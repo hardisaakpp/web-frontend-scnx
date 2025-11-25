@@ -1,0 +1,96 @@
+import { createRouter, createWebHistory } from 'vue-router'
+import authService from '@/services/authService'
+
+const router = createRouter({
+  history: createWebHistory(),
+  routes: [
+    {
+      path: '/login',
+      name: 'Login',
+      component: () => import('@/views/Login.vue'),
+      meta: { requiresAuth: false }
+    },
+    {
+      path: '/',
+      name: 'Dashboard',
+      component: () => import('@/views/Dashboard.vue'),
+      meta: { 
+        requiresAuth: true,
+        permissions: [] // Sin permisos específicos, solo autenticación
+      }
+    },
+    {
+      path: '/users',
+      name: 'Users',
+      component: () => import('@/views/Users.vue'),
+      meta: { 
+        requiresAuth: true,
+        permissions: ['users.view']
+      }
+    },
+    {
+      path: '/depositos',
+      name: 'Depositos',
+      component: () => import('@/views/Depositos.vue'),
+      meta: { 
+        requiresAuth: true,
+        permissions: ['depositos.view']
+      }
+    },
+    {
+      path: '/contabilidad',
+      name: 'Contabilidad',
+      component: () => import('@/views/Contabilidad.vue'),
+      meta: { 
+        requiresAuth: true,
+        permissions: ['contabilidad.view']
+      }
+    },
+    {
+      path: '/reportes',
+      name: 'Reportes',
+      component: () => import('@/views/Reportes.vue'),
+      meta: { 
+        requiresAuth: true,
+        permissions: ['reportes.view']
+      }
+    },
+    {
+      path: '/unauthorized',
+      name: 'Unauthorized',
+      component: () => import('@/views/Unauthorized.vue')
+    }
+  ]
+})
+
+// Guard global
+router.beforeEach((to, from, next) => {
+  const requiresAuth = to.meta.requiresAuth
+  const requiredPermissions = to.meta.permissions || []
+  const isAuthenticated = authService.isAuthenticated()
+
+  // Si la ruta requiere autenticación
+  if (requiresAuth && !isAuthenticated) {
+    return next('/login')
+  }
+
+  // Si está autenticado y va al login, redirigir al dashboard
+  if (to.path === '/login' && isAuthenticated) {
+    return next('/')
+  }
+
+  // Verificar permisos si están definidos
+  if (requiredPermissions.length > 0 && isAuthenticated) {
+    const hasPermission = requiredPermissions.some(p => 
+      authService.hasPermission(p)
+    )
+    
+    if (!hasPermission) {
+      return next('/unauthorized')
+    }
+  }
+
+  next()
+})
+
+export default router
