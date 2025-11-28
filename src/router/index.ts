@@ -12,6 +12,7 @@ import contabilidadRoutes from '../modules/contabilidad/router'
 import depositosRoutes from '../modules/depositos/router'
 import reportesRoutes from '../modules/reportes/router'
 import usuariosRoutes from '../modules/usuarios/router'
+import mba3ConsultasRoutes from '../modules/mba3-consultas/router'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -52,6 +53,7 @@ const router = createRouter({
         ...depositosRoutes,
         ...reportesRoutes,
         ...usuariosRoutes,
+        ...mba3ConsultasRoutes,
         {
           path: 'forbidden',
           name: 'forbidden',

@@ -111,6 +111,17 @@
           <span v-show="!isSidebarCollapsed">Reportes</span>
         </router-link>
 
+        <!-- MBA3 Consultas -->
+        <router-link
+          to="/mba3-consultas"
+          class="flex items-center gap-3 px-4 py-2 rounded hover:bg-gray-700 transition-colors"
+          :class="{ 'bg-gray-700': $route.path.startsWith('/mba3-consultas') }"
+          :title="isSidebarCollapsed ? 'MBA3 Consultas' : ''"
+        >
+          <DocumentTextIcon class="h-5 w-5 flex-shrink-0" />
+          <span v-show="!isSidebarCollapsed">MBA3 Consultas</span>
+        </router-link>
+
         <!-- Separador Admin -->
         <div v-if="authStore.isAdmin" class="border-t border-gray-700 my-2"></div>
 
@@ -221,6 +232,7 @@ import {
   CalculatorIcon,
   BuildingLibraryIcon,
   DocumentChartBarIcon,
+  DocumentTextIcon,
   ArrowRightOnRectangleIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -243,6 +255,10 @@ const pageTitle = computed(() => {
     '/contabilidad': 'Contabilidad',
     '/depositos': 'Depósitos',
     '/reportes': 'Reportes',
+    '/mba3-consultas': 'MBA3 Consultas',
+    '/mba3-consultas/facturas': 'Facturas MBA3',
+    '/mba3-consultas/ordenes-compra': 'Órdenes de Compra',
+    '/mba3-consultas/proceso': 'Proceso Completo',
     '/usuarios': 'Gestión de Usuarios',
     '/roles': 'Gestión de Roles',
     '/permisos': 'Gestión de Permisos'
