@@ -4,7 +4,14 @@ import MainLayout from '../layouts/MainLayout.vue'
 import LoginView from '../views/LoginView.vue'
 import AdminView from '../views/AdminView.vue'
 import UserView from '../views/UserView.vue'
+import Dashboard from '../views/Dashboard.vue'
 import ForbiddenView from '../views/ForbiddenView.vue'
+
+// Import module routes
+import contabilidadRoutes from '../modules/contabilidad/router'
+import depositosRoutes from '../modules/depositos/router'
+import reportesRoutes from '../modules/reportes/router'
+import usuariosRoutes from '../modules/usuarios/router'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -20,12 +27,13 @@ const router = createRouter({
       children: [
         {
           path: '',
-          redirect: () => {
-            const authStore = useAuthStore()
-            if (authStore.isAdmin) return { name: 'admin' }
-            if (authStore.isUser) return { name: 'user' }
-            return { name: 'login' }
-          }
+          redirect: '/dashboard'
+        },
+        {
+          path: 'dashboard',
+          name: 'dashboard',
+          component: Dashboard,
+          meta: { requiresAuth: true }
         },
         {
           path: 'admin',
@@ -39,6 +47,11 @@ const router = createRouter({
           component: UserView,
           meta: { requiresAuth: true, role: 'User' }
         },
+        // Module routes - auto imported
+        ...contabilidadRoutes,
+        ...depositosRoutes,
+        ...reportesRoutes,
+        ...usuariosRoutes,
         {
           path: 'forbidden',
           name: 'forbidden',
