@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import api from '../plugins/axios'
 import { jwtDecode } from 'jwt-decode'
+import axios from 'axios'
 
 interface AuthState {
   token: string | null
@@ -11,6 +12,20 @@ interface AuthState {
 interface LoginCredentials {
   username: string
   password: string
+  useActiveDirectory?: boolean
+}
+
+interface LoginResponse {
+  token: string
+  expiresIn: number
+  user: {
+    id: string
+    userName: string
+    email: string
+    fullName: string
+    roles: string[]
+    permissions: string[]
+  }
 }
 
 interface JwtPayload {
@@ -37,19 +52,24 @@ export const useAuthStore = defineStore('auth', {
   actions: {
     async login(credentials: LoginCredentials): Promise<boolean> {
       try {
-        const response = await api.post('/Auth/login', credentials)
-        const token = response.data.token
+        // Transformar el body para que coincida con la API
+        const requestBody = {
+          userName: credentials.username,
+          password: credentials.password,
+          useActiveDirectory: credentials.useActiveDirectory ?? false
+        }
+        
+        const response = await api.post<LoginResponse>('/Auth/login', requestBody)
+        const { token, user } = response.data
 
-        // Decode token
-        const decoded = jwtDecode<JwtPayload>(token)
-
-        // Set state
+        // Usar la información del user de la respuesta
         this.token = token
-        this.user = decoded.unique_name
-        this.role = decoded.role[0]
+        this.user = user.userName
+        this.role = user.roles[0] || null
 
-        // Store token
+        // Guardar token y user completo en localStorage
         localStorage.setItem('token', token)
+        localStorage.setItem('user', JSON.stringify(user))
 
         // Configure axios
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`

@@ -3,7 +3,7 @@ import api from './api'
 export default {
   // Login
   async login(username, password, useActiveDirectory = false) {
-    const response = await api.post('/auth/login', {
+    const response = await api.post('/Auth/login', {
       userName: username,
       password: password,
       useActiveDirectory: useActiveDirectory
@@ -26,7 +26,7 @@ export default {
 
   // Obtener usuario actual
   async getCurrentUser() {
-    const response = await api.get('/auth/me')
+    const response = await api.get('/Auth/me')
     const user = response.data.user
     localStorage.setItem('user', JSON.stringify(user))
     return user
@@ -34,7 +34,7 @@ export default {
 
   // Validar token
   async validateToken(token) {
-    const response = await api.post('/auth/validate', { token })
+    const response = await api.post('/Auth/validate', { token })
     return response.data
   },
 
