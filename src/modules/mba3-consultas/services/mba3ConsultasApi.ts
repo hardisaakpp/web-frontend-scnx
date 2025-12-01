@@ -25,6 +25,10 @@ mba3Api.interceptors.request.use(
     const token = localStorage.getItem('token')
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`
+      // DEBUG: Verificar que el token se está enviando
+      console.log('MBA3 API Request:', config.method?.toUpperCase(), config.url, 'Token:', token ? 'Presente' : 'Ausente')
+    } else {
+      console.warn('MBA3 API Request sin token:', config.method?.toUpperCase(), config.url)
     }
     return config
   },
@@ -45,13 +49,8 @@ mba3Api.interceptors.response.use(
       }
     }
     
-    // Manejar errores de permisos (403)
-    if (error.response?.status === 403) {
-      // Redirigir a página de acceso denegado
-      if (router.currentRoute.value.path !== '/forbidden') {
-        router.push('/forbidden')
-      }
-    }
+    // Manejar errores de permisos (403) - No redirigir automáticamente, dejar que el componente maneje el error
+    // El error se propagará y el componente puede mostrar un mensaje apropiado
     
     console.error('MBA3 API Error:', error)
     const message = error.response?.data?.message || error.message || 'Error desconocido'

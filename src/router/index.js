@@ -74,6 +74,11 @@ const router = createRouter({
           path: '/unauthorized',
           name: 'Unauthorized',
           component: () => import('@/views/Unauthorized.vue')
+        },
+        {
+          path: '/forbidden',
+          name: 'Forbidden',
+          component: () => import('@/views/ForbiddenView.vue')
         }
       ]
     }
@@ -96,14 +101,20 @@ router.beforeEach((to, from, next) => {
     return next('/')
   }
 
-  // Verificar permisos si están definidos
+  // Verificar permisos si están definidos (los administradores tienen acceso automático)
   if (requiredPermissions.length > 0 && isAuthenticated) {
-    const hasPermission = requiredPermissions.some(p => 
-      authService.hasPermission(p)
-    )
+    // Verificar si es admin desde userRoles
+    const user = authService.getUser()
+    const isAdmin = user?.roles?.includes('Admin') || false
     
-    if (!hasPermission) {
-      return next('/unauthorized')
+    if (!isAdmin) {
+      const hasPermission = requiredPermissions.some(p => 
+        authService.hasPermission(p)
+      )
+      
+      if (!hasPermission) {
+        return next('/unauthorized')
+      }
     }
   }
 
