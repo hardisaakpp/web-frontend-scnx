@@ -1,4 +1,5 @@
 import axios from 'axios'
+import router from '@/router'
 import type { 
   FacturaResponse, 
   FacturaFilters 
@@ -18,10 +19,40 @@ const mba3Api = axios.create({
   timeout: 30000,
 })
 
-// Interceptor para errores
+// Interceptor para agregar token en cada request
+mba3Api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token')
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+  },
+  (error) => Promise.reject(error)
+)
+
+// Interceptor para manejar errores y autenticación
 mba3Api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Manejar errores de autenticación (401)
+    if (error.response?.status === 401) {
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      // Redirigir al login si es necesario
+      if (router.currentRoute.value.path !== '/login') {
+        router.push('/login')
+      }
+    }
+    
+    // Manejar errores de permisos (403)
+    if (error.response?.status === 403) {
+      // Redirigir a página de acceso denegado
+      if (router.currentRoute.value.path !== '/forbidden') {
+        router.push('/forbidden')
+      }
+    }
+    
     console.error('MBA3 API Error:', error)
     const message = error.response?.data?.message || error.message || 'Error desconocido'
     return Promise.reject(new Error(message))

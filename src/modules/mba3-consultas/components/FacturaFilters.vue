@@ -1,12 +1,12 @@
 <template>
-  <div class="filters-card">
-    <h3 class="filters-title">Filtros de Búsqueda</h3>
-    <div class="filters-grid">
-      <div class="filter-group">
-        <label class="filter-label">Anulada</label>
+  <div class="bg-white rounded-lg shadow p-6 border border-gray-200 mb-6">
+    <h3 class="text-lg font-semibold text-gray-900 mb-4">Filtros de Búsqueda</h3>
+    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
+      <div class="flex flex-col">
+        <label class="text-sm font-medium text-gray-700 mb-2">Anulada</label>
         <select 
           v-model="localFilters.anulada" 
-          class="filter-select"
+          class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
           @change="emitUpdate"
         >
           <option :value="null">Todas</option>
@@ -15,11 +15,11 @@
         </select>
       </div>
 
-      <div class="filter-group">
-        <label class="filter-label">Confirmado</label>
+      <div class="flex flex-col">
+        <label class="text-sm font-medium text-gray-700 mb-2">Confirmado</label>
         <select 
           v-model="localFilters.confirmado" 
-          class="filter-select"
+          class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
           @change="emitUpdate"
         >
           <option :value="null">Todas</option>
@@ -28,11 +28,11 @@
         </select>
       </div>
 
-      <div class="filter-group">
-        <label class="filter-label">Remisión Facturada</label>
+      <div class="flex flex-col">
+        <label class="text-sm font-medium text-gray-700 mb-2">Remisión Facturada</label>
         <select 
           v-model="localFilters.remision_facturada" 
-          class="filter-select"
+          class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
           @change="emitUpdate"
         >
           <option :value="null">Todas</option>
@@ -41,34 +41,44 @@
         </select>
       </div>
 
-      <div class="filter-group checkbox-group">
-        <label class="checkbox-label">
+      <div class="flex items-center">
+        <label class="flex items-center gap-2 cursor-pointer">
           <input 
             type="checkbox" 
             v-model="localFilters.include_obj_datos"
             @change="emitUpdate"
-            class="checkbox-input"
+            class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
           />
-          <span>Incluir solo con ObjDatosFactura</span>
+          <span class="text-sm text-gray-700">Incluir solo con ObjDatosFactura</span>
         </label>
       </div>
 
-      <div class="filter-group checkbox-group">
-        <label class="checkbox-label">
+      <div class="flex items-center">
+        <label class="flex items-center gap-2 cursor-pointer">
           <input 
             type="checkbox" 
             v-model="localFilters.save_to_db"
             @change="emitUpdate"
-            class="checkbox-input"
+            class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
           />
-          <span>Guardar en base de datos</span>
+          <span class="text-sm text-gray-700">Guardar en base de datos</span>
         </label>
       </div>
     </div>
 
-    <div class="filters-actions">
-      <button @click="handleReset" class="btn btn-secondary">Resetear</button>
-      <button @click="handleApply" class="btn btn-primary">Aplicar Filtros</button>
+    <div class="flex gap-3 justify-end pt-4 border-t border-gray-200">
+      <button 
+        @click="handleReset" 
+        class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors text-sm font-medium"
+      >
+        Resetear
+      </button>
+      <button 
+        @click="handleApply" 
+        class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
+      >
+        Aplicar Filtros
+      </button>
     </div>
   </div>
 </template>
@@ -105,116 +115,4 @@ function handleReset() {
 }
 </script>
 
-<style scoped>
-.filters-card {
-  background: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  margin-bottom: 2rem;
-  border: 1px solid #e5e7eb;
-}
-
-.filters-title {
-  margin: 0 0 1.5rem 0;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #111827;
-}
-
-.filters-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 1.5rem;
-}
-
-.filter-group {
-  display: flex;
-  flex-direction: column;
-}
-
-.filter-label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #6b7280;
-  margin-bottom: 0.5rem;
-}
-
-.filter-select {
-  padding: 0.625rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  background: white;
-  color: #111827;
-  cursor: pointer;
-  transition: border-color 0.2s;
-}
-
-.filter-select:hover {
-  border-color: #3498db;
-}
-
-.filter-select:focus {
-  outline: none;
-  border-color: #3498db;
-  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
-}
-
-.checkbox-group {
-  justify-content: center;
-}
-
-.checkbox-label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-  font-size: 0.9rem;
-  color: #6b7280;
-}
-
-.checkbox-input {
-  width: 18px;
-  height: 18px;
-  cursor: pointer;
-}
-
-.filters-actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: flex-end;
-  padding-top: 1rem;
-  border-top: 1px solid #e5e7eb;
-}
-
-.btn {
-  padding: 0.625rem 1.25rem;
-  border: none;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-primary {
-  background: #3498db;
-  color: white;
-}
-
-.btn-primary:hover {
-  background: #2980b9;
-}
-
-.btn-secondary {
-  background: #95a5a6;
-  color: white;
-}
-
-.btn-secondary:hover {
-  background: #7f8c8d;
-}
-</style>
 

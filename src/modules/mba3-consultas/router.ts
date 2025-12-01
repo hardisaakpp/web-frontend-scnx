@@ -7,8 +7,9 @@ const routes: RouteRecordRaw[] = [
     component: () => import('./views/DashboardView.vue'),
     meta: { 
       requiresAuth: true,
-      title: 'MBA3 Consultas',
-      icon: 'DocumentTextIcon'
+      title: 'Integración MBA3-SAP',
+      icon: 'DocumentTextIcon',
+      permissions: ['mba3-consultas.view']
     }
   },
   {
@@ -18,7 +19,8 @@ const routes: RouteRecordRaw[] = [
     meta: { 
       requiresAuth: true,
       title: 'Facturas MBA3',
-      icon: 'DocumentIcon'
+      icon: 'DocumentIcon',
+      permissions: ['mba3-consultas.facturas.view']
     }
   },
   {
@@ -28,7 +30,8 @@ const routes: RouteRecordRaw[] = [
     meta: { 
       requiresAuth: true,
       title: 'Órdenes de Compra',
-      icon: 'ShoppingCartIcon'
+      icon: 'ShoppingCartIcon',
+      permissions: ['mba3-consultas.ordenes-compra.view']
     }
   },
   {
@@ -38,7 +41,8 @@ const routes: RouteRecordRaw[] = [
     meta: { 
       requiresAuth: true,
       title: 'Proceso Completo',
-      icon: 'CogIcon'
+      icon: 'CogIcon',
+      permissions: ['mba3-consultas.proceso.execute']
     }
   }
 ]

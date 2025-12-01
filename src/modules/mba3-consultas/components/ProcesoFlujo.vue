@@ -1,26 +1,32 @@
 <template>
-  <div class="proceso-flujo">
-    <div class="steps-container">
+  <div class="bg-white rounded-lg shadow p-8 border border-gray-200 mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
       <div 
         v-for="(step, index) in getSteps()" 
         :key="step.id"
-        class="step-item"
-        :class="getStepClass(step.id)"
+        class="flex flex-col items-center text-center p-6 rounded-lg transition-all"
+        :class="getStepClasses(step.status)"
       >
-        <div class="step-icon">
+        <div 
+          class="w-12 h-12 rounded-full flex items-center justify-center text-xl font-bold mb-4 shadow-sm border"
+          :class="getIconClasses(step.status)"
+        >
           <span v-if="step.status === 'completed'">✓</span>
-          <span v-else-if="step.status === 'active'">⟳</span>
+          <span v-else-if="step.status === 'active'" class="animate-pulse">⟳</span>
           <span v-else>{{ (index as number) + 1 }}</span>
         </div>
-        <div class="step-content">
-          <h3 class="step-title">{{ step.title }}</h3>
-          <p class="step-description">{{ step.description }}</p>
+        <div class="flex-1">
+          <h3 class="text-lg font-semibold mb-2" :class="getTitleClasses(step.status)">{{ step.title }}</h3>
+          <p class="text-sm opacity-80" :class="getDescriptionClasses(step.status)">{{ step.description }}</p>
         </div>
       </div>
     </div>
 
-    <div v-if="progress > 0" class="progress-bar">
-      <div class="progress-fill" :style="{ width: `${progress}%` }"></div>
+    <div v-if="progress > 0" class="w-full h-2 bg-gray-100 rounded-full overflow-hidden border border-gray-200">
+      <div 
+        class="h-full bg-gradient-to-r from-indigo-600 to-indigo-700 transition-all duration-300 ease-out"
+        :style="{ width: `${progress}%` }"
+      ></div>
     </div>
   </div>
 </template>
@@ -82,126 +88,30 @@ function getSteps(): Step[] {
   }))
 }
 
-function getStepClass(stepId: string): string {
-  const status = getStepStatus(stepId)
-  return `step-${status}`
+function getStepClasses(status: 'pending' | 'active' | 'completed'): string {
+  const baseClasses = 'border'
+  if (status === 'pending') return `${baseClasses} bg-gray-50 border-gray-200`
+  if (status === 'active') return `${baseClasses} bg-indigo-50 border-indigo-300 shadow-lg scale-105`
+  return `${baseClasses} bg-green-50 border-green-200`
+}
+
+function getIconClasses(status: 'pending' | 'active' | 'completed'): string {
+  if (status === 'pending') return 'bg-gray-100 text-gray-400 border-gray-200'
+  if (status === 'active') return 'bg-indigo-600 text-white border-indigo-700'
+  return 'bg-green-600 text-white border-green-700'
+}
+
+function getTitleClasses(status: 'pending' | 'active' | 'completed'): string {
+  if (status === 'pending') return 'text-gray-400'
+  if (status === 'active') return 'text-indigo-700'
+  return 'text-green-700'
+}
+
+function getDescriptionClasses(status: 'pending' | 'active' | 'completed'): string {
+  if (status === 'pending') return 'text-gray-500'
+  if (status === 'active') return 'text-indigo-600'
+  return 'text-green-600'
 }
 </script>
 
-<style scoped>
-.proceso-flujo {
-  background: white;
-  border-radius: 12px;
-  padding: 2rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e5e7eb;
-  margin-bottom: 2rem;
-}
-
-.steps-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-.step-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: 1.5rem;
-  border-radius: 8px;
-  transition: all 0.3s;
-}
-
-.step-pending {
-  background: #f9fafb;
-  color: #9ca3af;
-  border: 1px solid #e5e7eb;
-}
-
-.step-active {
-  background: #e3f2fd;
-  color: #1976d2;
-  box-shadow: 0 4px 12px rgba(25, 118, 210, 0.2);
-  transform: scale(1.05);
-}
-
-.step-completed {
-  background: #e8f5e9;
-  color: #2e7d32;
-}
-
-.step-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.5rem;
-  font-weight: bold;
-  margin-bottom: 1rem;
-  background: white;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e5e7eb;
-}
-
-.step-pending .step-icon {
-  background: #f9fafb;
-  color: #9ca3af;
-}
-
-.step-active .step-icon {
-  background: #1976d2;
-  color: white;
-  animation: pulse 2s infinite;
-}
-
-.step-completed .step-icon {
-  background: #2e7d32;
-  color: white;
-}
-
-.step-content {
-  flex: 1;
-}
-
-.step-title {
-  margin: 0 0 0.5rem 0;
-  font-size: 1.1rem;
-  font-weight: 600;
-}
-
-.step-description {
-  margin: 0;
-  font-size: 0.875rem;
-  opacity: 0.8;
-}
-
-.progress-bar {
-  width: 100%;
-  height: 8px;
-  background: #f9fafb;
-  border-radius: 4px;
-  overflow: hidden;
-  border: 1px solid #e5e7eb;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #3498db, #2980b9);
-  transition: width 0.3s ease;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.1);
-  }
-}
-</style>
 

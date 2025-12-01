@@ -69,15 +69,31 @@ router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
   const requiredRole = to.matched.find(record => record.meta.role)?.meta.role
+  const requiredPermissions = to.matched.find(record => record.meta.permissions)?.meta.permissions as string[] | undefined
 
+  // Verificar autenticación
   if (requiresAuth && !authStore.isAuthenticated) {
     next({ name: 'login' })
     return
   }
 
-  if (requiredRole && authStore.role !== requiredRole) {
+  // Verificar rol si está definido
+  if (requiredRole && !authStore.hasRole(requiredRole)) {
     next({ name: 'forbidden' })
     return
+  }
+
+  // Verificar permisos si están definidos (los administradores tienen acceso automático)
+  if (requiredPermissions && requiredPermissions.length > 0) {
+    // Verificar si es admin desde userRoles (ya que isAdmin getter no funciona)
+    const isAdmin = authStore.userRoles?.includes('Admin') || false
+    if (!isAdmin) {
+      const hasPermission = authStore.hasAnyPermission(requiredPermissions)
+      if (!hasPermission) {
+        next({ name: 'forbidden' })
+        return
+      }
+    }
   }
 
   next()

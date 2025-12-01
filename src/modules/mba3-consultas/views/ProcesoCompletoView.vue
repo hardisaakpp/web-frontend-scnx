@@ -1,32 +1,35 @@
 <template>
-  <div class="proceso-completo-view">
-    <h1 class="page-title">Proceso Completo</h1>
+  <div class="space-y-6">
+    <div>
+      <h1 class="text-3xl font-bold text-gray-900">Proceso Completo</h1>
+      <p class="mt-1 text-sm text-gray-500">Ejecuta el flujo completo de procesamiento MBA3</p>
+    </div>
     
     <ProcesoFlujo 
       :current-step="procesoStore.currentStep"
       :progress="procesoStore.progress"
     />
 
-    <div class="actions-section">
-      <h3>Acciones</h3>
-      <div class="actions-buttons">
+    <div class="bg-white rounded-lg shadow p-6 border border-gray-200">
+      <h3 class="text-xl font-semibold text-gray-900 mb-4">Acciones</h3>
+      <div class="flex flex-wrap gap-3">
         <button 
           @click="ejecutarProcesoCompleto" 
-          class="btn btn-success btn-large"
+          class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
           :disabled="procesoStore.loading"
         >
           {{ procesoStore.loading ? 'Ejecutando...' : 'Ejecutar Proceso Completo' }}
         </button>
         <button 
           @click="ejecutarPasoAPaso" 
-          class="btn btn-primary btn-large"
+          class="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
           :disabled="procesoStore.loading"
         >
           Ejecutar Paso a Paso
         </button>
         <button 
           @click="procesoStore.reset" 
-          class="btn btn-secondary"
+          class="px-4 py-3 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
           :disabled="procesoStore.loading"
         >
           Limpiar
@@ -34,65 +37,71 @@
       </div>
     </div>
 
-    <div v-if="procesoStore.error" class="error-alert">
-      <strong>Error:</strong> {{ procesoStore.error }}
+    <div v-if="procesoStore.error" class="bg-red-50 border-l-4 border-red-500 p-4 rounded">
+      <div class="flex">
+        <div class="ml-3">
+          <p class="text-sm text-red-700">
+            <strong>Error:</strong> {{ procesoStore.error }}
+          </p>
+        </div>
+      </div>
     </div>
 
-    <div v-if="procesoStore.resultados" class="resultados-section">
-      <h3>Resultados</h3>
-      <div class="resultados-card">
-        <div v-if="procesoStore.resultados.metadata?.save_status" class="resultado-item">
-          <h4>Guardado en Base de Datos</h4>
-          <ul>
+    <div v-if="procesoStore.resultados" class="bg-white rounded-lg shadow p-6 border border-gray-200">
+      <h3 class="text-xl font-semibold text-gray-900 mb-4">Resultados</h3>
+      <div class="space-y-4">
+        <div v-if="procesoStore.resultados.metadata?.save_status" class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <h4 class="text-lg font-medium text-gray-900 mb-3">Guardado en Base de Datos</h4>
+          <ul class="list-disc list-inside space-y-1 text-gray-600">
             <li>Facturas guardadas: {{ procesoStore.resultados.metadata.save_status.facturas_guardadas || 0 }}</li>
             <li>Facturas actualizadas: {{ procesoStore.resultados.metadata.save_status.facturas_actualizadas || 0 }}</li>
             <li>Total detalles: {{ procesoStore.resultados.metadata.save_status.total_detalles || 0 }}</li>
           </ul>
         </div>
 
-        <div v-if="procesoStore.resultados.metadata?.oc_status" class="resultado-item">
-          <h4>Órdenes de Compra</h4>
-          <ul>
+        <div v-if="procesoStore.resultados.metadata?.oc_status" class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <h4 class="text-lg font-medium text-gray-900 mb-3">Órdenes de Compra</h4>
+          <ul class="list-disc list-inside space-y-1 text-gray-600">
             <li>OCs creadas: {{ procesoStore.resultados.metadata.oc_status.oc_creadas || 0 }}</li>
             <li>Errores: {{ procesoStore.resultados.metadata.oc_status.oc_errores || 0 }}</li>
             <li>Total procesadas: {{ procesoStore.resultados.metadata.oc_status.total_procesadas || 0 }}</li>
           </ul>
         </div>
 
-        <div class="resultado-item">
-          <h4>Datos Completos</h4>
-          <pre class="json-preview">{{ JSON.stringify(procesoStore.resultados, null, 2) }}</pre>
+        <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <h4 class="text-lg font-medium text-gray-900 mb-3">Datos Completos</h4>
+          <pre class="bg-white p-4 rounded border border-gray-200 overflow-x-auto text-sm text-gray-800 max-h-96 overflow-y-auto font-mono">{{ JSON.stringify(procesoStore.resultados, null, 2) }}</pre>
         </div>
       </div>
     </div>
 
-    <div v-if="pasoAPasoMode" class="paso-a-paso-section">
-      <h3>Ejecutar Paso a Paso</h3>
-      <div class="paso-buttons">
+    <div v-if="pasoAPasoMode" class="bg-white rounded-lg shadow p-6 border border-gray-200">
+      <h3 class="text-xl font-semibold text-gray-900 mb-4">Ejecutar Paso a Paso</h3>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
         <button 
           @click="ejecutarConsultar" 
-          class="btn btn-primary"
+          class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
           :disabled="procesoStore.loading"
         >
           {{ procesoStore.loading && procesoStore.currentStep === 'consultar' ? 'Ejecutando...' : '1. Consultar' }}
         </button>
         <button 
           @click="ejecutarMigrar" 
-          class="btn btn-primary"
+          class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
           :disabled="procesoStore.loading"
         >
           {{ procesoStore.loading && procesoStore.currentStep === 'migrar' ? 'Ejecutando...' : '2. Migrar' }}
         </button>
         <button 
           @click="ejecutarProcesarOC" 
-          class="btn btn-primary"
+          class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
           :disabled="procesoStore.loading"
         >
           {{ procesoStore.loading && procesoStore.currentStep === 'procesar-oc' ? 'Ejecutando...' : '3. Procesar OC' }}
         </button>
         <button 
           @click="ejecutarIntegrarSAP" 
-          class="btn btn-primary"
+          class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
           :disabled="procesoStore.loading"
         >
           {{ procesoStore.loading && procesoStore.currentStep === 'integrar-sap' ? 'Ejecutando...' : '4. Integrar SAP' }}
@@ -155,170 +164,4 @@ async function ejecutarIntegrarSAP() {
 }
 </script>
 
-<style scoped>
-.proceso-completo-view {
-  padding: 2rem 0;
-}
-
-.page-title {
-  font-size: 2rem;
-  font-weight: 600;
-  color: #111827;
-  margin-bottom: 2rem;
-}
-
-.actions-section {
-  background: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e5e7eb;
-  margin-bottom: 2rem;
-}
-
-.actions-section h3 {
-  margin: 0 0 1rem 0;
-  font-size: 1.25rem;
-  color: #111827;
-}
-
-.actions-buttons {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.btn {
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-large {
-  padding: 1rem 2rem;
-  font-size: 1rem;
-}
-
-.btn-success {
-  background: #27ae60;
-  color: white;
-}
-
-.btn-success:hover:not(:disabled) {
-  background: #229954;
-}
-
-.btn-primary {
-  background: #3498db;
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: #2980b9;
-}
-
-.btn-secondary {
-  background: #95a5a6;
-  color: white;
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: #7f8c8d;
-}
-
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.error-alert {
-  background: #fee;
-  color: #c33;
-  padding: 1rem;
-  border-radius: 6px;
-  margin-bottom: 1.5rem;
-  border-left: 4px solid #e74c3c;
-}
-
-.resultados-section {
-  background: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e5e7eb;
-  margin-bottom: 2rem;
-}
-
-.resultados-section h3 {
-  margin: 0 0 1.5rem 0;
-  font-size: 1.25rem;
-  color: #111827;
-}
-
-.resultados-card {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.resultado-item {
-  padding: 1rem;
-  background: #f9fafb;
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
-}
-
-.resultado-item h4 {
-  margin: 0 0 0.75rem 0;
-  font-size: 1rem;
-  color: #111827;
-}
-
-.resultado-item ul {
-  margin: 0;
-  padding-left: 1.5rem;
-}
-
-.resultado-item li {
-  margin: 0.5rem 0;
-  color: #6b7280;
-}
-
-.json-preview {
-  background: #f9fafb;
-  color: #111827;
-  padding: 1rem;
-  border-radius: 6px;
-  overflow-x: auto;
-  font-size: 0.875rem;
-  max-height: 400px;
-  overflow-y: auto;
-  border: 1px solid #e5e7eb;
-  font-family: 'Courier New', monospace;
-}
-
-.paso-a-paso-section {
-  background: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e5e7eb;
-}
-
-.paso-a-paso-section h3 {
-  margin: 0 0 1rem 0;
-  font-size: 1.25rem;
-  color: #111827;
-}
-
-.paso-buttons {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 1rem;
-}
-</style>
 

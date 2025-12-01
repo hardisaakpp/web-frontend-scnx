@@ -111,15 +111,16 @@
           <span v-show="!isSidebarCollapsed">Reportes</span>
         </router-link>
 
-        <!-- MBA3 Consultas -->
+        <!-- Integración MBA3-SAP -->
         <router-link
+          v-if="(authStore.userRoles?.includes('Admin') || authStore.hasPermission('mba3-consultas.view'))"
           to="/mba3-consultas"
           class="flex items-center gap-3 px-4 py-2 rounded hover:bg-gray-700 transition-colors"
           :class="{ 'bg-gray-700': $route.path.startsWith('/mba3-consultas') }"
-          :title="isSidebarCollapsed ? 'MBA3 Consultas' : ''"
+          :title="isSidebarCollapsed ? 'Integración MBA3-SAP' : ''"
         >
           <DocumentTextIcon class="h-5 w-5 flex-shrink-0" />
-          <span v-show="!isSidebarCollapsed">MBA3 Consultas</span>
+          <span v-show="!isSidebarCollapsed">Integración MBA3-SAP</span>
         </router-link>
 
         <!-- Separador Admin -->
@@ -255,7 +256,7 @@ const pageTitle = computed(() => {
     '/contabilidad': 'Contabilidad',
     '/depositos': 'Depósitos',
     '/reportes': 'Reportes',
-    '/mba3-consultas': 'MBA3 Consultas',
+    '/mba3-consultas': 'Integración MBA3-SAP',
     '/mba3-consultas/facturas': 'Facturas MBA3',
     '/mba3-consultas/ordenes-compra': 'Órdenes de Compra',
     '/mba3-consultas/proceso': 'Proceso Completo',

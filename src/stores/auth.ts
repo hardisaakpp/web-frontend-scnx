@@ -3,10 +3,20 @@ import api from '../plugins/axios'
 import { jwtDecode } from 'jwt-decode'
 import axios from 'axios'
 
+interface User {
+  id: string
+  userName: string
+  email: string
+  fullName: string
+  roles: string[]
+  permissions: string[]
+}
+
 interface AuthState {
   token: string | null
   user: string | null
   role: string | null
+  userData: User | null
 }
 
 interface LoginCredentials {
@@ -40,13 +50,132 @@ export const useAuthStore = defineStore('auth', {
   state: (): AuthState => ({
     token: localStorage.getItem('token'),
     user: null,
-    role: null
+    role: null,
+    userData: null
   }),
 
   getters: {
     isAuthenticated: (state): boolean => !!state.token,
-    isAdmin: (state): boolean => state.role === 'Admin',
-    isUser: (state): boolean => state.role === 'User'
+    isAdmin(state): boolean {
+      // Verificar en state.role primero
+      if (state.role === 'Admin') return true
+      // Verificar en userData.roles
+      if (state.userData?.roles?.includes('Admin')) return true
+      // Verificar en localStorage
+      try {
+        const userStr = localStorage.getItem('user')
+        if (userStr) {
+          const user = JSON.parse(userStr) as User
+          return user.roles?.includes('Admin') || false
+        }
+      } catch {
+        return false
+      }
+      return false
+    },
+    isUser(state): boolean {
+      // Verificar en state.role primero
+      if (state.role === 'User') return true
+      // Verificar en userData.roles
+      if (state.userData?.roles?.includes('User')) return true
+      // Verificar en localStorage
+      try {
+        const userStr = localStorage.getItem('user')
+        if (userStr) {
+          const user = JSON.parse(userStr) as User
+          return user.roles?.includes('User') || false
+        }
+      } catch {
+        return false
+      }
+      return false
+    },
+    role(state): string | null {
+      // Verificar en state.role primero
+      if (state.role) return state.role
+      // Verificar en userData.roles
+      if (state.userData?.roles && state.userData.roles.length > 0) {
+        return state.userData.roles[0]
+      }
+      // Verificar en localStorage
+      try {
+        const userStr = localStorage.getItem('user')
+        if (userStr) {
+          const user = JSON.parse(userStr) as User
+          return user.roles?.[0] || null
+        }
+      } catch {
+        return null
+      }
+      return null
+    },
+    userPermissions: (state): string[] => {
+      if (state.userData?.permissions) {
+        return state.userData.permissions
+      }
+      // Intentar obtener desde localStorage si no está en state
+      try {
+        const userStr = localStorage.getItem('user')
+        if (userStr) {
+          const user = JSON.parse(userStr) as User
+          return user.permissions || []
+        }
+      } catch {
+        return []
+      }
+      return []
+    },
+    userRoles: (state): string[] => {
+      if (state.userData?.roles) {
+        return state.userData.roles
+      }
+      // Intentar obtener desde localStorage si no está en state
+      try {
+        const userStr = localStorage.getItem('user')
+        if (userStr) {
+          const user = JSON.parse(userStr) as User
+          return user.roles || []
+        }
+      } catch {
+        return []
+      }
+      return []
+    },
+    userName: (state): string => {
+      if (state.userData?.userName) {
+        return state.userData.userName
+      }
+      // Fallback al user del state o localStorage
+      if (state.user) {
+        return state.user
+      }
+      try {
+        const userStr = localStorage.getItem('user')
+        if (userStr) {
+          const user = JSON.parse(userStr) as User
+          return user.userName || ''
+        }
+      } catch {
+        return ''
+      }
+      return ''
+    },
+    fullName: (state): string => {
+      if (state.userData?.fullName) {
+        return state.userData.fullName
+      }
+      // Intentar obtener desde localStorage si no está en state
+      try {
+        const userStr = localStorage.getItem('user')
+        if (userStr) {
+          const user = JSON.parse(userStr) as User
+          return user.fullName || ''
+        }
+      } catch {
+        return ''
+      }
+      return ''
+    }
   },
 
   actions: {
@@ -66,6 +195,7 @@ export const useAuthStore = defineStore('auth', {
         this.token = token
         this.user = user.userName
         this.role = user.roles[0] || null
+        this.userData = user
 
         // Guardar token y user completo en localStorage
         localStorage.setItem('token', token)
@@ -86,12 +216,30 @@ export const useAuthStore = defineStore('auth', {
       this.token = null
       this.user = null
       this.role = null
+      this.userData = null
 
       // Remove from storage
       localStorage.removeItem('token')
+      localStorage.removeItem('user')
 
       // Remove axios header
       delete api.defaults.headers.common['Authorization']
+    },
+
+    hasPermission(permission: string): boolean {
+      return this.userPermissions.includes(permission)
+    },
+
+    hasAnyPermission(permissions: string[]): boolean {
+      return permissions.some(p => this.userPermissions.includes(p))
+    },
+
+    hasAllPermissions(permissions: string[]): boolean {
+      return permissions.every(p => this.userPermissions.includes(p))
+    },
+
+    hasRole(role: string): boolean {
+      return this.userRoles.includes(role)
     },
 
     initializeAuth(): void {
@@ -109,6 +257,17 @@ export const useAuthStore = defineStore('auth', {
           this.token = token
           this.user = decoded.unique_name
           this.role = decoded.role[0] || null
+          
+          // Cargar datos del usuario desde localStorage
+          const userStr = localStorage.getItem('user')
+          if (userStr) {
+            try {
+              this.userData = JSON.parse(userStr) as User
+            } catch {
+              // Si no se puede parsear, mantener null
+            }
+          }
+          
           api.defaults.headers.common['Authorization'] = `Bearer ${token}`
         } catch {
           this.logout()

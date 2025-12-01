@@ -1,5 +1,9 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import authService from '@/services/authService'
+import MainLayout from '@/layouts/MainLayout.vue'
+
+// Import module routes
+import mba3ConsultasRoutes from '@/modules/mba3-consultas/router'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -12,53 +16,66 @@ const router = createRouter({
     },
     {
       path: '/',
-      name: 'Dashboard',
-      component: () => import('@/views/Dashboard.vue'),
-      meta: { 
-        requiresAuth: true,
-        permissions: [] // Sin permisos específicos, solo autenticación
-      }
-    },
-    {
-      path: '/users',
-      name: 'Users',
-      component: () => import('@/views/Users.vue'),
-      meta: { 
-        requiresAuth: true,
-        permissions: ['users.view']
-      }
-    },
-    {
-      path: '/depositos',
-      name: 'Depositos',
-      component: () => import('@/views/Depositos.vue'),
-      meta: { 
-        requiresAuth: true,
-        permissions: ['depositos.view']
-      }
-    },
-    {
-      path: '/contabilidad',
-      name: 'Contabilidad',
-      component: () => import('@/views/Contabilidad.vue'),
-      meta: { 
-        requiresAuth: true,
-        permissions: ['contabilidad.view']
-      }
-    },
-    {
-      path: '/reportes',
-      name: 'Reportes',
-      component: () => import('@/views/Reportes.vue'),
-      meta: { 
-        requiresAuth: true,
-        permissions: ['reportes.view']
-      }
-    },
-    {
-      path: '/unauthorized',
-      name: 'Unauthorized',
-      component: () => import('@/views/Unauthorized.vue')
+      component: MainLayout,
+      children: [
+        {
+          path: '',
+          name: 'Dashboard',
+          redirect: '/dashboard'
+        },
+        {
+          path: 'dashboard',
+          name: 'dashboard',
+          component: () => import('@/views/Dashboard.vue'),
+          meta: { 
+            requiresAuth: true,
+            permissions: []
+          }
+        },
+        {
+          path: '/users',
+          name: 'Users',
+          component: () => import('@/views/Users.vue'),
+          meta: { 
+            requiresAuth: true,
+            permissions: ['users.view']
+          }
+        },
+        {
+          path: '/depositos',
+          name: 'Depositos',
+          component: () => import('@/views/Depositos.vue'),
+          meta: { 
+            requiresAuth: true,
+            permissions: ['depositos.view']
+          }
+        },
+        {
+          path: '/contabilidad',
+          name: 'Contabilidad',
+          component: () => import('@/views/Contabilidad.vue'),
+          meta: { 
+            requiresAuth: true,
+            permissions: ['contabilidad.view']
+          }
+        },
+        {
+          path: '/reportes',
+          name: 'Reportes',
+          component: () => import('@/views/Reportes.vue'),
+          meta: { 
+            requiresAuth: true,
+            permissions: ['reportes.view']
+          }
+        },
+        // MBA3 Consultas routes
+        ...mba3ConsultasRoutes,
+        {
+          path: '/unauthorized',
+          name: 'Unauthorized',
+          component: () => import('@/views/Unauthorized.vue')
+        }
+      ]
     }
   ]
 })

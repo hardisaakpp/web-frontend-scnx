@@ -1,10 +1,13 @@
 <template>
-  <div class="facturas-view">
-    <div class="view-header">
-      <h1 class="page-title">Facturas</h1>
+  <div class="space-y-6">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900">Facturas</h1>
+        <p class="mt-1 text-sm text-gray-500">Consulta y gestiona facturas desde MBA3</p>
+      </div>
       <button 
         @click="refreshFacturas" 
-        class="btn btn-primary"
+        class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         :disabled="facturasStore.loading"
       >
         {{ facturasStore.loading ? 'Cargando...' : 'Actualizar' }}
@@ -17,8 +20,14 @@
       @reset="handleResetFilters"
     />
 
-    <div v-if="facturasStore.error" class="error-alert">
-      <strong>Error:</strong> {{ facturasStore.error }}
+    <div v-if="facturasStore.error" class="bg-red-50 border-l-4 border-red-500 p-4 rounded">
+      <div class="flex">
+        <div class="ml-3">
+          <p class="text-sm text-red-700">
+            <strong>Error:</strong> {{ facturasStore.error }}
+          </p>
+        </div>
+      </div>
     </div>
 
     <LoadingSpinner v-if="facturasStore.loading" message="Cargando facturas..." />
@@ -60,56 +69,4 @@ function refreshFacturas() {
 }
 </script>
 
-<style scoped>
-.facturas-view {
-  padding: 2rem 0;
-}
-
-.view-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-}
-
-.page-title {
-  font-size: 2rem;
-  font-weight: 600;
-  color: #111827;
-  margin: 0;
-}
-
-.btn {
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-primary {
-  background: #3498db;
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: #2980b9;
-}
-
-.btn-primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.error-alert {
-  background: #fee;
-  color: #c33;
-  padding: 1rem;
-  border-radius: 6px;
-  margin-bottom: 1.5rem;
-  border-left: 4px solid #e74c3c;
-}
-</style>
 

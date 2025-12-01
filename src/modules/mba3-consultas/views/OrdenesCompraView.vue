@@ -1,12 +1,15 @@
 <template>
-  <div class="ordenes-compra-view">
-    <div class="view-header">
-      <h1 class="page-title">Órdenes de Compra</h1>
-      <div class="header-actions">
+  <div class="space-y-6">
+    <div class="flex items-center justify-between flex-wrap gap-4">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900">Órdenes de Compra</h1>
+        <p class="mt-1 text-sm text-gray-500">Gestiona y envía órdenes de compra a SAP</p>
+      </div>
+      <div class="flex items-center gap-3">
         <select 
           v-model="estadoFilter" 
           @change="handleFilterChange"
-          class="filter-select"
+          class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
         >
           <option value="">Todos los estados</option>
           <option value="PENDIENTE">Pendientes</option>
@@ -15,7 +18,7 @@
         </select>
         <button 
           @click="refreshOrdenes" 
-          class="btn btn-primary"
+          class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           :disabled="ordenesCompraStore.loading"
         >
           {{ ordenesCompraStore.loading ? 'Cargando...' : 'Actualizar' }}
@@ -23,8 +26,14 @@
       </div>
     </div>
 
-    <div v-if="ordenesCompraStore.error" class="error-alert">
-      <strong>Error:</strong> {{ ordenesCompraStore.error }}
+    <div v-if="ordenesCompraStore.error" class="bg-red-50 border-l-4 border-red-500 p-4 rounded">
+      <div class="flex">
+        <div class="ml-3">
+          <p class="text-sm text-red-700">
+            <strong>Error:</strong> {{ ordenesCompraStore.error }}
+          </p>
+        </div>
+      </div>
     </div>
 
     <LoadingSpinner v-if="ordenesCompraStore.loading" message="Cargando órdenes de compra..." />
@@ -36,9 +45,17 @@
       @integrar="handleIntegrar"
     />
 
-    <div v-if="getIntegrationResult()" class="result-alert" :class="getIntegrationResult()?.status === 'success' ? 'success' : 'error'">
-      <strong>{{ getIntegrationResult()?.status === 'success' ? '✓ Éxito' : '✗ Error' }}:</strong>
-      {{ getIntegrationResult()?.message }}
+    <div 
+      v-if="getIntegrationResult()" 
+      class="p-4 rounded border-l-4 mt-6"
+      :class="getIntegrationResult()?.status === 'success' 
+        ? 'bg-green-50 border-green-500 text-green-700' 
+        : 'bg-red-50 border-red-500 text-red-700'"
+    >
+      <p class="text-sm font-medium">
+        <strong>{{ getIntegrationResult()?.status === 'success' ? '✓ Éxito' : '✗ Error' }}:</strong>
+        {{ getIntegrationResult()?.message }}
+      </p>
     </div>
   </div>
 </template>
@@ -92,98 +109,4 @@ async function handleIntegrar(referenciaDespacho: string) {
 }
 </script>
 
-<style scoped>
-.ordenes-compra-view {
-  padding: 2rem 0;
-}
-
-.view-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-  flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.page-title {
-  font-size: 2rem;
-  font-weight: 600;
-  color: #111827;
-  margin: 0;
-}
-
-.header-actions {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-}
-
-.filter-select {
-  padding: 0.75rem 1rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  background: white;
-  color: #111827;
-  cursor: pointer;
-  transition: border-color 0.2s;
-}
-
-.filter-select:hover {
-  border-color: #3498db;
-}
-
-.btn {
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-primary {
-  background: #3498db;
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: #2980b9;
-}
-
-.btn-primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.error-alert {
-  background: #fee;
-  color: #c33;
-  padding: 1rem;
-  border-radius: 6px;
-  margin-bottom: 1.5rem;
-  border-left: 4px solid #e74c3c;
-}
-
-.result-alert {
-  padding: 1rem;
-  border-radius: 6px;
-  margin-top: 1.5rem;
-  border-left: 4px solid;
-}
-
-.result-alert.success {
-  background: #d4edda;
-  color: #155724;
-  border-color: #27ae60;
-}
-
-.result-alert.error {
-  background: #fee;
-  color: #c33;
-  border-color: #e74c3c;
-}
-</style>
 

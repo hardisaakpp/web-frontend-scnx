@@ -1,49 +1,51 @@
 <template>
-  <div class="table-container">
-    <div class="table-header">
-      <h2>Facturas Encontradas</h2>
-      <div class="table-info">
-        <span class="count-badge">{{ facturas.length }} facturas</span>
-        <span v-if="metadata?.save_status" class="save-status">
+  <div class="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
+    <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+      <h2 class="text-lg font-semibold text-gray-900">Facturas Encontradas</h2>
+      <div class="flex items-center gap-3">
+        <span class="px-3 py-1 bg-indigo-600 text-white rounded-full text-sm font-medium">
+          {{ facturas.length }} facturas
+        </span>
+        <span v-if="metadata?.save_status" class="text-sm text-gray-500">
           Guardadas: {{ metadata.save_status.facturas_guardadas || 0 }} | 
           Actualizadas: {{ metadata.save_status.facturas_actualizadas || 0 }}
         </span>
       </div>
     </div>
 
-    <div v-if="facturas.length === 0" class="empty-state">
+    <div v-if="facturas.length === 0" class="text-center py-12 text-gray-500">
       <p>No se encontraron facturas con los filtros seleccionados</p>
     </div>
 
-    <div v-else class="table-wrapper">
-      <table class="data-table">
-        <thead>
+    <div v-else class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
           <tr>
-            <th>Código Factura</th>
-            <th>Número Factura</th>
-            <th>Empresa</th>
-            <th>Cliente</th>
-            <th>Fecha</th>
-            <th>Estado</th>
-            <th>Acciones</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Código Factura</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Número Factura</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Empresa</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cliente</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
           </tr>
         </thead>
-        <tbody>
-          <tr v-for="factura in facturas" :key="factura.CODIGO_FACTURA" class="table-row">
-            <td class="font-mono">{{ factura.CODIGO_FACTURA }}</td>
-            <td>{{ factura.NUMERO_FACTURA }}</td>
-            <td>{{ factura.EMPRESA }}</td>
-            <td>{{ factura.CODIGO_CLIENTE }}</td>
-            <td>{{ formatDate(factura.FECHA_FACTURA) }}</td>
-            <td>
+        <tbody class="bg-white divide-y divide-gray-200">
+          <tr v-for="factura in facturas" :key="factura.CODIGO_FACTURA" class="hover:bg-gray-50">
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">{{ factura.CODIGO_FACTURA }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ factura.NUMERO_FACTURA }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ factura.EMPRESA }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ factura.CODIGO_CLIENTE }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ formatDate(factura.FECHA_FACTURA) }}</td>
+            <td class="px-6 py-4 whitespace-nowrap">
               <span :class="getStatusClass(factura)">
                 {{ getStatusText(factura) }}
               </span>
             </td>
-            <td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm">
               <button 
                 @click="openModal(factura)" 
-                class="btn-view"
+                class="px-3 py-1 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
               >
                 Ver Detalles
               </button>
@@ -84,9 +86,9 @@ function formatDate(dateString: string): string {
 }
 
 function getStatusClass(factura: Factura): string {
-  if (factura.ANULADA === 'true') return 'status-badge status-error'
-  if (factura.CONFIRMADO === 'true') return 'status-badge status-success'
-  return 'status-badge status-warning'
+  if (factura.ANULADA === 'true') return 'px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800'
+  if (factura.CONFIRMADO === 'true') return 'px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800'
+  return 'px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800'
 }
 
 function getStatusText(factura: Factura): string {
@@ -104,129 +106,4 @@ function closeModal() {
 }
 </script>
 
-<style scoped>
-.table-container {
-  background: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e5e7eb;
-}
-
-.table-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-  padding-bottom: 1rem;
-  border-bottom: 2px solid #e5e7eb;
-}
-
-.table-header h2 {
-  margin: 0;
-  font-size: 1.5rem;
-  color: #111827;
-}
-
-.table-info {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-}
-
-.count-badge {
-  background: #3498db;
-  color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.save-status {
-  font-size: 0.875rem;
-  color: #6b7280;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 3rem;
-  color: #9ca3af;
-}
-
-.table-wrapper {
-  overflow-x: auto;
-}
-
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.data-table thead {
-  background: #f9fafb;
-}
-
-.data-table th {
-  padding: 1rem;
-  text-align: left;
-  font-weight: 600;
-  color: #111827;
-  font-size: 0.875rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.data-table td {
-  padding: 1rem;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.table-row:hover {
-  background: #f9fafb;
-}
-
-.font-mono {
-  font-family: 'Courier New', monospace;
-  font-size: 0.9rem;
-}
-
-.status-badge {
-  display: inline-block;
-  padding: 0.25rem 0.75rem;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.status-success {
-  background: #d4edda;
-  color: #155724;
-}
-
-.status-warning {
-  background: #fff3cd;
-  color: #856404;
-}
-
-.status-error {
-  background: #f8d7da;
-  color: #721c24;
-}
-
-.btn-view {
-  background: #3498db;
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.875rem;
-  transition: background 0.2s;
-}
-
-.btn-view:hover {
-  background: #2980b9;
-}
-</style>
 

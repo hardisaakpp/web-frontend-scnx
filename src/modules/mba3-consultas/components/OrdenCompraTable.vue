@@ -1,55 +1,57 @@
 <template>
-  <div class="table-container">
-    <div class="table-header">
-      <h2>Órdenes de Compra</h2>
-      <div class="table-info">
-        <span class="count-badge">{{ ordenesCompra.length }} órdenes</span>
+  <div class="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
+    <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+      <h2 class="text-lg font-semibold text-gray-900">Órdenes de Compra</h2>
+      <div class="flex items-center gap-3">
+        <span class="px-3 py-1 bg-indigo-600 text-white rounded-full text-sm font-medium">
+          {{ ordenesCompra.length }} órdenes
+        </span>
       </div>
     </div>
 
-    <div v-if="ordenesCompra.length === 0" class="empty-state">
+    <div v-if="ordenesCompra.length === 0" class="text-center py-12 text-gray-500">
       <p>No se encontraron órdenes de compra</p>
     </div>
 
-    <div v-else class="table-wrapper">
-      <table class="data-table">
-        <thead>
+    <div v-else class="overflow-x-auto">
+      <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
           <tr>
-            <th>OC ID</th>
-            <th>Proveedor</th>
-            <th>Referencia Despacho</th>
-            <th>Fecha Generación</th>
-            <th>Estado</th>
-            <th>Número OC SAP</th>
-            <th>Acciones</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">OC ID</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Proveedor</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Referencia Despacho</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fecha Generación</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Número OC SAP</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody class="bg-white divide-y divide-gray-200">
           <tr 
             v-for="oc in ordenesCompra" 
             :key="oc.oc_id" 
-            class="table-row"
+            class="hover:bg-gray-50"
           >
-            <td class="font-mono">{{ oc.oc_id.substring(0, 8) }}...</td>
-            <td>{{ oc.proveedor }}</td>
-            <td>{{ oc.referencia_despacho }}</td>
-            <td>{{ formatDate(oc.fecha_generacion) }}</td>
-            <td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">{{ oc.oc_id.substring(0, 8) }}...</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ oc.proveedor }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ oc.referencia_despacho }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ formatDate(oc.fecha_generacion) }}</td>
+            <td class="px-6 py-4 whitespace-nowrap">
               <span :class="getEstadoClass(oc.estado)">
                 {{ oc.estado }}
               </span>
             </td>
-            <td>{{ oc.numero_oc_sap || '-' }}</td>
-            <td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ oc.numero_oc_sap || '-' }}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm">
               <button 
                 v-if="oc.estado === 'PENDIENTE'"
                 @click="handleIntegrar(oc.referencia_despacho)" 
-                class="btn-integrate"
+                class="px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
                 :disabled="loading"
               >
                 {{ loading ? 'Enviando...' : 'Enviar a SAP' }}
               </button>
-              <span v-else class="no-action">-</span>
+              <span v-else class="text-gray-400 italic">-</span>
             </td>
           </tr>
         </tbody>
@@ -82,11 +84,11 @@ function formatDate(dateString: string): string {
 
 function getEstadoClass(estado: string): string {
   const classes: Record<string, string> = {
-    'PENDIENTE': 'status-badge status-warning',
-    'ENVIADA': 'status-badge status-success',
-    'ERROR': 'status-badge status-error',
+    'PENDIENTE': 'px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800',
+    'ENVIADA': 'px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800',
+    'ERROR': 'px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800',
   }
-  return classes[estado] || 'status-badge'
+  return classes[estado] || 'px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800'
 }
 
 function handleIntegrar(referenciaDespacho: string) {
@@ -94,128 +96,4 @@ function handleIntegrar(referenciaDespacho: string) {
 }
 </script>
 
-<style scoped>
-.table-container {
-  background: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e5e7eb;
-}
-
-.table-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-  padding-bottom: 1rem;
-  border-bottom: 2px solid #e5e7eb;
-}
-
-.table-header h2 {
-  margin: 0;
-  font-size: 1.5rem;
-  color: #111827;
-}
-
-.count-badge {
-  background: #3498db;
-  color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 20px;
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 3rem;
-  color: #9ca3af;
-}
-
-.table-wrapper {
-  overflow-x: auto;
-}
-
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.data-table thead {
-  background: #f9fafb;
-}
-
-.data-table th {
-  padding: 1rem;
-  text-align: left;
-  font-weight: 600;
-  color: #111827;
-  font-size: 0.875rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.data-table td {
-  padding: 1rem;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.table-row:hover {
-  background: #f9fafb;
-}
-
-.font-mono {
-  font-family: 'Courier New', monospace;
-  font-size: 0.9rem;
-}
-
-.status-badge {
-  display: inline-block;
-  padding: 0.25rem 0.75rem;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.status-success {
-  background: #d4edda;
-  color: #155724;
-}
-
-.status-warning {
-  background: #fff3cd;
-  color: #856404;
-}
-
-.status-error {
-  background: #f8d7da;
-  color: #721c24;
-}
-
-.btn-integrate {
-  background: #27ae60;
-  color: white;
-  border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.875rem;
-  transition: background 0.2s;
-}
-
-.btn-integrate:hover:not(:disabled) {
-  background: #229954;
-}
-
-.btn-integrate:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.no-action {
-  color: #9ca3af;
-  font-style: italic;
-}
-</style>
 
