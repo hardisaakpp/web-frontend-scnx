@@ -232,40 +232,53 @@
                   <span class="ml-2 text-sm text-gray-600">Cargando detalles...</span>
                 </div>
                 <div v-else-if="detallesPorDespacho[despacho.despacho_id]?.length > 0" class="py-2">
-                  <h4 class="text-sm font-semibold text-gray-700 mb-3">Detalles del Despacho</h4>
+                  <h4 class="text-sm font-semibold text-gray-700 mb-3">
+                    Detalles del Despacho ({{ detallesPorDespacho[despacho.despacho_id]?.length }} {{ detallesPorDespacho[despacho.despacho_id]?.length === 1 ? 'ítem' : 'ítems' }})
+                  </h4>
                   <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200 bg-white rounded-lg">
+                    <table class="min-w-full divide-y divide-gray-200 bg-white rounded-lg border border-gray-200">
                       <thead class="bg-gray-100">
                         <tr>
-                          <th class="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase">Línea</th>
-                          <th class="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase">Código Producto</th>
-                          <th class="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase">Descripción</th>
-                          <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 uppercase">Cantidad</th>
-                          <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 uppercase">Precio Unit.</th>
-                          <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 uppercase">Precio Total</th>
-                          <th class="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase">Unidad Medida</th>
-                          <th class="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase">Bodega</th>
+                          <th class="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase">SKU</th>
+                          <th class="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase">Producto</th>
+                          <th class="px-4 py-2 text-center text-xs font-medium text-gray-600 uppercase">Cant. Docena MBA3</th>
+                          <th class="px-4 py-2 text-center text-xs font-medium text-gray-600 uppercase">Cant. Pack SAP</th>
+                          <th class="px-4 py-2 text-center text-xs font-medium text-gray-600 uppercase">Unidad SAP</th>
+                          <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 uppercase">Precio Unit. MBA3</th>
+                          <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 uppercase">Precio Unit. SAP</th>
+                          <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 uppercase">Descuento</th>
+                          <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 uppercase">Subtotal SAP</th>
+                          <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 uppercase">Total Línea MBA3</th>
                         </tr>
                       </thead>
                       <tbody class="divide-y divide-gray-200">
                         <tr v-for="(detalle, index) in detallesPorDespacho[despacho.despacho_id]" :key="detalle.detalle_id || index" class="hover:bg-gray-50">
-                          <td class="px-4 py-2 text-sm text-gray-900">{{ detalle.numero_linea || index + 1 }}</td>
-                          <td class="px-4 py-2 text-sm font-mono text-gray-900">{{ detalle.codigo_producto || '-' }}</td>
-                          <td class="px-4 py-2 text-sm text-gray-900">{{ detalle.descripcion_producto || '-' }}</td>
-                          <td class="px-4 py-2 text-sm text-gray-900 text-right">{{ formatNumber(detalle.cantidad) }}</td>
-                          <td class="px-4 py-2 text-sm text-gray-900 text-right">{{ formatCurrency(detalle.precio_unitario) }}</td>
-                          <td class="px-4 py-2 text-sm font-semibold text-gray-900 text-right">{{ formatCurrency(detalle.precio_total) }}</td>
-                          <td class="px-4 py-2 text-sm text-gray-900">{{ detalle.unidad_medida || '-' }}</td>
-                          <td class="px-4 py-2 text-sm text-gray-900">{{ detalle.codigo_bodega || '-' }}</td>
+                          <td class="px-4 py-2 text-sm font-mono text-gray-900 font-semibold">{{ detalle.sku || '-' }}</td>
+                          <td class="px-4 py-2 text-sm text-gray-900">
+                            <div class="max-w-xs">
+                              <div class="font-medium">{{ detalle.nombre_producto || '-' }}</div>
+                              <div class="text-xs text-gray-500 mt-1">{{ detalle.tipo_linea || '-' }}</div>
+                            </div>
+                          </td>
+                          <td class="px-4 py-2 text-sm text-gray-900 text-center">{{ formatNumber(detalle.cantidad_docena_mba3) }}</td>
+                          <td class="px-4 py-2 text-sm text-gray-900 text-center">{{ detalle.cantidad_pack_sap !== null ? formatNumber(detalle.cantidad_pack_sap) : '-' }}</td>
+                          <td class="px-4 py-2 text-sm text-gray-900 text-center font-mono">{{ detalle.unidad_sap || '-' }}</td>
+                          <td class="px-4 py-2 text-sm text-gray-900 text-right">{{ formatCurrency(detalle.precio_unitario_mba3) }}</td>
+                          <td class="px-4 py-2 text-sm text-gray-900 text-right">{{ detalle.precio_unitario_sap !== null ? formatCurrency(detalle.precio_unitario_sap) : '-' }}</td>
+                          <td class="px-4 py-2 text-sm text-gray-900 text-right">{{ formatCurrency(detalle.descuento) }}</td>
+                          <td class="px-4 py-2 text-sm text-gray-900 text-right font-medium">{{ formatCurrency(detalle.subtotal_sap) }}</td>
+                          <td class="px-4 py-2 text-sm font-semibold text-gray-900 text-right">{{ formatCurrency(detalle.total_linea_mba3) }}</td>
                         </tr>
                       </tbody>
-                      <tfoot v-if="detallesPorDespacho[despacho.despacho_id]?.length > 0" class="bg-gray-50">
+                      <tfoot v-if="detallesPorDespacho[despacho.despacho_id]?.length > 0" class="bg-gray-50 border-t-2 border-gray-300">
                         <tr>
-                          <td colspan="5" class="px-4 py-2 text-sm font-semibold text-gray-700 text-right">Total:</td>
-                          <td class="px-4 py-2 text-sm font-bold text-gray-900 text-right">
-                            {{ formatCurrency(getTotalDetalles(despacho.despacho_id)) }}
+                          <td colspan="8" class="px-4 py-2 text-sm font-semibold text-gray-700 text-right">Total Subtotal SAP:</td>
+                          <td class="px-4 py-2 text-sm font-bold text-gray-900 text-right border-l border-gray-300">
+                            {{ formatCurrency(getTotalSubtotalSAP(despacho.despacho_id)) }}
                           </td>
-                          <td colspan="2"></td>
+                          <td class="px-4 py-2 text-sm font-bold text-gray-900 text-right">
+                            {{ formatCurrency(getTotalLineaMBA3(despacho.despacho_id)) }}
+                          </td>
                         </tr>
                       </tfoot>
                     </table>
@@ -485,35 +498,43 @@ async function toggleDetalles(despachoId: string) {
 async function cargarDetalles(despachoId: string) {
   loadingDetalles.value[despachoId] = true
   try {
-    // Primero verificar si los detalles ya vienen en el despacho
+    // Primero verificar si los detalles ya vienen en el despacho (campo despacho_detalles)
     const despacho = props.despachos.find(d => d.despacho_id === despachoId)
-    if (despacho?.detalles && despacho.detalles.length > 0) {
-      detallesPorDespacho.value[despachoId] = despacho.detalles
+    if (despacho?.despacho_detalles && despacho.despacho_detalles.length > 0) {
+      console.log(`✅ [cargarDetalles] Detalles encontrados en despacho ${despachoId}:`, despacho.despacho_detalles.length)
+      detallesPorDespacho.value[despachoId] = despacho.despacho_detalles
       loadingDetalles.value[despachoId] = false
       return
     }
     
-    // Si no, intentar cargarlos desde el endpoint
-    const detalles = await mba3ConsultasService.getDespachoDetalles(despachoId)
-    detallesPorDespacho.value[despachoId] = detalles
+    // Si no hay detalles incluidos, intentar cargarlos desde el endpoint (por si acaso)
+    try {
+      const detalles = await mba3ConsultasService.getDespachoDetalles(despachoId)
+      detallesPorDespacho.value[despachoId] = detalles
+    } catch (endpointError: any) {
+      // Si el endpoint no existe o falla, usar los detalles vacíos del despacho
+      console.warn('No se pudieron cargar detalles desde endpoint, usando detalles incluidos (pueden estar vacíos)')
+      detallesPorDespacho.value[despachoId] = despacho?.despacho_detalles || []
+    }
   } catch (error: any) {
     console.error('Error al cargar detalles:', error)
-    // Si el endpoint no existe, no mostrar error pero dejar vacío
-    if (error.message && error.message.includes('404')) {
-      console.warn('Endpoint de detalles no disponible, los detalles deben venir incluidos en la respuesta')
-    } else {
-      toast.error('Error al cargar detalles', error.message || 'No se pudieron cargar los detalles del despacho')
-    }
     detallesPorDespacho.value[despachoId] = []
   } finally {
     loadingDetalles.value[despachoId] = false
   }
 }
 
-function getTotalDetalles(despachoId: string): number {
+function getTotalSubtotalSAP(despachoId: string): number {
   const detalles = detallesPorDespacho.value[despachoId] || []
   return detalles.reduce((total, detalle) => {
-    return total + (detalle.precio_total || 0)
+    return total + (detalle.subtotal_sap || 0)
+  }, 0)
+}
+
+function getTotalLineaMBA3(despachoId: string): number {
+  const detalles = detallesPorDespacho.value[despachoId] || []
+  return detalles.reduce((total, detalle) => {
+    return total + (detalle.total_linea_mba3 || 0)
   }, 0)
 }
 

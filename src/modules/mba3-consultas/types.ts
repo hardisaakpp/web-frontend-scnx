@@ -40,26 +40,29 @@ export interface Despacho {
   codigo_bodega: string | null
   numero_orden: string | null
   orden_compra_cliente: string | null
-  num_id_factura_relacionada: string | null
+  num_id_factura_relacionada: number | null
   orden_compra_info: string | null
   despacho_created_at: string
   despacho_updated_at: string
-  detalles?: DespachoDetalle[] // Detalles opcionales (pueden venir incluidos)
+  despacho_detalles?: DespachoDetalle[] // Detalles incluidos en la respuesta
 }
 
 // ========== Despacho Detalle (desde BD) ==========
 export interface DespachoDetalle {
-  detalle_id?: string
+  detalle_id: string
   despacho_id: string
-  codigo_producto?: string
-  descripcion_producto?: string
-  cantidad?: number
-  precio_unitario?: number
-  precio_total?: number
-  codigo_bodega?: string | null
-  numero_linea?: number | null
-  unidad_medida?: string | null
-  [key: string]: any // Para campos adicionales que puedan venir
+  sku: string
+  cantidad_docena_mba3: number
+  subtotal_sap: number
+  cantidad_pack_sap: number | null
+  unidad_sap: string | null
+  precio_unitario_mba3: number
+  descuento: number
+  total_linea_mba3: number
+  impuesto: number | null
+  nombre_producto: string
+  tipo_linea: string
+  precio_unitario_sap: number | null
 }
 
 export interface PrefacturaFilters {

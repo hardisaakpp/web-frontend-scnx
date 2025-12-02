@@ -213,8 +213,10 @@ export const mba3ConsultasService = {
       console.log('📋 [getDespachos] Primer despacho (ejemplo):', despachosData[0])
       
       // Verificar si los despachos ya tienen detalles incluidos
-      if (despachosData[0] && ('detalles' in despachosData[0] || 'items' in despachosData[0] || 'despacho_detalle' in despachosData[0])) {
-        console.log('ℹ️ [getDespachos] Los despachos incluyen detalles en la respuesta')
+      if (despachosData[0] && 'despacho_detalles' in despachosData[0]) {
+        console.log('ℹ️ [getDespachos] Los despachos incluyen detalles (despacho_detalles) en la respuesta')
+        const detallesCount = despachosData.reduce((acc, d) => acc + (d.despacho_detalles?.length || 0), 0)
+        console.log(`ℹ️ [getDespachos] Total de detalles incluidos: ${detallesCount}`)
       }
       
       const count = response.data.count || despachosData.length || 0
