@@ -13,17 +13,6 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
-    path: '/mba3-consultas/facturas',
-    name: 'mba3-consultas-facturas',
-    component: () => import('./views/FacturasView.vue'),
-    meta: { 
-      requiresAuth: true,
-      title: 'Facturas MBA3',
-      icon: 'DocumentIcon',
-      permissions: ['mba3-consultas.facturas.view']
-    }
-  },
-  {
     path: '/mba3-consultas/ordenes-compra',
     name: 'mba3-consultas-ordenes-compra',
     component: () => import('./views/OrdenesCompraView.vue'),
@@ -40,7 +29,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import('./views/ProcesoCompletoView.vue'),
     meta: { 
       requiresAuth: true,
-      title: 'Proceso Completo',
+      title: 'Procesos de Integración',
       icon: 'CogIcon',
       permissions: ['mba3-consultas.proceso.execute']
     }

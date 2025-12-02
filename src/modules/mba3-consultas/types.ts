@@ -1,7 +1,7 @@
 // Tipos consolidados para el módulo MBA3 Consultas
 
-// ========== Facturas ==========
-export interface Factura {
+// ========== Prefacturas/Despachos ==========
+export interface Prefactura {
   CODIGO_FACTURA: string
   ANULADA: string
   NUMERO_PEDIDO_SISTEMA: string
@@ -21,7 +21,48 @@ export interface Factura {
   CODIGO_BODEGA: string
 }
 
-export interface FacturaFilters {
+// ========== Despacho (desde BD) ==========
+export interface Despacho {
+  despacho_id: string
+  empresa: string
+  codigo_cliente: string
+  fecha_despacho: string
+  codigo_factura: string
+  numero_factura: number
+  numero_pedido_sistema: number | null
+  orden_compra: string | null
+  confirmado: boolean
+  anulada: boolean
+  tipo_documento: string
+  remision_facturada: boolean
+  fecha_factura: string
+  codigo_despacho: number
+  codigo_bodega: string | null
+  numero_orden: string | null
+  orden_compra_cliente: string | null
+  num_id_factura_relacionada: string | null
+  orden_compra_info: string | null
+  despacho_created_at: string
+  despacho_updated_at: string
+  detalles?: DespachoDetalle[] // Detalles opcionales (pueden venir incluidos)
+}
+
+// ========== Despacho Detalle (desde BD) ==========
+export interface DespachoDetalle {
+  detalle_id?: string
+  despacho_id: string
+  codigo_producto?: string
+  descripcion_producto?: string
+  cantidad?: number
+  precio_unitario?: number
+  precio_total?: number
+  codigo_bodega?: string | null
+  numero_linea?: number | null
+  unidad_medida?: string | null
+  [key: string]: any // Para campos adicionales que puedan venir
+}
+
+export interface PrefacturaFilters {
   anulada?: boolean | null
   confirmado?: boolean | null
   remision_facturada?: boolean | null
@@ -29,16 +70,16 @@ export interface FacturaFilters {
   save_to_db?: boolean
 }
 
-export interface FacturaResponse {
+export interface PrefacturaResponse {
   status: string
-  data: Factura[]
+  data: Prefactura[]
   metadata: {
     count: number
-    filters: FacturaFilters
+    filters: PrefacturaFilters
     save_status?: {
       status: string
-      facturas_guardadas: number
-      facturas_actualizadas: number
+      prefacturas_guardadas: number
+      prefacturas_actualizadas: number
       total_detalles: number
     }
   }
@@ -59,10 +100,15 @@ export interface OrdenCompra {
 export interface OrdenCompraResponse {
   status: string
   data: OrdenCompra[]
-  metadata: {
+  metadata?: {
     count: number
     estado_filter?: string
   }
+  // Información de paginación
+  total?: number
+  page?: number
+  pageSize?: number
+  totalPages?: number
 }
 
 export interface OrdenCompraDetalle {
@@ -91,8 +137,8 @@ export interface ProcesoResponse {
     query?: string
     save_status?: {
       status: string
-      facturas_guardadas: number
-      facturas_actualizadas: number
+      prefacturas_guardadas: number
+      prefacturas_actualizadas: number
       total_detalles: number
     }
     oc_status?: {
@@ -107,7 +153,7 @@ export interface ProcesoResponse {
 
 // ========== Estado del Módulo ==========
 export interface Mba3ConsultasState {
-  facturas: Factura[]
+  prefacturas: Prefactura[]
   ordenesCompra: OrdenCompra[]
   loading: boolean
   error: string | null

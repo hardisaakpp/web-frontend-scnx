@@ -9,23 +9,6 @@ export const useProcesoStore = defineStore('mba3Proceso', () => {
   const resultados = ref<any>(null)
   const progress = ref(0)
 
-  async function consultar() {
-    loading.value = true
-    error.value = null
-    currentStep.value = 'consultar'
-    progress.value = 25
-    try {
-      const data = await mba3ConsultasService.consultar()
-      resultados.value = { consultar: data }
-      return data
-    } catch (err: any) {
-      error.value = err.message || 'Error al consultar'
-      throw err
-    } finally {
-      loading.value = false
-    }
-  }
-
   async function migrar() {
     loading.value = true
     error.value = null
@@ -82,17 +65,46 @@ export const useProcesoStore = defineStore('mba3Proceso', () => {
     loading.value = true
     error.value = null
     progress.value = 0
+    currentStep.value = 'migrar'
+    
+    // Simular progreso paso a paso
+    const progressSteps = [
+      { step: 'migrar', progress: 33 },
+      { step: 'procesar-oc', progress: 66 }
+    ]
+    
+    let currentStepIndex = 0
+    
+    // Actualizar progreso cada segundo
+    const progressInterval = setInterval(() => {
+      if (currentStepIndex < progressSteps.length) {
+        const stepInfo = progressSteps[currentStepIndex]
+        currentStep.value = stepInfo.step
+        progress.value = stepInfo.progress
+        currentStepIndex++
+      }
+    }, 2000) // Cambiar de paso cada 2 segundos
+    
     try {
       const data = await mba3ConsultasService.pruebas()
+      clearInterval(progressInterval)
       resultados.value = data
+      currentStep.value = 'procesar-oc'
       progress.value = 100
+      
+      // Pequeño delay para mostrar el último paso completado
+      setTimeout(() => {
+        currentStep.value = null
+      }, 500)
+      
       return data
     } catch (err: any) {
+      clearInterval(progressInterval)
       error.value = err.message || 'Error en proceso completo'
+      currentStep.value = null
       throw err
     } finally {
       loading.value = false
-      currentStep.value = null
     }
   }
 
@@ -109,7 +121,6 @@ export const useProcesoStore = defineStore('mba3Proceso', () => {
     currentStep,
     resultados,
     progress,
-    consultar,
     migrar,
     procesarOC,
     integrarSAP,

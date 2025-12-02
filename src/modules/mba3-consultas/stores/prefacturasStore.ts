@@ -1,13 +1,13 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
-import type { Factura, FacturaFilters } from '../types'
+import type { Prefactura, PrefacturaFilters } from '../types'
 
-export const useFacturasStore = defineStore('mba3Facturas', () => {
-  const facturas = ref<Factura[]>([])
+export const usePrefacturasStore = defineStore('mba3Prefacturas', () => {
+  const prefacturas = ref<Prefactura[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
-  const filters = ref<FacturaFilters>({
+  const filters = ref<PrefacturaFilters>({
     anulada: false,
     confirmado: true,
     remision_facturada: false,
@@ -16,24 +16,24 @@ export const useFacturasStore = defineStore('mba3Facturas', () => {
   })
   const metadata = ref<any>(null)
 
-  const count = computed(() => facturas.value.length)
+  const count = computed(() => prefacturas.value.length)
 
-  async function fetchFacturas(customFilters?: FacturaFilters) {
+  async function fetchPrefacturas(customFilters?: PrefacturaFilters) {
     loading.value = true
     error.value = null
     try {
-      const response = await mba3ConsultasService.getFacturas(customFilters || filters.value)
-      facturas.value = response.data
+      const response = await mba3ConsultasService.getPrefacturas(customFilters || filters.value)
+      prefacturas.value = response.data
       metadata.value = response.metadata
     } catch (err: any) {
-      error.value = err.message || 'Error al obtener facturas'
-      console.error('Error fetching facturas:', err)
+      error.value = err.message || 'Error al obtener prefacturas'
+      console.error('Error fetching prefacturas:', err)
     } finally {
       loading.value = false
     }
   }
 
-  function updateFilters(newFilters: Partial<FacturaFilters>) {
+  function updateFilters(newFilters: Partial<PrefacturaFilters>) {
     filters.value = { ...filters.value, ...newFilters }
   }
 
@@ -48,15 +48,17 @@ export const useFacturasStore = defineStore('mba3Facturas', () => {
   }
 
   return {
-    facturas,
+    prefacturas,
     loading,
     error,
     filters,
     metadata,
     count,
-    fetchFacturas,
+    fetchPrefacturas,
     updateFilters,
     resetFilters,
   }
 })
+
+
 

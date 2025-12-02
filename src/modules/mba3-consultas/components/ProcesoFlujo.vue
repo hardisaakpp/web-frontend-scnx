@@ -1,6 +1,6 @@
 <template>
   <div class="bg-white rounded-lg shadow p-8 border border-gray-200 mb-6">
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
       <div 
         v-for="(step, index) in getSteps()" 
         :key="step.id"
@@ -48,13 +48,8 @@ const props = defineProps<{
 
 const baseSteps: Omit<Step, 'status'>[] = [
   {
-    id: 'consultar',
-    title: 'Consultar',
-    description: 'Consulta datos desde MBA3'
-  },
-  {
     id: 'migrar',
-    title: 'Migrar',
+    title: 'Importar-Despachos',
     description: 'Guarda en base de datos'
   },
   {
@@ -72,7 +67,7 @@ const baseSteps: Omit<Step, 'status'>[] = [
 function getStepStatus(stepId: string): 'pending' | 'active' | 'completed' {
   if (!props.currentStep) return 'pending'
   
-  const stepOrder = ['consultar', 'migrar', 'procesar-oc', 'integrar-sap']
+  const stepOrder = ['migrar', 'procesar-oc', 'integrar-sap']
   const currentIndex = stepOrder.indexOf(props.currentStep)
   const stepIndex = stepOrder.indexOf(stepId)
   

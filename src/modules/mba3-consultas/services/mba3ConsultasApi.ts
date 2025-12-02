@@ -1,8 +1,11 @@
 import axios from 'axios'
 import router from '@/router'
 import type { 
-  FacturaResponse, 
-  FacturaFilters 
+  PrefacturaResponse, 
+  PrefacturaFilters,
+  Prefactura,
+  Despacho,
+  DespachoDetalle
 } from '../types'
 import type { OrdenCompraResponse } from '../types'
 import type { HealthResponse, ProcesoResponse } from '../types'
@@ -19,41 +22,66 @@ const mba3Api = axios.create({
   timeout: 30000,
 })
 
-// Interceptor para agregar token en cada request
+// Interceptor para agregar token JWT en cada request
 mba3Api.interceptors.request.use(
-  (config) => {
+  config => {
     const token = localStorage.getItem('token')
-    if (token && config.headers) {
+    console.log('🔐 [MBA3 API Request] URL:', config.url)
+    console.log('🔐 [MBA3 API Request] Token disponible:', !!token)
+    
+    if (token) {
+      // Usar la misma sintaxis que funciona en api.js
+      if (!config.headers) {
+        config.headers = {}
+      }
       config.headers.Authorization = `Bearer ${token}`
-      // DEBUG: Verificar que el token se está enviando
-      console.log('MBA3 API Request:', config.method?.toUpperCase(), config.url, 'Token:', token ? 'Presente' : 'Ausente')
+      console.log('✅ [MBA3 API Request] Token agregado al header Authorization')
     } else {
-      console.warn('MBA3 API Request sin token:', config.method?.toUpperCase(), config.url)
+      console.warn('⚠️ [MBA3 API Request] No hay token disponible en localStorage')
     }
+    
     return config
   },
-  (error) => Promise.reject(error)
+  error => {
+    console.error('❌ [MBA3 API Request] Error en interceptor:', error)
+    return Promise.reject(error)
+  }
 )
 
 // Interceptor para manejar errores y autenticación
 mba3Api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Manejar errores de autenticación (401)
+    // Manejar errores 401 (token inválido o expirado)
     if (error.response?.status === 401) {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
-      // Redirigir al login si es necesario
-      if (router.currentRoute.value.path !== '/login') {
-        router.push('/login')
+      router.push('/login')
+    }
+    console.error('MBA3 API Error:', error)
+    
+    // Extraer mensaje de error más descriptivo
+    let message = error.message || 'Error desconocido'
+    
+    if (error.response?.data) {
+      // Si hay un mensaje en el response
+      if (error.response.data.message) {
+        message = error.response.data.message
+      } 
+      // Si hay un detalle en el response (típico de FastAPI)
+      else if (error.response.data.detail) {
+        message = error.response.data.detail
+      }
+      // Si es un error 500 relacionado con serialización
+      else if (error.response.status === 500 && typeof error.response.data === 'string') {
+        if (error.response.data.includes('Decimal') || error.response.data.includes('not JSON serializable')) {
+          message = 'Error de serialización en el servidor: El backend necesita convertir los valores Decimal a números antes de enviar la respuesta. Por favor, contacte al administrador.'
+        } else {
+          message = error.response.data
+        }
       }
     }
     
-    // Manejar errores de permisos (403) - No redirigir automáticamente, dejar que el componente maneje el error
-    // El error se propagará y el componente puede mostrar un mensaje apropiado
-    
-    console.error('MBA3 API Error:', error)
-    const message = error.response?.data?.message || error.message || 'Error desconocido'
     return Promise.reject(new Error(message))
   }
 )
@@ -66,7 +94,7 @@ export const mba3ConsultasService = {
   },
 
   // Facturas
-  async getFacturas(filters?: FacturaFilters): Promise<FacturaResponse> {
+  async getFacturas(filters?: PrefacturaFilters): Promise<PrefacturaResponse> {
     const params = new URLSearchParams()
     if (filters?.anulada !== undefined && filters.anulada !== null) {
       params.append('anulada', String(filters.anulada))
@@ -86,7 +114,7 @@ export const mba3ConsultasService = {
 
     const queryString = params.toString()
     const url = queryString ? `/facturas?${queryString}` : '/facturas'
-    const response = await mba3Api.get<FacturaResponse>(url)
+    const response = await mba3Api.get<PrefacturaResponse>(url)
     return response.data
   },
 
@@ -118,9 +146,15 @@ export const mba3ConsultasService = {
   },
 
   // Órdenes de compra
-  async getOrdenesCompra(estado?: string): Promise<OrdenCompraResponse> {
-    const params = estado ? `?estado=${estado}` : ''
-    const response = await mba3Api.get<OrdenCompraResponse>(`/ordenes-compra${params}`)
+  async getOrdenesCompra(estado?: string, page: number = 1, pageSize: number = 10): Promise<OrdenCompraResponse> {
+    const params = new URLSearchParams()
+    if (estado) params.append('estado', estado)
+    params.append('page', page.toString())
+    params.append('pageSize', pageSize.toString())
+    
+    const queryString = params.toString()
+    const url = queryString ? `/ordenes-compra?${queryString}` : '/ordenes-compra'
+    const response = await mba3Api.get<OrdenCompraResponse>(url)
     return response.data
   },
 
@@ -128,6 +162,105 @@ export const mba3ConsultasService = {
   async pruebas(): Promise<ProcesoResponse> {
     const response = await mba3Api.get<ProcesoResponse>('/pruebas')
     return response.data
+  },
+
+  // Obtener conteo de despachos disponibles
+  async getDespachosCount(): Promise<{ count: number; disponible: boolean }> {
+    const response = await mba3Api.get<{ count: number; disponible: boolean }>('/despachos/count')
+    return response.data
+  },
+
+  // Obtener lista de despachos (prefacturas guardadas en BD)
+  // Usa el endpoint /despachos/count modificado que ahora devuelve la lista + conteo
+  async getDespachos(page: number = 1, pageSize: number = 10): Promise<{ status: string; data: Despacho[]; metadata: { count: number; filters: {} }; total: number; page: number; pageSize: number }> {
+    try {
+      console.log('🔍 [getDespachos] Obteniendo despachos desde /despachos/count')
+      
+      // El endpoint /despachos/count ahora devuelve: { count, disponible, data: Prefactura[] }
+      // O podría devolver: { count, disponible, despachos: Prefactura[] } o directamente un array
+      const response = await mba3Api.get<any>('/despachos/count')
+      
+      // Log completo de la respuesta para diagnosticar
+      console.log('📦 [getDespachos] Respuesta completa del backend:', response.data)
+      console.log('📦 [getDespachos] Estructura de respuesta:', {
+        tieneData: 'data' in response.data,
+        tieneDespachos: 'despachos' in response.data,
+        esArray: Array.isArray(response.data),
+        keys: Object.keys(response.data || {}),
+      })
+      
+      // Intentar obtener los datos de diferentes formas posibles
+      let despachosData: Despacho[] = []
+      
+      if (Array.isArray(response.data)) {
+        // Si la respuesta es directamente un array
+        despachosData = response.data
+      } else if (response.data.data && Array.isArray(response.data.data)) {
+        // Si viene en data.data
+        despachosData = response.data.data
+      } else if (response.data.despachos && Array.isArray(response.data.despachos)) {
+        // Si viene en data.despachos
+        despachosData = response.data.despachos
+      } else if (response.data.resultado && Array.isArray(response.data.resultado)) {
+        // Si viene en data.resultado
+        despachosData = response.data.resultado
+      } else if (response.data.despatches && Array.isArray(response.data.despatches)) {
+        // Si viene en data.despatches (en inglés)
+        despachosData = response.data.despatches
+      }
+      
+      console.log('✅ [getDespachos] Despachos obtenidos:', despachosData.length)
+      console.log('📋 [getDespachos] Primer despacho (ejemplo):', despachosData[0])
+      
+      // Verificar si los despachos ya tienen detalles incluidos
+      if (despachosData[0] && ('detalles' in despachosData[0] || 'items' in despachosData[0] || 'despacho_detalle' in despachosData[0])) {
+        console.log('ℹ️ [getDespachos] Los despachos incluyen detalles en la respuesta')
+      }
+      
+      const count = response.data.count || despachosData.length || 0
+      
+      return {
+        status: 'success',
+        data: despachosData,
+        metadata: {
+          count: count,
+          filters: {},
+        },
+        total: count,
+        page: page,
+        pageSize: pageSize,
+      }
+    } catch (error: any) {
+      console.error('❌ [getDespachos] Error al obtener despachos:', error)
+      throw new Error(`No se pudo obtener los despachos desde el backend. Error: ${error.message}`)
+    }
+  },
+
+  // Obtener detalles de un despacho específico
+  async getDespachoDetalles(despachoId: string): Promise<DespachoDetalle[]> {
+    try {
+      console.log('🔍 [getDespachoDetalles] Obteniendo detalles para despacho:', despachoId)
+      const response = await mba3Api.get<any>(`/despachos/${despachoId}/detalles`)
+      
+      // El endpoint podría devolver los detalles de diferentes formas
+      let detalles: DespachoDetalle[] = []
+      
+      if (Array.isArray(response.data)) {
+        detalles = response.data
+      } else if (response.data.data && Array.isArray(response.data.data)) {
+        detalles = response.data.data
+      } else if (response.data.detalles && Array.isArray(response.data.detalles)) {
+        detalles = response.data.detalles
+      } else if (response.data.items && Array.isArray(response.data.items)) {
+        detalles = response.data.items
+      }
+      
+      console.log('✅ [getDespachoDetalles] Detalles obtenidos:', detalles.length)
+      return detalles
+    } catch (error: any) {
+      console.error('❌ [getDespachoDetalles] Error:', error)
+      throw new Error(`No se pudieron obtener los detalles del despacho. Error: ${error.message}`)
+    }
   },
 }
 
