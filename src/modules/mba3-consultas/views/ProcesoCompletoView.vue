@@ -282,6 +282,7 @@
 
             <DespachosTable 
               v-else
+              ref="despachosTableRef"
               :despachos="despachos"
               :loading="loadingDespachos"
               :total-despachos="despachosCount"
@@ -628,6 +629,13 @@ const progresoGenerarODC = ref(0)
 
 // Referencia al componente de tabla de órdenes de compra
 const ordenCompraTableRef = ref<{ 
+  clearSendingState?: () => void
+  clearSelection?: () => void
+  clearSendingMultipleState?: () => void
+} | null>(null)
+
+// Referencia al componente de tabla de despachos
+const despachosTableRef = ref<{
   clearSendingState?: () => void
   clearSelection?: () => void
   clearSendingMultipleState?: () => void
@@ -1001,9 +1009,19 @@ async function handleGenerarODCIndividual(despachoId: string) {
     await ordenesCompraStore.fetchEstadisticas()
     await cargarOrdenesCompraPendientes()
     await cargarDespachos()
+    
+    // Limpiar estado del botón individual
+    if (despachosTableRef.value?.clearSendingState) {
+      despachosTableRef.value.clearSendingState()
+    }
   } catch (error: any) {
     console.error('Error al generar ODC individual:', error)
     toast.error('Error al generar ODC', error.message || 'No se pudo generar la orden de compra')
+    
+    // Limpiar estado del botón individual en caso de error
+    if (despachosTableRef.value?.clearSendingState) {
+      despachosTableRef.value.clearSendingState()
+    }
   } finally {
     generandoODC.value = false
     progresoGenerarODC.value = 0
@@ -1058,9 +1076,19 @@ async function handleGenerarODCMultiples(despachoIds: string[]) {
     await ordenesCompraStore.fetchEstadisticas()
     await cargarOrdenesCompraPendientes()
     await cargarDespachos()
+    
+    // Limpiar estado de envío múltiple
+    if (despachosTableRef.value?.clearSendingMultipleState) {
+      despachosTableRef.value.clearSendingMultipleState()
+    }
   } catch (error: any) {
     console.error('Error al generar ODCs múltiples:', error)
     toast.error('Error al generar ODCs', error.message || 'No se pudieron generar las órdenes de compra')
+    
+    // Limpiar estado de envío múltiple en caso de error
+    if (despachosTableRef.value?.clearSendingMultipleState) {
+      despachosTableRef.value.clearSendingMultipleState()
+    }
   } finally {
     generandoODC.value = false
     progresoGenerarODC.value = 0

@@ -19,15 +19,15 @@
           <button
             @click="handleGenerarODCMultiples"
             class="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center gap-2"
-            :disabled="loading || isProcessing"
+            :disabled="loading || sendingMultiple"
           >
-            <svg v-if="loading || processing" class="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg v-if="loading || sendingMultiple" class="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
             <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            {{ (loading || isProcessing) ? `Generando ODC (${selectedDespachos.length})...` : `Generar ODC (${selectedDespachos.length})` }}
+            {{ sendingMultiple ? `Generando ODC (${selectedDespachos.length})...` : `Generar ODC (${selectedDespachos.length})` }}
           </button>
           <button
             @click="clearSelection"
@@ -326,16 +326,16 @@
                 <button
                   @click="handleGenerarODC(despacho.despacho_id)"
                   class="px-3 py-1 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center gap-1"
-                  :disabled="loading || isProcessing || despacho.anulada"
+                  :disabled="sendingDespachoId === despacho.despacho_id || despacho.anulada || sendingMultiple"
                   :title="despacho.anulada ? 'No se puede generar ODC para despachos anulados' : 'Generar ODC para este despacho'"
                 >
-                  <svg v-if="loading || isProcessing" class="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg v-if="sendingDespachoId === despacho.despacho_id" class="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
                   <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  {{ (loading || isProcessing) ? 'Generando...' : 'Generar ODC' }}
+                  {{ sendingDespachoId === despacho.despacho_id ? 'Generando...' : 'Generar ODC' }}
                 </button>
               </td>
             </tr>
@@ -453,6 +453,12 @@ const showColumnSelector = ref(false)
 const selectedDespachos = ref<string[]>([])
 // Usar el prop processing del padre o el estado local
 const isProcessing = computed(() => props.processing || false)
+
+// Estado para rastrear qué despacho individual se está procesando
+const sendingDespachoId = ref<string | null>(null)
+
+// Estado para rastrear cuando se están procesando múltiples despachos
+const sendingMultiple = ref(false)
 
 // Configuración de columnas
 const STORAGE_KEY = 'despachos-table-columns'
@@ -824,16 +830,52 @@ const someSelected = computed(() => {
 
 // Funciones de acción
 function handleGenerarODC(despachoId: string) {
-  emit('generar-odc', despachoId)
+  // Prevenir múltiples clics
+  if (sendingDespachoId.value === despachoId || sendingMultiple.value) {
+    return
+  }
+  
+  try {
+    sendingDespachoId.value = despachoId
+    emit('generar-odc', despachoId)
+    // El estado se limpiará cuando el componente padre termine la operación
+    // Pero como no podemos saber cuándo termina directamente, lo hacemos después de un pequeño delay
+    // El componente padre debería manejar la actualización del estado
+  } catch (error) {
+    sendingDespachoId.value = null
+  }
 }
 
 function handleGenerarODCMultiples() {
+  if (sendingMultiple.value || props.loading) {
+    return
+  }
+  
   if (selectedDespachos.value.length === 0) {
     toast.warning('No hay despachos seleccionados')
     return
   }
+  
+  sendingMultiple.value = true
   emit('generar-odc-multiples', [...selectedDespachos.value])
 }
+
+// Exponer funciones para limpiar el estado de envío (llamada por el componente padre después de completar)
+function clearSendingState() {
+  sendingDespachoId.value = null
+}
+
+// Función para limpiar el estado de envío múltiple (llamada por el componente padre después de completar)
+function clearSendingMultipleState() {
+  sendingMultiple.value = false
+}
+
+// Exponer funciones para que el componente padre pueda llamarlas
+defineExpose({
+  clearSendingState,
+  clearSelection,
+  clearSendingMultipleState
+})
 
 // Funciones para colores temáticos de cabecera y detalles
 // Los despachos pertenecen al proceso "migrar" (violeta)
