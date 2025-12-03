@@ -1,9 +1,10 @@
 <template>
   <div class="space-y-6">
+    <!-- Header -->
     <div class="flex items-center justify-between flex-wrap gap-4">
       <div>
-        <h1 class="text-3xl font-bold text-gray-900">Órdenes de Compra</h1>
-        <p class="mt-1 text-sm text-gray-500">Gestiona y envía órdenes de compra a SAP</p>
+        <h1 class="text-3xl font-bold text-gray-900">Historial de Órdenes de Compra</h1>
+        <p class="mt-1 text-sm text-gray-500">Consulta y visualiza el historial completo de órdenes de compra</p>
       </div>
       <div class="flex items-center gap-3">
         <select 
@@ -17,9 +18,29 @@
           <option value="ERROR">Con Error</option>
         </select>
         <button 
+          @click="exportData('csv')" 
+          class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+          :disabled="loadingTodas || todosLosLogs.length === 0"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          Exportar CSV
+        </button>
+        <button 
+          @click="exportData('excel')" 
+          class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+          :disabled="loadingTodas || todosLosLogs.length === 0"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          Exportar Excel
+        </button>
+        <button 
           @click="refreshOrdenes" 
           class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-          :disabled="ordenesCompraStore.loading"
+          :disabled="loadingTodas"
         >
           <svg v-if="ordenesCompraStore.loading" class="animate-spin h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -29,41 +50,142 @@
       </div>
     </div>
 
-    <SkeletonTable v-if="ordenesCompraStore.loading && ordenesCompraStore.ordenesCompra.length === 0" />
-
-    <OrdenCompraTable 
-      v-else
-      :ordenes-compra="ordenesCompraStore.ordenesCompra"
-      :loading="ordenesCompraStore.loading"
-      :total-ordenes="ordenesCompraStore.total"
-      @integrar="handleIntegrar"
-      @integrar-multiples="handleIntegrarMultiples"
-    />
-
-    <!-- Paginación -->
-    <div v-if="ordenesCompraStore.totalPages > 1 && !ordenesCompraStore.loading" class="bg-white rounded-lg shadow p-4 border border-gray-200">
-      <div class="flex items-center justify-between flex-wrap gap-4">
-        <div class="text-sm text-gray-700">
-          Mostrando {{ ordenesCompraStore.ordenesCompra.length }} de {{ ordenesCompraStore.total }} órdenes
+    <!-- Resumen de Estados -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="bg-white rounded-lg shadow p-6 border border-gray-200">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-gray-500 mb-1">Pendientes</p>
+            <p class="text-3xl font-bold text-orange-600">{{ ordenesCompraStore.pendientes }}</p>
+          </div>
+          <div class="w-12 h-12 rounded-lg bg-orange-100 flex items-center justify-center">
+            <span class="text-2xl">⏳</span>
+          </div>
         </div>
-        <div class="flex items-center gap-2">
-          <button
-            @click="prevPage"
-            :disabled="ordenesCompraStore.currentPage === 1 || ordenesCompraStore.loading"
-            class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
-          >
-            Anterior
-          </button>
-          <span class="px-4 py-2 text-sm text-gray-700">
-            Página {{ ordenesCompraStore.currentPage }} de {{ ordenesCompraStore.totalPages }}
+      </div>
+      
+      <div class="bg-white rounded-lg shadow p-6 border border-gray-200">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-gray-500 mb-1">Enviadas</p>
+            <p class="text-3xl font-bold text-green-600">{{ ordenesCompraStore.enviadas }}</p>
+          </div>
+          <div class="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center">
+            <span class="text-2xl">✅</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-white rounded-lg shadow p-6 border border-gray-200">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-sm text-gray-500 mb-1">Con Error</p>
+            <p class="text-3xl font-bold text-red-600">{{ ordenesCompraStore.errores }}</p>
+          </div>
+          <div class="w-12 h-12 rounded-lg bg-red-100 flex items-center justify-center">
+            <span class="text-2xl">❌</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabla de Historial -->
+    <div class="bg-white rounded-lg shadow border border-gray-200">
+      <div class="px-6 py-4 border-b border-gray-200">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-xl font-semibold text-gray-900">Historial de Órdenes</h2>
+            <p class="mt-1 text-sm text-gray-500">
+              Total: <span class="font-semibold">{{ totalFiltradas }}</span> registros
+              <span v-if="ocIdFilter" class="ml-2">
+                - Filtrado por OC ID: <span class="font-medium font-mono">{{ ocIdFilter }}</span>
+                <button
+                  @click="clearOcIdFilter"
+                  class="ml-2 text-indigo-600 hover:text-indigo-700 underline"
+                  title="Limpiar filtro de OC ID"
+                >
+                  (limpiar)
+                </button>
+              </span>
+              <span v-if="estadoFilter && !ocIdFilter">
+                - Filtrado por: <span class="font-medium">{{ getEstadoLabel(estadoFilter) }}</span>
+              </span>
+              <span v-else-if="!ocIdFilter" class="text-gray-400">
+                ({{ todosLosLogs.length }} en total)
+              </span>
+            </p>
+          </div>
+          <div class="text-sm text-gray-500">
+            <span class="text-indigo-600 font-medium">Nota:</span> Para realizar acciones sobre las órdenes, ve a 
+            <router-link to="/mba3-consultas/proceso" class="text-indigo-600 hover:text-indigo-700 underline font-medium">
+              Procesos de Integración
+            </router-link>
+          </div>
+        </div>
+      </div>
+      
+      <SkeletonTable v-if="loadingTodas && todosLosLogs.length === 0" />
+
+      <div v-else-if="todosLosLogs.length === 0" class="px-6 py-12 text-center">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
+          <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        </div>
+        <p class="text-gray-500 text-lg font-medium">No hay órdenes de compra para mostrar</p>
+        <p class="text-gray-400 text-sm mt-1">
+          <span v-if="ocIdFilter || estadoFilter">
+            <span v-if="ocIdFilter">No se encontraron registros para el OC ID: <span class="font-mono font-semibold">{{ ocIdFilter }}</span>.</span>
+            <span v-if="ocIdFilter && estadoFilter"> </span>
+            <span v-if="estadoFilter">Intenta cambiar el filtro o </span>
+            <span v-if="!estadoFilter">Intenta </span>
           </span>
-          <button
-            @click="nextPage"
-            :disabled="ordenesCompraStore.currentPage === ordenesCompraStore.totalPages || ordenesCompraStore.loading"
-            class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
-          >
-            Siguiente
+          <span v-else>Intenta </span>
+          <button v-if="ocIdFilter" @click="clearOcIdFilter" class="text-indigo-600 hover:text-indigo-700 underline">
+            limpiar el filtro de OC ID
           </button>
+          <span v-if="ocIdFilter && !estadoFilter"> o </span>
+          <button @click="refreshOrdenes" class="text-indigo-600 hover:text-indigo-700 underline">
+            actualizar los datos
+          </button>
+        </p>
+      </div>
+
+      <HistorialOrdenesTable 
+        v-else
+        :ordenes-compra="logsPaginados"
+        :loading="loadingTodas"
+        :total-ordenes="totalFiltradas"
+      />
+
+      <!-- Paginación -->
+      <div v-if="totalPagesLocal > 1 && !loadingTodas" class="px-6 py-4 border-t border-gray-200">
+        <div class="flex items-center justify-between flex-wrap gap-4">
+          <div class="text-sm text-gray-700">
+            Mostrando {{ logsPaginados.length }} de {{ totalFiltradas }} registros
+            <span v-if="estadoFilter" class="text-gray-500">
+              ({{ todosLosLogs.length }} total)
+            </span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+              @click="prevPage"
+              :disabled="currentPageLocal === 1 || loadingTodas"
+              class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+            >
+              Anterior
+            </button>
+            <span class="px-4 py-2 text-sm text-gray-700 bg-gray-50 rounded-lg">
+              Página {{ currentPageLocal }} de {{ totalPagesLocal }}
+            </span>
+            <button
+              @click="nextPage"
+              :disabled="currentPageLocal === totalPagesLocal || loadingTodas"
+              class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+            >
+              Siguiente
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -71,18 +193,117 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useOrdenesCompraStore } from '../stores/ordenesCompraStore'
 import { useToast } from '@/composables/useToast'
-import OrdenCompraTable from '../components/OrdenCompraTable.vue'
+import { useExport } from '../composables/useExport'
+import { mba3ConsultasService } from '../services/mba3ConsultasApi'
+import HistorialOrdenesTable from '../components/HistorialOrdenesTable.vue'
 import SkeletonTable from '../components/SkeletonTable.vue'
+import type { OrdenCompraLog } from '../types'
 
 const ordenesCompraStore = useOrdenesCompraStore()
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
+const { exportToCSV, exportToExcel } = useExport()
 const estadoFilter = ref<string>('')
+
+// Todos los logs cargados (sin filtro)
+const todosLosLogs = ref<OrdenCompraLog[]>([])
+const loadingTodas = ref(false)
+
+// Filtro por oc_id desde URL
+const ocIdFilter = computed(() => {
+  const ocIdFromQuery = route.query.oc_id as string | undefined
+  return ocIdFromQuery || null
+})
+
+// Logs filtrados localmente
+const logsFiltrados = computed(() => {
+  let filtered = todosLosLogs.value
+  
+  // Filtrar por oc_id si está en la URL
+  if (ocIdFilter.value) {
+    filtered = filtered.filter(log => log.oc_id === ocIdFilter.value)
+  }
+  
+  // Filtrar por estado si está seleccionado
+  if (estadoFilter.value) {
+    filtered = filtered.filter(log => log.estado === estadoFilter.value)
+  }
+  
+  return filtered
+})
+
+// Total de logs filtrados
+const totalFiltradas = computed(() => logsFiltrados.value.length)
+
+// Paginación local
+const pageSize = ref(10)
+const currentPageLocal = ref(1)
+const totalPagesLocal = computed(() => Math.ceil(totalFiltradas.value / pageSize.value))
+
+// Logs paginados
+const logsPaginados = computed(() => {
+  const start = (currentPageLocal.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return logsFiltrados.value.slice(start, end)
+})
+
+function getEstadoLabel(estado: string): string {
+  const labels: Record<string, string> = {
+    'PENDIENTE': 'Pendientes',
+    'ENVIADA': 'Enviadas',
+    'ERROR': 'Con Error'
+  }
+  return labels[estado] || estado
+}
+
+// Función para cargar todos los logs
+async function cargarTodosLosLogs() {
+  loadingTodas.value = true
+  ordenesCompraStore.loading = true
+  try {
+    // Cargar logs con paginación grande para obtener todos
+    const response = await mba3ConsultasService.getOrdenesCompraLogs(1, 10000)
+    
+    let logsData: OrdenCompraLog[] = []
+    
+    // Manejar diferentes formatos de respuesta
+    if (Array.isArray(response)) {
+      logsData = response
+    } else if (response.data && Array.isArray(response.data)) {
+      logsData = response.data
+    } else if (typeof response === 'object' && response !== null) {
+      // Intentar acceder a diferentes propiedades posibles
+      const responseAny = response as any
+      if (Array.isArray(responseAny.logs)) {
+        logsData = responseAny.logs
+      } else if (Array.isArray(responseAny.data)) {
+        logsData = responseAny.data
+      }
+    }
+    
+    // Ordenar por timestamp o fecha (más recientes primero)
+    logsData.sort((a, b) => {
+      const fechaA = new Date(a.timestamp || a.created_at || a.fecha || '').getTime()
+      const fechaB = new Date(b.timestamp || b.created_at || b.fecha || '').getTime()
+      return fechaB - fechaA
+    })
+    
+    todosLosLogs.value = logsData
+    
+    console.log(`[Historial] Cargados ${logsData.length} logs`)
+  } catch (error: any) {
+    console.error('Error al cargar los logs:', error)
+    toast.error('Error al cargar logs', error.message || 'No se pudieron cargar los logs de órdenes de compra')
+  } finally {
+    loadingTodas.value = false
+    ordenesCompraStore.loading = false
+  }
+}
 
 onMounted(async () => {
   // Verificar si hay un parámetro de estado en la URL
@@ -93,132 +314,91 @@ onMounted(async () => {
   
   try {
     await ordenesCompraStore.fetchEstadisticas()
-    
-    // Si el valor está vacío, pasar undefined explícitamente para obtener todos los estados
-    const estado = estadoFilter.value === '' ? undefined : estadoFilter.value
-    await ordenesCompraStore.fetchOrdenesCompra(estado, 1)
+    await cargarTodosLosLogs()
   } catch (error: any) {
-    toast.error('Error al cargar órdenes', error.message || 'No se pudieron cargar las órdenes de compra')
+    toast.error('Error al cargar logs', error.message || 'No se pudieron cargar los logs de órdenes de compra')
   }
 })
 
+// Watch para detectar cambios en la URL (cuando se navega con oc_id)
+watch(() => route.query.oc_id, async (newOcId) => {
+  if (newOcId && typeof newOcId === 'string') {
+    // Esperar a que los logs se carguen si aún no están cargados
+    if (todosLosLogs.value.length === 0) {
+      await cargarTodosLosLogs()
+    }
+    // El filtro se aplicará automáticamente a través de logsFiltrados computed
+  }
+}, { immediate: true })
+
 function handleFilterChange() {
   // Resetear a página 1 cuando cambia el filtro
-  ordenesCompraStore.setPage(1)
-  // Si el valor está vacío, pasar undefined explícitamente para obtener todos los estados
-  const estado = estadoFilter.value === '' ? undefined : estadoFilter.value
+  currentPageLocal.value = 1
   
-  // Actualizar la URL sin recargar la página
-  if (estado) {
-    router.replace({ query: { estado } })
-  } else {
-    router.replace({ query: {} })
+  // Actualizar la URL sin recargar la página, preservando oc_id si existe
+  const query: any = {}
+  if (estadoFilter.value) {
+    query.estado = estadoFilter.value
   }
-  
-  ordenesCompraStore.fetchOrdenesCompra(estado, 1)
+  if (ocIdFilter.value) {
+    query.oc_id = ocIdFilter.value
+  }
+  router.replace({ query })
+}
+
+function clearOcIdFilter() {
+  // Limpiar el filtro de oc_id y actualizar la URL
+  const query: any = {}
+  if (estadoFilter.value) {
+    query.estado = estadoFilter.value
+  }
+  router.replace({ query })
+  currentPageLocal.value = 1
 }
 
 async function refreshOrdenes() {
   try {
-    // Mantener la página actual al refrescar
-    // Si el valor está vacío, pasar undefined explícitamente para obtener todos los estados
-    const estado = estadoFilter.value === '' ? undefined : estadoFilter.value
-    await ordenesCompraStore.fetchOrdenesCompra(estado, ordenesCompraStore.currentPage)
-    toast.success('Lista actualizada', 'Las órdenes de compra se han actualizado correctamente')
+    await ordenesCompraStore.fetchEstadisticas()
+    await cargarTodosLosLogs()
+    currentPageLocal.value = 1
+    toast.success('Lista actualizada', 'Los logs se han actualizado correctamente')
   } catch (error: any) {
     toast.error('Error al actualizar', error.message || 'No se pudo actualizar la lista')
   }
 }
 
 function prevPage() {
-  if (ordenesCompraStore.currentPage > 1) {
-    const newPage = ordenesCompraStore.currentPage - 1
-    ordenesCompraStore.setPage(newPage)
-    const estado = estadoFilter.value === '' ? undefined : estadoFilter.value
-    ordenesCompraStore.fetchOrdenesCompra(estado, newPage)
+  if (currentPageLocal.value > 1) {
+    currentPageLocal.value--
   }
 }
 
 function nextPage() {
-  if (ordenesCompraStore.currentPage < ordenesCompraStore.totalPages) {
-    const newPage = ordenesCompraStore.currentPage + 1
-    ordenesCompraStore.setPage(newPage)
-    const estado = estadoFilter.value === '' ? undefined : estadoFilter.value
-    ordenesCompraStore.fetchOrdenesCompra(estado, newPage)
+  if (currentPageLocal.value < totalPagesLocal.value) {
+    currentPageLocal.value++
   }
 }
 
-async function handleIntegrar(referenciaDespacho: string) {
+function exportData(format: 'csv' | 'excel') {
   try {
-    toast.info('Enviando orden a SAP...', 'Por favor espere')
-    const result = await ordenesCompraStore.integrarSAP(referenciaDespacho)
+    const logsAExportar = logsFiltrados.value.length > 0 ? logsFiltrados.value : todosLosLogs.value
     
-    toast.success(
-      'Orden enviada exitosamente',
-      result.message || `La orden ${referenciaDespacho} se ha enviado correctamente a SAP`
-    )
-    
-    // Actualizar estadísticas después de integrar
-    await ordenesCompraStore.fetchEstadisticas()
-    
-    // Refrescar la lista actual
-    const estado = estadoFilter.value === '' ? undefined : estadoFilter.value
-    await ordenesCompraStore.fetchOrdenesCompra(estado, ordenesCompraStore.currentPage)
-  } catch (error: any) {
-    toast.error(
-      'Error al enviar orden',
-      error.message || `No se pudo enviar la orden ${referenciaDespacho} a SAP`
-    )
-  }
-}
-
-async function handleIntegrarMultiples(referenciasDespacho: string[]) {
-  if (referenciasDespacho.length === 0) {
-    toast.warning('No hay órdenes seleccionadas', 'Selecciona al menos una orden pendiente')
-    return
-  }
-  
-  if (!confirm(`¿Estás seguro de enviar ${referenciasDespacho.length} orden(es) a SAP?`)) {
-    return
-  }
-  
-  try {
-    toast.info(`Enviando ${referenciasDespacho.length} órdenes...`, 'Este proceso puede tardar unos momentos')
-    
-    // Enviar órdenes una por una (el backend podría tener un endpoint para múltiples)
-    let successCount = 0
-    let errorCount = 0
-    
-    for (const referencia of referenciasDespacho) {
-      try {
-        await ordenesCompraStore.integrarSAP(referencia)
-        successCount++
-      } catch (error) {
-        errorCount++
-        console.error(`Error al enviar ${referencia}:`, error)
-      }
+    if (logsAExportar.length === 0) {
+      toast.warning('No hay datos', 'No hay logs para exportar')
+      return
     }
+
+    const filename = `historial-logs-ordenes-compra${estadoFilter.value ? `-${estadoFilter.value.toLowerCase()}` : ''}`
     
-    // Actualizar estadísticas
-    await ordenesCompraStore.fetchEstadisticas()
-    
-    // Refrescar la lista
-    const estado = estadoFilter.value === '' ? undefined : estadoFilter.value
-    await ordenesCompraStore.fetchOrdenesCompra(estado, ordenesCompraStore.currentPage)
-    
-    if (errorCount === 0) {
-      toast.success(
-        'Todas las órdenes enviadas',
-        `${successCount} orden(es) se enviaron exitosamente a SAP`
-      )
+    if (format === 'csv') {
+      exportToCSV(logsAExportar as OrdenCompraLog[], filename)
+      toast.success('Exportación exitosa', `Se exportaron ${logsAExportar.length} registros en formato CSV`)
     } else {
-      toast.warning(
-        'Proceso completado con errores',
-        `${successCount} exitosas, ${errorCount} con error`
-      )
+      exportToExcel(logsAExportar as OrdenCompraLog[], filename)
+      toast.success('Exportación exitosa', `Se exportaron ${logsAExportar.length} registros en formato Excel`)
     }
   } catch (error: any) {
-    toast.error('Error en el proceso', error.message || 'Ocurrió un error al enviar las órdenes')
+    toast.error('Error al exportar', error.message || 'No se pudo exportar los datos')
   }
 }
 </script>

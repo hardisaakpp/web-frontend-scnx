@@ -26,13 +26,13 @@ export const useProcesoStore = defineStore('mba3Proceso', () => {
     }
   }
 
-  async function procesarOC() {
+  async function procesarOC(despachoIds?: string | string[]) {
     loading.value = true
     error.value = null
     currentStep.value = 'procesar-oc'
     progress.value = 75
     try {
-      const data = await mba3ConsultasService.procesarOC()
+      const data = await mba3ConsultasService.procesarOC(despachoIds)
       resultados.value = { ...resultados.value, procesarOC: data }
       return data
     } catch (err: any) {
@@ -43,7 +43,7 @@ export const useProcesoStore = defineStore('mba3Proceso', () => {
     }
   }
 
-  async function integrarSAP(referenciaDespacho?: string) {
+  async function integrarSAP(referenciaDespacho?: string | string[]) {
     loading.value = true
     error.value = null
     currentStep.value = 'integrar-sap'

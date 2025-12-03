@@ -272,7 +272,7 @@
                       </tbody>
                       <tfoot v-if="detallesPorDespacho[despacho.despacho_id]?.length > 0" class="bg-gray-50 border-t-2 border-gray-300">
                         <tr>
-                          <td colspan="8" class="px-4 py-2 text-sm font-semibold text-gray-700 text-right">Total Subtotal SAP:</td>
+                          <td colspan="8" class="px-4 py-2 text-sm font-semibold text-gray-700 text-right">Subtotal:</td>
                           <td class="px-4 py-2 text-sm font-bold text-gray-900 text-right border-l border-gray-300">
                             {{ formatCurrency(getTotalSubtotalSAP(despacho.despacho_id)) }}
                           </td>

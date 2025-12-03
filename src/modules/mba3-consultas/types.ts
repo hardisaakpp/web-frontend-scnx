@@ -98,6 +98,26 @@ export interface OrdenCompra {
   numero_oc_sap: string | null
   referencia_despacho: string
   created_at: string
+  fecha_procesado?: string | null
+  respuesta_sap?: string | null
+  error_source?: string | null
+  error_code?: string | null
+  error_message?: string | null
+  metadata?: {
+    detalles?: Array<{
+      oc_id?: string
+      proveedor?: string
+      success?: boolean
+      doc_entry?: number
+      doc_num?: number
+      error_source?: string
+      error_code?: string
+      error_message?: string
+      sap_response?: Record<string, any>
+      [key: string]: any
+    }>
+    [key: string]: any
+  }
 }
 
 export interface OrdenCompraResponse {
@@ -106,6 +126,10 @@ export interface OrdenCompraResponse {
   metadata?: {
     count: number
     estado_filter?: string
+    detalles?: Array<{
+      sap_response?: Record<string, any>
+      [key: string]: any
+    }>
   }
   // Información de paginación
   total?: number
@@ -118,6 +142,60 @@ export interface OrdenCompraDetalle {
   oc_id: string
   proveedor: string
   detalles: any[]
+}
+
+// ========== Logs de Órdenes de Compra ==========
+export interface OrdenCompraLog {
+  // Campos comunes de logs
+  log_id?: string
+  timestamp?: string
+  fecha?: string
+  created_at?: string
+  updated_at?: string
+  
+  // Información de la orden de compra
+  oc_id?: string
+  referencia_despacho?: string
+  proveedor?: string
+  despacho_id?: string
+  
+  // Estado y acción
+  estado?: string
+  accion?: string
+  tipo?: string
+  
+  // Información de SAP
+  numero_oc_sap?: string | null
+  doc_entry?: number | null
+  doc_num?: number | null
+  
+  // Mensajes y errores
+  mensaje?: string | null
+  error_message?: string | null
+  error_code?: string | null
+  error_source?: string | null
+  respuesta_sap?: string | null
+  
+  // Fechas
+  fecha_generacion?: string
+  fecha_procesado?: string | null
+  
+  // Campos adicionales dinámicos
+  [key: string]: any
+}
+
+export interface OrdenCompraLogResponse {
+  status: string
+  data: OrdenCompraLog[]
+  metadata?: {
+    count: number
+    filters?: Record<string, any>
+  }
+  // Información de paginación
+  total?: number
+  page?: number
+  pageSize?: number
+  totalPages?: number
 }
 
 // ========== API General ==========
@@ -160,5 +238,13 @@ export interface Mba3ConsultasState {
   ordenesCompra: OrdenCompra[]
   loading: boolean
   error: string | null
+}
+
+// ========== Componentes ==========
+export interface Tab {
+  id: string
+  label: string
+  badge?: string | number
+  color?: 'violet' | 'emerald' | 'rose' | 'default'
 }
 

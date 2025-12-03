@@ -7,7 +7,7 @@ import type {
   Despacho,
   DespachoDetalle
 } from '../types'
-import type { OrdenCompraResponse } from '../types'
+import type { OrdenCompraResponse, OrdenCompraLogResponse } from '../types'
 import type { HealthResponse, ProcesoResponse } from '../types'
 
 // Usar la URL base del backend MBA3
@@ -26,8 +26,6 @@ const mba3Api = axios.create({
 mba3Api.interceptors.request.use(
   config => {
     const token = localStorage.getItem('token')
-    console.log('🔐 [MBA3 API Request] URL:', config.url)
-    console.log('🔐 [MBA3 API Request] Token disponible:', !!token)
     
     if (token) {
       // Usar la misma sintaxis que funciona en api.js
@@ -35,9 +33,6 @@ mba3Api.interceptors.request.use(
         config.headers = {}
       }
       config.headers.Authorization = `Bearer ${token}`
-      console.log('✅ [MBA3 API Request] Token agregado al header Authorization')
-    } else {
-      console.warn('⚠️ [MBA3 API Request] No hay token disponible en localStorage')
     }
     
     return config
@@ -58,14 +53,48 @@ mba3Api.interceptors.response.use(
       localStorage.removeItem('user')
       router.push('/login')
     }
+    
+    // Log detallado del error para debugging
     console.error('MBA3 API Error:', error)
+    if (error.response) {
+      console.error('Response Status:', error.response.status)
+      console.error('Response Data:', error.response.data)
+      console.error('Response Headers:', error.response.headers)
+      console.error('Request URL:', error.config?.url)
+      console.error('Request Method:', error.config?.method)
+    } else if (error.request) {
+      console.error('Request Error:', error.request)
+      console.error('No se recibió respuesta del servidor')
+    }
     
     // Extraer mensaje de error más descriptivo
     let message = error.message || 'Error desconocido'
     
     if (error.response?.data) {
+      // Verificar si es un error de SAP
+      const errorSource = error.response.data.error_source
+      const errorCode = error.response.data.error_code
+      
+      if (errorSource?.toUpperCase() === 'SAP' && errorCode) {
+        // Usar mensajes amigables para errores de SAP
+        const sapErrorMessages: Record<string, string> = {
+          '401': 'Error de autenticación con SAP. Las credenciales no son válidas o han expirado.',
+          '403': 'Sin permisos para realizar esta operación en SAP.',
+          'VALIDATION_ERROR': 'Error de validación en los datos enviados a SAP.',
+          'MISSING_FIELD': 'Falta un campo obligatorio en la solicitud a SAP.',
+          'INVALID_FORMAT': 'El formato de uno o más campos no es válido para SAP.',
+          'INVALID_CARDCODE': 'El código del proveedor no existe en SAP.',
+          'INVALID_ITEMCODE': 'Uno o más códigos de artículo no existen en SAP.',
+          'DUPLICATE_DOCUMENT': 'Ya existe un documento con estos datos en SAP.',
+          'CONNECTION_ERROR': 'No se pudo establecer conexión con el servidor SAP.',
+          'TIMEOUT': 'La solicitud a SAP tardó demasiado tiempo en responder.',
+          'INTERNAL_ERROR': 'Error interno en el servidor SAP.',
+        }
+        const friendlyMessage = sapErrorMessages[errorCode.toUpperCase()] || `Error SAP (${errorCode})`
+        message = friendlyMessage + (error.response.data.error_message ? ` - ${error.response.data.error_message}` : '')
+      }
       // Si hay un mensaje en el response
-      if (error.response.data.message) {
+      else if (error.response.data.message) {
         message = error.response.data.message
       } 
       // Si hay un detalle en el response (típico de FastAPI)
@@ -80,6 +109,17 @@ mba3Api.interceptors.response.use(
           message = error.response.data
         }
       }
+      // Si es un error 500 sin mensaje específico
+      else if (error.response.status === 500) {
+        if (!message || message === 'Error desconocido') {
+          message = 'Error interno del servidor (500). Por favor, verifique los logs del backend o contacte al administrador.'
+        }
+      }
+    }
+    
+    // Si no hay respuesta del servidor (error de red)
+    if (!error.response && error.request) {
+      message = 'No se pudo conectar con el servidor. Verifique su conexión a internet o que el servidor esté en ejecución.'
     }
     
     return Promise.reject(new Error(message))
@@ -125,30 +165,95 @@ export const mba3ConsultasService = {
   },
 
   // Migrar
-  async migrar(): Promise<ProcesoResponse> {
-    const response = await mba3Api.get<ProcesoResponse>('/migrar')
+  async migrar(retries: number = 2): Promise<ProcesoResponse> {
+    let lastError: any = null
+    
+    // Intentar hasta (retries + 1) veces (retries = número de reintentos adicionales)
+    // Por defecto: 3 intentos totales (intento 0, 1, 2)
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        // Si no es el primer intento, agregar un delay progresivo para dar tiempo al backend
+        if (attempt > 0) {
+          const delay = attempt * 2000 // Delay progresivo: 2s, 4s, 6s...
+          console.warn(`[migrar] Reintentando migración (intento ${attempt + 1}/${retries + 1}) después de ${delay}ms...`)
+          await new Promise(resolve => setTimeout(resolve, delay))
+        }
+        
+        const response = await mba3Api.get<ProcesoResponse>('/migrar')
+        return response.data
+      } catch (error: any) {
+        lastError = error
+        
+        // Solo reintentar si es un error 500 y no es el último intento
+        const is500Error = error.response?.status === 500
+        const isLastAttempt = attempt === retries
+        
+        if (is500Error && !isLastAttempt) {
+          console.warn(`[migrar] Error 500 en intento ${attempt + 1}/${retries + 1}. El backend puede necesitar inicialización. Reintentando...`)
+          continue // Continuar al siguiente intento
+        }
+        
+        // Si no es un 500 o es el último intento, lanzar el error
+        throw error
+      }
+    }
+    
+    // Si llegamos aquí, todos los intentos fallaron
+    throw lastError
+  },
+
+  // Procesar OC (todos o específicos)
+  // despachoIds: string | string[] | undefined - Si se proporciona, procesa solo esos despachos
+  async procesarOC(despachoIds?: string | string[]): Promise<any> {
+    const params = new URLSearchParams()
+    
+    if (despachoIds) {
+      // Si es un array, enviar múltiples IDs
+      if (Array.isArray(despachoIds)) {
+        // Para múltiples IDs, algunos backends esperan múltiples parámetros con el mismo nombre
+        // O un string separado por comas. Intentamos con múltiples parámetros primero
+        despachoIds.forEach(id => params.append('despacho_id', id))
+      } else {
+        // Si es un solo ID
+        params.append('despacho_id', despachoIds)
+      }
+    }
+    
+    const queryString = params.toString()
+    const url = queryString ? `/procesar-oc?${queryString}` : '/procesar-oc'
+    const response = await mba3Api.get(url)
     return response.data
   },
 
-  // Procesar OC
-  async procesarOC(): Promise<any> {
-    const response = await mba3Api.get('/procesar-oc')
-    return response.data
-  },
-
-  // Integrar SAP
-  async integrarSAP(referenciaDespacho?: string): Promise<any> {
-    const params = referenciaDespacho 
-      ? `?referencia_despacho=${referenciaDespacho}`
-      : ''
-    const response = await mba3Api.post(`/integrar-sap${params}`)
+  // Integrar SAP (una o múltiples ODCs)
+  // referenciaDespacho: string | string[] | undefined - Si se proporciona, integra solo esas ODCs
+  async integrarSAP(referenciaDespacho?: string | string[]): Promise<any> {
+    const params = new URLSearchParams()
+    
+    if (referenciaDespacho) {
+      // Si es un array, enviar múltiples referencias
+      if (Array.isArray(referenciaDespacho)) {
+        referenciaDespacho.forEach(ref => params.append('referencia_despacho', ref))
+      } else {
+        // Si es un solo valor
+        params.append('referencia_despacho', referenciaDespacho)
+      }
+    }
+    
+    const queryString = params.toString()
+    const url = queryString ? `/integrar-sap?${queryString}` : '/integrar-sap'
+    const response = await mba3Api.post(url)
     return response.data
   },
 
   // Órdenes de compra
   async getOrdenesCompra(estado?: string, page: number = 1, pageSize: number = 10): Promise<OrdenCompraResponse> {
     const params = new URLSearchParams()
-    if (estado) params.append('estado', estado)
+    // Solo agregar el parámetro estado si está definido y no es undefined
+    // Si estado es undefined, no se agrega el parámetro, lo que debería devolver todas las órdenes
+    if (estado !== undefined && estado !== null && estado !== '') {
+      params.append('estado', estado)
+    }
     params.append('page', page.toString())
     params.append('pageSize', pageSize.toString())
     
@@ -156,6 +261,23 @@ export const mba3ConsultasService = {
     const url = queryString ? `/ordenes-compra?${queryString}` : '/ordenes-compra'
     const response = await mba3Api.get<OrdenCompraResponse>(url)
     return response.data
+  },
+
+  // Eliminar órdenes de compra (una o múltiples)
+  async deleteOrdenesCompra(ocIds: string | string[]): Promise<any> {
+    if (Array.isArray(ocIds)) {
+      // Para múltiples IDs, enviar como array en el body usando POST con método DELETE
+      // O usar parámetros en query string
+      const params = new URLSearchParams()
+      ocIds.forEach(id => params.append('oc_id', id))
+      const queryString = params.toString()
+      const response = await mba3Api.delete(`/ordenes-compra?${queryString}`)
+      return response.data
+    } else {
+      // Para un solo ID, enviar en la URL
+      const response = await mba3Api.delete(`/ordenes-compra/${ocIds}`)
+      return response.data
+    }
   },
 
   // Pruebas (endpoint completo)
@@ -174,49 +296,21 @@ export const mba3ConsultasService = {
   // Usa el endpoint /despachos/count modificado que ahora devuelve la lista + conteo
   async getDespachos(page: number = 1, pageSize: number = 10): Promise<{ status: string; data: Despacho[]; metadata: { count: number; filters: {} }; total: number; page: number; pageSize: number }> {
     try {
-      console.log('🔍 [getDespachos] Obteniendo despachos desde /despachos/count')
-      
-      // El endpoint /despachos/count ahora devuelve: { count, disponible, data: Prefactura[] }
-      // O podría devolver: { count, disponible, despachos: Prefactura[] } o directamente un array
       const response = await mba3Api.get<any>('/despachos/count')
-      
-      // Log completo de la respuesta para diagnosticar
-      console.log('📦 [getDespachos] Respuesta completa del backend:', response.data)
-      console.log('📦 [getDespachos] Estructura de respuesta:', {
-        tieneData: 'data' in response.data,
-        tieneDespachos: 'despachos' in response.data,
-        esArray: Array.isArray(response.data),
-        keys: Object.keys(response.data || {}),
-      })
       
       // Intentar obtener los datos de diferentes formas posibles
       let despachosData: Despacho[] = []
       
       if (Array.isArray(response.data)) {
-        // Si la respuesta es directamente un array
         despachosData = response.data
       } else if (response.data.data && Array.isArray(response.data.data)) {
-        // Si viene en data.data
         despachosData = response.data.data
       } else if (response.data.despachos && Array.isArray(response.data.despachos)) {
-        // Si viene en data.despachos
         despachosData = response.data.despachos
       } else if (response.data.resultado && Array.isArray(response.data.resultado)) {
-        // Si viene en data.resultado
         despachosData = response.data.resultado
       } else if (response.data.despatches && Array.isArray(response.data.despatches)) {
-        // Si viene en data.despatches (en inglés)
         despachosData = response.data.despatches
-      }
-      
-      console.log('✅ [getDespachos] Despachos obtenidos:', despachosData.length)
-      console.log('📋 [getDespachos] Primer despacho (ejemplo):', despachosData[0])
-      
-      // Verificar si los despachos ya tienen detalles incluidos
-      if (despachosData[0] && 'despacho_detalles' in despachosData[0]) {
-        console.log('ℹ️ [getDespachos] Los despachos incluyen detalles (despacho_detalles) en la respuesta')
-        const detallesCount = despachosData.reduce((acc, d) => acc + (d.despacho_detalles?.length || 0), 0)
-        console.log(`ℹ️ [getDespachos] Total de detalles incluidos: ${detallesCount}`)
       }
       
       const count = response.data.count || despachosData.length || 0
@@ -241,7 +335,6 @@ export const mba3ConsultasService = {
   // Obtener detalles de un despacho específico
   async getDespachoDetalles(despachoId: string): Promise<DespachoDetalle[]> {
     try {
-      console.log('🔍 [getDespachoDetalles] Obteniendo detalles para despacho:', despachoId)
       const response = await mba3Api.get<any>(`/despachos/${despachoId}/detalles`)
       
       // El endpoint podría devolver los detalles de diferentes formas
@@ -257,11 +350,62 @@ export const mba3ConsultasService = {
         detalles = response.data.items
       }
       
-      console.log('✅ [getDespachoDetalles] Detalles obtenidos:', detalles.length)
       return detalles
     } catch (error: any) {
       console.error('❌ [getDespachoDetalles] Error:', error)
       throw new Error(`No se pudieron obtener los detalles del despacho. Error: ${error.message}`)
+    }
+  },
+
+  // Obtener logs de órdenes de compra
+  async getOrdenesCompraLogs(page: number = 1, pageSize: number = 10, filters?: { estado?: string; fechaDesde?: string; fechaHasta?: string }): Promise<OrdenCompraLogResponse> {
+    try {
+      const params = new URLSearchParams()
+      params.append('page', page.toString())
+      params.append('pageSize', pageSize.toString())
+      
+      if (filters?.estado) {
+        params.append('estado', filters.estado)
+      }
+      if (filters?.fechaDesde) {
+        params.append('fecha_desde', filters.fechaDesde)
+      }
+      if (filters?.fechaHasta) {
+        params.append('fecha_hasta', filters.fechaHasta)
+      }
+      
+      const queryString = params.toString()
+      const url = queryString ? `/ordenes-compra/logs?${queryString}` : '/ordenes-compra/logs'
+      const response = await mba3Api.get<OrdenCompraLogResponse>(url)
+      return response.data
+    } catch (error: any) {
+      // Si el método GET no está permitido (405), intentar con POST
+      if (error.response?.status === 405) {
+        console.warn('⚠️ GET no permitido para /ordenes-compra/logs, intentando con POST...')
+        try {
+          const body: any = {
+            page,
+            pageSize
+          }
+          
+          if (filters?.estado) {
+            body.estado = filters.estado
+          }
+          if (filters?.fechaDesde) {
+            body.fecha_desde = filters.fechaDesde
+          }
+          if (filters?.fechaHasta) {
+            body.fecha_hasta = filters.fechaHasta
+          }
+          
+          const response = await mba3Api.post<OrdenCompraLogResponse>('/ordenes-compra/logs', body)
+          return response.data
+        } catch (postError: any) {
+          // Si POST tampoco funciona, lanzar un error más descriptivo
+          throw new Error('El endpoint /ordenes-compra/logs no está disponible. Por favor, verifique la configuración del backend. El endpoint debe aceptar GET o POST.')
+        }
+      }
+      throw error
     }
   },
 }

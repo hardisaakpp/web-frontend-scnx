@@ -80,7 +80,7 @@ export const useOrdenesCompraStore = defineStore('mba3OrdenesCompra', () => {
     currentPage.value = page
   }
 
-  async function integrarSAP(referenciaDespacho?: string) {
+  async function integrarSAP(referenciaDespacho?: string | string[]) {
     loading.value = true
     error.value = null
     try {
