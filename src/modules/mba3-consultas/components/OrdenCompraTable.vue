@@ -314,25 +314,17 @@
               <span v-else class="text-gray-400 italic">-</span>
             </td>
             <td v-if="isColumnVisible('estado')" class="px-6 py-4 whitespace-nowrap">
-              <button
-                @click="navigateToHistorial(oc.oc_id)"
-                :class="getEstadoClass(oc.estado)"
-                class="relative group inline-block transition-all duration-200 hover:scale-105 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 rounded-full"
-                :title="`Ver historial de ${oc.oc_id}. ${getEstadoTooltip(oc)}`"
-              >
-                <span class="flex items-center gap-1">
-                  {{ oc.estado }}
-                  <svg class="w-3 h-3 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                  </svg>
-                </span>
+              <div class="relative group inline-block">
+                <span :class="getEstadoClass(oc.estado)" class="cursor-help transition-all duration-200 hover:scale-105">
+                {{ oc.estado }}
+              </span>
                 <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 ease-in-out pointer-events-none whitespace-nowrap z-[9999]">
-                  Ver historial completo
+                  {{ getEstadoTooltip(oc) }}
                   <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
                     <div class="border-4 border-transparent border-t-gray-900"></div>
                   </div>
                 </div>
-              </button>
+              </div>
             </td>
             <td v-if="isColumnVisible('numero_oc_sap')" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
               <span v-if="oc.numero_oc_sap" class="font-mono">{{ oc.numero_oc_sap }}</span>
@@ -377,7 +369,6 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import type { OrdenCompra } from '../types'
 import { useToast } from '@/composables/useToast'
 
@@ -396,7 +387,6 @@ const emit = defineEmits<{
 }>()
 
 const toast = useToast()
-const router = useRouter()
 
 // Estado de selección
 const selectedOrdenes = ref<string[]>([])
@@ -775,14 +765,6 @@ function clearSendingState() {
 // Función para limpiar el estado de envío múltiple (llamada por el componente padre después de completar)
 function clearSendingMultipleState() {
   sendingMultiple.value = false
-}
-
-// Función para navegar al historial filtrando por oc_id
-function navigateToHistorial(ocId: string) {
-  router.push({
-    name: 'mba3-consultas-ordenes-compra',
-    query: { oc_id: ocId }
-  })
 }
 
 // Exponer funciones para que el componente padre pueda llamarlas

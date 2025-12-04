@@ -97,20 +97,10 @@
             <h2 class="text-xl font-semibold text-gray-900">Historial de Órdenes</h2>
             <p class="mt-1 text-sm text-gray-500">
               Total: <span class="font-semibold">{{ totalFiltradas }}</span> registros
-              <span v-if="ocIdFilter" class="ml-2">
-                - Filtrado por OC ID: <span class="font-medium font-mono">{{ ocIdFilter }}</span>
-                <button
-                  @click="clearOcIdFilter"
-                  class="ml-2 text-indigo-600 hover:text-indigo-700 underline"
-                  title="Limpiar filtro de OC ID"
-                >
-                  (limpiar)
-                </button>
-              </span>
-              <span v-if="estadoFilter && !ocIdFilter">
+              <span v-if="estadoFilter">
                 - Filtrado por: <span class="font-medium">{{ getEstadoLabel(estadoFilter) }}</span>
               </span>
-              <span v-else-if="!ocIdFilter" class="text-gray-400">
+              <span v-else class="text-gray-400">
                 ({{ todosLosLogs.length }} en total)
               </span>
             </p>
@@ -134,17 +124,7 @@
         </div>
         <p class="text-gray-500 text-lg font-medium">No hay órdenes de compra para mostrar</p>
         <p class="text-gray-400 text-sm mt-1">
-          <span v-if="ocIdFilter || estadoFilter">
-            <span v-if="ocIdFilter">No se encontraron registros para el OC ID: <span class="font-mono font-semibold">{{ ocIdFilter }}</span>.</span>
-            <span v-if="ocIdFilter && estadoFilter"> </span>
-            <span v-if="estadoFilter">Intenta cambiar el filtro o </span>
-            <span v-if="!estadoFilter">Intenta </span>
-          </span>
-          <span v-else>Intenta </span>
-          <button v-if="ocIdFilter" @click="clearOcIdFilter" class="text-indigo-600 hover:text-indigo-700 underline">
-            limpiar el filtro de OC ID
-          </button>
-          <span v-if="ocIdFilter && !estadoFilter"> o </span>
+          <span v-if="estadoFilter">Intenta cambiar el filtro o </span>
           <button @click="refreshOrdenes" class="text-indigo-600 hover:text-indigo-700 underline">
             actualizar los datos
           </button>
@@ -193,7 +173,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useOrdenesCompraStore } from '../stores/ordenesCompraStore'
 import { useToast } from '@/composables/useToast'
@@ -214,27 +194,12 @@ const estadoFilter = ref<string>('')
 const todosLosLogs = ref<OrdenCompraLog[]>([])
 const loadingTodas = ref(false)
 
-// Filtro por oc_id desde URL
-const ocIdFilter = computed(() => {
-  const ocIdFromQuery = route.query.oc_id as string | undefined
-  return ocIdFromQuery || null
-})
-
 // Logs filtrados localmente
 const logsFiltrados = computed(() => {
-  let filtered = todosLosLogs.value
-  
-  // Filtrar por oc_id si está en la URL
-  if (ocIdFilter.value) {
-    filtered = filtered.filter(log => log.oc_id === ocIdFilter.value)
+  if (!estadoFilter.value) {
+    return todosLosLogs.value
   }
-  
-  // Filtrar por estado si está seleccionado
-  if (estadoFilter.value) {
-    filtered = filtered.filter(log => log.estado === estadoFilter.value)
-  }
-  
-  return filtered
+  return todosLosLogs.value.filter(log => log.estado === estadoFilter.value)
 })
 
 // Total de logs filtrados
@@ -320,40 +285,16 @@ onMounted(async () => {
   }
 })
 
-// Watch para detectar cambios en la URL (cuando se navega con oc_id)
-watch(() => route.query.oc_id, async (newOcId) => {
-  if (newOcId && typeof newOcId === 'string') {
-    // Esperar a que los logs se carguen si aún no están cargados
-    if (todosLosLogs.value.length === 0) {
-      await cargarTodosLosLogs()
-    }
-    // El filtro se aplicará automáticamente a través de logsFiltrados computed
-  }
-}, { immediate: true })
-
 function handleFilterChange() {
   // Resetear a página 1 cuando cambia el filtro
   currentPageLocal.value = 1
   
-  // Actualizar la URL sin recargar la página, preservando oc_id si existe
-  const query: any = {}
+  // Actualizar la URL sin recargar la página
   if (estadoFilter.value) {
-    query.estado = estadoFilter.value
+    router.replace({ query: { estado: estadoFilter.value } })
+  } else {
+    router.replace({ query: {} })
   }
-  if (ocIdFilter.value) {
-    query.oc_id = ocIdFilter.value
-  }
-  router.replace({ query })
-}
-
-function clearOcIdFilter() {
-  // Limpiar el filtro de oc_id y actualizar la URL
-  const query: any = {}
-  if (estadoFilter.value) {
-    query.estado = estadoFilter.value
-  }
-  router.replace({ query })
-  currentPageLocal.value = 1
 }
 
 async function refreshOrdenes() {
