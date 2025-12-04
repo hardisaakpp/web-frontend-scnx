@@ -1010,6 +1010,10 @@ async function handleGenerarODCIndividual(despachoId: string) {
     await cargarOrdenesCompraPendientes()
     await cargarDespachos()
     
+    // Cambiar automáticamente a la pestaña "Procesar OC"
+    activeTab.value = 'procesar-oc'
+    await handleTabChange('procesar-oc')
+    
     // Limpiar estado del botón individual
     if (despachosTableRef.value?.clearSendingState) {
       despachosTableRef.value.clearSendingState()
@@ -1043,6 +1047,7 @@ async function handleGenerarODCMultiples(despachoIds: string[]) {
     toast.info('Generando ODCs...', `Generando ${despachoIds.length} orden(es) de compra`)
     
     // Si es un solo despacho, usar el método individual
+    // (la función individual ya cambiará la pestaña automáticamente)
     if (despachoIds.length === 1) {
       await handleGenerarODCIndividual(despachoIds[0])
       clearInterval(progressInterval)
@@ -1076,6 +1081,10 @@ async function handleGenerarODCMultiples(despachoIds: string[]) {
     await ordenesCompraStore.fetchEstadisticas()
     await cargarOrdenesCompraPendientes()
     await cargarDespachos()
+    
+    // Cambiar automáticamente a la pestaña "Procesar OC"
+    activeTab.value = 'procesar-oc'
+    await handleTabChange('procesar-oc')
     
     // Limpiar estado de envío múltiple
     if (despachosTableRef.value?.clearSendingMultipleState) {
