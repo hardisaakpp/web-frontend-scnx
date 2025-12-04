@@ -133,6 +133,7 @@
 
       <HistorialOrdenesTable 
         v-else
+        ref="historialTableRef"
         :ordenes-compra="logsPaginados"
         :loading="loadingTodas"
         :total-ordenes="totalFiltradas"
@@ -173,7 +174,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useOrdenesCompraStore } from '../stores/ordenesCompraStore'
 import { useToast } from '@/composables/useToast'
@@ -189,6 +190,7 @@ const router = useRouter()
 const toast = useToast()
 const { exportToCSV, exportToExcel } = useExport()
 const estadoFilter = ref<string>('')
+const historialTableRef = ref<InstanceType<typeof HistorialOrdenesTable> | null>(null)
 
 // Todos los logs cargados (sin filtro)
 const todosLosLogs = ref<OrdenCompraLog[]>([])
@@ -270,6 +272,28 @@ async function cargarTodosLosLogs() {
   }
 }
 
+// Función para buscar por oc_id
+async function buscarPorOcId(ocId: string) {
+  // Esperar a que se carguen los logs y el componente esté listo
+  await nextTick()
+  
+  if (historialTableRef.value && historialTableRef.value.setSearchQuery) {
+    historialTableRef.value.setSearchQuery(ocId)
+    toast.success('Búsqueda realizada', `Buscando orden de compra: ${ocId.substring(0, 8)}...`)
+  }
+}
+
+// Watch para detectar cambios en el query parameter oc_id
+watch(() => route.query.oc_id, async (newOcId) => {
+  if (newOcId && typeof newOcId === 'string') {
+    // Esperar a que los logs estén cargados
+    if (todosLosLogs.value.length === 0) {
+      await cargarTodosLosLogs()
+    }
+    await buscarPorOcId(newOcId)
+  }
+}, { immediate: true })
+
 onMounted(async () => {
   // Verificar si hay un parámetro de estado en la URL
   const estadoFromQuery = route.query.estado as string | undefined
@@ -280,6 +304,12 @@ onMounted(async () => {
   try {
     await ordenesCompraStore.fetchEstadisticas()
     await cargarTodosLosLogs()
+    
+    // Si hay un oc_id en el query, buscar después de cargar los logs
+    const ocIdFromQuery = route.query.oc_id as string | undefined
+    if (ocIdFromQuery) {
+      await buscarPorOcId(ocIdFromQuery)
+    }
   } catch (error: any) {
     toast.error('Error al cargar logs', error.message || 'No se pudieron cargar los logs de órdenes de compra')
   }

@@ -498,5 +498,14 @@ function formatDate(dateString: string): string {
     return dateString
   }
 }
+
+// Exponer método para establecer el searchQuery desde fuera
+function setSearchQuery(query: string) {
+  searchQuery.value = query
+}
+
+defineExpose({
+  setSearchQuery
+})
 </script>
 

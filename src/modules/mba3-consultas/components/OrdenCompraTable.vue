@@ -315,11 +315,24 @@
             </td>
             <td v-if="isColumnVisible('estado')" class="px-6 py-4 whitespace-nowrap">
               <div class="relative group inline-block">
-                <span :class="getEstadoClass(oc.estado)" class="cursor-help transition-all duration-200 hover:scale-105">
-                {{ oc.estado }}
-              </span>
+                <button
+                  v-if="oc.estado === 'ENVIADA' || oc.estado === 'ERROR'"
+                  @click="handleVerEnHistorial(oc.oc_id)"
+                  :class="getEstadoClass(oc.estado)"
+                  class="cursor-pointer transition-all duration-200 hover:scale-105"
+                  :title="'Ver en historial: ' + oc.oc_id"
+                >
+                  {{ oc.estado }}
+                </button>
+                <span
+                  v-else
+                  :class="getEstadoClass(oc.estado)"
+                  class="cursor-help transition-all duration-200 hover:scale-105"
+                >
+                  {{ oc.estado }}
+                </span>
                 <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 ease-in-out pointer-events-none whitespace-nowrap z-[9999]">
-                  {{ getEstadoTooltip(oc) }}
+                  {{ oc.estado === 'ENVIADA' || oc.estado === 'ERROR' ? `Ver detalles en historial: ${oc.oc_id}` : getEstadoTooltip(oc) }}
                   <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
                     <div class="border-4 border-transparent border-t-gray-900"></div>
                   </div>
@@ -369,6 +382,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import type { OrdenCompra } from '../types'
 import { useToast } from '@/composables/useToast'
 
@@ -387,6 +401,7 @@ const emit = defineEmits<{
 }>()
 
 const toast = useToast()
+const router = useRouter()
 
 // Estado de selección
 const selectedOrdenes = ref<string[]>([])
@@ -755,6 +770,13 @@ function getEstadoTooltip(oc: OrdenCompra): string {
     return oc.error_message || 'Error al enviar a SAP'
   }
   return 'Estado desconocido'
+}
+
+function handleVerEnHistorial(ocId: string) {
+  router.push({
+    path: '/mba3-consultas/ordenes-compra',
+    query: { oc_id: ocId }
+  })
 }
 
 // Exponer función para limpiar el estado de envío (llamada por el componente padre después de completar)

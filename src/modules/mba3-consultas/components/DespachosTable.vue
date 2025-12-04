@@ -375,7 +375,6 @@
                           <td class="px-4 py-2 text-sm text-gray-900">
                             <div class="max-w-xs">
                               <div class="font-medium">{{ detalle.nombre_producto || '-' }}</div>
-                              <div class="text-xs text-gray-500 mt-1">{{ detalle.tipo_linea || '-' }}</div>
                             </div>
                           </td>
                           <td class="px-4 py-2 text-sm text-gray-900 text-center">{{ formatNumber(detalle.cantidad_docena_mba3) }}</td>
