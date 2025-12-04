@@ -202,7 +202,7 @@ export const mba3ConsultasService = {
     throw lastError
   },
 
-  // Procesar OC (todos o específicos)
+  // Procesar ODC (todos o específicos)
   // despachoIds: string | string[] | undefined - Si se proporciona, procesa solo esos despachos
   async procesarOC(despachoIds?: string | string[]): Promise<any> {
     const params = new URLSearchParams()

@@ -294,7 +294,7 @@
         </div>
       </template>
 
-      <!-- Pestaña 2: Procesar OC -->
+      <!-- Pestaña 2: Procesar ODC -->
       <template #tab-procesar-oc>
         <div class="space-y-6">
           <!-- Botón de acción y estado -->
@@ -396,7 +396,7 @@
           </button>
           </div>
 
-          <!-- Barra de progreso para Procesar OC / Integrar SAP -->
+          <!-- Barra de progreso para Procesar ODC / Integrar SAP -->
           <div v-if="procesoStore.loading && (procesoStore.currentStep === 'procesar-oc' || procesoStore.currentStep === 'integrar-sap')" 
                class="bg-white/80 backdrop-blur-xl rounded-xl shadow-2xl p-4 border border-white/30 relative overflow-hidden transition-all duration-300">
             <div class="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent pointer-events-none"></div>
@@ -657,7 +657,7 @@ const tabs = computed<Tab[]>(() => {
     ? despachos.value.length 
     : (despachosCount.value > 0 ? despachosCount.value : 0)
   
-  // Calcular el total de órdenes de compra en la pestaña Procesar OC
+  // Calcular el total de órdenes de compra en la pestaña Procesar ODC
   // Usar el total del store (que contiene todas las órdenes: PENDIENTE, ENVIADA, ERROR)
   // Si no hay total, usar la longitud del array, sino la suma de todas las estadísticas
   const totalOrdenesProcesarOC = ordenesCompraStore.total > 0
@@ -675,7 +675,7 @@ const tabs = computed<Tab[]>(() => {
     },
     {
       id: 'procesar-oc',
-      label: 'Procesar OC',
+      label: 'Procesar ODC',
       badge: totalOrdenesProcesarOC > 0 ? totalOrdenesProcesarOC : undefined,
       color: 'emerald'
     }
@@ -684,11 +684,11 @@ const tabs = computed<Tab[]>(() => {
 
 // Computed para verificar si hay órdenes de compra disponibles
 const hayOrdenesCompra = computed(() => {
-  const totalOCs = ordenesCompraStore.pendientes + ordenesCompraStore.enviadas + ordenesCompraStore.errores
-  return totalOCs > 0
+  const totalODCs = ordenesCompraStore.pendientes + ordenesCompraStore.enviadas + ordenesCompraStore.errores
+  return totalODCs > 0
 })
 
-// Computed para verificar si se puede enviar OCs a SAP (en pestaña Procesar OC)
+// Computed para verificar si se puede enviar ODCs a SAP (en pestaña Procesar ODC)
 const puedeEnviarOCaSAP = computed(() => {
   // Verificar tanto las estadísticas como las órdenes cargadas en el array
   const hayPendientesEnStats = ordenesCompraStore.pendientes > 0
@@ -759,7 +759,7 @@ async function cargarDespachos() {
 }
 
 // Función para cargar órdenes de compra pendientes
-// Nota: Ahora carga todas las órdenes (PENDIENTE, ENVIADA, ERROR) para mostrar en la pestaña Procesar OC
+// Nota: Ahora carga todas las órdenes (PENDIENTE, ENVIADA, ERROR) para mostrar en la pestaña Procesar ODC
 async function cargarOrdenesCompraPendientes() {
   ordenesCompraStore.loading = true
   try {
@@ -801,7 +801,7 @@ async function cargarOrdenesCompraPendientes() {
 }
 
 
-// Funciones de paginación para OC
+// Funciones de paginación para ODC
 function prevPageOC() {
   if (ordenesCompraStore.currentPage > 1) {
     ordenesCompraStore.setPage(ordenesCompraStore.currentPage - 1)
@@ -900,7 +900,7 @@ async function ejecutarMigrar() {
   }
 }
 
-// Función para enviar OCs a SAP desde la pestaña Procesar OC
+// Función para enviar ODCs a SAP desde la pestaña Procesar ODC
 // Envía las órdenes pendientes una por una
 async function ejecutarIntegrarSAPDesdeProcesarOC() {
   // Verificar que no esté ya ejecutándose
@@ -1010,7 +1010,7 @@ async function handleGenerarODCIndividual(despachoId: string) {
     await cargarOrdenesCompraPendientes()
     await cargarDespachos()
     
-    // Cambiar automáticamente a la pestaña "Procesar OC"
+    // Cambiar automáticamente a la pestaña "Procesar ODC"
     activeTab.value = 'procesar-oc'
     await handleTabChange('procesar-oc')
     
@@ -1082,7 +1082,7 @@ async function handleGenerarODCMultiples(despachoIds: string[]) {
     await cargarOrdenesCompraPendientes()
     await cargarDespachos()
     
-    // Cambiar automáticamente a la pestaña "Procesar OC"
+    // Cambiar automáticamente a la pestaña "Procesar ODC"
     activeTab.value = 'procesar-oc'
     await handleTabChange('procesar-oc')
     
@@ -1119,7 +1119,7 @@ async function handleIntegrarOC(referenciaDespacho: string) {
       ordenCompraTableRef.value.clearSendingState()
     }
   } catch (error: any) {
-    console.error('Error al integrar OC:', error)
+    console.error('Error al integrar ODC:', error)
     toast.error('Error al integrar', error.message || 'No se pudo enviar la orden a SAP')
     // Limpiar el estado de envío incluso si hay error
     if (ordenCompraTableRef.value?.clearSendingState) {
@@ -1161,7 +1161,7 @@ async function handleIntegrarOCMultiples(referencias: string[]) {
       ordenCompraTableRef.value.clearSelection()
     }
   } catch (error: any) {
-    console.error('Error al integrar múltiples OCs:', error)
+    console.error('Error al integrar múltiples ODCs:', error)
     toast.error('Error al integrar', error.message || 'No se pudieron enviar todas las órdenes')
     
     // Limpiar el estado de envío múltiple incluso si hay error
@@ -1280,7 +1280,7 @@ function getStepStatus(step: string): 'pending' | 'active' | 'completed' | 'erro
 function getStepTitle(step: string): string {
   const titles: Record<string, string> = {
     'migrar': 'Importar despachos',
-    'procesar-oc': 'Procesar OC'
+    'procesar-oc': 'Procesar ODC'
   }
   return titles[step] || step
 }

@@ -36,7 +36,7 @@ export const useProcesoStore = defineStore('mba3Proceso', () => {
       resultados.value = { ...resultados.value, procesarOC: data }
       return data
     } catch (err: any) {
-      error.value = err.message || 'Error al procesar OC'
+      error.value = err.message || 'Error al procesar ODC'
       throw err
     } finally {
       loading.value = false

@@ -16,7 +16,7 @@
           </div>
           <div class="flex-1">
             <h3 class="text-2xl font-bold text-gray-900">{{ ordenesCompraStore.pendientes }}</h3>
-            <p class="text-sm text-gray-500">OCs Pendientes</p>
+            <p class="text-sm text-gray-500">ODCs Pendientes</p>
           </div>
         </div>
 
@@ -26,7 +26,7 @@
           </div>
           <div class="flex-1">
             <h3 class="text-2xl font-bold text-gray-900">{{ ordenesCompraStore.enviadas }}</h3>
-            <p class="text-sm text-gray-500">OCs Enviadas</p>
+            <p class="text-sm text-gray-500">ODCs Enviadas</p>
           </div>
         </div>
 
@@ -36,7 +36,7 @@
           </div>
           <div class="flex-1">
             <h3 class="text-2xl font-bold text-gray-900">{{ ordenesCompraStore.errores }}</h3>
-            <p class="text-sm text-gray-500">OCs con Error</p>
+            <p class="text-sm text-gray-500">ODCs con Error</p>
           </div>
         </div>
       </div>
@@ -49,7 +49,7 @@
         <div class="flex items-center justify-between mb-4">
           <div>
             <h2 class="text-xl font-bold text-gray-900">Procesos de Integración</h2>
-            <p class="text-sm text-gray-500 mt-1">Ejecuta migración y procesamiento de OC</p>
+            <p class="text-sm text-gray-500 mt-1">Ejecuta migración y procesamiento de ODC</p>
           </div>
           <div class="w-12 h-12 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0">
             <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

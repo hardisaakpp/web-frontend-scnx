@@ -71,7 +71,7 @@
             <input
               v-model="searchQuery"
               type="text"
-              placeholder="Buscar por proveedor, referencia, OC ID..."
+              placeholder="Buscar por proveedor, referencia, ODC ID..."
               class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
             />
           </div>
@@ -172,11 +172,11 @@
             />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Número OC SAP</label>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Número ODC SAP</label>
             <input
               v-model="filtroNumeroOC"
               type="text"
-              placeholder="Buscar por número OC SAP"
+              placeholder="Buscar por número ODC SAP"
               class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
             />
           </div>
@@ -215,7 +215,7 @@
             </th>
             <th v-if="isColumnVisible('oc_id')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" @click="sortBy('oc_id')">
               <div class="flex items-center gap-1">
-                OC ID
+                ODC ID
                 <svg v-if="sortField === 'oc_id'" class="w-4 h-4" :class="sortDirection === 'asc' ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
                 </svg>
@@ -262,7 +262,7 @@
               </div>
             </th>
             <th v-if="isColumnVisible('estado')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-            <th v-if="isColumnVisible('numero_oc_sap')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Número OC SAP</th>
+            <th v-if="isColumnVisible('numero_oc_sap')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Número ODC SAP</th>
             <th v-if="isColumnVisible('respuesta_sap')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Respuesta SAP</th>
             <th v-if="!readOnly" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
           </tr>
@@ -427,14 +427,14 @@ const STORAGE_KEY = 'ordenes-compra-table-columns'
 
 // Columnas disponibles
 const availableColumns = [
-  { key: 'oc_id', label: 'OC ID', default: true },
+  { key: 'oc_id', label: 'ODC ID', default: true },
   { key: 'proveedor', label: 'Proveedor', default: true },
   { key: 'referencia_despacho', label: 'Referencia Despacho', default: true },
   { key: 'fecha_generacion', label: 'Fecha Generación', default: true },
   { key: 'created_at', label: 'Fecha Creación', default: props.readOnly || false },
   { key: 'fecha_procesado', label: 'Fecha Procesado', default: props.readOnly || false },
   { key: 'estado', label: 'Estado', default: true },
-  { key: 'numero_oc_sap', label: 'Número OC SAP', default: false },
+  { key: 'numero_oc_sap', label: 'Número ODC SAP', default: false },
   { key: 'respuesta_sap', label: 'Respuesta SAP', default: props.readOnly || false },
 ]
 
@@ -530,7 +530,7 @@ const filteredOrdenes = computed(() => {
     filtered = filtered.filter(oc => new Date(oc.fecha_generacion) <= fechaHasta)
   }
   
-  // Filtro por número OC SAP
+  // Filtro por número ODC SAP
   if (filtroNumeroOC.value) {
     filtered = filtered.filter(oc => 
       oc.numero_oc_sap && oc.numero_oc_sap.toLowerCase().includes(filtroNumeroOC.value.toLowerCase())

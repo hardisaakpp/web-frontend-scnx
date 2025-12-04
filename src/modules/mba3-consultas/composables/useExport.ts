@@ -57,14 +57,14 @@ export function useExport() {
     // Exportar órdenes de compra (código original)
     const ordenes = data as OrdenCompra[]
     const headers = [
-      'OC ID',
+      'ODC ID',
       'Proveedor',
       'Referencia Despacho',
       'Fecha Generación',
       'Fecha Creación',
       'Fecha Procesado',
       'Estado',
-      'Número OC SAP',
+      'Número ODC SAP',
       'Respuesta SAP'
     ]
 
@@ -161,14 +161,14 @@ export function useExport() {
     // Exportar órdenes de compra (código original)
     const ordenes = data as OrdenCompra[]
     const headers = [
-      'OC ID',
+      'ODC ID',
       'Proveedor',
       'Referencia Despacho',
       'Fecha Generación',
       'Fecha Creación',
       'Fecha Procesado',
       'Estado',
-      'Número OC SAP',
+      'Número ODC SAP',
       'Respuesta SAP'
     ]
 

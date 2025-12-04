@@ -54,7 +54,7 @@ const baseSteps: Omit<Step, 'status'>[] = [
   },
   {
     id: 'procesar-oc',
-    title: 'Procesar OC',
+    title: 'Procesar ODC',
     description: 'Copia a órdenes de compra'
   },
   {

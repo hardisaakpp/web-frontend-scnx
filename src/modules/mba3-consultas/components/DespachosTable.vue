@@ -51,7 +51,7 @@
             <input
               v-model="searchQuery"
               type="text"
-              placeholder="Buscar por código factura, número factura, cliente, empresa, SKU..."
+              placeholder="Buscar por número pedido El Rayo, número factura, cliente, empresa, SKU..."
               class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
             />
           </div>
@@ -208,7 +208,7 @@
             <th class="w-12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
             <th v-if="isColumnVisible('codigo_factura')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" @click="sortBy('codigo_factura')">
               <div class="flex items-center gap-1">
-                Código Factura
+                Número Pedido El Rayo
                 <svg v-if="sortField === 'codigo_factura'" class="w-4 h-4" :class="sortDirection === 'asc' ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
                 </svg>
@@ -464,7 +464,7 @@ const STORAGE_KEY = 'despachos-table-columns'
 
 // Columnas disponibles
 const availableColumns = [
-  { key: 'codigo_factura', label: 'Código Factura', default: true },
+  { key: 'codigo_factura', label: 'Número Pedido El Rayo', default: true },
   { key: 'numero_factura', label: 'Número Factura', default: true },
   { key: 'empresa', label: 'Empresa', default: true },
   { key: 'codigo_cliente', label: 'Cliente', default: true },

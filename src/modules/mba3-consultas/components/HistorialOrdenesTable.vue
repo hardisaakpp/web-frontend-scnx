@@ -178,7 +178,7 @@ const STORAGE_KEY = 'historial-ordenes-table-columns'
 // Columnas base comunes en logs - Ordenadas lógicamente por categorías
 const baseColumns = [
   // 1. Identificadores principales
-  { key: 'oc_id', label: 'OC ID', priority: 1, default: true },
+  { key: 'oc_id', label: 'ODC ID', priority: 1, default: true },
   { key: 'referencia_despacho', label: 'Referencia Despacho', priority: 2, default: true },
   
   // 2. Información de la entidad
