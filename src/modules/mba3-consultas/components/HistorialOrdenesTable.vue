@@ -122,6 +122,8 @@
             v-for="log in sortedOrdenes" 
             :key="log.log_id || log.oc_id || log.timestamp || Math.random()" 
             class="hover:bg-gray-50 transition-colors"
+            :class="getRowWarningClass(log)"
+            :title="hasRowIssues(log).issues.length > 0 ? 'Problemas: ' + hasRowIssues(log).issues.join(', ') : ''"
           >
             <td 
               v-for="column in visibleLogColumns" 
@@ -316,6 +318,74 @@ function resetColumns() {
 }
 
 // Función para obtener el valor de un log
+// Función para detectar problemas en una fila de log de orden de compra
+function hasRowIssues(log: OrdenCompraLog): { hasErrors: boolean; hasWarnings: boolean; issues: string[] } {
+  const issues: string[] = []
+  let hasErrors = false
+  let hasWarnings = false
+
+  // Errores críticos (rojo)
+  if (log.estado === 'ERROR') {
+    issues.push('Estado: ERROR')
+    hasErrors = true
+  }
+  if (!log.oc_id || log.oc_id.trim() === '') {
+    issues.push('Falta ODC ID')
+    hasErrors = true
+  }
+  if (!log.referencia_despacho || log.referencia_despacho.trim() === '') {
+    issues.push('Falta referencia de despacho')
+    hasErrors = true
+  }
+  if (log.mensaje && (log.mensaje.toLowerCase().includes('error') || log.mensaje.toLowerCase().includes('fallo'))) {
+    issues.push(`Error: ${log.mensaje}`)
+    hasErrors = true
+  }
+  if (log.error_message) {
+    issues.push(`Error: ${log.error_message}`)
+    hasErrors = true
+  }
+
+  // Advertencias (amarillo/naranja)
+  if (!log.proveedor || log.proveedor.trim() === '') {
+    issues.push('Falta proveedor')
+    hasWarnings = true
+  }
+  if (!log.timestamp && !log.fecha && !log.created_at) {
+    issues.push('Falta fecha/timestamp')
+    hasWarnings = true
+  }
+  if (log.estado === 'ENVIADA' && !log.numero_oc_sap && !log.doc_entry && !log.doc_num) {
+    issues.push('Enviada pero sin referencia SAP')
+    hasWarnings = true
+  }
+  if (log.error_code && !log.error_message && !log.mensaje) {
+    issues.push(`Código de error: ${log.error_code}`)
+    hasWarnings = true
+  }
+  if (log.error_source && log.estado !== 'ERROR') {
+    issues.push(`Fuente de error: ${log.error_source}`)
+    hasWarnings = true
+  }
+
+  return { hasErrors, hasWarnings, issues }
+}
+
+// Función para obtener clases CSS según problemas detectados
+function getRowWarningClass(log: OrdenCompraLog): string {
+  const { hasErrors, hasWarnings } = hasRowIssues(log)
+  
+  if (hasErrors) {
+    // Fondo rojo claro con borde rojo para errores críticos
+    return 'bg-red-50/80 border-l-4 border-red-500 hover:bg-red-100/80'
+  } else if (hasWarnings) {
+    // Fondo amarillo/naranja claro con borde amarillo para advertencias
+    return 'bg-yellow-50/80 border-l-4 border-yellow-500 hover:bg-yellow-100/80'
+  }
+  
+  return ''
+}
+
 function getLogValue(log: OrdenCompraLog, columnKey: string): any {
   return log[columnKey] ?? null
 }

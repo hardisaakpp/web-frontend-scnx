@@ -272,7 +272,11 @@
             v-for="oc in sortedOrdenes" 
             :key="oc.oc_id" 
             class="hover:bg-gray-50 transition-colors"
-            :class="{ 'bg-emerald-50': isSelected(oc.oc_id) }"
+            :class="[
+              { 'bg-emerald-50': isSelected(oc.oc_id) },
+              getRowWarningClass(oc)
+            ]"
+            :title="hasRowIssues(oc).issues.length > 0 ? 'Problemas: ' + hasRowIssues(oc).issues.join(', ') : ''"
           >
             <td class="px-6 py-4 whitespace-nowrap">
               <input
@@ -734,6 +738,74 @@ function getTimeAgo(dateString: string): string {
   } catch {
     return ''
   }
+}
+
+// Función para detectar problemas en una fila de orden de compra
+function hasRowIssues(oc: OrdenCompra): { hasErrors: boolean; hasWarnings: boolean; issues: string[] } {
+  const issues: string[] = []
+  let hasErrors = false
+  let hasWarnings = false
+
+  // Errores críticos (rojo)
+  if (oc.estado === 'ERROR') {
+    issues.push('Estado: ERROR')
+    hasErrors = true
+  }
+  if (!oc.proveedor || oc.proveedor.trim() === '') {
+    issues.push('Falta proveedor')
+    hasErrors = true
+  }
+  if (!oc.referencia_despacho || oc.referencia_despacho.trim() === '') {
+    issues.push('Falta referencia de despacho')
+    hasErrors = true
+  }
+  if (!oc.fecha_generacion) {
+    issues.push('Falta fecha de generación')
+    hasErrors = true
+  }
+  if (oc.error_message) {
+    issues.push(`Error: ${oc.error_message}`)
+    hasErrors = true
+  }
+
+  // Advertencias (amarillo/naranja)
+  if (oc.estado === 'ENVIADA' && !oc.numero_oc_sap) {
+    issues.push('Enviada pero sin número ODC SAP')
+    hasWarnings = true
+  }
+  if (!oc.created_at) {
+    issues.push('Falta fecha de creación')
+    hasWarnings = true
+  }
+  if (oc.estado === 'ENVIADA' && !oc.fecha_procesado) {
+    issues.push('Enviada pero sin fecha de procesado')
+    hasWarnings = true
+  }
+  if (oc.error_code && !oc.error_message) {
+    issues.push(`Código de error: ${oc.error_code}`)
+    hasWarnings = true
+  }
+  if (oc.error_source && oc.estado !== 'ERROR') {
+    issues.push(`Fuente de error: ${oc.error_source}`)
+    hasWarnings = true
+  }
+
+  return { hasErrors, hasWarnings, issues }
+}
+
+// Función para obtener clases CSS según problemas detectados
+function getRowWarningClass(oc: OrdenCompra): string {
+  const { hasErrors, hasWarnings } = hasRowIssues(oc)
+  
+  if (hasErrors) {
+    // Fondo rojo claro con borde rojo para errores críticos
+    return 'bg-red-50/80 border-l-4 border-red-500 hover:bg-red-100/80'
+  } else if (hasWarnings) {
+    // Fondo amarillo/naranja claro con borde amarillo para advertencias
+    return 'bg-yellow-50/80 border-l-4 border-yellow-500 hover:bg-yellow-100/80'
+  }
+  
+  return ''
 }
 
 function getEstadoClass(estado: string): string {

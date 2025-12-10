@@ -263,7 +263,11 @@
         <tbody class="bg-white divide-y divide-gray-200">
           <template v-for="despacho in sortedDespachos" :key="despacho.despacho_id">
             <!-- Fila principal del despacho (Cabecera - colores más intensos) -->
-            <tr class="transition-colors" :class="getCabeceraRowClass()">
+            <tr 
+              class="transition-colors" 
+              :class="[getCabeceraRowClass(), getRowWarningClass(despacho)]"
+              :title="hasRowIssues(despacho).issues.length > 0 ? 'Problemas: ' + hasRowIssues(despacho).issues.join(', ') : ''"
+            >
               <td class="px-6 py-4 whitespace-nowrap">
                 <input
                   type="checkbox"
@@ -369,7 +373,12 @@
                         </tr>
                       </thead>
                       <tbody :class="getDetallesTbodyClass()">
-                        <tr v-for="(detalle, index) in detallesPorDespacho[despacho.despacho_id]" :key="detalle.detalle_id || index" :class="getDetallesRowClass()">
+                        <tr 
+                          v-for="(detalle, index) in detallesPorDespacho[despacho.despacho_id]" 
+                          :key="detalle.detalle_id || index" 
+                          :class="[getDetallesRowClass(), getDetalleWarningClass(detalle)]"
+                          :title="hasDetalleIssues(detalle).issues.length > 0 ? 'Problemas: ' + hasDetalleIssues(detalle).issues.join(', ') : ''"
+                        >
                           <td class="px-4 py-2 text-sm font-mono text-gray-900 font-semibold">{{ detalle.sku || '-' }}</td>
                           <td class="px-4 py-2 text-sm text-gray-900">
                             <div class="max-w-xs">
@@ -874,10 +883,81 @@ defineExpose({
   clearSendingMultipleState
 })
 
+// Función para detectar problemas en una fila de despacho
+function hasRowIssues(despacho: Despacho): { hasErrors: boolean; hasWarnings: boolean; issues: string[] } {
+  const issues: string[] = []
+  let hasErrors = false
+  let hasWarnings = false
+
+  // Errores críticos (rojo)
+  if (!despacho.codigo_factura || despacho.codigo_factura.trim() === '') {
+    issues.push('Falta código de factura')
+    hasErrors = true
+  }
+  if (!despacho.empresa || despacho.empresa.trim() === '') {
+    issues.push('Falta empresa')
+    hasErrors = true
+  }
+  if (!despacho.codigo_cliente || despacho.codigo_cliente.trim() === '') {
+    issues.push('Falta código de cliente')
+    hasErrors = true
+  }
+  if (!despacho.fecha_despacho) {
+    issues.push('Falta fecha de despacho')
+    hasErrors = true
+  }
+  if (despacho.anulada) {
+    issues.push('Despacho anulado')
+    hasErrors = true
+  }
+
+  // Advertencias (amarillo/naranja)
+  if (!despacho.numero_factura || despacho.numero_factura === 0) {
+    issues.push('Número de factura faltante')
+    hasWarnings = true
+  }
+  if (!despacho.orden_compra && despacho.confirmado && !despacho.anulada) {
+    issues.push('Falta orden de compra en despacho confirmado')
+    hasWarnings = true
+  }
+  if (!despacho.numero_pedido_sistema) {
+    issues.push('Falta número de pedido sistema')
+    hasWarnings = true
+  }
+  if (!despacho.despacho_detalles || despacho.despacho_detalles.length === 0) {
+    issues.push('Sin detalles de despacho')
+    hasWarnings = true
+  }
+  if (!despacho.codigo_bodega) {
+    issues.push('Falta código de bodega')
+    hasWarnings = true
+  }
+
+  return { hasErrors, hasWarnings, issues }
+}
+
+// Función para obtener clases CSS según problemas detectados
+function getRowWarningClass(despacho: Despacho): string {
+  const { hasErrors, hasWarnings } = hasRowIssues(despacho)
+  
+  if (hasErrors) {
+    // Fondo rojo claro con borde rojo para errores críticos
+    // Sobrescribe el borde violeta con rojo
+    return 'bg-red-50/80 !border-l-4 !border-red-500 hover:bg-red-100/80'
+  } else if (hasWarnings) {
+    // Fondo amarillo/naranja claro con borde amarillo para advertencias
+    // Sobrescribe el borde violeta con amarillo
+    return 'bg-yellow-50/80 !border-l-4 !border-yellow-500 hover:bg-yellow-100/80'
+  }
+  
+  return ''
+}
+
 // Funciones para colores temáticos de cabecera y detalles
 // Los despachos pertenecen al proceso "migrar" (violeta)
 function getCabeceraRowClass(): string {
   // Colores más intensos para la cabecera (proceso migrar - violeta)
+  // Borde izquierdo por defecto, pero puede ser sobrescrito por getRowWarningClass
   return 'bg-violet-50/40 hover:bg-violet-50/60 border-l-4 border-violet-300'
 }
 
@@ -919,6 +999,82 @@ function getDetallesFooterBorderClass(): string {
 function getDetallesTbodyClass(): string {
   // Tbody de detalles con divisores temáticos
   return 'divide-y divide-violet-100'
+}
+
+// Función para detectar problemas en un detalle
+function hasDetalleIssues(detalle: DespachoDetalle): { hasErrors: boolean; hasWarnings: boolean; issues: string[] } {
+  const issues: string[] = []
+  let hasErrors = false
+  let hasWarnings = false
+
+  // Errores críticos (rojo)
+  if (!detalle.sku || detalle.sku.trim() === '') {
+    issues.push('Falta SKU')
+    hasErrors = true
+  }
+  if (!detalle.nombre_producto || detalle.nombre_producto.trim() === '') {
+    issues.push('Falta nombre de producto')
+    hasErrors = true
+  }
+  if (!detalle.detalle_id || detalle.detalle_id.trim() === '') {
+    issues.push('Falta ID de detalle')
+    hasErrors = true
+  }
+  if (detalle.cantidad_docena_mba3 === null || detalle.cantidad_docena_mba3 === undefined || detalle.cantidad_docena_mba3 === 0) {
+    issues.push('Cantidad docena MBA3 nula o cero')
+    hasErrors = true
+  }
+  if (detalle.precio_unitario_mba3 === null || detalle.precio_unitario_mba3 === undefined || detalle.precio_unitario_mba3 === 0) {
+    issues.push('Precio unitario MBA3 nulo o cero')
+    hasErrors = true
+  }
+  if (detalle.total_linea_mba3 === null || detalle.total_linea_mba3 === undefined || detalle.total_linea_mba3 === 0) {
+    issues.push('Total línea MBA3 nulo o cero')
+    hasErrors = true
+  }
+
+  // Advertencias (amarillo/naranja)
+  if (detalle.cantidad_pack_sap === null || detalle.cantidad_pack_sap === undefined) {
+    issues.push('Falta cantidad pack SAP')
+    hasWarnings = true
+  }
+  if (!detalle.unidad_sap || detalle.unidad_sap.trim() === '') {
+    issues.push('Falta unidad SAP')
+    hasWarnings = true
+  }
+  if (detalle.precio_unitario_sap === null || detalle.precio_unitario_sap === undefined) {
+    issues.push('Falta precio unitario SAP')
+    hasWarnings = true
+  }
+  if (detalle.subtotal_sap === null || detalle.subtotal_sap === undefined || detalle.subtotal_sap === 0) {
+    issues.push('Subtotal SAP nulo o cero')
+    hasWarnings = true
+  }
+  if (!detalle.tipo_linea || detalle.tipo_linea.trim() === '') {
+    issues.push('Falta tipo de línea')
+    hasWarnings = true
+  }
+  if (detalle.descuento === null || detalle.descuento === undefined) {
+    issues.push('Descuento no especificado')
+    hasWarnings = true
+  }
+
+  return { hasErrors, hasWarnings, issues }
+}
+
+// Función para obtener clases CSS de advertencia para detalles
+function getDetalleWarningClass(detalle: DespachoDetalle): string {
+  const { hasErrors, hasWarnings } = hasDetalleIssues(detalle)
+  
+  if (hasErrors) {
+    // Fondo rojo claro con borde rojo para errores críticos
+    return 'bg-red-50/60 !border-l-4 !border-red-500 hover:bg-red-100/70'
+  } else if (hasWarnings) {
+    // Fondo amarillo claro con borde amarillo para advertencias
+    return 'bg-yellow-50/60 !border-l-4 !border-yellow-500 hover:bg-yellow-100/70'
+  }
+  
+  return ''
 }
 
 function getDetallesRowClass(): string {
