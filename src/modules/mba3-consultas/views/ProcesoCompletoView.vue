@@ -1,13 +1,17 @@
 <template>
   <div class="space-y-6 relative">
     <!-- Overlay de bloqueo cuando se ejecuta la importación -->
-    <div 
-      v-if="procesoStore.loading && procesoStore.currentStep === 'migrar'"
-      class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9998] flex items-center justify-center"
-      @click.prevent
-      @mousedown.prevent
-      @mouseup.prevent
-    >
+    <Teleport to="body">
+      <div 
+        v-if="procesoStore.loading && procesoStore.currentStep === 'migrar'"
+        class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center"
+        @click.prevent
+        @mousedown.prevent
+        @mouseup.prevent
+        @touchstart.prevent
+        @touchmove.prevent
+        @touchend.prevent
+      >
       <div class="bg-white rounded-xl shadow-2xl p-8 max-w-md mx-4 text-center">
         <div class="flex flex-col items-center gap-4">
           <svg class="animate-spin h-12 w-12 text-violet-600" fill="none" viewBox="0 0 24 24">
@@ -28,11 +32,46 @@
         </div>
       </div>
     </div>
+    </Teleport>
+
+    <!-- Overlay de bloqueo cuando se ejecuta el envío a SAP desde Procesar ODC -->
+    <Teleport to="body">
+      <div 
+        v-if="procesoStore.loading && (procesoStore.currentStep === 'integrar-sap' || procesoStore.currentStep === 'procesar-oc')"
+        class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center"
+        @click.prevent
+        @mousedown.prevent
+        @mouseup.prevent
+        @touchstart.prevent
+        @touchmove.prevent
+        @touchend.prevent
+      >
+      <div class="bg-white rounded-xl shadow-2xl p-8 max-w-md mx-4 text-center">
+        <div class="flex flex-col items-center gap-4">
+          <svg class="animate-spin h-12 w-12 text-emerald-600" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <div>
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">Enviando Órdenes a SAP</h3>
+            <p class="text-sm text-gray-600">Por favor espera mientras se procesan y envían las órdenes de compra...</p>
+            <div class="mt-4 w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+              <div
+                class="h-full bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 transition-all duration-300"
+                :style="{ width: `${procesoStore.progress}%` }"
+              ></div>
+            </div>
+            <p class="text-xs text-gray-500 mt-2">{{ procesoStore.progress }}% completado</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    </Teleport>
 
     <!-- Contenedor principal con bloqueo de interacción -->
     <div 
       :class="{
-        'pointer-events-none opacity-75': procesoStore.loading && procesoStore.currentStep === 'migrar'
+        'pointer-events-none opacity-75': procesoStore.loading && (procesoStore.currentStep === 'migrar' || procesoStore.currentStep === 'integrar-sap' || procesoStore.currentStep === 'procesar-oc')
       }"
     >
       <div>
@@ -45,7 +84,7 @@
         :tabs="tabs"
         :default-tab="activeTab"
         @tab-changed="handleTabChange"
-        :disabled="procesoStore.loading && procesoStore.currentStep === 'migrar'"
+        :disabled="procesoStore.loading && (procesoStore.currentStep === 'migrar' || procesoStore.currentStep === 'integrar-sap' || procesoStore.currentStep === 'procesar-oc')"
       >
       <!-- Pestaña 1: Importar-Despachos -->
       <template #tab-migrar>
@@ -591,7 +630,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useProcesoStore } from '../stores/procesoStore'
 import { useOrdenesCompraStore } from '../stores/ordenesCompraStore'
 import { useToast } from '@/composables/useToast'
@@ -922,28 +961,42 @@ async function ejecutarIntegrarSAPDesdeProcesarOC() {
     // Establecer loading en procesoStore para que el botón se deshabilite
     procesoStore.loading = true
     procesoStore.currentStep = 'integrar-sap'
+    procesoStore.progress = 0
+    
+    // Esperar a que Vue actualice el DOM para que el overlay aparezca
+    await nextTick()
     
     toast.info('Enviando órdenes a SAP...', `Enviando ${ordenesPendientes.length} orden(es) pendiente(s) una por una`)
     
     let successCount = 0
     let errorCount = 0
+    const totalOrdenes = ordenesPendientes.length
     
     // Enviar cada orden una por una usando el servicio directamente para evitar conflictos de loading
-    for (const orden of ordenesPendientes) {
+    for (let i = 0; i < ordenesPendientes.length; i++) {
+      const orden = ordenesPendientes[i]
       try {
         await mba3ConsultasService.integrarSAP(orden.referencia_despacho)
         successCount++
         
+        // Actualizar progreso basado en las órdenes procesadas
+        procesoStore.progress = Math.round(((i + 1) / totalOrdenes) * 100)
+        
         // Pequeño delay entre envíos para no saturar el servidor
-        if (ordenesPendientes.indexOf(orden) < ordenesPendientes.length - 1) {
+        if (i < ordenesPendientes.length - 1) {
           await new Promise(resolve => setTimeout(resolve, 500))
         }
       } catch (error: any) {
         console.error(`Error al enviar orden ${orden.referencia_despacho}:`, error)
         errorCount++
+        // Actualizar progreso incluso si hay error
+        procesoStore.progress = Math.round(((i + 1) / totalOrdenes) * 100)
         // Continuar con la siguiente orden aunque haya un error
       }
     }
+    
+    // Asegurar que el progreso esté al 100% al finalizar
+    procesoStore.progress = 100
     
     // Actualizar estadísticas y recargar órdenes
     await ordenesCompraStore.fetchEstadisticas()
@@ -964,8 +1017,11 @@ async function ejecutarIntegrarSAPDesdeProcesarOC() {
     toast.error('Error en integración SAP', error.message || 'No se pudo integrar con SAP')
     procesoStore.error = error.message || 'No se pudo integrar con SAP'
   } finally {
+    // Pequeño delay para mostrar el 100% antes de ocultar el overlay
+    await new Promise(resolve => setTimeout(resolve, 500))
     procesoStore.loading = false
     procesoStore.currentStep = null
+    procesoStore.progress = 0
   }
 }
 
