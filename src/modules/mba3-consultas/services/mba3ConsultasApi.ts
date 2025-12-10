@@ -179,7 +179,7 @@ export const mba3ConsultasService = {
           await new Promise(resolve => setTimeout(resolve, delay))
         }
         
-        const response = await mba3Api.get<ProcesoResponse>('/migrar')
+        const response = await mba3Api.get<ProcesoResponse>('/migrar/completo')
         return response.data
       } catch (error: any) {
         lastError = error

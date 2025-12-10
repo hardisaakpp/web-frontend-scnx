@@ -364,7 +364,6 @@
                           <th class="px-4 py-2 text-center text-xs font-medium text-gray-600 uppercase">Unidad SAP</th>
                           <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 uppercase">Precio Unit. MBA3</th>
                           <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 uppercase">Precio Unit. SAP</th>
-                          <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 uppercase">Descuento</th>
                           <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 uppercase">Subtotal SAP</th>
                           <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 uppercase">Total Línea MBA3</th>
                         </tr>
@@ -382,14 +381,13 @@
                           <td class="px-4 py-2 text-sm text-gray-900 text-center font-mono">{{ detalle.unidad_sap || '-' }}</td>
                           <td class="px-4 py-2 text-sm text-gray-900 text-right">{{ formatCurrency(detalle.precio_unitario_mba3) }}</td>
                           <td class="px-4 py-2 text-sm text-gray-900 text-right">{{ detalle.precio_unitario_sap !== null ? formatCurrency(detalle.precio_unitario_sap) : '-' }}</td>
-                          <td class="px-4 py-2 text-sm text-gray-900 text-right">{{ formatCurrency(detalle.descuento) }}</td>
                           <td class="px-4 py-2 text-sm text-gray-900 text-right font-medium">{{ formatCurrency(detalle.subtotal_sap) }}</td>
                           <td class="px-4 py-2 text-sm font-semibold text-gray-900 text-right">{{ formatCurrency(detalle.total_linea_mba3) }}</td>
                         </tr>
                       </tbody>
                       <tfoot v-if="detallesPorDespacho[despacho.despacho_id]?.length > 0" :class="getDetallesFooterClass()">
                         <tr>
-                          <td colspan="8" class="px-4 py-2 text-sm font-semibold text-right" :class="getDetallesFooterTextClass()">Subtotal:</td>
+                          <td colspan="7" class="px-4 py-2 text-sm font-semibold text-right" :class="getDetallesFooterTextClass()">Subtotal:</td>
                           <td class="px-4 py-2 text-sm font-bold text-right border-l" :class="[getDetallesFooterBorderClass(), getDetallesFooterTextClass()]">
                             {{ formatCurrency(getTotalSubtotalSAP(despacho.despacho_id)) }}
                           </td>
