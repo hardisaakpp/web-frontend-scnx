@@ -1162,10 +1162,34 @@ async function handleGenerarODCMultiples(despachoIds: string[]) {
 
 // Funciones de integración individuales
 async function handleIntegrarOC(referenciaDespacho: string) {
+  // Verificar que no esté ya ejecutándose
+  if (procesoStore.loading || ordenesCompraStore.loading) {
+    return
+  }
+  
   try {
+    // Establecer loading en procesoStore para mostrar el overlay
+    procesoStore.loading = true
+    procesoStore.currentStep = 'integrar-sap'
+    procesoStore.progress = 0
+    
+    // Esperar a que Vue actualice el DOM para que el overlay aparezca
+    await nextTick()
+    
     toast.info('Enviando orden a SAP...', `Enviando ${referenciaDespacho}`)
-    // Usar el servicio directamente para evitar que el loading del store bloquee otros botones
+    
+    // Simular progreso mientras se envía
+    procesoStore.progress = 50
+    
+    // Usar el servicio directamente para enviar la orden
     await mba3ConsultasService.integrarSAP(referenciaDespacho)
+    
+    // Completar el progreso
+    procesoStore.progress = 100
+    
+    // Pequeño delay para mostrar el 100% antes de ocultar
+    await new Promise(resolve => setTimeout(resolve, 500))
+    
     toast.success('Orden enviada', 'La orden se ha enviado correctamente a SAP')
     // Actualizar datos después del envío
     await ordenesCompraStore.fetchEstadisticas()
@@ -1181,26 +1205,53 @@ async function handleIntegrarOC(referenciaDespacho: string) {
     if (ordenCompraTableRef.value?.clearSendingState) {
       ordenCompraTableRef.value.clearSendingState()
     }
+  } finally {
+    // Asegurar que el loading se limpie
+    procesoStore.loading = false
+    procesoStore.currentStep = null
+    procesoStore.progress = 0
   }
 }
 
 async function handleIntegrarOCMultiples(referencias: string[]) {
+  // Verificar que no esté ya ejecutándose
+  if (procesoStore.loading || ordenesCompraStore.loading) {
+    return
+  }
+  
   try {
     if (referencias.length === 0) {
       toast.warning('No hay órdenes seleccionadas para enviar')
       return
     }
 
+    // Establecer loading en procesoStore para mostrar el overlay
+    procesoStore.loading = true
+    procesoStore.currentStep = 'integrar-sap'
+    procesoStore.progress = 0
+    
+    // Esperar a que Vue actualice el DOM para que el overlay aparezca
+    await nextTick()
+
     toast.info('Enviando órdenes a SAP...', `Enviando ${referencias.length} orden(es) a SAP`)
     
-    // Usar el servicio directamente para evitar que el loading del store bloquee otros botones
+    // Usar el servicio directamente para enviar las órdenes
     // Si es una sola referencia, enviarla directamente
     if (referencias.length === 1) {
+      procesoStore.progress = 50
       await mba3ConsultasService.integrarSAP(referencias[0])
     } else {
       // Si son múltiples, enviar todas en una sola llamada
+      // Simular progreso progresivo
+      procesoStore.progress = 30
       await mba3ConsultasService.integrarSAP(referencias)
     }
+    
+    // Completar el progreso
+    procesoStore.progress = 100
+    
+    // Pequeño delay para mostrar el 100% antes de ocultar
+    await new Promise(resolve => setTimeout(resolve, 500))
     
     toast.success('Órdenes enviadas', `Se han enviado ${referencias.length} orden(es) a SAP exitosamente`)
     // Actualizar datos después del envío
@@ -1224,6 +1275,11 @@ async function handleIntegrarOCMultiples(referencias: string[]) {
     if (ordenCompraTableRef.value?.clearSendingMultipleState) {
       ordenCompraTableRef.value.clearSendingMultipleState()
     }
+  } finally {
+    // Asegurar que el loading se limpie
+    procesoStore.loading = false
+    procesoStore.currentStep = null
+    procesoStore.progress = 0
   }
 }
 
