@@ -45,6 +45,8 @@ export interface Despacho {
   despacho_created_at: string
   despacho_updated_at: string
   despacho_detalles?: DespachoDetalle[] // Detalles incluidos en la respuesta
+  tiene_odc?: boolean // Indica si el despacho tiene una orden de compra asociada (desde backend)
+  oc_id?: string | null // ID de la orden de compra asociada (desde backend)
 }
 
 // ========== Despacho Detalle (desde BD) ==========

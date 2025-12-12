@@ -72,7 +72,7 @@
             <input
               v-model="searchQuery"
               type="text"
-              placeholder="Buscar por ODC ID..."
+              placeholder="Buscar en todos los campos..."
               class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
             />
           </div>
@@ -267,6 +267,11 @@
                   </svg>
                 </button>
               </td>
+              <!-- Referencia Despacho -->
+              <td v-else-if="columnKey === 'referencia_despacho'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <span v-if="oc.referencia_despacho" class="font-mono">{{ oc.referencia_despacho }}</span>
+                <span v-else class="text-gray-400 italic">-</span>
+              </td>
               <!-- Fecha Generación -->
               <td v-else-if="columnKey === 'fecha_generacion'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                 <div>{{ formatDate(oc.fecha_generacion) }}</div>
@@ -403,6 +408,7 @@ const showColumnSelector = ref(false)
 // Columnas disponibles
 const availableColumns = [
   { key: 'oc_id', label: 'ODC ID', default: true },
+  { key: 'referencia_despacho', label: 'Referencia Despacho', default: true },
   { key: 'fecha_generacion', label: 'Fecha Generación', default: true },
   { key: 'created_at', label: 'Fecha Creación', default: props.readOnly || false },
   { key: 'fecha_procesado', label: 'Fecha Procesado', default: props.readOnly || false },
@@ -533,14 +539,45 @@ const sortDirection = ref<'asc' | 'desc'>('asc')
 const filteredOrdenes = computed(() => {
   let filtered = [...props.ordenesCompra]
   
-  // Búsqueda por texto
+  // Búsqueda por texto en todos los campos
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(oc => 
-      oc.oc_id.toLowerCase().includes(query) ||
-      (oc.numero_oc_sap && oc.numero_oc_sap.toLowerCase().includes(query)) ||
-      (oc.respuesta_sap && oc.respuesta_sap.toLowerCase().includes(query))
-    )
+    filtered = filtered.filter(oc => {
+      // Función auxiliar para convertir valores a string y buscar
+      const searchInField = (value: any): boolean => {
+        if (value === null || value === undefined) return false
+        return String(value).toLowerCase().includes(query)
+      }
+      
+      // Función auxiliar para formatear fechas y buscar
+      const searchInDate = (dateString: string | null | undefined): boolean => {
+        if (!dateString) return false
+        try {
+          const date = new Date(dateString)
+          const formattedDate = formatDate(dateString).toLowerCase()
+          const timeAgo = getTimeAgo(dateString).toLowerCase()
+          return formattedDate.includes(query) || timeAgo.includes(query) || dateString.toLowerCase().includes(query)
+        } catch {
+          return dateString.toLowerCase().includes(query)
+        }
+      }
+      
+      return (
+        searchInField(oc.oc_id) ||
+        searchInField(oc.referencia_despacho) ||
+        searchInField(oc.numero_oc_sap) ||
+        searchInField(oc.respuesta_sap) ||
+        searchInField(oc.estado) ||
+        searchInField(oc.proveedor) ||
+        searchInField(oc.despacho_id) ||
+        searchInDate(oc.fecha_generacion) ||
+        searchInDate(oc.fecha_procesado) ||
+        searchInDate(oc.created_at) ||
+        searchInField(oc.error_message) ||
+        searchInField(oc.error_code) ||
+        searchInField(oc.error_source)
+      )
+    })
   }
   
   // Filtro por fecha

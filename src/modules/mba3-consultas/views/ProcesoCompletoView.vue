@@ -313,6 +313,7 @@
               :loading="loadingDespachos"
               :total-despachos="despachosCount"
               :processing="generandoODC || (procesoStore.loading && procesoStore.currentStep === 'procesar-oc')"
+              :ordenes-compra="ordenesCompraStore.ordenesCompra"
               @generar-odc="handleGenerarODCIndividual"
               @generar-odc-multiples="handleGenerarODCMultiples"
             />
@@ -543,10 +544,9 @@
               :ordenes-compra="ordenesCompraStore.ordenesCompra"
               :loading="ordenesCompraStore.loading"
               :total-ordenes="ordenesCompraStore.total"
-              :allow-delete="true"
+              :allow-delete="false"
               @integrar="handleIntegrarOC"
               @integrar-multiples="handleIntegrarOCMultiples"
-              @eliminar="handleEliminarOC"
               ref="ordenCompraTableRef"
             />
 
@@ -716,7 +716,8 @@ async function handleTabChange(tabId: string) {
   // Cargar datos cuando se cambia de pestaña
   if (tabId === 'migrar') {
     // Siempre cargar despachos cuando se entra a la pestaña de importar despachos
-    // Esto asegura que los datos estén actualizados
+    // El backend ahora proporciona el campo tiene_odc directamente, así que no necesitamos
+    // cargar todas las órdenes de compra previamente
     await cargarDespachos()
   } else if (tabId === 'procesar-oc') {
     // Cargar estadísticas primero para que el botón se habilite correctamente
@@ -1317,9 +1318,13 @@ async function handleEliminarOC(ocIds: string[]) {
 
 // Cargar estadísticas al montar el componente
 onMounted(async () => {
-  await ordenesCompraStore.fetchEstadisticas()
-  // Siempre cargar despachos al montar para asegurar que la información esté actualizada
-  await cargarDespachos()
+  // Cargar estadísticas en paralelo con despachos
+  // Ya no necesitamos cargar todas las órdenes de compra porque el backend ahora proporciona
+  // el campo tiene_odc directamente en cada despacho
+  await Promise.all([
+    ordenesCompraStore.fetchEstadisticas(),
+    cargarDespachos()
+  ])
 })
 
 function getStepStatus(step: string): 'pending' | 'active' | 'completed' | 'error' | 'retry' {

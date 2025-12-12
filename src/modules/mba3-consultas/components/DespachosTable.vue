@@ -202,7 +202,9 @@
                 :checked="allSelected"
                 :indeterminate="someSelected"
                 @change="toggleSelectAll"
-                class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
+                :disabled="!hasSelectableDespachos"
+                class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                :title="!hasSelectableDespachos ? 'No hay despachos seleccionables (todos tienen ODC o están anulados)' : 'Seleccionar todos los despachos disponibles'"
               />
             </th>
             <th class="w-12 px-6 py-3 text-center align-middle"></th>
@@ -254,7 +256,8 @@
                   type="checkbox"
                   :checked="isSelected(despacho.despacho_id)"
                   @change="toggleSelect(despacho.despacho_id)"
-                  class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
+                  :disabled="despacho.anulada || tieneODC(despacho)"
+                  class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-center align-middle">
@@ -340,16 +343,20 @@
                 <button
                   @click="handleGenerarODC(despacho.despacho_id)"
                   class="px-3 py-1 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center gap-1"
-                  :disabled="sendingDespachoId === despacho.despacho_id || despacho.anulada || sendingMultiple"
-                  :title="despacho.anulada ? 'No se puede generar ODC para despachos anulados' : 'Generar ODC para este despacho'"
+                  :class="{ 'bg-gray-400 hover:bg-gray-400': tieneODC(despacho) }"
+                  :disabled="sendingDespachoId === despacho.despacho_id || despacho.anulada || sendingMultiple || tieneODC(despacho)"
+                  :title="despacho.anulada ? 'No se puede generar ODC para despachos anulados' : tieneODC(despacho) ? 'Ya existe una ODC para este despacho' : 'Generar ODC para este despacho'"
                 >
                   <svg v-if="sendingDespachoId === despacho.despacho_id" class="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
+                  <svg v-else-if="tieneODC(despacho)" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                  </svg>
                   <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  {{ sendingDespachoId === despacho.despacho_id ? 'Generando...' : 'Generar ODC' }}
+                  {{ sendingDespachoId === despacho.despacho_id ? 'Generando...' : tieneODC(despacho) ? 'ODC Generada' : 'Generar ODC' }}
                 </button>
               </td>
             </tr>
@@ -484,6 +491,7 @@ const props = defineProps<{
   loading?: boolean
   totalDespachos?: number
   processing?: boolean
+  ordenesCompra?: Array<{ despacho_id?: string; referencia_despacho?: string }>
 }>()
 
 const emit = defineEmits<{
@@ -519,6 +527,27 @@ const sendingDespachoId = ref<string | null>(null)
 // Estado para rastrear cuando se están procesando múltiples despachos
 const sendingMultiple = ref(false)
 
+// Función para verificar si ya existe una ODC para un despacho
+function tieneODC(despacho: Despacho): boolean {
+  // Si el backend proporciona el campo tiene_odc, usarlo directamente (más eficiente y confiable)
+  if (despacho.tiene_odc !== undefined) {
+    return despacho.tiene_odc
+  }
+  
+  // Fallback: verificar en las órdenes de compra cargadas en el frontend
+  // (solo si el backend no proporciona el campo)
+  if (!props.ordenesCompra || props.ordenesCompra.length === 0) {
+    return false
+  }
+  
+  // Verificar si existe una ODC con el mismo despacho_id o referencia_despacho que coincida con codigo_factura
+  return props.ordenesCompra.some(oc => 
+    oc.despacho_id === despacho.despacho_id || 
+    oc.referencia_despacho === despacho.codigo_factura ||
+    oc.referencia_despacho === despacho.despacho_id
+  )
+}
+
 // Columnas disponibles
 const availableColumns = [
   { key: 'codigo_factura', label: 'Número Pedido El Rayo', default: true },
@@ -548,6 +577,16 @@ const {
   enableFilters: false,
   enablePageSize: false
 })
+
+// Watch para limpiar la selección de despachos que ya no son seleccionables (tienen ODC o están anulados)
+// Ahora el backend proporciona tiene_odc directamente, así que solo necesitamos observar los despachos
+watch(() => props.despachos, () => {
+  // Remover de la selección los despachos que ya no son seleccionables
+  selectedDespachos.value = selectedDespachos.value.filter(despachoId => {
+    const despacho = props.despachos.find(d => d.despacho_id === despachoId)
+    return despacho && !despacho.anulada && !tieneODC(despacho)
+  })
+}, { deep: true })
 
 // Watch para actualizar el orden cuando se agregan nuevas columnas visibles
 watch(visibleColumns, () => {
@@ -914,6 +953,13 @@ function isSelected(despachoId: string): boolean {
 }
 
 function toggleSelect(despachoId: string) {
+  const despacho = props.despachos.find(d => d.despacho_id === despachoId)
+  
+  // No permitir seleccionar despachos anulados o que ya tienen ODC
+  if (!despacho || despacho.anulada || tieneODC(despacho)) {
+    return
+  }
+  
   const index = selectedDespachos.value.indexOf(despachoId)
   if (index > -1) {
     selectedDespachos.value.splice(index, 1)
@@ -923,18 +969,22 @@ function toggleSelect(despachoId: string) {
 }
 
 function toggleSelectAll() {
+  if (!hasSelectableDespachos.value) {
+    return // No hacer nada si no hay despachos seleccionables
+  }
+  
   if (allSelected.value) {
-    // Deseleccionar todas las visibles
-    filteredDespachos.value.forEach(d => {
+    // Deseleccionar todas las seleccionables
+    selectableDespachos.value.forEach(d => {
       const index = selectedDespachos.value.indexOf(d.despacho_id)
       if (index > -1) {
         selectedDespachos.value.splice(index, 1)
       }
     })
   } else {
-    // Seleccionar todas las visibles (solo las no anuladas)
-    filteredDespachos.value.forEach(d => {
-      if (!d.anulada && !selectedDespachos.value.includes(d.despacho_id)) {
+    // Seleccionar todas las seleccionables
+    selectableDespachos.value.forEach(d => {
+      if (!selectedDespachos.value.includes(d.despacho_id)) {
         selectedDespachos.value.push(d.despacho_id)
       }
     })
@@ -945,14 +995,23 @@ function clearSelection() {
   selectedDespachos.value = []
 }
 
+// Computed para obtener despachos seleccionables (no anulados y sin ODC)
+const selectableDespachos = computed(() => {
+  return filteredDespachos.value.filter(d => !d.anulada && !tieneODC(d))
+})
+
+// Computed para verificar si hay despachos seleccionables
+const hasSelectableDespachos = computed(() => {
+  return selectableDespachos.value.length > 0
+})
+
 const allSelected = computed(() => {
-  const selectableDespachos = filteredDespachos.value.filter(d => !d.anulada)
-  return selectableDespachos.length > 0 && 
-         selectableDespachos.every(d => selectedDespachos.value.includes(d.despacho_id))
+  return hasSelectableDespachos.value && 
+         selectableDespachos.value.every(d => selectedDespachos.value.includes(d.despacho_id))
 })
 
 const someSelected = computed(() => {
-  return filteredDespachos.value.some(d => selectedDespachos.value.includes(d.despacho_id)) && !allSelected.value
+  return selectableDespachos.value.some(d => selectedDespachos.value.includes(d.despacho_id)) && !allSelected.value
 })
 
 // Funciones de acción
@@ -983,8 +1042,28 @@ function handleGenerarODCMultiples() {
     return
   }
   
+  // Filtrar despachos que ya tienen ODC
+  const despachosSinODC = selectedDespachos.value.filter(despachoId => {
+    const despacho = props.despachos.find(d => d.despacho_id === despachoId)
+    return despacho && !tieneODC(despacho)
+  })
+  
+  const despachosConODC = selectedDespachos.value.length - despachosSinODC.length
+  
+  if (despachosSinODC.length === 0) {
+    toast.warning('No hay despachos válidos', 'Todos los despachos seleccionados ya tienen ODC generada')
+    return
+  }
+  
+  if (despachosConODC > 0) {
+    toast.info(
+      'Algunos despachos ya tienen ODC', 
+      `Se generarán ODCs para ${despachosSinODC.length} despacho(s). ${despachosConODC} despacho(s) ya tienen ODC y serán omitidos.`
+    )
+  }
+  
   sendingMultiple.value = true
-  emit('generar-odc-multiples', [...selectedDespachos.value])
+  emit('generar-odc-multiples', despachosSinODC)
 }
 
 // Exponer funciones para limpiar el estado de envío (llamada por el componente padre después de completar)
