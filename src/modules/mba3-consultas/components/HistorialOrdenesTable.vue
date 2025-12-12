@@ -105,7 +105,17 @@
             <th 
               v-for="column in visibleLogColumns" 
               :key="column.key"
-              class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+              :draggable="true"
+              @dragstart="handleDragStart($event, column.key)"
+              @dragover="handleDragOver($event, column.key)"
+              @dragleave="handleDragLeave"
+              @drop="handleDrop($event, column.key)"
+              @dragend="handleDragEnd"
+              :class="[
+                'px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-grab',
+                draggedColumn === column.key ? 'opacity-50 cursor-grabbing' : '',
+                dragOverColumn === column.key && draggedColumn !== column.key ? 'bg-blue-100 border-l-4 border-blue-500' : 'hover:bg-gray-100'
+              ]"
               @click="sortBy(column.key)"
             >
               <div class="flex items-center gap-1">
@@ -160,6 +170,7 @@
 import { ref, computed, watch } from 'vue'
 import type { OrdenCompraLog } from '../types'
 import { isSapError, getSapErrorMessage } from '../composables/useSapErrorMessages'
+import { useTablePreferences } from '@/composables/useTablePreferences'
 
 const props = defineProps<{
   ordenesCompra: OrdenCompraLog[]
@@ -173,9 +184,6 @@ const showColumnSelector = ref(false)
 // Ordenamiento
 const sortField = ref<string | null>(null)
 const sortDirection = ref<'asc' | 'desc'>('asc')
-
-// Configuración de columnas
-const STORAGE_KEY = 'historial-ordenes-table-columns'
 
 // Columnas base comunes en logs - Ordenadas lógicamente por categorías
 const baseColumns = [
@@ -194,6 +202,24 @@ const baseColumns = [
   { key: 'error_source', label: 'Fuente de Error', priority: 7, default: false },
   { key: 'error_code', label: 'Código de Error', priority: 8, default: false },
 ]
+
+// Configuración de columnas usando composable híbrido
+const defaultVisibleColumns = baseColumns.filter(col => col.default).map(col => col.key)
+const defaultColumnOrder = baseColumns.map(col => col.key)
+
+const {
+  visibleColumns,
+  columnOrder,
+  orderedVisibleColumns: orderedVisibleColumnsFromComposable,
+  resetPreferences: resetTablePreferences,
+  selectAllColumns: selectAllTableColumns
+} = useTablePreferences({
+  tableId: 'historial-ordenes',
+  defaultVisibleColumns,
+  defaultColumnOrder,
+  enableFilters: false,
+  enablePageSize: false
+})
 
 // Función para formatear el nombre de la columna
 function formatColumnLabel(key: string): string {
@@ -243,42 +269,6 @@ const allAvailableColumns = computed(() => {
   return allColumns.map(({ priority, ...col }) => col) // Remover priority del objeto final
 })
 
-// Cargar columnas visibles desde localStorage o usar valores por defecto
-function loadVisibleColumns(): string[] {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved) {
-      const parsed = JSON.parse(saved)
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        // Validar que todas las columnas guardadas existen en las columnas disponibles
-        const availableKeys = allAvailableColumns.value.map(col => col.key)
-        return parsed.filter((key: string) => availableKeys.includes(key))
-      }
-    }
-  } catch (error) {
-    console.error('Error al cargar preferencias de columnas:', error)
-  }
-  
-  // Retornar columnas con default: true
-  return baseColumns.filter(col => col.default).map(col => col.key)
-}
-
-const visibleColumns = ref<string[]>(loadVisibleColumns())
-
-// Guardar preferencias cuando cambian
-function saveVisibleColumns() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(visibleColumns.value))
-  } catch (error) {
-    console.error('Error al guardar preferencias de columnas:', error)
-  }
-}
-
-// Watch para guardar cuando cambian las columnas o cuando se detectan nuevas columnas disponibles
-watch(visibleColumns, () => {
-  saveVisibleColumns()
-}, { deep: true })
-
 // Watch para agregar nuevas columnas detectadas con su valor default
 watch(allAvailableColumns, (newColumns) => {
   const currentVisible = visibleColumns.value
@@ -293,14 +283,26 @@ watch(allAvailableColumns, (newColumns) => {
   
   // Remover columnas que ya no existen
   visibleColumns.value = currentVisible.filter(key => availableKeys.includes(key))
+  
+  // Actualizar el orden: mantener el orden existente y agregar nuevas columnas al final
+  const currentOrder = columnOrder.value.filter(key => availableKeys.includes(key))
+  const missingInOrder = availableKeys.filter(key => !currentOrder.includes(key))
+  columnOrder.value = [...currentOrder, ...missingInOrder]
 }, { deep: true })
 
 // Computed para contar columnas visibles
 const visibleColumnsCount = computed(() => visibleColumns.value.length)
 
-// Filtrar columnas mostradas según selección del usuario
+// Filtrar columnas mostradas según selección del usuario y orden
 const visibleLogColumns = computed(() => {
-  return allAvailableColumns.value.filter(col => visibleColumns.value.includes(col.key))
+  // Obtener las columnas en el orden especificado
+  const orderedKeys = orderedVisibleColumnsFromComposable.value
+  const columnsMap = new Map(allAvailableColumns.value.map(col => [col.key, col]))
+  
+  // Retornar columnas en el orden correcto
+  return orderedKeys
+    .map(key => columnsMap.get(key))
+    .filter((col): col is { key: string; label: string; default: boolean } => col !== undefined)
 })
 
 // Extraer columnas dinámicamente de los logs (mantener para compatibilidad si se usa en otro lugar)
@@ -310,11 +312,68 @@ const logColumns = computed(() => {
 
 // Funciones de utilidad para manejo de columnas
 function selectAllColumns() {
-  visibleColumns.value = allAvailableColumns.value.map(col => col.key)
+  const allKeys = allAvailableColumns.value.map(col => col.key)
+  visibleColumns.value = [...allKeys]
+  columnOrder.value = [...allKeys]
 }
 
 function resetColumns() {
-  visibleColumns.value = baseColumns.filter(col => col.default).map(col => col.key)
+  resetTablePreferences()
+}
+
+// Funciones para drag and drop
+const draggedColumn = ref<string | null>(null)
+const dragOverColumn = ref<string | null>(null)
+
+function handleDragStart(event: DragEvent, columnKey: string) {
+  draggedColumn.value = columnKey
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', columnKey)
+  }
+}
+
+function handleDragOver(event: DragEvent, columnKey: string) {
+  event.preventDefault()
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'move'
+  }
+  dragOverColumn.value = columnKey
+}
+
+function handleDragLeave() {
+  dragOverColumn.value = null
+}
+
+function handleDrop(event: DragEvent, targetColumnKey: string) {
+  event.preventDefault()
+  
+  if (!draggedColumn.value || draggedColumn.value === targetColumnKey) {
+    draggedColumn.value = null
+    dragOverColumn.value = null
+    return
+  }
+  
+  // Reordenar columnas
+  const currentOrder = [...columnOrder.value]
+  const draggedIndex = currentOrder.indexOf(draggedColumn.value)
+  const targetIndex = currentOrder.indexOf(targetColumnKey)
+  
+  if (draggedIndex !== -1 && targetIndex !== -1) {
+    // Remover la columna arrastrada
+    currentOrder.splice(draggedIndex, 1)
+    // Insertar en la nueva posición
+    currentOrder.splice(targetIndex, 0, draggedColumn.value)
+    columnOrder.value = currentOrder
+  }
+  
+  draggedColumn.value = null
+  dragOverColumn.value = null
+}
+
+function handleDragEnd() {
+  draggedColumn.value = null
+  dragOverColumn.value = null
 }
 
 // Función para obtener el valor de un log

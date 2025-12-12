@@ -33,12 +33,13 @@
             v-if="allowDelete"
             @click="handleEliminarSeleccionadas"
             class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center gap-2"
-            :disabled="loading || deleting"
+            :disabled="loading || deleting || ordenesEliminables.length === 0"
+            :title="ordenesNoEliminables.length > 0 ? `${ordenesNoEliminables.length} ODC creada(s) no se pueden eliminar` : ''"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
-            {{ deleting ? 'Eliminando...' : `Eliminar ${selectedOrdenes.length}` }}
+            {{ deleting ? 'Eliminando...' : ordenesEliminables.length > 0 ? `Eliminar ${ordenesEliminables.length}` : `Eliminar (${ordenesNoEliminables.length} bloqueadas)` }}
           </button>
           <button
             @click="clearSelection"
@@ -71,7 +72,7 @@
             <input
               v-model="searchQuery"
               type="text"
-              placeholder="Buscar por proveedor, referencia, ODC ID..."
+              placeholder="Buscar por ODC ID..."
               class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
             />
           </div>
@@ -79,16 +80,6 @@
         
         <!-- Filtros rápidos -->
         <div class="flex items-center gap-2">
-          <select
-            v-model="filtroProveedor"
-            class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
-          >
-            <option value="">Todos los proveedores</option>
-            <option v-for="proveedor in proveedoresUnicos" :key="proveedor" :value="proveedor">
-              {{ proveedor }}
-            </option>
-          </select>
-          
           <button
             @click="showAdvancedFilters = !showAdvancedFilters"
             class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium flex items-center gap-2"
@@ -197,7 +188,7 @@
       <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
       </svg>
-      <p class="mt-2 text-sm">{{ searchQuery || filtroProveedor ? 'No se encontraron órdenes con los filtros aplicados' : 'No se encontraron órdenes de compra' }}</p>
+      <p class="mt-2 text-sm">{{ searchQuery ? 'No se encontraron órdenes con los filtros aplicados' : 'No se encontraron órdenes de compra' }}</p>
     </div>
 
     <div v-else class="overflow-x-auto">
@@ -213,57 +204,33 @@
                 class="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
               />
             </th>
-            <th v-if="isColumnVisible('oc_id')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" @click="sortBy('oc_id')">
+            <th
+              v-for="columnKey in orderedVisibleColumns"
+              :key="columnKey"
+              :draggable="true"
+              @dragstart="handleDragStart($event, columnKey)"
+              @dragover="handleDragOver($event, columnKey)"
+              @dragleave="handleDragLeave"
+              @drop="handleDrop($event, columnKey)"
+              @dragend="handleDragEnd"
+              :class="[
+                'px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-grab',
+                isColumnSortable(columnKey) ? 'hover:bg-gray-100' : 'hover:bg-gray-50',
+                draggedColumn === columnKey ? 'opacity-50 cursor-grabbing' : '',
+                dragOverColumn === columnKey && draggedColumn !== columnKey ? 'bg-emerald-100 border-l-4 border-emerald-500' : ''
+              ]"
+              @click="isColumnSortable(columnKey) && sortBy(columnKey)"
+            >
               <div class="flex items-center gap-1">
-                ODC ID
-                <svg v-if="sortField === 'oc_id'" class="w-4 h-4" :class="sortDirection === 'asc' ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <span>{{ getColumnLabel(columnKey) }}</span>
+                <svg v-if="isColumnSortable(columnKey) && sortField === columnKey" class="w-4 h-4" :class="sortDirection === 'asc' ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                </svg>
+                <svg v-else class="w-4 h-4 text-gray-300 opacity-0 hover:opacity-100" fill="none" stroke="currentColor" viewBox="0 0 24 24" title="Arrastra para reordenar">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16" />
                 </svg>
               </div>
             </th>
-            <th v-if="isColumnVisible('proveedor')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" @click="sortBy('proveedor')">
-              <div class="flex items-center gap-1">
-                Proveedor
-                <svg v-if="sortField === 'proveedor'" class="w-4 h-4" :class="sortDirection === 'asc' ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                </svg>
-              </div>
-            </th>
-            <th v-if="isColumnVisible('referencia_despacho')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" @click="sortBy('referencia_despacho')">
-              <div class="flex items-center gap-1">
-                Referencia Despacho
-                <svg v-if="sortField === 'referencia_despacho'" class="w-4 h-4" :class="sortDirection === 'asc' ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                </svg>
-              </div>
-            </th>
-            <th v-if="isColumnVisible('fecha_generacion')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" @click="sortBy('fecha_generacion')">
-              <div class="flex items-center gap-1">
-                Fecha Generación
-                <svg v-if="sortField === 'fecha_generacion'" class="w-4 h-4" :class="sortDirection === 'asc' ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                </svg>
-              </div>
-            </th>
-            <th v-if="isColumnVisible('created_at')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" @click="sortBy('created_at')">
-              <div class="flex items-center gap-1">
-                Fecha Creación
-                <svg v-if="sortField === 'created_at'" class="w-4 h-4" :class="sortDirection === 'asc' ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                </svg>
-              </div>
-            </th>
-            <th v-if="isColumnVisible('fecha_procesado')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" @click="sortBy('fecha_procesado')">
-              <div class="flex items-center gap-1">
-                Fecha Procesado
-                <svg v-if="sortField === 'fecha_procesado'" class="w-4 h-4" :class="sortDirection === 'asc' ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                </svg>
-              </div>
-            </th>
-            <th v-if="isColumnVisible('estado')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-            <th v-if="isColumnVisible('numero_oc_sap')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Número ODC SAP</th>
-            <th v-if="isColumnVisible('respuesta_sap')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Respuesta SAP</th>
             <th v-if="!readOnly" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
           </tr>
         </thead>
@@ -286,86 +253,93 @@
                 class="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
               />
             </td>
-            <td v-if="isColumnVisible('oc_id')" class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
-              <span class="font-semibold">{{ oc.oc_id.substring(0, 8) }}...</span>
-              <button
-                @click="copyToClipboard(oc.oc_id)"
-                class="ml-2 text-gray-400 hover:text-gray-600"
-                title="Copiar ID completo"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-              </button>
-            </td>
-            <td v-if="isColumnVisible('proveedor')" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ oc.proveedor }}</td>
-            <td v-if="isColumnVisible('referencia_despacho')" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ oc.referencia_despacho }}</td>
-            <td v-if="isColumnVisible('fecha_generacion')" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-              <div>{{ formatDate(oc.fecha_generacion) }}</div>
-            </td>
-            <td v-if="isColumnVisible('created_at')" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-              <div v-if="oc.created_at" class="space-y-0.5">
-                <div>{{ formatDate(oc.created_at) }}</div>
-                <div class="text-xs text-gray-500">{{ getTimeAgo(oc.created_at) }}</div>
-              </div>
-              <span v-else class="text-gray-400 italic">-</span>
-            </td>
-            <td v-if="isColumnVisible('fecha_procesado')" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-              <div v-if="oc.fecha_procesado" class="space-y-0.5">
-                <div>{{ formatDate(oc.fecha_procesado) }}</div>
-                <div class="text-xs text-gray-500">{{ getTimeAgo(oc.fecha_procesado) }}</div>
-              </div>
-              <span v-else class="text-gray-400 italic">-</span>
-            </td>
-            <td v-if="isColumnVisible('estado')" class="px-6 py-4 whitespace-nowrap">
-              <div class="relative group inline-block">
+            <template v-for="columnKey in orderedVisibleColumns" :key="columnKey">
+              <!-- ODC ID -->
+              <td v-if="columnKey === 'oc_id'" class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
+                <span class="font-semibold">{{ oc.oc_id.substring(0, 8) }}...</span>
                 <button
-                  v-if="oc.estado === 'ENVIADA' || oc.estado === 'ERROR'"
-                  @click="handleVerEnHistorial(oc.oc_id)"
-                  :class="getEstadoClass(oc.estado)"
-                  class="cursor-pointer transition-all duration-200 hover:scale-105"
-                  :title="'Ver en historial: ' + oc.oc_id"
+                  @click="copyToClipboard(oc.oc_id)"
+                  class="ml-2 text-gray-400 hover:text-gray-600"
+                  title="Copiar ID completo"
                 >
-                  {{ oc.estado }}
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
                 </button>
-                <span
-                  v-else
-                  :class="getEstadoClass(oc.estado)"
-                  class="cursor-help transition-all duration-200 hover:scale-105"
-                >
-                  {{ oc.estado }}
-                </span>
-                <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 ease-in-out pointer-events-none whitespace-nowrap z-[9999]">
-                  {{ oc.estado === 'ENVIADA' || oc.estado === 'ERROR' ? `Ver detalles en historial: ${oc.oc_id}` : getEstadoTooltip(oc) }}
-                  <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
-                    <div class="border-4 border-transparent border-t-gray-900"></div>
-                  </div>
+              </td>
+              <!-- Fecha Generación -->
+              <td v-else-if="columnKey === 'fecha_generacion'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <div>{{ formatDate(oc.fecha_generacion) }}</div>
+              </td>
+              <!-- Fecha Creación -->
+              <td v-else-if="columnKey === 'created_at'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <div v-if="oc.created_at" class="space-y-0.5">
+                  <div>{{ formatDate(oc.created_at) }}</div>
+                  <div class="text-xs text-gray-500">{{ getTimeAgo(oc.created_at) }}</div>
                 </div>
-              </div>
-            </td>
-            <td v-if="isColumnVisible('numero_oc_sap')" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-              <span v-if="oc.numero_oc_sap" class="font-mono">{{ oc.numero_oc_sap }}</span>
-              <span v-else class="text-gray-400 italic">-</span>
-            </td>
-            <td v-if="isColumnVisible('respuesta_sap')" class="px-6 py-4 text-sm text-gray-900">
-              <div v-if="oc.respuesta_sap" class="max-w-xs">
-                <div class="flex items-start gap-2">
-                  <div class="flex-1">
-                    <div class="text-xs font-medium text-gray-700 break-words">{{ oc.respuesta_sap }}</div>
-                  </div>
+                <span v-else class="text-gray-400 italic">-</span>
+              </td>
+              <!-- Fecha Procesado -->
+              <td v-else-if="columnKey === 'fecha_procesado'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <div v-if="oc.fecha_procesado" class="space-y-0.5">
+                  <div>{{ formatDate(oc.fecha_procesado) }}</div>
+                  <div class="text-xs text-gray-500">{{ getTimeAgo(oc.fecha_procesado) }}</div>
+                </div>
+                <span v-else class="text-gray-400 italic">-</span>
+              </td>
+              <!-- Estado -->
+              <td v-else-if="columnKey === 'estado'" class="px-6 py-4 whitespace-nowrap">
+                <div class="relative group inline-block">
                   <button
-                    @click="copyToClipboard(oc.respuesta_sap || '')"
-                    class="text-gray-400 hover:text-gray-600 flex-shrink-0"
-                    title="Copiar respuesta"
+                    v-if="oc.estado === 'ENVIADA' || oc.estado === 'ERROR'"
+                    @click="handleVerEnHistorial(oc.oc_id)"
+                    :class="getEstadoClass(oc.estado)"
+                    class="cursor-pointer transition-all duration-200 hover:scale-105"
+                    :title="'Ver en historial: ' + oc.oc_id"
                   >
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
+                    {{ oc.estado }}
                   </button>
+                  <span
+                    v-else
+                    :class="getEstadoClass(oc.estado)"
+                    class="cursor-help transition-all duration-200 hover:scale-105"
+                  >
+                    {{ oc.estado }}
+                  </span>
+                  <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 ease-in-out pointer-events-none whitespace-nowrap z-[9999]">
+                    {{ oc.estado === 'ENVIADA' || oc.estado === 'ERROR' ? `Ver detalles en historial: ${oc.oc_id}` : getEstadoTooltip(oc) }}
+                    <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
+                      <div class="border-4 border-transparent border-t-gray-900"></div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <span v-else class="text-gray-400 italic">-</span>
-            </td>
+              </td>
+              <!-- Número ODC SAP -->
+              <td v-else-if="columnKey === 'numero_oc_sap'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <span v-if="oc.numero_oc_sap" class="font-mono">{{ oc.numero_oc_sap }}</span>
+                <span v-else class="text-gray-400 italic">-</span>
+              </td>
+              <!-- Respuesta SAP -->
+              <td v-else-if="columnKey === 'respuesta_sap'" class="px-6 py-4 text-sm text-gray-900">
+                <div v-if="oc.respuesta_sap" class="max-w-xs">
+                  <div class="flex items-start gap-2">
+                    <div class="flex-1">
+                      <div class="text-xs font-medium text-gray-700 break-words">{{ oc.respuesta_sap }}</div>
+                    </div>
+                    <button
+                      @click="copyToClipboard(oc.respuesta_sap || '')"
+                      class="text-gray-400 hover:text-gray-600 flex-shrink-0"
+                      title="Copiar respuesta"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                <span v-else class="text-gray-400 italic">-</span>
+              </td>
+            </template>
             <td v-if="!readOnly" class="px-6 py-4 whitespace-nowrap text-sm">
               <button 
                 v-if="oc.estado === 'PENDIENTE'"
@@ -389,6 +363,7 @@ import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import type { OrdenCompra } from '../types'
 import { useToast } from '@/composables/useToast'
+import { useTablePreferences } from '@/composables/useTablePreferences'
 
 const props = defineProps<{
   ordenesCompra: OrdenCompra[]
@@ -419,21 +394,15 @@ const sendingMultiple = ref(false)
 
 // Búsqueda y filtros
 const searchQuery = ref('')
-const filtroProveedor = ref('')
 const filtroFechaDesde = ref('')
 const filtroFechaHasta = ref('')
 const filtroNumeroOC = ref('')
 const showAdvancedFilters = ref(false)
 const showColumnSelector = ref(false)
 
-// Configuración de columnas
-const STORAGE_KEY = 'ordenes-compra-table-columns'
-
 // Columnas disponibles
 const availableColumns = [
   { key: 'oc_id', label: 'ODC ID', default: true },
-  { key: 'proveedor', label: 'Proveedor', default: true },
-  { key: 'referencia_despacho', label: 'Referencia Despacho', default: true },
   { key: 'fecha_generacion', label: 'Fecha Generación', default: true },
   { key: 'created_at', label: 'Fecha Creación', default: props.readOnly || false },
   { key: 'fecha_procesado', label: 'Fecha Procesado', default: props.readOnly || false },
@@ -442,38 +411,34 @@ const availableColumns = [
   { key: 'respuesta_sap', label: 'Respuesta SAP', default: props.readOnly || false },
 ]
 
-// Cargar columnas visibles desde localStorage o usar valores por defecto
-function loadVisibleColumns(): string[] {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved) {
-      const parsed = JSON.parse(saved)
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed
-      }
-    }
-  } catch (error) {
-    console.error('Error al cargar preferencias de columnas:', error)
-  }
-  
-  // Retornar columnas con default: true
-  return availableColumns.filter(col => col.default).map(col => col.key)
-}
+// Configuración de columnas usando composable híbrido
+const defaultVisibleColumns = availableColumns.filter(col => col.default).map(col => col.key)
+const defaultColumnOrder = availableColumns.map(col => col.key)
 
-const visibleColumns = ref<string[]>(loadVisibleColumns())
+const {
+  visibleColumns,
+  columnOrder,
+  orderedVisibleColumns,
+  resetPreferences: resetTablePreferences,
+  selectAllColumns: selectAllTableColumns
+} = useTablePreferences({
+  tableId: 'ordenes-compra',
+  defaultVisibleColumns,
+  defaultColumnOrder,
+  enableFilters: false,
+  enablePageSize: false
+})
 
-// Guardar preferencias cuando cambian
-function saveVisibleColumns() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(visibleColumns.value))
-  } catch (error) {
-    console.error('Error al guardar preferencias de columnas:', error)
-  }
-}
-
-// Watch para guardar cuando cambian las columnas
+// Watch para actualizar el orden cuando se agregan nuevas columnas visibles
 watch(visibleColumns, () => {
-  saveVisibleColumns()
+  const availableKeys = availableColumns.map(col => col.key)
+  const currentOrder = columnOrder.value.filter(key => availableKeys.includes(key))
+  const missingInOrder = visibleColumns.value.filter(key => 
+    availableKeys.includes(key) && !currentOrder.includes(key)
+  )
+  if (missingInOrder.length > 0) {
+    columnOrder.value = [...currentOrder, ...missingInOrder]
+  }
 }, { deep: true })
 
 // Computed para contar columnas visibles
@@ -484,12 +449,79 @@ function isColumnVisible(key: string): boolean {
   return visibleColumns.value.includes(key)
 }
 
+function getColumnLabel(key: string): string {
+  const column = availableColumns.find(col => col.key === key)
+  return column?.label || key
+}
+
+function isColumnSortable(key: string): boolean {
+  // Columnas no ordenables
+  return !['estado', 'numero_oc_sap', 'respuesta_sap'].includes(key)
+}
+
 function selectAllColumns() {
-  visibleColumns.value = availableColumns.map(col => col.key)
+  const allKeys = availableColumns.map(col => col.key)
+  visibleColumns.value = [...allKeys]
+  columnOrder.value = [...allKeys]
 }
 
 function resetColumns() {
-  visibleColumns.value = availableColumns.filter(col => col.default).map(col => col.key)
+  resetTablePreferences()
+}
+
+// Funciones para drag and drop
+const draggedColumn = ref<string | null>(null)
+const dragOverColumn = ref<string | null>(null)
+
+function handleDragStart(event: DragEvent, columnKey: string) {
+  draggedColumn.value = columnKey
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', columnKey)
+  }
+}
+
+function handleDragOver(event: DragEvent, columnKey: string) {
+  event.preventDefault()
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'move'
+  }
+  dragOverColumn.value = columnKey
+}
+
+function handleDragLeave() {
+  dragOverColumn.value = null
+}
+
+function handleDrop(event: DragEvent, targetColumnKey: string) {
+  event.preventDefault()
+  
+  if (!draggedColumn.value || draggedColumn.value === targetColumnKey) {
+    draggedColumn.value = null
+    dragOverColumn.value = null
+    return
+  }
+  
+  // Reordenar columnas
+  const currentOrder = [...columnOrder.value]
+  const draggedIndex = currentOrder.indexOf(draggedColumn.value)
+  const targetIndex = currentOrder.indexOf(targetColumnKey)
+  
+  if (draggedIndex !== -1 && targetIndex !== -1) {
+    // Remover la columna arrastrada
+    currentOrder.splice(draggedIndex, 1)
+    // Insertar en la nueva posición
+    currentOrder.splice(targetIndex, 0, draggedColumn.value)
+    columnOrder.value = currentOrder
+  }
+  
+  draggedColumn.value = null
+  dragOverColumn.value = null
+}
+
+function handleDragEnd() {
+  draggedColumn.value = null
+  dragOverColumn.value = null
 }
 
 // Ordenamiento
@@ -497,10 +529,6 @@ const sortField = ref<string | null>(null)
 const sortDirection = ref<'asc' | 'desc'>('asc')
 
 // Computed
-const proveedoresUnicos = computed(() => {
-  const proveedores = new Set(props.ordenesCompra.map(oc => oc.proveedor))
-  return Array.from(proveedores).sort()
-})
 
 const filteredOrdenes = computed(() => {
   let filtered = [...props.ordenesCompra]
@@ -509,17 +537,10 @@ const filteredOrdenes = computed(() => {
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
     filtered = filtered.filter(oc => 
-      oc.proveedor.toLowerCase().includes(query) ||
-      oc.referencia_despacho.toLowerCase().includes(query) ||
       oc.oc_id.toLowerCase().includes(query) ||
       (oc.numero_oc_sap && oc.numero_oc_sap.toLowerCase().includes(query)) ||
       (oc.respuesta_sap && oc.respuesta_sap.toLowerCase().includes(query))
     )
-  }
-  
-  // Filtro por proveedor
-  if (filtroProveedor.value) {
-    filtered = filtered.filter(oc => oc.proveedor === filtroProveedor.value)
   }
   
   // Filtro por fecha
@@ -585,6 +606,24 @@ const hasPendientesSeleccionadas = computed(() => {
   })
 })
 
+// Computed para obtener las ODC seleccionadas que se pueden eliminar (sin created_at)
+const ordenesEliminables = computed(() => {
+  if (!props.allowDelete) return []
+  return selectedOrdenes.value.filter(ocId => {
+    const oc = props.ordenesCompra.find(o => o.oc_id === ocId)
+    return oc && !oc.created_at
+  })
+})
+
+// Computed para obtener las ODC seleccionadas que NO se pueden eliminar (con created_at)
+const ordenesNoEliminables = computed(() => {
+  if (!props.allowDelete) return []
+  return selectedOrdenes.value.filter(ocId => {
+    const oc = props.ordenesCompra.find(o => o.oc_id === ocId)
+    return oc && oc.created_at
+  })
+})
+
 // Funciones
 function isSelected(ocId: string): boolean {
   return selectedOrdenes.value.includes(ocId)
@@ -633,12 +672,12 @@ function sortBy(field: string) {
 
 function limpiarFiltros() {
   searchQuery.value = ''
-  filtroProveedor.value = ''
   filtroFechaDesde.value = ''
   filtroFechaHasta.value = ''
   filtroNumeroOC.value = ''
   showAdvancedFilters.value = false
 }
+
 
 async function copyToClipboard(text: string) {
   try {
@@ -691,7 +730,30 @@ function handleEliminarSeleccionadas() {
     return
   }
   
-  emit('eliminar', [...selectedOrdenes.value])
+  // Filtrar las ODC que tienen created_at (no se pueden eliminar)
+  const ordenesAEliminar = selectedOrdenes.value.filter(ocId => {
+    const oc = props.ordenesCompra.find(o => o.oc_id === ocId)
+    return oc && !oc.created_at
+  })
+  
+  const ordenesConCreatedAt = selectedOrdenes.value.filter(ocId => {
+    const oc = props.ordenesCompra.find(o => o.oc_id === ocId)
+    return oc && oc.created_at
+  })
+  
+  if (ordenesConCreatedAt.length > 0) {
+    toast.warning(
+      'Algunas ODC no se pueden eliminar', 
+      `${ordenesConCreatedAt.length} orden(es) creada(s) no pueden ser eliminada(s)`
+    )
+  }
+  
+  if (ordenesAEliminar.length === 0) {
+    toast.warning('No hay órdenes eliminables', 'Todas las órdenes seleccionadas ya fueron creadas')
+    return
+  }
+  
+  emit('eliminar', ordenesAEliminar)
 }
 
 function formatDate(dateString: string): string {
@@ -725,7 +787,7 @@ function getTimeAgo(dateString: string): string {
     const diffHours = Math.floor(diffMs / 3600000)
     const diffDays = Math.floor(diffMs / 86400000)
     
-    if (diffMins < 1) return 'Hace menos de un minuto'
+    if (diffMins < 1) return ''
     if (diffMins < 60) return `Hace ${diffMins} minuto${diffMins > 1 ? 's' : ''}`
     if (diffHours < 24) return `Hace ${diffHours} hora${diffHours > 1 ? 's' : ''}`
     if (diffDays < 30) return `Hace ${diffDays} día${diffDays > 1 ? 's' : ''}`

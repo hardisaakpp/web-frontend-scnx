@@ -302,20 +302,7 @@
                   Despachos guardados en la base de datos ({{ despachosCount }} total)
                 </p>
               </div>
-              <button 
-                @click="cargarDespachos" 
-                class="px-4 py-2 bg-gradient-to-r from-violet-600 to-violet-700 text-white rounded-xl hover:from-violet-700 hover:to-violet-800 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg hover:shadow-xl backdrop-blur-sm relative overflow-hidden"
-                :disabled="loadingDespachos || (procesoStore.loading && procesoStore.currentStep === 'migrar')"
-              >
-                <div class="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
-                <span class="relative z-10">
-                <svg v-if="loadingDespachos" class="animate-spin h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                {{ loadingDespachos ? 'Cargando...' : 'Actualizar' }}
-                </span>
-              </button>
-        </div>
+            </div>
 
             <SkeletonTable v-if="loadingDespachos && despachos.length === 0" />
 
@@ -547,19 +534,6 @@
                   Todas las órdenes de compra generadas (Pendientes, Enviadas y con Error)
                 </p>
               </div>
-              <button 
-                @click="cargarOrdenesCompraPendientes" 
-                class="px-4 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white rounded-xl hover:from-emerald-700 hover:to-emerald-800 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-lg hover:shadow-xl backdrop-blur-sm relative overflow-hidden"
-                :disabled="ordenesCompraStore.loading || (procesoStore.loading && procesoStore.currentStep === 'migrar')"
-              >
-                <div class="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
-                <span class="relative z-10">
-                <svg v-if="ordenesCompraStore.loading" class="animate-spin h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                {{ ordenesCompraStore.loading ? 'Cargando...' : 'Actualizar' }}
-                </span>
-              </button>
             </div>
 
             <SkeletonTable v-if="ordenesCompraStore.loading && ordenesCompraStore.ordenesCompra.length === 0" />
@@ -741,10 +715,9 @@ async function handleTabChange(tabId: string) {
   
   // Cargar datos cuando se cambia de pestaña
   if (tabId === 'migrar') {
-    // Cargar despachos cuando se entra a la pestaña de importar despachos
-    if (despachos.value.length === 0) {
-      await cargarDespachos()
-    }
+    // Siempre cargar despachos cuando se entra a la pestaña de importar despachos
+    // Esto asegura que los datos estén actualizados
+    await cargarDespachos()
   } else if (tabId === 'procesar-oc') {
     // Cargar estadísticas primero para que el botón se habilite correctamente
     await ordenesCompraStore.fetchEstadisticas()

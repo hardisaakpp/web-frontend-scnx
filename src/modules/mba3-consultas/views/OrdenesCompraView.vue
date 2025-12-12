@@ -22,20 +22,14 @@
           class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
           :disabled="loadingTodas || todosLosLogs.length === 0"
         >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <!-- Hoja de cálculo/Excel -->
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            <!-- Líneas de la cuadrícula -->
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 8h10M7 12h10M7 16h10" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 8v8M12 8v8M17 8v8" />
           </svg>
           Exportar CSV
-        </button>
-        <button 
-          @click="exportData('excel')" 
-          class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
-          :disabled="loadingTodas || todosLosLogs.length === 0"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          Exportar Excel
         </button>
         <button 
           @click="refreshOrdenes" 
@@ -47,45 +41,6 @@
           </svg>
           {{ ordenesCompraStore.loading ? 'Cargando...' : 'Actualizar' }}
         </button>
-      </div>
-    </div>
-
-    <!-- Resumen de Estados -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div class="bg-white rounded-lg shadow p-6 border border-gray-200">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm text-gray-500 mb-1">Pendientes</p>
-            <p class="text-3xl font-bold text-orange-600">{{ ordenesCompraStore.pendientes }}</p>
-          </div>
-          <div class="w-12 h-12 rounded-lg bg-orange-100 flex items-center justify-center">
-            <span class="text-2xl">⏳</span>
-          </div>
-        </div>
-      </div>
-      
-      <div class="bg-white rounded-lg shadow p-6 border border-gray-200">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm text-gray-500 mb-1">Enviadas</p>
-            <p class="text-3xl font-bold text-green-600">{{ ordenesCompraStore.enviadas }}</p>
-          </div>
-          <div class="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center">
-            <span class="text-2xl">✅</span>
-          </div>
-        </div>
-      </div>
-      
-      <div class="bg-white rounded-lg shadow p-6 border border-gray-200">
-        <div class="flex items-center justify-between">
-          <div>
-            <p class="text-sm text-gray-500 mb-1">Con Error</p>
-            <p class="text-3xl font-bold text-red-600">{{ ordenesCompraStore.errores }}</p>
-          </div>
-          <div class="w-12 h-12 rounded-lg bg-red-100 flex items-center justify-center">
-            <span class="text-2xl">❌</span>
-          </div>
-        </div>
       </div>
     </div>
 

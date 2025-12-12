@@ -196,7 +196,7 @@
       <table class="min-w-full divide-y divide-gray-200">
         <thead class="bg-gray-50">
           <tr>
-            <th class="px-6 py-3 text-left">
+            <th class="w-12 px-6 py-3 text-center align-middle">
               <input
                 type="checkbox"
                 :checked="allSelected"
@@ -205,58 +205,39 @@
                 class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
               />
             </th>
-            <th class="w-12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
-            <th v-if="isColumnVisible('codigo_factura')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" @click="sortBy('codigo_factura')">
+            <th class="w-12 px-6 py-3 text-center align-middle"></th>
+            <th class="w-8 px-2 py-3 text-center align-middle" title="Indicador de problemas">
+              <svg class="w-4 h-4 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </th>
+            <th
+              v-for="columnKey in orderedVisibleColumns"
+              :key="columnKey"
+              :draggable="true"
+              @dragstart="handleDragStart($event, columnKey)"
+              @dragover="handleDragOver($event, columnKey)"
+              @dragleave="handleDragLeave"
+              @drop="handleDrop($event, columnKey)"
+              @dragend="handleDragEnd"
+              :class="[
+                'px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-grab',
+                isColumnSortable(columnKey) ? 'hover:bg-gray-100' : 'hover:bg-gray-50',
+                draggedColumn === columnKey ? 'opacity-50 cursor-grabbing' : '',
+                dragOverColumn === columnKey && draggedColumn !== columnKey ? 'bg-violet-100 border-l-4 border-violet-500' : ''
+              ]"
+              @click="isColumnSortable(columnKey) && sortBy(columnKey)"
+            >
               <div class="flex items-center gap-1">
-                Número Pedido El Rayo
-                <svg v-if="sortField === 'codigo_factura'" class="w-4 h-4" :class="sortDirection === 'asc' ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <span>{{ getColumnLabel(columnKey) }}</span>
+                <svg v-if="isColumnSortable(columnKey) && sortField === columnKey" class="w-4 h-4" :class="sortDirection === 'asc' ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                </svg>
+                <svg v-else class="w-4 h-4 text-gray-300 opacity-0 hover:opacity-100" fill="none" stroke="currentColor" viewBox="0 0 24 24" title="Arrastra para reordenar">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16" />
                 </svg>
               </div>
             </th>
-            <th v-if="isColumnVisible('numero_factura')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" @click="sortBy('numero_factura')">
-              <div class="flex items-center gap-1">
-                Número Factura
-                <svg v-if="sortField === 'numero_factura'" class="w-4 h-4" :class="sortDirection === 'asc' ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                </svg>
-              </div>
-            </th>
-            <th v-if="isColumnVisible('empresa')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" @click="sortBy('empresa')">
-              <div class="flex items-center gap-1">
-                Empresa
-                <svg v-if="sortField === 'empresa'" class="w-4 h-4" :class="sortDirection === 'asc' ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                </svg>
-              </div>
-            </th>
-            <th v-if="isColumnVisible('codigo_cliente')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" @click="sortBy('codigo_cliente')">
-              <div class="flex items-center gap-1">
-                Cliente
-                <svg v-if="sortField === 'codigo_cliente'" class="w-4 h-4" :class="sortDirection === 'asc' ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                </svg>
-              </div>
-            </th>
-            <th v-if="isColumnVisible('fecha_despacho')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" @click="sortBy('fecha_despacho')">
-              <div class="flex items-center gap-1">
-                Fecha Despacho
-                <svg v-if="sortField === 'fecha_despacho'" class="w-4 h-4" :class="sortDirection === 'asc' ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                </svg>
-              </div>
-            </th>
-            <th v-if="isColumnVisible('tipo_documento')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" @click="sortBy('tipo_documento')">
-              <div class="flex items-center gap-1">
-                Tipo Doc.
-                <svg v-if="sortField === 'tipo_documento'" class="w-4 h-4" :class="sortDirection === 'asc' ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
-                </svg>
-              </div>
-            </th>
-            <th v-if="isColumnVisible('estado')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-            <th v-if="isColumnVisible('orden_compra')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Orden Compra</th>
-            <th v-if="isColumnVisible('numero_pedido_sistema')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pedido Sistema</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
           </tr>
         </thead>
@@ -266,9 +247,9 @@
             <tr 
               class="transition-colors" 
               :class="[getCabeceraRowClass(), getRowWarningClass(despacho)]"
-              :title="hasRowIssues(despacho).issues.length > 0 ? 'Problemas: ' + hasRowIssues(despacho).issues.join(', ') : ''"
+              :title="getRowTooltip(despacho)"
             >
-              <td class="px-6 py-4 whitespace-nowrap">
+              <td class="px-6 py-4 whitespace-nowrap text-center align-middle">
                 <input
                   type="checkbox"
                   :checked="isSelected(despacho.despacho_id)"
@@ -276,10 +257,10 @@
                   class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
                 />
               </td>
-              <td class="px-6 py-4 whitespace-nowrap">
+              <td class="px-6 py-4 whitespace-nowrap text-center align-middle">
                 <button
                   @click="toggleDetalles(despacho.despacho_id)"
-                  class="text-violet-500 hover:text-violet-700 transition-colors"
+                  class="text-violet-500 hover:text-violet-700 transition-colors inline-flex items-center justify-center"
                   :disabled="loadingDetalles[despacho.despacho_id]"
                 >
                   <svg 
@@ -293,39 +274,68 @@
                   </svg>
                 </button>
               </td>
-              <td v-if="isColumnVisible('codigo_factura')" class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
-                <span class="font-semibold">{{ despacho.codigo_factura }}</span>
-              </td>
-              <td v-if="isColumnVisible('numero_factura')" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ despacho.numero_factura || '-' }}</td>
-              <td v-if="isColumnVisible('empresa')" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ despacho.empresa }}</td>
-              <td v-if="isColumnVisible('codigo_cliente')" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">{{ despacho.codigo_cliente }}</td>
-              <td v-if="isColumnVisible('fecha_despacho')" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ formatDate(despacho.fecha_despacho) }}</td>
-              <td v-if="isColumnVisible('tipo_documento')" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                <span class="px-2 py-1 text-xs font-medium rounded bg-violet-100 text-violet-800">
-                  {{ despacho.tipo_documento }}
-                </span>
-              </td>
-              <td v-if="isColumnVisible('estado')" class="px-6 py-4 whitespace-nowrap">
-                <div class="relative group inline-block">
-                  <span :class="getEstadoClass(despacho)" class="cursor-help transition-all duration-200 hover:scale-105">
-                  {{ getEstadoText(despacho) }}
-                </span>
-                  <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 ease-in-out pointer-events-none whitespace-nowrap z-50">
-                    {{ getEstadoTooltip(despacho) }}
-                    <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
-                      <div class="border-4 border-transparent border-t-gray-900"></div>
-                    </div>
-                  </div>
+              <!-- Indicador visual de problemas (icono) - Siempre presente para mantener alineación -->
+              <td class="px-2 py-4 whitespace-nowrap w-8 text-center align-middle">
+                <div class="flex items-center justify-center">
+                  <svg 
+                    v-if="hasRowIssues(despacho).hasErrors"
+                    class="w-5 h-5 text-red-600" 
+                    fill="currentColor" 
+                    viewBox="0 0 20 20"
+                    title="Error crítico"
+                  >
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                  </svg>
+                  <svg 
+                    v-else-if="hasRowIssues(despacho).hasWarnings"
+                    class="w-5 h-5 text-amber-600" 
+                    fill="currentColor" 
+                    viewBox="0 0 20 20"
+                    title="Advertencia"
+                  >
+                    <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                  </svg>
                 </div>
               </td>
-              <td v-if="isColumnVisible('orden_compra')" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                <span v-if="despacho.orden_compra" class="font-mono">{{ despacho.orden_compra }}</span>
-                <span v-else class="text-gray-400 italic">-</span>
-              </td>
-              <td v-if="isColumnVisible('numero_pedido_sistema')" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                <span v-if="despacho.numero_pedido_sistema">{{ despacho.numero_pedido_sistema }}</span>
-                <span v-else class="text-gray-400 italic">-</span>
-              </td>
+              <template v-for="columnKey in orderedVisibleColumns" :key="columnKey">
+                <!-- Código Factura -->
+                <td v-if="columnKey === 'codigo_factura'" class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
+                  <span class="font-semibold">{{ despacho.codigo_factura }}</span>
+                </td>
+                <!-- Número Factura -->
+                <td v-else-if="columnKey === 'numero_factura'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ despacho.numero_factura || '-' }}</td>
+                <!-- Empresa -->
+                <td v-else-if="columnKey === 'empresa'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ despacho.empresa }}</td>
+                <!-- Código Cliente -->
+                <td v-else-if="columnKey === 'codigo_cliente'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">{{ despacho.codigo_cliente }}</td>
+                <!-- Fecha Despacho -->
+                <td v-else-if="columnKey === 'fecha_despacho'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ formatDate(despacho.fecha_despacho) }}</td>
+                <!-- Tipo Documento -->
+                <td v-else-if="columnKey === 'tipo_documento'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <span class="px-2 py-1 text-xs font-medium rounded bg-violet-100 text-violet-800">
+                    {{ despacho.tipo_documento }}
+                  </span>
+                </td>
+                <!-- Estado -->
+                <td v-else-if="columnKey === 'estado'" class="px-6 py-4 whitespace-nowrap">
+                  <div class="relative group inline-block">
+                    <span :class="getEstadoClass(despacho)" class="cursor-help transition-all duration-200 hover:scale-105">
+                    {{ getEstadoText(despacho) }}
+                  </span>
+                    <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 ease-in-out pointer-events-none whitespace-nowrap z-50">
+                      {{ getEstadoTooltip(despacho) }}
+                      <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
+                        <div class="border-4 border-transparent border-t-gray-900"></div>
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <!-- Orden Compra Cliente -->
+                <td v-else-if="columnKey === 'orden_compra_cliente'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <span v-if="despacho.orden_compra_cliente" class="font-mono">{{ despacho.orden_compra_cliente }}</span>
+                  <span v-else class="text-gray-400 italic">-</span>
+                </td>
+              </template>
               <td class="px-6 py-4 whitespace-nowrap text-sm">
                 <button
                   @click="handleGenerarODC(despacho.despacho_id)"
@@ -346,7 +356,7 @@
             
             <!-- Fila expandible con detalles (colores más claros) -->
             <tr v-if="detallesExpandidos.has(despacho.despacho_id)">
-              <td :colspan="visibleColumnsCount + 3" class="px-6 py-4" :class="getDetallesContainerClass()">
+              <td :colspan="visibleColumnsCount + 4" class="px-6 py-4" :class="getDetallesContainerClass()">
                 <div v-if="loadingDetalles[despacho.despacho_id]" class="flex items-center justify-center py-4">
                   <svg class="animate-spin h-5 w-5 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -361,6 +371,11 @@
                     <table class="min-w-full divide-y divide-gray-200 bg-white rounded-lg border" :class="getDetallesTableBorderClass()">
                       <thead :class="getDetallesHeaderClass()">
                         <tr>
+                          <th class="w-8 px-2 py-2 text-center align-middle text-xs font-medium text-gray-600 uppercase" title="Indicador de problemas">
+                            <svg class="w-3 h-3 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                          </th>
                           <th class="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase">SKU</th>
                           <th class="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase">Producto</th>
                           <th class="px-4 py-2 text-center text-xs font-medium text-gray-600 uppercase">Cant. Docena MBA3</th>
@@ -377,8 +392,31 @@
                           v-for="(detalle, index) in detallesPorDespacho[despacho.despacho_id]" 
                           :key="detalle.detalle_id || index" 
                           :class="[getDetallesRowClass(), getDetalleWarningClass(detalle)]"
-                          :title="hasDetalleIssues(detalle).issues.length > 0 ? 'Problemas: ' + hasDetalleIssues(detalle).issues.join(', ') : ''"
+                          :title="getDetalleTooltip(detalle)"
                         >
+                          <!-- Indicador visual de problemas en detalle (icono) - Siempre presente para mantener alineación -->
+                          <td class="px-2 py-2 whitespace-nowrap w-8 text-center align-middle">
+                            <div class="flex items-center justify-center">
+                              <svg 
+                                v-if="hasDetalleIssues(detalle).hasErrors"
+                                class="w-4 h-4 text-red-600" 
+                                fill="currentColor" 
+                                viewBox="0 0 20 20"
+                                title="Error crítico"
+                              >
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                              </svg>
+                              <svg 
+                                v-else-if="hasDetalleIssues(detalle).hasWarnings"
+                                class="w-4 h-4 text-amber-600" 
+                                fill="currentColor" 
+                                viewBox="0 0 20 20"
+                                title="Advertencia"
+                              >
+                                <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                              </svg>
+                            </div>
+                          </td>
                           <td class="px-4 py-2 text-sm font-mono text-gray-900 font-semibold">
                             <div class="flex items-center gap-2">
                               <span>{{ detalle.sku || '-' }}</span>
@@ -439,6 +477,7 @@ import { ref, computed, watch } from 'vue'
 import type { Despacho, DespachoDetalle } from '../types'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import { useToast } from '@/composables/useToast'
+import { useTablePreferences } from '@/composables/useTablePreferences'
 
 const props = defineProps<{
   despachos: Despacho[]
@@ -480,9 +519,6 @@ const sendingDespachoId = ref<string | null>(null)
 // Estado para rastrear cuando se están procesando múltiples despachos
 const sendingMultiple = ref(false)
 
-// Configuración de columnas
-const STORAGE_KEY = 'despachos-table-columns'
-
 // Columnas disponibles
 const availableColumns = [
   { key: 'codigo_factura', label: 'Número Pedido El Rayo', default: true },
@@ -492,42 +528,37 @@ const availableColumns = [
   { key: 'fecha_despacho', label: 'Fecha Despacho', default: true },
   { key: 'tipo_documento', label: 'Tipo Documento', default: true },
   { key: 'estado', label: 'Estado', default: true },
-  { key: 'orden_compra', label: 'Orden Compra', default: false },
-  { key: 'numero_pedido_sistema', label: 'Pedido Sistema', default: false },
+  { key: 'orden_compra_cliente', label: 'Orden Compra Cliente', default: true },
 ]
 
-// Cargar columnas visibles desde localStorage o usar valores por defecto
-function loadVisibleColumns(): string[] {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY)
-    if (saved) {
-      const parsed = JSON.parse(saved)
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed
-      }
-    }
-  } catch (error) {
-    console.error('Error al cargar preferencias de columnas:', error)
-  }
-  
-  // Retornar columnas con default: true
-  return availableColumns.filter(col => col.default).map(col => col.key)
-}
+// Configuración de columnas usando composable híbrido
+const defaultVisibleColumns = availableColumns.filter(col => col.default).map(col => col.key)
+const defaultColumnOrder = availableColumns.map(col => col.key)
 
-const visibleColumns = ref<string[]>(loadVisibleColumns())
+const {
+  visibleColumns,
+  columnOrder,
+  orderedVisibleColumns,
+  resetPreferences: resetTablePreferences,
+  selectAllColumns: selectAllTableColumns
+} = useTablePreferences({
+  tableId: 'despachos',
+  defaultVisibleColumns,
+  defaultColumnOrder,
+  enableFilters: false,
+  enablePageSize: false
+})
 
-// Guardar preferencias cuando cambian
-function saveVisibleColumns() {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(visibleColumns.value))
-  } catch (error) {
-    console.error('Error al guardar preferencias de columnas:', error)
-  }
-}
-
-// Watch para guardar cuando cambian las columnas
+// Watch para actualizar el orden cuando se agregan nuevas columnas visibles
 watch(visibleColumns, () => {
-  saveVisibleColumns()
+  const availableKeys = availableColumns.map(col => col.key)
+  const currentOrder = columnOrder.value.filter(key => availableKeys.includes(key))
+  const missingInOrder = visibleColumns.value.filter(key => 
+    availableKeys.includes(key) && !currentOrder.includes(key)
+  )
+  if (missingInOrder.length > 0) {
+    columnOrder.value = [...currentOrder, ...missingInOrder]
+  }
 }, { deep: true })
 
 // Computed para contar columnas visibles
@@ -538,12 +569,79 @@ function isColumnVisible(key: string): boolean {
   return visibleColumns.value.includes(key)
 }
 
+function getColumnLabel(key: string): string {
+  const column = availableColumns.find(col => col.key === key)
+  return column?.label || key
+}
+
+function isColumnSortable(key: string): boolean {
+  // Columnas no ordenables
+  return !['estado', 'orden_compra_cliente'].includes(key)
+}
+
 function selectAllColumns() {
-  visibleColumns.value = availableColumns.map(col => col.key)
+  const allKeys = availableColumns.map(col => col.key)
+  visibleColumns.value = [...allKeys]
+  columnOrder.value = [...allKeys]
 }
 
 function resetColumns() {
-  visibleColumns.value = availableColumns.filter(col => col.default).map(col => col.key)
+  resetTablePreferences()
+}
+
+// Funciones para drag and drop
+const draggedColumn = ref<string | null>(null)
+const dragOverColumn = ref<string | null>(null)
+
+function handleDragStart(event: DragEvent, columnKey: string) {
+  draggedColumn.value = columnKey
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', columnKey)
+  }
+}
+
+function handleDragOver(event: DragEvent, columnKey: string) {
+  event.preventDefault()
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'move'
+  }
+  dragOverColumn.value = columnKey
+}
+
+function handleDragLeave() {
+  dragOverColumn.value = null
+}
+
+function handleDrop(event: DragEvent, targetColumnKey: string) {
+  event.preventDefault()
+  
+  if (!draggedColumn.value || draggedColumn.value === targetColumnKey) {
+    draggedColumn.value = null
+    dragOverColumn.value = null
+    return
+  }
+  
+  // Reordenar columnas
+  const currentOrder = [...columnOrder.value]
+  const draggedIndex = currentOrder.indexOf(draggedColumn.value)
+  const targetIndex = currentOrder.indexOf(targetColumnKey)
+  
+  if (draggedIndex !== -1 && targetIndex !== -1) {
+    // Remover la columna arrastrada
+    currentOrder.splice(draggedIndex, 1)
+    // Insertar en la nueva posición
+    currentOrder.splice(targetIndex, 0, draggedColumn.value)
+    columnOrder.value = currentOrder
+  }
+  
+  draggedColumn.value = null
+  dragOverColumn.value = null
+}
+
+function handleDragEnd() {
+  draggedColumn.value = null
+  dragOverColumn.value = null
 }
 
 // Ordenamiento
@@ -574,8 +672,7 @@ const filteredDespachos = computed(() => {
         (d.numero_factura && String(d.numero_factura).includes(query)) ||
         (d.codigo_cliente && d.codigo_cliente.toLowerCase().includes(query)) ||
         (d.empresa && d.empresa.toLowerCase().includes(query)) ||
-        (d.orden_compra && d.orden_compra.toLowerCase().includes(query)) ||
-        (d.numero_pedido_sistema && String(d.numero_pedido_sistema).includes(query))
+        (d.orden_compra_cliente && d.orden_compra_cliente.toLowerCase().includes(query))
       
       // Búsqueda en detalles (despacho_detalles)
       let matchDetalles = false
@@ -908,12 +1005,13 @@ defineExpose({
 })
 
 // Función para detectar problemas en una fila de despacho
+// Incluye problemas de la cabecera Y de sus detalles
 function hasRowIssues(despacho: Despacho): { hasErrors: boolean; hasWarnings: boolean; issues: string[] } {
   const issues: string[] = []
   let hasErrors = false
   let hasWarnings = false
 
-  // Errores críticos (rojo)
+  // Errores críticos en la cabecera (rojo)
   if (!despacho.codigo_factura || despacho.codigo_factura.trim() === '') {
     issues.push('Falta código de factura')
     hasErrors = true
@@ -935,7 +1033,7 @@ function hasRowIssues(despacho: Despacho): { hasErrors: boolean; hasWarnings: bo
     hasErrors = true
   }
 
-  // Advertencias (amarillo/naranja)
+  // Advertencias en la cabecera (amarillo/naranja)
   if (!despacho.numero_factura || despacho.numero_factura === 0) {
     issues.push('Número de factura faltante')
     hasWarnings = true
@@ -957,21 +1055,81 @@ function hasRowIssues(despacho: Despacho): { hasErrors: boolean; hasWarnings: bo
     hasWarnings = true
   }
 
+  // Revisar problemas en los detalles del despacho
+  // Si algún detalle tiene problemas, también resaltar la cabecera
+  const detalles = detallesPorDespacho.value[despacho.despacho_id] || despacho.despacho_detalles || []
+  
+  if (detalles.length > 0) {
+    let detallesConErrores = 0
+    let detallesConAdvertencias = 0
+    const detallesIssuesList: string[] = []
+
+    detalles.forEach((detalle, index) => {
+      const detalleIssues = hasDetalleIssues(detalle)
+      
+      if (detalleIssues.hasErrors) {
+        detallesConErrores++
+        // Agregar solo el primer issue de cada detalle para no saturar
+        if (detalleIssues.issues.length > 0) {
+          detallesIssuesList.push(`Detalle ${index + 1}: ${detalleIssues.issues[0]}`)
+        }
+      } else if (detalleIssues.hasWarnings) {
+        detallesConAdvertencias++
+        // Agregar solo el primer issue de cada detalle para no saturar
+        if (detalleIssues.issues.length > 0) {
+          detallesIssuesList.push(`Detalle ${index + 1}: ${detalleIssues.issues[0]}`)
+        }
+      }
+    })
+
+    // Si hay errores en detalles, agregar a errores de cabecera
+    if (detallesConErrores > 0) {
+      hasErrors = true
+      issues.push(`${detallesConErrores} detalle(s) con errores críticos`)
+      // Agregar los primeros 2 issues de detalles
+      issues.push(...detallesIssuesList.slice(0, 2))
+    }
+    
+    // Si hay advertencias en detalles (y no hay errores), agregar a advertencias de cabecera
+    if (detallesConAdvertencias > 0 && detallesConErrores === 0) {
+      hasWarnings = true
+      issues.push(`${detallesConAdvertencias} detalle(s) con advertencias`)
+      // Agregar los primeros 2 issues de detalles
+      issues.push(...detallesIssuesList.slice(0, 2))
+    }
+  }
+
   return { hasErrors, hasWarnings, issues }
 }
 
+// Función para obtener tooltip informativo
+function getRowTooltip(despacho: Despacho): string {
+  const { hasErrors, hasWarnings, issues } = hasRowIssues(despacho)
+  
+  if (hasErrors) {
+    const errorCount = issues.filter(i => i.includes('Falta') || i.includes('anulado') || i.includes('errores críticos')).length
+    return `⚠️ ERRORES CRÍTICOS (${errorCount}): ${issues.slice(0, 3).join('; ')}${issues.length > 3 ? '...' : ''}`
+  } else if (hasWarnings) {
+    const warningCount = issues.filter(i => !i.includes('errores críticos')).length
+    return `⚠️ ADVERTENCIAS (${warningCount}): ${issues.slice(0, 3).join('; ')}${issues.length > 3 ? '...' : ''}`
+  }
+  
+  return ''
+}
+
 // Función para obtener clases CSS según problemas detectados
+// Mejora: Diferenciación más clara entre errores y advertencias
 function getRowWarningClass(despacho: Despacho): string {
   const { hasErrors, hasWarnings } = hasRowIssues(despacho)
   
   if (hasErrors) {
-    // Fondo rojo claro con borde rojo para errores críticos
-    // Sobrescribe el borde violeta con rojo
-    return 'bg-red-50/80 !border-l-4 !border-red-500 hover:bg-red-100/80'
+    // ERRORES CRÍTICOS: Rojo más intenso y visible
+    // Fondo rojo más intenso, borde rojo grueso, sombra sutil
+    return 'bg-red-100/90 !border-l-4 !border-red-600 hover:bg-red-200/90 shadow-sm shadow-red-200/50'
   } else if (hasWarnings) {
-    // Fondo amarillo/naranja claro con borde amarillo para advertencias
-    // Sobrescribe el borde violeta con amarillo
-    return 'bg-yellow-50/80 !border-l-4 !border-yellow-500 hover:bg-yellow-100/80'
+    // ADVERTENCIAS: Amarillo/naranja más visible pero menos intenso que errores
+    // Fondo amarillo claro, borde amarillo/naranja, sin sombra
+    return 'bg-amber-50/90 !border-l-4 !border-amber-500 hover:bg-amber-100/90'
   }
   
   return ''
@@ -1087,15 +1245,18 @@ function hasDetalleIssues(detalle: DespachoDetalle): { hasErrors: boolean; hasWa
 }
 
 // Función para obtener clases CSS de advertencia para detalles
+// Mejora: Diferenciación más clara entre errores y advertencias
 function getDetalleWarningClass(detalle: DespachoDetalle): string {
   const { hasErrors, hasWarnings } = hasDetalleIssues(detalle)
   
   if (hasErrors) {
-    // Fondo rojo claro con borde rojo para errores críticos
-    return 'bg-red-50/60 !border-l-4 !border-red-500 hover:bg-red-100/70'
+    // ERRORES CRÍTICOS: Rojo más intenso y visible
+    // Fondo rojo más intenso, borde rojo grueso
+    return 'bg-red-100/80 !border-l-4 !border-red-600 hover:bg-red-200/80'
   } else if (hasWarnings) {
-    // Fondo amarillo claro con borde amarillo para advertencias
-    return 'bg-yellow-50/60 !border-l-4 !border-yellow-500 hover:bg-yellow-100/70'
+    // ADVERTENCIAS: Amarillo/naranja más visible pero menos intenso que errores
+    // Fondo amarillo claro, borde amarillo/naranja
+    return 'bg-amber-50/80 !border-l-4 !border-amber-500 hover:bg-amber-100/80'
   }
   
   return ''
@@ -1104,5 +1265,18 @@ function getDetalleWarningClass(detalle: DespachoDetalle): string {
 function getDetallesRowClass(): string {
   // Filas de detalles con hover temático
   return 'hover:bg-violet-50/40 transition-colors'
+}
+
+// Función para obtener tooltip informativo de detalles
+function getDetalleTooltip(detalle: DespachoDetalle): string {
+  const { hasErrors, hasWarnings, issues } = hasDetalleIssues(detalle)
+  
+  if (hasErrors) {
+    return `❌ ERRORES CRÍTICOS: ${issues.slice(0, 3).join('; ')}${issues.length > 3 ? '...' : ''}`
+  } else if (hasWarnings) {
+    return `⚠️ ADVERTENCIAS: ${issues.slice(0, 3).join('; ')}${issues.length > 3 ? '...' : ''}`
+  }
+  
+  return ''
 }
 </script>
