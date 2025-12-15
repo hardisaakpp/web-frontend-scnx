@@ -16,6 +16,15 @@ export interface AllPreferencesResponse {
   preferences: Record<string, TablePreferences>
 }
 
+export interface SidebarPreferences {
+  collapsed: boolean
+}
+
+export interface UserPreferences {
+  sidebar?: SidebarPreferences
+  [key: string]: any
+}
+
 // Crear instancia de axios específica para preferencias
 // Conecta directamente al backend de Python (puerto 8000)
 // Similar a como mba3ConsultasApi.ts maneja el módulo MBA3
@@ -145,6 +154,46 @@ export const userPreferencesService = {
         console.debug(`Endpoint de preferencias no disponible para ${tableId}`)
       } else {
         console.warn(`Error eliminando preferencias de ${tableId}:`, error.message)
+      }
+    }
+  },
+
+  /**
+   * Obtener preferencias del sidebar
+   * @returns Preferencias del sidebar o null si no existen
+   */
+  async getSidebarPreferences(): Promise<SidebarPreferences | null> {
+    try {
+      const response = await preferencesApi.get<UserPreferencesResponse>('/api/users/preferences/sidebar')
+      return response.data.preferences as SidebarPreferences | null
+    } catch (error: any) {
+      // Manejar errores 400, 404 y 422 como si el endpoint no estuviera disponible
+      // Esto permite que funcione con localStorage mientras se implementa el backend
+      const status = error.response?.status
+      if (status === 404 || status === 400 || status === 422) {
+        console.debug('Endpoint de preferencias de sidebar no disponible, usando localStorage')
+      } else {
+        console.warn('Error obteniendo preferencias de sidebar:', error.message)
+      }
+      return null
+    }
+  },
+
+  /**
+   * Guardar preferencias del sidebar
+   * @param preferences Preferencias del sidebar a guardar
+   */
+  async saveSidebarPreferences(preferences: SidebarPreferences): Promise<void> {
+    try {
+      await preferencesApi.post('/api/users/preferences/sidebar', { preferences })
+    } catch (error: any) {
+      // Manejar errores 400, 404 y 422 como si el endpoint no estuviera disponible
+      // No lanzar error para que localStorage siga funcionando
+      const status = error.response?.status
+      if (status === 404 || status === 400 || status === 422) {
+        console.debug('Endpoint de preferencias de sidebar no disponible, solo usando localStorage')
+      } else {
+        console.warn('Error guardando preferencias de sidebar:', error.message)
       }
     }
   }

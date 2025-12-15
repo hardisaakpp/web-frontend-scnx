@@ -83,7 +83,7 @@ function selectTab(tabId: string) {
 }
 
 watch(() => props.defaultTab, (newTab) => {
-  if (newTab) {
+  if (newTab && newTab !== activeTab.value) {
     activeTab.value = newTab
   }
 })

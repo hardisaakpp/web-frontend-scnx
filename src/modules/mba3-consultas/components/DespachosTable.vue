@@ -378,20 +378,20 @@
                     <table class="min-w-full divide-y divide-gray-200 bg-white rounded-lg border" :class="getDetallesTableBorderClass()">
                       <thead :class="getDetallesHeaderClass()">
                         <tr>
-                          <th class="w-8 px-2 py-2 text-center align-middle text-xs font-medium text-gray-600 uppercase" title="Indicador de problemas">
+                          <th class="w-8 px-2 py-2 text-center align-middle text-xs font-medium text-gray-600 uppercase border-r border-gray-300" title="Indicador de problemas">
                             <svg class="w-3 h-3 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                             </svg>
                           </th>
-                          <th class="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase">SKU</th>
-                          <th class="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase">Producto</th>
-                          <th class="px-4 py-2 text-center text-xs font-medium text-gray-600 uppercase">Cant. Docena MBA3</th>
-                          <th class="px-4 py-2 text-center text-xs font-medium text-gray-600 uppercase">Cant. Pack SAP</th>
-                          <th class="px-4 py-2 text-center text-xs font-medium text-gray-600 uppercase">Unidad SAP</th>
-                          <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 uppercase">Precio Unit. MBA3</th>
-                          <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 uppercase">Precio Unit. SAP</th>
-                          <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 uppercase">Subtotal SAP</th>
-                          <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 uppercase">Total Línea MBA3</th>
+                          <th class="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase bg-gray-50">SKU</th>
+                          <th class="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase bg-gray-50 border-r border-gray-300">Producto</th>
+                          <th class="px-4 py-2 text-center text-xs font-medium text-gray-600 uppercase bg-blue-50">Cant. MBA3</th>
+                          <th class="px-4 py-2 text-center text-xs font-medium text-gray-600 uppercase bg-blue-50">Cant. SAP</th>
+                          <th class="px-4 py-2 text-center text-xs font-medium text-gray-600 uppercase bg-blue-50 border-r border-gray-300">Unidad SAP</th>
+                          <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 uppercase bg-amber-50">Precio Unit. MBA3</th>
+                          <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 uppercase bg-amber-50 border-r border-gray-300">Precio Unit. SAP</th>
+                          <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 uppercase bg-green-50">Subtotal SAP</th>
+                          <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 uppercase bg-blue-50">Total Línea MBA3</th>
                         </tr>
                       </thead>
                       <tbody :class="getDetallesTbodyClass()">
@@ -424,7 +424,7 @@
                               </svg>
                             </div>
                           </td>
-                          <td class="px-4 py-2 text-sm font-mono text-gray-900 font-semibold">
+                          <td class="px-4 py-2 text-sm font-mono text-gray-900 font-semibold bg-gray-50">
                             <div class="flex items-center gap-2">
                               <span>{{ detalle.sku || '-' }}</span>
                               <button
@@ -439,27 +439,27 @@
                               </button>
                             </div>
                           </td>
-                          <td class="px-4 py-2 text-sm text-gray-900">
+                          <td class="px-4 py-2 text-sm text-gray-900 bg-gray-50 border-r border-gray-200">
                             <div class="max-w-xs">
                               <div class="font-medium">{{ detalle.nombre_producto || '-' }}</div>
                             </div>
                           </td>
-                          <td class="px-4 py-2 text-sm text-gray-900 text-center">{{ formatNumber(detalle.cantidad_docena_mba3) }}</td>
-                          <td class="px-4 py-2 text-sm text-gray-900 text-center">{{ detalle.cantidad_pack_sap !== null ? formatNumber(detalle.cantidad_pack_sap) : '-' }}</td>
-                          <td class="px-4 py-2 text-sm text-gray-900 text-center font-mono">{{ detalle.unidad_sap || '-' }}</td>
-                          <td class="px-4 py-2 text-sm text-gray-900 text-right">{{ formatCurrency(detalle.precio_unitario_mba3) }}</td>
-                          <td class="px-4 py-2 text-sm text-gray-900 text-right">{{ detalle.precio_unitario_sap !== null ? formatCurrency(detalle.precio_unitario_sap) : '-' }}</td>
-                          <td class="px-4 py-2 text-sm text-gray-900 text-right font-medium">{{ formatCurrency(detalle.subtotal_sap) }}</td>
-                          <td class="px-4 py-2 text-sm font-semibold text-gray-900 text-right">{{ formatCurrency(detalle.total_linea_mba3) }}</td>
+                          <td class="px-4 py-2 text-sm text-gray-900 text-center font-medium bg-blue-50">{{ formatNumber(detalle.cantidad_docena_mba3) }}</td>
+                          <td class="px-4 py-2 text-sm text-gray-900 text-center font-medium bg-blue-50">{{ detalle.cantidad_pack_sap !== null ? formatNumber(detalle.cantidad_pack_sap) : '-' }}</td>
+                          <td class="px-4 py-2 text-sm text-gray-900 text-center font-mono bg-blue-50 border-r border-gray-200">{{ detalle.unidad_sap || '-' }}</td>
+                          <td class="px-4 py-2 text-sm text-gray-900 text-right bg-amber-50">{{ formatCurrency(detalle.precio_unitario_mba3) }}</td>
+                          <td class="px-4 py-2 text-sm text-gray-900 text-right bg-amber-50 border-r border-gray-200">{{ detalle.precio_unitario_sap !== null ? formatCurrency(detalle.precio_unitario_sap) : '-' }}</td>
+                          <td class="px-4 py-2 text-sm text-gray-900 text-right font-semibold bg-green-50">{{ formatCurrency(detalle.subtotal_sap) }}</td>
+                          <td class="px-4 py-2 text-sm font-bold text-gray-900 text-right bg-blue-50">{{ formatCurrency(detalle.total_linea_mba3) }}</td>
                         </tr>
                       </tbody>
                       <tfoot v-if="detallesPorDespacho[despacho.despacho_id]?.length > 0" :class="getDetallesFooterClass()">
                         <tr>
-                          <td colspan="7" class="px-4 py-2 text-sm font-semibold text-right" :class="getDetallesFooterTextClass()">Subtotal:</td>
-                          <td class="px-4 py-2 text-sm font-bold text-right border-l" :class="[getDetallesFooterBorderClass(), getDetallesFooterTextClass()]">
+                          <td colspan="8" class="px-4 py-2 text-sm font-semibold text-right border-t-2 border-gray-300" :class="getDetallesFooterTextClass()">Total:</td>
+                          <td class="px-4 py-2 text-sm font-bold text-right border-t-2 border-l-2 border-gray-300 bg-green-100" :class="[getDetallesFooterBorderClass(), getDetallesFooterTextClass()]">
                             {{ formatCurrency(getTotalSubtotalSAP(despacho.despacho_id)) }}
                           </td>
-                          <td class="px-4 py-2 text-sm font-bold text-right" :class="getDetallesFooterTextClass()">
+                          <td class="px-4 py-2 text-sm font-bold text-right border-t-2 border-gray-300 bg-blue-100" :class="getDetallesFooterTextClass()">
                             {{ formatCurrency(getTotalLineaMBA3(despacho.despacho_id)) }}
                           </td>
                         </tr>

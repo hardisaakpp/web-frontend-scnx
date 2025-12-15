@@ -284,7 +284,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { 
   Bars3Icon,
@@ -304,12 +304,94 @@ import {
 } from '@heroicons/vue/24/outline'
 import { useAuthStore } from '../stores/auth'
 import ToastContainer from '../components/ToastContainer.vue'
+import { userPreferencesService } from '@/services/userPreferencesService'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const isSidebarOpen = ref(false)
 const isSidebarCollapsed = ref(false)
+
+// Clave para localStorage del sidebar
+const SIDEBAR_STORAGE_KEY = 'sidebar-collapsed'
+
+// Función para cargar el estado del sidebar desde localStorage
+function loadSidebarState() {
+  try {
+    const saved = localStorage.getItem(SIDEBAR_STORAGE_KEY)
+    if (saved !== null) {
+      isSidebarCollapsed.value = JSON.parse(saved)
+    }
+  } catch (error) {
+    console.error('Error cargando estado del sidebar:', error)
+  }
+}
+
+// Función para guardar el estado del sidebar en localStorage
+function saveSidebarToLocalStorage() {
+  try {
+    localStorage.setItem(SIDEBAR_STORAGE_KEY, JSON.stringify(isSidebarCollapsed.value))
+  } catch (error) {
+    console.error('Error guardando estado del sidebar:', error)
+  }
+}
+
+// Función para sincronizar el estado del sidebar con el servidor
+async function syncSidebarToServer() {
+  if (!authStore.isAuthenticated) {
+    return
+  }
+
+  try {
+    await userPreferencesService.saveSidebarPreferences({
+      collapsed: isSidebarCollapsed.value
+    })
+  } catch (error) {
+    console.warn('Error sincronizando estado del sidebar al servidor:', error)
+    // No lanzar error, el estado ya está guardado en localStorage
+  }
+}
+
+// Función para cargar el estado del sidebar desde el servidor
+async function loadSidebarFromServer() {
+  if (!authStore.isAuthenticated) {
+    return false
+  }
+
+  try {
+    const serverPrefs = await userPreferencesService.getSidebarPreferences()
+    if (serverPrefs) {
+      isSidebarCollapsed.value = serverPrefs.collapsed
+      // Guardar también en localStorage como backup
+      saveSidebarToLocalStorage()
+      return true
+    }
+  } catch (error) {
+    console.warn('No se pudieron cargar preferencias del sidebar del servidor:', error)
+  }
+
+  return false
+}
+
+// Función para cargar preferencias: primero del servidor, luego localStorage
+async function loadSidebarPreferences() {
+  // Intentar cargar del servidor primero
+  const serverLoaded = await loadSidebarFromServer()
+  
+  // Si no se cargaron del servidor, usar localStorage
+  if (!serverLoaded) {
+    loadSidebarState()
+  }
+}
+
+// Función para guardar preferencias: primero localStorage (inmediato), luego servidor (background)
+async function saveSidebarPreferences() {
+  // Guardar inmediatamente en localStorage
+  saveSidebarToLocalStorage()
+
+  // Sincronizar con servidor en background (no bloquea)
+  syncSidebarToServer()
+}
 
 const pageTitle = computed(() => {
   const titles: Record<string, string> = {
@@ -333,6 +415,24 @@ const logout = () => {
   authStore.logout()
   router.push('/login')
 }
+
+// Cargar preferencias del sidebar al montar
+onMounted(() => {
+  loadSidebarPreferences()
+})
+
+// Guardar preferencias cuando cambia el estado del sidebar
+watch(isSidebarCollapsed, () => {
+  saveSidebarPreferences()
+})
+
+// Sincronizar cuando el usuario se autentica
+watch(() => authStore.isAuthenticated, (isAuthenticated) => {
+  if (isAuthenticated) {
+    // Cargar preferencias del servidor cuando el usuario se autentica
+    loadSidebarPreferences()
+  }
+})
 </script>
 
 <style scoped>

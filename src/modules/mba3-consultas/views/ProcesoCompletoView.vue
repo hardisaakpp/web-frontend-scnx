@@ -620,8 +620,10 @@ const procesoStore = useProcesoStore()
 const ordenesCompraStore = useOrdenesCompraStore()
 const toast = useToast()
 
-// Estado de pestañas
-const activeTab = ref('migrar')
+// Estado de pestañas - restaurar desde localStorage o usar 'migrar' por defecto
+const STORAGE_KEY = 'mba3-proceso-active-tab'
+const savedTab = localStorage.getItem(STORAGE_KEY)
+const activeTab = ref<string>(savedTab && ['migrar', 'procesar-oc'].includes(savedTab) ? savedTab : 'migrar')
 
 // Estados de visualización de resultados
 const showMigrarResults = ref(false)
@@ -712,6 +714,8 @@ const puedeEnviarOCaSAP = computed(() => {
 // Función para cambiar de pestaña
 async function handleTabChange(tabId: string) {
   activeTab.value = tabId
+  // Guardar la pestaña activa en localStorage para persistir al refrescar
+  localStorage.setItem(STORAGE_KEY, tabId)
   
   // Cargar datos cuando se cambia de pestaña
   if (tabId === 'migrar') {
@@ -772,6 +776,26 @@ async function cargarDespachos() {
 }
 
 // Función para cargar órdenes de compra pendientes
+// Función auxiliar para refrescar datos con retry inteligente
+async function refrescarDatosOrdenesCompra(maxRetries: number = 2, delayMs: number = 300) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      await ordenesCompraStore.fetchEstadisticas()
+      await cargarOrdenesCompraPendientes()
+      return // Si se completa exitosamente, salir
+    } catch (error: any) {
+      if (attempt < maxRetries) {
+        // Esperar un poco antes de reintentar
+        await new Promise(resolve => setTimeout(resolve, delayMs * (attempt + 1)))
+      } else {
+        // En el último intento, lanzar el error
+        console.error('Error al refrescar datos después de múltiples intentos:', error)
+        throw error
+      }
+    }
+  }
+}
+
 // Nota: Ahora carga todas las órdenes (PENDIENTE, ENVIADA, ERROR) para mostrar en la pestaña Procesar ODC
 async function cargarOrdenesCompraPendientes() {
   ordenesCompraStore.loading = true
@@ -782,23 +806,31 @@ async function cargarOrdenesCompraPendientes() {
     const todasLasOrdenes: any[] = []
     let totalCombinado = 0
     
-    // Cargar órdenes de cada estado
-    for (const estado of estados) {
+    // Cargar órdenes de cada estado en paralelo para mayor eficiencia
+    const promesas = estados.map(async (estado) => {
       try {
         const response = await mba3ConsultasService.getOrdenesCompra(estado, 1, 1000) // pageSize grande para obtener todas
-        if (response.data && Array.isArray(response.data)) {
-          todasLasOrdenes.push(...response.data)
-        }
-        // Sumar los totales
-        if (response.total !== undefined) {
-          totalCombinado += response.total
-        } else if (response.metadata?.count !== undefined) {
-          totalCombinado += response.metadata.count
-        }
+        return { estado, response }
       } catch (err) {
         console.warn(`Error al cargar órdenes con estado ${estado}:`, err)
+        return { estado, response: null }
       }
-    }
+    })
+    
+    const resultados = await Promise.all(promesas)
+    
+    // Procesar resultados
+    resultados.forEach(({ response }) => {
+      if (response?.data && Array.isArray(response.data)) {
+        todasLasOrdenes.push(...response.data)
+      }
+      // Sumar los totales
+      if (response?.total !== undefined) {
+        totalCombinado += response.total
+      } else if (response?.metadata?.count !== undefined) {
+        totalCombinado += response.metadata.count
+      }
+    })
     
     // Actualizar el store con todas las órdenes combinadas
     ordenesCompraStore.ordenesCompra = todasLasOrdenes
@@ -956,9 +988,9 @@ async function ejecutarIntegrarSAPDesdeProcesarOC() {
         // Actualizar progreso basado en las órdenes procesadas
         procesoStore.progress = Math.round(((i + 1) / totalOrdenes) * 100)
         
-        // Pequeño delay entre envíos para no saturar el servidor
+        // Delay mínimo entre envíos para no saturar el servidor (reducido de 500ms a 200ms)
         if (i < ordenesPendientes.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 500))
+          await new Promise(resolve => setTimeout(resolve, 200))
         }
       } catch (error: any) {
         console.error(`Error al enviar orden ${orden.referencia_despacho}:`, error)
@@ -972,9 +1004,8 @@ async function ejecutarIntegrarSAPDesdeProcesarOC() {
     // Asegurar que el progreso esté al 100% al finalizar
     procesoStore.progress = 100
     
-    // Actualizar estadísticas y recargar órdenes
-    await ordenesCompraStore.fetchEstadisticas()
-    await cargarOrdenesCompraPendientes()
+    // Refrescar datos inmediatamente después de enviar todas las órdenes (con retry si es necesario)
+    await refrescarDatosOrdenesCompra(2, 300)
     
     // Mostrar resultado
     if (errorCount === 0) {
@@ -1161,13 +1192,18 @@ async function handleIntegrarOC(referenciaDespacho: string) {
     // Completar el progreso
     procesoStore.progress = 100
     
-    // Pequeño delay para mostrar el 100% antes de ocultar
-    await new Promise(resolve => setTimeout(resolve, 500))
+    // Refrescar datos inmediatamente después del envío (con retry si es necesario)
+    // Esto se ejecuta en paralelo con el delay del overlay para máxima velocidad
+    const refreshPromise = refrescarDatosOrdenesCompra(2, 200)
+    
+    // Delay mínimo solo para mostrar el 100% antes de ocultar el overlay (reducido a 200ms)
+    await Promise.all([
+      refreshPromise,
+      new Promise(resolve => setTimeout(resolve, 200))
+    ])
     
     toast.success('Orden enviada', 'La orden se ha enviado correctamente a SAP')
-    // Actualizar datos después del envío
-    await ordenesCompraStore.fetchEstadisticas()
-    await cargarOrdenesCompraPendientes()
+    
     // Limpiar el estado de envío en el componente hijo
     if (ordenCompraTableRef.value?.clearSendingState) {
       ordenCompraTableRef.value.clearSendingState()
@@ -1209,28 +1245,48 @@ async function handleIntegrarOCMultiples(referencias: string[]) {
 
     toast.info('Enviando órdenes a SAP...', `Enviando ${referencias.length} orden(es) a SAP`)
     
-    // Usar el servicio directamente para enviar las órdenes
-    // Si es una sola referencia, enviarla directamente
-    if (referencias.length === 1) {
-      procesoStore.progress = 50
-      await mba3ConsultasService.integrarSAP(referencias[0])
-    } else {
-      // Si son múltiples, enviar todas en una sola llamada
-      // Simular progreso progresivo
-      procesoStore.progress = 30
-      await mba3ConsultasService.integrarSAP(referencias)
+    let successCount = 0
+    let errorCount = 0
+    const totalOrdenes = referencias.length
+    
+    // Enviar cada orden una por una (igual que el botón individual que funciona)
+    // Esto asegura que cada orden se procese correctamente y se actualice su estado
+    for (let i = 0; i < referencias.length; i++) {
+      const referencia = referencias[i]
+      try {
+        // Actualizar progreso antes de enviar
+        procesoStore.progress = Math.round((i / totalOrdenes) * 100)
+        
+        // Enviar la orden individual
+        await mba3ConsultasService.integrarSAP(referencia)
+        successCount++
+        
+        // Actualizar progreso después de enviar
+        procesoStore.progress = Math.round(((i + 1) / totalOrdenes) * 100)
+        
+        // Delay mínimo entre envíos para no saturar el servidor (reducido de 500ms a 200ms)
+        // El backend debería actualizar los estados inmediatamente después de cada envío
+        if (i < referencias.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 200))
+        }
+      } catch (error: any) {
+        console.error(`Error al enviar orden ${referencia}:`, error)
+        errorCount++
+        // Actualizar progreso incluso si hay error
+        procesoStore.progress = Math.round(((i + 1) / totalOrdenes) * 100)
+        // Continuar con la siguiente orden aunque haya un error
+      }
     }
     
-    // Completar el progreso
+    // Asegurar que el progreso esté al 100% al finalizar
     procesoStore.progress = 100
     
-    // Pequeño delay para mostrar el 100% antes de ocultar
-    await new Promise(resolve => setTimeout(resolve, 500))
+    // Refrescar datos inmediatamente después de enviar todas las órdenes (con retry si es necesario)
+    // El retry manejará cualquier delay del backend automáticamente
+    await refrescarDatosOrdenesCompra(2, 300)
     
-    toast.success('Órdenes enviadas', `Se han enviado ${referencias.length} orden(es) a SAP exitosamente`)
-    // Actualizar datos después del envío
-    await ordenesCompraStore.fetchEstadisticas()
-    await cargarOrdenesCompraPendientes()
+    // Pequeño delay solo para mostrar el 100% antes de ocultar el overlay
+    await new Promise(resolve => setTimeout(resolve, 300))
     
     // Limpiar el estado de envío múltiple en el componente hijo
     if (ordenCompraTableRef.value?.clearSendingMultipleState) {
@@ -1240,6 +1296,16 @@ async function handleIntegrarOCMultiples(referencias: string[]) {
     // Limpiar la selección después de enviar exitosamente
     if (ordenCompraTableRef.value?.clearSelection) {
       ordenCompraTableRef.value.clearSelection()
+    }
+    
+    // Mostrar resultado
+    if (errorCount === 0) {
+      toast.success('Órdenes enviadas', `Se han enviado ${successCount} orden(es) a SAP exitosamente`)
+    } else {
+      toast.warning(
+        'Envío parcial', 
+        `Se enviaron ${successCount} orden(es) correctamente, ${errorCount} con errores`
+      )
     }
   } catch (error: any) {
     console.error('Error al integrar múltiples ODCs:', error)
@@ -1318,13 +1384,20 @@ async function handleEliminarOC(ocIds: string[]) {
 
 // Cargar estadísticas al montar el componente
 onMounted(async () => {
-  // Cargar estadísticas en paralelo con despachos
-  // Ya no necesitamos cargar todas las órdenes de compra porque el backend ahora proporciona
-  // el campo tiene_odc directamente en cada despacho
-  await Promise.all([
-    ordenesCompraStore.fetchEstadisticas(),
-    cargarDespachos()
-  ])
+  // Cargar estadísticas siempre
+  await ordenesCompraStore.fetchEstadisticas()
+  
+  // Cargar datos según la pestaña activa guardada
+  if (activeTab.value === 'procesar-oc') {
+    // Si la pestaña activa es "Procesar ODC", cargar órdenes de compra
+    await cargarOrdenesCompraPendientes()
+  } else {
+    // Si es "Importar despachos" o por defecto, cargar despachos
+    await cargarDespachos()
+  }
+  
+  // Asegurar que el componente FolderTabs tenga el valor correcto
+  await nextTick()
 })
 
 function getStepStatus(step: string): 'pending' | 'active' | 'completed' | 'error' | 'retry' {

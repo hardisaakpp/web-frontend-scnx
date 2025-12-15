@@ -15,7 +15,7 @@
         </div>
         
         <!-- Acciones en lote -->
-        <div v-if="selectedOrdenes.length > 0 && !readOnly" class="flex items-center gap-2">
+        <div v-if="ordenesSeleccionables.length > 0 && !readOnly" class="flex items-center gap-2">
           <button
             @click="handleIntegrarSeleccionadas"
             class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center gap-2"
@@ -27,7 +27,7 @@
             <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
-            {{ sendingMultiple ? `Enviando ${selectedOrdenes.length}...` : `Enviar ${selectedOrdenes.length} a SAP` }}
+            {{ sendingMultiple ? `Enviando ${ordenesSeleccionables.length}...` : `Enviar ${ordenesSeleccionables.length} a SAP` }}
           </button>
           <button
             v-if="allowDelete"
@@ -201,7 +201,9 @@
                 :checked="allSelected"
                 :indeterminate="someSelected"
                 @change="toggleSelectAll"
-                class="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                :disabled="!hasSelectableOrdenes"
+                class="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                :title="!hasSelectableOrdenes ? 'No hay ODCs seleccionables (todas están enviadas o tienen error)' : 'Seleccionar todas las ODCs pendientes'"
               />
             </th>
             <th
@@ -250,7 +252,9 @@
                 type="checkbox"
                 :checked="isSelected(oc.oc_id)"
                 @change="toggleSelect(oc.oc_id)"
-                class="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                :disabled="oc.estado !== 'PENDIENTE'"
+                class="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                :title="oc.estado === 'ENVIADA' ? 'Esta ODC ya fue enviada a SAP' : oc.estado === 'ERROR' ? 'Esta ODC tiene un error y no se puede enviar' : ''"
               />
             </td>
             <template v-for="columnKey in orderedVisibleColumns" :key="columnKey">
@@ -434,6 +438,15 @@ const {
   enableFilters: false,
   enablePageSize: false
 })
+
+// Watch para limpiar la selección de ODCs que ya no son seleccionables (no pendientes)
+watch(() => props.ordenesCompra, () => {
+  // Remover de la selección las ODCs que no están pendientes
+  selectedOrdenes.value = selectedOrdenes.value.filter(ocId => {
+    const oc = props.ordenesCompra.find(o => o.oc_id === ocId)
+    return oc && oc.estado === 'PENDIENTE'
+  })
+}, { deep: true })
 
 // Watch para actualizar el orden cuando se agregan nuevas columnas visibles
 watch(visibleColumns, () => {
@@ -627,17 +640,35 @@ const sortedOrdenes = computed(() => {
   return sorted
 })
 
+// Computed para obtener ODCs seleccionables (solo pendientes)
+const selectableOrdenes = computed(() => {
+  return filteredOrdenes.value.filter(oc => oc.estado === 'PENDIENTE')
+})
+
+// Computed para verificar si hay ODCs seleccionables
+const hasSelectableOrdenes = computed(() => {
+  return selectableOrdenes.value.length > 0
+})
+
+// Computed para obtener ODCs seleccionadas que están pendientes (seleccionables)
+const ordenesSeleccionables = computed(() => {
+  return selectedOrdenes.value.filter(id => {
+    const oc = props.ordenesCompra.find(o => o.oc_id === id)
+    return oc && oc.estado === 'PENDIENTE'
+  })
+})
+
 const allSelected = computed(() => {
-  return filteredOrdenes.value.length > 0 && 
-         filteredOrdenes.value.every(oc => selectedOrdenes.value.includes(oc.oc_id))
+  return hasSelectableOrdenes.value && 
+         selectableOrdenes.value.every(oc => selectedOrdenes.value.includes(oc.oc_id))
 })
 
 const someSelected = computed(() => {
-  return filteredOrdenes.value.some(oc => selectedOrdenes.value.includes(oc.oc_id)) && !allSelected.value
+  return selectableOrdenes.value.some(oc => selectedOrdenes.value.includes(oc.oc_id)) && !allSelected.value
 })
 
 const hasPendientesSeleccionadas = computed(() => {
-  return selectedOrdenes.value.some(id => {
+  return ordenesSeleccionables.value.some(id => {
     const oc = props.ordenesCompra.find(o => o.oc_id === id)
     return oc && oc.estado === 'PENDIENTE'
   })
@@ -667,6 +698,13 @@ function isSelected(ocId: string): boolean {
 }
 
 function toggleSelect(ocId: string) {
+  const oc = props.ordenesCompra.find(o => o.oc_id === ocId)
+  
+  // Solo permitir seleccionar ODCs con estado PENDIENTE
+  if (!oc || oc.estado !== 'PENDIENTE') {
+    return
+  }
+  
   const index = selectedOrdenes.value.indexOf(ocId)
   if (index > -1) {
     selectedOrdenes.value.splice(index, 1)
@@ -676,17 +714,21 @@ function toggleSelect(ocId: string) {
 }
 
 function toggleSelectAll() {
+  if (!hasSelectableOrdenes.value) {
+    return // No hacer nada si no hay ODCs seleccionables
+  }
+  
   if (allSelected.value) {
-    // Deseleccionar todas las visibles
-    filteredOrdenes.value.forEach(oc => {
+    // Deseleccionar todas las seleccionables
+    selectableOrdenes.value.forEach(oc => {
       const index = selectedOrdenes.value.indexOf(oc.oc_id)
       if (index > -1) {
         selectedOrdenes.value.splice(index, 1)
       }
     })
   } else {
-    // Seleccionar todas las visibles
-    filteredOrdenes.value.forEach(oc => {
+    // Seleccionar todas las seleccionables (no enviadas)
+    selectableOrdenes.value.forEach(oc => {
       if (!selectedOrdenes.value.includes(oc.oc_id)) {
         selectedOrdenes.value.push(oc.oc_id)
       }
@@ -747,7 +789,13 @@ function handleIntegrarSeleccionadas() {
     return
   }
   
-  const referencias = selectedOrdenes.value
+  // Usar solo las ODCs seleccionables (no enviadas)
+  if (ordenesSeleccionables.value.length === 0) {
+    toast.warning('No hay órdenes seleccionadas')
+    return
+  }
+  
+  const referencias = ordenesSeleccionables.value
     .map(id => props.ordenesCompra.find(oc => oc.oc_id === id))
     .filter(oc => oc && oc.estado === 'PENDIENTE')
     .map(oc => oc!.referencia_despacho)
