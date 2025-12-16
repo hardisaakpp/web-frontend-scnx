@@ -230,6 +230,7 @@
               class="transition-colors" 
               :class="[getCabeceraRowClass(), getRowWarningClass(despacho)]"
               :title="getRowTooltip(despacho)"
+              :data-despacho-id="despacho.despacho_id"
             >
               <td class="px-6 py-4 whitespace-nowrap text-center align-middle">
                 <input
@@ -459,6 +460,7 @@ const props = defineProps<{
   totalDespachos?: number
   processing?: boolean
   ordenesCompra?: Array<{ despacho_id?: string; referencia_despacho?: string }>
+  initialSearch?: string
 }>()
 
 const emit = defineEmits<{
@@ -568,6 +570,28 @@ watch(() => props.despachos, () => {
     return !hasErrors && !hasWarnings
   })
 }, { deep: true })
+
+// Watch para aplicar búsqueda inicial cuando se navega desde OrdenCompraTable
+watch(() => props.initialSearch, async (newSearch) => {
+  if (newSearch) {
+    searchQuery.value = newSearch
+    // Expandir automáticamente el despacho si se encuentra
+    const despacho = props.despachos.find(d => 
+      d.despacho_id === newSearch || 
+      d.codigo_factura === newSearch
+    )
+    if (despacho) {
+      await toggleDetalles(despacho.despacho_id)
+      // Scroll suave hacia el despacho después de un pequeño delay
+      setTimeout(() => {
+        const despachoElement = document.querySelector(`[data-despacho-id="${despacho.despacho_id}"]`)
+        if (despachoElement) {
+          despachoElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }, 300)
+    }
+  }
+}, { immediate: true })
 
 // Watch para actualizar el orden cuando se agregan nuevas columnas visibles
 watch(visibleColumns, () => {

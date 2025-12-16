@@ -273,7 +273,14 @@
               </td>
               <!-- Referencia Despacho -->
               <td v-else-if="columnKey === 'referencia_despacho'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                <span v-if="oc.referencia_despacho" class="font-mono">{{ oc.referencia_despacho }}</span>
+                <button
+                  v-if="oc.referencia_despacho"
+                  @click="handleVerEnDespachos(oc.referencia_despacho)"
+                  class="font-mono px-2 py-1 text-xs font-medium rounded-full bg-violet-100 text-violet-800 cursor-pointer transition-all duration-200 hover:scale-105 hover:bg-violet-200"
+                  :title="`Ver despacho: ${oc.referencia_despacho}`"
+                >
+                  {{ oc.referencia_despacho }}
+                </button>
                 <span v-else class="text-gray-400 italic">-</span>
               </td>
               <!-- Fecha Generación -->
@@ -1007,6 +1014,16 @@ function handleVerEnHistorial(ocId: string) {
   router.push({
     path: '/mba3-consultas/ordenes-compra',
     query: { oc_id: ocId }
+  })
+}
+
+function handleVerEnDespachos(referenciaDespacho: string) {
+  router.push({
+    path: '/mba3-consultas/proceso',
+    query: { 
+      tab: 'migrar',
+      despacho_id: referenciaDespacho 
+    }
   })
 }
 

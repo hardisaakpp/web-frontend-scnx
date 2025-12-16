@@ -314,6 +314,7 @@
               :total-despachos="despachosCount"
               :processing="generandoODC || (procesoStore.loading && procesoStore.currentStep === 'procesar-oc')"
               :ordenes-compra="ordenesCompraStore.ordenesCompra"
+              :initial-search="initialSearchDespacho"
               @generar-odc="handleGenerarODCIndividual"
               @generar-odc-multiples="handleGenerarODCMultiples"
             />
@@ -604,7 +605,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useProcesoStore } from '../stores/procesoStore'
 import { useOrdenesCompraStore } from '../stores/ordenesCompraStore'
 import { useToast } from '@/composables/useToast'
@@ -619,6 +621,7 @@ import type { Tab } from '../types'
 const procesoStore = useProcesoStore()
 const ordenesCompraStore = useOrdenesCompraStore()
 const toast = useToast()
+const route = useRoute()
 
 // Estado de pestañas - restaurar desde localStorage o usar 'migrar' por defecto
 const STORAGE_KEY = 'mba3-proceso-active-tab'
@@ -633,6 +636,7 @@ const hayDespachos = ref(false)
 const despachosCount = ref(0)
 const despachos = ref<Despacho[]>([])
 const loadingDespachos = ref(false)
+const initialSearchDespacho = ref<string>('')
 
 // Estado para eliminación
 const eliminando = ref(false)
@@ -1569,6 +1573,27 @@ onMounted(async () => {
   // Asegurar que el componente FolderTabs tenga el valor correcto
   await nextTick()
 })
+
+// Watch para query params de navegación desde OrdenCompraTable
+watch(() => route.query, async (newQuery) => {
+  if (newQuery.tab && newQuery.tab !== activeTab.value) {
+    // Cambiar a la pestaña especificada
+    activeTab.value = newQuery.tab as string
+    localStorage.setItem(STORAGE_KEY, activeTab.value)
+    
+    if (newQuery.tab === 'migrar' && newQuery.despacho_id) {
+      // Cargar despachos si no están cargados
+      if (despachos.value.length === 0) {
+        await cargarDespachos()
+      }
+      
+      // Aplicar búsqueda automáticamente
+      initialSearchDespacho.value = newQuery.despacho_id as string
+      
+      await nextTick()
+    }
+  }
+}, { immediate: true })
 
 function getStepStatus(step: string): 'pending' | 'active' | 'completed' | 'error' | 'retry' {
   if (!procesoStore.currentStep && !procesoStore.resultados) return 'pending'
