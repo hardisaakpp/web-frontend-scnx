@@ -43,7 +43,7 @@
     </div>
 
     <!-- Acciones Rápidas -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       <!-- Panel de Procesos -->
       <div class="bg-white rounded-lg shadow-lg p-6 border border-gray-200 flex flex-col h-full">
         <div class="flex items-center justify-between mb-4">
@@ -115,6 +115,43 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
           <span>Ver Historial</span>
+        </button>
+      </div>
+
+      <!-- Panel de Documentos de Remisión -->
+      <div class="bg-white rounded-lg shadow-lg p-6 border border-gray-200 flex flex-col h-full">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-xl font-bold text-gray-900">Documentos de Remisión</h2>
+            <p class="text-sm text-gray-500 mt-1">Consulta y visualiza remisiones</p>
+          </div>
+          <div class="w-12 h-12 rounded-lg bg-cyan-100 flex items-center justify-center flex-shrink-0">
+            <svg class="w-6 h-6 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+        </div>
+        <div class="mb-4 flex-grow">
+          <p class="text-sm text-gray-600 mb-3">
+            Consulta y visualiza los documentos de remisión disponibles. Filtra por fecha, empresa y otros criterios para encontrar la información que necesitas.
+          </p>
+          <div class="flex items-center gap-2 text-xs text-gray-500">
+            <div class="flex items-center gap-1">
+              <svg class="w-4 h-4 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span>Documentos disponibles</span>
+            </div>
+          </div>
+        </div>
+        <button
+          @click="$router.push('/mba3-consultas/remisiones')"
+          class="w-full px-4 py-3 bg-gradient-to-r from-cyan-600 to-teal-600 text-white rounded-lg hover:from-cyan-700 hover:to-teal-700 transition-all font-semibold flex items-center justify-center gap-2 shadow-md hover:shadow-lg mt-auto"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <span>Ver Remisiones</span>
         </button>
       </div>
     </div>

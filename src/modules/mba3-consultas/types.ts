@@ -190,6 +190,55 @@ export interface ProcesoResponse {
   }
 }
 
+// ========== Remisiones ==========
+export interface Remision {
+  codigo_factura?: string
+  CODIGO_FACTURA?: string
+  anulada?: boolean
+  ANULADA?: boolean
+  numero_pedido_sistema?: number | null
+  NUMERO_PEDIDO_SISTEMA?: number | null
+  numero_orden?: number | null
+  NUMERO_ORDEN?: number | null
+  factura_impresa?: boolean
+  FACTURA_IMPRESA?: boolean
+  numero_factura?: number | null
+  NUMERO_FACTURA?: number
+  empresa?: string
+  EMPRESA?: string
+  codigo_cliente?: string
+  CODIGO_CLIENTE?: string
+  fecha_factura?: string | null
+  FECHA_FACTURA?: string | null
+  tipo_documento?: string
+  TIPO_DOCUMENTO?: string
+  obj_datos_factura?: any | null
+  ObjDatosFactura?: null
+  orden_compra?: string | null
+  ORDEN_COMPRA?: string | null
+  orden_compra_cliente?: string | null
+  ORDEN_COMPRA_CLIENTE?: string | null
+  remision_facturada?: boolean
+  Remision_Facturada?: boolean
+  confirmado?: boolean
+  CONFIRMADO?: boolean
+  // Helper getters para acceder a los valores sin importar el formato
+  [key: string]: any
+}
+
+export interface RemisionResponse {
+  status: string
+  data: Remision[]
+  metadata?: {
+    count: number
+    filters?: Record<string, any>
+  }
+  total?: number
+  page?: number
+  pageSize?: number
+  totalPages?: number
+}
+
 // ========== Componentes ==========
 export interface Tab {
   id: string

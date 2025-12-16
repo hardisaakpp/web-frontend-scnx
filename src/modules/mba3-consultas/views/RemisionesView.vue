@@ -1,0 +1,185 @@
+<template>
+  <div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between flex-wrap gap-4">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900">Documentos de Remisión</h1>
+        <p class="mt-1 text-sm text-gray-500">Consulta y visualiza los documentos de remisión disponibles</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <button 
+          @click="consultarDesdeMBA3" 
+          class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          :disabled="consultandoMBA3 || loading"
+        >
+          <svg v-if="consultandoMBA3" class="animate-spin h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          {{ consultandoMBA3 ? 'Consultando...' : 'Consultar desde MBA3' }}
+        </button>
+        <button 
+          @click="cargarRemisiones" 
+          class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          :disabled="loading"
+        >
+          <svg v-if="loading" class="animate-spin h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          {{ loading ? 'Cargando...' : 'Actualizar' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- Tabla de Remisiones -->
+    <div class="bg-white/80 backdrop-blur-xl rounded-xl shadow-2xl p-6 border border-white/30 relative overflow-hidden">
+      <div class="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent pointer-events-none"></div>
+      
+      <SkeletonTable v-if="loading && remisiones.length === 0" />
+
+      <RemisionesTable 
+        v-else
+        :remisiones="remisiones"
+        :loading="loading"
+        :total-remisiones="totalRemisiones"
+        :current-page="currentPage"
+        :page-size="pageSize"
+        @filtered-count-changed="handleFilteredCountChanged"
+      />
+
+      <!-- Paginación -->
+      <div v-if="totalPages > 1 && !loading" class="mt-4 flex items-center justify-between flex-wrap gap-4">
+        <div class="text-sm text-gray-700">
+          Mostrando página {{ currentPage }} de {{ totalPages }}
+          ({{ filteredRemisionesCount > 0 ? filteredRemisionesCount : totalRemisiones }} remisiones{{ filteredRemisionesCount > 0 && filteredRemisionesCount !== totalRemisiones ? ' filtradas' : '' }})
+        </div>
+        <div class="flex items-center gap-2">
+          <button
+            @click="prevPage"
+            :disabled="currentPage === 1 || loading"
+            class="px-4 py-2 border border-white/30 bg-white/60 backdrop-blur-sm rounded-xl hover:bg-white/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 text-sm font-medium shadow-md hover:shadow-lg"
+          >
+            Anterior
+          </button>
+          <span class="px-4 py-2 text-sm text-gray-700 bg-white/40 backdrop-blur-sm rounded-xl border border-white/20">
+            Página {{ currentPage }} de {{ totalPages }}
+          </span>
+          <button
+            @click="nextPage"
+            :disabled="currentPage === totalPages || loading"
+            class="px-4 py-2 border border-white/30 bg-white/60 backdrop-blur-sm rounded-xl hover:bg-white/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 text-sm font-medium shadow-md hover:shadow-lg"
+          >
+            Siguiente
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+import { useToast } from '@/composables/useToast'
+import { mba3ConsultasService } from '../services/mba3ConsultasApi'
+import RemisionesTable from '../components/RemisionesTable.vue'
+import SkeletonTable from '../components/SkeletonTable.vue'
+import type { Remision } from '../types'
+
+const toast = useToast()
+
+// Estados
+const remisiones = ref<Remision[]>([])
+const loading = ref(false)
+const consultandoMBA3 = ref(false)
+const totalRemisiones = ref(0)
+const currentPage = ref(1)
+const pageSize = ref(10)
+const filteredRemisionesCount = ref(0)
+
+// Computed para total de páginas
+const totalPages = computed(() => {
+  const count = filteredRemisionesCount.value > 0 ? filteredRemisionesCount.value : totalRemisiones.value
+  return Math.ceil(count / pageSize.value)
+})
+
+// Función para manejar el cambio en el conteo de remisiones filtradas
+function handleFilteredCountChanged(count: number) {
+  filteredRemisionesCount.value = count
+  // Resetear a la primera página si estamos en una página que ya no existe
+  const totalPagesCalc = Math.ceil(count / pageSize.value)
+  if (currentPage.value > totalPagesCalc && totalPagesCalc > 0) {
+    currentPage.value = 1
+  }
+}
+
+// Funciones de paginación
+function prevPage() {
+  if (currentPage.value > 1) {
+    currentPage.value--
+    cargarRemisiones()
+  }
+}
+
+function nextPage() {
+  if (currentPage.value < totalPages.value) {
+    currentPage.value++
+    cargarRemisiones()
+  }
+}
+
+// Función para cargar remisiones
+async function cargarRemisiones() {
+  loading.value = true
+  try {
+    const response = await mba3ConsultasService.getRemisiones(currentPage.value, pageSize.value)
+    remisiones.value = response.data || []
+    totalRemisiones.value = response.total || response.metadata?.count || remisiones.value.length
+    filteredRemisionesCount.value = 0
+  } catch (error: any) {
+    console.error('Error al cargar remisiones:', error)
+    toast.error('Error al cargar remisiones', error.message || 'No se pudieron cargar los documentos de remisión')
+    remisiones.value = []
+    filteredRemisionesCount.value = 0
+  } finally {
+    loading.value = false
+  }
+}
+
+// Función para consultar remisiones desde MBA3
+async function consultarDesdeMBA3() {
+  consultandoMBA3.value = true
+  try {
+    toast.info('Consultando desde MBA3...', 'Obteniendo remisiones desde MBA3 y guardándolas en la base de datos')
+    
+    const response = await mba3ConsultasService.consultarRemisionesDesdeMBA3()
+    
+    // Mostrar resultado
+    if (response.metadata?.save_status) {
+      const status = response.metadata.save_status
+      toast.success(
+        'Consulta completada',
+        `${status.facturas_guardadas || 0} guardadas, ${status.facturas_actualizadas || 0} actualizadas`
+      )
+    } else {
+      toast.success('Consulta completada', 'Las remisiones se han consultado exitosamente desde MBA3')
+    }
+    
+    // Recargar la lista para mostrar los nuevos datos
+    currentPage.value = 1
+    await cargarRemisiones()
+  } catch (error: any) {
+    console.error('Error al consultar remisiones desde MBA3:', error)
+    toast.error('Error al consultar desde MBA3', error.message || 'No se pudieron consultar las remisiones desde MBA3')
+  } finally {
+    consultandoMBA3.value = false
+  }
+}
+
+// Cargar remisiones al montar el componente
+onMounted(() => {
+  cargarRemisiones()
+})
+</script>
+

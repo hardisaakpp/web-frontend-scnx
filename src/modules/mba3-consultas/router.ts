@@ -33,6 +33,17 @@ const routes: RouteRecordRaw[] = [
       icon: 'CogIcon',
       permissions: ['mba3-consultas.proceso.execute']
     }
+  },
+  {
+    path: '/mba3-consultas/remisiones',
+    name: 'mba3-consultas-remisiones',
+    component: () => import('./views/RemisionesView.vue'),
+    meta: { 
+      requiresAuth: true,
+      title: 'Documentos de Remisión',
+      icon: 'DocumentIcon',
+      permissions: ['mba3-consultas.view']
+    }
   }
 ]
 

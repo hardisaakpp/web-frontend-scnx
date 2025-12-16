@@ -4,7 +4,7 @@ import type {
   Despacho,
   DespachoDetalle
 } from '../types'
-import type { OrdenCompraResponse, OrdenCompraLogResponse } from '../types'
+import type { OrdenCompraResponse, OrdenCompraLogResponse, RemisionResponse } from '../types'
 import type { HealthResponse, ProcesoResponse } from '../types'
 
 // Usar la URL base del backend MBA3
@@ -378,6 +378,34 @@ export const mba3ConsultasService = {
         }
       }
       throw error
+    }
+  },
+
+  // Obtener remisiones
+  async getRemisiones(page: number = 1, pageSize: number = 10): Promise<RemisionResponse> {
+    try {
+      const params = new URLSearchParams()
+      params.append('page', page.toString())
+      params.append('pageSize', pageSize.toString())
+      
+      const queryString = params.toString()
+      const url = queryString ? `/remisiones?${queryString}` : '/remisiones'
+      const response = await mba3Api.get<RemisionResponse>(url)
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [getRemisiones] Error al obtener remisiones:', error)
+      throw new Error(`No se pudieron obtener las remisiones desde el backend. Error: ${error.message}`)
+    }
+  },
+
+  // Consultar remisiones desde MBA3
+  async consultarRemisionesDesdeMBA3(): Promise<any> {
+    try {
+      const response = await mba3Api.get('/remisiones/consultar')
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [consultarRemisionesDesdeMBA3] Error al consultar remisiones desde MBA3:', error)
+      throw new Error(`No se pudieron consultar las remisiones desde MBA3. Error: ${error.message}`)
     }
   },
 }

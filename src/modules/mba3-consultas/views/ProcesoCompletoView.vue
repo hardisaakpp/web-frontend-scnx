@@ -576,30 +576,34 @@
               :loading="ordenesCompraStore.loading"
               :total-ordenes="ordenesCompraStore.total"
               :allow-delete="false"
+              :current-page="currentPageOC"
+              :page-size="pageSizeOC"
               @integrar="handleIntegrarOC"
               @integrar-multiples="handleIntegrarOCMultiples"
+              @filtered-count-changed="handleFilteredOCCountChanged"
               ref="ordenCompraTableRef"
             />
 
             <!-- Paginación -->
-            <div v-if="ordenesCompraStore.totalPages > 1 && !ordenesCompraStore.loading" class="mt-4 flex items-center justify-between flex-wrap gap-4">
+            <div v-if="totalPagesOC > 1 && !ordenesCompraStore.loading" class="mt-4 flex items-center justify-between flex-wrap gap-4">
               <div class="text-sm text-gray-700">
-                Mostrando {{ ordenesCompraStore.ordenesCompra.length }} de {{ ordenesCompraStore.total }} órdenes
+                Mostrando página {{ currentPageOC }} de {{ totalPagesOC }}
+                ({{ filteredOCCount > 0 ? filteredOCCount : ordenesCompraStore.total }} órdenes{{ filteredOCCount > 0 && filteredOCCount !== ordenesCompraStore.total ? ' filtradas' : '' }})
               </div>
               <div class="flex items-center gap-2">
                 <button
                   @click="prevPageOC"
-                  :disabled="ordenesCompraStore.currentPage === 1 || ordenesCompraStore.loading || (procesoStore.loading && procesoStore.currentStep === 'migrar')"
+                  :disabled="currentPageOC === 1 || ordenesCompraStore.loading || (procesoStore.loading && procesoStore.currentStep === 'migrar')"
                   class="px-4 py-2 border border-white/30 bg-white/60 backdrop-blur-sm rounded-xl hover:bg-white/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 text-sm font-medium shadow-md hover:shadow-lg"
                 >
                   Anterior
                 </button>
                 <span class="px-4 py-2 text-sm text-gray-700 bg-white/40 backdrop-blur-sm rounded-xl border border-white/20">
-                  Página {{ ordenesCompraStore.currentPage }} de {{ ordenesCompraStore.totalPages }}
+                  Página {{ currentPageOC }} de {{ totalPagesOC }}
                 </span>
                 <button
                   @click="nextPageOC"
-                  :disabled="ordenesCompraStore.currentPage === ordenesCompraStore.totalPages || ordenesCompraStore.loading || (procesoStore.loading && procesoStore.currentStep === 'migrar')"
+                  :disabled="currentPageOC === totalPagesOC || ordenesCompraStore.loading || (procesoStore.loading && procesoStore.currentStep === 'migrar')"
                   class="px-4 py-2 border border-white/30 bg-white/60 backdrop-blur-sm rounded-xl hover:bg-white/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 text-sm font-medium shadow-md hover:shadow-lg"
                 >
                   Siguiente
@@ -670,6 +674,11 @@ const initialSearchDespacho = ref<string>('')
 const currentPageDespachos = ref(1)
 const pageSizeDespachos = ref(10)
 const filteredDespachosCount = ref(0)
+
+// Estados para paginación de órdenes de compra
+const currentPageOC = ref(1)
+const pageSizeOC = ref(10)
+const filteredOCCount = ref(0)
 
 // Estado para eliminación
 const eliminando = ref(false)
@@ -923,6 +932,10 @@ async function cargarOrdenesCompraPendientes() {
     ordenesCompraStore.estadoFilter = undefined
     ordenesCompraStore.currentPage = 1
     
+    // Resetear paginación local
+    currentPageOC.value = 1
+    filteredOCCount.value = 0
+    
     // Asegurar que Vue detecte los cambios reactivos
     await nextTick()
   } catch (error: any) {
@@ -934,18 +947,32 @@ async function cargarOrdenesCompraPendientes() {
 }
 
 
+// Computed para total de páginas de órdenes de compra
+const totalPagesOC = computed(() => {
+  const count = filteredOCCount.value > 0 ? filteredOCCount.value : ordenesCompraStore.total
+  return Math.ceil(count / pageSizeOC.value)
+})
+
+// Función para manejar el cambio en el conteo de órdenes filtradas
+function handleFilteredOCCountChanged(count: number) {
+  filteredOCCount.value = count
+  // Resetear a la primera página si estamos en una página que ya no existe
+  const totalPages = Math.ceil(count / pageSizeOC.value)
+  if (currentPageOC.value > totalPages && totalPages > 0) {
+    currentPageOC.value = 1
+  }
+}
+
 // Funciones de paginación para ODC
 function prevPageOC() {
-  if (ordenesCompraStore.currentPage > 1) {
-    ordenesCompraStore.setPage(ordenesCompraStore.currentPage - 1)
-    ordenesCompraStore.fetchOrdenesCompra(undefined, ordenesCompraStore.currentPage)
+  if (currentPageOC.value > 1) {
+    currentPageOC.value--
   }
 }
 
 function nextPageOC() {
-  if (ordenesCompraStore.currentPage < ordenesCompraStore.totalPages) {
-    ordenesCompraStore.setPage(ordenesCompraStore.currentPage + 1)
-    ordenesCompraStore.fetchOrdenesCompra(undefined, ordenesCompraStore.currentPage)
+  if (currentPageOC.value < totalPagesOC.value) {
+    currentPageOC.value++
   }
 }
 

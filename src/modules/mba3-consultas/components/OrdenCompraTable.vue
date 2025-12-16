@@ -7,7 +7,9 @@
         <div class="flex items-center gap-3">
           <h2 class="text-lg font-semibold text-gray-900">Órdenes de Compra</h2>
           <span class="px-3 py-1 bg-emerald-600 text-white rounded-full text-sm font-medium">
-            {{ filteredOrdenes.length }} de {{ totalOrdenes }} órdenes
+            {{ (props.currentPage !== undefined && props.pageSize !== undefined && props.currentPage > 0 && props.pageSize > 0)
+              ? `${sortedOrdenes.length} de ${filteredOrdenes.length} (${totalOrdenes || 0} total)` 
+              : `${filteredOrdenes.length} de ${totalOrdenes || 0} órdenes` }}
           </span>
           <span v-if="selectedOrdenes.length > 0" class="px-3 py-1 bg-emerald-600 text-white rounded-full text-sm font-medium">
             {{ selectedOrdenes.length }} seleccionadas
@@ -398,12 +400,15 @@ const props = defineProps<{
   totalOrdenes?: number
   allowDelete?: boolean // Permite mostrar el botón de eliminar
   readOnly?: boolean // Modo solo lectura (oculta acciones de integración)
+  currentPage?: number
+  pageSize?: number
 }>()
 
 const emit = defineEmits<{
   integrar: [referenciaDespacho: string]
   integrarMultiples: [referenciasDespacho: string[]]
   eliminar: [ocIds: string[]]
+  'filtered-count-changed': [count: number]
 }>()
 
 const toast = useToast()
@@ -580,6 +585,9 @@ const sortDirection = ref<'asc' | 'desc'>('asc')
 // Computed
 
 const filteredOrdenes = computed(() => {
+  if (!props.ordenesCompra || !Array.isArray(props.ordenesCompra)) {
+    return []
+  }
   let filtered = [...props.ordenesCompra]
   
   // Búsqueda por texto en todos los campos
@@ -646,29 +654,54 @@ const filteredOrdenes = computed(() => {
 })
 
 const sortedOrdenes = computed(() => {
-  if (!sortField.value) return filteredOrdenes.value
+  let sorted: OrdenCompra[]
   
-  const sorted = [...filteredOrdenes.value]
-  sorted.sort((a, b) => {
-    const aValue = a[sortField.value as keyof OrdenCompra]
-    const bValue = b[sortField.value as keyof OrdenCompra]
-    
-    if (aValue === null || aValue === undefined) return 1
-    if (bValue === null || bValue === undefined) return -1
-    
-    if (typeof aValue === 'string' && typeof bValue === 'string') {
+  if (!sortField.value) {
+    sorted = [...filteredOrdenes.value]
+  } else {
+    sorted = [...filteredOrdenes.value]
+    sorted.sort((a, b) => {
+      const aValue = a[sortField.value as keyof OrdenCompra]
+      const bValue = b[sortField.value as keyof OrdenCompra]
+      
+      if (aValue === null || aValue === undefined) return 1
+      if (bValue === null || bValue === undefined) return -1
+      
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return sortDirection.value === 'asc' 
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue)
+      }
+      
       return sortDirection.value === 'asc' 
-        ? aValue.localeCompare(bValue)
-        : bValue.localeCompare(aValue)
-    }
-    
-    return sortDirection.value === 'asc' 
-      ? (aValue as any) - (bValue as any)
-      : (bValue as any) - (aValue as any)
-  })
+        ? (aValue as any) - (bValue as any)
+        : (bValue as any) - (aValue as any)
+    })
+  }
+  
+  // Aplicar paginación si se proporcionan los parámetros
+  if (props.currentPage !== undefined && props.pageSize !== undefined && props.currentPage > 0 && props.pageSize > 0) {
+    const start = (props.currentPage - 1) * props.pageSize
+    const end = start + props.pageSize
+    return sorted.slice(start, end)
+  }
   
   return sorted
 })
+
+// Watch para emitir el conteo de órdenes filtradas cuando cambie
+// Debe estar después de la definición de filteredOrdenes
+watch(() => filteredOrdenes.value, (newFiltered) => {
+  try {
+    if (newFiltered && Array.isArray(newFiltered)) {
+      emit('filtered-count-changed', newFiltered.length)
+    } else {
+      emit('filtered-count-changed', 0)
+    }
+  } catch (error) {
+    console.warn('Error al emitir conteo de órdenes filtradas:', error)
+  }
+}, { immediate: true })
 
 // Computed para obtener ODCs seleccionables (solo pendientes)
 const selectableOrdenes = computed(() => {
