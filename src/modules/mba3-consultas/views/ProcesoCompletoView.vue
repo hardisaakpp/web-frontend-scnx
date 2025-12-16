@@ -777,16 +777,22 @@ async function cargarDespachos() {
 
 // Función para cargar órdenes de compra pendientes
 // Función auxiliar para refrescar datos con retry inteligente
-async function refrescarDatosOrdenesCompra(maxRetries: number = 2, delayMs: number = 300) {
+async function refrescarDatosOrdenesCompra(maxRetries: number = 1, delayMs: number = 500) {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       await ordenesCompraStore.fetchEstadisticas()
       await cargarOrdenesCompraPendientes()
+      
+      // Asegurar que Vue detecte los cambios reactivos
+      await nextTick()
+      
+      console.log('[refrescarDatosOrdenesCompra] ✅ Datos sincronizados con el servidor')
       return // Si se completa exitosamente, salir
     } catch (error: any) {
+      console.warn(`Intento ${attempt + 1}/${maxRetries + 1} de refrescar datos falló:`, error)
       if (attempt < maxRetries) {
         // Esperar un poco antes de reintentar
-        await new Promise(resolve => setTimeout(resolve, delayMs * (attempt + 1)))
+        await new Promise(resolve => setTimeout(resolve, delayMs))
       } else {
         // En el último intento, lanzar el error
         console.error('Error al refrescar datos después de múltiples intentos:', error)
@@ -819,10 +825,13 @@ async function cargarOrdenesCompraPendientes() {
     
     const resultados = await Promise.all(promesas)
     
-    // Procesar resultados
+    // Procesar resultados y crear nuevos objetos para asegurar reactividad
     resultados.forEach(({ response }) => {
       if (response?.data && Array.isArray(response.data)) {
-        todasLasOrdenes.push(...response.data)
+        // Crear nuevos objetos usando spread operator para asegurar que Vue detecte los cambios
+        // Esto es crítico para que Vue detecte cambios en propiedades como 'estado'
+        const nuevasOrdenes = response.data.map(oc => ({ ...oc }))
+        todasLasOrdenes.push(...nuevasOrdenes)
       }
       // Sumar los totales
       if (response?.total !== undefined) {
@@ -833,10 +842,14 @@ async function cargarOrdenesCompraPendientes() {
     })
     
     // Actualizar el store con todas las órdenes combinadas
+    // Crear una nueva referencia del array para asegurar que Vue detecte el cambio
     ordenesCompraStore.ordenesCompra = todasLasOrdenes
     ordenesCompraStore.total = totalCombinado > 0 ? totalCombinado : todasLasOrdenes.length
     ordenesCompraStore.estadoFilter = undefined
     ordenesCompraStore.currentPage = 1
+    
+    // Asegurar que Vue detecte los cambios reactivos
+    await nextTick()
   } catch (error: any) {
     console.error('Error al cargar órdenes de compra:', error)
     toast.error('Error al cargar órdenes', error.message || 'No se pudieron cargar las órdenes de compra')
@@ -924,6 +937,21 @@ async function ejecutarMigrar() {
     // Intentar cargar despachos con reintentos
     await cargarDespachosConReintento()
     
+    // Actualizar estadísticas y órdenes de compra después de la migración
+    // para mantener los datos sincronizados (similar a los botones "Enviar" y "Enviar a SAP")
+    // La migración puede generar nuevas órdenes de compra, por lo que es importante actualizar
+    try {
+      await refrescarDatosOrdenesCompra(2, 300)
+    } catch (refreshError: any) {
+      console.warn('Error al actualizar órdenes de compra después de migración:', refreshError)
+      // No bloquear el flujo si falla la actualización, pero intentar al menos las estadísticas
+      try {
+        await ordenesCompraStore.fetchEstadisticas()
+      } catch (statsError: any) {
+        console.warn('Error al actualizar estadísticas después de migración:', statsError)
+      }
+    }
+    
   } catch (error: any) {
     console.error('Error al importar:', error)
     const errorMessage = error.message || 'No se pudo completar la importación'
@@ -978,17 +1006,60 @@ async function ejecutarIntegrarSAPDesdeProcesarOC() {
     let errorCount = 0
     const totalOrdenes = ordenesPendientes.length
     
-    // Enviar cada orden una por una usando el servicio directamente para evitar conflictos de loading
+    // Enviar cada orden una por una y actualizar estados localmente
     for (let i = 0; i < ordenesPendientes.length; i++) {
       const orden = ordenesPendientes[i]
       try {
-        await mba3ConsultasService.integrarSAP(orden.referencia_despacho)
-        successCount++
+        // ✅ ESPERAR LA RESPUESTA COMPLETA
+        const response = await mba3ConsultasService.integrarSAP(orden.referencia_despacho)
+        
+        // ✅ ACTUALIZAR ESTADO LOCAL basándose en la respuesta
+        const metadata = response?.metadata || {}
+        const detalles = metadata.detalles || []
+        
+        if (detalles.length > 0) {
+          const detalle = detalles[0]
+          const success = detalle.success === true
+          
+          // Buscar y actualizar la orden en el array local
+          const ordenIndex = ordenesCompraStore.ordenesCompra.findIndex(
+            (oc: any) => oc.referencia_despacho === orden.referencia_despacho
+          )
+          
+          if (ordenIndex !== -1) {
+            const ordenActualizada = { ...ordenesCompraStore.ordenesCompra[ordenIndex] }
+            
+            if (success) {
+              ordenActualizada.estado = 'ENVIADA'
+              ordenActualizada.numero_oc_sap = detalle.doc_num?.toString() || null
+              ordenActualizada.fecha_procesado = new Date().toISOString()
+              ordenActualizada.respuesta_sap = detalle.message || 'Enviada exitosamente'
+              successCount++
+            } else {
+              ordenActualizada.estado = 'ERROR'
+              ordenActualizada.error_message = detalle.error || 'Error desconocido'
+              ordenActualizada.fecha_procesado = new Date().toISOString()
+              ordenActualizada.respuesta_sap = detalle.error || 'Error al enviar'
+              errorCount++
+            }
+            
+            // Actualizar el array
+            ordenesCompraStore.ordenesCompra[ordenIndex] = ordenActualizada
+            ordenesCompraStore.ordenesCompra = [...ordenesCompraStore.ordenesCompra]
+            
+            console.log(`[ejecutarIntegrarSAPDesdeProcesarOC] ✅ Estado actualizado: ${orden.referencia_despacho} → ${ordenActualizada.estado}`)
+          }
+        } else {
+          successCount++
+        }
         
         // Actualizar progreso basado en las órdenes procesadas
         procesoStore.progress = Math.round(((i + 1) / totalOrdenes) * 100)
         
-        // Delay mínimo entre envíos para no saturar el servidor (reducido de 500ms a 200ms)
+        // Asegurar que Vue detecte los cambios
+        await nextTick()
+        
+        // Delay mínimo entre envíos para no saturar el servidor
         if (i < ordenesPendientes.length - 1) {
           await new Promise(resolve => setTimeout(resolve, 200))
         }
@@ -1004,8 +1075,15 @@ async function ejecutarIntegrarSAPDesdeProcesarOC() {
     // Asegurar que el progreso esté al 100% al finalizar
     procesoStore.progress = 100
     
-    // Refrescar datos inmediatamente después de enviar todas las órdenes (con retry si es necesario)
-    await refrescarDatosOrdenesCompra(2, 300)
+    // Asegurar que Vue haya procesado todos los cambios
+    await nextTick()
+    
+    // Delay para que el usuario vea los cambios en la UI antes de cerrar el overlay
+    await new Promise(resolve => setTimeout(resolve, 500))
+    
+    // ✅ NO REFRESCAR - Confiar en las respuestas del backend
+    // Las respuestas del backend son autoritativas y ya actualizamos los estados locales
+    // Refrescar ahora traería datos viejos del servidor que sobrescribirían nuestras actualizaciones
     
     // Mostrar resultado
     if (errorCount === 0) {
@@ -1186,32 +1264,80 @@ async function handleIntegrarOC(referenciaDespacho: string) {
     // Simular progreso mientras se envía
     procesoStore.progress = 50
     
-    // Usar el servicio directamente para enviar la orden
-    await mba3ConsultasService.integrarSAP(referenciaDespacho)
+    // ✅ ESPERAR LA RESPUESTA COMPLETA del endpoint (esto toma ~5 segundos)
+    const response = await mba3ConsultasService.integrarSAP(referenciaDespacho)
     
     // Completar el progreso
     procesoStore.progress = 100
     
-    // Refrescar datos inmediatamente después del envío (con retry si es necesario)
-    // Esto se ejecuta en paralelo con el delay del overlay para máxima velocidad
-    const refreshPromise = refrescarDatosOrdenesCompra(2, 200)
+    // ✅ ACTUALIZAR ESTADO LOCAL INMEDIATAMENTE basándose en la respuesta
+    const metadata = response?.metadata || {}
+    const detalles = metadata.detalles || []
     
-    // Delay mínimo solo para mostrar el 100% antes de ocultar el overlay (reducido a 200ms)
-    await Promise.all([
-      refreshPromise,
-      new Promise(resolve => setTimeout(resolve, 200))
-    ])
-    
-    toast.success('Orden enviada', 'La orden se ha enviado correctamente a SAP')
-    
-    // Limpiar el estado de envío en el componente hijo
-    if (ordenCompraTableRef.value?.clearSendingState) {
-      ordenCompraTableRef.value.clearSendingState()
+    if (detalles.length > 0) {
+      const detalle = detalles[0]
+      const success = detalle.success === true
+      
+      // Buscar y actualizar la orden en el array local
+      const ordenIndex = ordenesCompraStore.ordenesCompra.findIndex(
+        (oc: any) => oc.referencia_despacho === referenciaDespacho
+      )
+      
+      if (ordenIndex !== -1) {
+        // Crear un nuevo objeto para asegurar reactividad de Vue
+        const ordenActualizada = { ...ordenesCompraStore.ordenesCompra[ordenIndex] }
+        
+        if (success) {
+          ordenActualizada.estado = 'ENVIADA'
+          ordenActualizada.numero_oc_sap = detalle.doc_num?.toString() || null
+          ordenActualizada.fecha_procesado = new Date().toISOString()
+          ordenActualizada.respuesta_sap = detalle.message || 'Enviada exitosamente'
+          
+          toast.success('Orden enviada', `DocNum SAP: ${detalle.doc_num || 'N/A'}`)
+        } else {
+          ordenActualizada.estado = 'ERROR'
+          ordenActualizada.error_message = detalle.error || 'Error desconocido'
+          ordenActualizada.fecha_procesado = new Date().toISOString()
+          ordenActualizada.respuesta_sap = detalle.error || 'Error al enviar'
+          
+          toast.error('Error al integrar', detalle.error || 'Error desconocido')
+        }
+        
+        // Reemplazar la orden en el array (Vue detectará el cambio)
+        ordenesCompraStore.ordenesCompra[ordenIndex] = ordenActualizada
+        
+        // Crear un nuevo array para forzar reactividad
+        ordenesCompraStore.ordenesCompra = [...ordenesCompraStore.ordenesCompra]
+        
+        // Actualizar las estadísticas del store manualmente
+        const pendientes = ordenesCompraStore.ordenesCompra.filter(o => o.estado === 'PENDIENTE').length
+        const enviadas = ordenesCompraStore.ordenesCompra.filter(o => o.estado === 'ENVIADA').length
+        const errores = ordenesCompraStore.ordenesCompra.filter(o => o.estado === 'ERROR').length
+        
+        // Asegurar que Vue detecte los cambios
+        await nextTick()
+        
+        // Log para debugging
+        console.log(`[handleIntegrarOC] ✅ Estado actualizado localmente: ${referenciaDespacho} → ${ordenActualizada.estado}`)
+        console.log(`[handleIntegrarOC] 📊 Estadísticas: ${pendientes} pendientes, ${enviadas} enviadas, ${errores} errores`)
+      }
     }
+    
+    // Delay para que el usuario vea el cambio en la UI antes de cerrar el overlay
+    await new Promise(resolve => setTimeout(resolve, 500))
+    
+    // ✅ NO REFRESCAR - Confiar en la respuesta del backend
+    // La respuesta del backend es autoritativa y ya actualizamos el estado local
+    // Refrescar ahora traería datos viejos del servidor que sobrescribirían nuestra actualización
+    
+    // IMPORTANTE: NO limpiar sendingOcId aquí
+    // El watch en OrdenCompraTable detectará automáticamente cuando el estado cambie
+    // y limpiará sendingOcId solo cuando el estado sea != 'PENDIENTE'
   } catch (error: any) {
     console.error('Error al integrar ODC:', error)
     toast.error('Error al integrar', error.message || 'No se pudo enviar la orden a SAP')
-    // Limpiar el estado de envío incluso si hay error
+    
+    // En caso de error, SÍ limpiar el estado de envío para que el usuario pueda reintentar
     if (ordenCompraTableRef.value?.clearSendingState) {
       ordenCompraTableRef.value.clearSendingState()
     }
@@ -1249,31 +1375,73 @@ async function handleIntegrarOCMultiples(referencias: string[]) {
     let errorCount = 0
     const totalOrdenes = referencias.length
     
-    // Enviar cada orden una por una (igual que el botón individual que funciona)
-    // Esto asegura que cada orden se procese correctamente y se actualice su estado
+    // Enviar cada orden una por una y actualizar estados localmente
     for (let i = 0; i < referencias.length; i++) {
       const referencia = referencias[i]
       try {
         // Actualizar progreso antes de enviar
         procesoStore.progress = Math.round((i / totalOrdenes) * 100)
         
-        // Enviar la orden individual
-        await mba3ConsultasService.integrarSAP(referencia)
-        successCount++
+        // ✅ ESPERAR LA RESPUESTA COMPLETA
+        const response = await mba3ConsultasService.integrarSAP(referencia)
+        
+        // ✅ ACTUALIZAR ESTADO LOCAL basándose en la respuesta
+        const metadata = response?.metadata || {}
+        const detalles = metadata.detalles || []
+        
+        if (detalles.length > 0) {
+          const detalle = detalles[0]
+          const success = detalle.success === true
+          
+          // Buscar y actualizar la orden en el array local
+          const ordenIndex = ordenesCompraStore.ordenesCompra.findIndex(
+            (oc: any) => oc.referencia_despacho === referencia
+          )
+          
+          if (ordenIndex !== -1) {
+            const ordenActualizada = { ...ordenesCompraStore.ordenesCompra[ordenIndex] }
+            
+            if (success) {
+              ordenActualizada.estado = 'ENVIADA'
+              ordenActualizada.numero_oc_sap = detalle.doc_num?.toString() || null
+              ordenActualizada.fecha_procesado = new Date().toISOString()
+              ordenActualizada.respuesta_sap = detalle.message || 'Enviada exitosamente'
+              successCount++
+            } else {
+              ordenActualizada.estado = 'ERROR'
+              ordenActualizada.error_message = detalle.error || 'Error desconocido'
+              ordenActualizada.fecha_procesado = new Date().toISOString()
+              ordenActualizada.respuesta_sap = detalle.error || 'Error al enviar'
+              errorCount++
+            }
+            
+            // Actualizar el array
+            ordenesCompraStore.ordenesCompra[ordenIndex] = ordenActualizada
+            ordenesCompraStore.ordenesCompra = [...ordenesCompraStore.ordenesCompra]
+            
+            console.log(`[handleIntegrarOCMultiples] ✅ Estado actualizado: ${referencia} → ${ordenActualizada.estado}`)
+          }
+        } else {
+          successCount++
+        }
         
         // Actualizar progreso después de enviar
         procesoStore.progress = Math.round(((i + 1) / totalOrdenes) * 100)
         
-        // Delay mínimo entre envíos para no saturar el servidor (reducido de 500ms a 200ms)
-        // El backend debería actualizar los estados inmediatamente después de cada envío
+        // Asegurar que Vue detecte los cambios
+        await nextTick()
+        
+        // Delay mínimo entre envíos para no saturar el servidor
         if (i < referencias.length - 1) {
           await new Promise(resolve => setTimeout(resolve, 200))
         }
       } catch (error: any) {
         console.error(`Error al enviar orden ${referencia}:`, error)
         errorCount++
+        
         // Actualizar progreso incluso si hay error
         procesoStore.progress = Math.round(((i + 1) / totalOrdenes) * 100)
+        
         // Continuar con la siguiente orden aunque haya un error
       }
     }
@@ -1281,17 +1449,19 @@ async function handleIntegrarOCMultiples(referencias: string[]) {
     // Asegurar que el progreso esté al 100% al finalizar
     procesoStore.progress = 100
     
-    // Refrescar datos inmediatamente después de enviar todas las órdenes (con retry si es necesario)
-    // El retry manejará cualquier delay del backend automáticamente
-    await refrescarDatosOrdenesCompra(2, 300)
+    // Asegurar que Vue haya procesado todos los cambios
+    await nextTick()
     
-    // Pequeño delay solo para mostrar el 100% antes de ocultar el overlay
-    await new Promise(resolve => setTimeout(resolve, 300))
+    // Delay para que el usuario vea los cambios en la UI antes de cerrar el overlay
+    await new Promise(resolve => setTimeout(resolve, 500))
     
-    // Limpiar el estado de envío múltiple en el componente hijo
-    if (ordenCompraTableRef.value?.clearSendingMultipleState) {
-      ordenCompraTableRef.value.clearSendingMultipleState()
-    }
+    // ✅ NO REFRESCAR - Confiar en las respuestas del backend
+    // Las respuestas del backend son autoritativas y ya actualizamos los estados locales
+    // Refrescar ahora traería datos viejos del servidor que sobrescribirían nuestras actualizaciones
+    
+    // IMPORTANTE: NO limpiar sendingMultiple aquí
+    // El watch en OrdenCompraTable detectará automáticamente cuando los estados cambien
+    // y dejará los botones deshabilitados hasta que cambien de PENDIENTE
     
     // Limpiar la selección después de enviar exitosamente
     if (ordenCompraTableRef.value?.clearSelection) {

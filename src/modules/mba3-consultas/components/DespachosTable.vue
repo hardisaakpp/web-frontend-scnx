@@ -51,7 +51,7 @@
             <input
               v-model="searchQuery"
               type="text"
-              placeholder="Buscar por número pedido El Rayo, número factura, cliente, empresa, SKU..."
+              placeholder="Buscar por número factura, SKU..."
               class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
             />
           </div>
@@ -59,26 +59,6 @@
         
         <!-- Filtros rápidos -->
         <div class="flex items-center gap-2">
-          <select
-            v-model="filtroEmpresa"
-            class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-          >
-            <option value="">Todas las empresas</option>
-            <option v-for="empresa in empresasUnicas" :key="empresa" :value="empresa">
-              {{ empresa }}
-            </option>
-          </select>
-
-          <select
-            v-model="filtroTipoDocumento"
-            class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-          >
-            <option value="">Todos los tipos</option>
-            <option v-for="tipo in tiposDocumentoUnicos" :key="tipo" :value="tipo">
-              {{ tipo }}
-            </option>
-          </select>
-          
           <button
             @click="showAdvancedFilters = !showAdvancedFilters"
             class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium flex items-center gap-2"
@@ -189,7 +169,7 @@
       <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
       </svg>
-      <p class="mt-2 text-sm">{{ searchQuery || filtroEmpresa ? 'No se encontraron despachos con los filtros aplicados' : 'No se encontraron despachos' }}</p>
+      <p class="mt-2 text-sm">{{ searchQuery ? 'No se encontraron despachos con los filtros aplicados' : 'No se encontraron despachos' }}</p>
     </div>
 
     <div v-else class="overflow-x-auto">
@@ -204,7 +184,7 @@
                 @change="toggleSelectAll"
                 :disabled="!hasSelectableDespachos"
                 class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                :title="!hasSelectableDespachos ? 'No hay despachos seleccionables (todos tienen ODC o están anulados)' : 'Seleccionar todos los despachos disponibles'"
+                :title="!hasSelectableDespachos ? 'No hay despachos seleccionables (todos tienen ODC, están anulados, o tienen advertencias/errores)' : 'Seleccionar todos los despachos disponibles'"
               />
             </th>
             <th class="w-12 px-6 py-3 text-center align-middle"></th>
@@ -256,7 +236,8 @@
                   type="checkbox"
                   :checked="isSelected(despacho.despacho_id)"
                   @change="toggleSelect(despacho.despacho_id)"
-                  :disabled="despacho.anulada || tieneODC(despacho)"
+                  :disabled="despacho.anulada || tieneODC(despacho) || hasRowIssues(despacho).hasWarnings || hasRowIssues(despacho).hasErrors"
+                  :title="getCheckboxTooltip(despacho)"
                   class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               </td>
@@ -301,24 +282,15 @@
                 </div>
               </td>
               <template v-for="columnKey in orderedVisibleColumns" :key="columnKey">
-                <!-- Código Factura -->
-                <td v-if="columnKey === 'codigo_factura'" class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
-                  <span class="font-semibold">{{ despacho.codigo_factura }}</span>
+                <!-- Orden Compra Cliente -->
+                <td v-if="columnKey === 'orden_compra_cliente'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <span v-if="despacho.orden_compra_cliente" class="font-mono">{{ despacho.orden_compra_cliente }}</span>
+                  <span v-else class="text-gray-400 italic">-</span>
                 </td>
                 <!-- Número Factura -->
-                <td v-else-if="columnKey === 'numero_factura'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ despacho.numero_factura || '-' }}</td>
-                <!-- Empresa -->
-                <td v-else-if="columnKey === 'empresa'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ despacho.empresa }}</td>
-                <!-- Código Cliente -->
-                <td v-else-if="columnKey === 'codigo_cliente'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">{{ despacho.codigo_cliente }}</td>
+                <td v-else-if="columnKey === 'numero_factura'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">{{ despacho.numero_factura || '-' }}</td>
                 <!-- Fecha Despacho -->
                 <td v-else-if="columnKey === 'fecha_despacho'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ formatDate(despacho.fecha_despacho) }}</td>
-                <!-- Tipo Documento -->
-                <td v-else-if="columnKey === 'tipo_documento'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  <span class="px-2 py-1 text-xs font-medium rounded bg-violet-100 text-violet-800">
-                    {{ despacho.tipo_documento }}
-                  </span>
-                </td>
                 <!-- Estado -->
                 <td v-else-if="columnKey === 'estado'" class="px-6 py-4 whitespace-nowrap">
                   <div class="relative group inline-block">
@@ -333,19 +305,14 @@
                     </div>
                   </div>
                 </td>
-                <!-- Orden Compra Cliente -->
-                <td v-else-if="columnKey === 'orden_compra_cliente'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  <span v-if="despacho.orden_compra_cliente" class="font-mono">{{ despacho.orden_compra_cliente }}</span>
-                  <span v-else class="text-gray-400 italic">-</span>
-                </td>
               </template>
               <td class="px-6 py-4 whitespace-nowrap text-sm">
                 <button
                   @click="handleGenerarODC(despacho.despacho_id)"
                   class="px-3 py-1 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center gap-1"
                   :class="{ 'bg-gray-400 hover:bg-gray-400': tieneODC(despacho) }"
-                  :disabled="sendingDespachoId === despacho.despacho_id || despacho.anulada || sendingMultiple || tieneODC(despacho)"
-                  :title="despacho.anulada ? 'No se puede generar ODC para despachos anulados' : tieneODC(despacho) ? 'Ya existe una ODC para este despacho' : 'Generar ODC para este despacho'"
+                  :disabled="sendingDespachoId === despacho.despacho_id || despacho.anulada || sendingMultiple || tieneODC(despacho) || hasRowIssues(despacho).hasWarnings || hasRowIssues(despacho).hasErrors"
+                  :title="getButtonTooltip(despacho)"
                 >
                   <svg v-if="sendingDespachoId === despacho.despacho_id" class="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -356,7 +323,7 @@
                   <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  {{ sendingDespachoId === despacho.despacho_id ? 'Generando...' : tieneODC(despacho) ? 'ODC Generada' : 'Generar ODC' }}
+                  {{ sendingDespachoId === despacho.despacho_id ? 'Generando...' : tieneODC(despacho) ? 'ODC Generada' : hasRowIssues(despacho).hasWarnings || hasRowIssues(despacho).hasErrors ? 'ODC no disponible' : 'Generar ODC' }}
                 </button>
               </td>
             </tr>
@@ -508,8 +475,6 @@ const loadingDetalles = ref<Record<string, boolean>>({})
 
 // Búsqueda y filtros
 const searchQuery = ref('')
-const filtroEmpresa = ref('')
-const filtroTipoDocumento = ref('')
 const filtroFechaDesde = ref('')
 const filtroFechaHasta = ref('')
 const filtroEstado = ref('')
@@ -548,16 +513,12 @@ function tieneODC(despacho: Despacho): boolean {
   )
 }
 
-// Columnas disponibles
+// Columnas disponibles (en el orden especificado: Orden Compra Cliente, Número Factura, Fecha Despacho, Estado)
 const availableColumns = [
-  { key: 'codigo_factura', label: 'Número Pedido El Rayo', default: true },
-  { key: 'numero_factura', label: 'Número Factura', default: true },
-  { key: 'empresa', label: 'Empresa', default: true },
-  { key: 'codigo_cliente', label: 'Cliente', default: true },
-  { key: 'fecha_despacho', label: 'Fecha Despacho', default: true },
-  { key: 'tipo_documento', label: 'Tipo Documento', default: true },
-  { key: 'estado', label: 'Estado', default: true },
   { key: 'orden_compra_cliente', label: 'Orden Compra Cliente', default: true },
+  { key: 'numero_factura', label: 'Número Factura', default: true },
+  { key: 'fecha_despacho', label: 'Fecha Despacho', default: true },
+  { key: 'estado', label: 'Estado', default: true },
 ]
 
 // Configuración de columnas usando composable híbrido
@@ -578,21 +539,44 @@ const {
   enablePageSize: false
 })
 
-// Watch para limpiar la selección de despachos que ya no son seleccionables (tienen ODC o están anulados)
-// Ahora el backend proporciona tiene_odc directamente, así que solo necesitamos observar los despachos
+// Filtrar columnas que ya no existen en availableColumns (limpiar preferencias obsoletas)
+const availableColumnKeys = availableColumns.map(col => col.key)
+// Limpiar columnas obsoletas inmediatamente al montar y cuando cambien las columnas
+watch([visibleColumns, columnOrder], () => {
+  // Limpiar columnas visibles que no existen
+  const validVisibleColumns = visibleColumns.value.filter(key => availableColumnKeys.includes(key))
+  if (validVisibleColumns.length !== visibleColumns.value.length) {
+    visibleColumns.value = validVisibleColumns.length > 0 ? validVisibleColumns : defaultVisibleColumns
+  }
+  
+  // Limpiar orden de columnas que no existen
+  const validColumnOrder = columnOrder.value.filter(key => availableColumnKeys.includes(key))
+  if (validColumnOrder.length !== columnOrder.value.length) {
+    columnOrder.value = validColumnOrder.length > 0 ? validColumnOrder : defaultColumnOrder
+  }
+}, { immediate: true })
+
+// Watch para limpiar la selección de despachos que ya no son seleccionables (tienen ODC, están anulados, o tienen advertencias/errores)
 watch(() => props.despachos, () => {
   // Remover de la selección los despachos que ya no son seleccionables
   selectedDespachos.value = selectedDespachos.value.filter(despachoId => {
     const despacho = props.despachos.find(d => d.despacho_id === despachoId)
-    return despacho && !despacho.anulada && !tieneODC(despacho)
+    if (!despacho || despacho.anulada || tieneODC(despacho)) {
+      return false
+    }
+    const { hasErrors, hasWarnings } = hasRowIssues(despacho)
+    return !hasErrors && !hasWarnings
   })
 }, { deep: true })
 
 // Watch para actualizar el orden cuando se agregan nuevas columnas visibles
 watch(visibleColumns, () => {
-  const availableKeys = availableColumns.map(col => col.key)
+  const availableKeys = availableColumnKeys
+  // Filtrar solo columnas válidas
+  const validVisibleColumns = visibleColumns.value.filter(key => availableKeys.includes(key))
+  
   const currentOrder = columnOrder.value.filter(key => availableKeys.includes(key))
-  const missingInOrder = visibleColumns.value.filter(key => 
+  const missingInOrder = validVisibleColumns.filter(key => 
     availableKeys.includes(key) && !currentOrder.includes(key)
   )
   if (missingInOrder.length > 0) {
@@ -688,15 +672,6 @@ const sortField = ref<string | null>(null)
 const sortDirection = ref<'asc' | 'desc'>('asc')
 
 // Computed
-const empresasUnicas = computed(() => {
-  const empresas = new Set(props.despachos.map(d => d.empresa))
-  return Array.from(empresas).sort()
-})
-
-const tiposDocumentoUnicos = computed(() => {
-  const tipos = new Set(props.despachos.map(d => d.tipo_documento))
-  return Array.from(tipos).sort()
-})
 
 const filteredDespachos = computed(() => {
   let filtered = [...props.despachos]
@@ -707,10 +682,7 @@ const filteredDespachos = computed(() => {
     filtered = filtered.filter(d => {
       // Búsqueda en campos del despacho principal
       const matchDespacho = 
-        (d.codigo_factura && d.codigo_factura.toLowerCase().includes(query)) ||
         (d.numero_factura && String(d.numero_factura).includes(query)) ||
-        (d.codigo_cliente && d.codigo_cliente.toLowerCase().includes(query)) ||
-        (d.empresa && d.empresa.toLowerCase().includes(query)) ||
         (d.orden_compra_cliente && d.orden_compra_cliente.toLowerCase().includes(query))
       
       // Búsqueda en detalles (despacho_detalles)
@@ -725,16 +697,6 @@ const filteredDespachos = computed(() => {
       
       return matchDespacho || matchDetalles
     })
-  }
-  
-  // Filtro por empresa
-  if (filtroEmpresa.value) {
-    filtered = filtered.filter(d => d.empresa === filtroEmpresa.value)
-  }
-  
-  // Filtro por tipo de documento
-  if (filtroTipoDocumento.value) {
-    filtered = filtered.filter(d => d.tipo_documento === filtroTipoDocumento.value)
   }
   
   // Filtro por fecha
@@ -810,8 +772,6 @@ function sortBy(field: string) {
 
 function limpiarFiltros() {
   searchQuery.value = ''
-  filtroEmpresa.value = ''
-  filtroTipoDocumento.value = ''
   filtroFechaDesde.value = ''
   filtroFechaHasta.value = ''
   filtroEstado.value = ''
@@ -955,8 +915,13 @@ function isSelected(despachoId: string): boolean {
 function toggleSelect(despachoId: string) {
   const despacho = props.despachos.find(d => d.despacho_id === despachoId)
   
-  // No permitir seleccionar despachos anulados o que ya tienen ODC
+  // No permitir seleccionar despachos anulados, que ya tienen ODC, o que tienen advertencias/errores
   if (!despacho || despacho.anulada || tieneODC(despacho)) {
+    return
+  }
+  
+  const { hasErrors, hasWarnings } = hasRowIssues(despacho)
+  if (hasErrors || hasWarnings) {
     return
   }
   
@@ -995,9 +960,15 @@ function clearSelection() {
   selectedDespachos.value = []
 }
 
-// Computed para obtener despachos seleccionables (no anulados y sin ODC)
+// Computed para obtener despachos seleccionables (no anulados, sin ODC, y sin advertencias/errores)
 const selectableDespachos = computed(() => {
-  return filteredDespachos.value.filter(d => !d.anulada && !tieneODC(d))
+  return filteredDespachos.value.filter(d => {
+    if (d.anulada || tieneODC(d)) {
+      return false
+    }
+    const { hasErrors, hasWarnings } = hasRowIssues(d)
+    return !hasErrors && !hasWarnings
+  })
 })
 
 // Computed para verificar si hay despachos seleccionables
@@ -1113,30 +1084,19 @@ function hasRowIssues(despacho: Despacho): { hasErrors: boolean; hasWarnings: bo
   }
 
   // Advertencias en la cabecera (amarillo/naranja)
-  if (!despacho.numero_factura || despacho.numero_factura === 0) {
-    issues.push('Número de factura faltante')
-    hasWarnings = true
-  }
-  if (!despacho.orden_compra && despacho.confirmado && !despacho.anulada) {
-    issues.push('Falta orden de compra en despacho confirmado')
-    hasWarnings = true
-  }
-  if (!despacho.numero_pedido_sistema) {
-    issues.push('Falta número de pedido sistema')
-    hasWarnings = true
-  }
-  if (!despacho.despacho_detalles || despacho.despacho_detalles.length === 0) {
-    issues.push('Sin detalles de despacho')
-    hasWarnings = true
-  }
-  if (!despacho.codigo_bodega) {
-    issues.push('Falta código de bodega')
-    hasWarnings = true
-  }
+  // Solo campos críticos que impiden enviar a SAP
+  // NOTA: orden_compra, numero_pedido_sistema, codigo_bodega NO son críticos
+  // (despachos sin estos campos se pueden enviar a SAP exitosamente si tienen los campos básicos)
 
   // Revisar problemas en los detalles del despacho
   // Si algún detalle tiene problemas, también resaltar la cabecera
   const detalles = detallesPorDespacho.value[despacho.despacho_id] || despacho.despacho_detalles || []
+  
+  // Solo advertir si no hay detalles disponibles (esto sí es crítico)
+  if (detalles.length === 0) {
+    issues.push('Sin detalles de despacho')
+    hasWarnings = true
+  }
   
   if (detalles.length > 0) {
     let detallesConErrores = 0
@@ -1194,6 +1154,54 @@ function getRowTooltip(despacho: Despacho): string {
   }
   
   return ''
+}
+
+// Función para obtener tooltip del botón "Generar ODC"
+function getButtonTooltip(despacho: Despacho): string {
+  if (despacho.anulada) {
+    return 'No se puede generar ODC para despachos anulados'
+  }
+  
+  if (tieneODC(despacho)) {
+    return 'Ya existe una ODC para este despacho'
+  }
+  
+  const { hasErrors, hasWarnings, issues } = hasRowIssues(despacho)
+  
+  if (hasErrors) {
+    const errorCount = issues.length
+    return `No se puede generar ODC: ${issues.slice(0, 2).join('; ')}${issues.length > 2 ? '...' : ''}`
+  }
+  
+  if (hasWarnings) {
+    const warningCount = issues.length
+    return `No se puede generar ODC: ${issues.slice(0, 2).join('; ')}${issues.length > 2 ? '...' : ''}`
+  }
+  
+  return 'Generar ODC para este despacho'
+}
+
+// Función para obtener tooltip del checkbox de selección
+function getCheckboxTooltip(despacho: Despacho): string {
+  if (despacho.anulada) {
+    return 'No se puede seleccionar: despacho anulado'
+  }
+  
+  if (tieneODC(despacho)) {
+    return 'No se puede seleccionar: ya tiene ODC'
+  }
+  
+  const { hasErrors, hasWarnings, issues } = hasRowIssues(despacho)
+  
+  if (hasErrors) {
+    return `No se puede seleccionar: ${issues.slice(0, 2).join('; ')}${issues.length > 2 ? '...' : ''}`
+  }
+  
+  if (hasWarnings) {
+    return `No se puede seleccionar: ${issues.slice(0, 2).join('; ')}${issues.length > 2 ? '...' : ''}`
+  }
+  
+  return 'Seleccionar este despacho'
 }
 
 // Función para obtener clases CSS según problemas detectados

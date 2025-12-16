@@ -440,13 +440,25 @@ const {
 })
 
 // Watch para limpiar la selección de ODCs que ya no son seleccionables (no pendientes)
-watch(() => props.ordenesCompra, () => {
+watch(() => props.ordenesCompra, (newOrdenes) => {
   // Remover de la selección las ODCs que no están pendientes
   selectedOrdenes.value = selectedOrdenes.value.filter(ocId => {
-    const oc = props.ordenesCompra.find(o => o.oc_id === ocId)
+    const oc = newOrdenes.find(o => o.oc_id === ocId)
     return oc && oc.estado === 'PENDIENTE'
   })
-}, { deep: true })
+  
+  // IMPORTANTE: Limpiar sendingOcId si la orden cambió de estado
+  // Esto fuerza que el botón se actualice visualmente cuando el estado cambia de PENDIENTE a ENVIADA/ERROR
+  if (sendingOcId.value) {
+    const ordenEnviada = newOrdenes.find(o => o.oc_id === sendingOcId.value)
+    
+    if (ordenEnviada && ordenEnviada.estado !== 'PENDIENTE') {
+      // La orden ya no está pendiente, limpiar el estado de envío para que el botón desaparezca
+      console.log(`[OrdenCompraTable] ✅ Botón deshabilitado: ${sendingOcId.value} cambió a ${ordenEnviada.estado}`)
+      sendingOcId.value = null
+    }
+  }
+}, { deep: true, immediate: true })
 
 // Watch para actualizar el orden cuando se agregan nuevas columnas visibles
 watch(visibleColumns, () => {
