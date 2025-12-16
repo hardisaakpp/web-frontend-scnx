@@ -1,9 +1,6 @@
 import axios from 'axios'
 import router from '@/router'
 import type { 
-  PrefacturaResponse, 
-  PrefacturaFilters,
-  Prefactura,
   Despacho,
   DespachoDetalle
 } from '../types'
@@ -130,31 +127,6 @@ export const mba3ConsultasService = {
   // Health check
   async healthCheck(): Promise<HealthResponse> {
     const response = await mba3Api.get<HealthResponse>('/health')
-    return response.data
-  },
-
-  // Facturas
-  async getFacturas(filters?: PrefacturaFilters): Promise<PrefacturaResponse> {
-    const params = new URLSearchParams()
-    if (filters?.anulada !== undefined && filters.anulada !== null) {
-      params.append('anulada', String(filters.anulada))
-    }
-    if (filters?.confirmado !== undefined && filters.confirmado !== null) {
-      params.append('confirmado', String(filters.confirmado))
-    }
-    if (filters?.remision_facturada !== undefined && filters.remision_facturada !== null) {
-      params.append('remision_facturada', String(filters.remision_facturada))
-    }
-    if (filters?.include_obj_datos !== undefined) {
-      params.append('include_obj_datos', String(filters.include_obj_datos))
-    }
-    if (filters?.save_to_db !== undefined) {
-      params.append('save_to_db', String(filters.save_to_db))
-    }
-
-    const queryString = params.toString()
-    const url = queryString ? `/facturas?${queryString}` : '/facturas'
-    const response = await mba3Api.get<PrefacturaResponse>(url)
     return response.data
   },
 

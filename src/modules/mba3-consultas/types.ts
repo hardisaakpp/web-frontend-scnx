@@ -1,27 +1,6 @@
 // Tipos consolidados para el módulo MBA3 Consultas
 
-// ========== Prefacturas/Despachos ==========
-export interface Prefactura {
-  CODIGO_FACTURA: string
-  ANULADA: string
-  NUMERO_PEDIDO_SISTEMA: string
-  NUMERO_ORDEN: string
-  NUMERO_FACTURA: string
-  CODIGO_DESPACHO: string
-  EMPRESA: string
-  CODIGO_CLIENTE: string
-  FECHA_FACTURA: string
-  TIPO_DOCUMENTO: string
-  ObjDatosFactura: string | null
-  ORDEN_COMPRA: string | null
-  ORDEN_COMPRA_CLIENTE: string | null
-  Remision_Facturada: string
-  NumIDFacturaRelacionada: string | null
-  CONFIRMADO: string
-  CODIGO_BODEGA: string
-}
-
-// ========== Despacho (desde BD) ==========
+// ========== Despachos ==========
 export interface Despacho {
   despacho_id: string
   empresa: string
@@ -65,29 +44,6 @@ export interface DespachoDetalle {
   nombre_producto: string
   tipo_linea: string
   precio_unitario_sap: number | null
-}
-
-export interface PrefacturaFilters {
-  anulada?: boolean | null
-  confirmado?: boolean | null
-  remision_facturada?: boolean | null
-  include_obj_datos?: boolean
-  save_to_db?: boolean
-}
-
-export interface PrefacturaResponse {
-  status: string
-  data: Prefactura[]
-  metadata: {
-    count: number
-    filters: PrefacturaFilters
-    save_status?: {
-      status: string
-      prefacturas_guardadas: number
-      prefacturas_actualizadas: number
-      total_detalles: number
-    }
-  }
 }
 
 // ========== Órdenes de Compra ==========
@@ -232,14 +188,6 @@ export interface ProcesoResponse {
       detalles: any[]
     }
   }
-}
-
-// ========== Estado del Módulo ==========
-export interface Mba3ConsultasState {
-  prefacturas: Prefactura[]
-  ordenesCompra: OrdenCompra[]
-  loading: boolean
-  error: string | null
 }
 
 // ========== Componentes ==========

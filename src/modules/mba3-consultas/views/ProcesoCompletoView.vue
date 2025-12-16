@@ -315,9 +315,39 @@
               :processing="generandoODC || (procesoStore.loading && procesoStore.currentStep === 'procesar-oc')"
               :ordenes-compra="ordenesCompraStore.ordenesCompra"
               :initial-search="initialSearchDespacho"
+              :current-page="currentPageDespachos"
+              :page-size="pageSizeDespachos"
               @generar-odc="handleGenerarODCIndividual"
               @generar-odc-multiples="handleGenerarODCMultiples"
+              @filtered-count-changed="handleFilteredCountChanged"
             />
+
+            <!-- Paginación -->
+            <div v-if="totalPagesDespachos > 1 && !loadingDespachos" class="mt-4 flex items-center justify-between flex-wrap gap-4">
+              <div class="text-sm text-gray-700">
+                Mostrando página {{ currentPageDespachos }} de {{ totalPagesDespachos }}
+                ({{ filteredDespachosCount > 0 ? filteredDespachosCount : despachosCount }} despachos{{ filteredDespachosCount > 0 && filteredDespachosCount !== despachosCount ? ' filtrados' : '' }})
+              </div>
+              <div class="flex items-center gap-2">
+                <button
+                  @click="prevPageDespachos"
+                  :disabled="currentPageDespachos === 1 || loadingDespachos || (procesoStore.loading && procesoStore.currentStep === 'migrar')"
+                  class="px-4 py-2 border border-white/30 bg-white/60 backdrop-blur-sm rounded-xl hover:bg-white/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 text-sm font-medium shadow-md hover:shadow-lg"
+                >
+                  Anterior
+                </button>
+                <span class="px-4 py-2 text-sm text-gray-700 bg-white/40 backdrop-blur-sm rounded-xl border border-white/20">
+                  Página {{ currentPageDespachos }} de {{ totalPagesDespachos }}
+                </span>
+                <button
+                  @click="nextPageDespachos"
+                  :disabled="currentPageDespachos === totalPagesDespachos || loadingDespachos || (procesoStore.loading && procesoStore.currentStep === 'migrar')"
+                  class="px-4 py-2 border border-white/30 bg-white/60 backdrop-blur-sm rounded-xl hover:bg-white/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 text-sm font-medium shadow-md hover:shadow-lg"
+                >
+                  Siguiente
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </template>
@@ -637,6 +667,9 @@ const despachosCount = ref(0)
 const despachos = ref<Despacho[]>([])
 const loadingDespachos = ref(false)
 const initialSearchDespacho = ref<string>('')
+const currentPageDespachos = ref(1)
+const pageSizeDespachos = ref(10)
+const filteredDespachosCount = ref(0)
 
 // Estado para eliminación
 const eliminando = ref(false)
@@ -758,7 +791,8 @@ async function verificarDespachos() {
 async function cargarDespachos() {
   loadingDespachos.value = true
   try {
-    const response = await mba3ConsultasService.getDespachos(1, 100)
+    // Cargar todos los despachos (el backend devuelve todos)
+    const response = await mba3ConsultasService.getDespachos(1, 1000)
     despachos.value = response.data || []
     
     // Actualizar el conteo con el valor más confiable disponible
@@ -770,12 +804,49 @@ async function cargarDespachos() {
     } else if (response.total !== undefined) {
       despachosCount.value = response.total
     }
+    
+    // Resetear el conteo filtrado (se actualizará cuando DespachosTable emita el evento)
+    filteredDespachosCount.value = 0
+    
+    // Resetear a la primera página
+    currentPageDespachos.value = 1
   } catch (error: any) {
     console.error('Error al cargar despachos:', error)
     toast.error('Error al cargar despachos', error.message || 'No se pudieron cargar los despachos')
     despachos.value = []
+    filteredDespachosCount.value = 0
   } finally {
     loadingDespachos.value = false
+  }
+}
+
+// Computed para total de páginas de despachos
+// Usar el conteo de despachos filtrados para calcular las páginas correctamente
+const totalPagesDespachos = computed(() => {
+  const count = filteredDespachosCount.value > 0 ? filteredDespachosCount.value : despachosCount.value
+  return Math.ceil(count / pageSizeDespachos.value)
+})
+
+// Función para manejar el cambio en el conteo de despachos filtrados
+function handleFilteredCountChanged(count: number) {
+  filteredDespachosCount.value = count
+  // Resetear a la primera página si estamos en una página que ya no existe
+  const totalPages = Math.ceil(count / pageSizeDespachos.value)
+  if (currentPageDespachos.value > totalPages && totalPages > 0) {
+    currentPageDespachos.value = 1
+  }
+}
+
+// Funciones de paginación para despachos
+function prevPageDespachos() {
+  if (currentPageDespachos.value > 1) {
+    currentPageDespachos.value--
+  }
+}
+
+function nextPageDespachos() {
+  if (currentPageDespachos.value < totalPagesDespachos.value) {
+    currentPageDespachos.value++
   }
 }
 

@@ -7,7 +7,9 @@
         <div class="flex items-center gap-3">
           <h2 class="text-lg font-semibold text-gray-900">Despachos</h2>
           <span class="px-3 py-1 bg-violet-600 text-white rounded-full text-sm font-medium">
-            {{ filteredDespachos.length }} de {{ totalDespachos || 0 }} despachos
+            {{ (props.currentPage !== undefined && props.pageSize !== undefined && props.currentPage > 0 && props.pageSize > 0)
+              ? `${sortedDespachos.length} de ${filteredDespachos.length} (${totalDespachos || 0} total)` 
+              : `${filteredDespachos.length} de ${totalDespachos || 0} despachos` }}
           </span>
           <span v-if="selectedDespachos.length > 0" class="px-3 py-1 bg-violet-600 text-white rounded-full text-sm font-medium">
             {{ selectedDespachos.length }} seleccionados
@@ -472,11 +474,14 @@ const props = defineProps<{
   processing?: boolean
   ordenesCompra?: Array<{ despacho_id?: string; referencia_despacho?: string }>
   initialSearch?: string
+  currentPage?: number
+  pageSize?: number
 }>()
 
 const emit = defineEmits<{
   'generar-odc': [despachoId: string]
   'generar-odc-multiples': [despachoIds: string[]]
+  'filtered-count-changed': [count: number]
 }>()
 
 const toast = useToast()
@@ -709,6 +714,9 @@ const sortDirection = ref<'asc' | 'desc'>('asc')
 // Computed
 
 const filteredDespachos = computed(() => {
+  if (!props.despachos || !Array.isArray(props.despachos)) {
+    return []
+  }
   let filtered = [...props.despachos]
   
   // Búsqueda por texto
@@ -761,39 +769,64 @@ const filteredDespachos = computed(() => {
 })
 
 const sortedDespachos = computed(() => {
-  if (!sortField.value) return filteredDespachos.value
+  let sorted: Despacho[]
   
-  const sorted = [...filteredDespachos.value]
-  sorted.sort((a, b) => {
-    const aValue = a[sortField.value as keyof Despacho]
-    const bValue = b[sortField.value as keyof Despacho]
-    
-    if (aValue === null || aValue === undefined) return 1
-    if (bValue === null || bValue === undefined) return -1
-    
-    if (typeof aValue === 'string' && typeof bValue === 'string') {
-      return sortDirection.value === 'asc' 
-        ? aValue.localeCompare(bValue)
-        : bValue.localeCompare(aValue)
-    }
-    
-    if (typeof aValue === 'number' && typeof bValue === 'number') {
-      return sortDirection.value === 'asc' 
-        ? aValue - bValue
-        : bValue - aValue
-    }
-    
-    if (typeof aValue === 'boolean' && typeof bValue === 'boolean') {
-      return sortDirection.value === 'asc' 
-        ? (aValue === bValue ? 0 : aValue ? 1 : -1)
-        : (aValue === bValue ? 0 : aValue ? -1 : 1)
-    }
-    
-    return 0
-  })
+  if (!sortField.value) {
+    sorted = [...filteredDespachos.value]
+  } else {
+    sorted = [...filteredDespachos.value]
+    sorted.sort((a, b) => {
+      const aValue = a[sortField.value as keyof Despacho]
+      const bValue = b[sortField.value as keyof Despacho]
+      
+      if (aValue === null || aValue === undefined) return 1
+      if (bValue === null || bValue === undefined) return -1
+      
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        return sortDirection.value === 'asc' 
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue)
+      }
+      
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return sortDirection.value === 'asc' 
+          ? aValue - bValue
+          : bValue - aValue
+      }
+      
+      if (typeof aValue === 'boolean' && typeof bValue === 'boolean') {
+        return sortDirection.value === 'asc' 
+          ? (aValue === bValue ? 0 : aValue ? 1 : -1)
+          : (aValue === bValue ? 0 : aValue ? -1 : 1)
+      }
+      
+      return 0
+    })
+  }
+  
+  // Aplicar paginación si se proporcionan los parámetros
+  if (props.currentPage !== undefined && props.pageSize !== undefined && props.currentPage > 0 && props.pageSize > 0) {
+    const start = (props.currentPage - 1) * props.pageSize
+    const end = start + props.pageSize
+    return sorted.slice(start, end)
+  }
   
   return sorted
 })
+
+// Watch para emitir el conteo de despachos filtrados cuando cambie
+// Debe estar después de la definición de filteredDespachos
+watch(() => filteredDespachos.value, (newFiltered) => {
+  try {
+    if (newFiltered && Array.isArray(newFiltered)) {
+      emit('filtered-count-changed', newFiltered.length)
+    } else {
+      emit('filtered-count-changed', 0)
+    }
+  } catch (error) {
+    console.warn('Error al emitir conteo de despachos filtrados:', error)
+  }
+}, { immediate: true })
 
 // Funciones
 function sortBy(field: string) {
