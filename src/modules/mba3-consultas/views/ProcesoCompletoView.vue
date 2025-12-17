@@ -632,12 +632,9 @@ const almacenDestino = ref<string>('')
 
 // Lista de almacenes disponibles según iniciales del SKU
 const almacenesDisponibles = ref([
-  { codigo: 'RL', nombre: 'Retail' },
-  { codigo: 'OUT', nombre: 'Outlet' },
-  { codigo: 'LP', nombre: 'Lima Plaza' },
-  { codigo: 'CC', nombre: 'Centro Comercial' },
-  { codigo: 'WH', nombre: 'Warehouse' },
-  { codigo: 'ST', nombre: 'Store' }
+  { codigo: 'RL-CD', nombre: 'Roland' },
+  { codigo: 'RG-CD', nombre: 'Regions' },
+  { codigo: 'OUT-CD', nombre: 'Descuentón' }
 ])
 
 // Referencia al componente de tabla de órdenes de compra

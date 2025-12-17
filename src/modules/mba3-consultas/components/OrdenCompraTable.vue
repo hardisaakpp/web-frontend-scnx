@@ -376,7 +376,9 @@
                   <button 
                     @click="handleIntegrar(oc.referencia_despacho, oc.oc_id)" 
                     class="px-3 py-1.5 bg-emerald-600 text-white rounded-l-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
-                    :disabled="loading || sendingOcId === oc.oc_id"
+                    :class="!selectedAlmacen[oc.oc_id] ? 'cursor-not-allowed opacity-50' : ''"
+                    :disabled="loading || sendingOcId === oc.oc_id || !selectedAlmacen[oc.oc_id]"
+                    :title="!selectedAlmacen[oc.oc_id] ? 'Debes seleccionar un almacén primero' : 'Enviar a SAP'"
                   >
                     {{ sendingOcId === oc.oc_id ? 'Enviando...' : 'Enviar' }}
                   </button>
@@ -385,8 +387,9 @@
                   <button 
                     @click.stop="toggleDropdown(oc.oc_id, $event)"
                     class="px-2 py-1.5 bg-emerald-600 text-white rounded-r-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed border-l border-emerald-500/50 flex items-center"
+                    :class="!selectedAlmacen[oc.oc_id] ? 'bg-orange-600 hover:bg-orange-700 animate-pulse' : ''"
                     :disabled="loading || sendingOcId === oc.oc_id"
-                    :title="selectedAlmacen[oc.oc_id] ? `Almacén: ${selectedAlmacen[oc.oc_id]}` : 'Seleccionar almacén destino (opcional)'"
+                    :title="selectedAlmacen[oc.oc_id] ? `Almacén: ${selectedAlmacen[oc.oc_id]}` : 'Seleccionar almacén (obligatorio)'"
                   >
                     <svg 
                       class="w-3.5 h-3.5 transition-transform duration-200" 
@@ -400,10 +403,13 @@
                   </button>
                 </div>
                 
-                <!-- Indicador visual de almacén seleccionado -->
-                <div v-if="selectedAlmacen[oc.oc_id]" class="absolute -bottom-1 left-0 right-0 flex justify-center pointer-events-none">
-                  <span class="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-medium rounded-full border border-emerald-200 whitespace-nowrap">
+                <!-- Indicador visual de almacén seleccionado o requerido -->
+                <div class="absolute -bottom-1 left-0 right-0 flex justify-center pointer-events-none">
+                  <span v-if="selectedAlmacen[oc.oc_id]" class="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-medium rounded-full border border-emerald-200 whitespace-nowrap">
                     {{ selectedAlmacen[oc.oc_id] }}
+                  </span>
+                  <span v-else class="px-1.5 py-0.5 bg-orange-100 text-orange-700 text-xs font-semibold rounded-full border border-orange-200 whitespace-nowrap">
+                    Requerido
                   </span>
                 </div>
               </div>
@@ -423,39 +429,24 @@
       :style="{ 
         top: `${dropdownPosition.top}px`, 
         left: `${dropdownPosition.left}px`,
-        width: '220px'
+        minWidth: '160px',
+        maxWidth: '240px',
+        width: 'fit-content'
       }"
       @click.stop
     >
       <!-- Header del dropdown -->
-      <div class="px-3 py-1.5 bg-gradient-to-r from-emerald-50 to-emerald-100/50 border-b border-emerald-200">
-        <p class="text-xs font-semibold text-emerald-800 uppercase tracking-wide">Almacén</p>
+      <div class="px-3 py-1.5 bg-gradient-to-r from-orange-50 to-orange-100/50 border-b border-orange-200">
+        <p class="text-xs font-semibold text-orange-800 uppercase tracking-wide flex items-center gap-1">
+          <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+          </svg>
+          Almacén (Requerido)
+        </p>
       </div>
       
       <!-- Opciones del dropdown -->
       <div class="py-0.5 max-h-64 overflow-y-auto">
-        <!-- Opción sin almacén -->
-        <button
-          @click="selectAlmacen(openDropdownId, '')"
-          class="w-full text-left px-3 py-1.5 hover:bg-emerald-50 transition-colors flex items-center group"
-          :class="!selectedAlmacen[openDropdownId] ? 'bg-emerald-50' : ''"
-        >
-          <span class="flex items-center gap-2 w-full">
-            <span class="w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0"
-                  :class="!selectedAlmacen[openDropdownId] ? 'border-emerald-600 bg-emerald-600' : 'border-gray-300'">
-              <svg v-if="!selectedAlmacen[openDropdownId]" class="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-              </svg>
-            </span>
-            <span class="text-xs truncate"
-                  :class="!selectedAlmacen[openDropdownId] ? 'text-emerald-700 font-semibold' : 'text-gray-600 italic'">
-              Sin almacén
-            </span>
-          </span>
-        </button>
-        
-        <div class="my-0.5 border-t border-gray-200"></div>
-        
         <!-- Lista de almacenes -->
         <button
           v-for="almacen in almacenesDisponibles"
@@ -530,12 +521,9 @@ const dropdownPosition = ref({ top: 0, left: 0 }) // Posición calculada del dro
 
 // Lista de almacenes disponibles
 const almacenesDisponibles = [
-  { codigo: 'RL', nombre: 'Retail' },
-  { codigo: 'OUT', nombre: 'Outlet' },
-  { codigo: 'LP', nombre: 'Lima Plaza' },
-  { codigo: 'CC', nombre: 'Centro Comercial' },
-  { codigo: 'WH', nombre: 'Warehouse' },
-  { codigo: 'ST', nombre: 'Store' }
+  { codigo: 'RL-CD', nombre: 'Roland' },
+  { codigo: 'RG-CD', nombre: 'Regions' },
+  { codigo: 'OUT-CD', nombre: 'Descuentón' }
 ]
 
 // Búsqueda y filtros
@@ -950,12 +938,18 @@ async function handleIntegrar(referenciaDespacho: string, ocId: string) {
     return
   }
   
+  // Validar que haya un almacén seleccionado (obligatorio)
+  const almacen = selectedAlmacen.value[ocId]
+  if (!almacen) {
+    toast.warning('Almacén requerido', 'Debes seleccionar un almacén destino antes de enviar la ODC')
+    return
+  }
+  
   try {
     sendingOcId.value = ocId
     // Cerrar dropdown si está abierto
     openDropdownId.value = null
-    // Pasar el almacén destino seleccionado (si existe)
-    const almacen = selectedAlmacen.value[ocId] || undefined
+    // Pasar el almacén destino seleccionado (obligatorio)
     emit('integrar', referenciaDespacho, almacen)
     // El estado se limpiará cuando el componente padre termine la operación
     // Pero como no podemos saber cuándo termina directamente, lo hacemos después de un pequeño delay
@@ -974,9 +968,11 @@ function toggleDropdown(ocId: string, event: MouseEvent) {
     const container = button.closest('.relative') as HTMLElement
     const containerRect = container?.getBoundingClientRect() || button.getBoundingClientRect()
     
-    // Dimensiones del dropdown
-    const dropdownWidth = 220
-    const dropdownHeight = 280 // Altura máxima estimada (256px max-h + padding/border)
+    // Dimensiones del dropdown (estimadas, se ajustarán al contenido)
+    const dropdownMaxWidth = 200 // Ancho máximo estimado
+    // Altura estimada más precisa: max-h-64 (256px) + header (~28px) + padding (~8px) = ~292px
+    const dropdownHeight = 250 // Altura estimada más realista
+    const gap = 2 // Espacio mínimo entre el botón y el dropdown (consistente arriba/abajo)
     
     // Dimensiones de la ventana con márgenes de seguridad
     const windowWidth = window.innerWidth
@@ -993,7 +989,7 @@ function toggleDropdown(ocId: string, event: MouseEvent) {
     // Decidir si mostrar arriba o abajo según el espacio disponible
     if (spaceBelow >= dropdownHeight || spaceBelow >= spaceAbove) {
       // Hay suficiente espacio abajo O más espacio abajo que arriba
-      top = containerRect.bottom + 4
+      top = containerRect.bottom + gap
       
       // Verificar si aún así se sale por abajo
       if (top + dropdownHeight > windowHeight - margin) {
@@ -1001,7 +997,8 @@ function toggleDropdown(ocId: string, event: MouseEvent) {
       }
     } else {
       // Más espacio arriba, mostrar el dropdown encima del botón
-      top = containerRect.top - dropdownHeight - 4
+      // Usar la altura estimada más pequeña para que se pegue mejor
+      top = containerRect.top - dropdownHeight - gap
       
       // Verificar si se sale por arriba
       if (top < margin) {
@@ -1010,8 +1007,9 @@ function toggleDropdown(ocId: string, event: MouseEvent) {
     }
     
     // Ajustar posición horizontal si se sale de los bordes
-    if (left + dropdownWidth > windowWidth - margin) {
-      left = windowWidth - dropdownWidth - margin
+    // (el ancho real se ajustará al contenido, usamos el máximo para verificar)
+    if (left + dropdownMaxWidth > windowWidth - margin) {
+      left = windowWidth - dropdownMaxWidth - margin
     }
     
     if (left < margin) {
