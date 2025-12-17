@@ -274,13 +274,16 @@
               </td>
               <!-- Indicador visual de problemas (icono) - Siempre presente para mantener alineación -->
               <td class="px-2 py-4 whitespace-nowrap w-8 text-center align-middle">
-                <div class="flex items-center justify-center">
+                <div 
+                  class="flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
+                  @click.stop="navegarAHomologaciones(despacho)"
+                  :title="hasRowIssues(despacho).hasErrors ? 'Error crítico - Click para ver homologaciones' : hasRowIssues(despacho).hasWarnings ? 'Advertencia - Click para ver homologaciones' : ''"
+                >
                   <svg 
                     v-if="hasRowIssues(despacho).hasErrors"
                     class="w-5 h-5 text-red-600" 
                     fill="currentColor" 
                     viewBox="0 0 20 20"
-                    title="Error crítico"
                   >
                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
                   </svg>
@@ -289,7 +292,6 @@
                     class="w-5 h-5 text-amber-600" 
                     fill="currentColor" 
                     viewBox="0 0 20 20"
-                    title="Advertencia"
                   >
                     <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
                   </svg>
@@ -384,13 +386,16 @@
                         >
                           <!-- Indicador visual de problemas en detalle (icono) - Siempre presente para mantener alineación -->
                           <td class="px-2 py-2 whitespace-nowrap w-8 text-center align-middle">
-                            <div class="flex items-center justify-center">
+                            <div 
+                              class="flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
+                              @click.stop="navegarAHomologacionesPorSKU(detalle.sku)"
+                              :title="hasDetalleIssues(detalle).hasErrors ? `Error crítico - Click para editar SKU ${detalle.sku}` : hasDetalleIssues(detalle).hasWarnings ? `Advertencia - Click para editar SKU ${detalle.sku}` : ''"
+                            >
                               <svg 
                                 v-if="hasDetalleIssues(detalle).hasErrors"
                                 class="w-4 h-4 text-red-600" 
                                 fill="currentColor" 
                                 viewBox="0 0 20 20"
-                                title="Error crítico"
                               >
                                 <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
                               </svg>
@@ -399,7 +404,6 @@
                                 class="w-4 h-4 text-amber-600" 
                                 fill="currentColor" 
                                 viewBox="0 0 20 20"
-                                title="Advertencia"
                               >
                                 <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
                               </svg>
@@ -457,15 +461,28 @@
         </tbody>
       </table>
     </div>
+
+    <!-- Modal de edición de homologación -->
+    <HomologacionModal
+      :is-open="modalAbierto"
+      :homologacion="homologacionSeleccionada"
+      :loading="guardando"
+      @close="cerrarModal"
+      @submit="guardarHomologacion"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import type { Despacho, DespachoDetalle } from '../types'
+import type { SkuHomologacion, SkuHomologacionUpdateRequest } from '../types'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import { useToast } from '@/composables/useToast'
 import { useTablePreferences } from '@/composables/useTablePreferences'
+import { useHomologacionesStore } from '../stores/homologacionesStore'
+import HomologacionModal from './HomologacionModal.vue'
 
 const props = defineProps<{
   despachos: Despacho[]
@@ -484,7 +501,14 @@ const emit = defineEmits<{
   'filtered-count-changed': [count: number]
 }>()
 
+const router = useRouter()
 const toast = useToast()
+const homologacionesStore = useHomologacionesStore()
+
+// Estado para el modal de homologación
+const modalAbierto = ref(false)
+const homologacionSeleccionada = ref<SkuHomologacion | null>(null)
+const guardando = ref(false)
 
 // Estado para detalles expandidos
 const detallesExpandidos = ref<Set<string>>(new Set())
@@ -1433,5 +1457,111 @@ function getDetalleTooltip(detalle: DespachoDetalle): string {
   }
   
   return ''
+}
+
+// Función para abrir modal de homologación desde el despacho
+async function navegarAHomologaciones(despacho: Despacho) {
+  // Buscar si hay detalles con problemas de SKU en este despacho
+  const detalles = detallesPorDespacho.value[despacho.despacho_id] || despacho.despacho_detalles || []
+  const detalleConProblemas = detalles.find((d: DespachoDetalle) => {
+    const issues = hasDetalleIssues(d)
+    return issues.hasErrors || issues.hasWarnings
+  })
+  
+  if (detalleConProblemas && detalleConProblemas.sku) {
+    await abrirModalPorSKU(detalleConProblemas.sku, detalleConProblemas, despacho.despacho_id)
+  } else {
+    toast.info('Sin problemas de SKU', 'Este despacho no tiene detalles con problemas de SKU para homologar')
+  }
+}
+
+// Función para abrir modal de homologación por SKU específico
+async function navegarAHomologacionesPorSKU(sku: string | null | undefined) {
+  if (!sku || sku.trim() === '') {
+    toast.warning('SKU no disponible', 'Este detalle no tiene SKU para buscar en homologaciones')
+    return
+  }
+  
+  // Buscar el detalle que corresponde a este SKU
+  const detalle = Object.values(detallesPorDespacho.value)
+    .flat()
+    .find((d: DespachoDetalle) => d.sku === sku.trim())
+  
+  await abrirModalPorSKU(sku.trim(), detalle || null, detalle?.despacho_id)
+}
+
+// Función auxiliar para abrir el modal con la homologación
+async function abrirModalPorSKU(sku: string, detalle: DespachoDetalle | null, despachoId?: string) {
+  try {
+    // Buscar la homologación existente por SKU
+    const response = await mba3ConsultasService.getSkuHomologaciones(1, 1, { sku })
+    
+    if (response.data && response.data.length > 0) {
+      // Si existe, usar esa homologación
+      homologacionSeleccionada.value = response.data[0]
+      modalAbierto.value = true
+    } else if (detalle) {
+      // Si no existe, crear una homologación temporal con los datos del detalle
+      homologacionSeleccionada.value = {
+        sku_mba3: detalle.sku,
+        nombre_producto_mba3: detalle.nombre_producto || '',
+        precio_unitario_mba3: detalle.precio_unitario_mba3,
+        cantidad_docena_mba3: detalle.cantidad_docena_mba3,
+        total_linea_mba3: detalle.total_linea_mba3,
+        sku_sap: detalle.sku || null,
+        nombre_producto_sap: detalle.nombre_producto || null,
+        precio_unitario_sap: detalle.precio_unitario_sap,
+        cantidad_pack_sap: detalle.cantidad_pack_sap,
+        unidad_sap: detalle.unidad_sap,
+        subtotal_sap: detalle.subtotal_sap,
+        estado: 'PENDIENTE',
+        tiene_diferencias: false,
+        tiene_datos_sap: detalle.precio_unitario_sap !== null || detalle.cantidad_pack_sap !== null || detalle.subtotal_sap !== null,
+        detalle_id: detalle.detalle_id,
+        despacho_id: despachoId || detalle.despacho_id,
+      }
+      modalAbierto.value = true
+    } else {
+      toast.warning('No se pudo crear la homologación', 'Faltan datos del detalle para crear la homologación')
+    }
+  } catch (error: any) {
+    console.error('Error al buscar homologación:', error)
+    toast.error('Error', 'No se pudo cargar la información de homologación')
+  }
+}
+
+// Función para cerrar el modal
+function cerrarModal() {
+  modalAbierto.value = false
+  homologacionSeleccionada.value = null
+}
+
+// Función para guardar la homologación
+async function guardarHomologacion(data: SkuHomologacionUpdateRequest) {
+  if (!homologacionSeleccionada.value) {
+    toast.error('Error', 'No se pudo identificar la homologación')
+    return
+  }
+
+  guardando.value = true
+  try {
+    // Si tiene homologacion_id, actualizar existente
+    if (homologacionSeleccionada.value.homologacion_id) {
+      await homologacionesStore.updateHomologacion(
+        homologacionSeleccionada.value.homologacion_id,
+        data
+      )
+      toast.success('Homologación actualizada', 'Los cambios se han guardado correctamente')
+    } else {
+      // Si no tiene ID, es una nueva homologación - necesitaríamos crear un endpoint para esto
+      // Por ahora, mostramos un mensaje informativo
+      toast.info('Homologación nueva', 'Esta es una nueva homologación. Por favor, sincroniza desde la pantalla de homologaciones para crearla.')
+    }
+    cerrarModal()
+  } catch (error: any) {
+    toast.error('Error al guardar', error.message)
+  } finally {
+    guardando.value = false
+  }
 }
 </script>

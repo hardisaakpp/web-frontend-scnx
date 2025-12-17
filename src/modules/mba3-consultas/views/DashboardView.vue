@@ -43,7 +43,7 @@
     </div>
 
     <!-- Acciones Rápidas -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       <!-- Panel de Procesos -->
       <div class="bg-white rounded-lg shadow-lg p-6 border border-gray-200 flex flex-col h-full">
         <div class="flex items-center justify-between mb-4">
@@ -152,6 +152,43 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
           <span>Ver Remisiones</span>
+        </button>
+      </div>
+
+      <!-- Panel de Homologaciones de SKU -->
+      <div class="bg-white rounded-lg shadow-lg p-6 border border-gray-200 flex flex-col h-full">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-xl font-bold text-gray-900">Homologaciones de SKU</h2>
+            <p class="text-sm text-gray-500 mt-1">Administra SKUs no coincidentes</p>
+          </div>
+          <div class="w-12 h-12 rounded-lg bg-violet-100 flex items-center justify-center flex-shrink-0">
+            <svg class="w-6 h-6 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+            </svg>
+          </div>
+        </div>
+        <div class="mb-4 flex-grow">
+          <p class="text-sm text-gray-600 mb-3">
+            Administra las homologaciones de SKU que no coinciden entre MBA3 y SAP. Visualiza información de ambos sistemas y realiza modificaciones cuando los datos de SAP sean incompletos, nulos o diferentes.
+          </p>
+          <div class="flex items-center gap-2 text-xs text-gray-500">
+            <div class="flex items-center gap-1">
+              <svg class="w-4 h-4 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <span>Comparación MBA3 vs SAP</span>
+            </div>
+          </div>
+        </div>
+        <button
+          @click="$router.push('/mba3-consultas/homologaciones')"
+          class="w-full px-4 py-3 bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-lg hover:from-violet-700 hover:to-purple-700 transition-all font-semibold flex items-center justify-center gap-2 shadow-md hover:shadow-lg mt-auto"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+          </svg>
+          <span>Gestionar Homologaciones</span>
         </button>
       </div>
     </div>

@@ -44,6 +44,17 @@ const routes: RouteRecordRaw[] = [
       icon: 'DocumentIcon',
       permissions: ['mba3-consultas.view']
     }
+  },
+  {
+    path: '/mba3-consultas/homologaciones',
+    name: 'mba3-consultas-homologaciones',
+    component: () => import('./views/HomologacionesView.vue'),
+    meta: { 
+      requiresAuth: true,
+      title: 'Homologaciones de SKU',
+      icon: 'LinkIcon',
+      permissions: ['mba3-consultas.view']
+    }
   }
 ]
 

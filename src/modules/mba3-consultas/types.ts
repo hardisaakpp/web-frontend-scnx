@@ -1,6 +1,27 @@
 // Tipos consolidados para el módulo MBA3 Consultas
 
-// ========== Despachos ==========
+// ========== Prefacturas/Despachos ==========
+export interface Prefactura {
+  CODIGO_FACTURA: string
+  ANULADA: string
+  NUMERO_PEDIDO_SISTEMA: string
+  NUMERO_ORDEN: string
+  NUMERO_FACTURA: string
+  CODIGO_DESPACHO: string
+  EMPRESA: string
+  CODIGO_CLIENTE: string
+  FECHA_FACTURA: string
+  TIPO_DOCUMENTO: string
+  ObjDatosFactura: string | null
+  ORDEN_COMPRA: string | null
+  ORDEN_COMPRA_CLIENTE: string | null
+  Remision_Facturada: string
+  NumIDFacturaRelacionada: string | null
+  CONFIRMADO: string
+  CODIGO_BODEGA: string
+}
+
+// ========== Despacho (desde BD) ==========
 export interface Despacho {
   despacho_id: string
   empresa: string
@@ -24,8 +45,6 @@ export interface Despacho {
   despacho_created_at: string
   despacho_updated_at: string
   despacho_detalles?: DespachoDetalle[] // Detalles incluidos en la respuesta
-  tiene_odc?: boolean // Indica si el despacho tiene una orden de compra asociada (desde backend)
-  oc_id?: string | null // ID de la orden de compra asociada (desde backend)
 }
 
 // ========== Despacho Detalle (desde BD) ==========
@@ -44,6 +63,29 @@ export interface DespachoDetalle {
   nombre_producto: string
   tipo_linea: string
   precio_unitario_sap: number | null
+}
+
+export interface PrefacturaFilters {
+  anulada?: boolean | null
+  confirmado?: boolean | null
+  remision_facturada?: boolean | null
+  include_obj_datos?: boolean
+  save_to_db?: boolean
+}
+
+export interface PrefacturaResponse {
+  status: string
+  data: Prefactura[]
+  metadata: {
+    count: number
+    filters: PrefacturaFilters
+    save_status?: {
+      status: string
+      prefacturas_guardadas: number
+      prefacturas_actualizadas: number
+      total_detalles: number
+    }
+  }
 }
 
 // ========== Órdenes de Compra ==========
@@ -190,53 +232,12 @@ export interface ProcesoResponse {
   }
 }
 
-// ========== Remisiones ==========
-export interface Remision {
-  codigo_factura?: string
-  CODIGO_FACTURA?: string
-  anulada?: boolean
-  ANULADA?: boolean
-  numero_pedido_sistema?: number | null
-  NUMERO_PEDIDO_SISTEMA?: number | null
-  numero_orden?: number | null
-  NUMERO_ORDEN?: number | null
-  factura_impresa?: boolean
-  FACTURA_IMPRESA?: boolean
-  numero_factura?: number | null
-  NUMERO_FACTURA?: number
-  empresa?: string
-  EMPRESA?: string
-  codigo_cliente?: string
-  CODIGO_CLIENTE?: string
-  fecha_factura?: string | null
-  FECHA_FACTURA?: string | null
-  tipo_documento?: string
-  TIPO_DOCUMENTO?: string
-  obj_datos_factura?: any | null
-  ObjDatosFactura?: null
-  orden_compra?: string | null
-  ORDEN_COMPRA?: string | null
-  orden_compra_cliente?: string | null
-  ORDEN_COMPRA_CLIENTE?: string | null
-  remision_facturada?: boolean
-  Remision_Facturada?: boolean
-  confirmado?: boolean
-  CONFIRMADO?: boolean
-  // Helper getters para acceder a los valores sin importar el formato
-  [key: string]: any
-}
-
-export interface RemisionResponse {
-  status: string
-  data: Remision[]
-  metadata?: {
-    count: number
-    filters?: Record<string, any>
-  }
-  total?: number
-  page?: number
-  pageSize?: number
-  totalPages?: number
+// ========== Estado del Módulo ==========
+export interface Mba3ConsultasState {
+  prefacturas: Prefactura[]
+  ordenesCompra: OrdenCompra[]
+  loading: boolean
+  error: string | null
 }
 
 // ========== Componentes ==========

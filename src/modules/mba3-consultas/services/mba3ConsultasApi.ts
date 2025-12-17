@@ -6,6 +6,7 @@ import type {
 } from '../types'
 import type { OrdenCompraResponse, OrdenCompraLogResponse, RemisionResponse } from '../types'
 import type { HealthResponse, ProcesoResponse } from '../types'
+import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest } from '../types'
 
 // Usar la URL base del backend MBA3
 const API_BASE_URL = import.meta.env.VITE_MBA3_API_BASE_URL || 'http://localhost:8000'
@@ -199,7 +200,8 @@ export const mba3ConsultasService = {
 
   // Integrar SAP (una o múltiples ODCs)
   // referenciaDespacho: string | string[] | undefined - Si se proporciona, integra solo esas ODCs
-  async integrarSAP(referenciaDespacho?: string | string[]): Promise<any> {
+  // almacenDestino: string | undefined - Código del almacén destino (ej: RL, OUT, LP)
+  async integrarSAP(referenciaDespacho?: string | string[], almacenDestino?: string): Promise<any> {
     const params = new URLSearchParams()
     
     if (referenciaDespacho) {
@@ -210,6 +212,11 @@ export const mba3ConsultasService = {
         // Si es un solo valor
         params.append('referencia_despacho', referenciaDespacho)
       }
+    }
+    
+    // Agregar almacén destino si se proporciona
+    if (almacenDestino) {
+      params.append('almacen_destino', almacenDestino)
     }
     
     const queryString = params.toString()
@@ -406,6 +413,85 @@ export const mba3ConsultasService = {
     } catch (error: any) {
       console.error('❌ [consultarRemisionesDesdeMBA3] Error al consultar remisiones desde MBA3:', error)
       throw new Error(`No se pudieron consultar las remisiones desde MBA3. Error: ${error.message}`)
+    }
+  },
+
+  // ========== Homologaciones de SKU ==========
+  
+  // Obtener homologaciones de SKU con filtros
+  async getSkuHomologaciones(
+    page: number = 1,
+    pageSize: number = 10,
+    filters?: {
+      estado?: string
+      tiene_diferencias?: boolean
+      tiene_datos_sap?: boolean
+      sku?: string
+    }
+  ): Promise<SkuHomologacionResponse> {
+    try {
+      const params = new URLSearchParams()
+      params.append('page', page.toString())
+      params.append('pageSize', pageSize.toString())
+      
+      if (filters?.estado) {
+        params.append('estado', filters.estado)
+      }
+      if (filters?.tiene_diferencias !== undefined) {
+        params.append('tiene_diferencias', filters.tiene_diferencias.toString())
+      }
+      if (filters?.tiene_datos_sap !== undefined) {
+        params.append('tiene_datos_sap', filters.tiene_datos_sap.toString())
+      }
+      if (filters?.sku) {
+        params.append('sku', filters.sku)
+      }
+      
+      const queryString = params.toString()
+      const url = queryString ? `/api/homologaciones-sku?${queryString}` : '/api/homologaciones-sku'
+      const response = await mba3Api.get<SkuHomologacionResponse>(url)
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [getSkuHomologaciones] Error al obtener homologaciones:', error)
+      throw new Error(`No se pudieron obtener las homologaciones de SKU. Error: ${error.message}`)
+    }
+  },
+
+  // Actualizar una homologación de SKU
+  async updateSkuHomologacion(
+    homologacionId: string,
+    updateData: SkuHomologacionUpdateRequest
+  ): Promise<any> {
+    try {
+      const response = await mba3Api.put(`/api/homologaciones-sku/${homologacionId}`, updateData)
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [updateSkuHomologacion] Error al actualizar homologación:', error)
+      throw new Error(`No se pudo actualizar la homologación. Error: ${error.message}`)
+    }
+  },
+
+  // Crear o actualizar múltiples homologaciones
+  async bulkUpdateSkuHomologaciones(
+    updates: Array<{ homologacion_id: string; data: SkuHomologacionUpdateRequest }>
+  ): Promise<any> {
+    try {
+      const response = await mba3Api.post('/api/homologaciones-sku/bulk-update', { updates })
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [bulkUpdateSkuHomologaciones] Error al actualizar homologaciones:', error)
+      throw new Error(`No se pudieron actualizar las homologaciones. Error: ${error.message}`)
+    }
+  },
+
+  // Sincronizar homologaciones desde despachos (detectar SKUs no coincidentes)
+  async sincronizarHomologaciones(): Promise<any> {
+    try {
+      const response = await mba3Api.post('/api/homologaciones-sku/sincronizar')
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [sincronizarHomologaciones] Error al sincronizar homologaciones:', error)
+      throw new Error(`No se pudieron sincronizar las homologaciones. Error: ${error.message}`)
     }
   },
 }

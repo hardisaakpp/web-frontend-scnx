@@ -384,74 +384,13 @@
                 <svg v-else class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-            </div>
-            </div>
+              </div>
+              </div>
               <div class="relative z-10">
                 <h3 class="text-lg font-semibold mb-1">{{ getStepTitle('procesar-oc') }}</h3>
                 <p class="text-sm text-gray-600">{{ getStepDescription('procesar-oc') }}</p>
+              </div>
             </div>
-          </div>
-          
-          <button
-            @click="ejecutarIntegrarSAPDesdeProcesarOC"
-            :disabled="procesoStore.loading || !puedeEnviarOCaSAP || (procesoStore.loading && procesoStore.currentStep === 'migrar')"
-            class="px-6 py-3 rounded-xl font-medium transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden backdrop-blur-md shadow-lg hover:shadow-xl"
-            :class="[
-              getButtonClass('procesar-oc'),
-              procesoStore.loading && (procesoStore.currentStep === 'integrar-sap' || procesoStore.currentStep === 'procesar-oc') ? 'animate-pulse' : ''
-            ]"
-          >
-            <!-- Efecto de ondas animadas cuando está cargando -->
-            <div v-if="procesoStore.loading && (procesoStore.currentStep === 'integrar-sap' || procesoStore.currentStep === 'procesar-oc')" 
-                 class="absolute inset-0 overflow-hidden">
-              <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
-            </div>
-            
-            <!-- Barra de progreso animada -->
-            <div v-if="procesoStore.loading && (procesoStore.currentStep === 'integrar-sap' || procesoStore.currentStep === 'procesar-oc')" 
-                 class="absolute bottom-0 left-0 right-0 h-1 bg-white/20 overflow-hidden">
-              <div class="h-full bg-gradient-to-r from-emerald-300 via-emerald-400 to-emerald-300 animate-progress-bar"></div>
-            </div>
-            
-            <!-- Efecto de partículas/puntos animados -->
-            <div v-if="procesoStore.loading && (procesoStore.currentStep === 'integrar-sap' || procesoStore.currentStep === 'procesar-oc')" 
-                 class="absolute inset-0 pointer-events-none">
-              <div class="absolute top-1/2 left-1/4 w-2 h-2 bg-white/60 rounded-full animate-bounce" style="animation-delay: 0s; animation-duration: 1s;"></div>
-              <div class="absolute top-1/2 left-1/2 w-2 h-2 bg-white/60 rounded-full animate-bounce" style="animation-delay: 0.3s; animation-duration: 1s;"></div>
-              <div class="absolute top-1/2 left-3/4 w-2 h-2 bg-white/60 rounded-full animate-bounce" style="animation-delay: 0.6s; animation-duration: 1s;"></div>
-            </div>
-            
-            <div class="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
-            <span class="relative z-10 flex items-center justify-center gap-2">
-              <span v-if="procesoStore.loading && (procesoStore.currentStep === 'integrar-sap' || procesoStore.currentStep === 'procesar-oc')" class="flex items-center justify-center gap-2">
-                <!-- Spinner mejorado con múltiples círculos -->
-                <div class="relative w-5 h-5">
-                  <svg class="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <!-- Círculo exterior animado -->
-                  <div class="absolute inset-0 border-2 border-white/30 rounded-full animate-ping"></div>
-                </div>
-                <span class="font-semibold">Procesando...</span>
-              </span>
-              <span v-else-if="getStepStatus('integrar-sap') === 'completed'" class="flex items-center gap-2">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                </svg>
-                Completado
-              </span>
-              <span v-else-if="!puedeEnviarOCaSAP">
-                {{ ordenesCompraStore.pendientes === 0 ? 'Sin órdenes pendientes' : 'Sin órdenes disponibles' }}
-            </span>
-              <span v-else class="flex items-center gap-2">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-                Enviar ODC a SAP
-              </span>
-            </span>
-          </button>
           </div>
 
           <!-- Barra de progreso para Procesar ODC / Integrar SAP -->
@@ -688,6 +627,19 @@ const progresoEliminar = ref(0)
 const generandoODC = ref(false)
 const progresoGenerarODC = ref(0)
 
+// Estado para almacén destino
+const almacenDestino = ref<string>('')
+
+// Lista de almacenes disponibles según iniciales del SKU
+const almacenesDisponibles = ref([
+  { codigo: 'RL', nombre: 'Retail' },
+  { codigo: 'OUT', nombre: 'Outlet' },
+  { codigo: 'LP', nombre: 'Lima Plaza' },
+  { codigo: 'CC', nombre: 'Centro Comercial' },
+  { codigo: 'WH', nombre: 'Warehouse' },
+  { codigo: 'ST', nombre: 'Store' }
+])
+
 // Referencia al componente de tabla de órdenes de compra
 const ordenCompraTableRef = ref<{ 
   clearSendingState?: () => void
@@ -747,14 +699,6 @@ const tabs = computed<Tab[]>(() => {
 const hayOrdenesCompra = computed(() => {
   const totalODCs = ordenesCompraStore.pendientes + ordenesCompraStore.enviadas + ordenesCompraStore.errores
   return totalODCs > 0
-})
-
-// Computed para verificar si se puede enviar ODCs a SAP (en pestaña Procesar ODC)
-const puedeEnviarOCaSAP = computed(() => {
-  // Verificar tanto las estadísticas como las órdenes cargadas en el array
-  const hayPendientesEnStats = ordenesCompraStore.pendientes > 0
-  const hayPendientesEnArray = ordenesCompraStore.ordenesCompra.some(oc => oc.estado === 'PENDIENTE')
-  return hayOrdenesCompra.value && (hayPendientesEnStats || hayPendientesEnArray)
 })
 
 // Función para cambiar de pestaña
@@ -1075,141 +1019,6 @@ async function ejecutarMigrar() {
   }
 }
 
-// Función para enviar ODCs a SAP desde la pestaña Procesar ODC
-// Envía las órdenes pendientes una por una
-async function ejecutarIntegrarSAPDesdeProcesarOC() {
-  // Verificar que no esté ya ejecutándose
-  if (procesoStore.loading || ordenesCompraStore.loading) {
-    return
-  }
-  
-  try {
-    // Obtener todas las órdenes pendientes del store
-    const ordenesPendientes = ordenesCompraStore.ordenesCompra.filter(
-      oc => oc.estado === 'PENDIENTE'
-    )
-    
-    if (ordenesPendientes.length === 0) {
-      toast.warning('No hay órdenes pendientes', 'No hay órdenes de compra pendientes para enviar')
-      return
-    }
-    
-    // Establecer loading en procesoStore para que el botón se deshabilite
-    procesoStore.loading = true
-    procesoStore.currentStep = 'integrar-sap'
-    procesoStore.progress = 0
-    
-    // Esperar a que Vue actualice el DOM para que el overlay aparezca
-    await nextTick()
-    
-    toast.info('Enviando órdenes a SAP...', `Enviando ${ordenesPendientes.length} orden(es) pendiente(s) una por una`)
-    
-    let successCount = 0
-    let errorCount = 0
-    const totalOrdenes = ordenesPendientes.length
-    
-    // Enviar cada orden una por una y actualizar estados localmente
-    for (let i = 0; i < ordenesPendientes.length; i++) {
-      const orden = ordenesPendientes[i]
-      try {
-        // ✅ ESPERAR LA RESPUESTA COMPLETA
-        const response = await mba3ConsultasService.integrarSAP(orden.referencia_despacho)
-        
-        // ✅ ACTUALIZAR ESTADO LOCAL basándose en la respuesta
-        const metadata = response?.metadata || {}
-        const detalles = metadata.detalles || []
-        
-        if (detalles.length > 0) {
-          const detalle = detalles[0]
-          const success = detalle.success === true
-          
-          // Buscar y actualizar la orden en el array local
-          const ordenIndex = ordenesCompraStore.ordenesCompra.findIndex(
-            (oc: any) => oc.referencia_despacho === orden.referencia_despacho
-          )
-          
-          if (ordenIndex !== -1) {
-            const ordenActualizada = { ...ordenesCompraStore.ordenesCompra[ordenIndex] }
-            
-            if (success) {
-              ordenActualizada.estado = 'ENVIADA'
-              ordenActualizada.numero_oc_sap = detalle.doc_num?.toString() || null
-              ordenActualizada.fecha_procesado = new Date().toISOString()
-              ordenActualizada.respuesta_sap = detalle.message || 'Enviada exitosamente'
-              successCount++
-            } else {
-              ordenActualizada.estado = 'ERROR'
-              ordenActualizada.error_message = detalle.error || 'Error desconocido'
-              ordenActualizada.fecha_procesado = new Date().toISOString()
-              ordenActualizada.respuesta_sap = detalle.error || 'Error al enviar'
-              errorCount++
-            }
-            
-            // Actualizar el array
-            ordenesCompraStore.ordenesCompra[ordenIndex] = ordenActualizada
-            ordenesCompraStore.ordenesCompra = [...ordenesCompraStore.ordenesCompra]
-            
-            console.log(`[ejecutarIntegrarSAPDesdeProcesarOC] ✅ Estado actualizado: ${orden.referencia_despacho} → ${ordenActualizada.estado}`)
-          }
-        } else {
-          successCount++
-        }
-        
-        // Actualizar progreso basado en las órdenes procesadas
-        procesoStore.progress = Math.round(((i + 1) / totalOrdenes) * 100)
-        
-        // Asegurar que Vue detecte los cambios
-        await nextTick()
-        
-        // Delay mínimo entre envíos para no saturar el servidor
-        if (i < ordenesPendientes.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 200))
-        }
-      } catch (error: any) {
-        console.error(`Error al enviar orden ${orden.referencia_despacho}:`, error)
-        errorCount++
-        // Actualizar progreso incluso si hay error
-        procesoStore.progress = Math.round(((i + 1) / totalOrdenes) * 100)
-        // Continuar con la siguiente orden aunque haya un error
-      }
-    }
-    
-    // Asegurar que el progreso esté al 100% al finalizar
-    procesoStore.progress = 100
-    
-    // Asegurar que Vue haya procesado todos los cambios
-    await nextTick()
-    
-    // Delay para que el usuario vea los cambios en la UI antes de cerrar el overlay
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    // ✅ NO REFRESCAR - Confiar en las respuestas del backend
-    // Las respuestas del backend son autoritativas y ya actualizamos los estados locales
-    // Refrescar ahora traería datos viejos del servidor que sobrescribirían nuestras actualizaciones
-    
-    // Mostrar resultado
-    if (errorCount === 0) {
-      toast.success('Integración completada', `Se han enviado ${successCount} orden(es) correctamente a SAP`)
-      procesoStore.resultados = { ...procesoStore.resultados, integrarSAP: { success: successCount } }
-    } else {
-      toast.warning(
-        'Integración parcial', 
-        `Se enviaron ${successCount} orden(es) correctamente, ${errorCount} con errores`
-      )
-    }
-  } catch (error: any) {
-    console.error('Error al integrar SAP:', error)
-    toast.error('Error en integración SAP', error.message || 'No se pudo integrar con SAP')
-    procesoStore.error = error.message || 'No se pudo integrar con SAP'
-  } finally {
-    // Pequeño delay para mostrar el 100% antes de ocultar el overlay
-    await new Promise(resolve => setTimeout(resolve, 500))
-    procesoStore.loading = false
-    procesoStore.currentStep = null
-    procesoStore.progress = 0
-  }
-}
-
 // Funciones para generar ODC individual y múltiple
 async function handleGenerarODCIndividual(despachoId: string) {
   try {
@@ -1346,7 +1155,7 @@ async function handleGenerarODCMultiples(despachoIds: string[]) {
 }
 
 // Funciones de integración individuales
-async function handleIntegrarOC(referenciaDespacho: string) {
+async function handleIntegrarOC(referenciaDespacho: string, almacenDestinoParam?: string) {
   // Verificar que no esté ya ejecutándose
   if (procesoStore.loading || ordenesCompraStore.loading) {
     return
@@ -1361,13 +1170,15 @@ async function handleIntegrarOC(referenciaDespacho: string) {
     // Esperar a que Vue actualice el DOM para que el overlay aparezca
     await nextTick()
     
-    toast.info('Enviando orden a SAP...', `Enviando ${referenciaDespacho}`)
+    const almacenMsg = almacenDestinoParam ? ` (Almacén: ${almacenDestinoParam})` : ''
+    toast.info('Enviando orden a SAP...', `Enviando ${referenciaDespacho}${almacenMsg}`)
     
     // Simular progreso mientras se envía
     procesoStore.progress = 50
     
     // ✅ ESPERAR LA RESPUESTA COMPLETA del endpoint (esto toma ~5 segundos)
-    const response = await mba3ConsultasService.integrarSAP(referenciaDespacho)
+    // Usar almacén destino del parámetro si se proporciona, sino undefined
+    const response = await mba3ConsultasService.integrarSAP(referenciaDespacho, almacenDestinoParam)
     
     // Completar el progreso
     procesoStore.progress = 100
@@ -1485,7 +1296,8 @@ async function handleIntegrarOCMultiples(referencias: string[]) {
         procesoStore.progress = Math.round((i / totalOrdenes) * 100)
         
         // ✅ ESPERAR LA RESPUESTA COMPLETA
-        const response = await mba3ConsultasService.integrarSAP(referencia)
+        // Usar almacén destino si está seleccionado, sino enviar sin almacén
+        const response = await mba3ConsultasService.integrarSAP(referencia, almacenDestino.value || undefined)
         
         // ✅ ACTUALIZAR ESTADO LOCAL basándose en la respuesta
         const metadata = response?.metadata || {}
