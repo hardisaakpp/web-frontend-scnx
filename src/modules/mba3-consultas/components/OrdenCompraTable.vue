@@ -370,26 +370,30 @@
               </td>
             </template>
             <td v-if="!readOnly" class="px-6 py-4 whitespace-nowrap text-sm">
-              <div v-if="oc.estado === 'PENDIENTE'" class="relative inline-block">
+              <div v-if="oc.estado === 'PENDIENTE'" class="relative inline-flex flex-col gap-1">
                 <div class="flex items-stretch">
                   <!-- Botón principal Enviar -->
                   <button 
                     @click="handleIntegrar(oc.referencia_despacho, oc.oc_id)" 
-                    class="px-3 py-1.5 bg-emerald-600 text-white rounded-l-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
+                    class="px-3 py-1.5 bg-emerald-600 text-white rounded-l-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center gap-1.5"
                     :class="!selectedAlmacen[oc.oc_id] ? 'cursor-not-allowed opacity-50' : ''"
                     :disabled="loading || sendingOcId === oc.oc_id || !selectedAlmacen[oc.oc_id]"
-                    :title="!selectedAlmacen[oc.oc_id] ? 'Debes seleccionar un almacén primero' : 'Enviar a SAP'"
+                    :title="!selectedAlmacen[oc.oc_id] ? 'Debes seleccionar un almacén primero' : `Enviar a SAP (${selectedAlmacen[oc.oc_id]})`"
                   >
-                    {{ sendingOcId === oc.oc_id ? 'Enviando...' : 'Enviar' }}
+                    <span>{{ sendingOcId === oc.oc_id ? 'Enviando...' : 'Enviar' }}</span>
+                    <!-- Mostrar almacén en el botón -->
+                    <span v-if="selectedAlmacen[oc.oc_id] && sendingOcId !== oc.oc_id" class="text-emerald-200 text-xs font-normal">
+                      {{ selectedAlmacen[oc.oc_id] }}
+                    </span>
                   </button>
                   
-                  <!-- Botón dropdown con divisor -->
+                  <!-- Botón dropdown -->
                   <button 
                     @click.stop="toggleDropdown(oc.oc_id, $event)"
                     class="px-2 py-1.5 bg-emerald-600 text-white rounded-r-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed border-l border-emerald-500/50 flex items-center"
                     :class="!selectedAlmacen[oc.oc_id] ? 'bg-orange-600 hover:bg-orange-700 animate-pulse' : ''"
                     :disabled="loading || sendingOcId === oc.oc_id"
-                    :title="selectedAlmacen[oc.oc_id] ? `Almacén: ${selectedAlmacen[oc.oc_id]}` : 'Seleccionar almacén (obligatorio)'"
+                    :title="selectedAlmacen[oc.oc_id] ? `Cambiar almacén (${selectedAlmacen[oc.oc_id]})` : 'Seleccionar almacén (obligatorio)'"
                   >
                     <svg 
                       class="w-3.5 h-3.5 transition-transform duration-200" 
@@ -403,13 +407,13 @@
                   </button>
                 </div>
                 
-                <!-- Indicador visual de almacén seleccionado o requerido -->
-                <div class="absolute -bottom-1 left-0 right-0 flex justify-center pointer-events-none">
-                  <span v-if="selectedAlmacen[oc.oc_id]" class="px-1.5 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-medium rounded-full border border-emerald-200 whitespace-nowrap">
-                    {{ selectedAlmacen[oc.oc_id] }}
-                  </span>
-                  <span v-else class="px-1.5 py-0.5 bg-orange-100 text-orange-700 text-xs font-semibold rounded-full border border-orange-200 whitespace-nowrap">
-                    Requerido
+                <!-- Indicador compacto de estado -->
+                <div v-if="!selectedAlmacen[oc.oc_id]" class="flex justify-start">
+                  <span class="text-xs text-orange-600 font-medium flex items-center gap-1">
+                    <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                    </svg>
+                    Selecciona almacén
                   </span>
                 </div>
               </div>
@@ -968,11 +972,15 @@ function toggleDropdown(ocId: string, event: MouseEvent) {
     const container = button.closest('.relative') as HTMLElement
     const containerRect = container?.getBoundingClientRect() || button.getBoundingClientRect()
     
-    // Dimensiones del dropdown (estimadas, se ajustarán al contenido)
+    // Dimensiones del dropdown (calculadas según contenido real)
     const dropdownMaxWidth = 200 // Ancho máximo estimado
-    // Altura estimada más precisa: max-h-64 (256px) + header (~28px) + padding (~8px) = ~292px
-    const dropdownHeight = 250 // Altura estimada más realista
-    const gap = 2 // Espacio mínimo entre el botón y el dropdown (consistente arriba/abajo)
+    // Altura real del dropdown:
+    // - Header: ~24px
+    // - 3 opciones × ~30px cada una = ~90px
+    // - Padding y borders: ~6px
+    // Total real: ~120px
+    const dropdownHeight = 130 // Altura real del dropdown (ajustada al contenido)
+    const gap = 0 // Sin espacio - completamente pegado al botón
     
     // Dimensiones de la ventana con márgenes de seguridad
     const windowWidth = window.innerWidth
@@ -1274,12 +1282,22 @@ function handleClickOutside(event: MouseEvent) {
   }
 }
 
+// Cerrar dropdown al hacer scroll (para evitar que se vea separado)
+function handleScroll() {
+  if (openDropdownId.value) {
+    openDropdownId.value = null
+  }
+}
+
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
+  // Escuchar scroll en la ventana y en cualquier contenedor con scroll
+  window.addEventListener('scroll', handleScroll, true) // true = capture phase
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
+  window.removeEventListener('scroll', handleScroll, true)
 })
 
 // Exponer funciones para que el componente padre pueda llamarlas
