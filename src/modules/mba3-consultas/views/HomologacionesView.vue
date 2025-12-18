@@ -159,9 +159,9 @@
       </div>
     </div>
 
-    <!-- Tabla de homologaciones -->
-    <div class="bg-white rounded-lg shadow overflow-hidden">
-      <div v-if="store.loading" class="text-center py-12">
+    <!-- Tarjetas de homologaciones con 2 tablas -->
+    <div class="space-y-4">
+      <div v-if="store.loading" class="text-center py-12 bg-white rounded-lg shadow">
         <svg class="animate-spin h-8 w-8 text-violet-600 mx-auto" fill="none" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -169,149 +169,162 @@
         <p class="mt-4 text-gray-500">Cargando homologaciones...</p>
       </div>
 
-      <div v-else-if="store.error" class="text-center py-12">
+      <div v-else-if="store.error" class="text-center py-12 bg-white rounded-lg shadow">
         <p class="text-red-600">{{ store.error }}</p>
         <button @click="cargarHomologaciones" class="mt-4 text-violet-600 hover:underline">Reintentar</button>
       </div>
 
-      <div v-else-if="store.filteredHomologaciones.length === 0" class="text-center py-12">
+      <div v-else-if="store.filteredHomologaciones.length === 0" class="text-center py-12 bg-white rounded-lg shadow">
         <svg class="w-12 h-12 text-gray-400 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
         <p class="mt-4 text-gray-500">No se encontraron homologaciones</p>
       </div>
 
-      <div v-else class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
-            <tr>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SKU</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                <div class="flex items-center gap-2">
-                  <span class="text-blue-600">MBA3</span>
-                  <span class="text-gray-400">vs</span>
-                  <span class="text-green-600">SAP</span>
-                </div>
-              </th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
-            </tr>
-          </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
-            <tr
-              v-for="homologacion in paginatedHomologaciones"
-              :key="homologacion.homologacion_id || homologacion.sku_mba3"
-              class="hover:bg-gray-50"
-              :class="{
-                'bg-yellow-50': homologacion.estado === 'PENDIENTE',
-                'bg-green-50': homologacion.estado === 'HOMOLOGADO',
-                'bg-red-50': homologacion.estado === 'ERROR',
-              }"
+      <!-- Tarjeta por cada homologación -->
+      <div
+        v-else
+        v-for="homologacion in paginatedHomologaciones"
+        :key="homologacion.homologacion_id || homologacion.sku_mba3"
+        class="bg-white rounded-xl shadow-lg overflow-hidden border-2 transition-all duration-200 hover:shadow-xl"
+        :class="{
+          'border-yellow-300 bg-yellow-50/30': homologacion.estado === 'PENDIENTE',
+          'border-green-300 bg-green-50/30': homologacion.estado === 'HOMOLOGADO',
+          'border-red-300 bg-red-50/30': homologacion.estado === 'ERROR',
+        }"
+      >
+        <!-- Header con SKU y Estado -->
+        <div class="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <div>
+              <h3 class="text-lg font-bold font-mono text-gray-900">{{ homologacion.sku_mba3 }}</h3>
+              <p class="text-sm text-gray-600 mt-0.5">{{ homologacion.nombre_producto_mba3 }}</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <span
+              class="px-3 py-1.5 text-sm font-semibold rounded-full"
+              :class="getEstadoClass(homologacion.estado)"
             >
-              <!-- SKU -->
-              <td class="px-4 py-4 whitespace-nowrap">
-                <div class="text-sm font-mono font-medium text-gray-900">
-                  {{ homologacion.sku_mba3 }}
-                </div>
-                <div v-if="homologacion.sku_sap && homologacion.sku_sap !== homologacion.sku_mba3" class="text-xs text-gray-500 mt-1">
-                  SAP: {{ homologacion.sku_sap }}
-                </div>
-              </td>
+              {{ getEstadoLabel(homologacion.estado) }}
+            </span>
+            <div v-if="homologacion.tiene_diferencias || !homologacion.tiene_datos_sap" class="flex flex-col gap-1">
+              <span v-if="homologacion.tiene_diferencias" class="text-xs text-orange-600 font-medium flex items-center gap-1">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                </svg>
+                Diferencias
+              </span>
+              <span v-if="!homologacion.tiene_datos_sap" class="text-xs text-red-600 font-medium flex items-center gap-1">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+                </svg>
+                Sin datos SAP
+              </span>
+            </div>
+          </div>
+        </div>
 
-              <!-- Producto -->
-              <td class="px-4 py-4">
-                <div class="text-sm text-gray-900">
-                  {{ homologacion.nombre_producto_mba3 }}
-                </div>
-                <div v-if="homologacion.nombre_producto_sap && homologacion.nombre_producto_sap !== homologacion.nombre_producto_mba3" class="text-xs text-gray-500 mt-1">
-                  SAP: {{ homologacion.nombre_producto_sap }}
-                </div>
-              </td>
+        <!-- Contenido: 2 tablas lado a lado -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 p-6">
+          <!-- Tabla MBA3 -->
+          <div class="rounded-lg overflow-hidden border-2 border-blue-200 shadow-md">
+            <div class="bg-gradient-to-r from-blue-500 to-blue-600 px-4 py-3">
+              <h4 class="text-white font-bold text-sm flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Datos MBA3
+              </h4>
+            </div>
+            <div class="bg-blue-50/50">
+              <table class="w-full">
+                <tbody class="divide-y divide-blue-100">
+                  <tr class="hover:bg-blue-100/50">
+                    <td class="px-4 py-3 text-sm font-medium text-gray-700 w-1/2">SKU</td>
+                    <td class="px-4 py-3 text-sm font-mono text-gray-900 font-semibold">{{ homologacion.sku_mba3 }}</td>
+                  </tr>
+                  <tr class="hover:bg-blue-100/50">
+                    <td class="px-4 py-3 text-sm font-medium text-gray-700">Producto</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">{{ homologacion.nombre_producto_mba3 }}</td>
+                  </tr>
+                  <tr class="hover:bg-blue-100/50">
+                    <td class="px-4 py-3 text-sm font-medium text-gray-700">Precio Unitario</td>
+                    <td class="px-4 py-3 text-sm font-bold text-blue-700">{{ formatCurrency(homologacion.precio_unitario_mba3) }}</td>
+                  </tr>
+                  <tr class="hover:bg-blue-100/50">
+                    <td class="px-4 py-3 text-sm font-medium text-gray-700">Cantidad</td>
+                    <td class="px-4 py-3 text-sm font-bold text-blue-700">{{ homologacion.cantidad_docena_mba3 }} docenas</td>
+                  </tr>
+                  <tr class="hover:bg-blue-100/50 bg-blue-100/70">
+                    <td class="px-4 py-3 text-sm font-bold text-gray-900">Total Línea</td>
+                    <td class="px-4 py-3 text-base font-bold text-blue-700">{{ formatCurrency(homologacion.total_linea_mba3) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
 
-              <!-- Comparación MBA3 vs SAP -->
-              <td class="px-4 py-4">
-                <div class="space-y-2">
-                  <!-- Precio Unitario -->
-                  <div class="flex items-center gap-2">
-                    <span class="text-xs text-gray-500 w-24">Precio:</span>
-                    <span class="text-xs font-medium text-blue-600">
-                      {{ formatCurrency(homologacion.precio_unitario_mba3) }}
-                    </span>
-                    <span class="text-xs text-gray-400">→</span>
-                    <span
-                      class="text-xs font-medium"
-                      :class="getComparisonClass(homologacion.precio_unitario_mba3, homologacion.precio_unitario_sap)"
-                    >
+          <!-- Tabla SAP -->
+          <div class="rounded-lg overflow-hidden border-2 border-green-200 shadow-md">
+            <div class="bg-gradient-to-r from-green-500 to-green-600 px-4 py-3">
+              <h4 class="text-white font-bold text-sm flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Datos SAP
+              </h4>
+            </div>
+            <div class="bg-green-50/50">
+              <table class="w-full">
+                <tbody class="divide-y divide-green-100">
+                  <tr class="hover:bg-green-100/50">
+                    <td class="px-4 py-3 text-sm font-medium text-gray-700 w-1/2">SKU</td>
+                    <td class="px-4 py-3 text-sm font-mono font-semibold"
+                        :class="homologacion.sku_sap ? (homologacion.sku_sap !== homologacion.sku_mba3 ? 'text-orange-600' : 'text-gray-900') : 'text-gray-400 italic'">
+                      {{ homologacion.sku_sap || 'Sin datos' }}
+                    </td>
+                  </tr>
+                  <tr class="hover:bg-green-100/50">
+                    <td class="px-4 py-3 text-sm font-medium text-gray-700">Producto</td>
+                    <td class="px-4 py-3 text-sm"
+                        :class="homologacion.nombre_producto_sap ? (homologacion.nombre_producto_sap !== homologacion.nombre_producto_mba3 ? 'text-orange-600' : 'text-gray-900') : 'text-gray-400 italic'">
+                      {{ homologacion.nombre_producto_sap || 'Sin datos' }}
+                    </td>
+                  </tr>
+                  <tr class="hover:bg-green-100/50">
+                    <td class="px-4 py-3 text-sm font-medium text-gray-700">Precio Unitario</td>
+                    <td class="px-4 py-3 text-sm font-bold"
+                        :class="getComparisonClass(homologacion.precio_unitario_mba3, homologacion.precio_unitario_sap)">
                       {{ formatCurrency(homologacion.precio_unitario_sap) }}
-                    </span>
-                  </div>
-
-                  <!-- Cantidad -->
-                  <div class="flex items-center gap-2">
-                    <span class="text-xs text-gray-500 w-24">Cantidad:</span>
-                    <span class="text-xs font-medium text-blue-600">
-                      {{ homologacion.cantidad_docena_mba3 }} doc
-                    </span>
-                    <span class="text-xs text-gray-400">→</span>
-                    <span
-                      class="text-xs font-medium"
-                      :class="getComparisonClass(homologacion.cantidad_docena_mba3, homologacion.cantidad_pack_sap)"
-                    >
-                      {{ homologacion.cantidad_pack_sap || '-' }} {{ homologacion.unidad_sap || '' }}
-                    </span>
-                  </div>
-
-                  <!-- Total -->
-                  <div class="flex items-center gap-2">
-                    <span class="text-xs text-gray-500 w-24">Total:</span>
-                    <span class="text-xs font-medium text-blue-600">
-                      {{ formatCurrency(homologacion.total_linea_mba3) }}
-                    </span>
-                    <span class="text-xs text-gray-400">→</span>
-                    <span
-                      class="text-xs font-medium"
-                      :class="getComparisonClass(homologacion.total_linea_mba3, homologacion.subtotal_sap)"
-                    >
+                    </td>
+                  </tr>
+                  <tr class="hover:bg-green-100/50">
+                    <td class="px-4 py-3 text-sm font-medium text-gray-700">Cantidad</td>
+                    <td class="px-4 py-3 text-sm font-bold"
+                        :class="getComparisonClass(homologacion.cantidad_docena_mba3, homologacion.cantidad_pack_sap)">
+                      {{ homologacion.cantidad_pack_sap !== null && homologacion.cantidad_pack_sap !== undefined ? `${homologacion.cantidad_pack_sap} ${homologacion.unidad_sap || 'packs'}` : 'Sin datos' }}
+                    </td>
+                  </tr>
+                  <tr class="hover:bg-green-100/50 bg-green-100/70">
+                    <td class="px-4 py-3 text-sm font-bold text-gray-900">Subtotal</td>
+                    <td class="px-4 py-3 text-base font-bold"
+                        :class="getComparisonClass(homologacion.total_linea_mba3, homologacion.subtotal_sap)">
                       {{ formatCurrency(homologacion.subtotal_sap) }}
-                    </span>
-                  </div>
-                </div>
-              </td>
-
-              <!-- Estado -->
-              <td class="px-4 py-4 whitespace-nowrap">
-                <span
-                  class="px-2 py-1 text-xs font-medium rounded-full"
-                  :class="getEstadoClass(homologacion.estado)"
-                >
-                  {{ getEstadoLabel(homologacion.estado) }}
-                </span>
-                <div v-if="homologacion.tiene_diferencias" class="mt-1">
-                  <span class="text-xs text-orange-600">⚠ Diferencias</span>
-                </div>
-                <div v-if="!homologacion.tiene_datos_sap" class="mt-1">
-                  <span class="text-xs text-red-600">⚠ Sin datos SAP</span>
-                </div>
-              </td>
-
-              <!-- Acciones -->
-              <td class="px-4 py-4 whitespace-nowrap text-sm">
-                <button
-                  @click="abrirModalEdicion(homologacion)"
-                  class="text-violet-600 hover:text-violet-900 hover:underline font-medium"
-                >
-                  Editar
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <!-- Paginación -->
-      <div v-if="store.totalPages > 1" class="bg-gray-50 px-4 py-3 flex items-center justify-between border-t border-gray-200">
-        <div class="flex-1 flex justify-between sm:hidden">
+    </div>
+
+    <!-- Paginación -->
+    <div v-if="!store.loading && !store.error && store.totalPages > 1" class="bg-white rounded-lg shadow px-4 py-3 flex items-center justify-between">
+      <div class="flex-1 flex justify-between sm:hidden">
           <button
             @click="cambiarPagina(store.currentPage - 1)"
             :disabled="store.currentPage === 1"
@@ -376,16 +389,6 @@
           </div>
         </div>
       </div>
-    </div>
-
-    <!-- Modal de edición -->
-    <HomologacionModal
-      :is-open="modalAbierto"
-      :homologacion="homologacionSeleccionada"
-      :loading="guardando"
-      @close="cerrarModal"
-      @submit="guardarHomologacion"
-    />
   </div>
 </template>
 
@@ -394,8 +397,6 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useHomologacionesStore } from '../stores/homologacionesStore'
 import { useToast } from '@/composables/useToast'
-import HomologacionModal from '../components/HomologacionModal.vue'
-import type { SkuHomologacion, SkuHomologacionUpdateRequest } from '../types'
 
 const route = useRoute()
 const store = useHomologacionesStore()
@@ -407,9 +408,6 @@ const estadoFilter = ref('')
 const tieneDiferenciasFilter = ref<boolean | null>(null)
 const tieneDatosSapFilter = ref<boolean | null>(null)
 const mostrarHomologados = ref(false) // Por defecto no mostrar homologados
-const modalAbierto = ref(false)
-const homologacionSeleccionada = ref<SkuHomologacion | null>(null)
-const guardando = ref(false)
 
 // Computed - Los datos ya vienen paginados del servidor, pero filtramos localmente los homologados
 const paginatedHomologaciones = computed(() => {
@@ -530,34 +528,6 @@ function cambiarPagina(page: number) {
   if (page >= 1 && page <= store.totalPages) {
     store.currentPage = page
     cargarHomologaciones()
-  }
-}
-
-function abrirModalEdicion(homologacion: SkuHomologacion) {
-  homologacionSeleccionada.value = homologacion
-  modalAbierto.value = true
-}
-
-function cerrarModal() {
-  modalAbierto.value = false
-  homologacionSeleccionada.value = null
-}
-
-async function guardarHomologacion(data: SkuHomologacionUpdateRequest) {
-  if (!homologacionSeleccionada.value?.homologacion_id) {
-    toast.error('Error', 'No se pudo identificar la homologación')
-    return
-  }
-
-  guardando.value = true
-  try {
-    await store.updateHomologacion(homologacionSeleccionada.value.homologacion_id, data)
-    toast.success('Homologación actualizada', 'Los cambios se han guardado correctamente')
-    cerrarModal()
-  } catch (error: any) {
-    toast.error('Error al guardar', error.message)
-  } finally {
-    guardando.value = false
   }
 }
 

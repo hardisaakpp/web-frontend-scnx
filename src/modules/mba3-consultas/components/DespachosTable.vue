@@ -275,9 +275,8 @@
               <!-- Indicador visual de problemas (icono) - Siempre presente para mantener alineación -->
               <td class="px-2 py-4 whitespace-nowrap w-8 text-center align-middle">
                 <div 
-                  class="flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
-                  @click.stop="navegarAHomologaciones(despacho)"
-                  :title="hasRowIssues(despacho).hasErrors ? 'Error crítico - Click para ver homologaciones' : hasRowIssues(despacho).hasWarnings ? 'Advertencia - Click para ver homologaciones' : ''"
+                  class="flex items-center justify-center"
+                  :title="hasRowIssues(despacho).hasErrors ? 'Error crítico' : hasRowIssues(despacho).hasWarnings ? 'Advertencia' : ''"
                 >
                   <svg 
                     v-if="hasRowIssues(despacho).hasErrors"
@@ -355,26 +354,40 @@
                 </div>
                 <div v-else-if="detallesPorDespacho[despacho.despacho_id]?.length > 0" class="py-2">
                   <h4 class="text-sm font-semibold mb-3" :class="getDetallesTitleClass()">
-                    Detalles del Despacho ({{ detallesPorDespacho[despacho.despacho_id]?.length }} {{ detallesPorDespacho[despacho.despacho_id]?.length === 1 ? 'ítem' : 'ítems' }})
+                    Comparación MBA3 vs SAP - Detalles del Despacho ({{ detallesPorDespacho[despacho.despacho_id]?.length }} {{ detallesPorDespacho[despacho.despacho_id]?.length === 1 ? 'ítem' : 'ítems' }})
                   </h4>
                   <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200 bg-white rounded-lg border" :class="getDetallesTableBorderClass()">
                       <thead :class="getDetallesHeaderClass()">
+                        <!-- Fila de encabezados principales -->
                         <tr>
-                          <th class="w-8 px-2 py-2 text-center align-middle text-xs font-medium text-gray-600 uppercase border-r border-gray-300" title="Indicador de problemas">
+                          <th rowspan="2" class="w-8 px-2 py-2 text-center align-middle text-xs font-medium text-gray-600 uppercase border-r border-gray-300 bg-gray-100" title="Indicador de problemas">
                             <svg class="w-3 h-3 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                             </svg>
                           </th>
-                          <th class="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase bg-gray-50">SKU</th>
-                          <th class="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase bg-gray-50 border-r border-gray-300">Producto</th>
-                          <th class="px-4 py-2 text-center text-xs font-medium text-gray-600 uppercase bg-blue-50">Cant. MBA3</th>
-                          <th class="px-4 py-2 text-center text-xs font-medium text-gray-600 uppercase bg-blue-50">Cant. SAP</th>
-                          <th class="px-4 py-2 text-center text-xs font-medium text-gray-600 uppercase bg-blue-50 border-r border-gray-300">Unidad SAP</th>
-                          <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 uppercase bg-amber-50">Precio Unit. MBA3</th>
-                          <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 uppercase bg-amber-50 border-r border-gray-300">Precio Unit. SAP</th>
-                          <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 uppercase bg-green-50">Subtotal SAP</th>
-                          <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 uppercase bg-blue-50">Total Línea MBA3</th>
+                          <th rowspan="2" class="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase bg-gray-100 border-r border-gray-300">SKU</th>
+                          <th rowspan="2" class="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase bg-gray-100 border-r-4 border-violet-300">Producto</th>
+                          <!-- Sección MBA3 -->
+                          <th colspan="3" class="px-4 py-2 text-center text-sm font-bold text-blue-900 uppercase bg-gradient-to-r from-blue-100 to-blue-200 border-r-4 border-violet-300">
+                            MBA3
+                          </th>
+                          <!-- Sección SAP -->
+                          <th colspan="4" class="px-4 py-2 text-center text-sm font-bold text-green-900 uppercase bg-gradient-to-r from-green-100 to-green-200">
+                            SAP
+                          </th>
+                        </tr>
+                        <!-- Fila de sub-encabezados -->
+                        <tr>
+                          <!-- Sub-encabezados MBA3 -->
+                          <th class="px-4 py-2 text-center text-xs font-medium text-gray-600 uppercase bg-blue-50">Cant. Docena</th>
+                          <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 uppercase bg-blue-50">Precio Unit.</th>
+                          <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 uppercase bg-blue-50 border-r-4 border-violet-300">Total Línea</th>
+                          <!-- Sub-encabezados SAP -->
+                          <th class="px-4 py-2 text-center text-xs font-medium text-gray-600 uppercase bg-green-50">Cant. Pack</th>
+                          <th class="px-4 py-2 text-center text-xs font-medium text-gray-600 uppercase bg-green-50">Unidad</th>
+                          <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 uppercase bg-green-50">Precio Unit.</th>
+                          <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 uppercase bg-green-50">Subtotal</th>
                         </tr>
                       </thead>
                       <tbody :class="getDetallesTbodyClass()">
@@ -384,12 +397,11 @@
                           :class="[getDetallesRowClass(), getDetalleWarningClass(detalle)]"
                           :title="getDetalleTooltip(detalle)"
                         >
-                          <!-- Indicador visual de problemas en detalle (icono) - Siempre presente para mantener alineación -->
-                          <td class="px-2 py-2 whitespace-nowrap w-8 text-center align-middle">
+                          <!-- Indicador visual de problemas en detalle (icono) -->
+                          <td class="px-2 py-2 whitespace-nowrap w-8 text-center align-middle border-r border-gray-200">
                             <div 
-                              class="flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
-                              @click.stop="navegarAHomologacionesPorSKU(detalle.sku)"
-                              :title="hasDetalleIssues(detalle).hasErrors ? `Error crítico - Click para editar SKU ${detalle.sku}` : hasDetalleIssues(detalle).hasWarnings ? `Advertencia - Click para editar SKU ${detalle.sku}` : ''"
+                              class="flex items-center justify-center"
+                              :title="hasDetalleIssues(detalle).hasErrors ? `Error crítico en SKU ${detalle.sku}` : hasDetalleIssues(detalle).hasWarnings ? `Advertencia en SKU ${detalle.sku}` : ''"
                             >
                               <svg 
                                 v-if="hasDetalleIssues(detalle).hasErrors"
@@ -409,7 +421,8 @@
                               </svg>
                             </div>
                           </td>
-                          <td class="px-4 py-2 text-sm font-mono text-gray-900 font-semibold bg-gray-50">
+                          <!-- SKU -->
+                          <td class="px-4 py-2 text-sm font-mono text-gray-900 font-semibold bg-gray-50 border-r border-gray-200">
                             <div class="flex items-center gap-2">
                               <span>{{ detalle.sku || '-' }}</span>
                               <button
@@ -424,28 +437,59 @@
                               </button>
                             </div>
                           </td>
-                          <td class="px-4 py-2 text-sm text-gray-900 bg-gray-50 border-r border-gray-200">
+                          <!-- Producto -->
+                          <td class="px-4 py-2 text-sm text-gray-900 bg-gray-50 border-r-4 border-violet-300">
                             <div class="max-w-xs">
                               <div class="font-medium">{{ detalle.nombre_producto || '-' }}</div>
                             </div>
                           </td>
-                          <td class="px-4 py-2 text-sm text-gray-900 text-center font-medium bg-blue-50">{{ formatNumber(detalle.cantidad_docena_mba3) }}</td>
-                          <td class="px-4 py-2 text-sm text-gray-900 text-center font-medium bg-blue-50">{{ detalle.cantidad_pack_sap !== null ? formatNumber(detalle.cantidad_pack_sap) : '-' }}</td>
-                          <td class="px-4 py-2 text-sm text-gray-900 text-center font-mono bg-blue-50 border-r border-gray-200">{{ detalle.unidad_sap || '-' }}</td>
-                          <td class="px-4 py-2 text-sm text-gray-900 text-right bg-amber-50">{{ formatCurrency(detalle.precio_unitario_mba3) }}</td>
-                          <td class="px-4 py-2 text-sm text-gray-900 text-right bg-amber-50 border-r border-gray-200">{{ detalle.precio_unitario_sap !== null ? formatCurrency(detalle.precio_unitario_sap) : '-' }}</td>
-                          <td class="px-4 py-2 text-sm text-gray-900 text-right font-semibold bg-green-50">{{ formatCurrency(detalle.subtotal_sap) }}</td>
-                          <td class="px-4 py-2 text-sm font-bold text-gray-900 text-right bg-blue-50">{{ formatCurrency(detalle.total_linea_mba3) }}</td>
+                          <!-- MBA3: Cantidad Docena -->
+                          <td class="px-4 py-2 text-sm text-gray-900 text-center font-medium bg-blue-50">
+                            {{ formatNumber(detalle.cantidad_docena_mba3) }}
+                          </td>
+                          <!-- MBA3: Precio Unitario -->
+                          <td class="px-4 py-2 text-sm text-gray-900 text-right font-medium bg-blue-50">
+                            {{ formatCurrency(detalle.precio_unitario_mba3) }}
+                          </td>
+                          <!-- MBA3: Total Línea -->
+                          <td class="px-4 py-2 text-sm text-gray-900 text-right font-bold bg-blue-100 border-r-4 border-violet-300">
+                            {{ formatCurrency(detalle.total_linea_mba3) }}
+                          </td>
+                          <!-- SAP: Cantidad Pack -->
+                          <td class="px-4 py-2 text-sm text-gray-900 text-center font-medium bg-green-50">
+                            {{ detalle.cantidad_pack_sap !== null ? formatNumber(detalle.cantidad_pack_sap) : '-' }}
+                          </td>
+                          <!-- SAP: Unidad -->
+                          <td class="px-4 py-2 text-sm text-gray-900 text-center font-mono bg-green-50">
+                            {{ detalle.unidad_sap || '-' }}
+                          </td>
+                          <!-- SAP: Precio Unitario -->
+                          <td class="px-4 py-2 text-sm text-gray-900 text-right font-medium bg-green-50">
+                            {{ detalle.precio_unitario_sap !== null ? formatCurrency(detalle.precio_unitario_sap) : '-' }}
+                          </td>
+                          <!-- SAP: Subtotal -->
+                          <td class="px-4 py-2 text-sm text-gray-900 text-right font-bold bg-green-100">
+                            {{ formatCurrency(detalle.subtotal_sap) }}
+                          </td>
                         </tr>
                       </tbody>
                       <tfoot v-if="detallesPorDespacho[despacho.despacho_id]?.length > 0" :class="getDetallesFooterClass()">
                         <tr>
-                          <td colspan="8" class="px-4 py-2 text-sm font-semibold text-right border-t-2 border-gray-300" :class="getDetallesFooterTextClass()">Total:</td>
-                          <td class="px-4 py-2 text-sm font-bold text-right border-t-2 border-l-2 border-gray-300 bg-green-100" :class="[getDetallesFooterBorderClass(), getDetallesFooterTextClass()]">
-                            {{ formatCurrency(getTotalSubtotalSAP(despacho.despacho_id)) }}
+                          <!-- Celdas vacías para alineación -->
+                          <td colspan="3" class="border-t-2 border-gray-300"></td>
+                          <!-- Total MBA3 -->
+                          <td colspan="2" class="px-4 py-3 text-sm font-bold text-right border-t-2 border-gray-300 bg-blue-50" :class="getDetallesFooterTextClass()">
+                            Total MBA3:
                           </td>
-                          <td class="px-4 py-2 text-sm font-bold text-right border-t-2 border-gray-300 bg-blue-100" :class="getDetallesFooterTextClass()">
+                          <td class="px-4 py-3 text-sm font-bold text-right border-t-2 border-r-4 border-violet-300 bg-blue-100" :class="getDetallesFooterTextClass()">
                             {{ formatCurrency(getTotalLineaMBA3(despacho.despacho_id)) }}
+                          </td>
+                          <!-- Total SAP -->
+                          <td colspan="3" class="px-4 py-3 text-sm font-bold text-right border-t-2 border-gray-300 bg-green-50" :class="getDetallesFooterTextClass()">
+                            Total SAP:
+                          </td>
+                          <td class="px-4 py-3 text-sm font-bold text-right border-t-2 border-gray-300 bg-green-100" :class="getDetallesFooterTextClass()">
+                            {{ formatCurrency(getTotalSubtotalSAP(despacho.despacho_id)) }}
                           </td>
                         </tr>
                       </tfoot>
@@ -461,15 +505,6 @@
         </tbody>
       </table>
     </div>
-
-    <!-- Modal de edición de homologación -->
-    <HomologacionModal
-      :is-open="modalAbierto"
-      :homologacion="homologacionSeleccionada"
-      :loading="guardando"
-      @close="cerrarModal"
-      @submit="guardarHomologacion"
-    />
   </div>
 </template>
 
@@ -477,12 +512,9 @@
 import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import type { Despacho, DespachoDetalle } from '../types'
-import type { SkuHomologacion, SkuHomologacionUpdateRequest } from '../types'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import { useToast } from '@/composables/useToast'
 import { useTablePreferences } from '@/composables/useTablePreferences'
-import { useHomologacionesStore } from '../stores/homologacionesStore'
-import HomologacionModal from './HomologacionModal.vue'
 
 const props = defineProps<{
   despachos: Despacho[]
@@ -503,12 +535,6 @@ const emit = defineEmits<{
 
 const router = useRouter()
 const toast = useToast()
-const homologacionesStore = useHomologacionesStore()
-
-// Estado para el modal de homologación
-const modalAbierto = ref(false)
-const homologacionSeleccionada = ref<SkuHomologacion | null>(null)
-const guardando = ref(false)
 
 // Estado para detalles expandidos
 const detallesExpandidos = ref<Set<string>>(new Set())
@@ -1457,111 +1483,5 @@ function getDetalleTooltip(detalle: DespachoDetalle): string {
   }
   
   return ''
-}
-
-// Función para abrir modal de homologación desde el despacho
-async function navegarAHomologaciones(despacho: Despacho) {
-  // Buscar si hay detalles con problemas de SKU en este despacho
-  const detalles = detallesPorDespacho.value[despacho.despacho_id] || despacho.despacho_detalles || []
-  const detalleConProblemas = detalles.find((d: DespachoDetalle) => {
-    const issues = hasDetalleIssues(d)
-    return issues.hasErrors || issues.hasWarnings
-  })
-  
-  if (detalleConProblemas && detalleConProblemas.sku) {
-    await abrirModalPorSKU(detalleConProblemas.sku, detalleConProblemas, despacho.despacho_id)
-  } else {
-    toast.info('Sin problemas de SKU', 'Este despacho no tiene detalles con problemas de SKU para homologar')
-  }
-}
-
-// Función para abrir modal de homologación por SKU específico
-async function navegarAHomologacionesPorSKU(sku: string | null | undefined) {
-  if (!sku || sku.trim() === '') {
-    toast.warning('SKU no disponible', 'Este detalle no tiene SKU para buscar en homologaciones')
-    return
-  }
-  
-  // Buscar el detalle que corresponde a este SKU
-  const detalle = Object.values(detallesPorDespacho.value)
-    .flat()
-    .find((d: DespachoDetalle) => d.sku === sku.trim())
-  
-  await abrirModalPorSKU(sku.trim(), detalle || null, detalle?.despacho_id)
-}
-
-// Función auxiliar para abrir el modal con la homologación
-async function abrirModalPorSKU(sku: string, detalle: DespachoDetalle | null, despachoId?: string) {
-  try {
-    // Buscar la homologación existente por SKU
-    const response = await mba3ConsultasService.getSkuHomologaciones(1, 1, { sku })
-    
-    if (response.data && response.data.length > 0) {
-      // Si existe, usar esa homologación
-      homologacionSeleccionada.value = response.data[0]
-      modalAbierto.value = true
-    } else if (detalle) {
-      // Si no existe, crear una homologación temporal con los datos del detalle
-      homologacionSeleccionada.value = {
-        sku_mba3: detalle.sku,
-        nombre_producto_mba3: detalle.nombre_producto || '',
-        precio_unitario_mba3: detalle.precio_unitario_mba3,
-        cantidad_docena_mba3: detalle.cantidad_docena_mba3,
-        total_linea_mba3: detalle.total_linea_mba3,
-        sku_sap: detalle.sku || null,
-        nombre_producto_sap: detalle.nombre_producto || null,
-        precio_unitario_sap: detalle.precio_unitario_sap,
-        cantidad_pack_sap: detalle.cantidad_pack_sap,
-        unidad_sap: detalle.unidad_sap,
-        subtotal_sap: detalle.subtotal_sap,
-        estado: 'PENDIENTE',
-        tiene_diferencias: false,
-        tiene_datos_sap: detalle.precio_unitario_sap !== null || detalle.cantidad_pack_sap !== null || detalle.subtotal_sap !== null,
-        detalle_id: detalle.detalle_id,
-        despacho_id: despachoId || detalle.despacho_id,
-      }
-      modalAbierto.value = true
-    } else {
-      toast.warning('No se pudo crear la homologación', 'Faltan datos del detalle para crear la homologación')
-    }
-  } catch (error: any) {
-    console.error('Error al buscar homologación:', error)
-    toast.error('Error', 'No se pudo cargar la información de homologación')
-  }
-}
-
-// Función para cerrar el modal
-function cerrarModal() {
-  modalAbierto.value = false
-  homologacionSeleccionada.value = null
-}
-
-// Función para guardar la homologación
-async function guardarHomologacion(data: SkuHomologacionUpdateRequest) {
-  if (!homologacionSeleccionada.value) {
-    toast.error('Error', 'No se pudo identificar la homologación')
-    return
-  }
-
-  guardando.value = true
-  try {
-    // Si tiene homologacion_id, actualizar existente
-    if (homologacionSeleccionada.value.homologacion_id) {
-      await homologacionesStore.updateHomologacion(
-        homologacionSeleccionada.value.homologacion_id,
-        data
-      )
-      toast.success('Homologación actualizada', 'Los cambios se han guardado correctamente')
-    } else {
-      // Si no tiene ID, es una nueva homologación - necesitaríamos crear un endpoint para esto
-      // Por ahora, mostramos un mensaje informativo
-      toast.info('Homologación nueva', 'Esta es una nueva homologación. Por favor, sincroniza desde la pantalla de homologaciones para crearla.')
-    }
-    cerrarModal()
-  } catch (error: any) {
-    toast.error('Error al guardar', error.message)
-  } finally {
-    guardando.value = false
-  }
 }
 </script>

@@ -145,15 +145,19 @@ export const mba3ConsultasService = {
     // Por defecto: 3 intentos totales (intento 0, 1, 2)
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
-        // Si no es el primer intento, agregar un delay progresivo para dar tiempo al backend
-        if (attempt > 0) {
-          const delay = attempt * 2000 // Delay progresivo: 2s, 4s, 6s...
-          console.warn(`[migrar] Reintentando migración (intento ${attempt + 1}/${retries + 1}) después de ${delay}ms...`)
-          await new Promise(resolve => setTimeout(resolve, delay))
-        }
-        
-        const response = await mba3Api.get<ProcesoResponse>('/migrar/completo')
-        return response.data
+      // Si no es el primer intento, agregar un delay progresivo para dar tiempo al backend
+      if (attempt > 0) {
+        const delay = attempt * 2000 // Delay progresivo: 2s, 4s, 6s...
+        console.warn(`[migrar] Reintentando migración (intento ${attempt + 1}/${retries + 1}) después de ${delay}ms...`)
+        await new Promise(resolve => setTimeout(resolve, delay))
+      }
+      
+      // Timeout extendido a 120 segundos para operaciones de migración largas
+      // que incluyen consultas a MBA3, SAP y guardado en base de datos
+      const response = await mba3Api.get<ProcesoResponse>('/migrar/completo', {
+        timeout: 120000 // 2 minutos
+      })
+      return response.data
       } catch (error: any) {
         lastError = error
         

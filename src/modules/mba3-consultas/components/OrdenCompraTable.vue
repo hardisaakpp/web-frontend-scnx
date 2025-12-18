@@ -21,7 +21,8 @@
           <button
             @click="handleIntegrarSeleccionadas"
             class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center gap-2"
-            :disabled="props.loading || sendingMultiple || !hasPendientesSeleccionadas"
+            :disabled="props.loading || sendingMultiple || !hasPendientesSeleccionadas || !todasSeleccionadasTienenAlmacen"
+            :title="!todasSeleccionadasTienenAlmacen ? 'Debes seleccionar un almacén para todas las órdenes seleccionadas' : ''"
           >
             <svg v-if="sendingMultiple" class="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -843,6 +844,15 @@ const hasPendientesSeleccionadas = computed(() => {
   })
 })
 
+// Computed para verificar si todas las órdenes seleccionables tienen almacén asignado
+const todasSeleccionadasTienenAlmacen = computed(() => {
+  if (ordenesSeleccionables.value.length === 0) return false
+  
+  return ordenesSeleccionables.value.every(id => {
+    return selectedAlmacen.value[id] !== undefined && selectedAlmacen.value[id] !== ''
+  })
+})
+
 // Computed para obtener las ODC seleccionadas que se pueden eliminar (sin created_at)
 const ordenesEliminables = computed(() => {
   if (!props.allowDelete) return []
@@ -1052,10 +1062,27 @@ function handleIntegrarSeleccionadas() {
     return
   }
   
-  const referencias = ordenesSeleccionables.value
-    .map(id => props.ordenesCompra.find(oc => oc.oc_id === id))
-    .filter(oc => oc && oc.estado === 'PENDIENTE')
-    .map(oc => oc!.referencia_despacho)
+  // Validar que todas las órdenes seleccionadas tengan almacén asignado
+  const ordenesSeleccionadasData = ordenesSeleccionables.value
+    .map(id => {
+      const oc = props.ordenesCompra.find(o => o.oc_id === id)
+      const almacen = selectedAlmacen.value[id]
+      return { oc, almacen, id }
+    })
+  
+  const ordenesSinAlmacen = ordenesSeleccionadasData.filter(({ almacen }) => !almacen)
+  
+  if (ordenesSinAlmacen.length > 0) {
+    toast.warning(
+      'Almacén requerido', 
+      `${ordenesSinAlmacen.length} orden(es) seleccionada(s) no tiene(n) almacén asignado. Debes seleccionar un almacén para cada orden antes de enviar.`
+    )
+    return
+  }
+  
+  const referencias = ordenesSeleccionadasData
+    .filter(({ oc }) => oc && oc.estado === 'PENDIENTE')
+    .map(({ oc }) => oc!.referencia_despacho)
   
   if (referencias.length === 0) {
     toast.warning('No hay órdenes pendientes seleccionadas')

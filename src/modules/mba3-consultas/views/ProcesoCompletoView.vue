@@ -302,6 +302,13 @@
                   Despachos guardados en la base de datos ({{ despachosCount }} total)
                 </p>
               </div>
+              <!-- Indicador de última actualización -->
+              <div v-if="lastRefreshTime" class="flex items-center gap-1.5 px-2.5 py-1 text-xs text-gray-500">
+                <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>{{ timeAgoDisplay }}</span>
+              </div>
             </div>
 
             <SkeletonTable v-if="loadingDespachos && despachos.length === 0" />
@@ -578,7 +585,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useProcesoStore } from '../stores/procesoStore'
 import { useOrdenesCompraStore } from '../stores/ordenesCompraStore'
@@ -613,6 +620,15 @@ const initialSearchDespacho = ref<string>('')
 const currentPageDespachos = ref(1)
 const pageSizeDespachos = ref(10)
 const filteredDespachosCount = ref(0)
+
+// ========== POLLING AUTOMÁTICO ==========
+// Configuración de auto-refresh
+const POLLING_INTERVAL = 5 * 60 * 1000 // 5 minutos (ajustable según necesidades)
+let pollingIntervalId: ReturnType<typeof setInterval> | null = null
+let timeDisplayIntervalId: ReturnType<typeof setInterval> | null = null
+const lastRefreshTime = ref<Date | null>(null)
+const nextRefreshTime = ref<Date | null>(null)
+const timeAgoDisplay = ref<string>('')
 
 // Estados para paginación de órdenes de compra
 const currentPageOC = ref(1)
@@ -760,6 +776,12 @@ async function cargarDespachos() {
     
     // Resetear a la primera página
     currentPageDespachos.value = 1
+    
+    // Actualizar tiempo de última actualización
+    lastRefreshTime.value = new Date()
+    
+    // Actualizar display de tiempo en tiempo real
+    startTimeDisplayUpdate()
   } catch (error: any) {
     console.error('Error al cargar despachos:', error)
     toast.error('Error al cargar despachos', error.message || 'No se pudieron cargar los despachos')
@@ -768,6 +790,87 @@ async function cargarDespachos() {
   } finally {
     loadingDespachos.value = false
   }
+}
+
+// ========== FUNCIONES DE POLLING AUTOMÁTICO ==========
+
+// Función para auto-refrescar despachos
+async function autoRefreshDespachos() {
+  // Solo refrescar si estamos en la pestaña de despachos y no está cargando
+  if (activeTab.value === 'migrar' && !loadingDespachos.value) {
+    console.log('🔄 Auto-refresh: Actualizando despachos...')
+    await cargarDespachos()
+    nextRefreshTime.value = new Date(Date.now() + POLLING_INTERVAL)
+    
+    // Mostrar notificación sutil (opcional - comentar si no se desea)
+    // toast.info('Datos actualizados', 'La tabla de despachos se ha actualizado automáticamente', 2000)
+  }
+}
+
+// Iniciar polling
+function startPolling() {
+  stopPolling() // Limpiar cualquier intervalo existente
+  
+  pollingIntervalId = setInterval(autoRefreshDespachos, POLLING_INTERVAL)
+  console.log(`✅ Polling iniciado: cada ${POLLING_INTERVAL / 1000 / 60} minutos`)
+  
+  // Calcular próximo refresh
+  nextRefreshTime.value = new Date(Date.now() + POLLING_INTERVAL)
+}
+
+// Detener polling
+function stopPolling() {
+  if (pollingIntervalId) {
+    clearInterval(pollingIntervalId)
+    pollingIntervalId = null
+    console.log('⏹️ Polling detenido')
+  }
+}
+
+// Actualizar el display del tiempo en tiempo real
+function updateTimeDisplay() {
+  if (lastRefreshTime.value) {
+    timeAgoDisplay.value = formatTimeAgo(lastRefreshTime.value)
+  }
+}
+
+// Iniciar actualización del display de tiempo
+function startTimeDisplayUpdate() {
+  stopTimeDisplayUpdate() // Limpiar cualquier intervalo existente
+  
+  // Actualizar inmediatamente
+  updateTimeDisplay()
+  
+  // Actualizar cada 30 segundos para mantenerlo actualizado
+  timeDisplayIntervalId = setInterval(updateTimeDisplay, 30000)
+}
+
+// Detener actualización del display de tiempo
+function stopTimeDisplayUpdate() {
+  if (timeDisplayIntervalId) {
+    clearInterval(timeDisplayIntervalId)
+    timeDisplayIntervalId = null
+  }
+}
+
+// Función helper para formatear tiempo transcurrido
+function formatTimeAgo(date: Date): string {
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000)
+  
+  if (seconds < 60) return 'Hace menos de 1 min'
+  
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `Hace ${minutes} min`
+  
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `Hace ${hours}h ${minutes % 60}min`
+  
+  return date.toLocaleString('es-ES', { 
+    day: '2-digit', 
+    month: 'short', 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  })
 }
 
 // Computed para total de páginas de despachos
@@ -1479,6 +1582,30 @@ onMounted(async () => {
   
   // Asegurar que el componente FolderTabs tenga el valor correcto
   await nextTick()
+  
+  // ========== INICIAR POLLING AUTOMÁTICO ==========
+  // Iniciar polling solo si estamos en la pestaña de despachos
+  if (activeTab.value === 'migrar') {
+    startPolling()
+    startTimeDisplayUpdate()
+  }
+})
+
+// Limpiar polling al desmontar el componente
+onUnmounted(() => {
+  stopPolling()
+  stopTimeDisplayUpdate()
+})
+
+// Watch para pausar/reanudar polling según pestaña activa
+watch(activeTab, (newTab) => {
+  if (newTab === 'migrar') {
+    startPolling() // Reanudar cuando volvemos a la pestaña de despachos
+    startTimeDisplayUpdate() // Reanudar actualización del display de tiempo
+  } else {
+    stopPolling() // Pausar cuando salimos de la pestaña de despachos
+    stopTimeDisplayUpdate() // Pausar actualización del display de tiempo
+  }
 })
 
 // Watch para query params de navegación desde OrdenCompraTable
