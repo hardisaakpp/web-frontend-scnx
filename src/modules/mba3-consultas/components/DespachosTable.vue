@@ -440,7 +440,16 @@
                           <!-- Producto -->
                           <td class="px-4 py-2 text-sm text-gray-900 bg-gray-50 border-r-4 border-violet-300">
                             <div class="max-w-xs">
-                              <div class="font-medium">{{ detalle.nombre_producto || '-' }}</div>
+                              <div class="font-medium">{{ detalle.nombre_producto || detalle.PRODUCT_NAME || '-' }}</div>
+                              <div v-if="detalle.CORP || detalle.GrupoPrenda || detalle.Talla || detalle.PRESENTACION" class="text-xs text-gray-500 mt-1 space-x-2">
+                                <span v-if="detalle.CORP">Corp: {{ detalle.CORP }}</span>
+                                <span v-if="detalle.GrupoPrenda">Grupo: {{ detalle.GrupoPrenda }}</span>
+                                <span v-if="detalle.Talla">Talla: {{ detalle.Talla }}</span>
+                                <span v-if="detalle.PRESENTACION">Presentación: {{ detalle.PRESENTACION }}</span>
+                              </div>
+                              <div v-if="detalle.PRODUCT_ID" class="text-xs text-gray-400 mt-1">
+                                ID: {{ detalle.PRODUCT_ID }}
+                              </div>
                             </div>
                           </td>
                           <!-- MBA3: Cantidad Docena -->

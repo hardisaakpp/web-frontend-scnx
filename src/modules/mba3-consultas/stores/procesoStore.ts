@@ -1,13 +1,80 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 
+// Estado del proceso de generación de ODC
+type ODCProcessState = 
+  | 'idle'           // Sin proceso activo
+  | 'generating'     // Generando ODC en backend
+  | 'syncing'        // Sincronizando datos (solo si backend no confirma)
+  | 'ready'          // Proceso completo, datos listos
+  | 'error'          // Error en algún paso
+
 export const useProcesoStore = defineStore('mba3Proceso', () => {
+  // Estados básicos (mantener compatibilidad con código existente)
   const loading = ref(false)
   const error = ref<string | null>(null)
   const currentStep = ref<string | null>(null)
   const resultados = ref<any>(null)
   const progress = ref(0)
+
+  // ========== Estado del proceso ODC ==========
+  const odcProcessState = ref<ODCProcessState>('idle')
+  const odcProcessError = ref<string | null>(null)
+  const odcProcessDespachos = ref<string[]>([])
+  const odcProcessId = ref<string | null>(null)  // Para trazabilidad y debugging
+
+  // Computed: ¿Está bloqueando la UI?
+  const isBlocking = computed(() => {
+    return odcProcessState.value === 'generating' || odcProcessState.value === 'syncing'
+  })
+
+  // Computed: ¿Puede el usuario interactuar? (útil para deshabilitar botones)
+  const canInteract = computed(() => {
+    return odcProcessState.value === 'idle' || odcProcessState.value === 'ready'
+  })
+
+  // Función para resetear el estado del proceso ODC
+  function resetODCProcess() {
+    odcProcessState.value = 'idle'
+    odcProcessError.value = null
+    odcProcessDespachos.value = []
+    odcProcessId.value = null
+  }
+
+  // Función para iniciar el proceso de generación de ODC
+  function startODCProcess(despachoIds: string | string[]) {
+    odcProcessState.value = 'generating'
+    odcProcessError.value = null
+    odcProcessDespachos.value = Array.isArray(despachoIds) ? despachoIds : [despachoIds]
+    odcProcessId.value = null // Se asignará cuando llegue la respuesta del backend
+  }
+
+  // Función para pasar a sincronización (solo si backend no confirma)
+  function setODCProcessSyncing() {
+    if (odcProcessState.value === 'generating') {
+      odcProcessState.value = 'syncing'
+    }
+  }
+
+  // Función para completar el proceso
+  // NOTA: El auto-reset se maneja en el componente para mantener el store determinista
+  function completeODCProcess() {
+    odcProcessState.value = 'ready'
+  }
+
+  // Función para marcar error
+  function setODCProcessError(errorMessage: string) {
+    odcProcessState.value = 'error'
+    odcProcessError.value = errorMessage
+  }
+
+  // Función para guardar el process_id del backend
+  function setODCProcessId(processId: string) {
+    odcProcessId.value = processId
+    // Log para debugging en producción
+    console.log(`[ODC Process] process_id asignado: ${processId}`)
+  }
 
   async function migrar() {
     loading.value = true
@@ -31,12 +98,41 @@ export const useProcesoStore = defineStore('mba3Proceso', () => {
     error.value = null
     currentStep.value = 'procesar-oc'
     progress.value = 75
+    
     try {
       const data = await mba3ConsultasService.procesarOC(despachoIds)
       resultados.value = { ...resultados.value, procesarOC: data }
+      
+      // Guardar process_id si viene en la respuesta (para trazabilidad)
+      if (data?.process_id) {
+        setODCProcessId(data.process_id)
+      }
+      
+      // Log para debugging en producción
+      const ocStatus = data?.metadata?.oc_status
+      if (ocStatus) {
+        console.log(`[ODC Process] Estado recibido: ${ocStatus.status}`, {
+          process_id: data.process_id,
+          oc_creadas: ocStatus.oc_creadas,
+          oc_errores: ocStatus.oc_errores,
+          despachos_actualizados: ocStatus.despachos_actualizados,
+          datos_sincronizados: ocStatus.datos_sincronizados
+        })
+      }
+      
+      // Actualizar progreso según confirmación del backend
+      if (ocStatus?.datos_sincronizados === true && ocStatus?.despachos_actualizados === true) {
+        // Backend confirma que todo está listo
+        progress.value = 100
+      } else {
+        // Backend no confirma, necesitaremos sincronizar
+        progress.value = 90
+      }
+      
       return data
     } catch (err: any) {
       error.value = err.message || 'Error al procesar ODC'
+      console.error('[ODC Process] Error al procesar:', err)
       throw err
     } finally {
       loading.value = false
@@ -113,19 +209,39 @@ export const useProcesoStore = defineStore('mba3Proceso', () => {
     error.value = null
     currentStep.value = null
     progress.value = 0
+    resetODCProcess()
   }
 
   return {
+    // Estados básicos (compatibilidad)
     loading,
     error,
     currentStep,
     resultados,
     progress,
+    
+    // Nuevos estados del proceso ODC
+    odcProcessState,
+    odcProcessError,
+    odcProcessDespachos,
+    odcProcessId,
+    isBlocking,
+    canInteract,
+    
+    // Funciones
     migrar,
     procesarOC,
     integrarSAP,
     procesoCompleto,
     reset,
+    
+    // Nuevas funciones del proceso ODC
+    resetODCProcess,
+    startODCProcess,
+    setODCProcessSyncing,
+    completeODCProcess,
+    setODCProcessError,
+    setODCProcessId,
   }
 })
 

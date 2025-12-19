@@ -6,7 +6,7 @@ import type {
 } from '../types'
 import type { OrdenCompraResponse, OrdenCompraLogResponse, RemisionResponse } from '../types'
 import type { HealthResponse, ProcesoResponse } from '../types'
-import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest } from '../types'
+import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse } from '../types'
 
 // Usar la URL base del backend MBA3
 const API_BASE_URL = import.meta.env.VITE_MBA3_API_BASE_URL || 'http://localhost:8000'
@@ -496,6 +496,101 @@ export const mba3ConsultasService = {
     } catch (error: any) {
       console.error('❌ [sincronizarHomologaciones] Error al sincronizar homologaciones:', error)
       throw new Error(`No se pudieron sincronizar las homologaciones. Error: ${error.message}`)
+    }
+  },
+
+  // ========== Cruce de Productos ==========
+  
+  // Realizar cruce de productos entre MBA3 y SAP
+  async realizarCruce(): Promise<CruceProductosResponse> {
+    try {
+      // Timeout extendido ya que el cruce puede tardar
+      const response = await mba3Api.get<CruceProductosResponse>('/cruce-productos/realizar-cruce', {
+        timeout: 120000 // 2 minutos
+      })
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [realizarCruce] Error al realizar cruce de productos:', error)
+      throw new Error(`No se pudo realizar el cruce de productos. Error: ${error.message}`)
+    }
+  },
+
+  // Obtener sugerencias de homologación
+  async obtenerSugerencias(): Promise<SugerenciasResponse> {
+    try {
+      // Timeout extendido ya que puede tardar
+      const response = await mba3Api.get<SugerenciasResponse>('/cruce-productos/sugerencias', {
+        timeout: 120000 // 2 minutos
+      })
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [obtenerSugerencias] Error al obtener sugerencias:', error)
+      throw new Error(`No se pudieron obtener las sugerencias. Error: ${error.message}`)
+    }
+  },
+
+  // Obtener estado de sincronización
+  async obtenerEstadoSincronizacion(): Promise<EstadoSincronizacionResponse> {
+    try {
+      const response = await mba3Api.get<EstadoSincronizacionResponse>('/cruce-productos/estado-sincronizacion')
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [obtenerEstadoSincronizacion] Error al obtener estado:', error)
+      throw new Error(`No se pudo obtener el estado de sincronización. Error: ${error.message}`)
+    }
+  },
+
+  // Sincronizar maestros manualmente
+  async sincronizarMaestros(): Promise<SincronizarMaestrosResponse> {
+    try {
+      // Timeout muy extendido ya que la sincronización puede tardar varios minutos
+      const response = await mba3Api.post<SincronizarMaestrosResponse>('/cruce-productos/sincronizar-maestros', {}, {
+        timeout: 600000 // 10 minutos
+      })
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [sincronizarMaestros] Error al sincronizar maestros:', error)
+      throw new Error(`No se pudo sincronizar los maestros. Error: ${error.message}`)
+    }
+  },
+
+  // ========== Búsqueda de SKU ==========
+  
+  // Buscar SKU en MBA3
+  async buscarSkuMba3(sku: string): Promise<{ data: any }> {
+    try {
+      const response = await mba3Api.get(`/cruce-productos/buscar-sku/mba3`, {
+        params: { sku }
+      })
+      // El backend devuelve { status, sku, data }
+      // Extraer el campo data de la respuesta
+      return { data: response.data?.data || response.data || null }
+    } catch (error: any) {
+      // Si el error es 404, significa que no se encontró el SKU (no es un error crítico)
+      if (error.response?.status === 404) {
+        return { data: null }
+      }
+      console.error('❌ [buscarSkuMba3] Error al buscar SKU en MBA3:', error)
+      throw new Error(`No se pudo buscar el SKU en MBA3. Error: ${error.message}`)
+    }
+  },
+
+  // Buscar SKU en SAP
+  async buscarSkuSap(sku: string): Promise<{ data: any }> {
+    try {
+      const response = await mba3Api.get(`/cruce-productos/buscar-sku/sap`, {
+        params: { sku }
+      })
+      // El backend devuelve { status, sku, data }
+      // Extraer el campo data de la respuesta
+      return { data: response.data?.data || response.data || null }
+    } catch (error: any) {
+      // Si el error es 404, significa que no se encontró el SKU (no es un error crítico)
+      if (error.response?.status === 404) {
+        return { data: null }
+      }
+      console.error('❌ [buscarSkuSap] Error al buscar SKU en SAP:', error)
+      throw new Error(`No se pudo buscar el SKU en SAP. Error: ${error.message}`)
     }
   },
 }

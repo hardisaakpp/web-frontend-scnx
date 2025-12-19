@@ -37,7 +37,7 @@
     <!-- Overlay de bloqueo cuando se ejecuta el envío a SAP desde Procesar ODC -->
     <Teleport to="body">
       <div 
-        v-if="procesoStore.loading && (procesoStore.currentStep === 'integrar-sap' || procesoStore.currentStep === 'procesar-oc')"
+        v-if="procesoStore.isBlocking || (procesoStore.loading && (procesoStore.currentStep === 'integrar-sap' || procesoStore.currentStep === 'procesar-oc'))"
         class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center"
         @click.prevent
         @mousedown.prevent
@@ -53,8 +53,15 @@
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
           <div>
-            <h3 class="text-lg font-semibold text-gray-900 mb-2">Enviando Órdenes a SAP</h3>
-            <p class="text-sm text-gray-600">Por favor espera mientras se procesan y envían las órdenes de compra...</p>
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">
+              {{ getModalTitle() }}
+            </h3>
+            <p class="text-sm text-gray-600">
+              {{ getModalMessage() }}
+            </p>
+            <div v-if="procesoStore.odcProcessId" class="mt-2 text-xs text-gray-500 font-mono">
+              ID: {{ procesoStore.odcProcessId }}
+            </div>
             <div class="mt-4 w-full bg-gray-200 rounded-full h-2 overflow-hidden">
               <div
                 class="h-full bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 transition-all duration-300"
@@ -71,7 +78,7 @@
     <!-- Contenedor principal con bloqueo de interacción -->
     <div 
       :class="{
-        'pointer-events-none opacity-75': procesoStore.loading && (procesoStore.currentStep === 'migrar' || procesoStore.currentStep === 'integrar-sap' || procesoStore.currentStep === 'procesar-oc')
+        'pointer-events-none opacity-75': procesoStore.isBlocking || (procesoStore.loading && (procesoStore.currentStep === 'migrar' || procesoStore.currentStep === 'integrar-sap' || procesoStore.currentStep === 'procesar-oc'))
       }"
     >
       <div>
@@ -643,6 +650,12 @@ const progresoEliminar = ref(0)
 const generandoODC = ref(false)
 const progresoGenerarODC = ref(0)
 
+// Constantes de timing (evitar números mágicos)
+const AUTO_RESET_DELAY = 1000  // ms para auto-reset del estado 'ready'
+const ERROR_RESET_DELAY = 2000  // ms para reset después de error
+const PROGRESS_UPDATE_INTERVAL = 300  // ms para actualizar progreso simulado
+const PROGRESS_DISPLAY_DELAY = 300  // ms para mostrar 100% antes de continuar
+
 // Estado para almacén destino
 const almacenDestino = ref<string>('')
 
@@ -1119,63 +1132,217 @@ async function ejecutarMigrar() {
   }
 }
 
+// Funciones auxiliares para el modal
+function getModalTitle(): string {
+  if (procesoStore.odcProcessState === 'generating') {
+    return 'Generando ODC'
+  }
+  if (procesoStore.odcProcessState === 'syncing') {
+    return 'Sincronizando datos'
+  }
+  if (procesoStore.currentStep === 'integrar-sap') {
+    return 'Enviando Órdenes a SAP'
+  }
+  return 'Procesando...'
+}
+
+function getModalMessage(): string {
+  if (procesoStore.odcProcessState === 'generating') {
+    return 'Por favor espera mientras se genera la orden de compra...'
+  }
+  if (procesoStore.odcProcessState === 'syncing') {
+    return 'Actualizando información y verificando cambios...'
+  }
+  if (procesoStore.currentStep === 'integrar-sap') {
+    return 'Por favor espera mientras se procesan y envían las órdenes de compra...'
+  }
+  return 'Por favor espera...'
+}
+
+// Función auxiliar para manejar la respuesta del backend (reduce duplicación)
+// TODO: Refactorizar lógica duplicada entre handleGenerarODCIndividual y handleGenerarODCMultiples
+async function handleODCResponse(
+  response: any,
+  despachoIds: string[],
+  isMultiple: boolean = false
+): Promise<{ shouldChangeTab: boolean; shouldShowWarning: boolean }> {
+  const ocStatus = response?.metadata?.oc_status
+  
+  if (!ocStatus) {
+    throw new Error('Respuesta del backend sin metadata oc_status')
+  }
+  
+  // Manejar error
+  if (ocStatus.status === 'error') {
+    const errorMsg = ocStatus.detalles?.[0]?.error || (isMultiple ? 'Error al generar las ODCs' : 'Error al generar ODC')
+    throw new Error(errorMsg)
+  }
+  
+  // Manejar estado parcial
+  if (ocStatus.status === 'partial') {
+    toast.warning(
+      isMultiple ? 'ODCs generadas parcialmente' : 'ODC generada parcialmente',
+      `${ocStatus.oc_creadas} ODC(s) generada(s), ${ocStatus.oc_errores} con errores. Revisa los detalles.`
+    )
+    procesoStore.setODCProcessSyncing()
+    await Promise.all([
+      ordenesCompraStore.fetchEstadisticas(),
+      cargarOrdenesCompraPendientes(),
+      cargarDespachos()
+    ])
+    procesoStore.completeODCProcess()
+    // Auto-reset después de un momento (UX)
+    setTimeout(() => {
+      if (procesoStore.odcProcessState === 'ready') {
+        procesoStore.resetODCProcess()
+      }
+    }, AUTO_RESET_DELAY)
+    return { shouldChangeTab: false, shouldShowWarning: true }
+  }
+  
+  // Manejar estado processing (asíncrono)
+  if (ocStatus.status === 'processing') {
+    toast.info(
+      isMultiple ? 'ODCs en proceso' : 'ODC en proceso',
+      'La orden de compra se está generando. Se actualizará automáticamente cuando esté lista.'
+    )
+    procesoStore.setODCProcessSyncing()
+    // TODO: Implementar polling si el backend requiere verificación asíncrona
+    // Por ahora, recargamos datos una vez
+    await Promise.all([
+      ordenesCompraStore.fetchEstadisticas(),
+      cargarOrdenesCompraPendientes(),
+      cargarDespachos()
+    ])
+    procesoStore.completeODCProcess()
+    setTimeout(() => {
+      if (procesoStore.odcProcessState === 'ready') {
+        procesoStore.resetODCProcess()
+      }
+    }, AUTO_RESET_DELAY)
+    return { shouldChangeTab: true, shouldShowWarning: false }
+  }
+  
+  // Manejar estado completed
+  if (ocStatus.status === 'completed') {
+    if (ocStatus.datos_sincronizados === true && ocStatus.despachos_actualizados === true) {
+      // ✅ Backend confirma que TODO está listo
+      
+      // Actualizar UI optimísticamente (el backend ya confirmó)
+      despachoIds.forEach(despachoId => {
+        const despachoIndex = despachos.value.findIndex(d => d.despacho_id === despachoId)
+        if (despachoIndex !== -1) {
+          despachos.value[despachoIndex] = {
+            ...despachos.value[despachoIndex],
+            tiene_odc: true
+          } as Despacho
+        }
+      })
+      
+      // Recargar datos (el backend ya confirmó que están listos)
+      await Promise.all([
+        ordenesCompraStore.fetchEstadisticas(),
+        cargarOrdenesCompraPendientes(),
+        cargarDespachos()
+      ])
+      
+      toast.success(
+        isMultiple ? 'ODCs generadas' : 'ODC generada',
+        `${isMultiple ? `${ocStatus.oc_creadas || despachoIds.length} ODC(s) generada(s)` : 'Orden de compra generada exitosamente'}${ocStatus.oc_errores > 0 ? ` (con advertencias)` : ''}`
+      )
+      
+      procesoStore.completeODCProcess()
+      // Auto-reset después de un momento (UX)
+      setTimeout(() => {
+        if (procesoStore.odcProcessState === 'ready') {
+          procesoStore.resetODCProcess()
+        }
+      }, AUTO_RESET_DELAY)
+      
+      return { shouldChangeTab: true, shouldShowWarning: false }
+      
+    } else {
+      // ⚠️ Backend no confirma completamente, necesitamos sincronizar
+      procesoStore.setODCProcessSyncing()
+      
+      // Recargar datos y esperar a que se actualicen
+      await Promise.all([
+        ordenesCompraStore.fetchEstadisticas(),
+        cargarOrdenesCompraPendientes(),
+        cargarDespachos()
+      ])
+      
+      toast.success(
+        isMultiple ? 'ODCs generadas' : 'ODC generada',
+        isMultiple ? `${despachoIds.length} orden(es) de compra generada(s)` : 'La orden de compra se ha generado exitosamente'
+      )
+      
+      procesoStore.completeODCProcess()
+      setTimeout(() => {
+        if (procesoStore.odcProcessState === 'ready') {
+          procesoStore.resetODCProcess()
+        }
+      }, AUTO_RESET_DELAY)
+      
+      return { shouldChangeTab: true, shouldShowWarning: false }
+    }
+  }
+  
+  // Estado desconocido
+  throw new Error(`Estado desconocido del backend: ${ocStatus.status}`)
+}
+
 // Funciones para generar ODC individual y múltiple
 async function handleGenerarODCIndividual(despachoId: string) {
+  // Iniciar el proceso (activa el modal)
+  procesoStore.startODCProcess(despachoId)
+  
   try {
     generandoODC.value = true
     progresoGenerarODC.value = 0
-    
-    // Simular progreso durante la generación
-    const progressInterval = setInterval(() => {
-      if (progresoGenerarODC.value < 80) {
-        progresoGenerarODC.value += 10
-      }
-    }, 300)
     
     const despacho = despachos.value.find(d => d.despacho_id === despachoId)
     const referencia = despacho?.codigo_factura || despachoId
     
     toast.info('Generando ODC...', `Generando orden de compra para despacho ${referencia}`)
     
-    await procesoStore.procesarOC(despachoId)
+    // Generar la ODC
+    const response = await procesoStore.procesarOC(despachoId)
     
-    clearInterval(progressInterval)
     progresoGenerarODC.value = 100
     
-    // Pequeño delay para mostrar el 100%
-    await new Promise(resolve => setTimeout(resolve, 300))
+    // Manejar la respuesta del backend
+    const result = await handleODCResponse(response, [despachoId], false)
     
-    if (procesoStore.resultados?.metadata?.oc_status) {
-      const status = procesoStore.resultados.metadata.oc_status
-      toast.success(
-        'ODC generada',
-        `Orden de compra generada exitosamente${status.oc_errores > 0 ? ` (con advertencias)` : ''}`
-      )
-    } else {
-      toast.success('ODC generada', 'La orden de compra se ha generado exitosamente')
+    // Cambiar de pestaña solo si el proceso fue exitoso y completo
+    if (result.shouldChangeTab) {
+      activeTab.value = 'procesar-oc'
+      await handleTabChange('procesar-oc')
     }
-    
-    // Actualizar datos
-    await ordenesCompraStore.fetchEstadisticas()
-    await cargarOrdenesCompraPendientes()
-    await cargarDespachos()
-    
-    // Cambiar automáticamente a la pestaña "Procesar ODC"
-    activeTab.value = 'procesar-oc'
-    await handleTabChange('procesar-oc')
     
     // Limpiar estado del botón individual
     if (despachosTableRef.value?.clearSendingState) {
       despachosTableRef.value.clearSendingState()
     }
+    
   } catch (error: any) {
     console.error('Error al generar ODC individual:', error)
+    
+    // Marcar error en el estado
+    procesoStore.setODCProcessError(error.message || 'No se pudo generar la orden de compra')
+    
     toast.error('Error al generar ODC', error.message || 'No se pudo generar la orden de compra')
     
     // Limpiar estado del botón individual en caso de error
     if (despachosTableRef.value?.clearSendingState) {
       despachosTableRef.value.clearSendingState()
     }
+    
+    // Resetear después de mostrar el error
+    setTimeout(() => {
+      procesoStore.resetODCProcess()
+    }, ERROR_RESET_DELAY)
+    
   } finally {
     generandoODC.value = false
     progresoGenerarODC.value = 0
@@ -1183,71 +1350,58 @@ async function handleGenerarODCIndividual(despachoId: string) {
 }
 
 async function handleGenerarODCMultiples(despachoIds: string[]) {
+  // Iniciar el proceso
+  procesoStore.startODCProcess(despachoIds)
+  
   try {
     generandoODC.value = true
     progresoGenerarODC.value = 0
     
-    // Simular progreso durante la generación
-    const progressInterval = setInterval(() => {
-      if (progresoGenerarODC.value < 80) {
-        progresoGenerarODC.value += 10
-      }
-    }, 300)
-    
     toast.info('Generando ODCs...', `Generando ${despachoIds.length} orden(es) de compra`)
     
     // Si es un solo despacho, usar el método individual
-    // (la función individual ya cambiará la pestaña automáticamente)
     if (despachoIds.length === 1) {
       await handleGenerarODCIndividual(despachoIds[0])
-      clearInterval(progressInterval)
-      progresoGenerarODC.value = 100
-      await new Promise(resolve => setTimeout(resolve, 300))
       generandoODC.value = false
       progresoGenerarODC.value = 0
       return
     }
     
     // Si son múltiples, enviar array
-    await procesoStore.procesarOC(despachoIds)
+    const response = await procesoStore.procesarOC(despachoIds)
     
-    clearInterval(progressInterval)
     progresoGenerarODC.value = 100
     
-    // Pequeño delay para mostrar el 100%
-    await new Promise(resolve => setTimeout(resolve, 300))
+    // Manejar la respuesta del backend
+    const result = await handleODCResponse(response, despachoIds, true)
     
-    if (procesoStore.resultados?.metadata?.oc_status) {
-      const status = procesoStore.resultados.metadata.oc_status
-      toast.success(
-        'ODCs generadas',
-        `${status.oc_creadas || despachoIds.length} ODC(s) generada(s)${status.oc_errores > 0 ? `, ${status.oc_errores} con errores` : ''}`
-      )
-    } else {
-      toast.success('ODCs generadas', `${despachoIds.length} orden(es) de compra generada(s)`)
+    // Cambiar de pestaña solo si el proceso fue exitoso y completo
+    if (result.shouldChangeTab) {
+      activeTab.value = 'procesar-oc'
+      await handleTabChange('procesar-oc')
     }
-    
-    // Actualizar datos
-    await ordenesCompraStore.fetchEstadisticas()
-    await cargarOrdenesCompraPendientes()
-    await cargarDespachos()
-    
-    // Cambiar automáticamente a la pestaña "Procesar ODC"
-    activeTab.value = 'procesar-oc'
-    await handleTabChange('procesar-oc')
     
     // Limpiar estado de envío múltiple
     if (despachosTableRef.value?.clearSendingMultipleState) {
       despachosTableRef.value.clearSendingMultipleState()
     }
+    
   } catch (error: any) {
     console.error('Error al generar ODCs múltiples:', error)
+    
+    procesoStore.setODCProcessError(error.message || 'No se pudieron generar las órdenes de compra')
+    
     toast.error('Error al generar ODCs', error.message || 'No se pudieron generar las órdenes de compra')
     
     // Limpiar estado de envío múltiple en caso de error
     if (despachosTableRef.value?.clearSendingMultipleState) {
       despachosTableRef.value.clearSendingMultipleState()
     }
+    
+    setTimeout(() => {
+      procesoStore.resetODCProcess()
+    }, ERROR_RESET_DELAY)
+    
   } finally {
     generandoODC.value = false
     progresoGenerarODC.value = 0

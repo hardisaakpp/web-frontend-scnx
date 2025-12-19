@@ -26,7 +26,7 @@
             stroke-width="8"
             :stroke-dasharray="segment.dashArray"
             :stroke-dashoffset="segment.offset"
-            :stroke-linecap="round"
+            stroke-linecap="round"
             class="transition-all duration-500"
           />
         </svg>

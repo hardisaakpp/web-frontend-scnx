@@ -44,6 +44,7 @@ export interface Despacho {
   orden_compra_info: string | null
   despacho_created_at: string
   despacho_updated_at: string
+  tiene_odc?: boolean  // Indica si el despacho tiene una ODC generada
   despacho_detalles?: DespachoDetalle[] // Detalles incluidos en la respuesta
 }
 
@@ -63,6 +64,13 @@ export interface DespachoDetalle {
   nombre_producto: string
   tipo_linea: string
   precio_unitario_sap: number | null
+  // Campos adicionales del backend MBA3
+  CORP?: string
+  PRODUCT_NAME?: string
+  PRODUCT_ID?: string
+  GrupoPrenda?: string
+  Talla?: string
+  PRESENTACION?: string
 }
 
 export interface PrefacturaFilters {
@@ -212,8 +220,15 @@ export interface HealthResponse {
 }
 
 export interface ProcesoResponse {
-  status: string
-  data?: any
+  status: 'success' | 'error' | 'processing'  // Tipado explícito en lugar de string
+  message?: string
+  process_id?: string  // Para trazabilidad y debugging
+  data?: {
+    oc_ids?: string[]
+    despachos_procesados?: string[]
+    oc_creadas?: number
+    oc_errores?: number
+  }
   metadata?: {
     query?: string
     save_status?: {
@@ -223,13 +238,29 @@ export interface ProcesoResponse {
       total_detalles: number
     }
     oc_status?: {
-      status: string
+      status: 'completed' | 'partial' | 'error' | 'processing'  // Estados explícitos
       oc_creadas: number
       oc_errores: number
       total_procesadas: number
-      detalles: any[]
+      despachos_actualizados?: boolean  // Confirma que tiene_odc está actualizado
+      datos_sincronizados?: boolean  // Confirma que datos están listos para consulta
+      detalles: Array<{
+        despacho_id?: string
+        oc_id?: string
+        success?: boolean
+        tiene_odc_actualizado?: boolean
+        error?: string
+        [key: string]: any
+      }>
     }
+    timestamp?: string  // Para verificar frescura de los datos
   }
+}
+
+// Tipo para resultado del procesamiento de ODC (útil para handleODCResponse)
+export type ODCResult = {
+  shouldChangeTab: boolean
+  shouldShowWarning: boolean
 }
 
 // ========== Estado del Módulo ==========
@@ -246,5 +277,197 @@ export interface Tab {
   label: string
   badge?: string | number
   color?: 'violet' | 'emerald' | 'rose' | 'default'
+}
+
+// ========== Homologaciones de SKU ==========
+export interface SkuHomologacion {
+  homologacion_id: string
+  sku_mba3: string
+  nombre_producto_mba3: string
+  precio_unitario_mba3: number
+  cantidad_docena_mba3: number
+  total_linea_mba3: number
+  sku_sap: string | null
+  nombre_producto_sap: string | null
+  precio_unitario_sap: number | null
+  cantidad_pack_sap: number | null
+  unidad_sap: string | null
+  subtotal_sap: number | null
+  estado: 'PENDIENTE' | 'HOMOLOGADO' | 'ERROR'
+  tiene_diferencias: boolean
+  tiene_datos_sap: boolean
+  created_at?: string
+  updated_at?: string
+}
+
+export interface SkuHomologacionUpdateRequest {
+  sku_sap?: string | null
+  nombre_producto_sap?: string | null
+  precio_unitario_sap?: number | null
+  cantidad_pack_sap?: number | null
+  unidad_sap?: string | null
+  subtotal_sap?: number | null
+  estado?: 'PENDIENTE' | 'HOMOLOGADO' | 'ERROR'
+}
+
+export interface SkuHomologacionResponse {
+  status: string
+  data: SkuHomologacion[]
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
+  metadata?: {
+    total_pendientes: number
+    total_homologados: number
+    total_errores: number
+  }
+}
+
+// ========== Cruce de Productos ==========
+export interface ProductoHomologadoExacto {
+  codigo_mba3: string
+  nombre_mba3: string
+  corp?: string
+  grupo_prenda?: string
+  talla?: string
+  presentacion?: string
+  codigo_sap: string
+  nombre_sap: string
+  pack_sap?: string
+  tipo_coincidencia: 'exacta'
+}
+
+export interface ProductoHomologable {
+  codigo_mba3: string
+  nombre_mba3: string
+  corp?: string
+  grupo_prenda?: string
+  talla?: string
+  presentacion?: string
+  codigo_sap: string
+  nombre_sap: string
+  pack_sap?: string
+  codigo_mba3_normalizado: string
+  codigo_sap_normalizado: string
+  tipo_coincidencia: 'homologable'
+}
+
+export interface ProductoSoloMBA3 {
+  codigo_mba3: string
+  nombre_mba3: string
+  corp?: string
+  grupo_prenda?: string
+  talla?: string
+  presentacion?: string
+  tipo_coincidencia: 'solo_mba3'
+}
+
+export interface ProductoSoloSAP {
+  codigo_sap: string
+  nombre_sap: string
+  pack_sap?: string
+  group_code?: number
+  active?: boolean
+  tipo_coincidencia: 'solo_sap'
+}
+
+export interface EstadisticasCruce {
+  total_productos_mba3: number
+  total_productos_sap: number
+  homologados_exactos: number
+  homologables: number
+  solo_en_mba3: number
+  solo_en_sap: number
+  porcentaje_homologacion: number
+}
+
+export interface CruceProductosData {
+  homologados_exactos: ProductoHomologadoExacto[]
+  homologables: ProductoHomologable[]
+  solo_en_mba3: ProductoSoloMBA3[]
+  solo_en_sap: ProductoSoloSAP[]
+  estadisticas: EstadisticasCruce
+}
+
+export interface CruceProductosResponse {
+  status: string
+  message: string
+  data: CruceProductosData
+}
+
+// ========== Sugerencias ==========
+
+export interface MotivoSugerencia {
+  tipo: string
+  descripcion: string
+  detalle?: string
+}
+
+export interface SugerenciaProducto {
+  codigo_sap: string
+  nombre_sap: string
+  pack_sap?: string
+  group_code?: string
+  active?: boolean
+  score: number // 0-1
+  score_original: number
+  motivos: MotivoSugerencia[]
+}
+
+export interface ProductoConSugerencias {
+  codigo_mba3: string
+  nombre_mba3: string
+  corp?: string
+  grupo_prenda?: string
+  talla?: string
+  presentacion?: string
+  sugerencias: SugerenciaProducto[]
+}
+
+export interface SugerenciasResponse {
+  status: string
+  message: string
+  data: ProductoConSugerencias[]
+  metadata?: {
+    total_productos: number
+    total_sugerencias: number
+    tiempo_procesamiento?: number
+  }
+}
+
+// ========== Sincronización ==========
+
+export interface EstadoSincronizacion {
+  mba3?: {
+    ultima_sync: string | null
+    estado: 'exitoso' | 'error' | 'en_proceso' | null
+    mensaje?: string
+  }
+  sap?: {
+    ultima_sync: string | null
+    estado: 'exitoso' | 'error' | 'en_proceso' | null
+    mensaje?: string
+  }
+}
+
+export interface EstadoSincronizacionResponse {
+  status: string
+  data: EstadoSincronizacion
+}
+
+export interface SincronizarMaestrosResponse {
+  status: string
+  message: string
+  data?: {
+    mba3?: {
+      productos_sincronizados: number
+      tiempo_procesamiento: number
+    }
+    sap?: {
+      productos_sincronizados: number
+      tiempo_procesamiento: number
+    }
+  }
 }
 
