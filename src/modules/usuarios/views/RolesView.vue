@@ -19,7 +19,7 @@
 
     <div v-else-if="rolesStore.error" class="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
       <p class="text-red-600 mb-2">{{ rolesStore.error }}</p>
-      <button @click="loadData" class="text-indigo-600 hover:underline">Reintentar</button>
+      <button @click="rolesStore.fetchRoles" class="text-indigo-600 hover:underline">Reintentar</button>
     </div>
 
     <div v-else-if="rolesStore.roles.length === 0" class="bg-white rounded-lg shadow p-12 text-center">

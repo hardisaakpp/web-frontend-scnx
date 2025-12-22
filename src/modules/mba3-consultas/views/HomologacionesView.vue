@@ -473,7 +473,7 @@
                   <span class="font-semibold">{{ scoreMinimo }}%</span>
         </label>
         <button
-                  @click="cargarSugerencias"
+                  @click="() => cargarSugerencias()"
                   :disabled="sugerenciasLoading"
                   class="px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 disabled:opacity-50"
         >
@@ -504,7 +504,7 @@
         </svg>
               <p class="mt-4 text-gray-500">No hay sugerencias disponibles</p>
               <button
-                @click="cargarSugerencias"
+                @click="() => cargarSugerencias()"
                 class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
                 Ver Sugerencias
@@ -1605,7 +1605,7 @@ function getSyncStatusClass(): string {
   return 'border-green-400 bg-green-50'
 }
 
-function getSyncTextClass(sync?: { ultima_sync: string | null; estado?: string }): string {
+function getSyncTextClass(sync?: { ultima_sync: string | null; estado?: string | null }): string {
   if (!sync || !sync.ultima_sync) return 'text-gray-500 italic'
   if (sync.estado === 'error') return 'text-red-600'
   return 'text-gray-700'

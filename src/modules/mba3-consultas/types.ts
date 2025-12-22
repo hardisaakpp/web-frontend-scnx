@@ -96,6 +96,33 @@ export interface PrefacturaResponse {
   }
 }
 
+// ========== Remisiones ==========
+// Remision es similar a Prefactura, pero puede tener campos adicionales
+export interface Remision extends Prefactura {
+  // Campos adicionales que pueden existir en remisiones
+  factura_impresa?: string | boolean
+  [key: string]: any // Permitir campos dinámicos adicionales
+}
+
+export interface RemisionResponse {
+  status: string
+  data: Remision[]
+  total?: number
+  page?: number
+  pageSize?: number
+  totalPages?: number
+  metadata?: {
+    count: number
+    filters?: Record<string, any>
+    save_status?: {
+      status: string
+      facturas_guardadas?: number
+      facturas_actualizadas?: number
+      total_detalles?: number
+    }
+  }
+}
+
 // ========== Órdenes de Compra ==========
 export interface OrdenCompra {
   oc_id: string

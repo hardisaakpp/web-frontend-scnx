@@ -559,8 +559,10 @@ export const mba3ConsultasService = {
   // Buscar SKU en MBA3
   async buscarSkuMba3(sku: string): Promise<{ data: any }> {
     try {
-      const response = await mba3Api.get(`/cruce-productos/buscar-sku/mba3`, {
-        params: { sku }
+      // Timeout aumentado a 60 segundos para dar margen al backend (que tiene timeout de 25s)
+      const response = await mba3Api.get<{ status?: string; sku?: string; data?: any }>(`/cruce-productos/buscar-sku/mba3`, {
+        params: { sku },
+        timeout: 60000 // 60 segundos
       })
       // El backend devuelve { status, sku, data }
       // Extraer el campo data de la respuesta
@@ -570,6 +572,11 @@ export const mba3ConsultasService = {
       if (error.response?.status === 404) {
         return { data: null }
       }
+      // Si el error es 504 (Gateway Timeout), el backend falló por timeout (25s)
+      if (error.response?.status === 504) {
+        console.error('❌ [buscarSkuMba3] Timeout en el backend:', error)
+        throw new Error('La búsqueda en MBA3 tardó demasiado tiempo. Por favor, intente nuevamente.')
+      }
       console.error('❌ [buscarSkuMba3] Error al buscar SKU en MBA3:', error)
       throw new Error(`No se pudo buscar el SKU en MBA3. Error: ${error.message}`)
     }
@@ -578,8 +585,10 @@ export const mba3ConsultasService = {
   // Buscar SKU en SAP
   async buscarSkuSap(sku: string): Promise<{ data: any }> {
     try {
-      const response = await mba3Api.get(`/cruce-productos/buscar-sku/sap`, {
-        params: { sku }
+      // Timeout aumentado a 60 segundos para dar margen al backend (que tiene timeout de 25s)
+      const response = await mba3Api.get<{ status?: string; sku?: string; data?: any }>(`/cruce-productos/buscar-sku/sap`, {
+        params: { sku },
+        timeout: 60000 // 60 segundos
       })
       // El backend devuelve { status, sku, data }
       // Extraer el campo data de la respuesta
@@ -588,6 +597,11 @@ export const mba3ConsultasService = {
       // Si el error es 404, significa que no se encontró el SKU (no es un error crítico)
       if (error.response?.status === 404) {
         return { data: null }
+      }
+      // Si el error es 504 (Gateway Timeout), el backend falló por timeout (25s)
+      if (error.response?.status === 504) {
+        console.error('❌ [buscarSkuSap] Timeout en el backend:', error)
+        throw new Error('La búsqueda en SAP tardó demasiado tiempo. Por favor, intente nuevamente.')
       }
       console.error('❌ [buscarSkuSap] Error al buscar SKU en SAP:', error)
       throw new Error(`No se pudo buscar el SKU en SAP. Error: ${error.message}`)

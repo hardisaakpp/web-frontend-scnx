@@ -560,7 +560,7 @@ const filteredOrdenes = computed(() => {
 
     // Buscar en mensajes amigables de SAP
     if (log.estado === 'ERROR' && isSapError(log.error_source) && log.error_code) {
-      const friendlyMessage = getSapErrorMessage(log.error_code, log.error_message || log.mensaje || null)
+      const friendlyMessage = getSapErrorMessage(log.error_code, log.error_message || log.mensaje || undefined)
       if (friendlyMessage.toLowerCase().includes(query)) {
         return true
       }

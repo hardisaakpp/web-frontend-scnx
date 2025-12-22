@@ -22,3 +22,4 @@ Esta carpeta contiene documentación técnica detallada sobre funcionalidades es
 - **Documentación de módulos:** Ver README.md dentro de cada módulo en `src/modules/`
 - **Documentación general:** Ver [README.md](../README.md) principal
 
+
