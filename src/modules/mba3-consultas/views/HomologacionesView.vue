@@ -87,6 +87,40 @@
       </div>
     </div>
 
+    <!-- Indicador de progreso mejorado -->
+    <div v-if="cruceLoading" class="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+      <div class="flex items-center justify-between mb-2">
+        <div class="flex-1">
+          <span class="text-sm font-medium text-blue-900">{{ cruceMessage || 'Procesando...' }}</span>
+          <span v-if="cruceStep" class="text-xs text-blue-600 ml-2">({{ cruceStep }})</span>
+        </div>
+        <span class="text-sm font-bold text-blue-900">{{ cruceProgress }}%</span>
+      </div>
+      <div class="w-full bg-blue-200 rounded-full h-2.5 mb-2">
+        <div 
+          class="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-out" 
+          :style="{ width: `${cruceProgress}%` }"
+        ></div>
+      </div>
+      <div v-if="cruceProcessId" class="flex items-center justify-between">
+        <p class="text-xs text-gray-500">
+          ID: {{ cruceProcessId }}
+        </p>
+        <button
+          @click="cancelarCruce"
+          class="text-xs text-red-600 hover:text-red-800 underline"
+        >
+          Cancelar
+        </button>
+      </div>
+    </div>
+    
+    <!-- Mostrar error si existe -->
+    <div v-if="cruceError && !cruceLoading" class="mb-4 p-4 bg-red-50 rounded-lg border border-red-200">
+      <p class="text-sm text-red-800 font-medium">Error:</p>
+      <p class="text-sm text-red-700 mt-1">{{ cruceError }}</p>
+    </div>
+
     <!-- Sección de Cruce de Productos -->
     <div v-if="cruceResultado" class="space-y-4">
       <!-- Estadísticas del Cruce -->
@@ -95,43 +129,43 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4">
           <div class="bg-blue-50 rounded-lg p-4 border-l-4 border-blue-500">
             <p class="text-sm font-medium text-gray-600">Total MBA3</p>
-            <p class="text-2xl font-bold text-blue-900">{{ cruceResultado.estadisticas.total_productos_mba3 }}</p>
+            <p class="text-2xl font-bold text-blue-900">{{ cruceResultado?.estadisticas?.total_productos_mba3 || 0 }}</p>
           </div>
           <div class="bg-purple-50 rounded-lg p-4 border-l-4 border-purple-500">
             <p class="text-sm font-medium text-gray-600">Total SAP</p>
-            <p class="text-2xl font-bold text-purple-900">{{ cruceResultado.estadisticas.total_productos_sap }}</p>
+            <p class="text-2xl font-bold text-purple-900">{{ cruceResultado?.estadisticas?.total_productos_sap || 0 }}</p>
           </div>
           <div class="bg-green-50 rounded-lg p-4 border-l-4 border-green-500">
             <p class="text-sm font-medium text-gray-600">✅ Exactos</p>
-            <p class="text-2xl font-bold text-green-900">{{ cruceResultado.estadisticas.homologados_exactos }}</p>
+            <p class="text-2xl font-bold text-green-900">{{ cruceResultado?.estadisticas?.homologados_exactos || 0 }}</p>
             <p class="text-xs text-gray-500 mt-1">
-              {{ ((cruceResultado.estadisticas.homologados_exactos / cruceResultado.estadisticas.total_productos_mba3) * 100).toFixed(1) }}%
+              {{ cruceResultado?.estadisticas?.total_productos_mba3 ? ((cruceResultado.estadisticas.homologados_exactos / cruceResultado.estadisticas.total_productos_mba3) * 100).toFixed(1) : '0' }}%
             </p>
           </div>
           <div class="bg-yellow-50 rounded-lg p-4 border-l-4 border-yellow-500">
             <p class="text-sm font-medium text-gray-600">⚠️ Homologables</p>
-            <p class="text-2xl font-bold text-yellow-900">{{ cruceResultado.estadisticas.homologables }}</p>
+            <p class="text-2xl font-bold text-yellow-900">{{ cruceResultado?.estadisticas?.homologables || 0 }}</p>
             <p class="text-xs text-gray-500 mt-1">
-              {{ ((cruceResultado.estadisticas.homologables / cruceResultado.estadisticas.total_productos_mba3) * 100).toFixed(1) }}%
+              {{ cruceResultado?.estadisticas?.total_productos_mba3 ? ((cruceResultado.estadisticas.homologables / cruceResultado.estadisticas.total_productos_mba3) * 100).toFixed(1) : '0' }}%
             </p>
           </div>
           <div class="bg-red-50 rounded-lg p-4 border-l-4 border-red-500">
             <p class="text-sm font-medium text-gray-600">❌ Solo MBA3</p>
-            <p class="text-2xl font-bold text-red-900">{{ cruceResultado.estadisticas.solo_en_mba3 }}</p>
+            <p class="text-2xl font-bold text-red-900">{{ cruceResultado?.estadisticas?.solo_en_mba3 || 0 }}</p>
             <p class="text-xs text-gray-500 mt-1">
-              {{ ((cruceResultado.estadisticas.solo_en_mba3 / cruceResultado.estadisticas.total_productos_mba3) * 100).toFixed(1) }}%
+              {{ cruceResultado?.estadisticas?.total_productos_mba3 ? ((cruceResultado.estadisticas.solo_en_mba3 / cruceResultado.estadisticas.total_productos_mba3) * 100).toFixed(1) : '0' }}%
             </p>
           </div>
           <div class="bg-indigo-50 rounded-lg p-4 border-l-4 border-indigo-500">
             <p class="text-sm font-medium text-gray-600">🔵 Solo SAP</p>
-            <p class="text-2xl font-bold text-indigo-900">{{ cruceResultado.estadisticas.solo_en_sap }}</p>
+            <p class="text-2xl font-bold text-indigo-900">{{ cruceResultado?.estadisticas?.solo_en_sap || 0 }}</p>
             <p class="text-xs text-gray-500 mt-1">
-              {{ ((cruceResultado.estadisticas.solo_en_sap / cruceResultado.estadisticas.total_productos_sap) * 100).toFixed(1) }}%
+              {{ cruceResultado?.estadisticas?.total_productos_sap ? ((cruceResultado.estadisticas.solo_en_sap / cruceResultado.estadisticas.total_productos_sap) * 100).toFixed(1) : '0' }}%
             </p>
           </div>
           <div class="bg-violet-50 rounded-lg p-4 border-l-4 border-violet-500">
             <p class="text-sm font-medium text-gray-600">📈 Homologación</p>
-            <p class="text-2xl font-bold text-violet-900">{{ cruceResultado.estadisticas.porcentaje_homologacion.toFixed(1) }}%</p>
+            <p class="text-2xl font-bold text-violet-900">{{ cruceResultado?.estadisticas?.porcentaje_homologacion?.toFixed(1) || '0' }}%</p>
           </div>
         </div>
       </div>
@@ -474,8 +508,8 @@
         </label>
         <button
                   @click="() => cargarSugerencias()"
-                  :disabled="sugerenciasLoading"
-                  class="px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 disabled:opacity-50"
+                  :disabled="sugerenciasLoading || !cruceResultado"
+                  class="px-3 py-2 text-sm font-medium text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed"
         >
                   <svg v-if="sugerenciasLoading" class="animate-spin w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -505,7 +539,8 @@
               <p class="mt-4 text-gray-500">No hay sugerencias disponibles</p>
               <button
                 @click="() => cargarSugerencias()"
-                class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                :disabled="!cruceResultado || sugerenciasLoading"
+                class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Ver Sugerencias
               </button>
@@ -753,7 +788,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                   </svg>
                 </div>
-                <p class="text-4xl font-bold text-blue-900">{{ cruceResultado.estadisticas.total_productos_mba3 }}</p>
+                <p class="text-4xl font-bold text-blue-900">{{ cruceResultado?.estadisticas?.total_productos_mba3 || 0 }}</p>
                 <p class="text-sm text-blue-700 mt-2">Productos en sistema MBA3</p>
               </div>
 
@@ -764,7 +799,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                   </svg>
                 </div>
-                <p class="text-4xl font-bold text-purple-900">{{ cruceResultado.estadisticas.total_productos_sap }}</p>
+                <p class="text-4xl font-bold text-purple-900">{{ cruceResultado?.estadisticas?.total_productos_sap || 0 }}</p>
                 <p class="text-sm text-purple-700 mt-2">Productos en sistema SAP</p>
               </div>
 
@@ -775,7 +810,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                   </svg>
                 </div>
-                <p class="text-4xl font-bold text-violet-900">{{ cruceResultado.estadisticas.porcentaje_homologacion.toFixed(1) }}%</p>
+                <p class="text-4xl font-bold text-violet-900">{{ cruceResultado?.estadisticas?.porcentaje_homologacion?.toFixed(1) || '0' }}%</p>
                 <p class="text-sm text-violet-700 mt-2">Porcentaje de homologación</p>
               </div>
 
@@ -787,9 +822,9 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <p class="text-4xl font-bold text-green-900">{{ cruceResultado.estadisticas.homologados_exactos }}</p>
+                <p class="text-4xl font-bold text-green-900">{{ cruceResultado?.estadisticas?.homologados_exactos || 0 }}</p>
                 <p class="text-sm text-green-700 mt-2">
-                  {{ ((cruceResultado.estadisticas.homologados_exactos / cruceResultado.estadisticas.total_productos_mba3) * 100).toFixed(1) }}% del total MBA3
+                  {{ cruceResultado?.estadisticas?.total_productos_mba3 ? ((cruceResultado.estadisticas.homologados_exactos / cruceResultado.estadisticas.total_productos_mba3) * 100).toFixed(1) : '0' }}% del total MBA3
                 </p>
               </div>
 
@@ -801,9 +836,9 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
                 </div>
-                <p class="text-4xl font-bold text-yellow-900">{{ cruceResultado.estadisticas.homologables }}</p>
+                <p class="text-4xl font-bold text-yellow-900">{{ cruceResultado?.estadisticas?.homologables || 0 }}</p>
                 <p class="text-sm text-yellow-700 mt-2">
-                  {{ ((cruceResultado.estadisticas.homologables / cruceResultado.estadisticas.total_productos_mba3) * 100).toFixed(1) }}% del total MBA3
+                  {{ cruceResultado?.estadisticas?.total_productos_mba3 ? ((cruceResultado.estadisticas.homologables / cruceResultado.estadisticas.total_productos_mba3) * 100).toFixed(1) : '0' }}% del total MBA3
                 </p>
               </div>
 
@@ -815,7 +850,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                   </svg>
                 </div>
-                <p class="text-4xl font-bold text-blue-900">{{ sugerenciasData.reduce((sum, p) => sum + p.sugerencias.length, 0) }}</p>
+                <p class="text-4xl font-bold text-blue-900">{{ sugerenciasData.reduce((sum, p) => sum + (p.sugerencias?.length || 0), 0) }}</p>
                 <p class="text-sm text-blue-700 mt-2">Sugerencias disponibles</p>
               </div>
 
@@ -827,9 +862,9 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </div>
-                <p class="text-4xl font-bold text-red-900">{{ cruceResultado.estadisticas.solo_en_mba3 }}</p>
+                <p class="text-4xl font-bold text-red-900">{{ cruceResultado?.estadisticas?.solo_en_mba3 || 0 }}</p>
                 <p class="text-sm text-red-700 mt-2">
-                  {{ ((cruceResultado.estadisticas.solo_en_mba3 / cruceResultado.estadisticas.total_productos_mba3) * 100).toFixed(1) }}% del total MBA3
+                  {{ cruceResultado?.estadisticas?.total_productos_mba3 ? ((cruceResultado.estadisticas.solo_en_mba3 / cruceResultado.estadisticas.total_productos_mba3) * 100).toFixed(1) : '0' }}% del total MBA3
                 </p>
               </div>
 
@@ -841,9 +876,9 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <p class="text-4xl font-bold text-indigo-900">{{ cruceResultado.estadisticas.solo_en_sap }}</p>
+                <p class="text-4xl font-bold text-indigo-900">{{ cruceResultado?.estadisticas?.solo_en_sap || 0 }}</p>
                 <p class="text-sm text-indigo-700 mt-2">
-                  {{ ((cruceResultado.estadisticas.solo_en_sap / cruceResultado.estadisticas.total_productos_sap) * 100).toFixed(1) }}% del total SAP
+                  {{ cruceResultado?.estadisticas?.total_productos_sap ? ((cruceResultado.estadisticas.solo_en_sap / cruceResultado.estadisticas.total_productos_sap) * 100).toFixed(1) : '0' }}% del total SAP
                 </p>
               </div>
             </div>
@@ -888,12 +923,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useHomologacionesStore } from '../stores/homologacionesStore'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
-import type { CruceProductosData, ProductoConSugerencias, EstadoSincronizacion } from '../types'
+import type { CruceProductosData, ProductoConSugerencias, EstadoSincronizacion, ProcesoEstadoSSE } from '../types'
 import BuscarSkuModal from '../components/BuscarSkuModal.vue'
 
 const route = useRoute()
@@ -907,10 +942,22 @@ const tieneDiferenciasFilter = ref<boolean | null>(null)
 const tieneDatosSapFilter = ref<boolean | null>(null)
 const mostrarHomologados = ref(false) // Por defecto no mostrar homologados
 
-// Estado para el cruce de productos
+// Estado para el cruce de productos con progreso
 const cruceLoading = ref(false)
+const cruceProgress = ref(0)
+const cruceMessage = ref('')
+const cruceStep = ref('')
+const cruceProcessId = ref<string | null>(null)
 const cruceResultado = ref<CruceProductosData | null>(null)
+const cruceError = ref<string | null>(null)
 const tabActivo = ref<'exactos' | 'homologables' | 'sugerencias' | 'solo_mba3' | 'solo_sap' | 'estadisticas'>('exactos')
+
+// Control de SSE para limpieza
+let sseReader: ReadableStreamDefaultReader | null = null
+let sseAbortController: AbortController | null = null
+
+// Último progreso mostrado en toast (para evitar saturación)
+let ultimoProgresoToast = -1
 
 // Estado para sugerencias
 const sugerenciasLoading = ref(false)
@@ -1225,16 +1272,16 @@ const datosFiltradosCruce = computed(() => {
   let datos: any[] = []
   switch (tabActivo.value) {
     case 'exactos':
-      datos = cruceResultado.value.homologados_exactos
+      datos = cruceResultado.value.homologados_exactos || []
       break
     case 'homologables':
-      datos = cruceResultado.value.homologables
+      datos = cruceResultado.value.homologables || []
       break
     case 'solo_mba3':
-      datos = cruceResultado.value.solo_en_mba3
+      datos = cruceResultado.value.solo_en_mba3 || []
       break
     case 'solo_sap':
-      datos = cruceResultado.value.solo_en_sap
+      datos = cruceResultado.value.solo_en_sap || []
       break
     case 'sugerencias':
     case 'estadisticas':
@@ -1277,19 +1324,19 @@ const totalItemsCruce = computed(() => {
 const tabs = computed(() => {
   if (!cruceResultado.value) return []
   
-  const totalSugerencias = sugerenciasData.value.reduce((sum, p) => sum + p.sugerencias.length, 0)
+  const totalSugerencias = sugerenciasData.value.reduce((sum, p) => sum + (p.sugerencias?.length || 0), 0)
   
   return [
     {
       id: 'exactos' as const,
       label: '✅ Exactos',
-      badge: cruceResultado.value.homologados_exactos.length,
+      badge: cruceResultado.value.homologados_exactos?.length || 0,
       color: 'green'
     },
     {
       id: 'homologables' as const,
       label: '⚠️ Homologables',
-      badge: cruceResultado.value.homologables.length,
+      badge: cruceResultado.value.homologables?.length || 0,
       color: 'yellow'
     },
     {
@@ -1301,13 +1348,13 @@ const tabs = computed(() => {
     {
       id: 'solo_mba3' as const,
       label: '❌ Solo MBA3',
-      badge: cruceResultado.value.solo_en_mba3.length,
+      badge: cruceResultado.value.solo_en_mba3?.length || 0,
       color: 'red'
     },
     {
       id: 'solo_sap' as const,
       label: '🔵 Solo SAP',
-      badge: cruceResultado.value.solo_en_sap.length,
+      badge: cruceResultado.value.solo_en_sap?.length || 0,
       color: 'indigo'
     },
     {
@@ -1447,40 +1494,141 @@ function cambiarPagina(page: number) {
 }
 
 
+function cancelarCruce() {
+  if (sseAbortController) {
+    sseAbortController.abort()
+    sseAbortController = null
+  }
+  if (sseReader) {
+    sseReader.cancel().catch(() => {})
+    sseReader = null
+  }
+  cruceLoading.value = false
+  cruceMessage.value = 'Cruce cancelado'
+  toast.info('Cruce cancelado', 'El proceso de cruce ha sido cancelado')
+}
+
 async function realizarCruce() {
+  // Limpiar estado previo
   cruceLoading.value = true
+  cruceProgress.value = 0
+  cruceMessage.value = 'Iniciando cruce...'
+  cruceStep.value = ''
+  cruceError.value = null
+  cruceResultado.value = null
+  ultimoProgresoToast = -1
+  
+  // Cancelar stream anterior si existe
+  if (sseReader) {
+    sseReader.cancel().catch(() => {})
+  }
+  if (sseAbortController) {
+    sseAbortController.abort()
+  }
+  
   try {
-    toast.info('Leyendo datos locales...', 'Consultando productos desde datos sincronizados')
-    const response = await mba3ConsultasService.realizarCruce()
-    cruceResultado.value = response.data
-    tabActivo.value = 'exactos' // Mostrar primero los exactos
-    toast.success('Cruce completado', response.message || 'El cruce de productos se ha completado exitosamente')
+    // 1. Iniciar el cruce
+    toast.info('Iniciando cruce...', 'El proceso puede tardar varios minutos')
+    const iniciarResponse = await mba3ConsultasService.iniciarCruce()
+    cruceProcessId.value = iniciarResponse.process_id
     
-    // Cargar sugerencias automáticamente después del cruce para poder verificar qué productos tienen sugerencias
-    if (sugerenciasData.value.length === 0) {
-      // Cargar en segundo plano sin mostrar toast
-      cargarSugerencias(false).catch(() => {
-        // Silenciar errores en la carga automática
-      })
-    }
+    // Crear nuevo AbortController para este stream
+    sseAbortController = new AbortController()
+    
+    // 2. Conectar al stream SSE para seguir el progreso
+    sseReader = await mba3ConsultasService.seguirProgresoCruce(
+      iniciarResponse.process_id,
+      // onProgress
+      (data: ProcesoEstadoSSE) => {
+        cruceProgress.value = data.progress
+        cruceMessage.value = data.message
+        cruceStep.value = data.step || ''
+        
+        // Mostrar toast solo en hitos (ajuste #2)
+        mostrarToastProgreso(data.progress, data.message)
+        
+        // Si el proceso completó exitosamente
+        if (data.status === 'completed') {
+          // ✅ CORRECCIÓN: El backend envía "resultado", no "data"
+          const resultado = data.resultado || data.data  // Compatibilidad con ambas estructuras
+          
+          if (resultado && resultado.estadisticas) {
+            cruceResultado.value = resultado
+            tabActivo.value = 'exactos'
+            toast.success(
+              'Cruce completado',
+              `${data.message} (${data.progress}%)`
+            )
+            
+            // No cargar sugerencias automáticamente - el usuario decide cuándo
+            // Las sugerencias se cargan manualmente mediante el botón "Ver Sugerencias"
+            
+            // Limpiar referencias
+            sseReader = null
+            sseAbortController = null
+          } else {
+            console.error('❌ [SSE] Estructura de datos inesperada:', data)
+            toast.error('Error', 'Los datos del cruce no tienen el formato esperado')
+          }
+        }
+        
+        // Si hubo un error
+        if (data.status === 'error') {
+          cruceError.value = data.error || 'Error desconocido'
+          toast.error('Error en el cruce', cruceError.value ?? undefined)
+          
+          // Limpiar referencias
+          sseReader = null
+          sseAbortController = null
+        }
+      },
+      // onError
+      (error: Error) => {
+        cruceError.value = error.message
+        toast.error('Error de conexión', 'No se pudo seguir el progreso del cruce')
+        console.error('Error en stream SSE:', error)
+        
+        // Intentar obtener resultado por polling como fallback (ajuste #4)
+        if (cruceProcessId.value) {
+          console.log('🔄 Intentando obtener resultado por polling...')
+          obtenerResultadoPorPolling(cruceProcessId.value)
+        }
+        
+        // Limpiar referencias
+        sseReader = null
+        sseAbortController = null
+      },
+      // onComplete
+      () => {
+        cruceLoading.value = false
+        cruceMessage.value = ''
+        sseReader = null
+        sseAbortController = null
+      },
+      // abortSignal
+      sseAbortController.signal
+    )
   } catch (error: any) {
-    const errorMessage = error.message || 'Error desconocido'
+    cruceLoading.value = false
+    cruceError.value = error.message || 'Error desconocido'
     
     // Manejo específico para staging no disponible
-    if (errorMessage.includes('Staging no disponible') || errorMessage.includes('no están sincronizados')) {
+    if (cruceError.value && (cruceError.value.includes('Staging no disponible') || 
+        cruceError.value.includes('no están sincronizados'))) {
       toast.error(
         'Datos no sincronizados',
         'Los datos no están sincronizados. Por favor, ejecuta la sincronización primero.',
         5000
       )
-      // Cargar estado de sincronización para mostrar información
       await cargarEstadoSincronizacion()
     } else {
-      toast.error('Error al realizar cruce', errorMessage)
+      toast.error('Error al realizar cruce', cruceError.value ?? undefined)
     }
     cruceResultado.value = null
-  } finally {
-    cruceLoading.value = false
+    
+    // Limpiar referencias
+    sseReader = null
+    sseAbortController = null
   }
 }
 
@@ -1497,6 +1645,35 @@ async function cargarSugerencias(mostrarToast: boolean = true) {
     }
   } catch (error: any) {
     const errorMessage = error.message || 'Error desconocido'
+    const statusCode = error.response?.status
+    const isTimeout = error.isTimeout || error.code === 'ECONNABORTED' || errorMessage.includes('timeout')
+    
+    // Manejo específico para timeout
+    if (isTimeout) {
+      if (mostrarToast) {
+        toast.warning(
+          'Proceso en curso',
+          'El cálculo de sugerencias está tardando más de lo esperado. El proceso puede seguir ejecutándose en el servidor. Intenta nuevamente en unos minutos.',
+          8000
+        )
+      }
+      sugerenciasData.value = []
+      return // Salir sin mostrar error crítico
+    }
+    
+    // Manejo específico para error 412 (Precondition Failed)
+    // Esto NO es un error, es una condición de carrera esperada
+    if (statusCode === 412) {
+      if (mostrarToast) {
+        toast.info(
+          'Aún no disponibles',
+          'El cruce terminó hace poco. Intenta nuevamente en unos segundos.',
+          4000
+        )
+      }
+      sugerenciasData.value = []
+      return // Salir sin mostrar error crítico
+    }
     
     // Manejo específico para staging no disponible
     if (errorMessage.includes('Staging no disponible') || errorMessage.includes('no están sincronizados')) {
@@ -1687,9 +1864,9 @@ function tieneSugerencias(codigoMba3: string): boolean {
 }
 
 function verSugerenciasProducto(codigo: string) {
-  // Verificar si realmente tiene sugerencias antes de proceder
-  if (!tieneSugerencias(codigo)) {
-    toast.warning('Sin sugerencias', `El producto ${codigo} no tiene sugerencias disponibles`)
+  // Verificar si hay un cruce completado
+  if (!cruceResultado.value) {
+    toast.info('Ejecuta el cruce primero', 'Necesitas realizar un cruce antes de ver sugerencias')
     return
   }
   
@@ -1710,9 +1887,12 @@ function verSugerenciasProducto(codigo: string) {
           }
         }, 500)
       }
+    }).catch(() => {
+      // Si falla (ej: 412), mostrar mensaje amigable
+      toast.info('Sugerencias no disponibles', 'Ejecuta el cruce primero o intenta nuevamente en unos segundos')
     })
   } else {
-    // Expandir el producto específico cuando se carguen las sugerencias
+    // Expandir el producto específico cuando ya están cargadas
     setTimeout(() => {
       productoExpandido.value = codigo
       // Scroll al producto si está visible
@@ -1875,15 +2055,99 @@ onMounted(async () => {
   cargarHomologaciones()
 })
 
+// Limpieza al desmontar componente
+onUnmounted(() => {
+  if (sseReader) {
+    console.log('🧹 [onUnmounted] Cancelando stream SSE...')
+    sseReader.cancel().catch(err => {
+      console.warn('⚠️ Error al cancelar reader:', err)
+    })
+    sseReader = null
+  }
+  if (sseAbortController) {
+    sseAbortController.abort()
+    sseAbortController = null
+  }
+})
+
+// Función auxiliar para mostrar toast solo en hitos
+function mostrarToastProgreso(progress: number, message: string) {
+  // Solo mostrar toast en hitos: 0%, 25%, 50%, 75%, 100%
+  const hitos = [0, 25, 50, 75, 100]
+  const esHito = hitos.includes(progress) || 
+                  (progress > ultimoProgresoToast && progress % 25 === 0)
+  
+  if (esHito) {
+    ultimoProgresoToast = progress
+    toast.info(
+      `Progreso: ${progress}%`,
+      message,
+      3000
+    )
+  }
+}
+
+// Función auxiliar para polling (fallback si SSE falla)
+async function obtenerResultadoPorPolling(processId: string) {
+  const maxIntentos = 30 // 30 intentos máximo
+  const intervalo = 2000 // 2 segundos entre intentos
+  
+  for (let intento = 0; intento < maxIntentos; intento++) {
+    try {
+      await new Promise(resolve => setTimeout(resolve, intervalo))
+      
+      const resultado = await mba3ConsultasService.obtenerResultadoCruce(processId)
+      const estado = resultado.data
+      
+      // Actualizar UI con el estado actual
+      cruceProgress.value = estado.progress
+      cruceMessage.value = estado.message
+      cruceStep.value = estado.step || ''
+      
+      // Si completó o hubo error, terminar polling
+      if (estado.status === 'completed') {
+        // ✅ CORRECCIÓN: Usar resultado o data (compatibilidad)
+        const resultado = estado.resultado || estado.data
+        
+        if (resultado && resultado.estadisticas) {
+          cruceResultado.value = resultado
+          tabActivo.value = 'exactos'
+          toast.success('Cruce completado', estado.message)
+        } else {
+          console.error('❌ [Polling] Estructura de datos inesperada:', estado)
+          toast.error('Error', 'No se recibieron datos válidos del cruce')
+        }
+        cruceLoading.value = false
+        return
+      } else if (estado.status === 'error') {
+        cruceError.value = estado.error || 'Error desconocido'
+        toast.error('Error en el cruce', cruceError.value ?? undefined)
+        cruceLoading.value = false
+        return
+      }
+      
+      // Si sigue procesando, continuar polling
+    } catch (error: any) {
+      console.warn(`⚠️ [Polling] Intento ${intento + 1} falló:`, error.message)
+      // Continuar intentando
+    }
+  }
+  
+  // Si llegamos aquí, timeout
+  toast.warning(
+    'Timeout en polling',
+    'No se pudo obtener el resultado final. El proceso puede seguir ejecutándose en el servidor.'
+  )
+  cruceLoading.value = false
+}
+
 // Watch para resetear la página cuando cambia el tab activo
 watch(tabActivo, (newTab) => {
   paginaCruce.value = 1
   productoExpandido.value = null
   
-  // Cargar sugerencias automáticamente cuando se cambia a esa pestaña
-  if (newTab === 'sugerencias' && sugerenciasData.value.length === 0) {
-    cargarSugerencias()
-  }
+  // No cargar sugerencias automáticamente - el usuario decide cuándo cargarlas
+  // mediante el botón "Ver Sugerencias"
 })
 </script>
 

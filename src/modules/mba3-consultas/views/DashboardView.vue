@@ -1,198 +1,150 @@
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-    <div class="space-y-6">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div class="space-y-4">
+      <!-- Header -->
       <div>
-        <h1 class="text-3xl font-bold text-gray-900">Integración MBA3-SAP</h1>
-        <p class="mt-1 text-sm text-gray-500">Vista general del sistema de integración MBA3-SAP</p>
+        <h1 class="text-2xl font-semibold text-gray-900">Integración MBA3-SAP</h1>
       </div>
 
-    <!-- Tarjetas de Estadísticas -->
-    <div class="bg-white rounded-lg shadow p-6 border border-gray-200">
-      <h2 class="text-lg font-semibold text-gray-900 mb-4">Estadísticas de Órdenes de Compra</h2>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="flex items-center gap-4">
-          <div class="w-16 h-16 rounded-lg bg-orange-100 flex items-center justify-center text-2xl">
-            ⏳
+      <!-- Estadísticas -->
+      <div class="bg-white rounded border border-gray-200 p-4">
+        <div class="grid grid-cols-3 gap-4">
+          <div class="text-center">
+            <div class="text-2xl font-semibold text-orange-600">{{ ordenesCompraStore.pendientes }}</div>
+            <div class="text-xs text-gray-500 mt-1">Pendientes</div>
           </div>
-          <div class="flex-1">
-            <h3 class="text-2xl font-bold text-gray-900">{{ ordenesCompraStore.pendientes }}</h3>
-            <p class="text-sm text-gray-500">ODCs Pendientes</p>
+          <div class="text-center border-x border-gray-200">
+            <div class="text-2xl font-semibold text-green-600">{{ ordenesCompraStore.enviadas }}</div>
+            <div class="text-xs text-gray-500 mt-1">Enviadas</div>
           </div>
-        </div>
-
-        <div class="flex items-center gap-4">
-          <div class="w-16 h-16 rounded-lg bg-green-100 flex items-center justify-center text-2xl">
-            ✅
-          </div>
-          <div class="flex-1">
-            <h3 class="text-2xl font-bold text-gray-900">{{ ordenesCompraStore.enviadas }}</h3>
-            <p class="text-sm text-gray-500">ODCs Enviadas</p>
-          </div>
-        </div>
-
-        <div class="flex items-center gap-4">
-          <div class="w-16 h-16 rounded-lg bg-red-100 flex items-center justify-center text-2xl">
-            ❌
-          </div>
-          <div class="flex-1">
-            <h3 class="text-2xl font-bold text-gray-900">{{ ordenesCompraStore.errores }}</h3>
-            <p class="text-sm text-gray-500">ODCs con Error</p>
+          <div class="text-center">
+            <div class="text-2xl font-semibold text-red-600">{{ ordenesCompraStore.errores }}</div>
+            <div class="text-xs text-gray-500 mt-1">Errores</div>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- Acciones Rápidas -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      <!-- Panel de Procesos -->
-      <div class="bg-white rounded-lg shadow-lg p-6 border border-gray-200 flex flex-col h-full">
-        <div class="flex items-center justify-between mb-4">
-          <div>
-            <h2 class="text-xl font-bold text-gray-900">Procesos de Integración</h2>
-            <p class="text-sm text-gray-500 mt-1">Ejecuta migración y procesamiento de ODC</p>
-          </div>
-          <div class="w-12 h-12 rounded-lg bg-indigo-100 flex items-center justify-center flex-shrink-0">
-            <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-            </svg>
-          </div>
-        </div>
-        <p class="text-sm text-gray-600 mb-4 flex-grow">
-          Ejecuta el flujo completo de integración: Importar despachos desde MBA3 y procesar órdenes de compra.
-        </p>
+      <!-- Acciones -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+        <!-- Procesos -->
         <button
           @click="navigateToProceso"
           :disabled="loadingDespachos"
-          class="w-full px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all font-semibold flex items-center justify-center gap-2 shadow-md hover:shadow-lg mt-auto disabled:opacity-50 disabled:cursor-not-allowed"
+          class="bg-white rounded border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all text-left disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <svg v-if="loadingDespachos" class="animate-spin w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-          </svg>
-          <span>{{ loadingDespachos ? 'Cargando despachos...' : 'Gestionar Procesos' }}</span>
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded bg-indigo-50 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+              </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-gray-900 text-sm">Procesos</div>
+              <div class="text-xs text-gray-500 mt-1">Migración y procesamiento</div>
+              <div v-if="loadingDespachos" class="text-xs text-indigo-600 mt-2 flex items-center gap-1">
+                <svg class="animate-spin w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Cargando...
+              </div>
+            </div>
+          </div>
         </button>
-      </div>
 
-      <!-- Panel de Historial de Órdenes de Compra -->
-      <div class="bg-white rounded-lg shadow-lg p-6 border border-gray-200 flex flex-col h-full">
-        <div class="flex items-center justify-between mb-4">
-          <div>
-            <h2 class="text-xl font-bold text-gray-900">Historial de Órdenes</h2>
-            <p class="text-sm text-gray-500 mt-1">Consulta y visualiza el historial completo</p>
-          </div>
-          <div class="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-          </div>
-        </div>
-        <div class="mb-4 flex-grow">
-          <p class="text-sm text-gray-600 mb-3">
-            Visualiza el historial completo de órdenes de compra: pendientes, enviadas y con error. Filtra, busca y exporta los datos según tus necesidades.
-          </p>
-          <div class="flex items-center gap-4 text-xs text-gray-500">
-            <div class="flex items-center gap-1">
-              <span class="w-2 h-2 rounded-full bg-orange-500"></span>
-              <span>{{ ordenesCompraStore.pendientes }} Pendientes</span>
-            </div>
-            <div class="flex items-center gap-1">
-              <span class="w-2 h-2 rounded-full bg-green-500"></span>
-              <span>{{ ordenesCompraStore.enviadas }} Enviadas</span>
-            </div>
-            <div class="flex items-center gap-1">
-              <span class="w-2 h-2 rounded-full bg-red-500"></span>
-              <span>{{ ordenesCompraStore.errores }} Errores</span>
-            </div>
-          </div>
-        </div>
+        <!-- Órdenes de Compra -->
         <button
           @click="$router.push('/mba3-consultas/ordenes-compra')"
-          class="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all font-semibold flex items-center justify-center gap-2 shadow-md hover:shadow-lg mt-auto"
+          class="bg-white rounded border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all text-left"
         >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          <span>Ver Historial</span>
-        </button>
-      </div>
-
-      <!-- Panel de Documentos de Remisión -->
-      <div class="bg-white rounded-lg shadow-lg p-6 border border-gray-200 flex flex-col h-full">
-        <div class="flex items-center justify-between mb-4">
-          <div>
-            <h2 class="text-xl font-bold text-gray-900">Documentos de Remisión</h2>
-            <p class="text-sm text-gray-500 mt-1">Consulta y visualiza remisiones</p>
-          </div>
-          <div class="w-12 h-12 rounded-lg bg-cyan-100 flex items-center justify-center flex-shrink-0">
-            <svg class="w-6 h-6 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-          </div>
-        </div>
-        <div class="mb-4 flex-grow">
-          <p class="text-sm text-gray-600 mb-3">
-            Consulta y visualiza los documentos de remisión disponibles. Filtra por fecha, empresa y otros criterios para encontrar la información que necesitas.
-          </p>
-          <div class="flex items-center gap-2 text-xs text-gray-500">
-            <div class="flex items-center gap-1">
-              <svg class="w-4 h-4 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded bg-blue-50 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              <span>Documentos disponibles</span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-gray-900 text-sm">Órdenes de Compra</div>
+              <div class="text-xs text-gray-500 mt-1">Historial completo</div>
             </div>
           </div>
-        </div>
+        </button>
+
+        <!-- ODC con Errores -->
+        <button
+          @click="$router.push('/mba3-consultas/odc-errores')"
+          class="bg-white rounded border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all text-left"
+        >
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded bg-red-50 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-gray-900 text-sm">ODC con Errores</div>
+              <div class="text-xs text-gray-500 mt-1">
+                <span v-if="ordenesCompraStore.errores > 0">{{ ordenesCompraStore.errores }} pendiente(s)</span>
+                <span v-else>Corregir SKUs</span>
+              </div>
+            </div>
+          </div>
+        </button>
+
+        <!-- Remisiones -->
         <button
           @click="$router.push('/mba3-consultas/remisiones')"
-          class="w-full px-4 py-3 bg-gradient-to-r from-cyan-600 to-teal-600 text-white rounded-lg hover:from-cyan-700 hover:to-teal-700 transition-all font-semibold flex items-center justify-center gap-2 shadow-md hover:shadow-lg mt-auto"
+          class="bg-white rounded border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all text-left"
         >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          <span>Ver Remisiones</span>
-        </button>
-      </div>
-
-      <!-- Panel de Homologaciones de SKU -->
-      <div class="bg-white rounded-lg shadow-lg p-6 border border-gray-200 flex flex-col h-full">
-        <div class="flex items-center justify-between mb-4">
-          <div>
-            <h2 class="text-xl font-bold text-gray-900">Homologaciones de SKU</h2>
-            <p class="text-sm text-gray-500 mt-1">Administra SKUs no coincidentes</p>
-          </div>
-          <div class="w-12 h-12 rounded-lg bg-violet-100 flex items-center justify-center flex-shrink-0">
-            <svg class="w-6 h-6 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-            </svg>
-          </div>
-        </div>
-        <div class="mb-4 flex-grow">
-          <p class="text-sm text-gray-600 mb-3">
-            Administra las homologaciones de SKU que no coinciden entre MBA3 y SAP. Visualiza información de ambos sistemas y realiza modificaciones cuando los datos de SAP sean incompletos, nulos o diferentes.
-          </p>
-          <div class="flex items-center gap-2 text-xs text-gray-500">
-            <div class="flex items-center gap-1">
-              <svg class="w-4 h-4 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded bg-cyan-50 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              <span>Comparación MBA3 vs SAP</span>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-gray-900 text-sm">Remisiones</div>
+              <div class="text-xs text-gray-500 mt-1">Documentos disponibles</div>
             </div>
           </div>
-        </div>
+        </button>
+
+        <!-- Homologaciones -->
         <button
           @click="$router.push('/mba3-consultas/homologaciones')"
-          class="w-full px-4 py-3 bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-lg hover:from-violet-700 hover:to-purple-700 transition-all font-semibold flex items-center justify-center gap-2 shadow-md hover:shadow-lg mt-auto"
+          class="bg-white rounded border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all text-left"
         >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-          </svg>
-          <span>Gestionar Homologaciones</span>
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded bg-violet-50 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-gray-900 text-sm">Homologaciones</div>
+              <div class="text-xs text-gray-500 mt-1">SKUs no coincidentes</div>
+            </div>
+          </div>
+        </button>
+
+        <!-- Crear Pedido -->
+        <button
+          @click="$router.push('/mba3-consultas/crear-pedido')"
+          class="bg-white rounded border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all text-left"
+        >
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded bg-emerald-50 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+              </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-gray-900 text-sm">Crear Pedido</div>
+              <div class="text-xs text-gray-500 mt-1">Nuevo pedido de venta</div>
+            </div>
+          </div>
         </button>
       </div>
     </div>
-  </div>
   </div>
 </template>
 

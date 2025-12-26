@@ -23,3 +23,8 @@ Esta carpeta contiene documentación técnica detallada sobre funcionalidades es
 - **Documentación general:** Ver [README.md](../README.md) principal
 
 
+
+
+
+
+

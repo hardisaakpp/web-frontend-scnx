@@ -6,7 +6,7 @@ import type {
 } from '../types'
 import type { OrdenCompraResponse, OrdenCompraLogResponse, RemisionResponse } from '../types'
 import type { HealthResponse, ProcesoResponse } from '../types'
-import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse } from '../types'
+import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstado, ProcesoEstadoResponse, SugerenciaProducto, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuRequest, ActualizarSkuResponse, BuscarSkuMba3Response } from '../types'
 
 // Usar la URL base del backend MBA3
 const API_BASE_URL = import.meta.env.VITE_MBA3_API_BASE_URL || 'http://localhost:8000'
@@ -501,7 +501,129 @@ export const mba3ConsultasService = {
 
   // ========== Cruce de Productos ==========
   
-  // Realizar cruce de productos entre MBA3 y SAP
+  // Iniciar cruce de productos (retorna process_id)
+  async iniciarCruce(): Promise<IniciarCruceResponse> {
+    try {
+      const response = await mba3Api.post<IniciarCruceResponse>('/cruce-productos/iniciar')
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [iniciarCruce] Error al iniciar cruce:', error)
+      throw new Error(`No se pudo iniciar el cruce de productos. Error: ${error.message}`)
+    }
+  },
+
+  // Conectar al stream SSE para seguir el progreso
+  async seguirProgresoCruce(
+    processId: string,
+    onProgress: (data: ProcesoEstadoSSE) => void,
+    onError?: (error: Error) => void,
+    onComplete?: () => void,
+    abortSignal?: AbortSignal  // Para cancelación
+  ): Promise<ReadableStreamDefaultReader | null> {
+    const token = localStorage.getItem('token')
+    
+    if (!token) {
+      throw new Error('No hay token de autenticación')
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/cruce-productos/stream/${processId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'text/event-stream',
+        },
+        signal: abortSignal,  // Permite cancelación externa
+      })
+
+      if (!response.ok) {
+        throw new Error(`Error al conectar al stream: ${response.status} ${response.statusText}`)
+      }
+
+      const reader = response.body?.getReader()
+      if (!reader) {
+        throw new Error('No se pudo obtener el reader del stream')
+      }
+
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      // Función para procesar el stream
+      const processStream = async () => {
+        try {
+          while (true) {
+            const { done, value } = await reader.read()
+            
+            if (done) {
+              if (onComplete) onComplete()
+              break
+            }
+
+            buffer += decoder.decode(value, { stream: true })
+            const lines = buffer.split('\n')
+            buffer = lines.pop() || '' // Guardar línea incompleta
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const jsonStr = line.slice(6) // Remover 'data: '
+                  const data: ProcesoEstadoSSE = JSON.parse(jsonStr)
+                  onProgress(data)
+
+                  // Si el proceso terminó, cerrar la conexión
+                  if (data.status === 'completed' || data.status === 'error') {
+                    reader.cancel()
+                    if (onComplete) onComplete()
+                    return reader
+                  }
+                } catch (parseError) {
+                  console.warn('⚠️ [seguirProgresoCruce] Error al parsear evento SSE:', parseError, 'Line:', line)
+                }
+              } else if (line.startsWith('event: ')) {
+                // Opcional: manejar tipos de eventos específicos
+                const eventType = line.slice(7)
+                console.debug('📡 [SSE] Event type:', eventType)
+              }
+            }
+          }
+        } catch (streamError: any) {
+          // Si es cancelación, no es un error real
+          if (streamError.name === 'AbortError') {
+            console.log('🛑 [seguirProgresoCruce] Stream cancelado por el usuario')
+            reader.cancel()
+            return reader
+          }
+          throw streamError
+        }
+        
+        return reader
+      }
+
+      // Ejecutar procesamiento del stream
+      await processStream()
+      return reader
+    } catch (error: any) {
+      console.error('❌ [seguirProgresoCruce] Error en stream SSE:', error)
+      if (onError) {
+        onError(error instanceof Error ? error : new Error(error.message || 'Error desconocido'))
+      } else {
+        throw error
+      }
+      return null
+    }
+  },
+
+  // Obtener resultado del cruce (polling alternativo)
+  async obtenerResultadoCruce(processId: string): Promise<ProcesoEstadoResponse> {
+    try {
+      const response = await mba3Api.get<ProcesoEstadoResponse>(`/cruce-productos/resultado/${processId}`)
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [obtenerResultadoCruce] Error al obtener resultado:', error)
+      throw new Error(`No se pudo obtener el resultado del cruce. Error: ${error.message}`)
+    }
+  },
+
+  // Realizar cruce de productos entre MBA3 y SAP (método legacy - mantener para compatibilidad)
   async realizarCruce(): Promise<CruceProductosResponse> {
     try {
       // Timeout extendido ya que el cruce puede tardar
@@ -518,12 +640,32 @@ export const mba3ConsultasService = {
   // Obtener sugerencias de homologación
   async obtenerSugerencias(): Promise<SugerenciasResponse> {
     try {
-      // Timeout extendido ya que puede tardar
+      // Timeout muy extendido ya que el cálculo de sugerencias puede tardar varios minutos
+      // especialmente con muchos productos sin match
       const response = await mba3Api.get<SugerenciasResponse>('/cruce-productos/sugerencias', {
-        timeout: 120000 // 2 minutos
+        timeout: 600000 // 10 minutos (600 segundos)
       })
       return response.data
     } catch (error: any) {
+      // Si es error 412, lanzar un error con mensaje descriptivo
+      // pero preservar el status code para que el frontend lo detecte
+      if (error.response?.status === 412) {
+        const errorData = error.response.data
+        const message = errorData?.messsage || errorData?.message || 'No hay un cruce reciente disponible'
+        const customError = new Error(message)
+        // Preservar el status code para que el frontend lo detecte
+        ;(customError as any).response = error.response
+        throw customError
+      }
+      
+      // Detectar timeout específicamente
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        console.warn('⏱️ [obtenerSugerencias] Timeout - el proceso puede seguir ejecutándose en el servidor')
+        const timeoutError = new Error('El cálculo de sugerencias está tardando más de lo esperado. El proceso puede seguir ejecutándose en el servidor. Intenta nuevamente en unos minutos.')
+        ;(timeoutError as any).isTimeout = true
+        throw timeoutError
+      }
+      
       console.error('❌ [obtenerSugerencias] Error al obtener sugerencias:', error)
       throw new Error(`No se pudieron obtener las sugerencias. Error: ${error.message}`)
     }
@@ -557,20 +699,38 @@ export const mba3ConsultasService = {
   // ========== Búsqueda de SKU ==========
   
   // Buscar SKU en MBA3
-  async buscarSkuMba3(sku: string): Promise<{ data: any }> {
+  async buscarSkuMba3(
+    sku: string,
+    incluirSugerenciasSap: boolean = false,
+    limiteSugerencias: number = 20
+  ): Promise<BuscarSkuMba3Response> {
     try {
+      const params: any = {
+        sku: sku
+      }
+      
+      // Solo agregar parámetros si se solicitan sugerencias
+      if (incluirSugerenciasSap) {
+        params.incluir_sugerencias_sap = true
+        params.limite_sugerencias = Math.min(Math.max(limiteSugerencias, 1), 50) // Entre 1 y 50
+      }
+      
       // Timeout aumentado a 60 segundos para dar margen al backend (que tiene timeout de 25s)
-      const response = await mba3Api.get<{ status?: string; sku?: string; data?: any }>(`/cruce-productos/buscar-sku/mba3`, {
-        params: { sku },
+      const response = await mba3Api.get<BuscarSkuMba3Response>(`/cruce-productos/buscar-sku/mba3`, {
+        params: params,
         timeout: 60000 // 60 segundos
       })
-      // El backend devuelve { status, sku, data }
-      // Extraer el campo data de la respuesta
-      return { data: response.data?.data || response.data || null }
+      
+      return response.data
     } catch (error: any) {
       // Si el error es 404, significa que no se encontró el SKU (no es un error crítico)
       if (error.response?.status === 404) {
-        return { data: null }
+        return {
+          status: 'not_found',
+          message: `SKU no encontrado en MBA3: ${sku}`,
+          sku: sku,
+          data: null
+        }
       }
       // Si el error es 504 (Gateway Timeout), el backend falló por timeout (25s)
       if (error.response?.status === 504) {
@@ -605,6 +765,82 @@ export const mba3ConsultasService = {
       }
       console.error('❌ [buscarSkuSap] Error al buscar SKU en SAP:', error)
       throw new Error(`No se pudo buscar el SKU en SAP. Error: ${error.message}`)
+    }
+  },
+
+  // Buscar sugerencias de SKU similares en SAP
+  async buscarSugerenciasSku(sku: string, limite: number = 20): Promise<SugerenciasSkuResponse> {
+    try {
+      const response = await mba3Api.get<SugerenciasSkuResponse>(`/cruce-productos/buscar-sku/sap/sugerencias`, {
+        params: { 
+          sku,
+          limite: Math.min(limite, 50) // Máximo 50 según backend
+        },
+        timeout: 60000
+      })
+      
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [buscarSugerenciasSku] Error al buscar sugerencias:', error)
+      
+      // Si el error es 404, significa que no se encontraron sugerencias
+      if (error.response?.status === 404) {
+        return {
+          status: 'not_found',
+          sku_referencia: sku,
+          message: `No se encontraron SKUs similares para: ${sku}`,
+          sugerencias: [],
+          total_encontrados: 0
+        }
+      }
+      
+      // Para otros errores, lanzar excepción
+      throw new Error(`No se pudieron obtener las sugerencias. Error: ${error.message}`)
+    }
+  },
+
+  // Obtener detalles de una ODC
+  async obtenerDetallesOC(ocId: string): Promise<DetallesOCResponse> {
+    try {
+      const response = await mba3Api.get<DetallesOCResponse>(`/ordenes-compra/${ocId}/detalles`)
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [obtenerDetallesOC] Error al obtener detalles:', error)
+      throw new Error(`No se pudieron obtener los detalles de la ODC. Error: ${error.message}`)
+    }
+  },
+
+  // Actualizar SKU en un detalle de ODC
+  async actualizarSkuDetalle(
+    ocId: string,
+    ocDetalleId: string,
+    nuevoSku: string,
+    validarEnSap: boolean = true
+  ): Promise<ActualizarSkuResponse> {
+    try {
+      const response = await mba3Api.put<ActualizarSkuResponse>(
+        `/ordenes-compra/${ocId}/detalle/${ocDetalleId}/sku`,
+        {
+          nuevo_sku: nuevoSku,
+          validar_en_sap: validarEnSap
+        }
+      )
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [actualizarSkuDetalle] Error al actualizar SKU:', error)
+      
+      // Extraer mensaje de error más descriptivo
+      let message = error.message || 'Error desconocido al actualizar SKU'
+      
+      if (error.response?.data) {
+        if (error.response.data.detail) {
+          message = error.response.data.detail
+        } else if (error.response.data.message) {
+          message = error.response.data.message
+        }
+      }
+      
+      throw new Error(message)
     }
   },
 }

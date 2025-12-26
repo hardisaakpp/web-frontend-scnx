@@ -179,6 +179,41 @@ export interface OrdenCompraDetalle {
   detalles: any[]
 }
 
+// Detalle individual de una ODC
+export interface DetalleOC {
+  oc_detalle_id: string
+  oc_id: string
+  sku_sap: string
+  cantidad_sap: number
+  unidad_sap: string
+  precio_unitario: number
+  total_linea: number
+  cantidad_origen?: number
+}
+
+export interface DetallesOCResponse {
+  status: 'success' | 'error'
+  oc_id: string
+  detalles: DetalleOC[]
+  count: number
+}
+
+// Request y Response para actualizar SKU
+export interface ActualizarSkuRequest {
+  nuevo_sku: string
+  validar_en_sap?: boolean
+}
+
+export interface ActualizarSkuResponse {
+  status: 'success' | 'error'
+  message: string
+  oc_id: string
+  oc_detalle_id: string
+  sku_anterior: string
+  sku_nuevo: string
+  sku_validado_en_sap: boolean
+}
+
 // ========== Logs de Órdenes de Compra ==========
 export interface OrdenCompraLog {
   // Campos comunes de logs
@@ -442,6 +477,56 @@ export interface SugerenciaProducto {
   motivos: MotivoSugerencia[]
 }
 
+// Nueva interfaz para sugerencias de SKU similares (endpoint específico)
+export interface SugerenciaSkuSap {
+  codigo: string
+  nombre: string
+  pack?: string
+  group_code?: number
+  group_name?: string
+  estado: 'activo' | 'inactivo'
+  valid_for?: string
+  score: number // 0-1
+  score_porcentaje: number // 0-100
+  motivos: string[]
+}
+
+export interface SugerenciasSkuResponse {
+  status: 'success' | 'not_found'
+  sku_referencia: string
+  message?: string
+  sugerencias: SugerenciaSkuSap[]
+  total_encontrados: number
+}
+
+// Tipo para respuesta de buscar SKU en MBA3 (con sugerencias opcionales)
+export interface BuscarSkuMba3Response {
+  status: 'success' | 'not_found'
+  message: string
+  sku: string
+  data: {
+    codigo: string
+    nombre: string
+    corp?: string
+    grupo_prenda?: string
+    talla?: string
+    presentacion?: string
+    group_code?: string
+    tipo_origen?: string
+    descontinuado?: boolean | string
+    inactive?: boolean | string
+  } | null
+  
+  // Nuevos campos opcionales (solo si incluir_sugerencias_sap=true)
+  sugerencias_sap?: SugerenciaSkuSap[]
+  total_sugerencias_sap?: number
+  
+  // Campos de error opcionales para sugerencias
+  sugerencias_sap_timeout?: boolean
+  sugerencias_sap_disabled?: boolean
+  sugerencias_sap_error?: string
+}
+
 export interface ProductoConSugerencias {
   codigo_mba3: string
   nombre_mba3: string
@@ -496,5 +581,80 @@ export interface SincronizarMaestrosResponse {
       tiempo_procesamiento: number
     }
   }
+}
+
+// ========== Cruce de Productos con Progreso (SSE) ==========
+
+// Tipo específico para eventos SSE (lo que realmente envía el backend)
+export interface ProcesoEstadoSSE {
+  process_id: string
+  status: 'processing' | 'completed' | 'error'
+  step: string  // Paso actual del proceso
+  progress: number  // 0-100
+  message: string
+  updated_at: string
+  version: number
+  resultado?: CruceProductosData  // El backend envía los datos aquí cuando status === 'completed'
+  data?: CruceProductosData  // Mantener para compatibilidad
+  error?: string  // Solo cuando status === 'error'
+}
+
+// Tipo completo para polling (incluye created_at)
+export interface ProcesoEstado {
+  process_id: string
+  status: 'processing' | 'completed' | 'error'
+  step: string
+  progress: number
+  message: string
+  created_at: string
+  updated_at: string
+  version: number
+  resultado?: CruceProductosData  // El backend envía los datos aquí cuando status === 'completed'
+  data?: CruceProductosData  // Mantener para compatibilidad
+  error?: string
+}
+
+export interface IniciarCruceResponse {
+  status: string
+  process_id: string
+  message: string
+}
+
+export interface ProcesoEstadoResponse {
+  status: string
+  data: ProcesoEstado
+}
+
+// ========== Crear Pedido ==========
+export interface Cliente {
+  id: string
+  codigo: string
+  nombre: string
+  direccion?: string
+}
+
+export interface Producto {
+  id: string
+  codigo: string
+  nombre: string
+  precio_base?: number
+  unidad?: string
+}
+
+export interface ProductoPedido {
+  id: string
+  producto: Producto
+  cantidad: number
+  precio: number
+  subtotal: number
+}
+
+export interface Pedido {
+  cliente: Cliente | null
+  fecha: string
+  vendedor: string
+  observaciones: string
+  productos: ProductoPedido[]
+  total: number
 }
 

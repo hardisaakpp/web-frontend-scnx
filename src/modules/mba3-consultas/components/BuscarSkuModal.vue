@@ -40,7 +40,7 @@
               <label class="block text-sm font-medium text-gray-700 mb-2">
                 Ingrese el SKU a buscar
               </label>
-              <div class="flex gap-2">
+              <div class="flex gap-2 mb-3">
                 <input
                   v-model="skuBusqueda"
                   @keyup.enter="buscarSku"
@@ -62,6 +62,15 @@
                   {{ buscando ? 'Buscando...' : 'Buscar' }}
                 </button>
               </div>
+              <!-- Checkbox para incluir sugerencias -->
+              <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  v-model="incluirSugerencias"
+                  class="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                />
+                <span>Incluir sugerencias similares de SAP</span>
+              </label>
             </div>
 
             <!-- Resultados -->
@@ -167,9 +176,9 @@
                       <span class="text-sm font-medium text-gray-600">Group Code:</span>
                       <p class="text-sm text-gray-900 font-mono">{{ resultadoBusqueda.sap.group_code }}</p>
                     </div>
-                    <div v-if="resultadoBusqueda.sap.card_code">
+                    <div>
                       <span class="text-sm font-medium text-gray-600">Card Code:</span>
-                      <p class="text-sm text-gray-900 font-mono">{{ resultadoBusqueda.sap.card_code }}</p>
+                      <p class="text-sm text-gray-900 font-mono">{{ resultadoBusqueda.sap.card_code || '-' }}</p>
                     </div>
                     <div v-if="resultadoBusqueda.sap.estado || resultadoBusqueda.sap.active !== undefined">
                       <span class="text-sm font-medium text-gray-600">Estado:</span>
@@ -184,6 +193,82 @@
                 </div>
                 <div v-else class="text-sm text-gray-500 italic">
                   No se encontró el SKU en SAP
+                </div>
+              </div>
+
+              <!-- Sugerencias de SAP -->
+              <div v-if="incluirSugerencias && sugerenciasSap.length > 0" class="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                <h4 class="text-lg font-semibold text-purple-900 mb-3 flex items-center gap-2">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                  </svg>
+                  Sugerencias similares en SAP ({{ sugerenciasSap.length }})
+                </h4>
+                <div class="space-y-3">
+                  <div
+                    v-for="sugerencia in sugerenciasSap"
+                    :key="sugerencia.codigo"
+                    class="bg-white border-l-4 rounded-lg p-4"
+                    :class="{
+                      'border-green-500': sugerencia.score_porcentaje >= 80,
+                      'border-yellow-500': sugerencia.score_porcentaje >= 50 && sugerencia.score_porcentaje < 80,
+                      'border-red-500': sugerencia.score_porcentaje < 50
+                    }"
+                  >
+                    <div class="flex items-start justify-between mb-2">
+                      <div class="flex-1">
+                        <div class="flex items-center gap-2 mb-1">
+                          <span class="text-sm font-semibold text-gray-900 font-mono">{{ sugerencia.codigo }}</span>
+                          <span
+                            class="px-2 py-1 rounded-full text-xs font-semibold"
+                            :class="getScoreBadgeClass(sugerencia.score_porcentaje)"
+                          >
+                            {{ sugerencia.score_porcentaje }}% de coincidencia
+                          </span>
+                        </div>
+                        <p class="text-sm text-gray-700 font-medium">{{ sugerencia.nombre }}</p>
+                      </div>
+                    </div>
+                    
+                    <div class="flex flex-wrap gap-3 mt-2 text-xs text-gray-600">
+                      <span v-if="sugerencia.pack">Pack: <span class="font-semibold">{{ sugerencia.pack }}</span></span>
+                      <span v-if="sugerencia.group_name">Grupo: <span class="font-semibold">{{ sugerencia.group_name }}</span></span>
+                      <span
+                        :class="sugerencia.estado === 'activo' ? 'text-green-700 font-semibold' : 'text-red-700 font-semibold'"
+                      >
+                        {{ sugerencia.estado === 'activo' ? 'Activo' : 'Inactivo' }}
+                      </span>
+                    </div>
+                    
+                    <!-- Motivos expandibles -->
+                    <details v-if="sugerencia.motivos && sugerencia.motivos.length > 0" class="mt-3">
+                      <summary class="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900">
+                        Motivos de la sugerencia ({{ sugerencia.motivos.length }})
+                      </summary>
+                      <ul class="mt-2 ml-4 space-y-1">
+                        <li
+                          v-for="(motivo, index) in sugerencia.motivos"
+                          :key="index"
+                          class="text-xs text-gray-600 list-disc"
+                        >
+                          {{ motivo }}
+                        </li>
+                      </ul>
+                    </details>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Mensaje si no hay sugerencias pero se buscaron -->
+              <div
+                v-if="incluirSugerencias && resultadoBusqueda?.mba3 && sugerenciasSap.length === 0 && !buscando"
+                class="bg-yellow-50 border border-yellow-200 rounded-lg p-4"
+              >
+                <div class="flex items-center gap-2 text-yellow-800">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p class="text-sm font-medium">No se encontraron sugerencias similares en SAP para este código.</p>
                 </div>
               </div>
             </div>
@@ -219,6 +304,7 @@
 import { ref } from 'vue'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
+import type { SugerenciaSkuSap } from '../types'
 
 defineEmits<{
   close: []
@@ -227,6 +313,8 @@ defineEmits<{
 const toast = useToast()
 const skuBusqueda = ref('')
 const buscando = ref(false)
+const incluirSugerencias = ref(false)
+const sugerenciasSap = ref<SugerenciaSkuSap[]>([])
 const resultadoBusqueda = ref<{
   mba3: {
     codigo?: string
@@ -261,16 +349,77 @@ async function buscarSku() {
   buscando.value = true
   errorBusqueda.value = null
   resultadoBusqueda.value = null
+  sugerenciasSap.value = []
 
   try {
     // Buscar en MBA3 y SAP en paralelo
     const [resultadoMba3, resultadoSap] = await Promise.allSettled([
-      mba3ConsultasService.buscarSkuMba3(skuBusqueda.value.trim()),
+      mba3ConsultasService.buscarSkuMba3(
+        skuBusqueda.value.trim(),
+        incluirSugerencias.value,
+        20 // límite de sugerencias
+      ),
       mba3ConsultasService.buscarSkuSap(skuBusqueda.value.trim())
     ])
 
+    // Extraer datos de MBA3
+    let dataMba3: {
+      codigo?: string
+      nombre?: string
+      corp?: string
+      grupo_prenda?: string
+      talla?: string
+      presentacion?: string
+      descontinuado?: boolean | string
+      group_code?: string
+      inactive?: boolean | string
+      tipo_origen?: string
+    } | null = null
+    if (resultadoMba3.status === 'fulfilled') {
+      const response = resultadoMba3.value
+      console.log('🔍 [BuscarSkuModal] Respuesta completa del backend:', response)
+      
+      if (response.status === 'success' && response.data) {
+        dataMba3 = response.data
+        
+        // Si se incluyeron sugerencias y existen, guardarlas
+        if (incluirSugerencias.value) {
+          console.log('🔍 [BuscarSkuModal] Sugerencias recibidas:', {
+            sugerencias_sap: response.sugerencias_sap,
+            total_sugerencias_sap: response.total_sugerencias_sap,
+            cantidad_array: response.sugerencias_sap?.length || 0
+          })
+          
+          if (response.sugerencias_sap && response.sugerencias_sap.length > 0) {
+            sugerenciasSap.value = response.sugerencias_sap
+            console.log('✅ [BuscarSkuModal] Sugerencias asignadas:', sugerenciasSap.value.length)
+            
+            // Mostrar mensajes de advertencia si hay problemas con las sugerencias
+            if (response.sugerencias_sap_timeout) {
+              toast.warning('Timeout en sugerencias', 'La búsqueda de sugerencias tardó demasiado tiempo')
+            }
+            if (response.sugerencias_sap_disabled) {
+              toast.warning('Sugerencias deshabilitadas', 'Las sugerencias SAP están deshabilitadas temporalmente')
+            }
+            if (response.sugerencias_sap_error) {
+              console.error('Error en sugerencias SAP:', response.sugerencias_sap_error)
+              toast.warning('Error en sugerencias', 'Hubo un problema al obtener las sugerencias, pero la búsqueda principal fue exitosa')
+            }
+          } else {
+            sugerenciasSap.value = []
+            console.log('⚠️ [BuscarSkuModal] No se recibieron sugerencias en el array')
+            if (response.total_sugerencias_sap === 0) {
+              console.log('ℹ️ [BuscarSkuModal] Total de sugerencias SAP: 0')
+            }
+          }
+        }
+      }
+    } else if (resultadoMba3.status === 'rejected') {
+      console.error('❌ [BuscarSkuModal] Error al buscar SKU en MBA3:', resultadoMba3.reason)
+    }
+
     resultadoBusqueda.value = {
-      mba3: resultadoMba3.status === 'fulfilled' ? resultadoMba3.value.data : null,
+      mba3: dataMba3,
       sap: resultadoSap.status === 'fulfilled' ? resultadoSap.value.data : null
     }
 
@@ -281,7 +430,11 @@ async function buscarSku() {
       const sistemas: string[] = []
       if (resultadoBusqueda.value.mba3) sistemas.push('MBA3')
       if (resultadoBusqueda.value.sap) sistemas.push('SAP')
-      toast.success('Búsqueda completada', `SKU encontrado en: ${sistemas.join(' y ')}`)
+      let mensaje = `SKU encontrado en: ${sistemas.join(' y ')}`
+      if (incluirSugerencias.value && sugerenciasSap.value.length > 0) {
+        mensaje += ` (${sugerenciasSap.value.length} sugerencia(s) de SAP)`
+      }
+      toast.success('Búsqueda completada', mensaje)
     }
   } catch (error: any) {
     console.error('Error al buscar SKU:', error)
@@ -315,6 +468,19 @@ function getSapEstadoLabel(estado?: string, active?: boolean): string {
     return active ? 'Activo' : 'Inactivo'
   }
   return 'Desconocido'
+}
+
+// Funciones auxiliares para mostrar el score de sugerencias
+function getScoreClass(porcentaje: number): string {
+  if (porcentaje >= 80) return 'score-alta'
+  if (porcentaje >= 50) return 'score-media'
+  return 'score-baja'
+}
+
+function getScoreBadgeClass(porcentaje: number): string {
+  if (porcentaje >= 80) return 'bg-green-100 text-green-800'
+  if (porcentaje >= 50) return 'bg-yellow-100 text-yellow-800'
+  return 'bg-red-100 text-red-800'
 }
 </script>
 

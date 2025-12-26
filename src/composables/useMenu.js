@@ -37,6 +37,12 @@ export function useMenu() {
         permissions: ['reportes.view']
       },
       {
+        name: 'Conciliación',
+        icon: 'ChartBarIcon',
+        path: '/conciliacion',
+        permissions: ['conciliacion.view']
+      },
+      {
         name: 'Integración MBA3-SAP',
         icon: 'DocumentTextIcon',
         path: '/mba3-consultas',

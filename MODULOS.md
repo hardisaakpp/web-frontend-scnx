@@ -281,6 +281,7 @@ Revisa estos módulos como referencia:
 - `src/modules/contabilidad/` - Ejemplo completo con CRUD
 - `src/modules/depositos/` - Ejemplo básico
 - `src/modules/reportes/` - Ejemplo con generación de archivos
+- `src/modules/conciliacion/` - Módulo de conciliación (duplicado de reportes con arquitectura completa)
 
 ## 🤝 Colaboración
 
@@ -288,6 +289,63 @@ Revisa estos módulos como referencia:
 2. Hacer commits frecuentes
 3. Nombres de ramas: `feature/mi-modulo-funcionalidad`
 4. Pull requests con descripción clara
+
+## 📝 Notas de Implementación
+
+### Módulo Conciliación
+
+El módulo de Conciliación fue creado como duplicado del módulo Reportes siguiendo la arquitectura completa:
+
+1. **Estructura creada:**
+   - `src/modules/conciliacion/router.ts` - Rutas con permisos
+   - `src/modules/conciliacion/types.ts` - Tipos TypeScript
+   - `src/modules/conciliacion/services/conciliacionApi.ts` - Servicio API
+   - `src/modules/conciliacion/stores/conciliacionStore.ts` - Store Pinia
+   - `src/modules/conciliacion/views/ConciliacionView.vue` - Vista principal
+
+2. **Registro en router:**
+   - Agregado en `src/router/index.js` (archivo activo)
+   - También disponible en `src/router/index.ts` (para migración futura)
+
+3. **Menú del sidebar:**
+   - Agregado en `src/composables/useMenu.js`
+   - Permiso requerido: `conciliacion.view`
+
+4. **Ruta:** `/conciliacion`
+
+### ⚠️ Problema Común: Rutas no aparecen en la pantalla
+
+**Síntoma:**
+- Al navegar a la ruta del módulo, la pantalla aparece en blanco
+- En la consola del navegador aparece el warning: `[Vue Router warn]: No match found for location with path "/ruta-del-modulo"`
+
+**Causa:**
+El proyecto tiene dos archivos de router:
+- `src/router/index.js` - Archivo activo que se está usando
+- `src/router/index.ts` - Archivo TypeScript (posible migración futura)
+
+Si solo se registra la ruta en `index.ts` pero el proyecto usa `index.js`, Vue Router no encontrará la ruta.
+
+**Solución:**
+1. Verificar qué archivo de router se está usando (revisar `src/main.ts` o `src/main.js`)
+2. Registrar la ruta en el archivo correcto:
+   ```javascript
+   // En src/router/index.js (o index.ts según corresponda)
+   import conciliacionRoutes from '../modules/conciliacion/router'
+   
+   // En el array de children del MainLayout
+   children: [
+     // ... otras rutas
+     ...conciliacionRoutes,
+   ]
+   ```
+3. Si hay dos archivos de router, registrar en ambos para evitar problemas futuros
+4. Reiniciar el servidor de desarrollo para asegurar que los cambios se carguen
+
+**Prevención:**
+- Siempre verificar en qué archivo de router se están registrando las otras rutas del proyecto
+- Si hay dudas, registrar en ambos archivos (`index.js` e `index.ts`)
+- Después de agregar rutas, verificar en la consola del navegador que aparezcan en el log de debug (si está habilitado)
 
 ## 📞 Soporte
 

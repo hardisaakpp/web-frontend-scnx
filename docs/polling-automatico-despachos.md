@@ -90,3 +90,8 @@ El proceso backend ejecuta una sincronización con MBA3 cada **15 minutos**:
 **Archivo modificado:** `src/modules/mba3-consultas/views/ProcesoCompletoView.vue`
 
 
+
+
+
+
+

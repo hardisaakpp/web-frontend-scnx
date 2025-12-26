@@ -68,6 +68,15 @@ const router = createRouter({
             permissions: ['reportes.view']
           }
         },
+        {
+          path: '/conciliacion',
+          name: 'Conciliacion',
+          component: () => import('@/modules/conciliacion/views/ConciliacionView.vue'),
+          meta: { 
+            requiresAuth: true,
+            permissions: ['conciliacion.view']
+          }
+        },
         // MBA3 Consultas routes
         ...mba3ConsultasRoutes,
         {

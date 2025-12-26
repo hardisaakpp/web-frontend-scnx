@@ -99,3 +99,8 @@ Para que la optimización funcione de manera óptima, el backend debe:
 **Archivo modificado:** `src/modules/mba3-consultas/views/ProcesoCompletoView.vue`
 
 
+
+
+
+
+

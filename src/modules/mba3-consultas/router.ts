@@ -55,6 +55,28 @@ const routes: RouteRecordRaw[] = [
       icon: 'LinkIcon',
       permissions: ['mba3-consultas.view']
     }
+  },
+  {
+    path: '/mba3-consultas/odc-errores',
+    name: 'mba3-consultas-odc-errores',
+    component: () => import('./views/ODCErroresView.vue'),
+    meta: { 
+      requiresAuth: true,
+      title: 'ODC con Errores',
+      icon: 'ExclamationTriangleIcon',
+      permissions: ['mba3-consultas.view']
+    }
+  },
+  {
+    path: '/mba3-consultas/crear-pedido',
+    name: 'mba3-consultas-crear-pedido',
+    component: () => import('./views/CrearPedidoView.vue'),
+    meta: { 
+      requiresAuth: true,
+      title: 'Crear Pedido',
+      icon: 'DocumentPlusIcon',
+      permissions: ['mba3-consultas.view']
+    }
   }
 ]
 

@@ -144,6 +144,22 @@
           <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Reportes</span>
         </router-link>
 
+        <!-- Conciliación -->
+        <router-link
+          v-if="(authStore.userRoles?.includes('Admin') || authStore.hasPermission('conciliacion.view'))"
+          to="/conciliacion"
+          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
+          :class="{
+            'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/50': $route.path === '/conciliacion',
+            'text-slate-300 hover:bg-slate-800/50 hover:text-white': $route.path !== '/conciliacion'
+          }"
+          :title="isSidebarCollapsed ? 'Conciliación' : ''"
+        >
+          <div class="absolute inset-0 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <DocumentChartBarIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path === '/conciliacion' }" />
+          <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Conciliación</span>
+        </router-link>
+
         <!-- Integración MBA3-SAP -->
         <router-link
           v-if="(authStore.userRoles?.includes('Admin') || authStore.hasPermission('mba3-consultas.view'))"
@@ -296,6 +312,7 @@ import {
   BuildingLibraryIcon,
   DocumentChartBarIcon,
   ArrowsRightLeftIcon,
+  DocumentCheckIcon,
   ArrowRightOnRectangleIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -401,6 +418,7 @@ const pageTitle = computed(() => {
     '/contabilidad': 'Contabilidad',
     '/depositos': 'Depósitos',
     '/reportes': 'Reportes',
+    '/conciliacion': 'Conciliación',
     '/mba3-consultas': 'Integración MBA3-SAP',
     '/mba3-consultas/ordenes-compra': 'Órdenes de Compra',
     '/mba3-consultas/proceso': 'Proceso Completo',
