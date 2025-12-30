@@ -6,7 +6,7 @@ import type {
 } from '../types'
 import type { OrdenCompraResponse, OrdenCompraLogResponse, RemisionResponse } from '../types'
 import type { HealthResponse, ProcesoResponse } from '../types'
-import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstado, ProcesoEstadoResponse, SugerenciaProducto, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuRequest, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, PedidoCompleto, CargarRespuestaProveedorResponse, RespuestaProveedorResponse, ProcesarConfirmacionResponse, ReporteDiferenciasResponse } from '../types'
+import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstado, ProcesoEstadoResponse, SugerenciaProducto, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuRequest, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, PedidoCompleto, CargarRespuestaProveedorResponse, RespuestaProveedorResponse, ProcesarConfirmacionResponse, ReporteDiferenciasResponse, IntegracionSAPResponse } from '../types'
 
 // Usar la URL base del backend MBA3
 const API_BASE_URL = import.meta.env.VITE_MBA3_API_BASE_URL || 'http://localhost:8000'
@@ -210,7 +210,7 @@ export const mba3ConsultasService = {
   // Integrar SAP (una o múltiples ODCs)
   // referenciaDespacho: string | string[] | undefined - Si se proporciona, integra solo esas ODCs
   // almacenDestino: string | undefined - Código del almacén destino (ej: RL, OUT, LP)
-  async integrarSAP(referenciaDespacho?: string | string[], almacenDestino?: string): Promise<any> {
+  async integrarSAP(referenciaDespacho?: string | string[], almacenDestino?: string): Promise<IntegracionSAPResponse> {
     const params = new URLSearchParams()
     
     if (referenciaDespacho) {

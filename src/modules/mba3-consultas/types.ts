@@ -126,11 +126,13 @@ export interface RemisionResponse {
 // ========== Órdenes de Compra ==========
 export interface OrdenCompra {
   oc_id: string
-  despacho_id: string
+  despacho_id: string | null  // ⚠️ Ahora puede ser null (OC de pedido)
+  pedido_id: string | null    // ⭐ NUEVO - ID del pedido relacionado
   proveedor: string
   fecha_generacion: string
   estado: 'PENDIENTE' | 'ENVIADA' | 'ERROR'
   numero_oc_sap: string | null
+  doc_entry: number | null    // ⭐ NUEVO - DocEntry de SAP (importante para trazabilidad)
   referencia_despacho: string
   created_at: string
   fecha_procesado?: string | null
@@ -139,18 +141,7 @@ export interface OrdenCompra {
   error_code?: string | null
   error_message?: string | null
   metadata?: {
-    detalles?: Array<{
-      oc_id?: string
-      proveedor?: string
-      success?: boolean
-      doc_entry?: number
-      doc_num?: number
-      error_source?: string
-      error_code?: string
-      error_message?: string
-      sap_response?: Record<string, any>
-      [key: string]: any
-    }>
+    detalles?: IntegracionSAPDetalle[]  // Usar interfaz específica
     [key: string]: any
   }
 }
@@ -177,6 +168,45 @@ export interface OrdenCompraDetalle {
   oc_id: string
   proveedor: string
   detalles: any[]
+}
+
+// ⭐ NUEVO - Interfaz para detalles de integración SAP
+export interface IntegracionSAPDetalle {
+  oc_id: string
+  proveedor?: string
+  success: boolean
+  doc_entry: number | null        // ⭐ NUEVO - DocEntry de SAP
+  doc_num: number | null
+  message?: string | null          // Mensaje de éxito
+  error: string | null             // Mensaje de error (puede contener múltiples errores separados por ';')
+  error_message: string | null     // Alias de error (para compatibilidad)
+  error_code: string | null         // ⭐ NUEVO - Código numérico de SAP
+  error_source: string | null       // ⭐ NUEVO - "SAP" | "BACKEND" | "SAP_CONNECTION"
+  sap_response?: Record<string, any> | null  // Respuesta completa de SAP
+  sap_error_details?: Record<string, any> | null  // Detalles completos del error
+  [key: string]: any
+}
+
+// Interfaz para información de pedidos cerrados (opcional - Fase 6)
+export interface PedidoCerrado {
+  pedido_id: string
+  estado_anterior: string
+  estado_nuevo: 'CONFIRMADO_ENVIADO'
+  total_odc: number
+  odc_enviadas: number
+}
+
+// Interfaz para respuesta de integración SAP
+export interface IntegracionSAPResponse {
+  status?: string
+  success?: boolean
+  message?: string
+  metadata?: {
+    detalles?: IntegracionSAPDetalle[]
+    pedidos_cerrados?: PedidoCerrado[]  // ⭐ Opcional (Fase 6) - Pedidos que se cerraron después de enviar ODC
+    [key: string]: any
+  }
+  [key: string]: any
 }
 
 // Detalle individual de una ODC
@@ -660,7 +690,7 @@ export interface UploadPlantillaResponse {
   status: 'success' | 'validation_error' | 'error'
   message: string
   pedido_id: string
-  estado?: string  // "PENDIENTE_CONFIRMACION_PROVEEDOR"
+  estado?: string  // Estados: "PENDIENTE_CONFIRMACION_PROVEEDOR", "RESPUESTA_PROVEEDOR_CARGADA", "CONFIRMADO_PROVEEDOR", "CONFIRMADO_ENVIADO"
   articulos_cargados: number
   distribuciones_cargadas: number
   validacion?: ValidacionCompleta
@@ -691,7 +721,7 @@ export interface PedidoCabecera {
   archivo_nombre: string
   creado_por: string | null
   creado_en: string | null
-  estado?: string  // Estado del pedido (ej: "PENDIENTE_CONFIRMACION_PROVEEDOR", "RESPUESTA_PROVEEDOR_CARGADA")
+  estado?: string  // Estado del pedido: "PENDIENTE_CONFIRMACION_PROVEEDOR", "RESPUESTA_PROVEEDOR_CARGADA", "CONFIRMADO_PROVEEDOR", "CONFIRMADO_ENVIADO"
 }
 
 export interface TiendaDistribucion {

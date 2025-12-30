@@ -1457,17 +1457,45 @@ async function handleIntegrarOC(referenciaDespacho: string, almacenDestinoParam?
         if (success) {
           ordenActualizada.estado = 'ENVIADA'
           ordenActualizada.numero_oc_sap = detalle.doc_num?.toString() || null
+          ordenActualizada.doc_entry = detalle.doc_entry || null  // ⭐ Actualizar doc_entry
           ordenActualizada.fecha_procesado = new Date().toISOString()
           ordenActualizada.respuesta_sap = detalle.message || 'Enviada exitosamente'
           
-          toast.success('Orden enviada', `DocNum SAP: ${detalle.doc_num || 'N/A'}`)
+          const docInfo = detalle.doc_entry 
+            ? `DocEntry: ${detalle.doc_entry}${detalle.doc_num ? `, DocNum: ${detalle.doc_num}` : ''}`
+            : (detalle.doc_num ? `DocNum: ${detalle.doc_num}` : 'N/A')
+          toast.success('Orden enviada', docInfo)
         } else {
           ordenActualizada.estado = 'ERROR'
-          ordenActualizada.error_message = detalle.error || 'Error desconocido'
+          // Usar error_message si existe, sino error
+          const errorMsg = detalle.error_message || detalle.error || 'Error desconocido'
+          ordenActualizada.error_message = errorMsg
+          ordenActualizada.error_source = detalle.error_source || 'BACKEND'
+          ordenActualizada.error_code = detalle.error_code || null
           ordenActualizada.fecha_procesado = new Date().toISOString()
-          ordenActualizada.respuesta_sap = detalle.error || 'Error al enviar'
+          ordenActualizada.respuesta_sap = errorMsg
           
-          toast.error('Error al integrar', detalle.error || 'Error desconocido')
+          // Parsear errores múltiples si están separados por ';'
+          const errores = typeof errorMsg === 'string' && errorMsg.includes(';')
+            ? errorMsg.split(';').map(e => e.trim()).filter(e => e.length > 0)
+            : [errorMsg]
+          
+          // Determinar título según el origen del error
+          const errorTitle = detalle.error_source === 'BACKEND' 
+            ? 'Error de validación'
+            : detalle.error_source === 'SAP_CONNECTION'
+            ? 'Error de conexión con SAP'
+            : detalle.error_source === 'SAP'
+            ? 'Error de SAP'
+            : 'Error al integrar'
+          
+          // Mostrar primer error en toast, resto en consola
+          if (errores.length > 1) {
+            console.warn(`[handleIntegrarOC] Múltiples errores para ${referenciaDespacho}:`, errores)
+            toast.error(errorTitle, `${errores[0]} (+${errores.length - 1} error(es) más. Ver consola)`)
+          } else {
+            toast.error(errorTitle, errores[0])
+          }
         }
         
         // Reemplazar la orden en el array (Vue detectará el cambio)
@@ -1493,6 +1521,16 @@ async function handleIntegrarOC(referenciaDespacho: string, almacenDestinoParam?
     // Delay para que el usuario vea el cambio en la UI antes de cerrar el overlay
     await new Promise(resolve => setTimeout(resolve, 500))
     
+    // ✅ Verificar si hay pedidos cerrados en la respuesta (Fase 6)
+    const pedidosCerrados = response?.metadata?.pedidos_cerrados || []
+    if (pedidosCerrados.length > 0) {
+      toast.success(
+        'Pedidos cerrados',
+        `${pedidosCerrados.length} pedido(s) marcado(s) como CONFIRMADO_ENVIADO`
+      )
+      console.log('📦 Pedidos cerrados después del envío:', pedidosCerrados)
+    }
+    
     // ✅ NO REFRESCAR - Confiar en la respuesta del backend
     // La respuesta del backend es autoritativa y ya actualizamos el estado local
     // Refrescar ahora traería datos viejos del servidor que sobrescribirían nuestra actualización
@@ -1502,7 +1540,56 @@ async function handleIntegrarOC(referenciaDespacho: string, almacenDestinoParam?
     // y limpiará sendingOcId solo cuando el estado sea != 'PENDIENTE'
   } catch (error: any) {
     console.error('Error al integrar ODC:', error)
-    toast.error('Error al integrar', error.message || 'No se pudo enviar la orden a SAP')
+    
+    // Mejorar manejo de errores con mensajes más descriptivos
+    let errorTitle = 'Error al integrar'
+    let errorMessage = error.message || 'No se pudo enviar la orden a SAP'
+    
+    // Parsear errores del backend con estructura mejorada
+    if (error.response?.data) {
+      const errorData = error.response.data
+      
+      // Si tiene campo error (string con validaciones - puede tener múltiples errores separados por ';')
+      if (errorData.error) {
+        errorMessage = errorData.error
+        // Parsear errores múltiples si están separados por ';'
+        const errores = errorMessage.split(';').map(e => e.trim()).filter(e => e.length > 0)
+        if (errores.length > 1) {
+          // Si hay múltiples errores, mostrar el primero en el toast y los demás en consola
+          errorMessage = errores[0]
+          console.warn('Errores adicionales:', errores.slice(1))
+          // Mostrar todos los errores en un mensaje expandido
+          toast.error(errorTitle, `${errores[0]} (+${errores.length - 1} error(es) más. Ver consola)`)
+          return // Salir temprano para no mostrar el toast genérico
+        }
+      } 
+      // Si tiene campo detail (FastAPI)
+      else if (errorData.detail) {
+        errorMessage = typeof errorData.detail === 'string' 
+          ? errorData.detail 
+          : JSON.stringify(errorData.detail)
+      }
+      // Si tiene campo message
+      else if (errorData.message) {
+        errorMessage = errorData.message
+      }
+      
+      // Determinar título según el origen del error
+      if (errorData.error_source) {
+        errorTitle = errorData.error_source === 'BACKEND'
+          ? 'Error de validación'
+          : errorData.error_source === 'SAP_CONNECTION'
+          ? 'Error de conexión con SAP'
+          : errorData.error_source === 'SAP'
+          ? 'Error de SAP'
+          : 'Error al integrar'
+      }
+    }
+    
+    // Solo mostrar toast si no se mostró antes (por errores múltiples)
+    if (!errorMessage.includes('(+')) {
+      toast.error(errorTitle, errorMessage)
+    }
     
     // En caso de error, SÍ limpiar el estado de envío para que el usuario pueda reintentar
     if (ordenCompraTableRef.value?.clearSendingState) {
@@ -1541,6 +1628,7 @@ async function handleIntegrarOCMultiples(referencias: string[]) {
     let successCount = 0
     let errorCount = 0
     const totalOrdenes = referencias.length
+    const pedidosCerradosConsolidados: Set<string> = new Set()  // Para consolidar pedidos cerrados (Fase 6)
     
     // Enviar cada orden una por una y actualizar estados localmente
     for (let i = 0; i < referencias.length; i++) {
@@ -1557,6 +1645,15 @@ async function handleIntegrarOCMultiples(referencias: string[]) {
         const metadata = response?.metadata || {}
         const detalles = metadata.detalles || []
         
+        // Consolidar pedidos cerrados si están en la respuesta (Fase 6)
+        if (metadata.pedidos_cerrados && Array.isArray(metadata.pedidos_cerrados)) {
+          metadata.pedidos_cerrados.forEach((pedido: any) => {
+            if (pedido.pedido_id) {
+              pedidosCerradosConsolidados.add(pedido.pedido_id)
+            }
+          })
+        }
+        
         if (detalles.length > 0) {
           const detalle = detalles[0]
           const success = detalle.success === true
@@ -1572,15 +1669,26 @@ async function handleIntegrarOCMultiples(referencias: string[]) {
             if (success) {
               ordenActualizada.estado = 'ENVIADA'
               ordenActualizada.numero_oc_sap = detalle.doc_num?.toString() || null
+              ordenActualizada.doc_entry = detalle.doc_entry || null  // ⭐ Actualizar doc_entry
               ordenActualizada.fecha_procesado = new Date().toISOString()
               ordenActualizada.respuesta_sap = detalle.message || 'Enviada exitosamente'
               successCount++
             } else {
               ordenActualizada.estado = 'ERROR'
-              ordenActualizada.error_message = detalle.error || 'Error desconocido'
+              // Usar error_message si existe, sino error
+              const errorMsg = detalle.error_message || detalle.error || 'Error desconocido'
+              ordenActualizada.error_message = errorMsg
+              ordenActualizada.error_source = detalle.error_source || 'BACKEND'
+              ordenActualizada.error_code = detalle.error_code || null
               ordenActualizada.fecha_procesado = new Date().toISOString()
-              ordenActualizada.respuesta_sap = detalle.error || 'Error al enviar'
+              ordenActualizada.respuesta_sap = errorMsg
               errorCount++
+              
+              // Log para debugging - parsear errores múltiples si existen
+              if (errorMsg.includes(';')) {
+                const errores = errorMsg.split(';').map(e => e.trim())
+                console.warn(`[handleIntegrarOCMultiples] Múltiples errores para ${referencia}:`, errores)
+              }
             }
             
             // Actualizar el array
@@ -1607,6 +1715,40 @@ async function handleIntegrarOCMultiples(referencias: string[]) {
         console.error(`Error al enviar orden ${referencia}:`, error)
         errorCount++
         
+        // Buscar y actualizar la orden en el array local para marcar como error
+        const ordenIndex = ordenesCompraStore.ordenesCompra.findIndex(
+          (oc: any) => oc.referencia_despacho === referencia
+        )
+        
+        if (ordenIndex !== -1) {
+          const ordenActualizada = { ...ordenesCompraStore.ordenesCompra[ordenIndex] }
+          ordenActualizada.estado = 'ERROR'
+          
+          // Parsear error mejorado
+          if (error.response?.data) {
+            const errorData = error.response.data
+            const errorMsg = errorData.error || errorData.detail || errorData.message || error.message
+            ordenActualizada.error_message = errorMsg
+            ordenActualizada.error_source = errorData.error_source || 'BACKEND'
+            ordenActualizada.error_code = errorData.error_code || null
+            ordenActualizada.respuesta_sap = errorMsg
+            
+            // Log errores múltiples si existen
+            if (typeof errorMsg === 'string' && errorMsg.includes(';')) {
+              const errores = errorMsg.split(';').map(e => e.trim())
+              console.warn(`[handleIntegrarOCMultiples] Múltiples errores para ${referencia}:`, errores)
+            }
+          } else {
+            ordenActualizada.error_message = error.message || 'Error desconocido'
+            ordenActualizada.error_source = 'BACKEND'
+            ordenActualizada.respuesta_sap = ordenActualizada.error_message
+          }
+          
+          ordenActualizada.fecha_procesado = new Date().toISOString()
+          ordenesCompraStore.ordenesCompra[ordenIndex] = ordenActualizada
+          ordenesCompraStore.ordenesCompra = [...ordenesCompraStore.ordenesCompra]
+        }
+        
         // Actualizar progreso incluso si hay error
         procesoStore.progress = Math.round(((i + 1) / totalOrdenes) * 100)
         
@@ -1622,6 +1764,30 @@ async function handleIntegrarOCMultiples(referencias: string[]) {
     
     // Delay para que el usuario vea los cambios en la UI antes de cerrar el overlay
     await new Promise(resolve => setTimeout(resolve, 500))
+    
+    // Mostrar resumen final
+    if (successCount > 0) {
+      toast.success(
+        'Órdenes enviadas', 
+        `${successCount} orden(es) enviada(s) exitosamente${errorCount > 0 ? `, ${errorCount} con errores` : ''}`
+      )
+    }
+    
+    if (errorCount > 0 && successCount === 0) {
+      toast.error(
+        'Error al enviar órdenes',
+        `${errorCount} orden(es) no se pudieron enviar. Revisa los detalles.`
+      )
+    }
+    
+    // ✅ Mostrar información de pedidos cerrados si hubo alguno (Fase 6)
+    if (pedidosCerradosConsolidados.size > 0) {
+      toast.success(
+        'Pedidos cerrados',
+        `${pedidosCerradosConsolidados.size} pedido(s) marcado(s) como CONFIRMADO_ENVIADO`
+      )
+      console.log('📦 Pedidos cerrados después del envío:', Array.from(pedidosCerradosConsolidados))
+    }
     
     // ✅ NO REFRESCAR - Confiar en las respuestas del backend
     // Las respuestas del backend son autoritativas y ya actualizamos los estados locales

@@ -596,6 +596,7 @@ const canViewReporteDiferencias = computed(() => {
   // Permitir ver reporte si hay respuesta aprobada o si ya se procesó la confirmación
   return pedido.value?.respuesta_proveedor?.cabecera.estado === 'APROBADA' ||
          pedido.value?.cabecera.estado === 'CONFIRMADO_PROVEEDOR' ||
+         pedido.value?.cabecera.estado === 'CONFIRMADO_ENVIADO' ||
          reporteDiferencias.value !== null
 })
 
@@ -609,7 +610,8 @@ async function loadPedido() {
     
     // Si hay respuesta aprobada, cargar el reporte de diferencias
     if (pedido.value?.respuesta_proveedor?.cabecera.estado === 'APROBADA' ||
-        pedido.value?.cabecera.estado === 'CONFIRMADO_PROVEEDOR') {
+        pedido.value?.cabecera.estado === 'CONFIRMADO_PROVEEDOR' ||
+        pedido.value?.cabecera.estado === 'CONFIRMADO_ENVIADO') {
       await loadReporteDiferencias()
     }
   } catch (e: any) {
@@ -876,7 +878,8 @@ function formatEstadoPedido(estado: string): string {
   const estados: Record<string, string> = {
     'PENDIENTE_CONFIRMACION_PROVEEDOR': 'Pendiente Confirmación',
     'RESPUESTA_PROVEEDOR_CARGADA': 'Respuesta Cargada',
-    'CONFIRMADO_PROVEEDOR': 'Confirmado por Proveedor'
+    'CONFIRMADO_PROVEEDOR': 'Confirmado por Proveedor',
+    'CONFIRMADO_ENVIADO': 'Confirmado y Enviado'  // ⭐ NUEVO (Fase 6)
   }
   return estados[estado] || estado
 }
@@ -885,7 +888,8 @@ function getEstadoPedidoBadgeClass(estado: string): string {
   const classes: Record<string, string> = {
     'PENDIENTE_CONFIRMACION_PROVEEDOR': 'bg-yellow-100 text-yellow-800',
     'RESPUESTA_PROVEEDOR_CARGADA': 'bg-blue-100 text-blue-800',
-    'CONFIRMADO_PROVEEDOR': 'bg-green-100 text-green-800'
+    'CONFIRMADO_PROVEEDOR': 'bg-green-100 text-green-800',
+    'CONFIRMADO_ENVIADO': 'bg-emerald-100 text-emerald-800'  // ⭐ NUEVO (Fase 6) - Verde más intenso para estado final
   }
   return classes[estado] || 'bg-gray-100 text-gray-800'
 }

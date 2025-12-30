@@ -285,6 +285,23 @@
                   </svg>
                 </button>
               </td>
+              <!-- Origen (Pedido vs Despacho) -->
+              <td v-else-if="columnKey === 'origen'" class="px-6 py-4 whitespace-nowrap text-sm">
+                <span 
+                  v-if="oc.pedido_id"
+                  class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800"
+                  title="OC generada desde un pedido confirmado"
+                >
+                  📦 Pedido
+                </span>
+                <span 
+                  v-else
+                  class="px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-700"
+                  title="OC generada desde despacho (legacy)"
+                >
+                  🚚 Despacho
+                </span>
+              </td>
               <!-- Referencia Despacho -->
               <td v-else-if="columnKey === 'referencia_despacho'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                 <button
@@ -346,7 +363,18 @@
               </td>
               <!-- Número ODC SAP -->
               <td v-else-if="columnKey === 'numero_oc_sap'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                <span v-if="oc.numero_oc_sap" class="font-mono">{{ oc.numero_oc_sap }}</span>
+                <div v-if="oc.numero_oc_sap" class="flex items-center gap-2">
+                  <span class="font-mono">{{ oc.numero_oc_sap }}</span>
+                  <span v-if="oc.doc_entry" class="text-xs text-gray-500">(Entry: {{ oc.doc_entry }})</span>
+                </div>
+                <span v-else class="text-gray-400 italic">-</span>
+              </td>
+              <!-- DocEntry SAP -->
+              <td v-else-if="columnKey === 'doc_entry'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <div v-if="oc.doc_entry" class="flex items-center gap-2">
+                  <span class="font-mono font-semibold text-emerald-700">{{ oc.doc_entry }}</span>
+                  <span class="px-1.5 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700 rounded" title="OC ya enviada a SAP">✓</span>
+                </div>
                 <span v-else class="text-gray-400 italic">-</span>
               </td>
               <!-- Respuesta SAP -->
@@ -371,7 +399,25 @@
               </td>
             </template>
             <td v-if="!readOnly" class="px-6 py-4 whitespace-nowrap text-sm">
-              <div v-if="oc.estado === 'PENDIENTE'" class="relative inline-flex flex-col gap-1">
+              <!-- Si tiene doc_entry, ya fue enviada - mostrar mensaje -->
+              <div v-if="oc.doc_entry !== null && oc.doc_entry !== undefined" class="flex flex-col gap-1">
+                <div class="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium flex items-center gap-2">
+                  <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>Ya enviada (Entry: {{ oc.doc_entry }})</span>
+                </div>
+                <button
+                  v-if="oc.numero_oc_sap"
+                  @click="copyToClipboard(`DocEntry: ${oc.doc_entry}, DocNum: ${oc.numero_oc_sap}`)"
+                  class="text-xs text-gray-500 hover:text-gray-700 underline"
+                  title="Copiar información de SAP"
+                >
+                  Copiar info SAP
+                </button>
+              </div>
+              <!-- Si está pendiente y no tiene doc_entry, mostrar botones de acción -->
+              <div v-else-if="oc.estado === 'PENDIENTE'" class="relative inline-flex flex-col gap-1">
                 <div class="flex items-stretch">
                   <!-- Botón principal Enviar -->
                   <button 
@@ -542,12 +588,14 @@ const showColumnSelector = ref(false)
 // Columnas disponibles
 const availableColumns = [
   { key: 'oc_id', label: 'ODC ID', default: true },
+  { key: 'origen', label: 'Origen', default: true },  // ⭐ NUEVO - Pedido vs Despacho
   { key: 'referencia_despacho', label: 'Referencia Despacho', default: true },
   { key: 'fecha_generacion', label: 'Fecha Generación', default: true },
   { key: 'created_at', label: 'Fecha Creación', default: props.readOnly || false },
   { key: 'fecha_procesado', label: 'Fecha Procesado', default: props.readOnly || false },
   { key: 'estado', label: 'Estado', default: true },
   { key: 'numero_oc_sap', label: 'Número ODC SAP', default: false },
+  { key: 'doc_entry', label: 'DocEntry SAP', default: false },  // ⭐ NUEVO - Para trazabilidad
   { key: 'respuesta_sap', label: 'Respuesta SAP', default: props.readOnly || false },
 ]
 
@@ -617,7 +665,7 @@ function getColumnLabel(key: string): string {
 
 function isColumnSortable(key: string): boolean {
   // Columnas no ordenables
-  return !['estado', 'numero_oc_sap', 'respuesta_sap'].includes(key)
+  return !['estado', 'numero_oc_sap', 'doc_entry', 'respuesta_sap', 'origen'].includes(key)
 }
 
 function selectAllColumns() {
@@ -810,9 +858,12 @@ watch(() => filteredOrdenes.value, (newFiltered) => {
   }
 }, { immediate: true })
 
-// Computed para obtener ODCs seleccionables (solo pendientes)
+// Computed para obtener ODCs seleccionables (solo pendientes y sin doc_entry)
 const selectableOrdenes = computed(() => {
-  return filteredOrdenes.value.filter(oc => oc.estado === 'PENDIENTE')
+  return filteredOrdenes.value.filter(oc => 
+    oc.estado === 'PENDIENTE' && 
+    (oc.doc_entry === null || oc.doc_entry === undefined)
+  )
 })
 
 // Computed para verificar si hay ODCs seleccionables
@@ -821,10 +872,11 @@ const hasSelectableOrdenes = computed(() => {
 })
 
 // Computed para obtener ODCs seleccionadas que están pendientes (seleccionables)
+// Excluir las que ya tienen doc_entry (ya fueron enviadas)
 const ordenesSeleccionables = computed(() => {
   return selectedOrdenes.value.filter(id => {
     const oc = props.ordenesCompra.find(o => o.oc_id === id)
-    return oc && oc.estado === 'PENDIENTE'
+    return oc && oc.estado === 'PENDIENTE' && (oc.doc_entry === null || oc.doc_entry === undefined)
   })
 })
 
@@ -952,6 +1004,18 @@ async function handleIntegrar(referenciaDespacho: string, ocId: string) {
     return
   }
   
+  // Encontrar la OC para validar
+  const oc = props.ordenesCompra.find(o => o.oc_id === ocId)
+  
+  // ⚠️ Validar que no tenga doc_entry (ya fue enviada)
+  if (oc && oc.doc_entry !== null && oc.doc_entry !== undefined) {
+    toast.warning(
+      'OC ya enviada', 
+      `Esta OC ya fue enviada a SAP (DocEntry: ${oc.doc_entry}${oc.numero_oc_sap ? `, DocNum: ${oc.numero_oc_sap}` : ''}). No se puede reenviar.`
+    )
+    return
+  }
+  
   // Validar que haya un almacén seleccionado (obligatorio)
   const almacen = selectedAlmacen.value[ocId]
   if (!almacen) {
@@ -1056,9 +1120,9 @@ function handleIntegrarSeleccionadas() {
     return
   }
   
-  // Usar solo las ODCs seleccionables (no enviadas)
+  // Usar solo las ODCs seleccionables (no enviadas y sin doc_entry)
   if (ordenesSeleccionables.value.length === 0) {
-    toast.warning('No hay órdenes seleccionadas')
+    toast.warning('No hay órdenes seleccionadas', 'Las órdenes seleccionadas ya fueron enviadas o tienen doc_entry asignado')
     return
   }
   
@@ -1070,7 +1134,22 @@ function handleIntegrarSeleccionadas() {
       return { oc, almacen, id }
     })
   
-  const ordenesSinAlmacen = ordenesSeleccionadasData.filter(({ almacen }) => !almacen)
+  // Validar que no tengan doc_entry (doble validación)
+  const ordenesConDocEntry = ordenesSeleccionadasData.filter(({ oc }) => 
+    oc && oc.doc_entry !== null && oc.doc_entry !== undefined
+  )
+  
+  if (ordenesConDocEntry.length > 0) {
+    toast.warning(
+      'OC ya enviada', 
+      `${ordenesConDocEntry.length} orden(es) seleccionada(s) ya tienen DocEntry asignado (ya fueron enviadas). Se excluirán del envío.`
+    )
+    // Continuar con las que no tienen doc_entry
+  }
+  
+  const ordenesSinAlmacen = ordenesSeleccionadasData.filter(({ almacen, oc }) => 
+    !almacen && oc && (oc.doc_entry === null || oc.doc_entry === undefined)
+  )
   
   if (ordenesSinAlmacen.length > 0) {
     toast.warning(
@@ -1081,11 +1160,15 @@ function handleIntegrarSeleccionadas() {
   }
   
   const referencias = ordenesSeleccionadasData
-    .filter(({ oc }) => oc && oc.estado === 'PENDIENTE')
+    .filter(({ oc }) => 
+      oc && 
+      oc.estado === 'PENDIENTE' && 
+      (oc.doc_entry === null || oc.doc_entry === undefined)
+    )
     .map(({ oc }) => oc!.referencia_despacho)
   
   if (referencias.length === 0) {
-    toast.warning('No hay órdenes pendientes seleccionadas')
+    toast.warning('No hay órdenes pendientes seleccionadas', 'Todas las órdenes seleccionadas ya fueron enviadas')
     return
   }
   
