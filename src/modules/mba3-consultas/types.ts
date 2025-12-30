@@ -778,4 +778,64 @@ export interface RespuestaProveedorResponse {
   detalles: RespuestaProveedorDetalle[]
 }
 
+// ========== Fase 4: Ajuste y Redistribución ==========
+
+export interface DistribucionTienda {
+  tienda_codigo: string
+  tienda_nombre: string
+  cantidad: number
+}
+
+export interface AjusteDetalle {
+  codigo_producto: string
+  descripcion: string
+  cantidad_solicitada: number
+  cantidad_confirmada: number
+  cantidad_ajustada: number
+  distribucion_tiendas: DistribucionTienda[]
+  costo_original: number | null
+  costo_ajustado: number | null
+  cambio_precio: boolean
+}
+
+export interface ResumenConfirmacion {
+  total_productos: number
+  total_solicitado: number
+  total_confirmado: number
+  total_diferencia: number
+  porcentaje_confirmacion: number
+}
+
+export interface DiferenciaReporte {
+  codigo_producto: string
+  descripcion: string
+  cantidad_solicitada: number
+  cantidad_confirmada: number
+  diferencia: number
+  porcentaje_diferencia: number
+  costo_original: number | null
+  costo_ajustado: number | null
+  cambio_precio: boolean
+  distribucion_tiendas: DistribucionTienda[]
+  observaciones: string | null
+}
+
+export interface ReporteDiferenciasResponse {
+  pedido_id: string
+  numero_pedido: string | null
+  resumen: ResumenConfirmacion
+  detalle: DiferenciaReporte[]
+}
+
+export interface ProcesarConfirmacionResponse {
+  status: 'success'
+  message: string
+  pedido_id: string
+  respuesta_id: string
+  ajustes_realizados: number
+  resumen: ResumenConfirmacion
+  reporte_diferencias: DiferenciaReporte[]
+  ajustes_detalle: AjusteDetalle[]
+}
+
 

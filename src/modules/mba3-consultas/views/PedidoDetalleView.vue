@@ -17,6 +17,32 @@
             Volver
           </button>
           <button
+            v-if="canViewReporteDiferencias"
+            @click="handleViewReporteDiferencias"
+            :disabled="loading"
+            class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Ver Reporte de Diferencias
+          </button>
+          <button
+            v-if="canProcesarConfirmacion"
+            @click="showProcesarModal = true"
+            :disabled="loading || procesandoConfirmacion"
+            class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+          >
+            <svg v-if="!procesandoConfirmacion" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <svg v-else class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            {{ procesandoConfirmacion ? 'Procesando...' : 'Procesar Confirmación' }}
+          </button>
+          <button
             v-if="canExportForProvider"
             @click="handleExportForProvider"
             :disabled="loading"
@@ -81,6 +107,14 @@
             <div>
               <label class="text-xs font-medium text-gray-500 uppercase">Forma de Pago</label>
               <p class="mt-1 text-sm text-gray-900">{{ pedido.cabecera.forma_pago || 'N/A' }}</p>
+            </div>
+            <div v-if="pedido.cabecera.estado">
+              <label class="text-xs font-medium text-gray-500 uppercase">Estado del Pedido</label>
+              <p class="mt-1">
+                <span class="px-2 py-1 text-xs font-medium rounded-full" :class="getEstadoPedidoBadgeClass(pedido.cabecera.estado)">
+                  {{ formatEstadoPedido(pedido.cabecera.estado) }}
+                </span>
+              </p>
             </div>
           </div>
         </div>
@@ -265,6 +299,126 @@
           </div>
         </div>
 
+        <!-- Reporte de Diferencias -->
+        <div v-if="reporteDiferencias" data-reporte-diferencias class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold text-gray-900">Reporte de Diferencias</h2>
+            <button
+              @click="handleExportReporteDiferencias"
+              class="px-3 py-1.5 text-xs font-medium text-purple-600 hover:text-purple-700 border border-purple-300 rounded-lg hover:bg-purple-50 transition-colors flex items-center gap-1"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Exportar Excel
+            </button>
+          </div>
+
+          <!-- Resumen -->
+          <div class="bg-gray-50 rounded-lg p-4 mb-6">
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div>
+                <label class="text-xs font-medium text-gray-500 uppercase">Total Productos</label>
+                <p class="mt-1 text-lg font-semibold text-gray-900">{{ reporteDiferencias.resumen.total_productos }}</p>
+              </div>
+              <div>
+                <label class="text-xs font-medium text-gray-500 uppercase">Total Solicitado</label>
+                <p class="mt-1 text-lg font-semibold text-gray-900">{{ formatNumber(reporteDiferencias.resumen.total_solicitado) }}</p>
+              </div>
+              <div>
+                <label class="text-xs font-medium text-gray-500 uppercase">Total Confirmado</label>
+                <p class="mt-1 text-lg font-semibold text-gray-900">{{ formatNumber(reporteDiferencias.resumen.total_confirmado) }}</p>
+              </div>
+              <div>
+                <label class="text-xs font-medium text-gray-500 uppercase">Diferencia</label>
+                <p class="mt-1 text-lg font-semibold" :class="getDiferenciaClass(reporteDiferencias.resumen.total_diferencia)">
+                  {{ formatNumber(reporteDiferencias.resumen.total_diferencia) }}
+                </p>
+              </div>
+              <div>
+                <label class="text-xs font-medium text-gray-500 uppercase">% Confirmación</label>
+                <p class="mt-1 text-lg font-semibold" :class="getPorcentajeClass(reporteDiferencias.resumen.porcentaje_confirmacion)">
+                  {{ formatPorcentaje(reporteDiferencias.resumen.porcentaje_confirmacion) }}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabla de diferencias -->
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
+                  <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Solicitado</th>
+                  <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Confirmado</th>
+                  <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Diferencia</th>
+                  <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">% Diferencia</th>
+                  <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Costo Original</th>
+                  <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Costo Ajustado</th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cambio Precio</th>
+                </tr>
+              </thead>
+              <tbody class="bg-white divide-y divide-gray-200">
+                <tr v-for="item in reporteDiferencias.detalle" :key="item.codigo_producto" class="hover:bg-gray-50">
+                  <td class="px-4 py-4">
+                    <div class="text-sm font-medium text-gray-900">{{ item.codigo_producto }}</div>
+                    <div class="text-xs text-gray-500">{{ item.descripcion }}</div>
+                    <div v-if="item.observaciones" class="text-xs text-gray-400 mt-1">
+                      <span class="italic">{{ item.observaciones }}</span>
+                    </div>
+                  </td>
+                  <td class="px-4 py-4 whitespace-nowrap text-right text-sm text-gray-900">
+                    {{ formatNumber(item.cantidad_solicitada) }}
+                  </td>
+                  <td class="px-4 py-4 whitespace-nowrap text-right text-sm text-gray-900">
+                    {{ formatNumber(item.cantidad_confirmada) }}
+                  </td>
+                  <td class="px-4 py-4 whitespace-nowrap text-right text-sm font-medium" :class="getDiferenciaClass(item.diferencia)">
+                    {{ formatNumber(item.diferencia) }}
+                  </td>
+                  <td class="px-4 py-4 whitespace-nowrap text-right text-sm" :class="getPorcentajeDiferenciaClass(item.porcentaje_diferencia)">
+                    {{ formatPorcentaje(item.porcentaje_diferencia) }}
+                  </td>
+                  <td class="px-4 py-4 whitespace-nowrap text-right text-sm text-gray-900">
+                    {{ formatCurrency(item.costo_original) }}
+                  </td>
+                  <td class="px-4 py-4 whitespace-nowrap text-right text-sm" :class="item.cambio_precio ? 'text-orange-600 font-medium' : 'text-gray-900'">
+                    {{ formatCurrency(item.costo_ajustado) }}
+                  </td>
+                  <td class="px-4 py-4 whitespace-nowrap text-center">
+                    <span v-if="item.cambio_precio" class="px-2 py-1 text-xs font-medium bg-orange-100 text-orange-800 rounded-full">
+                      Sí
+                    </span>
+                    <span v-else class="text-xs text-gray-400">-</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Distribución por tienda (expandible) -->
+          <div v-if="reporteDiferencias.detalle.some(item => item.distribucion_tiendas && item.distribucion_tiendas.length > 0)" class="mt-6">
+            <h3 class="text-sm font-semibold text-gray-900 mb-3">Distribución por Tienda</h3>
+            <div class="space-y-4">
+              <details v-for="item in reporteDiferencias.detalle.filter(i => i.distribucion_tiendas && i.distribucion_tiendas.length > 0)" :key="item.codigo_producto" class="border border-gray-200 rounded-lg">
+                <summary class="px-4 py-3 bg-gray-50 cursor-pointer hover:bg-gray-100 text-sm font-medium text-gray-900">
+                  {{ item.codigo_producto }} - {{ item.descripcion }}
+                </summary>
+                <div class="p-4">
+                  <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div v-for="tienda in item.distribucion_tiendas" :key="tienda.tienda_codigo" class="bg-white border border-gray-200 rounded p-3">
+                      <div class="text-xs font-medium text-gray-500 uppercase">{{ tienda.tienda_codigo }}</div>
+                      <div class="text-sm text-gray-600 mt-1">{{ tienda.tienda_nombre }}</div>
+                      <div class="text-lg font-semibold text-gray-900 mt-2">{{ formatNumber(tienda.cantidad) }}</div>
+                    </div>
+                  </div>
+                </div>
+              </details>
+            </div>
+          </div>
+        </div>
+
         <!-- Detalles del pedido (tabla de productos) -->
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <h2 class="text-lg font-semibold text-gray-900 mb-4">Productos del Pedido</h2>
@@ -307,6 +461,87 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal para procesar confirmación -->
+    <div v-if="showProcesarModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" @click.self="showProcesarModal = false">
+      <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-semibold text-gray-900">Procesar Confirmación del Proveedor</h3>
+          <button
+            @click="showProcesarModal = false"
+            :disabled="procesandoConfirmacion"
+            class="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="space-y-4">
+          <p class="text-sm text-gray-600">
+            Al procesar la confirmación, el sistema:
+          </p>
+          <ul class="list-disc list-inside text-sm text-gray-600 space-y-1 ml-2">
+            <li>Ajustará las cantidades por tienda para que coincidan con el total confirmado</li>
+            <li>Recalculará los costos si hubo cambios de precio</li>
+            <li>Generará un reporte de diferencias</li>
+          </ul>
+
+          <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <div class="flex items-start gap-3">
+              <svg class="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <div class="flex-1">
+                <p class="text-sm font-medium text-yellow-900">Esta acción no se puede deshacer</p>
+                <p class="text-xs text-yellow-700 mt-1">Una vez procesada, la respuesta será marcada como aprobada y el pedido será ajustado.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-3">
+            <input
+              type="checkbox"
+              id="forzarRedistribucion"
+              v-model="forzarRedistribucion"
+              :disabled="procesandoConfirmacion"
+              class="mt-1 h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+            />
+            <label for="forzarRedistribucion" class="text-sm text-gray-700">
+              <span class="font-medium">Forzar redistribución proporcional</span>
+              <p class="text-xs text-gray-500 mt-1">
+                Si está marcado, siempre redistribuirá proporcionalmente, ignorando cualquier distribución específica del proveedor.
+              </p>
+            </label>
+          </div>
+
+          <div class="flex items-center gap-3 pt-4 border-t border-gray-200">
+            <button
+              @click="handleProcesarConfirmacion"
+              :disabled="procesandoConfirmacion"
+              class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              <svg v-if="!procesandoConfirmacion" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <svg v-else class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              {{ procesandoConfirmacion ? 'Procesando...' : 'Procesar Confirmación' }}
+            </button>
+            <button
+              @click="showProcesarModal = false"
+              :disabled="procesandoConfirmacion"
+              class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -315,7 +550,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
-import type { PedidoCompleto, CargarRespuestaProveedorResponse } from '../types'
+import type { PedidoCompleto, CargarRespuestaProveedorResponse, ProcesarConfirmacionResponse, ReporteDiferenciasResponse } from '../types'
 
 const route = useRoute()
 const router = useRouter()
@@ -330,6 +565,14 @@ const uploading = ref(false)
 const uploadResult = ref<CargarRespuestaProveedorResponse | null>(null)
 const uploadError = ref<string | null>(null)
 
+// Fase 4: Procesar confirmación
+const showProcesarModal = ref(false)
+const procesandoConfirmacion = ref(false)
+const forzarRedistribucion = ref(false)
+const procesarConfirmacionResult = ref<ProcesarConfirmacionResponse | null>(null)
+const reporteDiferencias = ref<ReporteDiferenciasResponse | null>(null)
+const loadingReporte = ref(false)
+
 const pedidoId = computed(() => route.params.id as string)
 
 const canExportForProvider = computed(() => {
@@ -343,6 +586,19 @@ const canUploadResponse = computed(() => {
          pedido.value?.respuesta_proveedor?.cabecera.estado === 'PENDIENTE_REVISION'
 })
 
+const canProcesarConfirmacion = computed(() => {
+  // Permitir procesar si hay respuesta y está en estado PENDIENTE_REVISION
+  return pedido.value?.respuesta_proveedor?.cabecera.estado === 'PENDIENTE_REVISION' ||
+         pedido.value?.cabecera.estado === 'RESPUESTA_PROVEEDOR_CARGADA'
+})
+
+const canViewReporteDiferencias = computed(() => {
+  // Permitir ver reporte si hay respuesta aprobada o si ya se procesó la confirmación
+  return pedido.value?.respuesta_proveedor?.cabecera.estado === 'APROBADA' ||
+         pedido.value?.cabecera.estado === 'CONFIRMADO_PROVEEDOR' ||
+         reporteDiferencias.value !== null
+})
+
 async function loadPedido() {
   loading.value = true
   error.value = null
@@ -350,11 +606,114 @@ async function loadPedido() {
   try {
     // Cargar pedido con respuesta si existe
     pedido.value = await mba3ConsultasService.getPedido(pedidoId.value, true)
+    
+    // Si hay respuesta aprobada, cargar el reporte de diferencias
+    if (pedido.value?.respuesta_proveedor?.cabecera.estado === 'APROBADA' ||
+        pedido.value?.cabecera.estado === 'CONFIRMADO_PROVEEDOR') {
+      await loadReporteDiferencias()
+    }
   } catch (e: any) {
     error.value = e.message || 'Error al cargar el pedido'
     toast.error('Error', error.value)
   } finally {
     loading.value = false
+  }
+}
+
+async function loadReporteDiferencias() {
+  if (!pedidoId.value) return
+  
+  loadingReporte.value = true
+  try {
+    reporteDiferencias.value = await mba3ConsultasService.getReporteDiferencias(pedidoId.value, 'json') as ReporteDiferenciasResponse
+  } catch (e: any) {
+    // Si es 404, simplemente no mostrar el reporte (aún no procesado)
+    if (e.message?.includes('404') || e.message?.includes('No existe reporte')) {
+      reporteDiferencias.value = null
+    } else {
+      console.error('Error al cargar reporte de diferencias:', e)
+      // No mostrar error al usuario si no existe aún
+    }
+  } finally {
+    loadingReporte.value = false
+  }
+}
+
+async function handleProcesarConfirmacion() {
+  if (!pedido.value) return
+  
+  procesandoConfirmacion.value = true
+  
+  try {
+    const result = await mba3ConsultasService.procesarConfirmacionProveedor(
+      pedidoId.value,
+      forzarRedistribucion.value
+    )
+    
+    procesarConfirmacionResult.value = result
+    reporteDiferencias.value = {
+      pedido_id: result.pedido_id,
+      numero_pedido: pedido.value.cabecera.numero_pedido,
+      resumen: result.resumen,
+      detalle: result.reporte_diferencias
+    }
+    
+    toast.success('Confirmación procesada', result.message)
+    showProcesarModal.value = false
+    
+    // Recargar el pedido para actualizar estados
+    await loadPedido()
+  } catch (e: any) {
+    // Manejar error 409 (ya procesado)
+    if ((e as any).isConflict || (e as any).statusCode === 409) {
+      toast.info('Ya procesado', e.message || 'Esta respuesta ya fue procesada anteriormente')
+      showProcesarModal.value = false
+      // Cargar el reporte existente
+      await loadReporteDiferencias()
+    } else {
+      toast.error('Error al procesar', e.message || 'No se pudo procesar la confirmación')
+    }
+  } finally {
+    procesandoConfirmacion.value = false
+  }
+}
+
+async function handleViewReporteDiferencias() {
+  if (!reporteDiferencias.value) {
+    await loadReporteDiferencias()
+  }
+  
+  // Scroll al reporte
+  if (reporteDiferencias.value) {
+    setTimeout(() => {
+      const reporteElement = document.querySelector('[data-reporte-diferencias]')
+      if (reporteElement) {
+        reporteElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      }
+    }, 100)
+  }
+}
+
+async function handleExportReporteDiferencias() {
+  if (!pedidoId.value) return
+  
+  try {
+    const blob = await mba3ConsultasService.getReporteDiferencias(pedidoId.value, 'excel') as Blob
+    
+    // Crear URL del blob y descargar
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    const numeroPedido = pedido.value?.cabecera.numero_pedido || pedidoId.value
+    a.download = `Reporte_Diferencias_${numeroPedido}_${new Date().toISOString().split('T')[0]}.xlsx`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(url)
+    
+    toast.success('Reporte exportado', 'El reporte de diferencias se ha descargado correctamente')
+  } catch (e: any) {
+    toast.error('Error al exportar', e.message || 'No se pudo exportar el reporte')
   }
 }
 
@@ -488,6 +847,47 @@ function getPrecioClass(original: number | null, ajustado: number | null): strin
   if (aumento > 0) return 'text-yellow-600'
   if (aumento < 0) return 'text-green-600'
   return 'text-gray-900'
+}
+
+function formatPorcentaje(value: number): string {
+  return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`
+}
+
+function getDiferenciaClass(diferencia: number): string {
+  if (diferencia < 0) return 'text-red-600 font-medium'
+  if (diferencia > 0) return 'text-green-600'
+  return 'text-gray-900'
+}
+
+function getPorcentajeClass(porcentaje: number): string {
+  if (porcentaje < 80) return 'text-red-600 font-medium'
+  if (porcentaje < 100) return 'text-yellow-600'
+  return 'text-green-600'
+}
+
+function getPorcentajeDiferenciaClass(porcentaje: number): string {
+  if (porcentaje < -10) return 'text-red-600 font-medium'
+  if (porcentaje < 0) return 'text-orange-600'
+  if (porcentaje > 0) return 'text-green-600'
+  return 'text-gray-900'
+}
+
+function formatEstadoPedido(estado: string): string {
+  const estados: Record<string, string> = {
+    'PENDIENTE_CONFIRMACION_PROVEEDOR': 'Pendiente Confirmación',
+    'RESPUESTA_PROVEEDOR_CARGADA': 'Respuesta Cargada',
+    'CONFIRMADO_PROVEEDOR': 'Confirmado por Proveedor'
+  }
+  return estados[estado] || estado
+}
+
+function getEstadoPedidoBadgeClass(estado: string): string {
+  const classes: Record<string, string> = {
+    'PENDIENTE_CONFIRMACION_PROVEEDOR': 'bg-yellow-100 text-yellow-800',
+    'RESPUESTA_PROVEEDOR_CARGADA': 'bg-blue-100 text-blue-800',
+    'CONFIRMADO_PROVEEDOR': 'bg-green-100 text-green-800'
+  }
+  return classes[estado] || 'bg-gray-100 text-gray-800'
 }
 
 onMounted(() => {

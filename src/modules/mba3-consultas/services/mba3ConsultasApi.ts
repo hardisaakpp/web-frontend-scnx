@@ -6,7 +6,7 @@ import type {
 } from '../types'
 import type { OrdenCompraResponse, OrdenCompraLogResponse, RemisionResponse } from '../types'
 import type { HealthResponse, ProcesoResponse } from '../types'
-import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstado, ProcesoEstadoResponse, SugerenciaProducto, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuRequest, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, PedidoCompleto, CargarRespuestaProveedorResponse, RespuestaProveedorResponse } from '../types'
+import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstado, ProcesoEstadoResponse, SugerenciaProducto, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuRequest, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, PedidoCompleto, CargarRespuestaProveedorResponse, RespuestaProveedorResponse, ProcesarConfirmacionResponse, ReporteDiferenciasResponse } from '../types'
 
 // Usar la URL base del backend MBA3
 const API_BASE_URL = import.meta.env.VITE_MBA3_API_BASE_URL || 'http://localhost:8000'
@@ -1062,6 +1062,103 @@ export const mba3ConsultasService = {
       }
       
       let message = error.message || 'Error desconocido al obtener respuesta del proveedor'
+      
+      if (error.response?.data) {
+        if (error.response.data.detail) {
+          message = error.response.data.detail
+        } else if (error.response.data.message) {
+          message = error.response.data.message
+        }
+      }
+      
+      throw new Error(message)
+    }
+  },
+
+  /**
+   * Procesa la confirmación del proveedor y ajusta el pedido
+   * Requiere permiso: mba3-consultas.proceso.execute
+   * @param pedidoId UUID del pedido
+   * @param forzarRedistribucion Si true, siempre redistribuye proporcionalmente
+   */
+  async procesarConfirmacionProveedor(
+    pedidoId: string,
+    forzarRedistribucion: boolean = false
+  ): Promise<ProcesarConfirmacionResponse> {
+    try {
+      const params = new URLSearchParams()
+      if (forzarRedistribucion) {
+        params.append('forzar_redistribucion', 'true')
+      }
+      
+      const queryString = params.toString()
+      const url = queryString 
+        ? `/api/pedidos/${pedidoId}/procesar-confirmacion?${queryString}`
+        : `/api/pedidos/${pedidoId}/procesar-confirmacion`
+      
+      const response = await mba3Api.post<ProcesarConfirmacionResponse>(url)
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [procesarConfirmacionProveedor] Error al procesar confirmación:', error)
+      
+      // Manejar error 409 (respuesta ya procesada - idempotencia)
+      if (error.response?.status === 409) {
+        const errorData = error.response.data
+        const message = errorData?.detail || errorData?.message || 'Esta respuesta del proveedor ya fue procesada anteriormente'
+        const customError = new Error(message)
+        ;(customError as any).isConflict = true
+        ;(customError as any).statusCode = 409
+        throw customError
+      }
+      
+      let message = error.message || 'Error desconocido al procesar confirmación'
+      
+      if (error.response?.data) {
+        if (error.response.data.detail) {
+          message = error.response.data.detail
+        } else if (error.response.data.message) {
+          message = error.response.data.message
+        }
+      }
+      
+      throw new Error(message)
+    }
+  },
+
+  /**
+   * Obtiene el reporte de diferencias para un pedido
+   * Requiere permiso: mba3-consultas.facturas.view
+   * @param pedidoId UUID del pedido
+   * @param formato Formato del reporte: 'json' (default), 'excel', 'csv' (pendiente)
+   */
+  async getReporteDiferencias(
+    pedidoId: string,
+    formato: 'json' | 'excel' | 'csv' = 'json'
+  ): Promise<ReporteDiferenciasResponse | Blob> {
+    try {
+      const params = new URLSearchParams()
+      params.append('formato', formato)
+      
+      const response = await mba3Api.get(
+        `/api/pedidos/${pedidoId}/reporte-diferencias?${params.toString()}`,
+        formato !== 'json' ? { responseType: 'blob' } : {}
+      )
+      
+      // Si es formato diferente a JSON, retornar el Blob
+      if (formato !== 'json') {
+        return response.data as Blob
+      }
+      
+      return response.data as ReporteDiferenciasResponse
+    } catch (error: any) {
+      console.error('❌ [getReporteDiferencias] Error al obtener reporte:', error)
+      
+      // Si es 404, el pedido no tiene confirmación procesada
+      if (error.response?.status === 404) {
+        throw new Error('No existe reporte de diferencias para este pedido. Primero debe procesar la confirmación del proveedor.')
+      }
+      
+      let message = error.message || 'Error desconocido al obtener reporte de diferencias'
       
       if (error.response?.data) {
         if (error.response.data.detail) {
