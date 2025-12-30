@@ -691,6 +691,7 @@ export interface PedidoCabecera {
   archivo_nombre: string
   creado_por: string | null
   creado_en: string | null
+  estado?: string  // Estado del pedido (ej: "PENDIENTE_CONFIRMACION_PROVEEDOR", "RESPUESTA_PROVEEDOR_CARGADA")
 }
 
 export interface TiendaDistribucion {
@@ -718,6 +719,63 @@ export interface PedidoDetalle {
 export interface PedidoCompleto {
   cabecera: PedidoCabecera
   detalles: PedidoDetalle[]
+  respuesta_proveedor?: RespuestaProveedor  // Incluido si incluir_respuesta=true
+}
+
+// ========== Respuesta del Proveedor (Fase 3) ==========
+
+export interface ValidacionError {
+  tipo: 'ERROR' | 'WARNING'
+  campo: string
+  mensaje: string
+  producto?: string
+}
+
+export interface ValidacionRespuestaProveedor {
+  valido: boolean
+  errores: ValidacionError[]
+  warnings: ValidacionError[]
+}
+
+export interface CargarRespuestaProveedorResponse {
+  status: 'success' | 'validation_error'
+  message: string
+  respuesta_id: string
+  validacion: ValidacionRespuestaProveedor
+  cantidades_guardadas: number
+  precios_guardados: number
+  pedido_id: string
+}
+
+export interface RespuestaProveedorDetalle {
+  codigo_producto: string
+  descripcion: string
+  cantidad_solicitada_total: number
+  cantidad_confirmada_total: number
+  costo_doc_sin_iva_original: number | null
+  costo_doc_sin_iva_ajustado: number | null
+  descuento_1_original: number | null
+  descuento_1_ajustado: number | null
+  observaciones: string | null
+}
+
+export interface RespuestaProveedorCabecera {
+  respuesta_id: string
+  version: number
+  estado: 'PENDIENTE_REVISION' | 'APROBADA' | 'RECHAZADA'
+  fecha_respuesta: string
+  creado_por: string
+  observaciones_generales: string | null
+}
+
+export interface RespuestaProveedor {
+  cabecera: RespuestaProveedorCabecera
+  detalles: RespuestaProveedorDetalle[]
+}
+
+export interface RespuestaProveedorResponse {
+  cabecera: RespuestaProveedorCabecera
+  detalles: RespuestaProveedorDetalle[]
 }
 
 

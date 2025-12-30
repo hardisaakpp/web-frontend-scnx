@@ -77,6 +77,17 @@ const routes: RouteRecordRaw[] = [
       icon: 'DocumentArrowUpIcon',
       permissions: ['mba3-consultas.view']
     }
+  },
+  {
+    path: '/mba3-consultas/pedidos/:id',
+    name: 'mba3-consultas-pedido-detalle',
+    component: () => import('./views/PedidoDetalleView.vue'),
+    meta: { 
+      requiresAuth: true,
+      title: 'Detalle del Pedido',
+      icon: 'DocumentTextIcon',
+      permissions: ['mba3-consultas.facturas.view']
+    }
   }
 ]
 

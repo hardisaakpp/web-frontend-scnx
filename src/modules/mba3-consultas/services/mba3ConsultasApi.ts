@@ -6,7 +6,7 @@ import type {
 } from '../types'
 import type { OrdenCompraResponse, OrdenCompraLogResponse, RemisionResponse } from '../types'
 import type { HealthResponse, ProcesoResponse } from '../types'
-import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstado, ProcesoEstadoResponse, SugerenciaProducto, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuRequest, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, PedidoCompleto } from '../types'
+import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstado, ProcesoEstadoResponse, SugerenciaProducto, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuRequest, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, PedidoCompleto, CargarRespuestaProveedorResponse, RespuestaProveedorResponse } from '../types'
 
 // Usar la URL base del backend MBA3
 const API_BASE_URL = import.meta.env.VITE_MBA3_API_BASE_URL || 'http://localhost:8000'
@@ -930,16 +930,138 @@ export const mba3ConsultasService = {
   /**
    * Obtiene un pedido completo por ID
    * Requiere permiso: mba3-consultas.facturas.view
+   * @param incluirRespuesta Si es true, incluye respuesta_proveedor si existe
    */
-  async getPedido(pedidoId: string): Promise<PedidoCompleto> {
+  async getPedido(pedidoId: string, incluirRespuesta: boolean = false): Promise<PedidoCompleto> {
     try {
-      const response = await mba3Api.get<PedidoCompleto>(`/api/plantillas/${pedidoId}`)
+      const params = incluirRespuesta ? '?incluir_respuesta=true' : ''
+      const response = await mba3Api.get<PedidoCompleto>(`/api/plantillas/${pedidoId}${params}`)
       return response.data
     } catch (error: any) {
       console.error('❌ [getPedido] Error al obtener pedido:', error)
       
       // Extraer mensaje de error más descriptivo
       let message = error.message || 'Error desconocido al obtener pedido'
+      
+      if (error.response?.data) {
+        if (error.response.data.detail) {
+          message = error.response.data.detail
+        } else if (error.response.data.message) {
+          message = error.response.data.message
+        }
+      }
+      
+      throw new Error(message)
+    }
+  },
+
+  /**
+   * Exporta un pedido en formato Excel para enviar al proveedor
+   * Requiere permiso: mba3-consultas.facturas.view
+   * @returns Blob del archivo Excel
+   */
+  async exportarPedidoParaProveedor(pedidoId: string): Promise<Blob> {
+    try {
+      const response = await mba3Api.get(`/api/pedidos/${pedidoId}/exportar-para-proveedor`, {
+        responseType: 'blob',
+      })
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [exportarPedidoParaProveedor] Error al exportar pedido:', error)
+      
+      let message = error.message || 'Error desconocido al exportar pedido'
+      
+      if (error.response?.data) {
+        if (error.response.data.detail) {
+          message = error.response.data.detail
+        } else if (error.response.data.message) {
+          message = error.response.data.message
+        }
+      }
+      
+      throw new Error(message)
+    }
+  },
+
+  /**
+   * Carga la respuesta del proveedor desde un archivo Excel
+   * Requiere permiso: mba3-consultas.proceso.execute
+   */
+  async cargarRespuestaProveedor(pedidoId: string, file: File): Promise<CargarRespuestaProveedorResponse> {
+    try {
+      // Validar tipo de archivo - solo Excel
+      const allowedExtensions = ['.xlsx', '.xls']
+      const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'))
+      
+      if (!allowedExtensions.includes(fileExtension)) {
+        throw new Error(`Tipo de archivo no permitido. Solo se permiten: ${allowedExtensions.join(', ')}`)
+      }
+
+      // Validar tamaño (10 MB máximo)
+      const maxSize = 10 * 1024 * 1024 // 10 MB en bytes
+      if (file.size > maxSize) {
+        throw new Error('El archivo excede el tamaño máximo de 10 MB')
+      }
+
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await mba3Api.post<CargarRespuestaProveedorResponse>(
+        `/api/pedidos/${pedidoId}/cargar-respuesta-proveedor`,
+        formData
+      )
+
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [cargarRespuestaProveedor] Error al cargar respuesta:', error)
+      
+      let message = error.message || 'Error desconocido al cargar respuesta del proveedor'
+      
+      if (error.response?.data) {
+        const detail = error.response.data.detail
+        
+        if (detail) {
+          if (Array.isArray(detail)) {
+            message = detail.map((item: any) => {
+              if (typeof item === 'string') return item
+              if (item?.msg) return item.msg
+              return JSON.stringify(item)
+            }).join('. ')
+          } else if (typeof detail === 'string') {
+            message = detail
+          } else if (detail.message) {
+            message = detail.message
+          } else {
+            message = String(detail)
+          }
+        } else if (error.response.data.message) {
+          message = error.response.data.message
+        }
+      } else if (error.request) {
+        message = 'No se pudo conectar con el servidor. Verifica tu conexión a internet.'
+      }
+      
+      throw new Error(message)
+    }
+  },
+
+  /**
+   * Obtiene la respuesta del proveedor para un pedido
+   * Requiere permiso: mba3-consultas.facturas.view
+   */
+  async getRespuestaProveedor(pedidoId: string): Promise<RespuestaProveedorResponse> {
+    try {
+      const response = await mba3Api.get<RespuestaProveedorResponse>(`/api/pedidos/${pedidoId}/respuesta-proveedor`)
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [getRespuestaProveedor] Error al obtener respuesta:', error)
+      
+      // Si es 404, el pedido no tiene respuesta aún
+      if (error.response?.status === 404) {
+        throw new Error('No existe respuesta del proveedor para este pedido')
+      }
+      
+      let message = error.message || 'Error desconocido al obtener respuesta del proveedor'
       
       if (error.response?.data) {
         if (error.response.data.detail) {

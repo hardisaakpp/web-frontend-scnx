@@ -144,6 +144,80 @@
           </div>
         </button>
 
+        <!-- Gestión de Pedidos (Fase 3) -->
+        <button
+          @click="showBuscarPedidoModal = true"
+          class="bg-white rounded border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all text-left"
+        >
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded bg-purple-50 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-gray-900 text-sm">Gestionar Pedidos</div>
+              <div class="text-xs text-gray-500 mt-1">Ver y gestionar pedidos</div>
+            </div>
+          </div>
+        </button>
+
+      </div>
+    </div>
+
+    <!-- Modal para buscar pedido por ID -->
+    <div
+      v-if="showBuscarPedidoModal"
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+      @click.self="showBuscarPedidoModal = false"
+    >
+      <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="text-lg font-semibold text-gray-900">Acceder a Pedido</h3>
+          <button
+            @click="showBuscarPedidoModal = false"
+            class="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        
+        <p class="text-sm text-gray-600 mb-4">
+          Ingresa el ID del pedido para acceder a su detalle y gestionar la respuesta del proveedor.
+        </p>
+        
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">
+              ID del Pedido
+            </label>
+            <input
+              v-model="pedidoIdInput"
+              @keyup.enter="goToPedido"
+              type="text"
+              placeholder="Ingresa el ID del pedido (UUID)"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+              autofocus
+            />
+          </div>
+          
+          <div class="flex items-center gap-3">
+            <button
+              @click="goToPedido"
+              class="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
+            >
+              Abrir Pedido
+            </button>
+            <button
+              @click="showBuscarPedidoModal = false"
+              class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -161,6 +235,8 @@ const ordenesCompraStore = useOrdenesCompraStore()
 const toast = useToast()
 
 const loadingDespachos = ref(false)
+const showBuscarPedidoModal = ref(false)
+const pedidoIdInput = ref('')
 
 // Función para cargar despachos antes de navegar
 async function cargarDespachos() {
@@ -181,6 +257,18 @@ async function cargarDespachos() {
 async function navigateToProceso() {
   await cargarDespachos()
   router.push('/mba3-consultas/proceso')
+}
+
+function goToPedido() {
+  const pedidoId = pedidoIdInput.value.trim()
+  if (!pedidoId) {
+    toast.error('Error', 'Por favor ingresa un ID de pedido válido')
+    return
+  }
+  
+  showBuscarPedidoModal.value = false
+  pedidoIdInput.value = ''
+  router.push(`/mba3-consultas/pedidos/${pedidoId}`)
 }
 
 onMounted(async () => {
