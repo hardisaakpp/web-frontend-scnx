@@ -6,7 +6,7 @@ import type {
 } from '../types'
 import type { OrdenCompraResponse, OrdenCompraLogResponse, RemisionResponse } from '../types'
 import type { HealthResponse, ProcesoResponse } from '../types'
-import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstado, ProcesoEstadoResponse, SugerenciaProducto, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuRequest, ActualizarSkuResponse, BuscarSkuMba3Response } from '../types'
+import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstado, ProcesoEstadoResponse, SugerenciaProducto, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuRequest, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, PedidoCompleto } from '../types'
 
 // Usar la URL base del backend MBA3
 const API_BASE_URL = import.meta.env.VITE_MBA3_API_BASE_URL || 'http://localhost:8000'
@@ -31,6 +31,11 @@ mba3Api.interceptors.request.use(
         config.headers = {}
       }
       config.headers.Authorization = `Bearer ${token}`
+    }
+    
+    // Si es FormData, eliminar Content-Type para que axios lo establezca automáticamente con boundary
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type']
     }
     
     return config
@@ -831,6 +836,110 @@ export const mba3ConsultasService = {
       
       // Extraer mensaje de error más descriptivo
       let message = error.message || 'Error desconocido al actualizar SKU'
+      
+      if (error.response?.data) {
+        if (error.response.data.detail) {
+          message = error.response.data.detail
+        } else if (error.response.data.message) {
+          message = error.response.data.message
+        }
+      }
+      
+      throw new Error(message)
+    }
+  },
+
+  // ========== Plantillas / Pedidos ==========
+  
+  /**
+   * Sube y procesa un archivo Excel de plantilla
+   * Requiere permiso: mba3-consultas.proceso.execute
+   */
+  async uploadPlantilla(file: File): Promise<UploadPlantillaResponse> {
+    try {
+      // Validar tipo de archivo - solo Excel
+      const allowedExtensions = ['.xlsx', '.xls']
+      const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'))
+      
+      if (!allowedExtensions.includes(fileExtension)) {
+        throw new Error(`Tipo de archivo no permitido. Solo se permiten: ${allowedExtensions.join(', ')}`)
+      }
+
+      // Validar tamaño (10 MB máximo)
+      const maxSize = 10 * 1024 * 1024 // 10 MB en bytes
+      if (file.size > maxSize) {
+        throw new Error('El archivo excede el tamaño máximo de 10 MB')
+      }
+
+      const formData = new FormData()
+      formData.append('file', file)
+
+      // Para FormData, axios establecerá automáticamente el Content-Type con el boundary correcto
+      // El interceptor se encargará de eliminar el Content-Type por defecto si es FormData
+      const response = await mba3Api.post<UploadPlantillaResponse>(
+        '/api/plantillas/upload',
+        formData
+      )
+
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [uploadPlantilla] Error al subir plantilla:', error)
+      
+      // Extraer mensaje de error más descriptivo
+      let message = error.message || 'Error desconocido al subir plantilla'
+      
+      if (error.response?.data) {
+        // FastAPI puede retornar detail como string, array, o objeto
+        const detail = error.response.data.detail
+        
+        if (detail) {
+          if (Array.isArray(detail)) {
+            // Si es un array, unir los mensajes
+            message = detail.map((item: any) => {
+              if (typeof item === 'string') return item
+              if (item?.msg) return item.msg
+              return JSON.stringify(item)
+            }).join('. ')
+          } else if (typeof detail === 'string') {
+            message = detail
+          } else if (detail.message) {
+            message = detail.message
+          } else {
+            // Intentar convertir a string
+            message = String(detail)
+          }
+        } else if (error.response.data.message) {
+          message = error.response.data.message
+        } else if (error.response.data.error) {
+          message = error.response.data.error
+        }
+      } else if (error.request) {
+        // Error de red (sin respuesta del servidor)
+        message = 'No se pudo conectar con el servidor. Verifica tu conexión a internet.'
+      }
+      
+      // Si el mensaje sigue siendo genérico, intentar extraer más información
+      if (message === 'Request failed with status code 400' || message.includes('status code')) {
+        message = 'Error al procesar el archivo. Verifica que el formato sea correcto y que no sea un pedido duplicado.'
+      }
+      
+      throw new Error(message)
+    }
+  },
+
+  /**
+   * Obtiene un pedido completo por ID
+   * Requiere permiso: mba3-consultas.facturas.view
+   */
+  async getPedido(pedidoId: string): Promise<PedidoCompleto> {
+    try {
+      const response = await mba3Api.get<PedidoCompleto>(`/api/plantillas/${pedidoId}`)
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [getPedido] Error al obtener pedido:', error)
+      
+      // Extraer mensaje de error más descriptivo
+      let message = error.message || 'Error desconocido al obtener pedido'
       
       if (error.response?.data) {
         if (error.response.data.detail) {

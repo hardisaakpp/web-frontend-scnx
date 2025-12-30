@@ -126,23 +126,24 @@
           </div>
         </button>
 
-        <!-- Crear Pedido -->
+        <!-- Cargar Plantillas -->
         <button
-          @click="$router.push('/mba3-consultas/crear-pedido')"
+          @click="$router.push('/mba3-consultas/cargar-plantillas')"
           class="bg-white rounded border border-gray-200 p-4 hover:border-gray-300 hover:shadow-sm transition-all text-left"
         >
           <div class="flex items-start gap-3">
             <div class="w-8 h-8 rounded bg-emerald-50 flex items-center justify-center flex-shrink-0">
               <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
             </div>
             <div class="flex-1 min-w-0">
-              <div class="font-medium text-gray-900 text-sm">Crear Pedido</div>
-              <div class="text-xs text-gray-500 mt-1">Nuevo pedido de venta</div>
+              <div class="font-medium text-gray-900 text-sm">Cargar Plantillas</div>
+              <div class="text-xs text-gray-500 mt-1">Subir archivos Excel</div>
             </div>
           </div>
         </button>
+
       </div>
     </div>
   </div>

@@ -1,17 +1,40 @@
 // Tipos para el módulo de Conciliación
 
 export interface Conciliacion {
-  id: number
+  id: string  // UUID
   nombre: string
-  tipo: 'financiero' | 'operativo' | 'estadistico'
-  fechaCreacion: string
-  formato: 'pdf' | 'excel' | 'csv'
-  url?: string
-  // Campos adicionales que pueden venir del backend
-  descripcion?: string
-  estado?: string
+  tipo: 'bancaria' | 'contable'
+  fecha_inicio: string  // ISO date string: "YYYY-MM-DD"
+  fecha_fin: string     // ISO date string: "YYYY-MM-DD"
+  cuenta_id: string
+  moneda: string        // ISO 4217 code: "USD", "EUR", etc.
+  documento_id: string  // UUID
+  observaciones?: string
+  fechaCreacion?: string
   usuarioCreacion?: string
   fechaModificacion?: string
+  estado?: string
+}
+
+export interface ConciliacionCreateData {
+  nombre: string
+  tipo: 'bancaria' | 'contable'
+  fecha_inicio: string
+  fecha_fin: string
+  cuenta_id: string
+  moneda: string
+  documento_id: string
+  observaciones?: string
+}
+
+export interface BackendValidationError {
+  loc: (string | number)[]
+  msg: string
+  type: string
+}
+
+export interface BackendErrorResponse {
+  detail: BackendValidationError[]
 }
 
 export interface ConciliacionState {

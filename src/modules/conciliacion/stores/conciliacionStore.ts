@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { Conciliacion, ConciliacionState, ModuleInfo, PermisosResponse, HealthResponse } from '../types'
+import type { Conciliacion, ConciliacionCreateData, ConciliacionState, ModuleInfo, PermisosResponse, HealthResponse } from '../types'
 import { conciliacionService } from '../services/conciliacionApi'
 
 export const useConciliacionStore = defineStore('conciliacion', () => {
@@ -13,16 +13,12 @@ export const useConciliacionStore = defineStore('conciliacion', () => {
   const isAdmin = ref(false)
 
   // Getters
-  const conciliacionesFinancieras = computed(() => 
-    conciliaciones.value.filter(c => c.tipo === 'financiero')
+  const conciliacionesBancarias = computed(() => 
+    conciliaciones.value.filter(c => c.tipo === 'bancaria')
   )
 
-  const conciliacionesOperativas = computed(() => 
-    conciliaciones.value.filter(c => c.tipo === 'operativo')
-  )
-
-  const conciliacionesEstadisticas = computed(() => 
-    conciliaciones.value.filter(c => c.tipo === 'estadistico')
+  const conciliacionesContables = computed(() => 
+    conciliaciones.value.filter(c => c.tipo === 'contable')
   )
 
   const hasData = computed(() => conciliaciones.value.length > 0)
@@ -41,7 +37,7 @@ export const useConciliacionStore = defineStore('conciliacion', () => {
     }
   }
 
-  async function fetchConciliacion(id: number) {
+  async function fetchConciliacion(id: string) {
     loading.value = true
     error.value = null
     try {
@@ -62,7 +58,7 @@ export const useConciliacionStore = defineStore('conciliacion', () => {
     }
   }
 
-  async function createConciliacion(data: Omit<Conciliacion, 'id' | 'fechaCreacion'>) {
+  async function createConciliacion(data: ConciliacionCreateData) {
     loading.value = true
     error.value = null
     try {
@@ -78,7 +74,7 @@ export const useConciliacionStore = defineStore('conciliacion', () => {
     }
   }
 
-  async function updateConciliacion(id: number, data: Partial<Conciliacion>) {
+  async function updateConciliacion(id: string, data: Partial<Conciliacion>) {
     loading.value = true
     error.value = null
     try {
@@ -97,7 +93,7 @@ export const useConciliacionStore = defineStore('conciliacion', () => {
     }
   }
 
-  async function deleteConciliacion(id: number) {
+  async function deleteConciliacion(id: string) {
     loading.value = true
     error.value = null
     try {
@@ -183,9 +179,8 @@ export const useConciliacionStore = defineStore('conciliacion', () => {
     permisos,
     isAdmin,
     // Getters
-    conciliacionesFinancieras,
-    conciliacionesOperativas,
-    conciliacionesEstadisticas,
+    conciliacionesBancarias,
+    conciliacionesContables,
     hasData,
     // Actions
     fetchConciliaciones,

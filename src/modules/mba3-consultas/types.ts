@@ -625,36 +625,99 @@ export interface ProcesoEstadoResponse {
   data: ProcesoEstado
 }
 
-// ========== Crear Pedido ==========
-export interface Cliente {
-  id: string
-  codigo: string
-  nombre: string
-  direccion?: string
+// ========== Plantillas / Pedidos ==========
+export interface ValidacionProductos {
+  validos: string[]
+  no_encontrados: string[]
+  todos_validos: boolean
 }
 
-export interface Producto {
-  id: string
-  codigo: string
-  nombre: string
-  precio_base?: number
-  unidad?: string
+export interface ValidacionTiendas {
+  validas: string[]
+  no_encontradas: string[]
+  inactivas: string[]
+  todas_validas: boolean
 }
 
-export interface ProductoPedido {
-  id: string
-  producto: Producto
+export interface ValidacionCantidades {
+  valid: boolean
+  errors: number
+  warnings: number
+}
+
+export interface ValidacionCompleta {
+  productos: ValidacionProductos
+  tiendas: ValidacionTiendas
+  cantidades: ValidacionCantidades
+}
+
+export interface Consolidacion {
+  total_productos: number
+  cantidad_total: number
+}
+
+export interface UploadPlantillaResponse {
+  status: 'success' | 'validation_error' | 'error'
+  message: string
+  pedido_id: string
+  estado?: string  // "PENDIENTE_CONFIRMACION_PROVEEDOR"
+  articulos_cargados: number
+  distribuciones_cargadas: number
+  validacion?: ValidacionCompleta
+  consolidacion?: Consolidacion
+  errores?: string[]
+  file_info?: {
+    filename: string
+    size_mb: number
+  }
+  metadata?: {
+    uploaded_by: string
+    uploaded_at: string
+  }
+}
+
+export interface PedidoCabecera {
+  pedido_id: string
+  numero_pedido: string | null
+  fecha_pedido: string | null
+  fecha_entrega: string | null
+  forma_pago: string | null
+  odc: string | null
+  proveedor_nombre: string | null
+  comprador_nombre: string | null
+  comprador_codigo: string | null
+  origen_traslado: string | null
+  serie: string | null
+  archivo_nombre: string
+  creado_por: string | null
+  creado_en: string | null
+}
+
+export interface TiendaDistribucion {
+  tienda_id: string
+  codigo: string
+  nombre: string | null
   cantidad: number
-  precio: number
-  subtotal: number
 }
 
-export interface Pedido {
-  cliente: Cliente | null
-  fecha: string
-  vendedor: string
-  observaciones: string
-  productos: ProductoPedido[]
-  total: number
+export interface PedidoDetalle {
+  pedido_detalle_id: string
+  codigo_interno: string | null
+  descripcion_sap: string | null
+  marca: string | null
+  codigo_barras: string | null
+  pack: string | null
+  costo_doc_sin_iva: number | null
+  descuento_1: number | null
+  pvp: number | null
+  subtotal: number | null
+  total: number | null
+  tiendas: TiendaDistribucion[]
 }
+
+export interface PedidoCompleto {
+  cabecera: PedidoCabecera
+  detalles: PedidoDetalle[]
+}
+
 

@@ -38,7 +38,7 @@ export function useMenu() {
       },
       {
         name: 'Conciliación',
-        icon: 'ChartBarIcon',
+        icon: 'ScaleIcon',
         path: '/conciliacion',
         permissions: ['conciliacion.view']
       },

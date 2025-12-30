@@ -1,6 +1,6 @@
 import axios from 'axios'
 import router from '@/router'
-import type { Conciliacion, ModuleInfo, PermisosResponse, HealthResponse } from '../types'
+import type { Conciliacion, ConciliacionCreateData, ModuleInfo, PermisosResponse, HealthResponse, BackendErrorResponse } from '../types'
 
 // URL base del backend de Conciliación Tesorería
 const API_BASE_URL = import.meta.env.VITE_CONCILIACION_API_BASE_URL || 'http://localhost:8002'
@@ -58,6 +58,13 @@ conciliacionApi.interceptors.response.use(
       // 422: Errores de validación
       if (status === 422) {
         console.warn('⚠️ [Conciliación API] Errores de validación:', data)
+        // Mantener el error para que el componente pueda manejarlo
+        const validationError = {
+          ...error,
+          validationErrors: (data as BackendErrorResponse).detail || [],
+          message: error.message || 'Errores de validación'
+        }
+        return Promise.reject(validationError)
       }
     }
     
@@ -109,7 +116,7 @@ export const conciliacionService = {
    * Obtener una conciliación por ID
    * Requiere permiso: conciliacion-tesoreria.ver
    */
-  async getConciliacion(id: number): Promise<Conciliacion> {
+  async getConciliacion(id: string): Promise<Conciliacion> {
     const response = await conciliacionApi.get<Conciliacion>(`/conciliacion-tesoreria/conciliaciones/${id}`)
     return response.data
   },
@@ -118,7 +125,7 @@ export const conciliacionService = {
    * Crear nueva conciliación
    * Requiere permiso: conciliacion-tesoreria.crear
    */
-  async createConciliacion(data: Omit<Conciliacion, 'id' | 'fechaCreacion'>): Promise<Conciliacion> {
+  async createConciliacion(data: ConciliacionCreateData): Promise<Conciliacion> {
     const response = await conciliacionApi.post<Conciliacion>('/conciliacion-tesoreria/conciliaciones', data)
     return response.data
   },
@@ -127,7 +134,7 @@ export const conciliacionService = {
    * Actualizar conciliación
    * Requiere permiso: conciliacion-tesoreria.editar
    */
-  async updateConciliacion(id: number, data: Partial<Conciliacion>): Promise<Conciliacion> {
+  async updateConciliacion(id: string, data: Partial<Conciliacion>): Promise<Conciliacion> {
     const response = await conciliacionApi.put<Conciliacion>(`/conciliacion-tesoreria/conciliaciones/${id}`, data)
     return response.data
   },
@@ -136,7 +143,7 @@ export const conciliacionService = {
    * Eliminar conciliación
    * Requiere permiso: conciliacion-tesoreria.eliminar
    */
-  async deleteConciliacion(id: number): Promise<void> {
+  async deleteConciliacion(id: string): Promise<void> {
     await conciliacionApi.delete(`/conciliacion-tesoreria/conciliaciones/${id}`)
   },
 
@@ -145,15 +152,15 @@ export const conciliacionService = {
   /**
    * Subir documento
    * Requiere permiso: conciliacion-tesoreria.crear
-   * Tipos permitidos: .xlsx, .xls, .csv, .pdf
+   * Tipos permitidos: .xlsx, .xls (solo archivos Excel)
    * Tamaño máximo: 10 MB
    * 
    * Nota: Las validaciones de tipo y tamaño también se realizan en el backend.
    * Esta validación en el frontend es para mejor UX (feedback inmediato).
    */
   async uploadDocumento(file: File): Promise<{ message: string; file_id?: string; filename?: string }> {
-    // Validar tipo de archivo (coincide con validación del backend)
-    const allowedExtensions = ['.xlsx', '.xls', '.csv', '.pdf']
+    // Validar tipo de archivo - solo Excel
+    const allowedExtensions = ['.xlsx', '.xls']
     
     const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'))
     if (!allowedExtensions.includes(fileExtension)) {

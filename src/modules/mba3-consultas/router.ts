@@ -68,13 +68,13 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
-    path: '/mba3-consultas/crear-pedido',
-    name: 'mba3-consultas-crear-pedido',
-    component: () => import('./views/CrearPedidoView.vue'),
+    path: '/mba3-consultas/cargar-plantillas',
+    name: 'mba3-consultas-cargar-plantillas',
+    component: () => import('./views/CargarPlantillasView.vue'),
     meta: { 
       requiresAuth: true,
-      title: 'Crear Pedido',
-      icon: 'DocumentPlusIcon',
+      title: 'Cargar Plantillas',
+      icon: 'DocumentArrowUpIcon',
       permissions: ['mba3-consultas.view']
     }
   }

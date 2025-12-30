@@ -8,8 +8,18 @@ const routes: RouteRecordRaw[] = [
     meta: { 
       requiresAuth: true,
       title: 'Conciliación',
-      icon: 'DocumentChartBarIcon',
+      icon: 'ClipboardDocumentCheckIcon',
       permissions: ['conciliacion.view']
+    }
+  },
+  {
+    path: '/conciliacion/crear',
+    name: 'conciliacion-create',
+    component: () => import('./views/ConciliacionCreateView.vue'),
+    meta: { 
+      requiresAuth: true,
+      title: 'Crear Conciliación',
+      permissions: ['conciliacion.create']
     }
   }
 ]

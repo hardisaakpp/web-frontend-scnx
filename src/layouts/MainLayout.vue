@@ -156,7 +156,7 @@
           :title="isSidebarCollapsed ? 'Conciliación' : ''"
         >
           <div class="absolute inset-0 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-          <DocumentChartBarIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path === '/conciliacion' }" />
+          <ClipboardDocumentCheckIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path === '/conciliacion' }" />
           <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Conciliación</span>
         </router-link>
 
@@ -313,6 +313,7 @@ import {
   DocumentChartBarIcon,
   ArrowsRightLeftIcon,
   DocumentCheckIcon,
+  ClipboardDocumentCheckIcon,
   ArrowRightOnRectangleIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
