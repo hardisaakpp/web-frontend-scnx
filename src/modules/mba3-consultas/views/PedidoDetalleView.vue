@@ -307,7 +307,7 @@
                 </svg>
                 <div class="flex-1">
                   <p class="text-sm font-semibold text-red-900">Error al cargar respuesta</p>
-                  <p class="text-sm text-red-800 mt-1">{{ uploadError }}</p>
+                  <pre class="text-sm text-red-800 mt-1 whitespace-pre-wrap font-sans">{{ uploadError }}</pre>
                 </div>
               </div>
             </div>

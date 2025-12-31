@@ -202,7 +202,7 @@
               </svg>
               <div class="flex-1">
                 <p class="text-sm font-semibold text-red-900 mb-1">Error al procesar el archivo</p>
-                <p class="text-sm text-red-800 mb-3">{{ uploadError }}</p>
+                <pre class="text-sm text-red-800 mb-3 whitespace-pre-wrap font-sans">{{ uploadError }}</pre>
                 
                 <!-- Sugerencias según el tipo de error -->
                 <div v-if="uploadError.includes('Ya existe un pedido') || uploadError.includes('duplicado')" class="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
@@ -212,10 +212,18 @@
                   </p>
                 </div>
                 
-                <div v-else-if="uploadError.includes('formato') || uploadError.includes('estructura')" class="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div v-else-if="uploadError.includes('formato') || uploadError.includes('estructura') || uploadError.includes('No se pudo detectar') || uploadError.includes('hojas') || uploadError.includes('Hojas encontradas')" class="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <p class="text-xs font-medium text-yellow-900 mb-1">💡 Sugerencia:</p>
                   <p class="text-xs text-yellow-800">
-                    Verifica que el archivo Excel tenga las hojas correctas ("Cabecera Pedido" y "Detalle Articulos") y que las columnas estén en el formato esperado.
+                    El archivo Excel debe tener una de las siguientes estructuras:
+                  </p>
+                  <ul class="text-xs text-yellow-800 mt-2 ml-4 list-disc space-y-1">
+                    <li><strong>Formato de dos hojas:</strong> 'CABECERA_PEDIDO' y 'DETALLE_ARTICULO'</li>
+                    <li><strong>Formato simple:</strong> una hoja con columnas CodigoProducto, IdTienda, Cantidad</li>
+                    <li><strong>Formato complejo:</strong> estructura legacy con cabecera y columnas de tiendas</li>
+                  </ul>
+                  <p class="text-xs text-yellow-800 mt-2">
+                    Verifica que las hojas tengan los nombres correctos y que las columnas estén en el formato esperado.
                   </p>
                 </div>
                 

@@ -887,19 +887,26 @@ export const mba3ConsultasService = {
       
       // Extraer mensaje de error más descriptivo
       let message = error.message || 'Error desconocido al subir plantilla'
+      let hasBackendMessage = false
       
       if (error.response?.data) {
         // FastAPI puede retornar detail como string, array, o objeto
         const detail = error.response.data.detail
         
         if (detail) {
+          hasBackendMessage = true
           if (Array.isArray(detail)) {
-            // Si es un array, unir los mensajes
+            // Si es un array, unir los mensajes de forma más legible
             message = detail.map((item: any) => {
               if (typeof item === 'string') return item
               if (item?.msg) return item.msg
+              if (item?.loc && item?.msg) {
+                // Formato de validación de FastAPI: {loc: [...], msg: "...", type: "..."}
+                const location = Array.isArray(item.loc) ? item.loc.join('.') : String(item.loc)
+                return `${location}: ${item.msg}`
+              }
               return JSON.stringify(item)
-            }).join('. ')
+            }).join('\n')
           } else if (typeof detail === 'string') {
             message = detail
           } else if (detail.message) {
@@ -909,8 +916,10 @@ export const mba3ConsultasService = {
             message = String(detail)
           }
         } else if (error.response.data.message) {
+          hasBackendMessage = true
           message = error.response.data.message
         } else if (error.response.data.error) {
+          hasBackendMessage = true
           message = error.response.data.error
         }
       } else if (error.request) {
@@ -918,8 +927,10 @@ export const mba3ConsultasService = {
         message = 'No se pudo conectar con el servidor. Verifica tu conexión a internet.'
       }
       
-      // Si el mensaje sigue siendo genérico, intentar extraer más información
-      if (message === 'Request failed with status code 400' || message.includes('status code')) {
+      // Solo usar mensaje genérico si NO tenemos un mensaje del backend y el mensaje es genérico
+      if (!hasBackendMessage && (message === 'Request failed with status code 400' || 
+          message.includes('status code') || 
+          message === 'Error desconocido al subir plantilla')) {
         message = 'Error al procesar el archivo. Verifica que el formato sea correcto y que no sea un pedido duplicado.'
       }
       
@@ -1019,17 +1030,25 @@ export const mba3ConsultasService = {
       console.error('❌ [cargarRespuestaProveedor] Error al cargar respuesta:', error)
       
       let message = error.message || 'Error desconocido al cargar respuesta del proveedor'
+      let hasBackendMessage = false
       
       if (error.response?.data) {
         const detail = error.response.data.detail
         
         if (detail) {
+          hasBackendMessage = true
           if (Array.isArray(detail)) {
+            // Si es un array, unir los mensajes de forma más legible
             message = detail.map((item: any) => {
               if (typeof item === 'string') return item
               if (item?.msg) return item.msg
+              if (item?.loc && item?.msg) {
+                // Formato de validación de FastAPI: {loc: [...], msg: "...", type: "..."}
+                const location = Array.isArray(item.loc) ? item.loc.join('.') : String(item.loc)
+                return `${location}: ${item.msg}`
+              }
               return JSON.stringify(item)
-            }).join('. ')
+            }).join('\n')
           } else if (typeof detail === 'string') {
             message = detail
           } else if (detail.message) {
@@ -1038,10 +1057,21 @@ export const mba3ConsultasService = {
             message = String(detail)
           }
         } else if (error.response.data.message) {
+          hasBackendMessage = true
           message = error.response.data.message
+        } else if (error.response.data.error) {
+          hasBackendMessage = true
+          message = error.response.data.error
         }
       } else if (error.request) {
         message = 'No se pudo conectar con el servidor. Verifica tu conexión a internet.'
+      }
+      
+      // Solo usar mensaje genérico si NO tenemos un mensaje del backend y el mensaje es genérico
+      if (!hasBackendMessage && (message === 'Request failed with status code 400' || 
+          message.includes('status code') || 
+          message === 'Error desconocido al cargar respuesta del proveedor')) {
+        message = 'Error al procesar el archivo. Verifica que el formato sea correcto.'
       }
       
       throw new Error(message)
