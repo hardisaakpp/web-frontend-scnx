@@ -53,6 +53,21 @@
             </svg>
             Exportar para Proveedor
           </button>
+          <button
+            v-if="canGenerarOC"
+            @click="handleGenerarOCDesdePedido"
+            :disabled="loading || generandoOC"
+            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+          >
+            <svg v-if="!generandoOC" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <svg v-else class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            {{ generandoOC ? 'Generando...' : 'Generar Orden de Compra' }}
+          </button>
         </div>
       </div>
 
@@ -572,8 +587,13 @@ const forzarRedistribucion = ref(false)
 const procesarConfirmacionResult = ref<ProcesarConfirmacionResponse | null>(null)
 const reporteDiferencias = ref<ReporteDiferenciasResponse | null>(null)
 const loadingReporte = ref(false)
+const generandoOC = ref(false)
 
-const pedidoId = computed(() => route.params.id as string)
+// El parámetro de ruta ahora es numero_pedido
+const numeroPedido = computed(() => {
+  const id = route.params.id as string
+  return id ? decodeURIComponent(id) : ''
+})
 
 const canExportForProvider = computed(() => {
   // Permitir exportar si no hay respuesta aún o si el estado lo permite
@@ -600,13 +620,24 @@ const canViewReporteDiferencias = computed(() => {
          reporteDiferencias.value !== null
 })
 
+const canGenerarOC = computed(() => {
+  // Permitir generar OC si el pedido está confirmado por proveedor y no está ya enviado
+  return pedido.value?.cabecera.estado === 'CONFIRMADO_PROVEEDOR' &&
+         pedido.value?.cabecera.estado !== 'CONFIRMADO_ENVIADO'
+})
+
 async function loadPedido() {
   loading.value = true
   error.value = null
   
   try {
-    // Cargar pedido con respuesta si existe
-    pedido.value = await mba3ConsultasService.getPedido(pedidoId.value, true)
+    // Cargar pedido usando numero_pedido del parámetro de ruta
+    if (!numeroPedido.value) {
+      error.value = 'Número de pedido no válido'
+      return
+    }
+    
+    pedido.value = await mba3ConsultasService.getPedido(numeroPedido.value, true)
     
     // Si hay respuesta aprobada, cargar el reporte de diferencias
     if (pedido.value?.respuesta_proveedor?.cabecera.estado === 'APROBADA' ||
@@ -623,11 +654,12 @@ async function loadPedido() {
 }
 
 async function loadReporteDiferencias() {
-  if (!pedidoId.value) return
+  // Usar numero_pedido para obtener el reporte
+  if (!numeroPedido.value) return
   
   loadingReporte.value = true
   try {
-    reporteDiferencias.value = await mba3ConsultasService.getReporteDiferencias(pedidoId.value, 'json') as ReporteDiferenciasResponse
+    reporteDiferencias.value = await mba3ConsultasService.getReporteDiferencias(numeroPedido.value, 'json') as ReporteDiferenciasResponse
   } catch (e: any) {
     // Si es 404, simplemente no mostrar el reporte (aún no procesado)
     if (e.message?.includes('404') || e.message?.includes('No existe reporte')) {
@@ -642,13 +674,13 @@ async function loadReporteDiferencias() {
 }
 
 async function handleProcesarConfirmacion() {
-  if (!pedido.value) return
+  if (!pedido.value || !numeroPedido.value) return
   
   procesandoConfirmacion.value = true
   
   try {
     const result = await mba3ConsultasService.procesarConfirmacionProveedor(
-      pedidoId.value,
+      numeroPedido.value,
       forzarRedistribucion.value
     )
     
@@ -680,6 +712,40 @@ async function handleProcesarConfirmacion() {
   }
 }
 
+async function handleGenerarOCDesdePedido() {
+  if (!pedido.value || !numeroPedido.value) return
+  
+  generandoOC.value = true
+  
+  try {
+    toast.info('Generando orden de compra...', 'Creando orden de compra desde el pedido confirmado')
+    
+    const result = await mba3ConsultasService.crearOrdenCompraDesdePedido(numeroPedido.value)
+    
+    if (result.status === 'success') {
+      toast.success(
+        'Orden de compra generada',
+        result.message || 'La orden de compra se ha generado exitosamente'
+      )
+      
+      // Recargar el pedido para actualizar estados
+      await loadPedido()
+      
+      // Redirigir a la vista de órdenes de compra después de un breve delay
+      setTimeout(() => {
+        router.push('/mba3-consultas/proceso-completo?tab=procesar-oc')
+      }, 1500)
+    } else {
+      toast.error('Error al generar orden', result.message || 'No se pudo generar la orden de compra')
+    }
+  } catch (e: any) {
+    console.error('Error al generar orden de compra:', e)
+    toast.error('Error al generar orden', e.message || 'No se pudo generar la orden de compra')
+  } finally {
+    generandoOC.value = false
+  }
+}
+
 async function handleViewReporteDiferencias() {
   if (!reporteDiferencias.value) {
     await loadReporteDiferencias()
@@ -697,16 +763,16 @@ async function handleViewReporteDiferencias() {
 }
 
 async function handleExportReporteDiferencias() {
-  if (!pedidoId.value) return
+  if (!pedido.value || !numeroPedido.value) return
   
   try {
-    const blob = await mba3ConsultasService.getReporteDiferencias(pedidoId.value, 'excel') as Blob
+    const blob = await mba3ConsultasService.getReporteDiferencias(numeroPedido.value, 'excel') as Blob
     
     // Crear URL del blob y descargar
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    const numeroPedido = pedido.value?.cabecera.numero_pedido || pedidoId.value
+    const numeroPedido = pedido.value.cabecera.numero_pedido || numeroPedido.value
     a.download = `Reporte_Diferencias_${numeroPedido}_${new Date().toISOString().split('T')[0]}.xlsx`
     document.body.appendChild(a)
     a.click()
@@ -720,16 +786,16 @@ async function handleExportReporteDiferencias() {
 }
 
 async function handleExportForProvider() {
-  if (!pedido.value) return
+  if (!pedido.value || !numeroPedido.value) return
   
   try {
-    const blob = await mba3ConsultasService.exportarPedidoParaProveedor(pedidoId.value)
+    const blob = await mba3ConsultasService.exportarPedidoParaProveedor(numeroPedido.value)
     
     // Crear URL del blob y descargar
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `Pedido_${pedido.value.cabecera.numero_pedido || pedidoId.value}_Proveedor.xlsx`
+    a.download = `Pedido_${pedido.value.cabecera.numero_pedido || numeroPedido.value}_Proveedor.xlsx`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -766,14 +832,14 @@ function clearFile() {
 }
 
 async function handleUploadResponse() {
-  if (!selectedFile.value || !pedido.value) return
+  if (!selectedFile.value || !pedido.value || !numeroPedido.value) return
   
   uploading.value = true
   uploadError.value = null
   uploadResult.value = null
   
   try {
-    const result = await mba3ConsultasService.cargarRespuestaProveedor(pedidoId.value, selectedFile.value)
+    const result = await mba3ConsultasService.cargarRespuestaProveedor(numeroPedido.value, selectedFile.value)
     uploadResult.value = result
     
     if (result.status === 'success') {

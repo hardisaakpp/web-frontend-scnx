@@ -690,6 +690,7 @@ export interface UploadPlantillaResponse {
   status: 'success' | 'validation_error' | 'error'
   message: string
   pedido_id: string
+  numero_pedido?: string  // Número de pedido (ej: "P-12.48 - 12 - 2025")
   estado?: string  // Estados: "PENDIENTE_CONFIRMACION_PROVEEDOR", "RESPUESTA_PROVEEDOR_CARGADA", "CONFIRMADO_PROVEEDOR", "CONFIRMADO_ENVIADO"
   articulos_cargados: number
   distribuciones_cargadas: number
@@ -868,4 +869,15 @@ export interface ProcesarConfirmacionResponse {
   ajustes_detalle: AjusteDetalle[]
 }
 
+
+export interface CrearOCDesdePedidoResponse {
+  status: 'success' | 'error'
+  message: string
+  oc_id?: string
+  pedido_id: string
+  metadata?: {
+    oc_creada: boolean
+    detalles?: any[]
+  }
+}
 

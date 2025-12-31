@@ -928,14 +928,15 @@ export const mba3ConsultasService = {
   },
 
   /**
-   * Obtiene un pedido completo por ID
+   * Obtiene un pedido completo por número de pedido
    * Requiere permiso: mba3-consultas.facturas.view
+   * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
    * @param incluirRespuesta Si es true, incluye respuesta_proveedor si existe
    */
-  async getPedido(pedidoId: string, incluirRespuesta: boolean = false): Promise<PedidoCompleto> {
+  async getPedido(numeroPedido: string, incluirRespuesta: boolean = false): Promise<PedidoCompleto> {
     try {
       const params = incluirRespuesta ? '?incluir_respuesta=true' : ''
-      const response = await mba3Api.get<PedidoCompleto>(`/api/plantillas/${pedidoId}${params}`)
+      const response = await mba3Api.get<PedidoCompleto>(`/api/plantillas/${numeroPedido}${params}`)
       return response.data
     } catch (error: any) {
       console.error('❌ [getPedido] Error al obtener pedido:', error)
@@ -958,11 +959,12 @@ export const mba3ConsultasService = {
   /**
    * Exporta un pedido en formato Excel para enviar al proveedor
    * Requiere permiso: mba3-consultas.facturas.view
+   * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
    * @returns Blob del archivo Excel
    */
-  async exportarPedidoParaProveedor(pedidoId: string): Promise<Blob> {
+  async exportarPedidoParaProveedor(numeroPedido: string): Promise<Blob> {
     try {
-      const response = await mba3Api.get(`/api/pedidos/${pedidoId}/exportar-para-proveedor`, {
+      const response = await mba3Api.get(`/api/pedidos/${encodeURIComponent(numeroPedido)}/exportar-para-proveedor`, {
         responseType: 'blob',
       })
       return response.data
@@ -986,8 +988,9 @@ export const mba3ConsultasService = {
   /**
    * Carga la respuesta del proveedor desde un archivo Excel
    * Requiere permiso: mba3-consultas.proceso.execute
+   * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
    */
-  async cargarRespuestaProveedor(pedidoId: string, file: File): Promise<CargarRespuestaProveedorResponse> {
+  async cargarRespuestaProveedor(numeroPedido: string, file: File): Promise<CargarRespuestaProveedorResponse> {
     try {
       // Validar tipo de archivo - solo Excel
       const allowedExtensions = ['.xlsx', '.xls']
@@ -1007,7 +1010,7 @@ export const mba3ConsultasService = {
       formData.append('file', file)
 
       const response = await mba3Api.post<CargarRespuestaProveedorResponse>(
-        `/api/pedidos/${pedidoId}/cargar-respuesta-proveedor`,
+        `/api/pedidos/${encodeURIComponent(numeroPedido)}/cargar-respuesta-proveedor`,
         formData
       )
 
@@ -1048,10 +1051,11 @@ export const mba3ConsultasService = {
   /**
    * Obtiene la respuesta del proveedor para un pedido
    * Requiere permiso: mba3-consultas.facturas.view
+   * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
    */
-  async getRespuestaProveedor(pedidoId: string): Promise<RespuestaProveedorResponse> {
+  async getRespuestaProveedor(numeroPedido: string): Promise<RespuestaProveedorResponse> {
     try {
-      const response = await mba3Api.get<RespuestaProveedorResponse>(`/api/pedidos/${pedidoId}/respuesta-proveedor`)
+      const response = await mba3Api.get<RespuestaProveedorResponse>(`/api/pedidos/${encodeURIComponent(numeroPedido)}/respuesta-proveedor`)
       return response.data
     } catch (error: any) {
       console.error('❌ [getRespuestaProveedor] Error al obtener respuesta:', error)
@@ -1078,11 +1082,11 @@ export const mba3ConsultasService = {
   /**
    * Procesa la confirmación del proveedor y ajusta el pedido
    * Requiere permiso: mba3-consultas.proceso.execute
-   * @param pedidoId UUID del pedido
+   * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
    * @param forzarRedistribucion Si true, siempre redistribuye proporcionalmente
    */
   async procesarConfirmacionProveedor(
-    pedidoId: string,
+    numeroPedido: string,
     forzarRedistribucion: boolean = false
   ): Promise<ProcesarConfirmacionResponse> {
     try {
@@ -1093,8 +1097,8 @@ export const mba3ConsultasService = {
       
       const queryString = params.toString()
       const url = queryString 
-        ? `/api/pedidos/${pedidoId}/procesar-confirmacion?${queryString}`
-        : `/api/pedidos/${pedidoId}/procesar-confirmacion`
+        ? `/api/pedidos/${encodeURIComponent(numeroPedido)}/procesar-confirmacion?${queryString}`
+        : `/api/pedidos/${encodeURIComponent(numeroPedido)}/procesar-confirmacion`
       
       const response = await mba3Api.post<ProcesarConfirmacionResponse>(url)
       return response.data
@@ -1128,11 +1132,11 @@ export const mba3ConsultasService = {
   /**
    * Obtiene el reporte de diferencias para un pedido
    * Requiere permiso: mba3-consultas.facturas.view
-   * @param pedidoId UUID del pedido
+   * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
    * @param formato Formato del reporte: 'json' (default), 'excel', 'csv' (pendiente)
    */
   async getReporteDiferencias(
-    pedidoId: string,
+    numeroPedido: string,
     formato: 'json' | 'excel' | 'csv' = 'json'
   ): Promise<ReporteDiferenciasResponse | Blob> {
     try {
@@ -1140,7 +1144,7 @@ export const mba3ConsultasService = {
       params.append('formato', formato)
       
       const response = await mba3Api.get(
-        `/api/pedidos/${pedidoId}/reporte-diferencias?${params.toString()}`,
+        `/api/pedidos/${encodeURIComponent(numeroPedido)}/reporte-diferencias?${params.toString()}`,
         formato !== 'json' ? { responseType: 'blob' } : {}
       )
       
@@ -1159,6 +1163,32 @@ export const mba3ConsultasService = {
       }
       
       let message = error.message || 'Error desconocido al obtener reporte de diferencias'
+      
+      if (error.response?.data) {
+        if (error.response.data.detail) {
+          message = error.response.data.detail
+        } else if (error.response.data.message) {
+          message = error.response.data.message
+        }
+      }
+      
+      throw new Error(message)
+    }
+  },
+
+  /**
+   * Crea una orden de compra desde un pedido confirmado
+   * Requiere permiso: mba3-consultas.proceso.execute
+   * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
+   */
+  async crearOrdenCompraDesdePedido(numeroPedido: string): Promise<any> {
+    try {
+      const response = await mba3Api.post(`/api/pedidos/${encodeURIComponent(numeroPedido)}/crear-orden-compra`)
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [crearOrdenCompraDesdePedido] Error al crear orden de compra:', error)
+      
+      let message = error.message || 'Error desconocido al crear orden de compra'
       
       if (error.response?.data) {
         if (error.response.data.detail) {
