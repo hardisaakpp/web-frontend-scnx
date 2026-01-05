@@ -10,11 +10,60 @@
           </p>
         </div>
         <div class="flex items-center gap-3">
+          <!-- Búsqueda directa de pedidos -->
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <input
+              ref="pedidoInputRef"
+              v-model="pedidoIdInput"
+              @keyup.enter="goToPedido"
+              @focus="showSearchHelp = true"
+              @blur="setTimeout(() => showSearchHelp = false, 200)"
+              type="text"
+              placeholder="Buscar por N° de pedido (ej: P-12.48 - 12 - 2025)"
+              :class="[
+                'w-80 pl-10 pr-10 py-2 border rounded-lg text-sm transition-colors',
+                pedidoIdInput && !isValidPedido
+                  ? 'border-red-400 focus:ring-red-400 focus:border-red-400'
+                  : 'border-gray-300 focus:ring-purple-500 focus:border-purple-500'
+              ]"
+            />
+            <button
+              v-if="pedidoIdInput"
+              @click="pedidoIdInput = ''"
+              class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+              title="Limpiar búsqueda"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <!-- Texto de ayuda contextual -->
+            <div
+              v-if="showSearchHelp && pedidoIdInput && !isValidPedido"
+              class="absolute top-full left-0 mt-1 w-full bg-white border border-red-200 rounded-lg shadow-lg p-2 z-10"
+            >
+              <p class="text-xs text-red-600 font-medium mb-1">Formato inválido</p>
+              <p class="text-xs text-gray-600">Ejemplo válido: <span class="font-mono text-purple-600">P-12.48 - 12 - 2025</span></p>
+            </div>
+          </div>
           <button
-            @click="goBack"
-            class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+            @click="goToCargarPlantillas"
+            :disabled="uploading"
+            class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
           >
-            Volver
+            <svg v-if="!uploading" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            <svg v-else class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            {{ uploading ? 'Cargando...' : 'Cargar Plantillas Excel' }}
           </button>
           <button
             v-if="canViewReporteDiferencias"
@@ -195,122 +244,6 @@
                 </tr>
               </tbody>
             </table>
-          </div>
-        </div>
-
-        <!-- Sección para cargar respuesta del proveedor -->
-        <div v-if="canUploadResponse" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h2 class="text-lg font-semibold text-gray-900 mb-4">Cargar Respuesta del Proveedor</h2>
-          
-          <div class="space-y-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">
-                Selecciona el archivo Excel con la respuesta del proveedor
-              </label>
-              <input
-                ref="fileInput"
-                type="file"
-                @change="handleFileSelect"
-                accept=".xlsx,.xls"
-                class="hidden"
-                :disabled="uploading"
-              />
-              <div
-                @click="triggerFileInput"
-                class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-indigo-500 transition-colors"
-              >
-                <svg class="h-12 w-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                </svg>
-                <p class="text-sm text-gray-600">
-                  <span v-if="!selectedFile">Haz clic para seleccionar archivo</span>
-                  <span v-else class="font-medium text-indigo-600">{{ selectedFile.name }}</span>
-                </p>
-                <p class="text-xs text-gray-500 mt-1">Formatos: XLSX, XLS (máx. 10 MB)</p>
-              </div>
-            </div>
-
-            <div v-if="selectedFile" class="flex items-center gap-3">
-              <button
-                @click="handleUploadResponse"
-                :disabled="uploading"
-                class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
-              >
-                <svg v-if="!uploading" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                </svg>
-                <svg v-else class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                {{ uploading ? 'Cargando...' : 'Cargar Respuesta' }}
-              </button>
-              <button
-                @click="clearFile"
-                :disabled="uploading"
-                class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-              >
-                Cancelar
-              </button>
-            </div>
-
-            <!-- Resultado de la carga -->
-            <div v-if="uploadResult" class="mt-4">
-              <div v-if="uploadResult.status === 'success'" class="bg-green-50 border border-green-200 rounded-lg p-4">
-                <div class="flex items-start gap-3">
-                  <svg class="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <div class="flex-1">
-                    <p class="text-sm font-semibold text-green-900">{{ uploadResult.message }}</p>
-                    <p class="text-xs text-green-700 mt-1">
-                      Cantidades guardadas: {{ uploadResult.cantidades_guardadas }}, 
-                      Precios guardados: {{ uploadResult.precios_guardados }}
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div v-else class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <div class="flex items-start gap-3">
-                  <svg class="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                  <div class="flex-1">
-                    <p class="text-sm font-semibold text-yellow-900">{{ uploadResult.message }}</p>
-                    <div v-if="uploadResult.validacion && (uploadResult.validacion.errores.length > 0 || uploadResult.validacion.warnings.length > 0)" class="mt-2 space-y-2">
-                      <div v-if="uploadResult.validacion.errores.length > 0">
-                        <p class="text-xs font-medium text-red-700">Errores:</p>
-                        <ul class="list-disc list-inside text-xs text-red-600 mt-1">
-                          <li v-for="(error, idx) in uploadResult.validacion.errores" :key="idx">
-                            {{ error.mensaje }} <span v-if="error.producto">({{ error.producto }})</span>
-                          </li>
-                        </ul>
-                      </div>
-                      <div v-if="uploadResult.validacion.warnings.length > 0">
-                        <p class="text-xs font-medium text-yellow-700">Advertencias:</p>
-                        <ul class="list-disc list-inside text-xs text-yellow-600 mt-1">
-                          <li v-for="(warning, idx) in uploadResult.validacion.warnings" :key="idx">
-                            {{ warning.mensaje }} <span v-if="warning.producto">({{ warning.producto }})</span>
-                          </li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div v-if="uploadError" class="bg-red-50 border border-red-200 rounded-lg p-4">
-              <div class="flex items-start gap-3">
-                <svg class="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <div class="flex-1">
-                  <p class="text-sm font-semibold text-red-900">Error al cargar respuesta</p>
-                  <pre class="text-sm text-red-800 mt-1 whitespace-pre-wrap font-sans">{{ uploadError }}</pre>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -561,11 +494,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
-import type { PedidoCompleto, CargarRespuestaProveedorResponse, ProcesarConfirmacionResponse, ReporteDiferenciasResponse } from '../types'
+import type { PedidoCompleto, ProcesarConfirmacionResponse, ReporteDiferenciasResponse, UploadPlantillaResponse } from '../types'
 
 const route = useRoute()
 const router = useRouter()
@@ -574,11 +507,15 @@ const toast = useToast()
 const pedido = ref<PedidoCompleto | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
-const selectedFile = ref<File | null>(null)
+
+// Búsqueda directa de pedidos
+const pedidoIdInput = ref('')
+const pedidoInputRef = ref<HTMLInputElement | null>(null)
+const showSearchHelp = ref(false)
+
+// Cargar plantillas (sin modal - selector directo)
 const fileInput = ref<HTMLInputElement | null>(null)
 const uploading = ref(false)
-const uploadResult = ref<CargarRespuestaProveedorResponse | null>(null)
-const uploadError = ref<string | null>(null)
 
 // Fase 4: Procesar confirmación
 const showProcesarModal = ref(false)
@@ -600,11 +537,6 @@ const canExportForProvider = computed(() => {
   return !pedido.value?.respuesta_proveedor
 })
 
-const canUploadResponse = computed(() => {
-  // Permitir cargar respuesta si no existe o si el estado permite actualización
-  return !pedido.value?.respuesta_proveedor || 
-         pedido.value?.respuesta_proveedor?.cabecera.estado === 'PENDIENTE_REVISION'
-})
 
 const canProcesarConfirmacion = computed(() => {
   // Permitir procesar si hay respuesta y está en estado PENDIENTE_REVISION
@@ -624,6 +556,17 @@ const canGenerarOC = computed(() => {
   // Permitir generar OC si el pedido está confirmado por proveedor y no está ya enviado
   return pedido.value?.cabecera.estado === 'CONFIRMADO_PROVEEDOR' &&
          pedido.value?.cabecera.estado !== 'CONFIRMADO_ENVIADO'
+})
+
+// Validación de número de pedido en tiempo real
+const isValidPedido = computed(() => {
+  const trimmed = pedidoIdInput.value.trim()
+  if (!trimmed) return true // Vacio es válido (no muestra error hasta que escriba)
+  
+  // Permitir letras, números, guiones, puntos, espacios
+  // Longitud mínima: 5 caracteres
+  // Formato flexible: P-12.48 - 12 - 2025, ODC-12345, etc.
+  return /^[A-Za-z0-9.\-\s]{5,}$/.test(trimmed)
 })
 
 async function loadPedido() {
@@ -807,59 +750,145 @@ async function handleExportForProvider() {
   }
 }
 
-function triggerFileInput() {
-  if (fileInput.value && !uploading.value) {
-    fileInput.value.click()
-  }
-}
-
-function handleFileSelect(event: Event) {
-  const target = event.target as HTMLInputElement
-  if (target.files && target.files.length > 0) {
-    selectedFile.value = target.files[0]
-    uploadError.value = null
-    uploadResult.value = null
-  }
-}
-
-function clearFile() {
-  selectedFile.value = null
-  uploadError.value = null
-  uploadResult.value = null
-  if (fileInput.value) {
-    fileInput.value.value = ''
-  }
-}
-
-async function handleUploadResponse() {
-  if (!selectedFile.value || !pedido.value || !numeroPedido.value) return
+// Función para validar archivo
+function validateFile(file: File): { valid: boolean; error?: string } {
+  const allowedExtensions = ['.xlsx', '.xls']
+  const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'))
   
+  if (!allowedExtensions.includes(fileExtension)) {
+    return { valid: false, error: 'Solo se permiten archivos Excel (.xlsx, .xls)' }
+  }
+  
+  const maxSize = 10 * 1024 * 1024 // 10 MB
+  if (file.size > maxSize) {
+    return { valid: false, error: 'El tamaño máximo es 10 MB' }
+  }
+  
+  return { valid: true }
+}
+
+// Función para abrir selector de archivos directamente
+function goToCargarPlantillas() {
+  // Bloquear doble subida accidental
+  if (uploading.value) return
+  
+  // Crear input de archivo dinámico si no existe
+  if (!fileInput.value) {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = '.xlsx,.xls'
+    input.style.display = 'none'
+    input.addEventListener('change', handleFileSelect)
+    document.body.appendChild(input)
+    fileInput.value = input as any
+  }
+  
+  // Abrir selector directamente
+  fileInput.value.click()
+}
+
+// Manejar selección de archivo - validar y subir automáticamente
+async function handleFileSelect(event: Event) {
+  const target = event.target as HTMLInputElement
+  if (!target.files || target.files.length === 0) return
+  
+  const file = target.files[0]
+  
+  // Validar archivo
+  const validation = validateFile(file)
+  if (!validation.valid) {
+    toast.error('Error de validación', validation.error || 'Archivo no válido')
+    // Limpiar input
+    if (target) target.value = ''
+    return
+  }
+  
+  // Mostrar confirmación rápida
+  toast.info(
+    `Archivo seleccionado: ${file.name}`,
+    'Subiendo archivo...',
+    2000
+  )
+  
+  // Subir automáticamente
+  await handleUploadFile(file)
+  
+  // Limpiar input después de procesar
+  if (target) target.value = ''
+}
+
+// Función para subir el archivo
+async function handleUploadFile(file: File) {
   uploading.value = true
-  uploadError.value = null
-  uploadResult.value = null
   
   try {
-    const result = await mba3ConsultasService.cargarRespuestaProveedor(numeroPedido.value, selectedFile.value)
-    uploadResult.value = result
+    const response: UploadPlantillaResponse = await mba3ConsultasService.uploadPlantilla(file)
     
-    if (result.status === 'success') {
-      toast.success('Respuesta cargada', result.message)
-      clearFile()
-      // Recargar el pedido para actualizar la información
-      await loadPedido()
+    // Obtener numero_pedido de la respuesta
+    let numeroPedido = response.numero_pedido
+    
+    // Si no viene en la respuesta, intentar obtenerlo del pedido cargado usando pedido_id
+    if (!numeroPedido && response.pedido_id) {
+      try {
+        const pedidoCompleto = await mba3ConsultasService.getPedido(response.pedido_id, false)
+        numeroPedido = pedidoCompleto.cabecera.numero_pedido || undefined
+      } catch (e) {
+        console.warn('No se pudo obtener el numero_pedido del pedido cargado:', e)
+      }
+    }
+    
+    // Mostrar resultado
+    if (response.status === 'success') {
+      toast.success(
+        'Plantilla procesada exitosamente',
+        `Número de pedido: ${numeroPedido || 'N/A'}\nArtículos: ${response.articulos_cargados}\nDistribuciones: ${response.distribuciones_cargadas}`
+      )
+    } else if (response.status === 'validation_error') {
+      toast.warning(
+        'Plantilla procesada con advertencias',
+        'Revisa los resultados de validación'
+      )
+    }
+    
+    // Redirigir o recargar según corresponda
+    if (numeroPedido && numeroPedido !== pedido.value?.cabecera.numero_pedido) {
+      // Si el pedido cargado es diferente al actual, redirigir
+      router.push(`/mba3-consultas/pedidos/${encodeURIComponent(numeroPedido)}`)
     } else {
-      toast.warning('Respuesta con advertencias', result.message)
+      // Recargar el pedido actual
+      await loadPedido()
     }
   } catch (e: any) {
-    uploadError.value = e.message || 'Error al cargar la respuesta'
-    toast.error('Error', uploadError.value)
+    const errorMessage = e.message || 'Error al subir plantilla'
+    toast.error('Error al cargar plantilla', errorMessage)
   } finally {
     uploading.value = false
   }
 }
 
-function goBack() {
-  router.back()
+function goToPedido() {
+  const numeroPedido = pedidoIdInput.value.trim()
+  
+  // Validar que no esté vacío
+  if (!numeroPedido) {
+    toast.warning('Campo vacío', 'Por favor ingresa un número de pedido')
+    pedidoInputRef.value?.focus()
+    return
+  }
+  
+  // Validar formato antes de navegar
+  if (!isValidPedido.value) {
+    toast.warning(
+      'Formato inválido',
+      'Usa el número de pedido tal como aparece en el Excel. Ejemplo: P-12.48 - 12 - 2025'
+    )
+    pedidoInputRef.value?.focus()
+    return
+  }
+  
+  // Navegar al pedido
+  router.push(`/mba3-consultas/pedidos/${encodeURIComponent(numeroPedido)}`)
+  // No limpiar el input - el usuario puede querer buscar otro después
 }
 
 function formatDate(dateString: string | null): string {
@@ -962,6 +991,16 @@ function getEstadoPedidoBadgeClass(estado: string): string {
 
 onMounted(() => {
   loadPedido()
+  // Autofocus opcional: descomentar si quieres que el input tenga foco al cargar
+  // pedidoInputRef.value?.focus()
+})
+
+// Cleanup: eliminar input de archivo cuando el componente se destruye
+onUnmounted(() => {
+  if (fileInput.value) {
+    fileInput.value.remove()
+    fileInput.value = null
+  }
 })
 </script>
 

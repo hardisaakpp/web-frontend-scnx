@@ -10,9 +10,10 @@
         <button
           @click="showBuscarPedidoModal = true"
           class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium flex items-center gap-2"
+          title="Buscar pedido por número"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
           Gestionar Pedidos
         </button>
@@ -299,7 +300,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
@@ -318,6 +319,8 @@ const uploadError = ref<string>('')
 const uploadResponse = ref<UploadPlantillaResponse | null>(null)
 const showBuscarPedidoModal = ref(false)
 const pedidoIdInput = ref('')
+const pedidoInicialCargado = ref(false)
+const cargandoUltimoPedido = ref(false)
 
 // Computed: validación completa OK
 const esValidacionCompletaOk = computed(() => {
@@ -479,10 +482,62 @@ function goToPedido() {
     return
   }
   
+  // Marcar que se hizo una búsqueda manual
+  pedidoInicialCargado.value = true
   showBuscarPedidoModal.value = false
   pedidoIdInput.value = ''
   router.push(`/mba3-consultas/pedidos/${encodeURIComponent(numeroPedido)}`)
 }
+
+/**
+ * Carga automáticamente el último pedido del usuario al montar el componente
+ */
+async function cargarUltimoPedido() {
+  // Evitar cargar si ya se hizo una búsqueda manual o si ya se cargó
+  if (pedidoInicialCargado.value || cargandoUltimoPedido.value) {
+    return
+  }
+
+  cargandoUltimoPedido.value = true
+  
+  try {
+    const pedido = await mba3ConsultasService.getUltimoPedido(false)
+    
+    if (pedido && pedido.cabecera.numero_pedido) {
+      // Marcar que ya se cargó el pedido inicial
+      pedidoInicialCargado.value = true
+      
+      // Mostrar badge informativo
+      toast.info(
+        'Último pedido cargado',
+        `Mostrando último pedido: ${pedido.cabecera.numero_pedido}`
+      )
+      
+      // Redirigir a la vista de detalle del pedido
+      router.push(`/mba3-consultas/pedidos/${encodeURIComponent(pedido.cabecera.numero_pedido)}`)
+    } else {
+      // No hay pedidos, marcar como cargado para no intentar de nuevo
+      pedidoInicialCargado.value = true
+    }
+  } catch (error: any) {
+    // Si es un error que no sea 404, loguearlo pero no mostrar error al usuario
+    // (el 404 ya se maneja en el servicio retornando null)
+    if (error.message && !error.message.includes('404')) {
+      console.error('Error al cargar último pedido:', error)
+    }
+    // Marcar como cargado para no intentar de nuevo
+    pedidoInicialCargado.value = true
+  } finally {
+    cargandoUltimoPedido.value = false
+  }
+}
+
+// Cargar último pedido al montar el componente
+onMounted(() => {
+  if (!pedidoInicialCargado.value) {
+    cargarUltimoPedido()
+  }
+})
 
 </script>
 

@@ -968,6 +968,40 @@ export const mba3ConsultasService = {
   },
 
   /**
+   * Obtiene el último pedido cargado por el usuario autenticado
+   * Requiere permiso: mba3-consultas.facturas.view
+   * @param incluirRespuesta Si es true, incluye respuesta_proveedor si existe
+   * @returns PedidoCompleto o null si no hay pedidos
+   */
+  async getUltimoPedido(incluirRespuesta: boolean = false): Promise<PedidoCompleto | null> {
+    try {
+      const params = incluirRespuesta ? '?incluir_respuesta=true' : ''
+      const response = await mba3Api.get<PedidoCompleto>(`/api/plantillas/ultimo${params}`)
+      return response.data
+    } catch (error: any) {
+      // Si es 404, significa que no hay pedidos (no es un error crítico)
+      if (error.response?.status === 404) {
+        return null
+      }
+      
+      console.error('❌ [getUltimoPedido] Error al obtener último pedido:', error)
+      
+      // Extraer mensaje de error más descriptivo
+      let message = error.message || 'Error desconocido al obtener último pedido'
+      
+      if (error.response?.data) {
+        if (error.response.data.detail) {
+          message = error.response.data.detail
+        } else if (error.response.data.message) {
+          message = error.response.data.message
+        }
+      }
+      
+      throw new Error(message)
+    }
+  },
+
+  /**
    * Exporta un pedido en formato Excel para enviar al proveedor
    * Requiere permiso: mba3-consultas.facturas.view
    * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
