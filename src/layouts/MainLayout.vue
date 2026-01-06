@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gray-100">
+  <div class="min-h-screen bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
     <!-- Overlay para móvil -->
     <div
       v-if="isSidebarOpen"
@@ -262,34 +262,49 @@
       ]"
     >
       <!-- Mobile Header -->
-      <header class="bg-white shadow md:hidden sticky top-0 z-10">
+      <header class="bg-white dark:bg-gray-800 shadow md:hidden sticky top-0 z-10 transition-colors duration-300">
         <div class="px-4 py-3 flex items-center justify-between">
           <button
             @click="isSidebarOpen = !isSidebarOpen"
-            class="p-2 rounded-md hover:bg-gray-100 transition-colors"
+            class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             aria-label="Toggle menu"
           >
-            <Bars3Icon class="h-6 w-6" />
+            <Bars3Icon class="h-6 w-6 text-gray-800 dark:text-gray-200" />
           </button>
-          <h1 class="text-xl font-semibold">SCNexus</h1>
-          <div class="w-10"></div>
+          <h1 class="text-xl font-semibold text-gray-800 dark:text-white">SCNexus</h1>
+          <button
+            @click="themeStore.toggleTheme()"
+            class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            :title="themeStore.isDark ? 'Modo Claro' : 'Modo Oscuro'"
+          >
+            <SunIcon v-if="themeStore.isDark" class="h-5 w-5 text-yellow-400" />
+            <MoonIcon v-else class="h-5 w-5 text-gray-600" />
+          </button>
         </div>
       </header>
 
       <!-- Desktop Header -->
-      <header class="hidden md:block bg-white shadow-sm sticky top-0 z-10">
+      <header class="hidden md:block bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-10 transition-colors duration-300">
         <div class="px-6 py-4 flex items-center justify-between">
-          <h1 class="text-2xl font-semibold text-gray-800">
+          <h1 class="text-2xl font-semibold text-gray-800 dark:text-white">
             {{ pageTitle }}
           </h1>
           <div class="flex items-center gap-4">
-            <span class="text-sm text-gray-600">{{ authStore.fullName || authStore.userName }}</span>
+            <button
+              @click="themeStore.toggleTheme()"
+              class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 group"
+              :title="themeStore.isDark ? 'Modo Claro' : 'Modo Oscuro'"
+            >
+              <SunIcon v-if="themeStore.isDark" class="h-6 w-6 text-yellow-400 group-hover:scale-110 transition-transform" />
+              <MoonIcon v-else class="h-6 w-6 text-gray-600 dark:text-gray-300 group-hover:scale-110 transition-transform" />
+            </button>
+            <span class="text-sm text-gray-600 dark:text-gray-300">{{ authStore.fullName || authStore.userName }}</span>
           </div>
         </div>
       </header>
 
       <!-- Page Content -->
-      <main class="p-4 md:p-6 lg:p-8">
+      <main class="p-4 md:p-6 lg:p-8 min-h-[calc(100vh-4rem)]">
         <router-view></router-view>
       </main>
     </div>
@@ -318,15 +333,19 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   ShieldCheckIcon,
-  LockClosedIcon
+  LockClosedIcon,
+  SunIcon,
+  MoonIcon
 } from '@heroicons/vue/24/outline'
 import { useAuthStore } from '../stores/auth'
+import { useThemeStore } from '../stores/theme'
 import ToastContainer from '../components/ToastContainer.vue'
 import { userPreferencesService } from '@/services/userPreferencesService'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const themeStore = useThemeStore()
 const isSidebarOpen = ref(false)
 const isSidebarCollapsed = ref(false)
 

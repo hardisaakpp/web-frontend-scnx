@@ -12,22 +12,22 @@
         @touchmove.prevent
         @touchend.prevent
       >
-      <div class="bg-white rounded-xl shadow-2xl p-8 max-w-md mx-4 text-center">
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-8 max-w-md mx-4 text-center transition-colors duration-300">
         <div class="flex flex-col items-center gap-4">
-          <svg class="animate-spin h-12 w-12 text-violet-600" fill="none" viewBox="0 0 24 24">
+          <svg class="animate-spin h-12 w-12 text-violet-600 dark:text-violet-400" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
           <div>
-            <h3 class="text-lg font-semibold text-gray-900 mb-2">Ejecutando Importación</h3>
-            <p class="text-sm text-gray-600">Por favor espera mientras se completa el proceso...</p>
-            <div class="mt-4 w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2 transition-colors duration-300">Ejecutando Importación</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-300 transition-colors duration-300">Por favor espera mientras se completa el proceso...</p>
+            <div class="mt-4 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden transition-colors duration-300">
               <div
                 class="h-full bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500 transition-all duration-300"
                 :style="{ width: `${procesoStore.progress}%` }"
               ></div>
             </div>
-            <p class="text-xs text-gray-500 mt-2">{{ procesoStore.progress }}% completado</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2 transition-colors duration-300">{{ procesoStore.progress }}% completado</p>
           </div>
         </div>
       </div>
@@ -46,29 +46,29 @@
         @touchmove.prevent
         @touchend.prevent
       >
-      <div class="bg-white rounded-xl shadow-2xl p-8 max-w-md mx-4 text-center">
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-8 max-w-md mx-4 text-center transition-colors duration-300">
         <div class="flex flex-col items-center gap-4">
-          <svg class="animate-spin h-12 w-12 text-emerald-600" fill="none" viewBox="0 0 24 24">
+          <svg class="animate-spin h-12 w-12 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
           <div>
-            <h3 class="text-lg font-semibold text-gray-900 mb-2">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2 transition-colors duration-300">
               {{ getModalTitle() }}
             </h3>
-            <p class="text-sm text-gray-600">
+            <p class="text-sm text-gray-600 dark:text-gray-300 transition-colors duration-300">
               {{ getModalMessage() }}
             </p>
-            <div v-if="procesoStore.odcProcessId" class="mt-2 text-xs text-gray-500 font-mono">
+            <div v-if="procesoStore.odcProcessId" class="mt-2 text-xs text-gray-500 dark:text-gray-400 font-mono transition-colors duration-300">
               ID: {{ procesoStore.odcProcessId }}
             </div>
-            <div class="mt-4 w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+            <div class="mt-4 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden transition-colors duration-300">
               <div
                 class="h-full bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-500 transition-all duration-300"
                 :style="{ width: `${procesoStore.progress}%` }"
               ></div>
             </div>
-            <p class="text-xs text-gray-500 mt-2">{{ procesoStore.progress }}% completado</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2 transition-colors duration-300">{{ procesoStore.progress }}% completado</p>
           </div>
         </div>
       </div>
@@ -82,8 +82,8 @@
       }"
     >
       <div>
-        <h1 class="text-3xl font-bold text-gray-900">Procesos de Integración MBA3-SAP</h1>
-        <p class="mt-1 text-sm text-gray-500">Ejecuta cada paso del proceso de integración de forma independiente cuando lo necesites</p>
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white transition-colors duration-300">Procesos de Integración MBA3-SAP</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400 transition-colors duration-300">Ejecuta cada paso del proceso de integración de forma independiente cuando lo necesites</p>
       </div>
 
       <!-- Sistema de Pestañas -->
@@ -97,16 +97,14 @@
       <template #tab-migrar>
         <div class="space-y-6">
           <!-- Botón de acción y estado -->
-          <div class="flex items-center justify-between flex-wrap gap-4 p-6 rounded-xl border border-white/30 backdrop-blur-xl transition-all duration-300 relative overflow-hidden shadow-2xl"
+          <div class="flex items-center justify-between flex-wrap gap-4 p-6 rounded-xl border border-gray-200 dark:border-gray-700 transition-colors duration-300 shadow-md"
             :class="getProcesoCardClass('migrar')">
-            <div class="absolute inset-0 pointer-events-none" :class="getProcesoOverlayClass('migrar')"></div>
-            <div class="flex items-center gap-4 relative z-10">
+            <div class="flex items-center gap-4">
               <div 
-                class="w-14 h-14 rounded-full flex items-center justify-center shadow-xl backdrop-blur-md transition-all duration-300 border-2 relative overflow-hidden"
+                class="w-14 h-14 rounded-full flex items-center justify-center shadow-md transition-all duration-300 border-2"
               :class="getProcesoIconClass('migrar')"
             >
-              <div class="absolute inset-0 bg-gradient-to-br from-white/30 to-transparent"></div>
-              <div class="relative z-10">
+              <div>
                 <span v-if="getStepStatus('migrar') === 'active'" class="animate-spin">
                   <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -132,20 +130,19 @@
                 </svg>
             </div>
             </div>
-              <div class="relative z-10">
+              <div>
                 <h3 class="text-lg font-semibold mb-1">{{ getStepTitle('migrar') }}</h3>
-                <p class="text-sm text-gray-600">{{ getStepDescription('migrar') }}</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400">{{ getStepDescription('migrar') }}</p>
             </div>
           </div>
           
           <button
             @click="ejecutarMigrar"
             :disabled="procesoStore.loading"
-              class="px-6 py-3 rounded-xl font-medium transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden backdrop-blur-md shadow-lg hover:shadow-xl"
+              class="px-6 py-3 rounded-lg font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
             :class="getButtonClass('migrar')"
           >
-            <div class="absolute inset-0 bg-gradient-to-br from-white/20 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-300"></div>
-            <span class="relative z-10">
+            <span>
             <span v-if="procesoStore.loading && procesoStore.currentStep === 'migrar'" class="flex items-center justify-center gap-2">
               <svg class="animate-spin h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -166,84 +163,55 @@
 
           <!-- Barra de progreso para Importar Despachos -->
           <div v-if="procesoStore.loading && procesoStore.currentStep === 'migrar'" 
-               class="bg-white/80 backdrop-blur-xl rounded-xl shadow-2xl p-4 border border-white/30 relative overflow-hidden transition-all duration-300">
-            <div class="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent pointer-events-none"></div>
-            
-            <!-- Efecto de ondas animadas (shimmer) -->
-            <div class="absolute inset-0 overflow-hidden pointer-events-none">
-              <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
-            </div>
-            
-            <!-- Partículas/puntos animados -->
-            <div class="absolute inset-0 pointer-events-none">
-              <div class="absolute top-2 left-1/4 w-2 h-2 bg-violet-400/60 rounded-full animate-bounce" style="animation-delay: 0s; animation-duration: 1s;"></div>
-              <div class="absolute top-2 left-1/2 w-2 h-2 bg-violet-500/60 rounded-full animate-bounce" style="animation-delay: 0.3s; animation-duration: 1s;"></div>
-              <div class="absolute top-2 left-3/4 w-2 h-2 bg-violet-600/60 rounded-full animate-bounce" style="animation-delay: 0.6s; animation-duration: 1s;"></div>
-            </div>
-            
-            <div class="flex items-center justify-between mb-2 relative z-10">
+               class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 border border-gray-200 dark:border-gray-700 transition-colors duration-300">
+            <div class="flex items-center justify-between mb-2">
               <div class="flex items-center gap-2">
-                <!-- Spinner animado -->
-                <div class="relative w-4 h-4">
-                  <svg class="animate-spin h-4 w-4 text-violet-600" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <div class="absolute inset-0 border-2 border-violet-300/30 rounded-full animate-ping"></div>
-                </div>
-                <span class="text-sm font-medium text-gray-700">Progreso de importación</span>
+                <svg class="animate-spin h-4 w-4 text-violet-600 dark:text-violet-400" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Progreso de importación</span>
               </div>
-              <span class="text-sm text-gray-500 font-semibold">{{ procesoStore.progress }}%</span>
+              <span class="text-sm text-gray-500 dark:text-gray-400 font-semibold">{{ procesoStore.progress }}%</span>
             </div>
-            <div class="w-full h-4 bg-gray-200/60 backdrop-blur-sm rounded-full overflow-hidden shadow-inner relative z-10">
+            <div class="w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
               <div
-                class="h-full bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500 transition-all duration-300 ease-out shadow-lg relative overflow-hidden"
+                class="h-full bg-violet-600 dark:bg-violet-500 transition-all duration-300"
                 :style="{ width: `${procesoStore.progress}%` }"
-              >
-                <!-- Efecto shimmer sobre la barra de progreso -->
-                <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-shimmer"></div>
-                
-                <!-- Barra de progreso animada interna -->
-                <div class="absolute bottom-0 left-0 right-0 h-1 bg-white/30 overflow-hidden">
-                  <div class="h-full bg-gradient-to-r from-emerald-300 via-emerald-400 to-emerald-300 animate-progress-bar"></div>
-                </div>
-                
-                <!-- Efecto de pulso en la barra -->
-                <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"></div>
-              </div>
+              ></div>
             </div>
           </div>
 
           <!-- Resultados de migración -->
-          <div v-if="procesoStore.resultados?.metadata?.save_status && !procesoStore.loading" class="border border-white/30 rounded-xl overflow-hidden backdrop-blur-xl bg-gradient-to-br from-violet-50/80 to-violet-100/60 shadow-xl relative">
-            <div class="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent pointer-events-none"></div>
+          <div v-if="procesoStore.resultados?.metadata?.save_status && !procesoStore.loading" class="border border-white/30 dark:border-gray-600/30 rounded-xl overflow-hidden backdrop-blur-xl bg-gradient-to-br from-violet-50/80 dark:from-violet-900/30 to-violet-100/60 dark:to-violet-800/40 shadow-xl relative transition-colors duration-300">
+            <div class="absolute inset-0 bg-gradient-to-br from-white/20 dark:from-gray-700/20 via-transparent to-transparent pointer-events-none"></div>
             <button
               @click="showMigrarResults = !showMigrarResults"
               :disabled="procesoStore.loading && procesoStore.currentStep === 'migrar'"
-              class="w-full px-4 py-3 bg-violet-100/60 hover:bg-violet-200/70 backdrop-blur-sm transition-all duration-300 flex items-center justify-between text-left relative z-10 border-b border-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
+              class="w-full px-4 py-3 bg-violet-100/60 dark:bg-violet-900/40 hover:bg-violet-200/70 dark:hover:bg-violet-800/60 backdrop-blur-sm transition-all duration-300 flex items-center justify-between text-left relative z-10 border-b border-white/20 dark:border-gray-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <div class="flex items-center gap-2">
-                <span class="text-violet-700 font-medium">✓ Importación completada</span>
-                <span class="text-xs text-violet-600">
+                <span class="text-violet-700 dark:text-violet-300 font-medium transition-colors duration-300">✓ Importación completada</span>
+                <span class="text-xs text-violet-600 dark:text-violet-400 transition-colors duration-300">
                   {{ procesoStore.resultados.metadata.save_status.prefacturas_guardadas || 0 }} guardadas, 
                   {{ procesoStore.resultados.metadata.save_status.prefacturas_actualizadas || 0 }} actualizadas
                 </span>
               </div>
-              <span class="text-violet-700">{{ showMigrarResults ? '▼' : '▶' }}</span>
+              <span class="text-violet-700 dark:text-violet-300 transition-colors duration-300">{{ showMigrarResults ? '▼' : '▶' }}</span>
             </button>
-            <div v-if="showMigrarResults" class="p-4 bg-white/60 backdrop-blur-md border-t border-white/20 relative z-10">
+            <div v-if="showMigrarResults" class="p-4 bg-white/60 dark:bg-gray-800/60 backdrop-blur-md border-t border-white/20 dark:border-gray-600/20 relative z-10 transition-colors duration-300">
               <div class="grid grid-cols-3 gap-3">
-                <div class="bg-white/80 backdrop-blur-sm p-4 rounded-xl text-center border border-white/30 shadow-lg hover:shadow-xl transition-all duration-300">
-                  <p class="text-xs text-gray-600 mb-1">Prefacturas Guardadas</p>
-                  <p class="text-2xl font-bold text-green-700">{{ procesoStore.resultados.metadata.save_status.prefacturas_guardadas || 0 }}</p>
+                <div class="bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm p-4 rounded-xl text-center border border-white/30 dark:border-gray-600/30 shadow-lg hover:shadow-xl transition-all duration-300">
+                  <p class="text-xs text-gray-600 dark:text-gray-400 mb-1 transition-colors duration-300">Prefacturas Guardadas</p>
+                  <p class="text-2xl font-bold text-green-700 dark:text-green-400 transition-colors duration-300">{{ procesoStore.resultados.metadata.save_status.prefacturas_guardadas || 0 }}</p>
                 </div>
-                <div class="bg-white/80 backdrop-blur-sm p-4 rounded-xl text-center border border-white/30 shadow-lg hover:shadow-xl transition-all duration-300">
-                  <p class="text-xs text-gray-600 mb-1">Prefacturas Actualizadas</p>
-                  <p class="text-2xl font-bold text-green-700">{{ procesoStore.resultados.metadata.save_status.prefacturas_actualizadas || 0 }}</p>
+                <div class="bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm p-4 rounded-xl text-center border border-white/30 dark:border-gray-600/30 shadow-lg hover:shadow-xl transition-all duration-300">
+                  <p class="text-xs text-gray-600 dark:text-gray-400 mb-1 transition-colors duration-300">Prefacturas Actualizadas</p>
+                  <p class="text-2xl font-bold text-green-700 dark:text-green-400 transition-colors duration-300">{{ procesoStore.resultados.metadata.save_status.prefacturas_actualizadas || 0 }}</p>
                 </div>
-                <div class="bg-white/80 backdrop-blur-sm p-4 rounded-xl text-center border border-white/30 shadow-lg hover:shadow-xl transition-all duration-300">
-                  <p class="text-xs text-gray-600 mb-1">Total Detalles</p>
-                  <p class="text-2xl font-bold text-green-700">{{ procesoStore.resultados.metadata.save_status.total_detalles || 0 }}</p>
+                <div class="bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm p-4 rounded-xl text-center border border-white/30 dark:border-gray-600/30 shadow-lg hover:shadow-xl transition-all duration-300">
+                  <p class="text-xs text-gray-600 dark:text-gray-400 mb-1 transition-colors duration-300">Total Detalles</p>
+                  <p class="text-2xl font-bold text-green-700 dark:text-green-400 transition-colors duration-300">{{ procesoStore.resultados.metadata.save_status.total_detalles || 0 }}</p>
                 </div>
               </div>
             </div>
@@ -251,67 +219,38 @@
 
           <!-- Barra de progreso para Generar ODC desde Despachos -->
           <div v-if="generandoODC" 
-               class="bg-white/80 backdrop-blur-xl rounded-xl shadow-2xl p-4 border border-white/30 relative overflow-hidden transition-all duration-300">
-            <div class="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent pointer-events-none"></div>
-            
-            <!-- Efecto de ondas animadas (shimmer) -->
-            <div class="absolute inset-0 overflow-hidden pointer-events-none">
-              <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
-            </div>
-            
-            <!-- Partículas/puntos animados -->
-            <div class="absolute inset-0 pointer-events-none">
-              <div class="absolute top-2 left-1/4 w-2 h-2 bg-violet-400/60 rounded-full animate-bounce" style="animation-delay: 0s; animation-duration: 1s;"></div>
-              <div class="absolute top-2 left-1/2 w-2 h-2 bg-violet-500/60 rounded-full animate-bounce" style="animation-delay: 0.3s; animation-duration: 1s;"></div>
-              <div class="absolute top-2 left-3/4 w-2 h-2 bg-violet-600/60 rounded-full animate-bounce" style="animation-delay: 0.6s; animation-duration: 1s;"></div>
-            </div>
-            
-            <div class="flex items-center justify-between mb-2 relative z-10">
+               class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 border border-gray-200 dark:border-gray-700 transition-colors duration-300">
+            <div class="flex items-center justify-between mb-2">
               <div class="flex items-center gap-2">
-                <!-- Spinner animado -->
-                <div class="relative w-4 h-4">
-                  <svg class="animate-spin h-4 w-4 text-violet-600" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <div class="absolute inset-0 border-2 border-violet-300/30 rounded-full animate-ping"></div>
-                </div>
-                <span class="text-sm font-medium text-gray-700">Generando órdenes de compra</span>
+                <svg class="animate-spin h-4 w-4 text-violet-600 dark:text-violet-400" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Generando órdenes de compra</span>
               </div>
-              <span class="text-sm text-gray-500 font-semibold">{{ progresoGenerarODC }}%</span>
+              <span class="text-sm text-gray-500 dark:text-gray-400 font-semibold">{{ progresoGenerarODC }}%</span>
             </div>
-            <div class="w-full h-4 bg-gray-200/60 backdrop-blur-sm rounded-full overflow-hidden shadow-inner relative z-10">
+            <div class="w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
               <div
-                class="h-full bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500 transition-all duration-300 ease-out shadow-lg relative overflow-hidden"
+                class="h-full bg-violet-600 dark:bg-violet-500 transition-all duration-300"
                 :style="{ width: `${progresoGenerarODC}%` }"
-              >
-                <!-- Efecto shimmer sobre la barra de progreso -->
-                <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-shimmer"></div>
-                
-                <!-- Barra de progreso animada interna -->
-                <div class="absolute bottom-0 left-0 right-0 h-1 bg-white/30 overflow-hidden">
-                  <div class="h-full bg-gradient-to-r from-emerald-300 via-emerald-400 to-emerald-300 animate-progress-bar"></div>
-                </div>
-                
-                <!-- Efecto de pulso en la barra -->
-                <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"></div>
-              </div>
+              ></div>
             </div>
           </div>
 
           <!-- Tabla de Despachos -->
-          <div class="bg-white/80 backdrop-blur-xl rounded-xl shadow-2xl p-6 border border-white/30 relative overflow-hidden">
-            <div class="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent pointer-events-none"></div>
+          <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-xl shadow-2xl p-6 border border-white/30 dark:border-gray-600/30 relative overflow-hidden transition-colors duration-300">
+            <div class="absolute inset-0 bg-gradient-to-br from-white/20 dark:from-gray-700/20 via-transparent to-transparent pointer-events-none"></div>
             <div class="flex items-center justify-between mb-4 relative z-10">
               <div>
-                <h2 class="text-2xl font-bold text-gray-900">Despachos Disponibles</h2>
-                <p class="mt-1 text-sm text-gray-500">
+                <h2 class="text-2xl font-bold text-gray-900 dark:text-white transition-colors duration-300">Despachos Disponibles</h2>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400 transition-colors duration-300">
                   Despachos guardados en la base de datos ({{ despachosCount }} total)
                 </p>
               </div>
               <!-- Indicador de última actualización -->
-              <div v-if="lastRefreshTime" class="flex items-center gap-1.5 px-2.5 py-1 text-xs text-gray-500">
-                <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div v-if="lastRefreshTime" class="flex items-center gap-1.5 px-2.5 py-1 text-xs text-gray-500 dark:text-gray-400 transition-colors duration-300">
+                <svg class="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <span>{{ timeAgoDisplay }}</span>
@@ -327,7 +266,7 @@
               :loading="loadingDespachos"
               :total-despachos="despachosCount"
               :processing="generandoODC || (procesoStore.loading && procesoStore.currentStep === 'procesar-oc')"
-              :ordenes-compra="ordenesCompraStore.ordenesCompra"
+              :ordenes-compra="ordenesCompraParaDespachos"
               :initial-search="initialSearchDespacho"
               :current-page="currentPageDespachos"
               :page-size="pageSizeDespachos"
@@ -338,7 +277,7 @@
 
             <!-- Paginación -->
             <div v-if="totalPagesDespachos > 1 && !loadingDespachos" class="mt-4 flex items-center justify-between flex-wrap gap-4">
-              <div class="text-sm text-gray-700">
+              <div class="text-sm text-gray-700 dark:text-gray-300 transition-colors duration-300">
                 Mostrando página {{ currentPageDespachos }} de {{ totalPagesDespachos }}
                 ({{ filteredDespachosCount > 0 ? filteredDespachosCount : despachosCount }} despachos{{ filteredDespachosCount > 0 && filteredDespachosCount !== despachosCount ? ' filtrados' : '' }})
               </div>
@@ -346,17 +285,17 @@
                 <button
                   @click="prevPageDespachos"
                   :disabled="currentPageDespachos === 1 || loadingDespachos || (procesoStore.loading && procesoStore.currentStep === 'migrar')"
-                  class="px-4 py-2 border border-white/30 bg-white/60 backdrop-blur-sm rounded-xl hover:bg-white/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 text-sm font-medium shadow-md hover:shadow-lg"
+                  class="px-4 py-2 border border-white/30 dark:border-gray-600/30 bg-white/60 dark:bg-gray-700/60 backdrop-blur-sm rounded-xl hover:bg-white/80 dark:hover:bg-gray-600/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 text-sm font-medium shadow-md hover:shadow-lg"
                 >
                   Anterior
                 </button>
-                <span class="px-4 py-2 text-sm text-gray-700 bg-white/40 backdrop-blur-sm rounded-xl border border-white/20">
+                <span class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-white/40 dark:bg-gray-700/40 backdrop-blur-sm rounded-xl border border-white/20 dark:border-gray-600/20 transition-colors duration-300">
                   Página {{ currentPageDespachos }} de {{ totalPagesDespachos }}
                 </span>
                 <button
                   @click="nextPageDespachos"
                   :disabled="currentPageDespachos === totalPagesDespachos || loadingDespachos || (procesoStore.loading && procesoStore.currentStep === 'migrar')"
-                  class="px-4 py-2 border border-white/30 bg-white/60 backdrop-blur-sm rounded-xl hover:bg-white/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 text-sm font-medium shadow-md hover:shadow-lg"
+                  class="px-4 py-2 border border-white/30 dark:border-gray-600/30 bg-white/60 dark:bg-gray-700/60 backdrop-blur-sm rounded-xl hover:bg-white/80 dark:hover:bg-gray-600/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 text-sm font-medium shadow-md hover:shadow-lg"
                 >
                   Siguiente
                 </button>
@@ -370,15 +309,15 @@
       <template #tab-procesar-oc>
         <div class="space-y-6">
           <!-- Botón de acción y estado -->
-          <div class="flex items-center justify-between flex-wrap gap-4 p-6 rounded-xl border border-white/30 backdrop-blur-xl transition-all duration-300 relative overflow-hidden shadow-2xl"
+          <div class="flex items-center justify-between flex-wrap gap-4 p-6 rounded-xl border border-white/30 dark:border-gray-600/30 backdrop-blur-xl transition-all duration-300 relative overflow-hidden shadow-2xl"
             :class="getProcesoCardClass('procesar-oc')">
-            <div class="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent pointer-events-none"></div>
+            <div class="absolute inset-0 bg-gradient-to-br from-white/20 dark:from-gray-700/20 via-transparent to-transparent pointer-events-none"></div>
             <div class="flex items-center gap-4 relative z-10">
               <div 
                 class="w-14 h-14 rounded-full flex items-center justify-center shadow-xl backdrop-blur-md transition-all duration-300 border-2 relative overflow-hidden"
               :class="getProcesoIconClass('procesar-oc')"
             >
-              <div class="absolute inset-0 bg-gradient-to-br from-white/30 to-transparent"></div>
+              <div class="absolute inset-0 bg-gradient-to-br from-white/30 dark:from-gray-700/30 to-transparent"></div>
               <div class="relative z-10">
                 <span v-if="getStepStatus('procesar-oc') === 'active'" class="animate-spin">
                   <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -401,16 +340,16 @@
               </div>
               </div>
               <div class="relative z-10">
-                <h3 class="text-lg font-semibold mb-1">{{ getStepTitle('procesar-oc') }}</h3>
-                <p class="text-sm text-gray-600">{{ getStepDescription('procesar-oc') }}</p>
+                <h3 class="text-lg font-semibold mb-1 transition-colors duration-300">{{ getStepTitle('procesar-oc') }}</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-300 transition-colors duration-300">{{ getStepDescription('procesar-oc') }}</p>
               </div>
             </div>
           </div>
 
           <!-- Barra de progreso para Procesar ODC / Integrar SAP -->
           <div v-if="procesoStore.loading && (procesoStore.currentStep === 'procesar-oc' || procesoStore.currentStep === 'integrar-sap')" 
-               class="bg-white/80 backdrop-blur-xl rounded-xl shadow-2xl p-4 border border-white/30 relative overflow-hidden transition-all duration-300">
-            <div class="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent pointer-events-none"></div>
+               class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-xl shadow-2xl p-4 border border-white/30 dark:border-gray-600/30 relative overflow-hidden transition-all duration-300">
+            <div class="absolute inset-0 bg-gradient-to-br from-white/20 dark:from-gray-700/20 via-transparent to-transparent pointer-events-none"></div>
             
             <!-- Efecto de ondas animadas (shimmer) -->
             <div class="absolute inset-0 overflow-hidden pointer-events-none">
@@ -428,17 +367,17 @@
               <div class="flex items-center gap-2">
                 <!-- Spinner animado -->
                 <div class="relative w-4 h-4">
-                  <svg class="animate-spin h-4 w-4 text-indigo-600" fill="none" viewBox="0 0 24 24">
+                  <svg class="animate-spin h-4 w-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <div class="absolute inset-0 border-2 border-indigo-300/30 rounded-full animate-ping"></div>
+                  <div class="absolute inset-0 border-2 border-indigo-300/30 dark:border-indigo-500/30 rounded-full animate-ping"></div>
                 </div>
-                <span class="text-sm font-medium text-gray-700">Progreso del proceso</span>
+                <span class="text-sm font-medium text-gray-700 dark:text-gray-200 transition-colors duration-300">Progreso del proceso</span>
               </div>
-              <span class="text-sm text-gray-500 font-semibold">{{ procesoStore.progress }}%</span>
+              <span class="text-sm text-gray-500 dark:text-gray-400 font-semibold transition-colors duration-300">{{ procesoStore.progress }}%</span>
             </div>
-            <div class="w-full h-4 bg-gray-200/60 backdrop-blur-sm rounded-full overflow-hidden shadow-inner relative z-10">
+            <div class="w-full h-4 bg-gray-200/60 dark:bg-gray-700/60 backdrop-blur-sm rounded-full overflow-hidden shadow-inner relative z-10 transition-colors duration-300">
               <div
                 class="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 transition-all duration-300 ease-out shadow-lg relative overflow-hidden"
                 :style="{ width: `${procesoStore.progress}%` }"
@@ -459,8 +398,8 @@
 
           <!-- Barra de progreso para Eliminar ODC -->
           <div v-if="eliminando" 
-               class="flex items-center justify-between flex-wrap gap-4 p-6 rounded-xl border border-white/30 backdrop-blur-xl transition-all duration-300 relative overflow-hidden shadow-2xl border-emerald-300/50 bg-gradient-to-br from-emerald-100/80 to-emerald-200/60">
-            <div class="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent pointer-events-none"></div>
+               class="flex items-center justify-between flex-wrap gap-4 p-6 rounded-xl border border-emerald-300/50 dark:border-emerald-700/50 backdrop-blur-xl transition-all duration-300 relative overflow-hidden shadow-2xl bg-gradient-to-br from-emerald-100/80 dark:from-emerald-900/30 to-emerald-200/60 dark:to-emerald-800/40">
+            <div class="absolute inset-0 bg-gradient-to-br from-white/20 dark:from-gray-700/20 via-transparent to-transparent pointer-events-none"></div>
             
             <!-- Efecto de ondas animadas (shimmer) -->
             <div class="absolute inset-0 overflow-hidden pointer-events-none">
@@ -479,17 +418,17 @@
                 <div class="flex items-center gap-2">
                   <!-- Spinner animado -->
                   <div class="relative w-4 h-4">
-                    <svg class="animate-spin h-4 w-4 text-red-600" fill="none" viewBox="0 0 24 24">
-                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <div class="absolute inset-0 border-2 border-red-300/30 rounded-full animate-ping"></div>
-                  </div>
-                  <span class="text-sm font-medium text-gray-700">Eliminando órdenes de compra</span>
+                  <svg class="animate-spin h-4 w-4 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <div class="absolute inset-0 border-2 border-red-300/30 dark:border-red-500/30 rounded-full animate-ping"></div>
                 </div>
-                <span class="text-sm text-gray-500 font-semibold">{{ progresoEliminar }}%</span>
+                <span class="text-sm font-medium text-gray-700 dark:text-gray-200 transition-colors duration-300">Eliminando órdenes de compra</span>
               </div>
-              <div class="w-full h-4 bg-gray-200/60 backdrop-blur-sm rounded-full overflow-hidden shadow-inner">
+              <span class="text-sm text-gray-500 dark:text-gray-400 font-semibold transition-colors duration-300">{{ progresoEliminar }}%</span>
+            </div>
+            <div class="w-full h-4 bg-gray-200/60 dark:bg-gray-700/60 backdrop-blur-sm rounded-full overflow-hidden shadow-inner transition-colors duration-300">
                 <div
                   class="h-full bg-gradient-to-r from-red-500 via-red-600 to-red-700 transition-all duration-300 ease-out shadow-lg relative overflow-hidden"
                   :style="{ width: `${progresoEliminar}%` }"
@@ -510,12 +449,12 @@
           </div>
 
           <!-- Tabla de Órdenes de Compra (Todas) -->
-          <div class="bg-white/80 backdrop-blur-xl rounded-xl shadow-2xl p-6 border border-white/30 relative overflow-hidden">
-            <div class="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent pointer-events-none"></div>
+          <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-xl shadow-2xl p-6 border border-white/30 dark:border-gray-600/30 relative overflow-hidden transition-colors duration-300">
+            <div class="absolute inset-0 bg-gradient-to-br from-white/20 dark:from-gray-700/20 via-transparent to-transparent pointer-events-none"></div>
             <div class="flex items-center justify-between mb-4 relative z-10">
               <div>
-                <h2 class="text-2xl font-bold text-gray-900">Órdenes de Compra Generadas</h2>
-                <p class="mt-1 text-sm text-gray-500">
+                <h2 class="text-2xl font-bold text-gray-900 dark:text-white transition-colors duration-300">Órdenes de Compra Generadas</h2>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400 transition-colors duration-300">
                   Todas las órdenes de compra generadas (Pendientes, Enviadas y con Error)
                 </p>
               </div>
@@ -539,7 +478,7 @@
 
             <!-- Paginación -->
             <div v-if="totalPagesOC > 1 && !ordenesCompraStore.loading" class="mt-4 flex items-center justify-between flex-wrap gap-4">
-              <div class="text-sm text-gray-700">
+              <div class="text-sm text-gray-700 dark:text-gray-300 transition-colors duration-300">
                 Mostrando página {{ currentPageOC }} de {{ totalPagesOC }}
                 ({{ filteredOCCount > 0 ? filteredOCCount : ordenesCompraStore.total }} órdenes{{ filteredOCCount > 0 && filteredOCCount !== ordenesCompraStore.total ? ' filtradas' : '' }})
               </div>
@@ -547,17 +486,17 @@
                 <button
                   @click="prevPageOC"
                   :disabled="currentPageOC === 1 || ordenesCompraStore.loading || (procesoStore.loading && procesoStore.currentStep === 'migrar')"
-                  class="px-4 py-2 border border-white/30 bg-white/60 backdrop-blur-sm rounded-xl hover:bg-white/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 text-sm font-medium shadow-md hover:shadow-lg"
+                  class="px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 text-sm font-medium shadow-sm"
                 >
                   Anterior
                 </button>
-                <span class="px-4 py-2 text-sm text-gray-700 bg-white/40 backdrop-blur-sm rounded-xl border border-white/20">
+                <span class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600">
                   Página {{ currentPageOC }} de {{ totalPagesOC }}
                 </span>
                 <button
                   @click="nextPageOC"
                   :disabled="currentPageOC === totalPagesOC || ordenesCompraStore.loading || (procesoStore.loading && procesoStore.currentStep === 'migrar')"
-                  class="px-4 py-2 border border-white/30 bg-white/60 backdrop-blur-sm rounded-xl hover:bg-white/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 text-sm font-medium shadow-md hover:shadow-lg"
+                  class="px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 text-sm font-medium shadow-sm"
                 >
                   Siguiente
                 </button>
@@ -572,16 +511,16 @@
       <!-- Mensajes de error globales -->
       <div v-if="procesoStore.error" 
            :class="isConsultaMBA3Error(procesoStore.error) 
-             ? 'bg-yellow-100/80 backdrop-blur-xl border-l-4 border-yellow-500 p-4 rounded-xl shadow-xl relative overflow-hidden' 
-             : 'bg-red-100/80 backdrop-blur-xl border-l-4 border-red-500 p-4 rounded-xl shadow-xl relative overflow-hidden'">
+             ? 'bg-yellow-50 dark:bg-yellow-900/30 border-l-4 border-yellow-500 dark:border-yellow-600 p-4 rounded-lg shadow-md transition-colors duration-300' 
+             : 'bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 dark:border-red-600 p-4 rounded-lg shadow-md transition-colors duration-300'">
         <div :class="isConsultaMBA3Error(procesoStore.error)
           ? 'absolute inset-0 bg-gradient-to-br from-yellow-200/20 via-transparent to-transparent pointer-events-none'
           : 'absolute inset-0 bg-gradient-to-br from-red-200/20 via-transparent to-transparent pointer-events-none'"></div>
         <div class="flex relative z-10">
           <div class="ml-3">
             <p :class="isConsultaMBA3Error(procesoStore.error)
-              ? 'text-sm text-yellow-700 font-medium'
-              : 'text-sm text-red-700 font-medium'">
+              ? 'text-sm text-yellow-700 dark:text-yellow-300 font-medium transition-colors duration-300'
+              : 'text-sm text-red-700 dark:text-red-300 font-medium transition-colors duration-300'">
               <strong>{{ isConsultaMBA3Error(procesoStore.error) ? 'Reintentar:' : 'Error:' }}</strong> {{ procesoStore.error }}
             </p>
           </div>
@@ -725,6 +664,14 @@ const tabs = computed<Tab[]>(() => {
 const hayOrdenesCompra = computed(() => {
   const totalODCs = ordenesCompraStore.pendientes + ordenesCompraStore.enviadas + ordenesCompraStore.errores
   return totalODCs > 0
+})
+
+// Computed para transformar las órdenes de compra al formato esperado por DespachosTable
+const ordenesCompraParaDespachos = computed(() => {
+  return ordenesCompraStore.ordenesCompra.map(oc => ({
+    despacho_id: oc.despacho_id ?? undefined,
+    referencia_despacho: oc.referencia_despacho || undefined
+  }))
 })
 
 // Función para cambiar de pestaña
@@ -2009,27 +1956,27 @@ function getProcesoCardClass(step: string): string {
   const status = getStepStatus(step)
   
   const baseColors: Record<string, string> = {
-    'migrar': 'border-violet-200/50 bg-gradient-to-br from-violet-50/80 to-violet-100/60',
-    'procesar-oc': 'border-emerald-200/50 bg-gradient-to-br from-emerald-50/80 to-emerald-100/60'
+    'migrar': 'border-violet-200/50 dark:border-violet-700/50 bg-gradient-to-br from-violet-50/80 dark:from-violet-900/30 to-violet-100/60 dark:to-violet-800/40',
+    'procesar-oc': 'border-emerald-200/50 dark:border-emerald-700/50 bg-gradient-to-br from-emerald-50/80 dark:from-emerald-900/30 to-emerald-100/60 dark:to-emerald-800/40'
   }
   
-  const baseColor = baseColors[step] || 'border-gray-200/50 bg-gradient-to-br from-gray-50/80 to-gray-100/60'
+  const baseColor = baseColors[step] || 'border-gray-200/50 dark:border-gray-700/50 bg-gradient-to-br from-gray-50/80 dark:from-gray-800/80 to-gray-100/60 dark:to-gray-700/60'
   
-  if (status === 'retry') return 'border-yellow-300/50 bg-gradient-to-br from-yellow-50/80 to-yellow-100/60'
-  if (status === 'error') return 'border-red-300/50 bg-gradient-to-br from-red-50/80 to-red-100/60'
+  if (status === 'retry') return 'border-yellow-300/50 dark:border-yellow-700/50 bg-gradient-to-br from-yellow-50/80 dark:from-yellow-900/30 to-yellow-100/60 dark:to-yellow-800/40'
+  if (status === 'error') return 'border-red-300/50 dark:border-red-700/50 bg-gradient-to-br from-red-50/80 dark:from-red-900/30 to-red-100/60 dark:to-red-800/40'
   if (status === 'active') {
     const activeColors: Record<string, string> = {
-      'migrar': 'border-violet-300/60 bg-gradient-to-br from-violet-100/90 to-violet-200/70 shadow-2xl',
-      'procesar-oc': 'border-emerald-300/60 bg-gradient-to-br from-emerald-100/90 to-emerald-200/70 shadow-2xl'
+      'migrar': 'border-violet-300/60 dark:border-violet-600/60 bg-gradient-to-br from-violet-100/90 dark:from-violet-900/40 to-violet-200/70 dark:to-violet-800/50 shadow-2xl',
+      'procesar-oc': 'border-emerald-300/60 dark:border-emerald-600/60 bg-gradient-to-br from-emerald-100/90 dark:from-emerald-900/40 to-emerald-200/70 dark:to-emerald-800/50 shadow-2xl'
     }
-    return activeColors[step] || 'border-blue-300/60 bg-gradient-to-br from-blue-100/90 to-blue-200/70 shadow-xl'
+    return activeColors[step] || 'border-blue-300/60 dark:border-blue-600/60 bg-gradient-to-br from-blue-100/90 dark:from-blue-900/40 to-blue-200/70 dark:to-blue-800/50 shadow-xl'
   }
   if (status === 'completed') {
     const completedColors: Record<string, string> = {
-      'migrar': 'border-violet-300/50 bg-gradient-to-br from-violet-100/80 to-violet-200/60',
-      'procesar-oc': 'border-emerald-300/50 bg-gradient-to-br from-emerald-100/80 to-emerald-200/60'
+      'migrar': 'border-violet-300/50 dark:border-violet-600/50 bg-gradient-to-br from-violet-100/80 dark:from-violet-900/30 to-violet-200/60 dark:to-violet-800/40',
+      'procesar-oc': 'border-emerald-300/50 dark:border-emerald-600/50 bg-gradient-to-br from-emerald-100/80 dark:from-emerald-900/30 to-emerald-200/60 dark:to-emerald-800/40'
     }
-    return completedColors[step] || 'border-green-200/50 bg-gradient-to-br from-green-100/80 to-green-200/60'
+    return completedColors[step] || 'border-green-200/50 dark:border-green-700/50 bg-gradient-to-br from-green-100/80 dark:from-green-900/30 to-green-200/60 dark:to-green-800/40'
   }
   return baseColor
 }
@@ -2038,39 +1985,39 @@ function getProcesoIconClass(step: string): string {
   const status = getStepStatus(step)
   
   const pendingColors: Record<string, string> = {
-    'migrar': 'bg-gradient-to-br from-violet-200/90 to-violet-300/80 text-violet-700 border-violet-300/60',
-    'procesar-oc': 'bg-gradient-to-br from-emerald-200/90 to-emerald-300/80 text-emerald-700 border-emerald-300/60'
+    'migrar': 'bg-gradient-to-br from-violet-200/90 dark:from-violet-700/90 to-violet-300/80 dark:to-violet-600/80 text-violet-700 dark:text-violet-200 border-violet-300/60 dark:border-violet-600/60',
+    'procesar-oc': 'bg-gradient-to-br from-emerald-200/90 dark:from-emerald-700/90 to-emerald-300/80 dark:to-emerald-600/80 text-emerald-700 dark:text-emerald-200 border-emerald-300/60 dark:border-emerald-600/60'
   }
   
-  if (status === 'retry') return 'bg-gradient-to-br from-yellow-400/90 to-yellow-500/80 text-white border-yellow-500/60'
-  if (status === 'error') return 'bg-gradient-to-br from-red-400/90 to-red-500/80 text-white border-red-500/60'
+  if (status === 'retry') return 'bg-gradient-to-br from-yellow-400/90 dark:from-yellow-500/90 to-yellow-500/80 dark:to-yellow-600/80 text-white border-yellow-500/60 dark:border-yellow-600/60'
+  if (status === 'error') return 'bg-gradient-to-br from-red-400/90 dark:from-red-500/90 to-red-500/80 dark:to-red-600/80 text-white border-red-500/60 dark:border-red-600/60'
   if (status === 'active') {
     const activeColors: Record<string, string> = {
-      'migrar': 'bg-gradient-to-br from-violet-400/90 to-violet-500/80 text-white border-violet-500/60 animate-pulse shadow-lg shadow-violet-300/50',
-      'procesar-oc': 'bg-gradient-to-br from-emerald-400/90 to-emerald-500/80 text-white border-emerald-500/60 animate-pulse shadow-lg shadow-emerald-300/50'
+      'migrar': 'bg-gradient-to-br from-violet-400/90 dark:from-violet-500/90 to-violet-500/80 dark:to-violet-600/80 text-white border-violet-500/60 dark:border-violet-600/60 animate-pulse shadow-lg shadow-violet-300/50 dark:shadow-violet-900/50',
+      'procesar-oc': 'bg-gradient-to-br from-emerald-400/90 dark:from-emerald-500/90 to-emerald-500/80 dark:to-emerald-600/80 text-white border-emerald-500/60 dark:border-emerald-600/60 animate-pulse shadow-lg shadow-emerald-300/50 dark:shadow-emerald-900/50'
     }
-    return activeColors[step] || 'bg-gradient-to-br from-blue-400/90 to-blue-500/80 text-white border-blue-500/60 animate-pulse shadow-lg'
+    return activeColors[step] || 'bg-gradient-to-br from-blue-400/90 dark:from-blue-500/90 to-blue-500/80 dark:to-blue-600/80 text-white border-blue-500/60 dark:border-blue-600/60 animate-pulse shadow-lg'
   }
   if (status === 'completed') {
     const completedColors: Record<string, string> = {
-      'migrar': 'bg-gradient-to-br from-violet-500/90 to-violet-600/80 text-white border-violet-600/60 shadow-lg',
-      'procesar-oc': 'bg-gradient-to-br from-emerald-500/90 to-emerald-600/80 text-white border-emerald-600/60 shadow-lg'
+      'migrar': 'bg-gradient-to-br from-violet-500/90 dark:from-violet-600/90 to-violet-600/80 dark:to-violet-700/80 text-white border-violet-600/60 dark:border-violet-700/60 shadow-lg',
+      'procesar-oc': 'bg-gradient-to-br from-emerald-500/90 dark:from-emerald-600/90 to-emerald-600/80 dark:to-emerald-700/80 text-white border-emerald-600/60 dark:border-emerald-700/60 shadow-lg'
     }
-    return completedColors[step] || 'bg-gradient-to-br from-green-400/90 to-green-500/80 text-white border-green-500/60 shadow-lg'
+    return completedColors[step] || 'bg-gradient-to-br from-green-400/90 dark:from-green-500/90 to-green-500/80 dark:to-green-600/80 text-white border-green-500/60 dark:border-green-600/60 shadow-lg'
   }
-  return pendingColors[step] || 'bg-gradient-to-br from-gray-200/90 to-gray-300/80 text-gray-500 border-gray-300/60'
+  return pendingColors[step] || 'bg-gradient-to-br from-gray-200/90 dark:from-gray-700/90 to-gray-300/80 dark:to-gray-600/80 text-gray-500 dark:text-gray-400 border-gray-300/60 dark:border-gray-600/60'
 }
 
 function getProcesoOverlayClass(step: string): string {
   const status = getStepStatus(step)
   
   if (status === 'retry') {
-    return 'bg-gradient-to-br from-yellow-100/30 via-transparent to-transparent'
+    return 'bg-gradient-to-br from-yellow-100/30 dark:from-yellow-900/20 via-transparent to-transparent'
   }
   if (status === 'error') {
-    return 'bg-gradient-to-br from-red-100/30 via-transparent to-transparent'
+    return 'bg-gradient-to-br from-red-100/30 dark:from-red-900/20 via-transparent to-transparent'
   }
-  return 'bg-gradient-to-br from-white/20 via-transparent to-transparent'
+  return 'bg-gradient-to-br from-white/20 dark:from-gray-700/20 via-transparent to-transparent'
 }
 
 function getButtonClass(step: string): string {
@@ -2083,10 +2030,10 @@ function getButtonClass(step: string): string {
   
   if (status === 'completed') {
     const completedColors: Record<string, string> = {
-      'migrar': 'bg-gradient-to-r from-violet-200/90 to-violet-300/80 text-violet-800 hover:from-violet-300 hover:to-violet-400 border border-violet-300/50',
-      'procesar-oc': 'bg-gradient-to-r from-emerald-200/90 to-emerald-300/80 text-emerald-800 hover:from-emerald-300 hover:to-emerald-400 border border-emerald-300/50'
+      'migrar': 'bg-gradient-to-r from-violet-200/90 dark:from-violet-700/90 to-violet-300/80 dark:to-violet-600/80 text-violet-800 dark:text-violet-200 hover:from-violet-300 dark:hover:from-violet-600 hover:to-violet-400 dark:hover:to-violet-500 border border-violet-300/50 dark:border-violet-600/50',
+      'procesar-oc': 'bg-gradient-to-r from-emerald-200/90 dark:from-emerald-700/90 to-emerald-300/80 dark:to-emerald-600/80 text-emerald-800 dark:text-emerald-200 hover:from-emerald-300 dark:hover:from-emerald-600 hover:to-emerald-400 dark:hover:to-emerald-500 border border-emerald-300/50 dark:border-emerald-600/50'
     }
-    return completedColors[step] || 'bg-gradient-to-r from-green-100/90 to-green-200/80 text-green-800 hover:from-green-200 hover:to-green-300 border border-green-300/50'
+    return completedColors[step] || 'bg-gradient-to-r from-green-100/90 dark:from-green-700/90 to-green-200/80 dark:to-green-600/80 text-green-800 dark:text-green-200 hover:from-green-200 dark:hover:from-green-600 hover:to-green-300 dark:hover:to-green-500 border border-green-300/50 dark:border-green-600/50'
   }
   if (status === 'active') {
     const activeColors: Record<string, string> = {
@@ -2142,35 +2089,5 @@ function getStepStatusTextClass(step: string): string {
 </script>
 
 <style scoped>
-@keyframes shimmer {
-  0% {
-    transform: translateX(-100%) skewX(-15deg);
-  }
-  100% {
-    transform: translateX(200%) skewX(-15deg);
-  }
-}
-
-@keyframes progress-bar {
-  0% {
-    transform: translateX(-100%);
-    width: 0%;
-  }
-  50% {
-    transform: translateX(0%);
-    width: 100%;
-  }
-  100% {
-    transform: translateX(100%);
-    width: 0%;
-  }
-}
-
-.animate-shimmer {
-  animation: shimmer 2s infinite;
-}
-
-.animate-progress-bar {
-  animation: progress-bar 1.5s ease-in-out infinite;
-}
+/* Estilos simplificados - efectos pesados removidos para mejor rendimiento */
 </style>

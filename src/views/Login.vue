@@ -1,15 +1,25 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gray-100">
-    <div class="max-w-md w-full bg-white rounded-lg shadow-md p-8">
+  <div class="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 transition-colors duration-300 relative">
+    <!-- Theme Toggle Button -->
+    <button
+      @click="themeStore.toggleTheme()"
+      class="absolute top-4 right-4 p-3 rounded-lg bg-white dark:bg-gray-800 shadow-md hover:shadow-lg transition-all duration-200 group"
+      :title="themeStore.isDark ? 'Modo Claro' : 'Modo Oscuro'"
+    >
+      <SunIcon v-if="themeStore.isDark" class="h-6 w-6 text-yellow-400 group-hover:scale-110 transition-transform" />
+      <MoonIcon v-else class="h-6 w-6 text-gray-600 group-hover:scale-110 transition-transform" />
+    </button>
+
+    <div class="max-w-md w-full bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-gray-900/50 p-8 transition-colors duration-300">
       <div class="text-center mb-8">
-        <h1 class="text-3xl font-bold text-gray-900">{{ appName }}</h1>
-        <p class="text-gray-600 mt-2">Iniciar Sesión</p>
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{{ appName }}</h1>
+        <p class="text-gray-600 dark:text-gray-400 mt-2">Iniciar Sesión</p>
       </div>
 
       <form @submit.prevent="handleLogin" class="space-y-6">
         <!-- Username -->
         <div>
-          <label for="username" class="block text-sm font-medium text-gray-700">
+          <label for="username" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
             Usuario
           </label>
           <input
@@ -17,14 +27,14 @@
             v-model="form.username"
             type="text"
             required
-            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+            class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors duration-300"
             placeholder="admin"
           />
         </div>
 
         <!-- Password -->
         <div>
-          <label for="password" class="block text-sm font-medium text-gray-700">
+          <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
             Contraseña
           </label>
           <input
@@ -32,7 +42,7 @@
             v-model="form.password"
             type="password"
             required
-            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+            class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors duration-300"
             placeholder="••••••••"
           />
         </div>
@@ -43,15 +53,15 @@
             id="useAD"
             v-model="form.useActiveDirectory"
             type="checkbox"
-            class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+            class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700"
           />
-          <label for="useAD" class="ml-2 block text-sm text-gray-900">
+          <label for="useAD" class="ml-2 block text-sm text-gray-900 dark:text-gray-300">
             Usar Active Directory
           </label>
         </div>
 
         <!-- Error Message -->
-        <div v-if="authStore.error" class="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded">
+        <div v-if="authStore.error" class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300 px-4 py-3 rounded">
           {{ authStore.error }}
         </div>
 
@@ -59,7 +69,7 @@
         <button
           type="submit"
           :disabled="authStore.loading"
-          class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+          class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 transition-colors duration-300"
         >
           <span v-if="!authStore.loading">Iniciar Sesión</span>
           <span v-else class="flex items-center">
@@ -78,9 +88,12 @@
 <script setup>
 import { reactive } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { useThemeStore } from '@/stores/theme'
+import { SunIcon, MoonIcon } from '@heroicons/vue/24/outline'
 
 const appName = import.meta.env.VITE_APP_NAME
 const authStore = useAuthStore()
+const themeStore = useThemeStore()
 
 const form = reactive({
   username: '',

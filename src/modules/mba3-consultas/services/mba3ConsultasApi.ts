@@ -34,7 +34,7 @@ mba3Api.interceptors.request.use(
     }
     
     // Si es FormData, eliminar Content-Type para que axios lo establezca automáticamente con boundary
-    if (config.data instanceof FormData) {
+    if (config.data instanceof FormData && config.headers) {
       delete config.headers['Content-Type']
     }
     
@@ -230,7 +230,7 @@ export const mba3ConsultasService = {
     
     const queryString = params.toString()
     const url = queryString ? `/integrar-sap?${queryString}` : '/integrar-sap'
-    const response = await mba3Api.post(url)
+    const response = await mba3Api.post<IntegracionSAPResponse>(url)
     return response.data
   },
 
@@ -890,6 +890,15 @@ export const mba3ConsultasService = {
       let hasBackendMessage = false
       
       if (error.response?.data) {
+        // Manejar business_exception (nuevo tipo de error)
+        if (error.response.data.type === 'business_exception') {
+          hasBackendMessage = true
+          message = error.response.data.error || error.response.data.message || 'No se puede procesar: productos no válidos en SAP'
+          // Preservar información adicional para mejor manejo
+          ;(error as any).isBusinessException = true
+          ;(error as any).businessError = error.response.data.error
+        }
+        
         // FastAPI puede retornar detail como string, array, o objeto
         const detail = error.response.data.detail
         
@@ -915,10 +924,10 @@ export const mba3ConsultasService = {
             // Intentar convertir a string
             message = String(detail)
           }
-        } else if (error.response.data.message) {
+        } else if (error.response.data.message && !hasBackendMessage) {
           hasBackendMessage = true
           message = error.response.data.message
-        } else if (error.response.data.error) {
+        } else if (error.response.data.error && !hasBackendMessage) {
           hasBackendMessage = true
           message = error.response.data.error
         }
@@ -1009,7 +1018,7 @@ export const mba3ConsultasService = {
    */
   async exportarPedidoParaProveedor(numeroPedido: string): Promise<Blob> {
     try {
-      const response = await mba3Api.get(`/api/pedidos/${encodeURIComponent(numeroPedido)}/exportar-para-proveedor`, {
+      const response = await mba3Api.get<Blob>(`/api/pedidos/${encodeURIComponent(numeroPedido)}/exportar-para-proveedor`, {
         responseType: 'blob',
       })
       return response.data

@@ -1,10 +1,7 @@
 <template>
-  <div class="bg-white/80 backdrop-blur-xl rounded-xl shadow-2xl border border-white/20 overflow-hidden relative">
-    <!-- Efecto de brillo sutil en el fondo -->
-    <div class="absolute inset-0 bg-gradient-to-br from-white/40 via-transparent to-transparent pointer-events-none"></div>
-    
-    <!-- Pestañas tipo carpeta con efecto Liquid Glass -->
-    <div class="flex border-b border-white/30 bg-gradient-to-b from-white/30 to-white/10 backdrop-blur-md relative">
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden">
+    <!-- Pestañas -->
+    <div class="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
       <button
         v-for="(tab, index) in tabs"
         :key="tab.id"
@@ -47,7 +44,7 @@
     <!-- Contenido de las pestañas -->
     <div class="p-6">
       <slot :name="`tab-${activeTab}`" :tab="activeTab">
-        <div class="text-center py-12 text-gray-500">
+        <div class="text-center py-12 text-gray-500 dark:text-gray-400">
           No hay contenido disponible
         </div>
       </slot>
@@ -92,110 +89,49 @@ function getTabClass(tab: Tab, index: number): string {
   const isActive = activeTab.value === tab.id
   
   if (isActive) {
-    // Pestaña activa: efecto Liquid Glass con gradiente y brillo
+    // Pestaña activa
     const colorClasses: Record<string, string> = {
-      violet: 'bg-gradient-to-b from-violet-100/80 to-violet-50/60 text-violet-700 backdrop-blur-sm border-l-4 border-violet-400/80 shadow-lg shadow-violet-200/50',
-      emerald: 'bg-gradient-to-b from-emerald-100/80 to-emerald-50/60 text-emerald-700 backdrop-blur-sm border-l-4 border-emerald-400/80 shadow-lg shadow-emerald-200/50',
-      rose: 'bg-gradient-to-b from-rose-100/80 to-rose-50/60 text-rose-700 backdrop-blur-sm border-l-4 border-rose-400/80 shadow-lg shadow-rose-200/50',
-      default: 'bg-gradient-to-b from-gray-100/80 to-gray-50/60 text-gray-700 backdrop-blur-sm border-l-4 border-gray-400/80 shadow-lg shadow-gray-200/50'
+      violet: 'bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 border-l-4 border-violet-500 dark:border-violet-400',
+      emerald: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 border-l-4 border-emerald-500 dark:border-emerald-400',
+      rose: 'bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300 border-l-4 border-rose-500 dark:border-rose-400',
+      default: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-l-4 border-gray-500 dark:border-gray-400'
     }
-    return `${colorClasses[tab.color || 'default']} rounded-tl-xl rounded-tr-xl relative z-10`
+    return `${colorClasses[tab.color || 'default']} rounded-t-lg`
   }
   
-  // Pestaña inactiva: efecto glass sutil con hover mejorado
-  return 'text-gray-600/80 hover:text-gray-900 hover:bg-white/40 backdrop-blur-sm transition-all duration-300 hover:shadow-md hover:shadow-gray-200/30'
+  // Pestaña inactiva
+  return 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200'
 }
 
 function getActiveIndicatorClass(tab: Tab): string {
   const colorClasses: Record<string, string> = {
-    violet: 'bg-gradient-to-r from-violet-400 via-violet-500 to-violet-400',
-    emerald: 'bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400',
-    rose: 'bg-gradient-to-r from-rose-400 via-rose-500 to-rose-400',
-    default: 'bg-gradient-to-r from-gray-400 via-gray-500 to-gray-400'
+    violet: 'bg-violet-500',
+    emerald: 'bg-emerald-500',
+    rose: 'bg-rose-500',
+    default: 'bg-gray-500'
   }
   return colorClasses[tab.color || 'default']
 }
 
 function getHoverGlowClass(tab: Tab): string {
-  const colorClasses: Record<string, string> = {
-    violet: 'bg-gradient-to-br from-violet-200/30 to-transparent',
-    emerald: 'bg-gradient-to-br from-emerald-200/30 to-transparent',
-    rose: 'bg-gradient-to-br from-rose-200/30 to-transparent',
-    default: 'bg-gradient-to-br from-gray-200/30 to-transparent'
-  }
-  return colorClasses[tab.color || 'default']
+  return ''
 }
 
 function getBadgeClass(tab: Tab): string {
   const colorClasses: Record<string, string> = {
-    violet: 'bg-violet-200/80 backdrop-blur-sm text-violet-700 border border-violet-300/50 shadow-sm',
-    emerald: 'bg-emerald-200/80 backdrop-blur-sm text-emerald-700 border border-emerald-300/50 shadow-sm',
-    rose: 'bg-rose-200/80 backdrop-blur-sm text-rose-700 border border-rose-300/50 shadow-sm',
-    default: 'bg-gray-200/80 backdrop-blur-sm text-gray-700 border border-gray-300/50 shadow-sm'
+    violet: 'bg-violet-200 dark:bg-violet-800 text-violet-700 dark:text-violet-300 border border-violet-300 dark:border-violet-600',
+    emerald: 'bg-emerald-200 dark:bg-emerald-800 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-600',
+    rose: 'bg-rose-200 dark:bg-rose-800 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-600',
+    default: 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600'
   }
   return colorClasses[tab.color || 'default']
 }
 
 function getConnectorClass(tab: Tab): string {
-  const colorClasses: Record<string, string> = {
-    violet: 'bg-violet-50/40 backdrop-blur-sm',
-    emerald: 'bg-emerald-50/40 backdrop-blur-sm',
-    rose: 'bg-rose-50/40 backdrop-blur-sm',
-    default: 'bg-gray-50/40 backdrop-blur-sm'
-  }
-  return colorClasses[tab.color || 'default']
+  return ''
 }
 </script>
 
 <style scoped>
-/* Efecto Liquid Glass mejorado */
-button:has(.absolute.bottom-0) {
-  position: relative;
-  z-index: 1;
-}
-
-/* Animación suave para el brillo */
-@keyframes shimmer {
-  0% {
-    background-position: -1000px 0;
-  }
-  100% {
-    background-position: 1000px 0;
-  }
-}
-
-/* Efecto de brillo animado en pestañas activas */
-button.group::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.4),
-    transparent
-  );
-  transition: left 0.5s;
-}
-
-button.group:hover::before {
-  left: 100%;
-}
-
-/* Mejora de transiciones */
-button {
-  position: relative;
-  overflow: hidden;
-}
-
-/* Efecto de profundidad con múltiples sombras */
-.bg-white\/80 {
-  box-shadow: 
-    0 8px 32px rgba(0, 0, 0, 0.1),
-    0 2px 8px rgba(0, 0, 0, 0.05),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
-}
+/* Estilos simplificados */
 </style>

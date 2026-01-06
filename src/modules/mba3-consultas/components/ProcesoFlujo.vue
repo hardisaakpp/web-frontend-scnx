@@ -1,5 +1,5 @@
 <template>
-  <div class="bg-white rounded-lg shadow p-8 border border-gray-200 mb-6">
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-8 border border-gray-200 dark:border-gray-700 mb-6 transition-colors duration-300">
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
       <div 
         v-for="(step, index) in getSteps()" 
@@ -22,9 +22,9 @@
       </div>
     </div>
 
-    <div v-if="progress > 0" class="w-full h-2 bg-gray-100 rounded-full overflow-hidden border border-gray-200">
+    <div v-if="progress > 0" class="w-full h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden border border-gray-200 dark:border-gray-600 transition-colors duration-300">
       <div 
-        class="h-full bg-gradient-to-r from-indigo-600 to-indigo-700 transition-all duration-300 ease-out"
+        class="h-full bg-gradient-to-r from-indigo-600 to-indigo-700 dark:from-indigo-500 dark:to-indigo-600 transition-all duration-300 ease-out"
         :style="{ width: `${progress}%` }"
       ></div>
     </div>
@@ -84,28 +84,28 @@ function getSteps(): Step[] {
 }
 
 function getStepClasses(status: 'pending' | 'active' | 'completed'): string {
-  const baseClasses = 'border'
-  if (status === 'pending') return `${baseClasses} bg-gray-50 border-gray-200`
-  if (status === 'active') return `${baseClasses} bg-indigo-50 border-indigo-300 shadow-lg scale-105`
-  return `${baseClasses} bg-green-50 border-green-200`
+  const baseClasses = 'border transition-colors duration-300'
+  if (status === 'pending') return `${baseClasses} bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600`
+  if (status === 'active') return `${baseClasses} bg-indigo-50 dark:bg-indigo-900/30 border-indigo-300 dark:border-indigo-600 shadow-lg scale-105`
+  return `${baseClasses} bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-700`
 }
 
 function getIconClasses(status: 'pending' | 'active' | 'completed'): string {
-  if (status === 'pending') return 'bg-gray-100 text-gray-400 border-gray-200'
-  if (status === 'active') return 'bg-indigo-600 text-white border-indigo-700'
-  return 'bg-green-600 text-white border-green-700'
+  if (status === 'pending') return 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 border-gray-200 dark:border-gray-600 transition-colors duration-300'
+  if (status === 'active') return 'bg-indigo-600 dark:bg-indigo-500 text-white border-indigo-700 dark:border-indigo-600 transition-colors duration-300'
+  return 'bg-green-600 dark:bg-green-500 text-white border-green-700 dark:border-green-600 transition-colors duration-300'
 }
 
 function getTitleClasses(status: 'pending' | 'active' | 'completed'): string {
-  if (status === 'pending') return 'text-gray-400'
-  if (status === 'active') return 'text-indigo-700'
-  return 'text-green-700'
+  if (status === 'pending') return 'text-gray-400 dark:text-gray-500 transition-colors duration-300'
+  if (status === 'active') return 'text-indigo-700 dark:text-indigo-300 transition-colors duration-300'
+  return 'text-green-700 dark:text-green-300 transition-colors duration-300'
 }
 
 function getDescriptionClasses(status: 'pending' | 'active' | 'completed'): string {
-  if (status === 'pending') return 'text-gray-500'
-  if (status === 'active') return 'text-indigo-600'
-  return 'text-green-600'
+  if (status === 'pending') return 'text-gray-500 dark:text-gray-400 transition-colors duration-300'
+  if (status === 'active') return 'text-indigo-600 dark:text-indigo-400 transition-colors duration-300'
+  return 'text-green-600 dark:text-green-400 transition-colors duration-300'
 }
 </script>
 

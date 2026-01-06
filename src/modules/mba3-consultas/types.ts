@@ -681,6 +681,23 @@ export interface ValidacionCompleta {
   cantidades: ValidacionCantidades
 }
 
+// Validación SAP (nuevo campo opcional en respuesta)
+export interface ValidacionSAP {
+  total_codigos: number
+  validos: number
+  no_encontrados: number
+  errores: number
+  warnings: number
+  todos_validos: boolean
+  detalle_validacion?: {
+    [codigo: string]: {
+      encontrado: boolean
+      mensaje?: string
+      tipo?: 'ERROR' | 'WARNING'
+    }
+  }
+}
+
 export interface Consolidacion {
   total_productos: number
   cantidad_total: number
@@ -695,8 +712,14 @@ export interface UploadPlantillaResponse {
   articulos_cargados: number
   distribuciones_cargadas: number
   validacion?: ValidacionCompleta
+  validacion_sap?: ValidacionSAP  // ⭐ NUEVO - Validación SAP (opcional)
   consolidacion?: Consolidacion
-  errores?: string[]
+  errores?: Array<string | {  // ⭐ ACTUALIZADO - Ahora puede ser string o objeto con detalles
+    tipo: 'ERROR' | 'WARNING'
+    campo?: string
+    mensaje: string
+    producto?: string
+  }>
   file_info?: {
     filename: string
     size_mb: number

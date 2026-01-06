@@ -3,30 +3,30 @@
     <!-- Header -->
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-3xl font-bold text-gray-900">Gestión de Usuarios</h1>
-        <p class="mt-1 text-sm text-gray-500">Administra usuarios, roles y permisos</p>
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Gestión de Usuarios</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Administra usuarios, roles y permisos</p>
       </div>
       <button 
         @click="openCreateModal"
-        class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+        class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-lg transition-colors"
       >
         + Nuevo Usuario
       </button>
     </div>
 
     <!-- Filtros -->
-    <div class="bg-white rounded-lg shadow p-4">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 transition-colors duration-300">
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <input
           v-model="search"
           type="text"
           placeholder="Buscar por nombre o email..."
-          class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+          class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           @input="handleSearch"
         />
         <select
           v-model="roleFilter"
-          class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+          class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           @change="handleSearch"
         >
           <option value="">Todos los roles</option>
@@ -36,7 +36,7 @@
         </select>
         <select
           v-model="activeFilter"
-          class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+          class="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           @change="handleSearch"
         >
           <option value="">Todos</option>
@@ -47,7 +47,7 @@
     </div>
 
     <!-- Tabla de usuarios -->
-    <div class="bg-white rounded-lg shadow overflow-hidden">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden transition-colors duration-300">
       <div v-if="store.loading" class="text-center py-12">
         <p class="text-gray-500">Cargando usuarios...</p>
       </div>

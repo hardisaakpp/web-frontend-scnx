@@ -13,7 +13,7 @@
         <div
           v-for="toast in toasts"
           :key="toast.id"
-          class="pointer-events-auto bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden animate-slide-in-right"
+          class="pointer-events-auto bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden animate-slide-in-right transition-colors duration-300"
           :class="getToastClasses(toast.type)"
         >
           <div class="flex items-start p-4">
@@ -46,7 +46,7 @@
             <!-- Close Button -->
             <button
               @click="removeToast(toast.id)"
-              class="ml-4 flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
+              class="ml-4 flex-shrink-0 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
               aria-label="Cerrar notificación"
             >
               <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -56,7 +56,7 @@
           </div>
           
           <!-- Progress Bar -->
-          <div v-if="toast.duration && toast.duration > 0" class="h-1 bg-gray-200">
+          <div v-if="toast.duration && toast.duration > 0" class="h-1 bg-gray-200 dark:bg-gray-700">
             <div
               class="h-full transition-all ease-linear"
               :class="getProgressBarClasses(toast.type)"
@@ -99,50 +99,50 @@ function getIcon(type: Toast['type']) {
 
 function getToastClasses(type: Toast['type']): string {
   const classes = {
-    success: 'border-green-200 bg-green-50',
-    error: 'border-red-200 bg-red-50',
-    info: 'border-blue-200 bg-blue-50',
-    warning: 'border-yellow-200 bg-yellow-50',
+    success: 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/30',
+    error: 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30',
+    info: 'border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/30',
+    warning: 'border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/30',
   }
   return classes[type]
 }
 
 function getIconClasses(type: Toast['type']): string {
   const classes = {
-    success: 'text-green-600',
-    error: 'text-red-600',
-    info: 'text-blue-600',
-    warning: 'text-yellow-600',
+    success: 'text-green-600 dark:text-green-400',
+    error: 'text-red-600 dark:text-red-400',
+    info: 'text-blue-600 dark:text-blue-400',
+    warning: 'text-yellow-600 dark:text-yellow-400',
   }
   return classes[type]
 }
 
 function getTitleClasses(type: Toast['type']): string {
   const classes = {
-    success: 'text-green-800',
-    error: 'text-red-800',
-    info: 'text-blue-800',
-    warning: 'text-yellow-800',
+    success: 'text-green-800 dark:text-green-200',
+    error: 'text-red-800 dark:text-red-200',
+    info: 'text-blue-800 dark:text-blue-200',
+    warning: 'text-yellow-800 dark:text-yellow-200',
   }
   return classes[type]
 }
 
 function getMessageClasses(type: Toast['type']): string {
   const classes = {
-    success: 'text-green-700',
-    error: 'text-red-700',
-    info: 'text-blue-700',
-    warning: 'text-yellow-700',
+    success: 'text-green-700 dark:text-green-300',
+    error: 'text-red-700 dark:text-red-300',
+    info: 'text-blue-700 dark:text-blue-300',
+    warning: 'text-yellow-700 dark:text-yellow-300',
   }
   return classes[type]
 }
 
 function getActionClasses(type: Toast['type']): string {
   const classes = {
-    success: 'text-green-700 hover:text-green-800',
-    error: 'text-red-700 hover:text-red-800',
-    info: 'text-blue-700 hover:text-blue-800',
-    warning: 'text-yellow-700 hover:text-yellow-800',
+    success: 'text-green-700 dark:text-green-300 hover:text-green-800 dark:hover:text-green-200',
+    error: 'text-red-700 dark:text-red-300 hover:text-red-800 dark:hover:text-red-200',
+    info: 'text-blue-700 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200',
+    warning: 'text-yellow-700 dark:text-yellow-300 hover:text-yellow-800 dark:hover:text-yellow-200',
   }
   return classes[type]
 }

@@ -1,11 +1,11 @@
 <template>
-  <div class="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden border border-gray-200 dark:border-gray-700 transition-colors duration-300">
     <!-- Header con búsqueda y acciones -->
-    <div class="px-6 py-4 border-b border-gray-200">
+    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 transition-colors duration-300">
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <!-- Título y contador -->
         <div class="flex items-center gap-3">
-          <h2 class="text-lg font-semibold text-gray-900">Órdenes de Compra</h2>
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white transition-colors duration-300">Órdenes de Compra</h2>
           <span class="px-3 py-1 bg-emerald-600 text-white rounded-full text-sm font-medium">
             {{ (props.currentPage !== undefined && props.pageSize !== undefined && props.currentPage > 0 && props.pageSize > 0)
               ? `${sortedOrdenes.length} de ${filteredOrdenes.length} (${totalOrdenes || 0} total)` 
@@ -76,7 +76,7 @@
               v-model="searchQuery"
               type="text"
               placeholder="Buscar en todos los campos..."
-              class="block w-full pl-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
+              class="block w-full pl-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors duration-300"
               :class="searchQuery ? 'pr-10' : 'pr-3'"
             />
             <button
@@ -96,7 +96,7 @@
         <div class="flex items-center gap-2">
           <button
             @click="showAdvancedFilters = !showAdvancedFilters"
-            class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium flex items-center gap-2"
+            class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium flex items-center gap-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
@@ -106,7 +106,7 @@
           
           <button
             @click="showColumnSelector = !showColumnSelector"
-            class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium flex items-center gap-2 relative"
+            class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium flex items-center gap-2 relative bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -121,9 +121,9 @@
       </div>
       
       <!-- Selector de Columnas -->
-      <div v-if="showColumnSelector" class="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+      <div v-if="showColumnSelector" class="mt-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600 transition-colors duration-300">
         <div class="flex items-center justify-between mb-3">
-          <h3 class="text-sm font-semibold text-gray-700">Seleccionar Columnas</h3>
+          <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 transition-colors duration-300">Seleccionar Columnas</h3>
           <div class="flex items-center gap-2">
             <button
               @click="selectAllColumns"
@@ -144,52 +144,52 @@
           <label
             v-for="column in availableColumns"
             :key="column.key"
-            class="flex items-center gap-2 p-2 rounded-lg hover:bg-white transition-colors cursor-pointer"
+            class="flex items-center gap-2 p-2 rounded-lg hover:bg-white dark:hover:bg-gray-600 transition-colors cursor-pointer"
           >
             <input
               type="checkbox"
               v-model="visibleColumns"
               :value="column.key"
-              class="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
+              class="w-4 h-4 text-emerald-600 border-gray-300 dark:border-gray-600 rounded focus:ring-emerald-500"
             />
-            <span class="text-sm text-gray-700">{{ column.label }}</span>
+            <span class="text-sm text-gray-700 dark:text-gray-200 transition-colors duration-300">{{ column.label }}</span>
           </label>
         </div>
       </div>
       
       <!-- Filtros avanzados -->
-      <div v-if="showAdvancedFilters" class="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+      <div v-if="showAdvancedFilters" class="mt-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600 transition-colors duration-300">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Fecha desde</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1 transition-colors duration-300">Fecha desde</label>
             <input
               v-model="filtroFechaDesde"
               type="date"
-              class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+              class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-300"
             />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Fecha hasta</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1 transition-colors duration-300">Fecha hasta</label>
             <input
               v-model="filtroFechaHasta"
               type="date"
-              class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+              class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-300"
             />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Número ODC SAP</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1 transition-colors duration-300">Número ODC SAP</label>
             <input
               v-model="filtroNumeroOC"
               type="text"
               placeholder="Buscar por número ODC SAP"
-              class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+              class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors duration-300"
             />
           </div>
         </div>
         <div class="mt-4 flex justify-end gap-2">
           <button
             @click="limpiarFiltros"
-            class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-300"
           >
             Limpiar filtros
           </button>
@@ -198,16 +198,16 @@
     </div>
 
     <!-- Tabla -->
-    <div v-if="filteredOrdenes.length === 0" class="text-center py-12 text-gray-500">
-      <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div v-if="filteredOrdenes.length === 0" class="text-center py-12 text-gray-500 dark:text-gray-400 transition-colors duration-300">
+      <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
       </svg>
       <p class="mt-2 text-sm">{{ searchQuery ? 'No se encontraron órdenes con los filtros aplicados' : 'No se encontraron órdenes de compra' }}</p>
     </div>
 
     <div v-else class="overflow-x-auto">
-      <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50">
+      <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+        <thead class="bg-gray-50 dark:bg-gray-700/50 transition-colors duration-300">
           <tr>
             <th class="px-6 py-3 text-left">
               <input
@@ -230,10 +230,10 @@
               @drop="handleDrop($event, columnKey)"
               @dragend="handleDragEnd"
               :class="[
-                'px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-grab',
-                isColumnSortable(columnKey) ? 'hover:bg-gray-100' : 'hover:bg-gray-50',
+                'px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-grab transition-colors duration-300',
+                isColumnSortable(columnKey) ? 'hover:bg-gray-100 dark:hover:bg-gray-600' : 'hover:bg-gray-50 dark:hover:bg-gray-700',
                 draggedColumn === columnKey ? 'opacity-50 cursor-grabbing' : '',
-                dragOverColumn === columnKey && draggedColumn !== columnKey ? 'bg-emerald-100 border-l-4 border-emerald-500' : ''
+                dragOverColumn === columnKey && draggedColumn !== columnKey ? 'bg-emerald-100 dark:bg-emerald-900/30 border-l-4 border-emerald-500 dark:border-emerald-400' : ''
               ]"
               @click="isColumnSortable(columnKey) && sortBy(columnKey)"
             >
@@ -247,16 +247,16 @@
                 </svg>
               </div>
             </th>
-            <th v-if="!readOnly" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+            <th v-if="!readOnly" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider transition-colors duration-300">Acciones</th>
           </tr>
         </thead>
-        <tbody class="bg-white divide-y divide-gray-200">
+        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700 transition-colors duration-300">
           <tr 
             v-for="oc in sortedOrdenes" 
             :key="oc.oc_id" 
-            class="hover:bg-gray-50 transition-colors"
+            class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-300"
             :class="[
-              { 'bg-emerald-50': isSelected(oc.oc_id) },
+              { 'bg-emerald-50 dark:bg-emerald-900/20': isSelected(oc.oc_id) },
               getRowWarningClass(oc)
             ]"
             :title="hasRowIssues(oc).issues.length > 0 ? 'Problemas: ' + hasRowIssues(oc).issues.join(', ') : ''"
@@ -273,11 +273,11 @@
             </td>
             <template v-for="columnKey in orderedVisibleColumns" :key="columnKey">
               <!-- ODC ID -->
-              <td v-if="columnKey === 'oc_id'" class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900">
+              <td v-if="columnKey === 'oc_id'" class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900 dark:text-gray-100 transition-colors duration-300">
                 <span class="font-semibold">{{ oc.oc_id.substring(0, 8) }}...</span>
                 <button
                   @click="copyToClipboard(oc.oc_id)"
-                  class="ml-2 text-gray-400 hover:text-gray-600"
+                  class="ml-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-300"
                   title="Copiar ID completo"
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -303,36 +303,36 @@
                 </span>
               </td>
               <!-- Referencia Despacho -->
-              <td v-else-if="columnKey === 'referencia_despacho'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              <td v-else-if="columnKey === 'referencia_despacho'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 transition-colors duration-300">
                 <button
                   v-if="oc.referencia_despacho"
                   @click="handleVerEnDespachos(oc.referencia_despacho)"
-                  class="font-mono px-2 py-1 text-xs font-medium rounded-full bg-violet-100 text-violet-800 cursor-pointer transition-all duration-200 hover:scale-105 hover:bg-violet-200"
+                  class="font-mono px-2 py-1 text-xs font-medium rounded-full bg-violet-100 dark:bg-violet-900/50 text-violet-800 dark:text-violet-200 cursor-pointer transition-all duration-200 hover:scale-105 hover:bg-violet-200 dark:hover:bg-violet-900/70"
                   :title="`Ver despacho: ${oc.referencia_despacho}`"
                 >
                   {{ oc.referencia_despacho }}
                 </button>
-                <span v-else class="text-gray-400 italic">-</span>
+                <span v-else class="text-gray-400 dark:text-gray-500 italic transition-colors duration-300">-</span>
               </td>
               <!-- Fecha Generación -->
-              <td v-else-if="columnKey === 'fecha_generacion'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              <td v-else-if="columnKey === 'fecha_generacion'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 transition-colors duration-300">
                 <div>{{ formatDate(oc.fecha_generacion) }}</div>
               </td>
               <!-- Fecha Creación -->
-              <td v-else-if="columnKey === 'created_at'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              <td v-else-if="columnKey === 'created_at'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 transition-colors duration-300">
                 <div v-if="oc.created_at" class="space-y-0.5">
                   <div>{{ formatDate(oc.created_at) }}</div>
-                  <div class="text-xs text-gray-500">{{ getTimeAgo(oc.created_at) }}</div>
+                  <div class="text-xs text-gray-500 dark:text-gray-400 transition-colors duration-300">{{ getTimeAgo(oc.created_at) }}</div>
                 </div>
-                <span v-else class="text-gray-400 italic">-</span>
+                <span v-else class="text-gray-400 dark:text-gray-500 italic transition-colors duration-300">-</span>
               </td>
               <!-- Fecha Procesado -->
-              <td v-else-if="columnKey === 'fecha_procesado'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              <td v-else-if="columnKey === 'fecha_procesado'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 transition-colors duration-300">
                 <div v-if="oc.fecha_procesado" class="space-y-0.5">
                   <div>{{ formatDate(oc.fecha_procesado) }}</div>
-                  <div class="text-xs text-gray-500">{{ getTimeAgo(oc.fecha_procesado) }}</div>
+                  <div class="text-xs text-gray-500 dark:text-gray-400 transition-colors duration-300">{{ getTimeAgo(oc.fecha_procesado) }}</div>
                 </div>
-                <span v-else class="text-gray-400 italic">-</span>
+                <span v-else class="text-gray-400 dark:text-gray-500 italic transition-colors duration-300">-</span>
               </td>
               <!-- Estado -->
               <td v-else-if="columnKey === 'estado'" class="px-6 py-4 whitespace-nowrap">
@@ -362,31 +362,31 @@
                 </div>
               </td>
               <!-- Número ODC SAP -->
-              <td v-else-if="columnKey === 'numero_oc_sap'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              <td v-else-if="columnKey === 'numero_oc_sap'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 transition-colors duration-300">
                 <div v-if="oc.numero_oc_sap" class="flex items-center gap-2">
                   <span class="font-mono">{{ oc.numero_oc_sap }}</span>
-                  <span v-if="oc.doc_entry" class="text-xs text-gray-500">(Entry: {{ oc.doc_entry }})</span>
+                  <span v-if="oc.doc_entry" class="text-xs text-gray-500 dark:text-gray-400 transition-colors duration-300">(Entry: {{ oc.doc_entry }})</span>
                 </div>
-                <span v-else class="text-gray-400 italic">-</span>
+                <span v-else class="text-gray-400 dark:text-gray-500 italic transition-colors duration-300">-</span>
               </td>
               <!-- DocEntry SAP -->
-              <td v-else-if="columnKey === 'doc_entry'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+              <td v-else-if="columnKey === 'doc_entry'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 transition-colors duration-300">
                 <div v-if="oc.doc_entry" class="flex items-center gap-2">
-                  <span class="font-mono font-semibold text-emerald-700">{{ oc.doc_entry }}</span>
-                  <span class="px-1.5 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700 rounded" title="OC ya enviada a SAP">✓</span>
+                  <span class="font-mono font-semibold text-emerald-700 dark:text-emerald-400 transition-colors duration-300">{{ oc.doc_entry }}</span>
+                  <span class="px-1.5 py-0.5 text-xs font-medium bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 rounded transition-colors duration-300" title="OC ya enviada a SAP">✓</span>
                 </div>
-                <span v-else class="text-gray-400 italic">-</span>
+                <span v-else class="text-gray-400 dark:text-gray-500 italic transition-colors duration-300">-</span>
               </td>
               <!-- Respuesta SAP -->
-              <td v-else-if="columnKey === 'respuesta_sap'" class="px-6 py-4 text-sm text-gray-900">
+              <td v-else-if="columnKey === 'respuesta_sap'" class="px-6 py-4 text-sm text-gray-900 dark:text-gray-100 transition-colors duration-300">
                 <div v-if="oc.respuesta_sap" class="max-w-xs">
                   <div class="flex items-start gap-2">
                     <div class="flex-1">
-                      <div class="text-xs font-medium text-gray-700 break-words">{{ oc.respuesta_sap }}</div>
+                      <div class="text-xs font-medium text-gray-700 dark:text-gray-300 break-words transition-colors duration-300">{{ oc.respuesta_sap }}</div>
                     </div>
                     <button
                       @click="copyToClipboard(oc.respuesta_sap || '')"
-                      class="text-gray-400 hover:text-gray-600 flex-shrink-0"
+                      class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0 transition-colors duration-300"
                       title="Copiar respuesta"
                     >
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -395,13 +395,13 @@
                     </button>
                   </div>
                 </div>
-                <span v-else class="text-gray-400 italic">-</span>
+                <span v-else class="text-gray-400 dark:text-gray-500 italic transition-colors duration-300">-</span>
               </td>
             </template>
             <td v-if="!readOnly" class="px-6 py-4 whitespace-nowrap text-sm">
               <!-- Si tiene doc_entry, ya fue enviada - mostrar mensaje -->
               <div v-if="oc.doc_entry !== null && oc.doc_entry !== undefined" class="flex flex-col gap-1">
-                <div class="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-xs font-medium flex items-center gap-2">
+                <div class="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-xs font-medium flex items-center gap-2 transition-colors duration-300">
                   <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
@@ -476,7 +476,7 @@
   <Teleport to="body">
     <div 
       v-if="openDropdownId"
-      class="fixed bg-white rounded-lg shadow-xl border border-gray-200 z-[9999] overflow-hidden"
+      class="fixed bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 z-[9999] overflow-hidden transition-colors duration-300"
       :style="{ 
         top: `${dropdownPosition.top}px`, 
         left: `${dropdownPosition.left}px`,
@@ -487,8 +487,8 @@
       @click.stop
     >
       <!-- Header del dropdown -->
-      <div class="px-3 py-1.5 bg-gradient-to-r from-orange-50 to-orange-100/50 border-b border-orange-200">
-        <p class="text-xs font-semibold text-orange-800 uppercase tracking-wide flex items-center gap-1">
+      <div class="px-3 py-1.5 bg-gradient-to-r from-orange-50 to-orange-100/50 dark:from-orange-900/30 dark:to-orange-800/20 border-b border-orange-200 dark:border-orange-700 transition-colors duration-300">
+        <p class="text-xs font-semibold text-orange-800 dark:text-orange-300 uppercase tracking-wide flex items-center gap-1 transition-colors duration-300">
           <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
             <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
           </svg>
@@ -503,23 +503,23 @@
           v-for="almacen in almacenesDisponibles"
           :key="almacen.codigo"
           @click="selectAlmacen(openDropdownId, almacen.codigo)"
-          class="w-full text-left px-3 py-1.5 hover:bg-emerald-50 transition-colors flex items-center group"
-          :class="selectedAlmacen[openDropdownId] === almacen.codigo ? 'bg-emerald-50' : ''"
+          class="w-full text-left px-3 py-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors flex items-center group"
+          :class="selectedAlmacen[openDropdownId] === almacen.codigo ? 'bg-emerald-50 dark:bg-emerald-900/30' : ''"
         >
           <span class="flex items-center gap-2 w-full min-w-0">
-            <span class="w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0"
-                  :class="selectedAlmacen[openDropdownId] === almacen.codigo ? 'border-emerald-600 bg-emerald-600' : 'border-gray-300'">
+            <span class="w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors duration-300"
+                  :class="selectedAlmacen[openDropdownId] === almacen.codigo ? 'border-emerald-600 dark:border-emerald-500 bg-emerald-600 dark:bg-emerald-500' : 'border-gray-300 dark:border-gray-600'">
               <svg v-if="selectedAlmacen[openDropdownId] === almacen.codigo" class="w-2.5 h-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
                 <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
               </svg>
             </span>
             <div class="flex items-center gap-1.5 min-w-0 flex-1">
-              <span class="text-xs font-semibold whitespace-nowrap"
-                    :class="selectedAlmacen[openDropdownId] === almacen.codigo ? 'text-emerald-700' : 'text-gray-900'">
+              <span class="text-xs font-semibold whitespace-nowrap transition-colors duration-300"
+                    :class="selectedAlmacen[openDropdownId] === almacen.codigo ? 'text-emerald-700 dark:text-emerald-400' : 'text-gray-900 dark:text-gray-100'">
                 {{ almacen.codigo }}
               </span>
-              <span class="text-xs text-gray-400">·</span>
-              <span class="text-xs text-gray-500 truncate">{{ almacen.nombre }}</span>
+              <span class="text-xs text-gray-400 dark:text-gray-500 transition-colors duration-300">·</span>
+              <span class="text-xs text-gray-500 dark:text-gray-400 truncate transition-colors duration-300">{{ almacen.nombre }}</span>
             </div>
           </span>
         </button>
@@ -1313,10 +1313,10 @@ function getRowWarningClass(oc: OrdenCompra): string {
   
   if (hasErrors) {
     // Fondo rojo claro con borde rojo para errores críticos
-    return 'bg-red-50/80 border-l-4 border-red-500 hover:bg-red-100/80'
+    return 'bg-red-50/80 dark:bg-red-900/20 border-l-4 border-red-500 dark:border-red-600 hover:bg-red-100/80 dark:hover:bg-red-900/30'
   } else if (hasWarnings) {
     // Fondo amarillo/naranja claro con borde amarillo para advertencias
-    return 'bg-yellow-50/80 border-l-4 border-yellow-500 hover:bg-yellow-100/80'
+    return 'bg-yellow-50/80 dark:bg-yellow-900/20 border-l-4 border-yellow-500 dark:border-yellow-600 hover:bg-yellow-100/80 dark:hover:bg-yellow-900/30'
   }
   
   return ''
@@ -1324,11 +1324,11 @@ function getRowWarningClass(oc: OrdenCompra): string {
 
 function getEstadoClass(estado: string): string {
   const classes: Record<string, string> = {
-    'PENDIENTE': 'px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800',
-    'ENVIADA': 'px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800',
-    'ERROR': 'px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800',
+    'PENDIENTE': 'px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200 transition-colors duration-300',
+    'ENVIADA': 'px-2 py-1 text-xs font-medium rounded-full bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200 transition-colors duration-300',
+    'ERROR': 'px-2 py-1 text-xs font-medium rounded-full bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200 transition-colors duration-300',
   }
-  return classes[estado] || 'px-2 py-1 text-xs font-medium rounded-full bg-gray-100 text-gray-800'
+  return classes[estado] || 'px-2 py-1 text-xs font-medium rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 transition-colors duration-300'
 }
 
 function getEstadoTooltip(oc: OrdenCompra): string {

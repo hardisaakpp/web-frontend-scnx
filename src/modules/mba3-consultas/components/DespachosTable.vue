@@ -1,11 +1,11 @@
 <template>
-  <div class="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden border border-gray-200 dark:border-gray-700 transition-colors duration-300">
     <!-- Header con búsqueda y acciones -->
-    <div class="px-6 py-4 border-b border-gray-200">
+    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 transition-colors duration-300">
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <!-- Título y contador -->
         <div class="flex items-center gap-3">
-          <h2 class="text-lg font-semibold text-gray-900">Despachos</h2>
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white transition-colors duration-300">Despachos</h2>
           <span class="px-3 py-1 bg-violet-600 text-white rounded-full text-sm font-medium">
             {{ (props.currentPage !== undefined && props.pageSize !== undefined && props.currentPage > 0 && props.pageSize > 0)
               ? `${sortedDespachos.length} de ${filteredDespachos.length} (${totalDespachos || 0} total)` 
@@ -54,7 +54,7 @@
               v-model="searchQuery"
               type="text"
               placeholder="Buscar por número factura, SKU..."
-              class="block w-full pl-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+              class="block w-full pl-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors duration-300"
               :class="searchQuery ? 'pr-10' : 'pr-3'"
             />
             <button
@@ -74,7 +74,7 @@
         <div class="flex items-center gap-2">
           <button
             @click="showAdvancedFilters = !showAdvancedFilters"
-            class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium flex items-center gap-2"
+            class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium flex items-center gap-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
@@ -84,7 +84,7 @@
           
           <button
             @click="showColumnSelector = !showColumnSelector"
-            class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium flex items-center gap-2 relative"
+            class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium flex items-center gap-2 relative bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -98,9 +98,9 @@
       </div>
       
       <!-- Selector de Columnas -->
-      <div v-if="showColumnSelector" class="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+      <div v-if="showColumnSelector" class="mt-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600 transition-colors duration-300">
         <div class="flex items-center justify-between mb-3">
-          <h3 class="text-sm font-semibold text-gray-700">Seleccionar Columnas</h3>
+          <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 transition-colors duration-300">Seleccionar Columnas</h3>
           <div class="flex items-center gap-2">
             <button
               @click="selectAllColumns"
@@ -121,43 +121,43 @@
           <label
             v-for="column in availableColumns"
             :key="column.key"
-            class="flex items-center gap-2 p-2 rounded-lg hover:bg-white transition-colors cursor-pointer"
+            class="flex items-center gap-2 p-2 rounded-lg hover:bg-white dark:hover:bg-gray-600 transition-colors cursor-pointer"
           >
             <input
               type="checkbox"
               v-model="visibleColumns"
               :value="column.key"
-              class="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
+              class="w-4 h-4 text-violet-600 border-gray-300 dark:border-gray-600 rounded focus:ring-violet-500"
             />
-            <span class="text-sm text-gray-700">{{ column.label }}</span>
+            <span class="text-sm text-gray-700 dark:text-gray-200 transition-colors duration-300">{{ column.label }}</span>
           </label>
         </div>
       </div>
       
       <!-- Filtros avanzados -->
-      <div v-if="showAdvancedFilters" class="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+      <div v-if="showAdvancedFilters" class="mt-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600 transition-colors duration-300">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Fecha desde</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1 transition-colors duration-300">Fecha desde</label>
             <input
               v-model="filtroFechaDesde"
               type="date"
-              class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+              class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-300"
             />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Fecha hasta</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1 transition-colors duration-300">Fecha hasta</label>
             <input
               v-model="filtroFechaHasta"
               type="date"
-              class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+              class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-300"
             />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1 transition-colors duration-300">Estado</label>
             <select
               v-model="filtroEstado"
-              class="block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+              class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-300"
             >
               <option value="">Todos</option>
               <option value="confirmado">Confirmados</option>
@@ -169,7 +169,7 @@
         <div class="mt-4 flex justify-end gap-2">
           <button
             @click="limpiarFiltros"
-            class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-300"
           >
             Limpiar filtros
           </button>
@@ -178,16 +178,16 @@
     </div>
 
     <!-- Tabla -->
-    <div v-if="!loading && filteredDespachos.length === 0" class="text-center py-12 text-gray-500">
-      <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div v-if="!loading && filteredDespachos.length === 0" class="text-center py-12 text-gray-500 dark:text-gray-400 transition-colors duration-300">
+      <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
       </svg>
       <p class="mt-2 text-sm">{{ searchQuery ? 'No se encontraron despachos con los filtros aplicados' : 'No se encontraron despachos' }}</p>
     </div>
 
     <div v-else class="overflow-x-auto">
-      <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50">
+      <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+        <thead class="bg-gray-50 dark:bg-gray-700/50 transition-colors duration-300">
           <tr>
             <th class="w-12 px-6 py-3 text-center align-middle">
               <input
@@ -216,10 +216,10 @@
               @drop="handleDrop($event, columnKey)"
               @dragend="handleDragEnd"
               :class="[
-                'px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-grab',
-                isColumnSortable(columnKey) ? 'hover:bg-gray-100' : 'hover:bg-gray-50',
+                'px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-grab transition-colors duration-300',
+                isColumnSortable(columnKey) ? 'hover:bg-gray-100 dark:hover:bg-gray-600' : 'hover:bg-gray-50 dark:hover:bg-gray-700',
                 draggedColumn === columnKey ? 'opacity-50 cursor-grabbing' : '',
-                dragOverColumn === columnKey && draggedColumn !== columnKey ? 'bg-violet-100 border-l-4 border-violet-500' : ''
+                dragOverColumn === columnKey && draggedColumn !== columnKey ? 'bg-violet-100 dark:bg-violet-900/30 border-l-4 border-violet-500 dark:border-violet-400' : ''
               ]"
               @click="isColumnSortable(columnKey) && sortBy(columnKey)"
             >
@@ -233,10 +233,10 @@
                 </svg>
               </div>
             </th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider transition-colors duration-300">Acciones</th>
           </tr>
         </thead>
-        <tbody class="bg-white divide-y divide-gray-200">
+        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700 transition-colors duration-300">
           <template v-for="despacho in sortedDespachos" :key="despacho.despacho_id">
             <!-- Fila principal del despacho (Cabecera - colores más intensos) -->
             <tr 
@@ -298,14 +298,14 @@
               </td>
               <template v-for="columnKey in orderedVisibleColumns" :key="columnKey">
                 <!-- Orden Compra Cliente -->
-                <td v-if="columnKey === 'orden_compra_cliente'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <td v-if="columnKey === 'orden_compra_cliente'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                   <span v-if="despacho.orden_compra_cliente" class="font-mono">{{ despacho.orden_compra_cliente }}</span>
-                  <span v-else class="text-gray-400 italic">-</span>
+                  <span v-else class="text-gray-400 dark:text-gray-500 italic">-</span>
                 </td>
                 <!-- Número Factura -->
-                <td v-else-if="columnKey === 'numero_factura'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-mono">{{ despacho.numero_factura || '-' }}</td>
+                <td v-else-if="columnKey === 'numero_factura'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white font-mono">{{ despacho.numero_factura || '-' }}</td>
                 <!-- Fecha Despacho -->
-                <td v-else-if="columnKey === 'fecha_despacho'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ formatDate(despacho.fecha_despacho) }}</td>
+                <td v-else-if="columnKey === 'fecha_despacho'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{{ formatDate(despacho.fecha_despacho) }}</td>
                 <!-- Estado -->
                 <td v-else-if="columnKey === 'estado'" class="px-6 py-4 whitespace-nowrap">
                   <div class="relative group inline-block">
@@ -347,47 +347,47 @@
             <tr v-if="detallesExpandidos.has(despacho.despacho_id)">
               <td :colspan="visibleColumnsCount + 4" class="px-6 py-4" :class="getDetallesContainerClass()">
                 <div v-if="loadingDetalles[despacho.despacho_id]" class="flex items-center justify-center py-4">
-                  <svg class="animate-spin h-5 w-5 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="animate-spin h-5 w-5 text-violet-500 dark:text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
-                  <span class="ml-2 text-sm text-violet-600">Cargando detalles...</span>
+                  <span class="ml-2 text-sm text-violet-600 dark:text-violet-300">Cargando detalles...</span>
                 </div>
                 <div v-else-if="detallesPorDespacho[despacho.despacho_id]?.length > 0" class="py-2">
                   <h4 class="text-sm font-semibold mb-3" :class="getDetallesTitleClass()">
                     Comparación MBA3 vs SAP - Detalles del Despacho ({{ detallesPorDespacho[despacho.despacho_id]?.length }} {{ detallesPorDespacho[despacho.despacho_id]?.length === 1 ? 'ítem' : 'ítems' }})
                   </h4>
                   <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200 bg-white rounded-lg border" :class="getDetallesTableBorderClass()">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800 rounded-lg border" :class="getDetallesTableBorderClass()">
                       <thead :class="getDetallesHeaderClass()">
                         <!-- Fila de encabezados principales -->
                         <tr>
-                          <th rowspan="2" class="w-8 px-2 py-2 text-center align-middle text-xs font-medium text-gray-600 uppercase border-r border-gray-300 bg-gray-100" title="Indicador de problemas">
-                            <svg class="w-3 h-3 mx-auto text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <th rowspan="2" class="w-8 px-2 py-2 text-center align-middle text-xs font-medium text-gray-600 dark:text-gray-400 uppercase border-r border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700" title="Indicador de problemas">
+                            <svg class="w-3 h-3 mx-auto text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                             </svg>
                           </th>
-                          <th rowspan="2" class="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase bg-gray-100 border-r border-gray-300">SKU</th>
-                          <th rowspan="2" class="px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase bg-gray-100 border-r-4 border-violet-300">Producto</th>
+                          <th rowspan="2" class="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase bg-gray-100 dark:bg-gray-700 border-r border-gray-300 dark:border-gray-600">SKU</th>
+                          <th rowspan="2" class="px-4 py-2 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase bg-gray-100 dark:bg-gray-700 border-r border-gray-300 dark:border-gray-600">Producto</th>
                           <!-- Sección MBA3 -->
-                          <th colspan="3" class="px-4 py-2 text-center text-sm font-bold text-blue-900 uppercase bg-gradient-to-r from-blue-100 to-blue-200 border-r-4 border-violet-300">
+                          <th colspan="3" class="px-4 py-2 text-center text-sm font-bold text-gray-700 dark:text-gray-300 uppercase bg-gray-200 dark:bg-gray-600 border-r border-gray-300 dark:border-gray-600">
                             MBA3
                           </th>
                           <!-- Sección SAP -->
-                          <th colspan="4" class="px-4 py-2 text-center text-sm font-bold text-green-900 uppercase bg-gradient-to-r from-green-100 to-green-200">
+                          <th colspan="4" class="px-4 py-2 text-center text-sm font-bold text-gray-700 dark:text-gray-300 uppercase bg-gray-200 dark:bg-gray-600">
                             SAP
                           </th>
                         </tr>
                         <!-- Fila de sub-encabezados -->
                         <tr>
                           <!-- Sub-encabezados MBA3 -->
-                          <th class="px-4 py-2 text-center text-xs font-medium text-gray-600 uppercase bg-blue-50">Cant. Docena</th>
-                          <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 uppercase bg-blue-50">Precio Unit.</th>
-                          <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 uppercase bg-blue-50 border-r-4 border-violet-300">Total Línea</th>
+                          <th class="px-4 py-2 text-center text-xs font-medium text-gray-600 dark:text-gray-400 uppercase bg-gray-50 dark:bg-gray-800">Cant. Docena</th>
+                          <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 dark:text-gray-400 uppercase bg-gray-50 dark:bg-gray-800">Precio Unit.</th>
+                          <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 dark:text-gray-400 uppercase bg-gray-50 dark:bg-gray-800 border-r border-gray-300 dark:border-gray-600">Total Línea</th>
                           <!-- Sub-encabezados SAP -->
-                          <th class="px-4 py-2 text-center text-xs font-medium text-gray-600 uppercase bg-green-50">Cant. Pack</th>
-                          <th class="px-4 py-2 text-center text-xs font-medium text-gray-600 uppercase bg-green-50">Unidad</th>
-                          <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 uppercase bg-green-50">Precio Unit.</th>
-                          <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 uppercase bg-green-50">Subtotal</th>
+                          <th class="px-4 py-2 text-center text-xs font-medium text-gray-600 dark:text-gray-400 uppercase bg-gray-50 dark:bg-gray-800">Cant. Pack</th>
+                          <th class="px-4 py-2 text-center text-xs font-medium text-gray-600 dark:text-gray-400 uppercase bg-gray-50 dark:bg-gray-800">Unidad</th>
+                          <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 dark:text-gray-400 uppercase bg-gray-50 dark:bg-gray-800">Precio Unit.</th>
+                          <th class="px-4 py-2 text-right text-xs font-medium text-gray-600 dark:text-gray-400 uppercase bg-gray-50 dark:bg-gray-800">Subtotal</th>
                         </tr>
                       </thead>
                       <tbody :class="getDetallesTbodyClass()">
@@ -398,7 +398,7 @@
                           :title="getDetalleTooltip(detalle)"
                         >
                           <!-- Indicador visual de problemas en detalle (icono) -->
-                          <td class="px-2 py-2 whitespace-nowrap w-8 text-center align-middle border-r border-gray-200">
+                          <td class="px-2 py-2 whitespace-nowrap w-8 text-center align-middle border-r border-gray-200 dark:border-gray-600">
                             <div 
                               class="flex items-center justify-center"
                               :title="hasDetalleIssues(detalle).hasErrors ? `Error crítico en SKU ${detalle.sku}` : hasDetalleIssues(detalle).hasWarnings ? `Advertencia en SKU ${detalle.sku}` : ''"
@@ -422,13 +422,13 @@
                             </div>
                           </td>
                           <!-- SKU -->
-                          <td class="px-4 py-2 text-sm font-mono text-gray-900 font-semibold bg-gray-50 border-r border-gray-200">
+                          <td class="px-4 py-2 text-sm font-mono text-gray-900 dark:text-white font-semibold border-r border-gray-200 dark:border-gray-600">
                             <div class="flex items-center gap-2">
                               <span>{{ detalle.sku || '-' }}</span>
                               <button
                                 v-if="detalle.sku"
                                 @click="copyToClipboard(detalle.sku)"
-                                class="text-gray-400 hover:text-violet-600 transition-colors flex-shrink-0"
+                                class="text-gray-400 dark:text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors flex-shrink-0"
                                 title="Copiar SKU"
                               >
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -438,46 +438,46 @@
                             </div>
                           </td>
                           <!-- Producto -->
-                          <td class="px-4 py-2 text-sm text-gray-900 bg-gray-50 border-r-4 border-violet-300">
+                          <td class="px-4 py-2 text-sm text-gray-900 dark:text-white border-r border-gray-300 dark:border-gray-600">
                             <div class="max-w-xs">
                               <div class="font-medium">{{ detalle.nombre_producto || detalle.PRODUCT_NAME || '-' }}</div>
-                              <div v-if="detalle.CORP || detalle.GrupoPrenda || detalle.Talla || detalle.PRESENTACION" class="text-xs text-gray-500 mt-1 space-x-2">
+                              <div v-if="detalle.CORP || detalle.GrupoPrenda || detalle.Talla || detalle.PRESENTACION" class="text-xs text-gray-500 dark:text-gray-400 mt-1 space-x-2">
                                 <span v-if="detalle.CORP">Corp: {{ detalle.CORP }}</span>
                                 <span v-if="detalle.GrupoPrenda">Grupo: {{ detalle.GrupoPrenda }}</span>
                                 <span v-if="detalle.Talla">Talla: {{ detalle.Talla }}</span>
                                 <span v-if="detalle.PRESENTACION">Presentación: {{ detalle.PRESENTACION }}</span>
                               </div>
-                              <div v-if="detalle.PRODUCT_ID" class="text-xs text-gray-400 mt-1">
+                              <div v-if="detalle.PRODUCT_ID" class="text-xs text-gray-400 dark:text-gray-500 mt-1">
                                 ID: {{ detalle.PRODUCT_ID }}
                               </div>
                             </div>
                           </td>
                           <!-- MBA3: Cantidad Docena -->
-                          <td class="px-4 py-2 text-sm text-gray-900 text-center font-medium bg-blue-50">
+                          <td class="px-4 py-2 text-sm text-gray-900 dark:text-white text-center font-medium">
                             {{ formatNumber(detalle.cantidad_docena_mba3) }}
                           </td>
                           <!-- MBA3: Precio Unitario -->
-                          <td class="px-4 py-2 text-sm text-gray-900 text-right font-medium bg-blue-50">
+                          <td class="px-4 py-2 text-sm text-gray-900 dark:text-white text-right font-medium">
                             {{ formatCurrency(detalle.precio_unitario_mba3) }}
                           </td>
                           <!-- MBA3: Total Línea -->
-                          <td class="px-4 py-2 text-sm text-gray-900 text-right font-bold bg-blue-100 border-r-4 border-violet-300">
+                          <td class="px-4 py-2 text-sm text-gray-900 dark:text-white text-right font-bold border-r border-gray-300 dark:border-gray-600">
                             {{ formatCurrency(detalle.total_linea_mba3) }}
                           </td>
                           <!-- SAP: Cantidad Pack -->
-                          <td class="px-4 py-2 text-sm text-gray-900 text-center font-medium bg-green-50">
+                          <td class="px-4 py-2 text-sm text-gray-900 dark:text-white text-center font-medium">
                             {{ detalle.cantidad_pack_sap !== null ? formatNumber(detalle.cantidad_pack_sap) : '-' }}
                           </td>
                           <!-- SAP: Unidad -->
-                          <td class="px-4 py-2 text-sm text-gray-900 text-center font-mono bg-green-50">
+                          <td class="px-4 py-2 text-sm text-gray-900 dark:text-white text-center font-mono">
                             {{ detalle.unidad_sap || '-' }}
                           </td>
                           <!-- SAP: Precio Unitario -->
-                          <td class="px-4 py-2 text-sm text-gray-900 text-right font-medium bg-green-50">
+                          <td class="px-4 py-2 text-sm text-gray-900 dark:text-white text-right font-medium">
                             {{ detalle.precio_unitario_sap !== null ? formatCurrency(detalle.precio_unitario_sap) : '-' }}
                           </td>
                           <!-- SAP: Subtotal -->
-                          <td class="px-4 py-2 text-sm text-gray-900 text-right font-bold bg-green-100">
+                          <td class="px-4 py-2 text-sm text-gray-900 dark:text-white text-right font-bold">
                             {{ formatCurrency(detalle.subtotal_sap) }}
                           </td>
                         </tr>
@@ -485,19 +485,19 @@
                       <tfoot v-if="detallesPorDespacho[despacho.despacho_id]?.length > 0" :class="getDetallesFooterClass()">
                         <tr>
                           <!-- Celdas vacías para alineación -->
-                          <td colspan="3" class="border-t-2 border-gray-300"></td>
+                          <td colspan="3" class="border-t-2 border-gray-300 dark:border-gray-600"></td>
                           <!-- Total MBA3 -->
-                          <td colspan="2" class="px-4 py-3 text-sm font-bold text-right border-t-2 border-gray-300 bg-blue-50" :class="getDetallesFooterTextClass()">
+                          <td colspan="2" class="px-4 py-3 text-sm font-bold text-right border-t-2 border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700" :class="getDetallesFooterTextClass()">
                             Total MBA3:
                           </td>
-                          <td class="px-4 py-3 text-sm font-bold text-right border-t-2 border-r-4 border-violet-300 bg-blue-100" :class="getDetallesFooterTextClass()">
+                          <td class="px-4 py-3 text-sm font-bold text-right border-t-2 border-r border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700" :class="getDetallesFooterTextClass()">
                             {{ formatCurrency(getTotalLineaMBA3(despacho.despacho_id)) }}
                           </td>
                           <!-- Total SAP -->
-                          <td colspan="3" class="px-4 py-3 text-sm font-bold text-right border-t-2 border-gray-300 bg-green-50" :class="getDetallesFooterTextClass()">
+                          <td colspan="3" class="px-4 py-3 text-sm font-bold text-right border-t-2 border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700" :class="getDetallesFooterTextClass()">
                             Total SAP:
                           </td>
-                          <td class="px-4 py-3 text-sm font-bold text-right border-t-2 border-gray-300 bg-green-100" :class="getDetallesFooterTextClass()">
+                          <td class="px-4 py-3 text-sm font-bold text-right border-t-2 border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700" :class="getDetallesFooterTextClass()">
                             {{ formatCurrency(getTotalSubtotalSAP(despacho.despacho_id)) }}
                           </td>
                         </tr>
@@ -505,7 +505,7 @@
                     </table>
                   </div>
                 </div>
-                <div v-else class="py-4 text-center text-sm text-gray-500">
+                <div v-else class="py-4 text-center text-sm text-gray-500 dark:text-gray-400">
                   No hay detalles disponibles para este despacho
                 </div>
               </td>
@@ -921,12 +921,12 @@ function formatDate(dateString: string): string {
 
 function getEstadoClass(despacho: Despacho): string {
   if (despacho.anulada) {
-    return 'px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800'
+    return 'px-2 py-1 text-xs font-medium rounded-full bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200 transition-colors duration-300'
   }
   if (despacho.confirmado) {
-    return 'px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800'
+    return 'px-2 py-1 text-xs font-medium rounded-full bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200 transition-colors duration-300'
   }
-  return 'px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800'
+  return 'px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200 transition-colors duration-300'
 }
 
 function getEstadoText(despacho: Despacho): string {
@@ -1339,11 +1339,11 @@ function getRowWarningClass(despacho: Despacho): string {
   if (hasErrors) {
     // ERRORES CRÍTICOS: Rojo más intenso y visible
     // Fondo rojo más intenso, borde rojo grueso, sombra sutil
-    return 'bg-red-100/90 !border-l-4 !border-red-600 hover:bg-red-200/90 shadow-sm shadow-red-200/50'
+    return 'bg-red-100/90 dark:bg-red-900/30 !border-l-4 !border-red-600 dark:!border-red-600 hover:bg-red-200/90 dark:hover:bg-red-900/40 shadow-sm shadow-red-200/50 dark:shadow-red-900/30'
   } else if (hasWarnings) {
     // ADVERTENCIAS: Amarillo/naranja más visible pero menos intenso que errores
     // Fondo amarillo claro, borde amarillo/naranja, sin sombra
-    return 'bg-amber-50/90 !border-l-4 !border-amber-500 hover:bg-amber-100/90'
+    return 'bg-amber-50/90 dark:bg-amber-900/20 !border-l-4 !border-amber-500 dark:!border-amber-600 hover:bg-amber-100/90 dark:hover:bg-amber-900/30'
   }
   
   return ''
@@ -1354,47 +1354,47 @@ function getRowWarningClass(despacho: Despacho): string {
 function getCabeceraRowClass(): string {
   // Colores más intensos para la cabecera (proceso migrar - violeta)
   // Borde izquierdo por defecto, pero puede ser sobrescrito por getRowWarningClass
-  return 'bg-violet-50/40 hover:bg-violet-50/60 border-l-4 border-violet-300'
+  return 'bg-violet-50/40 dark:bg-violet-900/20 hover:bg-violet-50/60 dark:hover:bg-violet-900/30 border-l-4 border-violet-300 dark:border-violet-600 transition-colors duration-300'
 }
 
 function getDetallesContainerClass(): string {
   // Colores más claros para el contenedor de detalles (proceso migrar - violeta)
-  return 'bg-violet-50/20'
+  return 'bg-violet-50/20 dark:bg-violet-900/10 transition-colors duration-300'
 }
 
 function getDetallesTitleClass(): string {
   // Título de detalles con color temático
-  return 'text-violet-700'
+  return 'text-violet-700 dark:text-violet-300'
 }
 
 function getDetallesHeaderClass(): string {
   // Header de la tabla de detalles (más claro que la cabecera)
-  return 'bg-violet-100/50'
+  return 'bg-violet-100/50 dark:bg-violet-900/30'
 }
 
 function getDetallesTableBorderClass(): string {
   // Borde de la tabla de detalles
-  return 'border-violet-200'
+  return 'border-violet-200 dark:border-violet-700'
 }
 
 function getDetallesFooterClass(): string {
   // Footer de la tabla de detalles
-  return 'bg-violet-100/40 border-t-2 border-violet-200'
+  return 'bg-violet-100/40 dark:bg-violet-900/30 border-t-2 border-violet-200 dark:border-violet-700'
 }
 
 function getDetallesFooterTextClass(): string {
   // Texto del footer
-  return 'text-violet-800'
+  return 'text-violet-800 dark:text-violet-200'
 }
 
 function getDetallesFooterBorderClass(): string {
   // Borde del footer
-  return 'border-violet-200'
+  return 'border-violet-200 dark:border-violet-700'
 }
 
 function getDetallesTbodyClass(): string {
   // Tbody de detalles con divisores temáticos
-  return 'divide-y divide-violet-100'
+  return 'divide-y divide-violet-100 dark:divide-violet-800'
 }
 
 // Función para detectar problemas en un detalle
@@ -1466,11 +1466,11 @@ function getDetalleWarningClass(detalle: DespachoDetalle): string {
   if (hasErrors) {
     // ERRORES CRÍTICOS: Rojo más intenso y visible
     // Fondo rojo más intenso, borde rojo grueso
-    return 'bg-red-100/80 !border-l-4 !border-red-600 hover:bg-red-200/80'
+    return 'bg-red-100/80 dark:bg-red-900/30 !border-l-4 !border-red-600 dark:!border-red-500 hover:bg-red-200/80 dark:hover:bg-red-900/40'
   } else if (hasWarnings) {
     // ADVERTENCIAS: Amarillo/naranja más visible pero menos intenso que errores
     // Fondo amarillo claro, borde amarillo/naranja
-    return 'bg-amber-50/80 !border-l-4 !border-amber-500 hover:bg-amber-100/80'
+    return 'bg-amber-50/80 dark:bg-amber-900/20 !border-l-4 !border-amber-500 dark:!border-amber-600 hover:bg-amber-100/80 dark:hover:bg-amber-900/30'
   }
   
   return ''
@@ -1478,7 +1478,7 @@ function getDetalleWarningClass(detalle: DespachoDetalle): string {
 
 function getDetallesRowClass(): string {
   // Filas de detalles con hover temático
-  return 'hover:bg-violet-50/40 transition-colors'
+  return 'hover:bg-violet-50/40 dark:hover:bg-violet-900/20 transition-colors'
 }
 
 // Función para obtener tooltip informativo de detalles
