@@ -147,7 +147,23 @@
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
               <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Número de Pedido</label>
-              <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ pedido.cabecera.numero_pedido || 'N/A' }}</p>
+              <div class="flex items-center gap-2 mt-1">
+                <p class="text-sm text-gray-900 dark:text-white">{{ pedido.cabecera.numero_pedido || 'N/A' }}</p>
+                <button
+                  v-if="pedido.cabecera.numero_pedido"
+                  @click="copyToClipboard(pedido.cabecera.numero_pedido)"
+                  :title="copyFeedback ? 'Copiado!' : 'Copiar número de pedido'"
+                  class="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 transition-colors duration-200"
+                  :class="{ 'text-green-600 dark:text-green-400': copyFeedback }"
+                >
+                  <svg v-if="!copyFeedback" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                </button>
+              </div>
             </div>
             <div>
               <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Fecha de Pedido</label>
@@ -672,6 +688,9 @@ const error = ref<string | null>(null)
 const pedidoIdInput = ref('')
 const pedidoInputRef = ref<HTMLInputElement | null>(null)
 const showSearchHelp = ref(false)
+
+// Copiar número de pedido al portapapeles
+const copyFeedback = ref(false)
 
 // Cargar plantillas (sin modal - selector directo)
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -1291,6 +1310,19 @@ function formatDate(dateString: string | null): string {
   } catch {
     // Si falla el parseo, retornar el valor original
     return trimmedValue
+  }
+}
+
+async function copyToClipboard(text: string) {
+  try {
+    await navigator.clipboard.writeText(text)
+    copyFeedback.value = true
+    setTimeout(() => {
+      copyFeedback.value = false
+    }, 2000)
+  } catch (err) {
+    console.error('Error al copiar al portapapeles:', err)
+    toast.error('Error', 'No se pudo copiar al portapapeles')
   }
 }
 

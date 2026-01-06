@@ -985,8 +985,15 @@ export const mba3ConsultasService = {
   async getUltimoPedido(incluirRespuesta: boolean = false): Promise<PedidoCompleto | null> {
     try {
       const params = incluirRespuesta ? '?incluir_respuesta=true' : ''
-      const response = await mba3Api.get<PedidoCompleto>(`/api/plantillas/ultimo${params}`)
-      return response.data
+      const response = await mba3Api.get<{ status: string; hay_datos: boolean; data?: PedidoCompleto | null; mensaje?: string }>(`/api/plantillas/ultimo${params}`)
+      const payload = response.data
+
+      // Nuevo backend: devuelve 200 con envoltorio { status, hay_datos, data }
+      if (!payload || !payload.hay_datos || !payload.data) {
+        return null
+      }
+
+      return payload.data
     } catch (error: any) {
       // Si es 404, significa que no hay pedidos (no es un error crítico)
       if (error.response?.status === 404) {

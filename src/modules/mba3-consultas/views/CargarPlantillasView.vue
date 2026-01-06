@@ -4,8 +4,8 @@
       <!-- Header -->
       <div class="flex items-center justify-between">
         <div>
-          <h1 class="text-3xl font-bold text-gray-900">Cargar Plantillas</h1>
-          <p class="mt-1 text-sm text-gray-500">Sube plantillas de Excel para procesar</p>
+          <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Cargar Plantillas</h1>
+          <p class="mt-1 text-sm text-gray-500 dark:text-gray-300">Sube plantillas de Excel para procesar</p>
         </div>
         <button
           @click="showBuscarPedidoModal = true"
@@ -20,7 +20,7 @@
       </div>
 
       <!-- Área de carga de archivos -->
-      <div class="bg-white rounded-lg border border-gray-200 p-4">
+      <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
         <div>
           <input
             ref="fileInput"
@@ -40,38 +40,40 @@
               @drop.prevent="handleDrop"
               :class="[
                 'border border-dashed rounded-lg p-4 text-center cursor-pointer transition-colors',
-                isDragging ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300 hover:border-indigo-400 hover:bg-gray-50'
+                isDragging 
+                  ? 'border-indigo-500 bg-indigo-50 dark:border-indigo-400 dark:bg-indigo-900/30' 
+                  : 'border-gray-300 hover:border-indigo-400 hover:bg-gray-50 dark:border-gray-600 dark:hover:border-indigo-400 dark:hover:bg-gray-800/60'
               ]"
             >
               <div class="flex items-center justify-center gap-3">
                 <!-- Icono de Excel -->
-                <svg class="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="h-5 w-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                 </svg>
-                <span class="text-sm text-gray-600">Arrastra un archivo Excel o <span class="text-indigo-600 font-medium">haz clic para seleccionar</span></span>
+                <span class="text-sm text-gray-600 dark:text-gray-300">Arrastra un archivo Excel o <span class="text-indigo-600 dark:text-indigo-300 font-medium">haz clic para seleccionar</span></span>
               </div>
             </div>
           </div>
 
           <!-- Archivo seleccionado -->
-          <div v-if="selectedFile && !uploading && !archivoCargado" class="border border-gray-200 rounded-lg p-3">
+          <div v-if="selectedFile && !uploading && !archivoCargado" class="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-gray-800">
             <div class="flex items-center gap-3">
               <div class="flex-shrink-0">
-                <div class="w-8 h-8 bg-green-100 rounded flex items-center justify-center">
-                  <svg class="h-4 w-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="w-8 h-8 bg-green-100 dark:bg-emerald-900/40 rounded flex items-center justify-center">
+                  <svg class="h-4 w-4 text-green-600 dark:text-emerald-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                 </div>
               </div>
               <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium text-gray-900 truncate">{{ selectedFile.name }}</p>
-                <p class="text-xs text-gray-500">{{ formatFileSize(selectedFile.size) }}</p>
+                <p class="text-sm font-medium text-gray-900 dark:text-white truncate">{{ selectedFile.name }}</p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">{{ formatFileSize(selectedFile.size) }}</p>
               </div>
               <div class="flex items-center gap-2">
                 <button
                   @click="clearFile"
                   type="button"
-                  class="px-3 py-1.5 text-xs text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"
+                  class="px-3 py-1.5 text-xs text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
                 >
                   Cancelar
                 </button>
@@ -87,12 +89,12 @@
           </div>
 
           <!-- Estado de carga -->
-          <div v-if="uploading" class="border border-indigo-200 bg-indigo-50 rounded-lg p-3">
+          <div v-if="uploading" class="border border-indigo-200 dark:border-indigo-500/60 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg p-3">
             <div class="flex items-center gap-3">
-              <svg class="animate-spin h-4 w-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="animate-spin h-4 w-4 text-indigo-600 dark:text-indigo-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
-              <p class="text-sm text-indigo-900">Subiendo archivo...</p>
+              <p class="text-sm text-indigo-900 dark:text-indigo-100">Subiendo archivo...</p>
             </div>
           </div>
 
@@ -102,8 +104,8 @@
             <div :class="[
               'border rounded-lg p-4',
               uploadResponse?.status === 'success' 
-                ? 'border-green-200 bg-green-50' 
-                : 'border-yellow-200 bg-yellow-50'
+                ? 'border-green-200 bg-green-50 dark:border-green-700 dark:bg-green-900/30' 
+                : 'border-yellow-200 bg-yellow-50 dark:border-amber-700 dark:bg-amber-900/30'
             ]">
               <div class="flex items-center gap-3">
                 <svg 
@@ -127,13 +129,13 @@
                 <div class="flex-1 min-w-0">
                   <p :class="[
                     'text-sm font-medium truncate',
-                    uploadResponse?.status === 'success' ? 'text-green-900' : 'text-yellow-900'
+                    uploadResponse?.status === 'success' ? 'text-green-900 dark:text-green-100' : 'text-yellow-900 dark:text-amber-100'
                   ]">
                     {{ uploadedFileName }}
                   </p>
                   <p :class="[
                     'text-xs mt-1',
-                    uploadResponse?.status === 'success' ? 'text-green-700' : 'text-yellow-700'
+                    uploadResponse?.status === 'success' ? 'text-green-700 dark:text-green-200' : 'text-yellow-700 dark:text-amber-200'
                   ]">
                     {{ uploadResponse?.status === 'success' ? 'Cargado exitosamente' : 'Cargado con advertencias' }}
                   </p>
@@ -144,8 +146,8 @@
                   :class="[
                     'px-3 py-1.5 text-sm rounded-lg transition-colors',
                     uploadResponse?.status === 'success' 
-                      ? 'text-green-700 hover:text-green-900 hover:bg-green-100' 
-                      : 'text-yellow-700 hover:text-yellow-900 hover:bg-yellow-100'
+                      ? 'text-green-700 hover:text-green-900 hover:bg-green-100 dark:text-green-200 dark:hover:text-green-50 dark:hover:bg-green-900/40' 
+                      : 'text-yellow-700 hover:text-yellow-900 hover:bg-yellow-100 dark:text-amber-200 dark:hover:text-amber-50 dark:hover:bg-amber-900/40'
                   ]"
                 >
                   Subir otro
@@ -154,31 +156,31 @@
             </div>
 
             <!-- Validación compacta (solo si hay warnings/errores) -->
-            <div v-if="uploadResponse?.validacion && !esValidacionCompletaOk" class="bg-white rounded-lg border border-gray-200 p-4">
-              <h3 class="text-sm font-semibold text-gray-900 mb-3">Resultados de Validación</h3>
+            <div v-if="uploadResponse?.validacion && !esValidacionCompletaOk" class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+              <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Resultados de Validación</h3>
               <div class="space-y-2 text-sm">
                 <div class="flex items-center gap-2">
-                  <svg class="h-4 w-4" :class="uploadResponse.validacion.productos.todos_validos ? 'text-green-600' : 'text-red-600'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="h-4 w-4" :class="uploadResponse.validacion.productos.todos_validos ? 'text-green-600 dark:text-green-300' : 'text-red-600 dark:text-red-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path v-if="uploadResponse.validacion.productos.todos_validos" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <span class="text-gray-700">
+                  <span class="text-gray-700 dark:text-gray-200">
                     Productos: 
                     <span class="font-medium">{{ uploadResponse.validacion.productos.validos.length }} válidos</span>
-                    <span v-if="uploadResponse.validacion.productos.no_encontrados.length > 0" class="text-red-600">
+                    <span v-if="uploadResponse.validacion.productos.no_encontrados.length > 0" class="text-red-600 dark:text-red-400">
                       , {{ uploadResponse.validacion.productos.no_encontrados.length }} no encontrados
                     </span>
                   </span>
                 </div>
                 <div class="flex items-center gap-2">
-                  <svg class="h-4 w-4" :class="uploadResponse.validacion.tiendas.todas_validas ? 'text-green-600' : 'text-red-600'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg class="h-4 w-4" :class="uploadResponse.validacion.tiendas.todas_validas ? 'text-green-600 dark:text-green-300' : 'text-red-600 dark:text-red-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path v-if="uploadResponse.validacion.tiendas.todas_validas" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <span class="text-gray-700">
+                  <span class="text-gray-700 dark:text-gray-200">
                     Tiendas: 
                     <span class="font-medium">{{ uploadResponse.validacion.tiendas.validas.length }} válidas</span>
-                    <span v-if="uploadResponse.validacion.tiendas.no_encontradas.length > 0" class="text-red-600">
+                    <span v-if="uploadResponse.validacion.tiendas.no_encontradas.length > 0" class="text-red-600 dark:text-red-400">
                       , {{ uploadResponse.validacion.tiendas.no_encontradas.length }} no encontradas
                     </span>
                   </span>
@@ -187,50 +189,50 @@
             </div>
 
             <!-- Errores adicionales (si existen) -->
-            <div v-if="uploadResponse?.errores && uploadResponse.errores.length > 0" class="bg-red-50 rounded-lg p-4 border border-red-200">
-              <h4 class="font-medium text-red-900 mb-2">Errores adicionales</h4>
-              <ul class="list-disc list-inside text-sm text-red-700">
+            <div v-if="uploadResponse?.errores && uploadResponse.errores.length > 0" class="bg-red-50 dark:bg-red-900/30 rounded-lg p-4 border border-red-200 dark:border-red-800">
+              <h4 class="font-medium text-red-900 dark:text-red-100 mb-2">Errores adicionales</h4>
+              <ul class="list-disc list-inside text-sm text-red-700 dark:text-red-200">
                 <li v-for="(error, index) in uploadResponse.errores" :key="index">{{ error }}</li>
               </ul>
             </div>
           </div>
 
           <!-- Error de carga -->
-          <div v-if="uploadError" class="mt-4 border border-red-200 bg-red-50 rounded-lg p-4">
+          <div v-if="uploadError" class="mt-4 border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 rounded-lg p-4">
             <div class="flex items-start gap-3">
-              <svg class="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <div class="flex-1">
-                <p class="text-sm font-semibold text-red-900 mb-1">Error al procesar el archivo</p>
-                <pre class="text-sm text-red-800 mb-3 whitespace-pre-wrap font-sans">{{ uploadError }}</pre>
+                <p class="text-sm font-semibold text-red-900 dark:text-red-100 mb-1">Error al procesar el archivo</p>
+                <pre class="text-sm text-red-800 dark:text-red-200 mb-3 whitespace-pre-wrap font-sans">{{ uploadError }}</pre>
                 
                 <!-- Sugerencias según el tipo de error -->
-                <div v-if="uploadError.includes('Ya existe un pedido') || uploadError.includes('duplicado')" class="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <p class="text-xs font-medium text-yellow-900 mb-1">💡 Sugerencia:</p>
-                  <p class="text-xs text-yellow-800">
+                <div v-if="uploadError.includes('Ya existe un pedido') || uploadError.includes('duplicado')" class="mt-3 p-3 bg-yellow-50 dark:bg-amber-900/30 border border-yellow-200 dark:border-amber-800 rounded-lg">
+                  <p class="text-xs font-medium text-yellow-900 dark:text-amber-100 mb-1">💡 Sugerencia:</p>
+                  <p class="text-xs text-yellow-800 dark:text-amber-200">
                     Este pedido ya fue cargado anteriormente. Si necesitas cargarlo nuevamente, verifica que el número de pedido sea diferente o contacta al administrador.
                   </p>
                 </div>
                 
-                <div v-else-if="uploadError.includes('formato') || uploadError.includes('estructura') || uploadError.includes('No se pudo detectar') || uploadError.includes('hojas') || uploadError.includes('Hojas encontradas')" class="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <p class="text-xs font-medium text-yellow-900 mb-1">💡 Sugerencia:</p>
-                  <p class="text-xs text-yellow-800">
+                <div v-else-if="uploadError.includes('formato') || uploadError.includes('estructura') || uploadError.includes('No se pudo detectar') || uploadError.includes('hojas') || uploadError.includes('Hojas encontradas')" class="mt-3 p-3 bg-yellow-50 dark:bg-amber-900/30 border border-yellow-200 dark:border-amber-800 rounded-lg">
+                  <p class="text-xs font-medium text-yellow-900 dark:text-amber-100 mb-1">💡 Sugerencia:</p>
+                  <p class="text-xs text-yellow-800 dark:text-amber-200">
                     El archivo Excel debe tener una de las siguientes estructuras:
                   </p>
-                  <ul class="text-xs text-yellow-800 mt-2 ml-4 list-disc space-y-1">
+                  <ul class="text-xs text-yellow-800 dark:text-amber-200 mt-2 ml-4 list-disc space-y-1">
                     <li><strong>Formato de dos hojas:</strong> 'CABECERA_PEDIDO' y 'DETALLE_ARTICULO'</li>
                     <li><strong>Formato simple:</strong> una hoja con columnas CodigoProducto, IdTienda, Cantidad</li>
                     <li><strong>Formato complejo:</strong> estructura legacy con cabecera y columnas de tiendas</li>
                   </ul>
-                  <p class="text-xs text-yellow-800 mt-2">
+                  <p class="text-xs text-yellow-800 dark:text-amber-200 mt-2">
                     Verifica que las hojas tengan los nombres correctos y que las columnas estén en el formato esperado.
                   </p>
                 </div>
                 
-                <div v-else-if="uploadError.includes('conectar') || uploadError.includes('servidor')" class="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <p class="text-xs font-medium text-yellow-900 mb-1">💡 Sugerencia:</p>
-                  <p class="text-xs text-yellow-800">
+                <div v-else-if="uploadError.includes('conectar') || uploadError.includes('servidor')" class="mt-3 p-3 bg-yellow-50 dark:bg-amber-900/30 border border-yellow-200 dark:border-amber-800 rounded-lg">
+                  <p class="text-xs font-medium text-yellow-900 dark:text-amber-100 mb-1">💡 Sugerencia:</p>
+                  <p class="text-xs text-yellow-800 dark:text-amber-200">
                     Verifica tu conexión a internet y que el servidor esté disponible. Intenta nuevamente en unos momentos.
                   </p>
                 </div>
@@ -247,12 +249,12 @@
       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
       @click.self="showBuscarPedidoModal = false"
     >
-      <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-semibold text-gray-900">Acceder a Pedido</h3>
+          <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Acceder a Pedido</h3>
           <button
             @click="showBuscarPedidoModal = false"
-            class="text-gray-400 hover:text-gray-600 transition-colors"
+            class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
           >
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -260,13 +262,13 @@
           </button>
         </div>
         
-        <p class="text-sm text-gray-600 mb-4">
+        <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">
           Ingresa el número de pedido para acceder a su detalle y gestionar la respuesta del proveedor.
         </p>
         
         <div class="space-y-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
               Número de Pedido
             </label>
             <input
@@ -274,7 +276,7 @@
               @keyup.enter="goToPedido"
               type="text"
               placeholder="Ej: P-12.48 - 12 - 2025"
-              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               autofocus
             />
           </div>
@@ -288,7 +290,7 @@
             </button>
             <button
               @click="showBuscarPedidoModal = false"
-              class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+              class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm text-gray-700 dark:text-gray-200"
             >
               Cancelar
             </button>
