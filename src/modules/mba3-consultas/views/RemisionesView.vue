@@ -3,8 +3,8 @@
     <!-- Header -->
     <div class="flex items-center justify-between flex-wrap gap-4">
       <div>
-        <h1 class="text-3xl font-bold text-gray-900">Documentos de Remisión</h1>
-        <p class="mt-1 text-sm text-gray-500">Consulta y visualiza los documentos de remisión disponibles</p>
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">Documentos de Remisión</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Consulta y visualiza los documentos de remisión disponibles</p>
       </div>
       <div class="flex items-center gap-3">
         <button 
@@ -34,8 +34,8 @@
     </div>
 
     <!-- Tabla de Remisiones -->
-    <div class="bg-white/80 backdrop-blur-xl rounded-xl shadow-2xl p-6 border border-white/30 relative overflow-hidden">
-      <div class="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent pointer-events-none"></div>
+    <div class="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl rounded-xl shadow-2xl dark:shadow-none p-6 border border-white/30 dark:border-gray-700 relative overflow-hidden">
+      <div class="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent pointer-events-none dark:hidden"></div>
       
       <SkeletonTable v-if="loading && remisiones.length === 0" />
 
@@ -51,7 +51,7 @@
 
       <!-- Paginación -->
       <div v-if="totalPages > 1 && !loading" class="mt-4 flex items-center justify-between flex-wrap gap-4">
-        <div class="text-sm text-gray-700">
+        <div class="text-sm text-gray-700 dark:text-gray-300">
           Mostrando página {{ currentPage }} de {{ totalPages }}
           ({{ filteredRemisionesCount > 0 ? filteredRemisionesCount : totalRemisiones }} remisiones{{ filteredRemisionesCount > 0 && filteredRemisionesCount !== totalRemisiones ? ' filtradas' : '' }})
         </div>
@@ -59,17 +59,17 @@
           <button
             @click="prevPage"
             :disabled="currentPage === 1 || loading"
-            class="px-4 py-2 border border-white/30 bg-white/60 backdrop-blur-sm rounded-xl hover:bg-white/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 text-sm font-medium shadow-md hover:shadow-lg"
+            class="px-4 py-2 border border-white/30 dark:border-gray-700 bg-white/60 dark:bg-gray-800 backdrop-blur-sm rounded-xl hover:bg-white/80 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 text-sm font-medium shadow-md hover:shadow-lg"
           >
             Anterior
           </button>
-          <span class="px-4 py-2 text-sm text-gray-700 bg-white/40 backdrop-blur-sm rounded-xl border border-white/20">
+          <span class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-white/40 dark:bg-gray-800 backdrop-blur-sm rounded-xl border border-white/20 dark:border-gray-700">
             Página {{ currentPage }} de {{ totalPages }}
           </span>
           <button
             @click="nextPage"
             :disabled="currentPage === totalPages || loading"
-            class="px-4 py-2 border border-white/30 bg-white/60 backdrop-blur-sm rounded-xl hover:bg-white/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 text-sm font-medium shadow-md hover:shadow-lg"
+            class="px-4 py-2 border border-white/30 dark:border-gray-700 bg-white/60 dark:bg-gray-800 backdrop-blur-sm rounded-xl hover:bg-white/80 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 text-sm font-medium shadow-md hover:shadow-lg"
           >
             Siguiente
           </button>

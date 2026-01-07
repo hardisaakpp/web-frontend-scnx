@@ -58,74 +58,24 @@ mba3Api.interceptors.response.use(
     }
     
     // Log detallado del error para debugging
-    console.error('MBA3 API Error:', error)
+    console.error('🔍 [MBA3 API Interceptor] Error capturado:', error)
     if (error.response) {
-      console.error('Response Status:', error.response.status)
-      console.error('Response Data:', error.response.data)
-      console.error('Response Headers:', error.response.headers)
-      console.error('Request URL:', error.config?.url)
-      console.error('Request Method:', error.config?.method)
+      console.error('🔍 [MBA3 API Interceptor] Status:', error.response.status)
+      console.error('🔍 [MBA3 API Interceptor] Data completa:', error.response.data)
+      console.error('🔍 [MBA3 API Interceptor] URL:', error.config?.url)
+      console.error('🔍 [MBA3 API Interceptor] Method:', error.config?.method)
     } else if (error.request) {
-      console.error('Request Error:', error.request)
-      console.error('No se recibió respuesta del servidor')
+      console.error('🔍 [MBA3 API Interceptor] Request Error:', error.request)
+      console.error('🔍 [MBA3 API Interceptor] No se recibió respuesta del servidor')
     }
     
-    // Extraer mensaje de error más descriptivo
-    let message = error.message || 'Error desconocido'
-    
-    if (error.response?.data) {
-      // Verificar si es un error de SAP
-      const errorSource = error.response.data.error_source
-      const errorCode = error.response.data.error_code
-      
-      if (errorSource?.toUpperCase() === 'SAP' && errorCode) {
-        // Usar mensajes amigables para errores de SAP
-        const sapErrorMessages: Record<string, string> = {
-          '401': 'Error de autenticación con SAP. Las credenciales no son válidas o han expirado.',
-          '403': 'Sin permisos para realizar esta operación en SAP.',
-          'VALIDATION_ERROR': 'Error de validación en los datos enviados a SAP.',
-          'MISSING_FIELD': 'Falta un campo obligatorio en la solicitud a SAP.',
-          'INVALID_FORMAT': 'El formato de uno o más campos no es válido para SAP.',
-          'INVALID_CARDCODE': 'El código del proveedor no existe en SAP.',
-          'INVALID_ITEMCODE': 'Uno o más códigos de artículo no existen en SAP.',
-          'DUPLICATE_DOCUMENT': 'Ya existe un documento con estos datos en SAP.',
-          'CONNECTION_ERROR': 'No se pudo establecer conexión con el servidor SAP.',
-          'TIMEOUT': 'La solicitud a SAP tardó demasiado tiempo en responder.',
-          'INTERNAL_ERROR': 'Error interno en el servidor SAP.',
-        }
-        const friendlyMessage = sapErrorMessages[errorCode.toUpperCase()] || `Error SAP (${errorCode})`
-        message = friendlyMessage + (error.response.data.error_message ? ` - ${error.response.data.error_message}` : '')
-      }
-      // Si hay un mensaje en el response
-      else if (error.response.data.message) {
-        message = error.response.data.message
-      } 
-      // Si hay un detalle en el response (típico de FastAPI)
-      else if (error.response.data.detail) {
-        message = error.response.data.detail
-      }
-      // Si es un error 500 relacionado con serialización
-      else if (error.response.status === 500 && typeof error.response.data === 'string') {
-        if (error.response.data.includes('Decimal') || error.response.data.includes('not JSON serializable')) {
-          message = 'Error de serialización en el servidor: El backend necesita convertir los valores Decimal a números antes de enviar la respuesta. Por favor, contacte al administrador.'
-        } else {
-          message = error.response.data
-        }
-      }
-      // Si es un error 500 sin mensaje específico
-      else if (error.response.status === 500) {
-        if (!message || message === 'Error desconocido') {
-          message = 'Error interno del servidor (500). Por favor, verifique los logs del backend o contacte al administrador.'
-        }
-      }
+    // NO modificar el error aquí - dejarlo pasar tal cual para que cada método lo maneje
+    // Solo agregar información del response data al error si no la tiene
+    if (error.response?.data && !error.responseData) {
+      error.responseData = error.response.data
     }
     
-    // Si no hay respuesta del servidor (error de red)
-    if (!error.response && error.request) {
-      message = 'No se pudo conectar con el servidor. Verifique su conexión a internet o que el servidor esté en ejecución.'
-    }
-    
-    return Promise.reject(new Error(message))
+    return Promise.reject(error)
   }
 )
 
@@ -884,26 +834,33 @@ export const mba3ConsultasService = {
       return response.data
     } catch (error: any) {
       console.error('❌ [uploadPlantilla] Error al subir plantilla:', error)
+      console.error('❌ [uploadPlantilla] Response data:', error.response?.data)
       
       // Extraer mensaje de error más descriptivo
       let message = error.message || 'Error desconocido al subir plantilla'
       let hasBackendMessage = false
       
       if (error.response?.data) {
-        // Manejar business_exception (nuevo tipo de error)
+        // Prioridad 1: Manejar business_exception (nuevo tipo de error)
         if (error.response.data.type === 'business_exception') {
           hasBackendMessage = true
           message = error.response.data.error || error.response.data.message || 'No se puede procesar: productos no válidos en SAP'
+          console.log('✅ [uploadPlantilla] Business exception detectada:', message)
           // Preservar información adicional para mejor manejo
           ;(error as any).isBusinessException = true
           ;(error as any).businessError = error.response.data.error
         }
-        
-        // FastAPI puede retornar detail como string, array, o objeto
-        const detail = error.response.data.detail
-        
-        if (detail) {
+        // Prioridad 2: Verificar campo 'error' primero (antes que detail)
+        else if (error.response.data.error) {
           hasBackendMessage = true
+          message = error.response.data.error
+          console.log('✅ [uploadPlantilla] Error field detectado:', message)
+        }
+        // Prioridad 3: FastAPI puede retornar detail como string, array, o objeto
+        else if (error.response.data.detail) {
+          hasBackendMessage = true
+          const detail = error.response.data.detail
+          
           if (Array.isArray(detail)) {
             // Si es un array, unir los mensajes de forma más legible
             message = detail.map((item: any) => {
@@ -924,12 +881,13 @@ export const mba3ConsultasService = {
             // Intentar convertir a string
             message = String(detail)
           }
-        } else if (error.response.data.message && !hasBackendMessage) {
+          console.log('✅ [uploadPlantilla] Detail field detectado:', message)
+        }
+        // Prioridad 4: Campo 'message'
+        else if (error.response.data.message) {
           hasBackendMessage = true
           message = error.response.data.message
-        } else if (error.response.data.error && !hasBackendMessage) {
-          hasBackendMessage = true
-          message = error.response.data.error
+          console.log('✅ [uploadPlantilla] Message field detectado:', message)
         }
       } else if (error.request) {
         // Error de red (sin respuesta del servidor)
@@ -943,6 +901,7 @@ export const mba3ConsultasService = {
         message = 'Error al procesar el archivo. Verifica que el formato sea correcto y que no sea un pedido duplicado.'
       }
       
+      console.log('🔴 [uploadPlantilla] Mensaje final de error:', message)
       throw new Error(message)
     }
   },

@@ -1,11 +1,11 @@
 <template>
-  <div class="bg-white rounded-lg shadow overflow-hidden border border-gray-200">
+  <div class="bg-white dark:bg-gray-900 rounded-lg shadow overflow-hidden border border-gray-200 dark:border-gray-700">
     <!-- Header con búsqueda -->
-    <div class="px-6 py-4 border-b border-gray-200">
+    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <!-- Título y contador -->
         <div class="flex items-center gap-3">
-          <h2 class="text-lg font-semibold text-gray-900">Historial de Órdenes</h2>
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Historial de Órdenes</h2>
           <span class="px-3 py-1 bg-blue-600 text-white rounded-full text-sm font-medium">
             {{ filteredOrdenes.length }} de {{ totalOrdenes }} órdenes
           </span>
@@ -24,13 +24,13 @@
                 v-model="searchQuery"
                 type="text"
                 placeholder="Buscar en todas las columnas..."
-                class="block w-full pl-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                class="block w-full pl-10 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400"
                 :class="searchQuery ? 'pr-10' : 'pr-3'"
               />
               <button
                 v-if="searchQuery"
                 @click="searchQuery = ''"
-                class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
+                class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                 title="Limpiar búsqueda"
               >
                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -42,14 +42,14 @@
           
           <button
             @click="showColumnSelector = !showColumnSelector"
-            class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium flex items-center gap-2 relative"
+            class="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium flex items-center gap-2 relative text-gray-900 dark:text-gray-200 bg-white dark:bg-gray-800"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
             Columnas
-            <span v-if="visibleColumnsCount < allAvailableColumns.length" class="ml-1 px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-full">
+            <span v-if="visibleColumnsCount < allAvailableColumns.length" class="ml-1 px-1.5 py-0.5 text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 rounded-full">
               {{ visibleColumnsCount }}
             </span>
           </button>
@@ -57,9 +57,9 @@
       </div>
       
       <!-- Selector de Columnas -->
-      <div v-if="showColumnSelector" class="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+      <div v-if="showColumnSelector" class="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
         <div class="flex items-center justify-between mb-3">
-          <h3 class="text-sm font-semibold text-gray-700">Seleccionar Columnas</h3>
+          <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300">Seleccionar Columnas</h3>
           <div class="flex items-center gap-2">
             <button
               @click="selectAllColumns"
@@ -67,10 +67,10 @@
             >
               Mostrar todas
             </button>
-            <span class="text-gray-300">|</span>
+            <span class="text-gray-300 dark:text-gray-600">|</span>
             <button
               @click="resetColumns"
-              class="text-xs text-gray-600 hover:text-gray-700 font-medium"
+              class="text-xs text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 font-medium"
             >
               Restaurar predeterminadas
             </button>
@@ -80,38 +80,38 @@
           <label
             v-for="column in allAvailableColumns"
             :key="column.key"
-            class="flex items-center gap-2 p-2 rounded-lg hover:bg-white transition-colors cursor-pointer"
+            class="flex items-center gap-2 p-2 rounded-lg hover:bg-white dark:hover:bg-gray-700 transition-colors cursor-pointer"
           >
             <input
               type="checkbox"
               v-model="visibleColumns"
               :value="column.key"
-              class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              class="w-4 h-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500"
             />
-            <span class="text-sm text-gray-700">{{ column.label }}</span>
+            <span class="text-sm text-gray-700 dark:text-gray-300">{{ column.label }}</span>
           </label>
         </div>
       </div>
     </div>
 
     <!-- Tabla -->
-    <div v-if="loading" class="text-center py-12 text-gray-500">
+    <div v-if="loading" class="text-center py-12 text-gray-500 dark:text-gray-400">
       <svg class="animate-spin h-8 w-8 mx-auto text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
       </svg>
       <p class="mt-2">Cargando datos...</p>
     </div>
 
-    <div v-else-if="filteredOrdenes.length === 0" class="text-center py-12 text-gray-500">
-      <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div v-else-if="filteredOrdenes.length === 0" class="text-center py-12 text-gray-500 dark:text-gray-400">
+      <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
       </svg>
       <p class="mt-2 text-sm">{{ searchQuery ? 'No se encontraron órdenes con los filtros aplicados' : 'No se encontraron órdenes de compra' }}</p>
     </div>
 
     <div v-else class="overflow-x-auto">
-      <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50">
+      <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+        <thead class="bg-gray-50 dark:bg-gray-900">
           <tr>
             <th 
               v-for="column in visibleLogColumns" 
@@ -123,9 +123,9 @@
               @drop="handleDrop($event, column.key)"
               @dragend="handleDragEnd"
               :class="[
-                'px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-grab',
+                'px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-grab',
                 draggedColumn === column.key ? 'opacity-50 cursor-grabbing' : '',
-                dragOverColumn === column.key && draggedColumn !== column.key ? 'bg-blue-100 border-l-4 border-blue-500' : 'hover:bg-gray-100'
+                dragOverColumn === column.key && draggedColumn !== column.key ? 'bg-blue-100 dark:bg-blue-900 border-l-4 border-blue-500' : 'hover:bg-gray-100 dark:hover:bg-gray-800'
               ]"
               @click="sortBy(column.key)"
             >
@@ -138,18 +138,18 @@
             </th>
           </tr>
         </thead>
-        <tbody class="bg-white divide-y divide-gray-200">
+        <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
           <tr 
             v-for="log in sortedOrdenes" 
             :key="log.log_id || log.oc_id || log.timestamp || Math.random()" 
-            class="hover:bg-gray-50 transition-colors"
+            class="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             :class="getRowWarningClass(log)"
             :title="hasRowIssues(log).issues.length > 0 ? 'Problemas: ' + hasRowIssues(log).issues.join(', ') : ''"
           >
             <td 
               v-for="column in visibleLogColumns" 
               :key="column.key"
-              class="px-6 py-4 whitespace-nowrap text-sm text-gray-900"
+              class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100"
             >
               <div v-if="column.key === 'oc_id' && log.oc_id" class="font-mono font-semibold">
                 {{ log.oc_id.length > 8 ? log.oc_id.substring(0, 8) + '...' : log.oc_id }}
@@ -447,10 +447,10 @@ function getRowWarningClass(log: OrdenCompraLog): string {
   
   if (hasErrors) {
     // Fondo rojo claro con borde rojo para errores críticos
-    return 'bg-red-50/80 border-l-4 border-red-500 hover:bg-red-100/80'
+    return 'bg-red-50/80 dark:bg-red-900/20 border-l-4 border-red-500 hover:bg-red-100/80 dark:hover:bg-red-900/30'
   } else if (hasWarnings) {
     // Fondo amarillo/naranja claro con borde amarillo para advertencias
-    return 'bg-yellow-50/80 border-l-4 border-yellow-500 hover:bg-yellow-100/80'
+    return 'bg-yellow-50/80 dark:bg-yellow-900/20 border-l-4 border-yellow-500 hover:bg-yellow-100/80 dark:hover:bg-yellow-900/30'
   }
   
   return ''

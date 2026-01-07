@@ -205,7 +205,29 @@
               </svg>
               <div class="flex-1">
                 <p class="text-sm font-semibold text-red-900 dark:text-red-100 mb-1">Error al procesar el archivo</p>
-                <pre class="text-sm text-red-800 dark:text-red-200 mb-3 whitespace-pre-wrap font-sans">{{ uploadError }}</pre>
+                <div class="text-sm text-red-800 dark:text-red-200 mb-3">{{ uploadError }}</div>
+                
+                <!-- Error específico: Productos no válidos en SAP -->
+                <div v-if="uploadError.includes('No se puede persistir el pedido') && uploadError.includes('productos no válidos en SAP')" class="mt-3 p-4 bg-red-100 dark:bg-red-950 border-2 border-red-300 dark:border-red-700 rounded-lg">
+                  <div class="flex items-start gap-2 mb-2">
+                    <svg class="h-5 w-5 text-red-700 dark:text-red-300 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div class="flex-1">
+                      <p class="text-sm font-bold text-red-900 dark:text-red-100 mb-1">❌ Productos no encontrados en SAP</p>
+                      <p class="text-xs text-red-800 dark:text-red-200">Los siguientes productos no existen en el sistema SAP y deben ser corregidos: <span class="font-mono">{{ extractProductosNoValidos(uploadError) }}</span></p>
+                    </div>
+                  </div>
+                  <div class="mt-3 p-3 bg-yellow-50 dark:bg-amber-950 border border-yellow-300 dark:border-amber-800 rounded">
+                    <p class="text-xs font-medium text-yellow-900 dark:text-amber-100 mb-1">💡 Soluciones sugeridas:</p>
+                    <ul class="text-xs text-yellow-800 dark:text-amber-200 ml-4 list-disc space-y-1">
+                      <li>Verifica que los códigos de producto estén escritos correctamente</li>
+                      <li>Confirma que los productos existen en el catálogo SAP</li>
+                      <li>Revisa posibles errores de tipeo en el archivo Excel</li>
+                      <li>Contacta al administrador si los productos deberían existir</li>
+                    </ul>
+                  </div>
+                </div>
                 
                 <!-- Sugerencias según el tipo de error -->
                 <div v-if="uploadError.includes('Ya existe un pedido') || uploadError.includes('duplicado')" class="mt-3 p-3 bg-yellow-50 dark:bg-amber-900/30 border border-yellow-200 dark:border-amber-800 rounded-lg">
@@ -323,6 +345,16 @@ const showBuscarPedidoModal = ref(false)
 const pedidoIdInput = ref('')
 const pedidoInicialCargado = ref(false)
 const cargandoUltimoPedido = ref(false)
+
+// Función para extraer productos no válidos del mensaje de error
+const extractProductosNoValidos = (errorMsg: string): string => {
+  // Buscar el patrón: "Productos no encontrados en SAP: XXX"
+  const match = errorMsg.match(/Productos no encontrados en SAP:\s*(.+?)(?:\.|$)/i)
+  if (match && match[1]) {
+    return match[1].trim()
+  }
+  return 'No especificados'
+}
 
 // Computed: validación completa OK
 const esValidacionCompletaOk = computed(() => {

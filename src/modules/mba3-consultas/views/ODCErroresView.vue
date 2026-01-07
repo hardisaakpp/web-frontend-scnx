@@ -3,8 +3,8 @@
     <!-- Header -->
     <div class="flex items-center justify-between flex-wrap gap-4">
       <div>
-        <h1 class="text-2xl font-semibold text-gray-900">ODC con Errores</h1>
-        <p class="mt-1 text-sm text-gray-500">Corrige los SKUs de las órdenes de compra que no se pudieron enviar a SAP</p>
+        <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">ODC con Errores</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Corrige los SKUs de las órdenes de compra que no se pudieron enviar a SAP</p>
       </div>
       <div class="flex items-center gap-3">
         <button 
@@ -24,30 +24,30 @@
     </div>
 
     <!-- Estadísticas rápidas -->
-    <div class="bg-white rounded border border-gray-200 p-4">
+    <div class="bg-white dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-700 p-4">
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div class="text-center">
           <div class="text-2xl font-semibold text-red-600">{{ totalErrores }}</div>
-          <div class="text-xs text-gray-500 mt-1">Total con Error</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Total con Error</div>
         </div>
-        <div class="text-center border-x border-gray-200">
+        <div class="text-center border-x border-gray-200 dark:border-gray-700">
           <div class="text-2xl font-semibold text-orange-600">{{ erroresSAP }}</div>
-          <div class="text-xs text-gray-500 mt-1">Errores de SAP</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Errores de SAP</div>
         </div>
         <div class="text-center">
           <div class="text-2xl font-semibold text-purple-600">{{ erroresSKU }}</div>
-          <div class="text-xs text-gray-500 mt-1">Errores de SKU</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Errores de SKU</div>
         </div>
       </div>
     </div>
 
     <!-- Tabla de ODC con Errores -->
-    <div class="bg-white rounded-lg shadow border border-gray-200">
-      <div class="px-6 py-4 border-b border-gray-200">
+    <div class="bg-white dark:bg-gray-900 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+      <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         <div class="flex items-center justify-between">
           <div>
-            <h2 class="text-lg font-semibold text-gray-900">Órdenes de Compra con Error</h2>
-            <p class="mt-1 text-sm text-gray-500">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Órdenes de Compra con Error</h2>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Total: <span class="font-semibold">{{ odcErrores.length }}</span> orden(es) con error
             </p>
           </div>
@@ -57,68 +57,68 @@
       <SkeletonTable v-if="loading && odcErrores.length === 0" />
 
       <div v-else-if="odcErrores.length === 0" class="px-6 py-12 text-center">
-        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-4">
-          <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/20 mb-4">
+          <svg class="w-8 h-8 text-green-600 dark:text-green-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
-        <p class="text-gray-500 text-lg font-medium">No hay órdenes de compra con error</p>
-        <p class="text-gray-400 text-sm mt-1">
+        <p class="text-gray-500 dark:text-gray-400 text-lg font-medium">No hay órdenes de compra con error</p>
+        <p class="text-gray-400 dark:text-gray-500 text-sm mt-1">
           Todas las órdenes se han procesado correctamente
         </p>
       </div>
 
       <div v-else class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead class="bg-gray-50 dark:bg-gray-900">
             <tr>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 OC ID
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Proveedor
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Fecha Generación
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Error
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Código Error
               </th>
-              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Acciones
               </th>
             </tr>
           </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
+          <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
             <tr 
               v-for="odc in odcErrores" 
               :key="odc.oc_id"
-              class="hover:bg-gray-50 transition-colors"
+              class="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm font-mono text-gray-900">{{ odc.oc_id.substring(0, 8) }}...</div>
+                <div class="text-sm font-mono text-gray-900 dark:text-gray-100">{{ odc.oc_id.substring(0, 8) }}...</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-900">{{ odc.proveedor || '-' }}</div>
+                <div class="text-sm text-gray-900 dark:text-gray-100">{{ odc.proveedor || '-' }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-900">{{ formatDate(odc.fecha_generacion) }}</div>
+                <div class="text-sm text-gray-900 dark:text-gray-100">{{ formatDate(odc.fecha_generacion) }}</div>
               </td>
               <td class="px-6 py-4">
-                <div class="text-sm text-gray-900 max-w-md truncate" :title="odc.error_message || 'Sin mensaje de error'">
+                <div class="text-sm text-gray-900 dark:text-gray-100 max-w-md truncate" :title="odc.error_message || 'Sin mensaje de error'">
                   {{ odc.error_message || 'Error desconocido' }}
                 </div>
-                <div v-if="odc.error_source" class="text-xs text-gray-500 mt-1">
+                <div v-if="odc.error_source" class="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   Fuente: {{ odc.error_source }}
                 </div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <span 
                   v-if="odc.error_code"
-                  class="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800"
+                  class="px-2 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
                 >
                   {{ odc.error_code }}
                 </span>

@@ -3,14 +3,14 @@
     <!-- Header -->
     <div class="flex items-center justify-between flex-wrap gap-4">
       <div>
-        <h1 class="text-3xl font-bold text-gray-900">Historial de Órdenes de Compra</h1>
-        <p class="mt-1 text-sm text-gray-500">Consulta y visualiza el historial completo de órdenes de compra</p>
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Historial de Órdenes de Compra</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Consulta y visualiza el historial completo de órdenes de compra</p>
       </div>
       <div class="flex items-center gap-3">
         <select 
           v-model="estadoFilter" 
           @change="handleFilterChange"
-          class="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+          class="px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
         >
           <option value="">Todos los estados</option>
           <option value="PENDIENTE">Pendientes</option>
@@ -45,22 +45,22 @@
     </div>
 
     <!-- Tabla de Historial -->
-    <div class="bg-white rounded-lg shadow border border-gray-200">
-      <div class="px-6 py-4 border-b border-gray-200">
+    <div class="bg-white dark:bg-gray-900 rounded-lg shadow border border-gray-200 dark:border-gray-700">
+      <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         <div class="flex items-center justify-between">
           <div>
-            <h2 class="text-xl font-semibold text-gray-900">Historial de Órdenes</h2>
-            <p class="mt-1 text-sm text-gray-500">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">Historial de Órdenes</h2>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Total: <span class="font-semibold">{{ totalFiltradas }}</span> registros
               <span v-if="estadoFilter">
                 - Filtrado por: <span class="font-medium">{{ getEstadoLabel(estadoFilter) }}</span>
               </span>
-              <span v-else class="text-gray-400">
+              <span v-else class="text-gray-400 dark:text-gray-500">
                 ({{ todosLosLogs.length }} en total)
               </span>
             </p>
           </div>
-          <div class="text-sm text-gray-500">
+          <div class="text-sm text-gray-500 dark:text-gray-400">
             <span class="text-indigo-600 font-medium">Nota:</span> Para realizar acciones sobre las órdenes, ve a 
             <router-link to="/mba3-consultas/proceso" class="text-indigo-600 hover:text-indigo-700 underline font-medium">
               Procesos de Integración
@@ -72,13 +72,13 @@
       <SkeletonTable v-if="loadingTodas && todosLosLogs.length === 0" />
 
       <div v-else-if="todosLosLogs.length === 0" class="px-6 py-12 text-center">
-        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
-          <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 mb-4">
+          <svg class="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
         </div>
-        <p class="text-gray-500 text-lg font-medium">No hay órdenes de compra para mostrar</p>
-        <p class="text-gray-400 text-sm mt-1">
+        <p class="text-gray-500 dark:text-gray-400 text-lg font-medium">No hay órdenes de compra para mostrar</p>
+        <p class="text-gray-400 dark:text-gray-500 text-sm mt-1">
           <span v-if="estadoFilter">Intenta cambiar el filtro o </span>
           <button @click="refreshOrdenes" class="text-indigo-600 hover:text-indigo-700 underline">
             actualizar los datos
@@ -95,11 +95,11 @@
       />
 
       <!-- Paginación -->
-      <div v-if="totalPagesLocal > 1 && !loadingTodas" class="px-6 py-4 border-t border-gray-200">
+      <div v-if="totalPagesLocal > 1 && !loadingTodas" class="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
         <div class="flex items-center justify-between flex-wrap gap-4">
-          <div class="text-sm text-gray-700">
+          <div class="text-sm text-gray-700 dark:text-gray-300">
             Mostrando {{ logsPaginados.length }} de {{ totalFiltradas }} registros
-            <span v-if="estadoFilter" class="text-gray-500">
+            <span v-if="estadoFilter" class="text-gray-500 dark:text-gray-400">
               ({{ todosLosLogs.length }} total)
             </span>
           </div>
@@ -107,17 +107,17 @@
             <button
               @click="prevPage"
               :disabled="currentPageLocal === 1 || loadingTodas"
-              class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+              class="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium text-gray-900 dark:text-gray-200 bg-white dark:bg-gray-800"
             >
               Anterior
             </button>
-            <span class="px-4 py-2 text-sm text-gray-700 bg-gray-50 rounded-lg">
+            <span class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 rounded-lg">
               Página {{ currentPageLocal }} de {{ totalPagesLocal }}
             </span>
             <button
               @click="nextPage"
               :disabled="currentPageLocal === totalPagesLocal || loadingTodas"
-              class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+              class="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium text-gray-900 dark:text-gray-200 bg-white dark:bg-gray-800"
             >
               Siguiente
             </button>

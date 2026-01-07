@@ -3,8 +3,8 @@
     <!-- Header -->
     <div class="flex items-center justify-between flex-wrap gap-4">
       <div>
-        <h1 class="text-3xl font-bold text-gray-900">Homologaciones de SKU</h1>
-        <p class="mt-1 text-sm text-gray-500">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Homologaciones de SKU</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-300">
           Administra las homologaciones de SKU que no coinciden entre MBA3 y SAP
         </p>
       </div>
@@ -50,34 +50,34 @@
     </div>
 
     <!-- Estado de Sincronización -->
-    <div v-if="estadoSincronizacion" class="bg-white rounded-lg shadow p-4 border-l-4"
+    <div v-if="estadoSincronizacion" class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4"
          :class="getSyncStatusClass()">
       <div class="flex items-start justify-between">
         <div class="flex-1">
-          <h3 class="font-semibold text-gray-900 mb-2">Estado de Sincronización</h3>
+          <h3 class="font-semibold text-gray-900 dark:text-white mb-2">Estado de Sincronización</h3>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
           <div>
-              <span class="font-medium text-gray-700">MBA3:</span>
+              <span class="font-medium text-gray-700 dark:text-gray-200">MBA3:</span>
               <span class="ml-2" :class="getSyncTextClass(estadoSincronizacion.mba3)">
                 {{ formatSyncDate(estadoSincronizacion.mba3?.ultima_sync) }}
               </span>
           </div>
           <div>
-              <span class="font-medium text-gray-700">SAP:</span>
+              <span class="font-medium text-gray-700 dark:text-gray-200">SAP:</span>
               <span class="ml-2" :class="getSyncTextClass(estadoSincronizacion.sap)">
                 {{ formatSyncDate(estadoSincronizacion.sap?.ultima_sync) }}
               </span>
           </div>
         </div>
           <div v-if="isSyncOld()" class="mt-3">
-            <p class="text-sm text-yellow-700 mb-2">
+            <p class="text-sm text-yellow-700 dark:text-amber-200 mb-2">
               ⚠️ La última sincronización es antigua. Se recomienda sincronizar los datos.
             </p>
       </div>
           </div>
         <button
           @click="cargarEstadoSincronizacion"
-          class="ml-4 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors"
+          class="ml-4 px-3 py-1.5 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors"
           title="Actualizar estado"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -88,27 +88,27 @@
     </div>
 
     <!-- Indicador de progreso mejorado -->
-    <div v-if="cruceLoading" class="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+    <div v-if="cruceLoading" class="mb-4 p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-700">
       <div class="flex items-center justify-between mb-2">
         <div class="flex-1">
-          <span class="text-sm font-medium text-blue-900">{{ cruceMessage || 'Procesando...' }}</span>
-          <span v-if="cruceStep" class="text-xs text-blue-600 ml-2">({{ cruceStep }})</span>
+          <span class="text-sm font-medium text-blue-900 dark:text-blue-100">{{ cruceMessage || 'Procesando...' }}</span>
+          <span v-if="cruceStep" class="text-xs text-blue-600 dark:text-blue-300 ml-2">({{ cruceStep }})</span>
         </div>
-        <span class="text-sm font-bold text-blue-900">{{ cruceProgress }}%</span>
+        <span class="text-sm font-bold text-blue-900 dark:text-blue-100">{{ cruceProgress }}%</span>
       </div>
-      <div class="w-full bg-blue-200 rounded-full h-2.5 mb-2">
+      <div class="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-2.5 mb-2">
         <div 
           class="bg-blue-600 h-2.5 rounded-full transition-all duration-300 ease-out" 
           :style="{ width: `${cruceProgress}%` }"
         ></div>
       </div>
       <div v-if="cruceProcessId" class="flex items-center justify-between">
-        <p class="text-xs text-gray-500">
+        <p class="text-xs text-gray-500 dark:text-gray-400">
           ID: {{ cruceProcessId }}
         </p>
         <button
           @click="cancelarCruce"
-          class="text-xs text-red-600 hover:text-red-800 underline"
+          class="text-xs text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 underline"
         >
           Cancelar
         </button>
@@ -116,64 +116,64 @@
     </div>
     
     <!-- Mostrar error si existe -->
-    <div v-if="cruceError && !cruceLoading" class="mb-4 p-4 bg-red-50 rounded-lg border border-red-200">
-      <p class="text-sm text-red-800 font-medium">Error:</p>
-      <p class="text-sm text-red-700 mt-1">{{ cruceError }}</p>
+    <div v-if="cruceError && !cruceLoading" class="mb-4 p-4 bg-red-50 dark:bg-red-900/30 rounded-lg border border-red-200 dark:border-red-800">
+      <p class="text-sm text-red-800 dark:text-red-200 font-medium">Error:</p>
+      <p class="text-sm text-red-700 dark:text-red-300 mt-1">{{ cruceError }}</p>
     </div>
 
     <!-- Sección de Cruce de Productos -->
     <div v-if="cruceResultado" class="space-y-4">
       <!-- Estadísticas del Cruce -->
-      <div class="bg-white rounded-lg shadow p-6">
-        <h2 class="text-xl font-bold text-gray-900 mb-4">📊 Resumen del Cruce</h2>
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-4">📊 Resumen del Cruce</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4">
-          <div class="bg-blue-50 rounded-lg p-4 border-l-4 border-blue-500">
-            <p class="text-sm font-medium text-gray-600">Total MBA3</p>
-            <p class="text-2xl font-bold text-blue-900">{{ cruceResultado?.estadisticas?.total_productos_mba3 || 0 }}</p>
+          <div class="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-4 border-l-4 border-blue-500 dark:border-blue-400">
+            <p class="text-sm font-medium text-gray-600 dark:text-gray-300">Total MBA3</p>
+            <p class="text-2xl font-bold text-blue-900 dark:text-blue-100">{{ cruceResultado?.estadisticas?.total_productos_mba3 || 0 }}</p>
           </div>
-          <div class="bg-purple-50 rounded-lg p-4 border-l-4 border-purple-500">
-            <p class="text-sm font-medium text-gray-600">Total SAP</p>
-            <p class="text-2xl font-bold text-purple-900">{{ cruceResultado?.estadisticas?.total_productos_sap || 0 }}</p>
+          <div class="bg-purple-50 dark:bg-purple-900/30 rounded-lg p-4 border-l-4 border-purple-500 dark:border-purple-400">
+            <p class="text-sm font-medium text-gray-600 dark:text-gray-300">Total SAP</p>
+            <p class="text-2xl font-bold text-purple-900 dark:text-purple-100">{{ cruceResultado?.estadisticas?.total_productos_sap || 0 }}</p>
           </div>
-          <div class="bg-green-50 rounded-lg p-4 border-l-4 border-green-500">
-            <p class="text-sm font-medium text-gray-600">✅ Exactos</p>
-            <p class="text-2xl font-bold text-green-900">{{ cruceResultado?.estadisticas?.homologados_exactos || 0 }}</p>
-            <p class="text-xs text-gray-500 mt-1">
+          <div class="bg-green-50 dark:bg-emerald-900/30 rounded-lg p-4 border-l-4 border-green-500 dark:border-emerald-400">
+            <p class="text-sm font-medium text-gray-600 dark:text-gray-300">✅ Exactos</p>
+            <p class="text-2xl font-bold text-green-900 dark:text-green-100">{{ cruceResultado?.estadisticas?.homologados_exactos || 0 }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
               {{ cruceResultado?.estadisticas?.total_productos_mba3 ? ((cruceResultado.estadisticas.homologados_exactos / cruceResultado.estadisticas.total_productos_mba3) * 100).toFixed(1) : '0' }}%
             </p>
           </div>
-          <div class="bg-yellow-50 rounded-lg p-4 border-l-4 border-yellow-500">
-            <p class="text-sm font-medium text-gray-600">⚠️ Homologables</p>
-            <p class="text-2xl font-bold text-yellow-900">{{ cruceResultado?.estadisticas?.homologables || 0 }}</p>
-            <p class="text-xs text-gray-500 mt-1">
+          <div class="bg-yellow-50 dark:bg-amber-900/30 rounded-lg p-4 border-l-4 border-yellow-500 dark:border-amber-400">
+            <p class="text-sm font-medium text-gray-600 dark:text-gray-300">⚠️ Homologables</p>
+            <p class="text-2xl font-bold text-yellow-900 dark:text-amber-100">{{ cruceResultado?.estadisticas?.homologables || 0 }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
               {{ cruceResultado?.estadisticas?.total_productos_mba3 ? ((cruceResultado.estadisticas.homologables / cruceResultado.estadisticas.total_productos_mba3) * 100).toFixed(1) : '0' }}%
             </p>
           </div>
-          <div class="bg-red-50 rounded-lg p-4 border-l-4 border-red-500">
-            <p class="text-sm font-medium text-gray-600">❌ Solo MBA3</p>
-            <p class="text-2xl font-bold text-red-900">{{ cruceResultado?.estadisticas?.solo_en_mba3 || 0 }}</p>
-            <p class="text-xs text-gray-500 mt-1">
+          <div class="bg-red-50 dark:bg-red-900/30 rounded-lg p-4 border-l-4 border-red-500 dark:border-red-400">
+            <p class="text-sm font-medium text-gray-600 dark:text-gray-300">❌ Solo MBA3</p>
+            <p class="text-2xl font-bold text-red-900 dark:text-red-100">{{ cruceResultado?.estadisticas?.solo_en_mba3 || 0 }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
               {{ cruceResultado?.estadisticas?.total_productos_mba3 ? ((cruceResultado.estadisticas.solo_en_mba3 / cruceResultado.estadisticas.total_productos_mba3) * 100).toFixed(1) : '0' }}%
             </p>
           </div>
-          <div class="bg-indigo-50 rounded-lg p-4 border-l-4 border-indigo-500">
-            <p class="text-sm font-medium text-gray-600">🔵 Solo SAP</p>
-            <p class="text-2xl font-bold text-indigo-900">{{ cruceResultado?.estadisticas?.solo_en_sap || 0 }}</p>
-            <p class="text-xs text-gray-500 mt-1">
+          <div class="bg-indigo-50 dark:bg-indigo-900/30 rounded-lg p-4 border-l-4 border-indigo-500 dark:border-indigo-400">
+            <p class="text-sm font-medium text-gray-600 dark:text-gray-300">🔵 Solo SAP</p>
+            <p class="text-2xl font-bold text-indigo-900 dark:text-indigo-100">{{ cruceResultado?.estadisticas?.solo_en_sap || 0 }}</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
               {{ cruceResultado?.estadisticas?.total_productos_sap ? ((cruceResultado.estadisticas.solo_en_sap / cruceResultado.estadisticas.total_productos_sap) * 100).toFixed(1) : '0' }}%
             </p>
           </div>
-          <div class="bg-violet-50 rounded-lg p-4 border-l-4 border-violet-500">
-            <p class="text-sm font-medium text-gray-600">📈 Homologación</p>
-            <p class="text-2xl font-bold text-violet-900">{{ cruceResultado?.estadisticas?.porcentaje_homologacion?.toFixed(1) || '0' }}%</p>
+          <div class="bg-violet-50 dark:bg-violet-900/30 rounded-lg p-4 border-l-4 border-violet-500 dark:border-violet-400">
+            <p class="text-sm font-medium text-gray-600 dark:text-gray-300">📈 Homologación</p>
+            <p class="text-2xl font-bold text-violet-900 dark:text-violet-100">{{ cruceResultado?.estadisticas?.porcentaje_homologacion?.toFixed(1) || '0' }}%</p>
           </div>
         </div>
       </div>
 
       <!-- Tabs para cada categoría -->
-      <div class="bg-white rounded-lg shadow">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
         <!-- Tabs Navigation -->
-        <div class="border-b border-gray-200">
+        <div class="border-b border-gray-200 dark:border-gray-700">
           <nav class="flex -mb-px space-x-8 px-6" aria-label="Tabs">
             <button
               v-for="tab in tabs"
@@ -206,7 +206,7 @@
                   @input="onBusquedaChange"
                   type="text"
                   placeholder="Buscar por código, nombre, pack, corp, grupo, talla..."
-                  class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  class="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg leading-5 bg-white dark:bg-gray-700 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:placeholder-gray-400 dark:focus:placeholder-gray-500 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm text-gray-900 dark:text-white"
                 />
                 <button
                   v-if="busquedaCruce"
@@ -218,7 +218,7 @@
                   </svg>
                 </button>
               </div>
-              <div v-if="busquedaCruce" class="text-sm text-gray-600 whitespace-nowrap">
+              <div v-if="busquedaCruce" class="text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap">
                 {{ datosFiltradosCruce.length }} resultado(s)
               </div>
             </div>
@@ -228,7 +228,7 @@
               <div class="flex items-center gap-2">
                 <button
                   @click="mostrarSelectorColumnas = !mostrarSelectorColumnas"
-                  class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center gap-2"
+                  class="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 flex items-center gap-2"
                 >
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -254,41 +254,41 @@
           </div>
 
           <!-- Panel de Selección de Columnas -->
-          <div v-if="mostrarSelectorColumnas && ['exactos', 'homologables', 'solo_mba3', 'solo_sap'].includes(tabActivo)" class="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <div v-if="mostrarSelectorColumnas && ['exactos', 'homologables', 'solo_mba3', 'solo_sap'].includes(tabActivo)" class="mb-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
               <label
                 v-for="columna in columnasDisponibles"
                 :key="columna.id"
-                class="flex items-center gap-2 p-2 bg-white rounded border border-gray-200 hover:bg-gray-50 cursor-pointer"
+                class="flex items-center gap-2 p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
               >
                 <input
                   type="checkbox"
                   v-model="columnasVisibles[columna.id]"
                   class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                 />
-                <span class="text-sm text-gray-700">{{ columna.label }}</span>
+                <span class="text-sm text-gray-700 dark:text-gray-200">{{ columna.label }}</span>
               </label>
             </div>
           </div>
 
           <!-- Tab: Homologados Exactos -->
           <div v-if="tabActivo === 'exactos'" class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-              <thead class="bg-gray-50">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead class="bg-gray-50 dark:bg-gray-900">
                 <tr>
-                  <th v-for="columna in columnasVisiblesActual" :key="columna.id" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th v-for="columna in columnasVisiblesActual" :key="columna.id" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     {{ columna.label }}
                   </th>
                 </tr>
               </thead>
-              <tbody class="bg-white divide-y divide-gray-200">
-                <tr v-for="item in datosPaginadosCruce" :key="item.codigo_mba3" class="hover:bg-green-50">
+              <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                <tr v-for="item in datosPaginadosCruce" :key="item.codigo_mba3" class="hover:bg-green-50 dark:hover:bg-emerald-900/30">
                   <td v-for="columna in columnasVisiblesActual" :key="columna.id" :class="getCellClass(columna.id)">
                     <div v-if="columna.id === 'codigo_mba3' || columna.id === 'codigo_sap'" class="flex items-center gap-2">
                       <span class="font-mono">{{ getCellValue(item, columna.id, tabActivo) }}</span>
                       <button
                         @click="copiarAlPortapapeles(getCellValue(item, columna.id, tabActivo), columna.id)"
-                        class="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                        class="p-1 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                         :title="`Copiar ${columna.id === 'codigo_mba3' ? 'SKU MBA3' : 'SKU SAP'}`"
                       >
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -303,24 +303,24 @@
             </table>
             <!-- Paginación -->
             <div v-if="totalPaginasCruce > 1" class="mt-4 flex items-center justify-between px-6 pb-4">
-              <div class="text-sm text-gray-700">
+              <div class="text-sm text-gray-700 dark:text-gray-300">
                 Mostrando {{ (paginaCruce - 1) * itemsPorPagina + 1 }} a {{ Math.min(paginaCruce * itemsPorPagina, totalItemsCruce) }} de {{ totalItemsCruce }} resultados
               </div>
               <div class="flex items-center gap-2">
                 <button
                   @click="paginaCruce = Math.max(1, paginaCruce - 1)"
                   :disabled="paginaCruce === 1"
-                  class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Anterior
                 </button>
-                <span class="px-3 py-2 text-sm text-gray-700">
+                <span class="px-3 py-2 text-sm text-gray-700 dark:text-gray-300">
                   Página {{ paginaCruce }} de {{ totalPaginasCruce }}
                 </span>
                 <button
                   @click="paginaCruce = Math.min(totalPaginasCruce, paginaCruce + 1)"
                   :disabled="paginaCruce === totalPaginasCruce"
-                  class="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Siguiente
                 </button>
@@ -330,16 +330,16 @@
 
           <!-- Tab: Homologables -->
           <div v-if="tabActivo === 'homologables'" class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-              <thead class="bg-gray-50">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead class="bg-gray-50 dark:bg-gray-900">
                 <tr>
-                  <th v-for="columna in columnasVisiblesActual" :key="columna.id" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th v-for="columna in columnasVisiblesActual" :key="columna.id" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     {{ columna.label }}
                   </th>
                 </tr>
               </thead>
-              <tbody class="bg-white divide-y divide-gray-200">
-                <tr v-for="item in datosPaginadosCruce" :key="item.codigo_mba3" class="hover:bg-yellow-50">
+              <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                <tr v-for="item in datosPaginadosCruce" :key="item.codigo_mba3" class="hover:bg-yellow-50 dark:hover:bg-amber-900/30">
                   <td v-for="columna in columnasVisiblesActual" :key="columna.id" :class="getCellClass(columna.id, 'homologables')">
                     <div v-if="columna.id === 'codigo_mba3' || columna.id === 'codigo_sap'" class="flex items-center gap-2">
                       <span :class="columna.id === 'codigo_sap' && tabActivo === 'homologables' ? 'text-orange-600 font-mono' : 'font-mono'">{{ getCellValue(item, columna.id, tabActivo) }}</span>
@@ -388,19 +388,19 @@
 
           <!-- Tab: Solo en MBA3 -->
           <div v-if="tabActivo === 'solo_mba3'" class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-              <thead class="bg-gray-50">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead class="bg-gray-50 dark:bg-gray-900">
                 <tr>
-                  <th v-for="columna in columnasVisiblesActual" :key="columna.id" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th v-for="columna in columnasVisiblesActual" :key="columna.id" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     {{ columna.label }}
                   </th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Acciones
                   </th>
                 </tr>
               </thead>
-              <tbody class="bg-white divide-y divide-gray-200">
-                <tr v-for="item in datosPaginadosCruce" :key="item.codigo_mba3" class="hover:bg-red-50">
+              <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                <tr v-for="item in datosPaginadosCruce" :key="item.codigo_mba3" class="hover:bg-red-50 dark:hover:bg-red-900/30">
                   <td v-for="columna in columnasVisiblesActual" :key="columna.id" :class="getCellClass(columna.id)">
                     <div v-if="columna.id === 'codigo_mba3'" class="flex items-center gap-2">
                       <span class="font-mono">{{ getCellValue(item, columna.id, tabActivo) }}</span>

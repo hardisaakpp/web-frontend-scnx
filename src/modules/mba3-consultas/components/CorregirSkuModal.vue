@@ -8,11 +8,11 @@
       @click.self="$emit('close')"
     >
       <!-- Overlay -->
-      <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" @click.self="$emit('close')"></div>
+      <div class="fixed inset-0 bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-80 transition-opacity" @click.self="$emit('close')"></div>
 
       <!-- Modal -->
       <div class="flex min-h-full items-center justify-center p-4">
-        <div class="relative transform overflow-hidden rounded-lg bg-white shadow-xl transition-all w-full max-w-5xl max-h-[90vh] flex flex-col">
+        <div class="relative transform overflow-hidden rounded-lg bg-white dark:bg-gray-900 dark:text-gray-100 shadow-xl transition-all w-full max-w-5xl max-h-[90vh] flex flex-col">
           <!-- Header -->
           <div class="bg-gradient-to-r from-red-500 to-red-600 px-6 py-4 flex-shrink-0">
             <div class="flex items-center justify-between">
@@ -36,62 +36,62 @@
           <!-- Content -->
           <div class="px-6 py-4 overflow-y-auto flex-1">
             <!-- Información de la ODC -->
-            <div class="mb-6 bg-gray-50 rounded-lg p-4 border border-gray-200">
-              <h4 class="text-sm font-semibold text-gray-900 mb-3">Información de la Orden de Compra</h4>
+            <div class="mb-6 bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+              <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-200 mb-3">Información de la Orden de Compra</h4>
               <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>
-                  <span class="text-gray-500">Proveedor:</span>
-                  <p class="font-medium text-gray-900">{{ odc?.proveedor || '-' }}</p>
+                  <span class="text-gray-500 dark:text-gray-400">Proveedor:</span>
+                  <p class="font-medium text-gray-900 dark:text-gray-100">{{ odc?.proveedor || '-' }}</p>
                 </div>
                 <div>
-                  <span class="text-gray-500">Fecha:</span>
-                  <p class="font-medium text-gray-900">{{ formatDate(odc?.fecha_generacion) }}</p>
+                  <span class="text-gray-500 dark:text-gray-400">Fecha:</span>
+                  <p class="font-medium text-gray-900 dark:text-gray-100">{{ formatDate(odc?.fecha_generacion) }}</p>
                 </div>
                 <div>
-                  <span class="text-gray-500">Error:</span>
+                  <span class="text-gray-500 dark:text-gray-400">Error:</span>
                   <p class="font-medium text-red-600">{{ odc?.error_code || '-' }}</p>
                 </div>
                 <div>
-                  <span class="text-gray-500">Fuente:</span>
-                  <p class="font-medium text-gray-900">{{ odc?.error_source || '-' }}</p>
+                  <span class="text-gray-500 dark:text-gray-400">Fuente:</span>
+                  <p class="font-medium text-gray-900 dark:text-gray-100">{{ odc?.error_source || '-' }}</p>
                 </div>
               </div>
-              <div v-if="odc?.error_message" class="mt-3 pt-3 border-t border-gray-200">
-                <span class="text-gray-500 text-sm">Mensaje de error:</span>
-                <p class="text-sm text-gray-900 mt-1">{{ odc.error_message }}</p>
+              <div v-if="odc?.error_message" class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                <span class="text-gray-500 dark:text-gray-400 text-sm">Mensaje de error:</span>
+                <p class="text-sm text-gray-900 dark:text-gray-100 mt-1">{{ odc.error_message }}</p>
               </div>
             </div>
 
             <!-- Detalles de la ODC -->
-            <div v-if="detallesOC.length > 0" class="mb-6 bg-blue-50 rounded-lg p-4 border border-blue-200">
-              <h4 class="text-sm font-semibold text-blue-900 mb-3">Detalles de la ODC</h4>
+            <div v-if="detallesOC.length > 0" class="mb-6 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-700">
+              <h4 class="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-3">Detalles de la ODC</h4>
               <div v-if="detallesOC.length === 1" class="text-sm">
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
-                    <span class="text-gray-600">SKU SAP:</span>
-                    <p class="font-mono font-medium text-gray-900">{{ detallesOC[0].sku_sap || '-' }}</p>
+                    <span class="text-gray-600 dark:text-gray-300">SKU SAP:</span>
+                    <p class="font-mono font-medium text-gray-900 dark:text-gray-100">{{ detallesOC[0].sku_sap || '-' }}</p>
                   </div>
                   <div>
-                    <span class="text-gray-600">Cantidad:</span>
-                    <p class="font-medium text-gray-900">{{ detallesOC[0].cantidad_sap }} {{ detallesOC[0].unidad_sap }}</p>
+                    <span class="text-gray-600 dark:text-gray-300">Cantidad:</span>
+                    <p class="font-medium text-gray-900 dark:text-gray-100">{{ detallesOC[0].cantidad_sap }} {{ detallesOC[0].unidad_sap }}</p>
                   </div>
                   <div>
-                    <span class="text-gray-600">Precio Unit:</span>
-                    <p class="font-medium text-gray-900">${{ detallesOC[0].precio_unitario?.toFixed(2) || '0.00' }}</p>
+                    <span class="text-gray-600 dark:text-gray-300">Precio Unit:</span>
+                    <p class="font-medium text-gray-900 dark:text-gray-100">${{ detallesOC[0].precio_unitario?.toFixed(2) || '0.00' }}</p>
                   </div>
                   <div>
-                    <span class="text-gray-600">Total:</span>
-                    <p class="font-medium text-gray-900">${{ detallesOC[0].total_linea?.toFixed(2) || '0.00' }}</p>
+                    <span class="text-gray-600 dark:text-gray-300">Total:</span>
+                    <p class="font-medium text-gray-900 dark:text-gray-100">${{ detallesOC[0].total_linea?.toFixed(2) || '0.00' }}</p>
                   </div>
                 </div>
               </div>
               <div v-else>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Selecciona el detalle a corregir:
                 </label>
                 <select
                   v-model="detalleSeleccionado"
-                  class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  class="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-800 dark:text-gray-100"
                 >
                   <option :value="null">Selecciona un detalle...</option>
                   <option
@@ -107,7 +107,7 @@
 
             <!-- SKU Problemático -->
             <div class="mb-6">
-              <label class="block text-sm font-medium text-gray-700 mb-2">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 SKU que causó el error (MBA3)
               </label>
               <div class="flex gap-2">
@@ -115,7 +115,7 @@
                   v-model="skuProblematico"
                   type="text"
                   placeholder="Ingrese el SKU de MBA3 que causó el error"
-                  class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                  class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent dark:bg-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400"
                   :disabled="buscandoSugerencias"
                 />
                 <button
@@ -135,8 +135,8 @@
             </div>
 
             <!-- Información del SKU en MBA3 -->
-            <div v-if="infoSkuMba3" class="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h4 class="text-sm font-semibold text-blue-900 mb-3 flex items-center gap-2">
+            <div v-if="infoSkuMba3" class="mb-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
+              <h4 class="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-3 flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
@@ -144,20 +144,20 @@
               </h4>
               <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>
-                  <span class="text-gray-600">Código:</span>
-                  <p class="font-mono font-medium text-gray-900">{{ infoSkuMba3.codigo || '-' }}</p>
+                  <span class="text-gray-600 dark:text-gray-300">Código:</span>
+                  <p class="font-mono font-medium text-gray-900 dark:text-gray-100">{{ infoSkuMba3.codigo || '-' }}</p>
                 </div>
                 <div>
-                  <span class="text-gray-600">Nombre:</span>
-                  <p class="font-medium text-gray-900">{{ infoSkuMba3.nombre || '-' }}</p>
+                  <span class="text-gray-600 dark:text-gray-300">Nombre:</span>
+                  <p class="font-medium text-gray-900 dark:text-gray-100">{{ infoSkuMba3.nombre || '-' }}</p>
                 </div>
                 <div v-if="infoSkuMba3.corp">
-                  <span class="text-gray-600">Corp:</span>
-                  <p class="font-medium text-gray-900">{{ infoSkuMba3.corp }}</p>
+                  <span class="text-gray-600 dark:text-gray-300">Corp:</span>
+                  <p class="font-medium text-gray-900 dark:text-gray-100">{{ infoSkuMba3.corp }}</p>
                 </div>
                 <div v-if="infoSkuMba3.grupo_prenda">
-                  <span class="text-gray-600">Grupo:</span>
-                  <p class="font-medium text-gray-900">{{ infoSkuMba3.grupo_prenda }}</p>
+                  <span class="text-gray-600 dark:text-gray-300">Grupo:</span>
+                  <p class="font-medium text-gray-900 dark:text-gray-100">{{ infoSkuMba3.grupo_prenda }}</p>
                 </div>
               </div>
             </div>
@@ -168,7 +168,7 @@
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
-              <p class="mt-4 text-gray-500">Buscando sugerencias de SKU similares en SAP...</p>
+              <p class="mt-4 text-gray-500 dark:text-gray-400">Buscando sugerencias de SKU similares en SAP...</p>
             </div>
 
             <div v-else-if="sugerencias.length > 0" class="space-y-4">
@@ -183,16 +183,16 @@
                 <div
                   v-for="(sugerencia, index) in sugerencias"
                   :key="sugerencia.codigo"
-                  class="bg-white rounded-lg border-2 p-4 transition-all cursor-pointer"
+                  class="bg-white dark:bg-gray-800 rounded-lg border-2 dark:border-gray-700 p-4 transition-all cursor-pointer"
                   :class="sugerenciaSeleccionada?.codigo === sugerencia.codigo 
-                    ? 'border-indigo-500 bg-indigo-50' 
-                    : 'border-gray-200 hover:border-gray-300'"
+                    ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20' 
+                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'"
                   @click="seleccionarSugerencia(sugerencia)"
                 >
                   <div class="flex items-start justify-between mb-3">
                     <div class="flex-1">
                       <div class="flex items-center gap-3 mb-2">
-                        <span class="font-mono font-semibold text-gray-900 text-lg">{{ sugerencia.codigo }}</span>
+                        <span class="font-mono font-semibold text-gray-900 dark:text-gray-100 text-lg">{{ sugerencia.codigo }}</span>
                         <span
                           :class="getScoreBadgeClass(sugerencia.score_porcentaje)"
                           class="px-2 py-1 rounded-full text-xs font-semibold"
@@ -201,19 +201,19 @@
                         </span>
                         <span
                           v-if="sugerencia.estado === 'inactivo'"
-                          class="px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800"
+                          class="px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
                         >
                           Inactivo
                         </span>
                       </div>
-                      <p class="text-sm text-gray-700 mb-2">{{ sugerencia.nombre }}</p>
-                      <div class="flex items-center gap-4 text-xs text-gray-600">
+                      <p class="text-sm text-gray-700 dark:text-gray-300 mb-2">{{ sugerencia.nombre }}</p>
+                      <div class="flex items-center gap-4 text-xs text-gray-600 dark:text-gray-400">
                         <span v-if="sugerencia.pack">Pack: {{ sugerencia.pack }}</span>
                         <span v-if="sugerencia.group_code">Group Code: {{ sugerencia.group_code }}</span>
                         <span v-if="sugerencia.group_name">Grupo: {{ sugerencia.group_name }}</span>
                         <span
                           v-if="sugerencia.estado === 'activo'"
-                          class="text-green-600 font-semibold"
+                          class="text-green-600 dark:text-green-300 font-semibold"
                         >
                           ✓ Activo
                         </span>
@@ -233,11 +233,11 @@
 
                   <!-- Barra de score -->
                   <div class="mb-3">
-                    <div class="flex items-center justify-between text-xs text-gray-600 mb-1">
+                    <div class="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400 mb-1">
                       <span>Confianza</span>
                       <span>{{ sugerencia.score_porcentaje.toFixed(1) }}%</span>
                     </div>
-                    <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                       <div
                         :class="getScoreBarClass(sugerencia.score_porcentaje)"
                         class="h-2 rounded-full transition-all duration-300"
@@ -247,10 +247,10 @@
                   </div>
 
                   <!-- Motivos -->
-                  <div v-if="sugerencia.motivos && sugerencia.motivos.length > 0" class="mt-3 pt-3 border-t border-gray-200">
+                  <div v-if="sugerencia.motivos && sugerencia.motivos.length > 0" class="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
                     <button
                       @click.stop="toggleMotivos(index)"
-                      class="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1 mb-2"
+                      class="text-xs text-indigo-600 hover:text-indigo-700 dark:hover:text-indigo-400 font-medium flex items-center gap-1 mb-2"
                     >
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -261,7 +261,7 @@
                       <div
                         v-for="(motivo, motivoIndex) in sugerencia.motivos"
                         :key="motivoIndex"
-                        class="bg-gray-50 rounded p-2 text-xs text-gray-600"
+                        class="bg-gray-50 dark:bg-gray-800 rounded p-2 text-xs text-gray-600 dark:text-gray-400"
                       >
                         • {{ motivo }}
                       </div>
@@ -271,31 +271,31 @@
               </div>
             </div>
 
-            <div v-else-if="skuProblematico && !buscandoSugerencias" class="text-center py-12 bg-yellow-50 rounded-lg border border-yellow-200">
+            <div v-else-if="skuProblematico && !buscandoSugerencias" class="text-center py-12 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-700">
               <svg class="w-12 h-12 text-yellow-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
-              <p class="text-gray-700 font-medium">No se encontraron sugerencias</p>
-              <p class="text-sm text-gray-500 mt-1">Intenta buscar manualmente el SKU en SAP</p>
+              <p class="text-gray-700 dark:text-gray-300 font-medium">No se encontraron sugerencias</p>
+              <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Intenta buscar manualmente el SKU en SAP</p>
             </div>
 
             <!-- Mensaje de error -->
-            <div v-if="errorBusqueda" class="bg-red-50 border border-red-200 rounded-lg p-4">
-              <div class="flex items-center gap-2 text-red-800">
+            <div v-if="errorBusqueda" class="bg-red-50 border border-red-200 dark:bg-red-900/20 dark:border-red-700 rounded-lg p-4">
+              <div class="flex items-center gap-2 text-red-800 dark:text-red-200">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <p class="font-medium">Error al buscar sugerencias</p>
               </div>
-              <p class="text-sm text-red-700 mt-2">{{ errorBusqueda }}</p>
+              <p class="text-sm text-red-700 dark:text-red-300 mt-2">{{ errorBusqueda }}</p>
             </div>
           </div>
 
           <!-- Footer -->
-          <div class="bg-gray-50 px-6 py-4 flex justify-end gap-3 flex-shrink-0 border-t border-gray-200">
+          <div class="bg-gray-50 dark:bg-gray-800 px-6 py-4 flex justify-end gap-3 flex-shrink-0 border-t border-gray-200 dark:border-gray-700">
             <button
               @click="$emit('close')"
-              class="px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              class="px-4 py-2 text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               Cancelar
             </button>
@@ -518,9 +518,9 @@ async function aplicarCorreccion() {
 
 // Funciones auxiliares
 function getScoreBadgeClass(porcentaje: number): string {
-  if (porcentaje >= 80) return 'bg-green-100 text-green-800'
-  if (porcentaje >= 50) return 'bg-yellow-100 text-yellow-800'
-  return 'bg-red-100 text-red-800'
+  if (porcentaje >= 80) return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+  if (porcentaje >= 50) return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+  return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
 }
 
 function getScoreLabel(porcentaje: number): string {
