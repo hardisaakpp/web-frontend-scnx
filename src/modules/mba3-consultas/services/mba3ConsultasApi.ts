@@ -1,6 +1,6 @@
 import axios from 'axios'
 import router from '@/router'
-import type { 
+import type {
   Despacho,
   DespachoDetalle
 } from '../types'
@@ -24,7 +24,7 @@ const mba3Api = axios.create({
 mba3Api.interceptors.request.use(
   config => {
     const token = localStorage.getItem('token')
-    
+
     if (token) {
       // Usar la misma sintaxis que funciona en api.js
       if (!config.headers) {
@@ -32,12 +32,12 @@ mba3Api.interceptors.request.use(
       }
       config.headers.Authorization = `Bearer ${token}`
     }
-    
+
     // Si es FormData, eliminar Content-Type para que axios lo establezca automáticamente con boundary
     if (config.data instanceof FormData && config.headers) {
       delete config.headers['Content-Type']
     }
-    
+
     return config
   },
   error => {
@@ -56,7 +56,7 @@ mba3Api.interceptors.response.use(
       localStorage.removeItem('user')
       router.push('/login')
     }
-    
+
     // Log detallado del error para debugging
     console.error('🔍 [MBA3 API Interceptor] Error capturado:', error)
     if (error.response) {
@@ -68,13 +68,13 @@ mba3Api.interceptors.response.use(
       console.error('🔍 [MBA3 API Interceptor] Request Error:', error.request)
       console.error('🔍 [MBA3 API Interceptor] No se recibió respuesta del servidor')
     }
-    
+
     // NO modificar el error aquí - dejarlo pasar tal cual para que cada método lo maneje
     // Solo agregar información del response data al error si no la tiene
     if (error.response?.data && !error.responseData) {
       error.responseData = error.response.data
     }
-    
+
     return Promise.reject(error)
   }
 )
@@ -95,41 +95,41 @@ export const mba3ConsultasService = {
   // Migrar
   async migrar(retries: number = 2): Promise<ProcesoResponse> {
     let lastError: any = null
-    
+
     // Intentar hasta (retries + 1) veces (retries = número de reintentos adicionales)
     // Por defecto: 3 intentos totales (intento 0, 1, 2)
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
-      // Si no es el primer intento, agregar un delay progresivo para dar tiempo al backend
-      if (attempt > 0) {
-        const delay = attempt * 2000 // Delay progresivo: 2s, 4s, 6s...
-        console.warn(`[migrar] Reintentando migración (intento ${attempt + 1}/${retries + 1}) después de ${delay}ms...`)
-        await new Promise(resolve => setTimeout(resolve, delay))
-      }
-      
-      // Timeout extendido a 120 segundos para operaciones de migración largas
-      // que incluyen consultas a MBA3, SAP y guardado en base de datos
-      const response = await mba3Api.get<ProcesoResponse>('/migrar/completo', {
-        timeout: 120000 // 2 minutos
-      })
-      return response.data
+        // Si no es el primer intento, agregar un delay progresivo para dar tiempo al backend
+        if (attempt > 0) {
+          const delay = attempt * 2000 // Delay progresivo: 2s, 4s, 6s...
+          console.warn(`[migrar] Reintentando migración (intento ${attempt + 1}/${retries + 1}) después de ${delay}ms...`)
+          await new Promise(resolve => setTimeout(resolve, delay))
+        }
+
+        // Timeout extendido a 120 segundos para operaciones de migración largas
+        // que incluyen consultas a MBA3, SAP y guardado en base de datos
+        const response = await mba3Api.get<ProcesoResponse>('/migrar/completo', {
+          timeout: 120000 // 2 minutos
+        })
+        return response.data
       } catch (error: any) {
         lastError = error
-        
+
         // Solo reintentar si es un error 500 y no es el último intento
         const is500Error = error.response?.status === 500
         const isLastAttempt = attempt === retries
-        
+
         if (is500Error && !isLastAttempt) {
           console.warn(`[migrar] Error 500 en intento ${attempt + 1}/${retries + 1}. El backend puede necesitar inicialización. Reintentando...`)
           continue // Continuar al siguiente intento
         }
-        
+
         // Si no es un 500 o es el último intento, lanzar el error
         throw error
       }
     }
-    
+
     // Si llegamos aquí, todos los intentos fallaron
     throw lastError
   },
@@ -138,7 +138,7 @@ export const mba3ConsultasService = {
   // despachoIds: string | string[] | undefined - Si se proporciona, procesa solo esos despachos
   async procesarOC(despachoIds?: string | string[]): Promise<any> {
     const params = new URLSearchParams()
-    
+
     if (despachoIds) {
       // Si es un array, enviar múltiples IDs
       if (Array.isArray(despachoIds)) {
@@ -150,7 +150,7 @@ export const mba3ConsultasService = {
         params.append('despacho_id', despachoIds)
       }
     }
-    
+
     const queryString = params.toString()
     const url = queryString ? `/procesar-oc?${queryString}` : '/procesar-oc'
     const response = await mba3Api.get(url)
@@ -162,7 +162,7 @@ export const mba3ConsultasService = {
   // almacenDestino: string | undefined - Código del almacén destino (ej: RL, OUT, LP)
   async integrarSAP(referenciaDespacho?: string | string[], almacenDestino?: string): Promise<IntegracionSAPResponse> {
     const params = new URLSearchParams()
-    
+
     if (referenciaDespacho) {
       // Si es un array, enviar múltiples referencias
       if (Array.isArray(referenciaDespacho)) {
@@ -172,12 +172,12 @@ export const mba3ConsultasService = {
         params.append('referencia_despacho', referenciaDespacho)
       }
     }
-    
+
     // Agregar almacén destino si se proporciona
     if (almacenDestino) {
       params.append('almacen_destino', almacenDestino)
     }
-    
+
     const queryString = params.toString()
     const url = queryString ? `/integrar-sap?${queryString}` : '/integrar-sap'
     const response = await mba3Api.post<IntegracionSAPResponse>(url)
@@ -194,7 +194,7 @@ export const mba3ConsultasService = {
     }
     params.append('page', page.toString())
     params.append('pageSize', pageSize.toString())
-    
+
     const queryString = params.toString()
     const url = queryString ? `/ordenes-compra?${queryString}` : '/ordenes-compra'
     const response = await mba3Api.get<OrdenCompraResponse>(url)
@@ -235,10 +235,10 @@ export const mba3ConsultasService = {
   async getDespachos(page: number = 1, pageSize: number = 10): Promise<{ status: string; data: Despacho[]; metadata: { count: number; filters: {} }; total: number; page: number; pageSize: number }> {
     try {
       const response = await mba3Api.get<any>('/despachos/count')
-      
+
       // Intentar obtener los datos de diferentes formas posibles
       let despachosData: Despacho[] = []
-      
+
       if (Array.isArray(response.data)) {
         despachosData = response.data
       } else if (response.data.data && Array.isArray(response.data.data)) {
@@ -250,9 +250,9 @@ export const mba3ConsultasService = {
       } else if (response.data.despatches && Array.isArray(response.data.despatches)) {
         despachosData = response.data.despatches
       }
-      
+
       const count = response.data.count || despachosData.length || 0
-      
+
       return {
         status: 'success',
         data: despachosData,
@@ -274,10 +274,10 @@ export const mba3ConsultasService = {
   async getDespachoDetalles(despachoId: string): Promise<DespachoDetalle[]> {
     try {
       const response = await mba3Api.get<any>(`/despachos/${despachoId}/detalles`)
-      
+
       // El endpoint podría devolver los detalles de diferentes formas
       let detalles: DespachoDetalle[] = []
-      
+
       if (Array.isArray(response.data)) {
         detalles = response.data
       } else if (response.data.data && Array.isArray(response.data.data)) {
@@ -287,7 +287,7 @@ export const mba3ConsultasService = {
       } else if (response.data.items && Array.isArray(response.data.items)) {
         detalles = response.data.items
       }
-      
+
       return detalles
     } catch (error: any) {
       console.error('❌ [getDespachoDetalles] Error:', error)
@@ -301,7 +301,7 @@ export const mba3ConsultasService = {
       const params = new URLSearchParams()
       params.append('page', page.toString())
       params.append('pageSize', pageSize.toString())
-      
+
       if (filters?.estado) {
         params.append('estado', filters.estado)
       }
@@ -311,7 +311,7 @@ export const mba3ConsultasService = {
       if (filters?.fechaHasta) {
         params.append('fecha_hasta', filters.fechaHasta)
       }
-      
+
       const queryString = params.toString()
       const url = queryString ? `/ordenes-compra/logs?${queryString}` : '/ordenes-compra/logs'
       const response = await mba3Api.get<OrdenCompraLogResponse>(url)
@@ -325,7 +325,7 @@ export const mba3ConsultasService = {
             page,
             pageSize
           }
-          
+
           if (filters?.estado) {
             body.estado = filters.estado
           }
@@ -335,7 +335,7 @@ export const mba3ConsultasService = {
           if (filters?.fechaHasta) {
             body.fecha_hasta = filters.fechaHasta
           }
-          
+
           const response = await mba3Api.post<OrdenCompraLogResponse>('/ordenes-compra/logs', body)
           return response.data
         } catch (postError: any) {
@@ -353,14 +353,15 @@ export const mba3ConsultasService = {
       const params = new URLSearchParams()
       params.append('page', page.toString())
       params.append('pageSize', pageSize.toString())
-      
+
       const queryString = params.toString()
       const url = queryString ? `/remisiones?${queryString}` : '/remisiones'
       const response = await mba3Api.get<RemisionResponse>(url)
       return response.data
     } catch (error: any) {
       console.error('❌ [getRemisiones] Error al obtener remisiones:', error)
-      throw new Error(`No se pudieron obtener las remisiones desde el backend. Error: ${error.message}`)
+      // Preservar el error original (AxiosError) para que la vista pueda distinguir 4xx/5xx
+      throw error
     }
   },
 
@@ -371,12 +372,13 @@ export const mba3ConsultasService = {
       return response.data
     } catch (error: any) {
       console.error('❌ [consultarRemisionesDesdeMBA3] Error al consultar remisiones desde MBA3:', error)
-      throw new Error(`No se pudieron consultar las remisiones desde MBA3. Error: ${error.message}`)
+      // Preservar el error original (AxiosError) para que la vista pueda distinguir 4xx/5xx
+      throw error
     }
   },
 
   // ========== Homologaciones de SKU ==========
-  
+
   // Obtener homologaciones de SKU con filtros
   async getSkuHomologaciones(
     page: number = 1,
@@ -392,7 +394,7 @@ export const mba3ConsultasService = {
       const params = new URLSearchParams()
       params.append('page', page.toString())
       params.append('pageSize', pageSize.toString())
-      
+
       if (filters?.estado) {
         params.append('estado', filters.estado)
       }
@@ -405,7 +407,7 @@ export const mba3ConsultasService = {
       if (filters?.sku) {
         params.append('sku', filters.sku)
       }
-      
+
       const queryString = params.toString()
       const url = queryString ? `/api/homologaciones-sku?${queryString}` : '/api/homologaciones-sku'
       const response = await mba3Api.get<SkuHomologacionResponse>(url)
@@ -455,7 +457,7 @@ export const mba3ConsultasService = {
   },
 
   // ========== Cruce de Productos ==========
-  
+
   // Iniciar cruce de productos (retorna process_id)
   async iniciarCruce(): Promise<IniciarCruceResponse> {
     try {
@@ -476,7 +478,7 @@ export const mba3ConsultasService = {
     abortSignal?: AbortSignal  // Para cancelación
   ): Promise<ReadableStreamDefaultReader | null> {
     const token = localStorage.getItem('token')
-    
+
     if (!token) {
       throw new Error('No hay token de autenticación')
     }
@@ -507,7 +509,7 @@ export const mba3ConsultasService = {
         try {
           while (true) {
             const { done, value } = await reader.read()
-            
+
             if (done) {
               if (onComplete) onComplete()
               break
@@ -549,7 +551,7 @@ export const mba3ConsultasService = {
           }
           throw streamError
         }
-        
+
         return reader
       }
 
@@ -608,19 +610,19 @@ export const mba3ConsultasService = {
         const errorData = error.response.data
         const message = errorData?.messsage || errorData?.message || 'No hay un cruce reciente disponible'
         const customError = new Error(message)
-        // Preservar el status code para que el frontend lo detecte
-        ;(customError as any).response = error.response
+          // Preservar el status code para que el frontend lo detecte
+          ; (customError as any).response = error.response
         throw customError
       }
-      
+
       // Detectar timeout específicamente
       if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
         console.warn('⏱️ [obtenerSugerencias] Timeout - el proceso puede seguir ejecutándose en el servidor')
         const timeoutError = new Error('El cálculo de sugerencias está tardando más de lo esperado. El proceso puede seguir ejecutándose en el servidor. Intenta nuevamente en unos minutos.')
-        ;(timeoutError as any).isTimeout = true
+          ; (timeoutError as any).isTimeout = true
         throw timeoutError
       }
-      
+
       console.error('❌ [obtenerSugerencias] Error al obtener sugerencias:', error)
       throw new Error(`No se pudieron obtener las sugerencias. Error: ${error.message}`)
     }
@@ -652,7 +654,7 @@ export const mba3ConsultasService = {
   },
 
   // ========== Búsqueda de SKU ==========
-  
+
   // Buscar SKU en MBA3
   async buscarSkuMba3(
     sku: string,
@@ -663,19 +665,19 @@ export const mba3ConsultasService = {
       const params: any = {
         sku: sku
       }
-      
+
       // Solo agregar parámetros si se solicitan sugerencias
       if (incluirSugerenciasSap) {
         params.incluir_sugerencias_sap = true
         params.limite_sugerencias = Math.min(Math.max(limiteSugerencias, 1), 50) // Entre 1 y 50
       }
-      
+
       // Timeout aumentado a 60 segundos para dar margen al backend (que tiene timeout de 25s)
       const response = await mba3Api.get<BuscarSkuMba3Response>(`/cruce-productos/buscar-sku/mba3`, {
         params: params,
         timeout: 60000 // 60 segundos
       })
-      
+
       return response.data
     } catch (error: any) {
       // Si el error es 404, significa que no se encontró el SKU (no es un error crítico)
@@ -727,17 +729,17 @@ export const mba3ConsultasService = {
   async buscarSugerenciasSku(sku: string, limite: number = 20): Promise<SugerenciasSkuResponse> {
     try {
       const response = await mba3Api.get<SugerenciasSkuResponse>(`/cruce-productos/buscar-sku/sap/sugerencias`, {
-        params: { 
+        params: {
           sku,
           limite: Math.min(limite, 50) // Máximo 50 según backend
         },
         timeout: 60000
       })
-      
+
       return response.data
     } catch (error: any) {
       console.error('❌ [buscarSugerenciasSku] Error al buscar sugerencias:', error)
-      
+
       // Si el error es 404, significa que no se encontraron sugerencias
       if (error.response?.status === 404) {
         return {
@@ -748,7 +750,7 @@ export const mba3ConsultasService = {
           total_encontrados: 0
         }
       }
-      
+
       // Para otros errores, lanzar excepción
       throw new Error(`No se pudieron obtener las sugerencias. Error: ${error.message}`)
     }
@@ -783,10 +785,10 @@ export const mba3ConsultasService = {
       return response.data
     } catch (error: any) {
       console.error('❌ [actualizarSkuDetalle] Error al actualizar SKU:', error)
-      
+
       // Extraer mensaje de error más descriptivo
       let message = error.message || 'Error desconocido al actualizar SKU'
-      
+
       if (error.response?.data) {
         if (error.response.data.detail) {
           message = error.response.data.detail
@@ -794,13 +796,13 @@ export const mba3ConsultasService = {
           message = error.response.data.message
         }
       }
-      
+
       throw new Error(message)
     }
   },
 
   // ========== Plantillas / Pedidos ==========
-  
+
   /**
    * Sube y procesa un archivo Excel de plantilla
    * Requiere permiso: mba3-consultas.proceso.execute
@@ -810,7 +812,7 @@ export const mba3ConsultasService = {
       // Validar tipo de archivo - solo Excel
       const allowedExtensions = ['.xlsx', '.xls']
       const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'))
-      
+
       if (!allowedExtensions.includes(fileExtension)) {
         throw new Error(`Tipo de archivo no permitido. Solo se permiten: ${allowedExtensions.join(', ')}`)
       }
@@ -831,24 +833,49 @@ export const mba3ConsultasService = {
         formData
       )
 
-      return response.data
+      // Normalizar claves del backend (validation -> validacion) para el frontend
+      const data: any = { ...response.data }
+      if (data && data.validation && !data.validacion) {
+        data.validacion = data.validation
+      }
+      if (data && data.validation_sap && !data.validacion_sap) {
+        data.validacion_sap = data.validation_sap
+      }
+      return data as UploadPlantillaResponse
     } catch (error: any) {
       console.error('❌ [uploadPlantilla] Error al subir plantilla:', error)
       console.error('❌ [uploadPlantilla] Response data:', error.response?.data)
-      
+
       // Extraer mensaje de error más descriptivo
       let message = error.message || 'Error desconocido al subir plantilla'
       let hasBackendMessage = false
-      
+
+      // Si el backend retorna 400 con cuerpo de validación, devolverlo como resultado manejable
+      if (error.response?.status === 400 && error.response?.data?.status === 'validation_error') {
+        const raw = error.response.data
+        const data: any = { ...raw }
+        if (data && data.validation && !data.validacion) {
+          data.validacion = data.validation
+        }
+        if (data && data.validation_sap && !data.validacion_sap) {
+          data.validacion_sap = data.validation_sap
+        }
+        // Asegurar campos mínimos
+        if (!data.message && data.detail) {
+          data.message = data.detail
+        }
+        return data as UploadPlantillaResponse
+      }
+
       if (error.response?.data) {
         // Prioridad 1: Manejar business_exception (nuevo tipo de error)
         if (error.response.data.type === 'business_exception') {
           hasBackendMessage = true
           message = error.response.data.error || error.response.data.message || 'No se puede procesar: productos no válidos en SAP'
           console.log('✅ [uploadPlantilla] Business exception detectada:', message)
-          // Preservar información adicional para mejor manejo
-          ;(error as any).isBusinessException = true
-          ;(error as any).businessError = error.response.data.error
+            // Preservar información adicional para mejor manejo
+            ; (error as any).isBusinessException = true
+            ; (error as any).businessError = error.response.data.error
         }
         // Prioridad 2: Verificar campo 'error' primero (antes que detail)
         else if (error.response.data.error) {
@@ -860,7 +887,7 @@ export const mba3ConsultasService = {
         else if (error.response.data.detail) {
           hasBackendMessage = true
           const detail = error.response.data.detail
-          
+
           if (Array.isArray(detail)) {
             // Si es un array, unir los mensajes de forma más legible
             message = detail.map((item: any) => {
@@ -893,14 +920,14 @@ export const mba3ConsultasService = {
         // Error de red (sin respuesta del servidor)
         message = 'No se pudo conectar con el servidor. Verifica tu conexión a internet.'
       }
-      
+
       // Solo usar mensaje genérico si NO tenemos un mensaje del backend y el mensaje es genérico
-      if (!hasBackendMessage && (message === 'Request failed with status code 400' || 
-          message.includes('status code') || 
-          message === 'Error desconocido al subir plantilla')) {
+      if (!hasBackendMessage && (message === 'Request failed with status code 400' ||
+        message.includes('status code') ||
+        message === 'Error desconocido al subir plantilla')) {
         message = 'Error al procesar el archivo. Verifica que el formato sea correcto y que no sea un pedido duplicado.'
       }
-      
+
       console.log('🔴 [uploadPlantilla] Mensaje final de error:', message)
       throw new Error(message)
     }
@@ -919,10 +946,10 @@ export const mba3ConsultasService = {
       return response.data
     } catch (error: any) {
       console.error('❌ [getPedido] Error al obtener pedido:', error)
-      
+
       // Extraer mensaje de error más descriptivo
       let message = error.message || 'Error desconocido al obtener pedido'
-      
+
       if (error.response?.data) {
         if (error.response.data.detail) {
           message = error.response.data.detail
@@ -930,7 +957,7 @@ export const mba3ConsultasService = {
           message = error.response.data.message
         }
       }
-      
+
       throw new Error(message)
     }
   },
@@ -958,12 +985,12 @@ export const mba3ConsultasService = {
       if (error.response?.status === 404) {
         return null
       }
-      
+
       console.error('❌ [getUltimoPedido] Error al obtener último pedido:', error)
-      
+
       // Extraer mensaje de error más descriptivo
       let message = error.message || 'Error desconocido al obtener último pedido'
-      
+
       if (error.response?.data) {
         if (error.response.data.detail) {
           message = error.response.data.detail
@@ -971,7 +998,7 @@ export const mba3ConsultasService = {
           message = error.response.data.message
         }
       }
-      
+
       throw new Error(message)
     }
   },
@@ -990,9 +1017,9 @@ export const mba3ConsultasService = {
       return response.data
     } catch (error: any) {
       console.error('❌ [exportarPedidoParaProveedor] Error al exportar pedido:', error)
-      
+
       let message = error.message || 'Error desconocido al exportar pedido'
-      
+
       if (error.response?.data) {
         if (error.response.data.detail) {
           message = error.response.data.detail
@@ -1000,7 +1027,7 @@ export const mba3ConsultasService = {
           message = error.response.data.message
         }
       }
-      
+
       throw new Error(message)
     }
   },
@@ -1015,7 +1042,7 @@ export const mba3ConsultasService = {
       // Validar tipo de archivo - solo Excel
       const allowedExtensions = ['.xlsx', '.xls']
       const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'))
-      
+
       if (!allowedExtensions.includes(fileExtension)) {
         throw new Error(`Tipo de archivo no permitido. Solo se permiten: ${allowedExtensions.join(', ')}`)
       }
@@ -1037,13 +1064,13 @@ export const mba3ConsultasService = {
       return response.data
     } catch (error: any) {
       console.error('❌ [cargarRespuestaProveedor] Error al cargar respuesta:', error)
-      
+
       let message = error.message || 'Error desconocido al cargar respuesta del proveedor'
       let hasBackendMessage = false
-      
+
       if (error.response?.data) {
         const detail = error.response.data.detail
-        
+
         if (detail) {
           hasBackendMessage = true
           if (Array.isArray(detail)) {
@@ -1075,14 +1102,14 @@ export const mba3ConsultasService = {
       } else if (error.request) {
         message = 'No se pudo conectar con el servidor. Verifica tu conexión a internet.'
       }
-      
+
       // Solo usar mensaje genérico si NO tenemos un mensaje del backend y el mensaje es genérico
-      if (!hasBackendMessage && (message === 'Request failed with status code 400' || 
-          message.includes('status code') || 
-          message === 'Error desconocido al cargar respuesta del proveedor')) {
+      if (!hasBackendMessage && (message === 'Request failed with status code 400' ||
+        message.includes('status code') ||
+        message === 'Error desconocido al cargar respuesta del proveedor')) {
         message = 'Error al procesar el archivo. Verifica que el formato sea correcto.'
       }
-      
+
       throw new Error(message)
     }
   },
@@ -1098,14 +1125,14 @@ export const mba3ConsultasService = {
       return response.data
     } catch (error: any) {
       console.error('❌ [getRespuestaProveedor] Error al obtener respuesta:', error)
-      
+
       // Si es 404, el pedido no tiene respuesta aún
       if (error.response?.status === 404) {
         throw new Error('No existe respuesta del proveedor para este pedido')
       }
-      
+
       let message = error.message || 'Error desconocido al obtener respuesta del proveedor'
-      
+
       if (error.response?.data) {
         if (error.response.data.detail) {
           message = error.response.data.detail
@@ -1113,7 +1140,7 @@ export const mba3ConsultasService = {
           message = error.response.data.message
         }
       }
-      
+
       throw new Error(message)
     }
   },
@@ -1133,29 +1160,29 @@ export const mba3ConsultasService = {
       if (forzarRedistribucion) {
         params.append('forzar_redistribucion', 'true')
       }
-      
+
       const queryString = params.toString()
-      const url = queryString 
+      const url = queryString
         ? `/api/pedidos/${encodeURIComponent(numeroPedido)}/procesar-confirmacion?${queryString}`
         : `/api/pedidos/${encodeURIComponent(numeroPedido)}/procesar-confirmacion`
-      
+
       const response = await mba3Api.post<ProcesarConfirmacionResponse>(url)
       return response.data
     } catch (error: any) {
       console.error('❌ [procesarConfirmacionProveedor] Error al procesar confirmación:', error)
-      
+
       // Manejar error 409 (respuesta ya procesada - idempotencia)
       if (error.response?.status === 409) {
         const errorData = error.response.data
         const message = errorData?.detail || errorData?.message || 'Esta respuesta del proveedor ya fue procesada anteriormente'
         const customError = new Error(message)
-        ;(customError as any).isConflict = true
-        ;(customError as any).statusCode = 409
+          ; (customError as any).isConflict = true
+          ; (customError as any).statusCode = 409
         throw customError
       }
-      
+
       let message = error.message || 'Error desconocido al procesar confirmación'
-      
+
       if (error.response?.data) {
         if (error.response.data.detail) {
           message = error.response.data.detail
@@ -1163,7 +1190,7 @@ export const mba3ConsultasService = {
           message = error.response.data.message
         }
       }
-      
+
       throw new Error(message)
     }
   },
@@ -1181,28 +1208,28 @@ export const mba3ConsultasService = {
     try {
       const params = new URLSearchParams()
       params.append('formato', formato)
-      
+
       const response = await mba3Api.get(
         `/api/pedidos/${encodeURIComponent(numeroPedido)}/reporte-diferencias?${params.toString()}`,
         formato !== 'json' ? { responseType: 'blob' } : {}
       )
-      
+
       // Si es formato diferente a JSON, retornar el Blob
       if (formato !== 'json') {
         return response.data as Blob
       }
-      
+
       return response.data as ReporteDiferenciasResponse
     } catch (error: any) {
       console.error('❌ [getReporteDiferencias] Error al obtener reporte:', error)
-      
+
       // Si es 404, el pedido no tiene confirmación procesada
       if (error.response?.status === 404) {
         throw new Error('No existe reporte de diferencias para este pedido. Primero debe procesar la confirmación del proveedor.')
       }
-      
+
       let message = error.message || 'Error desconocido al obtener reporte de diferencias'
-      
+
       if (error.response?.data) {
         if (error.response.data.detail) {
           message = error.response.data.detail
@@ -1210,7 +1237,7 @@ export const mba3ConsultasService = {
           message = error.response.data.message
         }
       }
-      
+
       throw new Error(message)
     }
   },
@@ -1226,9 +1253,9 @@ export const mba3ConsultasService = {
       return response.data
     } catch (error: any) {
       console.error('❌ [crearOrdenCompraDesdePedido] Error al crear orden de compra:', error)
-      
+
       let message = error.message || 'Error desconocido al crear orden de compra'
-      
+
       if (error.response?.data) {
         if (error.response.data.detail) {
           message = error.response.data.detail
@@ -1236,7 +1263,7 @@ export const mba3ConsultasService = {
           message = error.response.data.message
         }
       }
-      
+
       throw new Error(message)
     }
   },

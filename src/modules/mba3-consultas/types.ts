@@ -252,34 +252,34 @@ export interface OrdenCompraLog {
   fecha?: string
   created_at?: string
   updated_at?: string
-  
+
   // Información de la orden de compra
   oc_id?: string
   referencia_despacho?: string
   proveedor?: string
   despacho_id?: string
-  
+
   // Estado y acción
   estado?: string
   accion?: string
   tipo?: string
-  
+
   // Información de SAP
   numero_oc_sap?: string | null
   doc_entry?: number | null
   doc_num?: number | null
-  
+
   // Mensajes y errores
   mensaje?: string | null
   error_message?: string | null
   error_code?: string | null
   error_source?: string | null
   respuesta_sap?: string | null
-  
+
   // Fechas
   fecha_generacion?: string
   fecha_procesado?: string | null
-  
+
   // Campos adicionales dinámicos
   [key: string]: any
 }
@@ -546,11 +546,11 @@ export interface BuscarSkuMba3Response {
     descontinuado?: boolean | string
     inactive?: boolean | string
   } | null
-  
+
   // Nuevos campos opcionales (solo si incluir_sugerencias_sap=true)
   sugerencias_sap?: SugerenciaSkuSap[]
   total_sugerencias_sap?: number
-  
+
   // Campos de error opcionales para sugerencias
   sugerencias_sap_timeout?: boolean
   sugerencias_sap_disabled?: boolean
@@ -767,6 +767,7 @@ export interface PedidoDetalle {
   pvp: number | null
   subtotal: number | null
   total: number | null
+  bodega: number | null
   tiendas: TiendaDistribucion[]
 }
 

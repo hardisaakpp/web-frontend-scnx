@@ -159,28 +159,28 @@
             <div v-if="uploadResponse?.validacion && !esValidacionCompletaOk" class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
               <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Resultados de Validación</h3>
               <div class="space-y-2 text-sm">
-                <div class="flex items-center gap-2">
+                <div v-if="uploadResponse.validacion.productos" class="flex items-center gap-2">
                   <svg class="h-4 w-4" :class="uploadResponse.validacion.productos.todos_validos ? 'text-green-600 dark:text-green-300' : 'text-red-600 dark:text-red-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path v-if="uploadResponse.validacion.productos.todos_validos" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <span class="text-gray-700 dark:text-gray-200">
                     Productos: 
-                    <span class="font-medium">{{ uploadResponse.validacion.productos.validos.length }} válidos</span>
-                    <span v-if="uploadResponse.validacion.productos.no_encontrados.length > 0" class="text-red-600 dark:text-red-400">
+                    <span class="font-medium">{{ uploadResponse.validacion.productos.validos?.length || 0 }} válidos</span>
+                    <span v-if="uploadResponse.validacion.productos.no_encontrados?.length > 0" class="text-red-600 dark:text-red-400">
                       , {{ uploadResponse.validacion.productos.no_encontrados.length }} no encontrados
                     </span>
                   </span>
                 </div>
-                <div class="flex items-center gap-2">
+                <div v-if="uploadResponse.validacion.tiendas" class="flex items-center gap-2">
                   <svg class="h-4 w-4" :class="uploadResponse.validacion.tiendas.todas_validas ? 'text-green-600 dark:text-green-300' : 'text-red-600 dark:text-red-400'" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path v-if="uploadResponse.validacion.tiendas.todas_validas" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <span class="text-gray-700 dark:text-gray-200">
                     Tiendas: 
-                    <span class="font-medium">{{ uploadResponse.validacion.tiendas.validas.length }} válidas</span>
-                    <span v-if="uploadResponse.validacion.tiendas.no_encontradas.length > 0" class="text-red-600 dark:text-red-400">
+                    <span class="font-medium">{{ uploadResponse.validacion.tiendas.validas?.length || 0 }} válidas</span>
+                    <span v-if="uploadResponse.validacion.tiendas.no_encontradas?.length > 0" class="text-red-600 dark:text-red-400">
                       , {{ uploadResponse.validacion.tiendas.no_encontradas.length }} no encontradas
                     </span>
                   </span>
@@ -197,6 +197,31 @@
             </div>
           </div>
 
+          <!-- Mensaje de validación del backend cuando hay validation_error -->
+          <div v-if="uploadResponse && uploadResponse.status === 'validation_error' && uploadResponse.message" class="mt-4 border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 rounded-lg p-4">
+            <div class="flex items-start gap-3">
+              <svg class="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div class="flex-1">
+                <p class="text-sm font-semibold text-red-900 dark:text-red-100 mb-1">Error de validación</p>
+                <div class="text-sm text-red-800 dark:text-red-200 mb-2">{{ uploadResponse.message }}</div>
+                
+                <!-- Detalle específico: Productos no válidos en SAP -->
+                <div v-if="(uploadResponse.message.includes('No se puede persistir el pedido') || uploadResponse.message.includes('No se puede procesar la plantilla')) && (uploadResponse.message.includes('productos no válidos en SAP') || uploadResponse.message.includes('no encontrados en SAP'))" class="mt-3 p-3 bg-yellow-50 dark:bg-amber-950 border border-yellow-300 dark:border-amber-800 rounded">
+                  <p class="text-xs font-medium text-yellow-900 dark:text-amber-100 mb-1">💡 Productos no válidos: <span class="font-mono">{{ extractProductosNoValidos(uploadResponse.message) }}</span></p>
+                  <p class="text-xs font-medium text-yellow-900 dark:text-amber-100 mb-1 mt-2">Soluciones sugeridas:</p>
+                  <ul class="text-xs text-yellow-800 dark:text-amber-200 ml-4 list-disc space-y-1">
+                    <li>Verifica que los códigos de producto estén escritos correctamente</li>
+                    <li>Confirma que los productos existen en el catálogo SAP</li>
+                    <li>Revisa posibles errores de tipeo en el archivo Excel</li>
+                    <li>Contacta al administrador si los productos deberían existir</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Error de carga -->
           <div v-if="uploadError" class="mt-4 border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 rounded-lg p-4">
             <div class="flex items-start gap-3">
@@ -208,7 +233,7 @@
                 <div class="text-sm text-red-800 dark:text-red-200 mb-3">{{ uploadError }}</div>
                 
                 <!-- Error específico: Productos no válidos en SAP -->
-                <div v-if="uploadError.includes('No se puede persistir el pedido') && uploadError.includes('productos no válidos en SAP')" class="mt-3 p-4 bg-red-100 dark:bg-red-950 border-2 border-red-300 dark:border-red-700 rounded-lg">
+                <div v-if="(uploadError.includes('No se puede persistir el pedido') || uploadError.includes('No se puede procesar la plantilla')) && (uploadError.includes('productos no válidos en SAP') || uploadError.includes('no encontrados en SAP'))" class="mt-3 p-4 bg-red-100 dark:bg-red-950 border-2 border-red-300 dark:border-red-700 rounded-lg">
                   <div class="flex items-start gap-2 mb-2">
                     <svg class="h-5 w-5 text-red-700 dark:text-red-300 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -348,11 +373,19 @@ const cargandoUltimoPedido = ref(false)
 
 // Función para extraer productos no válidos del mensaje de error
 const extractProductosNoValidos = (errorMsg: string): string => {
-  // Buscar el patrón: "Productos no encontrados en SAP: XXX"
-  const match = errorMsg.match(/Productos no encontrados en SAP:\s*(.+?)(?:\.|$)/i)
+  // Buscar varios patrones posibles
+  // Patrón 1: "Productos no encontrados en SAP: XXX"
+  let match = errorMsg.match(/Productos no encontrados en SAP:\s*(.+?)(?:\.|$)/i)
   if (match && match[1]) {
     return match[1].trim()
   }
+  
+  // Patrón 2: "Productos (Movimiento) no encontrados en SAP: XXX"
+  match = errorMsg.match(/Productos \([^)]+\) no encontrados en SAP:\s*(.+?)(?:\.|$)/i)
+  if (match && match[1]) {
+    return match[1].trim()
+  }
+  
   return 'No especificados'
 }
 
@@ -360,9 +393,9 @@ const extractProductosNoValidos = (errorMsg: string): string => {
 const esValidacionCompletaOk = computed(() => {
   if (!uploadResponse.value?.validacion) return true
   const v = uploadResponse.value.validacion
-  return v.productos.todos_validos && 
-         v.tiendas.todas_validas && 
-         v.cantidades.valid
+  return v?.productos?.todos_validos && 
+         v?.tiendas?.todas_validas && 
+         v?.cantidades?.valid
 })
 
 const triggerFileInput = () => {
@@ -436,8 +469,20 @@ const handleUpload = async () => {
     const response: UploadPlantillaResponse = await mba3ConsultasService.uploadPlantilla(selectedFile.value)
     
     uploadResponse.value = response
-    archivoCargado.value = true
     uploadedFileName.value = selectedFile.value.name
+    
+    // Si es un error de validación, marcar como archivo cargado para mostrar resultados
+    if (response.status === 'validation_error') {
+      archivoCargado.value = true
+      toast.error(
+        'Error de validación',
+        response.message || 'La plantilla tiene errores que deben corregirse'
+      )
+      return // Salir aquí para mostrar el panel de error
+    }
+    
+    // Solo marcar como cargado exitoso si no es error
+    archivoCargado.value = true
     
     // Obtener numero_pedido de la respuesta
     let numeroPedido = response.numero_pedido
@@ -461,11 +506,6 @@ const handleUpload = async () => {
           'Plantilla procesada exitosamente', 
           `Número de pedido: ${numeroPedido}\nArtículos: ${response.articulos_cargados}\nDistribuciones: ${response.distribuciones_cargadas}`
         )
-      } else if (response.status === 'validation_error') {
-        toast.warning(
-          'Plantilla procesada con advertencias',
-          'Revisa los resultados de validación'
-        )
       }
       
       // Redirigir a la vista de detalle del pedido (misma interfaz que "Gestionar Pedidos")
@@ -479,15 +519,16 @@ const handleUpload = async () => {
         'Plantilla procesada exitosamente', 
         `Artículos: ${response.articulos_cargados}\nDistribuciones: ${response.distribuciones_cargadas}`
       )
-    } else if (response.status === 'validation_error') {
-      toast.warning(
-        'Plantilla procesada con advertencias',
-        'Revisa los resultados de validación'
-      )
     }
   } catch (e: any) {
+    // Cuando hay un error de catch (error de red, timeout, etc), resetear el estado
     const errorMessage = e.message || 'Error al subir plantilla'
     uploadError.value = errorMessage
+    
+    // Resetear archivo seleccionado para permitir reintentar
+    selectedFile.value = null
+    archivoCargado.value = false
+    
     toast.error('Error al cargar plantilla', errorMessage)
   } finally {
     uploading.value = false

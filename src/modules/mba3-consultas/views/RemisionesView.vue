@@ -97,6 +97,20 @@ const totalRemisiones = ref(0)
 const currentPage = ref(1)
 const pageSize = ref(10)
 const filteredRemisionesCount = ref(0)
+// Utilidad: normalizar errores HTTP para logging/UX
+function parseHttpError(err: any) {
+  const status = err?.response?.status ?? err?.status ?? null
+  const data = err?.response?.data ?? err?.data ?? null
+  const message = data?.message ?? data?.detail ?? err?.message ?? 'Error desconocido'
+  return {
+    status,
+    data,
+    message,
+    is4xx: typeof status === 'number' && status >= 400 && status < 500,
+    is5xx: typeof status === 'number' && status >= 500,
+  }
+}
+
 
 // Computed para total de páginas
 const totalPages = computed(() => {
@@ -138,8 +152,14 @@ async function cargarRemisiones() {
     totalRemisiones.value = response.total || response.metadata?.count || remisiones.value.length
     filteredRemisionesCount.value = 0
   } catch (error: any) {
-    console.error('Error al cargar remisiones:', error)
-    toast.error('Error al cargar remisiones', error.message || 'No se pudieron cargar los documentos de remisión')
+    const { status, message, is4xx, data } = parseHttpError(error)
+    if (is4xx) {
+      console.warn('Validación al cargar remisiones (4xx):', status, message, data)
+      toast.warning('Error al cargar remisiones', message || 'Solicitud inválida')
+    } else {
+      console.error('Error al cargar remisiones (sistema):', status, message, error)
+      toast.error('Error al cargar remisiones', message || 'Error interno. Intenta más tarde.')
+    }
     remisiones.value = []
     filteredRemisionesCount.value = 0
   } finally {
@@ -170,8 +190,14 @@ async function consultarDesdeMBA3() {
     currentPage.value = 1
     await cargarRemisiones()
   } catch (error: any) {
-    console.error('Error al consultar remisiones desde MBA3:', error)
-    toast.error('Error al consultar desde MBA3', error.message || 'No se pudieron consultar las remisiones desde MBA3')
+    const { status, message, is4xx, data } = parseHttpError(error)
+    if (is4xx) {
+      console.warn('Validación al consultar desde MBA3 (4xx):', status, message, data)
+      toast.warning('Error al consultar desde MBA3', message || 'Solicitud inválida')
+    } else {
+      console.error('Error al consultar remisiones desde MBA3 (sistema):', status, message, error)
+      toast.error('Error al consultar desde MBA3', message || 'Error interno. Intenta más tarde.')
+    }
   } finally {
     consultandoMBA3.value = false
   }

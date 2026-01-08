@@ -382,38 +382,81 @@
 
         <!-- Detalles del pedido (tabla de productos) -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Productos del Pedido</h2>
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Productos del Pedido</h2>
+            <div class="relative">
+              <button
+                @click="showColumnSelector = !showColumnSelector"
+                class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-2 text-gray-700 dark:text-gray-300"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                </svg>
+                Columnas
+              </button>
+              
+              <!-- Dropdown de selección de columnas -->
+              <div
+                v-if="showColumnSelector"
+                @click.stop
+                class="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 p-3"
+              >
+                <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-2 px-2">Seleccionar columnas</div>
+                <div class="space-y-1 max-h-80 overflow-y-auto">
+                  <label
+                    v-for="column in availableColumns"
+                    :key="column.key"
+                    class="flex items-center gap-2 px-2 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      v-model="column.visible"
+                      class="w-4 h-4 text-indigo-600 border-gray-300 dark:border-gray-600 rounded focus:ring-indigo-500 dark:focus:ring-indigo-400"
+                    />
+                    <span class="text-sm text-gray-700 dark:text-gray-300">{{ column.label }}</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
           <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead class="bg-gray-50 dark:bg-gray-900">
                 <tr>
-                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Código</th>
-                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Descripción</th>
-                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Marca</th>
-                  <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cantidad Total</th>
-                  <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Costo Unit.</th>
-                  <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total</th>
+                  <th
+                    v-for="(column, index) in visibleColumns"
+                    :key="column.key"
+                    draggable="true"
+                    @dragstart="handleDragStart(index)"
+                    @dragover.prevent="handleDragOver(index)"
+                    @drop.prevent="handleDrop(index)"
+                    @dragend="handleDragEnd"
+                    :class="[
+                      'px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-move select-none',
+                      column.align === 'right' ? 'text-right' : 'text-left',
+                      draggedColumnIndex === index ? 'opacity-50 bg-indigo-100 dark:bg-indigo-900' : '',
+                      dragOverColumnIndex === index && draggedColumnIndex !== null ? 'border-l-4 border-indigo-500' : ''
+                    ]"
+                  >
+                    {{ column.label }}
+                  </th>
                 </tr>
               </thead>
               <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 <tr v-for="detalle in pedido.detalles" :key="detalle.pedido_detalle_id">
-                  <td class="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                    {{ detalle.codigo_interno || 'N/A' }}
-                  </td>
-                  <td class="px-4 py-4 text-sm text-gray-900 dark:text-white">
-                    {{ detalle.descripcion_sap || 'N/A' }}
-                  </td>
-                  <td class="px-4 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                    {{ detalle.marca || 'N/A' }}
-                  </td>
-                  <td class="px-4 py-4 whitespace-nowrap text-right text-sm text-gray-900 dark:text-white">
-                    {{ formatNumber(getTotalCantidad(detalle.tiendas)) }}
-                  </td>
-                  <td class="px-4 py-4 whitespace-nowrap text-right text-sm text-gray-900 dark:text-white">
-                    {{ formatCurrency(detalle.costo_doc_sin_iva) }}
-                  </td>
-                  <td class="px-4 py-4 whitespace-nowrap text-right text-sm font-medium text-gray-900 dark:text-white">
-                    {{ formatCurrency(detalle.total) }}
+                  <td
+                    v-for="column in visibleColumns"
+                    :key="column.key"
+                    :class="[
+                      'px-4 py-4 text-sm',
+                      column.align === 'right' ? 'text-right whitespace-nowrap' : '',
+                      column.key === 'codigo_interno' ? 'font-medium text-gray-900 dark:text-white whitespace-nowrap' :
+                      column.key === 'total' ? 'font-medium text-gray-900 dark:text-white' :
+                      column.key === 'descripcion_sap' ? 'text-gray-900 dark:text-white' :
+                      'text-gray-500 dark:text-gray-400 whitespace-nowrap'
+                    ]"
+                  >
+                    {{ formatColumnValue(detalle, column) }}
                   </td>
                 </tr>
               </tbody>
@@ -713,6 +756,34 @@ const uploadErrorInfo = ref<{
   fileName?: string
   errors?: Array<string | { tipo?: string; campo?: string; mensaje: string; producto?: string }>
 } | null>(null)
+
+// Gestión de columnas visibles en la tabla
+const showColumnSelector = ref(false)
+const draggedColumnIndex = ref<number | null>(null)
+const dragOverColumnIndex = ref<number | null>(null)
+interface ColumnConfig {
+  key: string
+  label: string
+  visible: boolean
+  align?: 'left' | 'right'
+  format?: 'text' | 'number' | 'currency'
+}
+
+const availableColumns = ref<ColumnConfig[]>([
+  { key: 'codigo_interno', label: 'Código', visible: true, align: 'left', format: 'text' },
+  { key: 'descripcion_sap', label: 'Descripción', visible: true, align: 'left', format: 'text' },
+  { key: 'marca', label: 'Marca', visible: true, align: 'left', format: 'text' },
+  { key: 'codigo_barras', label: 'Código de Barras', visible: false, align: 'left', format: 'text' },
+  { key: 'pack', label: 'Pack', visible: false, align: 'left', format: 'text' },
+  { key: 'costo_doc_sin_iva', label: 'Costo Unit.', visible: true, align: 'right', format: 'currency' },
+  { key: 'descuento_1', label: 'Descuento', visible: false, align: 'right', format: 'number' },
+  { key: 'pvp', label: 'PVP', visible: false, align: 'right', format: 'currency' },
+  { key: 'subtotal', label: 'Subtotal', visible: true, align: 'right', format: 'number' },
+  { key: 'bodega', label: 'Bodega', visible: true, align: 'right', format: 'number' },
+  { key: 'total', label: 'Total', visible: true, align: 'right', format: 'number' }
+])
+
+const visibleColumns = computed(() => availableColumns.value.filter(col => col.visible))
 
 // El parámetro de ruta ahora es numero_pedido
 const numeroPedido = computed(() => {
@@ -1343,6 +1414,26 @@ function getTotalCantidad(tiendas: any[]): number {
   return tiendas.reduce((sum, t) => sum + (t.cantidad || 0), 0)
 }
 
+function formatColumnValue(detalle: any, column: ColumnConfig): string {
+  const value = detalle[column.key]
+  
+  // Manejar valores null/undefined
+  if (value === null || value === undefined) {
+    return column.key === 'bodega' ? '-' : 'N/A'
+  }
+  
+  // Formatear según el tipo
+  switch (column.format) {
+    case 'currency':
+      return formatCurrency(value)
+    case 'number':
+      return formatNumber(value)
+    case 'text':
+    default:
+      return value.toString()
+  }
+}
+
 function getEstadoBadgeClass(estado: string): string {
   const classes: Record<string, string> = {
     'PENDIENTE_REVISION': 'bg-yellow-100 text-yellow-800',
@@ -1433,6 +1524,9 @@ onMounted(() => {
   loadPedido()
   // Autofocus opcional: descomentar si quieres que el input tenga foco al cargar
   // pedidoInputRef.value?.focus()
+  
+  // Agregar listener para cerrar dropdown al hacer click fuera
+  document.addEventListener('click', handleClickOutsideColumnSelector)
 })
 
 // Watch para reaccionar a cambios en el parámetro de ruta
@@ -1454,6 +1548,69 @@ onUnmounted(() => {
     fileInput.value.remove()
     fileInput.value = null
   }
+  
+  // Remover listener del dropdown
+  document.removeEventListener('click', handleClickOutsideColumnSelector)
 })
+
+function handleClickOutsideColumnSelector(event: MouseEvent) {
+  if (!showColumnSelector.value) return
+  
+  const target = event.target as HTMLElement
+  // Si el click es dentro del dropdown o del botón, no hacer nada
+  if (target.closest('.relative')) {
+    return
+  }
+  
+  // Cerrar el dropdown
+  showColumnSelector.value = false
+}
+
+function handleDragStart(index: number) {
+  draggedColumnIndex.value = index
+}
+
+function handleDragOver(index: number) {
+  if (draggedColumnIndex.value !== null) {
+    dragOverColumnIndex.value = index
+  }
+}
+
+function handleDrop(dropIndex: number) {
+  if (draggedColumnIndex.value === null || draggedColumnIndex.value === dropIndex) {
+    return
+  }
+  
+  // Reordenar las columnas visibles
+  const visibleCols = availableColumns.value.filter(col => col.visible)
+  const draggedColumn = visibleCols[draggedColumnIndex.value]
+  
+  // Remover columna arrastrada
+  visibleCols.splice(draggedColumnIndex.value, 1)
+  
+  // Insertar en nueva posición
+  visibleCols.splice(dropIndex, 0, draggedColumn)
+  
+  // Actualizar el orden en availableColumns manteniendo las ocultas
+  const newAvailableColumns: ColumnConfig[] = []
+  const hiddenColumns = availableColumns.value.filter(col => !col.visible)
+  
+  // Agregar columnas visibles en nuevo orden
+  visibleCols.forEach(col => {
+    newAvailableColumns.push(col)
+  })
+  
+  // Agregar columnas ocultas al final (mantener su orden)
+  hiddenColumns.forEach(col => {
+    newAvailableColumns.push(col)
+  })
+  
+  availableColumns.value = newAvailableColumns
+}
+
+function handleDragEnd() {
+  draggedColumnIndex.value = null
+  dragOverColumnIndex.value = null
+}
 </script>
 
