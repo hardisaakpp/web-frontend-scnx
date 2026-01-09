@@ -4,7 +4,9 @@
       <!-- Header con botones de acción -->
       <div class="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Detalle del Pedido</h1>
+          <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
+            {{ tituloInterfaz }}
+          </h1>
         </div>
         <div class="flex items-center gap-3">
           <!-- Búsqueda directa de pedidos -->
@@ -89,17 +91,6 @@
             {{ procesandoConfirmacion ? 'Procesando...' : 'Procesar Confirmación' }}
           </button>
           <button
-            v-if="canExportForProvider"
-            @click="handleExportForProvider"
-            :disabled="loading"
-            class="px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
-          >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            Exportar para Proveedor
-          </button>
-          <button
             v-if="canGenerarOC"
             @click="handleGenerarOCDesdePedido"
             :disabled="loading || generandoOC"
@@ -113,6 +104,16 @@
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
             {{ generandoOC ? 'Generando...' : 'Generar Orden de Compra' }}
+          </button>
+          <button
+            @click="handleConfirmar"
+            :disabled="loading || !pedido"
+            class="px-4 py-2 bg-purple-600 dark:bg-purple-500 text-white rounded-lg hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Confirmar
           </button>
         </div>
       </div>
@@ -1010,11 +1011,17 @@ const numeroPedido = computed(() => {
   return id ? decodeURIComponent(id) : ''
 })
 
-const canExportForProvider = computed(() => {
-  // Permitir exportar si no hay respuesta aún o si el estado lo permite
-  return !pedido.value?.respuesta_proveedor
+// ⭐ Detectar el modo de interfaz según query params
+const esModoMabelTrading = computed(() => {
+  return route.query.usuario === 'mabel-trading' || route.query.modo === 'confirmacion'
 })
 
+// ⭐ Título de la interfaz según el modo
+const tituloInterfaz = computed(() => {
+  return esModoMabelTrading.value 
+    ? 'Detalle del Pedido - MABEL TRADING'
+    : 'Detalle del Pedido - EL RAYO'
+})
 
 const canProcesarConfirmacion = computed(() => {
   // Permitir procesar si hay respuesta y está en estado PENDIENTE_REVISION
@@ -1182,6 +1189,23 @@ async function handleGenerarOCDesdePedido() {
   }
 }
 
+function handleConfirmar() {
+  if (!pedido.value || !numeroPedido.value) return
+  
+  // Construir la URL para la interfaz de MABEL TRADING
+  // Usar router.resolve para obtener la URL completa
+  const routeData = router.resolve({
+    name: 'mba3-consultas-pedido-detalle',
+    params: { id: encodeURIComponent(numeroPedido.value) },
+    query: { modo: 'confirmacion', usuario: 'mabel-trading' }
+  })
+  
+  // Abrir en nueva pestaña
+  window.open(routeData.href, '_blank')
+  
+  toast.info('Abriendo confirmación', 'Se ha abierto la interfaz de confirmación en una nueva pestaña')
+}
+
 async function handleViewReporteDiferencias() {
   if (!reporteDiferencias.value) {
     await loadReporteDiferencias()
@@ -1218,28 +1242,6 @@ async function handleExportReporteDiferencias() {
     toast.success('Reporte exportado', 'El reporte de diferencias se ha descargado correctamente')
   } catch (e: any) {
     toast.error('Error al exportar', e.message || 'No se pudo exportar el reporte')
-  }
-}
-
-async function handleExportForProvider() {
-  if (!pedido.value || !numeroPedido.value) return
-  
-  try {
-    const blob = await mba3ConsultasService.exportarPedidoParaProveedor(numeroPedido.value)
-    
-    // Crear URL del blob y descargar
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `Pedido_${pedido.value.cabecera.numero_pedido || numeroPedido.value}_Proveedor.xlsx`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    window.URL.revokeObjectURL(url)
-    
-    toast.success('Archivo exportado', 'El archivo Excel se ha descargado correctamente')
-  } catch (e: any) {
-    toast.error('Error al exportar', e.message || 'No se pudo exportar el archivo')
   }
 }
 
