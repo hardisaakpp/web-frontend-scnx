@@ -6,7 +6,7 @@ import type {
 } from '../types'
 import type { OrdenCompraResponse, OrdenCompraLogResponse, RemisionResponse } from '../types'
 import type { HealthResponse, ProcesoResponse } from '../types'
-import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstado, ProcesoEstadoResponse, SugerenciaProducto, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuRequest, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, PedidoCompleto, CargarRespuestaProveedorResponse, RespuestaProveedorResponse, ProcesarConfirmacionResponse, ReporteDiferenciasResponse, IntegracionSAPResponse } from '../types'
+import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstado, ProcesoEstadoResponse, SugerenciaProducto, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuRequest, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, PedidoCompleto, CargarRespuestaProveedorResponse, RespuestaProveedorResponse, ProcesarConfirmacionResponse, ReporteDiferenciasResponse, IntegracionSAPResponse, ActualizarCostoPedidoResponse } from '../types'
 
 // Usar la URL base del backend MBA3
 const API_BASE_URL = import.meta.env.VITE_MBA3_API_BASE_URL || 'http://localhost:8000'
@@ -1255,6 +1255,43 @@ export const mba3ConsultasService = {
       console.error('❌ [crearOrdenCompraDesdePedido] Error al crear orden de compra:', error)
 
       let message = error.message || 'Error desconocido al crear orden de compra'
+
+      if (error.response?.data) {
+        if (error.response.data.detail) {
+          message = error.response.data.detail
+        } else if (error.response.data.message) {
+          message = error.response.data.message
+        }
+      }
+
+      throw new Error(message)
+    }
+  },
+
+  /**
+   * Actualiza el costo unitario de un detalle de pedido
+   * Requiere permiso: mba3-consultas.proceso.execute
+   * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
+   * @param pedidoDetalleId ID del detalle del pedido a actualizar
+   * @param nuevoCosto Nuevo costo unitario sin IVA
+   */
+  async actualizarCostoPedido(
+    numeroPedido: string,
+    pedidoDetalleId: string,
+    nuevoCosto: number
+  ): Promise<ActualizarCostoPedidoResponse> {
+    try {
+      const response = await mba3Api.patch<ActualizarCostoPedidoResponse>(
+        `/api/pedidos/${encodeURIComponent(numeroPedido)}/detalle/${pedidoDetalleId}/costo`,
+        {
+          costo_doc_sin_iva: nuevoCosto
+        }
+      )
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [actualizarCostoPedido] Error al actualizar costo:', error)
+
+      let message = error.message || 'Error desconocido al actualizar costo'
 
       if (error.response?.data) {
         if (error.response.data.detail) {

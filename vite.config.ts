@@ -19,6 +19,7 @@ export default defineConfig({
       '/api': {
         //target: 'http://192.168.2.153:5053',
         target: 'http://172.30.159.208:5053',
+        //target: 'http://localhost:8000',  // Cambio temporal
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path

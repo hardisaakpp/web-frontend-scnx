@@ -401,16 +401,26 @@
                 @click.stop
                 class="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 p-3"
               >
-                <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-2 px-2">Seleccionar columnas</div>
+                <div class="flex items-center justify-between mb-2 px-2">
+                  <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Seleccionar columnas</div>
+                  <div v-if="isSyncing" class="flex items-center gap-1">
+                    <svg class="animate-spin w-3 h-3 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span class="text-xs text-indigo-600 dark:text-indigo-400">Guardando...</span>
+                  </div>
+                </div>
                 <div class="space-y-1 max-h-80 overflow-y-auto">
                   <label
-                    v-for="column in availableColumns"
+                    v-for="column in availableColumnsWithVisibility"
                     :key="column.key"
                     class="flex items-center gap-2 px-2 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer transition-colors"
                   >
                     <input
                       type="checkbox"
-                      v-model="column.visible"
+                      :checked="column.visible"
+                      @change="toggleColumnVisibility(column.key)"
                       class="w-4 h-4 text-indigo-600 border-gray-300 dark:border-gray-600 rounded focus:ring-indigo-500 dark:focus:ring-indigo-400"
                     />
                     <span class="text-sm text-gray-700 dark:text-gray-300">{{ column.label }}</span>
@@ -424,7 +434,7 @@
               <thead class="bg-gray-50 dark:bg-gray-900">
                 <tr>
                   <th
-                    v-for="(column, index) in visibleColumns"
+                    v-for="(column, index) in orderedVisibleColumns"
                     :key="column.key"
                     draggable="true"
                     @dragstart="handleDragStart(index)"
@@ -445,7 +455,7 @@
               <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 <tr v-for="detalle in pedido.detalles" :key="detalle.pedido_detalle_id">
                   <td
-                    v-for="column in visibleColumns"
+                    v-for="column in orderedVisibleColumns"
                     :key="column.key"
                     :class="[
                       'px-4 py-4 text-sm',
@@ -453,10 +463,31 @@
                       column.key === 'codigo_interno' ? 'font-medium text-gray-900 dark:text-white whitespace-nowrap' :
                       column.key === 'total' ? 'font-medium text-gray-900 dark:text-white' :
                       column.key === 'descripcion_sap' ? 'text-gray-900 dark:text-white' :
+                      column.key === 'costo_doc_sin_iva' ? 'cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors' :
                       'text-gray-500 dark:text-gray-400 whitespace-nowrap'
                     ]"
+                    :data-column-key="column.key"
+                    :data-detalle-id="detalle.pedido_detalle_id"
+                    @dblclick="column.key === 'costo_doc_sin_iva' && iniciarEdicion(detalle)"
                   >
-                    {{ formatColumnValue(detalle, column) }}
+                    <!-- Mostrar input si estamos editando esta celda -->
+                    <template v-if="editingCell?.detalleId === detalle.pedido_detalle_id && column.key === 'costo_doc_sin_iva'">
+                      <input
+                        ref="editingInputRef"
+                        v-model="editingCell.value"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        @blur="guardarEdicion"
+                        @keydown="manejarTeclasEdicion"
+                        @click.stop
+                        class="w-full px-2 py-1 border border-blue-500 dark:border-blue-400 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                      />
+                    </template>
+                    <!-- Mostrar valor normal si no estamos editando -->
+                    <template v-else>
+                      {{ formatColumnValue(detalle, column) }}
+                    </template>
                   </td>
                 </tr>
               </tbody>
@@ -713,9 +744,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
+import { useTablePreferences } from '@/composables/useTablePreferences'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import type { PedidoCompleto, ProcesarConfirmacionResponse, ReporteDiferenciasResponse, UploadPlantillaResponse } from '../types'
 
@@ -761,6 +793,15 @@ const uploadErrorInfo = ref<{
 const showColumnSelector = ref(false)
 const draggedColumnIndex = ref<number | null>(null)
 const dragOverColumnIndex = ref<number | null>(null)
+
+// Gestión de edición inline de costo unitario
+interface EditingCell {
+  detalleId: string
+  value: string
+  originalValue: number | null
+}
+const editingCell = ref<EditingCell | null>(null)
+const editingInputRef = ref<HTMLInputElement | null>(null)
 interface ColumnConfig {
   key: string
   label: string
@@ -769,7 +810,8 @@ interface ColumnConfig {
   format?: 'text' | 'number' | 'currency'
 }
 
-const availableColumns = ref<ColumnConfig[]>([
+// ⭐ CAMBIO: Array estático en lugar de ref
+const availableColumns: ColumnConfig[] = [
   { key: 'codigo_interno', label: 'Código', visible: true, align: 'left', format: 'text' },
   { key: 'descripcion_sap', label: 'Descripción', visible: true, align: 'left', format: 'text' },
   { key: 'marca', label: 'Marca', visible: true, align: 'left', format: 'text' },
@@ -781,9 +823,42 @@ const availableColumns = ref<ColumnConfig[]>([
   { key: 'subtotal', label: 'Subtotal', visible: true, align: 'right', format: 'number' },
   { key: 'bodega', label: 'Bodega', visible: true, align: 'right', format: 'number' },
   { key: 'total', label: 'Total', visible: true, align: 'right', format: 'number' }
-])
+]
 
-const visibleColumns = computed(() => availableColumns.value.filter(col => col.visible))
+// ⭐ CAMBIO: Usar composable useTablePreferences
+const defaultVisibleColumns = availableColumns.filter(col => col.visible).map(col => col.key)
+const defaultColumnOrder = availableColumns.map(col => col.key)
+
+const {
+  visibleColumns,
+  columnOrder,
+  orderedVisibleColumns: orderedVisibleColumnKeys,
+  savePreferences,
+  resetPreferences: resetTablePreferences,
+  selectAllColumns: selectAllTableColumns,
+  isSyncing
+} = useTablePreferences({
+  tableId: 'productos-pedido',
+  defaultVisibleColumns,
+  defaultColumnOrder,
+  enableFilters: false,
+  enablePageSize: false
+})
+
+// ⭐ NUEVO: Computed para obtener objetos ColumnConfig ordenados
+const orderedVisibleColumns = computed(() => {
+  return orderedVisibleColumnKeys.value
+    .map(key => availableColumns.find(col => col.key === key))
+    .filter((col): col is ColumnConfig => col !== undefined)
+})
+
+// ⭐ NUEVO: Computed para obtener todas las columnas con su estado de visibilidad
+const availableColumnsWithVisibility = computed(() => {
+  return availableColumns.map(col => ({
+    ...col,
+    visible: visibleColumns.value.includes(col.key)
+  }))
+})
 
 // El parámetro de ruta ahora es numero_pedido
 const numeroPedido = computed(() => {
@@ -875,6 +950,9 @@ async function loadReporteDiferencias() {
     loadingReporte.value = false
   }
 }
+
+// ⭐ ELIMINADO: loadTablePreferences, saveTablePreferences, debouncedSavePreferences
+// El composable useTablePreferences maneja esto automáticamente
 
 async function handleProcesarConfirmacion() {
   if (!pedido.value || !numeroPedido.value) return
@@ -1422,6 +1500,11 @@ function formatColumnValue(detalle: any, column: ColumnConfig): string {
     return column.key === 'bodega' ? '-' : 'N/A'
   }
   
+  // Formatear descuentos como porcentaje
+  if (column.key === 'descuento_1' || column.key.includes('descuento')) {
+    return formatPorcentaje(value)
+  }
+  
   // Formatear según el tipo
   switch (column.format) {
     case 'currency':
@@ -1460,7 +1543,9 @@ function getPrecioClass(original: number | null, ajustado: number | null): strin
 }
 
 function formatPorcentaje(value: number): string {
-  return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`
+  // Convert decimal (0.2) to percentage (20%)
+  const percentageValue = value * 100
+  return `${percentageValue.toFixed(2)}%`
 }
 
 function getDiferenciaClass(diferencia: number): string {
@@ -1521,6 +1606,7 @@ function getEstadoPedidoBadgeClass(estado: string): string {
 }
 
 onMounted(() => {
+  // El composable carga las preferencias automáticamente
   loadPedido()
   // Autofocus opcional: descomentar si quieres que el input tenga foco al cargar
   // pedidoInputRef.value?.focus()
@@ -1541,6 +1627,8 @@ watch(
     }
   }
 )
+
+// ⭐ ELIMINADO: Watchers antiguos (el composable maneja esto automáticamente)
 
 // Cleanup: eliminar input de archivo cuando el componente se destruye
 onUnmounted(() => {
@@ -1576,41 +1664,136 @@ function handleDragOver(index: number) {
   }
 }
 
+// ⭐ ACTUALIZAR: handleDrop para usar el composable
 function handleDrop(dropIndex: number) {
   if (draggedColumnIndex.value === null || draggedColumnIndex.value === dropIndex) {
     return
   }
   
-  // Reordenar las columnas visibles
-  const visibleCols = availableColumns.value.filter(col => col.visible)
-  const draggedColumn = visibleCols[draggedColumnIndex.value]
+  // Reordenar usando el composable
+  const currentOrder = [...orderedVisibleColumnKeys.value]
+  const draggedKey = currentOrder[draggedColumnIndex.value]
   
   // Remover columna arrastrada
-  visibleCols.splice(draggedColumnIndex.value, 1)
+  currentOrder.splice(draggedColumnIndex.value, 1)
   
   // Insertar en nueva posición
-  visibleCols.splice(dropIndex, 0, draggedColumn)
+  currentOrder.splice(dropIndex, 0, draggedKey)
   
-  // Actualizar el orden en availableColumns manteniendo las ocultas
-  const newAvailableColumns: ColumnConfig[] = []
-  const hiddenColumns = availableColumns.value.filter(col => !col.visible)
+  // Actualizar el orden usando el composable
+  columnOrder.value = currentOrder
   
-  // Agregar columnas visibles en nuevo orden
-  visibleCols.forEach(col => {
-    newAvailableColumns.push(col)
-  })
-  
-  // Agregar columnas ocultas al final (mantener su orden)
-  hiddenColumns.forEach(col => {
-    newAvailableColumns.push(col)
-  })
-  
-  availableColumns.value = newAvailableColumns
+  // Guardar preferencias
+  savePreferences()
 }
 
 function handleDragEnd() {
   draggedColumnIndex.value = null
   dragOverColumnIndex.value = null
+}
+
+// ⭐ NUEVO: Función para toggle de visibilidad de columnas
+function toggleColumnVisibility(columnKey: string) {
+  const currentVisible = [...visibleColumns.value]
+  const index = currentVisible.indexOf(columnKey)
+  
+  // Validación: Asegurar que hay al menos una columna visible
+  if (index > -1 && currentVisible.length === 1) {
+    console.warn('⚠️ Debe haber al menos una columna visible. Operación cancelada.')
+    return
+  }
+  
+  if (index > -1) {
+    // Ocultar columna
+    currentVisible.splice(index, 1)
+  } else {
+    // Mostrar columna
+    currentVisible.push(columnKey)
+  }
+  
+  visibleColumns.value = currentVisible
+  savePreferences()
+}
+
+// ⭐ NUEVO: Funciones para edición de costo unitario
+function iniciarEdicion(detalle: any) {
+  if (!pedido.value) return
+  
+  editingCell.value = {
+    detalleId: detalle.pedido_detalle_id,
+    value: detalle.costo_doc_sin_iva?.toString() || '0',
+    originalValue: detalle.costo_doc_sin_iva
+  }
+  
+  // Esperar a que el input se monte en el DOM y darle focus
+  nextTick(() => {
+    if (editingInputRef.value) {
+      editingInputRef.value.focus()
+      editingInputRef.value.select()
+    }
+  })
+}
+
+async function guardarEdicion() {
+  if (!editingCell.value || !pedido.value) return
+  
+  const newValue = parseFloat(editingCell.value.value)
+  
+  // Validación: número válido
+  if (isNaN(newValue) || newValue < 0) {
+    toast.warning('Valor inválido', 'Por favor ingresa un número válido mayor o igual a 0')
+    return
+  }
+  
+  // No cambió nada
+  if (newValue === editingCell.value.originalValue) {
+    editingCell.value = null
+    return
+  }
+  
+  try {
+    // Encontrar el detalle a actualizar
+    const detalle = pedido.value.detalles.find(d => d.pedido_detalle_id === editingCell.value!.detalleId)
+    if (!detalle) return
+    
+    // Actualizar en el backend
+    const response = await mba3ConsultasService.actualizarCostoPedido(
+      numeroPedido.value,
+      editingCell.value.detalleId,
+      newValue
+    )
+    
+    // Actualizar en el local state
+    detalle.costo_doc_sin_iva = newValue
+    
+    // Recalcular totales si es necesario
+    if (detalle.tiendas && detalle.tiendas.length > 0) {
+      const cantidadTotal = detalle.tiendas.reduce((sum: number, t: any) => sum + (t.cantidad || 0), 0)
+      detalle.subtotal = newValue * cantidadTotal
+      detalle.total = detalle.subtotal // Asumir que no hay IVA adicional en este contexto
+    }
+    
+    toast.success('Costo actualizado', `Costo unitario actualizado a ${formatCurrency(newValue)}`)
+    editingCell.value = null
+  } catch (e: any) {
+    toast.error('Error al actualizar', e.message || 'No se pudo actualizar el costo')
+    // Restaurar el valor anterior
+    editingCell.value = null
+  }
+}
+
+function cancelarEdicion() {
+  editingCell.value = null
+}
+
+function manejarTeclasEdicion(event: KeyboardEvent) {
+  if (event.key === 'Enter') {
+    event.preventDefault()
+    guardarEdicion()
+  } else if (event.key === 'Escape') {
+    event.preventDefault()
+    cancelarEdicion()
+  }
 }
 </script>
 

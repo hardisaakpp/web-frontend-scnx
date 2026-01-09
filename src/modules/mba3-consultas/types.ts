@@ -905,3 +905,12 @@ export interface CrearOCDesdePedidoResponse {
   }
 }
 
+export interface ActualizarCostoPedidoResponse {
+  status: 'success' | 'error'
+  message: string
+  pedido_detalle_id: string
+  costo_anterior: number | null
+  costo_nuevo: number
+  total_actualizado: number
+}
+
