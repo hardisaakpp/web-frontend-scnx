@@ -1281,19 +1281,38 @@ export const mba3ConsultasService = {
     nuevoCosto: number
   ): Promise<ActualizarCostoPedidoResponse> {
     try {
+      // ⭐ CORRECCIÓN: El backend espera 'costo_doc_sin_iva' en lugar de 'costo'
+      const payload = {
+        costo_doc_sin_iva: nuevoCosto
+      }
+
+      console.log('📤 [actualizarCostoPedido] Enviando:', {
+        url: `/api/pedidos/${encodeURIComponent(numeroPedido)}/detalle/${pedidoDetalleId}/costo`,
+        payload
+      })
+
       const response = await mba3Api.patch<ActualizarCostoPedidoResponse>(
         `/api/pedidos/${encodeURIComponent(numeroPedido)}/detalle/${pedidoDetalleId}/costo`,
-        {
-          costo_doc_sin_iva: nuevoCosto
-        }
+        payload
       )
+
+      console.log('✅ [actualizarCostoPedido] Respuesta exitosa:', response.data)
       return response.data
     } catch (error: any) {
       console.error('❌ [actualizarCostoPedido] Error al actualizar costo:', error)
 
       let message = error.message || 'Error desconocido al actualizar costo'
+      let detailedError = ''
 
       if (error.response?.data) {
+        // Loguear los errores detallados del backend
+        if (error.response.data.errors) {
+          console.error('❌ [actualizarCostoPedido] Errores de validación:', error.response.data.errors)
+          detailedError = error.response.data.errors
+            .map((e: any) => typeof e === 'string' ? e : e.msg || e.message || JSON.stringify(e))
+            .join('; ')
+        }
+
         if (error.response.data.detail) {
           message = error.response.data.detail
         } else if (error.response.data.message) {
@@ -1301,7 +1320,126 @@ export const mba3ConsultasService = {
         }
       }
 
-      throw new Error(message)
+      const finalMessage = detailedError ? `${message}. Detalles: ${detailedError}` : message
+      console.error('❌ [actualizarCostoPedido] Mensaje final:', finalMessage)
+
+      throw new Error(finalMessage)
+    }
+  },
+
+  /**
+   * Actualiza el total de un detalle de pedido
+   * Requiere permiso: mba3-consultas.proceso.execute
+   * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
+   * @param pedidoDetalleId ID del detalle del pedido a actualizar
+   * @param nuevoTotal Nuevo total
+   */
+  async actualizarTotalPedido(
+    numeroPedido: string,
+    pedidoDetalleId: string,
+    nuevoTotal: number
+  ): Promise<ActualizarCostoPedidoResponse> {
+    try {
+      const payload = {
+        total: nuevoTotal
+      }
+
+      console.log('📤 [actualizarTotalPedido] Enviando:', {
+        url: `/api/pedidos/${encodeURIComponent(numeroPedido)}/detalle/${pedidoDetalleId}/total`,
+        payload
+      })
+
+      const response = await mba3Api.patch<ActualizarCostoPedidoResponse>(
+        `/api/pedidos/${encodeURIComponent(numeroPedido)}/detalle/${pedidoDetalleId}/total`,
+        payload
+      )
+
+      console.log('✅ [actualizarTotalPedido] Respuesta exitosa:', response.data)
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [actualizarTotalPedido] Error al actualizar total:', error)
+
+      let message = error.message || 'Error desconocido al actualizar total'
+      let detailedError = ''
+
+      if (error.response?.data) {
+        // Loguear los errores detallados del backend
+        if (error.response.data.errors) {
+          console.error('❌ [actualizarTotalPedido] Errores de validación:', error.response.data.errors)
+          detailedError = error.response.data.errors
+            .map((e: any) => typeof e === 'string' ? e : e.msg || e.message || JSON.stringify(e))
+            .join('; ')
+        }
+
+        if (error.response.data.detail) {
+          message = error.response.data.detail
+        } else if (error.response.data.message) {
+          message = error.response.data.message
+        }
+      }
+
+      const finalMessage = detailedError ? `${message}. Detalles: ${detailedError}` : message
+      console.error('❌ [actualizarTotalPedido] Mensaje final:', finalMessage)
+
+      throw new Error(finalMessage)
+    }
+  },
+
+  /**
+   * Actualiza el comentario de un detalle de pedido
+   * Requiere permiso: mba3-consultas.proceso.execute
+   * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
+   * @param pedidoDetalleId ID del detalle del pedido a actualizar
+   * @param nuevoComentario Nuevo comentario (puede ser null para eliminar)
+   */
+  async actualizarComentarioPedido(
+    numeroPedido: string,
+    pedidoDetalleId: string,
+    nuevoComentario: string | null
+  ): Promise<ActualizarCostoPedidoResponse> {
+    try {
+      const payload = {
+        comentario: nuevoComentario
+      }
+
+      console.log('📤 [actualizarComentarioPedido] Enviando:', {
+        url: `/api/pedidos/${encodeURIComponent(numeroPedido)}/detalle/${pedidoDetalleId}/comentario`,
+        payload
+      })
+
+      const response = await mba3Api.patch<ActualizarCostoPedidoResponse>(
+        `/api/pedidos/${encodeURIComponent(numeroPedido)}/detalle/${pedidoDetalleId}/comentario`,
+        payload
+      )
+
+      console.log('✅ [actualizarComentarioPedido] Respuesta exitosa:', response.data)
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [actualizarComentarioPedido] Error al actualizar comentario:', error)
+
+      let message = error.message || 'Error desconocido al actualizar comentario'
+      let detailedError = ''
+
+      if (error.response?.data) {
+        // Loguear los errores detallados del backend
+        if (error.response.data.errors) {
+          console.error('❌ [actualizarComentarioPedido] Errores de validación:', error.response.data.errors)
+          detailedError = error.response.data.errors
+            .map((e: any) => typeof e === 'string' ? e : e.msg || e.message || JSON.stringify(e))
+            .join('; ')
+        }
+
+        if (error.response.data.detail) {
+          message = error.response.data.detail
+        } else if (error.response.data.message) {
+          message = error.response.data.message
+        }
+      }
+
+      const finalMessage = detailedError ? `${message}. Detalles: ${detailedError}` : message
+      console.error('❌ [actualizarComentarioPedido] Mensaje final:', finalMessage)
+
+      throw new Error(finalMessage)
     }
   },
 }

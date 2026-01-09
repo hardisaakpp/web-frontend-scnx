@@ -453,7 +453,13 @@
                 </tr>
               </thead>
               <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                <tr v-for="detalle in pedido.detalles" :key="detalle.pedido_detalle_id">
+                <tr 
+                  v-for="detalle in pedido.detalles" 
+                  :key="detalle.pedido_detalle_id"
+                  :class="{
+                    'bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 dark:border-amber-400': filasModificadas.has(detalle.pedido_detalle_id)
+                  }"
+                >
                   <td
                     v-for="column in orderedVisibleColumns"
                     :key="column.key"
@@ -461,19 +467,21 @@
                       'px-4 py-4 text-sm',
                       column.align === 'right' ? 'text-right whitespace-nowrap' : '',
                       column.key === 'codigo_interno' ? 'font-medium text-gray-900 dark:text-white whitespace-nowrap' :
-                      column.key === 'total' ? 'font-medium text-gray-900 dark:text-white' :
+                      column.key === 'total' ? 'font-medium text-gray-900 dark:text-white cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors' :
                       column.key === 'descripcion_sap' ? 'text-gray-900 dark:text-white' :
                       column.key === 'costo_doc_sin_iva' ? 'cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors' :
+                      column.key === 'comentario' ? 'cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors' :
                       'text-gray-500 dark:text-gray-400 whitespace-nowrap'
                     ]"
                     :data-column-key="column.key"
                     :data-detalle-id="detalle.pedido_detalle_id"
-                    @dblclick="column.key === 'costo_doc_sin_iva' && iniciarEdicion(detalle)"
+                    @dblclick="(column.key === 'costo_doc_sin_iva' || column.key === 'total' || column.key === 'comentario') && iniciarEdicion(detalle, column.key === 'costo_doc_sin_iva' ? 'costo' : column.key === 'total' ? 'total' : 'comentario')"
                   >
                     <!-- Mostrar input si estamos editando esta celda -->
-                    <template v-if="editingCell?.detalleId === detalle.pedido_detalle_id && column.key === 'costo_doc_sin_iva'">
+                    <template v-if="editingCell?.detalleId === detalle.pedido_detalle_id && ((column.key === 'costo_doc_sin_iva' && editingCell.fieldType === 'costo') || (column.key === 'total' && editingCell.fieldType === 'total') || (column.key === 'comentario' && editingCell.fieldType === 'comentario'))">
                       <input
-                        ref="editingInputRef"
+                        v-if="column.key !== 'comentario'"
+                        :data-editing-cell="detalle.pedido_detalle_id"
                         v-model="editingCell.value"
                         type="number"
                         step="0.01"
@@ -483,10 +491,54 @@
                         @click.stop
                         class="w-full px-2 py-1 border border-blue-500 dark:border-blue-400 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
                       />
+                      <textarea
+                        v-else
+                        :data-editing-cell="detalle.pedido_detalle_id"
+                        v-model="editingCell.value"
+                        @blur="guardarEdicion"
+                        @keydown="manejarTeclasEdicion"
+                        @click.stop
+                        rows="2"
+                        placeholder="Ingrese un comentario..."
+                        class="w-full px-2 py-1 border border-blue-500 dark:border-blue-400 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 resize-none"
+                      />
                     </template>
                     <!-- Mostrar valor normal si no estamos editando -->
                     <template v-else>
-                      {{ formatColumnValue(detalle, column) }}
+                      <span v-if="column.key === 'comentario' && detalle.comentario" class="text-gray-700 dark:text-gray-300">{{ detalle.comentario }}</span>
+                      <span v-else-if="column.key === 'comentario' && !detalle.comentario" class="text-gray-400 dark:text-gray-500 italic text-xs">Sin comentario</span>
+                      <template v-else>{{ formatColumnValue(detalle, column) }}</template>
+                    </template>
+                  </td>
+                </tr>
+                <!-- Fila de totales -->
+                <tr v-if="pedido && pedido.detalles && pedido.detalles.length > 0" class="bg-gray-50 dark:bg-gray-900 border-t-2 border-gray-300 dark:border-gray-600 font-semibold">
+                  <td
+                    v-for="column in orderedVisibleColumns"
+                    :key="column.key"
+                    :class="[
+                      'px-4 py-3 text-sm',
+                      column.align === 'right' ? 'text-right whitespace-nowrap' : 'text-left',
+                      'text-gray-900 dark:text-white'
+                    ]"
+                  >
+                    <template v-if="column.key === 'costo_doc_sin_iva'">
+                      {{ formatCurrency(totalesCostoUnitario) }}
+                    </template>
+                    <template v-else-if="column.key === 'subtotal'">
+                      {{ formatNumber(totalesSubtotal) }}
+                    </template>
+                    <template v-else-if="column.key === 'bodega'">
+                      {{ formatNumber(totalesBodega) }}
+                    </template>
+                    <template v-else-if="column.key === 'total'">
+                      {{ formatNumber(totalesTotal) }}
+                    </template>
+                    <template v-else-if="column.key === 'codigo_interno'">
+                      <span class="text-gray-600 dark:text-gray-400 font-medium">TOTALES</span>
+                    </template>
+                    <template v-else>
+                      <!-- Dejar vacío para otras columnas -->
                     </template>
                   </td>
                 </tr>
@@ -794,14 +846,20 @@ const showColumnSelector = ref(false)
 const draggedColumnIndex = ref<number | null>(null)
 const dragOverColumnIndex = ref<number | null>(null)
 
-// Gestión de edición inline de costo unitario
+// Gestión de edición inline de costo unitario, total y comentario
 interface EditingCell {
   detalleId: string
   value: string
-  originalValue: number | null
+  originalValue: number | string | null
+  fieldType: 'costo' | 'total' | 'comentario' // ⭐ NUEVO: Tipo de campo que se está editando
 }
 const editingCell = ref<EditingCell | null>(null)
-const editingInputRef = ref<HTMLInputElement | null>(null)
+let editingInputElement: HTMLInputElement | null = null
+
+// ⭐ Set para rastrear filas modificadas
+const filasModificadas = ref<Set<string>>(new Set())
+
+// ⭐ EXTENSIÓN DEL TIPO: Agregar comentario al tipo PedidoDetalle localmente
 interface ColumnConfig {
   key: string
   label: string
@@ -822,7 +880,8 @@ const availableColumns: ColumnConfig[] = [
   { key: 'pvp', label: 'PVP', visible: false, align: 'right', format: 'currency' },
   { key: 'subtotal', label: 'Subtotal', visible: true, align: 'right', format: 'number' },
   { key: 'bodega', label: 'Bodega', visible: true, align: 'right', format: 'number' },
-  { key: 'total', label: 'Total', visible: true, align: 'right', format: 'number' }
+  { key: 'total', label: 'Total', visible: true, align: 'right', format: 'number' },
+  { key: 'comentario', label: 'Comentario', visible: true, align: 'left', format: 'text' }
 ]
 
 // ⭐ CAMBIO: Usar composable useTablePreferences
@@ -858,6 +917,35 @@ const availableColumnsWithVisibility = computed(() => {
     ...col,
     visible: visibleColumns.value.includes(col.key)
   }))
+})
+
+// ⭐ NUEVO: Computed para calcular totales de la tabla
+const totalesCostoUnitario = computed(() => {
+  if (!pedido.value?.detalles) return 0
+  return pedido.value.detalles.reduce((sum: number, detalle: any) => {
+    return sum + (detalle.costo_doc_sin_iva || 0)
+  }, 0)
+})
+
+const totalesSubtotal = computed(() => {
+  if (!pedido.value?.detalles) return 0
+  return pedido.value.detalles.reduce((sum: number, detalle: any) => {
+    return sum + (detalle.subtotal || 0)
+  }, 0)
+})
+
+const totalesBodega = computed(() => {
+  if (!pedido.value?.detalles) return 0
+  return pedido.value.detalles.reduce((sum: number, detalle: any) => {
+    return sum + (detalle.bodega || 0)
+  }, 0)
+})
+
+const totalesTotal = computed(() => {
+  if (!pedido.value?.detalles) return 0
+  return pedido.value.detalles.reduce((sum: number, detalle: any) => {
+    return sum + (detalle.total || 0)
+  }, 0)
 })
 
 // El parámetro de ruta ahora es numero_pedido
@@ -1715,21 +1803,45 @@ function toggleColumnVisibility(columnKey: string) {
   savePreferences()
 }
 
-// ⭐ NUEVO: Funciones para edición de costo unitario
-function iniciarEdicion(detalle: any) {
+// ⭐ NUEVO: Funciones para edición de costo unitario, total y comentario
+function iniciarEdicion(detalle: any, fieldType: 'costo' | 'total' | 'comentario' = 'costo') {
   if (!pedido.value) return
+  
+  let value: string
+  let originalValue: number | string | null
+  
+  if (fieldType === 'costo') {
+    value = detalle.costo_doc_sin_iva?.toString() || '0'
+    originalValue = detalle.costo_doc_sin_iva
+  } else if (fieldType === 'total') {
+    value = detalle.total?.toString() || '0'
+    originalValue = detalle.total
+  } else {
+    // comentario
+    value = detalle.comentario || ''
+    originalValue = detalle.comentario
+  }
   
   editingCell.value = {
     detalleId: detalle.pedido_detalle_id,
-    value: detalle.costo_doc_sin_iva?.toString() || '0',
-    originalValue: detalle.costo_doc_sin_iva
+    value: value,
+    originalValue: originalValue,
+    fieldType: fieldType
   }
   
   // Esperar a que el input se monte en el DOM y darle focus
   nextTick(() => {
-    if (editingInputRef.value) {
-      editingInputRef.value.focus()
-      editingInputRef.value.select()
+    // Buscar el input o textarea por atributo data específico
+    const input = document.querySelector(
+      `input[data-editing-cell="${detalle.pedido_detalle_id}"], textarea[data-editing-cell="${detalle.pedido_detalle_id}"]`
+    ) as HTMLInputElement | HTMLTextAreaElement
+    
+    if (input) {
+      editingInputElement = input as HTMLInputElement
+      input.focus()
+      if (input instanceof HTMLInputElement) {
+        input.select()
+      }
     }
   })
 }
@@ -1737,48 +1849,182 @@ function iniciarEdicion(detalle: any) {
 async function guardarEdicion() {
   if (!editingCell.value || !pedido.value) return
   
-  const newValue = parseFloat(editingCell.value.value)
+  const fieldType = editingCell.value.fieldType
+  // Convertir a string antes de trim (v-model con type="number" puede devolver un número)
+  const newValueStr = String(editingCell.value.value || '').trim()
   
-  // Validación: número válido
-  if (isNaN(newValue) || newValue < 0) {
-    toast.warning('Valor inválido', 'Por favor ingresa un número válido mayor o igual a 0')
-    return
+  // Validación específica según el tipo de campo
+  if (fieldType === 'comentario') {
+    // Para comentario, no hay validación numérica, solo verificar si cambió
+    if (newValueStr === (editingCell.value.originalValue || '')) {
+      editingCell.value = null
+      return
+    }
+  } else {
+    // Para costo y total, validar que sea un número válido
+    const newValue = parseFloat(newValueStr)
+    
+    if (isNaN(newValue) || newValue < 0) {
+      toast.warning('Valor inválido', 'Por favor ingresa un número válido mayor o igual a 0')
+      return
+    }
+    
+    // No cambió nada
+    if (newValue === editingCell.value.originalValue) {
+      editingCell.value = null
+      return
+    }
   }
   
-  // No cambió nada
-  if (newValue === editingCell.value.originalValue) {
-    editingCell.value = null
-    return
+  // Encontrar el detalle a actualizar
+  const detalle = pedido.value.detalles.find(d => d.pedido_detalle_id === editingCell.value!.detalleId)
+  if (!detalle) return
+  
+  // ⭐ Guardar detalleId antes de cerrar el editor
+  const detalleId = editingCell.value.detalleId
+  
+  // ⭐ ACTUALIZACIÓN OPTIMISTA: Guardar valores anteriores para poder revertir
+  const oldCosto = detalle.costo_doc_sin_iva
+  const oldSubtotal = detalle.subtotal
+  const oldTotal = detalle.total
+  const oldComentario = detalle.comentario
+  
+  // ⭐ ACTUALIZAR UI INMEDIATAMENTE (optimistic update)
+  if (fieldType === 'costo') {
+    const newValue = parseFloat(newValueStr)
+    // ⭐ COSTO UNIT. es completamente independiente - solo actualizar el costo mismo
+    // NO hacer ningún cálculo sobre él (no recalcular subtotal ni ningún otro campo)
+    detalle.costo_doc_sin_iva = newValue
+  } else if (fieldType === 'total') {
+    const newValue = parseFloat(newValueStr)
+    // ⭐ FASE 2: Solo actualizar el TOTAL, NO tocar COSTO UNIT. ni subtotal
+    // El TOTAL es independiente y puede ser cualquier valor que el usuario ingrese
+    detalle.total = newValue
+    // ⭐ NO recalcular nada - el TOTAL es independiente
+  } else if (fieldType === 'comentario') {
+    // Actualizar comentario inmediatamente
+    detalle.comentario = newValueStr || null
+  }
+  
+  // Cerrar el editor inmediatamente para mejor UX
+  editingCell.value = null
+  
+  // Mostrar feedback inmediato (sin esperar al backend)
+  if (fieldType === 'comentario') {
+    toast.info('Actualizando...', 'Guardando comentario...')
+  } else {
+    const fieldLabel = fieldType === 'costo' ? 'costo' : 'total'
+    const newValue = parseFloat(newValueStr)
+    toast.info('Actualizando...', `Actualizando ${fieldLabel} a ${fieldType === 'costo' ? formatCurrency(newValue) : formatNumber(newValue)}`)
   }
   
   try {
-    // Encontrar el detalle a actualizar
-    const detalle = pedido.value.detalles.find(d => d.pedido_detalle_id === editingCell.value!.detalleId)
-    if (!detalle) return
+    let response
+    if (fieldType === 'costo') {
+      const newValue = parseFloat(newValueStr)
+      // Actualizar costo en el backend
+      response = await mba3ConsultasService.actualizarCostoPedido(
+        numeroPedido.value,
+        detalleId,
+        newValue
+      )
+      
+      // ⭐ Backend confirmó el cambio - actualizar con datos del servidor si vienen
+      if (response.costo_nuevo !== undefined) {
+        detalle.costo_doc_sin_iva = response.costo_nuevo
+      }
+      // ⭐ COSTO UNIT. es completamente independiente - NO hacer ningún cálculo
+      // NO actualizar subtotal, NO actualizar TOTAL - todos son independientes
+      
+      // ⭐ Marcar fila como modificada
+      filasModificadas.value.add(detalleId)
+      
+      toast.success('Costo actualizado', `Costo unitario actualizado a ${formatCurrency(parseFloat(newValueStr))}`)
+    } else if (fieldType === 'total') {
+      const newValue = parseFloat(newValueStr)
+      // Actualizar total en el backend
+      response = await mba3ConsultasService.actualizarTotalPedido(
+        numeroPedido.value,
+        detalleId,
+        newValue
+      )
+      
+      // ⭐ Backend confirmó el cambio - actualizar con datos del servidor si vienen
+      if (response.total_nuevo !== undefined) {
+        detalle.total = response.total_nuevo
+      }
+      // ⭐ FASE 2: Solo actualizar el TOTAL, NO tocar COSTO UNIT. ni subtotal
+      // El TOTAL es independiente y puede ser cualquier valor que el usuario ingrese
+      // ⭐ NO actualizar subtotal ni costo - son independientes del TOTAL
+      
+      // ⭐ Marcar fila como modificada
+      filasModificadas.value.add(detalleId)
+      
+      toast.success('Total actualizado', `Total actualizado a ${formatNumber(parseFloat(newValueStr))}`)
+    } else if (fieldType === 'comentario') {
+      // Actualizar comentario en el backend
+      response = await mba3ConsultasService.actualizarComentarioPedido(
+        numeroPedido.value,
+        detalleId,
+        newValueStr || null
+      )
+      
+      // ⭐ Backend confirmó el cambio - actualizar con datos del servidor si vienen
+      // El backend puede devolver comentario_nuevo o podemos usar el valor que enviamos
+      if (response.comentario_nuevo !== undefined) {
+        detalle.comentario = response.comentario_nuevo
+      } else {
+        // Si el backend no devuelve el comentario, usar el valor que enviamos
+        detalle.comentario = newValueStr || null
+      }
+      
+      // ⭐ Marcar fila como modificada
+      filasModificadas.value.add(detalleId)
+      
+      toast.success('Comentario guardado', 'El comentario se ha guardado correctamente')
+    }
+  } catch (e: any) {
+    // ⭐ REVERTIR CAMBIOS si el backend falla
+    detalle.costo_doc_sin_iva = oldCosto
+    detalle.subtotal = oldSubtotal
+    detalle.total = oldTotal
+    detalle.comentario = oldComentario
     
-    // Actualizar en el backend
-    const response = await mba3ConsultasService.actualizarCostoPedido(
-      numeroPedido.value,
-      editingCell.value.detalleId,
-      newValue
-    )
+    // Mensaje de error más amigable
+    const fieldLabel = fieldType === 'costo' ? 'costo' : fieldType === 'total' ? 'total' : 'comentario'
+    const errorMessage = e.message || `No se pudo actualizar el ${fieldLabel}`
+    const isBackendError = errorMessage.includes('JSON serializable') || 
+                          errorMessage.includes('internal_error') ||
+                          errorMessage.includes('500')
     
-    // Actualizar en el local state
-    detalle.costo_doc_sin_iva = newValue
-    
-    // Recalcular totales si es necesario
-    if (detalle.tiendas && detalle.tiendas.length > 0) {
-      const cantidadTotal = detalle.tiendas.reduce((sum: number, t: any) => sum + (t.cantidad || 0), 0)
-      detalle.subtotal = newValue * cantidadTotal
-      detalle.total = detalle.subtotal // Asumir que no hay IVA adicional en este contexto
+    if (isBackendError) {
+      toast.error(
+        'Error del servidor', 
+        'El cambio se aplicó localmente pero no se pudo guardar en el servidor. Por favor, recarga la página.'
+      )
+    } else {
+      toast.error('Error al actualizar', errorMessage)
     }
     
-    toast.success('Costo actualizado', `Costo unitario actualizado a ${formatCurrency(newValue)}`)
-    editingCell.value = null
-  } catch (e: any) {
-    toast.error('Error al actualizar', e.message || 'No se pudo actualizar el costo')
-    // Restaurar el valor anterior
-    editingCell.value = null
+    // Restaurar el editor para que el usuario pueda intentar de nuevo (solo si el detalle aún existe)
+    const detalleActualizado = pedido.value.detalles.find(d => d.pedido_detalle_id === detalleId)
+    if (detalleActualizado) {
+      let originalValue: number | string | null
+      if (fieldType === 'costo') {
+        originalValue = oldCosto
+      } else if (fieldType === 'total') {
+        originalValue = oldTotal
+      } else {
+        originalValue = oldComentario ?? null
+      }
+      
+      editingCell.value = {
+        detalleId: detalleActualizado.pedido_detalle_id,
+        value: originalValue?.toString() || (fieldType === 'comentario' ? '' : '0'),
+        originalValue: originalValue,
+        fieldType: fieldType
+      }
+    }
   }
 }
 

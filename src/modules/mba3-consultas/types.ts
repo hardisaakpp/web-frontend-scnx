@@ -768,6 +768,7 @@ export interface PedidoDetalle {
   subtotal: number | null
   total: number | null
   bodega: number | null
+  comentario?: string | null  // ⭐ Campo editable para comentarios
   tiendas: TiendaDistribucion[]
 }
 
@@ -909,8 +910,14 @@ export interface ActualizarCostoPedidoResponse {
   status: 'success' | 'error'
   message: string
   pedido_detalle_id: string
-  costo_anterior: number | null
-  costo_nuevo: number
-  total_actualizado: number
+  costo_anterior?: number | null
+  costo_nuevo?: number
+  total_actualizado?: number
+  // ⭐ Campos adicionales para actualización de total
+  total_anterior?: number | null
+  total_nuevo?: number
+  subtotal_actualizado?: number
+  costo_actualizado?: number
+  // ⭐ Campo para actualización de comentario
+  comentario_nuevo?: string | null
 }
-
