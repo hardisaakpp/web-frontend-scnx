@@ -456,9 +456,6 @@
                 <tr 
                   v-for="detalle in pedido.detalles" 
                   :key="detalle.pedido_detalle_id"
-                  :class="{
-                    'bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 dark:border-amber-400': filasModificadas.has(detalle.pedido_detalle_id)
-                  }"
                 >
                   <td
                     v-for="column in orderedVisibleColumns"
@@ -466,6 +463,10 @@
                     :class="[
                       'px-4 py-4 text-sm',
                       column.align === 'right' ? 'text-right whitespace-nowrap' : '',
+                      // ⭐ Resaltado persistente para columnas modificadas
+                      isColumnaModificada(detalle.pedido_detalle_id, column.key) 
+                        ? 'bg-amber-50 dark:bg-amber-900/20 border-l-2 border-amber-500 dark:border-amber-400' 
+                        : '',
                       column.key === 'codigo_interno' ? 'font-medium text-gray-900 dark:text-white whitespace-nowrap' :
                       column.key === 'total' ? 'font-medium text-gray-900 dark:text-white cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors' :
                       column.key === 'descripcion_sap' ? 'text-gray-900 dark:text-white' :
@@ -856,8 +857,63 @@ interface EditingCell {
 const editingCell = ref<EditingCell | null>(null)
 let editingInputElement: HTMLInputElement | null = null
 
-// ⭐ Set para rastrear filas modificadas
-const filasModificadas = ref<Set<string>>(new Set())
+// ⭐ Set para rastrear columnas modificadas (formato: "detalleId:columnKey")
+const columnasModificadas = ref<Set<string>>(new Set())
+
+// Función helper para crear la clave de columna modificada
+function getColumnaModificadaKey(detalleId: string, columnKey: string): string {
+  return `${detalleId}:${columnKey}`
+}
+
+// Función helper para verificar si una columna está modificada
+function isColumnaModificada(detalleId: string, columnKey: string): boolean {
+  return columnasModificadas.value.has(getColumnaModificadaKey(detalleId, columnKey))
+}
+
+// ⭐ Funciones para persistencia en sessionStorage
+function getStorageKey(): string {
+  return `pedido_columnas_modificadas_${numeroPedido.value}`
+}
+
+function guardarColumnasModificadasEnStorage() {
+  if (!numeroPedido.value) return
+  
+  try {
+    const storageKey = getStorageKey()
+    const columnasArray = Array.from(columnasModificadas.value)
+    sessionStorage.setItem(storageKey, JSON.stringify(columnasArray))
+  } catch (e) {
+    console.warn('Error al guardar columnas modificadas en sessionStorage:', e)
+  }
+}
+
+function cargarColumnasModificadasDesdeStorage() {
+  if (!numeroPedido.value) return
+  
+  try {
+    const storageKey = getStorageKey()
+    const stored = sessionStorage.getItem(storageKey)
+    
+    if (stored) {
+      const columnasArray = JSON.parse(stored) as string[]
+      columnasModificadas.value = new Set(columnasArray)
+    }
+  } catch (e) {
+    console.warn('Error al cargar columnas modificadas desde sessionStorage:', e)
+  }
+}
+
+function limpiarColumnasModificadasEnStorage() {
+  if (!numeroPedido.value) return
+  
+  try {
+    const storageKey = getStorageKey()
+    sessionStorage.removeItem(storageKey)
+    columnasModificadas.value.clear()
+  } catch (e) {
+    console.warn('Error al limpiar columnas modificadas en sessionStorage:', e)
+  }
+}
 
 // ⭐ EXTENSIÓN DEL TIPO: Agregar comentario al tipo PedidoDetalle localmente
 interface ColumnConfig {
@@ -995,6 +1051,9 @@ async function loadPedido() {
   loading.value = true
   error.value = null
   
+  // ⭐ Guardar el número de pedido anterior para comparar
+  const pedidoAnterior = numeroPedido.value
+  
   try {
     // Cargar pedido usando numero_pedido del parámetro de ruta
     if (!numeroPedido.value) {
@@ -1002,7 +1061,15 @@ async function loadPedido() {
       return
     }
     
+    // ⭐ Si se carga un pedido diferente, limpiar las columnas modificadas del pedido anterior
+    if (pedidoAnterior && pedidoAnterior !== numeroPedido.value) {
+      limpiarColumnasModificadasEnStorage()
+    }
+    
     pedido.value = await mba3ConsultasService.getPedido(numeroPedido.value, true)
+    
+    // ⭐ Cargar columnas modificadas desde sessionStorage después de cargar el pedido
+    cargarColumnasModificadasDesdeStorage()
     
     // Si hay respuesta aprobada, cargar el reporte de diferencias
     if (pedido.value?.respuesta_proveedor?.cabecera.estado === 'APROBADA' ||
@@ -1696,6 +1763,7 @@ function getEstadoPedidoBadgeClass(estado: string): string {
 onMounted(() => {
   // El composable carga las preferencias automáticamente
   loadPedido()
+  // ⭐ Las columnas modificadas se cargan automáticamente en loadPedido()
   // Autofocus opcional: descomentar si quieres que el input tenga foco al cargar
   // pedidoInputRef.value?.focus()
   
@@ -1936,8 +2004,9 @@ async function guardarEdicion() {
       // ⭐ COSTO UNIT. es completamente independiente - NO hacer ningún cálculo
       // NO actualizar subtotal, NO actualizar TOTAL - todos son independientes
       
-      // ⭐ Marcar fila como modificada
-      filasModificadas.value.add(detalleId)
+      // ⭐ Marcar columna específica como modificada (persistente)
+      columnasModificadas.value.add(getColumnaModificadaKey(detalleId, 'costo_doc_sin_iva'))
+      guardarColumnasModificadasEnStorage()
       
       toast.success('Costo actualizado', `Costo unitario actualizado a ${formatCurrency(parseFloat(newValueStr))}`)
     } else if (fieldType === 'total') {
@@ -1957,8 +2026,9 @@ async function guardarEdicion() {
       // El TOTAL es independiente y puede ser cualquier valor que el usuario ingrese
       // ⭐ NO actualizar subtotal ni costo - son independientes del TOTAL
       
-      // ⭐ Marcar fila como modificada
-      filasModificadas.value.add(detalleId)
+      // ⭐ Marcar columna específica como modificada (persistente)
+      columnasModificadas.value.add(getColumnaModificadaKey(detalleId, 'total'))
+      guardarColumnasModificadasEnStorage()
       
       toast.success('Total actualizado', `Total actualizado a ${formatNumber(parseFloat(newValueStr))}`)
     } else if (fieldType === 'comentario') {
@@ -1978,8 +2048,9 @@ async function guardarEdicion() {
         detalle.comentario = newValueStr || null
       }
       
-      // ⭐ Marcar fila como modificada
-      filasModificadas.value.add(detalleId)
+      // ⭐ Marcar columna específica como modificada (persistente)
+      columnasModificadas.value.add(getColumnaModificadaKey(detalleId, 'comentario'))
+      guardarColumnasModificadasEnStorage()
       
       toast.success('Comentario guardado', 'El comentario se ha guardado correctamente')
     }
