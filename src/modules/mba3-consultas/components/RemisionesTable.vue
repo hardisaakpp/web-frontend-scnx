@@ -285,6 +285,7 @@
 import { ref, computed, watch } from 'vue'
 import type { Remision } from '../types'
 import { useTablePreferences } from '@/composables/useTablePreferences'
+import { formatDate } from '../utils/formatters'
 
 const props = defineProps<{
   remisiones: Remision[]
@@ -575,24 +576,7 @@ function limpiarFiltros() {
   showAdvancedFilters.value = false
 }
 
-function formatDate(dateString: string): string {
-  if (!dateString) return '-'
-  try {
-    const date = new Date(dateString)
-    
-    if (isNaN(date.getTime())) {
-      return dateString
-    }
-    
-    const day = String(date.getDate()).padStart(2, '0')
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const year = date.getFullYear()
-    
-    return `${day}/${month}/${year}`
-  } catch {
-    return dateString
-  }
-}
+// formatDate ahora importada desde utils/formatters.ts
 
 // Helper function para obtener valores de campos que pueden venir en diferentes formatos
 function getFieldValue(remision: Remision, snakeCaseKey: string, upperCaseKey: string): any {

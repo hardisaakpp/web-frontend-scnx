@@ -2,121 +2,29 @@
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
     <div class="space-y-6">
       <!-- Header con botones de acción -->
-      <div class="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
-            {{ tituloInterfaz }}
-          </h1>
-        </div>
-        <div class="flex items-center gap-3">
-          <!-- Búsqueda directa de pedidos -->
-          <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg class="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            <input
-              ref="pedidoInputRef"
-              v-model="pedidoIdInput"
-              @keyup.enter="goToPedido"
-              @focus="showSearchHelp = true"
-              @blur="handleSearchBlur"
-              type="text"
-              placeholder="Buscar por N° de pedido (ej: P-12.48 - 12 - 2025)"
-              :class="[
-                'w-80 pl-10 pr-10 py-2 border rounded-lg text-sm transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-white',
-                pedidoIdInput && !isValidPedido
-                  ? 'border-red-400 focus:ring-red-400 focus:border-red-400'
-                  : 'border-gray-300 dark:border-gray-600 focus:ring-purple-500 focus:border-purple-500'
-              ]"
-            />
-            <button
-              v-if="pedidoIdInput"
-              @click="pedidoIdInput = ''"
-              class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-              title="Limpiar búsqueda"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-            <!-- Texto de ayuda contextual -->
-            <div
-              v-if="showSearchHelp && pedidoIdInput && !isValidPedido"
-              class="absolute top-full left-0 mt-1 w-full bg-white dark:bg-gray-800 border border-red-200 dark:border-red-800 rounded-lg shadow-lg p-2 z-10"
-            >
-              <p class="text-xs text-red-600 dark:text-red-400 font-medium mb-1">Formato inválido</p>
-              <p class="text-xs text-gray-600 dark:text-gray-400">Ejemplo válido: <span class="font-mono text-purple-600 dark:text-purple-400">P-12.48 - 12 - 2025</span></p>
-            </div>
-          </div>
-          <button
-            @click="goToCargarPlantillas"
-            :disabled="uploading"
-            class="px-4 py-2 bg-emerald-600 dark:bg-emerald-500 text-white rounded-lg hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
-          >
-            <svg v-if="!uploading" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-            </svg>
-            <svg v-else class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            {{ uploading ? 'Cargando...' : 'Cargar Plantillas Excel' }}
-          </button>
-          <button
-            v-if="canViewReporteDiferencias"
-            @click="handleViewReporteDiferencias"
-            :disabled="loading"
-            class="px-4 py-2 bg-purple-600 dark:bg-purple-500 text-white rounded-lg hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
-          >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            Ver Reporte de Diferencias
-          </button>
-          <button
-            v-if="canProcesarConfirmacion"
-            @click="showProcesarModal = true"
-            :disabled="loading || procesandoConfirmacion"
-            class="px-4 py-2 bg-green-600 dark:bg-green-500 text-white rounded-lg hover:bg-green-700 dark:hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
-          >
-            <svg v-if="!procesandoConfirmacion" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <svg v-else class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            {{ procesandoConfirmacion ? 'Procesando...' : 'Procesar Confirmación' }}
-          </button>
-          <button
-            v-if="canGenerarOC"
-            @click="handleGenerarOCDesdePedido"
-            :disabled="loading || generandoOC"
-            class="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
-          >
-            <svg v-if="!generandoOC" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <svg v-else class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            {{ generandoOC ? 'Generando...' : 'Generar Orden de Compra' }}
-          </button>
-          <button
-            @click="handleConfirmar"
-            :disabled="loading || !pedido"
-            class="px-4 py-2 bg-purple-600 dark:bg-purple-500 text-white rounded-lg hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
-          >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Confirmar
-          </button>
-        </div>
-      </div>
+      <PedidoHeaderActions
+        v-model:pedido-id-input="pedidoIdInput"
+        v-model:show-search-help="showSearchHelp"
+        :titulo-interfaz="tituloInterfaz"
+        :pedido-input-ref="pedidoInputRef as any"
+        :is-valid-pedido="isValidPedido"
+        :uploading="uploading"
+        :loading="loading"
+        :procesando-confirmacion="procesandoConfirmacion"
+        :generando-o-c="generandoOC"
+        :can-view-reporte-diferencias="canViewReporteDiferencias"
+        :can-procesar-confirmacion="canProcesarConfirmacion"
+        :can-generar-o-c="canGenerarOC"
+        :es-modo-mabel-trading="esModoMabelTrading"
+        :pedido="pedido"
+        @cargar-plantillas="goToCargarPlantillas"
+        @ver-reporte="handleViewReporteDiferencias"
+        @procesar-confirmacion="showProcesarModal = true"
+        @generar-oc="handleGenerarOCDesdePedido"
+        @confirmar="handleConfirmar"
+        @go-to-pedido="goToPedido"
+        @search-blur="handleSearchBlur"
+      />
 
       <!-- Loading state -->
       <div v-if="loading && !pedido" class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-12 text-center">
@@ -143,243 +51,38 @@
       <!-- Contenido del pedido -->
       <div v-if="pedido && !loading">
         <!-- Información de la cabecera -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Información del Pedido</h2>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div>
-              <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Número de Pedido</label>
-              <div class="flex items-center gap-2 mt-1">
-                <p class="text-sm text-gray-900 dark:text-white">{{ pedido.cabecera.numero_pedido || 'N/A' }}</p>
-                <button
-                  v-if="pedido.cabecera.numero_pedido"
-                  @click="copyToClipboard(pedido.cabecera.numero_pedido)"
-                  :title="copyFeedback ? 'Copiado!' : 'Copiar número de pedido'"
-                  class="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 transition-colors duration-200"
-                  :class="{ 'text-green-600 dark:text-green-400': copyFeedback }"
-                >
-                  <svg v-if="!copyFeedback" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                  <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-            <div>
-              <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Fecha de Pedido</label>
-              <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ formatDate(pedido.cabecera.fecha_pedido) }}</p>
-            </div>
-            <div>
-              <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Fecha de Entrega</label>
-              <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ formatDate(pedido.cabecera.fecha_entrega) }}</p>
-            </div>
-            <div>
-              <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Proveedor</label>
-              <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ pedido.cabecera.proveedor_nombre || 'N/A' }}</p>
-            </div>
-            <div>
-              <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Comprador</label>
-              <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ pedido.cabecera.comprador_nombre || 'N/A' }}</p>
-            </div>
-            <div>
-              <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Forma de Pago</label>
-              <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ pedido.cabecera.forma_pago || 'N/A' }}</p>
-            </div>
-            <div v-if="pedido.cabecera.estado">
-              <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Estado del Pedido</label>
-              <p class="mt-1">
-                <span class="px-2 py-1 text-xs font-medium rounded-full" :class="getEstadoPedidoBadgeClass(pedido.cabecera.estado)">
-                  {{ formatEstadoPedido(pedido.cabecera.estado) }}
-                </span>
-              </p>
-            </div>
-          </div>
-        </div>
+        <PedidoCabecera
+          :pedido="pedido"
+          :copy-feedback="copyFeedback"
+          @copy-to-clipboard="copyToClipboard"
+        />
 
         <!-- Sección de Respuesta del Proveedor -->
-        <div v-if="pedido.respuesta_proveedor" class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Respuesta del Proveedor</h2>
-            <span class="px-3 py-1 text-xs font-medium rounded-full" :class="getEstadoBadgeClass(pedido.respuesta_proveedor.cabecera.estado)">
-              {{ pedido.respuesta_proveedor.cabecera.estado }}
-            </span>
-          </div>
-          
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div>
-              <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Versión</label>
-              <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ pedido.respuesta_proveedor.cabecera.version }}</p>
-            </div>
-            <div>
-              <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Fecha de Respuesta</label>
-              <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ formatDate(pedido.respuesta_proveedor.cabecera.fecha_respuesta) }}</p>
-            </div>
-            <div>
-              <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Creado por</label>
-              <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ pedido.respuesta_proveedor.cabecera.creado_por }}</p>
-            </div>
-          </div>
+        <RespuestaProveedor :pedido="pedido" />
 
-          <!-- Tabla comparativa: Solicitado vs Confirmado -->
-          <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead class="bg-gray-50 dark:bg-gray-900">
-                <tr>
-                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Producto</th>
-                  <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Solicitado</th>
-                  <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Confirmado</th>
-                  <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Precio Original</th>
-                  <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Precio Ajustado</th>
-                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Observaciones</th>
-                </tr>
-              </thead>
-              <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                <tr v-for="detalle in pedido.respuesta_proveedor.detalles" :key="detalle.codigo_producto">
-                  <td class="px-4 py-4 whitespace-nowrap">
-                    <div class="text-sm font-medium text-gray-900 dark:text-white">{{ detalle.codigo_producto }}</div>
-                    <div class="text-xs text-gray-500 dark:text-gray-400">{{ detalle.descripcion }}</div>
-                  </td>
-                  <td class="px-4 py-4 whitespace-nowrap text-right text-sm text-gray-900 dark:text-white">
-                    {{ formatNumber(detalle.cantidad_solicitada_total) }}
-                  </td>
-                  <td class="px-4 py-4 whitespace-nowrap text-right text-sm" :class="getCantidadClass(detalle.cantidad_solicitada_total, detalle.cantidad_confirmada_total)">
-                    {{ formatNumber(detalle.cantidad_confirmada_total) }}
-                  </td>
-                  <td class="px-4 py-4 whitespace-nowrap text-right text-sm text-gray-900 dark:text-white">
-                    {{ formatCurrency(detalle.costo_doc_sin_iva_original) }}
-                  </td>
-                  <td class="px-4 py-4 whitespace-nowrap text-right text-sm" :class="getPrecioClass(detalle.costo_doc_sin_iva_original, detalle.costo_doc_sin_iva_ajustado)">
-                    {{ formatCurrency(detalle.costo_doc_sin_iva_ajustado) }}
-                  </td>
-                  <td class="px-4 py-4 text-sm text-gray-500 dark:text-gray-400">
-                    {{ detalle.observaciones || '-' }}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <!-- ⭐ FASE 4: Ajuste y Redistribución a Tiendas -->
+        <RedistribucionTiendas
+          :pedido="pedido"
+          :es-modo-mabel-trading="esModoMabelTrading"
+          :productos-redistribucion="redistribucion.productosRedistribucion"
+          :productos-expandidos="redistribucion.productosExpandidos"
+          :guardando-redistribucion="redistribucion.guardandoRedistribucion"
+          :confirmando-redistribucion="redistribucion.confirmandoRedistribucion"
+          @toggle-expandir-producto="toggleExpandirProducto"
+          @actualizar-cantidad-tienda="actualizarCantidadTienda"
+          @validar-y-corregir-cantidad="validarYCorregirCantidad"
+          @distribuir-proporcionalmente="distribuirProporcionalmente"
+          @copiar-distribucion-original="copiarDistribucionOriginal"
+          @resetear-distribucion="resetearDistribucion"
+          @guardar-borrador="guardarBorradorRedistribucion"
+          @confirmar-redistribucion="confirmarRedistribucion"
+        />
 
         <!-- Reporte de Diferencias -->
-        <div v-if="reporteDiferencias" data-reporte-diferencias class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Reporte de Diferencias</h2>
-            <button
-              @click="handleExportReporteDiferencias"
-              class="px-3 py-1.5 text-xs font-medium text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 border border-purple-300 dark:border-purple-600 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-colors flex items-center gap-1"
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              Exportar Excel
-            </button>
-          </div>
-
-          <!-- Resumen -->
-          <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 mb-6 transition-colors duration-300">
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
-              <div>
-                <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Total Productos</label>
-                <p class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">{{ reporteDiferencias.resumen.total_productos }}</p>
-              </div>
-              <div>
-                <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Total Solicitado</label>
-                <p class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">{{ formatNumber(reporteDiferencias.resumen.total_solicitado) }}</p>
-              </div>
-              <div>
-                <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Total Confirmado</label>
-                <p class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">{{ formatNumber(reporteDiferencias.resumen.total_confirmado) }}</p>
-              </div>
-              <div>
-                <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Diferencia</label>
-                <p class="mt-1 text-lg font-semibold" :class="getDiferenciaClass(reporteDiferencias.resumen.total_diferencia)">
-                  {{ formatNumber(reporteDiferencias.resumen.total_diferencia) }}
-                </p>
-              </div>
-              <div>
-                <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">% Confirmación</label>
-                <p class="mt-1 text-lg font-semibold" :class="getPorcentajeClass(reporteDiferencias.resumen.porcentaje_confirmacion)">
-                  {{ formatPorcentaje(reporteDiferencias.resumen.porcentaje_confirmacion) }}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Tabla de diferencias -->
-          <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead class="bg-gray-50 dark:bg-gray-900">
-                <tr>
-                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Producto</th>
-                  <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Solicitado</th>
-                  <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Confirmado</th>
-                  <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Diferencia</th>
-                  <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">% Diferencia</th>
-                  <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Costo Original</th>
-                  <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Costo Ajustado</th>
-                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cambio Precio</th>
-                </tr>
-              </thead>
-              <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                <tr v-for="item in reporteDiferencias.detalle" :key="item.codigo_producto" class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                  <td class="px-4 py-4">
-                    <div class="text-sm font-medium text-gray-900 dark:text-white">{{ item.codigo_producto }}</div>
-                    <div class="text-xs text-gray-500 dark:text-gray-400">{{ item.descripcion }}</div>
-                    <div v-if="item.observaciones" class="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                      <span class="italic">{{ item.observaciones }}</span>
-                    </div>
-                  </td>
-                  <td class="px-4 py-4 whitespace-nowrap text-right text-sm text-gray-900 dark:text-white">
-                    {{ formatNumber(item.cantidad_solicitada) }}
-                  </td>
-                  <td class="px-4 py-4 whitespace-nowrap text-right text-sm text-gray-900 dark:text-white">
-                    {{ formatNumber(item.cantidad_confirmada) }}
-                  </td>
-                  <td class="px-4 py-4 whitespace-nowrap text-right text-sm font-medium" :class="getDiferenciaClass(item.diferencia)">
-                    {{ formatNumber(item.diferencia) }}
-                  </td>
-                  <td class="px-4 py-4 whitespace-nowrap text-right text-sm" :class="getPorcentajeDiferenciaClass(item.porcentaje_diferencia)">
-                    {{ formatPorcentaje(item.porcentaje_diferencia) }}
-                  </td>
-                  <td class="px-4 py-4 whitespace-nowrap text-right text-sm text-gray-900 dark:text-white">
-                    {{ formatCurrency(item.costo_original) }}
-                  </td>
-                  <td class="px-4 py-4 whitespace-nowrap text-right text-sm" :class="item.cambio_precio ? 'text-orange-600 dark:text-orange-400 font-medium' : 'text-gray-900 dark:text-white'">
-                    {{ formatCurrency(item.costo_ajustado) }}
-                  </td>
-                  <td class="px-4 py-4 whitespace-nowrap text-center">
-                    <span v-if="item.cambio_precio" class="px-2 py-1 text-xs font-medium bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300 rounded-full">
-                      Sí
-                    </span>
-                    <span v-else class="text-xs text-gray-400 dark:text-gray-500">-</span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <!-- Distribución por tienda (expandible) -->
-          <div v-if="reporteDiferencias.detalle.some(item => item.distribucion_tiendas && item.distribucion_tiendas.length > 0)" class="mt-6">
-            <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Distribución por Tienda</h3>
-            <div class="space-y-4">
-              <details v-for="item in reporteDiferencias.detalle.filter(i => i.distribucion_tiendas && i.distribucion_tiendas.length > 0)" :key="item.codigo_producto" class="border border-gray-200 dark:border-gray-700 rounded-lg transition-colors duration-300">
-                <summary class="px-4 py-3 bg-gray-50 dark:bg-gray-900 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 text-sm font-medium text-gray-900 dark:text-white transition-colors">
-                  {{ item.codigo_producto }} - {{ item.descripcion }}
-                </summary>
-                <div class="p-4">
-                  <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div v-for="tienda in item.distribucion_tiendas" :key="tienda.tienda_codigo" class="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded p-3 transition-colors duration-300">
-                      <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{{ tienda.tienda_codigo }}</div>
-                      <div class="text-sm text-gray-600 dark:text-gray-300 mt-1">{{ tienda.tienda_nombre }}</div>
-                      <div class="text-lg font-semibold text-gray-900 dark:text-white mt-2">{{ formatNumber(tienda.cantidad) }}</div>
-                    </div>
-                  </div>
-                </div>
-              </details>
-            </div>
-          </div>
-        </div>
+        <ReporteDiferencias
+          :reporte-diferencias="reporteDiferencias"
+          @exportar="handleExportReporteDiferencias"
+        />
 
         <!-- Detalles del pedido (tabla de productos) -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6">
@@ -804,72 +507,68 @@ import { useToast } from '@/composables/useToast'
 import { useTablePreferences } from '@/composables/useTablePreferences'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import type { PedidoCompleto, ProcesarConfirmacionResponse, ReporteDiferenciasResponse, UploadPlantillaResponse } from '../types'
+// Utilidades extraídas
+import {
+  formatDate,
+  formatNumber,
+  formatCurrency,
+  formatPorcentaje,
+  formatEstadoPedido,
+  formatError,
+  formatColumnValue,
+  getTotalCantidad,
+  type ColumnConfig
+} from '../utils/formatters'
+import {
+  getEstadoBadgeClass,
+  getEstadoPedidoBadgeClass,
+  getCantidadClass,
+  getPrecioClass,
+  getDiferenciaClass,
+  getPorcentajeClass,
+  getPorcentajeDiferenciaClass
+} from '../utils/styleHelpers'
+import {
+  getProgresoPorcentaje,
+  getProgresoBarClass,
+  getProgresoTextClass,
+  getMensajeValidacionRedistribucion,
+  type ProductoRedistribucion,
+  type DistribucionTiendaEditada
+} from '../utils/redistribucionHelpers'
+// Composables
+import { useFileUpload } from '../composables/useFileUpload'
+import { useColumnManagement } from '../composables/useColumnManagement'
+import { usePedidoDetalle } from '../composables/usePedidoDetalle'
+import { useRedistribucion } from '../composables/useRedistribucion'
+// Componentes
+import PedidoHeaderActions from '../components/PedidoHeaderActions.vue'
+import PedidoCabecera from '../components/PedidoCabecera.vue'
+import RespuestaProveedor from '../components/RespuestaProveedor.vue'
+import ReporteDiferencias from '../components/ReporteDiferencias.vue'
+import RedistribucionTiendas from '../components/RedistribucionTiendas.vue'
+
+// Constantes de configuración
+const SCROLL_DELAY_MS = 100
+const ROUTE_REDIRECT_DELAY_MS = 1500
+const SEARCH_HELP_BLUR_DELAY_MS = 200
+const COPY_FEEDBACK_DURATION_MS = 2000
 
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
 
 const pedido = ref<PedidoCompleto | null>(null)
-const loading = ref(false)
-const error = ref<string | null>(null)
 
-// Búsqueda directa de pedidos
-const pedidoIdInput = ref('')
-const pedidoInputRef = ref<HTMLInputElement | null>(null)
-const showSearchHelp = ref(false)
-
-// Copiar número de pedido al portapapeles
-const copyFeedback = ref(false)
-
-// Cargar plantillas (sin modal - selector directo)
-const fileInput = ref<HTMLInputElement | null>(null)
-const uploading = ref(false)
-
-// Fase 4: Procesar confirmación
-const showProcesarModal = ref(false)
-const procesandoConfirmacion = ref(false)
-const forzarRedistribucion = ref(false)
-const procesarConfirmacionResult = ref<ProcesarConfirmacionResponse | null>(null)
-const reporteDiferencias = ref<ReporteDiferenciasResponse | null>(null)
-const loadingReporte = ref(false)
-const generandoOC = ref(false)
-
-// Modal de errores de carga de archivo
-const showErrorModal = ref(false)
-const uploadErrorInfo = ref<{
-  title?: string
-  message: string
-  fileName?: string
-  errors?: Array<string | { tipo?: string; campo?: string; mensaje: string; producto?: string }>
-} | null>(null)
+// ⭐ Set para rastrear columnas modificadas (formato: "detalleId:columnKey")
+const columnasModificadas = ref<Set<string>>(new Set())
 
 // Gestión de columnas visibles en la tabla
 const showColumnSelector = ref(false)
 const draggedColumnIndex = ref<number | null>(null)
 const dragOverColumnIndex = ref<number | null>(null)
 
-// Gestión de edición inline de costo unitario, total y comentario
-interface EditingCell {
-  detalleId: string
-  value: string
-  originalValue: number | string | null
-  fieldType: 'costo' | 'total' | 'comentario' // ⭐ NUEVO: Tipo de campo que se está editando
-}
-const editingCell = ref<EditingCell | null>(null)
-let editingInputElement: HTMLInputElement | null = null
-
-// ⭐ Set para rastrear columnas modificadas (formato: "detalleId:columnKey")
-const columnasModificadas = ref<Set<string>>(new Set())
-
-// Función helper para crear la clave de columna modificada
-function getColumnaModificadaKey(detalleId: string, columnKey: string): string {
-  return `${detalleId}:${columnKey}`
-}
-
-// Función helper para verificar si una columna está modificada
-function isColumnaModificada(detalleId: string, columnKey: string): boolean {
-  return columnasModificadas.value.has(getColumnaModificadaKey(detalleId, columnKey))
-}
+// La interfaz EditingCell ahora está importada desde composables/useColumnManagement
 
 // ⭐ Funciones para persistencia en sessionStorage
 function getStorageKey(): string {
@@ -917,13 +616,7 @@ function limpiarColumnasModificadasEnStorage() {
 }
 
 // ⭐ EXTENSIÓN DEL TIPO: Agregar comentario al tipo PedidoDetalle localmente
-interface ColumnConfig {
-  key: string
-  label: string
-  visible: boolean
-  align?: 'left' | 'right'
-  format?: 'text' | 'number' | 'currency'
-}
+// La interfaz ColumnConfig ahora está importada desde utils/formatters
 
 // ⭐ CAMBIO: Array estático en lugar de ref
 const availableColumns: ColumnConfig[] = [
@@ -1016,6 +709,76 @@ const esModoMabelTrading = computed(() => {
   return route.query.usuario === 'mabel-trading' || route.query.modo === 'confirmacion'
 })
 
+// Inicializar composable de pedido detalle primero
+const pedidoDetalle = usePedidoDetalle({
+  pedido,
+  numeroPedido,
+  esModoMabelTrading,
+  columnasModificadas,
+  limpiarColumnasModificadasEnStorage: () => {
+    if (!numeroPedido.value) return
+    try {
+      const storageKey = `pedido_columnas_modificadas_${numeroPedido.value}`
+      sessionStorage.removeItem(storageKey)
+      columnasModificadas.value.clear()
+    } catch (e) {
+      console.warn('Error al limpiar columnas modificadas en sessionStorage:', e)
+    }
+  },
+  cargarColumnasModificadasDesdeStorage: () => {
+    if (!numeroPedido.value) return
+    try {
+      const storageKey = `pedido_columnas_modificadas_${numeroPedido.value}`
+      const stored = sessionStorage.getItem(storageKey)
+      if (stored) {
+        const columnasArray = JSON.parse(stored) as string[]
+        columnasModificadas.value = new Set(columnasArray)
+      }
+    } catch (e) {
+      console.warn('Error al cargar columnas modificadas desde sessionStorage:', e)
+    }
+  }
+})
+
+// Inicializar composable de redistribución después de pedidoDetalle
+const redistribucion = useRedistribucion({
+  pedido,
+  numeroPedido,
+  esModoMabelTrading,
+  getReporteDiferencias: () => pedidoDetalle.reporteDiferencias,
+  loadPedido: () => pedidoDetalle.loadPedido()
+})
+
+// Extraer variables del composable de pedido detalle
+const {
+  loading,
+  error,
+  pedidoIdInput,
+  pedidoInputRef,
+  showSearchHelp,
+  copyFeedback,
+  showProcesarModal,
+  procesandoConfirmacion,
+  forzarRedistribucion,
+  procesarConfirmacionResult,
+  reporteDiferencias,
+  loadingReporte,
+  generandoOC,
+  isValidPedido,
+  loadPedido,
+  loadReporteDiferencias,
+  handleProcesarConfirmacion,
+  handleGenerarOCDesdePedido,
+  handleViewReporteDiferencias,
+  handleExportReporteDiferencias,
+  goToPedido,
+  handleSearchBlur,
+  copyToClipboard
+} = pedidoDetalle
+
+// Extraer variables del composable de redistribución
+// Ahora se acceden directamente desde redistribucion.productosRedistribucion, etc.
+
 // ⭐ Título de la interfaz según el modo
 const tituloInterfaz = computed(() => {
   return esModoMabelTrading.value 
@@ -1037,157 +800,104 @@ const canViewReporteDiferencias = computed(() => {
          reporteDiferencias.value !== null
 })
 
+// ⭐ FASE 4: Computed para resumen de redistribución
+const resumenRedistribucion = computed(() => {
+  if (redistribucion.productosRedistribucion.value.length === 0) {
+    return {
+      total_solicitado: 0,
+      total_confirmado: 0,
+      total_distribuido: 0,
+      diferencia_pendiente: 0
+    }
+  }
+  
+  const total_solicitado = redistribucion.productosRedistribucion.value.reduce((sum, p) => sum + p.cantidad_solicitada, 0)
+  const total_confirmado = redistribucion.productosRedistribucion.value.reduce((sum, p) => sum + p.cantidad_confirmada, 0)
+  const total_distribuido = redistribucion.productosRedistribucion.value.reduce((sum, p) => sum + p.cantidad_distribuida, 0)
+  const diferencia_pendiente = total_confirmado - total_distribuido
+  
+  return {
+    total_solicitado,
+    total_confirmado,
+    total_distribuido,
+    diferencia_pendiente
+  }
+})
+
+// ⭐ FASE 4: Computed para impacto económico
+const impactoEconomico = computed(() => {
+  let costo_unitario_total = 0
+  let subtotal_original = 0
+  let subtotal_ajustado = 0
+  let diferencia_economica = 0
+  
+  redistribucion.productosRedistribucion.value.forEach(producto => {
+    const costo = producto.costo_unitario || 0
+    costo_unitario_total += costo
+    subtotal_original += producto.cantidad_solicitada * costo
+    subtotal_ajustado += producto.cantidad_distribuida * costo
+  })
+  
+  diferencia_economica = subtotal_ajustado - subtotal_original
+  
+  return {
+    costo_unitario_promedio: redistribucion.productosRedistribucion.value.length > 0 
+      ? costo_unitario_total / redistribucion.productosRedistribucion.value.length 
+      : 0,
+    subtotal_original,
+    subtotal_ajustado,
+    diferencia_economica
+  }
+})
+
+// ⭐ FASE 4: Validar si se puede confirmar
+const puedeConfirmarRedistribucion = computed(() => {
+  return resumenRedistribucion.value.diferencia_pendiente === 0 &&
+         redistribucion.productosRedistribucion.value.every(p => p.diferencia === 0) &&
+         redistribucion.productosRedistribucion.value.every(p => !p.error)
+})
+
 const canGenerarOC = computed(() => {
   // Permitir generar OC si el pedido está confirmado por proveedor
   const estado = pedido.value?.cabecera.estado
   return estado === 'CONFIRMADO_PROVEEDOR'
 })
 
-// Validación de número de pedido en tiempo real
-const isValidPedido = computed(() => {
-  const trimmed = pedidoIdInput.value.trim()
-  if (!trimmed) return true // Vacio es válido (no muestra error hasta que escriba)
-  
-  // Permitir letras, números, guiones, puntos, espacios
-  // Longitud mínima: 5 caracteres
-  // Formato flexible: P-12.48 - 12 - 2025, ODC-12345, etc.
-  return /^[A-Za-z0-9.\-\s]{5,}$/.test(trimmed)
+// Funciones de carga y gestión del pedido ahora están en el composable usePedidoDetalle
+
+// Inicializar composable de carga de archivos
+const fileUploadComposable = useFileUpload({
+  pedido,
+  loadPedido: () => pedidoDetalle.loadPedido(),
+  onUploadSuccess: async (numeroPedido) => {
+    if (numeroPedido && numeroPedido !== pedido.value?.cabecera.numero_pedido) {
+      await pedidoDetalle.loadPedido()
+    }
+  }
 })
 
-async function loadPedido() {
-  loading.value = true
-  error.value = null
-  
-  // ⭐ Guardar el número de pedido anterior para comparar
-  const pedidoAnterior = numeroPedido.value
-  
-  try {
-    // Cargar pedido usando numero_pedido del parámetro de ruta
-    if (!numeroPedido.value) {
-      error.value = 'Número de pedido no válido'
-      return
-    }
-    
-    // ⭐ Si se carga un pedido diferente, limpiar las columnas modificadas del pedido anterior
-    if (pedidoAnterior && pedidoAnterior !== numeroPedido.value) {
-      limpiarColumnasModificadasEnStorage()
-    }
-    
-    pedido.value = await mba3ConsultasService.getPedido(numeroPedido.value, true)
-    
-    // ⭐ Cargar columnas modificadas desde sessionStorage después de cargar el pedido
-    cargarColumnasModificadasDesdeStorage()
-    
-    // Si hay respuesta aprobada, cargar el reporte de diferencias
-    if (pedido.value?.respuesta_proveedor?.cabecera.estado === 'APROBADA' ||
-        pedido.value?.cabecera.estado === 'CONFIRMADO_PROVEEDOR' ||
-        pedido.value?.cabecera.estado === 'CONFIRMADO_ENVIADO') {
-      await loadReporteDiferencias()
-    }
-  } catch (e: any) {
-    const errorMessage = e.message || 'Error al cargar el pedido'
-    error.value = errorMessage
-    toast.error('Error', errorMessage)
-  } finally {
-    loading.value = false
-  }
-}
+const {
+  uploading,
+  showErrorModal,
+  uploadErrorInfo,
+  openFileSelector: goToCargarPlantillas,
+  validateFile
+} = fileUploadComposable
 
-async function loadReporteDiferencias() {
-  // Usar numero_pedido para obtener el reporte
-  if (!numeroPedido.value) return
-  
-  loadingReporte.value = true
-  try {
-    reporteDiferencias.value = await mba3ConsultasService.getReporteDiferencias(numeroPedido.value, 'json') as ReporteDiferenciasResponse
-  } catch (e: any) {
-    // Si es 404, simplemente no mostrar el reporte (aún no procesado)
-    if (e.message?.includes('404') || e.message?.includes('No existe reporte')) {
-      reporteDiferencias.value = null
-    } else {
-      console.error('Error al cargar reporte de diferencias:', e)
-      // No mostrar error al usuario si no existe aún
-    }
-  } finally {
-    loadingReporte.value = false
-  }
+const columnManagement = useColumnManagement(pedido, numeroPedido, columnasModificadas)
+
+// Extraer funciones del composable para uso directo
+const { editingCell, iniciarEdicion, cancelarEdicion, manejarTeclasEdicion, isColumnaModificada, getColumnaModificadaKey } = columnManagement
+
+// Wrapper para guardarEdicion que incluye guardar en storage
+async function guardarEdicion() {
+  await columnManagement.guardarEdicion(() => guardarColumnasModificadasEnStorage())
 }
 
 // ⭐ ELIMINADO: loadTablePreferences, saveTablePreferences, debouncedSavePreferences
 // El composable useTablePreferences maneja esto automáticamente
 
-async function handleProcesarConfirmacion() {
-  if (!pedido.value || !numeroPedido.value) return
-  
-  procesandoConfirmacion.value = true
-  
-  try {
-    const result = await mba3ConsultasService.procesarConfirmacionProveedor(
-      numeroPedido.value,
-      forzarRedistribucion.value
-    )
-    
-    procesarConfirmacionResult.value = result
-    reporteDiferencias.value = {
-      pedido_id: result.pedido_id,
-      numero_pedido: pedido.value.cabecera.numero_pedido,
-      resumen: result.resumen,
-      detalle: result.reporte_diferencias
-    }
-    
-    toast.success('Confirmación procesada', result.message)
-    showProcesarModal.value = false
-    
-    // Recargar el pedido para actualizar estados
-    await loadPedido()
-  } catch (e: any) {
-    // Manejar error 409 (ya procesado)
-    if ((e as any).isConflict || (e as any).statusCode === 409) {
-      toast.info('Ya procesado', e.message || 'Esta respuesta ya fue procesada anteriormente')
-      showProcesarModal.value = false
-      // Cargar el reporte existente
-      await loadReporteDiferencias()
-    } else {
-      toast.error('Error al procesar', e.message || 'No se pudo procesar la confirmación')
-    }
-  } finally {
-    procesandoConfirmacion.value = false
-  }
-}
-
-async function handleGenerarOCDesdePedido() {
-  if (!pedido.value || !numeroPedido.value) return
-  
-  generandoOC.value = true
-  
-  try {
-    toast.info('Generando orden de compra...', 'Creando orden de compra desde el pedido confirmado')
-    
-    const result = await mba3ConsultasService.crearOrdenCompraDesdePedido(numeroPedido.value)
-    
-    if (result.status === 'success') {
-      toast.success(
-        'Orden de compra generada',
-        result.message || 'La orden de compra se ha generado exitosamente'
-      )
-      
-      // Recargar el pedido para actualizar estados
-      await loadPedido()
-      
-      // Redirigir a la vista de órdenes de compra después de un breve delay
-      setTimeout(() => {
-        router.push('/mba3-consultas/proceso-completo?tab=procesar-oc')
-      }, 1500)
-    } else {
-      toast.error('Error al generar orden', result.message || 'No se pudo generar la orden de compra')
-    }
-  } catch (e: any) {
-    console.error('Error al generar orden de compra:', e)
-    toast.error('Error al generar orden', e.message || 'No se pudo generar la orden de compra')
-  } finally {
-    generandoOC.value = false
-  }
-}
+// Funciones de gestión del pedido ahora están en el composable usePedidoDetalle
 
 function handleConfirmar() {
   if (!pedido.value || !numeroPedido.value) return
@@ -1206,561 +916,50 @@ function handleConfirmar() {
   toast.info('Abriendo confirmación', 'Se ha abierto la interfaz de confirmación en una nueva pestaña')
 }
 
-async function handleViewReporteDiferencias() {
-  if (!reporteDiferencias.value) {
-    await loadReporteDiferencias()
-  }
-  
-  // Scroll al reporte
-  if (reporteDiferencias.value) {
-    setTimeout(() => {
-      const reporteElement = document.querySelector('[data-reporte-diferencias]')
-      if (reporteElement) {
-        reporteElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      }
-    }, 100)
-  }
+// Función formatDate ahora importada desde utils/formatters
+
+// ⭐ REMOVIDO: Funciones de redistribución movidas al composable useRedistribucion.ts
+
+// ⭐ FASE 4: Funciones de redistribución - ahora delegadas al composable useRedistribucion
+// Las funciones se pasan al componente RedistribucionTiendas como eventos
+function toggleExpandirProducto(codigoProducto: string) {
+  redistribucion.toggleExpandirProducto(codigoProducto)
 }
 
-async function handleExportReporteDiferencias() {
-  if (!pedido.value || !numeroPedido.value) return
-  
-  try {
-    const blob = await mba3ConsultasService.getReporteDiferencias(numeroPedido.value, 'excel') as Blob
-    
-    // Crear URL del blob y descargar
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    const numeroPedidoParaDescarga = pedido.value.cabecera.numero_pedido || numeroPedido.value
-    a.download = `Reporte_Diferencias_${numeroPedidoParaDescarga}_${new Date().toISOString().split('T')[0]}.xlsx`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    window.URL.revokeObjectURL(url)
-    
-    toast.success('Reporte exportado', 'El reporte de diferencias se ha descargado correctamente')
-  } catch (e: any) {
-    toast.error('Error al exportar', e.message || 'No se pudo exportar el reporte')
-  }
+function actualizarCantidadTienda(codigoProducto: string, tiendaCodigo: string, event: Event) {
+  redistribucion.actualizarCantidadTienda(codigoProducto, tiendaCodigo, event)
 }
 
-// Función para validar archivo
-function validateFile(file: File): { valid: boolean; error?: string } {
-  const allowedExtensions = ['.xlsx', '.xls']
-  const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'))
-  
-  if (!allowedExtensions.includes(fileExtension)) {
-    return { valid: false, error: 'Solo se permiten archivos Excel (.xlsx, .xls)' }
-  }
-  
-  const maxSize = 10 * 1024 * 1024 // 10 MB
-  if (file.size > maxSize) {
-    return { valid: false, error: 'El tamaño máximo es 10 MB' }
-  }
-  
-  return { valid: true }
+function validarYCorregirCantidad(producto: ProductoRedistribucion, tienda: DistribucionTiendaEditada) {
+  redistribucion.validarYCorregirCantidad(producto, tienda)
 }
 
-// Función para abrir selector de archivos directamente
-function goToCargarPlantillas() {
-  // Bloquear doble subida accidental
-  if (uploading.value) return
-  
-  // Crear input de archivo dinámico si no existe
-  if (!fileInput.value) {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = '.xlsx,.xls'
-    input.style.display = 'none'
-    input.addEventListener('change', handleFileSelect)
-    document.body.appendChild(input)
-    fileInput.value = input as any
-  }
-  
-  // Abrir selector directamente
-  if (fileInput.value) {
-    fileInput.value.click()
-  }
+function distribuirProporcionalmente(codigoProducto: string) {
+  redistribucion.distribuirProporcionalmente(codigoProducto)
 }
 
-// Manejar selección de archivo - validar y subir automáticamente
-async function handleFileSelect(event: Event) {
-  const target = event.target as HTMLInputElement
-  if (!target.files || target.files.length === 0) return
-  
-  const file = target.files[0]
-  
-  // Validar archivo
-  const validation = validateFile(file)
-  if (!validation.valid) {
-    toast.error('Error de validación', validation.error || 'Archivo no válido')
-    // Limpiar input
-    if (target) target.value = ''
-    return
-  }
-  
-  // Mostrar confirmación rápida
-  toast.info(
-    `Archivo seleccionado: ${file.name}`,
-    'Subiendo archivo...',
-    2000
-  )
-  
-  // Subir automáticamente
-  await handleUploadFile(file)
-  
-  // Limpiar input después de procesar
-  if (target) target.value = ''
+function copiarDistribucionOriginal(codigoProducto: string) {
+  redistribucion.copiarDistribucionOriginal(codigoProducto)
 }
 
-// Función para subir el archivo
-async function handleUploadFile(file: File) {
-  uploading.value = true
-  
-  try {
-    const response: UploadPlantillaResponse = await mba3ConsultasService.uploadPlantilla(file)
-    
-    // Obtener numero_pedido de la respuesta
-    let numeroPedido = response.numero_pedido
-    
-    // Si no viene en la respuesta, intentar obtenerlo del pedido cargado usando pedido_id
-    if (!numeroPedido && response.pedido_id) {
-      try {
-        const pedidoCompleto = await mba3ConsultasService.getPedido(response.pedido_id, false)
-        numeroPedido = pedidoCompleto.cabecera.numero_pedido || undefined
-      } catch (e) {
-        console.warn('No se pudo obtener el numero_pedido del pedido cargado:', e)
-      }
-    }
-    
-    // Mostrar resultado con información de validación SAP si existe
-    let mensajeDetalle = `Número de pedido: ${numeroPedido || 'N/A'}\nArtículos: ${response.articulos_cargados}\nDistribuciones: ${response.distribuciones_cargadas}`
-    
-    // Agregar información de validación SAP si está disponible
-    if (response.validacion_sap) {
-      const sap = response.validacion_sap
-      mensajeDetalle += `\n\nValidación SAP:`
-      mensajeDetalle += `\n  • Códigos válidos: ${sap.validos}/${sap.total_codigos}`
-      if (sap.no_encontrados > 0) {
-        mensajeDetalle += `\n  • No encontrados en SAP: ${sap.no_encontrados}`
-      }
-      if (sap.errores > 0) {
-        mensajeDetalle += `\n  • Errores: ${sap.errores}`
-      }
-      if (sap.warnings > 0) {
-        mensajeDetalle += `\n  • Advertencias: ${sap.warnings}`
-      }
-    }
-    
-    // Mostrar errores SAP específicos si existen
-    const erroresSAP = response.errores?.filter((e: any) => {
-      if (typeof e === 'string') {
-        return e.toLowerCase().includes('sap') || e.toLowerCase().includes('no existe')
-      }
-      return e.campo === 'CodigoProducto' || (e.mensaje && (e.mensaje.toLowerCase().includes('sap') || e.mensaje.toLowerCase().includes('no existe')))
-    }) || []
-    
-    if (response.status === 'success') {
-      if (erroresSAP.length > 0 || (response.validacion_sap && !response.validacion_sap.todos_validos)) {
-        toast.warning(
-          'Plantilla procesada con advertencias SAP',
-          mensajeDetalle
-        )
-      } else {
-        toast.success(
-          'Plantilla procesada exitosamente',
-          mensajeDetalle
-        )
-      }
-    } else if (response.status === 'validation_error') {
-      toast.warning(
-        'Plantilla procesada con advertencias',
-        mensajeDetalle
-      )
-    }
-    
-    // Redirigir o recargar según corresponda
-    if (numeroPedido && numeroPedido !== pedido.value?.cabecera.numero_pedido) {
-      // Si el pedido cargado es diferente al actual, redirigir
-      router.push(`/mba3-consultas/pedidos/${encodeURIComponent(numeroPedido)}`)
-    } else {
-      // Recargar el pedido actual
-      await loadPedido()
-    }
-  } catch (e: any) {
-    // Preparar información del error para el modal
-    let errorTitle = 'Error al cargar plantilla'
-    let errorMessage = e.message || 'Error desconocido al subir plantilla'
-    const errorErrors: Array<string | { tipo?: string; campo?: string; mensaje: string; producto?: string }> = []
-    let productosNoEncontradosSAP: string[] = []
-
-    // Primero, buscar productos no encontrados en SAP en el mensaje de error
-    const errorMessageStr = e.message || ''
-    
-    // Detectar errores de validación SAP del mensaje
-    const sapErrorPatterns = [
-      /Productos no encontrados en SAP:\s*([A-Za-z0-9,.\s-]+)/i,
-      /no válidos en SAP[^:]*:\s*([A-Za-z0-9,.\s-]+)/i,
-      /No se encontró información en SAP para SKU:\s*([A-Za-z0-9,.\s-]+)/i
-    ]
-    
-    for (const pattern of sapErrorPatterns) {
-      const match = errorMessageStr.match(pattern)
-      if (match && match[1]) {
-        // Extraer códigos separados por comas
-        const codigos = match[1].split(',').map(c => c.trim()).filter(c => c)
-        productosNoEncontradosSAP.push(...codigos)
-      }
-    }
-
-    // Intentar extraer información detallada del error response
-    if (e.response?.data) {
-      const errorData = e.response.data
-      
-      // Si hay errores estructurados en la respuesta
-      if (errorData.errores && Array.isArray(errorData.errores)) {
-        errorErrors.push(...errorData.errores)
-      }
-      
-      // Si hay información de validación
-      if (errorData.validacion) {
-        const validacion = errorData.validacion
-        
-        // Agregar errores de productos no encontrados
-        if (validacion.productos?.no_encontrados?.length > 0) {
-          validacion.productos.no_encontrados.forEach((codigo: string) => {
-            errorErrors.push({
-              tipo: 'ERROR',
-              campo: 'Producto SAP',
-              mensaje: `No existe en SAP`,
-              producto: codigo
-            })
-            if (!productosNoEncontradosSAP.includes(codigo)) {
-              productosNoEncontradosSAP.push(codigo)
-            }
-          })
-        }
-        
-        // Agregar errores de tiendas no encontradas
-        if (validacion.tiendas?.no_encontradas?.length > 0) {
-          validacion.tiendas.no_encontradas.forEach((codigo: string) => {
-            errorErrors.push({
-              tipo: 'ERROR',
-              campo: 'CodigoTienda',
-              mensaje: `Tienda no encontrada en el sistema`,
-              producto: undefined
-            })
-          })
-        }
-        
-        // Agregar información de errores de validación de cantidades
-        if (validacion.cantidades && (!validacion.cantidades.valid || validacion.cantidades.errors > 0)) {
-          errorErrors.push({
-            tipo: 'ERROR',
-            campo: 'Cantidad',
-            mensaje: `Errores de validación en cantidades (${validacion.cantidades.errors} error(es), ${validacion.cantidades.warnings} advertencia(s))`,
-            producto: undefined
-          })
-        }
-      }
-      
-      // Si hay información de validación SAP
-      if (errorData.validacion_sap) {
-        const sap = errorData.validacion_sap
-        if (sap.no_encontrados > 0 || sap.errores > 0) {
-          errorErrors.push({
-            tipo: 'ERROR',
-            campo: 'ValidacionSAP',
-            mensaje: `${sap.no_encontrados} código(s) no encontrado(s) en SAP, ${sap.errores} error(es)`,
-            producto: undefined
-          })
-        }
-      }
-      
-    }
-
-    // Si hay errores estructurados en el objeto de error directamente, agregarlos
-    if ((e as any).errors && Array.isArray((e as any).errors)) {
-      errorErrors.push(...(e as any).errors)
-    }
-
-    // Identificar el tipo de error y ajustar título y mensaje
-    const isSAPError = productosNoEncontradosSAP.length > 0 || 
-                       errorMessageStr.toLowerCase().includes('sap') ||
-                       errorMessageStr.toLowerCase().includes('no válidos en sap') ||
-                       errorMessageStr.toLowerCase().includes('no se encontró')
-    
-    // Detectar duplicado con palabras clave más específicas
-    const isDuplicateError = (errorMessageStr.toLowerCase().includes('duplicado') ||
-                             errorMessageStr.toLowerCase().includes('ya existe en el sistema') ||
-                             errorMessageStr.toLowerCase().includes('pedido ya existe')) &&
-                             !isSAPError  // No es error de SAP
-    
-    const isFormatError = errorMessageStr.toLowerCase().includes('formato') ||
-                          errorMessageStr.toLowerCase().includes('estructura')
-
-    // Ajustar título según tipo de error (orden de prioridad)
-    if (isSAPError) {
-      errorTitle = 'Productos no encontrados en SAP'
-      if (productosNoEncontradosSAP.length > 0) {
-        // Crear errores específicos para cada producto no encontrado
-        productosNoEncontradosSAP.forEach(codigo => {
-          const exists = errorErrors.some(err => 
-            (typeof err !== 'string') && err.producto === codigo
-          )
-          if (!exists) {
-            errorErrors.push({
-              tipo: 'ERROR',
-              campo: 'Producto SAP',
-              mensaje: `El código no existe en la base de datos SAP`,
-              producto: codigo
-            })
-          }
-        })
-        errorMessage = `El archivo contiene ${productosNoEncontradosSAP.length} producto(s) que no existen en SAP.\n\nVerifica que los códigos sean correctos y estén registrados en el sistema SAP antes de cargar el archivo.`
-      } else {
-        errorMessage = `Uno o más productos del archivo no fueron encontrados en SAP.\n\nVerifica que todos los códigos de producto estén correctamente registrados en SAP.`
-      }
-    } else if (isDuplicateError) {
-      errorTitle = 'Pedido duplicado'
-      errorMessage = `Este pedido ya existe en el sistema.\n\nVerifica el número de pedido o contacta al administrador si necesitas modificar un pedido existente.`
-    } else if (isFormatError) {
-      errorTitle = 'Error de formato'
-      errorMessage = `El archivo Excel no tiene el formato correcto o está incompleto.\n\nAsegúrate de usar la plantilla oficial y completar todos los campos requeridos.`
-    } else if ((e as any).isBusinessException) {
-      errorTitle = 'No se puede procesar el archivo'
-      errorMessage = errorMessageStr || 'Ocurrió un error de validación de negocio que impide procesar el archivo.'
-    }
-    
-    uploadErrorInfo.value = {
-      title: errorTitle,
-      message: errorMessage,
-      fileName: file.name,
-      errors: errorErrors.length > 0 ? errorErrors : undefined
-    }
-
-    // Mostrar el modal
-    showErrorModal.value = true
-
-    // Mostrar toast con el título del error
-    toast.error(errorTitle, productosNoEncontradosSAP.length > 0 
-      ? `Productos no encontrados: ${productosNoEncontradosSAP.join(', ')}`
-      : errorMessage.split('\n')[0])
-  } finally {
-    uploading.value = false
-  }
+function resetearDistribucion(codigoProducto: string) {
+  redistribucion.resetearDistribucion(codigoProducto)
 }
 
-function goToPedido() {
-  const numeroPedido = pedidoIdInput.value.trim()
-  
-  // Validar que no esté vacío
-  if (!numeroPedido) {
-    toast.warning('Campo vacío', 'Por favor ingresa un número de pedido')
-    pedidoInputRef.value?.focus()
-    return
-  }
-  
-  // Validar formato antes de navegar
-  if (!isValidPedido.value) {
-    toast.warning(
-      'Formato inválido',
-      'Usa el número de pedido tal como aparece en el Excel. Ejemplo: P-12.48 - 12 - 2025'
-    )
-    pedidoInputRef.value?.focus()
-    return
-  }
-  
-  // Navegar al pedido
-  router.push(`/mba3-consultas/pedidos/${encodeURIComponent(numeroPedido)}`)
-  // No limpiar el input - el usuario puede querer buscar otro después
+async function guardarBorradorRedistribucion() {
+  await redistribucion.guardarBorradorRedistribucion()
 }
 
-function handleSearchBlur() {
-  // Delay para permitir que el click en el texto de ayuda funcione
-  setTimeout(() => {
-    showSearchHelp.value = false
-  }, 200)
+async function confirmarRedistribucion() {
+  await redistribucion.confirmarRedistribucion(puedeConfirmarRedistribucion)
 }
 
-function formatDate(dateString: string | null): string {
-  if (!dateString) return 'N/A'
-  
-  // Manejar valores especiales que no son fechas (ej: "INMEDIATO", "INMEDIATA", etc.)
-  const trimmedValue = dateString.trim()
-  const upperValue = trimmedValue.toUpperCase()
-  const valoresEspeciales = ['INMEDIATO', 'INMEDIATA', 'IMMEDIATE', 'URGENTE', 'URGENT', 'ASAP']
-  
-  if (valoresEspeciales.includes(upperValue)) {
-    // Retornar el valor original preservando mayúsculas/minúsculas del backend
-    return trimmedValue
-  }
-  
-  // Intentar parsear como fecha
-  try {
-    const date = new Date(dateString)
-    
-    // Verificar que sea una fecha válida
-    if (isNaN(date.getTime())) {
-      // No es una fecha válida, retornar el valor original
-      return trimmedValue
-    }
-    
-    // Es una fecha válida, formatearla
-    return date.toLocaleDateString('es-ES', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    })
-  } catch {
-    // Si falla el parseo, retornar el valor original
-    return trimmedValue
-  }
-}
+// Función copyToClipboard ahora está en el composable usePedidoDetalle
 
-async function copyToClipboard(text: string) {
-  try {
-    await navigator.clipboard.writeText(text)
-    copyFeedback.value = true
-    setTimeout(() => {
-      copyFeedback.value = false
-    }, 2000)
-  } catch (err) {
-    console.error('Error al copiar al portapapeles:', err)
-    toast.error('Error', 'No se pudo copiar al portapapeles')
-  }
-}
+// Funciones de formato ahora importadas desde utils/formatters y utils/styleHelpers
 
-function formatNumber(value: number | null): string {
-  if (value === null || value === undefined) return 'N/A'
-  return new Intl.NumberFormat('es-ES').format(value)
-}
-
-function formatCurrency(value: number | null): string {
-  if (value === null || value === undefined) return 'N/A'
-  return new Intl.NumberFormat('es-ES', {
-    style: 'currency',
-    currency: 'USD'
-  }).format(value)
-}
-
-function getTotalCantidad(tiendas: any[]): number {
-  return tiendas.reduce((sum, t) => sum + (t.cantidad || 0), 0)
-}
-
-function formatColumnValue(detalle: any, column: ColumnConfig): string {
-  const value = detalle[column.key]
-  
-  // Manejar valores null/undefined
-  if (value === null || value === undefined) {
-    return column.key === 'bodega' ? '-' : 'N/A'
-  }
-  
-  // Formatear descuentos como porcentaje
-  if (column.key === 'descuento_1' || column.key.includes('descuento')) {
-    return formatPorcentaje(value)
-  }
-  
-  // Formatear según el tipo
-  switch (column.format) {
-    case 'currency':
-      return formatCurrency(value)
-    case 'number':
-      return formatNumber(value)
-    case 'text':
-    default:
-      return value.toString()
-  }
-}
-
-function getEstadoBadgeClass(estado: string): string {
-  const classes: Record<string, string> = {
-    'PENDIENTE_REVISION': 'bg-yellow-100 text-yellow-800',
-    'APROBADA': 'bg-green-100 text-green-800',
-    'RECHAZADA': 'bg-red-100 text-red-800'
-  }
-  return classes[estado] || 'bg-gray-100 text-gray-800'
-}
-
-function getCantidadClass(solicitada: number, confirmada: number): string {
-  const porcentaje = solicitada > 0 ? (confirmada / solicitada) * 100 : 0
-  if (porcentaje < 80) return 'text-red-600 font-medium'
-  if (porcentaje < 100) return 'text-yellow-600'
-  return 'text-green-600'
-}
-
-function getPrecioClass(original: number | null, ajustado: number | null): string {
-  if (!original || !ajustado) return 'text-gray-900'
-  const aumento = ((ajustado - original) / original) * 100
-  if (aumento > 10) return 'text-red-600 font-medium'
-  if (aumento > 0) return 'text-yellow-600'
-  if (aumento < 0) return 'text-green-600'
-  return 'text-gray-900'
-}
-
-function formatPorcentaje(value: number): string {
-  // Convert decimal (0.2) to percentage (20%)
-  const percentageValue = value * 100
-  return `${percentageValue.toFixed(2)}%`
-}
-
-function getDiferenciaClass(diferencia: number): string {
-  if (diferencia < 0) return 'text-red-600 font-medium'
-  if (diferencia > 0) return 'text-green-600'
-  return 'text-gray-900'
-}
-
-function getPorcentajeClass(porcentaje: number): string {
-  if (porcentaje < 80) return 'text-red-600 font-medium'
-  if (porcentaje < 100) return 'text-yellow-600'
-  return 'text-green-600'
-}
-
-function getPorcentajeDiferenciaClass(porcentaje: number): string {
-  if (porcentaje < -10) return 'text-red-600 font-medium'
-  if (porcentaje < 0) return 'text-orange-600'
-  if (porcentaje > 0) return 'text-green-600'
-  return 'text-gray-900'
-}
-
-function formatEstadoPedido(estado: string): string {
-  const estados: Record<string, string> = {
-    'PENDIENTE_CONFIRMACION_PROVEEDOR': 'Pendiente Confirmación',
-    'RESPUESTA_PROVEEDOR_CARGADA': 'Respuesta Cargada',
-    'CONFIRMADO_PROVEEDOR': 'Confirmado por Proveedor',
-    'CONFIRMADO_ENVIADO': 'Confirmado y Enviado'  // ⭐ NUEVO (Fase 6)
-  }
-  return estados[estado] || estado
-}
-
-function formatError(error: string | { tipo?: string; campo?: string; mensaje: string; producto?: string }): string {
-  if (typeof error === 'string') {
-    return error
-  }
-  
-  let formatted = error.mensaje
-  if (error.producto) {
-    formatted = `[${error.producto}] ${formatted}`
-  }
-  if (error.campo) {
-    formatted = `${error.campo}: ${formatted}`
-  }
-  if (error.tipo) {
-    formatted = `${error.tipo === 'ERROR' ? '❌' : '⚠️'} ${formatted}`
-  }
-  return formatted
-}
-
-function getEstadoPedidoBadgeClass(estado: string): string {
-  const classes: Record<string, string> = {
-    'PENDIENTE_CONFIRMACION_PROVEEDOR': 'bg-yellow-100 text-yellow-800',
-    'RESPUESTA_PROVEEDOR_CARGADA': 'bg-blue-100 text-blue-800',
-    'CONFIRMADO_PROVEEDOR': 'bg-green-100 text-green-800',
-    'CONFIRMADO_ENVIADO': 'bg-emerald-100 text-emerald-800'  // ⭐ NUEVO (Fase 6) - Verde más intenso para estado final
-  }
-  return classes[estado] || 'bg-gray-100 text-gray-800'
-}
+// Funciones de redistribución ahora importadas desde utils/redistribucionHelpers y utils/styleHelpers
+// Función getMensajeValidacionRedistribucion ahora requiere pasar productosRedistribucion.value como parámetro
 
 onMounted(() => {
   // El composable carga las preferencias automáticamente
@@ -1786,15 +985,25 @@ watch(
   }
 )
 
+// ⭐ FASE 4: Watch para inicializar redistribución cuando cambie el pedido o el modo
+watch(
+  [() => pedido.value?.respuesta_proveedor, () => esModoMabelTrading.value],
+  () => {
+    if (pedido.value?.respuesta_proveedor && esModoMabelTrading.value) {
+      redistribucion.inicializarProductosRedistribucion()
+    } else {
+      redistribucion.productosRedistribucion.value = []
+      redistribucion.productosExpandidos.value.clear()
+    }
+  },
+  { immediate: true }
+)
+
 // ⭐ ELIMINADO: Watchers antiguos (el composable maneja esto automáticamente)
 
-// Cleanup: eliminar input de archivo cuando el componente se destruye
+// Cleanup: eliminar listener del dropdown cuando el componente se destruye
+// El composable useFileUpload maneja el cleanup del fileInput
 onUnmounted(() => {
-  if (fileInput.value) {
-    fileInput.value.remove()
-    fileInput.value = null
-  }
-  
   // Remover listener del dropdown
   document.removeEventListener('click', handleClickOutsideColumnSelector)
 })
@@ -1873,246 +1082,6 @@ function toggleColumnVisibility(columnKey: string) {
   savePreferences()
 }
 
-// ⭐ NUEVO: Funciones para edición de costo unitario, total y comentario
-function iniciarEdicion(detalle: any, fieldType: 'costo' | 'total' | 'comentario' = 'costo') {
-  if (!pedido.value) return
-  
-  let value: string
-  let originalValue: number | string | null
-  
-  if (fieldType === 'costo') {
-    value = detalle.costo_doc_sin_iva?.toString() || '0'
-    originalValue = detalle.costo_doc_sin_iva
-  } else if (fieldType === 'total') {
-    value = detalle.total?.toString() || '0'
-    originalValue = detalle.total
-  } else {
-    // comentario
-    value = detalle.comentario || ''
-    originalValue = detalle.comentario
-  }
-  
-  editingCell.value = {
-    detalleId: detalle.pedido_detalle_id,
-    value: value,
-    originalValue: originalValue,
-    fieldType: fieldType
-  }
-  
-  // Esperar a que el input se monte en el DOM y darle focus
-  nextTick(() => {
-    // Buscar el input o textarea por atributo data específico
-    const input = document.querySelector(
-      `input[data-editing-cell="${detalle.pedido_detalle_id}"], textarea[data-editing-cell="${detalle.pedido_detalle_id}"]`
-    ) as HTMLInputElement | HTMLTextAreaElement
-    
-    if (input) {
-      editingInputElement = input as HTMLInputElement
-      input.focus()
-      if (input instanceof HTMLInputElement) {
-        input.select()
-      }
-    }
-  })
-}
-
-async function guardarEdicion() {
-  if (!editingCell.value || !pedido.value) return
-  
-  const fieldType = editingCell.value.fieldType
-  // Convertir a string antes de trim (v-model con type="number" puede devolver un número)
-  const newValueStr = String(editingCell.value.value || '').trim()
-  
-  // Validación específica según el tipo de campo
-  if (fieldType === 'comentario') {
-    // Para comentario, no hay validación numérica, solo verificar si cambió
-    if (newValueStr === (editingCell.value.originalValue || '')) {
-      editingCell.value = null
-      return
-    }
-  } else {
-    // Para costo y total, validar que sea un número válido
-    const newValue = parseFloat(newValueStr)
-    
-    if (isNaN(newValue) || newValue < 0) {
-      toast.warning('Valor inválido', 'Por favor ingresa un número válido mayor o igual a 0')
-      return
-    }
-    
-    // No cambió nada
-    if (newValue === editingCell.value.originalValue) {
-      editingCell.value = null
-      return
-    }
-  }
-  
-  // Encontrar el detalle a actualizar
-  const detalle = pedido.value.detalles.find(d => d.pedido_detalle_id === editingCell.value!.detalleId)
-  if (!detalle) return
-  
-  // ⭐ Guardar detalleId antes de cerrar el editor
-  const detalleId = editingCell.value.detalleId
-  
-  // ⭐ ACTUALIZACIÓN OPTIMISTA: Guardar valores anteriores para poder revertir
-  const oldCosto = detalle.costo_doc_sin_iva
-  const oldSubtotal = detalle.subtotal
-  const oldTotal = detalle.total
-  const oldComentario = detalle.comentario
-  
-  // ⭐ ACTUALIZAR UI INMEDIATAMENTE (optimistic update)
-  if (fieldType === 'costo') {
-    const newValue = parseFloat(newValueStr)
-    // ⭐ COSTO UNIT. es completamente independiente - solo actualizar el costo mismo
-    // NO hacer ningún cálculo sobre él (no recalcular subtotal ni ningún otro campo)
-    detalle.costo_doc_sin_iva = newValue
-  } else if (fieldType === 'total') {
-    const newValue = parseFloat(newValueStr)
-    // ⭐ FASE 2: Solo actualizar el TOTAL, NO tocar COSTO UNIT. ni subtotal
-    // El TOTAL es independiente y puede ser cualquier valor que el usuario ingrese
-    detalle.total = newValue
-    // ⭐ NO recalcular nada - el TOTAL es independiente
-  } else if (fieldType === 'comentario') {
-    // Actualizar comentario inmediatamente
-    detalle.comentario = newValueStr || null
-  }
-  
-  // Cerrar el editor inmediatamente para mejor UX
-  editingCell.value = null
-  
-  // Mostrar feedback inmediato (sin esperar al backend)
-  if (fieldType === 'comentario') {
-    toast.info('Actualizando...', 'Guardando comentario...')
-  } else {
-    const fieldLabel = fieldType === 'costo' ? 'costo' : 'total'
-    const newValue = parseFloat(newValueStr)
-    toast.info('Actualizando...', `Actualizando ${fieldLabel} a ${fieldType === 'costo' ? formatCurrency(newValue) : formatNumber(newValue)}`)
-  }
-  
-  try {
-    let response
-    if (fieldType === 'costo') {
-      const newValue = parseFloat(newValueStr)
-      // Actualizar costo en el backend
-      response = await mba3ConsultasService.actualizarCostoPedido(
-        numeroPedido.value,
-        detalleId,
-        newValue
-      )
-      
-      // ⭐ Backend confirmó el cambio - actualizar con datos del servidor si vienen
-      if (response.costo_nuevo !== undefined) {
-        detalle.costo_doc_sin_iva = response.costo_nuevo
-      }
-      // ⭐ COSTO UNIT. es completamente independiente - NO hacer ningún cálculo
-      // NO actualizar subtotal, NO actualizar TOTAL - todos son independientes
-      
-      // ⭐ Marcar columna específica como modificada (persistente)
-      columnasModificadas.value.add(getColumnaModificadaKey(detalleId, 'costo_doc_sin_iva'))
-      guardarColumnasModificadasEnStorage()
-      
-      toast.success('Costo actualizado', `Costo unitario actualizado a ${formatCurrency(parseFloat(newValueStr))}`)
-    } else if (fieldType === 'total') {
-      const newValue = parseFloat(newValueStr)
-      // Actualizar total en el backend
-      response = await mba3ConsultasService.actualizarTotalPedido(
-        numeroPedido.value,
-        detalleId,
-        newValue
-      )
-      
-      // ⭐ Backend confirmó el cambio - actualizar con datos del servidor si vienen
-      if (response.total_nuevo !== undefined) {
-        detalle.total = response.total_nuevo
-      }
-      // ⭐ FASE 2: Solo actualizar el TOTAL, NO tocar COSTO UNIT. ni subtotal
-      // El TOTAL es independiente y puede ser cualquier valor que el usuario ingrese
-      // ⭐ NO actualizar subtotal ni costo - son independientes del TOTAL
-      
-      // ⭐ Marcar columna específica como modificada (persistente)
-      columnasModificadas.value.add(getColumnaModificadaKey(detalleId, 'total'))
-      guardarColumnasModificadasEnStorage()
-      
-      toast.success('Total actualizado', `Total actualizado a ${formatNumber(parseFloat(newValueStr))}`)
-    } else if (fieldType === 'comentario') {
-      // Actualizar comentario en el backend
-      response = await mba3ConsultasService.actualizarComentarioPedido(
-        numeroPedido.value,
-        detalleId,
-        newValueStr || null
-      )
-      
-      // ⭐ Backend confirmó el cambio - actualizar con datos del servidor si vienen
-      // El backend puede devolver comentario_nuevo o podemos usar el valor que enviamos
-      if (response.comentario_nuevo !== undefined) {
-        detalle.comentario = response.comentario_nuevo
-      } else {
-        // Si el backend no devuelve el comentario, usar el valor que enviamos
-        detalle.comentario = newValueStr || null
-      }
-      
-      // ⭐ Marcar columna específica como modificada (persistente)
-      columnasModificadas.value.add(getColumnaModificadaKey(detalleId, 'comentario'))
-      guardarColumnasModificadasEnStorage()
-      
-      toast.success('Comentario guardado', 'El comentario se ha guardado correctamente')
-    }
-  } catch (e: any) {
-    // ⭐ REVERTIR CAMBIOS si el backend falla
-    detalle.costo_doc_sin_iva = oldCosto
-    detalle.subtotal = oldSubtotal
-    detalle.total = oldTotal
-    detalle.comentario = oldComentario
-    
-    // Mensaje de error más amigable
-    const fieldLabel = fieldType === 'costo' ? 'costo' : fieldType === 'total' ? 'total' : 'comentario'
-    const errorMessage = e.message || `No se pudo actualizar el ${fieldLabel}`
-    const isBackendError = errorMessage.includes('JSON serializable') || 
-                          errorMessage.includes('internal_error') ||
-                          errorMessage.includes('500')
-    
-    if (isBackendError) {
-      toast.error(
-        'Error del servidor', 
-        'El cambio se aplicó localmente pero no se pudo guardar en el servidor. Por favor, recarga la página.'
-      )
-    } else {
-      toast.error('Error al actualizar', errorMessage)
-    }
-    
-    // Restaurar el editor para que el usuario pueda intentar de nuevo (solo si el detalle aún existe)
-    const detalleActualizado = pedido.value.detalles.find(d => d.pedido_detalle_id === detalleId)
-    if (detalleActualizado) {
-      let originalValue: number | string | null
-      if (fieldType === 'costo') {
-        originalValue = oldCosto
-      } else if (fieldType === 'total') {
-        originalValue = oldTotal
-      } else {
-        originalValue = oldComentario ?? null
-      }
-      
-      editingCell.value = {
-        detalleId: detalleActualizado.pedido_detalle_id,
-        value: originalValue?.toString() || (fieldType === 'comentario' ? '' : '0'),
-        originalValue: originalValue,
-        fieldType: fieldType
-      }
-    }
-  }
-}
-
-function cancelarEdicion() {
-  editingCell.value = null
-}
-
-function manejarTeclasEdicion(event: KeyboardEvent) {
-  if (event.key === 'Enter') {
-    event.preventDefault()
-    guardarEdicion()
-  } else if (event.key === 'Escape') {
-    event.preventDefault()
-    cancelarEdicion()
-  }
-}
+// Funciones de edición ahora están en el composable useColumnManagement
 </script>
 

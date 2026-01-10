@@ -6,7 +6,7 @@ import type {
 } from '../types'
 import type { OrdenCompraResponse, OrdenCompraLogResponse, RemisionResponse } from '../types'
 import type { HealthResponse, ProcesoResponse } from '../types'
-import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstado, ProcesoEstadoResponse, SugerenciaProducto, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuRequest, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, PedidoCompleto, CargarRespuestaProveedorResponse, RespuestaProveedorResponse, ProcesarConfirmacionResponse, ReporteDiferenciasResponse, IntegracionSAPResponse, ActualizarCostoPedidoResponse } from '../types'
+import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstado, ProcesoEstadoResponse, SugerenciaProducto, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuRequest, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, PedidoCompleto, CargarRespuestaProveedorResponse, RespuestaProveedorResponse, ProcesarConfirmacionResponse, ReporteDiferenciasResponse, IntegracionSAPResponse, ActualizarCostoPedidoResponse, AjusteDetalle, ResumenConfirmacion } from '../types'
 
 // Usar la URL base del backend MBA3
 const API_BASE_URL = import.meta.env.VITE_MBA3_API_BASE_URL || 'http://localhost:8000'
@@ -1115,6 +1115,36 @@ export const mba3ConsultasService = {
   },
 
   /**
+   * Crea automáticamente la respuesta del proveedor desde los datos actuales del pedido
+   * Este endpoint reemplaza la carga de archivo Excel - genera respuesta_proveedor desde pedido.detalles
+   * Requiere permiso: mba3-consultas.proceso.execute
+   * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
+   */
+  async crearRespuestaProveedorDesdePedido(numeroPedido: string): Promise<CargarRespuestaProveedorResponse> {
+    try {
+      const response = await mba3Api.post<CargarRespuestaProveedorResponse>(
+        `/api/pedidos/${encodeURIComponent(numeroPedido)}/crear-respuesta-proveedor`,
+        {}
+      )
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [crearRespuestaProveedorDesdePedido] Error al crear respuesta:', error)
+
+      let message = error.message || 'Error desconocido al crear respuesta del proveedor'
+
+      if (error.response?.data) {
+        if (error.response.data.detail) {
+          message = error.response.data.detail
+        } else if (error.response.data.message) {
+          message = error.response.data.message
+        }
+      }
+
+      throw new Error(message)
+    }
+  },
+
+  /**
    * Obtiene la respuesta del proveedor para un pedido
    * Requiere permiso: mba3-consultas.facturas.view
    * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
@@ -1440,6 +1470,55 @@ export const mba3ConsultasService = {
       console.error('❌ [actualizarComentarioPedido] Mensaje final:', finalMessage)
 
       throw new Error(finalMessage)
+    }
+  },
+
+  /**
+   * Confirma la redistribución de un pedido
+   * Requiere permiso: mba3-consultas.proceso.execute
+   * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
+   * @param ajustesDetalle Array de ajustes de redistribución por producto
+   */
+  async confirmarRedistribucion(
+    numeroPedido: string,
+    ajustesDetalle: AjusteDetalle[]
+  ): Promise<{
+    status: 'success'
+    message: string
+    pedido_id: string
+    redistribucion_id: string
+    fecha_confirmacion: string
+    resumen: ResumenConfirmacion
+    ajustes_aplicados: number
+  }> {
+    try {
+      const response = await mba3Api.post<{
+        status: 'success'
+        message: string
+        pedido_id: string
+        redistribucion_id: string
+        fecha_confirmacion: string
+        resumen: ResumenConfirmacion
+        ajustes_aplicados: number
+      }>(
+        `/api/pedidos/${encodeURIComponent(numeroPedido)}/redistribucion/confirmar`,
+        { ajustes_detalle: ajustesDetalle }
+      )
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [confirmarRedistribucion] Error al confirmar redistribución:', error)
+
+      let message = error.message || 'Error desconocido al confirmar redistribución'
+
+      if (error.response?.data) {
+        if (error.response.data.detail) {
+          message = error.response.data.detail
+        } else if (error.response.data.message) {
+          message = error.response.data.message
+        }
+      }
+
+      throw new Error(message)
     }
   },
 }
