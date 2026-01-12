@@ -1,7 +1,28 @@
 <template>
-  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6">
-    <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Información del Pedido</h2>
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
+    <!-- Header colapsable -->
+    <button
+      @click="isExpanded = !isExpanded"
+      class="w-full flex items-center justify-between p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors rounded-t-lg"
+    >
+      <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Información del Pedido</h2>
+      <svg
+        class="w-5 h-5 text-gray-500 dark:text-gray-400 transition-transform duration-200"
+        :class="{ 'rotate-180': isExpanded }"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+      </svg>
+    </button>
+    
+    <!-- Contenido colapsable -->
+    <div
+      v-show="isExpanded"
+      class="px-6 pb-6 border-t border-gray-200 dark:border-gray-700"
+    >
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-4">
       <div>
         <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Número de Pedido</label>
         <div class="flex items-center gap-2 mt-1">
@@ -50,11 +71,13 @@
           </span>
         </p>
       </div>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref } from 'vue'
 import type { PedidoCompleto } from '../types'
 import { formatDate, formatEstadoPedido } from '../utils/formatters'
 import { getEstadoPedidoBadgeClass } from '../utils/styleHelpers'
@@ -67,4 +90,7 @@ defineProps<{
 defineEmits<{
   'copy-to-clipboard': [text: string]
 }>()
+
+// Estado colapsable - por defecto encogido
+const isExpanded = ref(false)
 </script>

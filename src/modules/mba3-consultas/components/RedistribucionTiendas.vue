@@ -121,10 +121,10 @@
       </div>
     </div>
 
-    <!-- Contenido Principal: Tabla de Productos y Panel Lateral -->
-    <div v-if="pedidoValue?.respuesta_proveedor" class="p-6 flex flex-col lg:flex-row gap-6">
+    <!-- Contenido Principal: Tabla de Productos -->
+    <div v-if="pedidoValue?.respuesta_proveedor" class="p-6">
       <!-- Tabla Principal -->
-      <div class="flex-1 overflow-x-auto min-w-0">
+      <div class="overflow-x-auto min-w-0">
         <!-- Vista Excel -->
         <ExcelLikeGridView
           v-if="modoVista === 'excel'"
@@ -385,60 +385,6 @@
           </tbody>
         </table>
       </div>
-      
-      <!-- Panel Lateral de Impacto Económico (Sticky) -->
-      <div class="w-full lg:w-80 flex-shrink-0">
-        <div class="sticky top-24 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-md p-4">
-          <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-4">Impacto Económico</h3>
-          
-          <div class="space-y-3">
-            <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-3">
-              <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Costo Unit. Promedio</label>
-              <p class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">
-                {{ formatCurrency(impactoEconomico.costo_unitario_promedio) }}
-              </p>
-            </div>
-            
-            <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
-              <label class="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase">Subtotal Original</label>
-              <p class="mt-1 text-sm font-semibold text-blue-900 dark:text-blue-200">
-                {{ formatCurrency(impactoEconomico.subtotal_original) }}
-              </p>
-            </div>
-            
-            <div class="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-3 border border-purple-200 dark:border-purple-800">
-              <label class="text-xs font-medium text-purple-600 dark:text-purple-400 uppercase">Subtotal Ajustado</label>
-              <p class="mt-1 text-sm font-semibold text-purple-900 dark:text-purple-200">
-                {{ formatCurrency(impactoEconomico.subtotal_ajustado) }}
-              </p>
-            </div>
-            
-            <div 
-              class="rounded-lg p-3 border-2"
-              :class="impactoEconomico.diferencia_economica >= 0 
-                ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700' 
-                : 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700'"
-            >
-              <label 
-                class="text-xs font-medium uppercase"
-                :class="impactoEconomico.diferencia_economica >= 0 
-                  ? 'text-green-600 dark:text-green-400' 
-                  : 'text-red-600 dark:text-red-400'"
-              >
-                {{ impactoEconomico.diferencia_economica >= 0 ? 'Ahorro' : 'Incremento' }}
-              </label>
-              <p 
-                class="mt-1 text-lg font-semibold"
-                :class="impactoEconomico.diferencia_economica >= 0 
-                  ? 'text-green-900 dark:text-green-200' 
-                  : 'text-red-900 dark:text-red-200'"
-              >
-                {{ formatCurrency(Math.abs(impactoEconomico.diferencia_economica)) }}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
     
     <!-- Barra de Acciones Sticky Bottom -->
@@ -575,32 +521,6 @@ const resumenRedistribucion = computed(() => {
     total_confirmado,
     total_distribuido,
     diferencia_pendiente
-  }
-})
-
-// Computed para impacto económico
-const impactoEconomico = computed(() => {
-  let costo_unitario_total = 0
-  let subtotal_original = 0
-  let subtotal_ajustado = 0
-  let diferencia_economica = 0
-  
-  productosArray.value.forEach(producto => {
-    const costo = producto.costo_unitario || 0
-    costo_unitario_total += costo
-    subtotal_original += producto.cantidad_solicitada * costo
-    subtotal_ajustado += producto.cantidad_distribuida * costo
-  })
-  
-  diferencia_economica = subtotal_ajustado - subtotal_original
-  
-  return {
-    costo_unitario_promedio: productosArray.value.length > 0 
-      ? costo_unitario_total / productosArray.value.length 
-      : 0,
-    subtotal_original,
-    subtotal_ajustado,
-    diferencia_economica
   }
 })
 
