@@ -4,16 +4,16 @@
     <div class="overflow-x-auto">
       <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
         <!-- Header fijo -->
-        <thead class="bg-gray-50 dark:bg-gray-900 sticky top-0 z-20">
+        <thead class="bg-gray-50 dark:bg-gray-900 sticky top-0 z-50">
           <tr>
             <!-- Columnas fijas -->
-            <th class="sticky left-0 z-30 bg-gray-50 dark:bg-gray-900 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700">
+            <th class="sticky left-0 z-[60] bg-gray-50 dark:bg-gray-900 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700">
               Código
             </th>
-            <th class="sticky left-[120px] z-30 bg-gray-50 dark:bg-gray-900 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 min-w-[200px]">
+            <th class="sticky left-[120px] z-[60] bg-gray-50 dark:bg-gray-900 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 min-w-[200px]">
               Producto
             </th>
-            <th class="sticky left-[320px] z-30 bg-gray-50 dark:bg-gray-900 px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 min-w-[120px]">
+            <th class="sticky left-[320px] z-[60] bg-gray-50 dark:bg-gray-900 px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 min-w-[120px]">
               Total Confirmado
             </th>
             
@@ -54,16 +54,25 @@
               'bg-red-50 dark:bg-red-900/10'
             ]"
           >
-            <!-- Columnas fijas -->
-            <td class="sticky left-0 z-10 bg-inherit px-4 py-3 text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap border-r border-gray-200 dark:border-gray-700">
+            <!-- Columnas fijas - fondo completamente opaco -->
+            <td 
+              class="sticky left-0 z-30 px-4 py-3 text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap border-r border-gray-200 dark:border-gray-700 fixed-column-bg"
+              :class="producto.diferencia === 0 ? 'fixed-bg-green' : producto.diferencia < 0 ? 'fixed-bg-yellow' : 'fixed-bg-red'"
+            >
               {{ producto.codigo_producto }}
             </td>
-            <td class="sticky left-[120px] z-10 bg-inherit px-4 py-3 text-sm text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700">
+            <td 
+              class="sticky left-[120px] z-30 px-4 py-3 text-sm text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700 fixed-column-bg"
+              :class="producto.diferencia === 0 ? 'fixed-bg-green' : producto.diferencia < 0 ? 'fixed-bg-yellow' : 'fixed-bg-red'"
+            >
               <div class="max-w-[200px] truncate" :title="producto.descripcion">
                 {{ producto.descripcion }}
               </div>
             </td>
-            <td class="sticky left-[320px] z-10 bg-inherit px-4 py-3 text-sm font-semibold text-blue-600 dark:text-blue-400 text-right whitespace-nowrap border-r border-gray-200 dark:border-gray-700">
+            <td 
+              class="sticky left-[320px] z-30 px-4 py-3 text-sm font-semibold text-blue-600 dark:text-blue-400 text-right whitespace-nowrap border-r border-gray-200 dark:border-gray-700 fixed-column-bg"
+              :class="producto.diferencia === 0 ? 'fixed-bg-green' : producto.diferencia < 0 ? 'fixed-bg-yellow' : 'fixed-bg-red'"
+            >
               {{ formatNumber(producto.cantidad_confirmada) }}
             </td>
             
@@ -97,13 +106,13 @@
         </tbody>
         
         <!-- Footer con totales (opcional) -->
-        <tfoot v-if="showTotals" class="bg-gray-100 dark:bg-gray-900 border-t-2 border-gray-300 dark:border-gray-600 sticky bottom-0">
+        <tfoot v-if="showTotals" class="bg-gray-100 dark:bg-gray-900 border-t-2 border-gray-300 dark:border-gray-600 sticky bottom-0 z-40">
           <tr>
-            <td class="sticky left-0 z-10 bg-gray-100 dark:bg-gray-900 px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700">
+            <td class="sticky left-0 z-[45] bg-gray-100 dark:bg-gray-900 px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700">
               TOTALES
             </td>
-            <td class="sticky left-[120px] z-10 bg-gray-100 dark:bg-gray-900 px-4 py-3 border-r border-gray-200 dark:border-gray-700"></td>
-            <td class="sticky left-[320px] z-10 bg-gray-100 dark:bg-gray-900 px-4 py-3 text-sm font-bold text-blue-600 dark:text-blue-400 text-right border-r border-gray-200 dark:border-gray-700">
+            <td class="sticky left-[120px] z-[45] bg-gray-100 dark:bg-gray-900 px-4 py-3 border-r border-gray-200 dark:border-gray-700"></td>
+            <td class="sticky left-[320px] z-[45] bg-gray-100 dark:bg-gray-900 px-4 py-3 text-sm font-bold text-blue-600 dark:text-blue-400 text-right border-r border-gray-200 dark:border-gray-700">
               {{ formatNumber(totalesConfirmado) }}
             </td>
             <td
@@ -281,8 +290,39 @@ function handleBlur(producto: ProductoRedistribucion, tiendaCodigo: string) {
   background-color: rgba(156, 163, 175, 0.7);
 }
 
-/* Asegurar que las columnas fijas tengan el fondo correcto en hover */
-tbody tr:hover td.sticky {
-  background-color: inherit;
+/* Asegurar que las columnas fijas tengan fondo completamente opaco */
+tbody tr td.fixed-column-bg {
+  opacity: 1 !important;
+}
+
+/* Clases específicas para cada estado - Modo claro */
+td.fixed-bg-green {
+  background-color: rgb(240 253 244) !important; /* green-50 completamente opaco */
+}
+
+td.fixed-bg-yellow {
+  background-color: rgb(254 252 232) !important; /* yellow-50 completamente opaco */
+}
+
+td.fixed-bg-red {
+  background-color: rgb(254 242 242) !important; /* red-50 completamente opaco */
+}
+
+/* Modo oscuro - fondos completamente opacos */
+.dark td.fixed-bg-green {
+  background-color: rgb(20 83 45) !important; /* green-900 completamente opaco */
+}
+
+.dark td.fixed-bg-yellow {
+  background-color: rgb(113 63 18) !important; /* yellow-900 completamente opaco */
+}
+
+.dark td.fixed-bg-red {
+  background-color: rgb(127 29 29) !important; /* red-900 completamente opaco */
+}
+
+/* Mantener fondo opaco en hover */
+tbody tr:hover td.fixed-column-bg {
+  opacity: 1 !important;
 }
 </style>
