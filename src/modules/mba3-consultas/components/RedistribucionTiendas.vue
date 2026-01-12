@@ -130,6 +130,8 @@
           v-if="modoVista === 'excel'"
           :productos="productosRedistribucion"
           :show-totals="true"
+          :columnas-modificadas="columnasModificadas"
+          :pedido="pedidoValue"
           @actualizar-cantidad-tienda="handleActualizarCantidadTienda"
           @validar-y-corregir-cantidad="handleValidarYCorregirCantidad"
         />
@@ -469,6 +471,7 @@ interface Props {
   productosExpandidos: Ref<Set<string>>
   guardandoRedistribucion: Ref<boolean>
   confirmandoRedistribucion: Ref<boolean>
+  columnasModificadas?: Ref<Set<string>>
 }
 
 interface Emits {

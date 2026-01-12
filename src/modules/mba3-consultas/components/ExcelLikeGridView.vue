@@ -16,6 +16,9 @@
             <th class="sticky left-[320px] z-[4] bg-gray-50 dark:bg-gray-900 px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 min-w-[120px]">
               Total Confirmado
             </th>
+            <th class="sticky left-[440px] z-[4] bg-gray-50 dark:bg-gray-900 px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 min-w-[120px]">
+              Costo Unit.
+            </th>
             
             <!-- Columnas de tiendas (dinámicas) -->
             <th
@@ -75,6 +78,17 @@
             >
               {{ formatNumber(producto.cantidad_confirmada) }}
             </td>
+            <td 
+              class="sticky left-[440px] z-[4] px-4 py-3 text-sm font-medium text-right whitespace-nowrap border-r border-gray-200 dark:border-gray-700 fixed-column-bg"
+              :class="[
+                tieneCostoModificado(producto) 
+                  ? 'bg-amber-50 dark:bg-amber-900/20 border-l-2 border-amber-500 dark:border-amber-400 text-amber-900 dark:text-amber-200 font-semibold costo-modificado'
+                  : producto.diferencia === 0 ? 'fixed-bg-green' : producto.diferencia < 0 ? 'fixed-bg-yellow' : 'fixed-bg-red',
+                !tieneCostoModificado(producto) ? 'text-gray-900 dark:text-white' : ''
+              ]"
+            >
+              {{ producto.costo_unitario ? formatCurrency(producto.costo_unitario) : '-' }}
+            </td>
             
             <!-- Celdas de tiendas (editables) -->
             <td
@@ -114,6 +128,9 @@
             <td class="sticky left-[120px] z-[4] bg-gray-100 dark:bg-gray-900 px-4 py-3 border-r border-gray-200 dark:border-gray-700"></td>
             <td class="sticky left-[320px] z-[4] bg-gray-100 dark:bg-gray-900 px-4 py-3 text-sm font-bold text-blue-600 dark:text-blue-400 text-right border-r border-gray-200 dark:border-gray-700">
               {{ formatNumber(totalesConfirmado) }}
+            </td>
+            <td class="sticky left-[440px] z-[4] bg-gray-100 dark:bg-gray-900 px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white text-right border-r border-gray-200 dark:border-gray-700">
+              {{ formatCurrency(totalesCostoUnitario) }}
             </td>
             <td
               v-for="tienda in tiendasUnicas"
@@ -158,12 +175,14 @@
 import { computed, ref } from 'vue'
 import type { Ref } from 'vue'
 import type { ProductoRedistribucion, DistribucionTiendaEditada } from '../utils/redistribucionHelpers'
-import { formatNumber } from '../utils/formatters'
+import { formatNumber, formatCurrency } from '../utils/formatters'
 import { getDiferenciaClass } from '../utils/styleHelpers'
 
 interface Props {
   productos: Ref<ProductoRedistribucion[]>
   showTotals?: boolean
+  columnasModificadas?: Ref<Set<string>>
+  pedido?: any
 }
 
 interface Emits {
@@ -179,6 +198,24 @@ const emit = defineEmits<Emits>()
 
 // Computed para obtener productos como array (ya que viene como Ref)
 const productosArray = computed(() => props.productos.value || [])
+
+/**
+ * Verifica si un producto tiene modificaciones en costo unitario
+ */
+function tieneCostoModificado(producto: ProductoRedistribucion): boolean {
+  if (!props.columnasModificadas?.value || !props.pedido?.detalles) return false
+  
+  // Buscar el detalle del pedido que corresponde a este producto
+  const detallePedido = props.pedido.detalles.find(
+    d => d.codigo_interno === producto.codigo_producto
+  )
+  
+  if (!detallePedido?.pedido_detalle_id) return false
+  
+  // Verificar si hay una modificación para costo_doc_sin_iva
+  const key = `${detallePedido.pedido_detalle_id}:costo_doc_sin_iva`
+  return props.columnasModificadas.value.has(key)
+}
 
 // Obtener todas las tiendas únicas de todos los productos
 const tiendasUnicas = computed(() => {
@@ -215,6 +252,10 @@ function getTotalTienda(tiendaCodigo: string): number {
 // Totales generales
 const totalesConfirmado = computed(() => {
   return productosArray.value.reduce((sum, p) => sum + p.cantidad_confirmada, 0)
+})
+
+const totalesCostoUnitario = computed(() => {
+  return productosArray.value.reduce((sum, p) => sum + (p.costo_unitario || 0), 0)
 })
 
 const totalesDistribuido = computed(() => {
@@ -306,6 +347,21 @@ td.fixed-bg-yellow {
 
 td.fixed-bg-red {
   background-color: rgb(254 242 242) !important; /* red-50 completamente opaco */
+}
+
+/* Resaltado para costos modificados - sobrescribe el fondo del estado */
+/* Modo claro */
+td.fixed-column-bg.costo-modificado {
+  background-color: rgb(255 251 235) !important; /* amber-50 completamente opaco */
+  border-left-width: 2px !important;
+  border-left-color: rgb(245 158 11) !important; /* amber-500 */
+}
+
+/* Modo oscuro */
+.dark td.fixed-column-bg.costo-modificado {
+  background-color: rgb(120 53 15) !important; /* amber-900 completamente opaco */
+  border-left-width: 2px !important;
+  border-left-color: rgb(251 191 36) !important; /* amber-400 */
 }
 
 /* Modo oscuro - fondos completamente opacos */

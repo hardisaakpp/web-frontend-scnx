@@ -62,6 +62,7 @@
           :productos-expandidos="redistribucion.productosExpandidos"
           :guardando-redistribucion="redistribucion.guardandoRedistribucion"
           :confirmando-redistribucion="redistribucion.confirmandoRedistribucion"
+          :columnas-modificadas="columnasModificadas as unknown as Ref<Set<string>>"
           @toggle-expandir-producto="toggleExpandirProducto"
           @actualizar-cantidad-tienda="actualizarCantidadTienda"
           @validar-y-corregir-cantidad="validarYCorregirCantidad"
@@ -415,7 +416,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick, type Ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { useTablePreferences } from '@/composables/useTablePreferences'

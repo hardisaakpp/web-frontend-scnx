@@ -80,6 +80,7 @@
         :productos-expandidos="redistribucion.productosExpandidos"
         :guardando-redistribucion="redistribucion.guardandoRedistribucion"
         :confirmando-redistribucion="redistribucion.confirmandoRedistribucion"
+        :columnas-modificadas="columnasModificadas"
         @toggle-expandir-producto="toggleExpandirProducto"
         @actualizar-cantidad-tienda="actualizarCantidadTienda"
         @validar-y-corregir-cantidad="validarYCorregirCantidad"
@@ -123,6 +124,9 @@ const toast = useToast()
 const pedido = ref<PedidoCompleto | null>(null)
 const pedidoIdInput = ref('')
 
+// ⭐ Set para rastrear columnas modificadas (para resaltado en redistribución)
+const columnasModificadas = ref<Set<string>>(new Set())
+
 const numeroPedido = computed(() => {
   const id = route.params.id as string
   return id ? decodeURIComponent(id) : ''
@@ -135,7 +139,31 @@ const pedidoDetalle = usePedidoDetalle({
   pedido,
   numeroPedido,
   esModoMabelTrading,
-  reporteDiferencias: ref(null)
+  columnasModificadas,
+  reporteDiferencias: ref(null),
+  limpiarColumnasModificadasEnStorage: () => {
+    if (!numeroPedido.value) return
+    try {
+      const storageKey = `pedido_columnas_modificadas_${numeroPedido.value}`
+      sessionStorage.removeItem(storageKey)
+      columnasModificadas.value.clear()
+    } catch (e) {
+      console.warn('Error al limpiar columnas modificadas en sessionStorage:', e)
+    }
+  },
+  cargarColumnasModificadasDesdeStorage: () => {
+    if (!numeroPedido.value) return
+    try {
+      const storageKey = `pedido_columnas_modificadas_${numeroPedido.value}`
+      const stored = sessionStorage.getItem(storageKey)
+      if (stored) {
+        const columnasArray = JSON.parse(stored) as string[]
+        columnasModificadas.value = new Set(columnasArray)
+      }
+    } catch (e) {
+      console.warn('Error al cargar columnas modificadas desde sessionStorage:', e)
+    }
+  }
 })
 
 const {
