@@ -52,7 +52,9 @@
             :key="producto.codigo_producto"
             :class="[
               'transition-colors',
-              producto.diferencia === 0 ? 'bg-green-50 dark:bg-green-900/10' :
+              producto.error ? 'bg-gray-100 dark:bg-gray-700/30' :
+              tieneModificaciones(producto) ? 'bg-amber-100 dark:bg-amber-900/60 row-modified-amber' :
+              producto.diferencia === 0 ? 'bg-green-50 dark:bg-gray-700/30' :
               producto.diferencia < 0 ? 'bg-yellow-50 dark:bg-yellow-900/10' :
               'bg-red-50 dark:bg-red-900/10'
             ]"
@@ -60,13 +62,13 @@
             <!-- Columnas fijas - fondo completamente opaco -->
             <td 
               class="sticky left-0 z-[4] px-4 py-3 text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap border-r border-gray-200 dark:border-gray-700 fixed-column-bg"
-              :class="producto.diferencia === 0 ? 'fixed-bg-green' : producto.diferencia < 0 ? 'fixed-bg-yellow' : 'fixed-bg-red'"
+              :class="producto.error ? 'fixed-bg-error' : tieneModificaciones(producto) ? 'fixed-bg-amber' : producto.diferencia === 0 ? 'fixed-bg-green' : producto.diferencia < 0 ? 'fixed-bg-yellow' : 'fixed-bg-red'"
             >
               {{ producto.codigo_producto }}
             </td>
             <td 
               class="sticky left-[120px] z-[4] px-4 py-3 text-sm text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700 fixed-column-bg"
-              :class="producto.diferencia === 0 ? 'fixed-bg-green' : producto.diferencia < 0 ? 'fixed-bg-yellow' : 'fixed-bg-red'"
+              :class="producto.error ? 'fixed-bg-error' : tieneModificaciones(producto) ? 'fixed-bg-amber' : producto.diferencia === 0 ? 'fixed-bg-green' : producto.diferencia < 0 ? 'fixed-bg-yellow' : 'fixed-bg-red'"
             >
               <div class="max-w-[200px] truncate" :title="producto.descripcion">
                 {{ producto.descripcion }}
@@ -74,17 +76,21 @@
             </td>
             <td 
               class="sticky left-[320px] z-[4] px-4 py-3 text-sm font-semibold text-blue-600 dark:text-blue-400 text-right whitespace-nowrap border-r border-gray-200 dark:border-gray-700 fixed-column-bg"
-              :class="producto.diferencia === 0 ? 'fixed-bg-green' : producto.diferencia < 0 ? 'fixed-bg-yellow' : 'fixed-bg-red'"
+              :class="producto.error ? 'fixed-bg-error' : tieneModificaciones(producto) ? 'fixed-bg-amber' : producto.diferencia === 0 ? 'fixed-bg-green' : producto.diferencia < 0 ? 'fixed-bg-yellow' : 'fixed-bg-red'"
             >
               {{ formatNumber(producto.cantidad_confirmada) }}
             </td>
             <td 
               class="sticky left-[440px] z-[4] px-4 py-3 text-sm font-medium text-right whitespace-nowrap border-r border-gray-200 dark:border-gray-700 fixed-column-bg"
               :class="[
-                tieneCostoModificado(producto) 
+                producto.error 
+                  ? 'fixed-bg-error'
+                  : tieneModificaciones(producto) 
+                  ? 'fixed-bg-amber'
+                  : tieneCostoModificado(producto) 
                   ? 'bg-amber-50 dark:bg-amber-900/20 border-l-2 border-amber-500 dark:border-amber-400 text-amber-900 dark:text-amber-200 font-semibold costo-modificado'
                   : producto.diferencia === 0 ? 'fixed-bg-green' : producto.diferencia < 0 ? 'fixed-bg-yellow' : 'fixed-bg-red',
-                !tieneCostoModificado(producto) ? 'text-gray-900 dark:text-white' : ''
+                !producto.error && !tieneModificaciones(producto) && !tieneCostoModificado(producto) ? 'text-gray-900 dark:text-white' : ''
               ]"
             >
               {{ producto.costo_unitario ? formatCurrency(producto.costo_unitario) : '-' }}
@@ -200,9 +206,54 @@ const emit = defineEmits<Emits>()
 const productosArray = computed(() => props.productos.value || [])
 
 /**
+ * Verifica si un producto tiene modificaciones en COSTO UNIT o TOTAL (columnas modificadas por EL RAYO)
+ * Solo se resaltan las filas cuando hay modificaciones en estas columnas específicas
+ * 
+ * Prioridad:
+ * 1. Usar campos del backend (costo_modificado_manual, total_modificado_manual) si están disponibles
+ * 2. Fallback a columnasModificadas si los campos del backend no están disponibles
+ */
+function tieneModificaciones(producto: ProductoRedistribucion): boolean {
+  // ⭐ PRIORIDAD 1: Usar campos del backend si están disponibles
+  if (producto.costo_modificado_manual === true || producto.total_modificado_manual === true) {
+    return true
+  }
+  
+  // ⭐ PRIORIDAD 2: Fallback a columnasModificadas (compatibilidad con sistema anterior)
+  if (!props.columnasModificadas?.value || !props.pedido?.detalles) return false
+  
+  // Buscar el detalle del pedido que corresponde a este producto
+  const detallePedido = props.pedido.detalles.find(
+    d => d.codigo_interno === producto.codigo_producto
+  )
+  
+  if (!detallePedido?.pedido_detalle_id) return false
+  
+  // ⭐ Solo verificar columnas COSTO UNIT y TOTAL (no comentario)
+  // Estas son las columnas que se resaltan en color ámbar en la interfaz de EL RAYO
+  const columnasParaResaltar = ['costo_doc_sin_iva', 'total']
+  
+  // Verificar si hay una modificación en cualquiera de estas columnas
+  return columnasParaResaltar.some(columnaKey => {
+    const key = `${detallePedido.pedido_detalle_id}:${columnaKey}`
+    return props.columnasModificadas!.value.has(key)
+  })
+}
+
+/**
  * Verifica si un producto tiene modificaciones en costo unitario
+ * 
+ * Prioridad:
+ * 1. Usar campo del backend (costo_modificado_manual) si está disponible
+ * 2. Fallback a columnasModificadas si el campo del backend no está disponible
  */
 function tieneCostoModificado(producto: ProductoRedistribucion): boolean {
+  // ⭐ PRIORIDAD 1: Usar campo del backend si está disponible
+  if (producto.costo_modificado_manual === true) {
+    return true
+  }
+  
+  // ⭐ PRIORIDAD 2: Fallback a columnasModificadas (compatibilidad con sistema anterior)
   if (!props.columnasModificadas?.value || !props.pedido?.detalles) return false
   
   // Buscar el detalle del pedido que corresponde a este producto
@@ -349,24 +400,33 @@ td.fixed-bg-red {
   background-color: rgb(254 242 242) !important; /* red-50 completamente opaco */
 }
 
+td.fixed-bg-error {
+  background-color: rgb(243 244 246) !important; /* gray-100 completamente opaco - más tenue para errores */
+}
+
+td.fixed-bg-amber {
+  background-color: rgb(254 243 199) !important; /* amber-100 completamente opaco - más visible que amber-50 - productos modificados por EL RAYO */
+  border-left: 3px solid rgb(245 158 11) !important; /* borde izquierdo ámbar más grueso para destacar en modo claro */
+}
+
 /* Resaltado para costos modificados - sobrescribe el fondo del estado */
 /* Modo claro */
 td.fixed-column-bg.costo-modificado {
-  background-color: rgb(255 251 235) !important; /* amber-50 completamente opaco */
-  border-left-width: 2px !important;
+  background-color: rgb(254 243 199) !important; /* amber-100 completamente opaco - más visible */
+  border-left-width: 3px !important;
   border-left-color: rgb(245 158 11) !important; /* amber-500 */
 }
 
 /* Modo oscuro */
 .dark td.fixed-column-bg.costo-modificado {
-  background-color: rgb(120 53 15) !important; /* amber-900 completamente opaco */
-  border-left-width: 2px !important;
+  background-color: rgb(146 64 14) !important; /* amber-800 completamente opaco - más visible */
+  border-left-width: 3px !important;
   border-left-color: rgb(251 191 36) !important; /* amber-400 */
 }
 
 /* Modo oscuro - fondos completamente opacos */
 .dark td.fixed-bg-green {
-  background-color: rgb(20 83 45) !important; /* green-900 completamente opaco */
+  background-color: rgb(55 65 81) !important; /* gray-700 completamente opaco - filas completas en modo oscuro */
 }
 
 .dark td.fixed-bg-yellow {
@@ -375,6 +435,30 @@ td.fixed-column-bg.costo-modificado {
 
 .dark td.fixed-bg-red {
   background-color: rgb(127 29 29) !important; /* red-900 completamente opaco */
+}
+
+.dark td.fixed-bg-error {
+  background-color: rgb(55 65 81) !important; /* gray-700 completamente opaco - más tenue para errores */
+}
+
+.dark td.fixed-bg-amber {
+  background-color: rgb(146 64 14) !important; /* amber-800 completamente opaco - más visible que amber-900 - productos modificados por EL RAYO */
+}
+
+/* Resaltado adicional para filas completas con modificaciones en modo oscuro */
+.dark tbody tr.row-modified-amber {
+  background-color: rgb(146 64 14 / 0.6) !important; /* amber-800 con 60% opacidad - más visible */
+  border-left: 3px solid rgb(251 191 36) !important; /* borde izquierdo ámbar brillante para destacar */
+}
+
+.dark tbody tr.row-modified-amber td:not(.fixed-column-bg) {
+  background-color: rgb(146 64 14 / 0.4) !important; /* celdas no fijas con fondo ámbar más tenue */
+}
+
+/* Modo claro - también mejorar visibilidad */
+tbody tr.row-modified-amber {
+  border-left: 3px solid rgb(245 158 11) !important; /* borde izquierdo ámbar para destacar en modo claro */
+  background-color: rgb(254 243 199) !important; /* amber-100 para mayor visibilidad en modo claro */
 }
 
 /* Mantener fondo opaco en hover */

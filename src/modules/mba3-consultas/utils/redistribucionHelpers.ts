@@ -16,6 +16,10 @@ export interface ProductoRedistribucion {
   distribucion_tiendas: DistribucionTiendaEditada[]
   expandido: boolean
   error?: string
+  // ⭐ Campos para identificar modificaciones de EL RAYO
+  pedido_detalle_id?: string
+  costo_modificado_manual?: boolean
+  total_modificado_manual?: boolean
 }
 
 /**

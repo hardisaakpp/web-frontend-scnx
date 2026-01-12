@@ -227,19 +227,50 @@ export function usePedidoDetalle(options: {
    * Navega a la vista de reporte de diferencias
    */
   async function handleViewReporteDiferencias() {
+    // Si no hay reporte cargado, intentar cargarlo
     if (!reporteDiferencias.value) {
+      toast.info('Cargando reporte...', 'Obteniendo reporte de diferencias del servidor')
       await loadReporteDiferencias()
     }
     
-    // Scroll al reporte
-    if (reporteDiferencias.value) {
-      setTimeout(() => {
-        const reporteElement = document.querySelector('[data-reporte-diferencias]')
-        if (reporteElement) {
-          reporteElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        }
-      }, SCROLL_DELAY_MS)
+    // Si después de cargar aún no hay reporte, mostrar mensaje
+    if (!reporteDiferencias.value) {
+      toast.warning(
+        'Reporte no disponible',
+        'El reporte de diferencias aún no está disponible. Debe procesar la confirmación del proveedor primero.'
+      )
+      return
     }
+    
+    // Scroll al reporte con un pequeño delay para asegurar que el DOM esté actualizado
+    setTimeout(() => {
+      const reporteElement = document.querySelector('[data-reporte-diferencias]')
+      if (reporteElement) {
+        // Calcular offset para el header sticky si existe
+        const headerOffset = 80 // Altura aproximada del header sticky
+        const elementPosition = reporteElement.getBoundingClientRect().top
+        const offsetPosition = elementPosition + window.pageYOffset - headerOffset
+        
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: 'smooth'
+        })
+        
+        // Feedback visual: resaltar brevemente el reporte
+        reporteElement.classList.add('ring-2', 'ring-purple-500', 'ring-opacity-50')
+        setTimeout(() => {
+          reporteElement.classList.remove('ring-2', 'ring-purple-500', 'ring-opacity-50')
+        }, 2000)
+      } else {
+        // Si no se encuentra el elemento, intentar de nuevo después de un delay más largo
+        setTimeout(() => {
+          const retryElement = document.querySelector('[data-reporte-diferencias]')
+          if (retryElement) {
+            retryElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }
+        }, 500)
+      }
+    }, SCROLL_DELAY_MS)
   }
 
   /**

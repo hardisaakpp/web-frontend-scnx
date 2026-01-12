@@ -157,7 +157,9 @@
               <tr 
                 :class="[
                   'transition-colors',
-                  producto.diferencia === 0 ? 'bg-green-50 dark:bg-green-900/10' :
+                  producto.error ? 'bg-gray-100 dark:bg-gray-700/30' :
+                  tieneModificaciones(producto) ? 'bg-amber-50 dark:bg-amber-900/20' :
+                  producto.diferencia === 0 ? 'bg-green-50 dark:bg-gray-700/30' :
                   producto.diferencia < 0 ? 'bg-yellow-50 dark:bg-yellow-900/10' :
                   'bg-red-50 dark:bg-red-900/10'
                 ]"
@@ -442,7 +444,7 @@
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            {{ confirmandoRedistribucionValue ? 'Confirmando...' : 'Confirmar Redistribución' }}
+            {{ confirmandoRedistribucionValue ? 'Confirmando redistribución...' : 'Confirmar Redistribución' }}
           </button>
         </div>
       </div>
@@ -533,6 +535,41 @@ const puedeConfirmarRedistribucion = computed(() => {
          productosArray.value.every(p => p.diferencia === 0) &&
          productosArray.value.every(p => !p.error)
 })
+
+/**
+ * Verifica si un producto tiene modificaciones en COSTO UNIT o TOTAL (columnas modificadas por EL RAYO)
+ * Solo se resaltan las filas cuando hay modificaciones en estas columnas específicas
+ * 
+ * Prioridad:
+ * 1. Usar campos del backend (costo_modificado_manual, total_modificado_manual) si están disponibles
+ * 2. Fallback a columnasModificadas si los campos del backend no están disponibles
+ */
+function tieneModificaciones(producto: ProductoRedistribucion): boolean {
+  // ⭐ PRIORIDAD 1: Usar campos del backend si están disponibles
+  if (producto.costo_modificado_manual === true || producto.total_modificado_manual === true) {
+    return true
+  }
+  
+  // ⭐ PRIORIDAD 2: Fallback a columnasModificadas (compatibilidad con sistema anterior)
+  if (!props.columnasModificadas?.value || !props.pedido?.detalles) return false
+  
+  // Buscar el detalle del pedido que corresponde a este producto
+  const detallePedido = props.pedido.detalles.find(
+    d => d.codigo_interno === producto.codigo_producto
+  )
+  
+  if (!detallePedido?.pedido_detalle_id) return false
+  
+  // ⭐ Solo verificar columnas COSTO UNIT y TOTAL (no comentario)
+  // Estas son las columnas que se resaltan en color ámbar en la interfaz de EL RAYO
+  const columnasParaResaltar = ['costo_doc_sin_iva', 'total']
+  
+  // Verificar si hay una modificación en cualquiera de estas columnas
+  return columnasParaResaltar.some(columnaKey => {
+    const key = `${detallePedido.pedido_detalle_id}:${columnaKey}`
+    return props.columnasModificadas!.value.has(key)
+  })
+}
 
 // Funciones que emiten eventos
 function toggleExpandirProducto(codigoProducto: string) {

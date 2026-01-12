@@ -157,6 +157,52 @@ export const useProcesoStore = defineStore('mba3Proceso', () => {
     }
   }
 
+  /**
+   * Procesa ODC desde un pedido (similar a procesarOC pero para pedidos)
+   * Reutiliza la misma lógica de transformación docenas→unidades SAP
+   */
+  async function procesarOCDesdePedido(numeroPedido: string) {
+    loading.value = true
+    error.value = null
+    currentStep.value = 'procesar-oc'
+    progress.value = 75
+    
+    try {
+      const data = await mba3ConsultasService.procesarOCDesdePedido(numeroPedido)
+      resultados.value = { ...resultados.value, procesarOCDesdePedido: data }
+      
+      // Guardar process_id si viene en la respuesta
+      if (data?.process_id) {
+        setODCProcessId(data.process_id)
+      }
+      
+      // Log para debugging
+      const ocStatus = data?.metadata?.oc_status
+      if (ocStatus) {
+        console.log(`[ODC Process Pedido] Estado recibido: ${ocStatus.status}`, {
+          process_id: data.process_id,
+          oc_creadas: ocStatus.oc_creadas,
+          oc_errores: ocStatus.oc_errores
+        })
+      }
+      
+      // Actualizar progreso
+      if (ocStatus?.datos_sincronizados === true) {
+        progress.value = 100
+      } else {
+        progress.value = 90
+      }
+      
+      return data
+    } catch (err: any) {
+      error.value = err.message || 'Error al procesar ODC desde pedido'
+      console.error('[ODC Process Pedido] Error al procesar:', err)
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function procesoCompleto() {
     loading.value = true
     error.value = null
@@ -234,6 +280,7 @@ export const useProcesoStore = defineStore('mba3Proceso', () => {
     integrarSAP,
     procesoCompleto,
     reset,
+    procesarOCDesdePedido,
     
     // Nuevas funciones del proceso ODC
     resetODCProcess,

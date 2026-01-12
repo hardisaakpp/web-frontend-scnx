@@ -6,6 +6,7 @@ import { useToast } from '@/composables/useToast'
 import { formatNumber } from '../utils/formatters'
 import type { ProductoRedistribucion, DistribucionTiendaEditada } from '../utils/redistribucionHelpers'
 import type { PedidoCompleto, ReporteDiferenciasResponse } from '../types'
+import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 
 export function useRedistribucion(options: {
   pedido: Ref<PedidoCompleto | null>
@@ -14,6 +15,7 @@ export function useRedistribucion(options: {
   reporteDiferencias?: Ref<ReporteDiferenciasResponse | null>
   getReporteDiferencias?: () => Ref<ReporteDiferenciasResponse | null>
   loadPedido?: () => Promise<void>
+  loadReporteDiferencias?: () => Promise<void>
 }) {
   const toast = useToast()
 
@@ -81,7 +83,11 @@ export function useRedistribucion(options: {
         diferencia,
         costo_unitario: detalle.costo_doc_sin_iva_ajustado || detalle.costo_doc_sin_iva_original,
         distribucion_tiendas,
-        expandido: false
+        expandido: false,
+        // ⭐ Campos para identificar modificaciones de EL RAYO
+        pedido_detalle_id: detalle.pedido_detalle_id,
+        costo_modificado_manual: detalle.costo_modificado_manual || false,
+        total_modificado_manual: detalle.total_modificado_manual || false
       }
     })
     
@@ -329,7 +335,8 @@ export function useRedistribucion(options: {
   }
 
   /**
-   * Confirma redistribución
+   * Confirma redistribución y genera ODC directamente
+   * Reutiliza la lógica de procesarOC pero adaptada para pedidos
    */
   async function confirmarRedistribucion(puedeConfirmar: Ref<boolean> | ComputedRef<boolean>) {
     if (!puedeConfirmar.value) {
@@ -341,7 +348,7 @@ export function useRedistribucion(options: {
     
     confirmandoRedistribucion.value = true
     try {
-      // Preparar datos para enviar al backend
+      // 1. Preparar datos para enviar al backend (guardar redistribución)
       const ajustes_detalle = productosRedistribucion.value.map(producto => ({
         codigo_producto: producto.codigo_producto,
         descripcion: producto.descripcion,
@@ -358,17 +365,51 @@ export function useRedistribucion(options: {
         cambio_precio: false
       }))
       
-      // TODO: Llamar al endpoint del backend para confirmar redistribución
-      // const response = await mba3ConsultasService.confirmarRedistribucion(options.numeroPedido.value, ajustes_detalle)
+      // 2. Confirmar redistribución (guarda los ajustes)
+      await mba3ConsultasService.confirmarRedistribucion(options.numeroPedido.value, ajustes_detalle)
       
-      toast.success('Redistribución confirmada', 'La redistribución se ha confirmado exitosamente')
+      toast.success('Redistribución confirmada', 'Procesando orden de compra...')
       
-      // Recargar pedido para actualizar datos
+      // 3. Generar ODC directamente (reutiliza lógica de procesarOC)
+      // El backend aplicará la transformación docenas→unidades SAP automáticamente
+      const ocResponse = await mba3ConsultasService.procesarOCDesdePedido(options.numeroPedido.value)
+      
+      // 4. Manejar respuesta similar a procesarOC
+      if (ocResponse?.metadata?.oc_status) {
+        const ocStatus = ocResponse.metadata.oc_status
+        
+        if (ocStatus.status === 'completed') {
+          toast.success(
+            'ODC generada exitosamente',
+            `Orden de compra creada con ${ocStatus.oc_creadas || 1} artículo(s)`
+          )
+        } else if (ocStatus.status === 'partial') {
+          toast.warning(
+            'ODC generada parcialmente',
+            `${ocStatus.oc_creadas} artículo(s) procesado(s), ${ocStatus.oc_errores} con errores`
+          )
+        } else if (ocStatus.status === 'processing') {
+          toast.info(
+            'ODC en proceso',
+            'La orden de compra se está generando. Revisa el estado en "Procesar ODC"'
+          )
+        }
+      } else {
+        toast.success('ODC generada', 'La orden de compra se ha generado exitosamente')
+      }
+      
+      // 5. Recargar pedido para actualizar datos
       if (options.loadPedido) {
         await options.loadPedido()
       }
+      
+      // 6. Cargar reporte de diferencias
+      if (options.loadReporteDiferencias) {
+        await options.loadReporteDiferencias()
+      }
     } catch (e: any) {
-      toast.error('Error al confirmar', e.message || 'No se pudo confirmar la redistribución')
+      console.error('Error al confirmar redistribución y generar ODC:', e)
+      toast.error('Error al procesar', e.message || 'No se pudo confirmar la redistribución o generar la ODC')
     } finally {
       confirmandoRedistribucion.value = false
     }

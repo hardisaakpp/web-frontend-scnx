@@ -180,7 +180,8 @@ const redistribucion = useRedistribucion({
   numeroPedido,
   esModoMabelTrading,
   getReporteDiferencias: () => pedidoDetalle.reporteDiferencias,
-  loadPedido: () => pedidoDetalle.loadPedido()
+  loadPedido: () => pedidoDetalle.loadPedido(),
+  loadReporteDiferencias: () => pedidoDetalle.loadReporteDiferencias()
 })
 
 // Computed para validar si se puede confirmar

@@ -1631,5 +1631,83 @@ export const mba3ConsultasService = {
       throw new Error(message)
     }
   },
+
+  /**
+   * Obtiene lista de pedidos con redistribución confirmada (listos para generar ODC)
+   * @param filters Filtros de paginación y búsqueda
+   */
+  async getPedidosConfirmados(filters?: {
+    page?: number
+    pageSize?: number
+    estado?: string
+  }): Promise<{
+    data: PedidoCompleto[]
+    total: number
+    page: number
+    pageSize: number
+    totalPages: number
+  }> {
+    try {
+      const params = new URLSearchParams()
+      if (filters?.page) params.append('page', filters.page.toString())
+      if (filters?.pageSize) params.append('pageSize', filters.pageSize.toString())
+      if (filters?.estado) params.append('estado', filters.estado)
+      
+      // Filtrar solo pedidos con redistribución confirmada
+      params.append('redistribucion_confirmada', 'true')
+      
+      const queryString = params.toString()
+      const url = queryString ? `/api/pedidos/confirmados?${queryString}` : '/api/pedidos/confirmados'
+      
+      const response = await mba3Api.get<{
+        data: PedidoCompleto[]
+        total: number
+        page: number
+        pageSize: number
+        totalPages: number
+      }>(url)
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [getPedidosConfirmados] Error al obtener pedidos confirmados:', error)
+      
+      let message = error.message || 'Error desconocido al obtener pedidos confirmados'
+      
+      if (error.response?.data) {
+        if (error.response.data.detail) {
+          message = error.response.data.detail
+        } else if (error.response.data.message) {
+          message = error.response.data.message
+        }
+      }
+      
+      throw new Error(message)
+    }
+  },
+
+  /**
+   * Procesa ODC desde un pedido (reutiliza lógica de procesarOC pero para pedidos)
+   * Aplica transformación docenas→unidades SAP automáticamente
+   * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
+   */
+  async procesarOCDesdePedido(numeroPedido: string): Promise<any> {
+    try {
+      const response = await mba3Api.post(`/api/pedidos/${encodeURIComponent(numeroPedido)}/procesar-oc`)
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [procesarOCDesdePedido] Error al procesar ODC desde pedido:', error)
+      
+      let message = error.message || 'Error desconocido al procesar ODC desde pedido'
+      
+      if (error.response?.data) {
+        if (error.response.data.detail) {
+          message = error.response.data.detail
+        } else if (error.response.data.message) {
+          message = error.response.data.message
+        }
+      }
+      
+      throw new Error(message)
+    }
+  },
 }
 

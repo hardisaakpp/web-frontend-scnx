@@ -93,8 +93,8 @@
         @tab-changed="handleTabChange"
         :disabled="procesoStore.loading && (procesoStore.currentStep === 'migrar' || procesoStore.currentStep === 'integrar-sap' || procesoStore.currentStep === 'procesar-oc')"
       >
-      <!-- Pestaña 1: Importar-Despachos -->
-      <template #tab-migrar>
+      <!-- ⭐ Pestaña legacy oculta (solo visible si SHOW_LEGACY_DESPACHOS = true) -->
+      <template v-if="SHOW_LEGACY_DESPACHOS" #tab-migrar>
         <div class="space-y-6">
           <!-- Botón de acción y estado -->
           <div class="flex items-center justify-between flex-wrap gap-4 p-6 rounded-xl border border-gray-200 dark:border-gray-700 transition-colors duration-300 shadow-md"
@@ -296,6 +296,137 @@
                   @click="nextPageDespachos"
                   :disabled="currentPageDespachos === totalPagesDespachos || loadingDespachos || (procesoStore.loading && procesoStore.currentStep === 'migrar')"
                   class="px-4 py-2 border border-white/30 dark:border-gray-600/30 bg-white/60 dark:bg-gray-700/60 backdrop-blur-sm rounded-xl hover:bg-white/80 dark:hover:bg-gray-600/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 text-sm font-medium shadow-md hover:shadow-lg"
+                >
+                  Siguiente
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <!-- ⭐ NUEVA: Pestaña Pedidos Confirmados -->
+      <template #tab-pedidos-confirmados>
+        <div class="space-y-6">
+          <!-- Header -->
+          <div class="flex items-center justify-between flex-wrap gap-4 p-6 rounded-xl border border-gray-200 dark:border-gray-700 transition-colors duration-300 shadow-md bg-blue-50 dark:bg-blue-900/20">
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-1">Pedidos Confirmados</h3>
+              <p class="text-sm text-gray-600 dark:text-gray-400">
+                Pedidos con redistribución confirmada listos para generar ODC
+              </p>
+            </div>
+            <button
+              @click="cargarPedidosConfirmados"
+              :disabled="loadingPedidosConfirmados"
+              class="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              <svg v-if="!loadingPedidosConfirmados" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <svg v-else class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              {{ loadingPedidosConfirmados ? 'Cargando...' : 'Actualizar' }}
+            </button>
+          </div>
+
+          <!-- Tabla de Pedidos Confirmados -->
+          <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Pedidos Listos para ODC</h2>
+              <p class="text-sm text-gray-500 dark:text-gray-400">
+                {{ pedidosConfirmadosCount }} pedido(s) confirmado(s)
+              </p>
+            </div>
+
+            <SkeletonTable v-if="loadingPedidosConfirmados && pedidosConfirmados.length === 0" />
+
+            <!-- Tabla de pedidos -->
+            <div v-else-if="pedidosConfirmados.length > 0" class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead class="bg-gray-50 dark:bg-gray-900">
+                  <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Número Pedido
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Proveedor
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Fecha Pedido
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Estado
+                    </th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Acciones
+                    </th>
+                  </tr>
+                </thead>
+                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  <tr v-for="pedido in pedidosConfirmados" :key="pedido.cabecera.pedido_id">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
+                      {{ pedido.cabecera.numero_pedido }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {{ pedido.cabecera.proveedor_nombre }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {{ pedido.cabecera.fecha_pedido ? new Date(pedido.cabecera.fecha_pedido).toLocaleDateString('es-ES') : '-' }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                      <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                        {{ pedido.cabecera.estado || 'CONFIRMADO' }}
+                      </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                      <button
+                        @click="handleGenerarODCDesdePedido(pedido.cabecera.numero_pedido || '')"
+                        :disabled="generandoODC || !pedido.cabecera.numero_pedido"
+                        class="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                      >
+                        <svg v-if="!generandoODC" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <svg v-else class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        {{ generandoODC ? 'Generando...' : 'Generar ODC' }}
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div v-else class="text-center py-12">
+              <p class="text-gray-500 dark:text-gray-400">No hay pedidos confirmados disponibles</p>
+            </div>
+
+            <!-- Paginación -->
+            <div v-if="Math.ceil(pedidosConfirmadosCount / pageSizePedidos) > 1 && !loadingPedidosConfirmados" class="mt-4 flex items-center justify-between">
+              <div class="text-sm text-gray-700 dark:text-gray-300">
+                Mostrando página {{ currentPagePedidos }} de {{ Math.ceil(pedidosConfirmadosCount / pageSizePedidos) }}
+                ({{ filteredPedidosCount > 0 ? filteredPedidosCount : pedidosConfirmadosCount }} pedidos)
+              </div>
+              <div class="flex items-center gap-2">
+                <button
+                  @click="currentPagePedidos--"
+                  :disabled="currentPagePedidos === 1 || loadingPedidosConfirmados"
+                  class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Anterior
+                </button>
+                <span class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">
+                  Página {{ currentPagePedidos }} de {{ Math.ceil(pedidosConfirmadosCount / pageSizePedidos) }}
+                </span>
+                <button
+                  @click="currentPagePedidos++"
+                  :disabled="currentPagePedidos >= Math.ceil(pedidosConfirmadosCount / pageSizePedidos) || loadingPedidosConfirmados"
+                  class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Siguiente
                 </button>
@@ -537,7 +668,7 @@ import { useProcesoStore } from '../stores/procesoStore'
 import { useOrdenesCompraStore } from '../stores/ordenesCompraStore'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
-import type { Despacho, OrdenCompra } from '../types'
+import type { Despacho, OrdenCompra, PedidoCompleto } from '../types'
 import DespachosTable from '../components/DespachosTable.vue'
 import OrdenCompraTable from '../components/OrdenCompraTable.vue'
 import SkeletonTable from '../components/SkeletonTable.vue'
@@ -549,10 +680,17 @@ const ordenesCompraStore = useOrdenesCompraStore()
 const toast = useToast()
 const route = useRoute()
 
-// Estado de pestañas - restaurar desde localStorage o usar 'migrar' por defecto
+// ⭐ Flag para modo legacy (ocultar pestaña de despachos)
+const SHOW_LEGACY_DESPACHOS = false // Cambiar a true si necesitas activar el modo legacy
+
+// Estado de pestañas - restaurar desde localStorage o usar 'pedidos-confirmados' por defecto
 const STORAGE_KEY = 'mba3-proceso-active-tab'
 const savedTab = localStorage.getItem(STORAGE_KEY)
-const activeTab = ref<string>(savedTab && ['migrar', 'procesar-oc'].includes(savedTab) ? savedTab : 'migrar')
+const activeTab = ref<string>(
+  savedTab && ['migrar', 'pedidos-confirmados', 'procesar-oc'].includes(savedTab) 
+    ? savedTab 
+    : 'pedidos-confirmados'
+)
 
 // Estados de visualización de resultados
 const showMigrarResults = ref(false)
@@ -580,6 +718,14 @@ const timeAgoDisplay = ref<string>('')
 const currentPageOC = ref(1)
 const pageSizeOC = ref(10)
 const filteredOCCount = ref(0)
+
+// ⭐ NUEVO: Estados para pedidos confirmados
+const pedidosConfirmados = ref<PedidoCompleto[]>([])
+const pedidosConfirmadosCount = ref(0)
+const loadingPedidosConfirmados = ref(false)
+const currentPagePedidos = ref(1)
+const pageSizePedidos = ref(10)
+const filteredPedidosCount = ref(0)
 
 // Estado para eliminación
 const eliminando = ref(false)
@@ -681,11 +827,12 @@ async function handleTabChange(tabId: string) {
   localStorage.setItem(STORAGE_KEY, tabId)
   
   // Cargar datos cuando se cambia de pestaña
-  if (tabId === 'migrar') {
-    // Siempre cargar despachos cuando se entra a la pestaña de importar despachos
-    // El backend ahora proporciona el campo tiene_odc directamente, así que no necesitamos
-    // cargar todas las órdenes de compra previamente
+  if (tabId === 'migrar' && SHOW_LEGACY_DESPACHOS) {
+    // Siempre cargar despachos cuando se entra a la pestaña de importar despachos (legacy)
     await cargarDespachos()
+  } else if (tabId === 'pedidos-confirmados') {
+    // ⭐ NUEVO: Cargar pedidos confirmados
+    await cargarPedidosConfirmados()
   } else if (tabId === 'procesar-oc') {
     // Cargar estadísticas primero para que el botón se habilite correctamente
     await ordenesCompraStore.fetchEstadisticas()
@@ -710,6 +857,28 @@ async function verificarDespachos() {
     }
     hayDespachos.value = false
     despachosCount.value = 0
+  }
+}
+
+// ⭐ NUEVO: Función para cargar pedidos confirmados
+async function cargarPedidosConfirmados() {
+  loadingPedidosConfirmados.value = true
+  try {
+    const response = await mba3ConsultasService.getPedidosConfirmados({
+      page: currentPagePedidos.value,
+      pageSize: pageSizePedidos.value
+    })
+    pedidosConfirmados.value = response.data || []
+    pedidosConfirmadosCount.value = response.total || 0
+    filteredPedidosCount.value = response.total || 0
+  } catch (error: any) {
+    console.error('Error al cargar pedidos confirmados:', error)
+    toast.error('Error', 'No se pudieron cargar los pedidos confirmados')
+    pedidosConfirmados.value = []
+    pedidosConfirmadosCount.value = 0
+    filteredPedidosCount.value = 0
+  } finally {
+    loadingPedidosConfirmados.value = false
   }
 }
 
@@ -1237,6 +1406,49 @@ async function handleODCResponse(
   
   // Estado desconocido
   throw new Error(`Estado desconocido del backend: ${ocStatus.status}`)
+}
+
+// ⭐ NUEVO: Función para generar ODC desde pedido
+async function handleGenerarODCDesdePedido(numeroPedido: string) {
+  generandoODC.value = true
+  progresoGenerarODC.value = 0
+  
+  try {
+    toast.info('Generando ODC...', `Generando orden de compra para pedido ${numeroPedido}`)
+    
+    // Usar el nuevo endpoint que reutiliza la lógica de procesarOC
+    const response = await procesoStore.procesarOCDesdePedido(numeroPedido)
+    
+    progresoGenerarODC.value = 100
+    
+    // Manejar respuesta similar a handleODCResponse
+    const ocStatus = response?.metadata?.oc_status
+    if (ocStatus?.status === 'completed') {
+      toast.success('ODC generada', 'La orden de compra se ha generado exitosamente')
+      // Recargar pedidos y cambiar a pestaña de ODC
+      await cargarPedidosConfirmados()
+      activeTab.value = 'procesar-oc'
+      await handleTabChange('procesar-oc')
+    } else if (ocStatus?.status === 'processing') {
+      toast.info('ODC en proceso', 'La orden de compra se está generando. Revisa el estado en "Procesar ODC"')
+      await cargarPedidosConfirmados()
+    } else if (ocStatus?.status === 'partial') {
+      toast.warning(
+        'ODC generada parcialmente',
+        `${ocStatus.oc_creadas} artículo(s) procesado(s), ${ocStatus.oc_errores} con errores`
+      )
+      await cargarPedidosConfirmados()
+    } else {
+      toast.success('ODC generada', 'La orden de compra se ha generado exitosamente')
+      await cargarPedidosConfirmados()
+    }
+  } catch (error: any) {
+    console.error('Error al generar ODC desde pedido:', error)
+    toast.error('Error al generar ODC', error.message || 'No se pudo generar la orden de compra')
+  } finally {
+    generandoODC.value = false
+    progresoGenerarODC.value = 0
+  }
 }
 
 // Funciones para generar ODC individual y múltiple
@@ -1842,17 +2054,23 @@ onMounted(async () => {
   if (activeTab.value === 'procesar-oc') {
     // Si la pestaña activa es "Procesar ODC", cargar órdenes de compra
     await cargarOrdenesCompraPendientes()
-  } else {
-    // Si es "Importar despachos" o por defecto, cargar despachos
+  } else if (activeTab.value === 'pedidos-confirmados') {
+    // ⭐ NUEVO: Cargar pedidos confirmados
+    await cargarPedidosConfirmados()
+  } else if (activeTab.value === 'migrar' && SHOW_LEGACY_DESPACHOS) {
+    // Si es "Importar despachos" (legacy), cargar despachos
     await cargarDespachos()
+  } else {
+    // Por defecto, cargar pedidos confirmados
+    await cargarPedidosConfirmados()
   }
   
   // Asegurar que el componente FolderTabs tenga el valor correcto
   await nextTick()
   
   // ========== INICIAR POLLING AUTOMÁTICO ==========
-  // Iniciar polling solo si estamos en la pestaña de despachos
-  if (activeTab.value === 'migrar') {
+  // Iniciar polling solo si estamos en la pestaña de despachos (legacy)
+  if (activeTab.value === 'migrar' && SHOW_LEGACY_DESPACHOS) {
     startPolling()
     startTimeDisplayUpdate()
   }

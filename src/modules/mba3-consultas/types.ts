@@ -813,6 +813,10 @@ export interface RespuestaProveedorDetalle {
   descuento_1_original: number | null
   descuento_1_ajustado: number | null
   observaciones: string | null
+  // ⭐ Campos para identificar modificaciones de EL RAYO
+  pedido_detalle_id?: string
+  costo_modificado_manual?: boolean
+  total_modificado_manual?: boolean
 }
 
 export interface RespuestaProveedorCabecera {

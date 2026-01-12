@@ -10,6 +10,7 @@
         :is-valid-pedido="isValidPedido"
         :uploading="uploading"
         :loading="loading"
+        :loading-reporte="loadingReporte"
         :generando-o-c="generandoOC"
         :can-view-reporte-diferencias="canViewReporteDiferencias"
         :can-generar-o-c="canGenerarOC"
@@ -671,7 +672,8 @@ const redistribucion = useRedistribucion({
   numeroPedido,
   esModoMabelTrading,
   getReporteDiferencias: () => pedidoDetalle.reporteDiferencias,
-  loadPedido: () => pedidoDetalle.loadPedido()
+  loadPedido: () => pedidoDetalle.loadPedido(),
+  loadReporteDiferencias: () => pedidoDetalle.loadReporteDiferencias()
 })
 
 // Extraer variables del composable de pedido detalle
@@ -707,11 +709,10 @@ const tituloInterfaz = computed(() => {
 })
 
 const canViewReporteDiferencias = computed(() => {
-  // Permitir ver reporte si hay respuesta aprobada o si ya se procesó la confirmación
-  return pedido.value?.respuesta_proveedor?.cabecera.estado === 'APROBADA' ||
-         pedido.value?.cabecera.estado === 'CONFIRMADO_PROVEEDOR' ||
-         pedido.value?.cabecera.estado === 'CONFIRMADO_ENVIADO' ||
-         reporteDiferencias.value !== null
+  // El reporte de diferencias solo está disponible DESPUÉS de que MABEL TRADING
+  // confirma la redistribución. El backend genera el reporte automáticamente
+  // al confirmar la redistribución.
+  return reporteDiferencias.value !== null
 })
 
 // ⭐ FASE 4: Computed para resumen de redistribución
