@@ -144,6 +144,101 @@
           </div>
         </button>
 
+        <!-- Procesamiento SAP -->
+        <button
+          @click="showProcesamientoSAPModal = true"
+          class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left"
+        >
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-gray-900 dark:text-white text-sm">Procesamiento SAP</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Ver pedidos confirmados</div>
+            </div>
+          </div>
+        </button>
+
+      </div>
+    </div>
+
+    <!-- Modal para buscar procesamiento SAP -->
+    <div
+      v-if="showProcesamientoSAPModal"
+      class="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4"
+      @click.self="closeProcesamientoSAPModal"
+    >
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-md w-full">
+        <!-- Header del modal -->
+        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+          <div>
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Buscar Procesamiento SAP</h3>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Ingrese el número de pedido para ver su procesamiento SAP
+            </p>
+          </div>
+          <button
+            @click="closeProcesamientoSAPModal"
+            class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+          >
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Contenido del modal -->
+        <div class="px-6 py-4">
+          <div class="space-y-4">
+            <div>
+              <label for="pedido-procesamiento-sap" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Número de Pedido
+              </label>
+              <input
+                id="pedido-procesamiento-sap"
+                v-model="pedidoProcesamientoSAP"
+                type="text"
+                placeholder="Ej: P-12.48 - 12 - 2025"
+                @keydown.enter="navigateToProcesamientoSAP"
+                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400"
+                :disabled="loadingProcesamientoSAP"
+              />
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Presione Enter para buscar
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer del modal -->
+        <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-end gap-3">
+          <button
+            @click="closeProcesamientoSAPModal"
+            :disabled="loadingProcesamientoSAP"
+            class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Cancelar
+          </button>
+          <button
+            @click="navigateToProcesamientoSAP"
+            :disabled="loadingProcesamientoSAP || !pedidoProcesamientoSAP.trim()"
+            class="px-4 py-2 bg-purple-600 dark:bg-purple-500 text-white rounded-lg hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            <svg
+              v-if="loadingProcesamientoSAP"
+              class="animate-spin w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            {{ loadingProcesamientoSAP ? 'Buscando...' : 'Buscar' }}
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -161,6 +256,9 @@ const ordenesCompraStore = useOrdenesCompraStore()
 const toast = useToast()
 
 const loadingDespachos = ref(false)
+const showProcesamientoSAPModal = ref(false)
+const pedidoProcesamientoSAP = ref('')
+const loadingProcesamientoSAP = ref(false)
 
 // Función para cargar despachos antes de navegar
 async function cargarDespachos() {
@@ -181,6 +279,42 @@ async function cargarDespachos() {
 async function navigateToProceso() {
   await cargarDespachos()
   router.push('/mba3-consultas/proceso')
+}
+
+// Función para navegar a procesamiento SAP
+async function navigateToProcesamientoSAP() {
+  if (!pedidoProcesamientoSAP.value.trim()) {
+    toast.warning('Campo requerido', 'Por favor ingrese un número de pedido')
+    return
+  }
+
+  loadingProcesamientoSAP.value = true
+
+  try {
+    // Verificar que el procesamiento SAP existe antes de navegar
+    await mba3ConsultasService.getProcesamientoSAP(pedidoProcesamientoSAP.value.trim())
+    
+    // Si existe, navegar a la vista
+    router.push({
+      name: 'mba3-consultas-pedido-procesamiento-sap',
+      params: { id: encodeURIComponent(pedidoProcesamientoSAP.value.trim()) }
+    })
+    
+    // Cerrar modal y limpiar input
+    closeProcesamientoSAPModal()
+  } catch (error: any) {
+    console.error('Error al verificar procesamiento SAP:', error)
+    toast.error('Error', error.message || 'No se pudo encontrar el procesamiento SAP para este pedido')
+  } finally {
+    loadingProcesamientoSAP.value = false
+  }
+}
+
+// Cerrar modal
+function closeProcesamientoSAPModal() {
+  showProcesamientoSAPModal.value = false
+  pedidoProcesamientoSAP.value = ''
+  loadingProcesamientoSAP.value = false
 }
 
 onMounted(async () => {

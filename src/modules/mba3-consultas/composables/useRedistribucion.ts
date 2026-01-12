@@ -2,6 +2,7 @@
  * Composable para manejar la redistribución de productos a tiendas
  */
 import { ref, Ref, type ComputedRef } from 'vue'
+import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { formatNumber } from '../utils/formatters'
 import type { ProductoRedistribucion, DistribucionTiendaEditada } from '../utils/redistribucionHelpers'
@@ -18,6 +19,7 @@ export function useRedistribucion(options: {
   loadReporteDiferencias?: () => Promise<void>
 }) {
   const toast = useToast()
+  const router = useRouter()
 
   const productosRedistribucion = ref<ProductoRedistribucion[]>([])
   const productosExpandidos = ref<Set<string>>(new Set())
@@ -335,8 +337,9 @@ export function useRedistribucion(options: {
   }
 
   /**
-   * Confirma redistribución y genera ODC directamente
-   * Reutiliza la lógica de procesarOC pero adaptada para pedidos
+   * Confirma redistribución
+   * El backend procesa automáticamente la información SAP y transforma unidades
+   * Después de confirmar, redirige a la interfaz de Procesos de Integración MBA3-SAP
    */
   async function confirmarRedistribucion(puedeConfirmar: Ref<boolean> | ComputedRef<boolean>) {
     if (!puedeConfirmar.value) {
@@ -348,7 +351,7 @@ export function useRedistribucion(options: {
     
     confirmandoRedistribucion.value = true
     try {
-      // 1. Preparar datos para enviar al backend (guardar redistribución)
+      // 1. Preparar datos para enviar al backend
       const ajustes_detalle = productosRedistribucion.value.map(producto => ({
         codigo_producto: producto.codigo_producto,
         descripcion: producto.descripcion,
@@ -365,51 +368,38 @@ export function useRedistribucion(options: {
         cambio_precio: false
       }))
       
-      // 2. Confirmar redistribución (guarda los ajustes)
+      // 2. Confirmar redistribución
+      // El backend procesa automáticamente:
+      // - Consulta SAP para cada producto
+      // - Calcula conversiones de cantidades y precios
+      // - Detecta productos no homologados
+      // - Guarda en pedido_sap_procesamiento_detalle
       await mba3ConsultasService.confirmarRedistribucion(options.numeroPedido.value, ajustes_detalle)
       
-      toast.success('Redistribución confirmada', 'Procesando orden de compra...')
+      toast.success(
+        'Redistribución confirmada',
+        'Procesando información SAP y transformando unidades...'
+      )
       
-      // 3. Generar ODC directamente (reutiliza lógica de procesarOC)
-      // El backend aplicará la transformación docenas→unidades SAP automáticamente
-      const ocResponse = await mba3ConsultasService.procesarOCDesdePedido(options.numeroPedido.value)
-      
-      // 4. Manejar respuesta similar a procesarOC
-      if (ocResponse?.metadata?.oc_status) {
-        const ocStatus = ocResponse.metadata.oc_status
-        
-        if (ocStatus.status === 'completed') {
-          toast.success(
-            'ODC generada exitosamente',
-            `Orden de compra creada con ${ocStatus.oc_creadas || 1} artículo(s)`
-          )
-        } else if (ocStatus.status === 'partial') {
-          toast.warning(
-            'ODC generada parcialmente',
-            `${ocStatus.oc_creadas} artículo(s) procesado(s), ${ocStatus.oc_errores} con errores`
-          )
-        } else if (ocStatus.status === 'processing') {
-          toast.info(
-            'ODC en proceso',
-            'La orden de compra se está generando. Revisa el estado en "Procesar ODC"'
-          )
-        }
-      } else {
-        toast.success('ODC generada', 'La orden de compra se ha generado exitosamente')
-      }
-      
-      // 5. Recargar pedido para actualizar datos
+      // 3. Recargar pedido para actualizar datos
       if (options.loadPedido) {
         await options.loadPedido()
       }
       
-      // 6. Cargar reporte de diferencias
+      // 4. Cargar reporte de diferencias
       if (options.loadReporteDiferencias) {
         await options.loadReporteDiferencias()
       }
+      
+      // 5. Redirigir a la nueva vista de procesamiento SAP
+      // Mostrando la información del pedido confirmado y los detalles del procesamiento SAP
+      router.push({
+        name: 'mba3-consultas-pedido-procesamiento-sap',
+        params: { id: encodeURIComponent(options.numeroPedido.value) }
+      })
     } catch (e: any) {
-      console.error('Error al confirmar redistribución y generar ODC:', e)
-      toast.error('Error al procesar', e.message || 'No se pudo confirmar la redistribución o generar la ODC')
+      console.error('Error al confirmar redistribución:', e)
+      toast.error('Error al confirmar', e.message || 'No se pudo confirmar la redistribución')
     } finally {
       confirmandoRedistribucion.value = false
     }

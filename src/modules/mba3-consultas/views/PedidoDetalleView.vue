@@ -115,15 +115,24 @@
                   <label
                     v-for="column in availableColumnsWithVisibility"
                     :key="column.key"
-                    class="flex items-center gap-2 px-2 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer transition-colors"
+                    :class="[
+                      'flex items-center gap-2 px-2 py-2 rounded transition-colors',
+                      column.fixed 
+                        ? 'cursor-not-allowed opacity-60 bg-gray-50 dark:bg-gray-900' 
+                        : 'hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer'
+                    ]"
                   >
                     <input
                       type="checkbox"
                       :checked="column.visible"
-                      @change="toggleColumnVisibility(column.key)"
-                      class="w-4 h-4 text-indigo-600 border-gray-300 dark:border-gray-600 rounded focus:ring-indigo-500 dark:focus:ring-indigo-400"
+                      :disabled="column.fixed"
+                      @change="!column.fixed && toggleColumnVisibility(column.key)"
+                      class="w-4 h-4 text-indigo-600 border-gray-300 dark:border-gray-600 rounded focus:ring-indigo-500 dark:focus:ring-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed"
                     />
-                    <span class="text-sm text-gray-700 dark:text-gray-300">{{ column.label }}</span>
+                    <span class="text-sm text-gray-700 dark:text-gray-300">
+                      {{ column.label }}
+                      <span v-if="column.fixed" class="text-xs text-gray-500 dark:text-gray-500 ml-1">(fija)</span>
+                    </span>
                   </label>
                 </div>
               </div>
@@ -136,14 +145,15 @@
                   <th
                     v-for="(column, index) in orderedVisibleColumns"
                     :key="column.key"
-                    draggable="true"
-                    @dragstart="handleDragStart(index)"
-                    @dragover.prevent="handleDragOver(index)"
-                    @drop.prevent="handleDrop(index)"
-                    @dragend="handleDragEnd"
+                    :draggable="!column.fixed"
+                    @dragstart="!column.fixed && handleDragStart(index)"
+                    @dragover.prevent="!column.fixed && handleDragOver(index)"
+                    @drop.prevent="!column.fixed && handleDrop(index)"
+                    @dragend="!column.fixed && handleDragEnd()"
                     :class="[
-                      'px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-move select-none',
-                      column.align === 'right' ? 'text-right' : 'text-left',
+                      'px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider select-none',
+                      column.fixed ? 'cursor-default' : 'cursor-move',
+                      column.align === 'right' ? 'text-right' : column.align === 'center' ? 'text-center' : 'text-left',
                       draggedColumnIndex === index ? 'opacity-50 bg-indigo-100 dark:bg-indigo-900' : '',
                       dragOverColumnIndex === index && draggedColumnIndex !== null ? 'border-l-4 border-indigo-500' : ''
                     ]"
@@ -154,7 +164,7 @@
               </thead>
               <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 <tr 
-                  v-for="detalle in pedido.detalles" 
+                  v-for="(detalle, detalleIndex) in pedido.detalles" 
                   :key="detalle.pedido_detalle_id"
                 >
                   <td
@@ -162,11 +172,12 @@
                     :key="column.key"
                     :class="[
                       'px-4 py-4 text-sm',
-                      column.align === 'right' ? 'text-right whitespace-nowrap' : '',
-                      // ⭐ Resaltado persistente para columnas modificadas
-                      isColumnaModificada(detalle.pedido_detalle_id, column.key) 
+                      column.align === 'right' ? 'text-right whitespace-nowrap' : column.align === 'center' ? 'text-center whitespace-nowrap' : '',
+                      // ⭐ Resaltado persistente para columnas modificadas (no aplicar a columna numero)
+                      isColumnaModificada(detalle.pedido_detalle_id, column.key) && column.key !== 'numero'
                         ? 'bg-amber-50 dark:bg-amber-900/20 border-l-2 border-amber-500 dark:border-amber-400' 
                         : '',
+                      column.key === 'numero' ? 'font-medium text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/50' :
                       column.key === 'codigo_interno' ? 'font-medium text-gray-900 dark:text-white whitespace-nowrap' :
                       column.key === 'total' ? 'font-medium text-gray-900 dark:text-white cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors' :
                       column.key === 'descripcion_sap' ? 'text-gray-900 dark:text-white' :
@@ -208,7 +219,7 @@
                     <template v-else>
                       <span v-if="column.key === 'comentario' && detalle.comentario" class="text-gray-700 dark:text-gray-300">{{ detalle.comentario }}</span>
                       <span v-else-if="column.key === 'comentario' && !detalle.comentario" class="text-gray-400 dark:text-gray-500 italic text-xs">Sin comentario</span>
-                      <template v-else>{{ formatColumnValue(detalle, column) }}</template>
+                      <template v-else>{{ formatColumnValue(detalle, column, detalleIndex) }}</template>
                     </template>
                   </td>
                 </tr>
@@ -219,11 +230,14 @@
                     :key="column.key"
                     :class="[
                       'px-4 py-3 text-sm',
-                      column.align === 'right' ? 'text-right whitespace-nowrap' : 'text-left',
+                      column.align === 'right' ? 'text-right whitespace-nowrap' : column.align === 'center' ? 'text-center whitespace-nowrap' : 'text-left',
                       'text-gray-900 dark:text-white'
                     ]"
                   >
-                    <template v-if="column.key === 'costo_doc_sin_iva'">
+                    <template v-if="column.key === 'numero'">
+                      <!-- Dejar vacío para la columna de numeración -->
+                    </template>
+                    <template v-else-if="column.key === 'costo_doc_sin_iva'">
                       {{ formatCurrency(totalesCostoUnitario) }}
                     </template>
                     <template v-else-if="column.key === 'subtotal'">
@@ -546,6 +560,7 @@ function limpiarColumnasModificadasEnStorage() {
 
 // ⭐ CAMBIO: Array estático en lugar de ref
 const availableColumns: ColumnConfig[] = [
+  { key: 'numero', label: '#', visible: true, align: 'center', format: 'number', fixed: true },
   { key: 'codigo_interno', label: 'Código', visible: true, align: 'left', format: 'text' },
   { key: 'descripcion_sap', label: 'Descripción', visible: true, align: 'left', format: 'text' },
   { key: 'marca', label: 'Marca', visible: true, align: 'left', format: 'text' },
@@ -561,7 +576,8 @@ const availableColumns: ColumnConfig[] = [
 ]
 
 // ⭐ CAMBIO: Usar composable useTablePreferences
-const defaultVisibleColumns = availableColumns.filter(col => col.visible).map(col => col.key)
+// Asegurar que la columna 'numero' esté siempre visible y al inicio
+const defaultVisibleColumns = availableColumns.filter(col => col.visible || col.fixed).map(col => col.key)
 const defaultColumnOrder = availableColumns.map(col => col.key)
 
 const {
@@ -581,19 +597,47 @@ const {
 })
 
 // ⭐ NUEVO: Computed para obtener objetos ColumnConfig ordenados
+// Asegurar que la columna 'numero' siempre esté al inicio
 const orderedVisibleColumns = computed(() => {
-  return orderedVisibleColumnKeys.value
+  const ordered = orderedVisibleColumnKeys.value
     .map(key => availableColumns.find(col => col.key === key))
     .filter((col): col is ColumnConfig => col !== undefined)
+  
+  // Separar columnas fijas y no fijas
+  const fixedColumns = ordered.filter(col => col.fixed)
+  const nonFixedColumns = ordered.filter(col => !col.fixed)
+  
+  // Asegurar que 'numero' esté al inicio si existe
+  const numeroColumn = fixedColumns.find(col => col.key === 'numero')
+  const otherFixedColumns = fixedColumns.filter(col => col.key !== 'numero')
+  
+  // Reconstruir el orden: primero 'numero', luego otras fijas, luego no fijas
+  return [
+    ...(numeroColumn ? [numeroColumn] : []),
+    ...otherFixedColumns,
+    ...nonFixedColumns
+  ]
 })
 
 // ⭐ NUEVO: Computed para obtener todas las columnas con su estado de visibilidad
 const availableColumnsWithVisibility = computed(() => {
   return availableColumns.map(col => ({
     ...col,
-    visible: visibleColumns.value.includes(col.key)
+    visible: col.fixed ? true : visibleColumns.value.includes(col.key)
   }))
 })
+
+// ⭐ Asegurar que la columna 'numero' siempre esté visible
+watch(
+  () => visibleColumns.value,
+  (newVisible) => {
+    if (!newVisible.includes('numero')) {
+      visibleColumns.value = ['numero', ...newVisible.filter(key => key !== 'numero')]
+      savePreferences()
+    }
+  },
+  { immediate: true }
+)
 
 // ⭐ NUEVO: Computed para calcular totales de la tabla
 const totalesCostoUnitario = computed(() => {
@@ -980,6 +1024,18 @@ function handleDrop(dropIndex: number) {
     return
   }
   
+  // No permitir arrastrar columnas fijas
+  const draggedColumn = orderedVisibleColumns.value[draggedColumnIndex.value]
+  if (draggedColumn?.fixed) {
+    return
+  }
+  
+  // No permitir colocar columnas antes de columnas fijas
+  const dropColumn = orderedVisibleColumns.value[dropIndex]
+  if (dropColumn?.fixed && dropIndex < draggedColumnIndex.value) {
+    return
+  }
+  
   // Reordenar usando el composable
   const currentOrder = [...orderedVisibleColumnKeys.value]
   const draggedKey = currentOrder[draggedColumnIndex.value]
@@ -987,8 +1043,19 @@ function handleDrop(dropIndex: number) {
   // Remover columna arrastrada
   currentOrder.splice(draggedColumnIndex.value, 1)
   
-  // Insertar en nueva posición
-  currentOrder.splice(dropIndex, 0, draggedKey)
+  // Insertar en nueva posición (ajustar índice si hay columnas fijas antes)
+  let adjustedDropIndex = dropIndex
+  if (dropIndex > draggedColumnIndex.value) {
+    adjustedDropIndex = dropIndex - 1
+  }
+  currentOrder.splice(adjustedDropIndex, 0, draggedKey)
+  
+  // Asegurar que 'numero' esté al inicio
+  const numeroIndex = currentOrder.indexOf('numero')
+  if (numeroIndex > 0) {
+    currentOrder.splice(numeroIndex, 1)
+    currentOrder.unshift('numero')
+  }
   
   // Actualizar el orden usando el composable
   columnOrder.value = currentOrder
@@ -1004,11 +1071,22 @@ function handleDragEnd() {
 
 // ⭐ NUEVO: Función para toggle de visibilidad de columnas
 function toggleColumnVisibility(columnKey: string) {
+  // No permitir ocultar columnas fijas
+  const column = availableColumns.find(col => col.key === columnKey)
+  if (column?.fixed) {
+    return
+  }
+  
   const currentVisible = [...visibleColumns.value]
   const index = currentVisible.indexOf(columnKey)
   
-  // Validación: Asegurar que hay al menos una columna visible
-  if (index > -1 && currentVisible.length === 1) {
+  // Validación: Asegurar que hay al menos una columna visible (excluyendo fijas)
+  const visibleNonFixed = currentVisible.filter(key => {
+    const col = availableColumns.find(c => c.key === key)
+    return !col?.fixed
+  })
+  
+  if (index > -1 && visibleNonFixed.length === 1) {
     console.warn('⚠️ Debe haber al menos una columna visible. Operación cancelada.')
     return
   }

@@ -123,6 +123,64 @@
 
     <!-- Contenido Principal: Tabla de Productos -->
     <div v-if="pedidoValue?.respuesta_proveedor" class="p-6 pb-24">
+      <!-- Header de la tabla con selector de columnas (solo vista compacta) -->
+      <div v-if="modoVista === 'compacta'" class="flex items-center justify-between mb-4">
+        <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300">Tabla de Redistribución</h3>
+        <div class="relative">
+          <button
+            @click="showColumnSelector = !showColumnSelector"
+            class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-2 text-gray-700 dark:text-gray-300"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+            </svg>
+            Columnas
+          </button>
+          
+          <!-- Dropdown de selección de columnas -->
+          <div
+            v-if="showColumnSelector"
+            @click.stop
+            class="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 p-3"
+          >
+            <div class="flex items-center justify-between mb-2 px-2">
+              <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Seleccionar columnas</div>
+              <div v-if="isSyncing" class="flex items-center gap-1">
+                <svg class="animate-spin w-3 h-3 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span class="text-xs text-indigo-600 dark:text-indigo-400">Guardando...</span>
+              </div>
+            </div>
+            <div class="space-y-1 max-h-80 overflow-y-auto">
+              <label
+                v-for="column in availableColumnsWithVisibility"
+                :key="column.key"
+                :class="[
+                  'flex items-center gap-2 px-2 py-2 rounded transition-colors',
+                  column.fixed 
+                    ? 'cursor-not-allowed opacity-60 bg-gray-50 dark:bg-gray-900' 
+                    : 'hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer'
+                ]"
+              >
+                <input
+                  type="checkbox"
+                  :checked="column.visible"
+                  :disabled="column.fixed"
+                  @change="!column.fixed && toggleColumnVisibility(column.key)"
+                  class="w-4 h-4 text-indigo-600 border-gray-300 dark:border-gray-600 rounded focus:ring-indigo-500 dark:focus:ring-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+                <span class="text-sm text-gray-700 dark:text-gray-300">
+                  {{ column.label }}
+                  <span v-if="column.fixed" class="text-xs text-gray-500 dark:text-gray-500 ml-1">(fija)</span>
+                </span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+      
       <!-- Tabla Principal -->
       <div class="overflow-x-auto min-w-0">
         <!-- Vista Excel -->
@@ -140,15 +198,22 @@
         <table v-else class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead class="bg-gray-50 dark:bg-gray-900">
             <tr>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-8"></th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Código</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Producto</th>
-              <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Total Confirmado</th>
-              <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Distribuido</th>
-              <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Diferencia</th>
-              <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[140px]">Progreso</th>
-              <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Estado</th>
-              <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Acciones</th>
+              <th
+                v-for="column in orderedVisibleColumns"
+                :key="column.key"
+                :class="[
+                  'px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider',
+                  column.key === 'expand' ? 'w-8 text-left' :
+                  column.key === 'codigo' ? 'text-left' :
+                  column.key === 'producto' ? 'text-left' :
+                  column.key === 'progreso' ? 'text-center min-w-[140px]' :
+                  column.key === 'estado' ? 'text-center' :
+                  column.key === 'acciones' ? 'text-center' :
+                  'text-right'
+                ]"
+              >
+                {{ column.label }}
+              </th>
             </tr>
           </thead>
           <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -164,110 +229,145 @@
                   'bg-red-50 dark:bg-red-900/10'
                 ]"
               >
-                <td class="px-4 py-4 whitespace-nowrap">
-                  <button
-                    @click="toggleExpandirProducto(producto.codigo_producto)"
-                    class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                  >
-                    <svg 
-                      class="w-5 h-5 transform transition-transform"
-                      :class="{ 'rotate-90': productosExpandidosSet.has(producto.codigo_producto) }"
-                      fill="none" 
-                      stroke="currentColor" 
-                      viewBox="0 0 24 24"
+                <td
+                  v-for="column in orderedVisibleColumns"
+                  :key="column.key"
+                  :class="[
+                    'px-4 py-4',
+                    column.key === 'expand' ? 'whitespace-nowrap' :
+                    column.key === 'codigo' ? 'whitespace-nowrap' :
+                    column.key === 'producto' ? '' :
+                    column.key === 'total_confirmado' ? 'whitespace-nowrap text-right' :
+                    column.key === 'distribuido' ? 'whitespace-nowrap text-right' :
+                    column.key === 'diferencia' ? 'whitespace-nowrap text-right' :
+                    column.key === 'progreso' ? 'whitespace-nowrap' :
+                    column.key === 'estado' ? 'whitespace-nowrap text-center' :
+                    column.key === 'acciones' ? 'whitespace-nowrap text-center' :
+                    ''
+                  ]"
+                >
+                  <!-- Columna Expand -->
+                  <template v-if="column.key === 'expand'">
+                    <button
+                      @click="toggleExpandirProducto(producto.codigo_producto)"
+                      class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                     >
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
-                </td>
-                <td class="px-4 py-4 whitespace-nowrap">
-                  <div class="text-sm font-medium text-gray-900 dark:text-white">{{ producto.codigo_producto }}</div>
-                </td>
-                <td class="px-4 py-4">
-                  <div class="text-sm text-gray-900 dark:text-white">{{ producto.descripcion }}</div>
-                </td>
-                <td class="px-4 py-4 whitespace-nowrap text-right">
-                  <div class="text-sm font-semibold text-blue-600 dark:text-blue-400">
-                    {{ formatNumber(producto.cantidad_confirmada) }}
-                  </div>
-                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    ajustado por EL RAYO
-                  </div>
-                </td>
-                <td class="px-4 py-4 whitespace-nowrap text-right">
-                  <div class="text-sm font-semibold text-purple-600 dark:text-purple-400">
-                    {{ formatNumber(producto.cantidad_distribuida) }}
-                  </div>
-                </td>
-                <td class="px-4 py-4 whitespace-nowrap text-right">
-                  <div class="text-sm font-semibold" :class="getDiferenciaClass(producto.diferencia)">
-                    {{ producto.diferencia > 0 ? '+' : '' }}{{ formatNumber(producto.diferencia) }}
-                  </div>
-                </td>
-                <td class="px-4 py-4 whitespace-nowrap">
-                  <div class="flex flex-col items-center gap-1.5 min-w-[140px]">
-                    <!-- Barra de progreso visual -->
-                    <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
-                      <div
-                        class="h-full rounded-full transition-all duration-300"
-                        :class="getProgresoBarClass(producto)"
-                        :style="{ width: getProgresoPorcentaje(producto) + '%' }"
-                      ></div>
+                      <svg 
+                        class="w-5 h-5 transform transition-transform"
+                        :class="{ 'rotate-90': productosExpandidosSet.has(producto.codigo_producto) }"
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </template>
+                  
+                  <!-- Columna Código -->
+                  <template v-else-if="column.key === 'codigo'">
+                    <div class="text-sm font-medium text-gray-900 dark:text-white">{{ producto.codigo_producto }}</div>
+                  </template>
+                  
+                  <!-- Columna Producto -->
+                  <template v-else-if="column.key === 'producto'">
+                    <div class="text-sm text-gray-900 dark:text-white">{{ producto.descripcion }}</div>
+                  </template>
+                  
+                  <!-- Columna Total Confirmado -->
+                  <template v-else-if="column.key === 'total_confirmado'">
+                    <div class="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                      {{ formatNumber(producto.cantidad_confirmada) }}
                     </div>
-                    <!-- Texto de progreso -->
-                    <div class="text-xs font-medium" :class="getProgresoTextClass(producto)">
-                      {{ formatNumber(producto.cantidad_distribuida) }} / {{ formatNumber(producto.cantidad_confirmada) }}
+                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                      ajustado por EL RAYO
                     </div>
-                  </div>
-                </td>
-                <td class="px-4 py-4 whitespace-nowrap text-center">
-                  <span 
-                    class="px-2 py-1 text-xs font-medium rounded-full"
-                    :class="producto.diferencia === 0 
-                      ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' 
-                      : producto.diferencia < 0 
-                      ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
-                      : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'"
-                  >
-                    {{ producto.diferencia === 0 ? '✓ Completo' : producto.diferencia < 0 ? '⚠ Falta' : '✗ Excede' }}
-                  </span>
-                </td>
-                <td class="px-4 py-4 whitespace-nowrap text-center">
-                  <div class="flex items-center justify-center gap-2">
-                    <button
-                      @click="distribuirProporcionalmente(producto.codigo_producto)"
-                      class="p-1 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-                      title="Distribuir proporcionalmente"
+                  </template>
+                  
+                  <!-- Columna Distribuido -->
+                  <template v-else-if="column.key === 'distribuido'">
+                    <div class="text-sm font-semibold text-purple-600 dark:text-purple-400">
+                      {{ formatNumber(producto.cantidad_distribuida) }}
+                    </div>
+                  </template>
+                  
+                  <!-- Columna Diferencia -->
+                  <template v-else-if="column.key === 'diferencia'">
+                    <div class="text-sm font-semibold" :class="getDiferenciaClass(producto.diferencia)">
+                      {{ producto.diferencia > 0 ? '+' : '' }}{{ formatNumber(producto.diferencia) }}
+                    </div>
+                  </template>
+                  
+                  <!-- Columna Progreso -->
+                  <template v-else-if="column.key === 'progreso'">
+                    <div class="flex flex-col items-center gap-1.5 min-w-[140px]">
+                      <!-- Barra de progreso visual -->
+                      <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
+                        <div
+                          class="h-full rounded-full transition-all duration-300"
+                          :class="getProgresoBarClass(producto)"
+                          :style="{ width: getProgresoPorcentaje(producto) + '%' }"
+                        ></div>
+                      </div>
+                      <!-- Texto de progreso -->
+                      <div class="text-xs font-medium" :class="getProgresoTextClass(producto)">
+                        {{ formatNumber(producto.cantidad_distribuida) }} / {{ formatNumber(producto.cantidad_confirmada) }}
+                      </div>
+                    </div>
+                  </template>
+                  
+                  <!-- Columna Estado -->
+                  <template v-else-if="column.key === 'estado'">
+                    <span 
+                      class="px-2 py-1 text-xs font-medium rounded-full"
+                      :class="producto.diferencia === 0 
+                        ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' 
+                        : producto.diferencia < 0 
+                        ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
+                        : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'"
                     >
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>
-                    </button>
-                    <button
-                      @click="copiarDistribucionOriginal(producto.codigo_producto)"
-                      class="p-1 text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors"
-                      title="Copiar distribución original"
-                    >
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                      </svg>
-                    </button>
-                    <button
-                      @click="resetearDistribucion(producto.codigo_producto)"
-                      class="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
-                      title="Resetear distribución"
-                    >
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                      </svg>
-                    </button>
-                  </div>
+                      {{ producto.diferencia === 0 ? '✓ Completo' : producto.diferencia < 0 ? '⚠ Falta' : '✗ Excede' }}
+                    </span>
+                  </template>
+                  
+                  <!-- Columna Acciones -->
+                  <template v-else-if="column.key === 'acciones'">
+                    <div class="flex items-center justify-center gap-2">
+                      <button
+                        @click="distribuirProporcionalmente(producto.codigo_producto)"
+                        class="p-1 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                        title="Distribuir proporcionalmente"
+                      >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                      </button>
+                      <button
+                        @click="copiarDistribucionOriginal(producto.codigo_producto)"
+                        class="p-1 text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors"
+                        title="Copiar distribución original"
+                      >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                      </button>
+                      <button
+                        @click="resetearDistribucion(producto.codigo_producto)"
+                        class="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                        title="Resetear distribución"
+                      >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                      </button>
+                    </div>
+                  </template>
                 </td>
               </tr>
               
               <!-- Fila Expandida: Distribución a Tiendas -->
               <tr v-if="productosExpandidosSet.has(producto.codigo_producto)">
-                <td colspan="9" class="px-0 py-0 bg-gray-50 dark:bg-gray-900/50">
+                <td :colspan="orderedVisibleColumns.length" class="px-0 py-0 bg-gray-50 dark:bg-gray-900/50">
                   <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
                     <!-- Header de la sub-tabla con información del producto -->
                     <div class="mb-4 flex items-start justify-between">
@@ -453,10 +553,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, type Ref } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch, type Ref } from 'vue'
 import type { PedidoCompleto } from '../types'
 import type { ProductoRedistribucion, DistribucionTiendaEditada } from '../utils/redistribucionHelpers'
-import { formatNumber, formatCurrency } from '../utils/formatters'
+import { formatNumber, formatCurrency, type ColumnConfig } from '../utils/formatters'
 import { getDiferenciaClass } from '../utils/styleHelpers'
 import { 
   getProgresoPorcentaje, 
@@ -464,6 +564,7 @@ import {
   getProgresoTextClass,
   getMensajeValidacionRedistribucion
 } from '../utils/redistribucionHelpers'
+import { useTablePreferences } from '@/composables/useTablePreferences'
 import ExcelLikeGridView from './ExcelLikeGridView.vue'
 
 interface Props {
@@ -492,6 +593,105 @@ const emit = defineEmits<Emits>()
 
 // Estado para el modo de vista
 const modoVista = ref<'compacta' | 'excel'>('compacta')
+
+// ⭐ Gestión de columnas visibles en la tabla
+const showColumnSelector = ref(false)
+
+// Definir columnas disponibles para la tabla de redistribución
+const availableColumns: ColumnConfig[] = [
+  { key: 'expand', label: '', visible: true, align: 'left', format: 'text', fixed: true },
+  { key: 'codigo', label: 'Código', visible: true, align: 'left', format: 'text', fixed: true },
+  { key: 'producto', label: 'Producto', visible: true, align: 'left', format: 'text', fixed: true },
+  { key: 'total_confirmado', label: 'Total Confirmado', visible: true, align: 'right', format: 'number' },
+  { key: 'distribuido', label: 'Distribuido', visible: true, align: 'right', format: 'number' },
+  { key: 'diferencia', label: 'Diferencia', visible: true, align: 'right', format: 'number' },
+  { key: 'progreso', label: 'Progreso', visible: true, align: 'center', format: 'text' },
+  { key: 'estado', label: 'Estado', visible: true, align: 'center', format: 'text' },
+  { key: 'acciones', label: 'Acciones', visible: true, align: 'center', format: 'text' }
+]
+
+// Configuración de columnas usando composable
+const defaultVisibleColumns = availableColumns.filter(col => col.visible || col.fixed).map(col => col.key)
+const defaultColumnOrder = availableColumns.map(col => col.key)
+
+const {
+  visibleColumns,
+  columnOrder,
+  orderedVisibleColumns: orderedVisibleColumnKeys,
+  savePreferences,
+  isSyncing
+} = useTablePreferences({
+  tableId: 'redistribucion-tiendas',
+  defaultVisibleColumns,
+  defaultColumnOrder,
+  enableFilters: false,
+  enablePageSize: false
+})
+
+// Computed para obtener objetos ColumnConfig ordenados
+const orderedVisibleColumns = computed(() => {
+  const ordered = orderedVisibleColumnKeys.value
+    .map(key => availableColumns.find(col => col.key === key))
+    .filter((col): col is ColumnConfig => col !== undefined)
+  
+  // Separar columnas fijas y no fijas
+  const fixedColumns = ordered.filter(col => col.fixed)
+  const nonFixedColumns = ordered.filter(col => !col.fixed)
+  
+  // Asegurar que las columnas fijas estén al inicio
+  return [...fixedColumns, ...nonFixedColumns]
+})
+
+// Computed para obtener todas las columnas con su estado de visibilidad
+const availableColumnsWithVisibility = computed(() => {
+  return availableColumns.map(col => ({
+    ...col,
+    visible: col.fixed ? true : visibleColumns.value.includes(col.key)
+  }))
+})
+
+// Función para toggle de visibilidad de columnas
+function toggleColumnVisibility(columnKey: string) {
+  const column = availableColumns.find(col => col.key === columnKey)
+  if (column?.fixed) {
+    return
+  }
+  
+  const currentVisible = [...visibleColumns.value]
+  const index = currentVisible.indexOf(columnKey)
+  
+  // Validación: Asegurar que hay al menos una columna visible (excluyendo fijas)
+  const visibleNonFixed = currentVisible.filter(key => {
+    const col = availableColumns.find(c => c.key === key)
+    return !col?.fixed
+  })
+  
+  if (index > -1 && visibleNonFixed.length === 1) {
+    console.warn('⚠️ Debe haber al menos una columna visible. Operación cancelada.')
+    return
+  }
+  
+  if (index > -1) {
+    currentVisible.splice(index, 1)
+  } else {
+    currentVisible.push(columnKey)
+  }
+  
+  visibleColumns.value = currentVisible
+  savePreferences()
+}
+
+// Cerrar dropdown al hacer click fuera
+function handleClickOutsideColumnSelector(event: MouseEvent) {
+  if (!showColumnSelector.value) return
+  
+  const target = event.target as HTMLElement
+  if (target.closest('.relative')) {
+    return
+  }
+  
+  showColumnSelector.value = false
+}
 
 // Alias para pedido para consistencia con el template
 const pedidoValue = computed(() => props.pedido)
@@ -617,4 +817,13 @@ function copiarDistribucionOriginal(codigoProducto: string) {
 function resetearDistribucion(codigoProducto: string) {
   emit('resetear-distribucion', codigoProducto)
 }
+
+// Agregar listener para cerrar dropdown al hacer click fuera
+onMounted(() => {
+  document.addEventListener('click', handleClickOutsideColumnSelector)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutsideColumnSelector)
+})
 </script>

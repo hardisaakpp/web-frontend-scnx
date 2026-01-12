@@ -108,14 +108,20 @@ export interface ColumnConfig {
   key: string
   label: string
   visible: boolean
-  align?: 'left' | 'right'
+  align?: 'left' | 'right' | 'center'
   format?: 'text' | 'number' | 'currency'
+  fixed?: boolean // Si es true, la columna no puede ser ocultada ni arrastrada
 }
 
 /**
  * Formatea el valor de una columna según su tipo
  */
-export function formatColumnValue(detalle: any, column: ColumnConfig): string {
+export function formatColumnValue(detalle: any, column: ColumnConfig, index?: number): string {
+  // La columna 'numero' se maneja especialmente con el índice
+  if (column.key === 'numero' && index !== undefined) {
+    return (index + 1).toString()
+  }
+  
   const value = detalle[column.key]
   
   // Manejar valores null/undefined

@@ -6,7 +6,7 @@ import type {
 } from '../types'
 import type { OrdenCompraResponse, OrdenCompraLogResponse, RemisionResponse } from '../types'
 import type { HealthResponse, ProcesoResponse } from '../types'
-import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstado, ProcesoEstadoResponse, SugerenciaProducto, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuRequest, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, PedidoCompleto, CargarRespuestaProveedorResponse, RespuestaProveedorResponse, ProcesarConfirmacionResponse, ReporteDiferenciasResponse, IntegracionSAPResponse, ActualizarCostoPedidoResponse, AjusteDetalle, ResumenConfirmacion, GuardarModificacionesColumnasRequest, GuardarModificacionesColumnasResponse, ObtenerModificacionesColumnasResponse } from '../types'
+import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstado, ProcesoEstadoResponse, SugerenciaProducto, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuRequest, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, PedidoCompleto, CargarRespuestaProveedorResponse, RespuestaProveedorResponse, ProcesarConfirmacionResponse, ReporteDiferenciasResponse, IntegracionSAPResponse, ActualizarCostoPedidoResponse, AjusteDetalle, ResumenConfirmacion, GuardarModificacionesColumnasRequest, GuardarModificacionesColumnasResponse, ObtenerModificacionesColumnasResponse, ProcesamientoSAPResponse } from '../types'
 
 // Usar la URL base del backend MBA3
 const API_BASE_URL = import.meta.env.VITE_MBA3_API_BASE_URL || 'http://localhost:8000'
@@ -1706,6 +1706,40 @@ export const mba3ConsultasService = {
         }
       }
       
+      throw new Error(message)
+    }
+  },
+
+  /**
+   * Obtiene el procesamiento SAP de un pedido confirmado
+   * Requiere permiso: mba3-consultas.facturas.view
+   * @param pedidoId ID del pedido o número de pedido (ej: "P-12.48 - 12 - 2025")
+   * @returns Información completa del procesamiento SAP incluyendo productos y estadísticas
+   */
+  async getProcesamientoSAP(pedidoId: string): Promise<ProcesamientoSAPResponse> {
+    try {
+      const response = await mba3Api.get<ProcesamientoSAPResponse>(
+        `/api/pedidos/${encodeURIComponent(pedidoId)}/procesamiento-sap`
+      )
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [getProcesamientoSAP] Error al obtener procesamiento SAP:', error)
+
+      // Si es 404, el pedido no tiene procesamiento SAP aún
+      if (error.response?.status === 404) {
+        throw new Error('No existe procesamiento SAP para este pedido. Primero debe confirmar la redistribución.')
+      }
+
+      let message = error.message || 'Error desconocido al obtener procesamiento SAP'
+
+      if (error.response?.data) {
+        if (error.response.data.detail) {
+          message = error.response.data.detail
+        } else if (error.response.data.message) {
+          message = error.response.data.message
+        }
+      }
+
       throw new Error(message)
     }
   },

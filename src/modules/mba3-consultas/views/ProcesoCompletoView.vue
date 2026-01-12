@@ -681,7 +681,7 @@ const toast = useToast()
 const route = useRoute()
 
 // ⭐ Flag para modo legacy (ocultar pestaña de despachos)
-const SHOW_LEGACY_DESPACHOS = false // Cambiar a true si necesitas activar el modo legacy
+const SHOW_LEGACY_DESPACHOS = true // Habilitado: interfaz de Procesos de Integración MBA3-SAP activa
 
 // Estado de pestañas - restaurar desde localStorage o usar 'pedidos-confirmados' por defecto
 const STORAGE_KEY = 'mba3-proceso-active-tab'

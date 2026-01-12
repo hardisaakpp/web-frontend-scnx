@@ -99,6 +99,17 @@ const routes: RouteRecordRaw[] = [
       icon: 'ChartBarIcon',
       permissions: ['mba3-consultas.facturas.view']
     }
+  },
+  {
+    path: '/mba3-consultas/pedidos/:id/procesamiento-sap',
+    name: 'mba3-consultas-pedido-procesamiento-sap',
+    component: () => import('./views/ProcesamientoSAPView.vue'),
+    meta: { 
+      requiresAuth: true,
+      title: 'Procesamiento SAP del Pedido',
+      icon: 'CogIcon',
+      permissions: ['mba3-consultas.facturas.view']
+    }
   }
 ]
 

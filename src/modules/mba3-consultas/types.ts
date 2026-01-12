@@ -951,3 +951,63 @@ export interface ObtenerModificacionesColumnasResponse {
   numero_pedido: string
   modificaciones: ColumnaModificada[]
 }
+
+// ========== Procesamiento SAP (Post-Confirmación) ==========
+
+/**
+ * Item individual de producto procesado con SAP
+ */
+export interface ProductoSAPProcesamientoItem {
+  pedido_detalle_id: string
+  codigo_interno: string | null
+  codigo_sap: string | null
+  descripcion_producto: string | null
+  descripcion_sap: string | null
+  descripcion_original: string | null
+  cantidad_original: number
+  cantidad_sap: number
+  unidad_original: string | null
+  unidad_sap: string | null
+  precio_unitario_original: number | null
+  precio_original: number | null
+  // Campos del backend (nombres directos de BD)
+  total_linea_original: number | null
+  total_linea_sap: number | null
+  // Campos mapeados (por compatibilidad, si el backend los mapea)
+  subtotal_original?: number | null
+  subtotal_sap?: number | null
+  precio_unitario_sap: number | null
+  precio_sap: number | null
+  cantidad_pack_sap: number | null
+  factor_conversion: number | null
+  esta_homologado: boolean
+  tiene_error: boolean
+  error_mensaje: string | null
+  fecha_procesamiento: string
+}
+
+/**
+ * Estadísticas del procesamiento SAP
+ */
+export interface EstadisticasProcesamientoSAP {
+  total_productos: number
+  productos_homologados: number
+  productos_no_homologados: number
+  productos_con_error: number
+  total_cantidad_original: number
+  total_cantidad_sap: number
+  total_precio_original: number
+  total_precio_sap: number
+}
+
+/**
+ * Respuesta completa del endpoint de procesamiento SAP
+ */
+export interface ProcesamientoSAPResponse {
+  status: 'success'
+  pedido_id: string
+  numero_pedido: string
+  productos: ProductoSAPProcesamientoItem[]
+  estadisticas: EstadisticasProcesamientoSAP
+  fecha_procesamiento: string
+}
