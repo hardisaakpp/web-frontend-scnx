@@ -3,7 +3,7 @@
   <!-- Se muestra siempre en modo MABEL TRADING -->
   <div v-if="esModoMabelTradingValue" class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
     <!-- Header Sticky con Indicadores Globales -->
-    <div class="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 shadow-sm">
+    <div class="sticky top-0 z-[5] bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 shadow-sm">
       <div class="flex items-center justify-between mb-4">
         <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Ajuste y Redistribución a Tiendas</h2>
         
@@ -122,7 +122,7 @@
     </div>
 
     <!-- Contenido Principal: Tabla de Productos -->
-    <div v-if="pedidoValue?.respuesta_proveedor" class="p-6">
+    <div v-if="pedidoValue?.respuesta_proveedor" class="p-6 pb-24">
       <!-- Tabla Principal -->
       <div class="overflow-x-auto min-w-0">
         <!-- Vista Excel -->
@@ -388,7 +388,7 @@
     </div>
     
     <!-- Barra de Acciones Sticky Bottom -->
-    <div v-if="pedidoValue?.respuesta_proveedor" class="sticky bottom-0 z-10 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-6 py-4 shadow-lg">
+    <div v-if="pedidoValue?.respuesta_proveedor" class="sticky bottom-0 z-[5] bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-6 py-4 shadow-lg">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
