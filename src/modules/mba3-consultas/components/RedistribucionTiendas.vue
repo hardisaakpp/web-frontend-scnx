@@ -4,18 +4,59 @@
   <div v-if="esModoMabelTradingValue" class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
     <!-- Header Sticky con Indicadores Globales -->
     <div class="sticky top-0 z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 shadow-sm">
-      <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Ajuste y Redistribución a Tiendas</h2>
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Ajuste y Redistribución a Tiendas</h2>
+        
+        <!-- Toggle de Vista (solo cuando hay respuesta del proveedor) -->
+        <div v-if="pedidoValue?.respuesta_proveedor" class="flex items-center gap-2">
+          <span class="text-sm text-gray-600 dark:text-gray-400">Vista:</span>
+          <div class="inline-flex rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 p-1">
+            <button
+              @click="modoVista = 'compacta'"
+              :class="[
+                'px-3 py-1.5 text-sm font-medium rounded transition-colors',
+                modoVista === 'compacta'
+                  ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+              ]"
+            >
+              <span class="flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                </svg>
+                Compacta
+              </span>
+            </button>
+            <button
+              @click="modoVista = 'excel'"
+              :class="[
+                'px-3 py-1.5 text-sm font-medium rounded transition-colors',
+                modoVista === 'excel'
+                  ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+              ]"
+            >
+              <span class="flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
+                </svg>
+                Excel
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
       
       <!-- Estado cuando no hay respuesta del proveedor -->
-      <div v-if="!pedidoValue?.respuesta_proveedor" class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+      <div v-if="!pedidoValue?.respuesta_proveedor" class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
         <div class="flex items-start gap-3">
-          <svg class="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          <svg class="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <div>
-            <p class="text-sm font-medium text-yellow-800 dark:text-yellow-200">Esperando respuesta del proveedor</p>
-            <p class="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
-              La sección de redistribución estará disponible una vez que EL RAYO cargue la respuesta del proveedor con las cantidades confirmadas.
+          <div class="flex-1">
+            <p class="text-sm font-medium text-blue-800 dark:text-blue-200">Preparando datos para redistribución</p>
+            <p class="text-xs text-blue-700 dark:text-blue-300 mt-1">
+              El sistema está generando la confirmación del proveedor a partir de los ajustes realizados por EL RAYO. Esto puede tomar unos segundos...
             </p>
           </div>
         </div>
@@ -84,7 +125,17 @@
     <div v-if="pedidoValue?.respuesta_proveedor" class="p-6 flex flex-col lg:flex-row gap-6">
       <!-- Tabla Principal -->
       <div class="flex-1 overflow-x-auto min-w-0">
-        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+        <!-- Vista Excel -->
+        <ExcelLikeGridView
+          v-if="modoVista === 'excel'"
+          :productos="productosRedistribucion"
+          :show-totals="true"
+          @actualizar-cantidad-tienda="handleActualizarCantidadTienda"
+          @validar-y-corregir-cantidad="handleValidarYCorregirCantidad"
+        />
+        
+        <!-- Vista Compacta (tabla original) -->
+        <table v-else class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead class="bg-gray-50 dark:bg-gray-900">
             <tr>
               <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-8"></th>
@@ -99,7 +150,7 @@
             </tr>
           </thead>
           <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            <template v-for="producto in productosRedistribucion" :key="producto.codigo_producto">
+            <template v-for="producto in productosArray" :key="producto.codigo_producto">
               <!-- Fila Principal del Producto -->
               <tr 
                 :class="[
@@ -116,7 +167,7 @@
                   >
                     <svg 
                       class="w-5 h-5 transform transition-transform"
-                      :class="{ 'rotate-90': productosExpandidos.has(producto.codigo_producto) }"
+                      :class="{ 'rotate-90': productosExpandidosSet.has(producto.codigo_producto) }"
                       fill="none" 
                       stroke="currentColor" 
                       viewBox="0 0 24 24"
@@ -211,7 +262,7 @@
               </tr>
               
               <!-- Fila Expandida: Distribución a Tiendas -->
-              <tr v-if="productosExpandidos.has(producto.codigo_producto)">
+              <tr v-if="productosExpandidosSet.has(producto.codigo_producto)">
                 <td colspan="9" class="px-0 py-0 bg-gray-50 dark:bg-gray-900/50">
                   <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
                     <!-- Header de la sub-tabla con información del producto -->
@@ -406,7 +457,7 @@
             </span>
             <span class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
               <template v-if="!puedeConfirmarRedistribucion">
-                {{ getMensajeValidacionRedistribucion(productosRedistribucion) }}
+                {{ getMensajeValidacionRedistribucion(productosArray) }}
               </template>
               <template v-else>
                 Todos los productos están correctamente distribuidos
@@ -418,32 +469,32 @@
         <div class="flex items-center gap-3">
           <button
             @click="$emit('guardar-borrador')"
-            :disabled="guardandoRedistribucion || productosRedistribucion.length === 0"
+            :disabled="guardandoRedistribucionValue || productosArray.length === 0"
             class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300 flex items-center gap-2"
           >
-            <svg v-if="!guardandoRedistribucion" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg v-if="!guardandoRedistribucionValue" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
             </svg>
             <svg v-else class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            {{ guardandoRedistribucion ? 'Guardando...' : 'Guardar Borrador' }}
+            {{ guardandoRedistribucionValue ? 'Guardando...' : 'Guardar Borrador' }}
           </button>
           
           <button
             @click="$emit('confirmar-redistribucion')"
-            :disabled="!puedeConfirmarRedistribucion || confirmandoRedistribucion"
+            :disabled="!puedeConfirmarRedistribucion || confirmandoRedistribucionValue"
             class="px-6 py-2 bg-green-600 dark:bg-green-500 text-white rounded-lg hover:bg-green-700 dark:hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium"
           >
-            <svg v-if="!confirmandoRedistribucion" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg v-if="!confirmandoRedistribucionValue" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <svg v-else class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            {{ confirmandoRedistribucion ? 'Confirmando...' : 'Confirmar Redistribución' }}
+            {{ confirmandoRedistribucionValue ? 'Confirmando...' : 'Confirmar Redistribución' }}
           </button>
         </div>
       </div>
@@ -452,7 +503,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, type Ref } from 'vue'
+import { computed, ref, type Ref } from 'vue'
 import type { PedidoCompleto } from '../types'
 import type { ProductoRedistribucion, DistribucionTiendaEditada } from '../utils/redistribucionHelpers'
 import { formatNumber, formatCurrency } from '../utils/formatters'
@@ -463,6 +514,7 @@ import {
   getProgresoTextClass,
   getMensajeValidacionRedistribucion
 } from '../utils/redistribucionHelpers'
+import ExcelLikeGridView from './ExcelLikeGridView.vue'
 
 interface Props {
   pedido: PedidoCompleto | null
@@ -487,13 +539,24 @@ interface Emits {
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
+// Estado para el modo de vista
+const modoVista = ref<'compacta' | 'excel'>('compacta')
+
 // Alias para pedido para consistencia con el template
 const pedidoValue = computed(() => props.pedido)
 const esModoMabelTradingValue = computed(() => props.esModoMabelTrading)
 
+// Computed para productos (unwrap del Ref para TypeScript)
+const productosArray = computed(() => props.productosRedistribucion.value || [])
+const productosExpandidosSet = computed(() => props.productosExpandidos.value)
+
+// Unwrap de refs booleanos para TypeScript
+const guardandoRedistribucionValue = computed(() => props.guardandoRedistribucion.value)
+const confirmandoRedistribucionValue = computed(() => props.confirmandoRedistribucion.value)
+
 // Computed para resumen de redistribución
 const resumenRedistribucion = computed(() => {
-  if (props.productosRedistribucion.value.length === 0) {
+  if (productosArray.value.length === 0) {
     return {
       total_solicitado: 0,
       total_confirmado: 0,
@@ -502,9 +565,9 @@ const resumenRedistribucion = computed(() => {
     }
   }
   
-  const total_solicitado = props.productosRedistribucion.value.reduce((sum, p) => sum + p.cantidad_solicitada, 0)
-  const total_confirmado = props.productosRedistribucion.value.reduce((sum, p) => sum + p.cantidad_confirmada, 0)
-  const total_distribuido = props.productosRedistribucion.value.reduce((sum, p) => sum + p.cantidad_distribuida, 0)
+  const total_solicitado = productosArray.value.reduce((sum, p) => sum + p.cantidad_solicitada, 0)
+  const total_confirmado = productosArray.value.reduce((sum, p) => sum + p.cantidad_confirmada, 0)
+  const total_distribuido = productosArray.value.reduce((sum, p) => sum + p.cantidad_distribuida, 0)
   const diferencia_pendiente = total_confirmado - total_distribuido
   
   return {
@@ -522,7 +585,7 @@ const impactoEconomico = computed(() => {
   let subtotal_ajustado = 0
   let diferencia_economica = 0
   
-  props.productosRedistribucion.value.forEach(producto => {
+  productosArray.value.forEach(producto => {
     const costo = producto.costo_unitario || 0
     costo_unitario_total += costo
     subtotal_original += producto.cantidad_solicitada * costo
@@ -532,8 +595,8 @@ const impactoEconomico = computed(() => {
   diferencia_economica = subtotal_ajustado - subtotal_original
   
   return {
-    costo_unitario_promedio: props.productosRedistribucion.value.length > 0 
-      ? costo_unitario_total / props.productosRedistribucion.value.length 
+    costo_unitario_promedio: productosArray.value.length > 0 
+      ? costo_unitario_total / productosArray.value.length 
       : 0,
     subtotal_original,
     subtotal_ajustado,
@@ -544,8 +607,8 @@ const impactoEconomico = computed(() => {
 // Validar si se puede confirmar
 const puedeConfirmarRedistribucion = computed(() => {
   return resumenRedistribucion.value.diferencia_pendiente === 0 &&
-         props.productosRedistribucion.value.every(p => p.diferencia === 0) &&
-         props.productosRedistribucion.value.every(p => !p.error)
+         productosArray.value.every(p => p.diferencia === 0) &&
+         productosArray.value.every(p => !p.error)
 })
 
 // Funciones que emiten eventos
@@ -555,6 +618,15 @@ function toggleExpandirProducto(codigoProducto: string) {
 
 function actualizarCantidadTienda(codigoProducto: string, tiendaCodigo: string, event: Event) {
   emit('actualizar-cantidad-tienda', codigoProducto, tiendaCodigo, event)
+}
+
+// Función wrapper para usar con ExcelLikeGridView (mismo comportamiento)
+function handleActualizarCantidadTienda(codigoProducto: string, tiendaCodigo: string, event: Event) {
+  actualizarCantidadTienda(codigoProducto, tiendaCodigo, event)
+}
+
+function handleValidarYCorregirCantidad(producto: ProductoRedistribucion, tienda: DistribucionTiendaEditada) {
+  validarYCorregirCantidad(producto, tienda)
 }
 
 function validarYCorregirCantidad(producto: ProductoRedistribucion, tienda: DistribucionTiendaEditada) {

@@ -10,16 +10,13 @@
         :is-valid-pedido="isValidPedido"
         :uploading="uploading"
         :loading="loading"
-        :procesando-confirmacion="procesandoConfirmacion"
         :generando-o-c="generandoOC"
         :can-view-reporte-diferencias="canViewReporteDiferencias"
-        :can-procesar-confirmacion="canProcesarConfirmacion"
         :can-generar-o-c="canGenerarOC"
         :es-modo-mabel-trading="esModoMabelTrading"
         :pedido="pedido"
         @cargar-plantillas="goToCargarPlantillas"
         @ver-reporte="handleViewReporteDiferencias"
-        @procesar-confirmacion="showProcesarModal = true"
         @generar-oc="handleGenerarOCDesdePedido"
         @confirmar="handleConfirmar"
         @go-to-pedido="goToPedido"
@@ -56,9 +53,6 @@
           :copy-feedback="copyFeedback"
           @copy-to-clipboard="copyToClipboard"
         />
-
-        <!-- Sección de Respuesta del Proveedor -->
-        <RespuestaProveedor :pedido="pedido" />
 
         <!-- ⭐ FASE 4: Ajuste y Redistribución a Tiendas -->
         <RedistribucionTiendas
@@ -417,86 +411,6 @@
       </div>
     </div>
 
-    <!-- Modal para procesar confirmación -->
-    <div v-if="showProcesarModal" class="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4" @click.self="showProcesarModal = false">
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-md w-full p-6">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Procesar Confirmación del Proveedor</h3>
-          <button
-            @click="showProcesarModal = false"
-            :disabled="procesandoConfirmacion"
-            class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-          >
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        <div class="space-y-4">
-          <p class="text-sm text-gray-600 dark:text-gray-400">
-            Al procesar la confirmación, el sistema:
-          </p>
-          <ul class="list-disc list-inside text-sm text-gray-600 dark:text-gray-400 space-y-1 ml-2">
-            <li>Ajustará las cantidades por tienda para que coincidan con el total confirmado</li>
-            <li>Recalculará los costos si hubo cambios de precio</li>
-            <li>Generará un reporte de diferencias</li>
-          </ul>
-
-          <div class="bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 transition-colors duration-300">
-            <div class="flex items-start gap-3">
-              <svg class="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <div class="flex-1">
-                <p class="text-sm font-medium text-yellow-900 dark:text-yellow-200">Esta acción no se puede deshacer</p>
-                <p class="text-xs text-yellow-700 dark:text-yellow-300 mt-1">Una vez procesada, la respuesta será marcada como aprobada y el pedido será ajustado.</p>
-              </div>
-            </div>
-          </div>
-
-          <div class="flex items-start gap-3">
-            <input
-              type="checkbox"
-              id="forzarRedistribucion"
-              v-model="forzarRedistribucion"
-              :disabled="procesandoConfirmacion"
-              class="mt-1 h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700"
-            />
-            <label for="forzarRedistribucion" class="text-sm text-gray-700 dark:text-gray-300">
-              <span class="font-medium">Forzar redistribución proporcional</span>
-              <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Si está marcado, siempre redistribuirá proporcionalmente, ignorando cualquier distribución específica del proveedor.
-              </p>
-            </label>
-          </div>
-
-          <div class="flex items-center gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <button
-              @click="handleProcesarConfirmacion"
-              :disabled="procesandoConfirmacion"
-              class="flex-1 px-4 py-2 bg-green-600 dark:bg-green-500 text-white rounded-lg hover:bg-green-700 dark:hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              <svg v-if="!procesandoConfirmacion" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <svg v-else class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              {{ procesandoConfirmacion ? 'Procesando...' : 'Procesar Confirmación' }}
-            </button>
-            <button
-              @click="showProcesarModal = false"
-              :disabled="procesandoConfirmacion"
-              class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300"
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -506,7 +420,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { useTablePreferences } from '@/composables/useTablePreferences'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
-import type { PedidoCompleto, ProcesarConfirmacionResponse, ReporteDiferenciasResponse, UploadPlantillaResponse } from '../types'
+import type { PedidoCompleto, ReporteDiferenciasResponse, UploadPlantillaResponse } from '../types'
 // Utilidades extraídas
 import {
   formatDate,
@@ -544,7 +458,6 @@ import { useRedistribucion } from '../composables/useRedistribucion'
 // Componentes
 import PedidoHeaderActions from '../components/PedidoHeaderActions.vue'
 import PedidoCabecera from '../components/PedidoCabecera.vue'
-import RespuestaProveedor from '../components/RespuestaProveedor.vue'
 import ReporteDiferencias from '../components/ReporteDiferencias.vue'
 import RedistribucionTiendas from '../components/RedistribucionTiendas.vue'
 
@@ -757,17 +670,12 @@ const {
   pedidoInputRef,
   showSearchHelp,
   copyFeedback,
-  showProcesarModal,
-  procesandoConfirmacion,
-  forzarRedistribucion,
-  procesarConfirmacionResult,
   reporteDiferencias,
   loadingReporte,
   generandoOC,
   isValidPedido,
   loadPedido,
   loadReporteDiferencias,
-  handleProcesarConfirmacion,
   handleGenerarOCDesdePedido,
   handleViewReporteDiferencias,
   handleExportReporteDiferencias,
@@ -784,12 +692,6 @@ const tituloInterfaz = computed(() => {
   return esModoMabelTrading.value 
     ? 'Detalle del Pedido - MABEL TRADING'
     : 'Detalle del Pedido - EL RAYO'
-})
-
-const canProcesarConfirmacion = computed(() => {
-  // Permitir procesar si hay respuesta y está en estado PENDIENTE_REVISION
-  return pedido.value?.respuesta_proveedor?.cabecera.estado === 'PENDIENTE_REVISION' ||
-         pedido.value?.cabecera.estado === 'RESPUESTA_PROVEEDOR_CARGADA'
 })
 
 const canViewReporteDiferencias = computed(() => {
@@ -899,21 +801,45 @@ async function guardarEdicion() {
 
 // Funciones de gestión del pedido ahora están en el composable usePedidoDetalle
 
-function handleConfirmar() {
+async function handleConfirmar() {
   if (!pedido.value || !numeroPedido.value) return
   
-  // Construir la URL para la interfaz de MABEL TRADING
-  // Usar router.resolve para obtener la URL completa
-  const routeData = router.resolve({
-    name: 'mba3-consultas-pedido-detalle',
-    params: { id: encodeURIComponent(numeroPedido.value) },
-    query: { modo: 'confirmacion', usuario: 'mabel-trading' }
-  })
+  // Mostrar indicador de carga
+  toast.info('Guardando cambios...', 'Guardando los cambios realizados en la tabla')
   
-  // Abrir en nueva pestaña
-  window.open(routeData.href, '_blank')
-  
-  toast.info('Abriendo confirmación', 'Se ha abierto la interfaz de confirmación en una nueva pestaña')
+  try {
+    // ⭐ FASE 3: Solo guardar cambios y crear respuesta_proveedor
+    // NO procesar confirmación - eso lo hace MABEL TRADING en Fase 4
+    // Usar pedido_id si está disponible (más eficiente), sino usar numero_pedido
+    const pedidoId = pedido.value?.cabecera?.pedido_id
+    await mba3ConsultasService.crearRespuestaProveedorDesdePedido(numeroPedido.value, pedidoId)
+    
+    toast.success('Cambios guardados', 'Los cambios han sido guardados. Redirigiendo a redistribución...')
+    
+    // Recargar el pedido para obtener respuesta_proveedor actualizada
+    await loadPedido()
+    
+    // Navegar a la interfaz específica de MABEL TRADING (Fase 4)
+    router.push({
+      name: 'mba3-consultas-pedido-redistribucion',
+      params: { id: encodeURIComponent(numeroPedido.value) }
+    })
+  } catch (e: any) {
+    console.error('Error al confirmar:', e)
+    
+    // Si la respuesta ya existe, navegar directamente
+    if (e.message?.includes('ya existe') || (e as any).isConflict || (e as any).statusCode === 409) {
+      toast.info('Redirigiendo', 'La respuesta ya está creada. Abriendo redistribución...')
+      // Recargar pedido para asegurar que tenemos los datos actualizados
+      await loadPedido()
+      router.push({
+        name: 'mba3-consultas-pedido-redistribucion',
+        params: { id: encodeURIComponent(numeroPedido.value) }
+      })
+    } else {
+      toast.error('Error al guardar', e.message || 'No se pudieron guardar los cambios')
+    }
+  }
 }
 
 // Función formatDate ahora importada desde utils/formatters

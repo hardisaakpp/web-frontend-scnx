@@ -1119,16 +1119,30 @@ export const mba3ConsultasService = {
    * Este endpoint reemplaza la carga de archivo Excel - genera respuesta_proveedor desde pedido.detalles
    * Requiere permiso: mba3-consultas.proceso.execute
    * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
+   * @param pedidoId Opcional: ID del pedido (si se proporciona, se usa en lugar de numeroPedido)
    */
-  async crearRespuestaProveedorDesdePedido(numeroPedido: string): Promise<CargarRespuestaProveedorResponse> {
+  async crearRespuestaProveedorDesdePedido(numeroPedido: string, pedidoId?: string): Promise<CargarRespuestaProveedorResponse> {
     try {
+      // Usar pedido_id si está disponible, sino usar numero_pedido
+      const identifier = pedidoId || encodeURIComponent(numeroPedido)
+      // El backend usa /crear-respuesta-desde-pedido según la implementación
       const response = await mba3Api.post<CargarRespuestaProveedorResponse>(
-        `/api/pedidos/${encodeURIComponent(numeroPedido)}/crear-respuesta-proveedor`,
+        `/api/pedidos/${identifier}/crear-respuesta-desde-pedido`,
         {}
       )
       return response.data
     } catch (error: any) {
       console.error('❌ [crearRespuestaProveedorDesdePedido] Error al crear respuesta:', error)
+
+      // Manejar error 409 (ya existe - idempotencia)
+      if (error.response?.status === 409) {
+        const errorData = error.response.data
+        const message = errorData?.detail || errorData?.message || 'Esta respuesta del proveedor ya existe'
+        const customError = new Error(message)
+          ; (customError as any).isConflict = true
+          ; (customError as any).statusCode = 409
+        throw customError
+      }
 
       let message = error.message || 'Error desconocido al crear respuesta del proveedor'
 

@@ -5,7 +5,7 @@ import { ref, Ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
-import type { PedidoCompleto, ProcesarConfirmacionResponse, ReporteDiferenciasResponse } from '../types'
+import type { PedidoCompleto, ReporteDiferenciasResponse } from '../types'
 
 const SCROLL_DELAY_MS = 100
 const ROUTE_REDIRECT_DELAY_MS = 1500
@@ -34,11 +34,6 @@ export function usePedidoDetalle(options: {
   const showSearchHelp = ref(false)
   const copyFeedback = ref(false)
 
-  // Fase 4: Procesar confirmación
-  const showProcesarModal = ref(false)
-  const procesandoConfirmacion = ref(false)
-  const forzarRedistribucion = ref(false)
-  const procesarConfirmacionResult = ref<ProcesarConfirmacionResponse | null>(null)
   const reporteDiferencias = ref<ReporteDiferenciasResponse | null>(null)
   const loadingReporte = ref(false)
   const generandoOC = ref(false)
@@ -128,48 +123,6 @@ export function usePedidoDetalle(options: {
       }
     } finally {
       loadingReporte.value = false
-    }
-  }
-
-  /**
-   * Procesa la confirmación del proveedor
-   */
-  async function handleProcesarConfirmacion() {
-    if (!options.pedido.value || !options.numeroPedido.value) return
-    
-    procesandoConfirmacion.value = true
-    
-    try {
-      const result = await mba3ConsultasService.procesarConfirmacionProveedor(
-        options.numeroPedido.value,
-        forzarRedistribucion.value
-      )
-      
-      procesarConfirmacionResult.value = result
-      reporteDiferencias.value = {
-        pedido_id: result.pedido_id,
-        numero_pedido: options.pedido.value.cabecera.numero_pedido,
-        resumen: result.resumen,
-        detalle: result.reporte_diferencias
-      }
-      
-      toast.success('Confirmación procesada', result.message)
-      showProcesarModal.value = false
-      
-      // Recargar el pedido para actualizar estados
-      await loadPedido()
-    } catch (e: any) {
-      // Manejar error 409 (ya procesado)
-      if ((e as any).isConflict || (e as any).statusCode === 409) {
-        toast.info('Ya procesado', e.message || 'Esta respuesta ya fue procesada anteriormente')
-        showProcesarModal.value = false
-        // Cargar el reporte existente
-        await loadReporteDiferencias()
-      } else {
-        toast.error('Error al procesar', e.message || 'No se pudo procesar la confirmación')
-      }
-    } finally {
-      procesandoConfirmacion.value = false
     }
   }
 
@@ -317,10 +270,6 @@ export function usePedidoDetalle(options: {
     pedidoInputRef,
     showSearchHelp,
     copyFeedback,
-    showProcesarModal,
-    procesandoConfirmacion,
-    forzarRedistribucion,
-    procesarConfirmacionResult,
     reporteDiferencias,
     loadingReporte,
     generandoOC,
@@ -331,7 +280,6 @@ export function usePedidoDetalle(options: {
     // Funciones
     loadPedido,
     loadReporteDiferencias,
-    handleProcesarConfirmacion,
     handleGenerarOCDesdePedido,
     handleViewReporteDiferencias,
     handleExportReporteDiferencias,

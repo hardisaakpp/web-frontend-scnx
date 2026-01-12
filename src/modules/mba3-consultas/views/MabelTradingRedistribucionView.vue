@@ -1,0 +1,283 @@
+<template>
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div class="space-y-6">
+      <!-- Header -->
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6">
+        <div class="flex items-center justify-between">
+          <div>
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+              Redistribución de Productos - MABEL TRADING
+            </h1>
+            <p v-if="pedido" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              Pedido: <span class="font-medium text-gray-900 dark:text-white">{{ pedido.cabecera.numero_pedido }}</span>
+            </p>
+          </div>
+          <div class="flex items-center gap-3">
+            <button
+              v-if="pedido"
+              @click="goBack"
+              class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-700 dark:text-gray-300 flex items-center gap-2 text-sm"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              Volver
+            </button>
+            <div class="relative">
+              <input
+                v-model="pedidoIdInput"
+                @keyup.enter="goToPedido"
+                type="text"
+                placeholder="Buscar por N° de pedido"
+                class="w-64 pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-purple-500 focus:border-purple-500"
+              />
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg class="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loading state -->
+      <div v-if="loading && !pedido" class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-12 text-center">
+        <svg class="animate-spin h-8 w-8 text-indigo-600 dark:text-indigo-400 mx-auto" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <p class="mt-4 text-sm text-gray-600 dark:text-gray-400">Cargando pedido...</p>
+      </div>
+
+      <!-- Error state -->
+      <div v-if="error" class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-6 transition-colors duration-300">
+        <div class="flex items-start gap-3">
+          <svg class="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div class="flex-1">
+            <p class="text-sm font-semibold text-red-900 dark:text-red-200">Error al cargar el pedido</p>
+            <p class="text-sm text-red-800 dark:text-red-300 mt-1">{{ error }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Información básica del pedido (opcional, solo si hay pedido) -->
+      <PedidoCabecera
+        v-if="pedido"
+        :pedido="pedido"
+        :copy-feedback="copyFeedback"
+        @copy-to-clipboard="copyToClipboard"
+      />
+
+      <!-- Sección de Redistribución (siempre visible si hay pedido) -->
+      <RedistribucionTiendas
+        v-if="pedido"
+        :pedido="pedido"
+        :es-modo-mabel-trading="true"
+        :productos-redistribucion="redistribucion.productosRedistribucion"
+        :productos-expandidos="redistribucion.productosExpandidos"
+        :guardando-redistribucion="redistribucion.guardandoRedistribucion"
+        :confirmando-redistribucion="redistribucion.confirmandoRedistribucion"
+        @toggle-expandir-producto="toggleExpandirProducto"
+        @actualizar-cantidad-tienda="actualizarCantidadTienda"
+        @validar-y-corregir-cantidad="validarYCorregirCantidad"
+        @distribuir-proporcionalmente="distribuirProporcionalmente"
+        @copiar-distribucion-original="copiarDistribucionOriginal"
+        @resetear-distribucion="resetearDistribucion"
+        @guardar-borrador="guardarBorradorRedistribucion"
+        @confirmar-redistribucion="confirmarRedistribucion"
+      />
+
+      <!-- Mensaje cuando no hay pedido cargado -->
+      <div v-if="!pedido && !loading && !error" class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-12 text-center">
+        <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        <h3 class="mt-4 text-lg font-medium text-gray-900 dark:text-white">Ingrese un número de pedido</h3>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+          Use el campo de búsqueda arriba para buscar un pedido y comenzar la redistribución.
+        </p>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, watch, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useToast } from '@/composables/useToast'
+import { mba3ConsultasService } from '../services/mba3ConsultasApi'
+import type { PedidoCompleto } from '../types'
+import type { ProductoRedistribucion, DistribucionTiendaEditada } from '../utils/redistribucionHelpers'
+import { usePedidoDetalle } from '../composables/usePedidoDetalle'
+import { useRedistribucion } from '../composables/useRedistribucion'
+import PedidoCabecera from '../components/PedidoCabecera.vue'
+import RedistribucionTiendas from '../components/RedistribucionTiendas.vue'
+
+const route = useRoute()
+const router = useRouter()
+const toast = useToast()
+
+const pedido = ref<PedidoCompleto | null>(null)
+const pedidoIdInput = ref('')
+
+const numeroPedido = computed(() => {
+  const id = route.params.id as string
+  return id ? decodeURIComponent(id) : ''
+})
+
+const esModoMabelTrading = computed(() => true) // Siempre true en esta vista
+
+// Inicializar composable de pedido detalle
+const pedidoDetalle = usePedidoDetalle({
+  pedido,
+  numeroPedido,
+  esModoMabelTrading,
+  reporteDiferencias: ref(null)
+})
+
+const {
+  loading,
+  error,
+  loadPedido,
+  copyFeedback,
+  copyToClipboard
+} = pedidoDetalle
+
+// Inicializar composable de redistribución
+const redistribucion = useRedistribucion({
+  pedido,
+  numeroPedido,
+  esModoMabelTrading,
+  getReporteDiferencias: () => pedidoDetalle.reporteDiferencias,
+  loadPedido: () => pedidoDetalle.loadPedido()
+})
+
+// Computed para validar si se puede confirmar
+const puedeConfirmarRedistribucion = computed(() => {
+  const productos = redistribucion.productosRedistribucion.value
+  if (productos.length === 0) return false
+  
+  const total_confirmado = productos.reduce((sum, p) => sum + p.cantidad_confirmada, 0)
+  const total_distribuido = productos.reduce((sum, p) => sum + p.cantidad_distribuida, 0)
+  const diferencia_pendiente = total_confirmado - total_distribuido
+  
+  return diferencia_pendiente === 0 &&
+         productos.every(p => p.diferencia === 0) &&
+         productos.every(p => !p.error)
+})
+
+// Funciones de redistribución
+function toggleExpandirProducto(codigoProducto: string) {
+  redistribucion.toggleExpandirProducto(codigoProducto)
+}
+
+function actualizarCantidadTienda(codigoProducto: string, tiendaCodigo: string, event: Event) {
+  redistribucion.actualizarCantidadTienda(codigoProducto, tiendaCodigo, event)
+}
+
+function validarYCorregirCantidad(producto: ProductoRedistribucion, tienda: DistribucionTiendaEditada) {
+  redistribucion.validarYCorregirCantidad(producto, tienda)
+}
+
+function distribuirProporcionalmente(codigoProducto: string) {
+  redistribucion.distribuirProporcionalmente(codigoProducto)
+}
+
+function copiarDistribucionOriginal(codigoProducto: string) {
+  redistribucion.copiarDistribucionOriginal(codigoProducto)
+}
+
+function resetearDistribucion(codigoProducto: string) {
+  redistribucion.resetearDistribucion(codigoProducto)
+}
+
+async function guardarBorradorRedistribucion() {
+  await redistribucion.guardarBorradorRedistribucion()
+}
+
+async function confirmarRedistribucion() {
+  await redistribucion.confirmarRedistribucion(puedeConfirmarRedistribucion)
+}
+
+// Navegación
+function goToPedido() {
+  if (!pedidoIdInput.value.trim()) return
+  
+  router.push({
+    name: 'mba3-consultas-pedido-redistribucion',
+    params: { id: encodeURIComponent(pedidoIdInput.value.trim()) }
+  })
+}
+
+function goBack() {
+  router.back()
+}
+
+// Watch para inicializar redistribución cuando cambie el pedido
+watch(
+  () => pedido.value,
+  async (newPedido) => {
+    if (!newPedido) {
+      redistribucion.productosRedistribucion.value = []
+      redistribucion.productosExpandidos.value.clear()
+      return
+    }
+    
+    // Si hay respuesta_proveedor, inicializar normalmente
+    if (newPedido.respuesta_proveedor) {
+      redistribucion.inicializarProductosRedistribucion()
+    } else if (newPedido.detalles && newPedido.detalles.length > 0) {
+      // Si no hay respuesta_proveedor pero hay pedido con detalles,
+      // intentar crear respuesta_proveedor automáticamente (solo crear, NO procesar)
+      // Esto puede pasar si EL RAYO aún no ha hecho clic en "Confirmar"
+      try {
+        toast.info('Creando respuesta', 'Generando respuesta del proveedor desde los ajustes de EL RAYO...')
+        // Usar pedido_id si está disponible (más eficiente), sino usar numero_pedido
+        const pedidoId = newPedido?.cabecera?.pedido_id
+        await mba3ConsultasService.crearRespuestaProveedorDesdePedido(numeroPedido.value, pedidoId)
+        
+        // Recargar el pedido para obtener respuesta_proveedor
+        await loadPedido()
+        
+        // Si ahora hay respuesta_proveedor, inicializar redistribución
+        if (pedido.value?.respuesta_proveedor) {
+          redistribucion.inicializarProductosRedistribucion()
+          toast.success('Listo', 'La redistribución está lista. Puede comenzar a distribuir manualmente.')
+        }
+      } catch (e: any) {
+        console.error('Error al crear respuesta automáticamente:', e)
+        // Si la respuesta ya existe, recargar y continuar
+        if (e.message?.includes('ya existe') || (e as any).isConflict || (e as any).statusCode === 409) {
+          await loadPedido()
+          if (pedido.value?.respuesta_proveedor) {
+            redistribucion.inicializarProductosRedistribucion()
+          }
+        } else {
+          toast.error('Error', e.message || 'No se pudo crear la respuesta automáticamente. Por favor, contacte a EL RAYO para que complete la Fase 3.')
+        }
+      }
+    }
+  },
+  { immediate: true }
+)
+
+// Watch para reaccionar a cambios en el parámetro de ruta
+watch(
+  () => route.params.id,
+  async (newId, oldId) => {
+    if (newId && newId !== oldId) {
+      await loadPedido()
+      pedidoIdInput.value = ''
+    }
+  }
+)
+
+onMounted(() => {
+  if (numeroPedido.value) {
+    loadPedido()
+  }
+})
+</script>
