@@ -6,7 +6,7 @@ import type {
 } from '../types'
 import type { OrdenCompraResponse, OrdenCompraLogResponse, RemisionResponse } from '../types'
 import type { HealthResponse, ProcesoResponse } from '../types'
-import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstado, ProcesoEstadoResponse, SugerenciaProducto, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuRequest, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, PedidoCompleto, CargarRespuestaProveedorResponse, RespuestaProveedorResponse, ProcesarConfirmacionResponse, ReporteDiferenciasResponse, IntegracionSAPResponse, ActualizarCostoPedidoResponse, AjusteDetalle, ResumenConfirmacion } from '../types'
+import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstado, ProcesoEstadoResponse, SugerenciaProducto, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuRequest, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, PedidoCompleto, CargarRespuestaProveedorResponse, RespuestaProveedorResponse, ProcesarConfirmacionResponse, ReporteDiferenciasResponse, IntegracionSAPResponse, ActualizarCostoPedidoResponse, AjusteDetalle, ResumenConfirmacion, GuardarModificacionesColumnasRequest, GuardarModificacionesColumnasResponse, ObtenerModificacionesColumnasResponse } from '../types'
 
 // Usar la URL base del backend MBA3
 const API_BASE_URL = import.meta.env.VITE_MBA3_API_BASE_URL || 'http://localhost:8000'
@@ -1523,6 +1523,102 @@ export const mba3ConsultasService = {
       console.error('❌ [confirmarRedistribucion] Error al confirmar redistribución:', error)
 
       let message = error.message || 'Error desconocido al confirmar redistribución'
+
+      if (error.response?.data) {
+        if (error.response.data.detail) {
+          message = error.response.data.detail
+        } else if (error.response.data.message) {
+          message = error.response.data.message
+        }
+      }
+
+      throw new Error(message)
+    }
+  },
+
+  /**
+   * Guarda las modificaciones de columnas (resaltado) para un pedido
+   * Requiere permiso: mba3-consultas.proceso.execute
+   * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
+   * @param modificaciones Array de modificaciones de columnas
+   */
+  async guardarModificacionesColumnas(
+    numeroPedido: string,
+    modificaciones: Array<{ pedido_detalle_id: string; columna_key: string }>
+  ): Promise<GuardarModificacionesColumnasResponse> {
+    try {
+      const payload: GuardarModificacionesColumnasRequest = {
+        numero_pedido: numeroPedido,
+        modificaciones: modificaciones.map(m => ({
+          pedido_detalle_id: m.pedido_detalle_id,
+          columna_key: m.columna_key
+        }))
+      }
+
+      console.log('📤 [guardarModificacionesColumnas] Enviando:', {
+        url: `/api/pedidos/${encodeURIComponent(numeroPedido)}/modificaciones-columnas`,
+        payload,
+        modificaciones_count: modificaciones.length
+      })
+
+      const response = await mba3Api.post<GuardarModificacionesColumnasResponse>(
+        `/api/pedidos/${encodeURIComponent(numeroPedido)}/modificaciones-columnas`,
+        payload
+      )
+
+      console.log('✅ [guardarModificacionesColumnas] Respuesta exitosa:', response.data)
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [guardarModificacionesColumnas] Error al guardar modificaciones:', error)
+
+      let message = error.message || 'Error desconocido al guardar modificaciones'
+
+      if (error.response?.data) {
+        if (error.response.data.detail) {
+          message = error.response.data.detail
+        } else if (error.response.data.message) {
+          message = error.response.data.message
+        }
+      }
+
+      throw new Error(message)
+    }
+  },
+
+  /**
+   * Obtiene las modificaciones de columnas (resaltado) para un pedido
+   * Requiere permiso: mba3-consultas.facturas.view
+   * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
+   */
+  async obtenerModificacionesColumnas(
+    numeroPedido: string
+  ): Promise<ObtenerModificacionesColumnasResponse> {
+    try {
+      console.log('📤 [obtenerModificacionesColumnas] Obteniendo:', {
+        url: `/api/pedidos/${encodeURIComponent(numeroPedido)}/modificaciones-columnas`
+      })
+
+      const response = await mba3Api.get<ObtenerModificacionesColumnasResponse>(
+        `/api/pedidos/${encodeURIComponent(numeroPedido)}/modificaciones-columnas`
+      )
+
+      console.log('✅ [obtenerModificacionesColumnas] Respuesta exitosa:', {
+        modificaciones_count: response.data.modificaciones?.length || 0
+      })
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [obtenerModificacionesColumnas] Error al obtener modificaciones:', error)
+
+      // Si es 404, retornar respuesta vacía (no hay modificaciones guardadas)
+      if (error.response?.status === 404) {
+        return {
+          status: 'success',
+          numero_pedido: numeroPedido,
+          modificaciones: []
+        }
+      }
+
+      let message = error.message || 'Error desconocido al obtener modificaciones'
 
       if (error.response?.data) {
         if (error.response.data.detail) {

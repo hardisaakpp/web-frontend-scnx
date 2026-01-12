@@ -921,3 +921,29 @@ export interface ActualizarCostoPedidoResponse {
   // ⭐ Campo para actualización de comentario
   comentario_nuevo?: string | null
 }
+
+// ⭐ FASE 3: Persistencia de modificaciones de columnas
+export interface ColumnaModificada {
+  pedido_detalle_id: string
+  columna_key: string
+  modificado_por?: string
+  fecha_modificacion?: string
+}
+
+export interface GuardarModificacionesColumnasRequest {
+  numero_pedido: string
+  modificaciones: ColumnaModificada[]
+}
+
+export interface GuardarModificacionesColumnasResponse {
+  status: 'success' | 'error'
+  message: string
+  numero_pedido: string
+  modificaciones_guardadas: number
+}
+
+export interface ObtenerModificacionesColumnasResponse {
+  status: 'success'
+  numero_pedido: string
+  modificaciones: ColumnaModificada[]
+}

@@ -48,6 +48,38 @@ export function useColumnManagement(
   }
 
   /**
+   * Guarda una modificación en el backend
+   */
+  async function guardarModificacionEnBackend(detalleId: string, columnKey: string) {
+    if (!numeroPedido.value) return
+    
+    try {
+      // Obtener todas las modificaciones actuales
+      const modificacionesActuales: Array<{ pedido_detalle_id: string; columna_key: string }> = []
+      
+      if (columnasModificadas) {
+        columnasModificadas.value.forEach(key => {
+          const [detId, colKey] = key.split(':')
+          modificacionesActuales.push({
+            pedido_detalle_id: detId,
+            columna_key: colKey
+          })
+        })
+      }
+      
+      // Guardar todas las modificaciones en el backend
+      await mba3ConsultasService.guardarModificacionesColumnas(
+        numeroPedido.value,
+        modificacionesActuales
+      )
+    } catch (error: any) {
+      // No mostrar error al usuario, solo loguear
+      // El resaltado seguirá funcionando localmente
+      console.warn('⚠️ [useColumnManagement] No se pudo guardar modificación en backend:', error.message)
+    }
+  }
+
+  /**
    * Inicia la edición de una celda
    */
   function iniciarEdicion(detalle: any, fieldType: 'costo' | 'total' | 'comentario' = 'costo') {
@@ -170,6 +202,10 @@ export function useColumnManagement(
         }
         
         marcarColumnaModificada(detalleId, 'costo_doc_sin_iva')
+        
+        // Guardar modificación en el backend
+        await guardarModificacionEnBackend(detalleId, 'costo_doc_sin_iva')
+        
         if (onSaveStorage) onSaveStorage()
         
         toast.success('Costo actualizado', `Costo unitario actualizado a ${formatCurrency(parseFloat(newValueStr))}`)
@@ -186,6 +222,10 @@ export function useColumnManagement(
         }
         
         marcarColumnaModificada(detalleId, 'total')
+        
+        // Guardar modificación en el backend
+        await guardarModificacionEnBackend(detalleId, 'total')
+        
         if (onSaveStorage) onSaveStorage()
         
         toast.success('Total actualizado', `Total actualizado a ${formatNumber(parseFloat(newValueStr))}`)
@@ -203,6 +243,10 @@ export function useColumnManagement(
         }
         
         marcarColumnaModificada(detalleId, 'comentario')
+        
+        // Guardar modificación en el backend
+        await guardarModificacionEnBackend(detalleId, 'comentario')
+        
         if (onSaveStorage) onSaveStorage()
         
         toast.success('Comentario guardado', 'El comentario se ha guardado correctamente')

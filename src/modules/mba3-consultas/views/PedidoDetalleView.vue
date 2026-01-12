@@ -483,7 +483,8 @@ const dragOverColumnIndex = ref<number | null>(null)
 
 // La interfaz EditingCell ahora está importada desde composables/useColumnManagement
 
-// ⭐ Funciones para persistencia en sessionStorage
+// ⭐ Funciones para persistencia en sessionStorage (fallback/migración)
+// ⚠️ NOTA: El backend es la fuente principal de verdad. sessionStorage solo se usa como fallback.
 function getStorageKey(): string {
   return `pedido_columnas_modificadas_${numeroPedido.value}`
 }
@@ -496,12 +497,19 @@ function guardarColumnasModificadasEnStorage() {
     const columnasArray = Array.from(columnasModificadas.value)
     sessionStorage.setItem(storageKey, JSON.stringify(columnasArray))
   } catch (e) {
-    console.warn('Error al guardar columnas modificadas en sessionStorage:', e)
+    console.warn('Error al guardar columnas modificadas en sessionStorage (fallback):', e)
   }
 }
 
 function cargarColumnasModificadasDesdeStorage() {
   if (!numeroPedido.value) return
+  
+  // Solo cargar desde sessionStorage si no hay modificaciones ya cargadas desde el backend
+  // Esto permite migración gradual de datos
+  if (columnasModificadas.value.size > 0) {
+    console.log('ℹ️ [PedidoDetalleView] Modificaciones ya cargadas desde backend, omitiendo sessionStorage')
+    return
+  }
   
   try {
     const storageKey = getStorageKey()
@@ -509,10 +517,13 @@ function cargarColumnasModificadasDesdeStorage() {
     
     if (stored) {
       const columnasArray = JSON.parse(stored) as string[]
+      // Limpiar antes de cargar desde storage
+      columnasModificadas.value.clear()
       columnasModificadas.value = new Set(columnasArray)
+      console.log(`ℹ️ [PedidoDetalleView] Cargadas ${columnasArray.length} modificaciones desde sessionStorage (fallback)`)
     }
   } catch (e) {
-    console.warn('Error al cargar columnas modificadas desde sessionStorage:', e)
+    console.warn('Error al cargar columnas modificadas desde sessionStorage (fallback):', e)
   }
 }
 
@@ -791,9 +802,13 @@ const columnManagement = useColumnManagement(pedido, numeroPedido, columnasModif
 // Extraer funciones del composable para uso directo
 const { editingCell, iniciarEdicion, cancelarEdicion, manejarTeclasEdicion, isColumnaModificada, getColumnaModificadaKey } = columnManagement
 
-// Wrapper para guardarEdicion que incluye guardar en storage
+// Wrapper para guardarEdicion que incluye guardar en storage (fallback)
+// ⚠️ NOTA: El backend se actualiza automáticamente en useColumnManagement
 async function guardarEdicion() {
-  await columnManagement.guardarEdicion(() => guardarColumnasModificadasEnStorage())
+  await columnManagement.guardarEdicion(() => {
+    // Guardar en sessionStorage como fallback (migración)
+    guardarColumnasModificadasEnStorage()
+  })
 }
 
 // ⭐ ELIMINADO: loadTablePreferences, saveTablePreferences, debouncedSavePreferences

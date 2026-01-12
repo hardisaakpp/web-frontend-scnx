@@ -67,15 +67,32 @@ export function usePedidoDetalle(options: {
       }
       
       // Si se carga un pedido diferente, limpiar las columnas modificadas del pedido anterior
-      if (pedidoAnterior && pedidoAnterior !== options.numeroPedido.value && options.limpiarColumnasModificadasEnStorage) {
-        options.limpiarColumnasModificadasEnStorage()
+      if (pedidoAnterior && pedidoAnterior !== options.numeroPedido.value) {
+        console.log(`🔄 [usePedidoDetalle] Cambiando de pedido: ${pedidoAnterior} → ${options.numeroPedido.value}`)
+        if (options.limpiarColumnasModificadasEnStorage) {
+          options.limpiarColumnasModificadasEnStorage()
+        }
+        // También limpiar el Set directamente
+        if (options.columnasModificadas) {
+          options.columnasModificadas.value.clear()
+        }
       }
       
       options.pedido.value = await mba3ConsultasService.getPedido(options.numeroPedido.value, true)
       
-      // Cargar columnas modificadas desde sessionStorage después de cargar el pedido
-      if (options.cargarColumnasModificadasDesdeStorage) {
+      // ⭐ FASE 3: Cargar columnas modificadas desde el backend
+      console.log(`📥 [usePedidoDetalle] Cargando modificaciones para pedido: ${options.numeroPedido.value}`)
+      const modificacionesCargadas = await cargarModificacionesDesdeBackend()
+      
+      // Fallback: Cargar desde sessionStorage SOLO si el backend no tiene datos (migración)
+      if (!modificacionesCargadas && options.cargarColumnasModificadasDesdeStorage) {
+        console.log('📦 [usePedidoDetalle] Usando fallback: sessionStorage')
         options.cargarColumnasModificadasDesdeStorage()
+      }
+      
+      // Log final del estado de modificaciones
+      if (options.columnasModificadas) {
+        console.log(`✅ [usePedidoDetalle] Estado final: ${options.columnasModificadas.value.size} modificaciones cargadas`)
       }
       
       // Inicializar productos para redistribución si hay respuesta del proveedor
@@ -95,6 +112,49 @@ export function usePedidoDetalle(options: {
       toast.error('Error', errorMessage)
     } finally {
       loading.value = false
+    }
+  }
+
+  /**
+   * Carga las modificaciones de columnas desde el backend
+   * @returns true si se cargaron modificaciones desde el backend, false en caso contrario
+   */
+  async function cargarModificacionesDesdeBackend(): Promise<boolean> {
+    if (!options.numeroPedido.value || !options.columnasModificadas) return false
+    
+    try {
+      const response = await mba3ConsultasService.obtenerModificacionesColumnas(
+        options.numeroPedido.value
+      )
+      
+      if (response.modificaciones && response.modificaciones.length > 0) {
+        // Limpiar modificaciones actuales antes de cargar desde backend
+        options.columnasModificadas.value.clear()
+        
+        // Cargar modificaciones desde el backend
+        response.modificaciones.forEach(mod => {
+          const key = `${mod.pedido_detalle_id}:${mod.columna_key}`
+          options.columnasModificadas!.value.add(key)
+          console.log(`  ✓ Agregada modificación: ${key}`)
+        })
+        
+        console.log(`✅ [usePedidoDetalle] Cargadas ${response.modificaciones.length} modificaciones desde backend`)
+        return true // Se cargaron modificaciones desde el backend
+      }
+      
+      // Si el array está vacío, no hay modificaciones
+      console.log('ℹ️ [usePedidoDetalle] No hay modificaciones guardadas en backend para este pedido')
+      return false
+    } catch (error: any) {
+      // Si es 404, simplemente no hay modificaciones guardadas (normal)
+      if (error.response?.status === 404 || error.message?.includes('404') || error.message?.includes('No existe')) {
+        console.log('ℹ️ [usePedidoDetalle] No hay modificaciones guardadas en backend para este pedido (404)')
+        return false
+      } else {
+        console.warn('⚠️ [usePedidoDetalle] Error al cargar modificaciones desde backend:', error.message)
+        // Si hay un error diferente a 404, retornar false para usar fallback
+        return false
+      }
     }
   }
 
