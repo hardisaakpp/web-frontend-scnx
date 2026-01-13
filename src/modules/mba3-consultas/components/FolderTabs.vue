@@ -1,46 +1,5 @@
 <template>
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden">
-    <!-- Pestañas -->
-    <div class="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-      <button
-        v-for="(tab, index) in tabs"
-        :key="tab.id"
-        @click="selectTab(tab.id)"
-        :disabled="disabled"
-        class="relative flex-1 px-4 py-4 font-medium text-sm transition-all duration-300 focus:outline-none text-center group disabled:opacity-50 disabled:cursor-not-allowed"
-        :class="getTabClass(tab, index)"
-      >
-        <!-- Efecto de pestaña tipo carpeta -->
-        <div class="flex items-center justify-center gap-2 flex-wrap">
-          <span class="whitespace-nowrap">{{ tab.label }}</span>
-          <span v-if="tab.badge" class="px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap" :class="getBadgeClass(tab)">
-            {{ tab.badge }}
-          </span>
-        </div>
-        
-        <!-- Efecto de brillo en hover -->
-        <div class="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-lg"
-             :class="getHoverGlowClass(tab)"></div>
-        
-        <!-- Indicador de pestaña activa (línea inferior con efecto glass) -->
-        <div
-          v-if="activeTab === tab.id"
-          class="absolute bottom-0 left-0 right-0 h-1 transition-all duration-300 rounded-t-full shadow-lg"
-          :class="getActiveIndicatorClass(tab)"
-        >
-          <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-pulse"></div>
-        </div>
-        
-        <!-- Conector tipo carpeta (solo en escritorio, para las no activas) -->
-        <div
-          v-if="index < tabs.length - 1 && activeTab !== tab.id"
-          class="hidden md:block absolute top-0 -right-4 w-4 h-full z-10"
-          :class="getConnectorClass(tab)"
-          style="clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 20% 50%)"
-        ></div>
-      </button>
-    </div>
-
     <!-- Contenido de las pestañas -->
     <div class="p-6">
       <slot :name="`tab-${activeTab}`" :tab="activeTab">

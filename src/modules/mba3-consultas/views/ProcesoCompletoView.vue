@@ -83,7 +83,6 @@
     >
       <div>
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white transition-colors duration-300">Procesos de Integración MBA3-SAP</h1>
-        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400 transition-colors duration-300">Ejecuta cada paso del proceso de integración de forma independiente cuando lo necesites</p>
       </div>
 
       <!-- Sistema de Pestañas -->
