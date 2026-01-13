@@ -683,12 +683,12 @@ async function handleGenerarOC() {
       // Recargar el procesamiento para actualizar estados
       await loadProcesamientoSAP()
 
-      // No redirigir automáticamente si hay Solicitudes de Transferencia para que el usuario las vea
-      if (!result.solicitudes_transferencia) {
-        setTimeout(() => {
-          router.push('/mba3-consultas/proceso-completo?tab=procesar-oc')
-        }, 1500)
-      }
+      // Redirigir a la vista de procesos después de un breve delay
+      // Si hay Solicitudes de Transferencia, dar tiempo para que el usuario las vea
+      const delay = result.solicitudes_transferencia ? 3000 : 1500
+      setTimeout(() => {
+        router.push('/mba3-consultas/proceso')
+      }, delay)
     } else {
       toast.error('Error al generar orden', result.message || 'No se pudo generar la orden de compra')
     }

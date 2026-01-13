@@ -12,6 +12,7 @@
         :loading="loading"
         :loading-reporte="loadingReporte"
         :generando-o-c="generandoOC"
+        :confirmando="confirmando"
         :can-view-reporte-diferencias="canViewReporteDiferencias"
         :can-generar-o-c="canGenerarOC"
         :es-modo-mabel-trading="esModoMabelTrading"
@@ -494,6 +495,7 @@ const columnasModificadas = ref<Set<string>>(new Set())
 
 // Gestión de columnas visibles en la tabla
 const showColumnSelector = ref(false)
+const confirmando = ref(false)
 const draggedColumnIndex = ref<number | null>(null)
 const dragOverColumnIndex = ref<number | null>(null)
 
@@ -863,7 +865,11 @@ async function guardarEdicion() {
 // Funciones de gestión del pedido ahora están en el composable usePedidoDetalle
 
 async function handleConfirmar() {
-  if (!pedido.value || !numeroPedido.value) return
+  // Prevenir múltiples clics
+  if (confirmando.value || !pedido.value || !numeroPedido.value) return
+  
+  // Establecer estado de confirmación
+  confirmando.value = true
   
   // Mostrar indicador de carga
   toast.info('Guardando cambios...', 'Guardando los cambios realizados en la tabla')
@@ -899,8 +905,12 @@ async function handleConfirmar() {
       })
     } else {
       toast.error('Error al guardar', e.message || 'No se pudieron guardar los cambios')
+      // Solo resetear el estado si hay un error real (no si es conflicto 409)
+      confirmando.value = false
     }
   }
+  // Nota: No resetear confirmando.value aquí porque se redirige a otra página
+  // Si hay un error y no se redirige, ya se resetea en el catch
 }
 
 // Función formatDate ahora importada desde utils/formatters
