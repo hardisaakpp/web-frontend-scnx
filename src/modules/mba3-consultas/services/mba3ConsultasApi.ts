@@ -6,7 +6,7 @@ import type {
 } from '../types'
 import type { OrdenCompraResponse, OrdenCompraLogResponse, RemisionResponse } from '../types'
 import type { HealthResponse, ProcesoResponse } from '../types'
-import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstado, ProcesoEstadoResponse, SugerenciaProducto, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuRequest, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, PedidoCompleto, CargarRespuestaProveedorResponse, RespuestaProveedorResponse, ProcesarConfirmacionResponse, ReporteDiferenciasResponse, IntegracionSAPResponse, ActualizarCostoPedidoResponse, AjusteDetalle, ResumenConfirmacion, GuardarModificacionesColumnasRequest, GuardarModificacionesColumnasResponse, ObtenerModificacionesColumnasResponse, ProcesamientoSAPResponse } from '../types'
+import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstado, ProcesoEstadoResponse, SugerenciaProducto, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuRequest, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, PedidoCompleto, CargarRespuestaProveedorResponse, RespuestaProveedorResponse, ProcesarConfirmacionResponse, ReporteDiferenciasResponse, IntegracionSAPResponse, ActualizarCostoPedidoResponse, AjusteDetalle, ResumenConfirmacion, GuardarModificacionesColumnasRequest, GuardarModificacionesColumnasResponse, ObtenerModificacionesColumnasResponse, ProcesamientoSAPResponse, PedidosListadoResponse, CrearOCDesdePedidoResponse } from '../types'
 
 // Usar la URL base del backend MBA3
 const API_BASE_URL = import.meta.env.VITE_MBA3_API_BASE_URL || 'http://localhost:8000'
@@ -1290,10 +1290,11 @@ export const mba3ConsultasService = {
    * Crea una orden de compra desde un pedido confirmado
    * Requiere permiso: mba3-consultas.proceso.execute
    * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
+   * @returns Respuesta con información de la OC creada y Solicitudes de Transferencia (si se integró a SAP)
    */
-  async crearOrdenCompraDesdePedido(numeroPedido: string): Promise<any> {
+  async crearOrdenCompraDesdePedido(numeroPedido: string): Promise<CrearOCDesdePedidoResponse> {
     try {
-      const response = await mba3Api.post(`/api/pedidos/${encodeURIComponent(numeroPedido)}/crear-orden-compra`)
+      const response = await mba3Api.post<CrearOCDesdePedidoResponse>(`/api/pedidos/${encodeURIComponent(numeroPedido)}/crear-orden-compra`)
       return response.data
     } catch (error: any) {
       console.error('❌ [crearOrdenCompraDesdePedido] Error al crear orden de compra:', error)
@@ -1731,6 +1732,72 @@ export const mba3ConsultasService = {
       }
 
       let message = error.message || 'Error desconocido al obtener procesamiento SAP'
+
+      if (error.response?.data) {
+        if (error.response.data.detail) {
+          message = error.response.data.detail
+        } else if (error.response.data.message) {
+          message = error.response.data.message
+        }
+      }
+
+      throw new Error(message)
+    }
+  },
+
+  /**
+   * Obtiene lista de pedidos con filtros y paginación
+   * Requiere permiso: mba3-consultas.facturas.view
+   * @param filtros Filtros opcionales para la búsqueda
+   * @returns Lista de pedidos con metadata de paginación
+   */
+  async getPedidosListado(filtros?: {
+    estado?: string
+    fecha_desde?: string
+    fecha_hasta?: string
+    proveedor_nombre?: string
+    numero_pedido?: string
+    creado_por?: string
+    limit?: number
+    offset?: number
+  }): Promise<import('../types').PedidosListadoResponse> {
+    try {
+      const params = new URLSearchParams()
+      
+      if (filtros?.estado) {
+        params.append('estado', filtros.estado)
+      }
+      if (filtros?.fecha_desde) {
+        params.append('fecha_desde', filtros.fecha_desde)
+      }
+      if (filtros?.fecha_hasta) {
+        params.append('fecha_hasta', filtros.fecha_hasta)
+      }
+      if (filtros?.proveedor_nombre) {
+        params.append('proveedor_nombre', filtros.proveedor_nombre)
+      }
+      if (filtros?.numero_pedido) {
+        params.append('numero_pedido', filtros.numero_pedido)
+      }
+      if (filtros?.creado_por) {
+        params.append('creado_por', filtros.creado_por)
+      }
+      if (filtros?.limit !== undefined) {
+        params.append('limit', filtros.limit.toString())
+      }
+      if (filtros?.offset !== undefined) {
+        params.append('offset', filtros.offset.toString())
+      }
+
+      const queryString = params.toString()
+      const url = queryString ? `/api/pedidos?${queryString}` : '/api/pedidos'
+      
+      const response = await mba3Api.get<PedidosListadoResponse>(url)
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [getPedidosListado] Error al obtener listado de pedidos:', error)
+
+      let message = error.message || 'Error desconocido al obtener listado de pedidos'
 
       if (error.response?.data) {
         if (error.response.data.detail) {

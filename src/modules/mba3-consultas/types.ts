@@ -201,6 +201,10 @@ export interface IntegracionSAPResponse {
   status?: string
   success?: boolean
   message?: string
+  oc_id?: string
+  doc_entry?: number
+  doc_num?: number
+  solicitudes_transferencia?: SolicitudesTransferencia  // ⭐ NUEVO - Solicitudes de Transferencia creadas automáticamente
   metadata?: {
     detalles?: IntegracionSAPDetalle[]
     pedidos_cerrados?: PedidoCerrado[]  // ⭐ Opcional (Fase 6) - Pedidos que se cerraron después de enviar ODC
@@ -708,7 +712,7 @@ export interface UploadPlantillaResponse {
   message: string
   pedido_id: string
   numero_pedido?: string  // Número de pedido (ej: "P-12.48 - 12 - 2025")
-  estado?: string  // Estados: "PENDIENTE_CONFIRMACION_PROVEEDOR", "RESPUESTA_PROVEEDOR_CARGADA", "CONFIRMADO_PROVEEDOR", "CONFIRMADO_ENVIADO"
+  estado?: string  // Estados: "PENDIENTE_CONFIRMACION_PROVEEDOR", "RESPUESTA_PROVEEDOR_CARGADA", "CONFIRMADO_PROVEEDOR", "PEDIDO_CONFIRMADO", "PROCESADO_SAP", "CONFIRMADO_ENVIADO"
   articulos_cargados: number
   distribuciones_cargadas: number
   validacion?: ValidacionCompleta
@@ -745,7 +749,7 @@ export interface PedidoCabecera {
   archivo_nombre: string
   creado_por: string | null
   creado_en: string | null
-  estado?: string  // Estado del pedido: "PENDIENTE_CONFIRMACION_PROVEEDOR", "RESPUESTA_PROVEEDOR_CARGADA", "CONFIRMADO_PROVEEDOR", "CONFIRMADO_ENVIADO"
+  estado?: string  // Estado del pedido: "PENDIENTE_CONFIRMACION_PROVEEDOR", "RESPUESTA_PROVEEDOR_CARGADA", "CONFIRMADO_PROVEEDOR", "PEDIDO_CONFIRMADO", "PROCESADO_SAP", "CONFIRMADO_ENVIADO"
 }
 
 export interface TiendaDistribucion {
@@ -904,6 +908,7 @@ export interface CrearOCDesdePedidoResponse {
   message: string
   oc_id?: string
   pedido_id: string
+  solicitudes_transferencia?: SolicitudesTransferencia  // ⭐ NUEVO - Solicitudes de Transferencia creadas automáticamente
   metadata?: {
     oc_creada: boolean
     detalles?: any[]
@@ -1010,4 +1015,86 @@ export interface ProcesamientoSAPResponse {
   productos: ProductoSAPProcesamientoItem[]
   estadisticas: EstadisticasProcesamientoSAP
   fecha_procesamiento: string
+}
+
+// ========== Solicitudes de Transferencia (HU-04) ==========
+
+/**
+ * Resultado individual de una Solicitud de Transferencia creada
+ */
+export interface SolicitudTransferenciaResultado {
+  tienda_id: string
+  tienda_codigo: string
+  success: boolean
+  doc_entry: number | null
+  doc_num: number | null
+  error: string | null
+}
+
+/**
+ * Información de Solicitudes de Transferencia creadas automáticamente
+ */
+export interface SolicitudesTransferencia {
+  success: boolean
+  pedido_id: string
+  total_tiendas: number
+  transferencias_creadas: number
+  transferencias_errores: number
+  resultados: SolicitudTransferenciaResultado[]
+}
+
+// ========== Listado de Pedidos con Filtros (HU-02, HU-07) ==========
+
+/**
+ * Pedido resumido para listado (sin detalles completos)
+ */
+export interface PedidoResumido {
+  pedido_id: string
+  numero_pedido: string
+  fecha_pedido: string | null
+  fecha_entrega: string | null
+  forma_pago: string | null
+  odc: string | null
+  proveedor_nombre: string | null
+  comprador_nombre: string | null
+  comprador_codigo: string | null
+  origen_traslado: string | null
+  serie: string | null
+  archivo_nombre: string
+  creado_por: string | null
+  estado: string
+  creado_en: string
+}
+
+/**
+ * Metadata de paginación para listado de pedidos
+ */
+export interface PedidosListadoMetadata {
+  total: number
+  limit: number
+  offset: number
+  has_more: boolean
+}
+
+/**
+ * Respuesta del endpoint GET /api/pedidos
+ */
+export interface PedidosListadoResponse {
+  status: 'success'
+  data: PedidoResumido[]
+  metadata: PedidosListadoMetadata
+}
+
+/**
+ * Filtros disponibles para el listado de pedidos
+ */
+export interface PedidosListadoFiltros {
+  estado?: string
+  fecha_desde?: string
+  fecha_hasta?: string
+  proveedor_nombre?: string
+  numero_pedido?: string
+  creado_por?: string
+  limit?: number
+  offset?: number
 }

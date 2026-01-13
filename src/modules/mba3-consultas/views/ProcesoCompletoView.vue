@@ -681,15 +681,19 @@ const toast = useToast()
 const route = useRoute()
 
 // ⭐ Flag para modo legacy (ocultar pestaña de despachos)
-const SHOW_LEGACY_DESPACHOS = true // Habilitado: interfaz de Procesos de Integración MBA3-SAP activa
+const SHOW_LEGACY_DESPACHOS = false // Deshabilitado: pestaña "Importar despachos" oculta (legacy)
 
-// Estado de pestañas - restaurar desde localStorage o usar 'pedidos-confirmados' por defecto
+// Estado de pestañas - restaurar desde localStorage o usar 'procesar-oc' por defecto
 const STORAGE_KEY = 'mba3-proceso-active-tab'
 const savedTab = localStorage.getItem(STORAGE_KEY)
+// Si la pestaña guardada es 'migrar' pero está oculta, usar 'procesar-oc' por defecto
+const validTabs = SHOW_LEGACY_DESPACHOS 
+  ? ['migrar', 'pedidos-confirmados', 'procesar-oc']
+  : ['pedidos-confirmados', 'procesar-oc']
 const activeTab = ref<string>(
-  savedTab && ['migrar', 'pedidos-confirmados', 'procesar-oc'].includes(savedTab) 
+  savedTab && validTabs.includes(savedTab) 
     ? savedTab 
-    : 'pedidos-confirmados'
+    : 'procesar-oc'
 )
 
 // Estados de visualización de resultados
@@ -790,20 +794,27 @@ const tabs = computed<Tab[]>(() => {
       ? ordenesCompraStore.ordenesCompra.length
       : (ordenesCompraStore.pendientes + ordenesCompraStore.enviadas + ordenesCompraStore.errores))
   
-  return [
-    {
+  const tabsArray: Tab[] = []
+  
+  // Solo incluir la pestaña "Importar despachos" si SHOW_LEGACY_DESPACHOS está habilitado
+  if (SHOW_LEGACY_DESPACHOS) {
+    tabsArray.push({
       id: 'migrar',
       label: 'Importar despachos',
       badge: totalDespachos > 0 ? totalDespachos : undefined,
       color: 'violet'
-    },
-    {
-      id: 'procesar-oc',
-      label: 'Procesar ODC',
-      badge: totalOrdenesProcesarOC > 0 ? totalOrdenesProcesarOC : undefined,
-      color: 'emerald'
-    }
-  ]
+    })
+  }
+  
+  // Siempre incluir la pestaña "Procesar ODC"
+  tabsArray.push({
+    id: 'procesar-oc',
+    label: 'Procesar ODC',
+    badge: totalOrdenesProcesarOC > 0 ? totalOrdenesProcesarOC : undefined,
+    color: 'emerald'
+  })
+  
+  return tabsArray
 })
 
 // Computed para verificar si hay órdenes de compra disponibles
@@ -2084,7 +2095,7 @@ onUnmounted(() => {
 
 // Watch para pausar/reanudar polling según pestaña activa
 watch(activeTab, (newTab) => {
-  if (newTab === 'migrar') {
+  if (newTab === 'migrar' && SHOW_LEGACY_DESPACHOS) {
     startPolling() // Reanudar cuando volvemos a la pestaña de despachos
     startTimeDisplayUpdate() // Reanudar actualización del display de tiempo
   } else {
@@ -2096,11 +2107,18 @@ watch(activeTab, (newTab) => {
 // Watch para query params de navegación desde OrdenCompraTable
 watch(() => route.query, async (newQuery) => {
   if (newQuery.tab && newQuery.tab !== activeTab.value) {
+    // Si se intenta acceder a la pestaña 'migrar' pero está oculta, redirigir a 'procesar-oc'
+    if (newQuery.tab === 'migrar' && !SHOW_LEGACY_DESPACHOS) {
+      activeTab.value = 'procesar-oc'
+      localStorage.setItem(STORAGE_KEY, 'procesar-oc')
+      return
+    }
+    
     // Cambiar a la pestaña especificada
     activeTab.value = newQuery.tab as string
     localStorage.setItem(STORAGE_KEY, activeTab.value)
     
-    if (newQuery.tab === 'migrar' && newQuery.despacho_id) {
+    if (newQuery.tab === 'migrar' && newQuery.despacho_id && SHOW_LEGACY_DESPACHOS) {
       // Cargar despachos si no están cargados
       if (despachos.value.length === 0) {
         await cargarDespachos()

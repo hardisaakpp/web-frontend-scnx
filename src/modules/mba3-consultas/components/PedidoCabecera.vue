@@ -82,15 +82,16 @@ import type { PedidoCompleto } from '../types'
 import { formatDate, formatEstadoPedido } from '../utils/formatters'
 import { getEstadoPedidoBadgeClass } from '../utils/styleHelpers'
 
-defineProps<{
+const props = defineProps<{
   pedido: PedidoCompleto
   copyFeedback: boolean
+  defaultExpanded?: boolean
 }>()
 
 defineEmits<{
   'copy-to-clipboard': [text: string]
 }>()
 
-// Estado colapsable - por defecto encogido
-const isExpanded = ref(false)
+// Estado colapsable - por defecto encogido, a menos que se especifique defaultExpanded
+const isExpanded = ref(props.defaultExpanded ?? false)
 </script>

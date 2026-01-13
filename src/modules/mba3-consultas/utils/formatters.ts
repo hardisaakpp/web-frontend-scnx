@@ -75,6 +75,8 @@ export function formatEstadoPedido(estado: string): string {
     'PENDIENTE_CONFIRMACION_PROVEEDOR': 'Pendiente Confirmación',
     'RESPUESTA_PROVEEDOR_CARGADA': 'Respuesta Cargada',
     'CONFIRMADO_PROVEEDOR': 'Confirmado por Proveedor',
+    'PEDIDO_CONFIRMADO': 'Pedido Confirmado',
+    'PROCESADO_SAP': 'Procesado SAP',
     'CONFIRMADO_ENVIADO': 'Confirmado y Enviado'
   }
   return estados[estado] || estado

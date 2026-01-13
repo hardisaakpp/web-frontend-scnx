@@ -22,6 +22,8 @@ export function getEstadoPedidoBadgeClass(estado: string): string {
     'PENDIENTE_CONFIRMACION_PROVEEDOR': 'bg-yellow-100 text-yellow-800',
     'RESPUESTA_PROVEEDOR_CARGADA': 'bg-blue-100 text-blue-800',
     'CONFIRMADO_PROVEEDOR': 'bg-green-100 text-green-800',
+    'PEDIDO_CONFIRMADO': 'bg-teal-100 text-teal-800',
+    'PROCESADO_SAP': 'bg-indigo-100 text-indigo-800',
     'CONFIRMADO_ENVIADO': 'bg-emerald-100 text-emerald-800'
   }
   return classes[estado] || 'bg-gray-100 text-gray-800'

@@ -1,7 +1,7 @@
 <template>
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
     <div class="space-y-6">
-      <!-- Header con título y botón de regreso -->
+      <!-- Header con título y botones de acción -->
       <div class="flex items-center justify-between">
         <div>
           <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Procesamiento SAP del Pedido</h1>
@@ -9,15 +9,32 @@
             Información procesada después de confirmar la redistribución
           </p>
         </div>
-        <button
-          @click="goBack"
-          class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-700 dark:text-gray-300 flex items-center gap-2"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          Volver
-        </button>
+        <div class="flex items-center gap-3">
+          <button
+            v-if="canGenerarOC"
+            @click="handleGenerarOC"
+            :disabled="loading || generandoOC"
+            class="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+          >
+            <svg v-if="!generandoOC" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <svg v-else class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            {{ generandoOC ? 'Generando...' : 'Generar ODC' }}
+          </button>
+          <button
+            @click="goBack"
+            class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-700 dark:text-gray-300 flex items-center gap-2"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Volver
+          </button>
+        </div>
       </div>
 
       <!-- Loading state -->
@@ -48,68 +65,9 @@
         <PedidoCabecera
           :pedido="pedidoCompleto"
           :copy-feedback="copyFeedback"
+          :default-expanded="true"
           @copy-to-clipboard="copyToClipboard"
         />
-
-        <!-- Estadísticas del procesamiento -->
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Estadísticas del Procesamiento</h2>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
-              <div class="text-sm font-medium text-blue-600 dark:text-blue-400 uppercase">Total Productos</div>
-              <div class="text-2xl font-bold text-blue-900 dark:text-blue-100 mt-1">
-                {{ formatNumber(procesamiento.estadisticas.total_productos) }}
-              </div>
-            </div>
-            <div class="bg-green-50 dark:bg-green-900/30 rounded-lg p-4 border border-green-200 dark:border-green-800">
-              <div class="text-sm font-medium text-green-600 dark:text-green-400 uppercase">Homologados</div>
-              <div class="text-2xl font-bold text-green-900 dark:text-green-100 mt-1">
-                {{ formatNumber(procesamiento.estadisticas.productos_homologados) }}
-              </div>
-            </div>
-            <div class="bg-yellow-50 dark:bg-yellow-900/30 rounded-lg p-4 border border-yellow-200 dark:border-yellow-800">
-              <div class="text-sm font-medium text-yellow-600 dark:text-yellow-400 uppercase">No Homologados</div>
-              <div class="text-2xl font-bold text-yellow-900 dark:text-yellow-100 mt-1">
-                {{ formatNumber(procesamiento.estadisticas.productos_no_homologados) }}
-              </div>
-            </div>
-            <div class="bg-red-50 dark:bg-red-900/30 rounded-lg p-4 border border-red-200 dark:border-red-800">
-              <div class="text-sm font-medium text-red-600 dark:text-red-400 uppercase">Con Errores</div>
-              <div class="text-2xl font-bold text-red-900 dark:text-red-100 mt-1">
-                {{ formatNumber(procesamiento.estadisticas.productos_con_error) }}
-              </div>
-            </div>
-          </div>
-
-          <!-- Totales de cantidades -->
-          <div class="mt-4">
-            <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-              <div class="text-sm font-medium text-gray-600 dark:text-gray-400 uppercase mb-2">Cantidades</div>
-              <div class="space-y-1">
-                <div class="flex justify-between">
-                  <span class="text-sm text-gray-700 dark:text-gray-300">Original:</span>
-                  <span class="text-sm font-semibold text-gray-900 dark:text-white">
-                    {{ formatNumber(procesamiento.estadisticas.total_cantidad_original) }}
-                  </span>
-                </div>
-                <div class="flex justify-between">
-                  <span class="text-sm text-gray-700 dark:text-gray-300">SAP:</span>
-                  <span class="text-sm font-semibold text-gray-900 dark:text-white">
-                    {{ formatNumber(procesamiento.estadisticas.total_cantidad_sap) }}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Fecha de procesamiento -->
-          <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <div class="text-sm text-gray-600 dark:text-gray-400">
-              <span class="font-medium">Fecha de procesamiento:</span>
-              <span class="ml-2">{{ formatDate(procesamiento.fecha_procesamiento) }}</span>
-            </div>
-          </div>
-        </div>
 
         <!-- Tabla de productos procesados -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6">
@@ -321,6 +279,136 @@
             No hay productos que coincidan con el filtro seleccionado.
           </div>
         </div>
+
+        <!-- Sección de Solicitudes de Transferencia -->
+        <div v-if="solicitudesTransferencia" class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6 mt-6">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Solicitudes de Transferencia</h2>
+              <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                Generadas automáticamente después de crear la Orden de Compra
+              </p>
+            </div>
+            <div class="flex items-center gap-2">
+              <span
+                :class="[
+                  'px-3 py-1 rounded-full text-sm font-medium',
+                  solicitudesTransferencia.transferencias_errores === 0
+                    ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200'
+                    : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200'
+                ]"
+              >
+                {{ solicitudesTransferencia.transferencias_creadas }} / {{ solicitudesTransferencia.total_tiendas }} creadas
+              </span>
+            </div>
+          </div>
+
+          <!-- Alerta si hay errores -->
+          <div
+            v-if="solicitudesTransferencia.transferencias_errores > 0"
+            class="mb-4 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4"
+          >
+            <div class="flex items-start gap-3">
+              <svg class="h-5 w-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <div class="flex-1">
+                <p class="text-sm font-semibold text-yellow-900 dark:text-yellow-200">
+                  Advertencia: {{ solicitudesTransferencia.transferencias_errores }} solicitud(es) de transferencia fallaron
+                </p>
+                <p class="text-sm text-yellow-800 dark:text-yellow-300 mt-1">
+                  Algunas tiendas no pudieron recibir su Solicitud de Transferencia. Revise los detalles a continuación.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabla de Solicitudes de Transferencia -->
+          <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead class="bg-gray-50 dark:bg-gray-900">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Tienda
+                  </th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Código
+                  </th>
+                  <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Estado
+                  </th>
+                  <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    DocNum
+                  </th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Error
+                  </th>
+                </tr>
+              </thead>
+              <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                <tr
+                  v-for="resultado in solicitudesTransferencia.resultados"
+                  :key="resultado.tienda_id"
+                  :class="[
+                    'hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors',
+                    !resultado.success ? 'bg-red-50 dark:bg-red-900/20' : ''
+                  ]"
+                >
+                  <td class="px-4 py-4 text-sm text-gray-900 dark:text-white">
+                    {{ resultado.tienda_codigo }}
+                  </td>
+                  <td class="px-4 py-4 text-sm text-gray-700 dark:text-gray-300">
+                    {{ resultado.tienda_codigo }}
+                  </td>
+                  <td class="px-4 py-4 text-sm text-center">
+                    <span
+                      :class="[
+                        'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                        resultado.success
+                          ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200'
+                          : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200'
+                      ]"
+                    >
+                      <svg
+                        v-if="resultado.success"
+                        class="w-4 h-4 mr-1"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                      </svg>
+                      <svg
+                        v-else
+                        class="w-4 h-4 mr-1"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                      {{ resultado.success ? 'Creada' : 'Error' }}
+                    </span>
+                  </td>
+                  <td class="px-4 py-4 text-sm text-right text-gray-900 dark:text-white">
+                    {{ resultado.doc_num || '-' }}
+                  </td>
+                  <td class="px-4 py-4 text-sm text-gray-700 dark:text-gray-300">
+                    <span v-if="resultado.error" class="text-red-600 dark:text-red-400">
+                      {{ resultado.error }}
+                    </span>
+                    <span v-else class="text-gray-400 dark:text-gray-500">-</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Mensaje si no hay resultados -->
+          <div v-if="solicitudesTransferencia.resultados.length === 0" class="text-center py-8 text-gray-500 dark:text-gray-400">
+            No se crearon Solicitudes de Transferencia.
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -332,7 +420,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { useTablePreferences } from '@/composables/useTablePreferences'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
-import type { ProcesamientoSAPResponse, PedidoCompleto } from '../types'
+import type { ProcesamientoSAPResponse, PedidoCompleto, SolicitudesTransferencia } from '../types'
 import { formatDate, formatNumber, formatCurrency, type ColumnConfig } from '../utils/formatters'
 import PedidoCabecera from '../components/PedidoCabecera.vue'
 
@@ -346,6 +434,8 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 const copyFeedback = ref(false)
 const filtroEstado = ref<'todos' | 'homologados' | 'no-homologados' | 'con-error'>('todos')
+const generandoOC = ref(false)
+const solicitudesTransferencia = ref<SolicitudesTransferencia | null>(null)
 
 // ⭐ Gestión de columnas visibles en la tabla
 const showColumnSelector = ref(false)
@@ -553,6 +643,61 @@ function copyToClipboard(text: string) {
 // Navegación
 function goBack() {
   router.back()
+}
+
+// Computed para determinar si se puede generar OC
+const canGenerarOC = computed(() => {
+  // Permitir generar OC si el pedido está en un estado válido después de procesar SAP
+  const estado = pedidoCompleto.value?.cabecera.estado
+  return estado === 'CONFIRMADO_PROVEEDOR' || 
+         estado === 'PEDIDO_CONFIRMADO' || 
+         estado === 'PROCESADO_SAP'
+})
+
+// Función para generar orden de compra
+async function handleGenerarOC() {
+  if (!procesamiento.value?.numero_pedido) {
+    toast.error('Error', 'No se encontró el número de pedido')
+    return
+  }
+
+  generandoOC.value = true
+
+  try {
+    toast.info('Generando orden de compra...', 'Creando orden de compra desde el pedido confirmado')
+
+    const result = await mba3ConsultasService.crearOrdenCompraDesdePedido(procesamiento.value.numero_pedido)
+
+    if (result.status === 'success') {
+      // Guardar información de Solicitudes de Transferencia si está disponible
+      if (result.solicitudes_transferencia) {
+        solicitudesTransferencia.value = result.solicitudes_transferencia
+      }
+
+      const mensaje = result.solicitudes_transferencia
+        ? `Orden de compra generada. ${result.solicitudes_transferencia.transferencias_creadas} de ${result.solicitudes_transferencia.total_tiendas} Solicitudes de Transferencia creadas.`
+        : (result.message || 'La orden de compra se ha generado exitosamente')
+
+      toast.success('Orden de compra generada', mensaje)
+
+      // Recargar el procesamiento para actualizar estados
+      await loadProcesamientoSAP()
+
+      // No redirigir automáticamente si hay Solicitudes de Transferencia para que el usuario las vea
+      if (!result.solicitudes_transferencia) {
+        setTimeout(() => {
+          router.push('/mba3-consultas/proceso-completo?tab=procesar-oc')
+        }, 1500)
+      }
+    } else {
+      toast.error('Error al generar orden', result.message || 'No se pudo generar la orden de compra')
+    }
+  } catch (e: any) {
+    console.error('Error al generar orden de compra:', e)
+    toast.error('Error al generar orden', e.message || 'No se pudo generar la orden de compra')
+  } finally {
+    generandoOC.value = false
+  }
 }
 
 // Cargar datos al montar el componente

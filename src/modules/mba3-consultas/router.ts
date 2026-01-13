@@ -110,6 +110,17 @@ const routes: RouteRecordRaw[] = [
       icon: 'CogIcon',
       permissions: ['mba3-consultas.facturas.view']
     }
+  },
+  {
+    path: '/mba3-consultas/pedidos',
+    name: 'mba3-consultas-pedidos-listado',
+    component: () => import('./views/PedidosListView.vue'),
+    meta: { 
+      requiresAuth: true,
+      title: 'Listado de Pedidos',
+      icon: 'DocumentTextIcon',
+      permissions: ['mba3-consultas.facturas.view']
+    }
   }
 ]
 
