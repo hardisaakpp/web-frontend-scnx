@@ -771,8 +771,24 @@ async function handleSubmit() {
 
     // Manejar respuesta similar a la carga de plantillas Excel
     if (response.status === 'validation_error') {
-      error.value = response.message || 'Error de validación al crear el pedido'
-      toast.error('Error de validación', error.value)
+      // Construir mensaje de error más descriptivo
+      let errorMessage = response.message || 'Error de validación al crear el pedido'
+      
+      // Si hay errores específicos en el array, agregarlos al mensaje
+      if (response.errores && Array.isArray(response.errores) && response.errores.length > 0) {
+        errorMessage = response.errores.join('\n')
+      }
+      
+      // Si hay información de validación SAP, agregar detalles
+      if (response.validacion?.productos_sap) {
+        const sapValidation = response.validacion.productos_sap
+        if (sapValidation.no_encontrados && sapValidation.no_encontrados.length > 0) {
+          errorMessage = `Los siguientes códigos de producto no son válidos en SAP:\n${sapValidation.no_encontrados.join(', ')}\n\nPor favor, verifica los códigos e intenta nuevamente.`
+        }
+      }
+      
+      error.value = errorMessage
+      toast.error('Error de validación', errorMessage)
       return
     }
 
