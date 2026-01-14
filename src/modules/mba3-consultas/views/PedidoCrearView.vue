@@ -780,11 +780,31 @@ async function handleSubmit() {
       }
       
       // Si hay información de validación SAP, agregar detalles
+      const erroresSap: string[] = []
+      
       if (response.validacion?.productos_sap) {
         const sapValidation = response.validacion.productos_sap
         if (sapValidation.no_encontrados && sapValidation.no_encontrados.length > 0) {
-          errorMessage = `Los siguientes códigos de producto no son válidos en SAP:\n${sapValidation.no_encontrados.join(', ')}\n\nPor favor, verifica los códigos e intenta nuevamente.`
+          erroresSap.push(`Productos no válidos en SAP: ${sapValidation.no_encontrados.join(', ')}`)
         }
+      }
+      
+      if (response.validacion?.tiendas_sap) {
+        const tiendasValidation = response.validacion.tiendas_sap
+        if (tiendasValidation.no_encontradas && tiendasValidation.no_encontradas.length > 0) {
+          erroresSap.push(`Tiendas no válidas en SAP: ${tiendasValidation.no_encontradas.join(', ')}`)
+        }
+      }
+      
+      if (response.validacion?.bodegas_sap) {
+        const bodegasValidation = response.validacion.bodegas_sap
+        if (bodegasValidation.no_encontradas && bodegasValidation.no_encontradas.length > 0) {
+          erroresSap.push(`Bodegas no válidas en SAP: ${bodegasValidation.no_encontradas.join(', ')}`)
+        }
+      }
+      
+      if (erroresSap.length > 0) {
+        errorMessage = erroresSap.join('\n') + '\n\nPor favor, verifica los códigos e intenta nuevamente.'
       }
       
       error.value = errorMessage
@@ -794,7 +814,7 @@ async function handleSubmit() {
 
     // Si la creación fue exitosa (cualquier respuesta que no sea validation_error)
     // Obtener numero_pedido de la respuesta
-    let numeroPedido = response.numero_pedido
+    let numeroPedido: string | undefined = response.numero_pedido
 
     // Si no viene en la respuesta, intentar obtenerlo del pedido creado usando pedido_id
     if (!numeroPedido && response.pedido_id) {

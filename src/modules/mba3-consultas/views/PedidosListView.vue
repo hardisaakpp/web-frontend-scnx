@@ -437,7 +437,7 @@ async function cargarPedidos() {
   } catch (e: any) {
     console.error('Error al cargar pedidos:', e)
     error.value = e.message || 'No se pudieron cargar los pedidos'
-    toast.error('Error', error.value)
+    toast.error('Error', error.value ?? undefined)
   } finally {
     loading.value = false
   }

@@ -694,6 +694,24 @@ export interface ValidacionCompleta {
   productos: ValidacionProductos
   tiendas: ValidacionTiendas
   cantidades: ValidacionCantidades
+  productos_sap?: {
+    validos: string[]
+    no_encontrados: string[]
+    errores: string[]
+    todos_validos: boolean
+  }
+  tiendas_sap?: {
+    validas: string[]
+    no_encontradas: string[]
+    errores: string[]
+    todas_validas: boolean
+  }
+  bodegas_sap?: {
+    validas: string[]
+    no_encontradas: string[]
+    errores: string[]
+    todas_validas: boolean
+  }
 }
 
 // Validación SAP (nuevo campo opcional en respuesta)

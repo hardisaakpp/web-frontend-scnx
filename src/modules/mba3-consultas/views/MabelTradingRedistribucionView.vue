@@ -80,7 +80,7 @@
         :productos-expandidos="redistribucion.productosExpandidos"
         :guardando-redistribucion="redistribucion.guardandoRedistribucion"
         :confirmando-redistribucion="redistribucion.confirmandoRedistribucion"
-        :columnas-modificadas="columnasModificadas"
+        :columnas-modificadas="columnasModificadas as unknown as Ref<Set<string>>"
         @toggle-expandir-producto="toggleExpandirProducto"
         @actualizar-cantidad-tienda="actualizarCantidadTienda"
         @validar-y-corregir-cantidad="validarYCorregirCantidad"
@@ -106,7 +106,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, type Ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
@@ -125,7 +125,7 @@ const pedido = ref<PedidoCompleto | null>(null)
 const pedidoIdInput = ref('')
 
 // ⭐ Set para rastrear columnas modificadas (para resaltado en redistribución)
-const columnasModificadas = ref<Set<string>>(new Set())
+const columnasModificadas: Ref<Set<string>> = ref<Set<string>>(new Set())
 
 const numeroPedido = computed(() => {
   const id = route.params.id as string

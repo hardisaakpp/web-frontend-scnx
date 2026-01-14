@@ -10,21 +10,34 @@
           </p>
         </div>
         <div class="flex items-center gap-3">
-          <button
-            v-if="canGenerarOC"
-            @click="handleGenerarOC"
-            :disabled="loading || generandoOC"
-            class="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
-          >
-            <svg v-if="!generandoOC" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <svg v-else class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            {{ generandoOC ? 'Generando...' : 'Generar ODC' }}
-          </button>
+          <!-- ⭐ MEJORA: Botón con tooltip y mejor progreso -->
+          <div class="relative group">
+            <button
+              v-if="canGenerarOC"
+              @click="handleGenerarOC"
+              :disabled="loading || generandoOC"
+              class="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm relative"
+            >
+              <svg v-if="!generandoOC" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <svg v-else class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              {{ generandoOC ? `Generando... ${progressStep}` : 'Generar ODC' }}
+            </button>
+            <!-- ⭐ Tooltip explicativo -->
+            <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-64 p-3 bg-gray-900 dark:bg-gray-800 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none">
+              <div class="font-semibold mb-1">Generar Orden de Compra y Solicitudes de Transferencia</div>
+              <div class="text-gray-300">
+                Este proceso generará la Orden de Compra en SAP, creará las Solicitudes de Transferencia por tienda, realizará validaciones y conversiones de unidades, y enviará notificaciones al personal de El Rayo.
+              </div>
+              <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-full">
+                <div class="border-4 border-transparent border-t-gray-900 dark:border-t-gray-800"></div>
+              </div>
+            </div>
+          </div>
           <button
             @click="goBack"
             class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-700 dark:text-gray-300 flex items-center gap-2"
@@ -59,10 +72,55 @@
         </div>
       </div>
 
+      <!-- ⭐ MEJORA: Indicador de progreso mejorado -->
+      <div v-if="generandoOC" class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6">
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Generando Orden de Compra</h3>
+            <span class="text-sm text-gray-600 dark:text-gray-400">{{ progressPercentage }}%</span>
+          </div>
+          
+          <!-- Barra de progreso animada -->
+          <div class="w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+            <div
+              class="h-full bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 transition-all duration-500 ease-out relative"
+              :style="{ width: `${progressPercentage}%` }"
+            >
+              <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
+            </div>
+          </div>
+
+          <!-- Pasos del proceso -->
+          <div class="space-y-2">
+            <div
+              v-for="(step, index) in progressSteps"
+              :key="index"
+              class="flex items-center gap-3 text-sm"
+              :class="step.status === 'completed' ? 'text-green-600 dark:text-green-400' : step.status === 'active' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'"
+            >
+              <div class="flex-shrink-0">
+                <svg v-if="step.status === 'completed'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                <svg v-else-if="step.status === 'active'" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <span :class="step.status === 'active' ? 'font-semibold' : ''">{{ step.label }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Contenido del procesamiento -->
       <div v-if="procesamiento && !loading">
         <!-- Información de la cabecera del pedido -->
         <PedidoCabecera
+          v-if="pedidoCompleto"
           :pedido="pedidoCompleto"
           :copy-feedback="copyFeedback"
           :default-expanded="true"
@@ -410,6 +468,14 @@
           </div>
         </div>
       </div>
+
+      <!-- ⭐ MEJORA: Modal de error detallado -->
+      <SapErrorDetailModal
+        v-if="showErrorModal && errorData"
+        :error-data="errorData"
+        @close="showErrorModal = false"
+        @retry="handleRetryGenerarOC"
+      />
     </div>
   </div>
 </template>
@@ -423,6 +489,7 @@ import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import type { ProcesamientoSAPResponse, PedidoCompleto, SolicitudesTransferencia } from '../types'
 import { formatDate, formatNumber, formatCurrency, type ColumnConfig } from '../utils/formatters'
 import PedidoCabecera from '../components/PedidoCabecera.vue'
+import SapErrorDetailModal from '../components/SapErrorDetailModal.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -436,6 +503,23 @@ const copyFeedback = ref(false)
 const filtroEstado = ref<'todos' | 'homologados' | 'no-homologados' | 'con-error'>('todos')
 const generandoOC = ref(false)
 const solicitudesTransferencia = ref<SolicitudesTransferencia | null>(null)
+
+// ⭐ NUEVO: Variables para manejo mejorado de errores y progreso
+const showErrorModal = ref(false)
+const errorData = ref<{
+  errorCode?: string | null
+  errorSource?: string | null
+  errorMessage?: string | null
+} | null>(null)
+
+const progressPercentage = ref(0)
+const progressStep = ref('')
+const progressSteps = ref([
+  { label: 'Validando datos del pedido', status: 'pending' as 'pending' | 'active' | 'completed' },
+  { label: 'Creando Orden de Compra en SAP', status: 'pending' as 'pending' | 'active' | 'completed' },
+  { label: 'Generando Solicitudes de Transferencia', status: 'pending' as 'pending' | 'active' | 'completed' },
+  { label: 'Enviando notificaciones', status: 'pending' as 'pending' | 'active' | 'completed' }
+])
 
 // ⭐ Gestión de columnas visibles en la tabla
 const showColumnSelector = ref(false)
@@ -594,7 +678,7 @@ async function loadProcesamientoSAP() {
     // Cargar también el pedido completo para mostrar la cabecera
     try {
       const pedido = await mba3ConsultasService.getPedido(procesamientoData.numero_pedido)
-      pedidoCompleto.value = pedido
+      pedidoCompleto.value = pedido as PedidoCompleto
     } catch (e: any) {
       console.warn('No se pudo cargar el pedido completo:', e)
       // Si no se puede cargar el pedido, crear un objeto mínimo para la cabecera
@@ -617,12 +701,12 @@ async function loadProcesamientoSAP() {
           estado: undefined
         },
         detalles: []
-      }
+      } as PedidoCompleto
     }
   } catch (e: any) {
     console.error('Error al cargar procesamiento SAP:', e)
     error.value = e.message || 'No se pudo cargar el procesamiento SAP'
-    toast.error('Error', error.value)
+    toast.error('Error', error.value || 'No se pudo cargar el procesamiento SAP')
   } finally {
     loading.value = false
   }
@@ -654,7 +738,7 @@ const canGenerarOC = computed(() => {
          estado === 'PROCESADO_SAP'
 })
 
-// Función para generar orden de compra
+// ⭐ MEJORA: Función para generar orden de compra con mejor manejo de errores y progreso
 async function handleGenerarOC() {
   if (!procesamiento.value?.numero_pedido) {
     toast.error('Error', 'No se encontró el número de pedido')
@@ -662,17 +746,54 @@ async function handleGenerarOC() {
   }
 
   generandoOC.value = true
+  progressPercentage.value = 0
+  progressStep.value = 'Validando datos...'
+  
+  // Resetear pasos
+  progressSteps.value.forEach(step => {
+    step.status = 'pending'
+  })
 
   try {
     toast.info('Generando orden de compra...', 'Creando orden de compra desde el pedido confirmado')
 
+    // Paso 1: Validación
+    progressSteps.value[0].status = 'active'
+    progressPercentage.value = 10
+    progressStep.value = 'Validando datos del pedido...'
+    await new Promise(resolve => setTimeout(resolve, 300))
+
+    // Paso 2: Crear OC
+    progressSteps.value[0].status = 'completed'
+    progressSteps.value[1].status = 'active'
+    progressPercentage.value = 30
+    progressStep.value = 'Creando Orden de Compra en SAP...'
+
     const result = await mba3ConsultasService.crearOrdenCompraDesdePedido(procesamiento.value.numero_pedido)
 
     if (result.status === 'success') {
+      // Paso 3: Solicitudes de Transferencia
+      progressSteps.value[1].status = 'completed'
+      progressSteps.value[2].status = 'active'
+      progressPercentage.value = 70
+      progressStep.value = 'Generando Solicitudes de Transferencia...'
+      await new Promise(resolve => setTimeout(resolve, 500))
+
       // Guardar información de Solicitudes de Transferencia si está disponible
       if (result.solicitudes_transferencia) {
         solicitudesTransferencia.value = result.solicitudes_transferencia
       }
+
+      // Paso 4: Notificaciones
+      progressSteps.value[2].status = 'completed'
+      progressSteps.value[3].status = 'active'
+      progressPercentage.value = 90
+      progressStep.value = 'Enviando notificaciones...'
+      await new Promise(resolve => setTimeout(resolve, 300))
+
+      progressSteps.value[3].status = 'completed'
+      progressPercentage.value = 100
+      progressStep.value = 'Completado'
 
       const mensaje = result.solicitudes_transferencia
         ? `Orden de compra generada. ${result.solicitudes_transferencia.transferencias_creadas} de ${result.solicitudes_transferencia.total_tiendas} Solicitudes de Transferencia creadas.`
@@ -684,20 +805,52 @@ async function handleGenerarOC() {
       await loadProcesamientoSAP()
 
       // Redirigir a la vista de procesos después de un breve delay
-      // Si hay Solicitudes de Transferencia, dar tiempo para que el usuario las vea
       const delay = result.solicitudes_transferencia ? 3000 : 1500
       setTimeout(() => {
         router.push('/mba3-consultas/proceso')
       }, delay)
     } else {
+      // ⭐ MEJORA: Mostrar modal de error detallado
+      errorData.value = {
+        errorCode: (result as any).error_code || null,
+        errorSource: (result as any).error_source || null,
+        errorMessage: result.message || 'No se pudo generar la orden de compra'
+      }
+      showErrorModal.value = true
+      
       toast.error('Error al generar orden', result.message || 'No se pudo generar la orden de compra')
     }
   } catch (e: any) {
     console.error('Error al generar orden de compra:', e)
+    
+    // ⭐ MEJORA: Mostrar modal de error detallado
+    errorData.value = {
+      errorCode: e.response?.data?.error_code || null,
+      errorSource: e.response?.data?.error_source || 'BACKEND',
+      errorMessage: e.message || 'No se pudo generar la orden de compra'
+    }
+    showErrorModal.value = true
+    
     toast.error('Error al generar orden', e.message || 'No se pudo generar la orden de compra')
   } finally {
     generandoOC.value = false
+    setTimeout(() => {
+      progressPercentage.value = 0
+      progressStep.value = ''
+      progressSteps.value.forEach(step => {
+        step.status = 'pending'
+      })
+    }, 2000)
   }
+}
+
+// ⭐ NUEVO: Función para reintentar
+function handleRetryGenerarOC() {
+  showErrorModal.value = false
+  errorData.value = null
+  setTimeout(() => {
+    handleGenerarOC()
+  }, 500)
 }
 
 // Cargar datos al montar el componente
@@ -722,3 +875,18 @@ watch(
   }
 )
 </script>
+
+<style scoped>
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+</style>
