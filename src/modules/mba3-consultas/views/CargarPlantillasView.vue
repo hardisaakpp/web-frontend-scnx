@@ -19,7 +19,7 @@
             Crear Pedido Manual
           </button>
           <button
-            @click="showBuscarPedidoModal = true"
+            @click="abrirModalBuscarPedido"
             class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium flex items-center gap-2"
             title="Buscar pedido por número"
           >
@@ -334,10 +334,15 @@
               v-model="pedidoIdInput"
               @keyup.enter="goToPedido"
               type="text"
+              :list="`pedido-history-list-${showBuscarPedidoModal}`"
               placeholder="Ej: P-12.48 - 12 - 2025"
               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              autocomplete="off"
               autofocus
             />
+            <datalist :id="`pedido-history-list-${showBuscarPedidoModal}`">
+              <option v-for="pedido in historialPedidos" :key="pedido" :value="pedido" />
+            </datalist>
           </div>
           
           <div class="flex items-center gap-3">
@@ -384,6 +389,63 @@ const pedidoIdInput = ref('')
 const cargandoUltimoPedido = ref(false)
 // Flag para evitar redirección automática si el usuario hizo una búsqueda manual
 const busquedaManualRealizada = ref(false)
+
+// ⭐ Historial de números de pedido (similar al autocompletado del navegador)
+const STORAGE_KEY_PEDIDOS = 'mba3_pedidos_historial'
+const MAX_HISTORIAL_SIZE = 10 // Máximo de 10 números de pedido en el historial
+
+/**
+ * Guarda un número de pedido en el historial
+ */
+function guardarEnHistorial(numeroPedido: string) {
+  if (!numeroPedido || !numeroPedido.trim()) return
+  
+  try {
+    const historial = obtenerHistorial()
+    const numeroPedidoTrimmed = numeroPedido.trim()
+    
+    // Remover si ya existe (para moverlo al principio)
+    const index = historial.indexOf(numeroPedidoTrimmed)
+    if (index > -1) {
+      historial.splice(index, 1)
+    }
+    
+    // Agregar al principio
+    historial.unshift(numeroPedidoTrimmed)
+    
+    // Limitar el tamaño del historial
+    if (historial.length > MAX_HISTORIAL_SIZE) {
+      historial.splice(MAX_HISTORIAL_SIZE)
+    }
+    
+    // Guardar en localStorage
+    localStorage.setItem(STORAGE_KEY_PEDIDOS, JSON.stringify(historial))
+  } catch (e) {
+    console.warn('Error al guardar en historial de pedidos:', e)
+  }
+}
+
+/**
+ * Obtiene el historial de números de pedido
+ */
+function obtenerHistorial(): string[] {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY_PEDIDOS)
+    if (stored) {
+      const historial = JSON.parse(stored) as string[]
+      // Validar que sea un array y filtrar valores vacíos
+      if (Array.isArray(historial)) {
+        return historial.filter(p => p && p.trim().length > 0)
+      }
+    }
+  } catch (e) {
+    console.warn('Error al obtener historial de pedidos:', e)
+  }
+  return []
+}
+
+// Computed para el historial (reactivo)
+const historialPedidos = computed(() => obtenerHistorial())
 
 // Función para extraer productos no válidos del mensaje de error
 const extractProductosNoValidos = (errorMsg: string): string => {
@@ -564,12 +626,27 @@ const formatFileSize = (bytes: number): string => {
   return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
 }
 
+/**
+ * Abre el modal de búsqueda de pedido y precarga el último número de pedido usado
+ */
+function abrirModalBuscarPedido() {
+  showBuscarPedidoModal.value = true
+  // Precargar el último número de pedido del historial
+  const historial = obtenerHistorial()
+  if (historial.length > 0) {
+    pedidoIdInput.value = historial[0]
+  }
+}
+
 function goToPedido() {
   const numeroPedido = pedidoIdInput.value.trim()
   if (!numeroPedido) {
     toast.error('Error', 'Por favor ingresa un número de pedido válido')
     return
   }
+  
+  // ⭐ Guardar en el historial antes de navegar
+  guardarEnHistorial(numeroPedido)
   
   // Marcar que se hizo una búsqueda manual (evita redirección automática)
   busquedaManualRealizada.value = true
