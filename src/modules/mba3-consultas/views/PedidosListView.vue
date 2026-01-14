@@ -38,9 +38,25 @@
       </div>
 
       <!-- Filtros -->
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Filtros de Búsqueda</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
+        <div 
+          @click="filtrosColapsados = !filtrosColapsados"
+          class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+        >
+          <div class="flex items-center justify-between">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Filtros de Búsqueda</h2>
+            <svg 
+              :class="['w-5 h-5 text-gray-500 dark:text-gray-400 transition-transform duration-200', filtrosColapsados ? '' : 'rotate-180']"
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </div>
+        <div v-show="!filtrosColapsados" class="p-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <!-- Filtro de Estado -->
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -147,12 +163,16 @@
             </button>
           </div>
         </div>
+        </div>
       </div>
 
       <!-- Tabla de Pedidos -->
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
         <!-- Header de la tabla -->
-        <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+        <div 
+          @click="pedidosColapsados = !pedidosColapsados"
+          class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+        >
           <div class="flex items-center justify-between">
             <div>
               <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Pedidos</h2>
@@ -160,8 +180,18 @@
                 Mostrando {{ metadata.offset + 1 }} - {{ Math.min(metadata.offset + metadata.limit, metadata.total) }} de {{ metadata.total }} resultados
               </p>
             </div>
+            <svg 
+              :class="['w-5 h-5 text-gray-500 dark:text-gray-400 transition-transform duration-200', pedidosColapsados ? '' : 'rotate-180']"
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
           </div>
         </div>
+
+        <div v-show="!pedidosColapsados">
 
         <!-- Loading state -->
         <div v-if="loading" class="p-12 text-center">
@@ -299,6 +329,7 @@
             </div>
           </div>
         </div>
+        </div>
       </div>
     </div>
   </div>
@@ -324,6 +355,10 @@ const metadata = ref<PedidosListadoMetadata>({
   offset: 0,
   has_more: false
 })
+
+// Estados de colapso (por defecto abiertos)
+const filtrosColapsados = ref(false)
+const pedidosColapsados = ref(false)
 
 const filtros = ref<PedidosListadoFiltros>({
   estado: '',
