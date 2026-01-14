@@ -406,6 +406,17 @@ export interface SkuHomologacionUpdateRequest {
   estado?: 'PENDIENTE' | 'HOMOLOGADO' | 'ERROR'
 }
 
+export interface SkuHomologacionCreateRequest {
+  sku_mba3: string
+  sku_sap: string
+  nombre_producto_sap?: string | null
+  precio_unitario_sap?: number | null
+  cantidad_pack_sap?: number | null
+  unidad_sap?: string | null
+  subtotal_sap?: number | null
+  estado?: 'PENDIENTE' | 'HOMOLOGADO' | 'ERROR'
+}
+
 export interface SkuHomologacionResponse {
   status: string
   data: SkuHomologacion[]
@@ -732,6 +743,68 @@ export interface UploadPlantillaResponse {
     uploaded_by: string
     uploaded_at: string
   }
+}
+
+// ========== Crear Pedido Manual (HU-01) ==========
+
+/**
+ * Distribución por tienda para creación manual de pedidos
+ */
+export interface DistribucionTiendaRequest {
+  tienda_codigo: string
+  cantidad: number
+}
+
+/**
+ * Artículo del pedido para creación manual
+ */
+export interface ArticuloRequest {
+  codigo_producto: string
+  costo_unitario: number
+  cantidad_total: number
+  distribuciones: DistribucionTiendaRequest[]
+  comentario?: string | null
+}
+
+/**
+ * Request para crear un pedido manualmente
+ */
+export interface CrearPedidoRequest {
+  cabecera: {
+    numero_pedido: string
+    fecha_pedido?: string | null
+    fecha_entrega?: string | null
+    proveedor_nombre?: string | null
+    comprador_nombre?: string | null
+    comprador_codigo?: string | null
+    forma_pago?: string | null
+    origen_traslado?: string | null
+    serie?: string | null
+    estado?: string | null
+  }
+  articulos: ArticuloRequest[]
+}
+
+/**
+ * Response del endpoint de creación manual de pedidos
+ */
+export interface CrearPedidoResponse {
+  status: 'success' | 'validation_error'
+  message: string
+  pedido_id: string
+  numero_pedido: string
+  estado: string
+  articulos_cargados: number
+  distribuciones_cargadas: number
+  validacion?: ValidacionCompleta
+  validacion_sap?: ValidacionSAP
+  consolidacion?: Consolidacion
+  errores?: Array<string | {
+    tipo: 'ERROR' | 'WARNING'
+    campo?: string
+    mensaje: string
+    producto?: string
+  }>
 }
 
 export interface PedidoCabecera {

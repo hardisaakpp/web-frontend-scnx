@@ -197,7 +197,7 @@
                         :data-editing-cell="detalle.pedido_detalle_id"
                         v-model="editingCell.value"
                         type="number"
-                        step="0.01"
+                        :step="editingCell.fieldType === 'total' ? '1' : '0.01'"
                         min="0"
                         @blur="guardarEdicion"
                         @keydown="manejarTeclasEdicion"

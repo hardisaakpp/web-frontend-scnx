@@ -6,7 +6,7 @@ import type {
 } from '../types'
 import type { OrdenCompraResponse, OrdenCompraLogResponse, RemisionResponse } from '../types'
 import type { HealthResponse, ProcesoResponse } from '../types'
-import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstado, ProcesoEstadoResponse, SugerenciaProducto, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuRequest, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, PedidoCompleto, CargarRespuestaProveedorResponse, RespuestaProveedorResponse, ProcesarConfirmacionResponse, ReporteDiferenciasResponse, IntegracionSAPResponse, ActualizarCostoPedidoResponse, AjusteDetalle, ResumenConfirmacion, GuardarModificacionesColumnasRequest, GuardarModificacionesColumnasResponse, ObtenerModificacionesColumnasResponse, ProcesamientoSAPResponse, PedidosListadoResponse, CrearOCDesdePedidoResponse } from '../types'
+import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, SkuHomologacionCreateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstado, ProcesoEstadoResponse, SugerenciaProducto, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuRequest, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, PedidoCompleto, CargarRespuestaProveedorResponse, RespuestaProveedorResponse, ProcesarConfirmacionResponse, ReporteDiferenciasResponse, IntegracionSAPResponse, ActualizarCostoPedidoResponse, AjusteDetalle, ResumenConfirmacion, GuardarModificacionesColumnasRequest, GuardarModificacionesColumnasResponse, ObtenerModificacionesColumnasResponse, ProcesamientoSAPResponse, PedidosListadoResponse, CrearOCDesdePedidoResponse, CrearPedidoRequest, CrearPedidoResponse } from '../types'
 
 // Usar la URL base del backend MBA3
 const API_BASE_URL = import.meta.env.VITE_MBA3_API_BASE_URL || 'http://localhost:8000'
@@ -453,6 +453,19 @@ export const mba3ConsultasService = {
     } catch (error: any) {
       console.error('❌ [sincronizarHomologaciones] Error al sincronizar homologaciones:', error)
       throw new Error(`No se pudieron sincronizar las homologaciones. Error: ${error.message}`)
+    }
+  },
+
+  // Crear una nueva homologación manualmente
+  async createSkuHomologacion(
+    createData: SkuHomologacionCreateRequest
+  ): Promise<any> {
+    try {
+      const response = await mba3Api.post('/api/homologaciones-sku', createData)
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [createSkuHomologacion] Error al crear homologación:', error)
+      throw new Error(`No se pudo crear la homologación. Error: ${error.message}`)
     }
   },
 
@@ -929,6 +942,133 @@ export const mba3ConsultasService = {
       }
 
       console.log('🔴 [uploadPlantilla] Mensaje final de error:', message)
+      throw new Error(message)
+    }
+  },
+
+  /**
+   * Crea un pedido manualmente por pantalla (sin Excel)
+   * Requiere permiso: mba3-consultas.proceso.execute
+   * @param pedidoData Datos del pedido a crear
+   */
+  async crearPedidoManual(pedidoData: CrearPedidoRequest): Promise<CrearPedidoResponse> {
+    try {
+      const response = await mba3Api.post<CrearPedidoResponse>(
+        '/api/pedidos',
+        pedidoData
+      )
+
+      // Normalizar claves del backend (validation -> validacion) para el frontend
+      const data: any = { ...response.data }
+      if (data && data.validation && !data.validacion) {
+        data.validacion = data.validation
+      }
+      if (data && data.validation_sap && !data.validacion_sap) {
+        data.validacion_sap = data.validacion_sap
+      }
+      return data as CrearPedidoResponse
+    } catch (error: any) {
+      console.error('❌ [crearPedidoManual] Error al crear pedido:', error)
+      console.error('❌ [crearPedidoManual] Response data:', error.response?.data)
+
+      // Extraer mensaje de error más descriptivo
+      let message = error.message || 'Error desconocido al crear pedido'
+      let hasBackendMessage = false
+
+      // Si el backend retorna 400 con cuerpo de validación, devolverlo como resultado manejable
+      if (error.response?.status === 400 && error.response?.data?.status === 'validation_error') {
+        const raw = error.response.data
+        const data: any = { ...raw }
+        if (data && data.validation && !data.validacion) {
+          data.validacion = data.validation
+        }
+        if (data && data.validation_sap && !data.validacion_sap) {
+          data.validacion_sap = data.validation_sap
+        }
+        // Asegurar campos mínimos
+        if (!data.message && data.detail) {
+          data.message = data.detail
+        }
+        return data as CrearPedidoResponse
+      }
+
+      if (error.response?.data) {
+        // Prioridad 1: Manejar business_exception
+        if (error.response.data.type === 'business_exception') {
+          hasBackendMessage = true
+          message = error.response.data.error || error.response.data.message || 'No se puede procesar: productos no válidos en SAP'
+          console.log('✅ [crearPedidoManual] Business exception detectada:', message)
+          ;(error as any).isBusinessException = true
+          ;(error as any).businessError = error.response.data.error
+        }
+        // Prioridad 2: Manejar array de errores (status: 'error' con errors array)
+        else if (error.response.data.errors && Array.isArray(error.response.data.errors)) {
+          hasBackendMessage = true
+          const errorMessages = error.response.data.errors.map((err: any) => {
+            if (typeof err === 'string') return err
+            if (err?.msg) return err.msg
+            if (err?.message) return err.message
+            if (err?.loc && err?.msg) {
+              const location = Array.isArray(err.loc) ? err.loc.join('.') : String(err.loc)
+              return `${location}: ${err.msg}`
+            }
+            return JSON.stringify(err)
+          })
+          message = errorMessages.join('\n') || error.response.data.detail || error.response.data.message || 'Error de validación en la solicitud'
+          console.log('✅ [crearPedidoManual] Errores array detectado:', error.response.data.errors)
+          console.log('✅ [crearPedidoManual] Mensajes extraídos:', errorMessages)
+        }
+        // Prioridad 3: Verificar campo 'error' primero
+        else if (error.response.data.error) {
+          hasBackendMessage = true
+          message = error.response.data.error
+          console.log('✅ [crearPedidoManual] Error field detectado:', message)
+        }
+        // Prioridad 4: FastAPI puede retornar detail como string, array, o objeto
+        else if (error.response.data.detail) {
+          hasBackendMessage = true
+          const detail = error.response.data.detail
+
+          if (Array.isArray(detail)) {
+            // Si es un array, unir los mensajes de forma más legible
+            message = detail.map((item: any) => {
+              if (typeof item === 'string') return item
+              if (item?.msg) return item.msg
+              if (item?.loc && item?.msg) {
+                // Formato de validación de FastAPI: {loc: [...], msg: "...", type: "..."}
+                const location = Array.isArray(item.loc) ? item.loc.join('.') : String(item.loc)
+                return `${location}: ${item.msg}`
+              }
+              return JSON.stringify(item)
+            }).join('\n')
+          } else if (typeof detail === 'string') {
+            message = detail
+          } else if (detail.message) {
+            message = detail.message
+          } else {
+            message = String(detail)
+          }
+          console.log('✅ [crearPedidoManual] Detail field detectado:', message)
+        }
+        // Prioridad 5: Campo 'message'
+        else if (error.response.data.message) {
+          hasBackendMessage = true
+          message = error.response.data.message
+          console.log('✅ [crearPedidoManual] Message field detectado:', message)
+        }
+      } else if (error.request) {
+        // Error de red (sin respuesta del servidor)
+        message = 'No se pudo conectar con el servidor. Verifica tu conexión a internet.'
+      }
+
+      // Solo usar mensaje genérico si NO tenemos un mensaje del backend
+      if (!hasBackendMessage && (message === 'Request failed with status code 400' ||
+        message.includes('status code') ||
+        message === 'Error desconocido al crear pedido')) {
+        message = 'Error al crear el pedido. Verifica que los datos sean correctos.'
+      }
+
+      console.log('🔴 [crearPedidoManual] Mensaje final de error:', message)
       throw new Error(message)
     }
   },

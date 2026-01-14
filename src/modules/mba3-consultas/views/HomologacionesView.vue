@@ -24,6 +24,15 @@
           Ver Cruce
         </button>
         <button
+          @click="mostrarModalCrear = true"
+          class="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center gap-2"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          Crear Homologación
+        </button>
+        <button
           @click="mostrarModalBuscarSku = true"
           class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center gap-2"
         >
@@ -919,6 +928,14 @@
       @close="mostrarModalBuscarSku = false"
     />
 
+    <!-- Modal de Crear Homologación -->
+    <HomologacionCreateModal
+      :is-open="mostrarModalCrear"
+      :loading="creandoHomologacion"
+      @close="mostrarModalCrear = false"
+      @submit="handleCrearHomologacion"
+    />
+
   </div>
 </template>
 
@@ -928,8 +945,9 @@ import { useRoute } from 'vue-router'
 import { useHomologacionesStore } from '../stores/homologacionesStore'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
-import type { CruceProductosData, ProductoConSugerencias, EstadoSincronizacion, ProcesoEstadoSSE } from '../types'
+import type { CruceProductosData, ProductoConSugerencias, EstadoSincronizacion, ProcesoEstadoSSE, SkuHomologacionCreateRequest } from '../types'
 import BuscarSkuModal from '../components/BuscarSkuModal.vue'
+import HomologacionCreateModal from '../components/HomologacionCreateModal.vue'
 
 const route = useRoute()
 const store = useHomologacionesStore()
@@ -973,6 +991,10 @@ const cargandoEstadoSync = ref(false)
 
 // Estado para modal de búsqueda de SKU
 const mostrarModalBuscarSku = ref(false)
+
+// Estado para modal de crear homologación
+const mostrarModalCrear = ref(false)
+const creandoHomologacion = ref(false)
 
 // Estado de paginación para el cruce
 const paginaCruce = ref(1)
@@ -1418,6 +1440,20 @@ async function cargarHomologaciones() {
     await store.fetchHomologaciones(store.currentPage)
   } catch (error: any) {
     toast.error('Error al cargar homologaciones', error.message)
+  }
+}
+
+async function handleCrearHomologacion(data: SkuHomologacionCreateRequest) {
+  creandoHomologacion.value = true
+  try {
+    await store.createHomologacion(data)
+    toast.success('Homologación creada', 'La homologación se ha creado exitosamente')
+    mostrarModalCrear.value = false
+    await cargarHomologaciones()
+  } catch (error: any) {
+    toast.error('Error al crear homologación', error.message || 'No se pudo crear la homologación')
+  } finally {
+    creandoHomologacion.value = false
   }
 }
 

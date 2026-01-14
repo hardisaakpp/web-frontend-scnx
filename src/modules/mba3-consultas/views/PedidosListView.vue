@@ -9,20 +9,32 @@
             Visualiza y filtra pedidos según estado, fechas, proveedor y más
           </p>
         </div>
-        <button
-          @click="cargarPedidos"
-          class="px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
-          :disabled="loading"
-        >
-          <svg v-if="!loading" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          <svg v-else class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          {{ loading ? 'Cargando...' : 'Actualizar' }}
-        </button>
+        <div class="flex items-center gap-3">
+          <!-- Toggle Auto-Refresh -->
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              v-model="autoRefreshEnabled"
+              @change="toggleAutoRefresh"
+              class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 dark:focus:ring-indigo-400 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+            />
+            <span class="text-sm text-gray-700 dark:text-gray-300">Auto-actualizar</span>
+          </label>
+          <button
+            @click="cargarPedidos"
+            class="px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+            :disabled="loading"
+          >
+            <svg v-if="!loading" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <svg v-else class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            {{ loading ? 'Cargando...' : 'Actualizar' }}
+          </button>
+        </div>
       </div>
 
       <!-- Filtros -->
@@ -96,6 +108,19 @@
               type="text"
               v-model="filtros.numero_pedido"
               placeholder="Buscar por número de pedido..."
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 text-sm"
+            />
+          </div>
+
+          <!-- Filtro de Creado Por -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Creado Por
+            </label>
+            <input
+              type="text"
+              v-model="filtros.creado_por"
+              placeholder="Buscar por usuario creador..."
               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 text-sm"
             />
           </div>
@@ -216,9 +241,14 @@
                   {{ pedido.proveedor_nombre || '-' }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-center">
-                  <span :class="getEstadoBadgeClass(pedido.estado)">
-                    {{ getEstadoLabel(pedido.estado) }}
-                  </span>
+                  <div class="flex items-center justify-center gap-2">
+                    <span :class="getEstadoBadgeClass(pedido.estado)">
+                      {{ getEstadoLabel(pedido.estado) }}
+                    </span>
+                    <span v-if="requiereAccion(pedido.estado)" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300" title="Requiere acción">
+                      !
+                    </span>
+                  </div>
                 </td>
                 <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
                   {{ pedido.comprador_nombre || '-' }}
@@ -269,7 +299,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
@@ -295,9 +325,15 @@ const filtros = ref<PedidosListadoFiltros>({
   fecha_hasta: '',
   proveedor_nombre: '',
   numero_pedido: '',
+  creado_por: '',
   limit: 50,
   offset: 0
 })
+
+// Polling automático
+const autoRefreshEnabled = ref(false)
+const POLLING_INTERVAL = 60000 // 60 segundos
+let pollingIntervalId: ReturnType<typeof setInterval> | null = null
 
 // Función para obtener la etiqueta del estado
 function getEstadoLabel(estado: string): string {
@@ -331,6 +367,16 @@ function getEstadoBadgeClass(estado: string): string {
   }
   
   return `${baseClasses} ${classes[estado] || `bg-gray-100 text-gray-800 ${darkClasses} dark:bg-gray-700 dark:text-gray-200`}`
+}
+
+// Función para determinar si un pedido requiere acción
+function requiereAccion(estado: string): boolean {
+  const estadosQueRequierenAccion = [
+    'PENDIENTE_CONFIRMACION_PROVEEDOR',
+    'RESPUESTA_PROVEEDOR_CARGADA',
+    'CONFIRMADO_PROVEEDOR'
+  ]
+  return estadosQueRequierenAccion.includes(estado)
 }
 
 // Cargar pedidos
@@ -371,6 +417,7 @@ function limpiarFiltros() {
     fecha_hasta: '',
     proveedor_nombre: '',
     numero_pedido: '',
+    creado_por: '',
     limit: 50,
     offset: 0
   }
@@ -390,8 +437,38 @@ function verDetalle(pedidoId: string) {
   router.push(`/mba3-consultas/pedidos/${pedidoId}`)
 }
 
+// Polling automático
+function startPolling() {
+  stopPolling()
+  pollingIntervalId = setInterval(() => {
+    if (!loading.value) {
+      cargarPedidos()
+    }
+  }, POLLING_INTERVAL)
+}
+
+function stopPolling() {
+  if (pollingIntervalId) {
+    clearInterval(pollingIntervalId)
+    pollingIntervalId = null
+  }
+}
+
+function toggleAutoRefresh() {
+  if (autoRefreshEnabled.value) {
+    startPolling()
+  } else {
+    stopPolling()
+  }
+}
+
 // Cargar datos al montar
 onMounted(() => {
   cargarPedidos()
+})
+
+// Limpiar polling al desmontar
+onUnmounted(() => {
+  stopPolling()
 })
 </script>

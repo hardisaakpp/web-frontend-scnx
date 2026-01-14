@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
-import type { SkuHomologacion, SkuHomologacionUpdateRequest } from '../types'
+import type { SkuHomologacion, SkuHomologacionUpdateRequest, SkuHomologacionCreateRequest } from '../types'
 
 export const useHomologacionesStore = defineStore('mba3Homologaciones', () => {
   // Estado
@@ -142,6 +142,27 @@ export const useHomologacionesStore = defineStore('mba3Homologaciones', () => {
     }
   }
 
+  async function createHomologacion(
+    createData: SkuHomologacionCreateRequest
+  ) {
+    loading.value = true
+    error.value = null
+
+    try {
+      const response = await mba3ConsultasService.createSkuHomologacion(createData)
+      
+      // Recargar las homologaciones después de crear
+      await fetchHomologaciones(1)
+
+      return response
+    } catch (err: any) {
+      error.value = err.message || 'Error al crear homologación'
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   function setEstadoFilter(estado: string) {
     estadoFilter.value = estado
   }
@@ -190,6 +211,7 @@ export const useHomologacionesStore = defineStore('mba3Homologaciones', () => {
     updateHomologacion,
     bulkUpdateHomologaciones,
     sincronizarHomologaciones,
+    createHomologacion,
     setEstadoFilter,
     setTieneDiferenciasFilter,
     setTieneDatosSapFilter,
