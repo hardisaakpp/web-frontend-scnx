@@ -6,7 +6,7 @@ import type {
 } from '../types'
 import type { OrdenCompraResponse, OrdenCompraLogResponse, RemisionResponse } from '../types'
 import type { HealthResponse, ProcesoResponse } from '../types'
-import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, SkuHomologacionCreateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstado, ProcesoEstadoResponse, SugerenciaProducto, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuRequest, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, PedidoCompleto, CargarRespuestaProveedorResponse, RespuestaProveedorResponse, ProcesarConfirmacionResponse, ReporteDiferenciasResponse, IntegracionSAPResponse, ActualizarCostoPedidoResponse, AjusteDetalle, ResumenConfirmacion, GuardarModificacionesColumnasRequest, GuardarModificacionesColumnasResponse, ObtenerModificacionesColumnasResponse, ProcesamientoSAPResponse, PedidosListadoResponse, CrearOCDesdePedidoResponse, CrearPedidoRequest, CrearPedidoResponse } from '../types'
+import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, SkuHomologacionCreateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstado, ProcesoEstadoResponse, SugerenciaProducto, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuRequest, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, PedidoCompleto, CargarRespuestaProveedorResponse, RespuestaProveedorResponse, ProcesarConfirmacionResponse, ReporteDiferenciasResponse, IntegracionSAPResponse, ActualizarCostoPedidoResponse, AjusteDetalle, ResumenConfirmacion, GuardarModificacionesColumnasRequest, GuardarModificacionesColumnasResponse, ObtenerModificacionesColumnasResponse, ProcesamientoSAPResponse, PedidosListadoResponse, CrearOCDesdePedidoResponse, CrearPedidoRequest, CrearPedidoResponse, ModificarPedidoCabeceraRequest, ModificarPedidoCabeceraResponse } from '../types'
 
 // Usar la URL base del backend MBA3
 const API_BASE_URL = import.meta.env.VITE_MBA3_API_BASE_URL || 'http://localhost:8000'
@@ -1183,6 +1183,40 @@ export const mba3ConsultasService = {
   },
 
   /**
+   * Exporta un pedido en formato plano (CSV o TXT) para subir en MBA
+   * HU-08: Permite a usuarios de El Rayo descargar el pedido en archivo plano
+   * Requiere permiso: mba3-consultas.facturas.view
+   * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
+   * @param formato Formato de salida: 'csv' o 'txt' (por defecto 'csv')
+   * @returns Blob del archivo plano
+   */
+  async exportarPedidoPlanoMba(numeroPedido: string, formato: 'csv' | 'txt' = 'csv'): Promise<Blob> {
+    try {
+      const response = await mba3Api.get<Blob>(
+        `/api/pedidos/${encodeURIComponent(numeroPedido)}/exportar-plano-mba?formato=${formato}`,
+        {
+          responseType: 'blob',
+        }
+      )
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [exportarPedidoPlanoMba] Error al exportar pedido plano:', error)
+
+      let message = error.message || 'Error desconocido al exportar pedido plano'
+
+      if (error.response?.data) {
+        if (error.response.data.detail) {
+          message = error.response.data.detail
+        } else if (error.response.data.message) {
+          message = error.response.data.message
+        }
+      }
+
+      throw new Error(message)
+    }
+  },
+
+  /**
    * Carga la respuesta del proveedor desde un archivo Excel
    * Requiere permiso: mba3-consultas.proceso.execute
    * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
@@ -1633,6 +1667,58 @@ export const mba3ConsultasService = {
 
       const finalMessage = detailedError ? `${message}. Detalles: ${detailedError}` : message
       console.error('❌ [actualizarComentarioPedido] Mensaje final:', finalMessage)
+
+      throw new Error(finalMessage)
+    }
+  },
+
+  /**
+   * Actualiza la cabecera de un pedido (HU-06 - Modificar estado y fechas)
+   * Requiere permiso: mba3-consultas.proceso.execute
+   * @param pedidoId ID del pedido (UUID)
+   * @param datosCabecera Datos de la cabecera a modificar (estado, fechas, etc.)
+   */
+  async actualizarCabeceraPedido(
+    pedidoId: string,
+    datosCabecera: ModificarPedidoCabeceraRequest
+  ): Promise<ModificarPedidoCabeceraResponse> {
+    try {
+      console.log('📤 [actualizarCabeceraPedido] Enviando:', {
+        url: `/api/pedidos/${pedidoId}`,
+        payload: datosCabecera
+      })
+
+      const response = await mba3Api.put<ModificarPedidoCabeceraResponse>(
+        `/api/pedidos/${pedidoId}`,
+        datosCabecera
+      )
+
+      console.log('✅ [actualizarCabeceraPedido] Respuesta exitosa:', response.data)
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [actualizarCabeceraPedido] Error al actualizar cabecera:', error)
+
+      let message = error.message || 'Error desconocido al actualizar cabecera'
+      let detailedError = ''
+
+      if (error.response?.data) {
+        // Loguear los errores detallados del backend
+        if (error.response.data.errors) {
+          console.error('❌ [actualizarCabeceraPedido] Errores de validación:', error.response.data.errors)
+          detailedError = error.response.data.errors
+            .map((e: any) => typeof e === 'string' ? e : e.msg || e.message || JSON.stringify(e))
+            .join('; ')
+        }
+
+        if (error.response.data.detail) {
+          message = error.response.data.detail
+        } else if (error.response.data.message) {
+          message = error.response.data.message
+        }
+      }
+
+      const finalMessage = detailedError ? `${message}. Detalles: ${detailedError}` : message
+      console.error('❌ [actualizarCabeceraPedido] Mensaje final:', finalMessage)
 
       throw new Error(finalMessage)
     }

@@ -23,6 +23,7 @@
         @confirmar="handleConfirmar"
         @go-to-pedido="goToPedido"
         @search-blur="handleSearchBlur"
+        @descargar-plano-mba="handleDescargarPlanoMba"
       />
 
       <!-- Loading state -->
@@ -53,7 +54,11 @@
         <PedidoCabecera
           :pedido="pedido"
           :copy-feedback="copyFeedback"
+          :editable="!esModoMabelTrading"
           @copy-to-clipboard="copyToClipboard"
+          @update-fecha-pedido="handleUpdateFechaPedido"
+          @update-fecha-entrega="handleUpdateFechaEntrega"
+          @update-estado="handleUpdateEstado"
         />
 
         <!-- ⭐ FASE 4: Ajuste y Redistribución a Tiendas -->
@@ -864,6 +869,82 @@ async function guardarEdicion() {
 
 // Funciones de gestión del pedido ahora están en el composable usePedidoDetalle
 
+// ⭐ HU-06: Funciones para actualizar cabecera del pedido
+async function handleUpdateFechaPedido(fecha: string | null) {
+  if (!pedido.value?.cabecera?.pedido_id) return
+  
+  try {
+    await mba3ConsultasService.actualizarCabeceraPedido(pedido.value.cabecera.pedido_id, {
+      fecha_pedido: fecha
+    })
+    
+    // Actualizar el valor localmente
+    if (pedido.value.cabecera) {
+      pedido.value.cabecera.fecha_pedido = fecha
+    }
+    
+    toast.success('Fecha actualizada', 'La fecha de pedido se ha actualizado correctamente')
+    
+    // Recargar el pedido para asegurar sincronización
+    await loadPedido()
+  } catch (e: any) {
+    console.error('Error al actualizar fecha de pedido:', e)
+    toast.error('Error al actualizar', e.message || 'No se pudo actualizar la fecha de pedido')
+    // Recargar para restaurar valor original
+    await loadPedido()
+  }
+}
+
+async function handleUpdateFechaEntrega(fecha: string | null) {
+  if (!pedido.value?.cabecera?.pedido_id) return
+  
+  try {
+    await mba3ConsultasService.actualizarCabeceraPedido(pedido.value.cabecera.pedido_id, {
+      fecha_entrega: fecha
+    })
+    
+    // Actualizar el valor localmente
+    if (pedido.value.cabecera) {
+      pedido.value.cabecera.fecha_entrega = fecha
+    }
+    
+    toast.success('Fecha actualizada', 'La fecha de entrega se ha actualizado correctamente')
+    
+    // Recargar el pedido para asegurar sincronización
+    await loadPedido()
+  } catch (e: any) {
+    console.error('Error al actualizar fecha de entrega:', e)
+    toast.error('Error al actualizar', e.message || 'No se pudo actualizar la fecha de entrega')
+    // Recargar para restaurar valor original
+    await loadPedido()
+  }
+}
+
+async function handleUpdateEstado(estado: string | null) {
+  if (!pedido.value?.cabecera?.pedido_id) return
+  
+  try {
+    await mba3ConsultasService.actualizarCabeceraPedido(pedido.value.cabecera.pedido_id, {
+      estado: estado || undefined
+    })
+    
+    // Actualizar el valor localmente
+    if (pedido.value.cabecera) {
+      pedido.value.cabecera.estado = estado || undefined
+    }
+    
+    toast.success('Estado actualizado', 'El estado del pedido se ha actualizado correctamente')
+    
+    // Recargar el pedido para asegurar sincronización
+    await loadPedido()
+  } catch (e: any) {
+    console.error('Error al actualizar estado:', e)
+    toast.error('Error al actualizar', e.message || 'No se pudo actualizar el estado del pedido')
+    // Recargar para restaurar valor original
+    await loadPedido()
+  }
+}
+
 async function handleConfirmar() {
   // Prevenir múltiples clics
   if (confirmando.value || !pedido.value || !numeroPedido.value) return
@@ -911,6 +992,35 @@ async function handleConfirmar() {
   }
   // Nota: No resetear confirmando.value aquí porque se redirige a otra página
   // Si hay un error y no se redirige, ya se resetea en el catch
+}
+
+// ⭐ HU-08: Función para descargar pedido en formato plano para MBA
+async function handleDescargarPlanoMba() {
+  if (!pedido.value || !numeroPedido.value) {
+    toast.error('Error', 'No hay pedido seleccionado')
+    return
+  }
+  
+  try {
+    toast.info('Generando archivo...', 'Preparando descarga del pedido en formato plano')
+    
+    const blob = await mba3ConsultasService.exportarPedidoPlanoMba(numeroPedido.value, 'csv')
+    
+    // Crear URL del blob y descargar
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `pedido_mba_${numeroPedido.value.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    
+    toast.success('Descarga completada', 'El archivo se ha descargado correctamente')
+  } catch (e: any) {
+    console.error('Error al descargar pedido plano:', e)
+    toast.error('Error al descargar', e.message || 'No se pudo descargar el archivo')
+  }
 }
 
 // Función formatDate ahora importada desde utils/formatters

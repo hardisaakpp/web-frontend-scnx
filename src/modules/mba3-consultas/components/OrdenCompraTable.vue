@@ -6,11 +6,6 @@
         <!-- Título y contador -->
         <div class="flex items-center gap-3">
           <h2 class="text-lg font-semibold text-gray-900 dark:text-white transition-colors duration-300">Órdenes de Compra</h2>
-          <span class="px-3 py-1 bg-emerald-600 text-white rounded-full text-sm font-medium">
-            {{ (props.currentPage !== undefined && props.pageSize !== undefined && props.currentPage > 0 && props.pageSize > 0)
-              ? `${sortedOrdenes.length} de ${filteredOrdenes.length} (${totalOrdenes || 0} total)` 
-              : `${filteredOrdenes.length} de ${totalOrdenes || 0} órdenes` }}
-          </span>
           <span v-if="selectedOrdenes.length > 0" class="px-3 py-1 bg-emerald-600 text-white rounded-full text-sm font-medium">
             {{ selectedOrdenes.length }} seleccionadas
           </span>
@@ -219,6 +214,9 @@
                 :title="!hasSelectableOrdenes ? 'No hay ODCs seleccionables (todas están enviadas o tienen error)' : 'Seleccionar todas las ODCs pendientes'"
               />
             </th>
+            <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider transition-colors duration-300 w-12">
+              Detalles
+            </th>
             <th
               v-for="columnKey in orderedVisibleColumns"
               :key="columnKey"
@@ -246,13 +244,12 @@
                 </svg>
               </div>
             </th>
-            <th v-if="!readOnly" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider transition-colors duration-300">Acciones</th>
+            <th v-if="!props.readOnly" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider transition-colors duration-300">Acciones</th>
           </tr>
         </thead>
         <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700 transition-colors duration-300">
+          <template v-for="oc in sortedOrdenes" :key="oc.oc_id">
           <tr 
-            v-for="oc in sortedOrdenes" 
-            :key="oc.oc_id" 
             class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-300"
             :class="[
               { 'bg-emerald-50 dark:bg-emerald-900/20': isSelected(oc.oc_id) },
@@ -269,6 +266,24 @@
                 class="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 :title="oc.estado === 'ENVIADA' ? 'Esta ODC ya fue enviada a SAP' : oc.estado === 'ERROR' ? 'Esta ODC tiene un error y no se puede enviar' : ''"
               />
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-center align-middle">
+              <button
+                @click="toggleDetalles(oc.oc_id)"
+                class="text-emerald-500 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors inline-flex items-center justify-center"
+                :disabled="loadingDetalles[oc.oc_id]"
+                title="Ver detalles de la orden de compra"
+              >
+                <svg 
+                  class="w-5 h-5 transform transition-transform"
+                  :class="{ 'rotate-90': detallesExpandidos.has(oc.oc_id) }"
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
             </td>
             <template v-for="columnKey in orderedVisibleColumns" :key="columnKey">
               <!-- ODC ID -->
@@ -397,7 +412,7 @@
                 <span v-else class="text-gray-400 dark:text-gray-500 italic transition-colors duration-300">-</span>
               </td>
             </template>
-            <td v-if="!readOnly" class="px-6 py-4 whitespace-nowrap text-sm">
+            <td v-if="!props.readOnly" class="px-6 py-4 whitespace-nowrap text-sm">
               <!-- Si tiene doc_entry, ya fue enviada - mostrar mensaje -->
               <div v-if="oc.doc_entry !== null && oc.doc_entry !== undefined" class="flex flex-col gap-1">
                 <div class="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-xs font-medium flex items-center gap-2 transition-colors duration-300">
@@ -430,6 +445,72 @@
               <span v-else class="text-gray-400 italic">-</span>
             </td>
           </tr>
+          
+          <!-- Fila expandible con detalles -->
+          <tr v-if="detallesExpandidos.has(oc.oc_id)">
+            <td :colspan="visibleColumnsCount + (props.readOnly ? 2 : 3)" class="px-6 py-4 bg-gray-50/80 dark:bg-gray-900/50 border-l-4 border-emerald-500 dark:border-emerald-400">
+              <div v-if="loadingDetalles[oc.oc_id]" class="flex items-center justify-center py-4">
+                <svg class="animate-spin h-5 w-5 text-emerald-500 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span class="ml-2 text-sm text-emerald-600 dark:text-emerald-300">Cargando detalles...</span>
+              </div>
+              <div v-else-if="detallesPorOC[oc.oc_id]?.length > 0" class="py-2">
+                <h4 class="text-sm font-semibold mb-3 text-gray-900 dark:text-white">
+                  Detalles de la Orden de Compra ({{ detallesPorOC[oc.oc_id]?.length }} {{ detallesPorOC[oc.oc_id]?.length === 1 ? 'ítem' : 'ítems' }})
+                </h4>
+                <div class="overflow-x-auto">
+                  <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <thead class="bg-gray-100 dark:bg-gray-700">
+                      <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">SKU SAP</th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Cantidad</th>
+                        <th class="px-4 py-3 text-center text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Unidad</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Precio Unit.</th>
+                        <th class="px-4 py-3 text-right text-xs font-medium text-gray-700 dark:text-gray-300 uppercase tracking-wider">Total Línea</th>
+                      </tr>
+                    </thead>
+                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                      <tr 
+                        v-for="(detalle, index) in detallesPorOC[oc.oc_id]" 
+                        :key="detalle.oc_detalle_id || index"
+                        class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                      >
+                        <td class="px-4 py-3 whitespace-nowrap text-sm font-mono text-gray-900 dark:text-white">
+                          {{ detalle.sku_sap }}
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-900 dark:text-white">
+                          {{ formatNumber(detalle.cantidad_sap) }}
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-900 dark:text-white">
+                          {{ detalle.unidad_sap }}
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 dark:text-white">
+                          {{ formatCurrency(detalle.precio_unitario) }}
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-medium text-gray-900 dark:text-white">
+                          {{ formatCurrency(detalle.total_linea) }}
+                        </td>
+                      </tr>
+                      <!-- Fila de totales -->
+                      <tr class="bg-gray-50 dark:bg-gray-900 border-t-2 border-gray-300 dark:border-gray-600 font-semibold">
+                        <td colspan="4" class="px-4 py-3 text-right text-sm text-gray-900 dark:text-white">
+                          Total:
+                        </td>
+                        <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 dark:text-white">
+                          {{ formatCurrency(getTotalDetalles(oc.oc_id)) }}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div v-else class="py-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                No se encontraron detalles para esta orden de compra
+              </div>
+            </td>
+          </tr>
+          </template>
         </tbody>
       </table>
     </div>
@@ -440,9 +521,11 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import type { OrdenCompra } from '../types'
+import type { OrdenCompra, DetalleOC } from '../types'
 import { useToast } from '@/composables/useToast'
 import { useTablePreferences } from '@/composables/useTablePreferences'
+import { mba3ConsultasService } from '../services/mba3ConsultasApi'
+import { formatNumber, formatCurrency } from '../utils/formatters'
 
 const props = defineProps<{
   ordenesCompra: OrdenCompra[]
@@ -483,6 +566,11 @@ const almacenesDisponibles = [
   { codigo: 'RG-CD', nombre: 'Regions' },
   { codigo: 'OUT-CD', nombre: 'Descuentón' }
 ]
+
+// Estado para detalles expandibles
+const detallesExpandidos = ref<Set<string>>(new Set())
+const detallesPorOC = ref<Record<string, DetalleOC[]>>({})
+const loadingDetalles = ref<Record<string, boolean>>({})
 
 // Búsqueda y filtros
 const searchQuery = ref('')
@@ -1185,6 +1273,40 @@ function handleVerEnDespachos(referenciaDespacho: string) {
       despacho_id: referenciaDespacho 
     }
   })
+}
+
+// Funciones para manejar detalles expandibles
+async function toggleDetalles(ocId: string) {
+  if (detallesExpandidos.value.has(ocId)) {
+    // Colapsar
+    detallesExpandidos.value.delete(ocId)
+  } else {
+    // Expandir y cargar detalles si no están cargados
+    detallesExpandidos.value.add(ocId)
+    
+    if (!detallesPorOC.value[ocId]) {
+      await cargarDetalles(ocId)
+    }
+  }
+}
+
+async function cargarDetalles(ocId: string) {
+  loadingDetalles.value[ocId] = true
+  try {
+    const response = await mba3ConsultasService.obtenerDetallesOC(ocId)
+    detallesPorOC.value[ocId] = response.detalles || []
+  } catch (error: any) {
+    console.error('Error al cargar detalles de ODC:', error)
+    toast.error('Error al cargar detalles', error.message || 'No se pudieron cargar los detalles de la orden de compra')
+    detallesPorOC.value[ocId] = []
+  } finally {
+    loadingDetalles.value[ocId] = false
+  }
+}
+
+function getTotalDetalles(ocId: string): number {
+  const detalles = detallesPorOC.value[ocId] || []
+  return detalles.reduce((total, detalle) => total + (detalle.total_linea || 0), 0)
 }
 
 // Exponer función para limpiar el estado de envío (llamada por el componente padre después de completar)

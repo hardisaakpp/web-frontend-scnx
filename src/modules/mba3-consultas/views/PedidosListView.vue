@@ -4,10 +4,31 @@
       <!-- Header -->
       <div class="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Listado de Pedidos</h1>
+          <div class="flex items-center gap-3">
+            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+              {{ esModoElRayo ? 'Listado de Pedidos - EL RAYO' : 'Listado de Pedidos' }}
+            </h1>
+            <span v-if="esModoElRayo" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+              EL RAYO
+            </span>
+          </div>
           <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Visualiza y filtra pedidos según estado, fechas, proveedor y más
+            {{ esModoElRayo 
+              ? 'Seguimiento de pedidos pendientes que requieren tu acción' 
+              : 'Visualiza y filtra pedidos según estado, fechas, proveedor y más' 
+            }}
           </p>
+          <!-- Contador de pedidos pendientes -->
+          <div v-if="contadorPedidosPendientes > 0" class="mt-2">
+            <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800">
+              <svg class="w-4 h-4 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <span class="text-sm font-semibold text-orange-800 dark:text-orange-200">
+                {{ contadorPedidosPendientes }} pedido{{ contadorPedidosPendientes !== 1 ? 's' : '' }} {{ esModoElRayo ? 'requieren tu acción' : 'requieren acción' }}
+              </span>
+            </div>
+          </div>
         </div>
         <div class="flex items-center gap-3">
           <!-- Toggle Auto-Refresh -->
@@ -56,6 +77,29 @@
           </div>
         </div>
         <div v-show="!filtrosColapsados" class="p-6">
+          <!-- Filtro rápido: Solo pedidos que requieren acción -->
+          <div v-if="esModoElRayo || mostrarFiltroRapido" class="mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+            <div class="flex items-center gap-3">
+              <label class="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  v-model="filtroSoloPendientes"
+                  @change="aplicarFiltroPendientes"
+                  class="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500 dark:focus:ring-orange-400 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                />
+                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Solo pedidos que requieren acción
+                </span>
+              </label>
+              <span v-if="filtroSoloPendientes" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300">
+                {{ contadorPedidosPendientes }} encontrados
+              </span>
+            </div>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-6">
+              Muestra solo pedidos en estados: Pendiente Confirmación, Respuesta Cargada, Confirmado Proveedor
+            </p>
+          </div>
+          
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <!-- Filtro de Estado -->
           <div>
@@ -65,6 +109,7 @@
             <select
               v-model="filtros.estado"
               @keyup.enter="aplicarFiltros"
+              @change="actualizarFiltroPendientes"
               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 text-sm"
             >
               <option value="">Todos los estados</option>
@@ -235,6 +280,18 @@
 
         <!-- Tabla -->
         <div v-else class="overflow-x-auto">
+          <!-- Filtro adicional en frontend si está activo el filtro rápido -->
+          <div v-if="filtroSoloPendientes && pedidos.length > 0" class="px-6 py-2 bg-orange-50 dark:bg-orange-900/20 border-b border-orange-200 dark:border-orange-800">
+            <p class="text-xs text-orange-700 dark:text-orange-300">
+              <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Mostrando solo pedidos que requieren acción. 
+              <button @click="filtroSoloPendientes = false; aplicarFiltroPendientes()" class="underline font-medium">
+                Mostrar todos
+              </button>
+            </p>
+          </div>
           <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead class="bg-gray-50 dark:bg-gray-900">
               <tr>
@@ -263,9 +320,12 @@
             </thead>
             <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               <tr
-                v-for="pedido in pedidos"
+                v-for="pedido in (filtroSoloPendientes ? pedidos.filter(p => requiereAccion(p.estado)) : pedidos)"
                 :key="pedido.pedido_id"
-                class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                :class="[
+                  'hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors',
+                  requiereAccion(pedido.estado) && esModoElRayo ? 'bg-orange-50/30 dark:bg-orange-900/10 border-l-4 border-orange-500 dark:border-orange-400' : ''
+                ]"
               >
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                   {{ pedido.numero_pedido }}
@@ -274,7 +334,14 @@
                   {{ pedido.fecha_pedido ? formatDate(pedido.fecha_pedido) : '-' }}
                 </td>
                 <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
-                  {{ pedido.proveedor_nombre || '-' }}
+                  <div class="flex items-center gap-2">
+                    <span>{{ pedido.proveedor_nombre || '-' }}</span>
+                    <span v-if="esProveedorElRayo(pedido.proveedor_nombre)" 
+                          class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
+                          title="Proveedor: El Rayo">
+                      EL RAYO
+                    </span>
+                  </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-center">
                   <div class="flex items-center justify-center gap-2">
@@ -336,14 +403,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import type { PedidosListadoResponse, PedidoResumido, PedidosListadoFiltros, PedidosListadoMetadata } from '../types'
 import { formatDate } from '../utils/formatters'
 
 const router = useRouter()
+const route = useRoute()
 const toast = useToast()
 
 const pedidos = ref<PedidoResumido[]>([])
@@ -359,6 +427,15 @@ const metadata = ref<PedidosListadoMetadata>({
 // Estados de colapso (por defecto abiertos)
 const filtrosColapsados = ref(false)
 const pedidosColapsados = ref(false)
+
+// Detectar si es modo El Rayo desde query params
+const esModoElRayo = computed(() => {
+  return route.query.usuario === 'el-rayo' || route.query.modo === 'el-rayo'
+})
+
+// Filtro rápido para pedidos pendientes
+const filtroSoloPendientes = ref(false)
+const mostrarFiltroRapido = ref(true) // Mostrar siempre el filtro rápido
 
 const filtros = ref<PedidosListadoFiltros>({
   estado: '',
@@ -420,6 +497,28 @@ function requiereAccion(estado: string): boolean {
   return estadosQueRequierenAccion.includes(estado)
 }
 
+// Función para verificar si un proveedor es El Rayo
+function esProveedorElRayo(proveedorNombre: string | null | undefined): boolean {
+  if (!proveedorNombre) return false
+  const nombreUpper = proveedorNombre.toUpperCase()
+  return nombreUpper.includes('EL RAYO') || nombreUpper.includes('RAYO')
+}
+
+// Contador de pedidos pendientes (computado desde los pedidos cargados)
+const contadorPedidosPendientes = computed(() => {
+  // Si el filtro rápido está activo, contar todos los pedidos cargados que requieren acción
+  // (ya que estamos filtrando en el frontend)
+  if (filtroSoloPendientes.value) {
+    return pedidos.value.filter(p => requiereAccion(p.estado)).length
+  }
+  
+  // Si no está activo, contar los pedidos visibles que requieren acción
+  // Nota: Esto solo cuenta los pedidos de la página actual
+  // Para un conteo total preciso, se necesitaría una llamada adicional al backend
+  const pedidosPendientes = pedidos.value.filter(p => requiereAccion(p.estado))
+  return pedidosPendientes.length
+})
+
 // Cargar pedidos
 async function cargarPedidos() {
   loading.value = true
@@ -443,6 +542,45 @@ async function cargarPedidos() {
   }
 }
 
+// Aplicar filtro de pedidos pendientes
+function aplicarFiltroPendientes() {
+  if (filtroSoloPendientes.value) {
+    // Cuando el filtro rápido está activo, no aplicamos filtro de estado en el backend
+    // para obtener todos los pedidos y luego filtrar en el frontend por los estados que requieren acción
+    // Esto permite mostrar todos los pedidos pendientes independientemente de su estado específico
+    const estadoAnterior = filtros.value.estado
+    const estadosPendientes = ['PENDIENTE_CONFIRMACION_PROVEEDOR', 'RESPUESTA_PROVEEDOR_CARGADA', 'CONFIRMADO_PROVEEDOR']
+    
+    // Solo limpiar el estado si estaba filtrando por uno de los estados pendientes
+    if (estadoAnterior && estadosPendientes.includes(estadoAnterior)) {
+      filtros.value.estado = ''
+    }
+  } else {
+    // Si se desactiva, limpiar el filtro de estado solo si estaba activo por el filtro rápido
+    const estadoActual = filtros.value.estado
+    const estadosPendientes = ['PENDIENTE_CONFIRMACION_PROVEEDOR', 'RESPUESTA_PROVEEDOR_CARGADA', 'CONFIRMADO_PROVEEDOR']
+    
+    // No limpiar si el usuario había seleccionado manualmente un estado
+    // Solo limpiar si el estado actual es uno de los pendientes (probablemente activado por el filtro rápido)
+    if (estadoActual && estadosPendientes.includes(estadoActual)) {
+      // Verificar si fue el filtro rápido quien lo activó (no limpiar si el usuario lo seleccionó manualmente)
+      // Por ahora, no limpiamos automáticamente para no perder la selección del usuario
+    }
+  }
+  aplicarFiltros()
+}
+
+// Actualizar filtro pendientes cuando cambia el estado manualmente
+function actualizarFiltroPendientes() {
+  const estadoActual = filtros.value.estado
+  const estadosPendientes = ['PENDIENTE_CONFIRMACION_PROVEEDOR', 'RESPUESTA_PROVEEDOR_CARGADA', 'CONFIRMADO_PROVEEDOR']
+  
+  // Si el estado seleccionado no es uno de los pendientes, desactivar el filtro rápido
+  if (estadoActual && !estadosPendientes.includes(estadoActual)) {
+    filtroSoloPendientes.value = false
+  }
+}
+
 // Aplicar filtros
 function aplicarFiltros() {
   metadata.value.offset = 0
@@ -462,6 +600,7 @@ function limpiarFiltros() {
     limit: 50,
     offset: 0
   }
+  filtroSoloPendientes.value = false
   metadata.value.offset = 0
   cargarPedidos()
 }
@@ -505,8 +644,25 @@ function toggleAutoRefresh() {
 
 // Cargar datos al montar
 onMounted(() => {
-  cargarPedidos()
+  // Si es modo El Rayo, activar filtro de pendientes por defecto
+  if (esModoElRayo.value) {
+    filtroSoloPendientes.value = true
+    aplicarFiltroPendientes()
+  } else {
+    cargarPedidos()
+  }
 })
+
+// Watch para detectar cambios en query params
+watch(
+  () => route.query.usuario,
+  (newUsuario) => {
+    if (newUsuario === 'el-rayo' && !filtroSoloPendientes.value) {
+      filtroSoloPendientes.value = true
+      aplicarFiltroPendientes()
+    }
+  }
+)
 
 // Limpiar polling al desmontar
 onUnmounted(() => {

@@ -81,10 +81,6 @@
         'pointer-events-none opacity-75': procesoStore.isBlocking || (procesoStore.loading && (procesoStore.currentStep === 'migrar' || procesoStore.currentStep === 'integrar-sap' || procesoStore.currentStep === 'procesar-oc'))
       }"
     >
-      <div>
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white transition-colors duration-300">Procesos de Integración MBA3-SAP</h1>
-      </div>
-
       <!-- Sistema de Pestañas -->
       <FolderTabs
         :tabs="tabs"
@@ -581,14 +577,6 @@
           <!-- Tabla de Órdenes de Compra (Todas) -->
           <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-xl shadow-2xl p-6 border border-white/30 dark:border-gray-600/30 relative overflow-hidden transition-colors duration-300">
             <div class="absolute inset-0 bg-gradient-to-br from-white/20 dark:from-gray-700/20 via-transparent to-transparent pointer-events-none"></div>
-            <div class="flex items-center justify-between mb-4 relative z-10">
-              <div>
-                <h2 class="text-2xl font-bold text-gray-900 dark:text-white transition-colors duration-300">Órdenes de Compra Generadas</h2>
-                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400 transition-colors duration-300">
-                  Todas las órdenes de compra generadas (Pendientes, Enviadas y con Error)
-                </p>
-              </div>
-            </div>
 
             <SkeletonTable v-if="ordenesCompraStore.loading && ordenesCompraStore.ordenesCompra.length === 0" />
 

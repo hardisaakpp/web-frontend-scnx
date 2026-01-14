@@ -30,6 +30,7 @@ export function useTablePreferences(options: UseTablePreferencesOptions) {
   const isLoading = ref(false)
   const isSyncing = ref(false)
   const lastSyncTime = ref<Date | null>(null)
+  const isInitializing = ref(true) // Bandera para evitar watchers durante inicialización
 
   const authStore = useAuthStore()
 
@@ -141,12 +142,21 @@ export function useTablePreferences(options: UseTablePreferencesOptions) {
    * Cargar preferencias: primero del servidor, luego localStorage como fallback
    */
   async function loadPreferences() {
-    // Intentar cargar del servidor primero
-    const serverLoaded = await loadFromServer()
+    isInitializing.value = true
     
-    // Si no se cargaron del servidor, usar localStorage
-    if (!serverLoaded) {
-      loadFromLocalStorage()
+    try {
+      // Intentar cargar del servidor primero
+      const serverLoaded = await loadFromServer()
+      
+      // Si no se cargaron del servidor, usar localStorage
+      if (!serverLoaded) {
+        loadFromLocalStorage()
+      }
+    } finally {
+      // Marcar como inicializado después de un pequeño delay para asegurar que los watchers no se activen
+      setTimeout(() => {
+        isInitializing.value = false
+      }, 100)
     }
   }
 
@@ -180,6 +190,17 @@ export function useTablePreferences(options: UseTablePreferencesOptions) {
       return
     }
 
+    // Validar que los arrays no estén vacíos antes de sincronizar
+    if (!visibleColumns.value || visibleColumns.value.length === 0) {
+      console.debug(`[${tableId}] Omitiendo sincronización: visibleColumns está vacío`)
+      return
+    }
+
+    if (!columnOrder.value || columnOrder.value.length === 0) {
+      console.debug(`[${tableId}] Omitiendo sincronización: columnOrder está vacío`)
+      return
+    }
+
     isSyncing.value = true
     try {
       const preferences: TablePreferences = {
@@ -209,6 +230,11 @@ export function useTablePreferences(options: UseTablePreferencesOptions) {
    * Guardar preferencias: primero localStorage (inmediato), luego servidor (background)
    */
   async function savePreferences() {
+    // No guardar durante la inicialización
+    if (isInitializing.value) {
+      return
+    }
+
     // Guardar inmediatamente en localStorage
     saveToLocalStorage()
 

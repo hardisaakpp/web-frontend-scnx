@@ -45,11 +45,47 @@
       </div>
       <div>
         <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Fecha de Pedido</label>
-        <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ formatDate(pedido.cabecera.fecha_pedido) }}</p>
+        <input
+          v-if="editable"
+          v-model="fechaPedidoLocal"
+          type="date"
+          @blur="actualizarFechaPedido"
+          @keydown.enter="actualizarFechaPedido"
+          class="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+        />
+        <p v-else class="mt-1 text-sm text-gray-900 dark:text-white">{{ formatDate(pedido.cabecera.fecha_pedido) }}</p>
       </div>
       <div>
         <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Fecha de Entrega</label>
-        <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ formatDate(pedido.cabecera.fecha_entrega) }}</p>
+        <div v-if="editable" class="mt-1 space-y-2">
+          <div class="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="entrega-inmediato"
+              :checked="fechaEntregaLocal === 'INMEDIATO'"
+              @change="handleInmediatoChange"
+              class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600"
+            />
+            <label for="entrega-inmediato" class="text-sm text-gray-700 dark:text-gray-200 cursor-pointer">
+              INMEDIATO
+            </label>
+          </div>
+          <input
+            v-if="fechaEntregaLocal !== 'INMEDIATO'"
+            v-model="fechaEntregaLocal"
+            type="date"
+            @blur="actualizarFechaEntrega"
+            @keydown.enter="actualizarFechaEntrega"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          />
+          <div
+            v-else
+            class="w-full px-3 py-2 border border-indigo-300 dark:border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg text-sm text-indigo-900 dark:text-indigo-100 font-medium"
+          >
+            INMEDIATO
+          </div>
+        </div>
+        <p v-else class="mt-1 text-sm text-gray-900 dark:text-white">{{ formatDate(pedido.cabecera.fecha_entrega) }}</p>
       </div>
       <div>
         <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Proveedor</label>
@@ -63,9 +99,25 @@
         <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Forma de Pago</label>
         <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ pedido.cabecera.forma_pago || 'N/A' }}</p>
       </div>
-      <div v-if="pedido.cabecera.estado">
+      <div v-if="pedido.cabecera.estado || editable">
         <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Estado del Pedido</label>
-        <p class="mt-1">
+        <select
+          v-if="editable"
+          v-model="estadoLocal"
+          @change="actualizarEstado"
+          class="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+        >
+          <option value="">-- Seleccionar estado --</option>
+          <option value="PENDIENTE_CONFIRMACION_PROVEEDOR">Pendiente Confirmación Proveedor</option>
+          <option value="RESPUESTA_PROVEEDOR_CARGADA">Respuesta Proveedor Cargada</option>
+          <option value="CONFIRMADO_PROVEEDOR">Confirmado Proveedor</option>
+          <option value="ORDEN_COMPRA_CREADA">Orden Compra Creada</option>
+          <option value="ENVIADA_SAP">Enviada SAP</option>
+          <option value="CONFIRMADO_ENVIADO">Confirmado Enviado</option>
+          <option value="CERRADO">Cerrado</option>
+          <option value="CANCELADO">Cancelado</option>
+        </select>
+        <p v-else class="mt-1">
           <span class="px-2 py-1 text-xs font-medium rounded-full" :class="getEstadoPedidoBadgeClass(pedido.cabecera.estado)">
             {{ formatEstadoPedido(pedido.cabecera.estado) }}
           </span>
@@ -77,7 +129,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch, computed } from 'vue'
 import type { PedidoCompleto } from '../types'
 import { formatDate, formatEstadoPedido } from '../utils/formatters'
 import { getEstadoPedidoBadgeClass } from '../utils/styleHelpers'
@@ -86,12 +138,69 @@ const props = defineProps<{
   pedido: PedidoCompleto
   copyFeedback: boolean
   defaultExpanded?: boolean
+  editable?: boolean
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   'copy-to-clipboard': [text: string]
+  'update-fecha-pedido': [fecha: string | null]
+  'update-fecha-entrega': [fecha: string | null]
+  'update-estado': [estado: string | null]
 }>()
 
 // Estado colapsable - por defecto encogido, a menos que se especifique defaultExpanded
 const isExpanded = ref(props.defaultExpanded ?? false)
+
+// Estados locales para edición
+const fechaPedidoLocal = ref<string>('')
+const fechaEntregaLocal = ref<string | null>(null)
+const estadoLocal = ref<string>('')
+
+// Convertir fecha a formato YYYY-MM-DD para input type="date"
+function dateToInputFormat(dateString: string | null): string {
+  if (!dateString) return ''
+  if (dateString === 'INMEDIATO' || dateString.toUpperCase() === 'INMEDIATO') return ''
+  try {
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) return ''
+    return date.toISOString().split('T')[0]
+  } catch {
+    return ''
+  }
+}
+
+// Inicializar valores locales desde el pedido
+watch(() => props.pedido, (newPedido) => {
+  if (newPedido?.cabecera) {
+    fechaPedidoLocal.value = dateToInputFormat(newPedido.cabecera.fecha_pedido)
+    fechaEntregaLocal.value = newPedido.cabecera.fecha_entrega || null
+    estadoLocal.value = newPedido.cabecera.estado || ''
+  }
+}, { immediate: true, deep: true })
+
+// Funciones para actualizar valores
+function actualizarFechaPedido() {
+  emit('update-fecha-pedido', fechaPedidoLocal.value || null)
+}
+
+function actualizarFechaEntrega() {
+  if (fechaEntregaLocal.value !== 'INMEDIATO') {
+    emit('update-fecha-entrega', fechaEntregaLocal.value || null)
+  }
+}
+
+function handleInmediatoChange(event: Event) {
+  const target = event.target as HTMLInputElement
+  if (target.checked) {
+    fechaEntregaLocal.value = 'INMEDIATO'
+    emit('update-fecha-entrega', 'INMEDIATO')
+  } else {
+    fechaEntregaLocal.value = null
+    emit('update-fecha-entrega', null)
+  }
+}
+
+function actualizarEstado() {
+  emit('update-estado', estadoLocal.value || null)
+}
 </script>

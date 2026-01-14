@@ -62,6 +62,18 @@
         {{ uploading ? 'Cargando...' : 'Cargar Plantillas Excel' }}
       </button>
       <button
+        v-if="!esModoMabelTrading"
+        @click="$emit('descargar-plano-mba')"
+        :disabled="loading || !pedido"
+        class="px-4 py-2 bg-cyan-600 dark:bg-cyan-500 text-white rounded-lg hover:bg-cyan-700 dark:hover:bg-cyan-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+        title="Descargar pedido en formato plano para subir en MBA"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        Descargar para MBA
+      </button>
+      <button
         v-if="canViewReporteDiferencias"
         @click="$emit('ver-reporte')"
         :disabled="loading || loadingReporte"
@@ -135,6 +147,7 @@ const emit = defineEmits<{
   'confirmar': []
   'go-to-pedido': []
   'search-blur': []
+  'descargar-plano-mba': []
 }>()
 
 const pedidoIdInputModel = defineModel<string>('pedidoIdInput', { default: '' })

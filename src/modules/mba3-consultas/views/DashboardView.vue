@@ -105,6 +105,24 @@
           </div>
         </button>
 
+        <!-- Homologaciones -->
+        <button
+          @click="$router.push('/mba3-consultas/homologaciones')"
+          class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left"
+        >
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded bg-violet-50 dark:bg-violet-900/30 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-violet-600 dark:text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-gray-900 dark:text-white text-sm">Homologaciones</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">SKUs no coincidentes</div>
+            </div>
+          </div>
+        </button>
+
         <!-- Órdenes de Compra -->
         <button
           @click="$router.push('/mba3-consultas/ordenes-compra')"
@@ -163,24 +181,6 @@
           </div>
         </button>
         -->
-
-        <!-- Homologaciones -->
-        <button
-          @click="$router.push('/mba3-consultas/homologaciones')"
-          class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left"
-        >
-          <div class="flex items-start gap-3">
-            <div class="w-8 h-8 rounded bg-violet-50 dark:bg-violet-900/30 flex items-center justify-center flex-shrink-0">
-              <svg class="w-4 h-4 text-violet-600 dark:text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-              </svg>
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="font-medium text-gray-900 dark:text-white text-sm">Homologaciones</div>
-              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">SKUs no coincidentes</div>
-            </div>
-          </div>
-        </button>
 
       </div>
     </div>

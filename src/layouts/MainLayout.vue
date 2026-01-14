@@ -441,7 +441,7 @@ const pageTitle = computed(() => {
     '/conciliacion': 'Conciliación',
     '/mba3-consultas': 'Integración MBA3-SAP',
     '/mba3-consultas/ordenes-compra': 'Órdenes de Compra',
-    '/mba3-consultas/proceso': 'Proceso Completo',
+    '/mba3-consultas/proceso': 'Enviar ODC a SAP',
     '/usuarios': 'Gestión de Usuarios',
     '/roles': 'Gestión de Roles',
     '/permisos': 'Gestión de Permisos'

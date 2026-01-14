@@ -1022,6 +1022,26 @@ export interface ActualizarCostoPedidoResponse {
   comentario_nuevo?: string | null
 }
 
+// ⭐ HU-06: Tipos para actualizar cabecera del pedido
+export interface ModificarPedidoCabeceraRequest {
+  fecha_pedido?: string | null
+  fecha_entrega?: string | null
+  estado?: string | null
+  forma_pago?: string | null
+  proveedor_nombre?: string | null
+  comprador_nombre?: string | null
+  comprador_codigo?: string | null
+  origen_traslado?: string | null
+  serie?: string | null
+}
+
+export interface ModificarPedidoCabeceraResponse {
+  status: 'success'
+  message: string
+  pedido_id: string
+  campos_modificados: string[]
+}
+
 // ⭐ FASE 3: Persistencia de modificaciones de columnas
 export interface ColumnaModificada {
   pedido_detalle_id: string
