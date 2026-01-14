@@ -267,10 +267,10 @@
                 </div>
                 
                 <!-- Sugerencias según el tipo de error -->
-                <div v-if="uploadError.includes('Ya existe un pedido') || uploadError.includes('duplicado')" class="mt-3 p-3 bg-yellow-50 dark:bg-amber-900/30 border border-yellow-200 dark:border-amber-800 rounded-lg">
+                <div v-if="uploadError.includes('Ya existe un pedido') || uploadError.includes('duplicado') || uploadError.includes('número de pedido') || uploadError.includes('numero de pedido')" class="mt-3 p-3 bg-yellow-50 dark:bg-amber-900/30 border border-yellow-200 dark:border-amber-800 rounded-lg">
                   <p class="text-xs font-medium text-yellow-900 dark:text-amber-100 mb-1">💡 Sugerencia:</p>
                   <p class="text-xs text-yellow-800 dark:text-amber-200">
-                    Este pedido ya fue cargado anteriormente. Si necesitas cargarlo nuevamente, verifica que el número de pedido sea diferente o contacta al administrador.
+                    El número de pedido que intentaste utilizar ya existe en el sistema. No es posible cargar un pedido con un número de pedido duplicado. Por favor, verifica el número de pedido en el archivo Excel e intenta con un número diferente.
                   </p>
                 </div>
                 

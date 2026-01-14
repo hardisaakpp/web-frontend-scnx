@@ -132,8 +132,14 @@ export function useColumnManagement(
     const fieldType = editingCell.value.fieldType
     const newValueStr = String(editingCell.value.value || '').trim()
     
-    // Validación específica según el tipo de campo
+    // ⭐ VALIDACIÓN MEJORADA: Validación específica según el tipo de campo
     if (fieldType === 'comentario') {
+      // Validar longitud máxima del comentario
+      if (newValueStr.length > 2000) {
+        toast.warning('Comentario demasiado largo', `El comentario no puede exceder 2000 caracteres. Longitud actual: ${newValueStr.length}`)
+        return
+      }
+      
       if (newValueStr === (editingCell.value.originalValue || '')) {
         editingCell.value = null
         return
@@ -150,9 +156,20 @@ export function useColumnManagement(
         return
       }
       
-      // Para total, validar que sea realmente un entero
+      // ⭐ VALIDACIÓN MEJORADA: Para total, validar que sea realmente un entero
       if (isTotal && parseFloat(newValueStr) % 1 !== 0) {
         toast.warning('Valor inválido', 'El total debe ser un número entero (sin decimales)')
+        return
+      }
+      
+      // ⭐ VALIDACIÓN MEJORADA: Validar rangos razonables
+      if (fieldType === 'costo' && newValue > 1000000) {
+        toast.warning('Costo excede límite', 'El costo unitario no puede exceder 1,000,000. Por favor, verifique el valor.')
+        return
+      }
+      
+      if (fieldType === 'total' && newValue > 10000000) {
+        toast.warning('Total excede límite', 'El total no puede exceder 10,000,000 unidades. Por favor, verifique el valor.')
         return
       }
       

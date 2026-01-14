@@ -126,26 +126,63 @@ export function useRedistribucion(options: {
 
   /**
    * Valida un producto
+   * ⭐ MEJORADO: Validaciones más estrictas (enteros, rangos, formato)
    */
   function validarProducto(producto: ProductoRedistribucion): string | undefined {
+    // Validar que la cantidad distribuida no exceda la confirmada
     if (producto.cantidad_distribuida > producto.cantidad_confirmada) {
-      return `La suma distribuida (${formatNumber(producto.cantidad_distribuida)}) excede el total confirmado (${formatNumber(producto.cantidad_confirmada)}). Debe reducir las cantidades asignadas.`
+      const exceso = producto.cantidad_distribuida - producto.cantidad_confirmada
+      return `La suma distribuida (${formatNumber(producto.cantidad_distribuida)}) excede el total confirmado (${formatNumber(producto.cantidad_confirmada)}) por ${formatNumber(exceso)} unidades. Debe reducir las cantidades asignadas.`
     }
+    
+    // Validar cantidades negativas
     if (producto.distribucion_tiendas.some(t => t.cantidad_asignada < 0)) {
       return 'No se permiten cantidades negativas. Por favor, revise las cantidades asignadas.'
     }
+    
+    // Validar que todas las cantidades sean enteros (no decimales)
+    const tieneDecimales = producto.distribucion_tiendas.some(t => {
+      const cantidad = t.cantidad_asignada
+      return cantidad % 1 !== 0
+    })
+    if (tieneDecimales) {
+      return 'Las cantidades asignadas deben ser números enteros (sin decimales). Por favor, corrija los valores decimales.'
+    }
+    
+    // Validar que la cantidad distribuida total sea entero
+    if (producto.cantidad_distribuida % 1 !== 0) {
+      return `La suma total distribuida (${producto.cantidad_distribuida}) debe ser un número entero.`
+    }
+    
+    // Validar rangos razonables (máximo 1,000,000 por tienda)
+    const excedeLimite = producto.distribucion_tiendas.some(t => t.cantidad_asignada > 1000000)
+    if (excedeLimite) {
+      return 'Una o más cantidades asignadas exceden el límite máximo permitido (1,000,000 unidades por tienda).'
+    }
+    
+    // Validar que no falte distribuir
     if (producto.diferencia < 0) {
       return `Faltan ${formatNumber(Math.abs(producto.diferencia))} unidades por distribuir. La suma debe ser exactamente ${formatNumber(producto.cantidad_confirmada)}.`
     }
+    
     return undefined
   }
 
   /**
    * Valida cantidad de tienda individual
+   * ⭐ MEJORADO: Validaciones más estrictas (enteros, rangos)
    */
   function validarCantidadTienda(producto: ProductoRedistribucion, tienda: DistribucionTiendaEditada): boolean {
+    const cantidad = tienda.cantidad_asignada
+    
     // No puede ser negativo
-    if (tienda.cantidad_asignada < 0) return false
+    if (cantidad < 0) return false
+    
+    // Debe ser un número entero (no decimal)
+    if (cantidad % 1 !== 0) return false
+    
+    // No puede exceder el límite máximo por tienda
+    if (cantidad > 1000000) return false
     
     // Calcular suma total actual (sumando todas las tiendas, incluyendo la que se está editando)
     const sumaActual = producto.distribucion_tiendas.reduce((sum, t) => {
@@ -158,13 +195,33 @@ export function useRedistribucion(options: {
 
   /**
    * Valida y corrige cantidad al perder el foco
+   * ⭐ MEJORADO: Validaciones y correcciones más robustas con feedback al usuario
    */
   function validarYCorregirCantidad(producto: ProductoRedistribucion, tienda: DistribucionTiendaEditada) {
     if (!tienda || !producto) return
     
+    let valorCorregido = false
+    let mensajeCorreccion = ''
+    
     // Asegurar que no sea negativo
     if (tienda.cantidad_asignada < 0) {
       tienda.cantidad_asignada = 0
+      valorCorregido = true
+      mensajeCorreccion = 'Cantidad negativa corregida a 0'
+    }
+    
+    // Asegurar que sea entero (redondear si es decimal)
+    if (tienda.cantidad_asignada % 1 !== 0) {
+      tienda.cantidad_asignada = Math.round(tienda.cantidad_asignada)
+      valorCorregido = true
+      mensajeCorreccion = 'Cantidad decimal redondeada a número entero'
+    }
+    
+    // Validar límite máximo
+    if (tienda.cantidad_asignada > 1000000) {
+      tienda.cantidad_asignada = 1000000
+      valorCorregido = true
+      mensajeCorreccion = 'Cantidad ajustada al límite máximo (1,000,000)'
     }
     
     // Calcular suma actual
@@ -173,7 +230,15 @@ export function useRedistribucion(options: {
     // Si excede, ajustar automáticamente la tienda actual para que no exceda
     if (sumaActual > producto.cantidad_confirmada) {
       const exceso = sumaActual - producto.cantidad_confirmada
-      tienda.cantidad_asignada = Math.max(0, tienda.cantidad_asignada - exceso)
+      const nuevoValor = Math.max(0, tienda.cantidad_asignada - exceso)
+      tienda.cantidad_asignada = nuevoValor
+      valorCorregido = true
+      mensajeCorreccion = `Cantidad ajustada para no exceder el total confirmado (${formatNumber(producto.cantidad_confirmada)}). Se redujo en ${formatNumber(exceso)} unidades.`
+    }
+    
+    // Mostrar feedback si se corrigió algo
+    if (valorCorregido && mensajeCorreccion) {
+      toast.info('Valor corregido', mensajeCorreccion)
     }
     
     // Recalcular diferencias
@@ -263,14 +328,20 @@ export function useRedistribucion(options: {
 
   /**
    * Actualiza cantidad de tienda
-   * ⭐ MEJORADO: Ahora crea la tienda automáticamente si no existe, permitiendo redistribuir cualquier producto a cualquier tienda
+   * ⭐ MEJORADO: Validaciones mejoradas (enteros, rangos, formato de tienda)
    */
   function actualizarCantidadTienda(codigoProducto: string, tiendaCodigo: string, event: Event) {
     const target = event.target as HTMLInputElement
-    const nuevoValor = parseFloat(target.value) || 0
+    let nuevoValor = parseFloat(target.value) || 0
     
     const producto = productosRedistribucion.value.find(p => p.codigo_producto === codigoProducto)
     if (!producto) return
+    
+    // ⭐ VALIDACIÓN: Validar formato del código de tienda
+    if (!tiendaCodigo || typeof tiendaCodigo !== 'string' || tiendaCodigo.trim().length === 0) {
+      toast.warning('Código de tienda inválido', 'El código de tienda no puede estar vacío')
+      return
+    }
     
     // Buscar la tienda existente
     let tienda = producto.distribucion_tiendas.find(t => t.tienda_codigo === tiendaCodigo)
@@ -288,11 +359,25 @@ export function useRedistribucion(options: {
       producto.distribucion_tiendas.push(tienda)
     }
     
-    // Validar que no sea negativo
-    if (nuevoValor < 0) {
+    // ⭐ VALIDACIÓN MEJORADA: Validar y corregir valor
+    if (isNaN(nuevoValor) || nuevoValor < 0) {
       target.value = '0'
       tienda.cantidad_asignada = 0
     } else {
+      // ⭐ Validar que sea entero (redondear si es decimal)
+      if (nuevoValor % 1 !== 0) {
+        nuevoValor = Math.round(nuevoValor)
+        target.value = nuevoValor.toString()
+        toast.info('Valor ajustado', 'Las cantidades deben ser números enteros. Se ha redondeado automáticamente.')
+      }
+      
+      // ⭐ Validar límite máximo
+      if (nuevoValor > 1000000) {
+        nuevoValor = 1000000
+        target.value = '1000000'
+        toast.warning('Límite máximo', 'La cantidad máxima permitida por tienda es 1,000,000 unidades')
+      }
+      
       tienda.cantidad_asignada = nuevoValor
     }
     
@@ -399,10 +484,28 @@ export function useRedistribucion(options: {
    * Confirma redistribución
    * El backend procesa automáticamente la información SAP y transforma unidades
    * Después de confirmar, redirige a la interfaz de Procesos de Integración MBA3-SAP
+   * ⭐ MEJORADO: Validación previa más detallada con mensajes específicos
    */
   async function confirmarRedistribucion(puedeConfirmar: Ref<boolean> | ComputedRef<boolean>) {
     if (!puedeConfirmar.value) {
-      toast.warning('Validación requerida', 'Debe completar la redistribución correctamente antes de confirmar')
+      // ⭐ MEJORADO: Mensaje de error más específico
+      const productosConError = productosRedistribucion.value.filter(p => p.error || p.diferencia !== 0)
+      
+      if (productosConError.length > 0) {
+        const errores = productosConError.map(p => {
+          if (p.error) return `${p.codigo_producto}: ${p.error}`
+          if (p.diferencia < 0) return `${p.codigo_producto}: Faltan ${formatNumber(Math.abs(p.diferencia))} unidades por distribuir`
+          if (p.diferencia > 0) return `${p.codigo_producto}: Excede por ${formatNumber(p.diferencia)} unidades`
+          return `${p.codigo_producto}: Error de validación`
+        })
+        
+        toast.error(
+          'Validación requerida', 
+          `Hay ${productosConError.length} producto(s) con errores:\n${errores.slice(0, 3).join('\n')}${errores.length > 3 ? '\n...' : ''}`
+        )
+      } else {
+        toast.warning('Validación requerida', 'Debe completar la redistribución correctamente antes de confirmar')
+      }
       return
     }
     

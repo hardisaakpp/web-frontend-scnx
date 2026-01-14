@@ -60,10 +60,20 @@ export function formatCurrency(value: number | null | undefined): string {
 }
 
 /**
- * Convierte un decimal (0.2) a porcentaje (20%)
+ * Formatea un valor como porcentaje.
+ * 
+ * Detecta automáticamente si el valor ya viene como porcentaje (>= 1) o como decimal (< 1).
+ * 
+ * Ejemplos:
+ * - formatPorcentaje(114.29) → "114.29%" (ya viene como porcentaje)
+ * - formatPorcentaje(0.1429) → "14.29%" (viene como decimal)
+ * - formatPorcentaje(20) → "20.00%" (ya viene como porcentaje)
+ * - formatPorcentaje(0.2) → "20.00%" (viene como decimal)
  */
 export function formatPorcentaje(value: number): string {
-  const percentageValue = value * 100
+  // Si el valor es >= 1, asumimos que ya viene como porcentaje (ej: 114.29, 20)
+  // Si el valor es < 1, asumimos que viene como decimal (ej: 0.1429, 0.2)
+  const percentageValue = value >= 1 ? value : value * 100
   return `${percentageValue.toFixed(2)}%`
 }
 

@@ -48,6 +48,7 @@
             </label>
             <select
               v-model="filtros.estado"
+              @keyup.enter="aplicarFiltros"
               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 text-sm"
             >
               <option value="">Todos los estados</option>
@@ -70,6 +71,7 @@
             <input
               type="date"
               v-model="filtros.fecha_desde"
+              @keyup.enter="aplicarFiltros"
               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 text-sm"
             />
           </div>
@@ -82,6 +84,7 @@
             <input
               type="date"
               v-model="filtros.fecha_hasta"
+              @keyup.enter="aplicarFiltros"
               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 text-sm"
             />
           </div>
@@ -94,6 +97,7 @@
             <input
               type="text"
               v-model="filtros.proveedor_nombre"
+              @keyup.enter="aplicarFiltros"
               placeholder="Buscar por nombre de proveedor..."
               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 text-sm"
             />
@@ -107,6 +111,7 @@
             <input
               type="text"
               v-model="filtros.numero_pedido"
+              @keyup.enter="aplicarFiltros"
               placeholder="Buscar por número de pedido..."
               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 text-sm"
             />
@@ -120,6 +125,7 @@
             <input
               type="text"
               v-model="filtros.creado_por"
+              @keyup.enter="aplicarFiltros"
               placeholder="Buscar por usuario creador..."
               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 text-sm"
             />

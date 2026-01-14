@@ -203,7 +203,10 @@ export function useFileUpload(options: {
     
     const isDuplicateError = (errorMessageStr.toLowerCase().includes('duplicado') ||
                              errorMessageStr.toLowerCase().includes('ya existe en el sistema') ||
-                             errorMessageStr.toLowerCase().includes('pedido ya existe')) &&
+                             errorMessageStr.toLowerCase().includes('pedido ya existe') ||
+                             errorMessageStr.toLowerCase().includes('número de pedido') && errorMessageStr.toLowerCase().includes('ya existe') ||
+                             errorMessageStr.toLowerCase().includes('numero de pedido') && errorMessageStr.toLowerCase().includes('ya existe') ||
+                             (e.response?.data?.error_tipo === 'numero_pedido_duplicado')) &&
                              !isSAPError
     
     const isFormatError = errorMessageStr.toLowerCase().includes('formato') ||
@@ -231,8 +234,17 @@ export function useFileUpload(options: {
         errorMessage = `Uno o más productos del archivo no fueron encontrados en SAP.\n\nVerifica que todos los códigos de producto estén correctamente registrados en SAP.`
       }
     } else if (isDuplicateError) {
-      errorTitle = 'Pedido duplicado'
-      errorMessage = `Este pedido ya existe en el sistema.\n\nVerifica el número de pedido o contacta al administrador si necesitas modificar un pedido existente.`
+      errorTitle = 'Número de pedido duplicado'
+      // Extraer el número de pedido del mensaje si está disponible
+      const numeroPedidoMatch = errorMessageStr.match(/['"]([^'"]+)['"]/)?.[1] || 
+                                errorMessageStr.match(/número de pedido ['"]([^'"]+)['"]/i)?.[1] ||
+                                errorMessageStr.match(/numero de pedido ['"]([^'"]+)['"]/i)?.[1]
+      
+      if (numeroPedidoMatch) {
+        errorMessage = `El número de pedido "${numeroPedidoMatch}" ya existe en el sistema.\n\nNo es posible cargar un pedido con un número de pedido duplicado. Por favor, verifica el número de pedido e intenta con un número diferente.`
+      } else {
+        errorMessage = `El número de pedido que intentaste utilizar ya existe en el sistema.\n\nNo es posible cargar un pedido con un número de pedido duplicado. Por favor, verifica el número de pedido e intenta con un número diferente.`
+      }
     } else if (isFormatError) {
       errorTitle = 'Error de formato'
       errorMessage = `El archivo Excel no tiene el formato correcto o está incompleto.\n\nAsegúrate de usar la plantilla oficial y completar todos los campos requeridos.`

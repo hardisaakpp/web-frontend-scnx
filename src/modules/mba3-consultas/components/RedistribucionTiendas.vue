@@ -454,12 +454,16 @@
                                 @input="actualizarCantidadTienda(producto.codigo_producto, tienda.tienda_codigo, $event)"
                                 @blur="validarYCorregirCantidad(producto, tienda)"
                                 min="0"
+                                max="1000000"
                                 step="1"
                                 class="w-full max-w-[120px] ml-auto px-3 py-2 text-sm text-right border rounded-lg focus:outline-none focus:ring-2 transition-colors"
                                 :class="validarCantidadTiendaLocal(producto, tienda) 
                                   ? 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-purple-500 dark:focus:ring-purple-400' 
                                   : 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20 text-red-900 dark:text-red-200 focus:ring-red-500 dark:focus:ring-red-400'"
                                 placeholder="0"
+                                :title="validarCantidadTiendaLocal(producto, tienda) 
+                                  ? `Cantidad válida (máximo: ${formatNumber(producto.cantidad_confirmada)})` 
+                                  : 'Cantidad inválida: excede el total confirmado o límite máximo'"
                               />
                             </td>
                           </tr>

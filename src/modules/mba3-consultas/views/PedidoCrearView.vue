@@ -815,8 +815,34 @@ async function handleSubmit() {
     toast.warning('Pedido creado', 'El pedido se creó pero no se pudo obtener su información completa')
   } catch (e: any) {
     console.error('Error al crear pedido:', e)
-    error.value = e.message || 'Error desconocido al crear el pedido'
-    toast.error('Error al crear pedido', error.value)
+    const errorMessage = e.message || 'Error desconocido al crear el pedido'
+    
+    // Detectar específicamente el error de número de pedido duplicado
+    const isDuplicateError = errorMessage.toLowerCase().includes('número de pedido') && 
+                           errorMessage.toLowerCase().includes('ya existe') ||
+                           errorMessage.toLowerCase().includes('numero de pedido') && 
+                           errorMessage.toLowerCase().includes('ya existe') ||
+                           errorMessage.toLowerCase().includes('duplicado') ||
+                           e.response?.data?.error_tipo === 'numero_pedido_duplicado'
+    
+    if (isDuplicateError) {
+      // Extraer el número de pedido del mensaje si está disponible
+      const numeroPedidoMatch = errorMessage.match(/['"]([^'"]+)['"]/)?.[1] || 
+                                errorMessage.match(/número de pedido ['"]([^'"]+)['"]/i)?.[1] ||
+                                errorMessage.match(/numero de pedido ['"]([^'"]+)['"]/i)?.[1]
+      
+      if (numeroPedidoMatch) {
+        error.value = `El número de pedido "${numeroPedidoMatch}" ya existe en el sistema. No es posible cargar un pedido con un número de pedido duplicado. Por favor, verifica el número de pedido e intenta con un número diferente.`
+        toast.error('Número de pedido duplicado', error.value)
+      } else {
+        error.value = 'El número de pedido que intentaste utilizar ya existe en el sistema. No es posible cargar un pedido con un número de pedido duplicado. Por favor, verifica el número de pedido e intenta con un número diferente.'
+        toast.error('Número de pedido duplicado', error.value)
+      }
+    } else {
+      // Manejar otros errores normalmente
+      error.value = errorMessage
+      toast.error('Error al crear pedido', error.value)
+    }
   } finally {
     creating.value = false
   }
