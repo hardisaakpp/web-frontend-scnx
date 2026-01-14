@@ -132,6 +132,9 @@ export function useColumnManagement(
     const fieldType = editingCell.value.fieldType
     const newValueStr = String(editingCell.value.value || '').trim()
     
+    // Variable para almacenar el valor numérico calculado (si aplica)
+    let newValue: number | null = null
+    
     // ⭐ VALIDACIÓN MEJORADA: Validación específica según el tipo de campo
     if (fieldType === 'comentario') {
       // Validar longitud máxima del comentario
@@ -147,9 +150,24 @@ export function useColumnManagement(
     } else {
       // Para 'total' solo acepta enteros, para 'costo' acepta decimales
       const isTotal = fieldType === 'total'
-      const newValue = isTotal ? parseInt(newValueStr, 10) : parseFloat(newValueStr)
       
-      if (isNaN(newValue) || newValue < 0) {
+      // Si el campo está vacío, tratar como 0 (permitir 0 explícitamente)
+      if (newValueStr === '' || newValueStr.trim() === '') {
+        newValue = 0
+      } else {
+        newValue = isTotal ? parseInt(newValueStr, 10) : parseFloat(newValueStr)
+      }
+      
+      // Validar que sea un número válido (incluyendo 0)
+      if (isNaN(newValue)) {
+        toast.warning('Valor inválido', isTotal 
+          ? 'Por favor ingresa un número entero válido (puede ser 0)' 
+          : 'Por favor ingresa un número válido (puede ser 0)')
+        return
+      }
+      
+      // Validar que no sea negativo (0 está permitido explícitamente)
+      if (newValue < 0) {
         toast.warning('Valor inválido', isTotal 
           ? 'Por favor ingresa un número entero mayor o igual a 0' 
           : 'Por favor ingresa un número válido mayor o igual a 0')
@@ -157,8 +175,9 @@ export function useColumnManagement(
       }
       
       // ⭐ VALIDACIÓN MEJORADA: Para total, validar que sea realmente un entero
-      if (isTotal && parseFloat(newValueStr) % 1 !== 0) {
-        toast.warning('Valor inválido', 'El total debe ser un número entero (sin decimales)')
+      // Solo validar si hay un punto decimal y el valor no es 0
+      if (isTotal && newValue !== 0 && newValueStr.includes('.') && parseFloat(newValueStr) % 1 !== 0) {
+        toast.warning('Valor inválido', 'El total debe ser un número entero (sin decimales). El valor 0 está permitido.')
         return
       }
       
@@ -191,13 +210,11 @@ export function useColumnManagement(
     const oldTotal = detalle.total
     const oldComentario = detalle.comentario
     
-    // ACTUALIZACIÓN OPTIMISTA: Actualizar UI inmediatamente
+    // ACTUALIZACIÓN OPTIMISTA: Actualizar UI inmediatamente usando el valor ya validado
     if (fieldType === 'costo') {
-      const newValue = parseFloat(newValueStr)
-      detalle.costo_doc_sin_iva = newValue
+      detalle.costo_doc_sin_iva = newValue!
     } else if (fieldType === 'total') {
-      const newValue = parseInt(newValueStr, 10) // Total solo acepta enteros
-      detalle.total = newValue
+      detalle.total = newValue! // Usar el valor ya validado (puede ser 0)
     } else if (fieldType === 'comentario') {
       detalle.comentario = newValueStr || null
     }
@@ -210,18 +227,18 @@ export function useColumnManagement(
       toast.info('Actualizando...', 'Guardando comentario...')
     } else {
       const fieldLabel = fieldType === 'costo' ? 'costo' : 'total'
-      const newValue = fieldType === 'total' ? parseInt(newValueStr, 10) : parseFloat(newValueStr)
-      toast.info('Actualizando...', `Actualizando ${fieldLabel} a ${fieldType === 'costo' ? formatCurrency(newValue) : formatNumber(newValue)}`)
+      // Usar el valor ya validado (puede ser 0)
+      toast.info('Actualizando...', `Actualizando ${fieldLabel} a ${fieldType === 'costo' ? formatCurrency(newValue!) : formatNumber(newValue!)}`)
     }
     
     try {
       let response
       if (fieldType === 'costo') {
-        const newValue = parseFloat(newValueStr)
+        // Usar el valor ya validado
         response = await mba3ConsultasService.actualizarCostoPedido(
           numeroPedido.value,
           detalleId,
-          newValue
+          newValue!
         )
         
         if (response.costo_nuevo !== undefined) {
@@ -235,13 +252,13 @@ export function useColumnManagement(
         
         if (onSaveStorage) onSaveStorage()
         
-        toast.success('Costo actualizado', `Costo unitario actualizado a ${formatCurrency(parseFloat(newValueStr))}`)
+        toast.success('Costo actualizado', `Costo unitario actualizado a ${formatCurrency(newValue!)}`)
       } else if (fieldType === 'total') {
-        const newValue = parseInt(newValueStr, 10) // Total solo acepta enteros
+        // Usar el valor ya validado (puede ser 0)
         response = await mba3ConsultasService.actualizarTotalPedido(
           numeroPedido.value,
           detalleId,
-          newValue
+          newValue!
         )
         
         if (response.total_nuevo !== undefined) {
@@ -255,7 +272,7 @@ export function useColumnManagement(
         
         if (onSaveStorage) onSaveStorage()
         
-        toast.success('Total actualizado', `Total actualizado a ${formatNumber(newValue)}`)
+        toast.success('Total actualizado', `Total actualizado a ${formatNumber(newValue!)}`)
       } else if (fieldType === 'comentario') {
         response = await mba3ConsultasService.actualizarComentarioPedido(
           numeroPedido.value,
