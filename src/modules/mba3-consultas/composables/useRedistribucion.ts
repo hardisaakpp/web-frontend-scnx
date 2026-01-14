@@ -1,7 +1,7 @@
 /**
  * Composable para manejar la redistribución de productos a tiendas
  */
-import { ref, Ref, type ComputedRef } from 'vue'
+import { ref, Ref, type ComputedRef, triggerRef } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { formatNumber } from '../utils/formatters'
@@ -102,10 +102,14 @@ export function useRedistribucion(options: {
    */
   function recalcularDiferencias() {
     productosRedistribucion.value.forEach(producto => {
-      producto.cantidad_distribuida = producto.distribucion_tiendas.reduce(
+      const cantidad_distribuida = producto.distribucion_tiendas.reduce(
         (sum, t) => sum + t.cantidad_asignada, 0
       )
-      producto.diferencia = producto.cantidad_distribuida - producto.cantidad_confirmada
+      const diferencia = cantidad_distribuida - producto.cantidad_confirmada
+      
+      // Actualizar propiedades para asegurar reactividad
+      producto.cantidad_distribuida = cantidad_distribuida
+      producto.diferencia = diferencia
       
       // Recalcular diferencias de tiendas
       producto.distribucion_tiendas.forEach(tienda => {
@@ -115,6 +119,9 @@ export function useRedistribucion(options: {
       // Validar y establecer error si existe
       producto.error = validarProducto(producto)
     })
+    
+    // Forzar actualización de reactividad para asegurar que Vue detecte los cambios
+    triggerRef(productosRedistribucion)
   }
 
   /**
@@ -217,7 +224,46 @@ export function useRedistribucion(options: {
   }
 
   /**
+   * Obtiene el nombre de una tienda desde otras fuentes si no está disponible
+   * Busca en: otros productos, pedido original, reporte de diferencias
+   */
+  function obtenerNombreTienda(tiendaCodigo: string): string {
+    // 1. Buscar en otros productos que ya tienen esta tienda
+    for (const producto of productosRedistribucion.value) {
+      const tiendaExistente = producto.distribucion_tiendas.find(t => t.tienda_codigo === tiendaCodigo)
+      if (tiendaExistente) {
+        return tiendaExistente.tienda_nombre
+      }
+    }
+    
+    // 2. Buscar en el pedido original
+    if (options.pedido.value?.detalles) {
+      for (const detalle of options.pedido.value.detalles) {
+        const tiendaOriginal = detalle.tiendas?.find(t => t.codigo === tiendaCodigo)
+        if (tiendaOriginal?.nombre) {
+          return tiendaOriginal.nombre
+        }
+      }
+    }
+    
+    // 3. Buscar en reporte de diferencias
+    const reporteDiferencias = options.getReporteDiferencias?.() || options.reporteDiferencias
+    if (reporteDiferencias?.value?.detalle) {
+      for (const item of reporteDiferencias.value.detalle) {
+        const tiendaReporte = item.distribucion_tiendas?.find(t => t.tienda_codigo === tiendaCodigo)
+        if (tiendaReporte?.tienda_nombre) {
+          return tiendaReporte.tienda_nombre
+        }
+      }
+    }
+    
+    // 4. Si no se encuentra, usar el código como nombre
+    return tiendaCodigo
+  }
+
+  /**
    * Actualiza cantidad de tienda
+   * ⭐ MEJORADO: Ahora crea la tienda automáticamente si no existe, permitiendo redistribuir cualquier producto a cualquier tienda
    */
   function actualizarCantidadTienda(codigoProducto: string, tiendaCodigo: string, event: Event) {
     const target = event.target as HTMLInputElement
@@ -226,8 +272,21 @@ export function useRedistribucion(options: {
     const producto = productosRedistribucion.value.find(p => p.codigo_producto === codigoProducto)
     if (!producto) return
     
-    const tienda = producto.distribucion_tiendas.find(t => t.tienda_codigo === tiendaCodigo)
-    if (!tienda) return
+    // Buscar la tienda existente
+    let tienda = producto.distribucion_tiendas.find(t => t.tienda_codigo === tiendaCodigo)
+    
+    // ⭐ Si la tienda no existe, crearla automáticamente
+    if (!tienda) {
+      const nombreTienda = obtenerNombreTienda(tiendaCodigo)
+      tienda = {
+        tienda_codigo: tiendaCodigo,
+        tienda_nombre: nombreTienda,
+        cantidad_original: 0, // Nueva tienda, no tenía distribución original
+        cantidad_asignada: 0,
+        diferencia: 0
+      }
+      producto.distribucion_tiendas.push(tienda)
+    }
     
     // Validar que no sea negativo
     if (nuevoValor < 0) {

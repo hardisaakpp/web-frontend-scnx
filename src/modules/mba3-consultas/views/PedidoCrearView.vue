@@ -410,7 +410,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
-import type { CrearPedidoRequest, DistribucionTiendaRequest, ArticuloRequest } from '../types'
+import type { CrearPedidoRequest, DistribucionTiendaRequest, ArticuloRequest, PedidoCompleto } from '../types'
 
 const router = useRouter()
 const toast = useToast()
@@ -569,10 +569,96 @@ watch(
   { deep: true }
 )
 
+// Función para cargar el último pedido y prellenar el formulario
+async function cargarUltimoPedido() {
+  try {
+    const ultimoPedido: PedidoCompleto | null = await mba3ConsultasService.getUltimoPedido(false)
+    
+    if (!ultimoPedido || !ultimoPedido.cabecera) {
+      return false
+    }
+
+    const cabecera = ultimoPedido.cabecera
+    
+    // Prellenar cabecera (solo campos que no sean null/undefined)
+    if (cabecera.numero_pedido) {
+      // No prellenar numero_pedido ya que debe ser único
+    }
+    if (cabecera.fecha_pedido) {
+      formData.value.cabecera.fecha_pedido = cabecera.fecha_pedido
+    }
+    if (cabecera.fecha_entrega) {
+      formData.value.cabecera.fecha_entrega = cabecera.fecha_entrega
+    }
+    if (cabecera.proveedor_nombre) {
+      formData.value.cabecera.proveedor_nombre = cabecera.proveedor_nombre
+    }
+    if (cabecera.comprador_nombre) {
+      formData.value.cabecera.comprador_nombre = cabecera.comprador_nombre
+    }
+    if (cabecera.comprador_codigo) {
+      formData.value.cabecera.comprador_codigo = cabecera.comprador_codigo
+    }
+    if (cabecera.forma_pago) {
+      formData.value.cabecera.forma_pago = cabecera.forma_pago
+    }
+    if (cabecera.origen_traslado) {
+      formData.value.cabecera.origen_traslado = cabecera.origen_traslado
+    }
+    if (cabecera.serie) {
+      formData.value.cabecera.serie = cabecera.serie
+    }
+
+    // Prellenar artículos
+    if (ultimoPedido.detalles && ultimoPedido.detalles.length > 0) {
+      formData.value.articulos = ultimoPedido.detalles.map(detalle => {
+        // Calcular cantidad_total sumando todas las distribuciones
+        const cantidadTotal = detalle.tiendas?.reduce((sum, tienda) => sum + (tienda.cantidad || 0), 0) || 0
+
+        return {
+          codigo_producto: detalle.codigo_interno || '',
+          costo_unitario: detalle.costo_doc_sin_iva || 0,
+          cantidad_total: cantidadTotal,
+          comentario: detalle.comentario || null,
+          distribuciones: (detalle.tiendas || []).map(tienda => ({
+            tienda_codigo: tienda.codigo || '',
+            cantidad: tienda.cantidad || 0
+          }))
+        }
+      })
+    }
+
+    // Guardar los datos cargados en localStorage para persistencia
+    guardarDatosFormulario()
+
+    toast.success(
+      'Último pedido cargado',
+      `Se han precargado los datos del último pedido: ${cabecera.numero_pedido || 'N/A'}`
+    )
+
+    return true
+  } catch (error: any) {
+    // Si es 404 o no hay pedidos, no es un error crítico
+    if (error.response?.status === 404 || error.message?.includes('404')) {
+      return false
+    }
+    console.warn('Error al cargar último pedido:', error)
+    return false
+  }
+}
+
 // Cargar datos guardados al montar el componente
-onMounted(() => {
+onMounted(async () => {
   verificarDatosGuardados()
+  
+  // Primero intentar cargar datos guardados en localStorage
+  const hayDatosGuardados = datosGuardadosExisten.value
   cargarDatosGuardados()
+  
+  // Si no hay datos guardados, intentar cargar el último pedido
+  if (!hayDatosGuardados) {
+    await cargarUltimoPedido()
+  }
 })
 
 // Validación del formulario
@@ -666,12 +752,17 @@ async function handleSubmit() {
       articulos: formData.value.articulos.map(articulo => ({
         codigo_interno: articulo.codigo_producto.trim(),  // ✅ Backend espera codigo_interno
         costo_doc_sin_iva: articulo.costo_unitario,        // ✅ Backend espera costo_doc_sin_iva
+        cantidad_total: articulo.cantidad_total,           // ✅ Incluir cantidad_total
+        comentario: articulo.comentario?.trim() || null,   // ✅ Incluir comentario si existe
         distribuciones: articulo.distribuciones.map(dist => ({
           tienda_codigo: dist.tienda_codigo.trim(),
           cantidad: dist.cantidad
         }))
       }))
     }
+
+    // Log para debugging - verificar qué se está enviando
+    console.log('📤 [handleSubmit] Datos enviados al backend:', JSON.stringify(dataToSend, null, 2))
 
     const response = await mba3ConsultasService.crearPedidoManual(dataToSend as CrearPedidoRequest)
 

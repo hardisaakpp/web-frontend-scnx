@@ -57,16 +57,26 @@ mba3Api.interceptors.response.use(
       router.push('/login')
     }
 
-    // Log detallado del error para debugging
-    console.error('🔍 [MBA3 API Interceptor] Error capturado:', error)
-    if (error.response) {
-      console.error('🔍 [MBA3 API Interceptor] Status:', error.response.status)
-      console.error('🔍 [MBA3 API Interceptor] Data completa:', error.response.data)
-      console.error('🔍 [MBA3 API Interceptor] URL:', error.config?.url)
-      console.error('🔍 [MBA3 API Interceptor] Method:', error.config?.method)
-    } else if (error.request) {
-      console.error('🔍 [MBA3 API Interceptor] Request Error:', error.request)
-      console.error('🔍 [MBA3 API Interceptor] No se recibió respuesta del servidor')
+    // Endpoints que pueden retornar 404 como respuesta válida (no son errores críticos)
+    const url = error.config?.url || ''
+    const isExpected404 = error.response?.status === 404 && (
+      url.includes('/api/plantillas/ultimo') || // No hay pedidos es válido
+      url.includes('/api/plantillas/') // Pedido no encontrado es válido
+    )
+
+    // Solo loguear errores que no sean 404 esperados
+    if (!isExpected404) {
+      // Log detallado del error para debugging
+      console.error('🔍 [MBA3 API Interceptor] Error capturado:', error)
+      if (error.response) {
+        console.error('🔍 [MBA3 API Interceptor] Status:', error.response.status)
+        console.error('🔍 [MBA3 API Interceptor] Data completa:', error.response.data)
+        console.error('🔍 [MBA3 API Interceptor] URL:', error.config?.url)
+        console.error('🔍 [MBA3 API Interceptor] Method:', error.config?.method)
+      } else if (error.request) {
+        console.error('🔍 [MBA3 API Interceptor] Request Error:', error.request)
+        console.error('🔍 [MBA3 API Interceptor] No se recibió respuesta del servidor')
+      }
     }
 
     // NO modificar el error aquí - dejarlo pasar tal cual para que cada método lo maneje
@@ -1111,15 +1121,15 @@ export const mba3ConsultasService = {
   async getUltimoPedido(incluirRespuesta: boolean = false): Promise<PedidoCompleto | null> {
     try {
       const params = incluirRespuesta ? '?incluir_respuesta=true' : ''
-      const response = await mba3Api.get<{ status: string; hay_datos: boolean; data?: PedidoCompleto | null; mensaje?: string }>(`/api/plantillas/ultimo${params}`)
-      const payload = response.data
-
-      // Nuevo backend: devuelve 200 con envoltorio { status, hay_datos, data }
-      if (!payload || !payload.hay_datos || !payload.data) {
-        return null
+      // El backend ahora devuelve el formato directo {cabecera, detalles} igual que getPedido
+      const response = await mba3Api.get<PedidoCompleto>(`/api/plantillas/ultimo${params}`)
+      
+      // Verificar que la respuesta tenga la estructura esperada
+      if (response.data && response.data.cabecera) {
+        return response.data
       }
-
-      return payload.data
+      
+      return null
     } catch (error: any) {
       // Si es 404, significa que no hay pedidos (no es un error crítico)
       if (error.response?.status === 404) {

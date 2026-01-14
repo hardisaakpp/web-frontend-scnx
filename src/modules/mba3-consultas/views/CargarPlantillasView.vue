@@ -361,7 +361,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onActivated } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
@@ -380,8 +380,10 @@ const uploadError = ref<string>('')
 const uploadResponse = ref<UploadPlantillaResponse | null>(null)
 const showBuscarPedidoModal = ref(false)
 const pedidoIdInput = ref('')
-const pedidoInicialCargado = ref(false)
+// Flag para evitar múltiples llamadas simultáneas, pero se resetea al montar/activar
 const cargandoUltimoPedido = ref(false)
+// Flag para evitar redirección automática si el usuario hizo una búsqueda manual
+const busquedaManualRealizada = ref(false)
 
 // Función para extraer productos no válidos del mensaje de error
 const extractProductosNoValidos = (errorMsg: string): string => {
@@ -569,19 +571,25 @@ function goToPedido() {
     return
   }
   
-  // Marcar que se hizo una búsqueda manual
-  pedidoInicialCargado.value = true
+  // Marcar que se hizo una búsqueda manual (evita redirección automática)
+  busquedaManualRealizada.value = true
   showBuscarPedidoModal.value = false
   pedidoIdInput.value = ''
   router.push(`/mba3-consultas/pedidos/${encodeURIComponent(numeroPedido)}`)
 }
 
 /**
- * Carga automáticamente el último pedido del usuario al montar el componente
+ * Carga automáticamente el último pedido del usuario al montar/activar el componente
+ * Se ejecuta cada vez que el usuario entra a "Cargar Plantillas"
  */
 async function cargarUltimoPedido() {
-  // Evitar cargar si ya se hizo una búsqueda manual o si ya se cargó
-  if (pedidoInicialCargado.value || cargandoUltimoPedido.value) {
+  // Evitar múltiples llamadas simultáneas
+  if (cargandoUltimoPedido.value) {
+    return
+  }
+
+  // Si el usuario hizo una búsqueda manual, no redirigir automáticamente
+  if (busquedaManualRealizada.value) {
     return
   }
 
@@ -591,39 +599,46 @@ async function cargarUltimoPedido() {
     const pedido = await mba3ConsultasService.getUltimoPedido(false)
     
     if (pedido && pedido.cabecera.numero_pedido) {
-      // Marcar que ya se cargó el pedido inicial
-      pedidoInicialCargado.value = true
-      
       // Mostrar badge informativo
       toast.info(
         'Último pedido cargado',
         `Mostrando último pedido: ${pedido.cabecera.numero_pedido}`
       )
       
-      // Redirigir a la vista de detalle del pedido
-      router.push(`/mba3-consultas/pedidos/${encodeURIComponent(pedido.cabecera.numero_pedido)}`)
-    } else {
-      // No hay pedidos, marcar como cargado para no intentar de nuevo
-      pedidoInicialCargado.value = true
+      // Redirigir a la vista de detalle del pedido solo si no hay búsqueda manual
+      if (!busquedaManualRealizada.value) {
+        router.push(`/mba3-consultas/pedidos/${encodeURIComponent(pedido.cabecera.numero_pedido)}`)
+      }
     }
   } catch (error: any) {
     // Si es un error que no sea 404, loguearlo pero no mostrar error al usuario
     // (el 404 ya se maneja en el servicio retornando null)
-    if (error.message && !error.message.includes('404')) {
+    if (error.response?.status !== 404 && error.message && !error.message.includes('404')) {
       console.error('Error al cargar último pedido:', error)
     }
-    // Marcar como cargado para no intentar de nuevo
-    pedidoInicialCargado.value = true
+    // No mostrar error al usuario, simplemente no redirigir
   } finally {
     cargandoUltimoPedido.value = false
   }
 }
 
+// Función para resetear el flag de búsqueda manual cuando se monta/activa el componente
+function resetearEstado() {
+  // Resetear el flag de búsqueda manual para permitir carga automática
+  // Esto permite que al regresar a "Cargar Plantillas", se vuelva a cargar el último pedido
+  busquedaManualRealizada.value = false
+}
+
 // Cargar último pedido al montar el componente
 onMounted(() => {
-  if (!pedidoInicialCargado.value) {
-    cargarUltimoPedido()
-  }
+  resetearEstado()
+  cargarUltimoPedido()
+})
+
+// Si el componente está en un keep-alive, también cargar al activarse
+onActivated(() => {
+  resetearEstado()
+  cargarUltimoPedido()
 })
 
 </script>
