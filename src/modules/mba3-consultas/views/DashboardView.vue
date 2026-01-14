@@ -162,6 +162,24 @@
           </div>
         </button>
 
+        <!-- Reporte de Diferencias -->
+        <button
+          @click="$router.push('/mba3-consultas/reporte-diferencias')"
+          class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left"
+        >
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded bg-pink-50 dark:bg-pink-900/30 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-pink-600 dark:text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-gray-900 dark:text-white text-sm">Reporte de Diferencias</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Ver diferencias pedido vs confirmado</div>
+            </div>
+          </div>
+        </button>
+
         <!-- Remisiones (Legacy - Oculto) -->
         <!--
         <button

@@ -10,15 +10,12 @@
         :is-valid-pedido="isValidPedido"
         :uploading="uploading"
         :loading="loading"
-        :loading-reporte="loadingReporte"
         :generando-o-c="generandoOC"
         :confirmando="confirmando"
-        :can-view-reporte-diferencias="canViewReporteDiferencias"
         :can-generar-o-c="canGenerarOC"
         :es-modo-mabel-trading="esModoMabelTrading"
         :pedido="pedido"
         @cargar-plantillas="goToCargarPlantillas"
-        @ver-reporte="handleViewReporteDiferencias"
         @generar-oc="handleGenerarOCDesdePedido"
         @confirmar="handleConfirmar"
         @go-to-pedido="goToPedido"
@@ -78,12 +75,6 @@
           @resetear-distribucion="resetearDistribucion"
           @guardar-borrador="guardarBorradorRedistribucion"
           @confirmar-redistribucion="confirmarRedistribucion"
-        />
-
-        <!-- Reporte de Diferencias -->
-        <ReporteDiferencias
-          :reporte-diferencias="reporteDiferencias"
-          @exportar="handleExportReporteDiferencias"
         />
 
         <!-- Detalles del pedido (tabla de productos) -->
@@ -480,7 +471,6 @@ import { useRedistribucion } from '../composables/useRedistribucion'
 // Componentes
 import PedidoHeaderActions from '../components/PedidoHeaderActions.vue'
 import PedidoCabecera from '../components/PedidoCabecera.vue'
-import ReporteDiferencias from '../components/ReporteDiferencias.vue'
 import RedistribucionTiendas from '../components/RedistribucionTiendas.vue'
 
 // Constantes de configuración
@@ -735,15 +725,10 @@ const {
   pedidoInputRef,
   showSearchHelp,
   copyFeedback,
-  reporteDiferencias,
-  loadingReporte,
   generandoOC,
   isValidPedido,
   loadPedido,
-  loadReporteDiferencias,
   handleGenerarOCDesdePedido,
-  handleViewReporteDiferencias,
-  handleExportReporteDiferencias,
   goToPedido,
   handleSearchBlur,
   copyToClipboard
@@ -759,12 +744,6 @@ const tituloInterfaz = computed(() => {
     : 'Detalle del Pedido - EL RAYO'
 })
 
-const canViewReporteDiferencias = computed(() => {
-  // El reporte de diferencias solo está disponible DESPUÉS de que MABEL TRADING
-  // confirma la redistribución. El backend genera el reporte automáticamente
-  // al confirmar la redistribución.
-  return reporteDiferencias.value !== null
-})
 
 // ⭐ FASE 4: Computed para resumen de redistribución
 const resumenRedistribucion = computed(() => {

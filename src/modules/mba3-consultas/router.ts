@@ -132,6 +132,17 @@ const routes: RouteRecordRaw[] = [
       icon: 'DocumentTextIcon',
       permissions: ['mba3-consultas.facturas.view']
     }
+  },
+  {
+    path: '/mba3-consultas/reporte-diferencias/:id?',
+    name: 'mba3-consultas-reporte-diferencias',
+    component: () => import('./views/ReporteDiferenciasView.vue'),
+    meta: { 
+      requiresAuth: true,
+      title: 'Reporte de Diferencias',
+      icon: 'ChartBarIcon',
+      permissions: ['mba3-consultas.view']
+    }
   }
 ]
 
