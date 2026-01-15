@@ -106,7 +106,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, type Ref } from 'vue'
+import { ref, computed, watch, onMounted, nextTick, type Ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
@@ -134,6 +134,25 @@ const numeroPedido = computed(() => {
 
 const esModoMabelTrading = computed(() => true) // Siempre true en esta vista
 
+// ⭐ Función para cargar columnas modificadas desde storage
+const cargarColumnasModificadasDesdeStorage = () => {
+  if (!numeroPedido.value) return
+  try {
+    const storageKey = `pedido_columnas_modificadas_${numeroPedido.value}`
+    const stored = sessionStorage.getItem(storageKey)
+    if (stored) {
+      const columnasArray = JSON.parse(stored) as string[]
+      columnasModificadas.value = new Set(columnasArray)
+      console.log(`📦 [MabelTradingRedistribucionView] Cargadas ${columnasArray.length} columnas modificadas desde sessionStorage para ${numeroPedido.value}`)
+      console.log(`   Columnas: ${Array.from(columnasModificadas.value).join(', ')}`)
+    } else {
+      console.log(`📦 [MabelTradingRedistribucionView] No hay columnas modificadas en sessionStorage para ${numeroPedido.value}`)
+    }
+  } catch (e) {
+    console.warn('Error al cargar columnas modificadas desde sessionStorage:', e)
+  }
+}
+
 // Inicializar composable de pedido detalle
 const pedidoDetalle = usePedidoDetalle({
   pedido,
@@ -151,19 +170,7 @@ const pedidoDetalle = usePedidoDetalle({
       console.warn('Error al limpiar columnas modificadas en sessionStorage:', e)
     }
   },
-  cargarColumnasModificadasDesdeStorage: () => {
-    if (!numeroPedido.value) return
-    try {
-      const storageKey = `pedido_columnas_modificadas_${numeroPedido.value}`
-      const stored = sessionStorage.getItem(storageKey)
-      if (stored) {
-        const columnasArray = JSON.parse(stored) as string[]
-        columnasModificadas.value = new Set(columnasArray)
-      }
-    } catch (e) {
-      console.warn('Error al cargar columnas modificadas desde sessionStorage:', e)
-    }
-  }
+  cargarColumnasModificadasDesdeStorage
 })
 
 const {
@@ -255,9 +262,27 @@ watch(
       return
     }
     
+    // ⭐ CRÍTICO: Cargar columnas modificadas ANTES de inicializar la redistribución
+    // Esto hereda el resaltado del flujo anterior (Detalle del Pedido - EL RAYO)
+    // Debe ejecutarse primero para que el resaltado esté disponible cuando se rendericen los productos
+    cargarColumnasModificadasDesdeStorage()
+    const columnasAntes = columnasModificadas.value.size
+    console.log(`🎨 [MabelTradingRedistribucionView] Columnas modificadas ANTES de inicializar: ${columnasAntes}`)
+    
     // Si hay respuesta_proveedor, inicializar normalmente
     if (newPedido.respuesta_proveedor) {
       redistribucion.inicializarProductosRedistribucion()
+      
+      // ⭐ CRÍTICO: Asegurar que las columnas modificadas se mantengan después de inicializar
+      // Usar nextTick para asegurar que se ejecute después de que Vue actualice el DOM
+      await nextTick()
+      
+      // Verificar y recargar si es necesario
+      if (columnasModificadas.value.size === 0 && columnasAntes > 0) {
+        console.warn(`⚠️ [MabelTradingRedistribucionView] Columnas modificadas se perdieron después de inicializar, recargando...`)
+        cargarColumnasModificadasDesdeStorage()
+      }
+      console.log(`🎨 [MabelTradingRedistribucionView] Columnas modificadas DESPUÉS de inicializar: ${columnasModificadas.value.size}`)
     } else if (newPedido.detalles && newPedido.detalles.length > 0) {
       // Si no hay respuesta_proveedor pero hay pedido con detalles,
       // intentar crear respuesta_proveedor automáticamente (solo crear, NO procesar)
@@ -300,13 +325,24 @@ watch(
     if (newId && newId !== oldId) {
       await loadPedido()
       pedidoIdInput.value = ''
+      // ⭐ Asegurar que las columnas modificadas se carguen después de cambiar de pedido
+      cargarColumnasModificadasDesdeStorage()
     }
   }
 )
 
-onMounted(() => {
+onMounted(async () => {
   if (numeroPedido.value) {
-    loadPedido()
+    await loadPedido()
+    // ⭐ Asegurar que las columnas modificadas se carguen después de cargar el pedido
+    // Esto hereda el resaltado del flujo anterior (Detalle del Pedido - EL RAYO)
+    // El loadPedido ya debería haber cargado desde el backend, pero hacemos un fallback a sessionStorage
+    cargarColumnasModificadasDesdeStorage()
+    // Log para verificar el estado final
+    console.log(`🎨 [MabelTradingRedistribucionView] Estado final de columnas modificadas: ${columnasModificadas.value.size} modificaciones`)
+    if (columnasModificadas.value.size > 0) {
+      console.log(`   Columnas modificadas: ${Array.from(columnasModificadas.value).join(', ')}`)
+    }
   }
 })
 </script>

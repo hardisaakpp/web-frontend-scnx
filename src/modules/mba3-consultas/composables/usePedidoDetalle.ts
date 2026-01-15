@@ -376,6 +376,7 @@ export function usePedidoDetalle(options: {
     handleExportReporteDiferencias,
     goToPedido,
     handleSearchBlur,
-    copyToClipboard
+    copyToClipboard,
+    cargarColumnasModificadasDesdeStorage: options.cargarColumnasModificadasDesdeStorage
   }
 }

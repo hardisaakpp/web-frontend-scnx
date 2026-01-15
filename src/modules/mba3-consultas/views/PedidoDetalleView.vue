@@ -357,7 +357,7 @@
                   Detalles del error ({{ uploadErrorInfo.errors.length }} problema{{ uploadErrorInfo.errors.length !== 1 ? 's' : '' }})
                 </p>
                 <span class="text-xs text-red-700 dark:text-red-300 font-medium">
-                  {{ uploadErrorInfo.title === 'Productos no encontrados en SAP' ? 'Códigos inválidos' : 'Revisar y corregir' }}
+                  {{ (uploadErrorInfo.title?.includes('SAP') || uploadErrorInfo.title?.includes('no encontrados')) ? 'Códigos inválidos' : 'Revisar y corregir' }}
                 </span>
               </div>
             </div>
@@ -393,17 +393,18 @@
                 </li>
               </ul>
             </div>
-            <div v-if="uploadErrorInfo.title === 'Productos no encontrados en SAP'" class="bg-amber-50 dark:bg-amber-900/30 border-t border-amber-200 dark:border-amber-800 px-4 py-3 transition-colors duration-300">
+            <div v-if="uploadErrorInfo.title && (uploadErrorInfo.title.includes('SAP') || uploadErrorInfo.title.includes('no encontrados'))" class="bg-amber-50 dark:bg-amber-900/30 border-t border-amber-200 dark:border-amber-800 px-4 py-3 transition-colors duration-300">
               <div class="flex items-start gap-2">
                 <svg class="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <div class="flex-1">
-                  <p class="text-xs font-medium text-amber-900 dark:text-amber-200">Acciones recomendadas:</p>
+                  <p class="text-xs font-medium text-amber-900 dark:text-amber-200">⚠️ Acciones recomendadas:</p>
                   <ul class="text-xs text-amber-800 dark:text-amber-300 mt-1 space-y-1 ml-2">
-                    <li>• Verifica que los códigos de producto estén escritos correctamente</li>
-                    <li>• Confirma que los productos estén registrados en SAP</li>
-                    <li>• Contacta al área de maestros si el producto es nuevo</li>
+                    <li>• Verifica que los códigos estén escritos correctamente en el Excel</li>
+                    <li>• Confirma que los códigos estén registrados en SAP</li>
+                    <li>• Revisa posibles errores de tipeo (mayúsculas/minúsculas, espacios, guiones)</li>
+                    <li>• Contacta al área de maestros si los códigos deberían existir</li>
                   </ul>
                 </div>
               </div>

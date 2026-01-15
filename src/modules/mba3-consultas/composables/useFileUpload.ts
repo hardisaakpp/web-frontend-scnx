@@ -114,10 +114,40 @@ export function useFileUpload(options: {
     let errorMessage = e.message || 'Error desconocido al subir plantilla'
     const errorErrors: Array<string | { tipo?: string; campo?: string; mensaje: string; producto?: string }> = []
     let productosNoEncontradosSAP: string[] = []
+    let tiendasNoEncontradasSAP: string[] = []
+    let bodegasNoEncontradasSAP: string[] = []
 
     const errorMessageStr = e.message || ''
     
-    // Detectar errores de validación SAP del mensaje
+    // ✅ NUEVO: Extraer códigos del formato estructurado del backend
+    // Formato: "❌ Códigos NO ENCONTRADOS en SAP (N):\n   • CODIGO1\n   • CODIGO2\n..."
+    const codigosNoEncontradosMatch = errorMessageStr.match(/❌ Códigos (?:de )?(PRODUCTO|TIENDA|BODEGA|NO ENCONTRADOS)[\s\S]*?\((?:[^)]+)\):\s*\n((?:\s*•\s*[^\n]+\n?)+)/gi)
+    if (codigosNoEncontradosMatch) {
+      for (const section of codigosNoEncontradosMatch) {
+        // Extraer tipo (PRODUCTO, TIENDA, BODEGA)
+        const tipoMatch = section.match(/Códigos (?:de )?(PRODUCTO|TIENDA|BODEGA|NO ENCONTRADOS)/i)
+        const tipo = tipoMatch ? tipoMatch[1] : 'NO ENCONTRADOS'
+        
+        // Extraer códigos (líneas que empiezan con "   •")
+        const codigosMatch = section.match(/\s*•\s*([^\n]+)/g)
+        if (codigosMatch) {
+          const codigos = codigosMatch.map(line => line.replace(/^\s*•\s*/, '').trim()).filter(c => c)
+          
+          if (tipo.includes('PRODUCTO')) {
+            productosNoEncontradosSAP.push(...codigos)
+          } else if (tipo.includes('TIENDA')) {
+            tiendasNoEncontradasSAP.push(...codigos)
+          } else if (tipo.includes('BODEGA')) {
+            bodegasNoEncontradasSAP.push(...codigos)
+          } else {
+            // Si no especifica tipo, asumir que pueden ser tiendas/bodegas (formato genérico)
+            tiendasNoEncontradasSAP.push(...codigos)
+          }
+        }
+      }
+    }
+    
+    // ✅ También extraer códigos del formato antiguo (compatibilidad)
     const sapErrorPatterns = [
       /Productos no encontrados en SAP:\s*([A-Za-z0-9,.\s-]+)/i,
       /no válidos en SAP[^:]*:\s*([A-Za-z0-9,.\s-]+)/i,
@@ -143,12 +173,16 @@ export function useFileUpload(options: {
       if (errorData.validacion) {
         const validacion = errorData.validacion
         
+        // ✅ Productos no encontrados
         if (validacion.productos?.no_encontrados?.length > 0) {
-          validacion.productos.no_encontrados.forEach((codigo: string) => {
+          const noEncontrados = Array.isArray(validacion.productos.no_encontrados) 
+            ? validacion.productos.no_encontrados 
+            : []
+          noEncontrados.forEach((codigo: string) => {
             errorErrors.push({
               tipo: 'ERROR',
               campo: 'Producto SAP',
-              mensaje: `No existe en SAP`,
+              mensaje: `El código no existe en SAP`,
               producto: codigo
             })
             if (!productosNoEncontradosSAP.includes(codigo)) {
@@ -157,14 +191,39 @@ export function useFileUpload(options: {
           })
         }
         
+        // ✅ Tiendas no encontradas
         if (validacion.tiendas?.no_encontradas?.length > 0) {
-          validacion.tiendas.no_encontradas.forEach(() => {
+          const noEncontradas = Array.isArray(validacion.tiendas.no_encontradas)
+            ? validacion.tiendas.no_encontradas
+            : []
+          noEncontradas.forEach((codigo: string) => {
             errorErrors.push({
               tipo: 'ERROR',
-              campo: 'CodigoTienda',
-              mensaje: `Tienda no encontrada en el sistema`,
-              producto: undefined
+              campo: 'Tienda/Bodega SAP',
+              mensaje: `El código no existe en SAP OWHS`,
+              producto: codigo
             })
+            if (!tiendasNoEncontradasSAP.includes(codigo)) {
+              tiendasNoEncontradasSAP.push(codigo)
+            }
+          })
+        }
+        
+        // ✅ Bodegas no encontradas
+        if (validacion.bodegas?.no_encontradas?.length > 0) {
+          const noEncontradas = Array.isArray(validacion.bodegas.no_encontradas)
+            ? validacion.bodegas.no_encontradas
+            : []
+          noEncontradas.forEach((codigo: string) => {
+            errorErrors.push({
+              tipo: 'ERROR',
+              campo: 'Bodega SAP',
+              mensaje: `El código no existe en SAP OWHS`,
+              producto: codigo
+            })
+            if (!bodegasNoEncontradasSAP.includes(codigo)) {
+              bodegasNoEncontradasSAP.push(codigo)
+            }
           })
         }
         
@@ -178,14 +237,56 @@ export function useFileUpload(options: {
         }
       }
       
+      // ✅ Extraer códigos desde validacion_sap estructurado
       if (errorData.validacion_sap) {
         const sap = errorData.validacion_sap
-        if (sap.no_encontrados > 0 || sap.errores > 0) {
+        
+        // Si viene como lista de códigos (nuevo formato)
+        if (Array.isArray(sap.no_encontrados)) {
+          sap.no_encontrados.forEach((codigo: string) => {
+            if (!productosNoEncontradosSAP.includes(codigo)) {
+              productosNoEncontradosSAP.push(codigo)
+            }
+          })
+        } else if (sap.no_encontrados > 0 || sap.errores > 0) {
+          // Formato antiguo (solo conteos)
           errorErrors.push({
             tipo: 'ERROR',
             campo: 'ValidacionSAP',
-            mensaje: `${sap.no_encontrados} código(s) no encontrado(s) en SAP, ${sap.errores} error(es)`,
+            mensaje: `${sap.no_encontrados || 0} código(s) no encontrado(s) en SAP, ${sap.errores || 0} error(es)`,
             producto: undefined
+          })
+        }
+      }
+      
+      // ✅ Extraer códigos desde data estructurado (BusinessException)
+      if (errorData.data?.validacion) {
+        const validacion = errorData.data.validacion
+        
+        // Productos
+        if (validacion.productos?.no_encontrados && Array.isArray(validacion.productos.no_encontrados)) {
+          validacion.productos.no_encontrados.forEach((codigo: string) => {
+            if (!productosNoEncontradosSAP.includes(codigo)) {
+              productosNoEncontradosSAP.push(codigo)
+            }
+          })
+        }
+        
+        // Tiendas
+        if (validacion.tiendas?.no_encontradas && Array.isArray(validacion.tiendas.no_encontradas)) {
+          validacion.tiendas.no_encontradas.forEach((codigo: string) => {
+            if (!tiendasNoEncontradasSAP.includes(codigo)) {
+              tiendasNoEncontradasSAP.push(codigo)
+            }
+          })
+        }
+        
+        // Bodegas
+        if (validacion.bodegas?.no_encontradas && Array.isArray(validacion.bodegas.no_encontradas)) {
+          validacion.bodegas.no_encontradas.forEach((codigo: string) => {
+            if (!bodegasNoEncontradasSAP.includes(codigo)) {
+              bodegasNoEncontradasSAP.push(codigo)
+            }
           })
         }
       }
@@ -197,6 +298,8 @@ export function useFileUpload(options: {
 
     // Identificar el tipo de error
     const isSAPError = productosNoEncontradosSAP.length > 0 || 
+                       tiendasNoEncontradasSAP.length > 0 ||
+                       bodegasNoEncontradasSAP.length > 0 ||
                        errorMessageStr.toLowerCase().includes('sap') ||
                        errorMessageStr.toLowerCase().includes('no válidos en sap') ||
                        errorMessageStr.toLowerCase().includes('no se encontró')
@@ -212,10 +315,15 @@ export function useFileUpload(options: {
     const isFormatError = errorMessageStr.toLowerCase().includes('formato') ||
                           errorMessageStr.toLowerCase().includes('estructura')
 
-    // Ajustar título según tipo de error
+    // Ajustar título y mensaje según tipo de error
     if (isSAPError) {
-      errorTitle = 'Productos no encontrados en SAP'
+      // ✅ Determinar si es producto, tienda o bodega
+      const totalErrores = productosNoEncontradosSAP.length + tiendasNoEncontradasSAP.length + bodegasNoEncontradasSAP.length
+      const tiposErrores: string[] = []
+      
+      // Agregar productos a errores detallados
       if (productosNoEncontradosSAP.length > 0) {
+        tiposErrores.push('producto')
         productosNoEncontradosSAP.forEach(codigo => {
           const exists = errorErrors.some(err => 
             (typeof err !== 'string') && err.producto === codigo
@@ -224,14 +332,96 @@ export function useFileUpload(options: {
             errorErrors.push({
               tipo: 'ERROR',
               campo: 'Producto SAP',
-              mensaje: `El código no existe en la base de datos SAP`,
+              mensaje: `El código no existe en SAP`,
               producto: codigo
             })
           }
         })
-        errorMessage = `El archivo contiene ${productosNoEncontradosSAP.length} producto(s) que no existen en SAP.\n\nVerifica que los códigos sean correctos y estén registrados en el sistema SAP antes de cargar el archivo.`
+      }
+      
+      // Agregar tiendas a errores detallados
+      if (tiendasNoEncontradasSAP.length > 0) {
+        tiposErrores.push('tienda/bodega')
+        tiendasNoEncontradasSAP.forEach(codigo => {
+          const exists = errorErrors.some(err => 
+            (typeof err !== 'string') && err.producto === codigo
+          )
+          if (!exists) {
+            errorErrors.push({
+              tipo: 'ERROR',
+              campo: 'Tienda/Bodega SAP',
+              mensaje: `El código no existe en SAP OWHS`,
+              producto: codigo
+            })
+          }
+        })
+      }
+      
+      // Agregar bodegas a errores detallados
+      if (bodegasNoEncontradasSAP.length > 0) {
+        if (!tiposErrores.includes('bodega')) {
+          tiposErrores.push('bodega')
+        }
+        bodegasNoEncontradasSAP.forEach(codigo => {
+          const exists = errorErrors.some(err => 
+            (typeof err !== 'string') && err.producto === codigo
+          )
+          if (!exists) {
+            errorErrors.push({
+              tipo: 'ERROR',
+              campo: 'Bodega SAP',
+              mensaje: `El código no existe en SAP OWHS`,
+              producto: codigo
+            })
+          }
+        })
+      }
+      
+      // ✅ Título dinámico según los tipos de errores encontrados
+      if (tiposErrores.length === 1) {
+        if (tiposErrores[0] === 'producto') {
+          errorTitle = 'Códigos de producto no encontrados en SAP'
+        } else if (tiposErrores[0] === 'tienda/bodega') {
+          errorTitle = 'Códigos de tienda/bodega no encontrados en SAP'
+        } else if (tiposErrores[0] === 'bodega') {
+          errorTitle = 'Códigos de bodega no encontrados en SAP'
+        }
       } else {
-        errorMessage = `Uno o más productos del archivo no fueron encontrados en SAP.\n\nVerifica que todos los códigos de producto estén correctamente registrados en SAP.`
+        errorTitle = 'Códigos no válidos en SAP'
+      }
+      
+      // ✅ Construir mensaje estructurado con todos los códigos
+      if (totalErrores > 0) {
+        errorMessage = `Existen ${totalErrores} código(s) no válidos en SAP.\n\n`
+        
+        if (productosNoEncontradosSAP.length > 0) {
+          errorMessage += `❌ Códigos de PRODUCTO no encontrados (${productosNoEncontradosSAP.length}):\n`
+          productosNoEncontradosSAP.forEach(codigo => {
+            errorMessage += `   • ${codigo}\n`
+          })
+          errorMessage += `\n`
+        }
+        
+        if (tiendasNoEncontradasSAP.length > 0) {
+          errorMessage += `❌ Códigos de TIENDA/BODEGA no encontrados (${tiendasNoEncontradasSAP.length}):\n`
+          tiendasNoEncontradasSAP.forEach(codigo => {
+            errorMessage += `   • ${codigo}\n`
+          })
+          errorMessage += `\n`
+        }
+        
+        if (bodegasNoEncontradasSAP.length > 0) {
+          errorMessage += `❌ Códigos de BODEGA no encontrados (${bodegasNoEncontradasSAP.length}):\n`
+          bodegasNoEncontradasSAP.forEach(codigo => {
+            errorMessage += `   • ${codigo}\n`
+          })
+          errorMessage += `\n`
+        }
+        
+        errorMessage += `⚠️ Por favor verifica que estos códigos estén escritos correctamente en el Excel.`
+      } else {
+        // Si no se pudieron extraer códigos, usar el mensaje del backend directamente
+        errorMessage = errorMessageStr || `Uno o más códigos del archivo no fueron encontrados en SAP.\n\nVerifica que todos los códigos estén correctamente registrados en SAP.`
       }
     } else if (isDuplicateError) {
       errorTitle = 'Número de pedido duplicado'
@@ -346,14 +536,18 @@ export function useFileUpload(options: {
       uploadErrorInfo.value = errorInfo
       showErrorModal.value = true
       
-      const productosNoEncontradosSAP = errorInfo.errors?.filter(err => 
-        typeof err !== 'string' && err.campo === 'Producto SAP'
-      ).map(err => typeof err !== 'string' ? err.producto : '').filter(Boolean) as string[] || []
+      // Extraer todos los códigos para el toast
+      const todosLosCodigos: string[] = []
+      errorInfo.errors?.forEach(err => {
+        if (typeof err !== 'string' && err.producto) {
+          todosLosCodigos.push(err.producto)
+        }
+      })
       
       toast.error(
         errorInfo.title || 'Error',
-        productosNoEncontradosSAP.length > 0 
-          ? `Productos no encontrados: ${productosNoEncontradosSAP.join(', ')}`
+        todosLosCodigos.length > 0 
+          ? `Códigos no válidos: ${todosLosCodigos.slice(0, 5).join(', ')}${todosLosCodigos.length > 5 ? ` y ${todosLosCodigos.length - 5} más` : ''}`
           : errorInfo.message.split('\n')[0]
       )
       

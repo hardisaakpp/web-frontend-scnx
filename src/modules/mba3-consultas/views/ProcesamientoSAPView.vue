@@ -532,8 +532,8 @@ const availableColumns: ColumnConfig[] = [
   { key: 'cantidad_original', label: 'Cant. Original', visible: true, align: 'right', format: 'number' },
   { key: 'precio_unitario_original', label: 'Precio Unit.', visible: true, align: 'right', format: 'currency' },
   { key: 'subtotal_pedido', label: 'Subtotal Pedido', visible: true, align: 'right', format: 'currency' },
-  { key: 'unidad', label: 'Unidad', visible: true, align: 'center', format: 'text' },
-  { key: 'cantidad_pack_sap', label: 'Cant. Pack', visible: true, align: 'right', format: 'number' },
+  { key: 'unidad', label: 'Pack', visible: true, align: 'center', format: 'text' },
+  { key: 'cantidad_pack_sap', label: 'CANT. SAP', visible: true, align: 'right', format: 'number' },
   { key: 'precio_unitario_sap', label: 'Precio Unit.', visible: true, align: 'right', format: 'currency' },
   { key: 'subtotal_sap', label: 'Subtotal', visible: true, align: 'right', format: 'currency' }
 ]

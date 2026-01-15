@@ -219,11 +219,16 @@
           <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             <template v-for="producto in productosArray" :key="producto.codigo_producto">
               <!-- Fila Principal del Producto -->
+              <!-- Fila Principal: Resalta primero modificaciones (ámbar), luego diferencia (verde/amarillo/rojo) -->
+              <!-- ⭐ IMPORTANTE: El resaltado ámbar debe aparecer inmediatamente si el producto tiene modificaciones del flujo anterior (EL RAYO) -->
               <tr 
                 :class="[
                   'transition-colors',
                   producto.error ? 'bg-gray-100 dark:bg-gray-700/30' :
-                  tieneModificaciones(producto) ? 'bg-amber-50 dark:bg-amber-900/20' :
+                  // ⭐ PRIORIDAD 1: Resaltar productos con modificaciones del flujo anterior (EL RAYO)
+                  // Esto debe aparecer inmediatamente al cargar la página, no solo después de distribuir
+                  tieneModificaciones(producto) ? 'bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 dark:border-amber-400' :
+                  // ⭐ PRIORIDAD 2: Resaltar según el estado de la distribución
                   producto.diferencia === 0 ? 'bg-green-50 dark:bg-gray-700/30' :
                   producto.diferencia < 0 ? 'bg-yellow-50 dark:bg-yellow-900/10' :
                   'bg-red-50 dark:bg-red-900/10'
@@ -741,38 +746,85 @@ const puedeConfirmarRedistribucion = computed(() => {
 })
 
 /**
- * Verifica si un producto tiene modificaciones en COSTO UNIT o TOTAL (columnas modificadas por EL RAYO)
- * Solo se resaltan las filas cuando hay modificaciones en estas columnas específicas
+ * ⭐ Computed que mapea cada producto a si tiene modificaciones
+ * Esto asegura reactividad completa y que el resaltado se aplique inmediatamente
  * 
- * Prioridad:
- * 1. Usar campos del backend (costo_modificado_manual, total_modificado_manual) si están disponibles
- * 2. Fallback a columnasModificadas si los campos del backend no están disponibles
+ * IMPORTANTE: Accede directamente a props.columnasModificadas?.value para que Vue rastree la dependencia
  */
-function tieneModificaciones(producto: ProductoRedistribucion): boolean {
-  // ⭐ PRIORIDAD 1: Usar campos del backend si están disponibles
-  if (producto.costo_modificado_manual === true || producto.total_modificado_manual === true) {
-    return true
+const productosConModificaciones = computed(() => {
+  const map = new Map<string, boolean>()
+  
+  // ⭐ Acceder directamente a las props para que Vue rastree las dependencias
+  // Esto asegura que el computed se recalcule cuando cambien las columnas modificadas
+  const columnasModificadasValue = props.columnasModificadas?.value
+  const pedidoDetalles = props.pedido?.detalles
+  
+  if (!columnasModificadasValue || !pedidoDetalles || productosArray.value.length === 0) {
+    return map
   }
   
-  // ⭐ PRIORIDAD 2: Fallback a columnasModificadas (compatibilidad con sistema anterior)
-  if (!props.columnasModificadas?.value || !props.pedido?.detalles) return false
-  
-  // Buscar el detalle del pedido que corresponde a este producto
-  const detallePedido = props.pedido.detalles.find(
-    d => d.codigo_interno === producto.codigo_producto
-  )
-  
-  if (!detallePedido?.pedido_detalle_id) return false
-  
-  // ⭐ Solo verificar columnas COSTO UNIT y TOTAL (no comentario)
-  // Estas son las columnas que se resaltan en color ámbar en la interfaz de EL RAYO
-  const columnasParaResaltar = ['costo_doc_sin_iva', 'total']
-  
-  // Verificar si hay una modificación en cualquiera de estas columnas
-  return columnasParaResaltar.some(columnaKey => {
-    const key = `${detallePedido.pedido_detalle_id}:${columnaKey}`
-    return props.columnasModificadas!.value.has(key)
+  productosArray.value.forEach(producto => {
+    // ⭐ PRIORIDAD 1: Usar campos del backend si están disponibles
+    if (producto.costo_modificado_manual === true || producto.total_modificado_manual === true) {
+      map.set(producto.codigo_producto, true)
+      return
+    }
+    
+    // ⭐ PRIORIDAD 2: Verificar columnasModificadas (heredar del flujo anterior - EL RAYO)
+    // Esta es la fuente principal para heredar el resaltado del flujo anterior
+    const detallePedido = pedidoDetalles.find(
+      d => d.codigo_interno === producto.codigo_producto
+    )
+    
+    if (!detallePedido?.pedido_detalle_id) {
+      map.set(producto.codigo_producto, false)
+      return
+    }
+    
+    // ⭐ Solo verificar columnas COSTO UNIT y TOTAL (no comentario)
+    // Estas son las columnas que se resaltan en color ámbar en la interfaz de EL RAYO
+    const columnasParaResaltar = ['costo_doc_sin_iva', 'total']
+    
+    const tieneMod = columnasParaResaltar.some(columnaKey => {
+      const key = `${detallePedido.pedido_detalle_id}:${columnaKey}`
+      const existe = columnasModificadasValue.has(key)
+      return existe
+    })
+    
+    map.set(producto.codigo_producto, tieneMod)
   })
+  
+  // Log para depuración
+  const productosConMod = Array.from(map.entries()).filter(([_, tieneMod]) => tieneMod)
+  if (productosConMod.length > 0) {
+    console.log(`🎨 [RedistribucionTiendas] ${productosConMod.length} productos con modificaciones heredadas:`, productosConMod.map(([codigo]) => codigo))
+  }
+  
+  return map
+})
+
+// ⭐ Watch para forzar reactividad cuando cambien las columnas modificadas
+// Esto asegura que el resaltado se actualice inmediatamente cuando se carguen las columnas
+watch(
+  () => props.columnasModificadas?.value,
+  (newValue) => {
+    if (newValue) {
+      console.log(`🔄 [RedistribucionTiendas] Columnas modificadas actualizadas: ${newValue.size} modificaciones`)
+      // Acceder al computed para forzar su recálculo
+      const _ = productosConModificaciones.value
+    }
+  },
+  { deep: true, immediate: true }
+)
+
+/**
+ * Verifica si un producto tiene modificaciones en COSTO UNIT o TOTAL (columnas modificadas por EL RAYO)
+ * ⭐ MEJORADO: Ahora usa el computed reactivo para asegurar que el resaltado se aplique inmediatamente
+ */
+function tieneModificaciones(producto: ProductoRedistribucion): boolean {
+  // Usar el computed reactivo que ya tiene toda la lógica
+  // Esto asegura que el resaltado se aplique inmediatamente al cargar la página
+  return productosConModificaciones.value.get(producto.codigo_producto) || false
 }
 
 // Funciones que emiten eventos
