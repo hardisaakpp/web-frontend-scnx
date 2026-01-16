@@ -90,9 +90,10 @@
                   Cancelar
                 </button>
                 <button
-                  @click="handleUpload"
+                  @click="handleUploadFile"
                   type="button"
-                  class="px-3 py-1.5 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors"
+                  :disabled="uploading"
+                  class="px-3 py-1.5 text-xs bg-indigo-600 text-white rounded hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Subir
                 </button>
@@ -209,92 +210,358 @@
             </div>
           </div>
 
-          <!-- Mensaje de validación del backend cuando hay validation_error -->
-          <div v-if="uploadResponse && uploadResponse.status === 'validation_error' && uploadResponse.message" class="mt-4 border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 rounded-lg p-4">
-            <div class="flex items-start gap-3">
-              <svg class="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal para errores de validación del archivo -->
+    <div
+      v-if="showErrorModal"
+      class="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4"
+      @click.self="showErrorModal = false"
+    >
+      <div :class="[
+        'bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden flex flex-col transition-all duration-300',
+        isModalMaximized ? 'w-full h-full max-w-none max-h-none m-0 rounded-none' : 'max-w-2xl w-full max-h-[90vh]'
+      ]">
+        <!-- Encabezado del modal con color según tipo de error -->
+        <div :class="[
+          'px-6 py-4 border-b flex items-center justify-between transition-colors duration-300',
+          uploadErrorInfo?.title?.includes('SAP') ? 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800' :
+          uploadErrorInfo?.title?.includes('duplicado') ? 'bg-orange-50 dark:bg-orange-900/30 border-orange-200 dark:border-orange-800' :
+          uploadErrorInfo?.title?.includes('formato') ? 'bg-yellow-50 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-800' :
+          'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800'
+        ]">
+          <div class="flex items-center gap-3">
+            <div :class="[
+              'flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center',
+              uploadErrorInfo?.title?.includes('SAP') ? 'bg-red-100 dark:bg-red-900' :
+              uploadErrorInfo?.title?.includes('duplicado') ? 'bg-orange-100 dark:bg-orange-900' :
+              uploadErrorInfo?.title?.includes('formato') ? 'bg-yellow-100 dark:bg-yellow-900' :
+              'bg-red-100 dark:bg-red-900'
+            ]">
+              <svg :class="[
+                'w-6 h-6',
+                uploadErrorInfo?.title?.includes('SAP') ? 'text-red-600 dark:text-red-400' :
+                uploadErrorInfo?.title?.includes('duplicado') ? 'text-orange-600 dark:text-orange-400' :
+                uploadErrorInfo?.title?.includes('formato') ? 'text-yellow-600 dark:text-yellow-400' :
+                'text-red-600 dark:text-red-400'
+              ]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
-              <div class="flex-1">
-                <p class="text-sm font-semibold text-red-900 dark:text-red-100 mb-1">Error de validación</p>
-                <div class="text-sm text-red-800 dark:text-red-200 mb-2">{{ uploadResponse.message }}</div>
-                
-                <!-- Detalle específico: Productos no válidos en SAP -->
-                <div v-if="(uploadResponse.message.includes('No se puede persistir el pedido') || uploadResponse.message.includes('No se puede procesar la plantilla')) && (uploadResponse.message.includes('productos no válidos en SAP') || uploadResponse.message.includes('no encontrados en SAP'))" class="mt-3 p-3 bg-yellow-50 dark:bg-amber-950 border border-yellow-300 dark:border-amber-800 rounded">
-                  <p class="text-xs font-medium text-yellow-900 dark:text-amber-100 mb-1">💡 Productos no válidos: <span class="font-mono">{{ extractProductosNoValidos(uploadResponse.message) }}</span></p>
-                  <p class="text-xs font-medium text-yellow-900 dark:text-amber-100 mb-1 mt-2">Soluciones sugeridas:</p>
-                  <ul class="text-xs text-yellow-800 dark:text-amber-200 ml-4 list-disc space-y-1">
-                    <li>Verifica que los códigos de producto estén escritos correctamente</li>
-                    <li>Confirma que los productos existen en el catálogo SAP</li>
-                    <li>Revisa posibles errores de tipeo en el archivo Excel</li>
-                    <li>Contacta al administrador si los productos deberían existir</li>
-                  </ul>
+            </div>
+            <div>
+              <h3 :class="[
+                'text-lg font-semibold',
+                uploadErrorInfo?.title?.includes('SAP') ? 'text-red-900 dark:text-red-200' :
+                uploadErrorInfo?.title?.includes('duplicado') ? 'text-orange-900 dark:text-orange-200' :
+                uploadErrorInfo?.title?.includes('formato') ? 'text-yellow-900 dark:text-yellow-200' :
+                'text-red-900 dark:text-red-200'
+              ]">{{ uploadErrorInfo?.title || 'Error al cargar archivo Excel' }}</h3>
+              <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">El archivo no pudo ser procesado</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <!-- Botón de maximizar/restaurar -->
+            <button
+              @click="isModalMaximized = !isModalMaximized"
+              class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors flex-shrink-0"
+              :title="isModalMaximized ? 'Restaurar' : 'Maximizar'"
+            >
+              <svg v-if="!isModalMaximized" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5 5m5-5v4m0-4h-4" />
+              </svg>
+              <svg v-else class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
+              </svg>
+            </button>
+            <!-- Botón de cerrar -->
+            <button
+              @click="showErrorModal = false"
+              class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors flex-shrink-0"
+            >
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        
+        <!-- Contenido del modal con scroll -->
+        <div class="overflow-y-auto flex-1 p-6">
+          <div class="space-y-4">
+            <!-- Información del archivo -->
+            <div v-if="uploadErrorInfo?.fileName" class="bg-gray-50 dark:bg-gray-900 rounded-lg p-3 border border-gray-200 dark:border-gray-700 transition-colors duration-300">
+              <p class="text-sm text-gray-700 dark:text-gray-300">
+                <span class="font-semibold text-gray-900 dark:text-white">Archivo rechazado:</span>
+                <span class="ml-2 font-mono text-gray-600 dark:text-gray-400">{{ uploadErrorInfo.fileName }}</span>
+              </p>
+            </div>
+
+            <!-- Mensaje de error principal -->
+            <div class="bg-white dark:bg-gray-900 border-2 border-red-200 dark:border-red-800 rounded-lg p-4 transition-colors duration-300">
+              <div class="flex items-start gap-3">
+                <svg class="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div class="flex-1">
+                  <p class="text-sm font-semibold text-gray-900 dark:text-white mb-2">Descripción del problema</p>
+                  <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line leading-relaxed">{{ uploadErrorInfo?.message }}</p>
                 </div>
               </div>
             </div>
-          </div>
 
-          <!-- Error de carga -->
-          <div v-if="uploadError" class="mt-4 border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 rounded-lg p-4">
-            <div class="flex items-start gap-3">
-              <svg class="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <div class="flex-1">
-                <p class="text-sm font-semibold text-red-900 dark:text-red-100 mb-1">Error al procesar el archivo</p>
-                <div class="text-sm text-red-800 dark:text-red-200 mb-3">{{ uploadError }}</div>
-                
-                <!-- Error específico: Productos no válidos en SAP -->
-                <div v-if="(uploadError.includes('No se puede persistir el pedido') || uploadError.includes('No se puede procesar la plantilla')) && (uploadError.includes('productos no válidos en SAP') || uploadError.includes('no encontrados en SAP'))" class="mt-3 p-4 bg-red-100 dark:bg-red-950 border-2 border-red-300 dark:border-red-700 rounded-lg">
-                  <div class="flex items-start gap-2 mb-2">
-                    <svg class="h-5 w-5 text-red-700 dark:text-red-300 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <div class="flex-1">
-                      <p class="text-sm font-bold text-red-900 dark:text-red-100 mb-1">❌ Productos no encontrados en SAP</p>
-                      <p class="text-xs text-red-800 dark:text-red-200">Los siguientes productos no existen en el sistema SAP y deben ser corregidos: <span class="font-mono">{{ extractProductosNoValidos(uploadError) }}</span></p>
+            <!-- Lista de errores detallados (si existen) -->
+            <div v-if="uploadErrorInfo?.errors && uploadErrorInfo.errors.length > 0" class="border border-red-200 dark:border-red-800 rounded-lg overflow-hidden bg-red-50 dark:bg-red-900/30 transition-colors duration-300">
+              <div class="bg-red-100 dark:bg-red-900/50 px-4 py-3 border-b border-red-200 dark:border-red-800">
+                <div class="flex items-center justify-between">
+                  <p class="text-sm font-semibold text-red-900 dark:text-red-200">
+                    Detalles del error ({{ uploadErrorInfo.errors.length }} problema{{ uploadErrorInfo.errors.length !== 1 ? 's' : '' }})
+                  </p>
+                  <span class="text-xs text-red-700 dark:text-red-300 font-medium">
+                    {{ (uploadErrorInfo.title?.includes('SAP') || uploadErrorInfo.title?.includes('no encontrados')) ? 'Códigos inválidos' : 'Revisar y corregir' }}
+                  </span>
+                </div>
+              </div>
+              <div class="max-h-80 overflow-y-auto bg-white dark:bg-gray-800">
+                <ul class="divide-y divide-gray-200 dark:divide-gray-700">
+                  <li v-for="(error, index) in uploadErrorInfo.errors" :key="index" class="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                    <div v-if="typeof error !== 'string' && error.producto" class="flex items-start gap-3">
+                      <div class="flex-shrink-0 mt-0.5">
+                        <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-300 text-xs font-bold">
+                          ✕
+                        </span>
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-1">
+                          <p class="text-sm font-semibold text-gray-900 dark:text-white font-mono">{{ error.producto }}</p>
+                          <span v-if="error.campo" class="px-2 py-0.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded">
+                            {{ error.campo }}
+                          </span>
+                        </div>
+                        <p class="text-sm text-gray-700 dark:text-gray-300">{{ error.mensaje }}</p>
+                        
+                        <!-- Sugerencias SAP automáticas (solo para códigos de producto no encontrados) -->
+                        <div v-if="error.campo === 'Producto SAP' && error.producto" class="mt-4">
+                          <!-- Estado de carga -->
+                          <div v-if="sugerenciasEstado[error.producto] === 'buscando'" class="mt-2 p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-lg">
+                            <div class="flex items-center gap-2 text-purple-700 dark:text-purple-300">
+                              <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              <span class="text-xs font-medium">Buscando sugerencias similares en SAP...</span>
+                            </div>
+                          </div>
+                          
+                          <!-- Sugerencias encontradas -->
+                          <div v-else-if="sugerenciasEstado[error.producto] === 'completado' && sugerenciasPorCodigo[error.producto]?.length > 0" class="mt-2 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-lg p-3">
+                            <div class="flex items-center justify-between mb-2">
+                              <h5 class="text-xs font-semibold text-purple-900 dark:text-purple-200 flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                                </svg>
+                                Sugerencias similares en SAP ({{ getSugerenciasLimitadas(error.producto).length }} de {{ sugerenciasPorCodigo[error.producto].length }}) - Selecciona una:
+                              </h5>
+                              <!-- Control de cantidad de sugerencias a mostrar -->
+                              <div class="flex items-center gap-2 flex-wrap">
+                                <label class="text-xs text-purple-700 dark:text-purple-300 whitespace-nowrap">
+                                  Mostrar:
+                                </label>
+                                <input
+                                  type="number"
+                                  :value="getLimiteSugerencias(error.producto)"
+                                  @input="setLimiteSugerencias(error.producto, parseInt(($event.target as HTMLInputElement).value) || 5)"
+                                  :min="1"
+                                  :max="sugerenciasPorCodigo[error.producto].length"
+                                  class="w-16 px-2 py-1 text-xs border border-purple-300 dark:border-purple-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400"
+                                />
+                                <span class="text-xs text-purple-600 dark:text-purple-400">
+                                  / {{ sugerenciasPorCodigo[error.producto].length }}
+                                </span>
+                                <!-- Botones rápidos -->
+                                <div class="flex items-center gap-1 ml-1">
+                                  <button
+                                    v-if="getLimiteSugerencias(error.producto) < sugerenciasPorCodigo[error.producto].length"
+                                    @click="setLimiteSugerencias(error.producto, Math.min(getLimiteSugerencias(error.producto) + 5, sugerenciasPorCodigo[error.producto].length))"
+                                    class="px-2 py-0.5 text-xs bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 rounded hover:bg-purple-200 dark:hover:bg-purple-800 transition-colors"
+                                    title="Mostrar 5 más"
+                                  >
+                                    +5
+                                  </button>
+                                  <button
+                                    v-if="getLimiteSugerencias(error.producto) < sugerenciasPorCodigo[error.producto].length"
+                                    @click="setLimiteSugerencias(error.producto, sugerenciasPorCodigo[error.producto].length)"
+                                    class="px-2 py-0.5 text-xs bg-purple-200 dark:bg-purple-800 text-purple-800 dark:text-purple-200 rounded hover:bg-purple-300 dark:hover:bg-purple-700 transition-colors font-semibold"
+                                    title="Mostrar todas"
+                                  >
+                                    Todas
+                                  </button>
+                                  <button
+                                    v-if="getLimiteSugerencias(error.producto) > 5"
+                                    @click="setLimiteSugerencias(error.producto, 5)"
+                                    class="px-2 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                    title="Mostrar solo 5"
+                                  >
+                                    Menos
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                            <div class="space-y-2">
+                              <label
+                                v-for="sugerencia in getSugerenciasLimitadas(error.producto)"
+                                :key="sugerencia.codigo"
+                                class="flex items-start gap-2 cursor-pointer bg-white dark:bg-gray-800 border-l-4 rounded-lg p-3 text-xs hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                                :class="{
+                                  'border-green-500': sugerencia.score_porcentaje >= 80,
+                                  'border-yellow-500': sugerencia.score_porcentaje >= 50 && sugerencia.score_porcentaje < 80,
+                                  'border-red-500': sugerencia.score_porcentaje < 50,
+                                  'ring-2 ring-purple-500': correccionesSeleccionadas[error.producto] === sugerencia.codigo
+                                }"
+                              >
+                                <input
+                                  type="radio"
+                                  :name="`correccion-${error.producto}`"
+                                  :value="sugerencia.codigo"
+                                  v-model="correccionesSeleccionadas[error.producto]"
+                                  class="mt-0.5 w-3 h-3 text-purple-600 border-gray-300 dark:border-gray-600 focus:ring-purple-500 dark:focus:ring-purple-600"
+                                />
+                                <div class="flex-1 min-w-0">
+                                  <div class="flex items-center gap-2 mb-1">
+                                    <span class="text-xs font-semibold text-gray-900 dark:text-gray-100 font-mono">{{ sugerencia.codigo }}</span>
+                                    <span
+                                      class="px-2 py-0.5 rounded-full text-xs font-semibold"
+                                      :class="getScoreBadgeClass(sugerencia.score_porcentaje)"
+                                    >
+                                      {{ sugerencia.score_porcentaje }}%
+                                    </span>
+                                  </div>
+                                  <p class="text-xs text-gray-700 dark:text-gray-300 font-medium truncate">{{ sugerencia.nombre }}</p>
+                                  
+                                  <div class="flex flex-wrap gap-2 mt-1.5 text-xs text-gray-600 dark:text-gray-400">
+                                    <span v-if="sugerencia.pack">Pack: <span class="font-semibold">{{ sugerencia.pack }}</span></span>
+                                    <span v-if="sugerencia.group_name">Grupo: <span class="font-semibold">{{ sugerencia.group_name }}</span></span>
+                                    <span
+                                      :class="sugerencia.estado === 'activo' ? 'text-green-700 dark:text-green-300 font-semibold' : 'text-red-700 dark:text-red-300 font-semibold'"
+                                    >
+                                      {{ sugerencia.estado === 'activo' ? 'Activo' : 'Inactivo' }}
+                                    </span>
+                                  </div>
+                                  
+                                  <!-- Motivos expandibles -->
+                                  <details v-if="sugerencia.motivos && sugerencia.motivos.length > 0" class="mt-2">
+                                    <summary class="cursor-pointer text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-200">
+                                      Motivos ({{ sugerencia.motivos.length }})
+                                    </summary>
+                                    <ul class="mt-1 ml-3 space-y-0.5">
+                                      <li
+                                        v-for="(motivo, motivoIndex) in sugerencia.motivos"
+                                        :key="motivoIndex"
+                                        class="text-xs text-gray-600 dark:text-gray-400 list-disc"
+                                      >
+                                        {{ motivo }}
+                                      </li>
+                                    </ul>
+                                  </details>
+                                </div>
+                              </label>
+                            </div>
+                          </div>
+                          
+                          <!-- Sin sugerencias -->
+                          <div v-else-if="sugerenciasEstado[error.producto] === 'completado' && (!sugerenciasPorCodigo[error.producto] || sugerenciasPorCodigo[error.producto].length === 0)" class="mt-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg">
+                            <div class="flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
+                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              <span class="text-xs font-medium">No se encontraron sugerencias similares en SAP para este código.</span>
+                            </div>
+                          </div>
+                          
+                          <!-- Error en búsqueda de sugerencias -->
+                          <div v-else-if="sugerenciasEstado[error.producto] === 'error'" class="mt-2 p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded-lg">
+                            <div class="flex items-center gap-2 text-orange-800 dark:text-orange-200">
+                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              <span class="text-xs font-medium">No se pudieron obtener sugerencias (puede ser timeout).</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <div class="mt-3 p-3 bg-yellow-50 dark:bg-amber-950 border border-yellow-300 dark:border-amber-800 rounded">
-                    <p class="text-xs font-medium text-yellow-900 dark:text-amber-100 mb-1">💡 Soluciones sugeridas:</p>
-                    <ul class="text-xs text-yellow-800 dark:text-amber-200 ml-4 list-disc space-y-1">
-                      <li>Verifica que los códigos de producto estén escritos correctamente</li>
-                      <li>Confirma que los productos existen en el catálogo SAP</li>
-                      <li>Revisa posibles errores de tipeo en el archivo Excel</li>
-                      <li>Contacta al administrador si los productos deberían existir</li>
+                    <div v-else class="flex items-start gap-3">
+                      <div class="flex-shrink-0 mt-0.5">
+                        <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-300 text-xs font-bold">
+                          !
+                        </span>
+                      </div>
+                      <div class="flex-1">
+                        <p class="text-sm text-gray-900 dark:text-white">{{ formatError(error) }}</p>
+                      </div>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+              <div v-if="uploadErrorInfo.title && (uploadErrorInfo.title.includes('SAP') || uploadErrorInfo.title.includes('no encontrados'))" class="bg-amber-50 dark:bg-amber-900/30 border-t border-amber-200 dark:border-amber-800 px-4 py-3 transition-colors duration-300">
+                <div class="flex items-start gap-2">
+                  <svg class="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div class="flex-1">
+                    <p class="text-xs font-medium text-amber-900 dark:text-amber-200">⚠️ Acciones recomendadas:</p>
+                    <ul class="text-xs text-amber-800 dark:text-amber-300 mt-1 space-y-1 ml-2">
+                      <li>• Verifica que los códigos estén escritos correctamente en el Excel</li>
+                      <li>• Confirma que los códigos estén registrados en SAP</li>
+                      <li>• Revisa posibles errores de tipeo (mayúsculas/minúsculas, espacios, guiones)</li>
+                      <li>• Contacta al área de maestros si los códigos deberían existir</li>
                     </ul>
                   </div>
                 </div>
-                
-                <!-- Sugerencias según el tipo de error -->
-                <div v-if="uploadError.includes('Ya existe un pedido') || uploadError.includes('duplicado') || uploadError.includes('número de pedido') || uploadError.includes('numero de pedido')" class="mt-3 p-3 bg-yellow-50 dark:bg-amber-900/30 border border-yellow-200 dark:border-amber-800 rounded-lg">
-                  <p class="text-xs font-medium text-yellow-900 dark:text-amber-100 mb-1">💡 Sugerencia:</p>
-                  <p class="text-xs text-yellow-800 dark:text-amber-200">
-                    El número de pedido que intentaste utilizar ya existe en el sistema. No es posible cargar un pedido con un número de pedido duplicado. Por favor, verifica el número de pedido en el archivo Excel e intenta con un número diferente.
-                  </p>
-                </div>
-                
-                <div v-else-if="uploadError.includes('formato') || uploadError.includes('estructura') || uploadError.includes('No se pudo detectar') || uploadError.includes('hojas') || uploadError.includes('Hojas encontradas')" class="mt-3 p-3 bg-yellow-50 dark:bg-amber-900/30 border border-yellow-200 dark:border-amber-800 rounded-lg">
-                  <p class="text-xs font-medium text-yellow-900 dark:text-amber-100 mb-1">💡 Sugerencia:</p>
-                  <p class="text-xs text-yellow-800 dark:text-amber-200">
-                    El archivo Excel debe tener una de las siguientes estructuras:
-                  </p>
-                  <ul class="text-xs text-yellow-800 dark:text-amber-200 mt-2 ml-4 list-disc space-y-1">
-                    <li><strong>Formato de dos hojas:</strong> 'CABECERA_PEDIDO' y 'DETALLE_ARTICULO'</li>
-                    <li><strong>Formato simple:</strong> una hoja con columnas CodigoProducto, IdTienda, Cantidad</li>
-                    <li><strong>Formato complejo:</strong> estructura legacy con cabecera y columnas de tiendas</li>
-                  </ul>
-                  <p class="text-xs text-yellow-800 dark:text-amber-200 mt-2">
-                    Verifica que las hojas tengan los nombres correctos y que las columnas estén en el formato esperado.
-                  </p>
-                </div>
-                
-                <div v-else-if="uploadError.includes('conectar') || uploadError.includes('servidor')" class="mt-3 p-3 bg-yellow-50 dark:bg-amber-900/30 border border-yellow-200 dark:border-amber-800 rounded-lg">
-                  <p class="text-xs font-medium text-yellow-900 dark:text-amber-100 mb-1">💡 Sugerencia:</p>
-                  <p class="text-xs text-yellow-800 dark:text-amber-200">
-                    Verifica tu conexión a internet y que el servidor esté disponible. Intenta nuevamente en unos momentos.
-                  </p>
-                </div>
+              </div>
+            </div>
+
+            <!-- Botones de acción -->
+            <div class="flex items-center justify-between gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <!-- Mensaje de validación de correcciones -->
+              <div v-if="uploadErrorInfo?.title?.includes('producto') || uploadErrorInfo?.title?.includes('SAP')" class="flex items-center gap-2 text-sm">
+                <span 
+                  v-if="!todosCodigosTienenCorreccion"
+                  class="text-amber-600 dark:text-amber-400 font-medium"
+                >
+                  ⚠️ Debes seleccionar una sugerencia para cada código inválido
+                </span>
+                <span 
+                  v-else
+                  class="text-green-600 dark:text-green-400 font-medium"
+                >
+                  ✅ Todas las correcciones seleccionadas
+                </span>
+              </div>
+              <div class="flex items-center gap-3">
+                <!-- Botón aplicar correcciones (solo si hay códigos de producto no encontrados) -->
+                <button
+                  v-if="(uploadErrorInfo?.title?.includes('producto') || uploadErrorInfo?.title?.includes('SAP')) && todosCodigosTienenCorreccion"
+                  @click="aplicarCorreccionesYContinuar"
+                  :disabled="aplicandoCorrecciones"
+                  class="px-4 py-2.5 bg-purple-600 dark:bg-purple-700 text-white rounded-lg hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  <svg v-if="aplicandoCorrecciones" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                  {{ aplicandoCorrecciones ? 'Aplicando correcciones...' : 'Aplicar correcciones y continuar' }}
+                </button>
+                <button
+                  @click="showErrorModal = false"
+                  class="px-4 py-2.5 bg-gray-600 dark:bg-gray-700 text-white rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors font-medium shadow-sm"
+                >
+                  Entendido
+                </button>
               </div>
             </div>
           </div>
@@ -366,11 +633,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onActivated } from 'vue'
+import { ref, computed, onMounted, onActivated, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
-import type { UploadPlantillaResponse } from '../types'
+import { useFileUpload } from '../composables/useFileUpload'
+import type { UploadPlantillaResponse, SugerenciaSkuSap } from '../types'
+import { formatError } from '../utils/formatters'
 
 const router = useRouter()
 const toast = useToast()
@@ -378,10 +647,8 @@ const toast = useToast()
 const selectedFile = ref<File | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const isDragging = ref(false)
-const uploading = ref(false)
 const archivoCargado = ref(false)
 const uploadedFileName = ref<string>('')
-const uploadError = ref<string>('')
 const uploadResponse = ref<UploadPlantillaResponse | null>(null)
 const showBuscarPedidoModal = ref(false)
 const pedidoIdInput = ref('')
@@ -389,6 +656,38 @@ const pedidoIdInput = ref('')
 const cargandoUltimoPedido = ref(false)
 // Flag para evitar redirección automática si el usuario hizo una búsqueda manual
 const busquedaManualRealizada = ref(false)
+
+// ⭐ Usar composable useFileUpload que muestra modal de error
+const fileUploadComposable = useFileUpload({
+  onUploadSuccess: async (numeroPedido) => {
+    // Redirigir a la vista de detalle del pedido
+    router.push(`/mba3-consultas/pedidos/${encodeURIComponent(numeroPedido)}`)
+  }
+})
+
+const {
+  uploading,
+  showErrorModal,
+  uploadErrorInfo,
+  uploadFile,
+  validateFile,
+  reintentarConCorrecciones,
+  archivoOriginal: archivoOriginalDelComposable
+} = fileUploadComposable
+
+// ⭐ NUEVA FUNCIONALIDAD: Sugerencias SAP automáticas en modal de error
+// Almacenar sugerencias por código de producto
+const sugerenciasPorCodigo = ref<Record<string, SugerenciaSkuSap[]>>({})
+// Estado de búsqueda por código: 'idle' | 'buscando' | 'completado' | 'error'
+const sugerenciasEstado = ref<Record<string, 'idle' | 'buscando' | 'completado' | 'error'>>({})
+// ⭐ NUEVA FUNCIONALIDAD: Correcciones seleccionadas por código
+const correccionesSeleccionadas = ref<Record<string, string>>({})
+// ⭐ NUEVA FUNCIONALIDAD: Límite de sugerencias a mostrar por código (por defecto 5)
+const limiteSugerenciasMostradas = ref<Record<string, number>>({})
+// Estado de aplicación de correcciones
+const aplicandoCorrecciones = ref(false)
+// Estado de maximización del modal
+const isModalMaximized = ref(false)
 
 // ⭐ Historial de números de pedido (similar al autocompletado del navegador)
 const STORAGE_KEY_PEDIDOS = 'mba3_pedidos_historial'
@@ -447,23 +746,223 @@ function obtenerHistorial(): string[] {
 // Computed para el historial (reactivo)
 const historialPedidos = computed(() => obtenerHistorial())
 
-// Función para extraer productos no válidos del mensaje de error
-const extractProductosNoValidos = (errorMsg: string): string => {
-  // Buscar varios patrones posibles
-  // Patrón 1: "Productos no encontrados en SAP: XXX"
-  let match = errorMsg.match(/Productos no encontrados en SAP:\s*(.+?)(?:\.|$)/i)
-  if (match && match[1]) {
-    return match[1].trim()
+/**
+ * Extrae códigos de producto no encontrados en SAP del modal de error
+ */
+function extraerCodigosProductoNoEncontrados(): string[] {
+  if (!uploadErrorInfo.value?.errors) return []
+  
+  const codigos: string[] = []
+  
+  for (const error of uploadErrorInfo.value.errors) {
+    if (typeof error !== 'string' && error.producto && error.campo === 'Producto SAP') {
+      const codigo = error.producto.trim()
+      if (codigo && !codigos.includes(codigo)) {
+        codigos.push(codigo)
+      }
+    }
   }
   
-  // Patrón 2: "Productos (Movimiento) no encontrados en SAP: XXX"
-  match = errorMsg.match(/Productos \([^)]+\) no encontrados en SAP:\s*(.+?)(?:\.|$)/i)
-  if (match && match[1]) {
-    return match[1].trim()
-  }
-  
-  return 'No especificados'
+  return codigos
 }
+
+/**
+ * Busca sugerencias SAP automáticamente para un código de producto
+ */
+async function buscarSugerenciasParaCodigo(codigo: string): Promise<void> {
+  if (!codigo || sugerenciasEstado.value[codigo] === 'buscando') {
+    return
+  }
+  
+  sugerenciasEstado.value[codigo] = 'buscando'
+  
+  try {
+    const resultado = await mba3ConsultasService.buscarSugerenciasSku(codigo, 100)
+    
+    if (resultado.status === 'success' && resultado.sugerencias && resultado.sugerencias.length > 0) {
+      sugerenciasPorCodigo.value[codigo] = resultado.sugerencias
+      sugerenciasEstado.value[codigo] = 'completado'
+      inicializarLimiteSugerencias(codigo)
+      console.log(`✅ [CargarPlantillasView] Sugerencias encontradas para ${codigo}:`, resultado.sugerencias.length)
+    } else {
+      sugerenciasPorCodigo.value[codigo] = []
+      sugerenciasEstado.value[codigo] = 'completado'
+      console.log(`ℹ️ [CargarPlantillasView] No se encontraron sugerencias para ${codigo}`)
+    }
+  } catch (error: any) {
+    console.error(`❌ [CargarPlantillasView] Error al buscar sugerencias para ${codigo}:`, error)
+    if (error.response?.status === 504 || error.message?.includes('timeout')) {
+      sugerenciasEstado.value[codigo] = 'error'
+    } else {
+      sugerenciasPorCodigo.value[codigo] = []
+      sugerenciasEstado.value[codigo] = 'completado'
+    }
+  }
+}
+
+/**
+ * Busca sugerencias automáticamente para todos los códigos no encontrados
+ */
+async function buscarSugerenciasAutomaticas(): Promise<void> {
+  if (!uploadErrorInfo.value || (!uploadErrorInfo.value.title?.includes('producto') && !uploadErrorInfo.value.title?.includes('SAP'))) {
+    return
+  }
+  
+  const codigos = extraerCodigosProductoNoEncontrados()
+  
+  if (codigos.length === 0) {
+    return
+  }
+  
+  console.log(`🔍 [CargarPlantillasView] Iniciando búsqueda automática de sugerencias para ${codigos.length} código(s):`, codigos)
+  
+  const promesas = codigos
+    .filter(codigo => !sugerenciasPorCodigo.value[codigo])
+    .map(codigo => buscarSugerenciasParaCodigo(codigo))
+  
+  await Promise.allSettled(promesas)
+  
+  console.log(`✅ [CargarPlantillasView] Búsqueda automática completada para ${codigos.length} código(s)`)
+}
+
+/**
+ * Limpia las sugerencias cuando se cierra el modal
+ */
+function limpiarSugerencias(): void {
+  sugerenciasPorCodigo.value = {}
+  sugerenciasEstado.value = {}
+  correccionesSeleccionadas.value = {}
+  limiteSugerenciasMostradas.value = {}
+  isModalMaximized.value = false
+}
+
+/**
+ * Computed: Verifica si todos los códigos inválidos tienen una corrección seleccionada
+ */
+const todosCodigosTienenCorreccion = computed(() => {
+  const codigosInvalidos = extraerCodigosProductoNoEncontrados()
+  
+  if (codigosInvalidos.length === 0) {
+    return false
+  }
+  
+  return codigosInvalidos.every(codigo => {
+    const correccion = correccionesSeleccionadas.value[codigo]
+    return correccion && correccion.trim().length > 0
+  })
+})
+
+/**
+ * Aplica las correcciones seleccionadas y reintenta el flujo de carga
+ */
+async function aplicarCorreccionesYContinuar(): Promise<void> {
+  if (!todosCodigosTienenCorreccion.value) {
+    toast.warning(
+      'Correcciones incompletas',
+      'Debes seleccionar una sugerencia para cada código inválido'
+    )
+    return
+  }
+  
+  const archivo = archivoOriginalDelComposable.value
+  
+  if (!archivo) {
+    toast.error(
+      'Error',
+      'No se encontró el archivo original. Por favor, vuelve a subir el archivo.'
+    )
+    return
+  }
+  
+  aplicandoCorrecciones.value = true
+  
+  try {
+    showErrorModal.value = false
+    
+    await reintentarConCorrecciones(
+      archivo,
+      correccionesSeleccionadas.value
+    )
+    
+    limpiarSugerencias()
+  } catch (error: any) {
+    console.error('❌ Error al aplicar correcciones:', error)
+    if (uploadErrorInfo.value) {
+      showErrorModal.value = true
+    }
+    toast.error(
+      'Error al aplicar correcciones',
+      error.message || 'No se pudo procesar el archivo con las correcciones aplicadas'
+    )
+  } finally {
+    aplicandoCorrecciones.value = false
+  }
+}
+
+// ⭐ Función auxiliar para obtener clase CSS del badge de score
+function getScoreBadgeClass(porcentaje: number): string {
+  if (porcentaje >= 80) return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+  if (porcentaje >= 50) return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+  return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+}
+
+/**
+ * Obtiene las sugerencias limitadas para un código específico
+ */
+function getSugerenciasLimitadas(codigo: string): SugerenciaSkuSap[] {
+  const todasLasSugerencias = sugerenciasPorCodigo.value[codigo] || []
+  const limite = limiteSugerenciasMostradas.value[codigo] || 5
+  return todasLasSugerencias.slice(0, limite)
+}
+
+/**
+ * Obtiene el límite actual de sugerencias para un código
+ */
+function getLimiteSugerencias(codigo: string): number {
+  return limiteSugerenciasMostradas.value[codigo] || 5
+}
+
+/**
+ * Establece el límite de sugerencias para un código
+ */
+function setLimiteSugerencias(codigo: string, limite: number): void {
+  const todasLasSugerencias = sugerenciasPorCodigo.value[codigo] || []
+  const maximo = todasLasSugerencias.length
+  const limiteAjustado = Math.max(1, Math.min(limite, maximo))
+  limiteSugerenciasMostradas.value[codigo] = limiteAjustado
+}
+
+/**
+ * Inicializa el límite de sugerencias cuando se cargan nuevas sugerencias
+ */
+function inicializarLimiteSugerencias(codigo: string): void {
+  const todasLasSugerencias = sugerenciasPorCodigo.value[codigo] || []
+  if (!limiteSugerenciasMostradas.value[codigo]) {
+    limiteSugerenciasMostradas.value[codigo] = Math.min(5, todasLasSugerencias.length)
+  }
+}
+
+// ⭐ Watcher para detectar cuando se muestra el modal y buscar sugerencias automáticamente
+watch(
+  () => showErrorModal.value,
+  async (isVisible) => {
+    if (isVisible) {
+      await nextTick()
+      
+      const esErrorSap = uploadErrorInfo.value?.title?.includes('SAP') || 
+                         uploadErrorInfo.value?.title?.includes('no encontrados')
+      
+      if (esErrorSap && uploadErrorInfo.value?.errors) {
+        await buscarSugerenciasAutomaticas()
+      }
+    } else {
+      if (!aplicandoCorrecciones.value) {
+        limpiarSugerencias()
+      }
+    }
+  },
+  { immediate: false }
+)
 
 // Computed: validación completa OK
 const esValidacionCompletaOk = computed(() => {
@@ -498,26 +997,10 @@ const handleDrop = (event: DragEvent) => {
 }
 
 const validateAndSetFile = (file: File, inputElement?: HTMLInputElement) => {
-  uploadError.value = ''
-  
-  // Validar tipo - solo archivos Excel
-  const allowedExtensions = ['.xlsx', '.xls']
-  const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'))
-  
-  if (!allowedExtensions.includes(fileExtension)) {
-    const errorMsg = `Solo se permiten archivos Excel (.xlsx, .xls)`
-    uploadError.value = errorMsg
-    toast.error('Tipo de archivo no permitido', errorMsg)
-    if (inputElement) inputElement.value = ''
-    return
-  }
-  
-  // Validar tamaño (10 MB)
-  const maxSize = 10 * 1024 * 1024
-  if (file.size > maxSize) {
-    const errorMsg = 'El tamaño máximo es 10 MB'
-    uploadError.value = errorMsg
-    toast.error('Archivo muy grande', errorMsg)
+  // Usar la validación del composable
+  const validation = validateFile(file)
+  if (!validation.valid) {
+    toast.error('Error de validación', validation.error || 'Archivo no válido')
     if (inputElement) inputElement.value = ''
     return
   }
@@ -528,86 +1011,23 @@ const validateAndSetFile = (file: File, inputElement?: HTMLInputElement) => {
 
 const clearFile = () => {
   selectedFile.value = null
-  uploadError.value = ''
   if (fileInput.value) {
     fileInput.value.value = ''
   }
 }
 
-const handleUpload = async () => {
+// ⭐ Usar uploadFile del composable que muestra modal de error
+const handleUploadFile = async () => {
   if (!selectedFile.value) return
   
-  uploading.value = true
-  uploadError.value = ''
-  uploadResponse.value = null
-  
   try {
-    const response: UploadPlantillaResponse = await mba3ConsultasService.uploadPlantilla(selectedFile.value)
-    
-    uploadResponse.value = response
-    uploadedFileName.value = selectedFile.value.name
-    
-    // Si es un error de validación, marcar como archivo cargado para mostrar resultados
-    if (response.status === 'validation_error') {
-      archivoCargado.value = true
-      toast.error(
-        'Error de validación',
-        response.message || 'La plantilla tiene errores que deben corregirse'
-      )
-      return // Salir aquí para mostrar el panel de error
-    }
-    
-    // Solo marcar como cargado exitoso si no es error
-    archivoCargado.value = true
-    
-    // Obtener numero_pedido de la respuesta
-    let numeroPedido = response.numero_pedido
-    
-    // Si no viene en la respuesta, intentar obtenerlo del pedido cargado usando pedido_id
-    if (!numeroPedido && response.pedido_id) {
-      try {
-        // El backend acepta tanto UUID como numero_pedido, así que podemos usar pedido_id temporalmente
-        // para obtener el pedido y extraer su numero_pedido
-        const pedidoCompleto = await mba3ConsultasService.getPedido(response.pedido_id, false)
-        numeroPedido = pedidoCompleto.cabecera.numero_pedido || undefined
-      } catch (e) {
-        console.warn('No se pudo obtener el numero_pedido del pedido cargado:', e)
-      }
-    }
-    
-    // Redirigir directamente a la vista de detalle del pedido si tenemos numero_pedido
-    if (numeroPedido) {
-      if (response.status === 'success') {
-        toast.success(
-          'Plantilla procesada exitosamente', 
-          `Número de pedido: ${numeroPedido}\nArtículos: ${response.articulos_cargados}\nDistribuciones: ${response.distribuciones_cargadas}`
-        )
-      }
-      
-      // Redirigir a la vista de detalle del pedido (misma interfaz que "Gestionar Pedidos")
-      router.push(`/mba3-consultas/pedidos/${encodeURIComponent(numeroPedido)}`)
-      return
-    }
-    
-    // Si no tenemos numero_pedido, mostrar mensaje pero no redirigir
-    if (response.status === 'success') {
-      toast.success(
-        'Plantilla procesada exitosamente', 
-        `Artículos: ${response.articulos_cargados}\nDistribuciones: ${response.distribuciones_cargadas}`
-      )
-    }
-  } catch (e: any) {
-    // Cuando hay un error de catch (error de red, timeout, etc), resetear el estado
-    const errorMessage = e.message || 'Error al subir plantilla'
-    uploadError.value = errorMessage
-    
-    // Resetear archivo seleccionado para permitir reintentar
+    await uploadFile(selectedFile.value)
+    // Si fue exitoso, el composable maneja la redirección
+    // Si hubo error, el composable muestra el modal automáticamente
     selectedFile.value = null
-    archivoCargado.value = false
-    
-    toast.error('Error al cargar plantilla', errorMessage)
-  } finally {
-    uploading.value = false
+  } catch (e: any) {
+    // El error ya fue manejado por el composable (modal de error)
+    console.error('Error en handleUploadFile:', e)
   }
 }
 

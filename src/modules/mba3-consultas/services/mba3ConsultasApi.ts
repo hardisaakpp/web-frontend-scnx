@@ -1233,20 +1233,16 @@ export const mba3ConsultasService = {
     try {
       const params = incluirRespuesta ? '?incluir_respuesta=true' : ''
       // El backend ahora devuelve el formato directo {cabecera, detalles} igual que getPedido
-      const response = await mba3Api.get<PedidoCompleto>(`/api/plantillas/ultimo${params}`)
+      // Retorna 200 con null cuando no hay pedidos (evita logs de 404)
+      const response = await mba3Api.get<PedidoCompleto | null>(`/api/plantillas/ultimo${params}`)
       
-      // Verificar que la respuesta tenga la estructura esperada
-      if (response.data && response.data.cabecera) {
-        return response.data
-      }
-      
-      return null
-    } catch (error: any) {
-      // Si es 404, significa que no hay pedidos (no es un error crítico)
-      if (error.response?.status === 404) {
+      // Si la respuesta es null o no tiene la estructura esperada, no hay pedidos
+      if (!response.data || !response.data.cabecera) {
         return null
       }
-
+      
+      return response.data
+    } catch (error: any) {
       console.error('❌ [getUltimoPedido] Error al obtener último pedido:', error)
 
       // Extraer mensaje de error más descriptivo
