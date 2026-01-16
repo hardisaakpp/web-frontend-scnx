@@ -692,7 +692,7 @@ export const mba3ConsultasService = {
       // Solo agregar parámetros si se solicitan sugerencias
       if (incluirSugerenciasSap) {
         params.incluir_sugerencias_sap = true
-        params.limite_sugerencias = Math.min(Math.max(limiteSugerencias, 1), 50) // Entre 1 y 50
+        params.limite_sugerencias = Math.min(Math.max(limiteSugerencias, 1), 100) // Entre 1 y 100
       }
 
       // Timeout aumentado a 60 segundos para dar margen al backend (que tiene timeout de 25s)
@@ -754,7 +754,7 @@ export const mba3ConsultasService = {
       const response = await mba3Api.get<SugerenciasSkuResponse>(`/cruce-productos/buscar-sku/sap/sugerencias`, {
         params: {
           sku,
-          limite: Math.min(limite, 50) // Máximo 50 según backend
+          limite: Math.min(limite, 100) // Máximo 100 según backend
         },
         timeout: 60000
       })

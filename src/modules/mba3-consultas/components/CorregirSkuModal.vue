@@ -438,7 +438,7 @@ async function buscarSugerencias() {
     }
 
     // Buscar sugerencias similares usando el nuevo endpoint
-    const resultadoSugerencias = await mba3ConsultasService.buscarSugerenciasSku(skuProblematico.value.trim(), 20)
+    const resultadoSugerencias = await mba3ConsultasService.buscarSugerenciasSku(skuProblematico.value.trim(), 100)
     
     if (resultadoSugerencias.status === 'success' && resultadoSugerencias.sugerencias.length > 0) {
       sugerencias.value = resultadoSugerencias.sugerencias

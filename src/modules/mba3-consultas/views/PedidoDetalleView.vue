@@ -413,15 +413,61 @@
                         
                         <!-- Sugerencias encontradas -->
                         <div v-else-if="sugerenciasEstado[error.producto] === 'completado' && sugerenciasPorCodigo[error.producto]?.length > 0" class="mt-2 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-lg p-3">
-                          <h5 class="text-xs font-semibold text-purple-900 dark:text-purple-200 mb-2 flex items-center gap-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                            </svg>
-                            Sugerencias similares en SAP ({{ sugerenciasPorCodigo[error.producto].length }}) - Selecciona una:
-                          </h5>
+                          <div class="flex items-center justify-between mb-2">
+                            <h5 class="text-xs font-semibold text-purple-900 dark:text-purple-200 flex items-center gap-2">
+                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                              </svg>
+                              Sugerencias similares en SAP ({{ getSugerenciasLimitadas(error.producto).length }} de {{ sugerenciasPorCodigo[error.producto].length }}) - Selecciona una:
+                            </h5>
+                            <!-- Control de cantidad de sugerencias a mostrar -->
+                            <div class="flex items-center gap-2 flex-wrap">
+                              <label class="text-xs text-purple-700 dark:text-purple-300 whitespace-nowrap">
+                                Mostrar:
+                              </label>
+                              <input
+                                type="number"
+                                :value="getLimiteSugerencias(error.producto)"
+                                @input="setLimiteSugerencias(error.producto, parseInt(($event.target as HTMLInputElement).value) || 5)"
+                                :min="1"
+                                :max="sugerenciasPorCodigo[error.producto].length"
+                                class="w-16 px-2 py-1 text-xs border border-purple-300 dark:border-purple-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500 dark:focus:ring-purple-400"
+                              />
+                              <span class="text-xs text-purple-600 dark:text-purple-400">
+                                / {{ sugerenciasPorCodigo[error.producto].length }}
+                              </span>
+                              <!-- Botones rápidos -->
+                              <div class="flex items-center gap-1 ml-1">
+                                <button
+                                  v-if="getLimiteSugerencias(error.producto) < sugerenciasPorCodigo[error.producto].length"
+                                  @click="setLimiteSugerencias(error.producto, Math.min(getLimiteSugerencias(error.producto) + 5, sugerenciasPorCodigo[error.producto].length))"
+                                  class="px-2 py-0.5 text-xs bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 rounded hover:bg-purple-200 dark:hover:bg-purple-800 transition-colors"
+                                  title="Mostrar 5 más"
+                                >
+                                  +5
+                                </button>
+                                <button
+                                  v-if="getLimiteSugerencias(error.producto) < sugerenciasPorCodigo[error.producto].length"
+                                  @click="setLimiteSugerencias(error.producto, sugerenciasPorCodigo[error.producto].length)"
+                                  class="px-2 py-0.5 text-xs bg-purple-200 dark:bg-purple-800 text-purple-800 dark:text-purple-200 rounded hover:bg-purple-300 dark:hover:bg-purple-700 transition-colors font-semibold"
+                                  title="Mostrar todas"
+                                >
+                                  Todas
+                                </button>
+                                <button
+                                  v-if="getLimiteSugerencias(error.producto) > 5"
+                                  @click="setLimiteSugerencias(error.producto, 5)"
+                                  class="px-2 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                  title="Mostrar solo 5"
+                                >
+                                  Menos
+                                </button>
+                              </div>
+                            </div>
+                          </div>
                           <div class="space-y-2">
                             <label
-                              v-for="sugerencia in sugerenciasPorCodigo[error.producto]"
+                              v-for="sugerencia in getSugerenciasLimitadas(error.producto)"
                               :key="sugerencia.codigo"
                               class="flex items-start gap-2 cursor-pointer bg-white dark:bg-gray-800 border-l-4 rounded-lg p-3 text-xs hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                               :class="{
@@ -994,6 +1040,8 @@ const sugerenciasPorCodigo = ref<Record<string, SugerenciaSkuSap[]>>({})
 const sugerenciasEstado = ref<Record<string, 'idle' | 'buscando' | 'completado' | 'error'>>({})
 // ⭐ NUEVA FUNCIONALIDAD: Correcciones seleccionadas por código
 const correccionesSeleccionadas = ref<Record<string, string>>({})
+// ⭐ NUEVA FUNCIONALIDAD: Límite de sugerencias a mostrar por código (por defecto 5)
+const limiteSugerenciasMostradas = ref<Record<string, number>>({})
 // Estado de aplicación de correcciones
 const aplicandoCorrecciones = ref(false)
 // Estado de maximización del modal
@@ -1030,11 +1078,12 @@ async function buscarSugerenciasParaCodigo(codigo: string): Promise<void> {
   sugerenciasEstado.value[codigo] = 'buscando'
   
   try {
-    const resultado = await mba3ConsultasService.buscarSugerenciasSku(codigo, 20)
+    const resultado = await mba3ConsultasService.buscarSugerenciasSku(codigo, 100)
     
     if (resultado.status === 'success' && resultado.sugerencias && resultado.sugerencias.length > 0) {
       sugerenciasPorCodigo.value[codigo] = resultado.sugerencias
       sugerenciasEstado.value[codigo] = 'completado'
+      inicializarLimiteSugerencias(codigo) // Inicializar límite cuando se cargan sugerencias
       console.log(`✅ [PedidoDetalleView] Sugerencias encontradas para ${codigo}:`, resultado.sugerencias.length)
     } else {
       sugerenciasPorCodigo.value[codigo] = []
@@ -1090,6 +1139,7 @@ function limpiarSugerencias(): void {
   sugerenciasPorCodigo.value = {}
   sugerenciasEstado.value = {}
   correccionesSeleccionadas.value = {}
+  limiteSugerenciasMostradas.value = {}
   // Restaurar tamaño del modal cuando se cierra
   isModalMaximized.value = false
 }
@@ -1195,6 +1245,44 @@ function getScoreBadgeClass(porcentaje: number): string {
   if (porcentaje >= 80) return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
   if (porcentaje >= 50) return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
   return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+}
+
+/**
+ * Obtiene las sugerencias limitadas para un código específico
+ */
+function getSugerenciasLimitadas(codigo: string): SugerenciaSkuSap[] {
+  const todasLasSugerencias = sugerenciasPorCodigo.value[codigo] || []
+  const limite = limiteSugerenciasMostradas.value[codigo] || 5
+  return todasLasSugerencias.slice(0, limite)
+}
+
+/**
+ * Obtiene el límite actual de sugerencias para un código
+ */
+function getLimiteSugerencias(codigo: string): number {
+  return limiteSugerenciasMostradas.value[codigo] || 5
+}
+
+/**
+ * Establece el límite de sugerencias para un código
+ */
+function setLimiteSugerencias(codigo: string, limite: number): void {
+  const todasLasSugerencias = sugerenciasPorCodigo.value[codigo] || []
+  const maximo = todasLasSugerencias.length
+  // Asegurar que el límite esté entre 1 y el máximo disponible
+  const limiteAjustado = Math.max(1, Math.min(limite, maximo))
+  limiteSugerenciasMostradas.value[codigo] = limiteAjustado
+}
+
+/**
+ * Inicializa el límite de sugerencias cuando se cargan nuevas sugerencias
+ */
+function inicializarLimiteSugerencias(codigo: string): void {
+  const todasLasSugerencias = sugerenciasPorCodigo.value[codigo] || []
+  // Si no hay límite establecido, usar 5 por defecto (o el total si hay menos de 5)
+  if (!limiteSugerenciasMostradas.value[codigo]) {
+    limiteSugerenciasMostradas.value[codigo] = Math.min(5, todasLasSugerencias.length)
+  }
 }
 
 const columnManagement = useColumnManagement(pedido, numeroPedido, columnasModificadas)
