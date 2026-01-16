@@ -952,7 +952,12 @@ export const mba3ConsultasService = {
       }
 
       console.log('🔴 [uploadPlantilla] Mensaje final de error:', message)
-      throw new Error(message)
+      // Preservar response.data en el error para que useFileUpload pueda acceder a los datos estructurados
+      const errorWithResponse = new Error(message) as any
+      errorWithResponse.response = error.response
+      errorWithResponse.isBusinessException = (error as any).isBusinessException
+      errorWithResponse.businessError = (error as any).businessError
+      throw errorWithResponse
     }
   },
 

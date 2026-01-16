@@ -110,14 +110,46 @@ export function useFileUpload(options: {
    * Procesa el error de carga y prepara la información para el modal
    */
   function processUploadError(e: any, fileName: string): UploadErrorInfo {
+    console.log('🔍 [useFileUpload] Procesando error de carga:', {
+      message: e.message,
+      hasResponse: !!e.response,
+      responseStatus: e.response?.status,
+      responseData: e.response?.data,
+      responseDataType: e.response?.data?.type,
+      error: e.response?.data?.error,
+      messageField: e.response?.data?.message,
+      detail: e.response?.data?.detail,
+      dataField: e.response?.data?.data,
+      validacion: e.response?.data?.validacion,
+      validacionData: e.response?.data?.data?.validacion
+    })
+    
     let errorTitle = 'Error al cargar plantilla'
-    let errorMessage = e.message || 'Error desconocido al subir plantilla'
+    // Obtener mensaje de error de múltiples fuentes posibles
+    let errorMessage = e.message || 
+                      e.response?.data?.error || 
+                      e.response?.data?.message || 
+                      e.response?.data?.detail ||
+                      'Error desconocido al subir plantilla'
     const errorErrors: Array<string | { tipo?: string; campo?: string; mensaje: string; producto?: string }> = []
     let productosNoEncontradosSAP: string[] = []
     let tiendasNoEncontradasSAP: string[] = []
     let bodegasNoEncontradasSAP: string[] = []
 
-    const errorMessageStr = e.message || ''
+    // Construir string de mensaje completo para búsqueda de patrones
+    // Combinar todos los posibles mensajes en un solo string para buscar patrones
+    // Eliminar duplicados usando Set
+    const mensajesUnicos = new Set([
+      e.message,
+      e.response?.data?.error,
+      e.response?.data?.message,
+      e.response?.data?.detail,
+      e.response?.data?.data?.error,
+      e.response?.data?.data?.message
+    ].filter(Boolean))
+    const errorMessageStr = Array.from(mensajesUnicos).join(' ') || ''
+    
+    console.log('🔍 [useFileUpload] Mensaje completo para búsqueda:', errorMessageStr)
     
     // ✅ NUEVO: Extraer códigos del formato estructurado del backend
     // Formato: "❌ Códigos NO ENCONTRADOS en SAP (N):\n   • CODIGO1\n   • CODIGO2\n..."
@@ -148,10 +180,56 @@ export function useFileUpload(options: {
     }
     
     // ✅ También extraer códigos del formato antiguo (compatibilidad)
+    // Patrón para: "❌ Validación SAP productos falló: Productos no encontrados (N): CODIGO1, CODIGO2"
+    // También puede venir en múltiples líneas o como parte de un mensaje más largo
+    const validacionSapPatterns = [
+      // Patrón específico para el formato exacto del backend
+      /❌\s*Validación\s+SAP\s+productos?\s+falló:\s*Productos?\s+no\s+encontrados?\s*\([^)]*\):\s*([A-Za-z0-9,.\s-]+)/i,
+      /Validación\s+SAP\s+productos?\s+falló:\s*Productos?\s+no\s+encontrados?\s*\([^)]*\):\s*([A-Za-z0-9,.\s-]+)/i,
+      // Patrón más flexible que busca "Productos no encontrados (N):" seguido de códigos
+      /Productos?\s+no\s+encontrados?\s*\([^)]*\):\s*([A-Za-z0-9,.\s-]+)/i,
+      // Patrón alternativo sin paréntesis
+      /Productos?\s+no\s+encontrados?\s+en\s+SAP[^:]*:\s*([A-Za-z0-9,.\s-]+)/i
+    ]
+    
+    for (const pattern of validacionSapPatterns) {
+      const match = errorMessageStr.match(pattern)
+      if (match && match[1]) {
+        const codigos = match[1].split(',').map(c => c.trim()).filter(c => c && c.length > 0 && !c.match(/^\d+$/))
+        if (codigos.length > 0) {
+          productosNoEncontradosSAP.push(...codigos)
+          console.log('✅ [useFileUpload] Códigos extraídos del mensaje:', codigos)
+          break // Solo usar el primer patrón que coincida
+        }
+      }
+    }
+    
+    // Si aún no se encontraron códigos, buscar en todo el mensaje cualquier patrón de códigos después de ":"
+    if (productosNoEncontradosSAP.length === 0 && errorMessageStr.includes(':')) {
+      // Buscar la última parte después de ":" que contenga códigos separados por comas
+      const partes = errorMessageStr.split(':')
+      if (partes.length > 1) {
+        const ultimaParte = partes[partes.length - 1].trim()
+        // Verificar si la última parte parece contener códigos (tiene comas o múltiples palabras)
+        if (ultimaParte.includes(',') || ultimaParte.split(/\s+/).length > 1) {
+          const posiblesCodigos = ultimaParte.split(',').map(c => c.trim()).filter(c => {
+            // Filtrar solo códigos que parezcan válidos (no solo números, no vacíos)
+            return c && c.length > 0 && !c.match(/^\d+$/) && c.match(/[A-Za-z0-9.-]+/)
+          })
+          if (posiblesCodigos.length > 0) {
+            productosNoEncontradosSAP.push(...posiblesCodigos)
+            console.log('✅ [useFileUpload] Códigos extraídos de la última parte del mensaje:', posiblesCodigos)
+          }
+        }
+      }
+    }
+    
     const sapErrorPatterns = [
       /Productos no encontrados en SAP:\s*([A-Za-z0-9,.\s-]+)/i,
       /no válidos en SAP[^:]*:\s*([A-Za-z0-9,.\s-]+)/i,
-      /No se encontró información en SAP para SKU:\s*([A-Za-z0-9,.\s-]+)/i
+      /No se encontró información en SAP para SKU:\s*([A-Za-z0-9,.\s-]+)/i,
+      // Patrón adicional para formato: "Productos no encontrados (N): CODIGO1, CODIGO2"
+      /Productos?\s+no\s+encontrados?\s*\([^)]*\):\s*([A-Za-z0-9,.\s-]+)/i
     ]
     
     for (const pattern of sapErrorPatterns) {
@@ -163,8 +241,23 @@ export function useFileUpload(options: {
     }
 
     // Intentar extraer información detallada del error response
+    console.log('🔍 [useFileUpload] Verificando e.response?.data:', {
+      hasResponse: !!e.response,
+      hasData: !!e.response?.data,
+      dataKeys: e.response?.data ? Object.keys(e.response.data) : [],
+      data: e.response?.data,
+      // Buscar códigos en cualquier campo posible
+      validacionSapNoEncontrados: e.response?.data?.validacion_sap?.no_encontrados,
+      validacionProductosNoEncontrados: e.response?.data?.validacion?.productos?.no_encontrados,
+      // Buscar en campos anidados
+      dataValidacion: e.response?.data?.data?.validacion,
+      // Buscar en cualquier campo que pueda contener códigos
+      allFields: JSON.stringify(e.response?.data, null, 2)
+    })
+    
     if (e.response?.data) {
       const errorData = e.response.data
+      console.log('🔍 [useFileUpload] errorData completo:', errorData)
       
       if (errorData.errores && Array.isArray(errorData.errores)) {
         errorErrors.push(...errorData.errores)
@@ -240,28 +333,64 @@ export function useFileUpload(options: {
       // ✅ Extraer códigos desde validacion_sap estructurado
       if (errorData.validacion_sap) {
         const sap = errorData.validacion_sap
+        console.log('🔍 [useFileUpload] validacion_sap:', sap)
         
-        // Si viene como lista de códigos (nuevo formato)
+        // ⭐ MEJORADO: El backend ahora siempre envía arrays de códigos
         if (Array.isArray(sap.no_encontrados)) {
           sap.no_encontrados.forEach((codigo: string) => {
             if (!productosNoEncontradosSAP.includes(codigo)) {
               productosNoEncontradosSAP.push(codigo)
             }
           })
-        } else if (sap.no_encontrados > 0 || sap.errores > 0) {
-          // Formato antiguo (solo conteos)
+          console.log('✅ [useFileUpload] Códigos extraídos de validacion_sap.no_encontrados (array):', productosNoEncontradosSAP)
+        } else if (typeof sap.no_encontrados === 'number' && sap.no_encontrados > 0) {
+          // ⭐ COMPATIBILIDAD: Si el backend aún envía número (formato antiguo), buscar en otros campos
+          console.log('⚠️ [useFileUpload] validacion_sap.no_encontrados es un número (formato antiguo). Conteo:', sap.no_encontrados)
+          
+          // Buscar en validacion.productos.no_encontrados como fallback
+          if (errorData.validacion?.productos?.no_encontrados && Array.isArray(errorData.validacion.productos.no_encontrados) && errorData.validacion.productos.no_encontrados.length > 0) {
+            errorData.validacion.productos.no_encontrados.forEach((codigo: string) => {
+              if (!productosNoEncontradosSAP.includes(codigo)) {
+                productosNoEncontradosSAP.push(codigo)
+              }
+            })
+            console.log('✅ [useFileUpload] Códigos encontrados en validacion.productos.no_encontrados:', productosNoEncontradosSAP)
+          }
+          
+          // Si aún no tenemos códigos específicos, usar el conteo para el mensaje
+          if (productosNoEncontradosSAP.length === 0) {
+            ;(e as any).sapNoEncontradosCount = sap.no_encontrados
+            console.log('⚠️ [useFileUpload] No se encontraron códigos específicos. Conteo guardado:', sap.no_encontrados)
+          }
+        }
+        
+        // ⭐ MEJORADO: Manejar errores de SAP (ahora también es array)
+        if (Array.isArray(sap.errores) && sap.errores.length > 0) {
+          sap.errores.forEach((errorMsg: string) => {
+            errorErrors.push({
+              tipo: 'ERROR',
+              campo: 'ValidacionSAP',
+              mensaje: errorMsg,
+              producto: undefined
+            })
+          })
+        } else if (typeof sap.errores === 'number' && sap.errores > 0) {
+          // Compatibilidad con formato antiguo
           errorErrors.push({
             tipo: 'ERROR',
             campo: 'ValidacionSAP',
-            mensaje: `${sap.no_encontrados || 0} código(s) no encontrado(s) en SAP, ${sap.errores || 0} error(es)`,
+            mensaje: `${sap.no_encontrados?.length || sap.total_no_encontrados || 0} código(s) no encontrado(s) en SAP, ${sap.errores} error(es)`,
             producto: undefined
           })
         }
       }
       
       // ✅ Extraer códigos desde data estructurado (BusinessException)
+      // BusinessException puede tener la estructura: { type: 'business_exception', error: '...', data: { validacion: {...} } }
+      console.log('🔍 [useFileUpload] Verificando errorData.data:', errorData.data)
       if (errorData.data?.validacion) {
         const validacion = errorData.data.validacion
+        console.log('✅ [useFileUpload] Encontrada validacion en errorData.data.validacion:', validacion)
         
         // Productos
         if (validacion.productos?.no_encontrados && Array.isArray(validacion.productos.no_encontrados)) {
@@ -295,6 +424,18 @@ export function useFileUpload(options: {
     if ((e as any).errors && Array.isArray((e as any).errors)) {
       errorErrors.push(...(e as any).errors)
     }
+
+    // Eliminar duplicados de los códigos extraídos
+    productosNoEncontradosSAP = [...new Set(productosNoEncontradosSAP)]
+    tiendasNoEncontradasSAP = [...new Set(tiendasNoEncontradasSAP)]
+    bodegasNoEncontradasSAP = [...new Set(bodegasNoEncontradasSAP)]
+
+    console.log('📊 [useFileUpload] Códigos extraídos después de eliminar duplicados:', {
+      productos: productosNoEncontradosSAP,
+      tiendas: tiendasNoEncontradasSAP,
+      bodegas: bodegasNoEncontradasSAP,
+      total: productosNoEncontradosSAP.length + tiendasNoEncontradasSAP.length + bodegasNoEncontradasSAP.length
+    })
 
     // Identificar el tipo de error
     const isSAPError = productosNoEncontradosSAP.length > 0 || 
@@ -391,37 +532,103 @@ export function useFileUpload(options: {
       }
       
       // ✅ Construir mensaje estructurado con todos los códigos
-      if (totalErrores > 0) {
-        errorMessage = `Existen ${totalErrores} código(s) no válidos en SAP.\n\n`
+      // SIEMPRE construir mensaje detallado si hay códigos extraídos, sin importar el mensaje del backend
+      const sapNoEncontradosCount = (e as any).sapNoEncontradosCount || 0
+      const tieneCodigosEspecificos = totalErrores > 0
+      const tieneConteoSinCodigos = sapNoEncontradosCount > 0 && !tieneCodigosEspecificos
+      
+      if (tieneCodigosEspecificos || tieneConteoSinCodigos) {
+        console.log('✅ [useFileUpload] Construyendo mensaje detallado:', {
+          productos: productosNoEncontradosSAP,
+          tiendas: tiendasNoEncontradasSAP,
+          bodegas: bodegasNoEncontradasSAP,
+          total: totalErrores,
+          sapNoEncontradosCount
+        })
         
-        if (productosNoEncontradosSAP.length > 0) {
-          errorMessage += `❌ Códigos de PRODUCTO no encontrados (${productosNoEncontradosSAP.length}):\n`
-          productosNoEncontradosSAP.forEach(codigo => {
-            errorMessage += `   • ${codigo}\n`
-          })
-          errorMessage += `\n`
+        if (tieneCodigosEspecificos) {
+          // Tenemos códigos específicos - mostrar lista detallada
+          errorMessage = `Existen ${totalErrores} código(s) no válidos en SAP.\n\n`
+          
+          if (productosNoEncontradosSAP.length > 0) {
+            errorMessage += `❌ Códigos de PRODUCTO no encontrados (${productosNoEncontradosSAP.length}):\n`
+            productosNoEncontradosSAP.forEach(codigo => {
+              errorMessage += `   • ${codigo}\n`
+            })
+            errorMessage += `\n`
+          }
+          
+          if (tiendasNoEncontradasSAP.length > 0) {
+            errorMessage += `❌ Códigos de TIENDA/BODEGA no encontrados (${tiendasNoEncontradasSAP.length}):\n`
+            tiendasNoEncontradasSAP.forEach(codigo => {
+              errorMessage += `   • ${codigo}\n`
+            })
+            errorMessage += `\n`
+          }
+          
+          if (bodegasNoEncontradasSAP.length > 0) {
+            errorMessage += `❌ Códigos de BODEGA no encontrados (${bodegasNoEncontradasSAP.length}):\n`
+            bodegasNoEncontradasSAP.forEach(codigo => {
+              errorMessage += `   • ${codigo}\n`
+            })
+            errorMessage += `\n`
+          }
+          
+          errorMessage += `⚠️ Por favor verifica que estos códigos estén escritos correctamente en el Excel.`
+        } else if (tieneConteoSinCodigos) {
+          // No tenemos códigos específicos pero sí el conteo - mostrar mensaje informativo
+          errorMessage = `Existen ${sapNoEncontradosCount} código(s) de producto no válidos en SAP.\n\n`
+          errorMessage += `⚠️ Los códigos específicos no están disponibles en la respuesta del servidor.\n\n`
+          errorMessage += `Por favor, revisa el archivo Excel y verifica que todos los códigos de producto estén escritos correctamente y existan en SAP.`
         }
         
-        if (tiendasNoEncontradasSAP.length > 0) {
-          errorMessage += `❌ Códigos de TIENDA/BODEGA no encontrados (${tiendasNoEncontradasSAP.length}):\n`
-          tiendasNoEncontradasSAP.forEach(codigo => {
-            errorMessage += `   • ${codigo}\n`
-          })
-          errorMessage += `\n`
-        }
-        
-        if (bodegasNoEncontradasSAP.length > 0) {
-          errorMessage += `❌ Códigos de BODEGA no encontrados (${bodegasNoEncontradasSAP.length}):\n`
-          bodegasNoEncontradasSAP.forEach(codigo => {
-            errorMessage += `   • ${codigo}\n`
-          })
-          errorMessage += `\n`
-        }
-        
-        errorMessage += `⚠️ Por favor verifica que estos códigos estén escritos correctamente en el Excel.`
+        console.log('✅ [useFileUpload] Mensaje detallado construido:', errorMessage)
       } else {
-        // Si no se pudieron extraer códigos, usar el mensaje del backend directamente
-        errorMessage = errorMessageStr || `Uno o más códigos del archivo no fueron encontrados en SAP.\n\nVerifica que todos los códigos estén correctamente registrados en SAP.`
+        // Si no se pudieron extraer códigos con los patrones, intentar extraerlos del mensaje del backend directamente
+        // El mensaje del backend puede tener formato: "❌ Validación SAP productos falló: Productos no encontrados (2): R225.1012.BCO.10-12, R5082-17.1012896"
+        console.log('⚠️ [useFileUpload] No se extrajeron códigos con patrones. Mensaje original:', errorMessageStr)
+        
+        if (errorMessageStr && errorMessageStr.includes('no encontrados') && errorMessageStr.includes(':')) {
+          // Intentar extraer la parte después de los dos puntos que contiene los códigos
+          const partes = errorMessageStr.split(':')
+          if (partes.length > 1) {
+            // Buscar la parte que contiene códigos (generalmente la última o penúltima)
+            let codigosParte = ''
+            // Revisar desde el final hacia atrás para encontrar la parte con códigos
+            for (let i = partes.length - 1; i >= 0; i--) {
+              const parte = partes[i].trim()
+              // Verificar si esta parte parece contener códigos (tiene comas o múltiples palabras/códigos)
+              if (parte && (parte.includes(',') || parte.split(/\s+/).length > 1)) {
+                const posiblesCodigos = parte.split(',').map(c => c.trim()).filter(c => {
+                  return c && c.length > 0 && !c.match(/^\d+$/) && c.match(/[A-Za-z0-9.-]+/)
+                })
+                if (posiblesCodigos.length > 0) {
+                  codigosParte = parte
+                  productosNoEncontradosSAP.push(...posiblesCodigos)
+                  console.log('✅ [useFileUpload] Códigos extraídos del fallback:', posiblesCodigos)
+                  break
+                }
+              }
+            }
+            
+            if (codigosParte && productosNoEncontradosSAP.length > 0) {
+              // Eliminar duplicados
+              productosNoEncontradosSAP = [...new Set(productosNoEncontradosSAP)]
+              // Reconstruir el mensaje detallado con los códigos extraídos
+              const totalErrores = productosNoEncontradosSAP.length
+              errorMessage = `Existen ${totalErrores} código(s) no válidos en SAP.\n\n❌ Códigos de PRODUCTO no encontrados (${productosNoEncontradosSAP.length}):\n${productosNoEncontradosSAP.map(c => `   • ${c}`).join('\n')}\n\n⚠️ Por favor verifica que estos códigos estén escritos correctamente en el Excel.`
+              console.log('✅ [useFileUpload] Mensaje reconstruido con códigos del fallback:', errorMessage)
+            } else {
+              // Si no se pudieron extraer códigos, usar el mensaje del backend directamente
+              errorMessage = errorMessageStr || `Uno o más códigos del archivo no fueron encontrados en SAP.\n\nVerifica que todos los códigos estén correctamente registrados en SAP.`
+            }
+          } else {
+            errorMessage = errorMessageStr || `Uno o más códigos del archivo no fueron encontrados en SAP.\n\nVerifica que todos los códigos estén correctamente registrados en SAP.`
+          }
+        } else {
+          // Si no se pudieron extraer códigos, usar el mensaje del backend directamente
+          errorMessage = errorMessageStr || `Uno o más códigos del archivo no fueron encontrados en SAP.\n\nVerifica que todos los códigos estén correctamente registrados en SAP.`
+        }
       }
     } else if (isDuplicateError) {
       errorTitle = 'Número de pedido duplicado'
@@ -442,6 +649,15 @@ export function useFileUpload(options: {
       errorTitle = 'No se puede procesar el archivo'
       errorMessage = errorMessageStr || 'Ocurrió un error de validación de negocio que impide procesar el archivo.'
     }
+    
+    console.log('📤 [useFileUpload] Retornando error info:', {
+      title: errorTitle,
+      message: errorMessage.substring(0, 200) + (errorMessage.length > 200 ? '...' : ''),
+      errorsCount: errorErrors.length,
+      productosNoEncontrados: productosNoEncontradosSAP.length,
+      tiendasNoEncontradas: tiendasNoEncontradasSAP.length,
+      bodegasNoEncontradas: bodegasNoEncontradasSAP.length
+    })
     
     return {
       title: errorTitle,
@@ -480,14 +696,42 @@ export function useFileUpload(options: {
         const sap = response.validacion_sap
         mensajeDetalle += `\n\nValidación SAP:`
         mensajeDetalle += `\n  • Códigos válidos: ${sap.validos}/${sap.total_codigos}`
-        if (sap.no_encontrados > 0) {
-          mensajeDetalle += `\n  • No encontrados en SAP: ${sap.no_encontrados}`
+        
+        // ⭐ MEJORADO: Manejar arrays de códigos
+        const noEncontradosCount = Array.isArray(sap.no_encontrados) 
+          ? sap.no_encontrados.length 
+          : (sap.total_no_encontrados || (typeof sap.no_encontrados === 'number' ? sap.no_encontrados : 0))
+        
+        if (noEncontradosCount > 0) {
+          if (Array.isArray(sap.no_encontrados) && sap.no_encontrados.length > 0) {
+            mensajeDetalle += `\n  • No encontrados en SAP (${noEncontradosCount}): ${sap.no_encontrados.slice(0, 5).join(', ')}${sap.no_encontrados.length > 5 ? ` y ${sap.no_encontrados.length - 5} más` : ''}`
+          } else {
+            mensajeDetalle += `\n  • No encontrados en SAP: ${noEncontradosCount}`
+          }
         }
-        if (sap.errores > 0) {
-          mensajeDetalle += `\n  • Errores: ${sap.errores}`
+        
+        const erroresCount = Array.isArray(sap.errores) 
+          ? sap.errores.length 
+          : (sap.total_errores || (typeof sap.errores === 'number' ? sap.errores : 0))
+        
+        if (erroresCount > 0) {
+          if (Array.isArray(sap.errores) && sap.errores.length > 0) {
+            mensajeDetalle += `\n  • Errores (${erroresCount}): ${sap.errores.slice(0, 3).join(', ')}${sap.errores.length > 3 ? ` y ${sap.errores.length - 3} más` : ''}`
+          } else {
+            mensajeDetalle += `\n  • Errores: ${erroresCount}`
+          }
         }
-        if (sap.warnings > 0) {
-          mensajeDetalle += `\n  • Advertencias: ${sap.warnings}`
+        
+        const warningsCount = Array.isArray(sap.warnings) 
+          ? sap.warnings.length 
+          : (sap.total_warnings || (typeof sap.warnings === 'number' ? sap.warnings : 0))
+        
+        if (warningsCount > 0) {
+          if (Array.isArray(sap.warnings) && sap.warnings.length > 0) {
+            mensajeDetalle += `\n  • Advertencias (${warningsCount}): ${sap.warnings.slice(0, 3).join(', ')}${sap.warnings.length > 3 ? ` y ${sap.warnings.length - 3} más` : ''}`
+          } else {
+            mensajeDetalle += `\n  • Advertencias: ${warningsCount}`
+          }
         }
       }
       

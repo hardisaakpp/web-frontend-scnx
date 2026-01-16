@@ -718,10 +718,14 @@ export interface ValidacionCompleta {
 export interface ValidacionSAP {
   total_codigos: number
   validos: number
-  no_encontrados: number
-  errores: number
-  warnings: number
+  no_encontrados: string[]  // ⭐ MEJORADO: Array de códigos, no solo conteo
+  errores: string[]  // ⭐ MEJORADO: Array de errores, no solo conteo
+  warnings: string[]  // ⭐ MEJORADO: Array de warnings, no solo conteo
   todos_validos: boolean
+  // ⭐ Campos opcionales para compatibilidad (conteos)
+  total_no_encontrados?: number
+  total_errores?: number
+  total_warnings?: number
   detalle_validacion?: {
     [codigo: string]: {
       encontrado: boolean
