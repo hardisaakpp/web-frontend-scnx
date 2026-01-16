@@ -378,6 +378,103 @@
                         </span>
                       </div>
                       <p class="text-sm text-gray-700 dark:text-gray-300">{{ error.mensaje }}</p>
+                      
+                      <!-- Sugerencias SAP automáticas (solo para códigos de producto no encontrados) -->
+                      <div v-if="error.campo === 'Producto SAP' && error.producto" class="mt-4">
+                        <!-- Estado de carga -->
+                        <div v-if="sugerenciasEstado[error.producto] === 'buscando'" class="mt-2 p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-lg">
+                          <div class="flex items-center gap-2 text-purple-700 dark:text-purple-300">
+                            <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span class="text-xs font-medium">Buscando sugerencias similares en SAP...</span>
+                          </div>
+                        </div>
+                        
+                        <!-- Sugerencias encontradas -->
+                        <div v-else-if="sugerenciasEstado[error.producto] === 'completado' && sugerenciasPorCodigo[error.producto]?.length > 0" class="mt-2 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-lg p-3">
+                          <h5 class="text-xs font-semibold text-purple-900 dark:text-purple-200 mb-2 flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                            </svg>
+                            Sugerencias similares en SAP ({{ sugerenciasPorCodigo[error.producto].length }})
+                          </h5>
+                          <div class="space-y-2">
+                            <div
+                              v-for="sugerencia in sugerenciasPorCodigo[error.producto]"
+                              :key="sugerencia.codigo"
+                              class="bg-white dark:bg-gray-800 border-l-4 rounded-lg p-3 text-xs"
+                              :class="{
+                                'border-green-500': sugerencia.score_porcentaje >= 80,
+                                'border-yellow-500': sugerencia.score_porcentaje >= 50 && sugerencia.score_porcentaje < 80,
+                                'border-red-500': sugerencia.score_porcentaje < 50
+                              }"
+                            >
+                              <div class="flex items-start justify-between mb-1">
+                                <div class="flex-1 min-w-0">
+                                  <div class="flex items-center gap-2 mb-1">
+                                    <span class="text-xs font-semibold text-gray-900 dark:text-gray-100 font-mono">{{ sugerencia.codigo }}</span>
+                                    <span
+                                      class="px-2 py-0.5 rounded-full text-xs font-semibold"
+                                      :class="getScoreBadgeClass(sugerencia.score_porcentaje)"
+                                    >
+                                      {{ sugerencia.score_porcentaje }}%
+                                    </span>
+                                  </div>
+                                  <p class="text-xs text-gray-700 dark:text-gray-300 font-medium truncate">{{ sugerencia.nombre }}</p>
+                                </div>
+                              </div>
+                              
+                              <div class="flex flex-wrap gap-2 mt-1.5 text-xs text-gray-600 dark:text-gray-400">
+                                <span v-if="sugerencia.pack">Pack: <span class="font-semibold">{{ sugerencia.pack }}</span></span>
+                                <span v-if="sugerencia.group_name">Grupo: <span class="font-semibold">{{ sugerencia.group_name }}</span></span>
+                                <span
+                                  :class="sugerencia.estado === 'activo' ? 'text-green-700 dark:text-green-300 font-semibold' : 'text-red-700 dark:text-red-300 font-semibold'"
+                                >
+                                  {{ sugerencia.estado === 'activo' ? 'Activo' : 'Inactivo' }}
+                                </span>
+                              </div>
+                              
+                              <!-- Motivos expandibles -->
+                              <details v-if="sugerencia.motivos && sugerencia.motivos.length > 0" class="mt-2">
+                                <summary class="cursor-pointer text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-200">
+                                  Motivos ({{ sugerencia.motivos.length }})
+                                </summary>
+                                <ul class="mt-1 ml-3 space-y-0.5">
+                                  <li
+                                    v-for="(motivo, motivoIndex) in sugerencia.motivos"
+                                    :key="motivoIndex"
+                                    class="text-xs text-gray-600 dark:text-gray-400 list-disc"
+                                  >
+                                    {{ motivo }}
+                                  </li>
+                                </ul>
+                              </details>
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <!-- Sin sugerencias -->
+                        <div v-else-if="sugerenciasEstado[error.producto] === 'completado' && (!sugerenciasPorCodigo[error.producto] || sugerenciasPorCodigo[error.producto].length === 0)" class="mt-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg">
+                          <div class="flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span class="text-xs font-medium">No se encontraron sugerencias similares en SAP para este código.</span>
+                          </div>
+                        </div>
+                        
+                        <!-- Error en búsqueda de sugerencias -->
+                        <div v-else-if="sugerenciasEstado[error.producto] === 'error'" class="mt-2 p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded-lg">
+                          <div class="flex items-center gap-2 text-orange-800 dark:text-orange-200">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span class="text-xs font-medium">No se pudieron obtener sugerencias (puede ser timeout).</span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                   <div v-else class="flex items-start gap-3">
@@ -434,7 +531,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { useTablePreferences } from '@/composables/useTablePreferences'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
-import type { PedidoCompleto, ReporteDiferenciasResponse, UploadPlantillaResponse } from '../types'
+import type { PedidoCompleto, ReporteDiferenciasResponse, UploadPlantillaResponse, SugerenciaSkuSap } from '../types'
 // Utilidades extraídas
 import {
   formatDate,
@@ -829,6 +926,134 @@ const {
   openFileSelector: goToCargarPlantillas,
   validateFile
 } = fileUploadComposable
+
+// ⭐ NUEVA FUNCIONALIDAD: Sugerencias SAP automáticas en modal de error
+// Almacenar sugerencias por código de producto
+const sugerenciasPorCodigo = ref<Record<string, SugerenciaSkuSap[]>>({})
+// Estado de búsqueda por código: 'idle' | 'buscando' | 'completado' | 'error'
+const sugerenciasEstado = ref<Record<string, 'idle' | 'buscando' | 'completado' | 'error'>>({})
+
+/**
+ * Extrae códigos de producto no encontrados en SAP del modal de error
+ */
+function extraerCodigosProductoNoEncontrados(): string[] {
+  if (!uploadErrorInfo.value?.errors) return []
+  
+  const codigos: string[] = []
+  
+  for (const error of uploadErrorInfo.value.errors) {
+    if (typeof error !== 'string' && error.producto && error.campo === 'Producto SAP') {
+      const codigo = error.producto.trim()
+      if (codigo && !codigos.includes(codigo)) {
+        codigos.push(codigo)
+      }
+    }
+  }
+  
+  return codigos
+}
+
+/**
+ * Busca sugerencias SAP automáticamente para un código de producto
+ */
+async function buscarSugerenciasParaCodigo(codigo: string): Promise<void> {
+  if (!codigo || sugerenciasEstado.value[codigo] === 'buscando') {
+    return
+  }
+  
+  sugerenciasEstado.value[codigo] = 'buscando'
+  
+  try {
+    const resultado = await mba3ConsultasService.buscarSugerenciasSku(codigo, 20)
+    
+    if (resultado.status === 'success' && resultado.sugerencias && resultado.sugerencias.length > 0) {
+      sugerenciasPorCodigo.value[codigo] = resultado.sugerencias
+      sugerenciasEstado.value[codigo] = 'completado'
+      console.log(`✅ [PedidoDetalleView] Sugerencias encontradas para ${codigo}:`, resultado.sugerencias.length)
+    } else {
+      sugerenciasPorCodigo.value[codigo] = []
+      sugerenciasEstado.value[codigo] = 'completado'
+      console.log(`ℹ️ [PedidoDetalleView] No se encontraron sugerencias para ${codigo}`)
+    }
+  } catch (error: any) {
+    console.error(`❌ [PedidoDetalleView] Error al buscar sugerencias para ${codigo}:`, error)
+    // Manejar timeout o errores de forma no bloqueante
+    if (error.response?.status === 504 || error.message?.includes('timeout')) {
+      // Timeout - marcar como error pero no bloquear el modal
+      sugerenciasEstado.value[codigo] = 'error'
+    } else {
+      // Otro error - marcar como completado sin sugerencias
+      sugerenciasPorCodigo.value[codigo] = []
+      sugerenciasEstado.value[codigo] = 'completado'
+    }
+  }
+}
+
+/**
+ * Busca sugerencias automáticamente para todos los códigos no encontrados
+ */
+async function buscarSugerenciasAutomaticas(): Promise<void> {
+  // Solo buscar si el modal es de códigos de producto no encontrados en SAP
+  if (!uploadErrorInfo.value || (!uploadErrorInfo.value.title?.includes('producto') && !uploadErrorInfo.value.title?.includes('SAP'))) {
+    return
+  }
+  
+  const codigos = extraerCodigosProductoNoEncontrados()
+  
+  if (codigos.length === 0) {
+    return
+  }
+  
+  console.log(`🔍 [PedidoDetalleView] Iniciando búsqueda automática de sugerencias para ${codigos.length} código(s):`, codigos)
+  
+  // Buscar sugerencias para cada código en paralelo (pero con control de estado)
+  // Usar Promise.allSettled para que un error no detenga las otras búsquedas
+  const promesas = codigos
+    .filter(codigo => !sugerenciasPorCodigo.value[codigo]) // Solo buscar si no se ha buscado antes
+    .map(codigo => buscarSugerenciasParaCodigo(codigo))
+  
+  await Promise.allSettled(promesas)
+  
+  console.log(`✅ [PedidoDetalleView] Búsqueda automática completada para ${codigos.length} código(s)`)
+}
+
+/**
+ * Limpia las sugerencias cuando se cierra el modal
+ */
+function limpiarSugerencias(): void {
+  sugerenciasPorCodigo.value = {}
+  sugerenciasEstado.value = {}
+}
+
+// ⭐ Watcher para detectar cuando se muestra el modal y buscar sugerencias automáticamente
+watch(
+  () => showErrorModal.value,
+  async (isVisible) => {
+    if (isVisible) {
+      // Esperar un pequeño delay para asegurar que el DOM se haya actualizado
+      await nextTick()
+      
+      // Buscar sugerencias automáticamente solo para códigos de producto no encontrados en SAP
+      const esErrorSap = uploadErrorInfo.value?.title?.includes('SAP') || 
+                         uploadErrorInfo.value?.title?.includes('no encontrados')
+      
+      if (esErrorSap && uploadErrorInfo.value?.errors) {
+        await buscarSugerenciasAutomaticas()
+      }
+    } else {
+      // Limpiar sugerencias cuando se cierra el modal
+      limpiarSugerencias()
+    }
+  },
+  { immediate: false }
+)
+
+// ⭐ Función auxiliar para obtener clase CSS del badge de score (reutilizada de BuscarSkuModal)
+function getScoreBadgeClass(porcentaje: number): string {
+  if (porcentaje >= 80) return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+  if (porcentaje >= 50) return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+  return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+}
 
 const columnManagement = useColumnManagement(pedido, numeroPedido, columnasModificadas)
 
