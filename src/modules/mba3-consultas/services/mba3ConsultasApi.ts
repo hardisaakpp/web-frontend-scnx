@@ -962,6 +962,112 @@ export const mba3ConsultasService = {
   },
 
   /**
+   * ⭐ NUEVO: Sube una plantilla Excel con correcciones de códigos aplicadas
+   * Similar a uploadPlantilla pero acepta un mapa de correcciones {codigo_original: codigo_sap_corregido}
+   */
+  async uploadPlantillaConCorrecciones(
+    file: File,
+    correcciones: Record<string, string>
+  ): Promise<UploadPlantillaResponse> {
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('correcciones_codigos', JSON.stringify(correcciones))
+      
+      console.log('🔄 [uploadPlantillaConCorrecciones] Enviando correcciones:', correcciones)
+      
+      const response = await mba3Api.post<UploadPlantillaResponse>('/api/plantillas/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        },
+        timeout: 120000 // 120 segundos (2 minutos)
+      })
+
+      const data: any = { ...response.data }
+      if (data && data.validation && !data.validacion) {
+        data.validacion = data.validation
+      }
+      if (data && data.validation_sap && !data.validacion_sap) {
+        data.validacion_sap = data.validation_sap
+      }
+      
+      console.log('✅ [uploadPlantillaConCorrecciones] Respuesta exitosa:', data)
+      return data as UploadPlantillaResponse
+    } catch (error: any) {
+      console.error('❌ [uploadPlantillaConCorrecciones] Error al subir plantilla con correcciones:', error)
+      
+      // Reutilizar la misma lógica de manejo de errores que uploadPlantilla
+      let message = error.message || 'Error desconocido al subir plantilla con correcciones'
+      let hasBackendMessage = false
+
+      // Si el backend retorna 400 con cuerpo de validación, devolverlo como resultado manejable
+      if (error.response?.status === 400 && error.response?.data?.status === 'validation_error') {
+        const raw = error.response.data
+        const data: any = { ...raw }
+        if (data && data.validation && !data.validacion) {
+          data.validacion = data.validation
+        }
+        if (data && data.validation_sap && !data.validacion_sap) {
+          data.validacion_sap = data.validation_sap
+        }
+        if (!data.message && data.detail) {
+          data.message = data.detail
+        }
+        return data as UploadPlantillaResponse
+      }
+
+      if (error.response?.data) {
+        if (error.response.data.type === 'business_exception') {
+          hasBackendMessage = true
+          message = error.response.data.error || error.response.data.message || 'Error al procesar con correcciones aplicadas'
+          ;(error as any).isBusinessException = true
+          ;(error as any).businessError = error.response.data.error
+        } else if (error.response.data.error) {
+          hasBackendMessage = true
+          message = error.response.data.error
+        } else if (error.response.data.detail) {
+          hasBackendMessage = true
+          const detail = error.response.data.detail
+          if (Array.isArray(detail)) {
+            message = detail.map((item: any) => {
+              if (typeof item === 'string') return item
+              if (item?.msg) return item.msg
+              if (item?.loc && item?.msg) {
+                const location = Array.isArray(item.loc) ? item.loc.join('.') : String(item.loc)
+                return `${location}: ${item.msg}`
+              }
+              return JSON.stringify(item)
+            }).join('\n')
+          } else if (typeof detail === 'string') {
+            message = detail
+          } else if (detail.message) {
+            message = detail.message
+          } else {
+            message = String(detail)
+          }
+        } else if (error.response.data.message) {
+          hasBackendMessage = true
+          message = error.response.data.message
+        }
+      } else if (error.request) {
+        message = 'No se pudo conectar con el servidor. Verifica tu conexión a internet.'
+      }
+
+      if (!hasBackendMessage && (message === 'Request failed with status code 400' ||
+        message.includes('status code') ||
+        message === 'Error desconocido al subir plantilla con correcciones')) {
+        message = 'Error al procesar el archivo con las correcciones aplicadas. Verifica que los códigos corregidos sean válidos en SAP.'
+      }
+
+      const errorWithResponse = new Error(message) as any
+      errorWithResponse.response = error.response
+      errorWithResponse.isBusinessException = (error as any).isBusinessException
+      errorWithResponse.businessError = (error as any).businessError
+      throw errorWithResponse
+    }
+  },
+
+  /**
    * Crea un pedido manualmente por pantalla (sin Excel)
    * Requiere permiso: mba3-consultas.proceso.execute
    * @param pedidoData Datos del pedido a crear

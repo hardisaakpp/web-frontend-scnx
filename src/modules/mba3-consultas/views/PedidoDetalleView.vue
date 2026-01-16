@@ -263,7 +263,10 @@
 
     <!-- Modal para errores de validación del archivo -->
     <div v-if="showErrorModal" class="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4" @click.self="showErrorModal = false">
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+      <div :class="[
+        'bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden flex flex-col transition-all duration-300',
+        isModalMaximized ? 'w-full h-full max-w-none max-h-none m-0 rounded-none' : 'max-w-2xl w-full max-h-[90vh]'
+      ]">
         <!-- Encabezado del modal con color según tipo de error -->
         <div :class="[
           'px-6 py-4 border-b flex items-center justify-between transition-colors duration-300',
@@ -301,14 +304,30 @@
               <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">El archivo no pudo ser procesado</p>
             </div>
           </div>
-          <button
-            @click="showErrorModal = false"
-            class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors flex-shrink-0"
-          >
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <div class="flex items-center gap-2">
+            <!-- Botón de maximizar/restaurar -->
+            <button
+              @click="isModalMaximized = !isModalMaximized"
+              class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors flex-shrink-0"
+              :title="isModalMaximized ? 'Restaurar' : 'Maximizar'"
+            >
+              <svg v-if="!isModalMaximized" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5 5m5-5v4m0-4h-4" />
+              </svg>
+              <svg v-else class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
+              </svg>
+            </button>
+            <!-- Botón de cerrar -->
+            <button
+              @click="showErrorModal = false"
+              class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors flex-shrink-0"
+            >
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
         
         <!-- Contenido del modal con scroll -->
@@ -398,60 +417,66 @@
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                             </svg>
-                            Sugerencias similares en SAP ({{ sugerenciasPorCodigo[error.producto].length }})
+                            Sugerencias similares en SAP ({{ sugerenciasPorCodigo[error.producto].length }}) - Selecciona una:
                           </h5>
                           <div class="space-y-2">
-                            <div
+                            <label
                               v-for="sugerencia in sugerenciasPorCodigo[error.producto]"
                               :key="sugerencia.codigo"
-                              class="bg-white dark:bg-gray-800 border-l-4 rounded-lg p-3 text-xs"
+                              class="flex items-start gap-2 cursor-pointer bg-white dark:bg-gray-800 border-l-4 rounded-lg p-3 text-xs hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                               :class="{
                                 'border-green-500': sugerencia.score_porcentaje >= 80,
                                 'border-yellow-500': sugerencia.score_porcentaje >= 50 && sugerencia.score_porcentaje < 80,
-                                'border-red-500': sugerencia.score_porcentaje < 50
+                                'border-red-500': sugerencia.score_porcentaje < 50,
+                                'ring-2 ring-purple-500': correccionesSeleccionadas[error.producto] === sugerencia.codigo
                               }"
                             >
-                              <div class="flex items-start justify-between mb-1">
-                                <div class="flex-1 min-w-0">
-                                  <div class="flex items-center gap-2 mb-1">
-                                    <span class="text-xs font-semibold text-gray-900 dark:text-gray-100 font-mono">{{ sugerencia.codigo }}</span>
-                                    <span
-                                      class="px-2 py-0.5 rounded-full text-xs font-semibold"
-                                      :class="getScoreBadgeClass(sugerencia.score_porcentaje)"
-                                    >
-                                      {{ sugerencia.score_porcentaje }}%
-                                    </span>
-                                  </div>
-                                  <p class="text-xs text-gray-700 dark:text-gray-300 font-medium truncate">{{ sugerencia.nombre }}</p>
-                                </div>
-                              </div>
-                              
-                              <div class="flex flex-wrap gap-2 mt-1.5 text-xs text-gray-600 dark:text-gray-400">
-                                <span v-if="sugerencia.pack">Pack: <span class="font-semibold">{{ sugerencia.pack }}</span></span>
-                                <span v-if="sugerencia.group_name">Grupo: <span class="font-semibold">{{ sugerencia.group_name }}</span></span>
-                                <span
-                                  :class="sugerencia.estado === 'activo' ? 'text-green-700 dark:text-green-300 font-semibold' : 'text-red-700 dark:text-red-300 font-semibold'"
-                                >
-                                  {{ sugerencia.estado === 'activo' ? 'Activo' : 'Inactivo' }}
-                                </span>
-                              </div>
-                              
-                              <!-- Motivos expandibles -->
-                              <details v-if="sugerencia.motivos && sugerencia.motivos.length > 0" class="mt-2">
-                                <summary class="cursor-pointer text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-200">
-                                  Motivos ({{ sugerencia.motivos.length }})
-                                </summary>
-                                <ul class="mt-1 ml-3 space-y-0.5">
-                                  <li
-                                    v-for="(motivo, motivoIndex) in sugerencia.motivos"
-                                    :key="motivoIndex"
-                                    class="text-xs text-gray-600 dark:text-gray-400 list-disc"
+                              <input
+                                type="radio"
+                                :name="`correccion-${error.producto}`"
+                                :value="sugerencia.codigo"
+                                v-model="correccionesSeleccionadas[error.producto]"
+                                class="mt-0.5 w-3 h-3 text-purple-600 border-gray-300 dark:border-gray-600 focus:ring-purple-500 dark:focus:ring-purple-600"
+                              />
+                              <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 mb-1">
+                                  <span class="text-xs font-semibold text-gray-900 dark:text-gray-100 font-mono">{{ sugerencia.codigo }}</span>
+                                  <span
+                                    class="px-2 py-0.5 rounded-full text-xs font-semibold"
+                                    :class="getScoreBadgeClass(sugerencia.score_porcentaje)"
                                   >
-                                    {{ motivo }}
-                                  </li>
-                                </ul>
-                              </details>
-                            </div>
+                                    {{ sugerencia.score_porcentaje }}%
+                                  </span>
+                                </div>
+                                <p class="text-xs text-gray-700 dark:text-gray-300 font-medium truncate">{{ sugerencia.nombre }}</p>
+                                
+                                <div class="flex flex-wrap gap-2 mt-1.5 text-xs text-gray-600 dark:text-gray-400">
+                                  <span v-if="sugerencia.pack">Pack: <span class="font-semibold">{{ sugerencia.pack }}</span></span>
+                                  <span v-if="sugerencia.group_name">Grupo: <span class="font-semibold">{{ sugerencia.group_name }}</span></span>
+                                  <span
+                                    :class="sugerencia.estado === 'activo' ? 'text-green-700 dark:text-green-300 font-semibold' : 'text-red-700 dark:text-red-300 font-semibold'"
+                                  >
+                                    {{ sugerencia.estado === 'activo' ? 'Activo' : 'Inactivo' }}
+                                  </span>
+                                </div>
+                                
+                                <!-- Motivos expandibles -->
+                                <details v-if="sugerencia.motivos && sugerencia.motivos.length > 0" class="mt-2">
+                                  <summary class="cursor-pointer text-xs font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-200">
+                                    Motivos ({{ sugerencia.motivos.length }})
+                                  </summary>
+                                  <ul class="mt-1 ml-3 space-y-0.5">
+                                    <li
+                                      v-for="(motivo, motivoIndex) in sugerencia.motivos"
+                                      :key="motivoIndex"
+                                      class="text-xs text-gray-600 dark:text-gray-400 list-disc"
+                                    >
+                                      {{ motivo }}
+                                    </li>
+                                  </ul>
+                                </details>
+                              </div>
+                            </label>
                           </div>
                         </div>
                         
@@ -509,13 +534,46 @@
           </div>
 
             <!-- Botones de acción -->
-            <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-              <button
-                @click="showErrorModal = false"
-                class="px-4 py-2.5 bg-gray-600 dark:bg-gray-700 text-white rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors font-medium shadow-sm"
-              >
-                Entendido
-              </button>
+            <div class="flex items-center justify-between gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <!-- Mensaje de validación de correcciones -->
+              <div v-if="uploadErrorInfo?.title?.includes('producto') || uploadErrorInfo?.title?.includes('SAP')" class="flex items-center gap-2 text-sm">
+                <span 
+                  v-if="!todosCodigosTienenCorreccion"
+                  class="text-amber-600 dark:text-amber-400 font-medium"
+                >
+                  ⚠️ Debes seleccionar una sugerencia para cada código inválido
+                </span>
+                <span 
+                  v-else
+                  class="text-green-600 dark:text-green-400 font-medium"
+                >
+                  ✅ Todas las correcciones seleccionadas
+                </span>
+              </div>
+              <div class="flex items-center gap-3">
+                <!-- Botón aplicar correcciones (solo si hay códigos de producto no encontrados) -->
+                <button
+                  v-if="(uploadErrorInfo?.title?.includes('producto') || uploadErrorInfo?.title?.includes('SAP')) && todosCodigosTienenCorreccion"
+                  @click="aplicarCorreccionesYContinuar"
+                  :disabled="aplicandoCorrecciones"
+                  class="px-4 py-2.5 bg-purple-600 dark:bg-purple-700 text-white rounded-lg hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  <svg v-if="aplicandoCorrecciones" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                  {{ aplicandoCorrecciones ? 'Aplicando correcciones...' : 'Aplicar correcciones y continuar' }}
+                </button>
+                <button
+                  @click="showErrorModal = false"
+                  class="px-4 py-2.5 bg-gray-600 dark:bg-gray-700 text-white rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors font-medium shadow-sm"
+                >
+                  Entendido
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -924,7 +982,9 @@ const {
   showErrorModal,
   uploadErrorInfo,
   openFileSelector: goToCargarPlantillas,
-  validateFile
+  validateFile,
+  reintentarConCorrecciones,
+  archivoOriginal: archivoOriginalDelComposable
 } = fileUploadComposable
 
 // ⭐ NUEVA FUNCIONALIDAD: Sugerencias SAP automáticas en modal de error
@@ -932,6 +992,12 @@ const {
 const sugerenciasPorCodigo = ref<Record<string, SugerenciaSkuSap[]>>({})
 // Estado de búsqueda por código: 'idle' | 'buscando' | 'completado' | 'error'
 const sugerenciasEstado = ref<Record<string, 'idle' | 'buscando' | 'completado' | 'error'>>({})
+// ⭐ NUEVA FUNCIONALIDAD: Correcciones seleccionadas por código
+const correccionesSeleccionadas = ref<Record<string, string>>({})
+// Estado de aplicación de correcciones
+const aplicandoCorrecciones = ref(false)
+// Estado de maximización del modal
+const isModalMaximized = ref(false)
 
 /**
  * Extrae códigos de producto no encontrados en SAP del modal de error
@@ -1023,6 +1089,79 @@ async function buscarSugerenciasAutomaticas(): Promise<void> {
 function limpiarSugerencias(): void {
   sugerenciasPorCodigo.value = {}
   sugerenciasEstado.value = {}
+  correccionesSeleccionadas.value = {}
+  // Restaurar tamaño del modal cuando se cierra
+  isModalMaximized.value = false
+}
+
+/**
+ * Computed: Verifica si todos los códigos inválidos tienen una corrección seleccionada
+ */
+const todosCodigosTienenCorreccion = computed(() => {
+  const codigosInvalidos = extraerCodigosProductoNoEncontrados()
+  
+  if (codigosInvalidos.length === 0) {
+    return false // No hay códigos inválidos, no se puede aplicar
+  }
+  
+  // Verificar que todos los códigos tengan una corrección seleccionada
+  return codigosInvalidos.every(codigo => {
+    const correccion = correccionesSeleccionadas.value[codigo]
+    return correccion && correccion.trim().length > 0
+  })
+})
+
+/**
+ * Aplica las correcciones seleccionadas y reintenta el flujo de carga
+ */
+async function aplicarCorreccionesYContinuar(): Promise<void> {
+  if (!todosCodigosTienenCorreccion.value) {
+    toast.warning(
+      'Correcciones incompletas',
+      'Debes seleccionar una sugerencia para cada código inválido'
+    )
+    return
+  }
+  
+  // Obtener archivo original desde el composable
+  // El composable lo guarda cuando hay error SAP
+  const archivo = archivoOriginalDelComposable.value
+  
+  if (!archivo) {
+    toast.error(
+      'Error',
+      'No se encontró el archivo original. Por favor, vuelve a subir el archivo.'
+    )
+    return
+  }
+  
+  aplicandoCorrecciones.value = true
+  
+  try {
+    // Ocultar modal temporalmente mientras se procesa
+    showErrorModal.value = false
+    
+    // Llamar a la función de reintento con correcciones
+    await reintentarConCorrecciones(
+      archivo,
+      correccionesSeleccionadas.value
+    )
+    
+    // Limpiar estado después del éxito
+    limpiarSugerencias()
+  } catch (error: any) {
+    console.error('❌ Error al aplicar correcciones:', error)
+    // Mostrar modal de nuevo con el nuevo error si existe
+    if (uploadErrorInfo.value) {
+      showErrorModal.value = true
+    }
+    toast.error(
+      'Error al aplicar correcciones',
+      error.message || 'No se pudo procesar el archivo con las correcciones aplicadas'
+    )
+  } finally {
+    aplicandoCorrecciones.value = false
+  }
 }
 
 // ⭐ Watcher para detectar cuando se muestra el modal y buscar sugerencias automáticamente
@@ -1041,8 +1180,11 @@ watch(
         await buscarSugerenciasAutomaticas()
       }
     } else {
-      // Limpiar sugerencias cuando se cierra el modal
-      limpiarSugerencias()
+      // Limpiar sugerencias cuando se cierra el modal (pero NO limpiar archivoOriginal si se va a reintentar)
+      // Solo limpiar si no se está aplicando correcciones
+      if (!aplicandoCorrecciones.value) {
+        limpiarSugerencias()
+      }
     }
   },
   { immediate: false }

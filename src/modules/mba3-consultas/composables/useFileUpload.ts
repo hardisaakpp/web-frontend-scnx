@@ -32,6 +32,8 @@ export function useFileUpload(options: {
   const fileInput = ref<HTMLInputElement | null>(null)
   const showErrorModal = ref(false)
   const uploadErrorInfo = ref<UploadErrorInfo | null>(null)
+  // ⭐ NUEVO: Guardar archivo original para posible reintento con correcciones
+  const archivoOriginal = ref<File | null>(null)
 
   /**
    * Valida un archivo antes de subirlo
@@ -676,6 +678,11 @@ export function useFileUpload(options: {
     try {
       const response: UploadPlantillaResponse = await mba3ConsultasService.uploadPlantilla(file)
       
+      // ⭐ Limpiar archivo original si la carga fue exitosa
+      if (response.status === 'success') {
+        archivoOriginal.value = null
+      }
+      
       // Obtener numero_pedido de la respuesta
       let numeroPedido = response.numero_pedido
       
@@ -780,6 +787,14 @@ export function useFileUpload(options: {
       uploadErrorInfo.value = errorInfo
       showErrorModal.value = true
       
+      // ⭐ Guardar archivo original para posible reintento con correcciones
+      // Solo si el error es de códigos no válidos en SAP
+      const esErrorSap = errorInfo.title?.includes('SAP') || errorInfo.title?.includes('producto') || errorInfo.title?.includes('no encontrados')
+      if (esErrorSap) {
+        archivoOriginal.value = file
+        console.log('💾 [useFileUpload] Archivo original guardado para posible reintento con correcciones')
+      }
+      
       // Extraer todos los códigos para el toast
       const todosLosCodigos: string[] = []
       errorInfo.errors?.forEach(err => {
@@ -802,6 +817,102 @@ export function useFileUpload(options: {
       uploading.value = false
     }
   }
+  
+  /**
+   * ⭐ NUEVA FUNCIONALIDAD: Reintenta la carga del archivo con correcciones de códigos aplicadas
+   */
+  async function reintentarConCorrecciones(
+    file: File,
+    correcciones: Record<string, string>
+  ): Promise<void> {
+    if (!file) {
+      throw new Error('Archivo no disponible para reintento')
+    }
+    
+    if (!correcciones || Object.keys(correcciones).length === 0) {
+      throw new Error('No se proporcionaron correcciones de códigos')
+    }
+    
+    uploading.value = true
+    
+    try {
+      console.log('🔄 [useFileUpload] Reintentando carga con correcciones:', correcciones)
+      
+      // Llamar al servicio con correcciones
+      const response: UploadPlantillaResponse = await mba3ConsultasService.uploadPlantillaConCorrecciones(
+        file,
+        correcciones
+      )
+      
+      // Limpiar archivo original después del éxito
+      archivoOriginal.value = null
+      
+      // Obtener numero_pedido de la respuesta
+      let numeroPedido = response.numero_pedido
+      
+      // Si no viene en la respuesta, intentar obtenerlo del pedido cargado usando pedido_id
+      if (!numeroPedido && response.pedido_id && options?.pedido?.value) {
+        try {
+          const pedidoCompleto = await mba3ConsultasService.getPedido(response.pedido_id, false)
+          numeroPedido = pedidoCompleto.cabecera.numero_pedido || undefined
+        } catch (e) {
+          console.warn('No se pudo obtener el numero_pedido del pedido cargado:', e)
+        }
+      }
+      
+      // Mostrar mensaje de éxito
+      const mensajeDetalle = `Correcciones aplicadas exitosamente.\n\nNúmero de pedido: ${numeroPedido || 'N/A'}\nArtículos: ${response.articulos_cargados}\nDistribuciones: ${response.distribuciones_cargadas}`
+      
+      if (response.status === 'success') {
+        toast.success('Plantilla procesada con correcciones', mensajeDetalle)
+      } else if (response.status === 'validation_error') {
+        toast.warning('Plantilla procesada con advertencias', mensajeDetalle)
+      }
+      
+      // Llamar callback de éxito si existe
+      if (numeroPedido && options?.onUploadSuccess) {
+        await options.onUploadSuccess(numeroPedido)
+      }
+      
+      // Redirigir o recargar según corresponda
+      if (numeroPedido) {
+        const currentPedidoNumero = options?.pedido?.value?.cabecera.numero_pedido
+        if (numeroPedido !== currentPedidoNumero) {
+          // Si el pedido cargado es diferente al actual, redirigir
+          router.push(`/mba3-consultas/pedidos/${encodeURIComponent(numeroPedido)}`)
+        } else {
+          // Recargar el pedido actual si hay callback
+          if (options?.loadPedido) {
+            await options.loadPedido()
+          }
+        }
+      } else {
+        // Si no hay numeroPedido pero hay callback, intentar recargar
+        if (options?.loadPedido) {
+          await options.loadPedido()
+        }
+      }
+    } catch (e: any) {
+      // Si hay error en el reintento, procesar el error normalmente
+      const errorInfo = processUploadError(e, file.name)
+      uploadErrorInfo.value = errorInfo
+      showErrorModal.value = true
+      
+      toast.error(
+        'Error al aplicar correcciones',
+        errorInfo.message.split('\n')[0] || 'No se pudo procesar el archivo con las correcciones aplicadas'
+      )
+      
+      if (options?.onUploadError) {
+        options.onUploadError(errorInfo)
+      }
+      
+      // Re-lanzar para que el componente pueda manejar el error
+      throw e
+    } finally {
+      uploading.value = false
+    }
+  }
 
   // Cleanup al desmontar
   onUnmounted(() => {
@@ -817,6 +928,8 @@ export function useFileUpload(options: {
     uploadErrorInfo,
     openFileSelector,
     uploadFile,
-    validateFile
+    validateFile,
+    reintentarConCorrecciones,  // ⭐ NUEVO: Exportar función de reintento
+    archivoOriginal  // ⭐ NUEVO: Exportar archivo original para acceso externo
   }
 }
