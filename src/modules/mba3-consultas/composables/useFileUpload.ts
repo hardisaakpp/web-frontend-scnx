@@ -17,6 +17,36 @@ export interface UploadErrorInfo {
   message: string
   fileName?: string
   errors?: Array<string | { tipo?: string; campo?: string; mensaje: string; producto?: string }>
+  // ⭐ NUEVO: Información de validación SAP del backend (incluye MBA3 y sugerencias)
+  validacion_sap?: {
+    detalle_validacion?: Record<string, {
+      existe?: boolean
+      severity?: string
+      error?: string
+      mensaje?: string
+      mba3?: {
+        codigo?: string
+        nombre?: string
+        corp?: string
+        grupo_prenda?: string
+        talla?: string
+        presentacion?: string
+        descontinuado?: boolean
+        inactive?: boolean
+      }
+      sugerencias_sap?: Array<{
+        codigo: string
+        nombre: string
+        pack?: string
+        group_code?: number
+        group_name?: string
+        estado: string
+        score: number
+        score_porcentaje: number
+        motivos: string[]
+      }>
+    }>
+  }
 }
 
 export function useFileUpload(options: {
@@ -652,20 +682,30 @@ export function useFileUpload(options: {
       errorMessage = errorMessageStr || 'Ocurrió un error de validación de negocio que impide procesar el archivo.'
     }
     
+    // ⭐ NUEVO: Extraer información de validacion_sap del backend (incluye MBA3 y sugerencias)
+    const validacionSap = e.response?.data?.validacion_sap
+    
     console.log('📤 [useFileUpload] Retornando error info:', {
       title: errorTitle,
       message: errorMessage.substring(0, 200) + (errorMessage.length > 200 ? '...' : ''),
       errorsCount: errorErrors.length,
       productosNoEncontrados: productosNoEncontradosSAP.length,
       tiendasNoEncontradas: tiendasNoEncontradasSAP.length,
-      bodegasNoEncontradas: bodegasNoEncontradasSAP.length
+      bodegasNoEncontradas: bodegasNoEncontradasSAP.length,
+      tieneValidacionSap: !!validacionSap,
+      validacionSapCompleta: validacionSap,
+      detalleValidacion: validacionSap?.detalle_validacion
     })
     
     return {
       title: errorTitle,
       message: errorMessage,
       fileName,
-      errors: errorErrors.length > 0 ? errorErrors : undefined
+      errors: errorErrors.length > 0 ? errorErrors : undefined,
+      // ⭐ Incluir validacion_sap completa del backend
+      validacion_sap: validacionSap ? {
+        detalle_validacion: validacionSap.detalle_validacion || {}
+      } : undefined
     }
   }
 
@@ -769,7 +809,11 @@ export function useFileUpload(options: {
         const currentPedidoNumero = options?.pedido?.value?.cabecera.numero_pedido
         if (numeroPedido !== currentPedidoNumero) {
           // Si el pedido cargado es diferente al actual, redirigir
-          router.push(`/mba3-consultas/pedidos/${encodeURIComponent(numeroPedido)}`)
+          // ⭐ Asegurar que la navegación se complete antes de continuar
+          await router.push(`/mba3-consultas/pedidos/${encodeURIComponent(numeroPedido)}`)
+          // ⭐ Pequeño delay para asegurar que el componente detecte el cambio de ruta
+          // Esto es necesario porque el watcher puede no ejecutarse inmediatamente
+          await new Promise(resolve => setTimeout(resolve, 100))
         } else {
           // Recargar el pedido actual si hay callback
           if (options?.loadPedido) {
@@ -879,7 +923,11 @@ export function useFileUpload(options: {
         const currentPedidoNumero = options?.pedido?.value?.cabecera.numero_pedido
         if (numeroPedido !== currentPedidoNumero) {
           // Si el pedido cargado es diferente al actual, redirigir
-          router.push(`/mba3-consultas/pedidos/${encodeURIComponent(numeroPedido)}`)
+          // ⭐ Asegurar que la navegación se complete antes de continuar
+          await router.push(`/mba3-consultas/pedidos/${encodeURIComponent(numeroPedido)}`)
+          // ⭐ Pequeño delay para asegurar que el componente detecte el cambio de ruta
+          // Esto es necesario porque el watcher puede no ejecutarse inmediatamente
+          await new Promise(resolve => setTimeout(resolve, 100))
         } else {
           // Recargar el pedido actual si hay callback
           if (options?.loadPedido) {

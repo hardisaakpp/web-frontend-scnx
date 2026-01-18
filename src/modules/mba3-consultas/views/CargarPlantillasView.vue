@@ -341,10 +341,56 @@
                         </div>
                         <p class="text-sm text-gray-700 dark:text-gray-300">{{ error.mensaje }}</p>
                         
+                        <!-- ⭐ NUEVO: Información de MBA3 (si está disponible del backend) -->
+                        <div v-if="error.campo === 'Producto SAP' && error.producto && getInfoMba3(error.producto)" class="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
+                          <h6 class="text-xs font-semibold text-blue-900 dark:text-blue-200 mb-2 flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Resultado en MBA3
+                          </h6>
+                          <div class="grid grid-cols-2 gap-2 text-xs">
+                            <div>
+                              <span class="font-medium text-gray-600 dark:text-gray-300">Código:</span>
+                              <p class="text-gray-900 dark:text-gray-100 font-mono">{{ getInfoMba3(error.producto)?.codigo || '-' }}</p>
+                            </div>
+                            <div>
+                              <span class="font-medium text-gray-600 dark:text-gray-300">Nombre:</span>
+                              <p class="text-gray-900 dark:text-gray-100">{{ getInfoMba3(error.producto)?.nombre || '-' }}</p>
+                            </div>
+                            <div v-if="getInfoMba3(error.producto)?.corp">
+                              <span class="font-medium text-gray-600 dark:text-gray-300">Corp:</span>
+                              <p class="text-gray-900 dark:text-gray-100">{{ getInfoMba3(error.producto)?.corp }}</p>
+                            </div>
+                            <div v-if="getInfoMba3(error.producto)?.grupo_prenda">
+                              <span class="font-medium text-gray-600 dark:text-gray-300">Grupo:</span>
+                              <p class="text-gray-900 dark:text-gray-100">{{ getInfoMba3(error.producto)?.grupo_prenda }}</p>
+                            </div>
+                            <div v-if="getInfoMba3(error.producto)?.descontinuado !== undefined">
+                              <span class="font-medium text-gray-600 dark:text-gray-300">Descontinuado:</span>
+                              <span
+                                :class="getInfoMba3(error.producto)?.descontinuado ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'"
+                                class="px-2 py-0.5 rounded-full text-xs font-semibold"
+                              >
+                                {{ getInfoMba3(error.producto)?.descontinuado ? 'Sí' : 'No' }}
+                              </span>
+                            </div>
+                            <div v-if="getInfoMba3(error.producto)?.inactive !== undefined">
+                              <span class="font-medium text-gray-600 dark:text-gray-300">Inactivo:</span>
+                              <span
+                                :class="getInfoMba3(error.producto)?.inactive ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'"
+                                class="px-2 py-0.5 rounded-full text-xs font-semibold"
+                              >
+                                {{ getInfoMba3(error.producto)?.inactive ? 'Sí' : 'No' }}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        
                         <!-- Sugerencias SAP automáticas (solo para códigos de producto no encontrados) -->
                         <div v-if="error.campo === 'Producto SAP' && error.producto" class="mt-4">
-                          <!-- Estado de carga -->
-                          <div v-if="sugerenciasEstado[error.producto] === 'buscando'" class="mt-2 p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-lg">
+                          <!-- Estado de carga o sin estado (inicial) -->
+                          <div v-if="!sugerenciasEstado[error.producto] || sugerenciasEstado[error.producto] === 'buscando' || sugerenciasEstado[error.producto] === 'idle'" class="mt-2 p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-700 rounded-lg">
                             <div class="flex items-center gap-2 text-purple-700 dark:text-purple-300">
                               <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -638,7 +684,7 @@ import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import { useFileUpload } from '../composables/useFileUpload'
-import type { UploadPlantillaResponse, SugerenciaSkuSap } from '../types'
+import type { UploadPlantillaResponse, SugerenciaSkuSap, SugerenciasSkuResponse } from '../types'
 import { formatError } from '../utils/formatters'
 
 const router = useRouter()
@@ -661,7 +707,9 @@ const busquedaManualRealizada = ref(false)
 const fileUploadComposable = useFileUpload({
   onUploadSuccess: async (numeroPedido) => {
     // Redirigir a la vista de detalle del pedido
-    router.push(`/mba3-consultas/pedidos/${encodeURIComponent(numeroPedido)}`)
+    // ⭐ El composable ya maneja la redirección, pero si se llama este callback,
+    // asegurarse de que la navegación se complete correctamente
+    await router.push(`/mba3-consultas/pedidos/${encodeURIComponent(numeroPedido)}`)
   }
 })
 
@@ -767,7 +815,32 @@ function extraerCodigosProductoNoEncontrados(): string[] {
 }
 
 /**
+ * ⭐ NUEVO: Obtiene información de MBA3 para un código desde el backend
+ */
+function getInfoMba3(codigo: string) {
+  if (!uploadErrorInfo.value?.validacion_sap?.detalle_validacion) {
+    return null
+  }
+  
+  const detalle = uploadErrorInfo.value.validacion_sap.detalle_validacion[codigo]
+  const infoMba3 = detalle?.mba3 || null
+  
+  if (infoMba3) {
+    console.log(`📋 [getInfoMba3] Información MBA3 encontrada para "${codigo}":`, infoMba3)
+  }
+  
+  return infoMba3
+}
+
+/**
  * Busca sugerencias SAP automáticamente para un código de producto
+ * ⭐ Usa el mismo servicio de sugerencias que BuscarSkuModal para consistencia
+ * La normalización del código (espacios, formato, etc.) se maneja en el backend
+ * 
+ * Este método usa el endpoint específico de sugerencias que:
+ * 1. Busca productos similares en SAP basándose solo en el código
+ * 2. Calcula scores usando el servicio SugerenciasHomologacionService
+ * 3. Funciona incluso si el código no está en MBA3
  */
 async function buscarSugerenciasParaCodigo(codigo: string): Promise<void> {
   if (!codigo || sugerenciasEstado.value[codigo] === 'buscando') {
@@ -777,17 +850,29 @@ async function buscarSugerenciasParaCodigo(codigo: string): Promise<void> {
   sugerenciasEstado.value[codigo] = 'buscando'
   
   try {
-    const resultado = await mba3ConsultasService.buscarSugerenciasSku(codigo, 100)
+    // Solo hacer trim básico - la normalización inteligente (espacios, formato) se maneja en el backend
+    const codigoLimpio = codigo.trim()
     
+    console.log(`🔍 [CargarPlantillasView] Buscando sugerencias para código: "${codigo}"`)
+    
+    // ⭐ Usar buscarSugerenciasSku que usa el servicio SugerenciasHomologacionService
+    // Este endpoint busca sugerencias en SAP basándose en el código, incluso si no está en MBA3
+    // Reutiliza la misma lógica de scoring que BuscarSkuModal
+    const resultado: SugerenciasSkuResponse = await mba3ConsultasService.buscarSugerenciasSku(
+      codigoLimpio,
+      100   // limiteSugerencias (máximo permitido)
+    )
+    
+    // Extraer sugerencias de la respuesta (mismo formato que BuscarSkuModal)
     if (resultado.status === 'success' && resultado.sugerencias && resultado.sugerencias.length > 0) {
       sugerenciasPorCodigo.value[codigo] = resultado.sugerencias
       sugerenciasEstado.value[codigo] = 'completado'
       inicializarLimiteSugerencias(codigo)
-      console.log(`✅ [CargarPlantillasView] Sugerencias encontradas para ${codigo}:`, resultado.sugerencias.length)
+      console.log(`✅ [CargarPlantillasView] Sugerencias encontradas para "${codigo}":`, resultado.sugerencias.length)
     } else {
       sugerenciasPorCodigo.value[codigo] = []
       sugerenciasEstado.value[codigo] = 'completado'
-      console.log(`ℹ️ [CargarPlantillasView] No se encontraron sugerencias para ${codigo}`)
+      console.log(`ℹ️ [CargarPlantillasView] No se encontraron sugerencias para "${codigo}" - status: ${resultado.status}`)
     }
   } catch (error: any) {
     console.error(`❌ [CargarPlantillasView] Error al buscar sugerencias para ${codigo}:`, error)
@@ -802,6 +887,8 @@ async function buscarSugerenciasParaCodigo(codigo: string): Promise<void> {
 
 /**
  * Busca sugerencias automáticamente para todos los códigos no encontrados
+ * ⭐ MEJORADO: Primero intenta usar información del backend (MBA3 + sugerencias)
+ * Solo hace llamadas al endpoint si no hay información del backend
  */
 async function buscarSugerenciasAutomaticas(): Promise<void> {
   if (!uploadErrorInfo.value || (!uploadErrorInfo.value.title?.includes('producto') && !uploadErrorInfo.value.title?.includes('SAP'))) {
@@ -816,13 +903,88 @@ async function buscarSugerenciasAutomaticas(): Promise<void> {
   
   console.log(`🔍 [CargarPlantillasView] Iniciando búsqueda automática de sugerencias para ${codigos.length} código(s):`, codigos)
   
-  const promesas = codigos
-    .filter(codigo => !sugerenciasPorCodigo.value[codigo])
-    .map(codigo => buscarSugerenciasParaCodigo(codigo))
+  // ⭐ NUEVO: Primero intentar usar información del backend
+  const validacionSap = uploadErrorInfo.value.validacion_sap
+  const detalleValidacion = validacionSap?.detalle_validacion || {}
   
-  await Promise.allSettled(promesas)
+  console.log(`📋 [CargarPlantillasView] validacion_sap disponible:`, {
+    tieneValidacionSap: !!validacionSap,
+    tieneDetalleValidacion: !!detalleValidacion,
+    codigosEnDetalle: Object.keys(detalleValidacion),
+    detalleCompleto: detalleValidacion
+  })
   
-  console.log(`✅ [CargarPlantillasView] Búsqueda automática completada para ${codigos.length} código(s)`)
+  let codigosSinInfoBackend: string[] = []
+  
+  // Procesar información del backend para cada código
+  for (const codigo of codigos) {
+    const detalle = detalleValidacion[codigo]
+    
+    console.log(`🔍 [CargarPlantillasView] Procesando código "${codigo}":`, {
+      tieneDetalle: !!detalle,
+      detalleCompleto: detalle,
+      tieneSugerencias: !!detalle?.sugerencias_sap,
+      esArray: Array.isArray(detalle?.sugerencias_sap),
+      cantidadSugerencias: Array.isArray(detalle?.sugerencias_sap) ? detalle.sugerencias_sap.length : 0
+    })
+    
+    // ⭐ Inicializar estado como 'buscando' primero para mostrar indicador de carga
+    if (!sugerenciasEstado.value[codigo] || sugerenciasEstado.value[codigo] === 'idle') {
+      sugerenciasEstado.value[codigo] = 'buscando'
+    }
+    
+    // Verificar si hay sugerencias del backend
+    if (detalle && 'sugerencias_sap' in detalle) {
+      if (Array.isArray(detalle.sugerencias_sap) && detalle.sugerencias_sap.length > 0) {
+        // ⭐ Usar sugerencias del backend (ya están formateadas)
+        sugerenciasPorCodigo.value[codigo] = detalle.sugerencias_sap.map(s => ({
+          codigo: s.codigo,
+          nombre: s.nombre,
+          pack: s.pack || '',
+          group_code: s.group_code,
+          group_name: s.group_name || '',
+          estado: (s.estado === 'activo' || s.estado === 'inactivo') ? s.estado : 'inactivo' as 'activo' | 'inactivo',
+          score: s.score,
+          score_porcentaje: s.score_porcentaje,
+          motivos: s.motivos || []
+        }))
+        sugerenciasEstado.value[codigo] = 'completado'
+        inicializarLimiteSugerencias(codigo)
+        console.log(`✅ [CargarPlantillasView] Sugerencias del backend para "${codigo}":`, {
+          cantidad: detalle.sugerencias_sap.length,
+          sugerencias: detalle.sugerencias_sap,
+          estadoFinal: sugerenciasEstado.value[codigo],
+          sugerenciasAsignadas: sugerenciasPorCodigo.value[codigo].length
+        })
+      } else if (Array.isArray(detalle.sugerencias_sap) && detalle.sugerencias_sap.length === 0) {
+        // Backend retornó array vacío - no hay sugerencias
+        sugerenciasPorCodigo.value[codigo] = []
+        sugerenciasEstado.value[codigo] = 'completado'
+        console.log(`ℹ️ [CargarPlantillasView] Backend retornó 0 sugerencias para "${codigo}"`)
+      } else {
+        // Campo sugerencias_sap existe pero no es un array válido
+        codigosSinInfoBackend.push(codigo)
+        console.log(`⚠️ [CargarPlantillasView] Campo sugerencias_sap inválido para "${codigo}":`, detalle.sugerencias_sap)
+      }
+    } else {
+      // No hay campo sugerencias_sap en el detalle, agregar a lista para búsqueda
+      codigosSinInfoBackend.push(codigo)
+      console.log(`⚠️ [CargarPlantillasView] No hay campo sugerencias_sap en detalle para "${codigo}", se buscará por API. Detalle:`, detalle)
+    }
+  }
+  
+  // Solo buscar sugerencias para códigos que no tienen información del backend
+  if (codigosSinInfoBackend.length > 0) {
+    console.log(`🔍 [CargarPlantillasView] Buscando sugerencias para ${codigosSinInfoBackend.length} código(s) sin info del backend:`, codigosSinInfoBackend)
+    
+    const promesas = codigosSinInfoBackend
+      .filter(codigo => !sugerenciasPorCodigo.value[codigo])
+      .map(codigo => buscarSugerenciasParaCodigo(codigo))
+    
+    await Promise.allSettled(promesas)
+  }
+  
+  console.log(`✅ [CargarPlantillasView] Búsqueda automática completada: ${codigos.length - codigosSinInfoBackend.length} del backend, ${codigosSinInfoBackend.length} por API`)
 }
 
 /**
@@ -947,12 +1109,23 @@ watch(
   () => showErrorModal.value,
   async (isVisible) => {
     if (isVisible) {
+      // Esperar a que el DOM se actualice y el modal esté completamente renderizado
       await nextTick()
+      // Pequeño delay adicional para asegurar que el modal esté completamente visible
+      await new Promise(resolve => setTimeout(resolve, 100))
       
       const esErrorSap = uploadErrorInfo.value?.title?.includes('SAP') || 
-                         uploadErrorInfo.value?.title?.includes('no encontrados')
+                         uploadErrorInfo.value?.title?.includes('no encontrados') ||
+                         uploadErrorInfo.value?.title?.includes('producto')
       
       if (esErrorSap && uploadErrorInfo.value?.errors) {
+        console.log('🔍 [CargarPlantillasView] Modal de error abierto, iniciando búsqueda automática de sugerencias...')
+        console.log('📋 [CargarPlantillasView] uploadErrorInfo:', {
+          title: uploadErrorInfo.value.title,
+          tieneValidacionSap: !!uploadErrorInfo.value.validacion_sap,
+          detalleValidacion: uploadErrorInfo.value.validacion_sap?.detalle_validacion,
+          codigosEnDetalle: uploadErrorInfo.value.validacion_sap?.detalle_validacion ? Object.keys(uploadErrorInfo.value.validacion_sap.detalle_validacion) : []
+        })
         await buscarSugerenciasAutomaticas()
       }
     } else {
@@ -962,6 +1135,26 @@ watch(
     }
   },
   { immediate: false }
+)
+
+// ⭐ Watcher adicional para cuando cambia uploadErrorInfo (por si el modal ya está abierto)
+watch(
+  () => uploadErrorInfo.value,
+  async (newErrorInfo) => {
+    if (showErrorModal.value && newErrorInfo) {
+      const esErrorSap = newErrorInfo.title?.includes('SAP') || 
+                         newErrorInfo.title?.includes('no encontrados') ||
+                         newErrorInfo.title?.includes('producto')
+      
+      if (esErrorSap && newErrorInfo.errors) {
+        await nextTick()
+        await new Promise(resolve => setTimeout(resolve, 100))
+        console.log('🔍 [CargarPlantillasView] uploadErrorInfo cambió, iniciando búsqueda automática de sugerencias...')
+        await buscarSugerenciasAutomaticas()
+      }
+    }
+  },
+  { deep: true, immediate: false }
 )
 
 // Computed: validación completa OK

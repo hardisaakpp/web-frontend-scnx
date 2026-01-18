@@ -630,7 +630,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch, nextTick, type Ref } from 'vue'
+import { ref, computed, onMounted, onActivated, onUnmounted, watch, nextTick, type Ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { useTablePreferences } from '@/composables/useTablePreferences'
@@ -1514,17 +1514,29 @@ onMounted(() => {
   document.addEventListener('click', handleClickOutsideColumnSelector)
 })
 
+// ⭐ Si el componente está en un keep-alive, también cargar al activarse
+onActivated(() => {
+  // Recargar el pedido cuando el componente se activa (útil para keep-alive)
+  // Esto asegura que los datos estén actualizados después de navegar desde otras vistas
+  if (numeroPedido.value) {
+    loadPedido()
+  }
+})
+
 // Watch para reaccionar a cambios en el parámetro de ruta
+// ⭐ MEJORADO: Observar numeroPedido directamente (computed reactivo) para mayor robustez
 watch(
-  () => route.params.id,
-  async (newId, oldId) => {
-    // Solo recargar si el parámetro realmente cambió y no es la carga inicial
-    if (newId && newId !== oldId) {
+  () => numeroPedido.value,
+  async (newNumeroPedido, oldNumeroPedido) => {
+    // Solo recargar si el número de pedido realmente cambió y no es la carga inicial
+    if (newNumeroPedido && newNumeroPedido !== oldNumeroPedido) {
+      console.log(`🔄 [PedidoDetalleView] Cambio de pedido detectado: ${oldNumeroPedido || '(ninguno)'} → ${newNumeroPedido}`)
       await loadPedido()
       // Limpiar el input de búsqueda después de navegar
       pedidoIdInput.value = ''
     }
-  }
+  },
+  { immediate: false }
 )
 
 // ⭐ FASE 4: Watch para inicializar redistribución cuando cambie el pedido o el modo

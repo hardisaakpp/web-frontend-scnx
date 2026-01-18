@@ -728,9 +728,32 @@ export interface ValidacionSAP {
   total_warnings?: number
   detalle_validacion?: {
     [codigo: string]: {
-      encontrado: boolean
+      existe?: boolean
+      severity?: string
+      error?: string
       mensaje?: string
-      tipo?: 'ERROR' | 'WARNING'
+      // ⭐ NUEVO: Información de MBA3 y sugerencias SAP
+      mba3?: {
+        codigo?: string
+        nombre?: string
+        corp?: string
+        grupo_prenda?: string
+        talla?: string
+        presentacion?: string
+        descontinuado?: boolean
+        inactive?: boolean
+      }
+      sugerencias_sap?: Array<{
+        codigo: string
+        nombre: string
+        pack?: string
+        group_code?: number
+        group_name?: string
+        estado: string
+        score: number
+        score_porcentaje: number
+        motivos: string[]
+      }>
     }
   }
 }
