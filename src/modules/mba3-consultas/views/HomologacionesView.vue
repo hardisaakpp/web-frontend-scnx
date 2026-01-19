@@ -10,6 +10,15 @@
       </div>
       <div class="flex items-center gap-3">
         <button
+          @click="abrirModalBuscarSku"
+          class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center gap-2"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          Buscar SKU
+        </button>
+        <button
           @click="sincronizarHomologaciones"
           :disabled="store.loading"
           class="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center gap-2"
@@ -386,6 +395,12 @@
       @close="cerrarModal"
       @submit="guardarHomologacion"
     />
+
+    <!-- Modal de búsqueda de SKU -->
+    <BuscarSkuModal
+      v-if="modalBuscarSkuAbierto"
+      @close="cerrarModalBuscarSku"
+    />
   </div>
 </template>
 
@@ -395,6 +410,7 @@ import { useRoute } from 'vue-router'
 import { useHomologacionesStore } from '../stores/homologacionesStore'
 import { useToast } from '@/composables/useToast'
 import HomologacionModal from '../components/HomologacionModal.vue'
+import BuscarSkuModal from '../components/BuscarSkuModal.vue'
 import type { SkuHomologacion, SkuHomologacionUpdateRequest } from '../types'
 
 const route = useRoute()
@@ -410,6 +426,7 @@ const mostrarHomologados = ref(false) // Por defecto no mostrar homologados
 const modalAbierto = ref(false)
 const homologacionSeleccionada = ref<SkuHomologacion | null>(null)
 const guardando = ref(false)
+const modalBuscarSkuAbierto = ref(false)
 
 // Computed - Los datos ya vienen paginados del servidor, pero filtramos localmente los homologados
 const paginatedHomologaciones = computed(() => {
@@ -541,6 +558,14 @@ function abrirModalEdicion(homologacion: SkuHomologacion) {
 function cerrarModal() {
   modalAbierto.value = false
   homologacionSeleccionada.value = null
+}
+
+function abrirModalBuscarSku() {
+  modalBuscarSkuAbierto.value = true
+}
+
+function cerrarModalBuscarSku() {
+  modalBuscarSkuAbierto.value = false
 }
 
 async function guardarHomologacion(data: SkuHomologacionUpdateRequest) {
