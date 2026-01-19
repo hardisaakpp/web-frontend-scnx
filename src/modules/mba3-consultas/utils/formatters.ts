@@ -80,7 +80,8 @@ export function formatPorcentaje(value: number): string {
 /**
  * Formatea el estado del pedido a texto legible
  */
-export function formatEstadoPedido(estado: string): string {
+export function formatEstadoPedido(estado: string | undefined): string {
+  if (!estado) return 'Sin estado'
   const estados: Record<string, string> = {
     'PENDIENTE_CONFIRMACION_PROVEEDOR': 'Pendiente Confirmación',
     'RESPUESTA_PROVEEDOR_CARGADA': 'Respuesta Cargada',

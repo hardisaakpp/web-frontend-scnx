@@ -292,9 +292,3 @@ export function formatSapError(
     suggestedActions: errorCode ? getSapErrorSuggestedActions(errorCode) : undefined
   }
 }
-
-
-
-
-
-

@@ -41,11 +41,3 @@ function getWidthClass(index: number): string {
   return widths[index % widths.length] || 'w-24'
 }
 </script>
-
-
-
-
-
-
-
-

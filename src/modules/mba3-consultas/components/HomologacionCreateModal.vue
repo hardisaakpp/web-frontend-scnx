@@ -27,17 +27,17 @@
                 <svg class="w-6 h-6 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                 </svg>
-                Crear Nueva Homologación de SKU
+                Crear Nueva Homologaciรณn de SKU
               </DialogTitle>
 
               <div class="space-y-6">
-                <!-- Información de MBA3 -->
+                <!-- Informaciรณn de MBA3 -->
                 <div class="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
                   <h3 class="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-3 flex items-center gap-2">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    Información MBA3
+                    Informaciรณn MBA3
                   </h3>
                   <div class="grid grid-cols-2 gap-4">
                     <div>
@@ -77,18 +77,18 @@
                       <span class="font-medium">Talla:</span> {{ datosMba3.talla }}
                     </div>
                     <div v-if="datosMba3.presentacion">
-                      <span class="font-medium">Presentación:</span> {{ datosMba3.presentacion }}
+                      <span class="font-medium">Presentaciรณn:</span> {{ datosMba3.presentacion }}
                     </div>
                   </div>
                 </div>
 
-                <!-- Información de SAP -->
+                <!-- Informaciรณn de SAP -->
                 <div class="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg p-4">
                   <h3 class="text-sm font-semibold text-green-900 dark:text-green-200 mb-3 flex items-center gap-2">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
-                    Información SAP
+                    Informaciรณn SAP
                   </h3>
                   <form @submit.prevent="handleSubmit" class="space-y-4">
                     <div class="grid grid-cols-2 gap-4">
@@ -177,7 +177,7 @@
                       </div>
                     </div>
 
-                    <!-- Botones de acción -->
+                    <!-- Botones de acciรณn -->
                     <div class="flex gap-3 pt-4 border-t border-green-200 dark:border-green-700">
                       <button
                         type="button"
@@ -198,7 +198,7 @@
                         :disabled="loading || !skuMba3.trim() || !form.sku_sap"
                         class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
                       >
-                        {{ loading ? 'Creando...' : 'Crear Homologación' }}
+                        {{ loading ? 'Creando...' : 'Crear Homologaciรณn' }}
                       </button>
                     </div>
                   </form>
@@ -294,12 +294,12 @@ async function buscarSkuMba3() {
       datosMba3.value = response.data
       toast.success('SKU encontrado', `SKU MBA3: ${response.data.codigo}`)
     } else {
-      errorMba3.value = 'No se encontró el SKU en MBA3'
-      toast.warning('SKU no encontrado', 'No se encontró el SKU en MBA3')
+      errorMba3.value = 'No se encontrรณ el SKU en MBA3'
+      toast.warning('SKU no encontrado', 'No se encontrรณ el SKU en MBA3')
     }
   } catch (error: any) {
     errorMba3.value = error.message || 'Error al buscar SKU'
-    toast.error('Error al buscar', errorMba3.value)
+    toast.error('Error al buscar', errorMba3.value ?? undefined)
   } finally {
     buscandoMba3.value = false
   }
@@ -324,12 +324,12 @@ async function buscarSkuSap() {
       }
       toast.success('SKU encontrado', `SKU SAP: ${datos.codigo}`)
     } else {
-      errorSap.value = 'No se encontró el SKU en SAP'
-      toast.warning('SKU no encontrado', 'No se encontró el SKU en SAP')
+      errorSap.value = 'No se encontrรณ el SKU en SAP'
+      toast.warning('SKU no encontrado', 'No se encontrรณ el SKU en SAP')
     }
   } catch (error: any) {
     errorSap.value = error.message || 'Error al buscar SKU'
-    toast.error('Error al buscar', errorSap.value)
+    toast.error('Error al buscar', errorSap.value ?? undefined)
   } finally {
     buscandoSap.value = false
   }
@@ -352,7 +352,7 @@ function handleSubmit() {
     return
   }
 
-  // Convertir strings vacíos a null
+  // Convertir strings vacรญos a null
   const cleanedData: SkuHomologacionCreateRequest = {
     sku_mba3: skuMba3.value.trim(),
     sku_sap: form.value.sku_sap,

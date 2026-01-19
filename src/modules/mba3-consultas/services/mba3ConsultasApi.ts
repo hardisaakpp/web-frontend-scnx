@@ -895,16 +895,14 @@ export const mba3ConsultasService = {
         if (error.response.data.type === 'business_exception') {
           hasBackendMessage = true
           message = error.response.data.error || error.response.data.message || 'No se puede procesar: productos no válidos en SAP'
-          console.log('✅ [uploadPlantilla] Business exception detectada:', message)
-            // Preservar información adicional para mejor manejo
-            ; (error as any).isBusinessException = true
-            ; (error as any).businessError = error.response.data.error
+          // Preservar información adicional para mejor manejo
+          ; (error as any).isBusinessException = true
+          ; (error as any).businessError = error.response.data.error
         }
         // Prioridad 2: Verificar campo 'error' primero (antes que detail)
         else if (error.response.data.error) {
           hasBackendMessage = true
           message = error.response.data.error
-          console.log('✅ [uploadPlantilla] Error field detectado:', message)
         }
         // Prioridad 3: FastAPI puede retornar detail como string, array, o objeto
         else if (error.response.data.detail) {
@@ -931,13 +929,11 @@ export const mba3ConsultasService = {
             // Intentar convertir a string
             message = String(detail)
           }
-          console.log('✅ [uploadPlantilla] Detail field detectado:', message)
         }
         // Prioridad 4: Campo 'message'
         else if (error.response.data.message) {
           hasBackendMessage = true
           message = error.response.data.message
-          console.log('✅ [uploadPlantilla] Message field detectado:', message)
         }
       } else if (error.request) {
         // Error de red (sin respuesta del servidor)
@@ -951,7 +947,6 @@ export const mba3ConsultasService = {
         message = 'Error al procesar el archivo. Verifica que el formato sea correcto y que no sea un pedido duplicado.'
       }
 
-      console.log('🔴 [uploadPlantilla] Mensaje final de error:', message)
       // Preservar response.data en el error para que useFileUpload pueda acceder a los datos estructurados
       const errorWithResponse = new Error(message) as any
       errorWithResponse.response = error.response
@@ -974,8 +969,6 @@ export const mba3ConsultasService = {
       formData.append('file', file)
       formData.append('correcciones_codigos', JSON.stringify(correcciones))
       
-      console.log('🔄 [uploadPlantillaConCorrecciones] Enviando correcciones:', correcciones)
-      
       const response = await mba3Api.post<UploadPlantillaResponse>('/api/plantillas/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
@@ -991,7 +984,6 @@ export const mba3ConsultasService = {
         data.validacion_sap = data.validation_sap
       }
       
-      console.log('✅ [uploadPlantillaConCorrecciones] Respuesta exitosa:', data)
       return data as UploadPlantillaResponse
     } catch (error: any) {
       console.error('❌ [uploadPlantillaConCorrecciones] Error al subir plantilla con correcciones:', error)

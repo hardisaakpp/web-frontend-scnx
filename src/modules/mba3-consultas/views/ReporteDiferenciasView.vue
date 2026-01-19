@@ -178,7 +178,7 @@ async function buscarReporte() {
     if (e.message?.includes('No existe reporte')) {
       toast.warning('Reporte no disponible', 'Este pedido aún no tiene un reporte de diferencias. Debe procesar la confirmación del proveedor primero.')
     } else {
-      toast.error('Error', error.value)
+      toast.error('Error', error.value ?? undefined)
     }
   } finally {
     loadingReporte.value = false
@@ -194,7 +194,12 @@ async function handleExportReporteDiferencias() {
 
   try {
     const numeroPedido = pedidoIdInput.value.trim()
-    const blob = await mba3ConsultasService.getReporteDiferencias(numeroPedido, { formato: 'excel' })
+    const blob = await mba3ConsultasService.getReporteDiferencias(numeroPedido, 'excel')
+    
+    // Asegurar que es un Blob para exportación
+    if (!(blob instanceof Blob)) {
+      throw new Error('La respuesta no es un archivo descargable')
+    }
     
     const url = window.URL.createObjectURL(blob)
     const a = document.createElement('a')

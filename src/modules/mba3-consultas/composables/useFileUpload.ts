@@ -142,20 +142,6 @@ export function useFileUpload(options: {
    * Procesa el error de carga y prepara la información para el modal
    */
   function processUploadError(e: any, fileName: string): UploadErrorInfo {
-    console.log('🔍 [useFileUpload] Procesando error de carga:', {
-      message: e.message,
-      hasResponse: !!e.response,
-      responseStatus: e.response?.status,
-      responseData: e.response?.data,
-      responseDataType: e.response?.data?.type,
-      error: e.response?.data?.error,
-      messageField: e.response?.data?.message,
-      detail: e.response?.data?.detail,
-      dataField: e.response?.data?.data,
-      validacion: e.response?.data?.validacion,
-      validacionData: e.response?.data?.data?.validacion
-    })
-    
     let errorTitle = 'Error al cargar plantilla'
     // Obtener mensaje de error de múltiples fuentes posibles
     let errorMessage = e.message || 
@@ -230,7 +216,6 @@ export function useFileUpload(options: {
         const codigos = match[1].split(',').map(c => c.trim()).filter(c => c && c.length > 0 && !c.match(/^\d+$/))
         if (codigos.length > 0) {
           productosNoEncontradosSAP.push(...codigos)
-          console.log('✅ [useFileUpload] Códigos extraídos del mensaje:', codigos)
           break // Solo usar el primer patrón que coincida
         }
       }
@@ -273,23 +258,8 @@ export function useFileUpload(options: {
     }
 
     // Intentar extraer información detallada del error response
-    console.log('🔍 [useFileUpload] Verificando e.response?.data:', {
-      hasResponse: !!e.response,
-      hasData: !!e.response?.data,
-      dataKeys: e.response?.data ? Object.keys(e.response.data) : [],
-      data: e.response?.data,
-      // Buscar códigos en cualquier campo posible
-      validacionSapNoEncontrados: e.response?.data?.validacion_sap?.no_encontrados,
-      validacionProductosNoEncontrados: e.response?.data?.validacion?.productos?.no_encontrados,
-      // Buscar en campos anidados
-      dataValidacion: e.response?.data?.data?.validacion,
-      // Buscar en cualquier campo que pueda contener códigos
-      allFields: JSON.stringify(e.response?.data, null, 2)
-    })
-    
     if (e.response?.data) {
       const errorData = e.response.data
-      console.log('🔍 [useFileUpload] errorData completo:', errorData)
       
       if (errorData.errores && Array.isArray(errorData.errores)) {
         errorErrors.push(...errorData.errores)
@@ -365,7 +335,6 @@ export function useFileUpload(options: {
       // ✅ Extraer códigos desde validacion_sap estructurado
       if (errorData.validacion_sap) {
         const sap = errorData.validacion_sap
-        console.log('🔍 [useFileUpload] validacion_sap:', sap)
         
         // ⭐ MEJORADO: El backend ahora siempre envía arrays de códigos
         if (Array.isArray(sap.no_encontrados)) {
@@ -374,11 +343,8 @@ export function useFileUpload(options: {
               productosNoEncontradosSAP.push(codigo)
             }
           })
-          console.log('✅ [useFileUpload] Códigos extraídos de validacion_sap.no_encontrados (array):', productosNoEncontradosSAP)
         } else if (typeof sap.no_encontrados === 'number' && sap.no_encontrados > 0) {
           // ⭐ COMPATIBILIDAD: Si el backend aún envía número (formato antiguo), buscar en otros campos
-          console.log('⚠️ [useFileUpload] validacion_sap.no_encontrados es un número (formato antiguo). Conteo:', sap.no_encontrados)
-          
           // Buscar en validacion.productos.no_encontrados como fallback
           if (errorData.validacion?.productos?.no_encontrados && Array.isArray(errorData.validacion.productos.no_encontrados) && errorData.validacion.productos.no_encontrados.length > 0) {
             errorData.validacion.productos.no_encontrados.forEach((codigo: string) => {
@@ -386,13 +352,11 @@ export function useFileUpload(options: {
                 productosNoEncontradosSAP.push(codigo)
               }
             })
-            console.log('✅ [useFileUpload] Códigos encontrados en validacion.productos.no_encontrados:', productosNoEncontradosSAP)
           }
           
           // Si aún no tenemos códigos específicos, usar el conteo para el mensaje
           if (productosNoEncontradosSAP.length === 0) {
             ;(e as any).sapNoEncontradosCount = sap.no_encontrados
-            console.log('⚠️ [useFileUpload] No se encontraron códigos específicos. Conteo guardado:', sap.no_encontrados)
           }
         }
         
@@ -418,8 +382,24 @@ export function useFileUpload(options: {
       }
       
       // ✅ Extraer códigos desde data estructurado (BusinessException)
-      // BusinessException puede tener la estructura: { type: 'business_exception', error: '...', data: { validacion: {...} } }
+      // BusinessException puede tener la estructura: { type: 'business_exception', error: '...', data: { validacion: {...}, validacion_sap: {...} } }
       console.log('🔍 [useFileUpload] Verificando errorData.data:', errorData.data)
+      
+      // ⭐ NUEVO: También buscar validacion_sap en errorData.data (BusinessException)
+      if (errorData.data?.validacion_sap) {
+        const sapData = errorData.data.validacion_sap
+        console.log('✅ [useFileUpload] Encontrada validacion_sap en errorData.data.validacion_sap:', sapData)
+        
+        // Extraer códigos no encontrados
+        if (Array.isArray(sapData.no_encontrados)) {
+          sapData.no_encontrados.forEach((codigo: string) => {
+            if (!productosNoEncontradosSAP.includes(codigo)) {
+              productosNoEncontradosSAP.push(codigo)
+            }
+          })
+        }
+      }
+      
       if (errorData.data?.validacion) {
         const validacion = errorData.data.validacion
         console.log('✅ [useFileUpload] Encontrada validacion en errorData.data.validacion:', validacion)
@@ -461,13 +441,6 @@ export function useFileUpload(options: {
     productosNoEncontradosSAP = [...new Set(productosNoEncontradosSAP)]
     tiendasNoEncontradasSAP = [...new Set(tiendasNoEncontradasSAP)]
     bodegasNoEncontradasSAP = [...new Set(bodegasNoEncontradasSAP)]
-
-    console.log('📊 [useFileUpload] Códigos extraídos después de eliminar duplicados:', {
-      productos: productosNoEncontradosSAP,
-      tiendas: tiendasNoEncontradasSAP,
-      bodegas: bodegasNoEncontradasSAP,
-      total: productosNoEncontradosSAP.length + tiendasNoEncontradasSAP.length + bodegasNoEncontradasSAP.length
-    })
 
     // Identificar el tipo de error
     const isSAPError = productosNoEncontradosSAP.length > 0 || 
@@ -570,14 +543,6 @@ export function useFileUpload(options: {
       const tieneConteoSinCodigos = sapNoEncontradosCount > 0 && !tieneCodigosEspecificos
       
       if (tieneCodigosEspecificos || tieneConteoSinCodigos) {
-        console.log('✅ [useFileUpload] Construyendo mensaje detallado:', {
-          productos: productosNoEncontradosSAP,
-          tiendas: tiendasNoEncontradasSAP,
-          bodegas: bodegasNoEncontradasSAP,
-          total: totalErrores,
-          sapNoEncontradosCount
-        })
-        
         if (tieneCodigosEspecificos) {
           // Tenemos códigos específicos - mostrar lista detallada
           errorMessage = `Existen ${totalErrores} código(s) no válidos en SAP.\n\n`
@@ -637,7 +602,6 @@ export function useFileUpload(options: {
                 if (posiblesCodigos.length > 0) {
                   codigosParte = parte
                   productosNoEncontradosSAP.push(...posiblesCodigos)
-                  console.log('✅ [useFileUpload] Códigos extraídos del fallback:', posiblesCodigos)
                   break
                 }
               }
@@ -649,7 +613,6 @@ export function useFileUpload(options: {
               // Reconstruir el mensaje detallado con los códigos extraídos
               const totalErrores = productosNoEncontradosSAP.length
               errorMessage = `Existen ${totalErrores} código(s) no válidos en SAP.\n\n❌ Códigos de PRODUCTO no encontrados (${productosNoEncontradosSAP.length}):\n${productosNoEncontradosSAP.map(c => `   • ${c}`).join('\n')}\n\n⚠️ Por favor verifica que estos códigos estén escritos correctamente en el Excel.`
-              console.log('✅ [useFileUpload] Mensaje reconstruido con códigos del fallback:', errorMessage)
             } else {
               // Si no se pudieron extraer códigos, usar el mensaje del backend directamente
               errorMessage = errorMessageStr || `Uno o más códigos del archivo no fueron encontrados en SAP.\n\nVerifica que todos los códigos estén correctamente registrados en SAP.`
@@ -683,19 +646,10 @@ export function useFileUpload(options: {
     }
     
     // ⭐ NUEVO: Extraer información de validacion_sap del backend (incluye MBA3 y sugerencias)
-    const validacionSap = e.response?.data?.validacion_sap
-    
-    console.log('📤 [useFileUpload] Retornando error info:', {
-      title: errorTitle,
-      message: errorMessage.substring(0, 200) + (errorMessage.length > 200 ? '...' : ''),
-      errorsCount: errorErrors.length,
-      productosNoEncontrados: productosNoEncontradosSAP.length,
-      tiendasNoEncontradas: tiendasNoEncontradasSAP.length,
-      bodegasNoEncontradas: bodegasNoEncontradasSAP.length,
-      tieneValidacionSap: !!validacionSap,
-      validacionSapCompleta: validacionSap,
-      detalleValidacion: validacionSap?.detalle_validacion
-    })
+    // Buscar en múltiples ubicaciones posibles (BusinessException puede tener diferentes estructuras)
+    // 1. Directamente en data.validacion_sap (formato estándar)
+    // 2. En data.data.validacion_sap (cuando viene de BusinessException con exc.data)
+    const validacionSap = e.response?.data?.validacion_sap || e.response?.data?.data?.validacion_sap
     
     return {
       title: errorTitle,
@@ -880,8 +834,6 @@ export function useFileUpload(options: {
     uploading.value = true
     
     try {
-      console.log('🔄 [useFileUpload] Reintentando carga con correcciones:', correcciones)
-      
       // Llamar al servicio con correcciones
       const response: UploadPlantillaResponse = await mba3ConsultasService.uploadPlantillaConCorrecciones(
         file,

@@ -17,7 +17,8 @@ export function getEstadoBadgeClass(estado: string): string {
 /**
  * Retorna las clases CSS para el badge de estado del pedido
  */
-export function getEstadoPedidoBadgeClass(estado: string): string {
+export function getEstadoPedidoBadgeClass(estado: string | undefined): string {
+  if (!estado) return 'bg-gray-100 text-gray-800'
   const classes: Record<string, string> = {
     'PENDIENTE_CONFIRMACION_PROVEEDOR': 'bg-yellow-100 text-yellow-800',
     'RESPUESTA_PROVEEDOR_CARGADA': 'bg-blue-100 text-blue-800',
