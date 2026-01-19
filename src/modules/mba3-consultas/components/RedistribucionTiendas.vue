@@ -63,27 +63,27 @@
       </div>
       
       <!-- Indicadores cuando hay respuesta del proveedor -->
-      <div v-else class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
-          <label class="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase">Total Confirmado</label>
-          <p class="mt-1 text-2xl font-bold text-blue-900 dark:text-blue-200">
+      <div v-else class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2.5 border border-blue-200 dark:border-blue-800">
+          <label class="text-[10px] font-medium text-blue-600 dark:text-blue-400 uppercase leading-tight">Total Confirmado</label>
+          <p class="mt-0.5 text-lg font-bold text-blue-900 dark:text-blue-200 leading-tight">
             {{ formatNumber(resumenRedistribucion.total_confirmado) }}
           </p>
-          <p class="text-xs text-blue-700 dark:text-blue-300 mt-1">
+          <p class="text-[10px] text-blue-700 dark:text-blue-300 mt-0.5 leading-tight">
             Ajustado por EL RAYO
           </p>
         </div>
-        <div class="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4 border border-purple-200 dark:border-purple-800">
-          <label class="text-xs font-medium text-purple-600 dark:text-purple-400 uppercase">Total Distribuido</label>
-          <p class="mt-1 text-2xl font-bold text-purple-900 dark:text-purple-200">
+        <div class="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-2.5 border border-purple-200 dark:border-purple-800">
+          <label class="text-[10px] font-medium text-purple-600 dark:text-purple-400 uppercase leading-tight">Total Distribuido</label>
+          <p class="mt-0.5 text-lg font-bold text-purple-900 dark:text-purple-200 leading-tight">
             {{ formatNumber(resumenRedistribucion.total_distribuido) }}
           </p>
-          <p class="text-xs text-purple-700 dark:text-purple-300 mt-1">
+          <p class="text-[10px] text-purple-700 dark:text-purple-300 mt-0.5 leading-tight">
             Repartido entre tiendas
           </p>
         </div>
         <div 
-          class="rounded-lg p-4 border-2"
+          class="rounded-lg p-2.5 border-2"
           :class="resumenRedistribucion.diferencia_pendiente === 0 
             ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700' 
             : resumenRedistribucion.diferencia_pendiente < 0
@@ -91,7 +91,7 @@
             : 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700'"
         >
           <label 
-            class="text-xs font-medium uppercase"
+            class="text-[10px] font-medium uppercase leading-tight"
             :class="resumenRedistribucion.diferencia_pendiente === 0 
               ? 'text-green-600 dark:text-green-400' 
               : resumenRedistribucion.diferencia_pendiente < 0
@@ -101,7 +101,7 @@
             {{ resumenRedistribucion.diferencia_pendiente === 0 ? '✓ Completo' : resumenRedistribucion.diferencia_pendiente < 0 ? '⚠ Falta' : '✗ Excede' }}
           </label>
           <p 
-            class="mt-1 text-2xl font-bold"
+            class="mt-0.5 text-lg font-bold leading-tight"
             :class="resumenRedistribucion.diferencia_pendiente === 0 
               ? 'text-green-900 dark:text-green-200' 
               : resumenRedistribucion.diferencia_pendiente < 0
@@ -110,7 +110,7 @@
           >
             {{ resumenRedistribucion.diferencia_pendiente > 0 ? '+' : '' }}{{ formatNumber(resumenRedistribucion.diferencia_pendiente) }}
           </p>
-          <p class="text-xs mt-1" :class="resumenRedistribucion.diferencia_pendiente === 0 
+          <p class="text-[10px] mt-0.5 leading-tight" :class="resumenRedistribucion.diferencia_pendiente === 0 
             ? 'text-green-700 dark:text-green-300' 
             : resumenRedistribucion.diferencia_pendiente < 0
             ? 'text-yellow-700 dark:text-yellow-300'

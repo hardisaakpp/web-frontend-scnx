@@ -104,15 +104,20 @@
             <th
               v-for="tienda in tiendasUnicas"
               :key="tienda.codigo"
-              class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[100px] bg-gray-50 dark:bg-gray-900"
+              class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[120px] bg-gray-50 dark:bg-gray-900"
               :title="`${tienda.codigo} - ${tienda.nombre}`"
             >
-              <div class="flex flex-col items-end">
+              <div class="flex flex-col items-end gap-0.5">
                 <!-- Código (de la fila 2 del Excel) -->
-                <span class="font-semibold text-gray-700 dark:text-gray-300 leading-tight">{{ tienda.codigo }}</span>
+                <span class="font-semibold text-sm text-gray-900 dark:text-gray-100 leading-tight whitespace-nowrap">
+                  {{ tienda.codigo }}
+                </span>
                 <!-- Nombre (de la fila 1 del Excel) -->
-                <span class="text-xs font-normal text-gray-500 dark:text-gray-400 mt-0.5 truncate max-w-[100px]" :title="tienda.nombre">
-                  {{ tienda.nombre }}
+                <span 
+                  class="text-xs font-normal text-gray-600 dark:text-gray-400 leading-tight break-words max-w-[120px] text-right"
+                  :title="tienda.nombre"
+                >
+                  {{ tienda.nombre || tienda.codigo }}
                 </span>
               </div>
             </th>
@@ -581,16 +586,24 @@ const tiendasUnicas = computed(() => {
       if (!tiendasMap.has(tienda.tienda_codigo)) {
         // ⭐ El código viene de la fila 2 del Excel (ej: "RL-CD", "OUT-CD", "REG-CD", códigos de tiendas)
         // ⭐ El nombre viene de la fila 1 del Excel (ej: "Roland", "Descuentón", "Región", nombres de tiendas)
+        const nombre = tienda.tienda_nombre || tienda.tienda_codigo
         tiendasMap.set(tienda.tienda_codigo, {
           codigo: tienda.tienda_codigo,
-          nombre: tienda.tienda_nombre
+          nombre: nombre
         })
       }
     })
   })
   
   // Ordenar por código de tienda/bodega
-  return Array.from(tiendasMap.values()).sort((a, b) => a.codigo.localeCompare(b.codigo))
+  const tiendasOrdenadas = Array.from(tiendasMap.values()).sort((a, b) => a.codigo.localeCompare(b.codigo))
+  
+  // Log para depuración: verificar que los nombres se están recibiendo
+  if (tiendasOrdenadas.length > 0) {
+    console.log('📊 [ExcelLikeGridView] Tiendas detectadas:', tiendasOrdenadas.map(t => ({ codigo: t.codigo, nombre: t.nombre })))
+  }
+  
+  return tiendasOrdenadas
 })
 
 // Obtener cantidad de una tienda específica para un producto
