@@ -889,7 +889,6 @@ export interface PedidoDetalle {
   pvp: number | null
   subtotal: number | null
   total: number | null
-  bodega: number | null
   comentario?: string | null  // ⭐ Campo editable para comentarios
   tiendas: TiendaDistribucion[]
 }

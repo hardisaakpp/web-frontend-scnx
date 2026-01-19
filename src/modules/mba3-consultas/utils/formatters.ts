@@ -144,8 +144,6 @@ export function formatColumnValue(detalle: any, column: ColumnConfig, index?: nu
   // Manejar valores null/undefined (pero NO 0)
   // El valor 0 es válido y debe mostrarse formateado
   if (value === null || value === undefined) {
-    // Para columnas numéricas, mostrar guión en lugar de N/A para mejor UX
-    if (column.key === 'bodega') return '-'
     // Para columnas de costo y total, también mostrar 0 si están explícitamente en 0
     if (column.key === 'costo_doc_sin_iva' || column.key === 'total' || column.format === 'currency' || column.format === 'number') {
       return 'N/A'

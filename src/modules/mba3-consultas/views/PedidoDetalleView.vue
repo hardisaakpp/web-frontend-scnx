@@ -240,9 +240,6 @@
                     <template v-else-if="column.key === 'subtotal'">
                       {{ formatNumber(totalesSubtotal) }}
                     </template>
-                    <template v-else-if="column.key === 'bodega'">
-                      {{ formatNumber(totalesBodega) }}
-                    </template>
                     <template v-else-if="column.key === 'total'">
                       {{ formatNumber(totalesTotal) }}
                     </template>
@@ -412,7 +409,6 @@ const availableColumns: ColumnConfig[] = [
   { key: 'descuento_1', label: 'Descuento', visible: false, align: 'right', format: 'number' },
   { key: 'pvp', label: 'PVP', visible: false, align: 'right', format: 'currency' },
   { key: 'subtotal', label: 'Subtotal', visible: true, align: 'right', format: 'number' },
-  { key: 'bodega', label: 'Bodega', visible: true, align: 'right', format: 'number' },
   { key: 'total', label: 'Total', visible: true, align: 'right', format: 'number' },
   { key: 'comentario', label: 'Comentario', visible: true, align: 'left', format: 'text' }
 ]
@@ -496,12 +492,6 @@ const totalesSubtotal = computed(() => {
   }, 0)
 })
 
-const totalesBodega = computed(() => {
-  if (!pedido.value?.detalles) return 0
-  return pedido.value.detalles.reduce((sum: number, detalle: any) => {
-    return sum + (detalle.bodega || 0)
-  }, 0)
-})
 
 const totalesTotal = computed(() => {
   if (!pedido.value?.detalles) return 0
