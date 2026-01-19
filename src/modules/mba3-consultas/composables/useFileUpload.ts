@@ -17,6 +17,10 @@ export interface UploadErrorInfo {
   message: string
   fileName?: string
   errors?: Array<string | { tipo?: string; campo?: string; mensaje: string; producto?: string }>
+  // ⭐ NUEVO: Código de error específico del backend
+  error_code?: string
+  // ⭐ NUEVO: Número de pedido (para errores de duplicación)
+  numero_pedido?: string
   // ⭐ NUEVO: Información de validación SAP del backend (incluye MBA3 y sugerencias)
   validacion_sap?: {
     detalle_validacion?: Record<string, {
@@ -627,13 +631,16 @@ export function useFileUpload(options: {
       }
     } else if (isDuplicateError) {
       errorTitle = 'Número de pedido duplicado'
-      // Extraer el número de pedido del mensaje si está disponible
-      const numeroPedidoMatch = errorMessageStr.match(/['"]([^'"]+)['"]/)?.[1] || 
-                                errorMessageStr.match(/número de pedido ['"]([^'"]+)['"]/i)?.[1] ||
-                                errorMessageStr.match(/numero de pedido ['"]([^'"]+)['"]/i)?.[1]
+      // ⭐ MEJORADO: Primero intentar obtener el número de pedido del backend
+      let numeroPedido = e.response?.data?.numero_pedido || 
+                         e.response?.data?.data?.numero_pedido ||
+                         // Extraer del mensaje si está disponible
+                         errorMessageStr.match(/['"]([^'"]+)['"]/)?.[1] || 
+                         errorMessageStr.match(/número de pedido ['"]([^'"]+)['"]/i)?.[1] ||
+                         errorMessageStr.match(/numero de pedido ['"]([^'"]+)['"]/i)?.[1]
       
-      if (numeroPedidoMatch) {
-        errorMessage = `El número de pedido "${numeroPedidoMatch}" ya existe en el sistema.\n\nNo es posible cargar un pedido con un número de pedido duplicado. Por favor, verifica el número de pedido e intenta con un número diferente.`
+      if (numeroPedido) {
+        errorMessage = `El número de pedido "${numeroPedido}" ya existe en el sistema.\n\nNo es posible cargar un pedido con un número de pedido duplicado. Por favor, verifica el número de pedido e intenta con un número diferente.`
       } else {
         errorMessage = `El número de pedido que intentaste utilizar ya existe en el sistema.\n\nNo es posible cargar un pedido con un número de pedido duplicado. Por favor, verifica el número de pedido e intenta con un número diferente.`
       }
@@ -651,11 +658,26 @@ export function useFileUpload(options: {
     // 2. En data.data.validacion_sap (cuando viene de BusinessException con exc.data)
     const validacionSap = e.response?.data?.validacion_sap || e.response?.data?.data?.validacion_sap
     
+    // ⭐ NUEVO: Extraer error_code del backend
+    const errorCode = e.response?.data?.error_code || 
+                      e.response?.data?.data?.error_code ||
+                      e.response?.data?.error_tipo
+    
+    // ⭐ NUEVO: Extraer numero_pedido si es un error de duplicado
+    const numeroPedidoFromBackend = isDuplicateError ? (
+      e.response?.data?.numero_pedido || 
+      e.response?.data?.data?.numero_pedido
+    ) : undefined
+    
     return {
       title: errorTitle,
       message: errorMessage,
       fileName,
       errors: errorErrors.length > 0 ? errorErrors : undefined,
+      // ⭐ NUEVO: Código de error específico
+      error_code: errorCode,
+      // ⭐ NUEVO: Número de pedido (si es error de duplicado)
+      numero_pedido: numeroPedidoFromBackend,
       // ⭐ Incluir validacion_sap completa del backend
       validacion_sap: validacionSap ? {
         detalle_validacion: validacionSap.detalle_validacion || {}

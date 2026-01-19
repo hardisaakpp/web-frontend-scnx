@@ -11,23 +11,23 @@
       <!-- Encabezado del modal con color según tipo de error -->
       <div :class="[
         'px-6 py-4 border-b flex items-center justify-between transition-colors duration-300',
+        uploadErrorInfo?.error_code === 'NUMERO_PEDIDO_DUPLICADO' || uploadErrorInfo?.title?.includes('duplicado') ? 'bg-orange-50 dark:bg-orange-900/30 border-orange-200 dark:border-orange-800' :
         uploadErrorInfo?.title?.includes('SAP') ? 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800' :
-        uploadErrorInfo?.title?.includes('duplicado') ? 'bg-orange-50 dark:bg-orange-900/30 border-orange-200 dark:border-orange-800' :
         uploadErrorInfo?.title?.includes('formato') ? 'bg-yellow-50 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-800' :
         'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800'
       ]">
         <div class="flex items-center gap-3">
           <div :class="[
             'flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center',
+            uploadErrorInfo?.error_code === 'NUMERO_PEDIDO_DUPLICADO' || uploadErrorInfo?.title?.includes('duplicado') ? 'bg-orange-100 dark:bg-orange-900' :
             uploadErrorInfo?.title?.includes('SAP') ? 'bg-red-100 dark:bg-red-900' :
-            uploadErrorInfo?.title?.includes('duplicado') ? 'bg-orange-100 dark:bg-orange-900' :
             uploadErrorInfo?.title?.includes('formato') ? 'bg-yellow-100 dark:bg-yellow-900' :
             'bg-red-100 dark:bg-red-900'
           ]">
             <svg :class="[
               'w-6 h-6',
+              uploadErrorInfo?.error_code === 'NUMERO_PEDIDO_DUPLICADO' || uploadErrorInfo?.title?.includes('duplicado') ? 'text-orange-600 dark:text-orange-400' :
               uploadErrorInfo?.title?.includes('SAP') ? 'text-red-600 dark:text-red-400' :
-              uploadErrorInfo?.title?.includes('duplicado') ? 'text-orange-600 dark:text-orange-400' :
               uploadErrorInfo?.title?.includes('formato') ? 'text-yellow-600 dark:text-yellow-400' :
               'text-red-600 dark:text-red-400'
             ]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -37,8 +37,8 @@
           <div>
             <h3 :class="[
               'text-lg font-semibold',
+              uploadErrorInfo?.error_code === 'NUMERO_PEDIDO_DUPLICADO' || uploadErrorInfo?.title?.includes('duplicado') ? 'text-orange-900 dark:text-orange-200' :
               uploadErrorInfo?.title?.includes('SAP') ? 'text-red-900 dark:text-red-200' :
-              uploadErrorInfo?.title?.includes('duplicado') ? 'text-orange-900 dark:text-orange-200' :
               uploadErrorInfo?.title?.includes('formato') ? 'text-yellow-900 dark:text-yellow-200' :
               'text-red-900 dark:text-red-200'
             ]">{{ uploadErrorInfo?.title || 'Error al cargar archivo Excel' }}</h3>
@@ -95,8 +95,66 @@
             </p>
           </div>
 
-          <!-- Mensaje de error principal -->
-          <div class="bg-white dark:bg-gray-900 border-2 border-red-200 dark:border-red-800 rounded-lg p-4 transition-colors duration-300">
+          <!-- ⭐ Sección específica para error de número de pedido duplicado -->
+          <div v-if="uploadErrorInfo?.error_code === 'NUMERO_PEDIDO_DUPLICADO' && uploadErrorInfo?.numero_pedido" 
+               class="bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-900/30 dark:to-amber-900/30 border-2 border-orange-300 dark:border-orange-700 rounded-lg p-6 transition-colors duration-300">
+            <div class="flex items-start gap-4">
+              <div class="flex-shrink-0">
+                <div class="w-12 h-12 bg-orange-100 dark:bg-orange-900 rounded-full flex items-center justify-center">
+                  <svg class="w-6 h-6 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+              </div>
+              <div class="flex-1">
+                <h4 class="text-base font-bold text-orange-900 dark:text-orange-200 mb-3">
+                  Número de Pedido Duplicado
+                </h4>
+                <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-orange-200 dark:border-orange-700 mb-4">
+                  <p class="text-sm text-gray-700 dark:text-gray-300 mb-2">
+                    El siguiente número de pedido ya existe en el sistema:
+                  </p>
+                  <div class="flex items-center gap-3 bg-orange-50 dark:bg-orange-900/40 rounded-lg p-3 border border-orange-300 dark:border-orange-600">
+                    <svg class="w-5 h-5 text-orange-600 dark:text-orange-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                    </svg>
+                    <span class="text-lg font-bold font-mono text-orange-900 dark:text-orange-100">
+                      {{ uploadErrorInfo.numero_pedido }}
+                    </span>
+                  </div>
+                </div>
+                <div class="space-y-2">
+                  <p class="text-sm font-semibold text-gray-900 dark:text-white">
+                    ¿Qué puedes hacer?
+                  </p>
+                  <ul class="text-sm text-gray-700 dark:text-gray-300 space-y-2 ml-1">
+                    <li class="flex items-start gap-2">
+                      <svg class="w-4 h-4 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                      <span>Verifica que el número de pedido en tu archivo Excel sea el correcto</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <svg class="w-4 h-4 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                      <span>Cambia el número de pedido en el archivo Excel por uno nuevo y único</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <svg class="w-4 h-4 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                      <span>Vuelve a subir el archivo con el nuevo número de pedido</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mensaje de error principal (se oculta si ya mostramos el error de duplicado específico) -->
+          <div v-if="!(uploadErrorInfo?.error_code === 'NUMERO_PEDIDO_DUPLICADO' && uploadErrorInfo?.numero_pedido)" 
+               class="bg-white dark:bg-gray-900 border-2 border-red-200 dark:border-red-800 rounded-lg p-4 transition-colors duration-300">
             <div class="flex items-start gap-3">
               <svg class="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
