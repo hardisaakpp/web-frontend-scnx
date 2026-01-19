@@ -99,16 +99,19 @@
               Costo Unit.
             </th>
             
-            <!-- Columnas de tiendas (dinámicas) - siempre visibles -->
+            <!-- Columnas de tiendas/bodegas (dinámicas) - siempre visibles -->
+            <!-- ⭐ ACTUALIZADO: Muestra código y nombre según formato de dos filas de encabezado del backend -->
             <th
               v-for="tienda in tiendasUnicas"
               :key="tienda.codigo"
               class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[100px] bg-gray-50 dark:bg-gray-900"
-              :title="tienda.nombre"
+              :title="`${tienda.codigo} - ${tienda.nombre}`"
             >
-              <div class="flex flex-col">
-                <span class="font-semibold">{{ tienda.codigo }}</span>
-                <span class="text-xs font-normal text-gray-400 dark:text-gray-500 mt-0.5 truncate max-w-[100px]" :title="tienda.nombre">
+              <div class="flex flex-col items-end">
+                <!-- Código (de la fila 2 del Excel) -->
+                <span class="font-semibold text-gray-700 dark:text-gray-300 leading-tight">{{ tienda.codigo }}</span>
+                <!-- Nombre (de la fila 1 del Excel) -->
+                <span class="text-xs font-normal text-gray-500 dark:text-gray-400 mt-0.5 truncate max-w-[100px]" :title="tienda.nombre">
                   {{ tienda.nombre }}
                 </span>
               </div>
@@ -565,13 +568,19 @@ function tieneCostoModificado(producto: ProductoRedistribucion): boolean {
   return columnasModificadasValue.has(key)
 }
 
-// Obtener todas las tiendas únicas de todos los productos
+// ⭐ Obtener todas las tiendas/bodegas únicas de todos los productos
+// El backend ahora parsea dos filas de encabezado:
+// - Fila 1: nombres (ej: "Roland", "Descuentón", "Región")
+// - Fila 2: códigos (ej: "RL-CD", "OUT-CD", "REG-CD")
+// Esto aplica tanto para bodegas (K, L, M) como para tiendas (N+)
 const tiendasUnicas = computed(() => {
   const tiendasMap = new Map<string, { codigo: string; nombre: string }>()
   
   productosArray.value.forEach(producto => {
     producto.distribucion_tiendas.forEach(tienda => {
       if (!tiendasMap.has(tienda.tienda_codigo)) {
+        // ⭐ El código viene de la fila 2 del Excel (ej: "RL-CD", "OUT-CD", "REG-CD", códigos de tiendas)
+        // ⭐ El nombre viene de la fila 1 del Excel (ej: "Roland", "Descuentón", "Región", nombres de tiendas)
         tiendasMap.set(tienda.tienda_codigo, {
           codigo: tienda.tienda_codigo,
           nombre: tienda.tienda_nombre
@@ -580,7 +589,7 @@ const tiendasUnicas = computed(() => {
     })
   })
   
-  // Ordenar por código de tienda
+  // Ordenar por código de tienda/bodega
   return Array.from(tiendasMap.values()).sort((a, b) => a.codigo.localeCompare(b.codigo))
 })
 

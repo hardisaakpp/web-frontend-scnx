@@ -44,7 +44,9 @@ export function formatDate(dateString: string | null): string {
  * Formatea un número con separadores de miles
  */
 export function formatNumber(value: number | null | undefined): string {
+  // Distinguir explícitamente entre 0 y null/undefined
   if (value === null || value === undefined) return 'N/A'
+  // El valor 0 es válido y debe mostrarse como "0"
   return new Intl.NumberFormat('es-ES').format(value)
 }
 
@@ -52,7 +54,9 @@ export function formatNumber(value: number | null | undefined): string {
  * Formatea un número como moneda USD
  */
 export function formatCurrency(value: number | null | undefined): string {
+  // Distinguir explícitamente entre 0 y null/undefined
   if (value === null || value === undefined) return 'N/A'
+  // El valor 0 es válido y debe mostrarse como "$0.00"
   return new Intl.NumberFormat('es-ES', {
     style: 'currency',
     currency: 'USD'
@@ -137,9 +141,16 @@ export function formatColumnValue(detalle: any, column: ColumnConfig, index?: nu
   
   const value = detalle[column.key]
   
-  // Manejar valores null/undefined
+  // Manejar valores null/undefined (pero NO 0)
+  // El valor 0 es válido y debe mostrarse formateado
   if (value === null || value === undefined) {
-    return column.key === 'bodega' ? '-' : 'N/A'
+    // Para columnas numéricas, mostrar guión en lugar de N/A para mejor UX
+    if (column.key === 'bodega') return '-'
+    // Para columnas de costo y total, también mostrar 0 si están explícitamente en 0
+    if (column.key === 'costo_doc_sin_iva' || column.key === 'total' || column.format === 'currency' || column.format === 'number') {
+      return 'N/A'
+    }
+    return 'N/A'
   }
   
   // Formatear descuentos como porcentaje
@@ -148,6 +159,7 @@ export function formatColumnValue(detalle: any, column: ColumnConfig, index?: nu
   }
   
   // Formatear según el tipo
+  // Nota: El valor 0 pasará por aquí y se formateará correctamente
   switch (column.format) {
     case 'currency':
       return formatCurrency(value)
