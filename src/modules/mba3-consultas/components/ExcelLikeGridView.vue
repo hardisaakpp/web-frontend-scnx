@@ -61,40 +61,31 @@
     <!-- Contenedor con scroll horizontal -->
     <div class="overflow-x-auto">
       <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-        <!-- Header fijo -->
-        <thead class="bg-gray-50 dark:bg-gray-900 sticky top-0 z-[4]">
+        <!-- Header -->
+        <thead class="bg-gray-50 dark:bg-gray-900">
           <tr>
             <!-- Columnas fijas -->
             <th
               v-if="isColumnVisible('codigo')"
-              class="sticky left-0 z-[4] bg-gray-50 dark:bg-gray-900 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700"
+              class="bg-gray-50 dark:bg-gray-900 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700"
             >
               Código
             </th>
             <th
               v-if="isColumnVisible('producto')"
-              :class="[
-                'sticky z-[4] bg-gray-50 dark:bg-gray-900 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 min-w-[200px]',
-                getStickyLeftClass('producto')
-              ]"
+              class="bg-gray-50 dark:bg-gray-900 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 min-w-[200px]"
             >
               Producto
             </th>
             <th
               v-if="isColumnVisible('total_confirmado')"
-              :class="[
-                'sticky z-[4] bg-gray-50 dark:bg-gray-900 px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 min-w-[120px]',
-                getStickyLeftClass('total_confirmado')
-              ]"
+              class="bg-gray-50 dark:bg-gray-900 px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 min-w-[120px]"
             >
               Total Confirmado
             </th>
             <th
               v-if="isColumnVisible('costo_unitario')"
-              :class="[
-                'sticky z-[4] bg-gray-50 dark:bg-gray-900 px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 min-w-[120px]',
-                getStickyLeftClass('costo_unitario')
-              ]"
+              class="bg-gray-50 dark:bg-gray-900 px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 min-w-[120px]"
             >
               Costo Unit.
             </th>
@@ -114,7 +105,7 @@
                 </span>
                 <!-- Nombre (de la fila 1 del Excel) -->
                 <span 
-                  class="text-xs font-normal text-gray-600 dark:text-gray-400 leading-tight break-words max-w-[120px] text-right"
+                  class="text-[10px] font-normal text-gray-600 dark:text-gray-400 leading-tight break-words max-w-[120px] text-right"
                   :title="tienda.nombre"
                 >
                   {{ tienda.nombre || tienda.codigo }}
@@ -159,7 +150,7 @@
             <!-- Columnas fijas - fondo completamente opaco -->
             <td
               v-if="isColumnVisible('codigo')"
-              class="sticky left-0 z-[4] px-4 py-3 text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap border-r border-gray-200 dark:border-gray-700 fixed-column-bg"
+              class="sticky left-0 z-[5] px-4 py-3 text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap border-r border-gray-200 dark:border-gray-700 fixed-column-bg"
               :class="producto.error ? 'fixed-bg-error' : tieneModificaciones(producto) ? 'fixed-bg-amber' : producto.diferencia === 0 ? 'fixed-bg-green' : producto.diferencia < 0 ? 'fixed-bg-yellow' : 'fixed-bg-red'"
             >
               {{ producto.codigo_producto }}
@@ -167,7 +158,7 @@
             <td
               v-if="isColumnVisible('producto')"
               :class="[
-                'sticky z-[4] px-4 py-3 text-sm text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700 fixed-column-bg',
+                'sticky z-[5] px-4 py-3 text-sm text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700 fixed-column-bg',
                 getStickyLeftClass('producto'),
                 producto.error ? 'fixed-bg-error' : tieneModificaciones(producto) ? 'fixed-bg-amber' : producto.diferencia === 0 ? 'fixed-bg-green' : producto.diferencia < 0 ? 'fixed-bg-yellow' : 'fixed-bg-red'
               ]"
@@ -179,7 +170,7 @@
             <td
               v-if="isColumnVisible('total_confirmado')"
               :class="[
-                'sticky z-[4] px-4 py-3 text-sm font-semibold text-blue-600 dark:text-blue-400 text-right whitespace-nowrap border-r border-gray-200 dark:border-gray-700 fixed-column-bg',
+                'sticky z-[5] px-4 py-3 text-sm font-semibold text-blue-600 dark:text-blue-400 text-right whitespace-nowrap border-r border-gray-200 dark:border-gray-700 fixed-column-bg',
                 getStickyLeftClass('total_confirmado'),
                 producto.error ? 'fixed-bg-error' : tieneModificaciones(producto) ? 'fixed-bg-amber' : producto.diferencia === 0 ? 'fixed-bg-green' : producto.diferencia < 0 ? 'fixed-bg-yellow' : 'fixed-bg-red'
               ]"
@@ -189,7 +180,7 @@
             <td
               v-if="isColumnVisible('costo_unitario')"
               :class="[
-                'sticky z-[4] px-4 py-3 text-sm font-medium text-right whitespace-nowrap border-r border-gray-200 dark:border-gray-700 fixed-column-bg',
+                'sticky z-[5] px-4 py-3 text-sm font-medium text-right whitespace-nowrap border-r border-gray-200 dark:border-gray-700 fixed-column-bg',
                 getStickyLeftClass('costo_unitario'),
                 producto.error 
                   ? 'fixed-bg-error'
@@ -241,25 +232,25 @@
         </tbody>
         
         <!-- Footer con totales (opcional) -->
-        <tfoot v-if="showTotals" class="bg-gray-100 dark:bg-gray-900 border-t-2 border-gray-300 dark:border-gray-600 sticky bottom-0 z-[4]">
+        <tfoot v-if="showTotals" class="bg-gray-100 dark:bg-gray-900 border-t-2 border-gray-300 dark:border-gray-600">
           <tr>
             <td
               v-if="isColumnVisible('codigo')"
-              class="sticky left-0 z-[4] bg-gray-100 dark:bg-gray-900 px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700"
+              class="sticky left-0 z-[5] bg-gray-100 dark:bg-gray-900 px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700"
             >
               TOTALES
             </td>
             <td
               v-if="isColumnVisible('producto')"
               :class="[
-                'sticky z-[4] bg-gray-100 dark:bg-gray-900 px-4 py-3 border-r border-gray-200 dark:border-gray-700',
+                'sticky z-[5] bg-gray-100 dark:bg-gray-900 px-4 py-3 border-r border-gray-200 dark:border-gray-700',
                 getStickyLeftClass('producto')
               ]"
             ></td>
             <td
               v-if="isColumnVisible('total_confirmado')"
               :class="[
-                'sticky z-[4] bg-gray-100 dark:bg-gray-900 px-4 py-3 text-sm font-bold text-blue-600 dark:text-blue-400 text-right border-r border-gray-200 dark:border-gray-700',
+                'sticky z-[5] bg-gray-100 dark:bg-gray-900 px-4 py-3 text-sm font-bold text-blue-600 dark:text-blue-400 text-right border-r border-gray-200 dark:border-gray-700',
                 getStickyLeftClass('total_confirmado')
               ]"
             >
@@ -268,7 +259,7 @@
             <td
               v-if="isColumnVisible('costo_unitario')"
               :class="[
-                'sticky z-[4] bg-gray-100 dark:bg-gray-900 px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white text-right border-r border-gray-200 dark:border-gray-700',
+                'sticky z-[5] bg-gray-100 dark:bg-gray-900 px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white text-right border-r border-gray-200 dark:border-gray-700',
                 getStickyLeftClass('costo_unitario')
               ]"
             >

@@ -2,8 +2,8 @@
   <!-- ⭐ FASE 4: Ajuste y Redistribución a Tiendas -->
   <!-- Se muestra siempre en modo MABEL TRADING -->
   <div v-if="esModoMabelTradingValue" class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
-    <!-- Header Sticky con Indicadores Globales -->
-    <div class="sticky top-0 z-[5] bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 shadow-sm">
+    <!-- Header con Indicadores Globales -->
+    <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 shadow-sm">
       <div class="flex items-center justify-between mb-4">
         <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Ajuste y Redistribución a Tiendas</h2>
         
