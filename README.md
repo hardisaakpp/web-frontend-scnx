@@ -5,11 +5,10 @@ Frontend de la aplicación SCNexus construido con Vue 3, TypeScript y Vite.
 ## 🚀 Inicio Rápido
 
 ### Requisitos Previos
-
-- Node.js 18+ 
+- Node.js 18+
 - npm o yarn
 
-### Instalación
+### Instalación y Ejecución
 
 ```bash
 # Instalar dependencias
@@ -25,78 +24,103 @@ npm run build
 npm run preview
 ```
 
+**Servidor de desarrollo:** http://localhost:5173
+
 ## 📦 Estructura del Proyecto
 
 ```
 src/
 ├── modules/              # Módulos de la aplicación
+│   ├── mba3-consultas/  # Consultas MBA3, pedidos, ODC
+│   ├── usuarios/        # Gestión de usuarios, roles y permisos
 │   ├── contabilidad/    # Módulo de contabilidad
+│   ├── conciliacion/    # Módulo de conciliación
 │   ├── depositos/       # Módulo de depósitos
-│   ├── mba3-consultas/  # Consultas MBA3
-│   ├── reportes/        # Módulo de reportes
-│   └── usuarios/        # Gestión de usuarios, roles y permisos
+│   └── reportes/        # Módulo de reportes
 ├── components/          # Componentes compartidos
+├── composables/         # Composables reutilizables
 ├── layouts/            # Layouts de la aplicación
 ├── router/             # Configuración de rutas
-├── services/           # Servicios compartidos
+├── services/           # Servicios compartidos (API, auth)
 ├── stores/             # Stores Pinia globales
 └── views/              # Vistas compartidas
 ```
 
 ## 🎯 Módulos Principales
 
-### Usuarios, Roles y Permisos
-Sistema completo de gestión de usuarios con control de acceso basado en roles (RBAC).
-
-- **Rutas:** `/usuarios`, `/roles`, `/permisos`
-- **Documentación:** Ver [src/modules/usuarios/README.md](src/modules/usuarios/README.md)
-
 ### MBA3 Consultas
-Módulo para consultas y gestión de órdenes de compra, despachos y remisiones.
+Sistema completo de gestión de pedidos, órdenes de compra y despachos.
 
-- **Rutas:** `/dashboard`, `/ordenes-compra`, `/remisiones`, `/homologaciones`, `/proceso-completo`
+- **Rutas:** `/dashboard`, `/ordenes-compra`, `/pedidos`, `/remisiones`, `/homologaciones`
 - **Características:**
+  - Creación y validación de pedidos
   - Integración con SAP
   - Polling automático de despachos
-  - Optimización de actualización de estados
+  - Gestión de homologaciones SKU
+  - Procesamiento de órdenes de compra
 
-### Contabilidad
-Módulo de ejemplo que muestra la estructura recomendada para nuevos módulos.
+### Usuarios, Roles y Permisos
+Sistema completo de gestión de acceso (RBAC).
 
-- **Ruta:** `/contabilidad`
-- **Documentación:** Ver [src/modules/contabilidad/README.md](src/modules/contabilidad/README.md)
+- **Rutas:** `/usuarios`, `/roles`, `/permisos`
+- **Documentación:** [src/modules/usuarios/README.md](src/modules/usuarios/README.md)
+
+### Otros Módulos
+- **Contabilidad** - `/contabilidad`
+- **Conciliación** - `/conciliacion`
+- **Depósitos** - `/depositos`
+- **Reportes** - `/reportes`
 
 ## 📚 Documentación
 
-- **[Guía de Desarrollo de Módulos](MODULOS.md)** - Cómo crear nuevos módulos
-- **[Documentación Técnica](docs/)** - Documentación técnica detallada
-  - [Optimización de Estados ODC](docs/optimizacion-estados-odc.md)
-  - [Polling Automático de Despachos](docs/polling-automatico-despachos.md)
+### Guías de Desarrollo
+- **[Guía de Desarrollo de Módulos](docs/MODULOS.md)** 🚀 - Cómo crear nuevos módulos paso a paso
+- **[Guía de Modo Oscuro](docs/DARK_MODE_GUIDE.md)** 🌙 - Implementar dark mode en componentes
+- **[Índice de Documentación](docs/README.md)** - Documentación técnica completa
+
+### Documentación Técnica
+- [Optimización de Estados ODC](docs/optimizacion-estados-odc.md)
+- [Polling Automático de Despachos](docs/polling-automatico-despachos.md)
+- [Refactorización Pedido Detalle](docs/REFACTORIZACION_PEDIDO_DETALLE.md)
+- [Análisis HU-02 Frontend](docs/ANALISIS_HU-02_FRONTEND.md)
 
 ## 🛠️ Tecnologías
 
-- **Vue 3** - Framework frontend
+- **Vue 3** - Framework progresivo de JavaScript
 - **TypeScript** - Tipado estático
-- **Vite** - Build tool
+- **Vite** - Build tool ultrarrápido
 - **Pinia** - Gestión de estado
 - **Vue Router** - Enrutamiento
-- **Tailwind CSS** - Estilos
+- **Tailwind CSS** - Framework CSS utility-first
 - **Axios** - Cliente HTTP
+- **Chart.js** - Gráficos y visualizaciones
 
-## 🔐 Autenticación
+## ✨ Características
 
-La aplicación utiliza JWT para autenticación. El token se almacena y se envía automáticamente en las peticiones HTTP.
+### Generales
+- ✅ Autenticación JWT con tokens persistentes
+- ✅ Modo oscuro con persistencia de preferencias
+- ✅ Sistema de permisos granular (RBAC)
+- ✅ Componentes reutilizables y modulares
+- ✅ Responsive design (mobile-first)
+- ✅ Lazy loading de módulos y rutas
 
-## 📝 Desarrollo
+### MBA3 Consultas
+- ✅ Creación de pedidos desde Excel
+- ✅ Validación en tiempo real de SKUs
+- ✅ Sistema de homologaciones MBA3 ↔ SAP
+- ✅ Procesamiento de órdenes de compra
+- ✅ Integración bidireccional con SAP
+- ✅ Dashboard con métricas en tiempo real
+- ✅ Exportación a Excel
+
+## 🎨 Desarrollo
 
 ### Crear un Nuevo Módulo
 
-Ver la [Guía de Desarrollo de Módulos](MODULOS.md) para instrucciones detalladas.
+Ver la [Guía de Desarrollo de Módulos](docs/MODULOS.md) para instrucciones detalladas.
 
-### Estructura de un Módulo
-
-Cada módulo debe seguir esta estructura:
-
+**Estructura básica:**
 ```
 src/modules/[nombre-modulo]/
 ├── views/          # Vistas del módulo
@@ -107,6 +131,111 @@ src/modules/[nombre-modulo]/
 └── types.ts        # Tipos TypeScript
 ```
 
+### Modo Oscuro
+
+Ver la [Guía de Modo Oscuro](docs/DARK_MODE_GUIDE.md) para implementar dark mode en tus componentes.
+
+**Ejemplo:**
+```vue
+<div class="bg-white dark:bg-gray-800">
+  <h1 class="text-gray-900 dark:text-white">Título</h1>
+  <p class="text-gray-600 dark:text-gray-300">Descripción</p>
+</div>
+```
+
+### Buenas Prácticas
+
+1. **Modularidad** - Cada módulo debe ser independiente
+2. **TypeScript** - Definir todos los tipos explícitamente
+3. **Composables** - Reutilizar lógica común
+4. **Lazy Loading** - Cargar módulos bajo demanda
+5. **Error Handling** - Manejar errores en servicios
+6. **Responsive** - Diseñar mobile-first
+
+## 🔐 Autenticación y Seguridad
+
+- Autenticación JWT con renovación automática
+- Tokens almacenados en `localStorage`
+- Interceptores Axios para agregar tokens
+- Redirección automática al login si no está autenticado
+- Control de permisos a nivel de ruta y componente
+
+**Ejemplo de ruta protegida:**
+```typescript
+{
+  path: '/admin',
+  meta: { 
+    requiresAuth: true,
+    permissions: ['admin.view']
+  }
+}
+```
+
+## 🧪 Testing
+
+```bash
+# Ejecutar tests (cuando estén configurados)
+npm run test
+
+# Tests unitarios
+npm run test:unit
+
+# Tests e2e
+npm run test:e2e
+```
+
+## 🚀 Deploy
+
+```bash
+# Build para producción
+npm run build
+
+# Los archivos compilados estarán en /dist
+```
+
+### Variables de Entorno
+
+Configurar en `.env.production`:
+```env
+VITE_API_URL=https://api.production.com
+VITE_APP_NAME=SCNexus
+```
+
+## 🤝 Colaboración
+
+1. Cada desarrollador trabaja en su módulo
+2. Hacer commits frecuentes con mensajes descriptivos
+3. Nombres de ramas: `feature/modulo-funcionalidad`
+4. Pull requests con descripción clara
+5. Code review antes de merge
+
+## 📝 Convenciones
+
+### Nombres de Archivos
+- Componentes: `PascalCase.vue` (ej: `UserModal.vue`)
+- Composables: `camelCase.ts` con prefijo `use` (ej: `useAuth.ts`)
+- Stores: `camelCase.ts` con sufijo `Store` (ej: `authStore.ts`)
+- Tipos: `types.ts` o `[nombre].types.ts`
+
+### Estilo de Código
+- 2 espacios de indentación
+- Comillas simples
+- Punto y coma opcional
+- Usar Composition API con `<script setup>`
+
+## 📞 Soporte
+
+Para dudas sobre desarrollo o arquitectura, consulta:
+1. [Guía de Módulos](docs/MODULOS.md)
+2. [Documentación técnica](docs/README.md)
+3. Módulos existentes como referencia
+
 ## 📄 Licencia
 
 Este proyecto es privado y de uso interno.
+
+---
+
+**Versión:** 2.0  
+**Última actualización:** Enero 2026  
+**Documentación completa:** [docs/README.md](docs/README.md)
