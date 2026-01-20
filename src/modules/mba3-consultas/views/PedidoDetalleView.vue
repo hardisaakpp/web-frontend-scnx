@@ -52,6 +52,7 @@
           :pedido="pedido"
           :copy-feedback="copyFeedback"
           :editable="!esModoMabelTrading"
+          :default-expanded="!esModoMabelTrading"
           @copy-to-clipboard="copyToClipboard"
           @update-fecha-pedido="handleUpdateFechaPedido"
           @update-fecha-entrega="handleUpdateFechaEntrega"
