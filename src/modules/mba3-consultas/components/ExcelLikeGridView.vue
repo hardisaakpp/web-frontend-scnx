@@ -66,6 +66,12 @@
           <tr>
             <!-- Columnas fijas -->
             <th
+              v-if="isColumnVisible('numero')"
+              class="bg-gray-50 dark:bg-gray-900 px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 w-12"
+            >
+              #
+            </th>
+            <th
               v-if="isColumnVisible('codigo')"
               class="bg-gray-50 dark:bg-gray-900 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700"
             >
@@ -133,7 +139,7 @@
         <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
           <!-- ⭐ IMPORTANTE: El resaltado ámbar debe aparecer inmediatamente si el producto tiene modificaciones del flujo anterior (EL RAYO) -->
           <tr
-            v-for="producto in productosArray"
+            v-for="(producto, index) in productosArray"
             :key="producto.codigo_producto"
             :class="[
               'transition-colors',
@@ -149,9 +155,19 @@
           >
             <!-- Columnas fijas - fondo completamente opaco -->
             <td
-              v-if="isColumnVisible('codigo')"
-              class="sticky left-0 z-[5] px-4 py-3 text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap border-r border-gray-200 dark:border-gray-700 fixed-column-bg"
+              v-if="isColumnVisible('numero')"
+              class="sticky left-0 z-[5] px-4 py-3 text-sm font-medium text-gray-500 dark:text-gray-400 text-center whitespace-nowrap border-r border-gray-200 dark:border-gray-700 fixed-column-bg"
               :class="producto.error ? 'fixed-bg-error' : tieneModificaciones(producto) ? 'fixed-bg-amber' : producto.diferencia === 0 ? 'fixed-bg-green' : producto.diferencia < 0 ? 'fixed-bg-yellow' : 'fixed-bg-red'"
+            >
+              {{ index + 1 }}
+            </td>
+            <td
+              v-if="isColumnVisible('codigo')"
+              class="sticky z-[5] px-4 py-3 text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap border-r border-gray-200 dark:border-gray-700 fixed-column-bg"
+              :class="[
+                getStickyLeftClass('codigo'),
+                producto.error ? 'fixed-bg-error' : tieneModificaciones(producto) ? 'fixed-bg-amber' : producto.diferencia === 0 ? 'fixed-bg-green' : producto.diferencia < 0 ? 'fixed-bg-yellow' : 'fixed-bg-red'
+              ]"
             >
               {{ producto.codigo_producto }}
             </td>
@@ -235,8 +251,15 @@
         <tfoot v-if="showTotals" class="bg-gray-100 dark:bg-gray-900 border-t-2 border-gray-300 dark:border-gray-600">
           <tr>
             <td
+              v-if="isColumnVisible('numero')"
+              class="sticky left-0 z-[5] bg-gray-100 dark:bg-gray-900 px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700 text-center"
+            >
+              -
+            </td>
+            <td
               v-if="isColumnVisible('codigo')"
-              class="sticky left-0 z-[5] bg-gray-100 dark:bg-gray-900 px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700"
+              class="sticky z-[5] bg-gray-100 dark:bg-gray-900 px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700"
+              :class="getStickyLeftClass('codigo')"
             >
               TOTALES
             </td>
@@ -417,6 +440,7 @@ const showColumnSelector = ref(false)
 
 // Definir columnas disponibles para la vista Excel (solo fijas y calculadas, no tiendas)
 const availableColumns: ColumnConfig[] = [
+  { key: 'numero', label: '#', visible: true, align: 'center', format: 'text', fixed: true },
   { key: 'codigo', label: 'Código', visible: true, align: 'left', format: 'text', fixed: true },
   { key: 'producto', label: 'Producto', visible: true, align: 'left', format: 'text', fixed: true },
   { key: 'total_confirmado', label: 'Total Confirmado', visible: true, align: 'right', format: 'number', fixed: true },
@@ -465,6 +489,7 @@ function getStickyLeftClass(columnKey: string): string {
   
   let leftPosition = 0
   const widths: Record<string, number> = {
+    numero: 48,
     codigo: 120,
     producto: 200,
     total_confirmado: 120,
