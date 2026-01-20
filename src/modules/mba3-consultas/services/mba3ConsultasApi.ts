@@ -2145,5 +2145,47 @@ export const mba3ConsultasService = {
       throw new Error(message)
     }
   },
+
+  /**
+   * Ajusta automáticamente las bodegas cuando cambian las tiendas
+   * Mantiene el total confirmado constante
+   * Requiere permiso: mba3-consultas.proceso.execute
+   * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
+   * @param ajustesDetalle Array de ajustes de redistribución por producto
+   */
+  async ajustarBodegas(
+    numeroPedido: string,
+    ajustesDetalle: AjusteDetalle[]
+  ): Promise<{
+    status: 'success'
+    message: string
+    redistribucion_ajustada: AjusteDetalle[]
+  }> {
+    try {
+      const response = await mba3Api.post<{
+        status: 'success'
+        message: string
+        redistribucion_ajustada: AjusteDetalle[]
+      }>(
+        `/api/pedidos/${encodeURIComponent(numeroPedido)}/redistribucion/ajustar-bodegas`,
+        { ajustes_detalle: ajustesDetalle }
+      )
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [ajustarBodegas] Error al ajustar bodegas:', error)
+
+      let message = error.message || 'Error desconocido al ajustar bodegas'
+
+      if (error.response?.data) {
+        if (error.response.data.detail) {
+          message = error.response.data.detail
+        } else if (error.response.data.message) {
+          message = error.response.data.message
+        }
+      }
+
+      throw new Error(message)
+    }
+  },
 }
 

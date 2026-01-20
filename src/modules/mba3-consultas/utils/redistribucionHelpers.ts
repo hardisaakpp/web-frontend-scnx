@@ -31,6 +31,7 @@ export interface DistribucionTiendaEditada {
   cantidad_original: number
   cantidad_asignada: number
   diferencia: number
+  es_bodega?: boolean // Indica si es una bodega (RL-CD, OUT-CD, REG-CD)
 }
 
 /**
@@ -94,4 +95,14 @@ export function getMensajeValidacionRedistribucion(productos: ProductoRedistribu
   }
   
   return 'Complete la redistribución correctamente para habilitar la confirmación'
+}
+
+/**
+ * Determina si un código de tienda es una bodega
+ * Las bodegas son: RL-CD, OUT-CD, REG-CD
+ */
+export function esBodega(tiendaCodigo: string): boolean {
+  if (!tiendaCodigo) return false
+  const codigoUpper = tiendaCodigo.toUpperCase().trim()
+  return codigoUpper === 'RL-CD' || codigoUpper === 'OUT-CD' || codigoUpper === 'REG-CD'
 }
