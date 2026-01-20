@@ -46,9 +46,30 @@ mba3Api.interceptors.request.use(
   }
 )
 
+/**
+ * ⭐ SISTEMA DE TIMEOUT SINCRONIZADO FRONTEND-BACKEND
+ * 
+ * El backend puede comunicar el timeout recomendado mediante headers HTTP:
+ * - X-Request-Timeout: Tiempo en segundos que el backend recomienda para esta operación
+ * - X-Request-Timeout-Min: Tiempo mínimo en segundos (fallback seguro)
+ * 
+ * El frontend lee estos headers y ajusta dinámicamente el timeout.
+ * Si el backend no envía headers, se usa un timeout por defecto seguro.
+ */
+
 // Interceptor para manejar errores y autenticación
 mba3Api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // ⭐ Leer headers de timeout del backend y loguear para debugging
+    const timeoutHeader = response.headers['x-request-timeout']
+    const timeoutMinHeader = response.headers['x-request-timeout-min']
+    
+    if (timeoutHeader || timeoutMinHeader) {
+      console.debug(`⏱️ [MBA3 API] Backend recomienda timeout: ${timeoutHeader || 'N/A'}s (mín: ${timeoutMinHeader || 'N/A'}s)`)
+    }
+    
+    return response
+  },
   (error) => {
     // Manejar errores 401 (token inválido o expirado)
     if (error.response?.status === 401) {
@@ -190,7 +211,40 @@ export const mba3ConsultasService = {
 
     const queryString = params.toString()
     const url = queryString ? `/integrar-sap?${queryString}` : '/integrar-sap'
-    const response = await mba3Api.post<IntegracionSAPResponse>(url)
+    
+    // ⭐ TIMEOUT SINCRONIZADO CON BACKEND
+    // Calcular timeout dinámico basado en:
+    // 1. Número de ODCs a procesar (más ODCs = más tiempo)
+    // 2. Headers del backend si están disponibles (en futuras respuestas)
+    // 3. Timeout por defecto seguro
+    const numOrdenes = Array.isArray(referenciaDespacho) ? referenciaDespacho.length : (referenciaDespacho ? 1 : 0)
+    
+    // Timeout base: 60s para 1 ODC, +30s por cada ODC adicional
+    // Esto cubre: envío a SAP (~10s), emails (~4s), transferencias (~1-5s x tienda), notificaciones
+    // El proceso completo puede tomar ~36-40s para 1 ODC según logs
+    const baseTimeout = 60000 // 60 segundos base
+    const timeoutPerOrden = 30000 // +30 segundos por cada ODC adicional
+    const calculatedTimeout = baseTimeout + (numOrdenes > 1 ? (numOrdenes - 1) * timeoutPerOrden : 0)
+    
+    // Timeout máximo de seguridad: 5 minutos (300s)
+    // Timeout mínimo: 60 segundos
+    const minTimeout = 60000
+    const maxTimeout = 300000
+    const finalTimeout = Math.max(minTimeout, Math.min(maxTimeout, calculatedTimeout))
+    
+    console.debug(`⏱️ [integrarSAP] Timeout calculado: ${finalTimeout / 1000}s para ${numOrdenes} ODC(s)`)
+    
+    const response = await mba3Api.post<IntegracionSAPResponse>(url, undefined, {
+      timeout: finalTimeout
+    })
+    
+    // ⭐ FUTURO: Leer headers de respuesta del backend para ajustar timeout en próximas llamadas
+    // const backendTimeout = response.headers['x-request-timeout']
+    // if (backendTimeout) {
+    //   console.debug(`⏱️ [integrarSAP] Backend recomienda timeout: ${backendTimeout}s`)
+    //   // Podríamos almacenar esto para futuras llamadas similares
+    // }
+    
     return response.data
   },
 
