@@ -664,12 +664,21 @@ function getInputClass(producto: ProductoRedistribucion, tiendaCodigo: string): 
     return 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-purple-500 dark:focus:ring-purple-400'
   }
   
-  // Validación básica: no puede ser negativo y la suma no debe exceder cantidad_confirmada
-  const esValido = tienda.cantidad_asignada >= 0 && producto.cantidad_distribuida <= producto.cantidad_confirmada
+  // Validación básica: no puede ser negativo
+  if (tienda.cantidad_asignada < 0) {
+    return 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20 text-red-900 dark:text-red-200 focus:ring-red-500 dark:focus:ring-red-400'
+  }
+  
+  // ⭐ VALIDACIÓN VISUAL: Resaltar en rojo cuando el total exceda la cantidad confirmada
+  // Esto indica al usuario que debe corregir (ajustar bodegas o tiendas manualmente)
+  // Ya que las bodegas no se ajustan automáticamente, el usuario puede aumentar tiendas
+  // sin que se reste de las bodegas, lo que puede hacer que el total exceda lo confirmado
+  const esValido = producto.cantidad_distribuida <= producto.cantidad_confirmada
   
   if (esValido) {
     return 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-purple-500 dark:focus:ring-purple-400'
   } else {
+    // Resaltar en rojo para indicar que necesita corrección
     return 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20 text-red-900 dark:text-red-200 focus:ring-red-500 dark:focus:ring-red-400'
   }
 }

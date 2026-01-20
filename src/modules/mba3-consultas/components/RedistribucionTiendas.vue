@@ -858,8 +858,20 @@ function validarCantidadTiendaLocal(producto: ProductoRedistribucion, tienda: Di
     return sum + (t.cantidad_asignada || 0)
   }, 0)
   
-  // La suma no puede exceder la cantidad confirmada
-  return sumaActual <= producto.cantidad_confirmada
+  // ⭐ ACTUALIZADO: Permitir que el total exceda la cantidad confirmada cuando hay bodegas
+  // Ya que las bodegas no se ajustan automáticamente, el usuario puede aumentar tiendas
+  // sin que se reste de las bodegas, lo que puede hacer que el total exceda lo confirmado
+  const tieneBodegas = producto.distribucion_tiendas.some(t => t.es_bodega && (t.cantidad_asignada || 0) > 0)
+  
+  // Si hay bodegas, permitir que el total exceda (el usuario debe ajustar manualmente las bodegas)
+  // Si no hay bodegas, mantener la validación estricta
+  if (tieneBodegas) {
+    // Con bodegas: permitir exceder (advertencia visual, no bloqueo)
+    return true
+  } else {
+    // Sin bodegas: validación estricta (no puede exceder)
+    return sumaActual <= producto.cantidad_confirmada
+  }
 }
 
 function distribuirProporcionalmente(codigoProducto: string) {

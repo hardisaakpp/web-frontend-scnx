@@ -192,8 +192,21 @@ export function useRedistribucion(options: {
       return sum + (t.cantidad_asignada || 0)
     }, 0)
     
-    // La suma no puede exceder la cantidad confirmada
-    return sumaActual <= producto.cantidad_confirmada
+    // ⭐ ACTUALIZADO: Permitir que el total exceda la cantidad confirmada cuando hay bodegas
+    // Ya que las bodegas no se ajustan automáticamente, el usuario puede aumentar tiendas
+    // sin que se reste de las bodegas, lo que puede hacer que el total exceda lo confirmado
+    // Esto es válido porque las bodegas mantienen su valor original
+    const tieneBodegas = producto.distribucion_tiendas.some(t => t.es_bodega && (t.cantidad_asignada || 0) > 0)
+    
+    // Si hay bodegas, permitir que el total exceda (el usuario debe ajustar manualmente las bodegas)
+    // Si no hay bodegas, mantener la validación estricta
+    if (tieneBodegas) {
+      // Con bodegas: permitir exceder (advertencia visual, no bloqueo)
+      return true
+    } else {
+      // Sin bodegas: validación estricta (no puede exceder)
+      return sumaActual <= producto.cantidad_confirmada
+    }
   }
 
   /**
@@ -331,54 +344,59 @@ export function useRedistribucion(options: {
   }
 
   /**
-   * Ajusta automáticamente las bodegas cuando se modifica una tienda
-   * Mantiene el total confirmado constante
+   * ⭐ DESHABILITADO: Ajuste automático de bodegas
+   * 
+   * Esta función ya no se usa porque el backend retiró la funcionalidad de restar
+   * automáticamente de las bodegas cuando se redistribuye a tiendas.
+   * Las bodegas ahora mantienen sus valores originales.
+   * 
+   * @deprecated Ya no se ajustan automáticamente las bodegas
    */
-  function ajustarBodegasAutomaticamente(producto: ProductoRedistribucion, tiendaModificada: DistribucionTiendaEditada, diferencia: number) {
-    // Si la tienda modificada es bodega, no ajustar
-    if (tiendaModificada.es_bodega) return
-    
-    // Obtener todas las bodegas del producto
-    const bodegas = producto.distribucion_tiendas.filter(t => t.es_bodega && t.tienda_codigo !== tiendaModificada.tienda_codigo)
-    
-    if (bodegas.length === 0) return
-    
-    // Calcular la diferencia que necesita ajustarse en las bodegas
-    // Si aumentó la tienda, disminuir bodegas. Si disminuyó, aumentar bodegas.
-    const diferenciaBodegas = -diferencia // Invertir para compensar
-    
-    // Si hay múltiples bodegas, distribuir proporcionalmente según su cantidad actual
-    const totalBodegas = bodegas.reduce((sum, b) => sum + Math.max(0, b.cantidad_asignada), 0)
-    
-    if (totalBodegas > 0) {
-      // Distribuir proporcionalmente
-      let diferenciaRestante = diferenciaBodegas
-      bodegas.forEach((bodega, index) => {
-        if (index === bodegas.length - 1) {
-          // La última bodega recibe el resto para evitar errores de redondeo
-          bodega.cantidad_asignada = Math.max(0, bodega.cantidad_asignada + diferenciaRestante)
-        } else {
-          const proporcion = Math.max(0, bodega.cantidad_asignada) / totalBodegas
-          const ajuste = Math.round(diferenciaBodegas * proporcion)
-          bodega.cantidad_asignada = Math.max(0, bodega.cantidad_asignada + ajuste)
-          diferenciaRestante -= ajuste
-        }
-      })
-    } else {
-      // Si todas las bodegas están en 0, distribuir equitativamente
-      const ajustePorBodega = Math.round(diferenciaBodegas / bodegas.length)
-      const resto = diferenciaBodegas % bodegas.length
-      
-      bodegas.forEach((bodega, index) => {
-        if (index === 0) {
-          // La primera bodega recibe el resto
-          bodega.cantidad_asignada = Math.max(0, ajustePorBodega + resto)
-        } else {
-          bodega.cantidad_asignada = Math.max(0, ajustePorBodega)
-        }
-      })
-    }
-  }
+  // function ajustarBodegasAutomaticamente(producto: ProductoRedistribucion, tiendaModificada: DistribucionTiendaEditada, diferencia: number) {
+  //   // Si la tienda modificada es bodega, no ajustar
+  //   if (tiendaModificada.es_bodega) return
+  //   
+  //   // Obtener todas las bodegas del producto
+  //   const bodegas = producto.distribucion_tiendas.filter(t => t.es_bodega && t.tienda_codigo !== tiendaModificada.tienda_codigo)
+  //   
+  //   if (bodegas.length === 0) return
+  //   
+  //   // Calcular la diferencia que necesita ajustarse en las bodegas
+  //   // Si aumentó la tienda, disminuir bodegas. Si disminuyó, aumentar bodegas.
+  //   const diferenciaBodegas = -diferencia // Invertir para compensar
+  //   
+  //   // Si hay múltiples bodegas, distribuir proporcionalmente según su cantidad actual
+  //   const totalBodegas = bodegas.reduce((sum, b) => sum + Math.max(0, b.cantidad_asignada), 0)
+  //   
+  //   if (totalBodegas > 0) {
+  //     // Distribuir proporcionalmente
+  //     let diferenciaRestante = diferenciaBodegas
+  //     bodegas.forEach((bodega, index) => {
+  //       if (index === bodegas.length - 1) {
+  //         // La última bodega recibe el resto para evitar errores de redondeo
+  //         bodega.cantidad_asignada = Math.max(0, bodega.cantidad_asignada + diferenciaRestante)
+  //       } else {
+  //         const proporcion = Math.max(0, bodega.cantidad_asignada) / totalBodegas
+  //         const ajuste = Math.round(diferenciaBodegas * proporcion)
+  //         bodega.cantidad_asignada = Math.max(0, bodega.cantidad_asignada + ajuste)
+  //         diferenciaRestante -= ajuste
+  //       }
+  //     })
+  //   } else {
+  //     // Si todas las bodegas están en 0, distribuir equitativamente
+  //     const ajustePorBodega = Math.round(diferenciaBodegas / bodegas.length)
+  //     const resto = diferenciaBodegas % bodegas.length
+  //     
+  //     bodegas.forEach((bodega, index) => {
+  //       if (index === 0) {
+  //         // La primera bodega recibe el resto
+  //         bodega.cantidad_asignada = Math.max(0, ajustePorBodega + resto)
+  //       } else {
+  //         bodega.cantidad_asignada = Math.max(0, ajustePorBodega)
+  //       }
+  //     })
+  //   }
+  // }
 
   /**
    * Actualiza cantidad de tienda
@@ -440,11 +458,12 @@ export function useRedistribucion(options: {
       tienda.cantidad_asignada = nuevoValor
     }
     
-    // ⭐ NUEVO: Ajustar bodegas automáticamente si se modificó una tienda (no bodega)
-    const diferencia = nuevoValor - valorAnterior
-    if (diferencia !== 0 && !tienda.es_bodega) {
-      ajustarBodegasAutomaticamente(producto, tienda, diferencia)
-    }
+    // ⭐ DESHABILITADO: El backend ya no ajusta automáticamente las bodegas
+    // Las bodegas mantienen sus valores originales cuando se redistribuye a tiendas
+    // const diferencia = nuevoValor - valorAnterior
+    // if (diferencia !== 0 && !tienda.es_bodega) {
+    //   ajustarBodegasAutomaticamente(producto, tienda, diferencia)
+    // }
     
     // Recalcular diferencias
     recalcularDiferencias()
