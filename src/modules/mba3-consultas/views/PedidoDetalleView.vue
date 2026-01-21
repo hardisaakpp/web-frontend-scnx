@@ -907,7 +907,7 @@ async function handleExportarMBA(params: ExportarMBAParams) {
   try {
     toast.info('Generando archivo...', 'Preparando descarga del pedido en formato MBA')
     
-    const blob = await mba3ConsultasService.exportarPedidoPlanoMba(numeroPedido.value, params)
+    const blob = await mba3ConsultasService.exportarPedidoPlanoMba(numeroPedido.value, params.formato || 'txt')
     
     // Crear URL del blob y descargar
     const url = URL.createObjectURL(blob)

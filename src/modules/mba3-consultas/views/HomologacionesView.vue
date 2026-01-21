@@ -3,8 +3,8 @@
     <!-- Header -->
     <div class="flex items-center justify-between flex-wrap gap-4">
       <div>
-        <h1 class="text-3xl font-bold text-gray-900">Homologaciones de SKU</h1>
-        <p class="mt-1 text-sm text-gray-500">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Homologaciones de SKU</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
           Administra las homologaciones de SKU que no coinciden entre MBA3 y SAP
         </p>
       </div>
@@ -47,11 +47,11 @@
           </svg>
         </div>
       </div>
-      <div class="bg-white rounded-lg shadow p-4 border-l-4 border-orange-500">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-orange-500 transition-colors duration-300">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm font-medium text-gray-600">Pendientes</p>
-            <p class="text-2xl font-bold text-gray-900">{{ store.estadisticas.total_pendientes }}</p>
+            <p class="text-sm font-medium text-gray-600 dark:text-gray-300">Pendientes</p>
+            <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ store.estadisticas.total_pendientes }}</p>
           </div>
           <svg class="w-8 h-8 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -69,11 +69,11 @@
           </svg>
         </div>
       </div>
-      <div class="bg-white rounded-lg shadow p-4 border-l-4 border-red-500">
+      <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 border-l-4 border-red-500 transition-colors duration-300">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm font-medium text-gray-600">Errores</p>
-            <p class="text-2xl font-bold text-gray-900">{{ store.estadisticas.total_errores }}</p>
+            <p class="text-sm font-medium text-gray-600 dark:text-gray-300">Errores</p>
+            <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ store.estadisticas.total_errores }}</p>
           </div>
           <svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -83,11 +83,11 @@
     </div>
 
     <!-- Filtros -->
-    <div class="bg-white rounded-lg shadow p-4">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 transition-colors duration-300">
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <!-- Búsqueda por SKU -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Buscar SKU</label>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Buscar SKU</label>
           <div class="relative">
             <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -98,7 +98,7 @@
               v-model="skuSearch"
               type="text"
               placeholder="Buscar por SKU..."
-              class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500 text-sm"
+              class="block w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-colors duration-300"
               @input="handleSkuSearch"
             />
           </div>
@@ -106,11 +106,11 @@
 
         <!-- Filtro por estado -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Estado</label>
           <select
             v-model="estadoFilter"
             @change="handleEstadoFilter"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500 text-sm"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-300"
           >
             <option value="">Todos</option>
             <option value="PENDIENTE">Pendiente</option>
@@ -121,11 +121,11 @@
 
         <!-- Filtro por diferencias -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Tiene Diferencias</label>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tiene Diferencias</label>
           <select
             v-model="tieneDiferenciasFilter"
             @change="handleTieneDiferenciasFilter"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500 text-sm"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-300"
           >
             <option :value="null">Todos</option>
             <option :value="true">Sí</option>
@@ -135,11 +135,11 @@
 
         <!-- Filtro por datos SAP -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">Tiene Datos SAP</label>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tiene Datos SAP</label>
           <select
             v-model="tieneDatosSapFilter"
             @change="handleTieneDatosSapFilter"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500 text-sm"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-300"
           >
             <option :value="null">Todos</option>
             <option :value="true">Sí</option>
@@ -155,13 +155,13 @@
             v-model="mostrarHomologados"
             type="checkbox"
             @change="handleMostrarHomologados"
-            class="h-4 w-4 text-violet-600 focus:ring-violet-500 border-gray-300 rounded"
+            class="h-4 w-4 text-violet-600 focus:ring-violet-500 border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 transition-colors duration-300"
           />
-          <span class="text-sm text-gray-700">Mostrar homologados</span>
+          <span class="text-sm text-gray-700 dark:text-gray-300">Mostrar homologados</span>
         </label>
         <button
           @click="limpiarFiltros"
-          class="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-50 rounded-lg transition-colors"
+          class="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-colors duration-300"
         >
           Limpiar filtros
         </button>
@@ -169,71 +169,71 @@
     </div>
 
     <!-- Tabla de homologaciones -->
-    <div class="bg-white rounded-lg shadow overflow-hidden">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden transition-colors duration-300">
       <div v-if="store.loading" class="text-center py-12">
         <svg class="animate-spin h-8 w-8 text-violet-600 mx-auto" fill="none" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
-        <p class="mt-4 text-gray-500">Cargando homologaciones...</p>
+        <p class="mt-4 text-gray-500 dark:text-gray-400">Cargando homologaciones...</p>
       </div>
 
       <div v-else-if="store.error" class="text-center py-12">
-        <p class="text-red-600">{{ store.error }}</p>
-        <button @click="cargarHomologaciones" class="mt-4 text-violet-600 hover:underline">Reintentar</button>
+        <p class="text-red-600 dark:text-red-400">{{ store.error }}</p>
+        <button @click="cargarHomologaciones" class="mt-4 text-violet-600 dark:text-violet-400 hover:underline">Reintentar</button>
       </div>
 
       <div v-else-if="store.filteredHomologaciones.length === 0" class="text-center py-12">
-        <svg class="w-12 h-12 text-gray-400 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
-        <p class="mt-4 text-gray-500">No se encontraron homologaciones</p>
+        <p class="mt-4 text-gray-500 dark:text-gray-400">No se encontraron homologaciones</p>
       </div>
 
       <div v-else class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-          <thead class="bg-gray-50">
+        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead class="bg-gray-50 dark:bg-gray-700">
             <tr>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SKU</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Producto</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">SKU</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Producto</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 <div class="flex items-center gap-2">
-                  <span class="text-blue-600">MBA3</span>
-                  <span class="text-gray-400">vs</span>
-                  <span class="text-green-600">SAP</span>
+                  <span class="text-blue-600 dark:text-blue-400">MBA3</span>
+                  <span class="text-gray-400 dark:text-gray-500">vs</span>
+                  <span class="text-green-600 dark:text-green-400">SAP</span>
                 </div>
               </th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
-              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Acciones</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Estado</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Acciones</th>
             </tr>
           </thead>
-          <tbody class="bg-white divide-y divide-gray-200">
+          <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             <tr
               v-for="homologacion in paginatedHomologaciones"
               :key="homologacion.homologacion_id || homologacion.sku_mba3"
-              class="hover:bg-gray-50"
+              class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200"
               :class="{
-                'bg-yellow-50': homologacion.estado === 'PENDIENTE',
-                'bg-green-50': homologacion.estado === 'HOMOLOGADO',
-                'bg-red-50': homologacion.estado === 'ERROR',
+                'bg-yellow-50 dark:bg-yellow-900/20': homologacion.estado === 'PENDIENTE',
+                'bg-green-50 dark:bg-green-900/20': homologacion.estado === 'HOMOLOGADO',
+                'bg-red-50 dark:bg-red-900/20': homologacion.estado === 'ERROR',
               }"
             >
               <!-- SKU -->
               <td class="px-4 py-4 whitespace-nowrap">
-                <div class="text-sm font-mono font-medium text-gray-900">
+                <div class="text-sm font-mono font-medium text-gray-900 dark:text-white">
                   {{ homologacion.sku_mba3 }}
                 </div>
-                <div v-if="homologacion.sku_sap && homologacion.sku_sap !== homologacion.sku_mba3" class="text-xs text-gray-500 mt-1">
+                <div v-if="homologacion.sku_sap && homologacion.sku_sap !== homologacion.sku_mba3" class="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   SAP: {{ homologacion.sku_sap }}
                 </div>
               </td>
 
               <!-- Producto -->
               <td class="px-4 py-4">
-                <div class="text-sm text-gray-900">
+                <div class="text-sm text-gray-900 dark:text-white">
                   {{ homologacion.nombre_producto_mba3 }}
                 </div>
-                <div v-if="homologacion.nombre_producto_sap && homologacion.nombre_producto_sap !== homologacion.nombre_producto_mba3" class="text-xs text-gray-500 mt-1">
+                <div v-if="homologacion.nombre_producto_sap && homologacion.nombre_producto_sap !== homologacion.nombre_producto_mba3" class="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   SAP: {{ homologacion.nombre_producto_sap }}
                 </div>
               </td>
@@ -243,11 +243,11 @@
                 <div class="space-y-2">
                   <!-- Precio Unitario -->
                   <div class="flex items-center gap-2">
-                    <span class="text-xs text-gray-500 w-24">Precio:</span>
-                    <span class="text-xs font-medium text-blue-600">
+                    <span class="text-xs text-gray-500 dark:text-gray-400 w-24">Precio:</span>
+                    <span class="text-xs font-medium text-blue-600 dark:text-blue-400">
                       {{ formatCurrency(homologacion.precio_unitario_mba3) }}
                     </span>
-                    <span class="text-xs text-gray-400">→</span>
+                    <span class="text-xs text-gray-400 dark:text-gray-500">→</span>
                     <span
                       class="text-xs font-medium"
                       :class="getComparisonClass(homologacion.precio_unitario_mba3, homologacion.precio_unitario_sap)"
@@ -258,11 +258,11 @@
 
                   <!-- Cantidad -->
                   <div class="flex items-center gap-2">
-                    <span class="text-xs text-gray-500 w-24">Cantidad:</span>
-                    <span class="text-xs font-medium text-blue-600">
+                    <span class="text-xs text-gray-500 dark:text-gray-400 w-24">Cantidad:</span>
+                    <span class="text-xs font-medium text-blue-600 dark:text-blue-400">
                       {{ homologacion.cantidad_docena_mba3 }} doc
                     </span>
-                    <span class="text-xs text-gray-400">→</span>
+                    <span class="text-xs text-gray-400 dark:text-gray-500">→</span>
                     <span
                       class="text-xs font-medium"
                       :class="getComparisonClass(homologacion.cantidad_docena_mba3, homologacion.cantidad_pack_sap)"
@@ -273,11 +273,11 @@
 
                   <!-- Total -->
                   <div class="flex items-center gap-2">
-                    <span class="text-xs text-gray-500 w-24">Total:</span>
-                    <span class="text-xs font-medium text-blue-600">
+                    <span class="text-xs text-gray-500 dark:text-gray-400 w-24">Total:</span>
+                    <span class="text-xs font-medium text-blue-600 dark:text-blue-400">
                       {{ formatCurrency(homologacion.total_linea_mba3) }}
                     </span>
-                    <span class="text-xs text-gray-400">→</span>
+                    <span class="text-xs text-gray-400 dark:text-gray-500">→</span>
                     <span
                       class="text-xs font-medium"
                       :class="getComparisonClass(homologacion.total_linea_mba3, homologacion.subtotal_sap)"
@@ -297,10 +297,10 @@
                   {{ getEstadoLabel(homologacion.estado) }}
                 </span>
                 <div v-if="homologacion.tiene_diferencias" class="mt-1">
-                  <span class="text-xs text-orange-600">⚠ Diferencias</span>
+                  <span class="text-xs text-orange-600 dark:text-orange-400">⚠ Diferencias</span>
                 </div>
                 <div v-if="!homologacion.tiene_datos_sap" class="mt-1">
-                  <span class="text-xs text-red-600">⚠ Sin datos SAP</span>
+                  <span class="text-xs text-red-600 dark:text-red-400">⚠ Sin datos SAP</span>
                 </div>
               </td>
 
@@ -308,7 +308,7 @@
               <td class="px-4 py-4 whitespace-nowrap text-sm">
                 <button
                   @click="abrirModalEdicion(homologacion)"
-                  class="text-violet-600 hover:text-violet-900 hover:underline font-medium"
+                  class="text-violet-600 dark:text-violet-400 hover:text-violet-900 dark:hover:text-violet-300 hover:underline font-medium transition-colors duration-200"
                 >
                   Editar
                 </button>
@@ -319,26 +319,26 @@
       </div>
 
       <!-- Paginación -->
-      <div v-if="store.totalPages > 1" class="bg-gray-50 px-4 py-3 flex items-center justify-between border-t border-gray-200">
+      <div v-if="store.totalPages > 1" class="bg-gray-50 dark:bg-gray-700 px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-600 transition-colors duration-300">
         <div class="flex-1 flex justify-between sm:hidden">
           <button
             @click="cambiarPagina(store.currentPage - 1)"
             :disabled="store.currentPage === 1"
-            class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
           >
             Anterior
           </button>
           <button
             @click="cambiarPagina(store.currentPage + 1)"
             :disabled="store.currentPage >= store.totalPages"
-            class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
           >
             Siguiente
           </button>
         </div>
         <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
           <div>
-            <p class="text-sm text-gray-700">
+            <p class="text-sm text-gray-700 dark:text-gray-300">
               Mostrando
               <span class="font-medium">{{ (store.currentPage - 1) * store.pageSize + 1 }}</span>
               a
@@ -353,7 +353,7 @@
               <button
                 @click="cambiarPagina(store.currentPage - 1)"
                 :disabled="store.currentPage === 1"
-                class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
               >
                 <span class="sr-only">Anterior</span>
                 <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
@@ -364,17 +364,17 @@
                 v-for="page in visiblePages"
                 :key="page"
                 @click="cambiarPagina(page)"
-                class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium cursor-pointer"
+                class="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium cursor-pointer transition-colors duration-200"
                 :class="page === store.currentPage
-                  ? 'z-10 bg-violet-50 border-violet-500 text-violet-600'
-                  : 'bg-white text-gray-700 hover:bg-gray-50'"
+                  ? 'z-10 bg-violet-50 dark:bg-violet-900/30 border-violet-500 dark:border-violet-500 text-violet-600 dark:text-violet-400'
+                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
               >
                 {{ page }}
               </span>
               <button
                 @click="cambiarPagina(store.currentPage + 1)"
                 :disabled="store.currentPage >= store.totalPages"
-                class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
               >
                 <span class="sr-only">Siguiente</span>
                 <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
@@ -605,22 +605,22 @@ function formatCurrency(value: number | null | undefined): string {
 }
 
 function getComparisonClass(mba3Value: number | null | undefined, sapValue: number | null | undefined): string {
-  if (sapValue === null || sapValue === undefined) return 'text-red-600'
-  if (mba3Value === null || mba3Value === undefined) return 'text-green-600'
-  if (Math.abs(mba3Value - sapValue) < 0.01) return 'text-green-600'
-  return 'text-orange-600'
+  if (sapValue === null || sapValue === undefined) return 'text-red-600 dark:text-red-400'
+  if (mba3Value === null || mba3Value === undefined) return 'text-green-600 dark:text-green-400'
+  if (Math.abs(mba3Value - sapValue) < 0.01) return 'text-green-600 dark:text-green-400'
+  return 'text-orange-600 dark:text-orange-400'
 }
 
 function getEstadoClass(estado: string): string {
   switch (estado) {
     case 'PENDIENTE':
-      return 'bg-yellow-100 text-yellow-800'
+      return 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300'
     case 'HOMOLOGADO':
-      return 'bg-green-100 text-green-800'
+      return 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
     case 'ERROR':
-      return 'bg-red-100 text-red-800'
+      return 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
     default:
-      return 'bg-gray-100 text-gray-800'
+      return 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
   }
 }
 

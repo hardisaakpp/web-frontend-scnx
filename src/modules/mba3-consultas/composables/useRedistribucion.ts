@@ -399,9 +399,10 @@ export function useRedistribucion(options: {
   // }
 
   /**
-   * Actualiza cantidad de tienda
+   * Actualiza cantidad de tienda o bodega
    * ⭐ MEJORADO: Validaciones mejoradas (enteros, rangos, formato de tienda)
-   * ⭐ NUEVO: Ajuste automático de bodegas cuando se modifica una tienda
+   * ⭐ INDEPENDENCIA: Bodegas y tiendas son independientes - cada columna se puede
+   *    modificar libremente sin afectar a las demás
    */
   function actualizarCantidadTienda(codigoProducto: string, tiendaCodigo: string, event: Event) {
     const target = event.target as HTMLInputElement
@@ -458,12 +459,11 @@ export function useRedistribucion(options: {
       tienda.cantidad_asignada = nuevoValor
     }
     
-    // ⭐ DESHABILITADO: El backend ya no ajusta automáticamente las bodegas
-    // Las bodegas mantienen sus valores originales cuando se redistribuye a tiendas
-    // const diferencia = nuevoValor - valorAnterior
-    // if (diferencia !== 0 && !tienda.es_bodega) {
-    //   ajustarBodegasAutomaticamente(producto, tienda, diferencia)
-    // }
+    // ⭐ INDEPENDENCIA: Bodegas y tiendas son independientes
+    // - Al modificar una tienda, no se ajustan las bodegas
+    // - Al modificar una bodega, no se ajustan las tiendas
+    // - Cada columna se puede aumentar o reducir libremente sin afectar a las demás
+    // El usuario es responsable de asegurar que las cantidades sean correctas
     
     // Recalcular diferencias
     recalcularDiferencias()

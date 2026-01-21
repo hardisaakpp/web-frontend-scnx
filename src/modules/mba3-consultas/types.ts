@@ -1259,6 +1259,8 @@ export interface ExportarMBAParams {
   consolidado?: boolean
   /** Si true, incluye las 19 líneas de encabezado del formato MBA */
   incluir_encabezado?: boolean
+  /** Formato de salida: 'csv' o 'txt' (por defecto 'txt') */
+  formato?: 'csv' | 'txt'
 }
 
 /**
