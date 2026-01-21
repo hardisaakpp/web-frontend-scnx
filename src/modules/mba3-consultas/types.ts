@@ -1235,3 +1235,39 @@ export interface PedidosListadoFiltros {
   limit?: number
   offset?: number
 }
+
+// ========== HU-08: Exportación de Pedidos a Formato MBA ==========
+
+/**
+ * Parámetros de configuración para exportar pedido a formato plano MBA
+ * Estos parámetros corresponden a las columnas del formato de importación de PEDIDOS DE CLIENTES de MBA
+ */
+export interface ExportarMBAParams {
+  /** Código del cliente en MBA (ej: CLI0495) - Columna 3 */
+  codigo_cliente: string
+  /** Código de subcliente en MBA (ej: GO05) - Columna 4, dejar vacío si no aplica */
+  codigo_subcliente?: string
+  /** Código de moneda (ej: US, PEN) - Columna 7, default: US */
+  moneda?: string
+  /** Código de bodega en MBA (ej: BPT) - Columna 8 */
+  bodega: string
+  /** Código del vendedor en MBA (ej: JPC) - Columna 9 */
+  vendedor: string
+  /** Número de pedido para agrupar líneas en MBA - Columna 2, default: 1 */
+  numero_pedido_mba?: number
+  /** Si true, consolida las cantidades por producto (ignora tiendas) */
+  consolidado?: boolean
+  /** Si true, incluye las 19 líneas de encabezado del formato MBA */
+  incluir_encabezado?: boolean
+}
+
+/**
+ * Valores por defecto para los parámetros de exportación MBA
+ */
+export const EXPORTAR_MBA_DEFAULTS: Partial<ExportarMBAParams> = {
+  codigo_subcliente: '',
+  moneda: 'US',
+  numero_pedido_mba: 1,
+  consolidado: false,
+  incluir_encabezado: true,
+}

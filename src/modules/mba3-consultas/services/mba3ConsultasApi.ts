@@ -6,7 +6,7 @@ import type {
 } from '../types'
 import type { OrdenCompraResponse, OrdenCompraLogResponse, RemisionResponse } from '../types'
 import type { HealthResponse, ProcesoResponse } from '../types'
-import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, SkuHomologacionCreateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstado, ProcesoEstadoResponse, SugerenciaProducto, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuRequest, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, PedidoCompleto, CargarRespuestaProveedorResponse, RespuestaProveedorResponse, ProcesarConfirmacionResponse, ReporteDiferenciasResponse, IntegracionSAPResponse, ActualizarCostoPedidoResponse, AjusteDetalle, ResumenConfirmacion, GuardarModificacionesColumnasRequest, GuardarModificacionesColumnasResponse, ObtenerModificacionesColumnasResponse, ProcesamientoSAPResponse, PedidosListadoResponse, CrearOCDesdePedidoResponse, CrearPedidoRequest, CrearPedidoResponse, ModificarPedidoCabeceraRequest, ModificarPedidoCabeceraResponse } from '../types'
+import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, SkuHomologacionCreateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstado, ProcesoEstadoResponse, SugerenciaProducto, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuRequest, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, PedidoCompleto, CargarRespuestaProveedorResponse, RespuestaProveedorResponse, ProcesarConfirmacionResponse, ReporteDiferenciasResponse, IntegracionSAPResponse, ActualizarCostoPedidoResponse, AjusteDetalle, ResumenConfirmacion, GuardarModificacionesColumnasRequest, GuardarModificacionesColumnasResponse, ObtenerModificacionesColumnasResponse, ProcesamientoSAPResponse, PedidosListadoResponse, CrearOCDesdePedidoResponse, CrearPedidoRequest, CrearPedidoResponse, ModificarPedidoCabeceraRequest, ModificarPedidoCabeceraResponse, ExportarMBAParams } from '../types'
 
 // Usar la URL base del backend MBA3
 const API_BASE_URL = import.meta.env.VITE_MBA3_API_BASE_URL || 'http://localhost:8000'
@@ -1336,17 +1336,45 @@ export const mba3ConsultasService = {
   },
 
   /**
-   * Exporta un pedido en formato plano (CSV o TXT) para subir en MBA
+   * Exporta un pedido en formato plano (.txt) para importar en MBA
    * HU-08: Permite a usuarios de El Rayo descargar el pedido en archivo plano
+   * 
+   * El archivo generado sigue el formato de importación de PEDIDOS DE CLIENTES de MBA:
+   * - 19 líneas de encabezado (se eliminan automáticamente al importar)
+   * - 35 columnas separadas por TAB
+   * - Formato de fechas: DD/MM/YYYY
+   * 
    * Requiere permiso: mba3-consultas.facturas.view
    * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
-   * @param formato Formato de salida: 'csv' o 'txt' (por defecto 'csv')
-   * @returns Blob del archivo plano
+   * @param params Parámetros de configuración para el formato MBA
+   * @returns Blob del archivo .txt
    */
-  async exportarPedidoPlanoMba(numeroPedido: string, formato: 'csv' | 'txt' = 'csv'): Promise<Blob> {
+  async exportarPedidoPlanoMba(numeroPedido: string, params: ExportarMBAParams): Promise<Blob> {
     try {
+      // Construir query params
+      const queryParams = new URLSearchParams()
+      queryParams.append('codigo_cliente', params.codigo_cliente)
+      queryParams.append('bodega', params.bodega)
+      queryParams.append('vendedor', params.vendedor)
+      
+      if (params.codigo_subcliente) {
+        queryParams.append('codigo_subcliente', params.codigo_subcliente)
+      }
+      if (params.moneda) {
+        queryParams.append('moneda', params.moneda)
+      }
+      if (params.numero_pedido_mba !== undefined) {
+        queryParams.append('numero_pedido_mba', params.numero_pedido_mba.toString())
+      }
+      if (params.consolidado !== undefined) {
+        queryParams.append('consolidado', params.consolidado.toString())
+      }
+      if (params.incluir_encabezado !== undefined) {
+        queryParams.append('incluir_encabezado', params.incluir_encabezado.toString())
+      }
+
       const response = await mba3Api.get<Blob>(
-        `/api/pedidos/${encodeURIComponent(numeroPedido)}/exportar-plano-mba?formato=${formato}`,
+        `/api/pedidos/${encodeURIComponent(numeroPedido)}/exportar-plano-mba?${queryParams.toString()}`,
         {
           responseType: 'blob',
         }
@@ -1357,7 +1385,16 @@ export const mba3ConsultasService = {
 
       let message = error.message || 'Error desconocido al exportar pedido plano'
 
-      if (error.response?.data) {
+      // Si el error es un blob, intentar leer el mensaje
+      if (error.response?.data instanceof Blob) {
+        try {
+          const text = await error.response.data.text()
+          const json = JSON.parse(text)
+          message = json.detail || json.message || message
+        } catch {
+          // Ignorar si no se puede parsear
+        }
+      } else if (error.response?.data) {
         if (error.response.data.detail) {
           message = error.response.data.detail
         } else if (error.response.data.message) {
