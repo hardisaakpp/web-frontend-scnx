@@ -417,9 +417,10 @@ const toast = useToast()
 const pedidos = ref<PedidoResumido[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
+const PAGE_SIZE = 10
 const metadata = ref<PedidosListadoMetadata>({
   total: 0,
-  limit: 50,
+  limit: PAGE_SIZE,
   offset: 0,
   has_more: false
 })
@@ -444,7 +445,7 @@ const filtros = ref<PedidosListadoFiltros>({
   proveedor_nombre: '',
   numero_pedido: '',
   creado_por: '',
-  limit: 50,
+  limit: PAGE_SIZE,
   offset: 0
 })
 
@@ -597,7 +598,7 @@ function limpiarFiltros() {
     proveedor_nombre: '',
     numero_pedido: '',
     creado_por: '',
-    limit: 50,
+    limit: PAGE_SIZE,
     offset: 0
   }
   filtroSoloPendientes.value = false
