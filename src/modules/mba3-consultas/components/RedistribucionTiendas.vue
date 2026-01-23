@@ -12,22 +12,6 @@
           <span class="text-sm text-gray-600 dark:text-gray-400">Vista:</span>
           <div class="inline-flex rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 p-1">
             <button
-              @click="modoVista = 'compacta'"
-              :class="[
-                'px-3 py-1.5 text-sm font-medium rounded transition-colors',
-                modoVista === 'compacta'
-                  ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
-                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-              ]"
-            >
-              <span class="flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                </svg>
-                Compacta
-              </span>
-            </button>
-            <button
               @click="modoVista = 'excel'"
               :class="[
                 'px-3 py-1.5 text-sm font-medium rounded transition-colors',
@@ -41,6 +25,22 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
                 </svg>
                 Matríz
+              </span>
+            </button>
+            <button
+              @click="modoVista = 'compacta'"
+              :class="[
+                'px-3 py-1.5 text-sm font-medium rounded transition-colors',
+                modoVista === 'compacta'
+                  ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+              ]"
+            >
+              <span class="flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                </svg>
+                Compacta
               </span>
             </button>
           </div>
@@ -601,7 +601,7 @@ const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
 // Estado para el modo de vista
-const modoVista = ref<'compacta' | 'excel'>('compacta')
+const modoVista = ref<'compacta' | 'excel'>('excel')
 
 // ⭐ Gestión de columnas visibles en la tabla
 const showColumnSelector = ref(false)
