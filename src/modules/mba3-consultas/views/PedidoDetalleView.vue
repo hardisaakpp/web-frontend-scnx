@@ -144,16 +144,17 @@
                     v-for="(column, index) in orderedVisibleColumns"
                     :key="column.key"
                     :draggable="!column.fixed"
-                    @dragstart="!column.fixed && handleDragStart(index)"
-                    @dragover.prevent="!column.fixed && handleDragOver(index)"
-                    @drop.prevent="!column.fixed && handleDrop(index)"
+                    @dragstart="!column.fixed && handleDragStart($event, column.key)"
+                    @dragover.prevent="!column.fixed && handleDragOver($event, column.key)"
+                    @dragleave="!column.fixed && handleDragLeave()"
+                    @drop.prevent="!column.fixed && handleDrop($event, column.key)"
                     @dragend="!column.fixed && handleDragEnd()"
                     :class="[
                       'px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider select-none',
                       column.fixed ? 'cursor-default' : 'cursor-move',
                       column.align === 'right' ? 'text-right' : column.align === 'center' ? 'text-center' : 'text-left',
-                      draggedColumnIndex === index ? 'opacity-50 bg-indigo-100 dark:bg-indigo-900' : '',
-                      dragOverColumnIndex === index && draggedColumnIndex !== null ? 'border-l-4 border-indigo-500' : ''
+                      draggedColumnKey === column.key ? 'opacity-50 bg-indigo-100 dark:bg-indigo-900' : '',
+                      dragOverColumnKey === column.key && draggedColumnKey !== null ? 'border-l-4 border-indigo-500' : ''
                     ]"
                   >
                     {{ column.label }}
@@ -350,8 +351,8 @@ const columnasModificadas = ref<Set<string>>(new Set())
 // Gestión de columnas visibles en la tabla
 const showColumnSelector = ref(false)
 const confirmando = ref(false)
-const draggedColumnIndex = ref<number | null>(null)
-const dragOverColumnIndex = ref<number | null>(null)
+const draggedColumnKey = ref<string | null>(null)
+const dragOverColumnKey = ref<string | null>(null)
 
 // La interfaz EditingCell ahora está importada desde composables/useColumnManagement
 
@@ -1048,65 +1049,117 @@ function handleClickOutsideColumnSelector(event: MouseEvent) {
   showColumnSelector.value = false
 }
 
-function handleDragStart(index: number) {
-  draggedColumnIndex.value = index
-}
-
-function handleDragOver(index: number) {
-  if (draggedColumnIndex.value !== null) {
-    dragOverColumnIndex.value = index
+function handleDragStart(event: DragEvent, columnKey: string) {
+  const column = availableColumns.find(col => col.key === columnKey)
+  if (column?.fixed) {
+    return
+  }
+  
+  draggedColumnKey.value = columnKey
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', columnKey)
   }
 }
 
-// ⭐ ACTUALIZAR: handleDrop para usar el composable
-function handleDrop(dropIndex: number) {
-  if (draggedColumnIndex.value === null || draggedColumnIndex.value === dropIndex) {
+function handleDragOver(event: DragEvent, columnKey: string) {
+  event.preventDefault()
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'move'
+  }
+  
+  if (draggedColumnKey.value !== null && draggedColumnKey.value !== columnKey) {
+    dragOverColumnKey.value = columnKey
+  }
+  else {
+    dragOverColumnKey.value = null
+  }
+}
+
+function handleDragLeave() {
+  // No limpiar dragOverColumnKey aquí porque puede causar parpadeo
+  // Se limpiará en handleDrop o handleDragEnd
+}
+
+// ⭐ ACTUALIZAR: handleDrop para usar columnKey en lugar de índices
+function handleDrop(event: DragEvent, targetColumnKey: string) {
+  event.preventDefault()
+  
+  if (!draggedColumnKey.value || draggedColumnKey.value === targetColumnKey) {
+    draggedColumnKey.value = null
+    dragOverColumnKey.value = null
     return
   }
   
   // No permitir arrastrar columnas fijas
-  const draggedColumn = orderedVisibleColumns.value[draggedColumnIndex.value]
+  const draggedColumn = availableColumns.find(col => col.key === draggedColumnKey.value)
   if (draggedColumn?.fixed) {
+    draggedColumnKey.value = null
+    dragOverColumnKey.value = null
     return
   }
   
   // No permitir colocar columnas antes de columnas fijas
-  const dropColumn = orderedVisibleColumns.value[dropIndex]
-  if (dropColumn?.fixed && dropIndex < draggedColumnIndex.value) {
+  const targetColumn = availableColumns.find(col => col.key === targetColumnKey)
+  if (targetColumn?.fixed) {
+    draggedColumnKey.value = null
+    dragOverColumnKey.value = null
     return
   }
   
   // Reordenar usando el composable
-  const currentOrder = [...orderedVisibleColumnKeys.value]
-  const draggedKey = currentOrder[draggedColumnIndex.value]
+  // Preservar el orden completo (incluyendo columnas no visibles)
+  const fullOrder = [...columnOrder.value]
+  const visibleOrder = [...orderedVisibleColumnKeys.value]
   
-  // Remover columna arrastrada
-  currentOrder.splice(draggedColumnIndex.value, 1)
+  const draggedIndex = visibleOrder.indexOf(draggedColumnKey.value)
+  const targetIndex = visibleOrder.indexOf(targetColumnKey)
   
-  // Insertar en nueva posición (ajustar índice si hay columnas fijas antes)
-  let adjustedDropIndex = dropIndex
-  if (dropIndex > draggedColumnIndex.value) {
-    adjustedDropIndex = dropIndex - 1
+  if (draggedIndex === -1 || targetIndex === -1) {
+    draggedColumnKey.value = null
+    dragOverColumnKey.value = null
+    return
   }
-  currentOrder.splice(adjustedDropIndex, 0, draggedKey)
+  
+  // Obtener índices en el orden completo
+  const draggedIndexInFull = fullOrder.indexOf(draggedColumnKey.value)
+  const targetIndexInFull = fullOrder.indexOf(targetColumnKey)
+  
+  if (draggedIndexInFull === -1 || targetIndexInFull === -1) {
+    draggedColumnKey.value = null
+    dragOverColumnKey.value = null
+    return
+  }
+  
+  // Remover columna arrastrada del orden completo
+  fullOrder.splice(draggedIndexInFull, 1)
+  
+  // Insertar en nueva posición en el orden completo
+  // Si el índice objetivo es mayor que el arrastrado, ajustar porque ya removimos un elemento
+  const adjustedTargetIndex = targetIndexInFull > draggedIndexInFull ? targetIndexInFull - 1 : targetIndexInFull
+  fullOrder.splice(adjustedTargetIndex, 0, draggedColumnKey.value)
   
   // Asegurar que 'numero' esté al inicio
-  const numeroIndex = currentOrder.indexOf('numero')
+  const numeroIndex = fullOrder.indexOf('numero')
   if (numeroIndex > 0) {
-    currentOrder.splice(numeroIndex, 1)
-    currentOrder.unshift('numero')
+    fullOrder.splice(numeroIndex, 1)
+    fullOrder.unshift('numero')
   }
   
   // Actualizar el orden usando el composable
-  columnOrder.value = currentOrder
+  columnOrder.value = fullOrder
   
   // Guardar preferencias
   savePreferences()
+  
+  // Limpiar estados
+  draggedColumnKey.value = null
+  dragOverColumnKey.value = null
 }
 
 function handleDragEnd() {
-  draggedColumnIndex.value = null
-  dragOverColumnIndex.value = null
+  draggedColumnKey.value = null
+  dragOverColumnKey.value = null
 }
 
 // ⭐ NUEVO: Función para toggle de visibilidad de columnas

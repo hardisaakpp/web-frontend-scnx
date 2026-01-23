@@ -645,6 +645,15 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal de Integración SAP -->
+    <IntegracionSAPModal
+      :is-open="showIntegracionSAPModal"
+      :detalle="integracionSAPDetalle"
+      :solicitudes-transferencia="integracionSAPSolicitudes"
+      :estado-general="integracionSAPEstado"
+      @close="showIntegracionSAPModal = false"
+    />
   </div>
 </template>
 
@@ -660,7 +669,9 @@ import DespachosTable from '../components/DespachosTable.vue'
 import OrdenCompraTable from '../components/OrdenCompraTable.vue'
 import SkeletonTable from '../components/SkeletonTable.vue'
 import FolderTabs from '../components/FolderTabs.vue'
+import IntegracionSAPModal from '../components/IntegracionSAPModal.vue'
 import type { Tab } from '../types'
+import type { IntegracionSAPDetalle, SolicitudesTransferencia } from '../types'
 
 const procesoStore = useProcesoStore()
 const ordenesCompraStore = useOrdenesCompraStore()
@@ -685,6 +696,12 @@ const activeTab = ref<string>(
 
 // Estados de visualización de resultados
 const showMigrarResults = ref(false)
+
+// Estados para modal de integración SAP
+const showIntegracionSAPModal = ref(false)
+const integracionSAPDetalle = ref<IntegracionSAPDetalle | null>(null)
+const integracionSAPSolicitudes = ref<SolicitudesTransferencia | null>(null)
+const integracionSAPEstado = ref<'success' | 'partial' | 'error'>('success')
 
 // Estados para despachos
 const hayDespachos = ref(false)
@@ -1686,6 +1703,27 @@ async function handleIntegrarOC(referenciaDespacho: string, almacenDestinoParam?
         `${pedidosCerrados.length} pedido(s) marcado(s) como CONFIRMADO_ENVIADO`
       )
       console.log('📦 Pedidos cerrados después del envío:', pedidosCerrados)
+    }
+    
+    // ⭐ Mostrar modal con resultados de integración
+    if (detalles.length > 0) {
+      const detalle = detalles[0]
+      integracionSAPDetalle.value = detalle
+      integracionSAPSolicitudes.value = detalle.solicitudes_transferencia || null
+      
+      // Determinar estado general
+      const status = response?.status || (detalle.success ? 'success' : 'error')
+      if (status === 'partial' || (detalle.success && integracionSAPSolicitudes.value && integracionSAPSolicitudes.value.transferencias_errores > 0)) {
+        integracionSAPEstado.value = 'partial'
+      } else if (status === 'error' || !detalle.success) {
+        integracionSAPEstado.value = 'error'
+      } else {
+        integracionSAPEstado.value = 'success'
+      }
+      
+      // Mostrar modal después de un pequeño delay para que el overlay se cierre primero
+      await new Promise(resolve => setTimeout(resolve, 300))
+      showIntegracionSAPModal.value = true
     }
     
     // ✅ NO REFRESCAR - Confiar en la respuesta del backend

@@ -182,6 +182,7 @@ export interface IntegracionSAPDetalle {
   error_message: string | null     // Alias de error (para compatibilidad)
   error_code: string | null         // ⭐ NUEVO - Código numérico de SAP
   error_source: string | null       // ⭐ NUEVO - "SAP" | "BACKEND" | "SAP_CONNECTION"
+  solicitudes_transferencia?: SolicitudesTransferencia | null  // ⭐ NUEVO - Solicitudes de Transferencia creadas automáticamente
   sap_response?: Record<string, any> | null  // Respuesta completa de SAP
   sap_error_details?: Record<string, any> | null  // Detalles completos del error
   [key: string]: any
@@ -1162,6 +1163,7 @@ export interface ProcesamientoSAPResponse {
 export interface SolicitudTransferenciaResultado {
   tienda_id: string
   tienda_codigo: string
+  tienda_nombre: string | null  // ⭐ NUEVO - Nombre completo de la tienda
   success: boolean
   doc_entry: number | null
   doc_num: number | null
