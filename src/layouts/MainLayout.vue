@@ -160,7 +160,7 @@
           <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Conciliación</span>
         </router-link>
 
-        <!-- Integración MBA3-SAP -->
+        <!-- Gestión ODC SAP -->
         <router-link
           v-if="(authStore.userRoles?.includes('Admin') || authStore.hasPermission('mba3-consultas.view'))"
           to="/mba3-consultas"
@@ -169,11 +169,11 @@
             'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/50': $route.path.startsWith('/mba3-consultas'),
             'text-slate-300 hover:bg-slate-800/50 hover:text-white': !$route.path.startsWith('/mba3-consultas')
           }"
-          :title="isSidebarCollapsed ? 'Integración MBA3-SAP' : ''"
+          :title="isSidebarCollapsed ? 'Gestión ODC SAP' : ''"
         >
           <div class="absolute inset-0 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
           <ArrowsRightLeftIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/mba3-consultas') }" />
-          <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Integración MBA3-SAP</span>
+          <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Gestión ODC SAP</span>
         </router-link>
 
         <!-- Separador Administración -->
@@ -439,7 +439,7 @@ const pageTitle = computed(() => {
     '/depositos': 'Depósitos',
     '/reportes': 'Reportes',
     '/conciliacion': 'Conciliación',
-    '/mba3-consultas': 'Integración MBA3-SAP',
+    '/mba3-consultas': 'Gestión ODC SAP',
     '/mba3-consultas/ordenes-compra': 'Órdenes de Compra',
     '/mba3-consultas/proceso': 'Enviar ODC a SAP',
     '/usuarios': 'Gestión de Usuarios',

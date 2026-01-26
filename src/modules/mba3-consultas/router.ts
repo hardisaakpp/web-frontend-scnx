@@ -7,7 +7,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import('./views/DashboardView.vue'),
     meta: { 
       requiresAuth: true,
-      title: 'Integración MBA3-SAP',
+      title: 'Gestión ODC SAP',
       icon: 'DocumentTextIcon',
       permissions: ['mba3-consultas.view']
     }

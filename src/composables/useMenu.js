@@ -43,7 +43,7 @@ export function useMenu() {
         permissions: ['conciliacion.view']
       },
       {
-        name: 'Integración MBA3-SAP',
+        name: 'Gestión ODC SAP',
         icon: 'DocumentTextIcon',
         path: '/mba3-consultas',
         permissions: ['mba3-consultas.view']

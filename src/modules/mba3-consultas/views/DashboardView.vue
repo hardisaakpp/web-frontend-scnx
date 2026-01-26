@@ -3,7 +3,7 @@
     <div class="space-y-4">
       <!-- Header -->
       <div>
-        <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Integración MBA3-SAP</h1>
+        <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Gestión ODC SAP</h1>
       </div>
 
       <!-- Estadísticas -->
