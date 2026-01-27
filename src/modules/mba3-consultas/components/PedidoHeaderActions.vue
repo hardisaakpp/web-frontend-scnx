@@ -48,6 +48,17 @@
         </div>
       </div>
       <button
+        v-if="showCrearPedido"
+        @click="$emit('crear-pedido')"
+        class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center gap-2"
+        title="Crear pedido manualmente"
+      >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+        Crear Pedido Manual
+      </button>
+      <button
         @click="$emit('cargar-plantillas')"
         :disabled="uploading"
         class="px-4 py-2 bg-emerald-600 dark:bg-emerald-500 text-white rounded-lg hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
@@ -122,6 +133,7 @@ const props = defineProps<{
   esModoMabelTrading: boolean
   pedido: any
   hideConfirmAndDownload?: boolean
+  showCrearPedido?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -131,6 +143,7 @@ const emit = defineEmits<{
   'go-to-pedido': []
   'search-blur': []
   'descargar-plano-mba': []
+  'crear-pedido': []
 }>()
 
 const pedidoIdInputModel = defineModel<string>('pedidoIdInput', { default: '' })

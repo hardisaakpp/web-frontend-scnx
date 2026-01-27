@@ -16,12 +16,14 @@
         :es-modo-mabel-trading="esModoMabelTrading"
         :pedido="pedido"
         :hide-confirm-and-download="true"
+        :show-crear-pedido="true"
         @cargar-plantillas="goToCargarPlantillas"
         @generar-oc="handleGenerarOCDesdePedido"
         @confirmar="handleConfirmar"
         @go-to-pedido="goToPedidoWrapper"
         @search-blur="handleSearchBlur"
         @descargar-plano-mba="handleDescargarPlanoMba"
+        @crear-pedido="handleCrearPedido"
       />
 
       <!-- Loading state -->
@@ -340,6 +342,11 @@ const COPY_FEEDBACK_DURATION_MS = 2000
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
+
+// ⭐ Función para manejar el click en "Crear Pedido Manual"
+function handleCrearPedido() {
+  router.push('/mba3-consultas/pedidos/crear')
+}
 
 const pedido = ref<PedidoCompleto | null>(null)
 
