@@ -82,7 +82,8 @@ mba3Api.interceptors.response.use(
     const url = error.config?.url || ''
     const isExpected404 = error.response?.status === 404 && (
       url.includes('/api/plantillas/ultimo') || // No hay pedidos es válido
-      url.includes('/api/plantillas/') // Pedido no encontrado es válido
+      url.includes('/api/plantillas/') || // Pedido no encontrado es válido
+      url.includes('/api/pedidos/ultimo-redistribucion') // No hay último para redistribución es válido
     )
 
     // Solo loguear errores que no sean 404 esperados
@@ -2071,6 +2072,44 @@ export const mba3ConsultasService = {
       }
       
       throw new Error(message)
+    }
+  },
+
+  /**
+   * Obtiene el último pedido con redistribución confirmada (para cargar en Redistribución al entrar desde dashboard).
+   * Usa la lista de confirmados ordenada por el backend; devuelve el primero como "último".
+   * @returns PedidoCompleto o null si no hay pedidos confirmados
+   */
+  async getUltimoPedidoConfirmado(): Promise<PedidoCompleto | null> {
+    try {
+      const res = await this.getPedidosConfirmados({ page: 1, pageSize: 1 })
+      const first = res.data?.[0]
+      return first && (first as PedidoCompleto).cabecera ? (first as PedidoCompleto) : null
+    } catch (error: any) {
+      console.error('❌ [getUltimoPedidoConfirmado] Error al obtener último pedido confirmado:', error)
+      return null
+    }
+  },
+
+  /**
+   * Obtiene el último pedido con estado RESPUESTA_PROVEEDOR_CARGADA (para Redistribución al entrar desde dashboard).
+   * Usa el endpoint GET /api/pedidos/ultimo-redistribucion (misma idea que cargar-plantilla y GET /api/plantillas/ultimo).
+   * @param soloUsuario Si true (default), último del usuario autenticado; si false, último global.
+   * @returns Objeto con numero_pedido para redirigir, o null si no hay ninguno en ese estado.
+   */
+  async getUltimoPedidoRedistribucion(soloUsuario: boolean = true): Promise<{ numero_pedido: string } | null> {
+    try {
+      const params = new URLSearchParams()
+      params.append('solo_usuario', soloUsuario ? 'true' : 'false')
+      const url = `/api/pedidos/ultimo-redistribucion?${params.toString()}`
+      const response = await mba3Api.get<{ numero_pedido?: string; cabecera?: { numero_pedido: string } } | null>(url)
+      const body = response.data
+      if (body == null) return null
+      const num = body.numero_pedido ?? body.cabecera?.numero_pedido
+      return num ? { numero_pedido: num } : null
+    } catch (error: any) {
+      console.error('❌ [getUltimoPedidoRedistribucion] Error al obtener último pedido redistribución:', error)
+      return null
     }
   },
 

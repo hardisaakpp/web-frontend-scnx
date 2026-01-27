@@ -20,15 +20,20 @@
    - Uso del theme store
    - Mejores prácticas
 
+3. **[Convenciones y flujos frontend](FRONTEND.md)**
+   - Gestión del botón "Confirmar" en detalle del pedido (0.5.9.1)
+   - Endpoint y persistencia de la confirmación
+   - Cuándo deshabilitar el botón
+
 ### ⚙️ Optimizaciones y Mejoras
 
-3. **[Optimización de Actualización de Estados ODC](optimizacion-estados-odc.md)**
+4. **[Optimización de Actualización de Estados ODC](optimizacion-estados-odc.md)** 
    - Sistema de retry inteligente
    - Optimización de carga paralela
    - Reducción de delays artificiales
    - Métricas de mejora
 
-4. **[Polling Automático de Despachos](polling-automatico-despachos.md)**
+5. **[Polling Automático de Despachos](polling-automatico-despachos.md)**
    - Sistema de actualización automática
    - Indicadores visuales en tiempo real
    - Sincronización con proceso backend
@@ -36,19 +41,19 @@
 
 ### 🔧 Refactorizaciones
 
-5. **[Refactorización Pedido Detalle](REFACTORIZACION_PEDIDO_DETALLE.md)**
+6. **[Refactorización Pedido Detalle](REFACTORIZACION_PEDIDO_DETALLE.md)**
    - Mejoras en la vista de detalle de pedidos
    - Optimización de componentes
    - Separación de responsabilidades
 
 ### 📊 Análisis y Cambios Backend
 
-6. **[Análisis HU-02 Frontend](ANALISIS_HU-02_FRONTEND.md)**
+7. **[Análisis HU-02 Frontend](ANALISIS_HU-02_FRONTEND.md)**
    - Análisis de historia de usuario 02
    - Cambios requeridos en frontend
    - Impacto en componentes
 
-7. **[Cambios Backend - Procesado SAP](cambios-backend-procesado-sap.md)**
+8. **[Cambios Backend - Procesado SAP](cambios-backend-procesado-sap.md)**
    - Integración con nuevo endpoint de SAP
    - Adaptación de componentes frontend
    - Manejo de respuestas SAP

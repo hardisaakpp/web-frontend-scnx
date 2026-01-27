@@ -42,6 +42,7 @@
         :can-generar-o-c="canGenerarOC"
         :es-modo-mabel-trading="esModoMabelTrading"
         :pedido="pedido"
+        :confirmar-deshabilitado="confirmarDeshabilitadoPorEstado"
         :hide-confirm-and-download="false"
         :hide-cargar-plantillas="true"
         @cargar-plantillas="goToCargarPlantillas"
@@ -689,6 +690,16 @@ const canGenerarOC = computed(() => {
   const estado = pedido.value?.cabecera.estado
   return estado === 'CONFIRMADO_PROVEEDOR'
 })
+
+// ⭐ 0.5.9.1: Deshabilitar "Confirmar" cuando el pedido ya tiene respuesta cargada o está confirmado (ver docs/FRONTEND.md)
+const ESTADOS_YA_CONFIRMADOS = [
+  'RESPUESTA_PROVEEDOR_CARGADA',
+  'CONFIRMADO_PROVEEDOR',
+  'PEDIDO_CONFIRMADO'
+]
+const confirmarDeshabilitadoPorEstado = computed(() =>
+  ESTADOS_YA_CONFIRMADOS.includes(pedido.value?.cabecera?.estado ?? '')
+)
 
 // Funciones de carga y gestión del pedido ahora están en el composable usePedidoDetalle
 

@@ -31,13 +31,13 @@
         </div>
       </div>
 
-      <!-- Loading state -->
-      <div v-if="loading && !pedido" class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-12 text-center">
+      <!-- Estado de carga al montar /redistribucion sin id: GET /api/pedidos/ultimo-redistribucion -->
+      <div v-if="(loading || cargandoUltimoConfirmado) && !pedido" class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-12 text-center">
         <svg class="animate-spin h-8 w-8 text-indigo-600 dark:text-indigo-400 mx-auto" fill="none" viewBox="0 0 24 24">
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
-        <p class="mt-4 text-sm text-gray-600 dark:text-gray-400">Cargando pedido...</p>
+        <p class="mt-4 text-sm text-gray-600 dark:text-gray-400">{{ cargandoUltimoConfirmado ? 'Buscando último pedido...' : 'Cargando pedido...' }}</p>
       </div>
 
       <!-- Error state -->
@@ -81,15 +81,59 @@
         @confirmar-redistribucion="confirmarRedistribucion"
       />
 
-      <!-- Mensaje cuando no hay pedido cargado -->
-      <div v-if="!pedido && !loading && !error" class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-12 text-center">
-        <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-        <h3 class="mt-4 text-lg font-medium text-gray-900 dark:text-white">Ingrese un número de pedido</h3>
-        <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
-          Use el campo de búsqueda arriba para buscar un pedido y comenzar la redistribución.
-        </p>
+      <!-- Sin pedido: lista de pedidos confirmados + búsqueda manual (docs FRONTEND.md 1.4) -->
+      <div v-if="!pedido && !loading && !cargandoUltimoConfirmado && !error" class="space-y-6">
+        <!-- Bloque "Pedidos confirmados" siempre visible en /redistribucion -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
+            <h3 class="text-base font-semibold text-gray-900 dark:text-white">Pedidos confirmados</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+              Elija un pedido para ver su redistribución, o use el buscador de arriba.
+            </p>
+          </div>
+          <!-- Cargando lista -->
+          <div v-if="cargandoListaConfirmados" class="px-4 py-8 text-center">
+            <svg class="animate-spin h-6 w-6 text-indigo-600 dark:text-indigo-400 mx-auto" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="mt-3 text-sm text-gray-600 dark:text-gray-400">Cargando pedidos confirmados...</p>
+          </div>
+          <!-- Lista vacía -->
+          <div v-else-if="pedidosConfirmados.length === 0" class="px-4 py-6 text-center">
+            <p class="text-sm text-gray-500 dark:text-gray-400">No hay pedidos confirmados. Use el buscador de arriba para buscar por número de pedido.</p>
+          </div>
+          <!-- Lista de pedidos -->
+          <ul v-else class="divide-y divide-gray-200 dark:divide-gray-600">
+            <li
+              v-for="p in pedidosConfirmados"
+              :key="p.cabecera?.pedido_id ?? p.cabecera?.numero_pedido ?? ''"
+              @click="irAPedidoConfirmado(p.cabecera.numero_pedido)"
+              class="flex items-center justify-between gap-3 px-4 py-3 hover:bg-purple-50 dark:hover:bg-purple-900/20 cursor-pointer transition-colors"
+            >
+              <div class="min-w-0 flex-1">
+                <span class="font-medium text-gray-900 dark:text-white block truncate">{{ p.cabecera.numero_pedido }}</span>
+                <span v-if="p.cabecera.fecha_pedido || p.cabecera.estado" class="text-xs text-gray-500 dark:text-gray-400">
+                  {{ [p.cabecera.fecha_pedido, p.cabecera.estado].filter(Boolean).join(' · ') }}
+                </span>
+              </div>
+              <svg class="h-5 w-5 flex-shrink-0 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+              </svg>
+            </li>
+          </ul>
+        </div>
+
+        <!-- Mensaje cuando no hay pedido (instrucción de búsqueda manual) -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-12 text-center">
+          <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <h3 class="mt-4 text-lg font-medium text-gray-900 dark:text-white">Ingrese un número de pedido</h3>
+          <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+            Use el campo de búsqueda arriba para buscar un pedido y comenzar la redistribución.
+          </p>
+        </div>
       </div>
     </div>
   </div>
@@ -311,24 +355,80 @@ watch(
     if (newId && newId !== oldId) {
       await loadPedido()
       pedidoIdInput.value = ''
-      // ⭐ Asegurar que las columnas modificadas se carguen después de cambiar de pedido
       cargarColumnasModificadasDesdeStorage()
+    }
+    // Navegación a /redistribucion sin id: limpiar pedido y cargar último + lista
+    if (!newId && oldId !== undefined) {
+      pedido.value = null
+      await cargarRedistribucionSinPedido()
     }
   }
 )
 
+// ⭐ Cargando último pedido (RESPUESTA_PROVEEDOR_CARGADA) al entrar desde dashboard (ruta sin id)
+const cargandoUltimoConfirmado = ref(false)
+
+// ⭐ Lista de pedidos confirmados (docs FRONTEND.md 1.4): se muestra cuando no hay pedido y estamos en /redistribucion
+const pedidosConfirmados = ref<PedidoCompleto[]>([])
+const cargandoListaConfirmados = ref(false)
+
+function irAPedidoConfirmado(num: string) {
+  router.push({
+    name: 'mba3-consultas-pedido-redistribucion',
+    params: { id: encodeURIComponent(num) }
+  })
+}
+
+// Lógica para /redistribucion sin id: último pedido RESPUESTA_PROVEEDOR_CARGADA + lista (GET /api/pedidos/ultimo-redistribucion)
+async function cargarRedistribucionSinPedido() {
+  cargandoUltimoConfirmado.value = true
+  try {
+    const ultimo = await mba3ConsultasService.getUltimoPedidoRedistribucion(true)
+    const num = ultimo?.numero_pedido
+    if (num) {
+      toast.info('Último pedido', `Cargando pedido ${num}`)
+      await router.replace({
+        name: 'mba3-consultas-pedido-redistribucion',
+        params: { id: encodeURIComponent(num) }
+      })
+      return
+    }
+
+    cargandoListaConfirmados.value = true
+    try {
+      const res = await mba3ConsultasService.getPedidosConfirmados({ page: 1, pageSize: 20 })
+      pedidosConfirmados.value = res?.data ?? []
+    } catch {
+      pedidosConfirmados.value = []
+    } finally {
+      cargandoListaConfirmados.value = false
+    }
+  } catch {
+    try {
+      cargandoListaConfirmados.value = true
+      const res = await mba3ConsultasService.getPedidosConfirmados({ page: 1, pageSize: 20 })
+      pedidosConfirmados.value = res?.data ?? []
+    } catch {
+      pedidosConfirmados.value = []
+    } finally {
+      cargandoListaConfirmados.value = false
+    }
+  } finally {
+    cargandoUltimoConfirmado.value = false
+  }
+}
+
 onMounted(async () => {
   if (numeroPedido.value) {
     await loadPedido()
-    // ⭐ Asegurar que las columnas modificadas se carguen después de cargar el pedido
-    // Esto hereda el resaltado del flujo anterior (Detalle del Pedido - EL RAYO)
-    // El loadPedido ya debería haber cargado desde el backend, pero hacemos un fallback a sessionStorage
     cargarColumnasModificadasDesdeStorage()
-    // Log para verificar el estado final
     console.log(`🎨 [MabelTradingRedistribucionView] Estado final de columnas modificadas: ${columnasModificadas.value.size} modificaciones`)
     if (columnasModificadas.value.size > 0) {
       console.log(`   Columnas modificadas: ${Array.from(columnasModificadas.value).join(', ')}`)
     }
+    return
   }
+
+  await cargarRedistribucionSinPedido()
 })
 </script>

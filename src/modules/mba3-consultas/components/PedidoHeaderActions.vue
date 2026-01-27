@@ -103,7 +103,7 @@
       <button
         v-if="!esModoMabelTrading && !hideConfirmAndDownload"
         @click="$emit('confirmar')"
-        :disabled="loading || !pedido || confirmando"
+        :disabled="loading || !pedido || confirmando || confirmarDeshabilitado"
         class="px-4 py-2 bg-purple-600 dark:bg-purple-500 text-white rounded-lg hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
       >
         <svg v-if="!confirmando" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -133,6 +133,8 @@ const props = defineProps<{
   canGenerarOC: boolean
   esModoMabelTrading: boolean
   pedido: any
+  /** Deshabilita "Confirmar" cuando el pedido ya tiene respuesta cargada o está confirmado (ver docs/FRONTEND.md 0.5.9.1) */
+  confirmarDeshabilitado?: boolean
   hideConfirmAndDownload?: boolean
   showCrearPedido?: boolean
   hideCargarPlantillas?: boolean
