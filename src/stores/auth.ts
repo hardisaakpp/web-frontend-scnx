@@ -12,7 +12,7 @@ interface User {
   permissions: string[]
 }
 
-/** Capabilities expuestas por GET /Auth/me. */
+/** Capabilities expuestas por GET /Auth/me (snake_case). */
 export interface AuthCapabilities {
   /** true solo con permiso odc.view (sin admin override). Botón sidebar "Gestión ODC SAP". */
   can_view_odc_sap?: boolean
@@ -20,6 +20,8 @@ export interface AuthCapabilities {
   can_manage_order?: boolean
   /** true solo con permiso odcsap.view. Botón/link "Listado de Pedidos" en dashboard. */
   can_view_order_list?: boolean
+  /** true solo con permiso mabel.view. Cargar Plantilla, Redistribución, Procesamiento SAP, Procesos, Homologaciones. */
+  mabel_view?: boolean
   [key: string]: boolean | undefined
 }
 
@@ -199,7 +201,9 @@ export const useAuthStore = defineStore('auth', {
     /** true solo si capabilities.can_manage_order === true (permiso odcsap.view). Botón "Gestionar Pedido". Ver docs/FRONTEND.md § 0.5.7.2. */
     canManageOrder: (state): boolean => state.capabilities?.can_manage_order === true,
     /** true solo si capabilities.can_view_order_list === true (permiso odcsap.view). Botón "Listado de Pedidos". Ver docs/FRONTEND.md § 0.5.7.2. */
-    canViewOrderList: (state): boolean => state.capabilities?.can_view_order_list === true
+    canViewOrderList: (state): boolean => state.capabilities?.can_view_order_list === true,
+    /** true solo si capabilities.mabel_view === true (permiso mabel.view). Cargar Plantilla, Redistribución, Procesamiento SAP, Procesos, Homologaciones. Solo leer de capabilities. */
+    canViewMabel: (state): boolean => state.capabilities?.mabel_view === true
   },
 
   actions: {

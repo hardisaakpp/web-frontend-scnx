@@ -26,8 +26,9 @@
 
       <!-- Acciones -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
-        <!-- Cargar Plantilla -->
+        <!-- Cargar Plantilla: capability mabel_view (mabel.view). Solo capabilities, no permissions ni modo. -->
         <button
+          v-if="authStore.canViewMabel"
           @click="$router.push('/mba3-consultas/cargar-plantilla')"
           class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left"
         >
@@ -82,8 +83,9 @@
           </div>
         </button>
 
-        <!-- Redistribución -->
+        <!-- Redistribución: capability mabel_view (mabel.view). Solo capabilities. -->
         <button
+          v-if="authStore.canViewMabel"
           @click="$router.push('/mba3-consultas/redistribucion')"
           class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left"
         >
@@ -100,8 +102,9 @@
           </div>
         </button>
 
-        <!-- Procesamiento SAP -->
+        <!-- Procesamiento SAP: capability mabel_view (mabel.view). Solo capabilities. -->
         <button
+          v-if="authStore.canViewMabel"
           @click="showProcesamientoSAPModal = true"
           class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left"
         >
@@ -118,8 +121,9 @@
           </div>
         </button>
 
-        <!-- Procesos -->
+        <!-- Procesos: capability mabel_view (mabel.view). Solo capabilities. -->
         <button
+          v-if="authStore.canViewMabel"
           @click="navigateToProceso"
           :disabled="loadingDespachos"
           class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left disabled:opacity-50 disabled:cursor-not-allowed"
@@ -143,8 +147,9 @@
           </div>
         </button>
 
-        <!-- Homologaciones -->
+        <!-- Homologaciones: capability mabel_view (mabel.view). Solo capabilities. -->
         <button
+          v-if="authStore.canViewMabel"
           @click="$router.push('/mba3-consultas/homologaciones')"
           class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left"
         >

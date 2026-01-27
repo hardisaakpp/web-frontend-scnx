@@ -15,14 +15,16 @@ En las respuestas de **GET /api/auth/me** (o **GET /Auth/me**), el frontend reci
 - **can_view_odc_sap**: `true` **solo** si el usuario tiene el permiso **odc.view** (sin admin override). Para el uso en el sidebar, ver [0.5.7.1](#0571-botón-sidebar-gestión-odc-sap--permiso-odcview).
 - **can_manage_order**: `true` **solo** si el usuario tiene el permiso **odcsap.view**. Para el botón "Gestionar Pedido", ver [0.5.7.2](#0572-botones-gestionar-pedido-y-listado-de-pedidos--permiso-odcsapview).
 - **can_view_order_list**: `true` **solo** si el usuario tiene el permiso **odcsap.view**. Para el botón "Listado de Pedidos", ver [0.5.7.2](#0572-botones-gestionar-pedido-y-listado-de-pedidos--permiso-odcsapview).
+- **mabel_view**: `true` **solo** si el usuario tiene el permiso **mabel.view**. Si no viene o no es `true`, tratar como `false`. Para Cargar Plantilla, Redistribución, Procesamiento SAP, Procesos y Homologaciones, ver [0.5.7.3](#0573-botones-mabel-view--permiso-mabelview).
 
 **¿Los getters leen solo de capabilities?**
 
-En el store de auth, los getters deben reflejar exclusivamente `state.capabilities`:
+En el store de auth, los getters deben reflejar exclusivamente `state.capabilities` (no derivar de modo, empresa, permissions ni otros datos):
 
 - **canViewOdcSap** → `state.capabilities?.can_view_odc_sap === true`
 - **canManageOrder** → `state.capabilities?.can_manage_order === true`
 - **canViewOrderList** → `state.capabilities?.can_view_order_list === true`
+- **canViewMabel** → `state.capabilities?.mabel_view === true`
 
 ### 0.5.7.1 Botón sidebar "Gestión ODC SAP" — permiso `odc.view`
 
@@ -100,6 +102,54 @@ No usar `permissions.includes('odcsap.view')` ni lógica distinta de capabilitie
 | Sin `odcsap.view`     | No visible         | No visible           | Sin cambios               |
 
 El sidebar solo depende de `odc.view`; `odcsap.view` no lo modifica.
+
+### 0.5.7.3 Botones controlados por `mabel.view` — capability `mabel_view`
+
+Los botones **Cargar Plantilla**, **Redistribución**, **Procesamiento SAP**, **Procesos** y **Homologaciones** en el dashboard de Gestión ODC SAP dependen **únicamente** de la capability **mabel_view** (permiso `mabel.view`).
+
+**Fuente de datos:** solo la respuesta de **GET /api/auth/me** (o **GET /Auth/me**). En la respuesta, `capabilities` viene en **snake_case**; **mabel_view** es `true` solo si el usuario tiene el permiso `mabel.view`. En cualquier otro caso es `false` o no viene (tratar como `false`).
+
+**Getter en el store:** leer **solo** de capabilities:
+
+```ts
+canViewMabel → state.capabilities?.mabel_view === true
+```
+
+No derivar este valor de `modo`, `empresa`, `permissions`, roles ni de ningún otro dato.
+
+**Botones que controla mabel_view:**
+
+| capability   | Permiso     | UI                |
+|-------------|-------------|-------------------|
+| `mabel_view` | `mabel.view` | Cargar Plantilla   |
+| `mabel_view` | `mabel.view` | Redistribución     |
+| `mabel_view` | `mabel.view` | Procesamiento SAP  |
+| `mabel_view` | `mabel.view` | Procesos           |
+| `mabel_view` | `mabel.view` | Homologaciones     |
+
+Cuando **capabilities.mabel_view === true**, el usuario ve esos cinco botones. Cuando **capabilities.mabel_view !== true**, no se debe mostrar ninguno.
+
+**Uso en la UI:**
+
+Condicionar la visibilidad solo con la capability o con el getter:
+
+```vue
+<button v-if="authStore.canViewMabel" ...>Cargar Plantilla</button>
+<button v-if="authStore.canViewMabel" ...>Redistribución</button>
+<button v-if="authStore.canViewMabel" ...>Procesamiento SAP</button>
+<button v-if="authStore.canViewMabel" ...>Procesos</button>
+<button v-if="authStore.canViewMabel" ...>Homologaciones</button>
+```
+
+**Lo que no debe hacerse:**
+
+- No usar `permissions.includes('mabel.view')`.
+- No inferir el permiso desde roles, modo, empresa o lógica propia.
+- No mezclar condiciones tipo “modo MABEL” o “usuario de MABEL” con esta visibilidad.
+
+**Regla general:** El frontend no deduce permisos. El backend es la única autoridad sobre capabilities. La UI solo lee `capabilities` (o getters que vengan de ahí) y muestra u oculta según eso.
+
+**Cuándo cargar capabilities:** Al inicio de la app (p. ej. en `initializeAuth`), tras login y al restaurar sesión (token en localStorage). Asegurar que en rutas donde se usen estos botones ya se haya llamado a `/api/auth/me` antes de renderizar. Si no se llama o falla (p. ej. 401), `capabilities` queda vacío o sin cargar → `mabel_view` será falsy → esos cinco botones no se muestran.
 
 ---
 
