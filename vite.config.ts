@@ -16,9 +16,16 @@ export default defineConfig({
   server: {
     port: 3000,
     proxy: {
+      // /Auth/me → mba3-consultas (capabilities). Debe ir antes que /api.
+      '/api/Auth/me': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path
+      },
+      // Login y resto de /api → Core (Apps pruebas).
       '/api': {
-        //target: 'http://172.30.159.208:5053', // Alex
-        target: 'http://210.17.1.53:5053', // Apps pruebas
+        target: 'http://210.17.1.53:5053', // Apps pruebas / Core
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path

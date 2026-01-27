@@ -454,8 +454,11 @@ const logout = () => {
   router.push('/login')
 }
 
-// Cargar preferencias del sidebar al montar
-onMounted(() => {
+// Cargar preferencias del sidebar al montar y asegurar capabilities (p. ej. tras recarga)
+onMounted(async () => {
+  if (authStore.token && !authStore.capabilities) {
+    await authStore.fetchMe()
+  }
   loadSidebarPreferences()
 })
 

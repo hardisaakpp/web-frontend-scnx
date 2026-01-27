@@ -61,17 +61,17 @@
         </div>
 
         <!-- Error Message -->
-        <div v-if="authStore.error" class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300 px-4 py-3 rounded">
-          {{ authStore.error }}
+        <div v-if="error" class="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300 px-4 py-3 rounded">
+          {{ error }}
         </div>
 
         <!-- Submit Button -->
         <button
           type="submit"
-          :disabled="authStore.loading"
+          :disabled="isLoading"
           class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 transition-colors duration-300"
         >
-          <span v-if="!authStore.loading">Iniciar Sesión</span>
+          <span v-if="!isLoading">Iniciar Sesión</span>
           <span v-else class="flex items-center">
             <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -86,14 +86,18 @@
 </template>
 
 <script setup>
-import { reactive } from 'vue'
+import { reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
 import { SunIcon, MoonIcon } from '@heroicons/vue/24/outline'
 
 const appName = import.meta.env.VITE_APP_NAME
+const router = useRouter()
 const authStore = useAuthStore()
 const themeStore = useThemeStore()
+const isLoading = ref(false)
+const error = ref('')
 
 const form = reactive({
   username: '',
@@ -102,10 +106,24 @@ const form = reactive({
 })
 
 const handleLogin = async () => {
+  error.value = ''
+  isLoading.value = true
   try {
-    await authStore.login(form.username, form.password, form.useActiveDirectory)
-  } catch (error) {
-    console.error('Login failed:', error)
+    const success = await authStore.login({
+      username: form.username,
+      password: form.password,
+      useActiveDirectory: form.useActiveDirectory
+    })
+    if (success) {
+      router.push('/')
+    } else {
+      error.value = 'Credenciales inválidas'
+    }
+  } catch (e) {
+    console.error('Login failed:', e)
+    error.value = 'Error al iniciar sesión'
+  } finally {
+    isLoading.value = false
   }
 }
 </script>
