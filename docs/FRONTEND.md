@@ -4,6 +4,46 @@ Documentación de convenciones de UI, flujos de pantalla y uso de APIs desde el 
 
 ---
 
+## 0. Capabilities y diagnóstico
+
+### 0.4.1 Diagnóstico
+
+En las respuestas de **GET /api/auth/me** (o **GET /Auth/me**), el frontend recibe un objeto `capabilities`. La capability **can_view_odc_sap** es `true` **solo** si el usuario tiene el permiso **odc.view** (sin admin override). Para el uso de esta capability en el sidebar, ver [0.5.7.1](#0571-botón-sidebar-gestión-odc-sap--permiso-odcview).
+
+### 0.5.7.1 Botón sidebar "Gestión ODC SAP" — permiso `odc.view`
+
+El botón **"Gestión ODC SAP"** en el sidebar depende **únicamente** del permiso `odc.view`.
+
+**Reglas exactas:**
+
+- La capability `can_view_odc_sap` es `true` **solo** si el usuario tiene el permiso `odc.view` (sin admin override).
+- El botón **solo debe mostrarse** si `capabilities.can_view_odc_sap === true`.
+- El permiso `odc.view` **no** condiciona ningún otro botón ni funcionalidad del dashboard.
+- El frontend **no** debe chequear permisos directamente; solo la capability.
+
+**Implementación en frontend:**
+
+```ts
+authStore.canViewOdcSap  // getter que refleja capabilities.can_view_odc_sap
+```
+
+En el sidebar (p. ej. MainLayout):
+
+```vue
+<router-link v-if="authStore.canViewOdcSap" to="/mba3-consultas" ...>
+  Gestión ODC SAP
+</router-link>
+```
+
+Nada más. No usar `permissions.includes('odc.view')` ni `userRoles.includes('Admin')` ni `mba3-consultas.view` para este botón.
+
+**Comportamiento esperado:**
+
+- Usuario sin `odc.view` → no ve el botón.
+- Usuario con `odc.view` → ve el botón y puede entrar.
+
+---
+
 ## 1. Interfaz Redistribución: cargar último pedido para redistribución
 
 **Objetivo:** que al entrar por el botón "Redistribución" el usuario vea enseguida el último pedido con estado **RESPUESTA_PROVEEDOR_CARGADA** (listo para redistribuir), sin usar el buscador. Opcionalmente, mostrar una **lista de pedidos confirmados** para que elija uno.

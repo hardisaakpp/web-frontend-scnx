@@ -12,11 +12,19 @@ interface User {
   permissions: string[]
 }
 
+/** Capabilities expuestas por GET /Auth/me. can_view_odc_sap = true solo si el usuario tiene permiso odc.view (sin admin override). */
+export interface AuthCapabilities {
+  can_view_odc_sap?: boolean
+  [key: string]: boolean | undefined
+}
+
 interface AuthState {
   token: string | null
   user: string | null
   role: string | null
   userData: User | null
+  /** Rellenado por fetchMe() desde GET /Auth/me. Usar solo capabilities para visibilidad del botón "Gestión ODC SAP". */
+  capabilities: AuthCapabilities | null
 }
 
 interface LoginCredentials {
@@ -46,12 +54,19 @@ interface JwtPayload {
   exp: number
 }
 
+/** Respuesta de GET /Auth/me. capabilities.can_view_odc_sap es true solo con permiso odc.view (sin admin override). */
+interface MeResponse {
+  user?: User
+  capabilities?: AuthCapabilities
+}
+
 export const useAuthStore = defineStore('auth', {
   state: (): AuthState => ({
     token: localStorage.getItem('token'),
     user: null,
     role: null,
-    userData: null
+    userData: null,
+    capabilities: null
   }),
 
   getters: {
@@ -175,7 +190,9 @@ export const useAuthStore = defineStore('auth', {
         return ''
       }
       return ''
-    }
+    },
+    /** true solo si GET /Auth/me devolvió capabilities.can_view_odc_sap === true (permiso odc.view, sin admin override). Única fuente para mostrar el botón "Gestión ODC SAP". */
+    canViewOdcSap: (state): boolean => state.capabilities?.can_view_odc_sap === true
   },
 
   actions: {
@@ -204,10 +221,28 @@ export const useAuthStore = defineStore('auth', {
         // Configure axios
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`
 
+        await this.fetchMe()
         return true
       } catch (error) {
         console.error('Login failed:', error)
         return false
+      }
+    },
+
+    /** Obtiene user y capabilities desde GET /Auth/me. Usar capabilities.can_view_odc_sap para el botón "Gestión ODC SAP". */
+    async fetchMe(): Promise<void> {
+      if (!this.token) return
+      try {
+        const { data } = await api.get<MeResponse>('/Auth/me')
+        if (data?.user) {
+          this.userData = data.user
+          localStorage.setItem('user', JSON.stringify(data.user))
+        }
+        if (data?.capabilities) {
+          this.capabilities = data.capabilities
+        }
+      } catch (err) {
+        console.error('fetchMe failed:', err)
       }
     },
 
@@ -217,6 +252,7 @@ export const useAuthStore = defineStore('auth', {
       this.user = null
       this.role = null
       this.userData = null
+      this.capabilities = null
 
       // Remove from storage
       localStorage.removeItem('token')

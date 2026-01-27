@@ -80,6 +80,11 @@ router.beforeEach(async (to, from, next) => {
   const requiredRole = to.matched.find(record => record.meta.role)?.meta.role
   const requiredPermissions = to.matched.find(record => record.meta.permissions)?.meta.permissions as string[] | undefined
 
+  // Cargar user y capabilities desde GET /Auth/me cuando hay token y aún no tenemos capabilities (p. ej. tras recarga).
+  if (requiresAuth && authStore.isAuthenticated && authStore.capabilities === null) {
+    await authStore.fetchMe()
+  }
+
   // En desarrollo, permitir acceso sin autenticación para facilitar el debugging
   const isDevelopment = import.meta.env.DEV
   const allowUnauthenticatedAccess = isDevelopment

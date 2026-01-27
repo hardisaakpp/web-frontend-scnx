@@ -160,9 +160,9 @@
           <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Conciliación</span>
         </router-link>
 
-        <!-- Gestión ODC SAP -->
+        <!-- Gestión ODC SAP: solo capability can_view_odc_sap (odc.view, sin admin override). Ver docs/FRONTEND.md § 0.5.7.1 -->
         <router-link
-          v-if="(authStore.userRoles?.includes('Admin') || authStore.hasPermission('mba3-consultas.view'))"
+          v-if="authStore.canViewOdcSap"
           to="/mba3-consultas"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{

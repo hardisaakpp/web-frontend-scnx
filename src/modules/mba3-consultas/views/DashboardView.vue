@@ -160,62 +160,92 @@
           </div>
         </button>
 
-        <!-- Órdenes de Compra -->
-        <button
-          @click="$router.push('/mba3-consultas/ordenes-compra')"
-          class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left"
-        >
-          <div class="flex items-start gap-3">
-            <div class="w-8 h-8 rounded bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
-              <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        <!-- Contenedor colapsable: Órdenes de Compra, ODC con Errores, Reporte de Diferencias -->
+        <div class="xl:col-span-full lg:col-span-3 md:col-span-2 col-span-1">
+          <div class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 overflow-hidden transition-colors duration-300">
+            <button
+              type="button"
+              @click="odcConsultasAbierto = !odcConsultasAbierto"
+              class="w-full px-4 py-3 flex items-center justify-between gap-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+            >
+              <span class="font-medium text-gray-900 dark:text-white text-sm">Consultas ODC</span>
+              <svg
+                class="w-5 h-5 text-gray-500 dark:text-gray-400 flex-shrink-0 transition-transform duration-200"
+                :class="{ 'rotate-180': odcConsultasAbierto }"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
               </svg>
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="font-medium text-gray-900 dark:text-white text-sm">Órdenes de Compra</div>
-              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Historial completo</div>
-            </div>
-          </div>
-        </button>
+            </button>
+            <div
+              class="grid border-t border-gray-200 dark:border-gray-700 transition-[grid-template-rows] duration-200 ease-out"
+              :style="{ gridTemplateRows: odcConsultasAbierto ? '1fr' : '0fr' }"
+            >
+              <div class="min-h-0 overflow-hidden">
+                <div class="p-3 grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <!-- Órdenes de Compra -->
+                  <button
+                    @click="$router.push('/mba3-consultas/ordenes-compra')"
+                    class="bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-600 p-4 hover:border-gray-300 dark:hover:border-gray-500 hover:shadow-sm transition-all text-left"
+                  >
+                    <div class="flex items-start gap-3">
+                      <div class="w-8 h-8 rounded bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                        <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <div class="font-medium text-gray-900 dark:text-white text-sm">Órdenes de Compra</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Historial completo</div>
+                      </div>
+                    </div>
+                  </button>
 
-        <!-- ODC con Errores -->
-        <button
-          @click="$router.push('/mba3-consultas/odc-errores')"
-          class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left"
-        >
-          <div class="flex items-start gap-3">
-            <div class="w-8 h-8 rounded bg-red-50 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
-              <svg class="w-4 h-4 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="font-medium text-gray-900 dark:text-white text-sm">ODC con Errores</div>
-              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                <span v-if="ordenesCompraStore.errores > 0">{{ ordenesCompraStore.errores }} pendiente(s)</span>
-                <span v-else>Corregir SKUs</span>
+                  <!-- ODC con Errores -->
+                  <button
+                    @click="$router.push('/mba3-consultas/odc-errores')"
+                    class="bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-600 p-4 hover:border-gray-300 dark:hover:border-gray-500 hover:shadow-sm transition-all text-left"
+                  >
+                    <div class="flex items-start gap-3">
+                      <div class="w-8 h-8 rounded bg-red-50 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+                        <svg class="w-4 h-4 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <div class="font-medium text-gray-900 dark:text-white text-sm">ODC con Errores</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          <span v-if="ordenesCompraStore.errores > 0">{{ ordenesCompraStore.errores }} pendiente(s)</span>
+                          <span v-else>Corregir SKUs</span>
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+
+                  <!-- Reporte de Diferencias -->
+                  <button
+                    @click="$router.push('/mba3-consultas/reporte-diferencias')"
+                    class="bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-600 p-4 hover:border-gray-300 dark:hover:border-gray-500 hover:shadow-sm transition-all text-left"
+                  >
+                    <div class="flex items-start gap-3">
+                      <div class="w-8 h-8 rounded bg-pink-50 dark:bg-pink-900/30 flex items-center justify-center flex-shrink-0">
+                        <svg class="w-4 h-4 text-pink-600 dark:text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <div class="font-medium text-gray-900 dark:text-white text-sm">Reporte de Diferencias</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Ver diferencias pedido vs confirmado</div>
+                      </div>
+                    </div>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
-        </button>
-
-        <!-- Reporte de Diferencias -->
-        <button
-          @click="$router.push('/mba3-consultas/reporte-diferencias')"
-          class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left"
-        >
-          <div class="flex items-start gap-3">
-            <div class="w-8 h-8 rounded bg-pink-50 dark:bg-pink-900/30 flex items-center justify-center flex-shrink-0">
-              <svg class="w-4 h-4 text-pink-600 dark:text-pink-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="font-medium text-gray-900 dark:text-white text-sm">Reporte de Diferencias</div>
-              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Ver diferencias pedido vs confirmado</div>
-            </div>
-          </div>
-        </button>
+        </div>
 
         <!-- Remisiones (Legacy - Oculto) -->
         <!--
@@ -331,6 +361,7 @@ const ordenesCompraStore = useOrdenesCompraStore()
 const toast = useToast()
 
 const loadingDespachos = ref(false)
+const odcConsultasAbierto = ref(true)
 const showProcesamientoSAPModal = ref(false)
 const pedidoProcesamientoSAP = ref('')
 const loadingProcesamientoSAP = ref(false)
