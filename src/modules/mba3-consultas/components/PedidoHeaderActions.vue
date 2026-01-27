@@ -59,6 +59,7 @@
         Crear Pedido Manual
       </button>
       <button
+        v-if="!hideCargarPlantillas"
         @click="$emit('cargar-plantillas')"
         :disabled="uploading"
         class="px-4 py-2 bg-emerald-600 dark:bg-emerald-500 text-white rounded-lg hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
@@ -134,6 +135,7 @@ const props = defineProps<{
   pedido: any
   hideConfirmAndDownload?: boolean
   showCrearPedido?: boolean
+  hideCargarPlantillas?: boolean
 }>()
 
 const emit = defineEmits<{

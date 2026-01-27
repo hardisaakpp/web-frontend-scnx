@@ -35,26 +35,36 @@
           <p class="mt-1 text-sm text-gray-500 dark:text-gray-300">Editar cantidades, costos y gestionar pedidos</p>
         </div>
         <div class="flex items-center gap-3">
-          <button
-            @click="$router.push('/mba3-consultas/pedidos/crear')"
-            class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center gap-2"
-            title="Crear pedido manualmente"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
-            Crear Pedido Manual
-          </button>
-          <button
-            @click="abrirModalBuscarPedido"
-            class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium flex items-center gap-2"
-            title="Buscar pedido por número"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            Gestionar Pedidos
-          </button>
+          <!-- Input de búsqueda de pedidos -->
+          <div class="relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg class="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <input
+              v-model="pedidoIdInput"
+              @keyup.enter="goToPedido"
+              type="text"
+              :list="`pedido-history-list-search`"
+              placeholder="Buscar por N° de pedido (ej: P-12.48 - 12 - 2025)"
+              class="w-80 pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-purple-500 focus:border-purple-500"
+              autocomplete="off"
+            />
+            <datalist :id="`pedido-history-list-search`">
+              <option v-for="pedido in historialPedidos" :key="pedido" :value="pedido" />
+            </datalist>
+            <button
+              v-if="pedidoIdInput"
+              @click="pedidoIdInput = ''"
+              class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              title="Limpiar búsqueda"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -248,66 +258,6 @@
       @apply-corrections="aplicarCorreccionesYContinuar"
     />
 
-    <!-- Modal para buscar pedido por ID -->
-    <div
-      v-if="showBuscarPedidoModal"
-      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-      @click.self="showBuscarPedidoModal = false"
-    >
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Acceder a Pedido</h3>
-          <button
-            @click="showBuscarPedidoModal = false"
-            class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-          >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        
-        <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">
-          Ingresa el número de pedido para acceder a su detalle y gestionar la respuesta del proveedor.
-        </p>
-        
-        <div class="space-y-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-              Número de Pedido
-            </label>
-            <input
-              v-model="pedidoIdInput"
-              @keyup.enter="goToPedido"
-              type="text"
-              :list="`pedido-history-list-${showBuscarPedidoModal}`"
-              placeholder="Ej: P-12.48 - 12 - 2025"
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              autocomplete="off"
-              autofocus
-            />
-            <datalist :id="`pedido-history-list-${showBuscarPedidoModal}`">
-              <option v-for="pedido in historialPedidos" :key="pedido" :value="pedido" />
-            </datalist>
-          </div>
-          
-          <div class="flex items-center gap-3">
-            <button
-              @click="goToPedido"
-              class="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-medium"
-            >
-              Abrir Pedido
-            </button>
-            <button
-              @click="showBuscarPedidoModal = false"
-              class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm text-gray-700 dark:text-gray-200"
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -329,7 +279,6 @@ const isDragging = ref(false)
 const archivoCargado = ref(false)
 const uploadedFileName = ref<string>('')
 const uploadResponse = ref<UploadPlantillaResponse | null>(null)
-const showBuscarPedidoModal = ref(false)
 const pedidoIdInput = ref('')
 // Flag para evitar múltiples llamadas simultáneas, pero se resetea al montar/activar
 const cargandoUltimoPedido = ref(false)
@@ -530,18 +479,6 @@ const formatFileSize = (bytes: number): string => {
   return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i]
 }
 
-/**
- * Abre el modal de búsqueda de pedido y precarga el último número de pedido usado
- */
-function abrirModalBuscarPedido() {
-  showBuscarPedidoModal.value = true
-  // Precargar el último número de pedido del historial
-  const historial = obtenerHistorial()
-  if (historial.length > 0) {
-    pedidoIdInput.value = historial[0]
-  }
-}
-
 function goToPedido() {
   const numeroPedido = pedidoIdInput.value.trim()
   if (!numeroPedido) {
@@ -554,8 +491,10 @@ function goToPedido() {
   
   // Marcar que se hizo una búsqueda manual (evita redirección automática)
   busquedaManualRealizada.value = true
-  showBuscarPedidoModal.value = false
+  
+  // Limpiar el input después de navegar
   pedidoIdInput.value = ''
+  
   router.push(`/mba3-consultas/pedidos/${encodeURIComponent(numeroPedido)}`)
 }
 

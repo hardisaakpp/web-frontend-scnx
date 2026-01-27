@@ -44,6 +44,7 @@
         :pedido="pedido"
         :hide-confirm-and-download="true"
         :show-crear-pedido="true"
+        :hide-cargar-plantillas="true"
         @cargar-plantillas="goToCargarPlantillas"
         @generar-oc="handleGenerarOCDesdePedido"
         @confirmar="handleConfirmar"
@@ -72,6 +73,36 @@
             <p class="text-sm font-semibold text-red-900 dark:text-red-200">Error al cargar el pedido</p>
             <p class="text-sm text-red-800 dark:text-red-300 mt-1">{{ error }}</p>
           </div>
+        </div>
+      </div>
+
+      <!-- Estado inicial: cuando no hay pedido, no está cargando y no hay error -->
+      <div v-if="!pedido && !loading && !error" class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-12 text-center">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-indigo-100 dark:bg-indigo-900/30 mb-4">
+          <svg class="w-8 h-8 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        </div>
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Busca o carga un pedido</h3>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
+          Usa el campo de búsqueda en el header para buscar un pedido por número, o carga una plantilla Excel.
+        </p>
+        <div class="flex items-center justify-center gap-3">
+          <button
+            @click="goToCargarPlantillas"
+            :disabled="uploading"
+            class="px-4 py-2 bg-emerald-600 dark:bg-emerald-500 text-white rounded-lg hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center gap-2"
+            title="Cargar plantilla Excel"
+          >
+            <svg v-if="!uploading" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            <svg v-else class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            {{ uploading ? 'Cargando...' : 'Cargar Plantillas Excel' }}
+          </button>
         </div>
       </div>
 
