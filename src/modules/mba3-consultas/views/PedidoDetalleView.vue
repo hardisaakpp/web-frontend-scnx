@@ -310,6 +310,15 @@
       @exportar="handleExportarMBA"
     />
 
+    <!-- Modal de confirmación: pedido confirmado (tras clic en Confirmar) -->
+    <SimpleConfirmModal
+      :is-open="showConfirmacionModal"
+      title="Pedido confirmado"
+      message="El pedido se ha confirmado correctamente. Será redirigido al inicio."
+      confirm-label="Aceptar"
+      @close="handleCerrarModalConfirmacion"
+    />
+
   </div>
 </template>
 
@@ -359,6 +368,7 @@ import PedidoCabecera from '../components/PedidoCabecera.vue'
 import RedistribucionTiendas from '../components/RedistribucionTiendas.vue'
 import UploadErrorModal from '../components/UploadErrorModal.vue'
 import ExportarMBAModal from '../components/ExportarMBAModal.vue'
+import SimpleConfirmModal from '../components/SimpleConfirmModal.vue'
 
 // Constantes de configuración
 const SCROLL_DELAY_MS = 100
@@ -375,6 +385,9 @@ const pedido = ref<PedidoCompleto | null>(null)
 // ⭐ HU-08: Estado del modal de exportación MBA
 const showExportarMBAModal = ref(false)
 const exportarMBAModalRef = ref<InstanceType<typeof ExportarMBAModal> | null>(null)
+
+// Modal de confirmación tras "Confirmar" (pedido confirmado)
+const showConfirmacionModal = ref(false)
 
 // ⭐ Set para rastrear columnas modificadas (formato: "detalleId:columnKey")
 const columnasModificadas = ref<Set<string>>(new Set())
@@ -696,7 +709,9 @@ const canGenerarOC = computed(() => {
 const ESTADOS_YA_CONFIRMADOS = [
   'RESPUESTA_PROVEEDOR_CARGADA',
   'CONFIRMADO_PROVEEDOR',
-  'PEDIDO_CONFIRMADO'
+  'PEDIDO_CONFIRMADO',
+  'CONFIRMADO_ENVIADO',
+  'PROCESADO_SAP'
 ]
 const confirmarDeshabilitadoPorEstado = computed(() =>
   ESTADOS_YA_CONFIRMADOS.includes(pedido.value?.cabecera?.estado ?? '')
@@ -901,30 +916,29 @@ async function handleConfirmar() {
     const pedidoId = pedido.value?.cabecera?.pedido_id
     await mba3ConsultasService.crearRespuestaProveedorDesdePedido(numeroPedido.value, pedidoId)
     
-    toast.success('Cambios guardados', 'Los cambios han sido guardados. Redirigiendo al inicio...')
-    
     // Recargar el pedido para obtener respuesta_proveedor actualizada
     await loadPedido()
     
-    // Redirigir al dashboard
-    await router.push('/mba3-consultas')
+    confirmando.value = false
+    showConfirmacionModal.value = true
   } catch (e: any) {
     console.error('Error al confirmar:', e)
     
-    // Si la respuesta ya existe, redirigir al dashboard
+    // Si la respuesta ya existe, mostrar modal de confirmación y redirigir al cerrar
     if (e.message?.includes('ya existe') || (e as any).isConflict || (e as any).statusCode === 409) {
-      toast.info('Redirigiendo', 'La respuesta ya está creada. Redirigiendo al inicio...')
-      // Recargar pedido para asegurar que tenemos los datos actualizados
       await loadPedido()
-      await router.push('/mba3-consultas')
+      confirmando.value = false
+      showConfirmacionModal.value = true
     } else {
       toast.error('Error al guardar', e.message || 'No se pudieron guardar los cambios')
-      // Solo resetear el estado si hay un error real (no si es conflicto 409)
       confirmando.value = false
     }
   }
-  // Nota: No resetear confirmando.value aquí porque se redirige a otra página
-  // Si hay un error y no se redirige, ya se resetea en el catch
+}
+
+function handleCerrarModalConfirmacion() {
+  showConfirmacionModal.value = false
+  router.push('/mba3-consultas')
 }
 
 // ⭐ HU-08: Función para abrir el modal de exportación MBA
