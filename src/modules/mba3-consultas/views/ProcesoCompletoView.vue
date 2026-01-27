@@ -810,10 +810,10 @@ const tabs = computed<Tab[]>(() => {
     })
   }
   
-  // Siempre incluir la pestaña "Procesar ODC"
+  // Siempre incluir la pestaña "Procesar ODC - MABEL TRADING"
   tabsArray.push({
     id: 'procesar-oc',
-    label: 'Procesar ODC',
+    label: 'Procesar ODC - MABEL TRADING',
     badge: totalOrdenesProcesarOC > 0 ? totalOrdenesProcesarOC : undefined,
     color: 'emerald'
   })
@@ -2200,7 +2200,7 @@ function getStepStatus(step: string): 'pending' | 'active' | 'completed' | 'erro
 function getStepTitle(step: string): string {
   const titles: Record<string, string> = {
     'migrar': 'Importar despachos',
-    'procesar-oc': 'Procesar ODC'
+    'procesar-oc': 'Procesar ODC - MABEL TRADING'
   }
   return titles[step] || step
 }
