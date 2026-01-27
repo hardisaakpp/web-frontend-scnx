@@ -44,7 +44,7 @@
         :pedido="pedido"
         :hide-confirm-and-download="true"
         :show-crear-pedido="true"
-        :hide-cargar-plantillas="true"
+        :hide-cargar-plantillas="!pedido"
         @cargar-plantillas="goToCargarPlantillas"
         @generar-oc="handleGenerarOCDesdePedido"
         @confirmar="handleConfirmar"
