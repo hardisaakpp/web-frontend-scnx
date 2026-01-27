@@ -13,16 +13,6 @@
             </p>
           </div>
           <div class="flex items-center gap-3">
-            <button
-              v-if="pedido"
-              @click="goBack"
-              class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-700 dark:text-gray-300 flex items-center gap-2 text-sm"
-            >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              Volver
-            </button>
             <div class="relative">
               <input
                 v-model="pedidoIdInput"
@@ -246,10 +236,6 @@ function goToPedido() {
     name: 'mba3-consultas-pedido-redistribucion',
     params: { id: encodeURIComponent(pedidoIdInput.value.trim()) }
   })
-}
-
-function goBack() {
-  router.back()
 }
 
 // Watch para inicializar redistribución cuando cambie el pedido

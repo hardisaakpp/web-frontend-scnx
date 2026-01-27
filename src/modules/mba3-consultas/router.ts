@@ -112,6 +112,17 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/mba3-consultas/redistribucion',
+    name: 'mba3-consultas-redistribucion',
+    component: () => import('./views/MabelTradingRedistribucionView.vue'),
+    meta: { 
+      requiresAuth: true,
+      title: 'Redistribución - MABEL TRADING',
+      icon: 'ChartBarIcon',
+      permissions: ['mba3-consultas.facturas.view']
+    }
+  },
+  {
     path: '/mba3-consultas/pedidos/:id/redistribucion',
     name: 'mba3-consultas-pedido-redistribucion',
     component: () => import('./views/MabelTradingRedistribucionView.vue'),

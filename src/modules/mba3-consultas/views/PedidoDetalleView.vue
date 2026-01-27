@@ -883,28 +883,22 @@ async function handleConfirmar() {
     const pedidoId = pedido.value?.cabecera?.pedido_id
     await mba3ConsultasService.crearRespuestaProveedorDesdePedido(numeroPedido.value, pedidoId)
     
-    toast.success('Cambios guardados', 'Los cambios han sido guardados. Redirigiendo a redistribución...')
+    toast.success('Cambios guardados', 'Los cambios han sido guardados. Redirigiendo al inicio...')
     
     // Recargar el pedido para obtener respuesta_proveedor actualizada
     await loadPedido()
     
-    // Navegar a la interfaz específica de MABEL TRADING (Fase 4)
-    router.push({
-      name: 'mba3-consultas-pedido-redistribucion',
-      params: { id: encodeURIComponent(numeroPedido.value) }
-    })
+    // Redirigir al dashboard
+    await router.push('/mba3-consultas')
   } catch (e: any) {
     console.error('Error al confirmar:', e)
     
-    // Si la respuesta ya existe, navegar directamente
+    // Si la respuesta ya existe, redirigir al dashboard
     if (e.message?.includes('ya existe') || (e as any).isConflict || (e as any).statusCode === 409) {
-      toast.info('Redirigiendo', 'La respuesta ya está creada. Abriendo redistribución...')
+      toast.info('Redirigiendo', 'La respuesta ya está creada. Redirigiendo al inicio...')
       // Recargar pedido para asegurar que tenemos los datos actualizados
       await loadPedido()
-      router.push({
-        name: 'mba3-consultas-pedido-redistribucion',
-        params: { id: encodeURIComponent(numeroPedido.value) }
-      })
+      await router.push('/mba3-consultas')
     } else {
       toast.error('Error al guardar', e.message || 'No se pudieron guardar los cambios')
       // Solo resetear el estado si hay un error real (no si es conflicto 409)
