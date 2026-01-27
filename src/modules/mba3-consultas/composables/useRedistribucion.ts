@@ -614,7 +614,7 @@ export function useRedistribucion(options: {
         cambio_precio: false
       }))
       
-      // 2. Confirmar redistribución
+      // 2. Confirmar redistribución (el backend procesa hasta terminar; el modal bloquea la pantalla hasta que responda)
       // El backend procesa automáticamente:
       // - Consulta SAP para cada producto
       // - Calcula conversiones de cantidades y precios
@@ -622,23 +622,7 @@ export function useRedistribucion(options: {
       // - Guarda en pedido_sap_procesamiento_detalle
       await mba3ConsultasService.confirmarRedistribucion(options.numeroPedido.value, ajustes_detalle)
       
-      toast.success(
-        'Redistribución confirmada',
-        'Procesando información SAP y transformando unidades...'
-      )
-      
-      // 3. Recargar pedido para actualizar datos
-      if (options.loadPedido) {
-        await options.loadPedido()
-      }
-      
-      // 4. Cargar reporte de diferencias
-      if (options.loadReporteDiferencias) {
-        await options.loadReporteDiferencias()
-      }
-      
-      // 5. Redirigir a la nueva vista de procesamiento SAP
-      // Mostrando la información del pedido confirmado y los detalles del procesamiento SAP
+      // 3. Redirigir a procesamiento SAP en cuanto el backend termina (modal desaparece al cambiar de vista)
       router.push({
         name: 'mba3-consultas-pedido-procesamiento-sap',
         params: { id: encodeURIComponent(options.numeroPedido.value) }
