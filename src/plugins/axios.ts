@@ -9,15 +9,22 @@ const api = axios.create({
   withCredentials: true
 })
 
-// Interceptor para manejar errores
-api.interceptors.response.use(
-  response => response,
-  error => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token')
+// Request: inyectar token en cada petición (refresh, etc.)
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token')
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
     }
-    return Promise.reject(error)
-  }
+    return config
+  },
+  (error) => Promise.reject(error)
+)
+
+// Response: no borrar token aquí; el store decide cuándo hacer logout en 401
+api.interceptors.response.use(
+  (response) => response,
+  (error) => Promise.reject(error)
 )
 
 export default api

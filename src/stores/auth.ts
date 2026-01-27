@@ -110,14 +110,12 @@ export const useAuthStore = defineStore('auth', {
       }
       return false
     },
-    role(state): string | null {
-      // Verificar en state.role primero
+    /** Rol principal del usuario (evita colisión con state.role). */
+    currentRole(state): string | null {
       if (state.role) return state.role
-      // Verificar en userData.roles
       if (state.userData?.roles && state.userData.roles.length > 0) {
         return state.userData.roles[0]
       }
-      // Verificar en localStorage
       try {
         const userStr = localStorage.getItem('user')
         if (userStr) {
@@ -256,8 +254,12 @@ export const useAuthStore = defineStore('auth', {
           }
           this.capabilities = data.capabilities
         }
-      } catch (err) {
+      } catch (err: unknown) {
         console.error('fetchMe failed:', err)
+        const status = (err as { response?: { status?: number } })?.response?.status
+        if (status === 401) {
+          this.logout()
+        }
       }
     },
 
