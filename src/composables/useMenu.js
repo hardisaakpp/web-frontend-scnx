@@ -7,12 +7,6 @@ export function useMenu() {
   const menuItems = computed(() => {
     const items = [
       {
-        name: 'Dashboard',
-        icon: 'HomeIcon',
-        path: '/',
-        permissions: [] // Visible para todos los autenticados
-      },
-      {
         name: 'Usuarios',
         icon: 'UsersIcon',
         path: '/users',

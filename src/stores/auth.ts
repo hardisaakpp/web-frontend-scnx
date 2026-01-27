@@ -242,9 +242,6 @@ export const useAuthStore = defineStore('auth', {
 
     /** Obtiene user y capabilities desde GET /Auth/me. Usar capabilities.can_view_odc_sap para el botón "Gestión ODC SAP". */
     async fetchMe(): Promise<void> {
-      if (import.meta.env.DEV) {
-        console.log('[fetchMe] token:', this.token ? 'present' : 'null')
-      }
       if (!this.token) return
       try {
         const { data } = await api.get<MeResponse>('/Auth/me')
@@ -253,9 +250,6 @@ export const useAuthStore = defineStore('auth', {
           localStorage.setItem('user', JSON.stringify(data.user))
         }
         if (data?.capabilities) {
-          if (import.meta.env.DEV) {
-            console.log('[fetchMe] capabilities recibidas:', data.capabilities)
-          }
           this.capabilities = data.capabilities
         }
       } catch (err: unknown) {

@@ -4,6 +4,7 @@ import MainLayout from '@/layouts/MainLayout.vue'
 
 // Import module routes
 import mba3ConsultasRoutes from '@/modules/mba3-consultas/router'
+import usuariosRoutes from '@/modules/usuarios/router'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -31,6 +32,18 @@ const router = createRouter({
             requiresAuth: true,
             permissions: []
           }
+        },
+        {
+          path: 'admin',
+          name: 'admin',
+          component: () => import('@/views/AdminView.vue'),
+          meta: { requiresAuth: true }
+        },
+        {
+          path: 'user',
+          name: 'user',
+          component: () => import('@/views/UserView.vue'),
+          meta: { requiresAuth: true }
         },
         {
           path: '/users',
@@ -79,6 +92,8 @@ const router = createRouter({
         },
         // MBA3 Consultas routes
         ...mba3ConsultasRoutes,
+        // Usuarios / Roles / Permisos (módulo administración)
+        ...usuariosRoutes,
         {
           path: '/unauthorized',
           name: 'Unauthorized',
