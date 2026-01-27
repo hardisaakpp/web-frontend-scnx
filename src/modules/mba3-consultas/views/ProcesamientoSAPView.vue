@@ -4,7 +4,7 @@
       <!-- Header con título y botones de acción -->
       <div class="flex items-center justify-between">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Procesamiento SAP del Pedido</h1>
+          <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Procesamiento SAP del Pedido - MABEL TRADING</h1>
           <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
             Información procesada después de confirmar la redistribución
           </p>

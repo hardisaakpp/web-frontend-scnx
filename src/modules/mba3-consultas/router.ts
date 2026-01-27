@@ -29,7 +29,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import('./views/ProcesoCompletoView.vue'),
     meta: { 
       requiresAuth: true,
-      title: 'Procesos de Integración',
+      title: 'Procesar ODC - MABEL TRADING',
       icon: 'CogIcon',
       permissions: ['mba3-consultas.proceso.execute']
     }
@@ -128,7 +128,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import('./views/ProcesamientoSAPView.vue'),
     meta: { 
       requiresAuth: true,
-      title: 'Procesamiento SAP del Pedido',
+      title: 'Procesamiento SAP del Pedido - MABEL TRADING',
       icon: 'CogIcon',
       permissions: ['mba3-consultas.facturas.view']
     }

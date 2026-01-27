@@ -43,6 +43,7 @@
         :es-modo-mabel-trading="esModoMabelTrading"
         :pedido="pedido"
         :hide-confirm-and-download="false"
+        :hide-cargar-plantillas="true"
         @cargar-plantillas="goToCargarPlantillas"
         @generar-oc="handleGenerarOCDesdePedido"
         @confirmar="handleConfirmar"
