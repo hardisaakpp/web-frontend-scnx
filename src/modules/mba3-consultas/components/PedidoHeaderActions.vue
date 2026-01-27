@@ -62,7 +62,7 @@
         {{ uploading ? 'Cargando...' : 'Cargar Plantillas Excel' }}
       </button>
       <button
-        v-if="!esModoMabelTrading"
+        v-if="!esModoMabelTrading && !hideConfirmAndDownload"
         @click="$emit('descargar-plano-mba')"
         :disabled="loading || !pedido"
         class="px-4 py-2 bg-cyan-600 dark:bg-cyan-500 text-white rounded-lg hover:bg-cyan-700 dark:hover:bg-cyan-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
@@ -89,7 +89,7 @@
         {{ generandoOC ? 'Generando...' : 'Generar Orden de Compra' }}
       </button>
       <button
-        v-if="!esModoMabelTrading"
+        v-if="!esModoMabelTrading && !hideConfirmAndDownload"
         @click="$emit('confirmar')"
         :disabled="loading || !pedido || confirmando"
         class="px-4 py-2 bg-purple-600 dark:bg-purple-500 text-white rounded-lg hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
@@ -121,6 +121,7 @@ const props = defineProps<{
   canGenerarOC: boolean
   esModoMabelTrading: boolean
   pedido: any
+  hideConfirmAndDownload?: boolean
 }>()
 
 const emit = defineEmits<{
