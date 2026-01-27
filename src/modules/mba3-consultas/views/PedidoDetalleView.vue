@@ -691,7 +691,7 @@ const canGenerarOC = computed(() => {
   return estado === 'CONFIRMADO_PROVEEDOR'
 })
 
-// ⭐ 0.5.9.1: Deshabilitar "Confirmar" cuando el pedido ya tiene respuesta cargada o está confirmado (ver docs/FRONTEND.md)
+// ⭐ Deshabilitar "Confirmar" cuando el pedido ya tiene respuesta cargada o está confirmado (ver docs/FRONTEND.md §2)
 const ESTADOS_YA_CONFIRMADOS = [
   'RESPUESTA_PROVEEDOR_CARGADA',
   'CONFIRMADO_PROVEEDOR',

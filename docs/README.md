@@ -21,7 +21,7 @@
    - Mejores prácticas
 
 3. **[Convenciones y flujos frontend](FRONTEND.md)**
-   - Gestión del botón "Confirmar" en detalle del pedido (0.5.9.1)
+   - Gestión del botón "Confirmar" en detalle del pedido (§2)
    - Endpoint y persistencia de la confirmación
    - Cuándo deshabilitar el botón
 

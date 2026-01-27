@@ -117,7 +117,7 @@ En `/mba3-consultas/pedidos/{numero_pedido}` el frontend debe integrar el botón
 
 ### 2.1 Cuándo mostrar y cuándo deshabilitar
 
-- **Mostrar** el botón solo cuando corresponda al flujo (p. ej. modo EL RAYO, no MABEL TRADING) y no esté oculto por `hideConfirmAndDownload`. Si el proyecto define `capabilities.can_confirm_pedido`, usarlo para decidir visibilidad.
+- **Mostrar** el botón solo cuando corresponda al flujo (p. ej. modo EL RAYO, no MABEL TRADING) y no esté oculto por `hideConfirmAndDownload`. Si el backend expone `capabilities.can_confirm_pedido`, usar `capabilities.can_confirm_pedido === true` para decidir visibilidad del botón Confirmar. (Los permisos `odcsap.view` y `odc.view` se han eliminado; la visibilidad depende de las capabilities y de `mba3-consultas.view` para el módulo.)
 - **Deshabilitar** el botón cuando `cabecera.estado` sea uno de:
   - `RESPUESTA_PROVEEDOR_CARGADA`
   - `CONFIRMADO_PROVEEDOR`

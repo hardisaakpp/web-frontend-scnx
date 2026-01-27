@@ -38,15 +38,6 @@
               </div>
             </div>
           </div>
-          <button
-            @click="goBack"
-            class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-700 dark:text-gray-300 flex items-center gap-2"
-          >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            Volver
-          </button>
         </div>
       </div>
 
@@ -725,10 +716,6 @@ function copyToClipboard(text: string) {
 }
 
 // Navegación
-function goBack() {
-  router.back()
-}
-
 // Computed para determinar si se puede generar OC
 const canGenerarOC = computed(() => {
   // Permitir generar OC si el pedido está en un estado válido después de procesar SAP

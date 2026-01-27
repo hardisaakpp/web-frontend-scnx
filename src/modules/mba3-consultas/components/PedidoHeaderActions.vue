@@ -133,7 +133,7 @@ const props = defineProps<{
   canGenerarOC: boolean
   esModoMabelTrading: boolean
   pedido: any
-  /** Deshabilita "Confirmar" cuando el pedido ya tiene respuesta cargada o está confirmado (ver docs/FRONTEND.md 0.5.9.1) */
+  /** Deshabilita "Confirmar" cuando el pedido ya tiene respuesta cargada o está confirmado (ver docs/FRONTEND.md §2) */
   confirmarDeshabilitado?: boolean
   hideConfirmAndDownload?: boolean
   showCrearPedido?: boolean
