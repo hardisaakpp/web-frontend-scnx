@@ -40,7 +40,7 @@
             </div>
             <div class="flex-1 min-w-0">
               <div class="font-medium text-gray-900 dark:text-white text-sm">Cargar Plantilla</div>
-              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Ver y editar pedido</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">MABEL TRADING - Ver y editar pedido</div>
             </div>
           </div>
         </button>
@@ -59,7 +59,7 @@
             </div>
             <div class="flex-1 min-w-0">
               <div class="font-medium text-gray-900 dark:text-white text-sm">Gestionar Pedido</div>
-              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">editar cantidades, costos</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">EL RAYO — Editar cantidades y costos</div>
             </div>
           </div>
         </button>
@@ -78,7 +78,7 @@
             </div>
             <div class="flex-1 min-w-0">
               <div class="font-medium text-gray-900 dark:text-white text-sm">Listado de Pedidos</div>
-              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Ver todos los pedidos</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">EL RAYO — Ver todos los pedidos</div>
             </div>
           </div>
         </button>
@@ -116,7 +116,7 @@
             </div>
             <div class="flex-1 min-w-0">
               <div class="font-medium text-gray-900 dark:text-white text-sm">Procesamiento SAP</div>
-              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Ver pedidos confirmados</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">MABEL TRADING - Ver pedidos confirmados</div>
             </div>
           </div>
         </button>
@@ -136,7 +136,7 @@
             </div>
             <div class="flex-1 min-w-0">
               <div class="font-medium text-gray-900 dark:text-white text-sm">Procesos</div>
-              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Migración y procesamiento</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">MABEL TRADING - Migración y procesamiento</div>
               <div v-if="loadingDespachos" class="text-xs text-indigo-600 dark:text-indigo-400 mt-2 flex items-center gap-1">
                 <svg class="animate-spin w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />

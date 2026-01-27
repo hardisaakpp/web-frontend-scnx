@@ -228,10 +228,10 @@
                   // ⭐ PRIORIDAD 1: Resaltar productos con modificaciones del flujo anterior (EL RAYO)
                   // Esto debe aparecer inmediatamente al cargar la página, no solo después de distribuir
                   tieneModificaciones(producto) ? 'bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 dark:border-amber-400' :
-                  // ⭐ PRIORIDAD 2: Resaltar según el estado de la distribución
+                  // ⭐ PRIORIDAD 2: Resaltar según el estado de la distribución (rojo si |diferencia| >= 1)
                   producto.diferencia === 0 ? 'bg-green-50 dark:bg-gray-700/30' :
-                  producto.diferencia < 0 ? 'bg-yellow-50 dark:bg-yellow-900/10' :
-                  'bg-red-50 dark:bg-red-900/10'
+                  (producto.diferencia <= -1 || producto.diferencia >= 1) ? 'bg-red-50 dark:bg-red-900/10' :
+                  'bg-yellow-50 dark:bg-yellow-900/10'
                 ]"
               >
                 <td
@@ -327,9 +327,9 @@
                       class="px-2 py-1 text-xs font-medium rounded-full"
                       :class="producto.diferencia === 0 
                         ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' 
-                        : producto.diferencia < 0 
-                        ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
-                        : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'"
+                        : (producto.diferencia <= -1 || producto.diferencia >= 1)
+                        ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+                        : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'"
                     >
                       {{ producto.diferencia === 0 ? '✓ Completo' : producto.diferencia < 0 ? '⚠ Falta' : '✗ Excede' }}
                     </span>
@@ -480,7 +480,7 @@
                             </td>
                             <td class="px-4 py-3"></td>
                             <td class="px-4 py-3 whitespace-nowrap text-right">
-                              <div class="text-sm font-bold" :class="producto.diferencia === 0 ? 'text-green-600 dark:text-green-400' : producto.diferencia < 0 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'">
+                              <div class="text-sm font-bold" :class="producto.diferencia === 0 ? 'text-green-600 dark:text-green-400' : (producto.diferencia <= -1 || producto.diferencia >= 1) ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400'">
                                 {{ formatNumber(producto.cantidad_distribuida) }}
                               </div>
                               <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
@@ -543,7 +543,7 @@
           
           <button
             @click="$emit('confirmar-redistribucion')"
-            :disabled="!puedeConfirmarRedistribucion || confirmandoRedistribucionValue"
+            :disabled="!puedeConfirmarRedistribucion || confirmandoRedistribucionValue || confirmarDeshabilitadoPorEstado"
             class="px-6 py-2 bg-green-600 dark:bg-green-500 text-white rounded-lg hover:bg-green-700 dark:hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium"
           >
             <svg v-if="!confirmandoRedistribucionValue" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -583,6 +583,8 @@ interface Props {
   productosExpandidos: Ref<Set<string>>
   guardandoRedistribucion: Ref<boolean>
   confirmandoRedistribucion: Ref<boolean>
+  /** Si true, el botón "Confirmar Redistribución" va deshabilitado al cargar (p. ej. cabecera.estado === 'PEDIDO_CONFIRMADO'). Ver docs/FRONTEND.md §1.3.1 */
+  confirmarDeshabilitadoPorEstado?: boolean
   columnasModificadas?: Ref<Set<string>>
 }
 
@@ -597,7 +599,7 @@ interface Emits {
   (e: 'confirmar-redistribucion'): void
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), { confirmarDeshabilitadoPorEstado: false })
 const emit = defineEmits<Emits>()
 
 // Estado para el modo de vista

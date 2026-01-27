@@ -97,6 +97,7 @@
           :productos-expandidos="redistribucion.productosExpandidos"
           :guardando-redistribucion="redistribucion.guardandoRedistribucion"
           :confirmando-redistribucion="redistribucion.confirmandoRedistribucion"
+          :confirmar-deshabilitado-por-estado="confirmarRedistribucionDeshabilitadoPorEstado"
           :columnas-modificadas="columnasModificadas as unknown as Ref<Set<string>>"
           @toggle-expandir-producto="toggleExpandirProducto"
           @actualizar-cantidad-tienda="actualizarCantidadTienda"
@@ -699,6 +700,12 @@ const ESTADOS_YA_CONFIRMADOS = [
 ]
 const confirmarDeshabilitadoPorEstado = computed(() =>
   ESTADOS_YA_CONFIRMADOS.includes(pedido.value?.cabecera?.estado ?? '')
+)
+
+// Deshabilitar "Confirmar Redistribución" solo cuando ya está confirmado o posterior (docs/FRONTEND.md §1.3.1)
+const ESTADOS_REDISTRIBUCION_YA_CONFIRMADA = ['PEDIDO_CONFIRMADO', 'PROCESADO_SAP']
+const confirmarRedistribucionDeshabilitadoPorEstado = computed(() =>
+  ESTADOS_REDISTRIBUCION_YA_CONFIRMADA.includes(pedido.value?.cabecera?.estado ?? '')
 )
 
 // Funciones de carga y gestión del pedido ahora están en el composable usePedidoDetalle

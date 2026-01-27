@@ -237,6 +237,22 @@ Usuario hace clic en "Redistribución"
         → Se queda en /redistribucion con el input de búsqueda y, si aplica, la lista de pedidos confirmados.
 ```
 
+### 1.3.1 Gestión del botón "Confirmar Redistribución"
+
+En la vista de redistribución (detalle de pedido o `/mba3-consultas/pedidos/{numero_pedido}/redistribucion`) el botón **"Confirmar Redistribución"** debe seguir este contrato:
+
+- **Endpoint:** `POST /api/pedidos/{numero_pedido}/redistribucion/confirmar` (en frontend: `mba3ConsultasService.confirmarRedistribucion(numeroPedido, ajustes_detalle)`).
+
+- **Al hacer clic:** deshabilitar el botón de inmediato, mostrar “Confirmando…” o spinner y llamar al endpoint. No permitir doble envío.
+
+- **Si la petición es exitosa:** actualizar el estado local (p. ej. considerar el pedido en `PEDIDO_CONFIRMADO`) o recargar el pedido, y dejar el botón deshabilitado (en la implementación actual se redirige a Procesamiento SAP).
+
+- **Si la petición falla:** mostrar el error (toast/mensaje) y volver a habilitar el botón para que el usuario pueda reintentar.
+
+- **Deshabilitar según estado al cargar:** si `cabecera.estado === 'PEDIDO_CONFIRMADO'` (o cualquier estado posterior, p. ej. `PROCESADO_SAP`), el botón debe ir deshabilitado al cargar la vista. La vista debe recibir o calcular un booleano tipo `confirmarDeshabilitadoPorEstado` y pasarlo al componente del botón para que lo use en `disabled` junto con `confirmandoRedistribucion`.
+
+El componente `RedistribucionTiendas` define la prop opcional `confirmarDeshabilitadoPorEstado`. Las vistas que lo usan (`PedidoDetalleView`, `MabelTradingRedistribucionView`) deben calcular ese valor desde `pedido?.cabecera?.estado` y pasarlo.
+
 ### 1.4 Alternativa UX: lista de pedidos confirmados (misma página o con URL)
 
 Además de “redirect al último confirmado”, el frontend puede ofrecer una **lista de pedidos confirmados** en `/mba3-consultas/redistribucion`:

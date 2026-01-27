@@ -100,6 +100,7 @@
         :productos-expandidos="redistribucion.productosExpandidos"
         :guardando-redistribucion="redistribucion.guardandoRedistribucion"
         :confirmando-redistribucion="redistribucion.confirmandoRedistribucion"
+        :confirmar-deshabilitado-por-estado="confirmarDeshabilitadoPorEstado"
         :columnas-modificadas="columnasModificadas as unknown as Ref<Set<string>>"
         @toggle-expandir-producto="toggleExpandirProducto"
         @actualizar-cantidad-tienda="actualizarCantidadTienda"
@@ -226,6 +227,12 @@ const puedeConfirmarRedistribucion = computed(() => {
          productos.every(p => p.diferencia === 0) &&
          productos.every(p => !p.error)
 })
+
+// Deshabilitar "Confirmar Redistribución" cuando el pedido ya está confirmado (docs/FRONTEND.md §1.3.1: PEDIDO_CONFIRMADO o posterior)
+const ESTADOS_REDISTRIBUCION_YA_CONFIRMADA = ['PEDIDO_CONFIRMADO', 'PROCESADO_SAP']
+const confirmarDeshabilitadoPorEstado = computed(() =>
+  ESTADOS_REDISTRIBUCION_YA_CONFIRMADA.includes(pedido.value?.cabecera?.estado ?? '')
+)
 
 // Funciones de redistribución
 function toggleExpandirProducto(codigoProducto: string) {
