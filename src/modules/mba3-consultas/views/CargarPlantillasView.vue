@@ -1,11 +1,38 @@
 <template>
+  <!-- Overlay de bloqueo durante la carga de plantilla Excel -->
+  <Teleport to="body">
+    <div 
+      v-if="uploading"
+      class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center"
+      @click.prevent
+      @mousedown.prevent
+      @mouseup.prevent
+      @touchstart.prevent
+      @touchmove.prevent
+      @touchend.prevent
+    >
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-8 max-w-md mx-4 text-center transition-colors duration-300">
+        <div class="flex flex-col items-center gap-4">
+          <svg class="animate-spin h-12 w-12 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <div>
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2 transition-colors duration-300">Cargando Plantilla Excel</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-300 transition-colors duration-300">Por favor espera mientras se procesa el archivo...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </Teleport>
+
   <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-    <div class="space-y-6">
+    <div class="space-y-6" :class="{ 'pointer-events-none opacity-75': uploading }">
       <!-- Header -->
       <div class="flex items-center justify-between">
         <div>
-          <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Cargar Plantillas</h1>
-          <p class="mt-1 text-sm text-gray-500 dark:text-gray-300">Sube plantillas de Excel para procesar</p>
+          <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Gestionar Pedido</h1>
+          <p class="mt-1 text-sm text-gray-500 dark:text-gray-300">Editar cantidades, costos y gestionar pedidos</p>
         </div>
         <div class="flex items-center gap-3">
           <button
@@ -285,7 +312,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onActivated, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onActivated, watch, nextTick, Teleport } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
@@ -534,7 +561,7 @@ function goToPedido() {
 
 /**
  * Carga automáticamente el último pedido del usuario al montar/activar el componente
- * Se ejecuta cada vez que el usuario entra a "Cargar Plantillas"
+ * Se ejecuta cada vez que el usuario entra a "Gestionar Pedido"
  */
 async function cargarUltimoPedido() {
   // Evitar múltiples llamadas simultáneas
@@ -579,7 +606,7 @@ async function cargarUltimoPedido() {
 // Función para resetear el flag de búsqueda manual cuando se monta/activa el componente
 function resetearEstado() {
   // Resetear el flag de búsqueda manual para permitir carga automática
-  // Esto permite que al regresar a "Cargar Plantillas", se vuelva a cargar el último pedido
+  // Esto permite que al regresar a "Gestionar Pedido", se vuelva a cargar el último pedido
   busquedaManualRealizada.value = false
 }
 

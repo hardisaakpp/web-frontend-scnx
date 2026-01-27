@@ -46,7 +46,7 @@
 
         <!-- Gestionar Pedido -->
         <button
-          @click="$router.push('/mba3-consultas/cargar-plantillas')"
+          @click="$router.push('/mba3-consultas/gestionar-pedido')"
           class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left"
         >
           <div class="flex items-start gap-3">
