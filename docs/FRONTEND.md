@@ -8,7 +8,21 @@ Documentación de convenciones de UI, flujos de pantalla y uso de APIs desde el 
 
 ### 0.4.1 Diagnóstico
 
-En las respuestas de **GET /api/auth/me** (o **GET /Auth/me**), el frontend recibe un objeto `capabilities`. La capability **can_view_odc_sap** es `true` **solo** si el usuario tiene el permiso **odc.view** (sin admin override). Para el uso de esta capability en el sidebar, ver [0.5.7.1](#0571-botón-sidebar-gestión-odc-sap--permiso-odcview).
+**¿La respuesta incluye las capabilities esperadas?**
+
+En las respuestas de **GET /api/auth/me** (o **GET /Auth/me**), el frontend recibe un objeto `capabilities`. Debe incluir al menos:
+
+- **can_view_odc_sap**: `true` **solo** si el usuario tiene el permiso **odc.view** (sin admin override). Para el uso en el sidebar, ver [0.5.7.1](#0571-botón-sidebar-gestión-odc-sap--permiso-odcview).
+- **can_manage_order**: `true` **solo** si el usuario tiene el permiso **odcsap.view**. Para el botón "Gestionar Pedido", ver [0.5.7.2](#0572-botones-gestionar-pedido-y-listado-de-pedidos--permiso-odcsapview).
+- **can_view_order_list**: `true` **solo** si el usuario tiene el permiso **odcsap.view**. Para el botón "Listado de Pedidos", ver [0.5.7.2](#0572-botones-gestionar-pedido-y-listado-de-pedidos--permiso-odcsapview).
+
+**¿Los getters leen solo de capabilities?**
+
+En el store de auth, los getters deben reflejar exclusivamente `state.capabilities`:
+
+- **canViewOdcSap** → `state.capabilities?.can_view_odc_sap === true`
+- **canManageOrder** → `state.capabilities?.can_manage_order === true`
+- **canViewOrderList** → `state.capabilities?.can_view_order_list === true`
 
 ### 0.5.7.1 Botón sidebar "Gestión ODC SAP" — permiso `odc.view`
 
@@ -41,6 +55,51 @@ Nada más. No usar `permissions.includes('odc.view')` ni `userRoles.includes('Ad
 
 - Usuario sin `odc.view` → no ve el botón.
 - Usuario con `odc.view` → ve el botón y puede entrar.
+
+### 0.5.7.2 Botones "Gestionar Pedido" y "Listado de Pedidos" — permiso `odcsap.view`
+
+Los botones **"Gestionar Pedido"** y **"Listado de Pedidos"** en el dashboard de Gestión ODC SAP dependen **únicamente** del permiso `odcsap.view`.
+
+**Reglas exactas:**
+
+- El permiso **odcsap.view** habilita solo esos dos botones; no afecta al sidebar "Gestión ODC SAP" ni a otros botones.
+- **can_manage_order** y **can_view_order_list** son `true` **solo** si el usuario tiene `odcsap.view` (sin admin override ni otros permisos).
+- Sin `odcsap.view` no se muestra ninguno de los dos.
+- El frontend **no** debe chequear permisos directamente; solo las capabilities.
+
+**Mapeo:**
+
+| Permiso       | Capability           | UI                    |
+|---------------|----------------------|------------------------|
+| `odcsap.view` | `can_manage_order`    | Botón "Gestionar Pedido" |
+| `odcsap.view` | `can_view_order_list` | Botón "Listado de Pedidos" |
+
+**Implementación en frontend:**
+
+Usar solo los getters del store de auth:
+
+```ts
+authStore.canManageOrder   // capabilities.can_manage_order
+authStore.canViewOrderList // capabilities.can_view_order_list
+```
+
+En el dashboard (p. ej. DashboardView):
+
+```vue
+<button v-if="authStore.canManageOrder && tienePedidos" ...>Gestionar Pedido</button>
+<button v-if="authStore.canViewOrderList" ...>Listado de Pedidos</button>
+```
+
+No usar `permissions.includes('odcsap.view')` ni lógica distinta de capabilities.
+
+**Comportamiento esperado:**
+
+| Usuario               | "Gestionar Pedido" | "Listado de Pedidos" | Sidebar "Gestión ODC SAP" |
+|-----------------------|--------------------|----------------------|---------------------------|
+| Con `odcsap.view`     | Visible            | Visible              | Solo si tiene `odc.view`  |
+| Sin `odcsap.view`     | No visible         | No visible           | Sin cambios               |
+
+El sidebar solo depende de `odc.view`; `odcsap.view` no lo modifica.
 
 ---
 

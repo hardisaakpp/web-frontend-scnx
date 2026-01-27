@@ -12,9 +12,14 @@ interface User {
   permissions: string[]
 }
 
-/** Capabilities expuestas por GET /Auth/me. can_view_odc_sap = true solo si el usuario tiene permiso odc.view (sin admin override). */
+/** Capabilities expuestas por GET /Auth/me. */
 export interface AuthCapabilities {
+  /** true solo con permiso odc.view (sin admin override). Botón sidebar "Gestión ODC SAP". */
   can_view_odc_sap?: boolean
+  /** true solo con permiso odcsap.view. Botón "Gestionar Pedido" en dashboard. */
+  can_manage_order?: boolean
+  /** true solo con permiso odcsap.view. Botón/link "Listado de Pedidos" en dashboard. */
+  can_view_order_list?: boolean
   [key: string]: boolean | undefined
 }
 
@@ -192,7 +197,11 @@ export const useAuthStore = defineStore('auth', {
       return ''
     },
     /** true solo si GET /Auth/me devolvió capabilities.can_view_odc_sap === true (permiso odc.view, sin admin override). Única fuente para mostrar el botón "Gestión ODC SAP". */
-    canViewOdcSap: (state): boolean => state.capabilities?.can_view_odc_sap === true
+    canViewOdcSap: (state): boolean => state.capabilities?.can_view_odc_sap === true,
+    /** true solo si capabilities.can_manage_order === true (permiso odcsap.view). Botón "Gestionar Pedido". Ver docs/FRONTEND.md § 0.5.7.2. */
+    canManageOrder: (state): boolean => state.capabilities?.can_manage_order === true,
+    /** true solo si capabilities.can_view_order_list === true (permiso odcsap.view). Botón "Listado de Pedidos". Ver docs/FRONTEND.md § 0.5.7.2. */
+    canViewOrderList: (state): boolean => state.capabilities?.can_view_order_list === true
   },
 
   actions: {

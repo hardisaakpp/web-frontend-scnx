@@ -44,9 +44,9 @@
           </div>
         </button>
 
-        <!-- Gestionar Pedido -->
+        <!-- Gestionar Pedido: solo capability can_manage_order (odcsap.view). Ver docs/FRONTEND.md § 0.5.7.2 -->
         <button
-          v-if="tienePedidos"
+          v-if="authStore.canManageOrder && tienePedidos"
           @click="$router.push('/mba3-consultas/gestionar-pedido')"
           class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left"
         >
@@ -63,8 +63,9 @@
           </div>
         </button>
 
-        <!-- Listado de Pedidos -->
+        <!-- Listado de Pedidos: solo capability can_view_order_list (odcsap.view). Ver docs/FRONTEND.md § 0.5.7.2 -->
         <button
+          v-if="authStore.canViewOrderList"
           @click="$router.push('/mba3-consultas/pedidos')"
           class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left"
         >
@@ -168,7 +169,7 @@
               @click="odcConsultasAbierto = !odcConsultasAbierto"
               class="w-full px-4 py-3 flex items-center justify-between gap-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
             >
-              <span class="font-medium text-gray-900 dark:text-white text-sm">Consultas ODC</span>
+              <span class="font-medium text-gray-900 dark:text-white text-sm">Información ODC</span>
               <svg
                 class="w-5 h-5 text-gray-500 dark:text-gray-400 flex-shrink-0 transition-transform duration-200"
                 :class="{ 'rotate-180': odcConsultasAbierto }"
@@ -352,11 +353,13 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import { useOrdenesCompraStore } from '../stores/ordenesCompraStore'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import { useToast } from '@/composables/useToast'
 
 const router = useRouter()
+const authStore = useAuthStore()
 const ordenesCompraStore = useOrdenesCompraStore()
 const toast = useToast()
 
