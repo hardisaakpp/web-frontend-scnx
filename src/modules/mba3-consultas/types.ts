@@ -1227,6 +1227,13 @@ export interface PedidosListadoResponse {
 /**
  * Filtros disponibles para el listado de pedidos
  */
+// ========== Verificación de existencia de pedidos ==========
+export interface TienePedidosResponse {
+  status: string
+  tiene_pedidos: boolean
+  message: string
+}
+
 export interface PedidosListadoFiltros {
   estado?: string
   fecha_desde?: string

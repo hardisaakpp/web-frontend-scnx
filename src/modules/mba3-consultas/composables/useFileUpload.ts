@@ -58,6 +58,8 @@ export function useFileUpload(options: {
   onUploadError?: (error: UploadErrorInfo) => void
   loadPedido?: () => Promise<void>
   pedido?: Ref<PedidoCompleto | null>
+  /** Si es true, tras subir plantilla redirige a /mba3-consultas/cargar-plantilla/:id en lugar de /mba3-consultas/pedidos/:id */
+  redirectToCargarPlantilla?: boolean
 } = {}) {
   const router = useRouter()
   const toast = useToast()
@@ -783,10 +785,11 @@ export function useFileUpload(options: {
       // Redirigir o recargar según corresponda
       if (numeroPedido) {
         const currentPedidoNumero = options?.pedido?.value?.cabecera.numero_pedido
+        const pathBase = options?.redirectToCargarPlantilla ? '/mba3-consultas/cargar-plantilla' : '/mba3-consultas/pedidos'
         if (numeroPedido !== currentPedidoNumero) {
           // Si el pedido cargado es diferente al actual, redirigir
           // ⭐ Asegurar que la navegación se complete antes de continuar
-          await router.push(`/mba3-consultas/pedidos/${encodeURIComponent(numeroPedido)}`)
+          await router.push(`${pathBase}/${encodeURIComponent(numeroPedido)}`)
           // ⭐ Pequeño delay para asegurar que el componente detecte el cambio de ruta
           // Esto es necesario porque el watcher puede no ejecutarse inmediatamente
           await new Promise(resolve => setTimeout(resolve, 100))
@@ -895,10 +898,11 @@ export function useFileUpload(options: {
       // Redirigir o recargar según corresponda
       if (numeroPedido) {
         const currentPedidoNumero = options?.pedido?.value?.cabecera.numero_pedido
+        const pathBase = options?.redirectToCargarPlantilla ? '/mba3-consultas/cargar-plantilla' : '/mba3-consultas/pedidos'
         if (numeroPedido !== currentPedidoNumero) {
           // Si el pedido cargado es diferente al actual, redirigir
           // ⭐ Asegurar que la navegación se complete antes de continuar
-          await router.push(`/mba3-consultas/pedidos/${encodeURIComponent(numeroPedido)}`)
+          await router.push(`${pathBase}/${encodeURIComponent(numeroPedido)}`)
           // ⭐ Pequeño delay para asegurar que el componente detecte el cambio de ruta
           // Esto es necesario porque el watcher puede no ejecutarse inmediatamente
           await new Promise(resolve => setTimeout(resolve, 100))

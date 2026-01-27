@@ -32,8 +32,8 @@
           class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left"
         >
           <div class="flex items-start gap-3">
-            <div class="w-8 h-8 rounded bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
-              <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="w-8 h-8 rounded bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
             </div>
@@ -46,12 +46,13 @@
 
         <!-- Gestionar Pedido -->
         <button
+          v-if="tienePedidos"
           @click="$router.push('/mba3-consultas/gestionar-pedido')"
           class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left"
         >
           <div class="flex items-start gap-3">
-            <div class="w-8 h-8 rounded bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
-              <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="w-8 h-8 rounded bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
               </svg>
             </div>
@@ -315,6 +316,8 @@ const loadingDespachos = ref(false)
 const showProcesamientoSAPModal = ref(false)
 const pedidoProcesamientoSAP = ref('')
 const loadingProcesamientoSAP = ref(false)
+const tienePedidos = ref(false)
+const loadingTienePedidos = ref(false)
 
 // Función para cargar despachos antes de navegar
 async function cargarDespachos() {
@@ -373,7 +376,25 @@ function closeProcesamientoSAPModal() {
   loadingProcesamientoSAP.value = false
 }
 
+// Función para verificar si hay pedidos guardados
+async function verificarTienePedidos() {
+  loadingTienePedidos.value = true
+  try {
+    const response = await mba3ConsultasService.tienePedidos()
+    tienePedidos.value = response.tiene_pedidos
+  } catch (error: any) {
+    console.error('Error al verificar existencia de pedidos:', error)
+    // En caso de error, ocultar el botón por defecto
+    tienePedidos.value = false
+  } finally {
+    loadingTienePedidos.value = false
+  }
+}
+
 onMounted(async () => {
-  await ordenesCompraStore.fetchEstadisticas()
+  await Promise.all([
+    ordenesCompraStore.fetchEstadisticas(),
+    verificarTienePedidos()
+  ])
 })
 </script>

@@ -84,7 +84,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import('./views/CargarPlantillaView.vue'),
     meta: { 
       requiresAuth: true,
-      title: 'Cargar Plantilla',
+      title: 'Cargar Plantilla - MABEL TRADING',
       icon: 'DocumentArrowUpIcon',
       permissions: ['mba3-consultas.view']
     }

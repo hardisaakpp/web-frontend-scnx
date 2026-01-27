@@ -659,7 +659,7 @@ const {
 
 // ⭐ Título de la interfaz según el modo
 const tituloInterfaz = computed(() => {
-  return 'Cargar Plantilla'
+  return 'Cargar Plantilla - MABEL TRADING'
 })
 
 // ⭐ Variables para controlar la carga automática del último pedido
@@ -822,6 +822,7 @@ const canGenerarOC = computed(() => {
 const fileUploadComposable = useFileUpload({
   pedido,
   loadPedido: () => pedidoDetalle.loadPedido(),
+  redirectToCargarPlantilla: true, // Tras subir plantilla, permanecer en /mba3-consultas/cargar-plantilla/:id
   onUploadSuccess: async (numeroPedido) => {
     if (numeroPedido && numeroPedido !== pedido.value?.cabecera.numero_pedido) {
       await pedidoDetalle.loadPedido()
