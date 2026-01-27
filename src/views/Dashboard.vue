@@ -67,23 +67,6 @@
         </div>
       </div>
 
-      <!-- Módulos Disponibles -->
-      <div class="mt-6">
-        <h2 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Módulos Disponibles</h2>
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <router-link
-            v-for="item in menuItems"
-            :key="item.path"
-            :to="item.path"
-            class="relative rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-6 py-5 shadow-sm flex items-center space-x-3 hover:border-gray-400 dark:hover:border-gray-600 focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500 transition-colors duration-300"
-          >
-            <div class="flex-1 min-w-0">
-              <span class="absolute inset-0" aria-hidden="true"></span>
-              <p class="text-sm font-medium text-gray-900 dark:text-white">{{ item.name }}</p>
-            </div>
-          </router-link>
-        </div>
-      </div>
     </div>
   </Layout>
 </template>
@@ -91,8 +74,6 @@
 <script setup>
 import Layout from '@/components/Layout.vue'
 import { useAuthStore } from '@/stores/auth'
-import { useMenu } from '@/composables/useMenu'
 
 const authStore = useAuthStore()
-const { menuItems } = useMenu()
 </script>
