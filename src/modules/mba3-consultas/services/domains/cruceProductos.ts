@@ -114,7 +114,9 @@ export const cruceProductosService = {
         } catch (streamError: any) {
           // Si es cancelación, no es un error real
           if (streamError.name === 'AbortError') {
-            console.log('🛑 [seguirProgresoCruce] Stream cancelado por el usuario')
+            if (import.meta.env.DEV) {
+              console.log('📋 [seguirProgresoCruce] Stream cancelado por el usuario')
+            }
             reader.cancel()
             return reader
           }

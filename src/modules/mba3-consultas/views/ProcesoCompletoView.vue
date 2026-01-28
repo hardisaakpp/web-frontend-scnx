@@ -936,7 +936,7 @@ async function ejecutarMigrar() {
     
     // Mostrar resultados si están disponibles
     if (procesoStore.resultados?.metadata?.save_status) {
-      showMigrarResults.value = true
+      // showMigrarResults.value = true  // TODO: Mostrar modal de resultados
       const status = procesoStore.resultados.metadata.save_status
       toast.success(
         'Importación completada',

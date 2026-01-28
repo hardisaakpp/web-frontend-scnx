@@ -28,10 +28,10 @@ export function useToast() {
     toasts.value.push(newToast)
     
     // Auto-remove after duration
-    if (newToast.duration > 0) {
+    if ((newToast.duration || 0) > 0) {
       setTimeout(() => {
         removeToast(id)
-      }, newToast.duration)
+      }, newToast.duration || 3000)
     }
     
     return id

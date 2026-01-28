@@ -3,11 +3,15 @@ import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
 import permissionDirective from './directives/permission'
+import { setupErrorHandler } from './plugins/errorHandler'
 import { useThemeStore } from './stores/theme'
 import './style.css'
 
 const app = createApp(App)
 const pinia = createPinia()
+
+// Configurar manejador global de errores
+setupErrorHandler(app)
 
 app.use(pinia)
 app.use(router)

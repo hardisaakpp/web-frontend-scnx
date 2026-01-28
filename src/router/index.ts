@@ -69,9 +69,16 @@ const router = createRouter({
 // Debug: Verificar rutas registradas (solo en desarrollo)
 if (import.meta.env.DEV) {
   const allRoutes = router.getRoutes()
-  console.log('🔍 Todas las rutas registradas:', allRoutes.map(r => ({ path: r.path, name: r.name })))
-  console.log('🔍 Número total de rutas:', allRoutes.length)
+  console.debug('🔍 Todas las rutas registradas:', allRoutes.map(r => ({ path: r.path, name: r.name })))
+  console.debug('🔍 Número total de rutas:', allRoutes.length)
 }
+
+// ⚠️ SECURITY: Control explícito del acceso sin autenticación
+// En producción, DEBE ser false. En desarrollo, puede ser true para facilitar testing.
+// Se puede sobrescribir con variable de entorno VITE_ALLOW_UNAUTHENTICATED=true
+const ALLOW_UNAUTHENTICATED = 
+  import.meta.env.DEV && 
+  import.meta.env.VITE_ALLOW_UNAUTHENTICATED !== 'false'
 
 // Navigation guard
 router.beforeEach(async (to, from, next) => {
@@ -85,16 +92,12 @@ router.beforeEach(async (to, from, next) => {
     await authStore.fetchMe()
   }
 
-  // En desarrollo, permitir acceso sin autenticación para facilitar el debugging
-  const isDevelopment = import.meta.env.DEV
-  const allowUnauthenticatedAccess = isDevelopment
-
   // Verificar autenticación
   if (requiresAuth && !authStore.isAuthenticated) {
-    if (allowUnauthenticatedAccess) {
+    if (ALLOW_UNAUTHENTICATED) {
       // En desarrollo, permitir acceso pero registrar warning
-      if (isDevelopment) {
-        console.warn(`⚠️ [Router] Acceso sin autenticación a ruta protegida: ${to.path}`)
+      if (import.meta.env.DEV) {
+        console.debug(`⚠️ [Router] Acceso sin autenticación a ruta protegida: ${to.path}`)
       }
       next()
       return
@@ -105,9 +108,9 @@ router.beforeEach(async (to, from, next) => {
 
   // Verificar rol si está definido
   if (requiredRole && !authStore.hasRole(requiredRole as string)) {
-    if (allowUnauthenticatedAccess) {
-      if (isDevelopment) {
-        console.warn(`⚠️ [Router] Acceso sin rol requerido a: ${to.path}`)
+    if (ALLOW_UNAUTHENTICATED) {
+      if (import.meta.env.DEV) {
+        console.debug(`⚠️ [Router] Acceso sin rol requerido a: ${to.path}`)
       }
       next()
       return
@@ -123,10 +126,10 @@ router.beforeEach(async (to, from, next) => {
     if (!isAdmin) {
       const hasPermission = authStore.hasAnyPermission(requiredPermissions)
       if (!hasPermission) {
-        if (allowUnauthenticatedAccess) {
+        if (ALLOW_UNAUTHENTICATED) {
           // En desarrollo, permitir acceso pero registrar warning
-          if (isDevelopment) {
-            console.warn(`⚠️ [Router] Acceso sin permisos requeridos a: ${to.path}. Permisos requeridos:`, requiredPermissions)
+          if (import.meta.env.DEV) {
+            console.debug(`⚠️ [Router] Acceso sin permisos requeridos a: ${to.path}. Permisos requeridos:`, requiredPermissions)
           }
           next()
           return

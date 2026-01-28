@@ -270,17 +270,21 @@ export const pedidosService = {
     try {
       const payload = { costo_doc_sin_iva: nuevoCosto }
 
-      console.log('📤 [actualizarCostoPedido] Enviando:', {
-        url: `/api/pedidos/${encodeURIComponent(numeroPedido)}/detalle/${pedidoDetalleId}/costo`,
-        payload
-      })
+      if (import.meta.env.DEV) {
+        console.log('📤 [actualizarCostoPedido] Enviando:', {
+          url: `/api/pedidos/${encodeURIComponent(numeroPedido)}/detalle/${pedidoDetalleId}/costo`,
+          payload
+        })
+      }
 
       const response = await mba3Api.patch<ActualizarCostoPedidoResponse>(
         `/api/pedidos/${encodeURIComponent(numeroPedido)}/detalle/${pedidoDetalleId}/costo`,
         payload
       )
 
-      console.log('✅ [actualizarCostoPedido] Respuesta exitosa:', response.data)
+      if (import.meta.env.DEV) {
+        console.log('✅ [actualizarCostoPedido] Respuesta exitosa:', response.data)
+      }
       return response.data
     } catch (error: any) {
       console.error('❌ [actualizarCostoPedido] Error:', error)
