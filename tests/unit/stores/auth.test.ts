@@ -79,7 +79,11 @@ describe('Auth Store', () => {
             roles: ['User'],
             permissions: ['odcsap.view', 'mabel.view']
           }
-        }
+        },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: {} as any
       }
       
       const mockMeResponse = {
@@ -91,7 +95,11 @@ describe('Auth Store', () => {
             can_view_order_list: true,
             mabel_view: true
           }
-        }
+        },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: {} as any
       }
 
       vi.mocked(api.post).mockResolvedValue(mockResponse)
@@ -141,7 +149,11 @@ describe('Auth Store', () => {
             roles: ['User'],
             permissions: ['odcsap.view']
           }
-        }
+        },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: {} as any
       }
 
       const mockMeResponse = {
@@ -153,7 +165,11 @@ describe('Auth Store', () => {
             can_view_order_list: true,
             mabel_view: false
           }
-        }
+        },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: {} as any
       }
 
       vi.mocked(api.post).mockResolvedValue(mockResponse)
@@ -188,7 +204,11 @@ describe('Auth Store', () => {
             can_view_order_list: true,
             mabel_view: true
           }
-        }
+        },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: {} as any
       }
 
       vi.mocked(api.get).mockResolvedValue(mockMeResponse)

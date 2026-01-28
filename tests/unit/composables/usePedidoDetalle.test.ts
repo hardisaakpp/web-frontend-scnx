@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { ref, computed } from 'vue'
+import { ref, computed, type Ref } from 'vue'
 import { usePedidoDetalle } from '@/modules/mba3-consultas/composables/usePedidoDetalle'
-import type { Pedido } from '@/modules/mba3-consultas/types'
+import type { PedidoCompleto, ReporteDiferenciasResponse } from '@/modules/mba3-consultas/types'
 
 // Mock del router
 const mockPush = vi.fn()
@@ -68,17 +68,23 @@ Object.defineProperty(window, 'scrollTo', {
 })
 
 describe('usePedidoDetalle', () => {
-  let mockPedido: Ref<Pedido | null>
+  let mockPedido: Ref<PedidoCompleto | null>
   let mockNumeroPedido: Ref<string>
+  let mockEsModoMabelTrading: Ref<boolean>
   let mockColumnasModificadas: Ref<Set<string>>
+  let mockProductosRedistribucion: Ref<any[]>
+  let mockReporteDiferencias: Ref<ReporteDiferenciasResponse | null>
   
   beforeEach(() => {
     vi.clearAllMocks()
     
     // Crear refs para las opciones
-    mockPedido = ref(null)
+    mockPedido = ref<PedidoCompleto | null>(null)
     mockNumeroPedido = ref('P-12.48 - 12 - 2025')
+    mockEsModoMabelTrading = ref(false)
     mockColumnasModificadas = ref(new Set())
+    mockProductosRedistribucion = ref([])
+    mockReporteDiferencias = ref<ReporteDiferenciasResponse | null>(null)
     
     // Setup defaults para mocks
     mockGetPedido.mockResolvedValue({
@@ -102,8 +108,8 @@ describe('usePedidoDetalle', () => {
       const { loading, error, pedidoIdInput, showSearchHelp, copyFeedback, loadingReporte, generandoOC } = usePedidoDetalle({
         pedido: mockPedido,
         numeroPedido: mockNumeroPedido,
-        columnasModificadas: mockColumnasModificadas,
-        esModoMabelTrading: computed(() => false)
+        esModoMabelTrading: mockEsModoMabelTrading,
+        columnasModificadas: mockColumnasModificadas
       })
       
       expect(loading.value).toBe(false)
@@ -121,7 +127,7 @@ describe('usePedidoDetalle', () => {
       const { pedidoIdInput, isValidPedido } = usePedidoDetalle({
         pedido: mockPedido,
         numeroPedido: mockNumeroPedido,
-        esModoMabelTrading: computed(() => false)
+        esModoMabelTrading: mockEsModoMabelTrading
       })
       
       pedidoIdInput.value = 'P-12.48 - 12 - 2025'
@@ -132,7 +138,7 @@ describe('usePedidoDetalle', () => {
       const { pedidoIdInput, isValidPedido } = usePedidoDetalle({
         pedido: mockPedido,
         numeroPedido: mockNumeroPedido,
-        esModoMabelTrading: computed(() => false)
+        esModoMabelTrading: mockEsModoMabelTrading
       })
       
       pedidoIdInput.value = 'P-1234 - 05 - 2024'
@@ -143,7 +149,7 @@ describe('usePedidoDetalle', () => {
       const { pedidoIdInput, isValidPedido } = usePedidoDetalle({
         pedido: mockPedido,
         numeroPedido: mockNumeroPedido,
-        esModoMabelTrading: computed(() => false)
+        esModoMabelTrading: mockEsModoMabelTrading
       })
       
       // El formato permite letras, números, puntos, guiones y espacios (min 5 chars)
@@ -155,7 +161,7 @@ describe('usePedidoDetalle', () => {
       const { pedidoIdInput, isValidPedido } = usePedidoDetalle({
         pedido: mockPedido,
         numeroPedido: mockNumeroPedido,
-        esModoMabelTrading: computed(() => false)
+        esModoMabelTrading: mockEsModoMabelTrading
       })
       
       pedidoIdInput.value = ''
@@ -166,7 +172,7 @@ describe('usePedidoDetalle', () => {
       const { pedidoIdInput, isValidPedido } = usePedidoDetalle({
         pedido: mockPedido,
         numeroPedido: mockNumeroPedido,
-        esModoMabelTrading: computed(() => false)
+        esModoMabelTrading: mockEsModoMabelTrading
       })
       
       pedidoIdInput.value = 'P-1' // Menos de 5 caracteres
@@ -178,7 +184,7 @@ describe('usePedidoDetalle', () => {
     it('should load pedido successfully', async () => {
       const mockPedidoData = {
         cabecera: {
-          id_pedido: 1,
+          pedido_id: '1',
           numero_pedido: 'P-12.48 - 12 - 2025',
           estado: 'PENDIENTE'
         },
@@ -192,7 +198,7 @@ describe('usePedidoDetalle', () => {
       const { loadPedido, loading, error } = usePedidoDetalle({
         pedido: mockPedido,
         numeroPedido: mockNumeroPedido,
-        esModoMabelTrading: computed(() => false)
+        esModoMabelTrading: mockEsModoMabelTrading
       })
       
       await loadPedido()
@@ -210,7 +216,7 @@ describe('usePedidoDetalle', () => {
       const { loadPedido, loading, error } = usePedidoDetalle({
         pedido: mockPedido,
         numeroPedido: mockNumeroPedido,
-        esModoMabelTrading: computed(() => false)
+        esModoMabelTrading: mockEsModoMabelTrading
       })
       
       await loadPedido()
@@ -237,7 +243,7 @@ describe('usePedidoDetalle', () => {
         pedido: mockPedido,
         numeroPedido: mockNumeroPedido,
         columnasModificadas: mockColumnasModificadas,
-        esModoMabelTrading: computed(() => false)
+        esModoMabelTrading: mockEsModoMabelTrading
       })
       
       await loadPedido()
@@ -251,7 +257,7 @@ describe('usePedidoDetalle', () => {
     it('should use sessionStorage fallback when backend returns no modificaciones', async () => {
       const mockCargarDesdeStorage = vi.fn()
       mockGetPedido.mockResolvedValue({
-        cabecera: { id_pedido: 1, numero_pedido: 'P-12.48 - 12 - 2025', estado: 'PENDIENTE' },
+        cabecera: { pedido_id: '1', numero_pedido: 'P-12.48 - 12 - 2025', estado: 'PENDIENTE' },
         detalle: []
       })
       mockObtenerModificacionesColumnas.mockResolvedValue({ modificaciones: [] })
@@ -261,7 +267,7 @@ describe('usePedidoDetalle', () => {
         numeroPedido: mockNumeroPedido,
         columnasModificadas: mockColumnasModificadas,
         cargarColumnasModificadasDesdeStorage: mockCargarDesdeStorage,
-        esModoMabelTrading: computed(() => false)
+        esModoMabelTrading: mockEsModoMabelTrading
       })
       
       await loadPedido()
@@ -272,7 +278,7 @@ describe('usePedidoDetalle', () => {
     it('should use sessionStorage fallback when backend returns 404', async () => {
       const mockCargarDesdeStorage = vi.fn()
       mockGetPedido.mockResolvedValue({
-        cabecera: { id_pedido: 1, numero_pedido: 'P-12.48 - 12 - 2025', estado: 'PENDIENTE' },
+        cabecera: { pedido_id: '1', numero_pedido: 'P-12.48 - 12 - 2025', estado: 'PENDIENTE' },
         detalle: []
       })
       const error404 = new Error('404 - No existe')
@@ -283,7 +289,7 @@ describe('usePedidoDetalle', () => {
         numeroPedido: mockNumeroPedido,
         columnasModificadas: mockColumnasModificadas,
         cargarColumnasModificadasDesdeStorage: mockCargarDesdeStorage,
-        esModoMabelTrading: computed(() => false)
+        esModoMabelTrading: mockEsModoMabelTrading
       })
       
       await loadPedido()
@@ -305,7 +311,7 @@ describe('usePedidoDetalle', () => {
       const { loadPedido, reporteDiferencias } = usePedidoDetalle({
         pedido: mockPedido,
         numeroPedido: mockNumeroPedido,
-        esModoMabelTrading: computed(() => false)
+        esModoMabelTrading: mockEsModoMabelTrading
       })
       
       await loadPedido()
@@ -326,7 +332,7 @@ describe('usePedidoDetalle', () => {
       const { loadPedido, reporteDiferencias } = usePedidoDetalle({
         pedido: mockPedido,
         numeroPedido: mockNumeroPedido,
-        esModoMabelTrading: computed(() => false)
+        esModoMabelTrading: mockEsModoMabelTrading
       })
       
       await loadPedido()
@@ -372,8 +378,8 @@ describe('usePedidoDetalle', () => {
     
     it('should generate OC successfully', async () => {
       mockPedido.value = {
-        cabecera: { id_pedido: 1, numero_pedido: 'P-12.48 - 12 - 2025', estado: 'PENDIENTE' },
-        detalle: []
+        cabecera: { pedido_id: '1', numero_pedido: 'P-12.48 - 12 - 2025', estado: 'PENDIENTE' } as any,
+        detalles: []
       }
       mockGetPedido.mockResolvedValue(mockPedido.value)
       mockObtenerModificacionesColumnas.mockResolvedValue({ modificaciones: [] })
@@ -385,7 +391,7 @@ describe('usePedidoDetalle', () => {
       const { handleGenerarOCDesdePedido, generandoOC } = usePedidoDetalle({
         pedido: mockPedido,
         numeroPedido: mockNumeroPedido,
-        esModoMabelTrading: computed(() => false)
+        esModoMabelTrading: mockEsModoMabelTrading
       })
       
       const promise = handleGenerarOCDesdePedido()
@@ -408,8 +414,8 @@ describe('usePedidoDetalle', () => {
     
     it('should handle OC generation error', async () => {
       mockPedido.value = {
-        cabecera: { id_pedido: 1, numero_pedido: 'P-12.48 - 12 - 2025', estado: 'PENDIENTE' },
-        detalle: []
+        cabecera: { pedido_id: '1', numero_pedido: 'P-12.48 - 12 - 2025', estado: 'PENDIENTE' } as any,
+        detalles: []
       }
       mockCrearOrdenCompraDesdePedido.mockResolvedValue({
         status: 'error',
@@ -419,7 +425,7 @@ describe('usePedidoDetalle', () => {
       const { handleGenerarOCDesdePedido, generandoOC } = usePedidoDetalle({
         pedido: mockPedido,
         numeroPedido: mockNumeroPedido,
-        esModoMabelTrading: computed(() => false)
+        esModoMabelTrading: mockEsModoMabelTrading
       })
       
       await handleGenerarOCDesdePedido()
@@ -434,8 +440,8 @@ describe('usePedidoDetalle', () => {
     
     it('should handle OC generation exception', async () => {
       mockPedido.value = {
-        cabecera: { id_pedido: 1, numero_pedido: 'P-12.48 - 12 - 2025', estado: 'PENDIENTE' },
-        detalle: []
+        cabecera: { pedido_id: '1', numero_pedido: 'P-12.48 - 12 - 2025', estado: 'PENDIENTE' } as any,
+        detalles: []
       }
       const errorMessage = 'Network error'
       mockCrearOrdenCompraDesdePedido.mockRejectedValue(new Error(errorMessage))
@@ -443,7 +449,7 @@ describe('usePedidoDetalle', () => {
       const { handleGenerarOCDesdePedido, generandoOC } = usePedidoDetalle({
         pedido: mockPedido,
         numeroPedido: mockNumeroPedido,
-        esModoMabelTrading: computed(() => false)
+        esModoMabelTrading: mockEsModoMabelTrading
       })
       
       await handleGenerarOCDesdePedido()
@@ -458,7 +464,7 @@ describe('usePedidoDetalle', () => {
       const { handleGenerarOCDesdePedido } = usePedidoDetalle({
         pedido: mockPedido,
         numeroPedido: mockNumeroPedido,
-        esModoMabelTrading: computed(() => false)
+        esModoMabelTrading: mockEsModoMabelTrading
       })
       
       await handleGenerarOCDesdePedido()
@@ -472,7 +478,7 @@ describe('usePedidoDetalle', () => {
       const { pedidoIdInput, goToPedido } = usePedidoDetalle({
         pedido: mockPedido,
         numeroPedido: mockNumeroPedido,
-        esModoMabelTrading: computed(() => false)
+        esModoMabelTrading: mockEsModoMabelTrading
       })
       
       pedidoIdInput.value = 'P-12.48 - 12 - 2025'
@@ -486,7 +492,7 @@ describe('usePedidoDetalle', () => {
       const { pedidoIdInput, goToPedido } = usePedidoDetalle({
         pedido: mockPedido,
         numeroPedido: mockNumeroPedido,
-        esModoMabelTrading: computed(() => false)
+        esModoMabelTrading: mockEsModoMabelTrading
       })
       
       pedidoIdInput.value = ''
@@ -500,7 +506,7 @@ describe('usePedidoDetalle', () => {
       const { pedidoIdInput, goToPedido } = usePedidoDetalle({
         pedido: mockPedido,
         numeroPedido: mockNumeroPedido,
-        esModoMabelTrading: computed(() => false)
+        esModoMabelTrading: mockEsModoMabelTrading
       })
       
       pedidoIdInput.value = 'XY' // Menos de 5 caracteres (inválido)
@@ -528,7 +534,8 @@ describe('usePedidoDetalle', () => {
       
       const { copyToClipboard, copyFeedback } = usePedidoDetalle({
         pedido: mockPedido,
-        numeroPedido: mockNumeroPedido
+        numeroPedido: mockNumeroPedido,
+        esModoMabelTrading: mockEsModoMabelTrading
       })
       
       await copyToClipboard('P-12.48 - 12 - 2025')
@@ -545,7 +552,8 @@ describe('usePedidoDetalle', () => {
       
       const { copyToClipboard } = usePedidoDetalle({
         pedido: mockPedido,
-        numeroPedido: mockNumeroPedido
+        numeroPedido: mockNumeroPedido,
+        esModoMabelTrading: mockEsModoMabelTrading
       })
       
       await copyToClipboard('P-12.48 - 12 - 2025')
@@ -577,10 +585,21 @@ describe('usePedidoDetalle', () => {
       const { handleViewReporteDiferencias, reporteDiferencias } = usePedidoDetalle({
         pedido: mockPedido,
         numeroPedido: mockNumeroPedido,
-        esModoMabelTrading: computed(() => false)
+        esModoMabelTrading: mockEsModoMabelTrading
       })
       
-      reporteDiferencias.value = { diferencias: [], totales: {} }
+      reporteDiferencias.value = {
+        pedido_id: '1',
+        numero_pedido: 'P-12.48 - 12 - 2025',
+        resumen: {
+          total_productos: 0,
+          total_solicitado: 0,
+          total_confirmado: 0,
+          total_diferencia: 0,
+          porcentaje_confirmacion: 0
+        },
+        detalle: []
+      }
       
       await handleViewReporteDiferencias()
       
@@ -603,7 +622,7 @@ describe('usePedidoDetalle', () => {
       const { handleViewReporteDiferencias, reporteDiferencias } = usePedidoDetalle({
         pedido: mockPedido,
         numeroPedido: mockNumeroPedido,
-        esModoMabelTrading: computed(() => false)
+        esModoMabelTrading: mockEsModoMabelTrading
       })
       
       reporteDiferencias.value = null
@@ -624,11 +643,11 @@ describe('usePedidoDetalle', () => {
       
       mockPedido.value = {
         cabecera: {
-          id_pedido: 1,
+          pedido_id: '1',
           numero_pedido: 'P-12.48 - 12 - 2025',
           estado: 'PENDIENTE'
-        },
-        detalle: []
+        } as any,
+        detalles: []
       }
       
       // Mock DOM operations
@@ -652,7 +671,7 @@ describe('usePedidoDetalle', () => {
       const { handleExportReporteDiferencias } = usePedidoDetalle({
         pedido: mockPedido,
         numeroPedido: mockNumeroPedido,
-        esModoMabelTrading: computed(() => false)
+        esModoMabelTrading: mockEsModoMabelTrading
       })
       
       await handleExportReporteDiferencias()
@@ -668,11 +687,11 @@ describe('usePedidoDetalle', () => {
     it('should handle export error', async () => {
       mockPedido.value = {
         cabecera: {
-          id_pedido: 1,
+          pedido_id: '1',
           numero_pedido: 'P-12.48 - 12 - 2025',
           estado: 'PENDIENTE'
-        },
-        detalle: []
+        } as any,
+        detalles: []
       }
       
       const errorMessage = 'Error al exportar'
@@ -681,7 +700,7 @@ describe('usePedidoDetalle', () => {
       const { handleExportReporteDiferencias } = usePedidoDetalle({
         pedido: mockPedido,
         numeroPedido: mockNumeroPedido,
-        esModoMabelTrading: computed(() => false)
+        esModoMabelTrading: mockEsModoMabelTrading
       })
       
       await handleExportReporteDiferencias()
@@ -695,7 +714,7 @@ describe('usePedidoDetalle', () => {
       const { handleExportReporteDiferencias } = usePedidoDetalle({
         pedido: mockPedido,
         numeroPedido: mockNumeroPedido,
-        esModoMabelTrading: computed(() => false)
+        esModoMabelTrading: mockEsModoMabelTrading
       })
       
       await handleExportReporteDiferencias()
@@ -716,7 +735,8 @@ describe('usePedidoDetalle', () => {
     it('should hide search help after delay', () => {
       const { handleSearchBlur, showSearchHelp } = usePedidoDetalle({
         pedido: mockPedido,
-        numeroPedido: mockNumeroPedido
+        numeroPedido: mockNumeroPedido,
+        esModoMabelTrading: mockEsModoMabelTrading
       })
       
       showSearchHelp.value = true

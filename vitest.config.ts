@@ -8,6 +8,11 @@ export default mergeConfig(
       // Entorno de pruebas: jsdom simula el navegador
       environment: 'jsdom',
       
+      // TypeScript configuration para tests
+      typecheck: {
+        tsconfig: './tsconfig.test.json',
+      },
+      
       // Archivos globales de setup (opcional)
       // setupFiles: ['./tests/setup.ts'],
       
