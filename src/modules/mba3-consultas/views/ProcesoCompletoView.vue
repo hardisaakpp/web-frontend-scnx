@@ -88,218 +88,6 @@
         @tab-changed="handleTabChange"
         :disabled="procesoStore.loading && (procesoStore.currentStep === 'migrar' || procesoStore.currentStep === 'integrar-sap' || procesoStore.currentStep === 'procesar-oc')"
       >
-      <!-- ⭐ Pestaña legacy oculta (solo visible si SHOW_LEGACY_DESPACHOS = true) -->
-      <template v-if="SHOW_LEGACY_DESPACHOS" #tab-migrar>
-        <div class="space-y-6">
-          <!-- Botón de acción y estado -->
-          <div class="flex items-center justify-between flex-wrap gap-4 p-6 rounded-xl border border-gray-200 dark:border-gray-700 transition-colors duration-300 shadow-md"
-            :class="getProcesoCardClass('migrar')">
-            <div class="flex items-center gap-4">
-              <div 
-                class="w-14 h-14 rounded-full flex items-center justify-center shadow-md transition-all duration-300 border-2"
-              :class="getProcesoIconClass('migrar')"
-            >
-              <div>
-                <span v-if="getStepStatus('migrar') === 'active'" class="animate-spin">
-                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                </span>
-                <span v-else-if="getStepStatus('migrar') === 'completed'">
-                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                </span>
-                <span v-else-if="getStepStatus('migrar') === 'retry'">
-                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                </span>
-                <span v-else-if="getStepStatus('migrar') === 'error'">
-                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </span>
-                <svg v-else class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                </svg>
-            </div>
-            </div>
-              <div>
-                <h3 class="text-lg font-semibold mb-1">{{ getStepTitle('migrar') }}</h3>
-                <p class="text-sm text-gray-600 dark:text-gray-400">{{ getStepDescription('migrar') }}</p>
-            </div>
-          </div>
-          
-          <button
-            @click="ejecutarMigrar"
-            :disabled="procesoStore.loading"
-              class="px-6 py-3 rounded-lg font-medium transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
-            :class="getButtonClass('migrar')"
-          >
-            <span>
-            <span v-if="procesoStore.loading && procesoStore.currentStep === 'migrar'" class="flex items-center justify-center gap-2">
-              <svg class="animate-spin h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              Ejecutando...
-            </span>
-            <span v-else-if="getStepStatus('migrar') === 'retry'" class="flex items-center justify-center gap-2">
-              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              Reintentar
-            </span>
-            <span v-else-if="getStepStatus('migrar') === 'completed'">✓ Completado</span>
-            <span v-else>Ejecutar Importación</span>
-            </span>
-          </button>
-          </div>
-
-          <!-- Barra de progreso para Importar Despachos -->
-          <div v-if="procesoStore.loading && procesoStore.currentStep === 'migrar'" 
-               class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 border border-gray-200 dark:border-gray-700 transition-colors duration-300">
-            <div class="flex items-center justify-between mb-2">
-              <div class="flex items-center gap-2">
-                <svg class="animate-spin h-4 w-4 text-violet-600 dark:text-violet-400" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Progreso de importación</span>
-              </div>
-              <span class="text-sm text-gray-500 dark:text-gray-400 font-semibold">{{ procesoStore.progress }}%</span>
-            </div>
-            <div class="w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-              <div
-                class="h-full bg-violet-600 dark:bg-violet-500 transition-all duration-300"
-                :style="{ width: `${procesoStore.progress}%` }"
-              ></div>
-            </div>
-          </div>
-
-          <!-- Resultados de migración -->
-          <div v-if="procesoStore.resultados?.metadata?.save_status && !procesoStore.loading" class="border border-white/30 dark:border-gray-600/30 rounded-xl overflow-hidden backdrop-blur-xl bg-gradient-to-br from-violet-50/80 dark:from-violet-900/30 to-violet-100/60 dark:to-violet-800/40 shadow-xl relative transition-colors duration-300">
-            <div class="absolute inset-0 bg-gradient-to-br from-white/20 dark:from-gray-700/20 via-transparent to-transparent pointer-events-none"></div>
-            <button
-              @click="showMigrarResults = !showMigrarResults"
-              :disabled="procesoStore.loading && procesoStore.currentStep === 'migrar'"
-              class="w-full px-4 py-3 bg-violet-100/60 dark:bg-violet-900/40 hover:bg-violet-200/70 dark:hover:bg-violet-800/60 backdrop-blur-sm transition-all duration-300 flex items-center justify-between text-left relative z-10 border-b border-white/20 dark:border-gray-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <div class="flex items-center gap-2">
-                <span class="text-violet-700 dark:text-violet-300 font-medium transition-colors duration-300">✓ Importación completada</span>
-                <span class="text-xs text-violet-600 dark:text-violet-400 transition-colors duration-300">
-                  {{ procesoStore.resultados.metadata.save_status.prefacturas_guardadas || 0 }} guardadas, 
-                  {{ procesoStore.resultados.metadata.save_status.prefacturas_actualizadas || 0 }} actualizadas
-                </span>
-              </div>
-              <span class="text-violet-700 dark:text-violet-300 transition-colors duration-300">{{ showMigrarResults ? '▼' : '▶' }}</span>
-            </button>
-            <div v-if="showMigrarResults" class="p-4 bg-white/60 dark:bg-gray-800/60 backdrop-blur-md border-t border-white/20 dark:border-gray-600/20 relative z-10 transition-colors duration-300">
-              <div class="grid grid-cols-3 gap-3">
-                <div class="bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm p-4 rounded-xl text-center border border-white/30 dark:border-gray-600/30 shadow-lg hover:shadow-xl transition-all duration-300">
-                  <p class="text-xs text-gray-600 dark:text-gray-400 mb-1 transition-colors duration-300">Prefacturas Guardadas</p>
-                  <p class="text-2xl font-bold text-green-700 dark:text-green-400 transition-colors duration-300">{{ procesoStore.resultados.metadata.save_status.prefacturas_guardadas || 0 }}</p>
-                </div>
-                <div class="bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm p-4 rounded-xl text-center border border-white/30 dark:border-gray-600/30 shadow-lg hover:shadow-xl transition-all duration-300">
-                  <p class="text-xs text-gray-600 dark:text-gray-400 mb-1 transition-colors duration-300">Prefacturas Actualizadas</p>
-                  <p class="text-2xl font-bold text-green-700 dark:text-green-400 transition-colors duration-300">{{ procesoStore.resultados.metadata.save_status.prefacturas_actualizadas || 0 }}</p>
-                </div>
-                <div class="bg-white/80 dark:bg-gray-700/80 backdrop-blur-sm p-4 rounded-xl text-center border border-white/30 dark:border-gray-600/30 shadow-lg hover:shadow-xl transition-all duration-300">
-                  <p class="text-xs text-gray-600 dark:text-gray-400 mb-1 transition-colors duration-300">Total Detalles</p>
-                  <p class="text-2xl font-bold text-green-700 dark:text-green-400 transition-colors duration-300">{{ procesoStore.resultados.metadata.save_status.total_detalles || 0 }}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Barra de progreso para Generar ODC desde Despachos -->
-          <div v-if="generandoODC" 
-               class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-4 border border-gray-200 dark:border-gray-700 transition-colors duration-300">
-            <div class="flex items-center justify-between mb-2">
-              <div class="flex items-center gap-2">
-                <svg class="animate-spin h-4 w-4 text-violet-600 dark:text-violet-400" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Generando órdenes de compra</span>
-              </div>
-              <span class="text-sm text-gray-500 dark:text-gray-400 font-semibold">{{ progresoGenerarODC }}%</span>
-            </div>
-            <div class="w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-              <div
-                class="h-full bg-violet-600 dark:bg-violet-500 transition-all duration-300"
-                :style="{ width: `${progresoGenerarODC}%` }"
-              ></div>
-            </div>
-          </div>
-
-          <!-- Tabla de Despachos -->
-          <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-xl shadow-2xl p-6 border border-white/30 dark:border-gray-600/30 relative overflow-hidden transition-colors duration-300">
-            <div class="absolute inset-0 bg-gradient-to-br from-white/20 dark:from-gray-700/20 via-transparent to-transparent pointer-events-none"></div>
-            <div class="flex items-center justify-between mb-4 relative z-10">
-              <div>
-                <h2 class="text-2xl font-bold text-gray-900 dark:text-white transition-colors duration-300">Despachos Disponibles</h2>
-                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400 transition-colors duration-300">
-                  Despachos guardados en la base de datos ({{ despachosCount }} total)
-                </p>
-              </div>
-              <!-- Indicador de última actualización -->
-              <div v-if="lastRefreshTime" class="flex items-center gap-1.5 px-2.5 py-1 text-xs text-gray-500 dark:text-gray-400 transition-colors duration-300">
-                <svg class="w-3.5 h-3.5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span>{{ timeAgoDisplay }}</span>
-              </div>
-            </div>
-
-            <SkeletonTable v-if="loadingDespachos && despachos.length === 0" />
-
-            <DespachosTable 
-              v-else
-              ref="despachosTableRef"
-              :despachos="despachos"
-              :loading="loadingDespachos"
-              :total-despachos="despachosCount"
-              :processing="generandoODC || (procesoStore.loading && procesoStore.currentStep === 'procesar-oc')"
-              :ordenes-compra="ordenesCompraParaDespachos"
-              :initial-search="initialSearchDespacho"
-              :current-page="currentPageDespachos"
-              :page-size="pageSizeDespachos"
-              @generar-odc="handleGenerarODCIndividual"
-              @generar-odc-multiples="handleGenerarODCMultiples"
-              @filtered-count-changed="handleFilteredCountChanged"
-            />
-
-            <!-- Paginación -->
-            <div v-if="totalPagesDespachos > 1 && !loadingDespachos" class="mt-4 flex items-center justify-between flex-wrap gap-4">
-              <div class="text-sm text-gray-700 dark:text-gray-300 transition-colors duration-300">
-                Mostrando página {{ currentPageDespachos }} de {{ totalPagesDespachos }}
-                ({{ filteredDespachosCount > 0 ? filteredDespachosCount : despachosCount }} despachos{{ filteredDespachosCount > 0 && filteredDespachosCount !== despachosCount ? ' filtrados' : '' }})
-              </div>
-              <div class="flex items-center gap-2">
-                <button
-                  @click="prevPageDespachos"
-                  :disabled="currentPageDespachos === 1 || loadingDespachos || (procesoStore.loading && procesoStore.currentStep === 'migrar')"
-                  class="px-4 py-2 border border-white/30 dark:border-gray-600/30 bg-white/60 dark:bg-gray-700/60 backdrop-blur-sm rounded-xl hover:bg-white/80 dark:hover:bg-gray-600/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 text-sm font-medium shadow-md hover:shadow-lg"
-                >
-                  Anterior
-                </button>
-                <span class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-white/40 dark:bg-gray-700/40 backdrop-blur-sm rounded-xl border border-white/20 dark:border-gray-600/20 transition-colors duration-300">
-                  Página {{ currentPageDespachos }} de {{ totalPagesDespachos }}
-                </span>
-                <button
-                  @click="nextPageDespachos"
-                  :disabled="currentPageDespachos === totalPagesDespachos || loadingDespachos || (procesoStore.loading && procesoStore.currentStep === 'migrar')"
-                  class="px-4 py-2 border border-white/30 dark:border-gray-600/30 bg-white/60 dark:bg-gray-700/60 backdrop-blur-sm rounded-xl hover:bg-white/80 dark:hover:bg-gray-600/80 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 text-sm font-medium shadow-md hover:shadow-lg"
-                >
-                  Siguiente
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </template>
-
       <!-- ⭐ NUEVA: Pestaña Pedidos Confirmados -->
       <template #tab-pedidos-confirmados>
         <div class="space-y-6">
@@ -678,24 +466,15 @@ const ordenesCompraStore = useOrdenesCompraStore()
 const toast = useToast()
 const route = useRoute()
 
-// ⭐ Flag para modo legacy (ocultar pestaña de despachos)
-const SHOW_LEGACY_DESPACHOS = false // Deshabilitado: pestaña "Importar despachos" oculta (legacy)
-
 // Estado de pestañas - restaurar desde localStorage o usar 'procesar-oc' por defecto
 const STORAGE_KEY = 'mba3-proceso-active-tab'
 const savedTab = localStorage.getItem(STORAGE_KEY)
-// Si la pestaña guardada es 'migrar' pero está oculta, usar 'procesar-oc' por defecto
-const validTabs = SHOW_LEGACY_DESPACHOS 
-  ? ['migrar', 'pedidos-confirmados', 'procesar-oc']
-  : ['pedidos-confirmados', 'procesar-oc']
+const validTabs = ['pedidos-confirmados', 'procesar-oc']
 const activeTab = ref<string>(
   savedTab && validTabs.includes(savedTab) 
     ? savedTab 
     : 'procesar-oc'
 )
-
-// Estados de visualización de resultados
-const showMigrarResults = ref(false)
 
 // Estados para modal de integración SAP
 const showIntegracionSAPModal = ref(false)
@@ -799,18 +578,6 @@ const tabs = computed<Tab[]>(() => {
       : (ordenesCompraStore.pendientes + ordenesCompraStore.enviadas + ordenesCompraStore.errores))
   
   const tabsArray: Tab[] = []
-  
-  // Solo incluir la pestaña "Importar despachos" si SHOW_LEGACY_DESPACHOS está habilitado
-  if (SHOW_LEGACY_DESPACHOS) {
-    tabsArray.push({
-      id: 'migrar',
-      label: 'Importar despachos',
-      badge: totalDespachos > 0 ? totalDespachos : undefined,
-      color: 'violet'
-    })
-  }
-  
-  // Siempre incluir la pestaña "Procesar ODC - MABEL TRADING"
   tabsArray.push({
     id: 'procesar-oc',
     label: 'Procesar ODC - MABEL TRADING',
@@ -842,10 +609,7 @@ async function handleTabChange(tabId: string) {
   localStorage.setItem(STORAGE_KEY, tabId)
   
   // Cargar datos cuando se cambia de pestaña
-  if (tabId === 'migrar' && SHOW_LEGACY_DESPACHOS) {
-    // Siempre cargar despachos cuando se entra a la pestaña de importar despachos (legacy)
-    await cargarDespachos()
-  } else if (tabId === 'pedidos-confirmados') {
+  if (tabId === 'pedidos-confirmados') {
     // ⭐ NUEVO: Cargar pedidos confirmados
     await cargarPedidosConfirmados()
   } else if (tabId === 'procesar-oc') {
@@ -2093,9 +1857,6 @@ onMounted(async () => {
   } else if (activeTab.value === 'pedidos-confirmados') {
     // ⭐ NUEVO: Cargar pedidos confirmados
     await cargarPedidosConfirmados()
-  } else if (activeTab.value === 'migrar' && SHOW_LEGACY_DESPACHOS) {
-    // Si es "Importar despachos" (legacy), cargar despachos
-    await cargarDespachos()
   } else {
     // Por defecto, cargar pedidos confirmados
     await cargarPedidosConfirmados()
@@ -2103,50 +1864,19 @@ onMounted(async () => {
   
   // Asegurar que el componente FolderTabs tenga el valor correcto
   await nextTick()
-  
-  // ========== INICIAR POLLING AUTOMÁTICO ==========
-  // Iniciar polling solo si estamos en la pestaña de despachos (legacy)
-  if (activeTab.value === 'migrar' && SHOW_LEGACY_DESPACHOS) {
-    startPolling()
-    startTimeDisplayUpdate()
-  }
-})
-
-// Limpiar polling al desmontar el componente
-onUnmounted(() => {
-  stopPolling()
-  stopTimeDisplayUpdate()
-})
-
-// Watch para pausar/reanudar polling según pestaña activa
-watch(activeTab, (newTab) => {
-  if (newTab === 'migrar' && SHOW_LEGACY_DESPACHOS) {
-    startPolling() // Reanudar cuando volvemos a la pestaña de despachos
-    startTimeDisplayUpdate() // Reanudar actualización del display de tiempo
-  } else {
-    stopPolling() // Pausar cuando salimos de la pestaña de despachos
-    stopTimeDisplayUpdate() // Pausar actualización del display de tiempo
-  }
 })
 
 // Watch para query params de navegación desde OrdenCompraTable
 watch(() => route.query, async (newQuery) => {
   if (newQuery.tab && newQuery.tab !== activeTab.value) {
-    // Si se intenta acceder a la pestaña 'migrar' pero está oculta, redirigir a 'procesar-oc'
-    if (newQuery.tab === 'migrar' && !SHOW_LEGACY_DESPACHOS) {
-      activeTab.value = 'procesar-oc'
-      localStorage.setItem(STORAGE_KEY, 'procesar-oc')
-      return
-    }
-    
     // Cambiar a la pestaña especificada
     activeTab.value = newQuery.tab as string
     localStorage.setItem(STORAGE_KEY, activeTab.value)
     
-    if (newQuery.tab === 'migrar' && newQuery.despacho_id && SHOW_LEGACY_DESPACHOS) {
-      // Cargar despachos si no están cargados
-      if (despachos.value.length === 0) {
-        await cargarDespachos()
+    if (newQuery.tab === 'procesar-oc' && newQuery.orden_id) {
+      // Cargar órdenes de compra si no están cargadas
+      if (ordenesCompraStore.ordenesCompra.length === 0) {
+        await cargarOrdenesCompraPendientes()
       }
       
       // Aplicar búsqueda automáticamente

@@ -590,20 +590,6 @@ export const mba3ConsultasService = {
     }
   },
 
-  // Realizar cruce de productos entre MBA3 y SAP (método legacy - mantener para compatibilidad)
-  async realizarCruce(): Promise<CruceProductosResponse> {
-    try {
-      // Timeout extendido ya que el cruce puede tardar
-      const response = await mba3Api.get<CruceProductosResponse>('/cruce-productos/realizar-cruce', {
-        timeout: 120000 // 2 minutos
-      })
-      return response.data
-    } catch (error: any) {
-      console.error('❌ [realizarCruce] Error al realizar cruce de productos:', error)
-      throw new Error(`No se pudo realizar el cruce de productos. Error: ${error.message}`)
-    }
-  },
-
   // Obtener sugerencias de homologación
   async obtenerSugerencias(): Promise<SugerenciasResponse> {
     try {
