@@ -17,10 +17,16 @@ export { remisionesService } from './remisiones'
 // Servicios de procesamiento
 export { procesamientoService } from './procesamiento'
 
-// TODO: Agregar cuando se creen:
-// export { homologacionesService } from './homologaciones'
-// export { cruceProductosService } from './cruceProductos'
-// export { busquedaSkuService } from './busquedaSku'
+// Servicios de homologaciones y cruce
+export { homologacionesService } from './homologaciones'
+export { cruceProductosService } from './cruceProductos'
+export { busquedaSkuService } from './busquedaSku'
+
+// Servicios de pedidos y respuestas
+export { respuestaProveedorService } from './respuestaProveedor'
+
+// Servicios de reportes
+export { reportesService } from './reportes'
+
+// TODO: Falta migrar el dominio más grande
 // export { pedidosService } from './pedidos'
-// export { respuestaProveedorService } from './respuestaProveedor'
-// export { reportesService } from './reportes'
