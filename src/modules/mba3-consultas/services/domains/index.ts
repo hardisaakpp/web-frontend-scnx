@@ -28,5 +28,5 @@ export { respuestaProveedorService } from './respuestaProveedor'
 // Servicios de reportes
 export { reportesService } from './reportes'
 
-// TODO: Falta migrar el dominio más grande
-// export { pedidosService } from './pedidos'
+// Servicios de pedidos (dominio completo)
+export { pedidosService } from './pedidos'

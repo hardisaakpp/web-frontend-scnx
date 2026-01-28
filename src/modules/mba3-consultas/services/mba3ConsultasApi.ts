@@ -29,8 +29,9 @@ export * from './utils/fileValidator'
 // ⭐ REEXPORTAR SERVICIOS DE DOMINIO REFACTORIZADOS
 export * from './domains'
 
-// Importar configuración de axios para uso interno en este archivo
+// Importar configuración de axios y servicios refactorizados para uso interno
 import { mba3Api, API_BASE_URL } from './config/axiosConfig'
+import { pedidosService } from './domains/pedidos'
 
 /**
  * ⭐ Objeto de servicio original mantenido para compatibilidad
@@ -811,394 +812,46 @@ export const mba3ConsultasService = {
   },
 
   // ========== Plantillas / Pedidos ==========
+  // ⭐ REFACTORIZADO: Los métodos se delegan al servicio de pedidos
+  // Ver: services/domains/pedidos.ts
 
   /**
    * Sube y procesa un archivo Excel de plantilla
    * Requiere permiso: mba3-consultas.proceso.execute
+   * @deprecated Usar pedidosService.uploadPlantilla() directamente
    */
   async uploadPlantilla(file: File): Promise<UploadPlantillaResponse> {
-    try {
-      // Validar tipo de archivo - solo Excel
-      const allowedExtensions = ['.xlsx', '.xls']
-      const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'))
-
-      if (!allowedExtensions.includes(fileExtension)) {
-        throw new Error(`Tipo de archivo no permitido. Solo se permiten: ${allowedExtensions.join(', ')}`)
-      }
-
-      // Validar tamaño (10 MB máximo)
-      const maxSize = 10 * 1024 * 1024 // 10 MB en bytes
-      if (file.size > maxSize) {
-        throw new Error('El archivo excede el tamaño máximo de 10 MB')
-      }
-
-      const formData = new FormData()
-      formData.append('file', file)
-
-      // Para FormData, axios establecerá automáticamente el Content-Type con el boundary correcto
-      // El interceptor se encargará de eliminar el Content-Type por defecto si es FormData
-      const response = await mba3Api.post<UploadPlantillaResponse>(
-        '/api/plantillas/upload',
-        formData
-      )
-
-      // Normalizar claves del backend (validation -> validacion) para el frontend
-      const data: any = { ...response.data }
-      if (data && data.validation && !data.validacion) {
-        data.validacion = data.validation
-      }
-      if (data && data.validation_sap && !data.validacion_sap) {
-        data.validacion_sap = data.validation_sap
-      }
-      return data as UploadPlantillaResponse
-    } catch (error: any) {
-      console.error('❌ [uploadPlantilla] Error al subir plantilla:', error)
-      console.error('❌ [uploadPlantilla] Response data:', error.response?.data)
-
-      // Extraer mensaje de error más descriptivo
-      let message = error.message || 'Error desconocido al subir plantilla'
-      let hasBackendMessage = false
-
-      // Si el backend retorna 400 con cuerpo de validación, devolverlo como resultado manejable
-      if (error.response?.status === 400 && error.response?.data?.status === 'validation_error') {
-        const raw = error.response.data
-        const data: any = { ...raw }
-        if (data && data.validation && !data.validacion) {
-          data.validacion = data.validation
-        }
-        if (data && data.validation_sap && !data.validacion_sap) {
-          data.validacion_sap = data.validation_sap
-        }
-        // Asegurar campos mínimos
-        if (!data.message && data.detail) {
-          data.message = data.detail
-        }
-        return data as UploadPlantillaResponse
-      }
-
-      if (error.response?.data) {
-        // Prioridad 1: Manejar business_exception (nuevo tipo de error)
-        if (error.response.data.type === 'business_exception') {
-          hasBackendMessage = true
-          message = error.response.data.error || error.response.data.message || 'No se puede procesar: productos no válidos en SAP'
-          // Preservar información adicional para mejor manejo
-          ; (error as any).isBusinessException = true
-          ; (error as any).businessError = error.response.data.error
-        }
-        // Prioridad 2: Verificar campo 'error' primero (antes que detail)
-        else if (error.response.data.error) {
-          hasBackendMessage = true
-          message = error.response.data.error
-        }
-        // Prioridad 3: FastAPI puede retornar detail como string, array, o objeto
-        else if (error.response.data.detail) {
-          hasBackendMessage = true
-          const detail = error.response.data.detail
-
-          if (Array.isArray(detail)) {
-            // Si es un array, unir los mensajes de forma más legible
-            message = detail.map((item: any) => {
-              if (typeof item === 'string') return item
-              if (item?.msg) return item.msg
-              if (item?.loc && item?.msg) {
-                // Formato de validación de FastAPI: {loc: [...], msg: "...", type: "..."}
-                const location = Array.isArray(item.loc) ? item.loc.join('.') : String(item.loc)
-                return `${location}: ${item.msg}`
-              }
-              return JSON.stringify(item)
-            }).join('\n')
-          } else if (typeof detail === 'string') {
-            message = detail
-          } else if (detail.message) {
-            message = detail.message
-          } else {
-            // Intentar convertir a string
-            message = String(detail)
-          }
-        }
-        // Prioridad 4: Campo 'message'
-        else if (error.response.data.message) {
-          hasBackendMessage = true
-          message = error.response.data.message
-        }
-      } else if (error.request) {
-        // Error de red (sin respuesta del servidor)
-        message = 'No se pudo conectar con el servidor. Verifica tu conexión a internet.'
-      }
-
-      // Solo usar mensaje genérico si NO tenemos un mensaje del backend y el mensaje es genérico
-      if (!hasBackendMessage && (message === 'Request failed with status code 400' ||
-        message.includes('status code') ||
-        message === 'Error desconocido al subir plantilla')) {
-        message = 'Error al procesar el archivo. Verifica que el formato sea correcto y que no sea un pedido duplicado.'
-      }
-
-      // Preservar response.data en el error para que useFileUpload pueda acceder a los datos estructurados
-      const errorWithResponse = new Error(message) as any
-      errorWithResponse.response = error.response
-      errorWithResponse.isBusinessException = (error as any).isBusinessException
-      errorWithResponse.businessError = (error as any).businessError
-      throw errorWithResponse
-    }
+    return pedidosService.uploadPlantilla(file)
   },
 
   /**
    * ⭐ NUEVO: Sube una plantilla Excel con correcciones de códigos aplicadas
    * Similar a uploadPlantilla pero acepta un mapa de correcciones {codigo_original: codigo_sap_corregido}
+   * @deprecated Usar pedidosService.uploadPlantillaConCorrecciones() directamente
    */
   async uploadPlantillaConCorrecciones(
     file: File,
     correcciones: Record<string, string>
   ): Promise<UploadPlantillaResponse> {
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('correcciones_codigos', JSON.stringify(correcciones))
-      
-      const response = await mba3Api.post<UploadPlantillaResponse>('/api/plantillas/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        },
-        timeout: 120000 // 120 segundos (2 minutos)
-      })
-
-      const data: any = { ...response.data }
-      if (data && data.validation && !data.validacion) {
-        data.validacion = data.validation
-      }
-      if (data && data.validation_sap && !data.validacion_sap) {
-        data.validacion_sap = data.validation_sap
-      }
-      
-      return data as UploadPlantillaResponse
-    } catch (error: any) {
-      console.error('❌ [uploadPlantillaConCorrecciones] Error al subir plantilla con correcciones:', error)
-      
-      // Reutilizar la misma lógica de manejo de errores que uploadPlantilla
-      let message = error.message || 'Error desconocido al subir plantilla con correcciones'
-      let hasBackendMessage = false
-
-      // Si el backend retorna 400 con cuerpo de validación, devolverlo como resultado manejable
-      if (error.response?.status === 400 && error.response?.data?.status === 'validation_error') {
-        const raw = error.response.data
-        const data: any = { ...raw }
-        if (data && data.validation && !data.validacion) {
-          data.validacion = data.validation
-        }
-        if (data && data.validation_sap && !data.validacion_sap) {
-          data.validacion_sap = data.validation_sap
-        }
-        if (!data.message && data.detail) {
-          data.message = data.detail
-        }
-        return data as UploadPlantillaResponse
-      }
-
-      if (error.response?.data) {
-        if (error.response.data.type === 'business_exception') {
-          hasBackendMessage = true
-          message = error.response.data.error || error.response.data.message || 'Error al procesar con correcciones aplicadas'
-          ;(error as any).isBusinessException = true
-          ;(error as any).businessError = error.response.data.error
-        } else if (error.response.data.error) {
-          hasBackendMessage = true
-          message = error.response.data.error
-        } else if (error.response.data.detail) {
-          hasBackendMessage = true
-          const detail = error.response.data.detail
-          if (Array.isArray(detail)) {
-            message = detail.map((item: any) => {
-              if (typeof item === 'string') return item
-              if (item?.msg) return item.msg
-              if (item?.loc && item?.msg) {
-                const location = Array.isArray(item.loc) ? item.loc.join('.') : String(item.loc)
-                return `${location}: ${item.msg}`
-              }
-              return JSON.stringify(item)
-            }).join('\n')
-          } else if (typeof detail === 'string') {
-            message = detail
-          } else if (detail.message) {
-            message = detail.message
-          } else {
-            message = String(detail)
-          }
-        } else if (error.response.data.message) {
-          hasBackendMessage = true
-          message = error.response.data.message
-        }
-      } else if (error.request) {
-        message = 'No se pudo conectar con el servidor. Verifica tu conexión a internet.'
-      }
-
-      if (!hasBackendMessage && (message === 'Request failed with status code 400' ||
-        message.includes('status code') ||
-        message === 'Error desconocido al subir plantilla con correcciones')) {
-        message = 'Error al procesar el archivo con las correcciones aplicadas. Verifica que los códigos corregidos sean válidos en SAP.'
-      }
-
-      const errorWithResponse = new Error(message) as any
-      errorWithResponse.response = error.response
-      errorWithResponse.isBusinessException = (error as any).isBusinessException
-      errorWithResponse.businessError = (error as any).businessError
-      throw errorWithResponse
-    }
+    return pedidosService.uploadPlantillaConCorrecciones(file, correcciones)
   },
 
   /**
    * Crea un pedido manualmente por pantalla (sin Excel)
    * Requiere permiso: mba3-consultas.proceso.execute
-   * @param pedidoData Datos del pedido a crear
+   * @deprecated Usar pedidosService.crearPedidoManual() directamente
    */
   async crearPedidoManual(pedidoData: CrearPedidoRequest): Promise<CrearPedidoResponse> {
-    try {
-      const response = await mba3Api.post<CrearPedidoResponse>(
-        '/api/pedidos',
-        pedidoData
-      )
-
-      // Normalizar claves del backend (validation -> validacion) para el frontend
-      const data: any = { ...response.data }
-      if (data && data.validation && !data.validacion) {
-        data.validacion = data.validation
-      }
-      if (data && data.validation_sap && !data.validacion_sap) {
-        data.validacion_sap = data.validacion_sap
-      }
-      return data as CrearPedidoResponse
-    } catch (error: any) {
-      console.error('❌ [crearPedidoManual] Error al crear pedido:', error)
-      console.error('❌ [crearPedidoManual] Response data:', error.response?.data)
-
-      // Extraer mensaje de error más descriptivo
-      let message = error.message || 'Error desconocido al crear pedido'
-      let hasBackendMessage = false
-
-      // Si el backend retorna 400 con cuerpo de validación, devolverlo como resultado manejable
-      if (error.response?.status === 400 && error.response?.data?.status === 'validation_error') {
-        const raw = error.response.data
-        const data: any = { ...raw }
-        if (data && data.validation && !data.validacion) {
-          data.validacion = data.validation
-        }
-        if (data && data.validation_sap && !data.validacion_sap) {
-          data.validacion_sap = data.validation_sap
-        }
-        // Asegurar campos mínimos
-        if (!data.message && data.detail) {
-          data.message = data.detail
-        }
-        return data as CrearPedidoResponse
-      }
-
-      if (error.response?.data) {
-        // Prioridad 1: Manejar business_exception
-        if (error.response.data.type === 'business_exception') {
-          hasBackendMessage = true
-          message = error.response.data.error || error.response.data.message || 'No se puede procesar: productos no válidos en SAP'
-          console.log('✅ [crearPedidoManual] Business exception detectada:', message)
-          ;(error as any).isBusinessException = true
-          ;(error as any).businessError = error.response.data.error
-        }
-        // Prioridad 2: Manejar array de errores (status: 'error' con errors array)
-        else if (error.response.data.errors && Array.isArray(error.response.data.errors)) {
-          hasBackendMessage = true
-          const errorMessages = error.response.data.errors.map((err: any) => {
-            if (typeof err === 'string') return err
-            if (err?.msg) return err.msg
-            if (err?.message) return err.message
-            if (err?.loc && err?.msg) {
-              const location = Array.isArray(err.loc) ? err.loc.join('.') : String(err.loc)
-              return `${location}: ${err.msg}`
-            }
-            return JSON.stringify(err)
-          })
-          message = errorMessages.join('\n') || error.response.data.detail || error.response.data.message || 'Error de validación en la solicitud'
-          console.log('✅ [crearPedidoManual] Errores array detectado:', error.response.data.errors)
-          console.log('✅ [crearPedidoManual] Mensajes extraídos:', errorMessages)
-        }
-        // Prioridad 3: Verificar campo 'error' primero
-        else if (error.response.data.error) {
-          hasBackendMessage = true
-          message = error.response.data.error
-          console.log('✅ [crearPedidoManual] Error field detectado:', message)
-        }
-        // Prioridad 4: FastAPI puede retornar detail como string, array, o objeto
-        else if (error.response.data.detail) {
-          hasBackendMessage = true
-          const detail = error.response.data.detail
-
-          if (Array.isArray(detail)) {
-            // Si es un array, unir los mensajes de forma más legible
-            message = detail.map((item: any) => {
-              if (typeof item === 'string') return item
-              if (item?.msg) return item.msg
-              if (item?.loc && item?.msg) {
-                // Formato de validación de FastAPI: {loc: [...], msg: "...", type: "..."}
-                const location = Array.isArray(item.loc) ? item.loc.join('.') : String(item.loc)
-                return `${location}: ${item.msg}`
-              }
-              return JSON.stringify(item)
-            }).join('\n')
-          } else if (typeof detail === 'string') {
-            message = detail
-          } else if (detail.message) {
-            message = detail.message
-          } else {
-            message = String(detail)
-          }
-          console.log('✅ [crearPedidoManual] Detail field detectado:', message)
-        }
-        // Prioridad 5: Campo 'message'
-        else if (error.response.data.message) {
-          hasBackendMessage = true
-          message = error.response.data.message
-          console.log('✅ [crearPedidoManual] Message field detectado:', message)
-        }
-      } else if (error.request) {
-        // Error de red (sin respuesta del servidor)
-        message = 'No se pudo conectar con el servidor. Verifica tu conexión a internet.'
-      }
-
-      // Solo usar mensaje genérico si NO tenemos un mensaje del backend
-      if (!hasBackendMessage && (message === 'Request failed with status code 400' ||
-        message.includes('status code') ||
-        message === 'Error desconocido al crear pedido')) {
-        message = 'Error al crear el pedido. Verifica que los datos sean correctos.'
-      }
-
-      console.log('🔴 [crearPedidoManual] Mensaje final de error:', message)
-      throw new Error(message)
-    }
+    return pedidosService.crearPedidoManual(pedidoData)
   },
 
   /**
    * Obtiene un pedido completo por número de pedido
    * Requiere permiso: mba3-consultas.facturas.view
-   * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
-   * @param incluirRespuesta Si es true, incluye respuesta_proveedor si existe
+   * @deprecated Usar pedidosService.getPedido() directamente
    */
   async getPedido(numeroPedido: string, incluirRespuesta: boolean = false): Promise<PedidoCompleto> {
-    try {
-      const params = incluirRespuesta ? '?incluir_respuesta=true' : ''
-      const response = await mba3Api.get<PedidoCompleto>(`/api/plantillas/${numeroPedido}${params}`)
-      return response.data
-    } catch (error: any) {
-      console.error('❌ [getPedido] Error al obtener pedido:', error)
-
-      // Extraer mensaje de error más descriptivo
-      let message = error.message || 'Error desconocido al obtener pedido'
-
-      if (error.response?.data) {
-        if (error.response.data.detail) {
-          message = error.response.data.detail
-        } else if (error.response.data.message) {
-          message = error.response.data.message
-        }
-      }
-
-      throw new Error(message)
-    }
+    return pedidosService.getPedido(numeroPedido, incluirRespuesta)
   },
 
   /**
@@ -1206,36 +859,10 @@ export const mba3ConsultasService = {
    * Requiere permiso: mba3-consultas.facturas.view
    * @param incluirRespuesta Si es true, incluye respuesta_proveedor si existe
    * @returns PedidoCompleto o null si no hay pedidos
+   * @deprecated Usar pedidosService.getUltimoPedido() directamente
    */
   async getUltimoPedido(incluirRespuesta: boolean = false): Promise<PedidoCompleto | null> {
-    try {
-      const params = incluirRespuesta ? '?incluir_respuesta=true' : ''
-      // El backend ahora devuelve el formato directo {cabecera, detalles} igual que getPedido
-      // Retorna 200 con null cuando no hay pedidos (evita logs de 404)
-      const response = await mba3Api.get<PedidoCompleto | null>(`/api/plantillas/ultimo${params}`)
-      
-      // Si la respuesta es null o no tiene la estructura esperada, no hay pedidos
-      if (!response.data || !response.data.cabecera) {
-        return null
-      }
-      
-      return response.data
-    } catch (error: any) {
-      console.error('❌ [getUltimoPedido] Error al obtener último pedido:', error)
-
-      // Extraer mensaje de error más descriptivo
-      let message = error.message || 'Error desconocido al obtener último pedido'
-
-      if (error.response?.data) {
-        if (error.response.data.detail) {
-          message = error.response.data.detail
-        } else if (error.response.data.message) {
-          message = error.response.data.message
-        }
-      }
-
-      throw new Error(message)
-    }
+    return pedidosService.getUltimoPedido(incluirRespuesta)
   },
 
   /**
@@ -1243,28 +870,10 @@ export const mba3ConsultasService = {
    * Requiere permiso: mba3-consultas.facturas.view
    * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
    * @returns Blob del archivo Excel
+   * @deprecated Usar pedidosService.exportarPedidoParaProveedor() directamente
    */
   async exportarPedidoParaProveedor(numeroPedido: string): Promise<Blob> {
-    try {
-      const response = await mba3Api.get<Blob>(`/api/pedidos/${encodeURIComponent(numeroPedido)}/exportar-para-proveedor`, {
-        responseType: 'blob',
-      })
-      return response.data
-    } catch (error: any) {
-      console.error('❌ [exportarPedidoParaProveedor] Error al exportar pedido:', error)
-
-      let message = error.message || 'Error desconocido al exportar pedido'
-
-      if (error.response?.data) {
-        if (error.response.data.detail) {
-          message = error.response.data.detail
-        } else if (error.response.data.message) {
-          message = error.response.data.message
-        }
-      }
-
-      throw new Error(message)
-    }
+    return pedidosService.exportarPedidoParaProveedor(numeroPedido)
   },
 
   /**
@@ -1274,31 +883,10 @@ export const mba3ConsultasService = {
    * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
    * @param formato Formato de salida: 'csv' o 'txt' (por defecto 'csv')
    * @returns Blob del archivo plano
+   * @deprecated Usar pedidosService.exportarPedidoPlanoMba() directamente
    */
   async exportarPedidoPlanoMba(numeroPedido: string, formato: 'csv' | 'txt' = 'csv'): Promise<Blob> {
-    try {
-      const response = await mba3Api.get<Blob>(
-        `/api/pedidos/${encodeURIComponent(numeroPedido)}/exportar-plano-mba?formato=${formato}`,
-        {
-          responseType: 'blob',
-        }
-      )
-      return response.data
-    } catch (error: any) {
-      console.error('❌ [exportarPedidoPlanoMba] Error al exportar pedido plano:', error)
-
-      let message = error.message || 'Error desconocido al exportar pedido plano'
-
-      if (error.response?.data) {
-        if (error.response.data.detail) {
-          message = error.response.data.detail
-        } else if (error.response.data.message) {
-          message = error.response.data.message
-        }
-      }
-
-      throw new Error(message)
-    }
+    return pedidosService.exportarPedidoPlanoMba(numeroPedido, formato)
   },
 
   /**
@@ -1560,26 +1148,10 @@ export const mba3ConsultasService = {
    * Requiere permiso: mba3-consultas.proceso.execute
    * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
    * @returns Respuesta con información de la OC creada y Solicitudes de Transferencia (si se integró a SAP)
+   * @deprecated Usar pedidosService.crearOrdenCompraDesdePedido() directamente
    */
   async crearOrdenCompraDesdePedido(numeroPedido: string): Promise<CrearOCDesdePedidoResponse> {
-    try {
-      const response = await mba3Api.post<CrearOCDesdePedidoResponse>(`/api/pedidos/${encodeURIComponent(numeroPedido)}/crear-orden-compra`)
-      return response.data
-    } catch (error: any) {
-      console.error('❌ [crearOrdenCompraDesdePedido] Error al crear orden de compra:', error)
-
-      let message = error.message || 'Error desconocido al crear orden de compra'
-
-      if (error.response?.data) {
-        if (error.response.data.detail) {
-          message = error.response.data.detail
-        } else if (error.response.data.message) {
-          message = error.response.data.message
-        }
-      }
-
-      throw new Error(message)
-    }
+    return pedidosService.crearOrdenCompraDesdePedido(numeroPedido)
   },
 
   /**
@@ -1588,57 +1160,14 @@ export const mba3ConsultasService = {
    * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
    * @param pedidoDetalleId ID del detalle del pedido a actualizar
    * @param nuevoCosto Nuevo costo unitario sin IVA
+   * @deprecated Usar pedidosService.actualizarCostoPedido() directamente
    */
   async actualizarCostoPedido(
     numeroPedido: string,
     pedidoDetalleId: string,
     nuevoCosto: number
   ): Promise<ActualizarCostoPedidoResponse> {
-    try {
-      // ⭐ CORRECCIÓN: El backend espera 'costo_doc_sin_iva' en lugar de 'costo'
-      const payload = {
-        costo_doc_sin_iva: nuevoCosto
-      }
-
-      console.log('📤 [actualizarCostoPedido] Enviando:', {
-        url: `/api/pedidos/${encodeURIComponent(numeroPedido)}/detalle/${pedidoDetalleId}/costo`,
-        payload
-      })
-
-      const response = await mba3Api.patch<ActualizarCostoPedidoResponse>(
-        `/api/pedidos/${encodeURIComponent(numeroPedido)}/detalle/${pedidoDetalleId}/costo`,
-        payload
-      )
-
-      console.log('✅ [actualizarCostoPedido] Respuesta exitosa:', response.data)
-      return response.data
-    } catch (error: any) {
-      console.error('❌ [actualizarCostoPedido] Error al actualizar costo:', error)
-
-      let message = error.message || 'Error desconocido al actualizar costo'
-      let detailedError = ''
-
-      if (error.response?.data) {
-        // Loguear los errores detallados del backend
-        if (error.response.data.errors) {
-          console.error('❌ [actualizarCostoPedido] Errores de validación:', error.response.data.errors)
-          detailedError = error.response.data.errors
-            .map((e: any) => typeof e === 'string' ? e : e.msg || e.message || JSON.stringify(e))
-            .join('; ')
-        }
-
-        if (error.response.data.detail) {
-          message = error.response.data.detail
-        } else if (error.response.data.message) {
-          message = error.response.data.message
-        }
-      }
-
-      const finalMessage = detailedError ? `${message}. Detalles: ${detailedError}` : message
-      console.error('❌ [actualizarCostoPedido] Mensaje final:', finalMessage)
-
-      throw new Error(finalMessage)
-    }
+    return pedidosService.actualizarCostoPedido(numeroPedido, pedidoDetalleId, nuevoCosto)
   },
 
   /**
@@ -1647,56 +1176,14 @@ export const mba3ConsultasService = {
    * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
    * @param pedidoDetalleId ID del detalle del pedido a actualizar
    * @param nuevoTotal Nuevo total
+   * @deprecated Usar pedidosService.actualizarTotalPedido() directamente
    */
   async actualizarTotalPedido(
     numeroPedido: string,
     pedidoDetalleId: string,
     nuevoTotal: number
   ): Promise<ActualizarCostoPedidoResponse> {
-    try {
-      const payload = {
-        total: nuevoTotal
-      }
-
-      console.log('📤 [actualizarTotalPedido] Enviando:', {
-        url: `/api/pedidos/${encodeURIComponent(numeroPedido)}/detalle/${pedidoDetalleId}/total`,
-        payload
-      })
-
-      const response = await mba3Api.patch<ActualizarCostoPedidoResponse>(
-        `/api/pedidos/${encodeURIComponent(numeroPedido)}/detalle/${pedidoDetalleId}/total`,
-        payload
-      )
-
-      console.log('✅ [actualizarTotalPedido] Respuesta exitosa:', response.data)
-      return response.data
-    } catch (error: any) {
-      console.error('❌ [actualizarTotalPedido] Error al actualizar total:', error)
-
-      let message = error.message || 'Error desconocido al actualizar total'
-      let detailedError = ''
-
-      if (error.response?.data) {
-        // Loguear los errores detallados del backend
-        if (error.response.data.errors) {
-          console.error('❌ [actualizarTotalPedido] Errores de validación:', error.response.data.errors)
-          detailedError = error.response.data.errors
-            .map((e: any) => typeof e === 'string' ? e : e.msg || e.message || JSON.stringify(e))
-            .join('; ')
-        }
-
-        if (error.response.data.detail) {
-          message = error.response.data.detail
-        } else if (error.response.data.message) {
-          message = error.response.data.message
-        }
-      }
-
-      const finalMessage = detailedError ? `${message}. Detalles: ${detailedError}` : message
-      console.error('❌ [actualizarTotalPedido] Mensaje final:', finalMessage)
-
-      throw new Error(finalMessage)
-    }
+    return pedidosService.actualizarTotalPedido(numeroPedido, pedidoDetalleId, nuevoTotal)
   },
 
   /**
@@ -1705,56 +1192,14 @@ export const mba3ConsultasService = {
    * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
    * @param pedidoDetalleId ID del detalle del pedido a actualizar
    * @param nuevoComentario Nuevo comentario (puede ser null para eliminar)
+   * @deprecated Usar pedidosService.actualizarComentarioPedido() directamente
    */
   async actualizarComentarioPedido(
     numeroPedido: string,
     pedidoDetalleId: string,
     nuevoComentario: string | null
   ): Promise<ActualizarCostoPedidoResponse> {
-    try {
-      const payload = {
-        comentario: nuevoComentario
-      }
-
-      console.log('📤 [actualizarComentarioPedido] Enviando:', {
-        url: `/api/pedidos/${encodeURIComponent(numeroPedido)}/detalle/${pedidoDetalleId}/comentario`,
-        payload
-      })
-
-      const response = await mba3Api.patch<ActualizarCostoPedidoResponse>(
-        `/api/pedidos/${encodeURIComponent(numeroPedido)}/detalle/${pedidoDetalleId}/comentario`,
-        payload
-      )
-
-      console.log('✅ [actualizarComentarioPedido] Respuesta exitosa:', response.data)
-      return response.data
-    } catch (error: any) {
-      console.error('❌ [actualizarComentarioPedido] Error al actualizar comentario:', error)
-
-      let message = error.message || 'Error desconocido al actualizar comentario'
-      let detailedError = ''
-
-      if (error.response?.data) {
-        // Loguear los errores detallados del backend
-        if (error.response.data.errors) {
-          console.error('❌ [actualizarComentarioPedido] Errores de validación:', error.response.data.errors)
-          detailedError = error.response.data.errors
-            .map((e: any) => typeof e === 'string' ? e : e.msg || e.message || JSON.stringify(e))
-            .join('; ')
-        }
-
-        if (error.response.data.detail) {
-          message = error.response.data.detail
-        } else if (error.response.data.message) {
-          message = error.response.data.message
-        }
-      }
-
-      const finalMessage = detailedError ? `${message}. Detalles: ${detailedError}` : message
-      console.error('❌ [actualizarComentarioPedido] Mensaje final:', finalMessage)
-
-      throw new Error(finalMessage)
-    }
+    return pedidosService.actualizarComentarioPedido(numeroPedido, pedidoDetalleId, nuevoComentario)
   },
 
   /**
@@ -1762,51 +1207,13 @@ export const mba3ConsultasService = {
    * Requiere permiso: mba3-consultas.proceso.execute
    * @param pedidoId ID del pedido (UUID)
    * @param datosCabecera Datos de la cabecera a modificar (estado, fechas, etc.)
+   * @deprecated Usar pedidosService.actualizarCabeceraPedido() directamente
    */
   async actualizarCabeceraPedido(
     pedidoId: string,
     datosCabecera: ModificarPedidoCabeceraRequest
   ): Promise<ModificarPedidoCabeceraResponse> {
-    try {
-      console.log('📤 [actualizarCabeceraPedido] Enviando:', {
-        url: `/api/pedidos/${pedidoId}`,
-        payload: datosCabecera
-      })
-
-      const response = await mba3Api.put<ModificarPedidoCabeceraResponse>(
-        `/api/pedidos/${pedidoId}`,
-        datosCabecera
-      )
-
-      console.log('✅ [actualizarCabeceraPedido] Respuesta exitosa:', response.data)
-      return response.data
-    } catch (error: any) {
-      console.error('❌ [actualizarCabeceraPedido] Error al actualizar cabecera:', error)
-
-      let message = error.message || 'Error desconocido al actualizar cabecera'
-      let detailedError = ''
-
-      if (error.response?.data) {
-        // Loguear los errores detallados del backend
-        if (error.response.data.errors) {
-          console.error('❌ [actualizarCabeceraPedido] Errores de validación:', error.response.data.errors)
-          detailedError = error.response.data.errors
-            .map((e: any) => typeof e === 'string' ? e : e.msg || e.message || JSON.stringify(e))
-            .join('; ')
-        }
-
-        if (error.response.data.detail) {
-          message = error.response.data.detail
-        } else if (error.response.data.message) {
-          message = error.response.data.message
-        }
-      }
-
-      const finalMessage = detailedError ? `${message}. Detalles: ${detailedError}` : message
-      console.error('❌ [actualizarCabeceraPedido] Mensaje final:', finalMessage)
-
-      throw new Error(finalMessage)
-    }
+    return pedidosService.actualizarCabeceraPedido(pedidoId, datosCabecera)
   },
 
   /**
@@ -1814,6 +1221,7 @@ export const mba3ConsultasService = {
    * Requiere permiso: mba3-consultas.proceso.execute
    * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
    * @param ajustesDetalle Array de ajustes de redistribución por producto
+   * @deprecated Usar pedidosService.confirmarRedistribucion() directamente
    */
   async confirmarRedistribucion(
     numeroPedido: string,
@@ -1827,35 +1235,7 @@ export const mba3ConsultasService = {
     resumen: ResumenConfirmacion
     ajustes_aplicados: number
   }> {
-    try {
-      const response = await mba3Api.post<{
-        status: 'success'
-        message: string
-        pedido_id: string
-        redistribucion_id: string
-        fecha_confirmacion: string
-        resumen: ResumenConfirmacion
-        ajustes_aplicados: number
-      }>(
-        `/api/pedidos/${encodeURIComponent(numeroPedido)}/redistribucion/confirmar`,
-        { ajustes_detalle: ajustesDetalle }
-      )
-      return response.data
-    } catch (error: any) {
-      console.error('❌ [confirmarRedistribucion] Error al confirmar redistribución:', error)
-
-      let message = error.message || 'Error desconocido al confirmar redistribución'
-
-      if (error.response?.data) {
-        if (error.response.data.detail) {
-          message = error.response.data.detail
-        } else if (error.response.data.message) {
-          message = error.response.data.message
-        }
-      }
-
-      throw new Error(message)
-    }
+    return pedidosService.confirmarRedistribucion(numeroPedido, ajustesDetalle)
   },
 
   /**
@@ -1863,100 +1243,31 @@ export const mba3ConsultasService = {
    * Requiere permiso: mba3-consultas.proceso.execute
    * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
    * @param modificaciones Array de modificaciones de columnas
+   * @deprecated Usar pedidosService.guardarModificacionesColumnas() directamente
    */
   async guardarModificacionesColumnas(
     numeroPedido: string,
     modificaciones: Array<{ pedido_detalle_id: string; columna_key: string }>
   ): Promise<GuardarModificacionesColumnasResponse> {
-    try {
-      const payload: GuardarModificacionesColumnasRequest = {
-        numero_pedido: numeroPedido,
-        modificaciones: modificaciones.map(m => ({
-          pedido_detalle_id: m.pedido_detalle_id,
-          columna_key: m.columna_key
-        }))
-      }
-
-      console.log('📤 [guardarModificacionesColumnas] Enviando:', {
-        url: `/api/pedidos/${encodeURIComponent(numeroPedido)}/modificaciones-columnas`,
-        payload,
-        modificaciones_count: modificaciones.length
-      })
-
-      const response = await mba3Api.post<GuardarModificacionesColumnasResponse>(
-        `/api/pedidos/${encodeURIComponent(numeroPedido)}/modificaciones-columnas`,
-        payload
-      )
-
-      console.log('✅ [guardarModificacionesColumnas] Respuesta exitosa:', response.data)
-      return response.data
-    } catch (error: any) {
-      console.error('❌ [guardarModificacionesColumnas] Error al guardar modificaciones:', error)
-
-      let message = error.message || 'Error desconocido al guardar modificaciones'
-
-      if (error.response?.data) {
-        if (error.response.data.detail) {
-          message = error.response.data.detail
-        } else if (error.response.data.message) {
-          message = error.response.data.message
-        }
-      }
-
-      throw new Error(message)
-    }
+    return pedidosService.guardarModificacionesColumnas(numeroPedido, modificaciones)
   },
 
   /**
    * Obtiene las modificaciones de columnas (resaltado) para un pedido
    * Requiere permiso: mba3-consultas.facturas.view
    * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
+   * @deprecated Usar pedidosService.obtenerModificacionesColumnas() directamente
    */
   async obtenerModificacionesColumnas(
     numeroPedido: string
   ): Promise<ObtenerModificacionesColumnasResponse> {
-    try {
-      console.log('📤 [obtenerModificacionesColumnas] Obteniendo:', {
-        url: `/api/pedidos/${encodeURIComponent(numeroPedido)}/modificaciones-columnas`
-      })
-
-      const response = await mba3Api.get<ObtenerModificacionesColumnasResponse>(
-        `/api/pedidos/${encodeURIComponent(numeroPedido)}/modificaciones-columnas`
-      )
-
-      console.log('✅ [obtenerModificacionesColumnas] Respuesta exitosa:', {
-        modificaciones_count: response.data.modificaciones?.length || 0
-      })
-      return response.data
-    } catch (error: any) {
-      console.error('❌ [obtenerModificacionesColumnas] Error al obtener modificaciones:', error)
-
-      // Si es 404, retornar respuesta vacía (no hay modificaciones guardadas)
-      if (error.response?.status === 404) {
-        return {
-          status: 'success',
-          numero_pedido: numeroPedido,
-          modificaciones: []
-        }
-      }
-
-      let message = error.message || 'Error desconocido al obtener modificaciones'
-
-      if (error.response?.data) {
-        if (error.response.data.detail) {
-          message = error.response.data.detail
-        } else if (error.response.data.message) {
-          message = error.response.data.message
-        }
-      }
-
-      throw new Error(message)
-    }
+    return pedidosService.obtenerModificacionesColumnas(numeroPedido)
   },
 
   /**
    * Obtiene lista de pedidos con redistribución confirmada (listos para generar ODC)
    * @param filters Filtros de paginación y búsqueda
+   * @deprecated Usar pedidosService.getPedidosConfirmados() directamente
    */
   async getPedidosConfirmados(filters?: {
     page?: number
@@ -1969,57 +1280,17 @@ export const mba3ConsultasService = {
     pageSize: number
     totalPages: number
   }> {
-    try {
-      const params = new URLSearchParams()
-      if (filters?.page) params.append('page', filters.page.toString())
-      if (filters?.pageSize) params.append('pageSize', filters.pageSize.toString())
-      if (filters?.estado) params.append('estado', filters.estado)
-      
-      // Filtrar solo pedidos con redistribución confirmada
-      params.append('redistribucion_confirmada', 'true')
-      
-      const queryString = params.toString()
-      const url = queryString ? `/api/pedidos/confirmados?${queryString}` : '/api/pedidos/confirmados'
-      
-      const response = await mba3Api.get<{
-        data: PedidoCompleto[]
-        total: number
-        page: number
-        pageSize: number
-        totalPages: number
-      }>(url)
-      return response.data
-    } catch (error: any) {
-      console.error('❌ [getPedidosConfirmados] Error al obtener pedidos confirmados:', error)
-      
-      let message = error.message || 'Error desconocido al obtener pedidos confirmados'
-      
-      if (error.response?.data) {
-        if (error.response.data.detail) {
-          message = error.response.data.detail
-        } else if (error.response.data.message) {
-          message = error.response.data.message
-        }
-      }
-      
-      throw new Error(message)
-    }
+    return pedidosService.getPedidosConfirmados(filters)
   },
 
   /**
    * Obtiene el último pedido con redistribución confirmada (para cargar en Redistribución al entrar desde dashboard).
    * Usa la lista de confirmados ordenada por el backend; devuelve el primero como "último".
    * @returns PedidoCompleto o null si no hay pedidos confirmados
+   * @deprecated Usar pedidosService.getUltimoPedidoConfirmado() directamente
    */
   async getUltimoPedidoConfirmado(): Promise<PedidoCompleto | null> {
-    try {
-      const res = await this.getPedidosConfirmados({ page: 1, pageSize: 1 })
-      const first = res.data?.[0]
-      return first && (first as PedidoCompleto).cabecera ? (first as PedidoCompleto) : null
-    } catch (error: any) {
-      console.error('❌ [getUltimoPedidoConfirmado] Error al obtener último pedido confirmado:', error)
-      return null
-    }
+    return pedidosService.getUltimoPedidoConfirmado()
   },
 
   /**
@@ -2027,21 +1298,10 @@ export const mba3ConsultasService = {
    * Usa el endpoint GET /api/pedidos/ultimo-redistribucion (misma idea que cargar-plantilla y GET /api/plantillas/ultimo).
    * @param soloUsuario Si true (default), último del usuario autenticado; si false, último global.
    * @returns Objeto con numero_pedido para redirigir, o null si no hay ninguno en ese estado.
+   * @deprecated Usar pedidosService.getUltimoPedidoRedistribucion() directamente
    */
   async getUltimoPedidoRedistribucion(soloUsuario: boolean = true): Promise<{ numero_pedido: string } | null> {
-    try {
-      const params = new URLSearchParams()
-      params.append('solo_usuario', soloUsuario ? 'true' : 'false')
-      const url = `/api/pedidos/ultimo-redistribucion?${params.toString()}`
-      const response = await mba3Api.get<{ numero_pedido?: string; cabecera?: { numero_pedido: string } } | null>(url)
-      const body = response.data
-      if (body == null) return null
-      const num = body.numero_pedido ?? body.cabecera?.numero_pedido
-      return num ? { numero_pedido: num } : null
-    } catch (error: any) {
-      console.error('❌ [getUltimoPedidoRedistribucion] Error al obtener último pedido redistribución:', error)
-      return null
-    }
+    return pedidosService.getUltimoPedidoRedistribucion(soloUsuario)
   },
 
   /**
@@ -2109,6 +1369,7 @@ export const mba3ConsultasService = {
    * Requiere permiso: mba3-consultas.facturas.view
    * @param filtros Filtros opcionales para la búsqueda
    * @returns Lista de pedidos con metadata de paginación
+   * @deprecated Usar pedidosService.getPedidosListado() directamente
    */
   async getPedidosListado(filtros?: {
     estado?: string
@@ -2120,54 +1381,7 @@ export const mba3ConsultasService = {
     limit?: number
     offset?: number
   }): Promise<import('../types').PedidosListadoResponse> {
-    try {
-      const params = new URLSearchParams()
-      
-      if (filtros?.estado) {
-        params.append('estado', filtros.estado)
-      }
-      if (filtros?.fecha_desde) {
-        params.append('fecha_desde', filtros.fecha_desde)
-      }
-      if (filtros?.fecha_hasta) {
-        params.append('fecha_hasta', filtros.fecha_hasta)
-      }
-      if (filtros?.proveedor_nombre) {
-        params.append('proveedor_nombre', filtros.proveedor_nombre)
-      }
-      if (filtros?.numero_pedido) {
-        params.append('numero_pedido', filtros.numero_pedido)
-      }
-      if (filtros?.creado_por) {
-        params.append('creado_por', filtros.creado_por)
-      }
-      if (filtros?.limit !== undefined) {
-        params.append('limit', filtros.limit.toString())
-      }
-      if (filtros?.offset !== undefined) {
-        params.append('offset', filtros.offset.toString())
-      }
-
-      const queryString = params.toString()
-      const url = queryString ? `/api/pedidos?${queryString}` : '/api/pedidos'
-      
-      const response = await mba3Api.get<PedidosListadoResponse>(url)
-      return response.data
-    } catch (error: any) {
-      console.error('❌ [getPedidosListado] Error al obtener listado de pedidos:', error)
-
-      let message = error.message || 'Error desconocido al obtener listado de pedidos'
-
-      if (error.response?.data) {
-        if (error.response.data.detail) {
-          message = error.response.data.detail
-        } else if (error.response.data.message) {
-          message = error.response.data.message
-        }
-      }
-
-      throw new Error(message)
-    }
+    return pedidosService.getPedidosListado(filtros)
   },
 
   /**
@@ -2176,6 +1390,7 @@ export const mba3ConsultasService = {
    * Requiere permiso: mba3-consultas.proceso.execute
    * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
    * @param ajustesDetalle Array de ajustes de redistribución por producto
+   * @deprecated Usar pedidosService.ajustarBodegas() directamente
    */
   async ajustarBodegas(
     numeroPedido: string,
@@ -2185,61 +1400,16 @@ export const mba3ConsultasService = {
     message: string
     redistribucion_ajustada: AjusteDetalle[]
   }> {
-    try {
-      const response = await mba3Api.post<{
-        status: 'success'
-        message: string
-        redistribucion_ajustada: AjusteDetalle[]
-      }>(
-        `/api/pedidos/${encodeURIComponent(numeroPedido)}/redistribucion/ajustar-bodegas`,
-        { ajustes_detalle: ajustesDetalle }
-      )
-      return response.data
-    } catch (error: any) {
-      console.error('❌ [ajustarBodegas] Error al ajustar bodegas:', error)
-
-      let message = error.message || 'Error desconocido al ajustar bodegas'
-
-      if (error.response?.data) {
-        if (error.response.data.detail) {
-          message = error.response.data.detail
-        } else if (error.response.data.message) {
-          message = error.response.data.message
-        }
-      }
-
-      throw new Error(message)
-    }
+    return pedidosService.ajustarBodegas(numeroPedido, ajustesDetalle)
   },
 
   /**
    * Verifica si existen pedidos en el sistema
    * @returns Respuesta indicando si hay pedidos guardados
+   * @deprecated Usar pedidosService.tienePedidos() directamente
    */
   async tienePedidos(): Promise<TienePedidosResponse> {
-    try {
-      const response = await mba3Api.get<TienePedidosResponse>('/api/pedidos/existe')
-      return response.data
-    } catch (error: any) {
-      console.error('❌ [tienePedidos] Error al verificar existencia de pedidos:', error)
-
-      let message = error.message || 'Error desconocido al verificar existencia de pedidos'
-
-      if (error.response?.data) {
-        if (error.response.data.detail) {
-          message = error.response.data.detail
-        } else if (error.response.data.message) {
-          message = error.response.data.message
-        }
-      }
-
-      // En caso de error, asumir que no hay pedidos para no bloquear la UI
-      return {
-        status: 'error',
-        tiene_pedidos: false,
-        message: message
-      }
-    }
+    return pedidosService.tienePedidos()
   },
 }
 
