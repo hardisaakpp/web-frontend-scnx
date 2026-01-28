@@ -41,7 +41,9 @@ mba3Api.interceptors.request.use(
     return config
   },
   error => {
-    console.error('❌ [MBA3 API Request] Error en interceptor:', error)
+    if (import.meta.env.DEV) {
+      console.error('❌ [MBA3 API Request] Error en interceptor:', error)
+    }
     return Promise.reject(error)
   }
 )
@@ -64,7 +66,7 @@ mba3Api.interceptors.response.use(
     const timeoutHeader = response.headers['x-request-timeout']
     const timeoutMinHeader = response.headers['x-request-timeout-min']
     
-    if (timeoutHeader || timeoutMinHeader) {
+    if (import.meta.env.DEV && (timeoutHeader || timeoutMinHeader)) {
       console.debug(`⏱️ [MBA3 API] Backend recomienda timeout: ${timeoutHeader || 'N/A'}s (mín: ${timeoutMinHeader || 'N/A'}s)`)
     }
     
@@ -86,8 +88,8 @@ mba3Api.interceptors.response.use(
       url.includes('/api/pedidos/ultimo-redistribucion') // No hay último para redistribución es válido
     )
 
-    // Solo loguear errores que no sean 404 esperados
-    if (!isExpected404) {
+    // Solo loguear errores que no sean 404 esperados (solo en desarrollo)
+    if (!isExpected404 && import.meta.env.DEV) {
       // Log detallado del error para debugging
       console.error('🔍 [MBA3 API Interceptor] Error capturado:', error)
       if (error.response) {

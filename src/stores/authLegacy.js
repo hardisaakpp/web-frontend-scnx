@@ -46,7 +46,9 @@ export const useAuthLegacyStore = defineStore('authLegacy', {
       try {
         this.user = await authService.getCurrentUser()
       } catch (error) {
-        console.error('Error fetching user:', error)
+        if (import.meta.env.DEV) {
+          console.error('Error fetching user:', error)
+        }
         this.logout()
       }
     },

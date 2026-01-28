@@ -42,7 +42,9 @@ export const useAuthStore = defineStore('auth', {
       try {
         this.user = await authService.getCurrentUser()
       } catch (error) {
-        console.error('Error fetching user:', error)
+        if (import.meta.env.DEV) {
+          console.error('Error fetching user:', error)
+        }
         this.logout()
       }
     },

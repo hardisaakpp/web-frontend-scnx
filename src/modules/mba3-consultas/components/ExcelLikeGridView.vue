@@ -413,10 +413,12 @@ const productosConModificaciones = computed(() => {
     map.set(producto.codigo_producto, tieneMod)
   })
   
-  // Log para depuración
-  const productosConMod = Array.from(map.entries()).filter(([_, tieneMod]) => tieneMod)
-  if (productosConMod.length > 0) {
-    console.log(`🎨 [ExcelLikeGridView] ${productosConMod.length} productos con modificaciones heredadas:`, productosConMod.map(([codigo]) => codigo))
+  // Log para depuración (solo en desarrollo)
+  if (import.meta.env.DEV) {
+    const productosConMod = Array.from(map.entries()).filter(([_, tieneMod]) => tieneMod)
+    if (productosConMod.length > 0) {
+      console.log(`🎨 [ExcelLikeGridView] ${productosConMod.length} productos con modificaciones heredadas:`, productosConMod.map(([codigo]) => codigo))
+    }
   }
   
   return map
@@ -615,8 +617,8 @@ const tiendasUnicas = computed(() => {
   // Ordenar por código de tienda/bodega
   const tiendasOrdenadas = Array.from(tiendasMap.values()).sort((a, b) => a.codigo.localeCompare(b.codigo))
   
-  // Log para depuración: verificar que los nombres se están recibiendo
-  if (tiendasOrdenadas.length > 0) {
+  // Log para depuración: verificar que los nombres se están recibiendo (solo en desarrollo)
+  if (import.meta.env.DEV && tiendasOrdenadas.length > 0) {
     console.log('📊 [ExcelLikeGridView] Tiendas detectadas:', tiendasOrdenadas.map(t => ({ codigo: t.codigo, nombre: t.nombre })))
   }
   

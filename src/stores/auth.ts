@@ -235,7 +235,9 @@ export const useAuthStore = defineStore('auth', {
         await this.fetchMe()
         return true
       } catch (error) {
-        console.error('Login failed:', error)
+        if (import.meta.env.DEV) {
+          console.error('Login failed:', error)
+        }
         return false
       }
     },
@@ -253,7 +255,9 @@ export const useAuthStore = defineStore('auth', {
           this.capabilities = data.capabilities
         }
       } catch (err: unknown) {
-        console.error('fetchMe failed:', err)
+        if (import.meta.env.DEV) {
+          console.error('fetchMe failed:', err)
+        }
         const status = (err as { response?: { status?: number } })?.response?.status
         if (status === 401) {
           this.logout()

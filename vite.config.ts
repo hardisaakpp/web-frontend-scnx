@@ -13,6 +13,7 @@ export default defineConfig({
   optimizeDeps: {
     include: ['vue', 'vue-router', 'pinia', 'axios', 'jwt-decode']
   },
+  // Configuración del servidor de desarrollo (solo se usa en desarrollo)
   server: {
     port: 3000,
     proxy: {
@@ -31,5 +32,26 @@ export default defineConfig({
         rewrite: (path) => path
       }
     }
+  },
+  // Configuración de esbuild para eliminar console.logs y debuggers en producción
+  esbuild: {
+    drop: ['console', 'debugger']
+  },
+  // Configuración de build para producción
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    sourcemap: false, // Deshabilitar sourcemaps en producción para seguridad
+    minify: 'esbuild', // Usar esbuild (más rápido, viene incluido con Vite)
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vue-vendor': ['vue', 'vue-router', 'pinia'],
+          'ui-vendor': ['@headlessui/vue', '@heroicons/vue'],
+          'utils-vendor': ['axios', 'jwt-decode']
+        }
+      }
+    },
+    chunkSizeWarningLimit: 500 // Reducido de 1000 para detectar problemas de bundle size más temprano
   }
 })

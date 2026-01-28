@@ -54,7 +54,9 @@ preferencesApi.interceptors.request.use(
     return config
   },
   error => {
-    console.error('❌ [Preferences API Request] Error en interceptor:', error)
+    if (import.meta.env.DEV) {
+      console.error('❌ [Preferences API Request] Error en interceptor:', error)
+    }
     return Promise.reject(error)
   }
 )
@@ -92,10 +94,12 @@ export const userPreferencesService = {
     } catch (error: any) {
       // Si el endpoint no existe (404) o hay error, retornar null
       // Esto permite que funcione con localStorage mientras se implementa el backend
-      if (error.response?.status === 404) {
-        console.debug(`Endpoint de preferencias no disponible para ${tableId}, usando localStorage`)
-      } else {
-        console.warn(`Error obteniendo preferencias de ${tableId}:`, error.message)
+      if (import.meta.env.DEV) {
+        if (error.response?.status === 404) {
+          console.debug(`Endpoint de preferencias no disponible para ${tableId}, usando localStorage`)
+        } else {
+          console.warn(`Error obteniendo preferencias de ${tableId}:`, error.message)
+        }
       }
       return null
     }
@@ -113,12 +117,14 @@ export const userPreferencesService = {
     } catch (error: any) {
       // Si el endpoint no existe (404), solo loguear warning
       // No lanzar error para que localStorage siga funcionando
-      if (error.response?.status === 404) {
-        console.debug(`Endpoint de preferencias no disponible para ${tableId}, solo usando localStorage`)
-      } else {
-        console.warn(`Error guardando preferencias de ${tableId}:`, error.message)
-        // No lanzar el error para que la app siga funcionando con localStorage
+      if (import.meta.env.DEV) {
+        if (error.response?.status === 404) {
+          console.debug(`Endpoint de preferencias no disponible para ${tableId}, solo usando localStorage`)
+        } else {
+          console.warn(`Error guardando preferencias de ${tableId}:`, error.message)
+        }
       }
+      // No lanzar el error para que la app siga funcionando con localStorage
     }
   },
 
@@ -132,10 +138,12 @@ export const userPreferencesService = {
       const response = await preferencesApi.get<AllPreferencesResponse>('/api/users/preferences')
       return response.data.preferences || {}
     } catch (error: any) {
-      if (error.response?.status === 404) {
-        console.debug('Endpoint de preferencias no disponible, usando localStorage')
-      } else {
-        console.warn('Error obteniendo todas las preferencias:', error.message)
+      if (import.meta.env.DEV) {
+        if (error.response?.status === 404) {
+          console.debug('Endpoint de preferencias no disponible, usando localStorage')
+        } else {
+          console.warn('Error obteniendo todas las preferencias:', error.message)
+        }
       }
       return {}
     }
@@ -150,10 +158,12 @@ export const userPreferencesService = {
       // Usar /api/users/preferences (minúsculas) para coincidir con el backend de Python
       await preferencesApi.delete(`/api/users/preferences/${tableId}`)
     } catch (error: any) {
-      if (error.response?.status === 404) {
-        console.debug(`Endpoint de preferencias no disponible para ${tableId}`)
-      } else {
-        console.warn(`Error eliminando preferencias de ${tableId}:`, error.message)
+      if (import.meta.env.DEV) {
+        if (error.response?.status === 404) {
+          console.debug(`Endpoint de preferencias no disponible para ${tableId}`)
+        } else {
+          console.warn(`Error eliminando preferencias de ${tableId}:`, error.message)
+        }
       }
     }
   },
@@ -169,11 +179,13 @@ export const userPreferencesService = {
     } catch (error: any) {
       // Manejar errores 400, 404 y 422 como si el endpoint no estuviera disponible
       // Esto permite que funcione con localStorage mientras se implementa el backend
-      const status = error.response?.status
-      if (status === 404 || status === 400 || status === 422) {
-        console.debug('Endpoint de preferencias de sidebar no disponible, usando localStorage')
-      } else {
-        console.warn('Error obteniendo preferencias de sidebar:', error.message)
+      if (import.meta.env.DEV) {
+        const status = error.response?.status
+        if (status === 404 || status === 400 || status === 422) {
+          console.debug('Endpoint de preferencias de sidebar no disponible, usando localStorage')
+        } else {
+          console.warn('Error obteniendo preferencias de sidebar:', error.message)
+        }
       }
       return null
     }
@@ -189,11 +201,13 @@ export const userPreferencesService = {
     } catch (error: any) {
       // Manejar errores 400, 404 y 422 como si el endpoint no estuviera disponible
       // No lanzar error para que localStorage siga funcionando
-      const status = error.response?.status
-      if (status === 404 || status === 400 || status === 422) {
-        console.debug('Endpoint de preferencias de sidebar no disponible, solo usando localStorage')
-      } else {
-        console.warn('Error guardando preferencias de sidebar:', error.message)
+      if (import.meta.env.DEV) {
+        const status = error.response?.status
+        if (status === 404 || status === 400 || status === 422) {
+          console.debug('Endpoint de preferencias de sidebar no disponible, solo usando localStorage')
+        } else {
+          console.warn('Error guardando preferencias de sidebar:', error.message)
+        }
       }
     }
   }

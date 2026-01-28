@@ -120,7 +120,9 @@ const handleLogin = async () => {
       error.value = 'Credenciales inválidas'
     }
   } catch (e) {
-    console.error('Login failed:', e)
+    if (import.meta.env.DEV) {
+      console.error('Login failed:', e)
+    }
     error.value = 'Error al iniciar sesión'
   } finally {
     isLoading.value = false
