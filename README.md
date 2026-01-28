@@ -197,9 +197,20 @@ npm run build
 
 Configurar en `.env.production`:
 ```env
-VITE_API_URL=https://api.production.com
+# Patrón 1: URLs relativas (API Gateway/Proxy) - RECOMENDADO
+VITE_API_URL=/api
+VITE_MBA3_API_BASE_URL=/api/mba3
+VITE_CONCILIACION_API_BASE_URL=/api/conciliacion
+VITE_PREFERENCES_API_URL=/api/mba3
+
+# Patrón 2: URLs absolutas (APIs en hosts separados)
+# VITE_MBA3_API_BASE_URL=https://api.production.com:8000
+# VITE_CONCILIACION_API_BASE_URL=https://api.production.com:8002/conciliacion-tesoreria
+
 VITE_APP_NAME=SCNexus
 ```
+
+**📖 Referencia completa:** [docs/PRODUCTION_ENV_CHECKLIST.md](docs/PRODUCTION_ENV_CHECKLIST.md)
 
 ## 🤝 Colaboración
 

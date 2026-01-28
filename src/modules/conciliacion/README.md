@@ -35,10 +35,17 @@ conciliacion/
 
 ```env
 # URL del microservicio de conciliación tesorería
+# Desarrollo (localhost):
 VITE_CONCILIACION_API_BASE_URL=http://localhost:8002
+
+# Producción (relativa - requiere API Gateway):
+VITE_CONCILIACION_API_BASE_URL=/api/conciliacion
+
+# Producción (absoluta - APIs separadas):
+VITE_CONCILIACION_API_BASE_URL=https://tesoreria-api.production.com:8002/conciliacion-tesoreria
 ```
 
-Si no se define, por defecto usa `http://localhost:8002`
+**Nota:** La URL se configura en `.env` (desarrollo) o `.env.production` (producción).
 
 ## Endpoints del Backend
 
