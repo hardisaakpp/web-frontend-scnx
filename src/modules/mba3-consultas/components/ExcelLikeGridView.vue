@@ -392,7 +392,7 @@ const productosConModificaciones = computed(() => {
     // ⭐ PRIORIDAD 2: Verificar columnasModificadas (heredar del flujo anterior - EL RAYO)
     // Esta es la fuente principal para heredar el resaltado del flujo anterior
     const detallePedido = pedidoDetalles.find(
-      d => d.codigo_interno === producto.codigo_producto
+      (d: any) => d.codigo_interno === producto.codigo_producto
     )
     
     if (!detallePedido?.pedido_detalle_id) {
@@ -417,7 +417,7 @@ const productosConModificaciones = computed(() => {
   if (import.meta.env.DEV) {
     const productosConMod = Array.from(map.entries()).filter(([_, tieneMod]) => tieneMod)
     if (productosConMod.length > 0) {
-      console.log(`🎨 [ExcelLikeGridView] ${productosConMod.length} productos con modificaciones heredadas:`, productosConMod.map(([codigo]) => codigo))
+      if (import.meta.env.DEV) console.log(`🎨 [ExcelLikeGridView] ${productosConMod.length} productos con modificaciones heredadas:`, productosConMod.map(([codigo]) => codigo))
     }
   }
   
@@ -430,7 +430,7 @@ watch(
   () => props.columnasModificadas?.value,
   (newValue) => {
     if (newValue) {
-      console.log(`🔄 [ExcelLikeGridView] Columnas modificadas actualizadas: ${newValue.size} modificaciones`)
+      if (import.meta.env.DEV) console.log(`🔄 [ExcelLikeGridView] Columnas modificadas actualizadas: ${newValue.size} modificaciones`)
       // Acceder al computed para forzar su recálculo
       const _ = productosConModificaciones.value
     }
@@ -582,7 +582,7 @@ function tieneCostoModificado(producto: ProductoRedistribucion): boolean {
   
   // Buscar el detalle del pedido que corresponde a este producto
   const detallePedido = props.pedido.detalles.find(
-    d => d.codigo_interno === producto.codigo_producto
+    (d: any) => d.codigo_interno === producto.codigo_producto
   )
   
   if (!detallePedido?.pedido_detalle_id) return false
@@ -619,7 +619,7 @@ const tiendasUnicas = computed(() => {
   
   // Log para depuración: verificar que los nombres se están recibiendo (solo en desarrollo)
   if (import.meta.env.DEV && tiendasOrdenadas.length > 0) {
-    console.log('📊 [ExcelLikeGridView] Tiendas detectadas:', tiendasOrdenadas.map(t => ({ codigo: t.codigo, nombre: t.nombre })))
+    if (import.meta.env.DEV) console.log('📊 [ExcelLikeGridView] Tiendas detectadas:', tiendasOrdenadas.map(t => ({ codigo: t.codigo, nombre: t.nombre })))
   }
   
   return tiendasOrdenadas

@@ -424,7 +424,7 @@ function cargarColumnasModificadasDesdeStorage() {
   // Solo cargar desde sessionStorage si no hay modificaciones ya cargadas desde el backend
   // Esto permite migración gradual de datos
   if (columnasModificadas.value.size > 0) {
-    console.log('ℹ️ [PedidoDetalleView] Modificaciones ya cargadas desde backend, omitiendo sessionStorage')
+    if (import.meta.env.DEV) console.log('ℹ️ [PedidoDetalleView] Modificaciones ya cargadas desde backend, omitiendo sessionStorage')
     return
   }
   
@@ -437,7 +437,7 @@ function cargarColumnasModificadasDesdeStorage() {
       // Limpiar antes de cargar desde storage
       columnasModificadas.value.clear()
       columnasModificadas.value = new Set(columnasArray)
-      console.log(`ℹ️ [PedidoDetalleView] Cargadas ${columnasArray.length} modificaciones desde sessionStorage (fallback)`)
+      if (import.meta.env.DEV) console.log(`ℹ️ [PedidoDetalleView] Cargadas ${columnasArray.length} modificaciones desde sessionStorage (fallback)`)
     }
   } catch (e) {
     console.warn('Error al cargar columnas modificadas desde sessionStorage (fallback):', e)
@@ -1059,7 +1059,7 @@ watch(
   async (newNumeroPedido, oldNumeroPedido) => {
     // Solo recargar si el número de pedido realmente cambió y no es la carga inicial
     if (newNumeroPedido && newNumeroPedido !== oldNumeroPedido) {
-      console.log(`🔄 [PedidoDetalleView] Cambio de pedido detectado: ${oldNumeroPedido || '(ninguno)'} → ${newNumeroPedido}`)
+      if (import.meta.env.DEV) console.log(`🔄 [PedidoDetalleView] Cambio de pedido detectado: ${oldNumeroPedido || '(ninguno)'} → ${newNumeroPedido}`)
       await loadPedido()
       // Limpiar el input de búsqueda después de navegar
       pedidoIdInput.value = ''

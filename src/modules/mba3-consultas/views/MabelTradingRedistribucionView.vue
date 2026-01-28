@@ -166,10 +166,10 @@ const cargarColumnasModificadasDesdeStorage = () => {
     if (stored) {
       const columnasArray = JSON.parse(stored) as string[]
       columnasModificadas.value = new Set(columnasArray)
-      console.log(`📦 [MabelTradingRedistribucionView] Cargadas ${columnasArray.length} columnas modificadas desde sessionStorage para ${numeroPedido.value}`)
-      console.log(`   Columnas: ${Array.from(columnasModificadas.value).join(', ')}`)
+      if (import.meta.env.DEV) console.log(`📦 [MabelTradingRedistribucionView] Cargadas ${columnasArray.length} columnas modificadas desde sessionStorage para ${numeroPedido.value}`)
+      if (import.meta.env.DEV) console.log(`   Columnas: ${Array.from(columnasModificadas.value).join(', ')}`)
     } else {
-      console.log(`📦 [MabelTradingRedistribucionView] No hay columnas modificadas en sessionStorage para ${numeroPedido.value}`)
+      if (import.meta.env.DEV) console.log(`📦 [MabelTradingRedistribucionView] No hay columnas modificadas en sessionStorage para ${numeroPedido.value}`)
     }
   } catch (e) {
     console.warn('Error al cargar columnas modificadas desde sessionStorage:', e)
@@ -292,7 +292,7 @@ watch(
     // Debe ejecutarse primero para que el resaltado esté disponible cuando se rendericen los productos
     cargarColumnasModificadasDesdeStorage()
     const columnasAntes = columnasModificadas.value.size
-    console.log(`🎨 [MabelTradingRedistribucionView] Columnas modificadas ANTES de inicializar: ${columnasAntes}`)
+    if (import.meta.env.DEV) console.log(`🎨 [MabelTradingRedistribucionView] Columnas modificadas ANTES de inicializar: ${columnasAntes}`)
     
     // Si hay respuesta_proveedor, inicializar normalmente
     if (newPedido.respuesta_proveedor) {
@@ -307,7 +307,7 @@ watch(
         console.warn(`⚠️ [MabelTradingRedistribucionView] Columnas modificadas se perdieron después de inicializar, recargando...`)
         cargarColumnasModificadasDesdeStorage()
       }
-      console.log(`🎨 [MabelTradingRedistribucionView] Columnas modificadas DESPUÉS de inicializar: ${columnasModificadas.value.size}`)
+      if (import.meta.env.DEV) console.log(`🎨 [MabelTradingRedistribucionView] Columnas modificadas DESPUÉS de inicializar: ${columnasModificadas.value.size}`)
     } else if (newPedido.detalles && newPedido.detalles.length > 0) {
       // Si no hay respuesta_proveedor pero hay pedido con detalles,
       // intentar crear respuesta_proveedor automáticamente (solo crear, NO procesar)
@@ -387,9 +387,9 @@ onMounted(async () => {
   if (numeroPedido.value) {
     await loadPedido()
     cargarColumnasModificadasDesdeStorage()
-    console.log(`🎨 [MabelTradingRedistribucionView] Estado final de columnas modificadas: ${columnasModificadas.value.size} modificaciones`)
+    if (import.meta.env.DEV) console.log(`🎨 [MabelTradingRedistribucionView] Estado final de columnas modificadas: ${columnasModificadas.value.size} modificaciones`)
     if (columnasModificadas.value.size > 0) {
-      console.log(`   Columnas modificadas: ${Array.from(columnasModificadas.value).join(', ')}`)
+      if (import.meta.env.DEV) console.log(`   Columnas modificadas: ${Array.from(columnasModificadas.value).join(', ')}`)
     }
     return
   }

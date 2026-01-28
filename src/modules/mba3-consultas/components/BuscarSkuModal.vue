@@ -377,14 +377,14 @@ async function buscarSku() {
     } | null = null
     if (resultadoMba3.status === 'fulfilled') {
       const response = resultadoMba3.value
-      console.log('🔍 [BuscarSkuModal] Respuesta completa del backend:', response)
+      if (import.meta.env.DEV) console.log('🔍 [BuscarSkuModal] Respuesta completa del backend:', response)
       
       if (response.status === 'success' && response.data) {
         dataMba3 = response.data
         
         // Si se incluyeron sugerencias y existen, guardarlas
         if (incluirSugerencias.value) {
-          console.log('🔍 [BuscarSkuModal] Sugerencias recibidas:', {
+          if (import.meta.env.DEV) console.log('🔍 [BuscarSkuModal] Sugerencias recibidas:', {
             sugerencias_sap: response.sugerencias_sap,
             total_sugerencias_sap: response.total_sugerencias_sap,
             cantidad_array: response.sugerencias_sap?.length || 0
@@ -392,7 +392,7 @@ async function buscarSku() {
           
           if (response.sugerencias_sap && response.sugerencias_sap.length > 0) {
             sugerenciasSap.value = response.sugerencias_sap
-            console.log('✅ [BuscarSkuModal] Sugerencias asignadas:', sugerenciasSap.value.length)
+            if (import.meta.env.DEV) console.log('✅ [BuscarSkuModal] Sugerencias asignadas:', sugerenciasSap.value.length)
             
             // Mostrar mensajes de advertencia si hay problemas con las sugerencias
             if (response.sugerencias_sap_timeout) {
@@ -407,9 +407,9 @@ async function buscarSku() {
             }
           } else {
             sugerenciasSap.value = []
-            console.log('⚠️ [BuscarSkuModal] No se recibieron sugerencias en el array')
+            if (import.meta.env.DEV) console.log('⚠️ [BuscarSkuModal] No se recibieron sugerencias en el array')
             if (response.total_sugerencias_sap === 0) {
-              console.log('ℹ️ [BuscarSkuModal] Total de sugerencias SAP: 0')
+              if (import.meta.env.DEV) console.log('ℹ️ [BuscarSkuModal] Total de sugerencias SAP: 0')
             }
           }
         }

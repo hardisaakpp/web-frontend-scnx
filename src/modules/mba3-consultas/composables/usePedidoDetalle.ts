@@ -68,7 +68,7 @@ export function usePedidoDetalle(options: {
       
       // Si se carga un pedido diferente, limpiar las columnas modificadas del pedido anterior
       if (pedidoAnterior && pedidoAnterior !== options.numeroPedido.value) {
-        console.log(`🔄 [usePedidoDetalle] Cambiando de pedido: ${pedidoAnterior} → ${options.numeroPedido.value}`)
+        if (import.meta.env.DEV) console.log(`🔄 [usePedidoDetalle] Cambiando de pedido: ${pedidoAnterior} → ${options.numeroPedido.value}`)
         if (options.limpiarColumnasModificadasEnStorage) {
           options.limpiarColumnasModificadasEnStorage()
         }
@@ -81,18 +81,18 @@ export function usePedidoDetalle(options: {
       options.pedido.value = await mba3ConsultasService.getPedido(options.numeroPedido.value, true)
       
       // ⭐ FASE 3: Cargar columnas modificadas desde el backend
-      console.log(`📥 [usePedidoDetalle] Cargando modificaciones para pedido: ${options.numeroPedido.value}`)
+      if (import.meta.env.DEV) console.log(`📥 [usePedidoDetalle] Cargando modificaciones para pedido: ${options.numeroPedido.value}`)
       const modificacionesCargadas = await cargarModificacionesDesdeBackend()
       
       // Fallback: Cargar desde sessionStorage SOLO si el backend no tiene datos (migración)
       if (!modificacionesCargadas && options.cargarColumnasModificadasDesdeStorage) {
-        console.log('📦 [usePedidoDetalle] Usando fallback: sessionStorage')
+        if (import.meta.env.DEV) console.log('📦 [usePedidoDetalle] Usando fallback: sessionStorage')
         options.cargarColumnasModificadasDesdeStorage()
       }
       
       // Log final del estado de modificaciones
       if (options.columnasModificadas) {
-        console.log(`✅ [usePedidoDetalle] Estado final: ${options.columnasModificadas.value.size} modificaciones cargadas`)
+        if (import.meta.env.DEV) console.log(`✅ [usePedidoDetalle] Estado final: ${options.columnasModificadas.value.size} modificaciones cargadas`)
       }
       
       // Inicializar productos para redistribución si hay respuesta del proveedor
@@ -135,20 +135,20 @@ export function usePedidoDetalle(options: {
         response.modificaciones.forEach(mod => {
           const key = `${mod.pedido_detalle_id}:${mod.columna_key}`
           options.columnasModificadas!.value.add(key)
-          console.log(`  ✓ Agregada modificación: ${key}`)
+          if (import.meta.env.DEV) console.log(`  ✓ Agregada modificación: ${key}`)
         })
         
-        console.log(`✅ [usePedidoDetalle] Cargadas ${response.modificaciones.length} modificaciones desde backend`)
+        if (import.meta.env.DEV) console.log(`✅ [usePedidoDetalle] Cargadas ${response.modificaciones.length} modificaciones desde backend`)
         return true // Se cargaron modificaciones desde el backend
       }
       
       // Si el array está vacío, no hay modificaciones
-      console.log('ℹ️ [usePedidoDetalle] No hay modificaciones guardadas en backend para este pedido')
+      if (import.meta.env.DEV) console.log('ℹ️ [usePedidoDetalle] No hay modificaciones guardadas en backend para este pedido')
       return false
     } catch (error: any) {
       // Si es 404, simplemente no hay modificaciones guardadas (normal)
       if (error.response?.status === 404 || error.message?.includes('404') || error.message?.includes('No existe')) {
-        console.log('ℹ️ [usePedidoDetalle] No hay modificaciones guardadas en backend para este pedido (404)')
+        if (import.meta.env.DEV) console.log('ℹ️ [usePedidoDetalle] No hay modificaciones guardadas en backend para este pedido (404)')
         return false
       } else {
         console.warn('⚠️ [usePedidoDetalle] Error al cargar modificaciones desde backend:', error.message)

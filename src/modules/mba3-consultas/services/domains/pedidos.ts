@@ -271,7 +271,7 @@ export const pedidosService = {
       const payload = { costo_doc_sin_iva: nuevoCosto }
 
       if (import.meta.env.DEV) {
-        console.log('📤 [actualizarCostoPedido] Enviando:', {
+        if (import.meta.env.DEV) console.log('📤 [actualizarCostoPedido] Enviando:', {
           url: `/api/pedidos/${encodeURIComponent(numeroPedido)}/detalle/${pedidoDetalleId}/costo`,
           payload
         })
@@ -283,7 +283,7 @@ export const pedidosService = {
       )
 
       if (import.meta.env.DEV) {
-        console.log('✅ [actualizarCostoPedido] Respuesta exitosa:', response.data)
+        if (import.meta.env.DEV) console.log('✅ [actualizarCostoPedido] Respuesta exitosa:', response.data)
       }
       return response.data
     } catch (error: any) {

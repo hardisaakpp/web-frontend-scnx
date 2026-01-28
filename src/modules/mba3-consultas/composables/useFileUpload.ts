@@ -173,7 +173,7 @@ export function useFileUpload(options: {
     ].filter(Boolean))
     const errorMessageStr = Array.from(mensajesUnicos).join(' ') || ''
     
-    console.log('🔍 [useFileUpload] Mensaje completo para búsqueda:', errorMessageStr)
+    if (import.meta.env.DEV) console.log('🔍 [useFileUpload] Mensaje completo para búsqueda:', errorMessageStr)
     
     // ✅ NUEVO: Extraer códigos del formato estructurado del backend
     // Formato: "❌ Códigos NO ENCONTRADOS en SAP (N):\n   • CODIGO1\n   • CODIGO2\n..."
@@ -241,7 +241,7 @@ export function useFileUpload(options: {
           })
           if (posiblesCodigos.length > 0) {
             productosNoEncontradosSAP.push(...posiblesCodigos)
-            console.log('✅ [useFileUpload] Códigos extraídos de la última parte del mensaje:', posiblesCodigos)
+            if (import.meta.env.DEV) console.log('✅ [useFileUpload] Códigos extraídos de la última parte del mensaje:', posiblesCodigos)
           }
         }
       }
@@ -389,12 +389,12 @@ export function useFileUpload(options: {
       
       // ✅ Extraer códigos desde data estructurado (BusinessException)
       // BusinessException puede tener la estructura: { type: 'business_exception', error: '...', data: { validacion: {...}, validacion_sap: {...} } }
-      console.log('🔍 [useFileUpload] Verificando errorData.data:', errorData.data)
+      if (import.meta.env.DEV) console.log('🔍 [useFileUpload] Verificando errorData.data:', errorData.data)
       
       // ⭐ NUEVO: También buscar validacion_sap en errorData.data (BusinessException)
       if (errorData.data?.validacion_sap) {
         const sapData = errorData.data.validacion_sap
-        console.log('✅ [useFileUpload] Encontrada validacion_sap en errorData.data.validacion_sap:', sapData)
+        if (import.meta.env.DEV) console.log('✅ [useFileUpload] Encontrada validacion_sap en errorData.data.validacion_sap:', sapData)
         
         // Extraer códigos no encontrados
         if (Array.isArray(sapData.no_encontrados)) {
@@ -408,7 +408,7 @@ export function useFileUpload(options: {
       
       if (errorData.data?.validacion) {
         const validacion = errorData.data.validacion
-        console.log('✅ [useFileUpload] Encontrada validacion en errorData.data.validacion:', validacion)
+        if (import.meta.env.DEV) console.log('✅ [useFileUpload] Encontrada validacion en errorData.data.validacion:', validacion)
         
         // Productos
         if (validacion.productos?.no_encontrados && Array.isArray(validacion.productos.no_encontrados)) {
@@ -585,11 +585,11 @@ export function useFileUpload(options: {
           errorMessage += `Por favor, revisa el archivo Excel y verifica que todos los códigos de producto estén escritos correctamente y existan en SAP.`
         }
         
-        console.log('✅ [useFileUpload] Mensaje detallado construido:', errorMessage)
+        if (import.meta.env.DEV) console.log('✅ [useFileUpload] Mensaje detallado construido:', errorMessage)
       } else {
         // Si no se pudieron extraer códigos con los patrones, intentar extraerlos del mensaje del backend directamente
         // El mensaje del backend puede tener formato: "❌ Validación SAP productos falló: Productos no encontrados (2): R225.1012.BCO.10-12, R5082-17.1012896"
-        console.log('⚠️ [useFileUpload] No se extrajeron códigos con patrones. Mensaje original:', errorMessageStr)
+        if (import.meta.env.DEV) console.log('⚠️ [useFileUpload] No se extrajeron códigos con patrones. Mensaje original:', errorMessageStr)
         
         if (errorMessageStr && errorMessageStr.includes('no encontrados') && errorMessageStr.includes(':')) {
           // Intentar extraer la parte después de los dos puntos que contiene los códigos
@@ -815,7 +815,7 @@ export function useFileUpload(options: {
       const esErrorSap = errorInfo.title?.includes('SAP') || errorInfo.title?.includes('producto') || errorInfo.title?.includes('no encontrados')
       if (esErrorSap) {
         archivoOriginal.value = file
-        console.log('💾 [useFileUpload] Archivo original guardado para posible reintento con correcciones')
+        if (import.meta.env.DEV) console.log('💾 [useFileUpload] Archivo original guardado para posible reintento con correcciones')
       }
       
       // Extraer todos los códigos para el toast

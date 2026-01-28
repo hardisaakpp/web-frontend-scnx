@@ -706,7 +706,7 @@ async function cargarDespachos() {
 async function autoRefreshDespachos() {
   // Solo refrescar si estamos en la pestaña de despachos y no está cargando
   if (activeTab.value === 'migrar' && !loadingDespachos.value) {
-    console.log('🔄 Auto-refresh: Actualizando despachos...')
+    if (import.meta.env.DEV) console.log('🔄 Auto-refresh: Actualizando despachos...')
     await cargarDespachos()
     nextRefreshTime.value = new Date(Date.now() + POLLING_INTERVAL)
     
@@ -720,7 +720,7 @@ function startPolling() {
   stopPolling() // Limpiar cualquier intervalo existente
   
   pollingIntervalId = setInterval(autoRefreshDespachos, POLLING_INTERVAL)
-  console.log(`✅ Polling iniciado: cada ${POLLING_INTERVAL / 1000 / 60} minutos`)
+  if (import.meta.env.DEV) console.log(`✅ Polling iniciado: cada ${POLLING_INTERVAL / 1000 / 60} minutos`)
   
   // Calcular próximo refresh
   nextRefreshTime.value = new Date(Date.now() + POLLING_INTERVAL)
@@ -731,7 +731,7 @@ function stopPolling() {
   if (pollingIntervalId) {
     clearInterval(pollingIntervalId)
     pollingIntervalId = null
-    console.log('⏹️ Polling detenido')
+    if (import.meta.env.DEV) console.log('⏹️ Polling detenido')
   }
 }
 
@@ -822,7 +822,7 @@ async function refrescarDatosOrdenesCompra(maxRetries: number = 1, delayMs: numb
       // Asegurar que Vue detecte los cambios reactivos
       await nextTick()
       
-      console.log('[refrescarDatosOrdenesCompra] ✅ Datos sincronizados con el servidor')
+      if (import.meta.env.DEV) console.log('[refrescarDatosOrdenesCompra] ✅ Datos sincronizados con el servidor')
       return // Si se completa exitosamente, salir
     } catch (error: any) {
       console.warn(`Intento ${attempt + 1}/${maxRetries + 1} de refrescar datos falló:`, error)
@@ -1451,8 +1451,8 @@ async function handleIntegrarOC(referenciaDespacho: string, almacenDestinoParam?
         await nextTick()
         
         // Log para debugging
-        console.log(`[handleIntegrarOC] ✅ Estado actualizado localmente: ${referenciaDespacho} → ${ordenActualizada.estado}`)
-        console.log(`[handleIntegrarOC] 📊 Estadísticas: ${pendientes} pendientes, ${enviadas} enviadas, ${errores} errores`)
+        if (import.meta.env.DEV) console.log(`[handleIntegrarOC] ✅ Estado actualizado localmente: ${referenciaDespacho} → ${ordenActualizada.estado}`)
+        if (import.meta.env.DEV) console.log(`[handleIntegrarOC] 📊 Estadísticas: ${pendientes} pendientes, ${enviadas} enviadas, ${errores} errores`)
       }
     }
     
@@ -1466,7 +1466,7 @@ async function handleIntegrarOC(referenciaDespacho: string, almacenDestinoParam?
         'Pedidos cerrados',
         `${pedidosCerrados.length} pedido(s) marcado(s) como CONFIRMADO_ENVIADO`
       )
-      console.log('📦 Pedidos cerrados después del envío:', pedidosCerrados)
+      if (import.meta.env.DEV) console.log('📦 Pedidos cerrados después del envío:', pedidosCerrados)
     }
     
     // ⭐ Mostrar modal con resultados de integración
@@ -1512,7 +1512,7 @@ async function handleIntegrarOC(referenciaDespacho: string, almacenDestinoParam?
       if (errorData.error) {
         errorMessage = errorData.error
         // Parsear errores múltiples si están separados por ';'
-        const errores = errorMessage.split(';').map(e => e.trim()).filter(e => e.length > 0)
+        const errores = errorMessage.split(';').map((e: string) => e.trim()).filter((e: string) => e.length > 0)
         if (errores.length > 1) {
           // Si hay múltiples errores, mostrar el primero en el toast y los demás en consola
           errorMessage = errores[0]
@@ -1654,7 +1654,7 @@ async function handleIntegrarOCMultiples(referencias: string[]) {
             ordenesCompraStore.ordenesCompra[ordenIndex] = ordenActualizada
             ordenesCompraStore.ordenesCompra = [...ordenesCompraStore.ordenesCompra]
             
-            console.log(`[handleIntegrarOCMultiples] ✅ Estado actualizado: ${referencia} → ${ordenActualizada.estado}`)
+            if (import.meta.env.DEV) console.log(`[handleIntegrarOCMultiples] ✅ Estado actualizado: ${referencia} → ${ordenActualizada.estado}`)
           }
         } else {
           successCount++
@@ -1745,7 +1745,7 @@ async function handleIntegrarOCMultiples(referencias: string[]) {
         'Pedidos cerrados',
         `${pedidosCerradosConsolidados.size} pedido(s) marcado(s) como CONFIRMADO_ENVIADO`
       )
-      console.log('📦 Pedidos cerrados después del envío:', Array.from(pedidosCerradosConsolidados))
+      if (import.meta.env.DEV) console.log('📦 Pedidos cerrados después del envío:', Array.from(pedidosCerradosConsolidados))
     }
     
     // ✅ NO REFRESCAR - Confiar en las respuestas del backend

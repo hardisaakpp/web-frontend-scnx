@@ -800,7 +800,7 @@ const productosConModificaciones = computed(() => {
   if (import.meta.env.DEV) {
     const productosConMod = Array.from(map.entries()).filter(([_, tieneMod]) => tieneMod)
     if (productosConMod.length > 0) {
-      console.log(`🎨 [RedistribucionTiendas] ${productosConMod.length} productos con modificaciones heredadas:`, productosConMod.map(([codigo]) => codigo))
+      if (import.meta.env.DEV) console.log(`🎨 [RedistribucionTiendas] ${productosConMod.length} productos con modificaciones heredadas:`, productosConMod.map(([codigo]) => codigo))
     }
   }
   
@@ -813,7 +813,7 @@ watch(
   () => props.columnasModificadas?.value,
   (newValue) => {
     if (newValue) {
-      console.log(`🔄 [RedistribucionTiendas] Columnas modificadas actualizadas: ${newValue.size} modificaciones`)
+      if (import.meta.env.DEV) console.log(`🔄 [RedistribucionTiendas] Columnas modificadas actualizadas: ${newValue.size} modificaciones`)
       // Acceder al computed para forzar su recálculo
       const _ = productosConModificaciones.value
     }

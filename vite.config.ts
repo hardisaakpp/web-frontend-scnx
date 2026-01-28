@@ -33,10 +33,10 @@ export default defineConfig({
       }
     }
   },
-  // Configuración de esbuild para eliminar console.logs y debuggers en producción
-  esbuild: {
-    drop: ['console', 'debugger']
-  },
+  // ⚠️ SECURITY: Removed esbuild.drop: ['console'] to preserve console.error() and error logging
+  // Development console.logs are now protected by import.meta.env.DEV checks
+  // Production build will be smaller because DEV-conditional logs are never reached
+  
   // Configuración de build para producción
   build: {
     outDir: 'dist',

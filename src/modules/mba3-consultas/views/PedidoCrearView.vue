@@ -868,12 +868,12 @@ async function handleSubmit() {
     }
 
     // Log para debugging - verificar qué se está enviando
-    console.log('📤 [handleSubmit] Datos enviados al backend:', JSON.stringify(dataToSend, null, 2))
+    if (import.meta.env.DEV) console.log('📤 [handleSubmit] Datos enviados al backend:', JSON.stringify(dataToSend, null, 2))
 
     const response = await mba3ConsultasService.crearPedidoManual(dataToSend as CrearPedidoRequest)
 
     // Log para debugging
-    console.log('✅ [handleSubmit] Respuesta del backend:', response)
+    if (import.meta.env.DEV) console.log('✅ [handleSubmit] Respuesta del backend:', response)
 
     // Manejar respuesta similar a la carga de plantillas Excel
     if (response.status === 'validation_error') {

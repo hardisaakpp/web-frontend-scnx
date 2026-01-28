@@ -627,7 +627,7 @@ watch(() => props.ordenesCompra, (newOrdenes) => {
     
     if (ordenEnviada && ordenEnviada.estado !== 'PENDIENTE') {
       // La orden ya no está pendiente, limpiar el estado de envío para que el botón desaparezca
-      console.log(`[OrdenCompraTable] ✅ Botón deshabilitado: ${sendingOcId.value} cambió a ${ordenEnviada.estado}`)
+      if (import.meta.env.DEV) console.log(`[OrdenCompraTable] ✅ Botón deshabilitado: ${sendingOcId.value} cambió a ${ordenEnviada.estado}`)
       sendingOcId.value = null
     }
   }

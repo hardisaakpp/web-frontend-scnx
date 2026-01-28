@@ -750,8 +750,8 @@ watch(
                          props.uploadErrorInfo?.title?.includes('producto')
       
       if (esErrorSap && props.uploadErrorInfo?.errors) {
-        console.log('🔍 [UploadErrorModal] Modal de error abierto, iniciando búsqueda automática de sugerencias...')
-        console.log('📋 [UploadErrorModal] uploadErrorInfo:', {
+        if (import.meta.env.DEV) console.log('🔍 [UploadErrorModal] Modal de error abierto, iniciando búsqueda automática de sugerencias...')
+        if (import.meta.env.DEV) console.log('📋 [UploadErrorModal] uploadErrorInfo:', {
           title: props.uploadErrorInfo.title,
           tieneValidacionSap: !!props.uploadErrorInfo.validacion_sap,
           detalleValidacion: props.uploadErrorInfo.validacion_sap?.detalle_validacion,

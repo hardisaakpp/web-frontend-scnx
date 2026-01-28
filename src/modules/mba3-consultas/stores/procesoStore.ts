@@ -73,7 +73,7 @@ export const useProcesoStore = defineStore('mba3Proceso', () => {
   function setODCProcessId(processId: string) {
     odcProcessId.value = processId
     // Log para debugging en producción
-    console.log(`[ODC Process] process_id asignado: ${processId}`)
+    if (import.meta.env.DEV) console.log(`[ODC Process] process_id asignado: ${processId}`)
   }
 
   async function migrar() {
@@ -111,7 +111,7 @@ export const useProcesoStore = defineStore('mba3Proceso', () => {
       // Log para debugging en producción
       const ocStatus = data?.metadata?.oc_status
       if (ocStatus) {
-        console.log(`[ODC Process] Estado recibido: ${ocStatus.status}`, {
+        if (import.meta.env.DEV) console.log(`[ODC Process] Estado recibido: ${ocStatus.status}`, {
           process_id: data.process_id,
           oc_creadas: ocStatus.oc_creadas,
           oc_errores: ocStatus.oc_errores,
@@ -179,7 +179,7 @@ export const useProcesoStore = defineStore('mba3Proceso', () => {
       // Log para debugging
       const ocStatus = data?.metadata?.oc_status
       if (ocStatus) {
-        console.log(`[ODC Process Pedido] Estado recibido: ${ocStatus.status}`, {
+        if (import.meta.env.DEV) console.log(`[ODC Process Pedido] Estado recibido: ${ocStatus.status}`, {
           process_id: data.process_id,
           oc_creadas: ocStatus.oc_creadas,
           oc_errores: ocStatus.oc_errores

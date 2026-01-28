@@ -970,7 +970,7 @@ async function cargarDetalles(despachoId: string) {
     // Primero verificar si los detalles ya vienen en el despacho (campo despacho_detalles)
     const despacho = props.despachos.find(d => d.despacho_id === despachoId)
     if (despacho?.despacho_detalles && despacho.despacho_detalles.length > 0) {
-      console.log(`✅ [cargarDetalles] Detalles encontrados en despacho ${despachoId}:`, despacho.despacho_detalles.length)
+      if (import.meta.env.DEV) console.log(`✅ [cargarDetalles] Detalles encontrados en despacho ${despachoId}:`, despacho.despacho_detalles.length)
       detallesPorDespacho.value[despachoId] = despacho.despacho_detalles
       loadingDetalles.value[despachoId] = false
       return

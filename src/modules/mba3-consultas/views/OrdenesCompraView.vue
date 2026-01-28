@@ -217,7 +217,7 @@ async function cargarTodosLosLogs() {
     
     todosLosLogs.value = logsData
     
-    console.log(`[Historial] Cargados ${logsData.length} logs`)
+    if (import.meta.env.DEV) console.log(`[Historial] Cargados ${logsData.length} logs`)
   } catch (error: any) {
     console.error('Error al cargar los logs:', error)
     toast.error('Error al cargar logs', error.message || 'No se pudieron cargar los logs de órdenes de compra')
