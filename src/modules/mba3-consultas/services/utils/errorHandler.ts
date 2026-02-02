@@ -47,6 +47,9 @@ export function extractErrorMessage(error: any): string {
   }
   
   if (error.request) {
+    if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+      return 'El servidor tardó demasiado en responder. El proceso de validación puede estar ejecutándose. Intenta nuevamente en unos minutos.'
+    }
     return 'No se pudo conectar con el servidor. Verifica tu conexión a internet.'
   }
   

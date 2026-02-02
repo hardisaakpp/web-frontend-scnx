@@ -50,7 +50,8 @@ export const pedidosService = {
 
       const response = await mba3Api.post<UploadPlantillaResponse>(
         '/api/plantillas/upload',
-        formData
+        formData,
+        { timeout: 120000 } // 2 minutos - sincronizado con backend (login MBA3, validación SAP, etc.)
       )
 
       return normalizeValidationResponse(response.data)

@@ -102,7 +102,7 @@ const error = ref('')
 const form = reactive({
   username: '',
   password: '',
-  useActiveDirectory: false
+  useActiveDirectory: true
 })
 
 const handleLogin = async () => {
