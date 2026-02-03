@@ -1245,6 +1245,13 @@ export const mba3ConsultasService = {
   },
 
   /**
+   * Marca el pedido como "Despachar y Facturar" (estado_id 17). Solo válido en CONFIRMADO_ENVIADO (12).
+   */
+  async marcarDespacharYFacturar(pedidoId: string): Promise<PedidoCompleto> {
+    return pedidosService.marcarDespacharYFacturar(pedidoId)
+  },
+
+  /**
    * Confirma la redistribución de un pedido
    * Requiere permiso: mba3-consultas.proceso.execute
    * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")

@@ -467,11 +467,14 @@ function getEstadoLabel(estado: string): string {
     'PENDIENTE_CONFIRMACION_PROVEEDOR': 'Pendiente Confirmación',
     'RESPUESTA_PROVEEDOR_CARGADA': 'Respuesta Cargada',
     'CONFIRMADO_PROVEEDOR': 'Confirmado Proveedor',
+    'CONFIRMADO REDISTRIBUCION': 'Confirmado redistribución',
     'PEDIDO_CONFIRMADO': 'Pedido Confirmado',
     'PROCESADO_SAP': 'Procesado SAP',
     'ORDEN_COMPRA_CREADA': 'OC Creada',
     'ENVIADA_SAP': 'Enviada SAP',
     'CONFIRMADO_ENVIADO': 'Confirmado Enviado',
+    'DESPACHAR Y FACTURAR': 'Despachar y Facturar',
+    'DESPACHAR_Y_FACTURAR': 'Despachar y Facturar',
     'CERRADO': 'Cerrado',
     'CANCELADO': 'Cancelado'
   }
@@ -493,11 +496,14 @@ function getEstadoBadgeClass(estado: string): string {
     'PENDIENTE_CONFIRMACION_PROVEEDOR': `bg-yellow-100 text-yellow-800 ${darkClasses} dark:bg-yellow-900/50 dark:text-yellow-200`,
     'RESPUESTA_PROVEEDOR_CARGADA': `bg-blue-100 text-blue-800 ${darkClasses} dark:bg-blue-900/50 dark:text-blue-200`,
     'CONFIRMADO_PROVEEDOR': `bg-green-100 text-green-800 ${darkClasses} dark:bg-green-900/50 dark:text-green-200`,
+    'CONFIRMADO REDISTRIBUCION': `bg-teal-100 text-teal-800 ${darkClasses} dark:bg-teal-900/50 dark:text-teal-200`,
     'PEDIDO_CONFIRMADO': `bg-teal-100 text-teal-800 ${darkClasses} dark:bg-teal-900/50 dark:text-teal-200`,
     'PROCESADO_SAP': `bg-indigo-100 text-indigo-800 ${darkClasses} dark:bg-indigo-900/50 dark:text-indigo-200`,
     'ORDEN_COMPRA_CREADA': `bg-fuchsia-100 text-fuchsia-800 ${darkClasses} dark:bg-fuchsia-900/50 dark:text-fuchsia-200`,
     'ENVIADA_SAP': `bg-purple-100 text-purple-800 ${darkClasses} dark:bg-purple-900/50 dark:text-purple-200`,
     'CONFIRMADO_ENVIADO': `bg-emerald-100 text-emerald-800 ${darkClasses} dark:bg-emerald-900/50 dark:text-emerald-200`,
+    'DESPACHAR Y FACTURAR': `bg-orange-100 text-orange-800 ${darkClasses} dark:bg-orange-900/50 dark:text-orange-200`,
+    'DESPACHAR_Y_FACTURAR': `bg-orange-100 text-orange-800 ${darkClasses} dark:bg-orange-900/50 dark:text-orange-200`,
     'CERRADO': `bg-gray-100 text-gray-700 ${darkClasses} dark:bg-gray-600 dark:text-gray-200`,
     'CANCELADO': `bg-red-100 text-red-800 ${darkClasses} dark:bg-red-900/50 dark:text-red-200`
   }

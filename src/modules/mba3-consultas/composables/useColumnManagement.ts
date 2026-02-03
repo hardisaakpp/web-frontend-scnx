@@ -48,10 +48,12 @@ export function useColumnManagement(
   }
 
   /**
-   * Guarda una modificación en el backend
+   * Guarda una modificación en el backend.
+   * El backend espera numero_pedido en la URL, no pedido_id (UUID).
    */
   async function guardarModificacionEnBackend(detalleId: string, columnKey: string) {
-    if (!numeroPedido.value) return
+    const numeroParaApi = pedido.value?.cabecera?.numero_pedido ?? numeroPedido.value
+    if (!numeroParaApi) return
     
     try {
       // Obtener todas las modificaciones actuales
@@ -67,9 +69,9 @@ export function useColumnManagement(
         })
       }
       
-      // Guardar todas las modificaciones en el backend
+      // Guardar todas las modificaciones en el backend (usar numero_pedido, no UUID)
       await mba3ConsultasService.guardarModificacionesColumnas(
-        numeroPedido.value,
+        numeroParaApi,
         modificacionesActuales
       )
     } catch (error: any) {

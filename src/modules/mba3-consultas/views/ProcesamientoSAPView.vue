@@ -751,8 +751,9 @@ function copyToClipboard(text: string) {
 const canGenerarOC = computed(() => {
   // Permitir generar OC si el pedido está en un estado válido después de procesar SAP
   const estado = pedidoCompleto.value?.cabecera.estado
-  return estado === 'CONFIRMADO_PROVEEDOR' || 
-         estado === 'PEDIDO_CONFIRMADO' || 
+  return estado === 'CONFIRMADO_PROVEEDOR' ||
+         estado === 'CONFIRMADO REDISTRIBUCION' ||
+         estado === 'PEDIDO_CONFIRMADO' ||
          estado === 'PROCESADO_SAP'
 })
 

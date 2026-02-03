@@ -90,9 +90,15 @@ export function formatEstadoPedido(estado: string | undefined): string {
     'PENDIENTE_CONFIRMACION_PROVEEDOR': 'Pendiente Confirmación',
     'RESPUESTA_PROVEEDOR_CARGADA': 'Respuesta Cargada',
     'CONFIRMADO_PROVEEDOR': 'Confirmado por Proveedor',
+    'CONFIRMADO REDISTRIBUCION': 'Confirmado redistribución',
     'PEDIDO_CONFIRMADO': 'Pedido Confirmado',
     'PROCESADO_SAP': 'Procesado SAP',
-    'CONFIRMADO_ENVIADO': 'Confirmado y Enviado'
+    'CONFIRMADO_ENVIADO': 'Confirmado y Enviado',
+    'CONFIRMADO Y ENVIADO': 'Confirmado y Enviado',
+    'CONFIRMADO_Y_ENVIADO': 'Confirmado y Enviado',
+    'ENVIADA': 'Confirmado y Enviado', // orden_compra_cabecera.estado ENVIADA se muestra como Confirmado y Enviado en pedido
+    'DESPACHAR Y FACTURAR': 'Despachar y Facturar',
+    'DESPACHAR_Y_FACTURAR': 'Despachar y Facturar'
   }
   return estados[estado] || estado
 }

@@ -232,8 +232,8 @@ const puedeConfirmarRedistribucion = computed(() => {
          productos.every(p => !p.error)
 })
 
-// Deshabilitar "Confirmar Redistribución" cuando el pedido ya está confirmado (docs/FRONTEND.md §1.3.1: PEDIDO_CONFIRMADO o posterior)
-const ESTADOS_REDISTRIBUCION_YA_CONFIRMADA = ['PEDIDO_CONFIRMADO', 'PROCESADO_SAP']
+// Deshabilitar "Confirmar Redistribución" cuando la redistribución ya está confirmada (CONFIRMADO REDISTRIBUCION, PEDIDO_CONFIRMADO o posterior)
+const ESTADOS_REDISTRIBUCION_YA_CONFIRMADA = ['CONFIRMADO REDISTRIBUCION', 'PEDIDO_CONFIRMADO', 'PROCESADO_SAP']
 const confirmarDeshabilitadoPorEstado = computed(() =>
   ESTADOS_REDISTRIBUCION_YA_CONFIRMADA.includes(pedido.value?.cabecera?.estado ?? '')
 )

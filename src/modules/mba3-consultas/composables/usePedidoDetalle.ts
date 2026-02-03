@@ -80,9 +80,10 @@ export function usePedidoDetalle(options: {
       
       options.pedido.value = await mba3ConsultasService.getPedido(options.numeroPedido.value, true)
       
-      // ⭐ FASE 3: Cargar columnas modificadas desde el backend
-      if (import.meta.env.DEV) console.log(`📥 [usePedidoDetalle] Cargando modificaciones para pedido: ${options.numeroPedido.value}`)
-      const modificacionesCargadas = await cargarModificacionesDesdeBackend()
+      // ⭐ FASE 3: Cargar columnas modificadas desde el backend (backend espera numero_pedido, no UUID)
+      const numeroParaModificaciones = options.pedido.value?.cabecera?.numero_pedido ?? options.numeroPedido.value
+      if (import.meta.env.DEV) console.log(`📥 [usePedidoDetalle] Cargando modificaciones para pedido: ${numeroParaModificaciones}`)
+      const modificacionesCargadas = await cargarModificacionesDesdeBackend(numeroParaModificaciones)
       
       // Fallback: Cargar desde sessionStorage SOLO si el backend no tiene datos (migración)
       if (!modificacionesCargadas && options.cargarColumnasModificadasDesdeStorage) {
@@ -116,16 +117,17 @@ export function usePedidoDetalle(options: {
   }
 
   /**
-   * Carga las modificaciones de columnas desde el backend
+   * Carga las modificaciones de columnas desde el backend.
+   * Usar numero_pedido (ej. cabecera.numero_pedido) en la URL; el backend no acepta pedido_id (UUID).
+   * @param numeroPedidoParaApi Número de pedido para la API (si no se pasa, se usa options.numeroPedido, que puede ser UUID)
    * @returns true si se cargaron modificaciones desde el backend, false en caso contrario
    */
-  async function cargarModificacionesDesdeBackend(): Promise<boolean> {
-    if (!options.numeroPedido.value || !options.columnasModificadas) return false
+  async function cargarModificacionesDesdeBackend(numeroPedidoParaApi?: string): Promise<boolean> {
+    const numero = numeroPedidoParaApi ?? options.numeroPedido.value
+    if (!numero || !options.columnasModificadas) return false
     
     try {
-      const response = await mba3ConsultasService.obtenerModificacionesColumnas(
-        options.numeroPedido.value
-      )
+      const response = await mba3ConsultasService.obtenerModificacionesColumnas(numero)
       
       if (response.modificaciones && response.modificaciones.length > 0) {
         // Limpiar modificaciones actuales antes de cargar desde backend

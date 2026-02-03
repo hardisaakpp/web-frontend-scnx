@@ -485,6 +485,27 @@ export const pedidosService = {
   },
 
   /**
+   * Marca el pedido como "Despachar y Facturar" (estado_id 17).
+   * POST /api/pedidos/{pedido_id}/marcar-despachar-y-facturar (sin body).
+   * Solo válido cuando estado es CONFIRMADO_ENVIADO (estado_id 12). 400 si estado_no_confirmado_enviado.
+   *
+   * @param pedidoId ID del pedido (UUID)
+   * @returns Pedido completo actualizado (cabecera con estado DESPACHAR Y FACTURAR)
+   */
+  async marcarDespacharYFacturar(pedidoId: string): Promise<PedidoCompleto> {
+    try {
+      const response = await mba3Api.post<PedidoCompleto>(
+        `/api/pedidos/${encodeURIComponent(pedidoId)}/marcar-despachar-y-facturar`,
+        {}
+      )
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [marcarDespacharYFacturar] Error:', error)
+      throw createEnrichedError(error, 'Error al marcar Despachar y Facturar')
+    }
+  },
+
+  /**
    * Confirma la redistribución de un pedido
    * 
    * Requiere permiso: mba3-consultas.proceso.execute

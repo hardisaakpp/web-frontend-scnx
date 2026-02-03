@@ -6,6 +6,7 @@
       </h1>
     </div>
     <div class="flex items-center gap-3">
+      <slot name="leading" />
       <!-- Búsqueda directa de pedidos -->
       <div class="relative">
         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">

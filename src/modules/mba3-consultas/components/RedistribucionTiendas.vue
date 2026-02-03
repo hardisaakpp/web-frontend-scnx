@@ -591,7 +591,7 @@ interface Props {
   productosExpandidos: Ref<Set<string>>
   guardandoRedistribucion: Ref<boolean>
   confirmandoRedistribucion: Ref<boolean>
-  /** Si true, el botón "Confirmar Redistribución" va deshabilitado al cargar (p. ej. cabecera.estado === 'PEDIDO_CONFIRMADO'). Ver docs/FRONTEND.md §1.3.1 */
+  /** Si true, el botón "Confirmar Redistribución" va deshabilitado al cargar (p. ej. cabecera.estado === 'CONFIRMADO REDISTRIBUCION' o 'PEDIDO_CONFIRMADO'). Ver docs/FRONTEND.md §1.3.1 */
   confirmarDeshabilitadoPorEstado?: boolean
   columnasModificadas?: Ref<Set<string>>
 }

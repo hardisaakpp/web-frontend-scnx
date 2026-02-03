@@ -28,21 +28,7 @@
 
   <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
     <div class="space-y-6" :class="{ 'pointer-events-none opacity-75': uploading }">
-      <!-- Botón Volver al listado de pedidos -->
-      <div class="flex items-center">
-        <button
-          type="button"
-          @click="router.push('/mba3-consultas/pedidos')"
-          class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 hover:border-gray-400 dark:hover:border-gray-500 transition-colors"
-        >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          Volver
-        </button>
-      </div>
-
-      <!-- Header con botones de acción -->
+      <!-- Header con botones de acción (Volver + búsqueda y acciones) -->
       <PedidoHeaderActions
         v-model:pedido-id-input="pedidoIdInput"
         v-model:show-search-help="showSearchHelp"
@@ -65,7 +51,20 @@
         @go-to-pedido="goToPedido"
         @search-blur="handleSearchBlur"
         @descargar-plano-mba="handleDescargarPlanoMba"
-      />
+      >
+        <template #leading>
+          <button
+            type="button"
+            @click="router.push('/mba3-consultas/pedidos')"
+            class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 hover:border-gray-400 dark:hover:border-gray-500 transition-colors"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Volver
+          </button>
+        </template>
+      </PedidoHeaderActions>
 
       <!-- Loading state -->
       <div v-if="loading && !pedido" class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-12 text-center">
@@ -582,10 +581,9 @@ const numeroPedido = computed(() => {
   return id ? decodeURIComponent(id) : ''
 })
 
-// ⭐ Detectar el modo de interfaz según query params
-const esModoMabelTrading = computed(() => {
-  return route.query.usuario === 'mabel-trading' || route.query.modo === 'confirmacion'
-})
+// Modo MABEL TRADING obsoleto (antes: simulación/auth en desarrollo vía ?usuario=mabel-trading).
+// Desactivado para que la cabecera sea siempre editable y se pueda cambiar el estado a "Despachar y Facturar".
+const esModoMabelTrading = computed(() => false)
 
 // Inicializar composable de pedido detalle primero
 const pedidoDetalle = usePedidoDetalle({
@@ -723,17 +721,18 @@ const canGenerarOC = computed(() => {
 const ESTADOS_YA_CONFIRMADOS = [
   'RESPUESTA_PROVEEDOR_CARGADA',
   'CONFIRMADO_PROVEEDOR',
+  'CONFIRMADO REDISTRIBUCION',
   'PEDIDO_CONFIRMADO',
   'CONFIRMADO_ENVIADO',
   'PROCESADO_SAP',
-  'REDISTRIBUCION' // tras "Confirmar" (GESTIONAR PEDIDO → REDISTRIBUCION) se redirige a redistribución; en detalle no aplica de nuevo
+  'REDISTRIBUCION'
 ]
 const confirmarDeshabilitadoPorEstado = computed(() =>
   ESTADOS_YA_CONFIRMADOS.includes(pedido.value?.cabecera?.estado ?? '')
 )
 
-// Deshabilitar "Confirmar Redistribución" solo cuando ya está confirmado o posterior (docs/FRONTEND.md §1.3.1)
-const ESTADOS_REDISTRIBUCION_YA_CONFIRMADA = ['PEDIDO_CONFIRMADO', 'PROCESADO_SAP']
+// Deshabilitar "Confirmar Redistribución" cuando la redistribución ya está confirmada (docs/FRONTEND.md §1.3.1)
+const ESTADOS_REDISTRIBUCION_YA_CONFIRMADA = ['CONFIRMADO REDISTRIBUCION', 'PEDIDO_CONFIRMADO', 'PROCESADO_SAP']
 const confirmarRedistribucionDeshabilitadoPorEstado = computed(() =>
   ESTADOS_REDISTRIBUCION_YA_CONFIRMADA.includes(pedido.value?.cabecera?.estado ?? '')
 )
@@ -891,25 +890,44 @@ async function handleUpdateFechaEntrega(fecha: string | null) {
 
 async function handleUpdateEstado(estado: string | null) {
   if (!pedido.value?.cabecera?.pedido_id) return
-  
-  try {
-    await mba3ConsultasService.actualizarCabeceraPedido(pedido.value.cabecera.pedido_id, {
-      estado: estado || undefined
-    })
-    
-    // Actualizar el valor localmente
-    if (pedido.value.cabecera) {
-      pedido.value.cabecera.estado = estado || undefined
+  const pedidoId = pedido.value.cabecera.pedido_id
+  const estadoNorm = estado?.trim() || null
+
+  // Transición a "Despachar y Facturar" usa el endpoint específico (solo válido desde CONFIRMADO_ENVIADO)
+  if (estadoNorm === 'DESPACHAR Y FACTURAR' || estadoNorm === 'DESPACHAR_Y_FACTURAR') {
+    try {
+      const pedidoActualizado = await mba3ConsultasService.marcarDespacharYFacturar(pedidoId)
+      pedido.value = pedidoActualizado
+      toast.success('Estado actualizado', 'El pedido se ha marcado para Despachar y Facturar.')
+      await loadPedido()
+    } catch (e: any) {
+      const status = e.response?.status
+      const data = e.response?.data
+      const errorCode = data?.error
+      const detail = data?.detail
+      const msg = (typeof detail === 'object' && detail?.message) ? detail.message : (typeof detail === 'string' ? detail : null) ?? data?.message ?? e.message
+      if (status === 400 && (errorCode === 'estado_no_confirmado_enviado' || msg?.includes('Confirmado y Enviado'))) {
+        toast.error('Estado incorrecto', 'Solo se puede marcar "Despachar y Facturar" cuando el pedido está en estado Confirmado y Enviado.')
+      } else {
+        toast.error('Error', msg || 'No se pudo marcar para Despachar y Facturar.')
+      }
+      await loadPedido()
     }
-    
+    return
+  }
+
+  try {
+    await mba3ConsultasService.actualizarCabeceraPedido(pedidoId, {
+      estado: estadoNorm || undefined
+    })
+    if (pedido.value.cabecera) {
+      pedido.value.cabecera.estado = estadoNorm || undefined
+    }
     toast.success('Estado actualizado', 'El estado del pedido se ha actualizado correctamente')
-    
-    // Recargar el pedido para asegurar sincronización
     await loadPedido()
   } catch (e: any) {
     console.error('Error al actualizar estado:', e)
     toast.error('Error al actualizar', e.message || 'No se pudo actualizar el estado del pedido')
-    // Recargar para restaurar valor original
     await loadPedido()
   }
 }
