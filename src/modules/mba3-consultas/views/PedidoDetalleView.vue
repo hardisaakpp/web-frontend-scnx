@@ -224,18 +224,18 @@
                         : '',
                       column.key === 'numero' ? 'font-medium text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/50' :
                       column.key === 'codigo_interno' ? 'font-medium text-gray-900 dark:text-white whitespace-nowrap' :
-                      column.key === 'total' ? 'font-medium text-gray-900 dark:text-white cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors' :
+                      column.key === 'total' ? (puedeEditarCostoTotalComentario ? 'font-medium text-gray-900 dark:text-white cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors' : 'font-medium text-gray-900 dark:text-white') :
                       column.key === 'descripcion_sap' ? 'text-gray-900 dark:text-white' :
-                      column.key === 'costo_doc_sin_iva' ? 'cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors' :
-                      column.key === 'comentario' ? 'cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors' :
+                      column.key === 'costo_doc_sin_iva' ? (puedeEditarCostoTotalComentario ? 'cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors' : '') :
+                      column.key === 'comentario' ? (puedeEditarCostoTotalComentario ? 'cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors' : '') :
                       'text-gray-500 dark:text-gray-400 whitespace-nowrap'
                     ]"
                     :data-column-key="column.key"
                     :data-detalle-id="detalle.pedido_detalle_id"
-                    @dblclick="(column.key === 'costo_doc_sin_iva' || column.key === 'total' || column.key === 'comentario') && iniciarEdicion(detalle, column.key === 'costo_doc_sin_iva' ? 'costo' : column.key === 'total' ? 'total' : 'comentario')"
+                    @dblclick="puedeEditarCostoTotalComentario && (column.key === 'costo_doc_sin_iva' || column.key === 'total' || column.key === 'comentario') && iniciarEdicion(detalle, column.key === 'costo_doc_sin_iva' ? 'costo' : column.key === 'total' ? 'total' : 'comentario')"
                   >
-                    <!-- Mostrar input si estamos editando esta celda -->
-                    <template v-if="editingCell?.detalleId === detalle.pedido_detalle_id && ((column.key === 'costo_doc_sin_iva' && editingCell.fieldType === 'costo') || (column.key === 'total' && editingCell.fieldType === 'total') || (column.key === 'comentario' && editingCell.fieldType === 'comentario'))">
+                    <!-- Mostrar input si estamos editando esta celda (solo en estado GESTIONAR PEDIDO) -->
+                    <template v-if="puedeEditarCostoTotalComentario && editingCell?.detalleId === detalle.pedido_detalle_id && ((column.key === 'costo_doc_sin_iva' && editingCell.fieldType === 'costo') || (column.key === 'total' && editingCell.fieldType === 'total') || (column.key === 'comentario' && editingCell.fieldType === 'comentario'))">
                       <input
                         v-if="column.key !== 'comentario'"
                         :data-editing-cell="detalle.pedido_detalle_id"
@@ -735,6 +735,17 @@ const confirmarRedistribucionDeshabilitadoPorEstado = computed(() =>
   ESTADOS_REDISTRIBUCION_YA_CONFIRMADA.includes(pedido.value?.cabecera?.estado ?? '')
 )
 
+// Solo permitir editar COSTO UNIT., TOTAL y COMENTARIO en estado GESTIONAR PEDIDO (docs/FRONTEND.md §0.5.8.2)
+const puedeEditarCostoTotalComentario = computed(() => {
+  const cabecera = pedido.value?.cabecera
+  if (!cabecera) return false
+  const estadoId = cabecera.estado_id != null ? Number(cabecera.estado_id) : null
+  const estado = String(cabecera.estado ?? '').trim().toUpperCase()
+  if (estadoId === 3) return true
+  if (estado === 'GESTIONAR_PEDIDO' || estado === 'GESTIONAR PEDIDO') return true
+  return false
+})
+
 // Funciones de carga y gestión del pedido ahora están en el composable usePedidoDetalle
 
 // Inicializar composable de carga de archivos
@@ -945,11 +956,12 @@ async function handleConfirmar() {
   try {
     await mba3ConsultasService.crearRespuestaProveedorDesdePedido(numeroPedido.value, pedidoId)
 
-    // Actualizar pedido en memoria para deshabilitar el botón de inmediato (docs/FRONTEND.md §2)
+    // Actualizar pedido en memoria para deshabilitar el botón y la edición de costo/total/comentario (docs/FRONTEND.md §2, §0.5.8.2)
     if (pedido.value?.cabecera) {
       pedido.value.cabecera.estado = 'CONFIRMADO'
       pedido.value.cabecera.estado_id = 4
     }
+    cancelarEdicion()
     await loadPedido()
     confirmando.value = false
     showConfirmacionModal.value = true
@@ -961,6 +973,7 @@ async function handleConfirmar() {
         pedido.value.cabecera.estado = 'CONFIRMADO'
         pedido.value.cabecera.estado_id = 4
       }
+      cancelarEdicion()
       await loadPedido()
       confirmando.value = false
       showConfirmacionModal.value = true

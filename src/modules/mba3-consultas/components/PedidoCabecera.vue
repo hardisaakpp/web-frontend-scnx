@@ -115,7 +115,6 @@
           <option value="ORDEN_COMPRA_CREADA">Orden Compra Creada</option>
           <option value="ENVIADA_SAP">Enviada SAP</option>
           <option value="CONFIRMADO_ENVIADO">Confirmado Enviado</option>
-          <option value="DESPACHAR Y FACTURAR">Despachar y Facturar</option>
           <option value="CERRADO">Cerrado</option>
           <option value="CANCELADO">Cancelado</option>
         </select>
