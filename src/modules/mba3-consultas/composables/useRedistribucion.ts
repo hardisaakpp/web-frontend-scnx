@@ -13,7 +13,8 @@ import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 export function useRedistribucion(options: {
   pedido: Ref<PedidoCompleto | null>
   numeroPedido: Ref<string>
-  esModoMabelTrading: Ref<boolean>
+  /** Obsoleto en vista detalle de pedido. Si no se pasa, no afecta. */
+  esModoMabelTrading?: Ref<boolean>
   reporteDiferencias?: Ref<ReporteDiferenciasResponse | null>
   getReporteDiferencias?: () => Ref<ReporteDiferenciasResponse | null>
   loadPedido?: () => Promise<void>
@@ -621,7 +622,14 @@ export function useRedistribucion(options: {
       // - Detecta productos no homologados
       // - Guarda en pedido_sap_procesamiento_detalle
       await mba3ConsultasService.confirmarRedistribucion(options.numeroPedido.value, ajustes_detalle)
-      
+
+      // Actualizar estado del pedido en memoria para que el botón quede deshabilitado (docs/FRONTEND.md §1.3.1)
+      const cabecera = options.pedido.value?.cabecera
+      if (cabecera) {
+        cabecera.estado_id = 10
+        cabecera.estado = 'CONFIRMADO REDISTRIBUCION'
+      }
+
       // 3. Redirigir a procesamiento SAP en cuanto el backend termina (modal desaparece al cambiar de vista)
       router.push({
         name: 'mba3-consultas-pedido-procesamiento-sap',

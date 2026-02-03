@@ -14,7 +14,8 @@ const SEARCH_HELP_BLUR_DELAY_MS = 200
 export function usePedidoDetalle(options: {
   pedido: Ref<PedidoCompleto | null>
   numeroPedido: Ref<string>
-  esModoMabelTrading: Ref<boolean>
+  /** Obsoleto en vista detalle de pedido. Si no se pasa, se usa false. */
+  esModoMabelTrading?: Ref<boolean>
   columnasModificadas?: Ref<Set<string>>
   limpiarColumnasModificadasEnStorage?: () => void
   cargarColumnasModificadasDesdeStorage?: () => void
@@ -27,6 +28,7 @@ export function usePedidoDetalle(options: {
   const router = useRouter()
   const toast = useToast()
 
+  const esModoMabelTrading = options.esModoMabelTrading ?? ref(false)
   const loading = ref(false)
   const error = ref<string | null>(null)
   const pedidoIdInput = ref('')
@@ -97,7 +99,7 @@ export function usePedidoDetalle(options: {
       }
       
       // Inicializar productos para redistribución si hay respuesta del proveedor
-      if (options.pedido.value?.respuesta_proveedor && options.esModoMabelTrading.value && options.inicializarProductosRedistribucion) {
+      if (options.pedido.value?.respuesta_proveedor && esModoMabelTrading.value && options.inicializarProductosRedistribucion) {
         options.inicializarProductosRedistribucion()
       }
       
@@ -172,7 +174,7 @@ export function usePedidoDetalle(options: {
       reporteDiferencias.value = await mba3ConsultasService.getReporteDiferencias(options.numeroPedido.value, 'json') as ReporteDiferenciasResponse
       
       // Actualizar tiendas desde reporte si estamos en modo redistribución
-      if (options.esModoMabelTrading.value && options.productosRedistribucion && options.productosRedistribucion.value.length > 0 && options.actualizarTiendasDesdeReporte) {
+      if (esModoMabelTrading.value && options.productosRedistribucion && options.productosRedistribucion.value.length > 0 && options.actualizarTiendasDesdeReporte) {
         options.actualizarTiendasDesdeReporte()
       }
     } catch (e: any) {

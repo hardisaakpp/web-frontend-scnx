@@ -150,6 +150,7 @@
           :productos-expandidos="redistribucion.productosExpandidos"
           :guardando-redistribucion="redistribucion.guardandoRedistribucion"
           :confirmando-redistribucion="redistribucion.confirmandoRedistribucion"
+          :confirmar-deshabilitado-por-estado="confirmarRedistribucionDeshabilitadoPorEstado"
           :columnas-modificadas="columnasModificadas as unknown as Ref<Set<string>>"
           @toggle-expandir-producto="toggleExpandirProducto"
           @actualizar-cantidad-tienda="actualizarCantidadTienda"
@@ -877,6 +878,12 @@ const puedeConfirmarRedistribucion = computed(() => {
          redistribucion.productosRedistribucion.value.every(p => p.diferencia === 0) &&
          redistribucion.productosRedistribucion.value.every(p => !p.error)
 })
+
+// Deshabilitar "Confirmar Redistribución" cuando ya está confirmada (docs/FRONTEND.md §1.3.1)
+const ESTADOS_REDISTRIBUCION_YA_CONFIRMADA = ['CONFIRMADO REDISTRIBUCION', 'PEDIDO_CONFIRMADO', 'PROCESADO_SAP']
+const confirmarRedistribucionDeshabilitadoPorEstado = computed(() =>
+  ESTADOS_REDISTRIBUCION_YA_CONFIRMADA.includes(pedido.value?.cabecera?.estado ?? '')
+)
 
 const canGenerarOC = computed(() => {
   // Permitir generar OC si el pedido está confirmado por proveedor

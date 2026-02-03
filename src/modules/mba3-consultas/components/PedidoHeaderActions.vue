@@ -116,12 +116,23 @@
         </svg>
         {{ confirmando ? 'Confirmando...' : 'Confirmar' }}
       </button>
+      <button
+        v-if="showDespacharYFacturar && puedeDespacharYFacturar"
+        type="button"
+        @click="$emit('update-estado', 'DESPACHAR Y FACTURAR')"
+        class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors flex items-center gap-2 text-sm font-medium"
+      >
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        Despachar y Facturar
+      </button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import type { Ref } from 'vue'
+import { computed, type Ref } from 'vue'
 
 const props = defineProps<{
   tituloInterfaz: string
@@ -139,6 +150,8 @@ const props = defineProps<{
   hideConfirmAndDownload?: boolean
   showCrearPedido?: boolean
   hideCargarPlantillas?: boolean
+  /** Mostrar botón "Despachar y Facturar" (solo en vista detalle de pedido, no en Cargar Plantilla) */
+  showDespacharYFacturar?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -149,6 +162,7 @@ const emit = defineEmits<{
   'search-blur': []
   'descargar-plano-mba': []
   'crear-pedido': []
+  'update-estado': [estado: string]
 }>()
 
 const pedidoIdInputModel = defineModel<string>('pedidoIdInput', { default: '' })
@@ -156,4 +170,16 @@ const showSearchHelpModel = defineModel<boolean>('showSearchHelp', { default: fa
 
 const goToPedido = () => emit('go-to-pedido')
 const handleSearchBlur = () => emit('search-blur')
+
+// Mostrar botón "Despachar y Facturar" solo cuando el estado es Confirmado y Enviado (estado_id 12 o CONFIRMADO_ENVIADO/ENVIADA)
+const puedeDespacharYFacturar = computed(() => {
+  const c = props.pedido?.cabecera
+  if (!c) return false
+  if (c.estado_id != null && Number(c.estado_id) === 12) return true
+  const e = String(c.estado ?? (c as { estado_nombre?: string }).estado_nombre ?? '').trim().toUpperCase()
+  if (!e) return false
+  if (e === 'CONFIRMADO_ENVIADO' || e === 'CONFIRMADO Y ENVIADO' || e === 'CONFIRMADO_Y_ENVIADO' || e === 'ENVIADA') return true
+  if (e.replace(/\s+/g, '_').replace(/\s*Y\s*/gi, '_') === 'CONFIRMADO_ENVIADO') return true
+  return false
+})
 </script>

@@ -101,37 +101,9 @@
       </div>
       <div v-if="pedido.cabecera.estado || editable">
         <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Estado del Pedido</label>
-        <!-- Cuando está en "Confirmado y Enviado" y es editable: botón (badge) que despliega solo "Despachar y Facturar" -->
-        <div v-if="editable && (editableEstado !== false) && esConfirmadoEnviado" class="relative inline-block mt-1">
-          <button
-            type="button"
-            @click.stop="dropdownDespacharOpen = !dropdownDespacharOpen"
-            class="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full cursor-pointer transition-opacity hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-emerald-500"
-            :class="getEstadoPedidoBadgeClass(pedido.cabecera.estado)"
-            title="Clic para marcar como Despachar y Facturar"
-          >
-            {{ formatEstadoPedido(pedido.cabecera.estado) }}
-            <svg class="w-3.5 h-3.5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-            </svg>
-          </button>
-          <div
-            v-show="dropdownDespacharOpen"
-            @click.stop
-            class="absolute left-0 top-full mt-1 z-20 min-w-[200px] py-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg"
-          >
-            <button
-              type="button"
-              @click="elegirDespacharYFacturar"
-              class="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2"
-            >
-              <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-200">Despachar y Facturar</span>
-            </button>
-          </div>
-        </div>
-        <!-- Resto de estados editables: select completo -->
+        <!-- Editable: select con todos los estados -->
         <select
-          v-else-if="editable && (editableEstado !== false)"
+          v-if="editable && (editableEstado !== false)"
           v-model="estadoLocal"
           @change="actualizarEstado"
           class="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
@@ -160,7 +132,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
+import { ref, watch } from 'vue'
 import type { PedidoCompleto } from '../types'
 import { formatDate, formatEstadoPedido } from '../utils/formatters'
 import { getEstadoPedidoBadgeClass } from '../utils/styleHelpers'
@@ -183,51 +155,6 @@ const emit = defineEmits<{
 
 // Estado colapsable - por defecto encogido, a menos que se especifique defaultExpanded
 const isExpanded = ref(props.defaultExpanded ?? false)
-
-// Desplegable "Despachar y Facturar" cuando el estado es Confirmado y Enviado
-const dropdownDespacharOpen = ref(false)
-
-// Normalizar estado a clave para comparar con "Confirmado y Enviado" (incl. orden_compra_cabecera.estado = "ENVIADA")
-function normalizarEstadoConfirmadoEnviado(val: string): boolean {
-  const u = String(val).trim().toUpperCase()
-  if (!u) return false
-  if (u === 'ENVIADA') return true // orden_compra_cabecera.estado ENVIADA = Confirmado y Enviado en UI
-  if (u === 'CONFIRMADO_ENVIADO' || u === 'CONFIRMADO Y ENVIADO' || u === 'CONFIRMADO ENVIADO') return true
-  if (u === 'CONFIRMADO_Y_ENVIADO') return true
-  const normalizado = u.replace(/\s+/g, '_').replace(/\s*Y\s*/gi, '_')
-  if (normalizado === 'CONFIRMADO_ENVIADO' || normalizado === 'CONFIRMADO_Y_ENVIADO') return true
-  if (u.includes('CONFIRMADO') && u.includes('ENVIADO')) return true
-  return false
-}
-
-// Mostrar botón desplegable "Despachar y Facturar" cuando el estado es Confirmado y Enviado (id 12 o texto equivalente)
-const esConfirmadoEnviado = computed(() => {
-  const cabecera = props.pedido?.cabecera
-  if (!cabecera) return false
-  const estadoId = cabecera.estado_id != null ? Number(cabecera.estado_id) : null
-  if (estadoId === 12) return true
-  const raw = cabecera.estado ?? (cabecera as { estado_nombre?: string }).estado_nombre ?? ''
-  if (normalizarEstadoConfirmadoEnviado(raw)) return true
-  // Por si el backend solo envía el label: si el formato actual es "Confirmado y Enviado", tratarlo igual
-  if (formatEstadoPedido(raw) === 'Confirmado y Enviado') return true
-  return false
-})
-
-function cerrarDropdownDespachar() {
-  dropdownDespacharOpen.value = false
-}
-
-function elegirDespacharYFacturar() {
-  emit('update-estado', 'DESPACHAR Y FACTURAR')
-  dropdownDespacharOpen.value = false
-}
-
-onMounted(() => {
-  document.addEventListener('click', cerrarDropdownDespachar)
-})
-onUnmounted(() => {
-  document.removeEventListener('click', cerrarDropdownDespachar)
-})
 
 // Estados locales para edición
 const fechaPedidoLocal = ref<string>('')

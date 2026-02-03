@@ -40,14 +40,16 @@
         :generando-o-c="generandoOC"
         :confirmando="confirmando"
         :can-generar-o-c="canGenerarOC"
-        :es-modo-mabel-trading="esModoMabelTrading"
+        :es-modo-mabel-trading="false"
         :pedido="pedido"
         :confirmar-deshabilitado="confirmarDeshabilitadoPorEstado"
         :hide-confirm-and-download="false"
         :hide-cargar-plantillas="true"
+        :show-despachar-y-facturar="true"
         @cargar-plantillas="goToCargarPlantillas"
         @generar-oc="handleGenerarOCDesdePedido"
         @confirmar="handleConfirmar"
+        @update-estado="handleUpdateEstado"
         @go-to-pedido="goToPedido"
         @search-blur="handleSearchBlur"
         @descargar-plano-mba="handleDescargarPlanoMba"
@@ -94,8 +96,8 @@
         <PedidoCabecera
           :pedido="pedido"
           :copy-feedback="copyFeedback"
-          :editable="!esModoMabelTrading"
-          :default-expanded="!esModoMabelTrading"
+          :editable="true"
+          :default-expanded="true"
           @copy-to-clipboard="copyToClipboard"
           @update-fecha-pedido="handleUpdateFechaPedido"
           @update-fecha-entrega="handleUpdateFechaEntrega"
@@ -105,7 +107,7 @@
         <!-- ⭐ FASE 4: Ajuste y Redistribución a Tiendas -->
         <RedistribucionTiendas
           :pedido="pedido"
-          :es-modo-mabel-trading="esModoMabelTrading"
+          :es-modo-mabel-trading="false"
           :productos-redistribucion="redistribucion.productosRedistribucion"
           :productos-expandidos="redistribucion.productosExpandidos"
           :guardando-redistribucion="redistribucion.guardandoRedistribucion"
@@ -581,15 +583,10 @@ const numeroPedido = computed(() => {
   return id ? decodeURIComponent(id) : ''
 })
 
-// Modo MABEL TRADING obsoleto (antes: simulación/auth en desarrollo vía ?usuario=mabel-trading).
-// Desactivado para que la cabecera sea siempre editable y se pueda cambiar el estado a "Despachar y Facturar".
-const esModoMabelTrading = computed(() => false)
-
-// Inicializar composable de pedido detalle primero
+// Inicializar composable de pedido detalle primero (sin modo MABEL TRADING: cabecera siempre editable)
 const pedidoDetalle = usePedidoDetalle({
   pedido,
   numeroPedido,
-  esModoMabelTrading,
   columnasModificadas,
   limpiarColumnasModificadasEnStorage: () => {
     if (!numeroPedido.value) return
@@ -620,7 +617,6 @@ const pedidoDetalle = usePedidoDetalle({
 const redistribucion = useRedistribucion({
   pedido,
   numeroPedido,
-  esModoMabelTrading,
   getReporteDiferencias: () => pedidoDetalle.reporteDiferencias,
   loadPedido: () => pedidoDetalle.loadPedido(),
   loadReporteDiferencias: () => pedidoDetalle.loadReporteDiferencias()
@@ -646,12 +642,7 @@ const {
 // Extraer variables del composable de redistribución
 // Ahora se acceden directamente desde redistribucion.productosRedistribucion, etc.
 
-// ⭐ Título de la interfaz según el modo
-const tituloInterfaz = computed(() => {
-  return esModoMabelTrading.value 
-    ? 'Detalle del Pedido - MABEL TRADING'
-    : 'Detalle del Pedido - EL RAYO'
-})
+const tituloInterfaz = 'Detalle del Pedido'
 
 
 // ⭐ FASE 4: Computed para resumen de redistribución
@@ -717,8 +708,9 @@ const canGenerarOC = computed(() => {
   return estado === 'CONFIRMADO_PROVEEDOR'
 })
 
-// ⭐ Deshabilitar "Confirmar" cuando el pedido ya tiene respuesta cargada, está confirmado o ya está en REDISTRIBUCION (ver docs/FRONTEND.md §2)
+// ⭐ Deshabilitar "Confirmar" desde estado CONFIRMADO (id 4) en adelante (ver docs/FRONTEND.md §2)
 const ESTADOS_YA_CONFIRMADOS = [
+  'CONFIRMADO', // Backend devuelve este estado al confirmar (estado_id 4)
   'RESPUESTA_PROVEEDOR_CARGADA',
   'CONFIRMADO_PROVEEDOR',
   'CONFIRMADO REDISTRIBUCION',
@@ -727,9 +719,15 @@ const ESTADOS_YA_CONFIRMADOS = [
   'PROCESADO_SAP',
   'REDISTRIBUCION'
 ]
-const confirmarDeshabilitadoPorEstado = computed(() =>
-  ESTADOS_YA_CONFIRMADOS.includes(pedido.value?.cabecera?.estado ?? '')
-)
+const confirmarDeshabilitadoPorEstado = computed(() => {
+  const cabecera = pedido.value?.cabecera
+  if (!cabecera) return false
+  const estadoId = cabecera.estado_id != null ? Number(cabecera.estado_id) : null
+  const estado = cabecera.estado ?? ''
+  if (estadoId === 4 || estado === 'CONFIRMADO') return true
+  if (estadoId != null && estadoId >= 4) return true
+  return ESTADOS_YA_CONFIRMADOS.includes(estado)
+})
 
 // Deshabilitar "Confirmar Redistribución" cuando la redistribución ya está confirmada (docs/FRONTEND.md §1.3.1)
 const ESTADOS_REDISTRIBUCION_YA_CONFIRMADA = ['CONFIRMADO REDISTRIBUCION', 'PEDIDO_CONFIRMADO', 'PROCESADO_SAP']
@@ -947,6 +945,11 @@ async function handleConfirmar() {
   try {
     await mba3ConsultasService.crearRespuestaProveedorDesdePedido(numeroPedido.value, pedidoId)
 
+    // Actualizar pedido en memoria para deshabilitar el botón de inmediato (docs/FRONTEND.md §2)
+    if (pedido.value?.cabecera) {
+      pedido.value.cabecera.estado = 'CONFIRMADO'
+      pedido.value.cabecera.estado_id = 4
+    }
     await loadPedido()
     confirmando.value = false
     showConfirmacionModal.value = true
@@ -954,6 +957,10 @@ async function handleConfirmar() {
     console.error('Error al confirmar:', e)
 
     if (e.message?.includes('ya existe') || (e as any).isConflict || (e as any).statusCode === 409) {
+      if (pedido.value?.cabecera) {
+        pedido.value.cabecera.estado = 'CONFIRMADO'
+        pedido.value.cabecera.estado_id = 4
+      }
       await loadPedido()
       confirmando.value = false
       showConfirmacionModal.value = true
@@ -1096,19 +1103,8 @@ watch(
   { immediate: false }
 )
 
-// ⭐ FASE 4: Watch para inicializar redistribución cuando cambie el pedido o el modo
-watch(
-  [() => pedido.value?.respuesta_proveedor, () => esModoMabelTrading.value],
-  () => {
-    if (pedido.value?.respuesta_proveedor && esModoMabelTrading.value) {
-      redistribucion.inicializarProductosRedistribucion()
-    } else {
-      redistribucion.productosRedistribucion.value = []
-      redistribucion.productosExpandidos.value.clear()
-    }
-  },
-  { immediate: true }
-)
+// Sin modo MABEL TRADING: la sección Redistribución no se muestra en esta vista (es-modo-mabel-trading="false").
+// Si en el futuro se muestra, inicializar/limpiar productos aquí según convenga.
 
 // ⭐ ELIMINADO: Watchers antiguos (el composable maneja esto automáticamente)
 
