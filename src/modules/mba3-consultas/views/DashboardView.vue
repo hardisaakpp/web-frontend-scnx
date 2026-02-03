@@ -6,8 +6,8 @@
         <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Gestión ODC SAP</h1>
       </div>
 
-      <!-- Estadísticas -->
-      <div class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 transition-colors duration-300">
+      <!-- Estadísticas (oculto momentáneamente) -->
+      <div v-if="false" class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 transition-colors duration-300">
         <div class="grid grid-cols-3 gap-4">
           <div class="text-center">
             <div class="text-2xl font-semibold text-orange-600 dark:text-orange-400">{{ ordenesCompraStore.pendientes }}</div>
