@@ -45,25 +45,6 @@
           </div>
         </button>
 
-        <!-- Gestionar Pedido: solo capability can_manage_order (odcsap.view). Ver docs/FRONTEND.md § 0.5.7.2 -->
-        <button
-          v-if="authStore.canManageOrder && tienePedidos"
-          @click="$router.push('/mba3-consultas/gestionar-pedido')"
-          class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left"
-        >
-          <div class="flex items-start gap-3">
-            <div class="w-8 h-8 rounded bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
-              <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="font-medium text-gray-900 dark:text-white text-sm">Gestionar Pedido</div>
-              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">EL RAYO — Editar cantidades y costos</div>
-            </div>
-          </div>
-        </button>
-
         <!-- Listado de Pedidos: solo capability can_view_order_list (odcsap.view). Ver docs/FRONTEND.md § 0.5.7.2 -->
         <button
           v-if="authStore.canViewOrderList"
@@ -373,9 +354,6 @@ const odcConsultasAbierto = ref(true)
 const showProcesamientoSAPModal = ref(false)
 const pedidoProcesamientoSAP = ref('')
 const loadingProcesamientoSAP = ref(false)
-const tienePedidos = ref(false)
-const loadingTienePedidos = ref(false)
-
 // Función para cargar despachos antes de navegar
 async function cargarDespachos() {
   loadingDespachos.value = true
@@ -433,25 +411,7 @@ function closeProcesamientoSAPModal() {
   loadingProcesamientoSAP.value = false
 }
 
-// Función para verificar si hay pedidos guardados
-async function verificarTienePedidos() {
-  loadingTienePedidos.value = true
-  try {
-    const response = await mba3ConsultasService.tienePedidos()
-    tienePedidos.value = response.tiene_pedidos
-  } catch (error: any) {
-    console.error('Error al verificar existencia de pedidos:', error)
-    // En caso de error, ocultar el botón por defecto
-    tienePedidos.value = false
-  } finally {
-    loadingTienePedidos.value = false
-  }
-}
-
 onMounted(async () => {
-  await Promise.all([
-    ordenesCompraStore.fetchEstadisticas(),
-    verificarTienePedidos()
-  ])
+  await ordenesCompraStore.fetchEstadisticas()
 })
 </script>

@@ -43,7 +43,7 @@
         :es-modo-mabel-trading="esModoMabelTrading"
         :pedido="pedido"
         :hide-confirm-and-download="true"
-        :show-crear-pedido="true"
+        :show-crear-pedido="false"
         :hide-cargar-plantillas="!pedido"
         @cargar-plantillas="goToCargarPlantillas"
         @generar-oc="handleGenerarOCDesdePedido"
@@ -53,6 +53,25 @@
         @descargar-plano-mba="handleDescargarPlanoMba"
         @crear-pedido="handleCrearPedido"
       />
+
+      <!-- Enviar / Descartar (solo cuando hay pedido cargado) -->
+      <div v-if="pedido && !loading" class="flex items-center justify-end gap-3">
+        <button
+          type="button"
+          @click="handleDescartar"
+          :disabled="descartando"
+          class="px-4 py-2 border border-red-300 dark:border-red-600 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {{ descartando ? 'Descartando...' : 'Descartar' }}
+        </button>
+        <button
+          type="button"
+          @click="handleEnviar"
+          class="px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors text-sm font-medium"
+        >
+          Enviar
+        </button>
+      </div>
 
       <!-- Loading state -->
       <div v-if="loading && !pedido" class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-12 text-center">
@@ -113,6 +132,7 @@
           :pedido="pedido"
           :copy-feedback="copyFeedback"
           :editable="!esModoMabelTrading"
+          :editable-estado="false"
           :default-expanded="!esModoMabelTrading"
           @copy-to-clipboard="copyToClipboard"
           @update-fecha-pedido="handleUpdateFechaPedido"
@@ -349,7 +369,7 @@ import { ref, computed, onMounted, onActivated, onUnmounted, watch, nextTick, Te
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { useTablePreferences } from '@/composables/useTablePreferences'
-import { mba3ConsultasService } from '../services/mba3ConsultasApi'
+import { mba3ConsultasService, extractErrorMessage } from '../services/mba3ConsultasApi'
 import type { PedidoCompleto, ReporteDiferenciasResponse, UploadPlantillaResponse, ExportarMBAParams } from '../types'
 // Utilidades extraídas
 import {
@@ -404,6 +424,31 @@ const toast = useToast()
 // ⭐ Función para manejar el click en "Crear Pedido Manual"
 function handleCrearPedido() {
   router.push('/mba3-consultas/pedidos/crear')
+}
+
+function handleEnviar() {
+  // TODO: implementar lógica de envío
+}
+
+const descartando = ref(false)
+async function handleDescartar() {
+  const pedidoId = pedido.value?.cabecera?.pedido_id
+  if (!pedidoId) {
+    toast.warning('Sin pedido', 'No hay pedido cargado para descartar')
+    return
+  }
+  descartando.value = true
+  try {
+    await mba3ConsultasService.descartarPedido(pedidoId)
+    pedido.value = null
+    error.value = null
+    router.push('/mba3-consultas/cargar-plantilla')
+    toast.success('Pedido descartado', 'El pedido se ha eliminado correctamente')
+  } catch (e: any) {
+    toast.error('Error al descartar', extractErrorMessage(e))
+  } finally {
+    descartando.value = false
+  }
 }
 
 const pedido = ref<PedidoCompleto | null>(null)

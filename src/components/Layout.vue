@@ -17,12 +17,6 @@
             <span class="text-sm text-gray-700 dark:text-gray-300">
               {{ authStore.fullName || authStore.userName }}
             </span>
-            <button
-              @click="handleLogout"
-              class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 transition-colors"
-            >
-              Cerrar Sesión
-            </button>
           </div>
         </div>
       </div>
@@ -41,8 +35,4 @@ import { useAuthStore } from '@/stores/auth'
 
 const appName = import.meta.env.VITE_APP_NAME
 const authStore = useAuthStore()
-
-const handleLogout = () => {
-  authStore.logout()
-}
 </script>

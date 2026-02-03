@@ -1203,6 +1203,15 @@ export const mba3ConsultasService = {
   },
 
   /**
+   * Descarta (elimina) un pedido en estado BORRADOR sin datos aguas abajo.
+   * DELETE /api/pedidos/{pedido_id}. Respuestas: 204 éxito; 400/404/409 con detail.
+   * @param pedidoId ID del pedido (UUID)
+   */
+  async descartarPedido(pedidoId: string): Promise<void> {
+    return pedidosService.descartarPedido(pedidoId)
+  },
+
+  /**
    * Confirma la redistribución de un pedido
    * Requiere permiso: mba3-consultas.proceso.execute
    * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")

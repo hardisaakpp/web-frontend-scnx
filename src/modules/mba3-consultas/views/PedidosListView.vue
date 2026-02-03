@@ -426,7 +426,7 @@ const metadata = ref<PedidosListadoMetadata>({
 })
 
 // Estados de colapso (por defecto abiertos)
-const filtrosColapsados = ref(false)
+const filtrosColapsados = ref(true)
 const pedidosColapsados = ref(false)
 
 // Detectar si es modo El Rayo desde query params

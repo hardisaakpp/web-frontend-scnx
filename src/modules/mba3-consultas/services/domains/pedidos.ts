@@ -396,6 +396,22 @@ export const pedidosService = {
   },
 
   /**
+   * Descarta (elimina) un pedido en estado BORRADOR sin datos aguas abajo.
+   * DELETE /api/pedidos/{pedido_id}
+   * Respuestas: 204 éxito; 400/404/409 con detail.message o detail.error.
+   *
+   * @param pedidoId ID del pedido (UUID)
+   */
+  async descartarPedido(pedidoId: string): Promise<void> {
+    try {
+      await mba3Api.delete(`/api/pedidos/${encodeURIComponent(pedidoId)}`)
+    } catch (error: any) {
+      console.error('❌ [descartarPedido] Error:', error)
+      throw createEnrichedError(error, 'Error al descartar pedido')
+    }
+  },
+
+  /**
    * Confirma la redistribución de un pedido
    * 
    * Requiere permiso: mba3-consultas.proceso.execute

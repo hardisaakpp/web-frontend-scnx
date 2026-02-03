@@ -102,7 +102,7 @@
       <div v-if="pedido.cabecera.estado || editable">
         <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Estado del Pedido</label>
         <select
-          v-if="editable"
+          v-if="editable && (editableEstado !== false)"
           v-model="estadoLocal"
           @change="actualizarEstado"
           class="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
@@ -129,7 +129,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch } from 'vue'
 import type { PedidoCompleto } from '../types'
 import { formatDate, formatEstadoPedido } from '../utils/formatters'
 import { getEstadoPedidoBadgeClass } from '../utils/styleHelpers'
@@ -139,6 +139,8 @@ const props = defineProps<{
   copyFeedback: boolean
   defaultExpanded?: boolean
   editable?: boolean
+  /** Si false, el estado del pedido se muestra solo lectura (badge) aunque editable sea true. Por defecto true. */
+  editableEstado?: boolean
 }>()
 
 const emit = defineEmits<{
