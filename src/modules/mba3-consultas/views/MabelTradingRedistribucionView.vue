@@ -303,7 +303,7 @@ watch(
     // en Cargar Plantilla o Detalle del Pedido (EL RAYO). Llamarla al cargar esta vista disparaba
     // confirmación y envío de email en el backend sin intervención del usuario.
     if (newPedido.respuesta_proveedor) {
-      redistribucion.inicializarProductosRedistribucion()
+      await redistribucion.cargarYInicializarRedistribucion()
       
       // ⭐ CRÍTICO: Asegurar que las columnas modificadas se mantengan después de inicializar
       await nextTick()

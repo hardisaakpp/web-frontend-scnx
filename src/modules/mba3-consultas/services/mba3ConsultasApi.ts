@@ -1274,6 +1274,16 @@ export const mba3ConsultasService = {
   },
 
   /**
+   * Obtiene la distribución guardada (cantidad por tienda) para un pedido.
+   * GET /api/pedidos/{pedido_id}/distribucion. Sin version = última versión.
+   * @param pedidoId UUID del pedido
+   * @param version Opcional: versión concreta
+   */
+  async getDistribucion(pedidoId: string, version?: number) {
+    return pedidosService.getDistribucion(pedidoId, version)
+  },
+
+  /**
    * Guarda las modificaciones de columnas (resaltado) para un pedido
    * Requiere permiso: mba3-consultas.proceso.execute
    * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")

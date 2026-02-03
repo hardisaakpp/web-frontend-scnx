@@ -1256,9 +1256,9 @@ watch(
 // ⭐ FASE 4: Watch para inicializar redistribución cuando cambie el pedido o el modo
 watch(
   [() => pedido.value?.respuesta_proveedor, () => esModoMabelTrading.value],
-  () => {
+  async () => {
     if (pedido.value?.respuesta_proveedor && esModoMabelTrading.value) {
-      redistribucion.inicializarProductosRedistribucion()
+      await redistribucion.cargarYInicializarRedistribucion()
     } else {
       redistribucion.productosRedistribucion.value = []
       redistribucion.productosExpandidos.value.clear()

@@ -19,7 +19,8 @@ export function usePedidoDetalle(options: {
   columnasModificadas?: Ref<Set<string>>
   limpiarColumnasModificadasEnStorage?: () => void
   cargarColumnasModificadasDesdeStorage?: () => void
-  inicializarProductosRedistribucion?: () => void
+  /** Sincrono o async; si es async se espera antes de continuar (p. ej. cargarYInicializarRedistribucion). */
+  inicializarProductosRedistribucion?: () => void | Promise<void>
   productosRedistribucion?: Ref<any[]>
   reporteDiferencias?: Ref<ReporteDiferenciasResponse | null>
   actualizarTiendasDesdeReporte?: () => void
@@ -98,9 +99,9 @@ export function usePedidoDetalle(options: {
         if (import.meta.env.DEV) console.log(`✅ [usePedidoDetalle] Estado final: ${options.columnasModificadas.value.size} modificaciones cargadas`)
       }
       
-      // Inicializar productos para redistribución si hay respuesta del proveedor
+      // Inicializar productos para redistribución si hay respuesta del proveedor (o distribución guardada)
       if (options.pedido.value?.respuesta_proveedor && esModoMabelTrading.value && options.inicializarProductosRedistribucion) {
-        options.inicializarProductosRedistribucion()
+        await Promise.resolve(options.inicializarProductosRedistribucion())
       }
       
       // Si hay respuesta aprobada, cargar el reporte de diferencias

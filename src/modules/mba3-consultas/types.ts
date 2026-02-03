@@ -991,6 +991,37 @@ export interface ResumenConfirmacion {
   porcentaje_confirmacion: number
 }
 
+/**
+ * Respuesta de GET /api/pedidos/{pedido_id}/distribucion.
+ * Expone la distribución confirmada (cantidad por tienda) por producto.
+ */
+export interface DistribucionTiendaItemResponse {
+  tienda_id: string
+  tienda_codigo: string
+  tienda_nombre: string
+  cantidad_asignada: number
+  cantidad_solicitada?: number
+  cantidad_confirmada?: number
+}
+
+export interface ProductoDistribucionResponse {
+  pedido_detalle_id: string
+  codigo_interno: string
+  descripcion_sap: string
+  cantidad_solicitada_total: number
+  cantidad_confirmada_total: number
+  cantidad_asignada_total: number
+  distribuciones: DistribucionTiendaItemResponse[]
+}
+
+export interface DistribucionPedidoResponse {
+  pedido_id: string
+  numero_pedido: string
+  version_actual?: number
+  estado_pedido?: string
+  productos: ProductoDistribucionResponse[]
+}
+
 export interface DiferenciaReporte {
   codigo_producto: string
   descripcion: string

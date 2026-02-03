@@ -7,7 +7,7 @@ import { useToast } from '@/composables/useToast'
 import { formatNumber } from '../utils/formatters'
 import type { ProductoRedistribucion, DistribucionTiendaEditada } from '../utils/redistribucionHelpers'
 import { esBodega } from '../utils/redistribucionHelpers'
-import type { PedidoCompleto, ReporteDiferenciasResponse } from '../types'
+import type { PedidoCompleto, ReporteDiferenciasResponse, DistribucionPedidoResponse } from '../types'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 
 export function useRedistribucion(options: {
@@ -27,6 +27,45 @@ export function useRedistribucion(options: {
   const productosExpandidos = ref<Set<string>>(new Set())
   const guardandoRedistribucion = ref(false)
   const confirmandoRedistribucion = ref(false)
+
+  /**
+   * Mapea la respuesta de GET /api/pedidos/{pedido_id}/distribucion a ProductoRedistribucion[].
+   * Opcionalmente toma costo y flags de pedido.respuesta_proveedor si existe.
+   */
+  function mapDistribucionResponseToProductos(data: DistribucionPedidoResponse): ProductoRedistribucion[] {
+    const detallesRespuesta = options.pedido.value?.respuesta_proveedor?.detalles ?? []
+    return data.productos.map(p => {
+      const detalleRespuesta = detallesRespuesta.find(d => d.codigo_producto === p.codigo_interno)
+      const costo = detalleRespuesta?.costo_doc_sin_iva_ajustado ?? detalleRespuesta?.costo_doc_sin_iva_original ?? null
+      const distribucion_tiendas: DistribucionTiendaEditada[] = (p.distribuciones ?? []).map(d => {
+        const cantidadOriginal = d.cantidad_confirmada ?? d.cantidad_asignada ?? 0
+        return {
+          tienda_codigo: d.tienda_codigo,
+          tienda_nombre: d.tienda_nombre ?? d.tienda_codigo,
+          cantidad_original: cantidadOriginal,
+          cantidad_asignada: d.cantidad_asignada,
+          diferencia: (d.cantidad_asignada ?? 0) - cantidadOriginal,
+          es_bodega: esBodega(d.tienda_codigo)
+        }
+      })
+      const cantidad_distribuida = p.cantidad_asignada_total ?? distribucion_tiendas.reduce((sum, t) => sum + t.cantidad_asignada, 0)
+      const diferencia = cantidad_distribuida - p.cantidad_confirmada_total
+      return {
+        codigo_producto: p.codigo_interno,
+        descripcion: p.descripcion_sap ?? p.codigo_interno,
+        cantidad_solicitada: p.cantidad_solicitada_total,
+        cantidad_confirmada: p.cantidad_confirmada_total,
+        cantidad_distribuida,
+        diferencia,
+        costo_unitario: costo,
+        distribucion_tiendas,
+        expandido: false,
+        pedido_detalle_id: p.pedido_detalle_id,
+        costo_modificado_manual: detalleRespuesta?.costo_modificado_manual ?? false,
+        total_modificado_manual: detalleRespuesta?.total_modificado_manual ?? false
+      }
+    })
+  }
 
   /**
    * Inicializa productos para redistribución desde respuesta_proveedor
@@ -99,6 +138,27 @@ export function useRedistribucion(options: {
     
     // Recalcular diferencias iniciales
     recalcularDiferencias()
+  }
+
+  /**
+   * Carga la redistribución: intenta primero GET /api/pedidos/{pedido_id}/distribucion (lo guardado).
+   * Si hay datos, rellena la vista con ellos; si no, inicializa desde respuesta_proveedor + pedido.detalles.
+   */
+  async function cargarYInicializarRedistribucion(): Promise<void> {
+    const pedidoId = options.pedido.value?.cabecera?.pedido_id
+    if (pedidoId) {
+      try {
+        const data = await mba3ConsultasService.getDistribucion(pedidoId)
+        if (data?.productos?.length > 0) {
+          productosRedistribucion.value = mapDistribucionResponseToProductos(data)
+          recalcularDiferencias()
+          return
+        }
+      } catch (_) {
+        // Sin distribución guardada o error: seguir con inicialización desde pedido
+      }
+    }
+    inicializarProductosRedistribucion()
   }
 
   /**
@@ -630,7 +690,21 @@ export function useRedistribucion(options: {
         cabecera.estado = 'CONFIRMADO REDISTRIBUCION'
       }
 
-      // 3. Redirigir a procesamiento SAP en cuanto el backend termina (modal desaparece al cambiar de vista)
+      // 3. Refrescar estado con la distribución guardada (GET distribucion) antes de redirigir
+      const pedidoId = options.pedido.value?.cabecera?.pedido_id
+      if (pedidoId) {
+        try {
+          const data = await mba3ConsultasService.getDistribucion(pedidoId)
+          if (data?.productos?.length > 0) {
+            productosRedistribucion.value = mapDistribucionResponseToProductos(data)
+            recalcularDiferencias()
+          }
+        } catch (_) {
+          // Ignorar: ya confirmado, redirigimos igual
+        }
+      }
+
+      // 4. Redirigir a procesamiento SAP en cuanto el backend termina (modal desaparece al cambiar de vista)
       router.push({
         name: 'mba3-consultas-pedido-procesamiento-sap',
         params: { id: encodeURIComponent(options.numeroPedido.value) }
@@ -652,6 +726,7 @@ export function useRedistribucion(options: {
     
     // Funciones
     inicializarProductosRedistribucion,
+    cargarYInicializarRedistribucion,
     recalcularDiferencias,
     validarProducto,
     validarCantidadTienda,

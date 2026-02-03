@@ -29,7 +29,8 @@ import type {
   ObtenerModificacionesColumnasResponse,
   PedidosListadoResponse,
   TienePedidosResponse,
-  CrearOCDesdePedidoResponse
+  CrearOCDesdePedidoResponse,
+  DistribucionPedidoResponse
 } from '../../types'
 
 export const pedidosService = {
@@ -543,6 +544,27 @@ export const pedidosService = {
     } catch (error: any) {
       console.error('❌ [confirmarRedistribucion] Error:', error)
       throw createEnrichedError(error, 'Error desconocido al confirmar redistribución')
+    }
+  },
+
+  /**
+   * Obtiene la distribución (cantidad por tienda) guardada para un pedido.
+   * GET /api/pedidos/{pedido_id}/distribucion. Sin version = última versión.
+   *
+   * @param pedidoId UUID del pedido
+   * @param version Opcional: versión concreta; si no se envía, se usa la última
+   * @returns Distribución por producto y tienda (distribucion_confirmada)
+   */
+  async getDistribucion(pedidoId: string, version?: number): Promise<DistribucionPedidoResponse> {
+    try {
+      const params = version != null ? `?version=${version}` : ''
+      const response = await mba3Api.get<DistribucionPedidoResponse>(
+        `/api/pedidos/${encodeURIComponent(pedidoId)}/distribucion${params}`
+      )
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [getDistribucion] Error:', error)
+      throw createEnrichedError(error, 'Error al obtener distribución del pedido')
     }
   },
 

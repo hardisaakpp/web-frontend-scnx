@@ -1116,8 +1116,19 @@ watch(
   { immediate: false }
 )
 
-// Sin modo MABEL TRADING: la sección Redistribución no se muestra en esta vista (es-modo-mabel-trading="false").
-// Si en el futuro se muestra, inicializar/limpiar productos aquí según convenga.
+// Inicializar redistribución cuando el pedido tenga respuesta_proveedor (GET distribucion si existe, si no desde respuesta_proveedor)
+watch(
+  () => pedido.value?.respuesta_proveedor,
+  async (respuesta) => {
+    if (respuesta) {
+      await redistribucion.cargarYInicializarRedistribucion()
+    } else {
+      redistribucion.productosRedistribucion.value = []
+      redistribucion.productosExpandidos.value.clear()
+    }
+  },
+  { immediate: true }
+)
 
 // ⭐ ELIMINADO: Watchers antiguos (el composable maneja esto automáticamente)
 
