@@ -28,6 +28,20 @@
 
   <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
     <div class="space-y-6" :class="{ 'pointer-events-none opacity-75': uploading }">
+      <!-- Botón Volver al listado de pedidos -->
+      <div class="flex items-center">
+        <button
+          type="button"
+          @click="router.push('/mba3-consultas/pedidos')"
+          class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 hover:border-gray-400 dark:hover:border-gray-500 transition-colors"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          Volver
+        </button>
+      </div>
+
       <!-- Header con botones de acción -->
       <PedidoHeaderActions
         v-model:pedido-id-input="pedidoIdInput"
@@ -705,13 +719,14 @@ const canGenerarOC = computed(() => {
   return estado === 'CONFIRMADO_PROVEEDOR'
 })
 
-// ⭐ Deshabilitar "Confirmar" cuando el pedido ya tiene respuesta cargada o está confirmado (ver docs/FRONTEND.md §2)
+// ⭐ Deshabilitar "Confirmar" cuando el pedido ya tiene respuesta cargada, está confirmado o ya está en REDISTRIBUCION (ver docs/FRONTEND.md §2)
 const ESTADOS_YA_CONFIRMADOS = [
   'RESPUESTA_PROVEEDOR_CARGADA',
   'CONFIRMADO_PROVEEDOR',
   'PEDIDO_CONFIRMADO',
   'CONFIRMADO_ENVIADO',
-  'PROCESADO_SAP'
+  'PROCESADO_SAP',
+  'REDISTRIBUCION' // tras "Confirmar" (GESTIONAR PEDIDO → REDISTRIBUCION) se redirige a redistribución; en detalle no aplica de nuevo
 ]
 const confirmarDeshabilitadoPorEstado = computed(() =>
   ESTADOS_YA_CONFIRMADOS.includes(pedido.value?.cabecera?.estado ?? '')
@@ -902,29 +917,24 @@ async function handleUpdateEstado(estado: string | null) {
 async function handleConfirmar() {
   // Prevenir múltiples clics
   if (confirmando.value || !pedido.value || !numeroPedido.value) return
-  
-  // Establecer estado de confirmación
+
+  const pedidoId = pedido.value.cabecera?.pedido_id
+
+  // Un solo flujo: POST crear-respuesta-desde-pedido (crea respuesta, guarda modificaciones,
+  // registra confirmación de EL RAYO y envía email). Válido tanto desde GESTIONAR PEDIDO
+  // como desde otros estados; el backend aplica la transición y el correo según corresponda.
   confirmando.value = true
-  
-  // Mostrar indicador de carga
   toast.info('Guardando cambios...', 'Guardando los cambios realizados en la tabla')
-  
+
   try {
-    // ⭐ FASE 3: Solo guardar cambios y crear respuesta_proveedor
-    // NO procesar confirmación - eso lo hace MABEL TRADING en Fase 4
-    // Usar pedido_id si está disponible (más eficiente), sino usar numero_pedido
-    const pedidoId = pedido.value?.cabecera?.pedido_id
     await mba3ConsultasService.crearRespuestaProveedorDesdePedido(numeroPedido.value, pedidoId)
-    
-    // Recargar el pedido para obtener respuesta_proveedor actualizada
+
     await loadPedido()
-    
     confirmando.value = false
     showConfirmacionModal.value = true
   } catch (e: any) {
     console.error('Error al confirmar:', e)
-    
-    // Si la respuesta ya existe, mostrar modal de confirmación y redirigir al cerrar
+
     if (e.message?.includes('ya existe') || (e as any).isConflict || (e as any).statusCode === 409) {
       await loadPedido()
       confirmando.value = false

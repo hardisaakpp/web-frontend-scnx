@@ -165,7 +165,7 @@ const routes: RouteRecordRaw[] = [
       requiresAuth: true,
       title: 'Redistribución - MABEL TRADING',
       icon: 'ChartBarIcon',
-      permissions: ['mabel.view']
+      permissions: ['mabel.view', 'odcsap.view']
     }
   },
   {

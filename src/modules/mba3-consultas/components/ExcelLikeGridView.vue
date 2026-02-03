@@ -219,6 +219,7 @@
               :class="getCantidadTienda(producto, tienda.codigo) >= 1 ? 'bg-red-50 dark:bg-red-900/10' : ''"
             >
               <input
+                v-if="!soloLectura"
                 type="number"
                 :value="getCantidadTienda(producto, tienda.codigo)"
                 @input="handleCantidadChange(producto, tienda.codigo, $event)"
@@ -229,6 +230,9 @@
                 :class="getInputClass(producto, tienda.codigo)"
                 placeholder="0"
               />
+              <span v-else class="block w-full max-w-[100px] ml-auto px-2 py-1.5 text-sm text-right text-gray-900 dark:text-white">
+                {{ formatNumber(getCantidadTienda(producto, tienda.codigo)) }}
+              </span>
             </td>
             
             <!-- Columnas calculadas -->
@@ -346,6 +350,8 @@ import { useTablePreferences } from '@/composables/useTablePreferences'
 interface Props {
   productos: Ref<ProductoRedistribucion[]>
   showTotals?: boolean
+  /** Si true, las celdas de cantidad son solo lectura */
+  soloLectura?: boolean
   columnasModificadas?: Ref<Set<string>>
   pedido?: any
 }
@@ -356,7 +362,8 @@ interface Emits {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  showTotals: true
+  showTotals: true,
+  soloLectura: false
 })
 
 const emit = defineEmits<Emits>()
@@ -447,7 +454,7 @@ const availableColumns: ColumnConfig[] = [
   { key: 'codigo', label: 'Código', visible: true, align: 'left', format: 'text', fixed: true },
   { key: 'producto', label: 'Producto', visible: true, align: 'left', format: 'text', fixed: true },
   { key: 'total_confirmado', label: 'Total Confirmado', visible: true, align: 'right', format: 'number', fixed: true },
-  { key: 'costo_unitario', label: 'Costo Unit.', visible: true, align: 'right', format: 'currency', fixed: true },
+  { key: 'costo_unitario', label: 'PRECIO', visible: true, align: 'right', format: 'currency', fixed: true },
   { key: 'total_distribuido', label: 'Total Distribuido', visible: true, align: 'right', format: 'number' },
   { key: 'diferencia', label: 'Diferencia', visible: true, align: 'right', format: 'number' }
 ]

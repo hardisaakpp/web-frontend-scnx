@@ -59,17 +59,19 @@
         <button
           type="button"
           @click="handleDescartar"
-          :disabled="descartando"
+          :disabled="descartando || !(pedido?.puede_descartar ?? false)"
           class="px-4 py-2 border border-red-300 dark:border-red-600 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {{ descartando ? 'Descartando...' : 'Descartar' }}
         </button>
         <button
+          v-if="esPedidoBorrador"
           type="button"
           @click="handleEnviar"
-          class="px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors text-sm font-medium"
+          :disabled="enviando"
+          class="px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Enviar
+          {{ enviando ? 'Enviando...' : 'Enviar' }}
         </button>
       </div>
 
@@ -426,8 +428,26 @@ function handleCrearPedido() {
   router.push('/mba3-consultas/pedidos/crear')
 }
 
-function handleEnviar() {
-  // TODO: implementar lógica de envío
+const enviando = ref(false)
+async function handleEnviar() {
+  const pedidoId = pedido.value?.cabecera?.pedido_id
+  if (!pedidoId) {
+    toast.warning('Sin pedido', 'No hay pedido cargado para enviar')
+    return
+  }
+  if (!confirm('¿Deseas enviar este pedido a EL RAYO?')) return
+  enviando.value = true
+  try {
+    const data = await mba3ConsultasService.enviarPedido(pedidoId)
+    if (pedido.value?.cabecera) {
+      pedido.value.cabecera.estado = data.estado_nombre
+    }
+    toast.success('Pedido enviado', data.message || 'El pedido se ha enviado correctamente')
+  } catch (e: any) {
+    toast.error('Error al enviar', extractErrorMessage(e))
+  } finally {
+    enviando.value = false
+  }
 }
 
 const descartando = ref(false)
@@ -706,6 +726,9 @@ const {
 const tituloInterfaz = computed(() => {
   return 'Cargar Plantilla - MABEL TRADING'
 })
+
+/** Mostrar botón Enviar solo cuando el pedido está en BORRADOR (estado_id 1 / estado "BORRADOR") */
+const esPedidoBorrador = computed(() => pedido.value?.cabecera?.estado === 'BORRADOR')
 
 // ⭐ Variables para controlar la carga automática del último pedido
 const cargandoUltimoPedido = ref(false)

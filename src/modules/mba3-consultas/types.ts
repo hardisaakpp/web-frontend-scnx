@@ -898,6 +898,8 @@ export interface PedidoCompleto {
   cabecera: PedidoCabecera
   detalles: PedidoDetalle[]
   respuesta_proveedor?: RespuestaProveedor  // Incluido si incluir_respuesta=true
+  /** true si el pedido está en BORRADOR o NUEVO PEDIDO; false en el resto (p. ej. GESTIONAR PEDIDO). Backend: GET plantillas/ultimo, GET plantillas/{id}, POST .../gestionar */
+  puede_descartar?: boolean
 }
 
 // ========== Respuesta del Proveedor (Fase 3) ==========

@@ -412,6 +412,79 @@ export const pedidosService = {
   },
 
   /**
+   * Envía un pedido en BORRADOR a EL RAYO.
+   * POST /api/pedidos/{pedido_id}/enviar (sin body; usuario del JWT).
+   * Respuesta 200: { status, message, pedido_id, numero_pedido, estado_id, estado_nombre }.
+   * Errores 400/404: detail.error y detail.message.
+   *
+   * @param pedidoId ID del pedido (UUID)
+   */
+  async enviarPedido(pedidoId: string): Promise<{
+    status: 'success'
+    message: string
+    pedido_id: string
+    numero_pedido: string
+    estado_id: number
+    estado_nombre: string
+  }> {
+    try {
+      const response = await mba3Api.post<{
+        status: 'success'
+        message: string
+        pedido_id: string
+        numero_pedido: string
+        estado_id: number
+        estado_nombre: string
+      }>(`/api/pedidos/${encodeURIComponent(pedidoId)}/enviar`, {})
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [enviarPedido] Error:', error)
+      throw createEnrichedError(error, 'Error al enviar pedido')
+    }
+  },
+
+  /**
+   * Marca el pedido como "GESTIONAR PEDIDO" (estado_id 16) cuando el usuario hace clic en "Ver Detalle".
+   * POST /api/pedidos/{pedido_id}/gestionar (sin body).
+   * Si el pedido está en NUEVO_PEDIDO (2) pasa a GESTIONAR_PEDIDO (16); si no existe → 404.
+   * Respuesta 200: pedido completo para usar en detalle.
+   *
+   * @param pedidoId ID del pedido (UUID)
+   */
+  async gestionarPedido(pedidoId: string): Promise<PedidoCompleto> {
+    try {
+      const response = await mba3Api.post<PedidoCompleto>(
+        `/api/pedidos/${encodeURIComponent(pedidoId)}/gestionar`,
+        {}
+      )
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [gestionarPedido] Error:', error)
+      throw createEnrichedError(error, 'Error al abrir detalle del pedido')
+    }
+  },
+
+  /**
+   * Pasa el pedido de GESTIONAR PEDIDO a REDISTRIBUCION.
+   * POST /api/pedidos/{pedido_id}/confirmar-para-redistribucion (sin body).
+   * Solo válido cuando estado es GESTIONAR PEDIDO. Respuesta 200: pedido completo actualizado.
+   *
+   * @param pedidoId ID del pedido (UUID)
+   */
+  async confirmarParaRedistribucion(pedidoId: string): Promise<PedidoCompleto> {
+    try {
+      const response = await mba3Api.post<PedidoCompleto>(
+        `/api/pedidos/${encodeURIComponent(pedidoId)}/confirmar-para-redistribucion`,
+        {}
+      )
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [confirmarParaRedistribucion] Error:', error)
+      throw createEnrichedError(error, 'Error al confirmar pedido para redistribución')
+    }
+  },
+
+  /**
    * Confirma la redistribución de un pedido
    * 
    * Requiere permiso: mba3-consultas.proceso.execute

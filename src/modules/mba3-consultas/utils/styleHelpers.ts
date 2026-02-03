@@ -2,32 +2,44 @@
  * Utilidades para generar clases CSS según estados y condiciones
  */
 
+const badgeDark = 'dark:bg-opacity-30'
+
 /**
- * Retorna las clases CSS para el badge de estado de respuesta del proveedor
+ * Retorna las clases CSS para el badge de estado de respuesta del proveedor (solo color; el contenedor puede añadir padding/rounded)
  */
 export function getEstadoBadgeClass(estado: string): string {
   const classes: Record<string, string> = {
-    'PENDIENTE_REVISION': 'bg-yellow-100 text-yellow-800',
-    'APROBADA': 'bg-green-100 text-green-800',
-    'RECHAZADA': 'bg-red-100 text-red-800'
+    'PENDIENTE_REVISION': `bg-amber-100 text-amber-800 ${badgeDark} dark:bg-amber-900/50 dark:text-amber-200`,
+    'APROBADA': `bg-emerald-100 text-emerald-800 ${badgeDark} dark:bg-emerald-900/50 dark:text-emerald-200`,
+    'RECHAZADA': `bg-rose-100 text-rose-800 ${badgeDark} dark:bg-rose-900/50 dark:text-rose-200`
   }
-  return classes[estado] || 'bg-gray-100 text-gray-800'
+  return classes[estado] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
 }
 
 /**
- * Retorna las clases CSS para el badge de estado del pedido
+ * Retorna las clases CSS para el badge de estado del pedido (colores diferenciados por estado)
  */
 export function getEstadoPedidoBadgeClass(estado: string | undefined): string {
-  if (!estado) return 'bg-gray-100 text-gray-800'
+  if (!estado) return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
   const classes: Record<string, string> = {
-    'PENDIENTE_CONFIRMACION_PROVEEDOR': 'bg-yellow-100 text-yellow-800',
-    'RESPUESTA_PROVEEDOR_CARGADA': 'bg-blue-100 text-blue-800',
-    'CONFIRMADO_PROVEEDOR': 'bg-green-100 text-green-800',
-    'PEDIDO_CONFIRMADO': 'bg-teal-100 text-teal-800',
-    'PROCESADO_SAP': 'bg-indigo-100 text-indigo-800',
-    'CONFIRMADO_ENVIADO': 'bg-emerald-100 text-emerald-800'
+    'BORRADOR': `bg-slate-100 text-slate-800 ${badgeDark} dark:bg-slate-700 dark:text-slate-200`,
+    'NUEVO PEDIDO': `bg-sky-100 text-sky-800 ${badgeDark} dark:bg-sky-900/50 dark:text-sky-200`,
+    'NUEVO_PEDIDO': `bg-sky-100 text-sky-800 ${badgeDark} dark:bg-sky-900/50 dark:text-sky-200`,
+    'GESTIONAR PEDIDO': `bg-amber-100 text-amber-800 ${badgeDark} dark:bg-amber-900/50 dark:text-amber-200`,
+    'GESTIONAR_PEDIDO': `bg-amber-100 text-amber-800 ${badgeDark} dark:bg-amber-900/50 dark:text-amber-200`,
+    'REDISTRIBUCION': `bg-violet-100 text-violet-800 ${badgeDark} dark:bg-violet-900/50 dark:text-violet-200`,
+    'PENDIENTE_CONFIRMACION_PROVEEDOR': `bg-yellow-100 text-yellow-800 ${badgeDark} dark:bg-yellow-900/50 dark:text-yellow-200`,
+    'RESPUESTA_PROVEEDOR_CARGADA': `bg-blue-100 text-blue-800 ${badgeDark} dark:bg-blue-900/50 dark:text-blue-200`,
+    'CONFIRMADO_PROVEEDOR': `bg-green-100 text-green-800 ${badgeDark} dark:bg-green-900/50 dark:text-green-200`,
+    'PEDIDO_CONFIRMADO': `bg-teal-100 text-teal-800 ${badgeDark} dark:bg-teal-900/50 dark:text-teal-200`,
+    'PROCESADO_SAP': `bg-indigo-100 text-indigo-800 ${badgeDark} dark:bg-indigo-900/50 dark:text-indigo-200`,
+    'CONFIRMADO_ENVIADO': `bg-emerald-100 text-emerald-800 ${badgeDark} dark:bg-emerald-900/50 dark:text-emerald-200`,
+    'ORDEN_COMPRA_CREADA': `bg-fuchsia-100 text-fuchsia-800 ${badgeDark} dark:bg-fuchsia-900/50 dark:text-fuchsia-200`,
+    'ENVIADA_SAP': `bg-purple-100 text-purple-800 ${badgeDark} dark:bg-purple-900/50 dark:text-purple-200`,
+    'CERRADO': `bg-gray-100 text-gray-700 ${badgeDark} dark:bg-gray-600 dark:text-gray-200`,
+    'CANCELADO': `bg-red-100 text-red-800 ${badgeDark} dark:bg-red-900/50 dark:text-red-200`
   }
-  return classes[estado] || 'bg-gray-100 text-gray-800'
+  return classes[estado] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
 }
 
 /**

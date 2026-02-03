@@ -362,9 +362,10 @@
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <button
                     @click="verDetalle(pedido.pedido_id)"
-                    class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 transition-colors"
+                    :disabled="verDetalleCargandoId === pedido.pedido_id"
+                    class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Ver Detalle
+                    {{ verDetalleCargandoId === pedido.pedido_id ? 'Abriendo...' : 'Ver Detalle' }}
                   </button>
                 </td>
               </tr>
@@ -406,7 +407,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useToast } from '@/composables/useToast'
-import { mba3ConsultasService } from '../services/mba3ConsultasApi'
+import { mba3ConsultasService, extractErrorMessage } from '../services/mba3ConsultasApi'
 import type { PedidosListadoResponse, PedidoResumido, PedidosListadoFiltros, PedidosListadoMetadata } from '../types'
 import { formatDate } from '../utils/formatters'
 
@@ -457,9 +458,17 @@ let pollingIntervalId: ReturnType<typeof setInterval> | null = null
 // Función para obtener la etiqueta del estado
 function getEstadoLabel(estado: string): string {
   const labels: Record<string, string> = {
+    'BORRADOR': 'Borrador',
+    'NUEVO PEDIDO': 'Nuevo Pedido',
+    'NUEVO_PEDIDO': 'Nuevo Pedido',
+    'GESTIONAR PEDIDO': 'Gestionar Pedido',
+    'GESTIONAR_PEDIDO': 'Gestionar Pedido',
+    'REDISTRIBUCION': 'Redistribución',
     'PENDIENTE_CONFIRMACION_PROVEEDOR': 'Pendiente Confirmación',
     'RESPUESTA_PROVEEDOR_CARGADA': 'Respuesta Cargada',
-    'CONFIRMADO_PROVEEDOR': 'Confirmado',
+    'CONFIRMADO_PROVEEDOR': 'Confirmado Proveedor',
+    'PEDIDO_CONFIRMADO': 'Pedido Confirmado',
+    'PROCESADO_SAP': 'Procesado SAP',
     'ORDEN_COMPRA_CREADA': 'OC Creada',
     'ENVIADA_SAP': 'Enviada SAP',
     'CONFIRMADO_ENVIADO': 'Confirmado Enviado',
@@ -469,22 +478,30 @@ function getEstadoLabel(estado: string): string {
   return labels[estado] || estado
 }
 
-// Función para obtener las clases del badge de estado
+// Función para obtener las clases del badge de estado (colores diferenciados por estado)
 function getEstadoBadgeClass(estado: string): string {
   const baseClasses = 'px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors duration-300'
   const darkClasses = 'dark:bg-opacity-30'
-  
+
   const classes: Record<string, string> = {
-    'PENDIENTE_CONFIRMACION_PROVEEDOR': `bg-yellow-100 text-yellow-800 ${darkClasses} dark:bg-yellow-900 dark:text-yellow-200`,
-    'RESPUESTA_PROVEEDOR_CARGADA': `bg-blue-100 text-blue-800 ${darkClasses} dark:bg-blue-900 dark:text-blue-200`,
-    'CONFIRMADO_PROVEEDOR': `bg-green-100 text-green-800 ${darkClasses} dark:bg-green-900 dark:text-green-200`,
-    'ORDEN_COMPRA_CREADA': `bg-indigo-100 text-indigo-800 ${darkClasses} dark:bg-indigo-900 dark:text-indigo-200`,
-    'ENVIADA_SAP': `bg-purple-100 text-purple-800 ${darkClasses} dark:bg-purple-900 dark:text-purple-200`,
-    'CONFIRMADO_ENVIADO': `bg-emerald-100 text-emerald-800 ${darkClasses} dark:bg-emerald-900 dark:text-emerald-200`,
-    'CERRADO': `bg-gray-100 text-gray-800 ${darkClasses} dark:bg-gray-700 dark:text-gray-200`,
-    'CANCELADO': `bg-red-100 text-red-800 ${darkClasses} dark:bg-red-900 dark:text-red-200`
+    'BORRADOR': `bg-slate-100 text-slate-800 ${darkClasses} dark:bg-slate-700 dark:text-slate-200`,
+    'NUEVO PEDIDO': `bg-sky-100 text-sky-800 ${darkClasses} dark:bg-sky-900/50 dark:text-sky-200`,
+    'NUEVO_PEDIDO': `bg-sky-100 text-sky-800 ${darkClasses} dark:bg-sky-900/50 dark:text-sky-200`,
+    'GESTIONAR PEDIDO': `bg-amber-100 text-amber-800 ${darkClasses} dark:bg-amber-900/50 dark:text-amber-200`,
+    'GESTIONAR_PEDIDO': `bg-amber-100 text-amber-800 ${darkClasses} dark:bg-amber-900/50 dark:text-amber-200`,
+    'REDISTRIBUCION': `bg-violet-100 text-violet-800 ${darkClasses} dark:bg-violet-900/50 dark:text-violet-200`,
+    'PENDIENTE_CONFIRMACION_PROVEEDOR': `bg-yellow-100 text-yellow-800 ${darkClasses} dark:bg-yellow-900/50 dark:text-yellow-200`,
+    'RESPUESTA_PROVEEDOR_CARGADA': `bg-blue-100 text-blue-800 ${darkClasses} dark:bg-blue-900/50 dark:text-blue-200`,
+    'CONFIRMADO_PROVEEDOR': `bg-green-100 text-green-800 ${darkClasses} dark:bg-green-900/50 dark:text-green-200`,
+    'PEDIDO_CONFIRMADO': `bg-teal-100 text-teal-800 ${darkClasses} dark:bg-teal-900/50 dark:text-teal-200`,
+    'PROCESADO_SAP': `bg-indigo-100 text-indigo-800 ${darkClasses} dark:bg-indigo-900/50 dark:text-indigo-200`,
+    'ORDEN_COMPRA_CREADA': `bg-fuchsia-100 text-fuchsia-800 ${darkClasses} dark:bg-fuchsia-900/50 dark:text-fuchsia-200`,
+    'ENVIADA_SAP': `bg-purple-100 text-purple-800 ${darkClasses} dark:bg-purple-900/50 dark:text-purple-200`,
+    'CONFIRMADO_ENVIADO': `bg-emerald-100 text-emerald-800 ${darkClasses} dark:bg-emerald-900/50 dark:text-emerald-200`,
+    'CERRADO': `bg-gray-100 text-gray-700 ${darkClasses} dark:bg-gray-600 dark:text-gray-200`,
+    'CANCELADO': `bg-red-100 text-red-800 ${darkClasses} dark:bg-red-900/50 dark:text-red-200`
   }
-  
+
   return `${baseClasses} ${classes[estado] || `bg-gray-100 text-gray-800 ${darkClasses} dark:bg-gray-700 dark:text-gray-200`}`
 }
 
@@ -613,9 +630,18 @@ function cambiarPagina(nuevoOffset: number) {
   cargarPedidos()
 }
 
-// Ver detalle del pedido
-function verDetalle(pedidoId: string) {
-  router.push(`/mba3-consultas/pedidos/${pedidoId}`)
+// Ver detalle del pedido: llama POST .../gestionar (estado GESTIONAR_PEDIDO) y navega
+const verDetalleCargandoId = ref<string | null>(null)
+async function verDetalle(pedidoId: string) {
+  verDetalleCargandoId.value = pedidoId
+  try {
+    await mba3ConsultasService.gestionarPedido(pedidoId)
+    router.push(`/mba3-consultas/pedidos/${pedidoId}`)
+  } catch (e: any) {
+    toast.error('Error al abrir detalle', extractErrorMessage(e))
+  } finally {
+    verDetalleCargandoId.value = null
+  }
 }
 
 // Polling automático

@@ -188,6 +188,7 @@
           v-if="modoVista === 'excel'"
           :productos="productosRedistribucion"
           :show-totals="true"
+          :solo-lectura="soloLectura"
           :columnas-modificadas="columnasModificadas"
           :pedido="pedidoValue"
           @actualizar-cantidad-tienda="handleActualizarCantidadTienda"
@@ -337,7 +338,7 @@
                   
                   <!-- Columna Acciones -->
                   <template v-else-if="column.key === 'acciones'">
-                    <div class="flex items-center justify-center gap-2">
+                    <div v-if="!soloLectura" class="flex items-center justify-center gap-2">
                       <button
                         @click="distribuirProporcionalmente(producto.codigo_producto)"
                         class="p-1 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
@@ -366,6 +367,7 @@
                         </svg>
                       </button>
                     </div>
+                    <span v-else class="text-xs text-gray-500 dark:text-gray-400">—</span>
                   </template>
                 </td>
               </tr>
@@ -454,6 +456,7 @@
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap">
                               <input
+                                v-if="!soloLectura"
                                 type="number"
                                 :value="tienda.cantidad_asignada"
                                 @input="actualizarCantidadTienda(producto.codigo_producto, tienda.tienda_codigo, $event)"
@@ -470,6 +473,9 @@
                                   ? `Cantidad válida (máximo: ${formatNumber(producto.cantidad_confirmada)})` 
                                   : 'Cantidad inválida: excede el total confirmado o límite máximo'"
                               />
+                              <span v-else class="block w-full max-w-[120px] ml-auto px-3 py-2 text-sm text-right text-gray-900 dark:text-white">
+                                {{ formatNumber(tienda.cantidad_asignada) }}
+                              </span>
                             </td>
                           </tr>
                         </tbody>
@@ -525,7 +531,7 @@
           </div>
         </div>
         
-        <div class="flex items-center gap-3">
+        <div v-if="!soloLectura" class="flex items-center gap-3">
           <button
             @click="$emit('guardar-borrador')"
             :disabled="guardandoRedistribucionValue || productosArray.length === 0"
@@ -579,6 +585,8 @@ import ExcelLikeGridView from './ExcelLikeGridView.vue'
 interface Props {
   pedido: PedidoCompleto | null
   esModoMabelTrading: boolean
+  /** Si true, solo lectura (EL RAYO - Ver distribución sin editar) */
+  soloLectura?: boolean
   productosRedistribucion: Ref<ProductoRedistribucion[]>
   productosExpandidos: Ref<Set<string>>
   guardandoRedistribucion: Ref<boolean>
@@ -599,7 +607,7 @@ interface Emits {
   (e: 'confirmar-redistribucion'): void
 }
 
-const props = withDefaults(defineProps<Props>(), { confirmarDeshabilitadoPorEstado: false })
+const props = withDefaults(defineProps<Props>(), { confirmarDeshabilitadoPorEstado: false, soloLectura: false })
 const emit = defineEmits<Emits>()
 
 // Estado para el modo de vista

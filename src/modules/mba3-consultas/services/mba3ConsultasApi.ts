@@ -1212,6 +1212,39 @@ export const mba3ConsultasService = {
   },
 
   /**
+   * Envía un pedido en BORRADOR a EL RAYO. POST /api/pedidos/{pedido_id}/enviar.
+   * @param pedidoId ID del pedido (UUID)
+   */
+  async enviarPedido(pedidoId: string): Promise<{
+    status: 'success'
+    message: string
+    pedido_id: string
+    numero_pedido: string
+    estado_id: number
+    estado_nombre: string
+  }> {
+    return pedidosService.enviarPedido(pedidoId)
+  },
+
+  /**
+   * Marca el pedido como GESTIONAR_PEDIDO al hacer clic en "Ver Detalle". POST /api/pedidos/{pedido_id}/gestionar.
+   * @param pedidoId ID del pedido (UUID)
+   * @returns Pedido completo (respuesta 200)
+   */
+  async gestionarPedido(pedidoId: string): Promise<PedidoCompleto> {
+    return pedidosService.gestionarPedido(pedidoId)
+  },
+
+  /**
+   * Pasa el pedido de GESTIONAR PEDIDO a REDISTRIBUCION (desde detalle). POST /api/pedidos/{pedido_id}/confirmar-para-redistribucion.
+   * @param pedidoId ID del pedido (UUID)
+   * @returns Pedido completo actualizado (estado REDISTRIBUCION)
+   */
+  async confirmarParaRedistribucion(pedidoId: string): Promise<PedidoCompleto> {
+    return pedidosService.confirmarParaRedistribucion(pedidoId)
+  },
+
+  /**
    * Confirma la redistribución de un pedido
    * Requiere permiso: mba3-consultas.proceso.execute
    * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")

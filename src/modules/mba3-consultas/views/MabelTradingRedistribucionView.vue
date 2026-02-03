@@ -36,13 +36,13 @@
         <div class="flex items-center justify-between">
           <div>
             <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-              Redistribución de Productos - MABEL TRADING
+              {{ soloLectura ? 'Ver distribución de Productos - EL RAYO' : 'Redistribución de Productos - MABEL TRADING' }}
             </h1>
             <p v-if="pedido" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
               Pedido: <span class="font-medium text-gray-900 dark:text-white">{{ pedido.cabecera.numero_pedido }}</span>
             </p>
           </div>
-          <div class="flex items-center gap-3">
+          <div v-if="!soloLectura" class="flex items-center gap-3">
             <div class="relative">
               <input
                 v-model="pedidoIdInput"
@@ -96,6 +96,7 @@
         v-if="pedido"
         :pedido="pedido"
         :es-modo-mabel-trading="true"
+        :solo-lectura="soloLectura"
         :productos-redistribucion="redistribucion.productosRedistribucion"
         :productos-expandidos="redistribucion.productosExpandidos"
         :guardando-redistribucion="redistribucion.guardandoRedistribucion"
@@ -154,6 +155,9 @@ const numeroPedido = computed(() => {
   const id = route.params.id as string
   return id ? decodeURIComponent(id) : ''
 })
+
+/** Modo solo lectura: EL RAYO revisa distribución sin poder editar (query soloLectura=1) */
+const soloLectura = computed(() => route.query.soloLectura === '1')
 
 const esModoMabelTrading = computed(() => true) // Siempre true en esta vista
 
@@ -294,51 +298,24 @@ watch(
     const columnasAntes = columnasModificadas.value.size
     if (import.meta.env.DEV) console.log(`🎨 [MabelTradingRedistribucionView] Columnas modificadas ANTES de inicializar: ${columnasAntes}`)
     
-    // Si hay respuesta_proveedor, inicializar normalmente
+    // Solo inicializar redistribución si ya existe respuesta_proveedor.
+    // NO llamar a crear-respuesta-desde-pedido aquí: esa acción es exclusiva del clic en "Confirmar"
+    // en Cargar Plantilla o Detalle del Pedido (EL RAYO). Llamarla al cargar esta vista disparaba
+    // confirmación y envío de email en el backend sin intervención del usuario.
     if (newPedido.respuesta_proveedor) {
       redistribucion.inicializarProductosRedistribucion()
       
       // ⭐ CRÍTICO: Asegurar que las columnas modificadas se mantengan después de inicializar
-      // Usar nextTick para asegurar que se ejecute después de que Vue actualice el DOM
       await nextTick()
       
-      // Verificar y recargar si es necesario
       if (columnasModificadas.value.size === 0 && columnasAntes > 0) {
         console.warn(`⚠️ [MabelTradingRedistribucionView] Columnas modificadas se perdieron después de inicializar, recargando...`)
         cargarColumnasModificadasDesdeStorage()
       }
       if (import.meta.env.DEV) console.log(`🎨 [MabelTradingRedistribucionView] Columnas modificadas DESPUÉS de inicializar: ${columnasModificadas.value.size}`)
-    } else if (newPedido.detalles && newPedido.detalles.length > 0) {
-      // Si no hay respuesta_proveedor pero hay pedido con detalles,
-      // intentar crear respuesta_proveedor automáticamente (solo crear, NO procesar)
-      // Esto puede pasar si EL RAYO aún no ha hecho clic en "Confirmar"
-      try {
-        toast.info('Creando respuesta', 'Generando respuesta del proveedor desde los ajustes de EL RAYO...')
-        // Usar pedido_id si está disponible (más eficiente), sino usar numero_pedido
-        const pedidoId = newPedido?.cabecera?.pedido_id
-        await mba3ConsultasService.crearRespuestaProveedorDesdePedido(numeroPedido.value, pedidoId)
-        
-        // Recargar el pedido para obtener respuesta_proveedor
-        await loadPedido()
-        
-        // Si ahora hay respuesta_proveedor, inicializar redistribución
-        if (pedido.value?.respuesta_proveedor) {
-          redistribucion.inicializarProductosRedistribucion()
-          toast.success('Listo', 'La redistribución está lista. Puede comenzar a distribuir manualmente.')
-        }
-      } catch (e: any) {
-        console.error('Error al crear respuesta automáticamente:', e)
-        // Si la respuesta ya existe, recargar y continuar
-        if (e.message?.includes('ya existe') || (e as any).isConflict || (e as any).statusCode === 409) {
-          await loadPedido()
-          if (pedido.value?.respuesta_proveedor) {
-            redistribucion.inicializarProductosRedistribucion()
-          }
-        } else {
-          toast.error('Error', e.message || 'No se pudo crear la respuesta automáticamente. Por favor, contacte a EL RAYO para que complete la Fase 3.')
-        }
-      }
     }
+    // Si no hay respuesta_proveedor: no crear automáticamente. El usuario debe confirmar desde
+    // Cargar Plantilla o Detalle del Pedido (EL RAYO) para que exista la respuesta.
   },
   { immediate: true }
 )
