@@ -7,7 +7,7 @@ import { useToast } from '@/composables/useToast'
 import { formatNumber } from '../utils/formatters'
 import type { ProductoRedistribucion, DistribucionTiendaEditada } from '../utils/redistribucionHelpers'
 import { esBodega } from '../utils/redistribucionHelpers'
-import type { PedidoCompleto, ReporteDiferenciasResponse, DistribucionPedidoResponse } from '../types'
+import type { PedidoCompleto, ReporteDiferenciasResponse, DistribucionPedidoResponse, AjusteDetalle } from '../types'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 
 export function useRedistribucion(options: {
@@ -138,6 +138,57 @@ export function useRedistribucion(options: {
     
     // Recalcular diferencias iniciales
     recalcularDiferencias()
+  }
+
+  /**
+   * Mapea ajustes_detalle (BorradorResponse de GET .../redistribucion/inicial?solo_lectura=1) a ProductoRedistribucion[].
+   */
+  function mapAjustesDetalleToProductos(ajustes: AjusteDetalle[]): ProductoRedistribucion[] {
+    return ajustes.map(a => {
+      const distribucion_tiendas: DistribucionTiendaEditada[] = (a.distribucion_tiendas ?? []).map(t => {
+        const cantidad = t.cantidad ?? 0
+        return {
+          tienda_codigo: t.tienda_codigo,
+          tienda_nombre: t.tienda_nombre ?? t.tienda_codigo,
+          cantidad_original: cantidad,
+          cantidad_asignada: cantidad,
+          diferencia: 0,
+          es_bodega: esBodega(t.tienda_codigo)
+        }
+      })
+      const cantidad_distribuida = a.cantidad_ajustada ?? distribucion_tiendas.reduce((sum, t) => sum + t.cantidad_asignada, 0)
+      const diferencia = cantidad_distribuida - a.cantidad_confirmada
+      return {
+        codigo_producto: a.codigo_producto,
+        descripcion: a.descripcion ?? a.codigo_producto,
+        cantidad_solicitada: a.cantidad_solicitada,
+        cantidad_confirmada: a.cantidad_confirmada,
+        cantidad_distribuida,
+        diferencia,
+        costo_unitario: a.costo_ajustado ?? a.costo_original ?? null,
+        distribucion_tiendas,
+        expandido: false
+      }
+    })
+  }
+
+  /**
+   * Carga la última redistribución confirmada para vista solo lectura.
+   * Llama a GET /api/pedidos/{numero_pedido}/redistribucion/inicial?solo_lectura=1.
+   */
+  async function cargarRedistribucionSoloLectura(): Promise<void> {
+    const numero = options.numeroPedido.value
+    if (!numero) {
+      productosRedistribucion.value = []
+      return
+    }
+    const data = await mba3ConsultasService.getRedistribucionInicial(numero, true)
+    if (data?.ajustes_detalle?.length) {
+      productosRedistribucion.value = mapAjustesDetalleToProductos(data.ajustes_detalle)
+      recalcularDiferencias()
+    } else {
+      productosRedistribucion.value = []
+    }
   }
 
   /**
@@ -727,6 +778,7 @@ export function useRedistribucion(options: {
     // Funciones
     inicializarProductosRedistribucion,
     cargarYInicializarRedistribucion,
+    cargarRedistribucionSoloLectura,
     recalcularDiferencias,
     validarProducto,
     validarCantidadTienda,

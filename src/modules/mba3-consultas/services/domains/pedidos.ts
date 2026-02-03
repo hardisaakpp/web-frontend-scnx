@@ -507,6 +507,27 @@ export const pedidosService = {
   },
 
   /**
+   * Marca el pedido como "Finalizado" (estado_id 18).
+   * POST /api/pedidos/{pedido_id}/marcar-finalizado (sin body).
+   * Solo válido cuando estado es Despachar y Facturar (estado_id 17). 400 con error "estado_no_despachar_y_facturar" si no.
+   *
+   * @param pedidoId ID del pedido (UUID)
+   * @returns Pedido completo actualizado (cabecera con estado FINALIZADO)
+   */
+  async marcarFinalizado(pedidoId: string): Promise<PedidoCompleto> {
+    try {
+      const response = await mba3Api.post<PedidoCompleto>(
+        `/api/pedidos/${encodeURIComponent(pedidoId)}/marcar-finalizado`,
+        {}
+      )
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [marcarFinalizado] Error:', error)
+      throw createEnrichedError(error, 'Error al marcar Finalizado')
+    }
+  },
+
+  /**
    * Confirma la redistribución de un pedido
    * 
    * Requiere permiso: mba3-consultas.proceso.execute
@@ -544,6 +565,33 @@ export const pedidosService = {
     } catch (error: any) {
       console.error('❌ [confirmarRedistribucion] Error:', error)
       throw createEnrichedError(error, 'Error desconocido al confirmar redistribución')
+    }
+  },
+
+  /**
+   * Obtiene datos iniciales para la pantalla de redistribución.
+   * GET /api/pedidos/{numero_pedido}/redistribucion/inicial.
+   * Con solo_lectura=1 devuelve la última redistribución confirmada (formato BorradorResponse).
+   *
+   * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
+   * @param soloLectura Si true, añade ?solo_lectura=1 para obtener la última confirmada en solo lectura
+   * @returns ajustes_detalle (formato AjusteDetalle[]) para rellenar la vista
+   */
+  async getRedistribucionInicial(
+    numeroPedido: string,
+    soloLectura: boolean = false
+  ): Promise<{ ajustes_detalle: AjusteDetalle[] }> {
+    try {
+      const params = new URLSearchParams()
+      if (soloLectura) params.set('solo_lectura', '1')
+      const query = params.toString() ? `?${params.toString()}` : ''
+      const response = await mba3Api.get<{ ajustes_detalle: AjusteDetalle[] }>(
+        `/api/pedidos/${encodeURIComponent(numeroPedido)}/redistribucion/inicial${query}`
+      )
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [getRedistribucionInicial] Error:', error)
+      throw createEnrichedError(error, 'Error al obtener datos iniciales de redistribución')
     }
   },
 

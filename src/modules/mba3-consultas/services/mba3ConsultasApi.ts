@@ -1252,6 +1252,13 @@ export const mba3ConsultasService = {
   },
 
   /**
+   * Marca el pedido como "Finalizado" (estado_id 18). Solo válido en Despachar y Facturar (17).
+   */
+  async marcarFinalizado(pedidoId: string): Promise<PedidoCompleto> {
+    return pedidosService.marcarFinalizado(pedidoId)
+  },
+
+  /**
    * Confirma la redistribución de un pedido
    * Requiere permiso: mba3-consultas.proceso.execute
    * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
@@ -1271,6 +1278,15 @@ export const mba3ConsultasService = {
     ajustes_aplicados: number
   }> {
     return pedidosService.confirmarRedistribucion(numeroPedido, ajustesDetalle)
+  },
+
+  /**
+   * Obtiene datos iniciales de redistribución. Con soloLectura=true usa .../inicial?solo_lectura=1 (última confirmada).
+   * @param numeroPedido Número de pedido
+   * @param soloLectura Si true, devuelve la última redistribución confirmada (vista solo lectura)
+   */
+  async getRedistribucionInicial(numeroPedido: string, soloLectura: boolean = false) {
+    return pedidosService.getRedistribucionInicial(numeroPedido, soloLectura)
   },
 
   /**

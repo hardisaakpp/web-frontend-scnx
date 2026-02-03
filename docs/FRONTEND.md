@@ -173,9 +173,12 @@ Se usa para pintar la **lista de pedidos confirmados** en `/redistribucion` (p. 
 |------|----------------|----------------|
 | `/mba3-consultas/redistribucion` | Clic en "Redistribución" (o acceso directo sin pedido) | Pantalla con **input de búsqueda** para número de pedido. Aquí es donde se debe disparar la carga del "último confirmado". |
 | `/mba3-consultas/pedidos/{numero_pedido}/redistribucion` | Tras redirección automática o tras buscar un pedido | Vista de redistribución de **ese** pedido (detalle, cantidades, etc.). |
+| `/mba3-consultas/pedidos/{numero_pedido}/redistribucion?soloLectura=1` | EL RAYO revisa distribución sin editar | Vista **solo lectura** con la **última redistribución confirmada** del pedido. |
 
 Ejemplo de URL con pedido:  
 `/mba3-consultas/pedidos/P-12.24%20-%2012%20-%202025/redistribucion`
+
+**Vista solo lectura:** con query `soloLectura=1` la pantalla muestra siempre la última redistribución confirmada. Para cargar los datos se usa **`GET /api/pedidos/{numero_pedido}/redistribucion/inicial?solo_lectura=1`** (en frontend: `mba3ConsultasService.getRedistribucionInicial(numeroPedido, true)`). El backend devuelve formato BorradorResponse (`ajustes_detalle`).
 
 ### 1.2 Lógica cuando se monta la ruta sin pedido (`/mba3-consultas/redistribucion`)
 

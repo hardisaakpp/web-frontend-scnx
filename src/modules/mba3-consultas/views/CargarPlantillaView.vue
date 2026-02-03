@@ -54,7 +54,7 @@
         @crear-pedido="handleCrearPedido"
       />
 
-      <!-- Enviar / Descartar (solo cuando hay pedido cargado) -->
+      <!-- Enviar / Descartar / Finalizado (solo cuando hay pedido cargado) -->
       <div v-if="pedido && !loading" class="flex items-center justify-end gap-3">
         <button
           type="button"
@@ -72,6 +72,15 @@
           class="px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {{ enviando ? 'Enviando...' : 'Enviar' }}
+        </button>
+        <button
+          v-if="showBotonFinalizado"
+          type="button"
+          @click="handleFinalizado"
+          :disabled="finalizando"
+          class="px-4 py-2 bg-emerald-600 dark:bg-emerald-500 text-white rounded-lg hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {{ finalizando ? 'Finalizando...' : 'Finalizado' }}
         </button>
       </div>
 
@@ -657,6 +666,13 @@ const numeroPedido = computed(() => {
   return id ? decodeURIComponent(id) : ''
 })
 
+/** Número de pedido para el que se muestra el botón "Finalizado" (solo Cargar plantilla, estado Despachar y Facturar). */
+const NUMERO_PEDIDO_FINALIZADO = 'P-12.01 - 12 - 2025'
+const showBotonFinalizado = computed(() =>
+  numeroPedido.value === NUMERO_PEDIDO_FINALIZADO && pedido.value?.cabecera?.estado_id === 17
+)
+const finalizando = ref(false)
+
 // ⭐ Detectar el modo de interfaz según query params
 const esModoMabelTrading = computed(() => {
   return route.query.usuario === 'mabel-trading' || route.query.modo === 'confirmacion'
@@ -719,6 +735,31 @@ const {
   handleSearchBlur,
   copyToClipboard
 } = pedidoDetalle
+
+async function handleFinalizado() {
+  const pedidoId = pedido.value?.cabecera?.pedido_id
+  if (!pedidoId) return
+  finalizando.value = true
+  try {
+    const actualizado = await mba3ConsultasService.marcarFinalizado(pedidoId)
+    if (pedido.value?.cabecera && actualizado?.cabecera) {
+      pedido.value.cabecera.estado_id = actualizado.cabecera.estado_id
+      pedido.value.cabecera.estado = actualizado.cabecera.estado ?? 'FINALIZADO'
+    }
+    toast.success('Estado actualizado', 'El pedido se ha marcado como Finalizado.')
+  } catch (e: any) {
+    const msg = extractErrorMessage(e)
+    const errorCode = e.response?.data?.error
+    if (e.response?.status === 400 && errorCode === 'estado_no_despachar_y_facturar') {
+      toast.warning('Estado incorrecto', 'El pedido ya no está en Despachar y Facturar. Se recargará.')
+      await loadPedido()
+    } else {
+      toast.error('Error', msg || 'No se pudo marcar como Finalizado.')
+    }
+  } finally {
+    finalizando.value = false
+  }
+}
 
 // Extraer variables del composable de redistribución
 // Ahora se acceden directamente desde redistribucion.productosRedistribucion, etc.

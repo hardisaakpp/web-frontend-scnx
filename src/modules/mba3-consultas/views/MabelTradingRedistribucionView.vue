@@ -298,6 +298,14 @@ watch(
     const columnasAntes = columnasModificadas.value.size
     if (import.meta.env.DEV) console.log(`🎨 [MabelTradingRedistribucionView] Columnas modificadas ANTES de inicializar: ${columnasAntes}`)
     
+    // Vista solo lectura (soloLectura=1): cargar última redistribución confirmada vía GET .../redistribucion/inicial?solo_lectura=1
+    if (soloLectura.value) {
+      await redistribucion.cargarRedistribucionSoloLectura()
+      await nextTick()
+      if (columnasModificadas.value.size === 0 && columnasAntes > 0) cargarColumnasModificadasDesdeStorage()
+      if (import.meta.env.DEV) console.log(`🎨 [MabelTradingRedistribucionView] Solo lectura: datos cargados desde .../inicial?solo_lectura=1`)
+      return
+    }
     // Solo inicializar redistribución si ya existe respuesta_proveedor.
     // NO llamar a crear-respuesta-desde-pedido aquí: esa acción es exclusiva del clic en "Confirmar"
     // en Cargar Plantilla o Detalle del Pedido (EL RAYO). Llamarla al cargar esta vista disparaba

@@ -455,7 +455,7 @@ const autoRefreshEnabled = ref(false)
 const POLLING_INTERVAL = 60000 // 60 segundos
 let pollingIntervalId: ReturnType<typeof setInterval> | null = null
 
-// Función para obtener la etiqueta del estado
+// Función para obtener la etiqueta del estado (alineada con formatEstadoPedido de formatters)
 function getEstadoLabel(estado: string): string {
   const labels: Record<string, string> = {
     'BORRADOR': 'Borrador',
@@ -467,21 +467,23 @@ function getEstadoLabel(estado: string): string {
     'PENDIENTE_CONFIRMACION_PROVEEDOR': 'Pendiente Confirmación',
     'RESPUESTA_PROVEEDOR_CARGADA': 'Respuesta Cargada',
     'CONFIRMADO_PROVEEDOR': 'Confirmado Proveedor',
+    'CONFIRMADO': 'Confirmado',
     'CONFIRMADO REDISTRIBUCION': 'Confirmado redistribución',
     'PEDIDO_CONFIRMADO': 'Pedido Confirmado',
     'PROCESADO_SAP': 'Procesado SAP',
     'ORDEN_COMPRA_CREADA': 'OC Creada',
     'ENVIADA_SAP': 'Enviada SAP',
-    'CONFIRMADO_ENVIADO': 'Confirmado Enviado',
+    'CONFIRMADO_ENVIADO': 'Confirmado y Enviado',
     'DESPACHAR Y FACTURAR': 'Despachar y Facturar',
     'DESPACHAR_Y_FACTURAR': 'Despachar y Facturar',
+    'FINALIZADO': 'Finalizado',
     'CERRADO': 'Cerrado',
     'CANCELADO': 'Cancelado'
   }
   return labels[estado] || estado
 }
 
-// Función para obtener las clases del badge de estado (colores diferenciados por estado)
+// Colores distintivos por estado (misma paleta que getEstadoPedidoBadgeClass en styleHelpers)
 function getEstadoBadgeClass(estado: string): string {
   const baseClasses = 'px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors duration-300'
   const darkClasses = 'dark:bg-opacity-30'
@@ -496,16 +498,18 @@ function getEstadoBadgeClass(estado: string): string {
     'PENDIENTE_CONFIRMACION_PROVEEDOR': `bg-yellow-100 text-yellow-800 ${darkClasses} dark:bg-yellow-900/50 dark:text-yellow-200`,
     'RESPUESTA_PROVEEDOR_CARGADA': `bg-blue-100 text-blue-800 ${darkClasses} dark:bg-blue-900/50 dark:text-blue-200`,
     'CONFIRMADO_PROVEEDOR': `bg-green-100 text-green-800 ${darkClasses} dark:bg-green-900/50 dark:text-green-200`,
+    'CONFIRMADO': `bg-green-100 text-green-800 ${darkClasses} dark:bg-green-900/50 dark:text-green-200`,
     'CONFIRMADO REDISTRIBUCION': `bg-teal-100 text-teal-800 ${darkClasses} dark:bg-teal-900/50 dark:text-teal-200`,
-    'PEDIDO_CONFIRMADO': `bg-teal-100 text-teal-800 ${darkClasses} dark:bg-teal-900/50 dark:text-teal-200`,
+    'PEDIDO_CONFIRMADO': `bg-cyan-100 text-cyan-800 ${darkClasses} dark:bg-cyan-900/50 dark:text-cyan-200`,
     'PROCESADO_SAP': `bg-indigo-100 text-indigo-800 ${darkClasses} dark:bg-indigo-900/50 dark:text-indigo-200`,
     'ORDEN_COMPRA_CREADA': `bg-fuchsia-100 text-fuchsia-800 ${darkClasses} dark:bg-fuchsia-900/50 dark:text-fuchsia-200`,
     'ENVIADA_SAP': `bg-purple-100 text-purple-800 ${darkClasses} dark:bg-purple-900/50 dark:text-purple-200`,
     'CONFIRMADO_ENVIADO': `bg-emerald-100 text-emerald-800 ${darkClasses} dark:bg-emerald-900/50 dark:text-emerald-200`,
     'DESPACHAR Y FACTURAR': `bg-orange-100 text-orange-800 ${darkClasses} dark:bg-orange-900/50 dark:text-orange-200`,
     'DESPACHAR_Y_FACTURAR': `bg-orange-100 text-orange-800 ${darkClasses} dark:bg-orange-900/50 dark:text-orange-200`,
-    'CERRADO': `bg-gray-100 text-gray-700 ${darkClasses} dark:bg-gray-600 dark:text-gray-200`,
-    'CANCELADO': `bg-red-100 text-red-800 ${darkClasses} dark:bg-red-900/50 dark:text-red-200`
+    'FINALIZADO': `bg-lime-100 text-lime-800 ${darkClasses} dark:bg-lime-900/50 dark:text-lime-200`,
+    'CERRADO': `bg-stone-100 text-stone-700 ${darkClasses} dark:bg-stone-600 dark:text-stone-200`,
+    'CANCELADO': `bg-rose-100 text-rose-800 ${darkClasses} dark:bg-rose-900/50 dark:text-rose-200`
   }
 
   return `${baseClasses} ${classes[estado] || `bg-gray-100 text-gray-800 ${darkClasses} dark:bg-gray-700 dark:text-gray-200`}`
