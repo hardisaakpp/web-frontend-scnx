@@ -43,6 +43,22 @@
             </p>
           </div>
           <div v-if="!soloLectura" class="flex items-center gap-3">
+            <button
+              v-if="pedido"
+              type="button"
+              @click="handleCancelar"
+              :disabled="cancelando"
+              class="px-4 py-2 border border-red-300 dark:border-red-600 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              <svg v-if="!cancelando" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              <svg v-else class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              {{ cancelando ? 'Cancelando...' : 'Cancelar Pedido' }}
+            </button>
             <div class="relative">
               <input
                 v-model="pedidoIdInput"
@@ -133,7 +149,7 @@
 import { ref, computed, watch, onMounted, nextTick, type Ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
-import { mba3ConsultasService } from '../services/mba3ConsultasApi'
+import { mba3ConsultasService, extractErrorMessage } from '../services/mba3ConsultasApi'
 import type { PedidoCompleto } from '../types'
 import type { ProductoRedistribucion, DistribucionTiendaEditada } from '../utils/redistribucionHelpers'
 import { usePedidoDetalle } from '../composables/usePedidoDetalle'
@@ -271,10 +287,35 @@ async function confirmarRedistribucion() {
   await redistribucion.confirmarRedistribucion(puedeConfirmarRedistribucion)
 }
 
+// Cancelar (descartar) pedido: misma lógica que Descartar en Cargar Plantilla. Elimina el pedido y notifica a EL RAYO.
+const cancelando = ref(false)
+async function handleCancelar() {
+  const pedidoId = pedido.value?.cabecera?.pedido_id
+  if (!pedidoId) {
+    toast.warning('Sin pedido', 'No hay pedido para cancelar')
+    return
+  }
+  if (!confirm('¿Cancelar y descartar este pedido? Se eliminará por completo y se notificará a EL RAYO. Podrás volver a cargarlo desde cero.')) {
+    return
+  }
+  cancelando.value = true
+  try {
+    await mba3ConsultasService.cancelarPedido(pedidoId)
+    pedido.value = null
+    error.value = null
+    router.push('/mba3-consultas/cargar-plantilla')
+    toast.success('Pedido cancelado', 'El pedido se ha cancelado y eliminado correctamente. EL RAYO ha sido notificado.')
+  } catch (e: any) {
+    toast.error('Error al cancelar pedido', extractErrorMessage(e))
+  } finally {
+    cancelando.value = false
+  }
+}
+
 // Navegación
 function goToPedido() {
   if (!pedidoIdInput.value.trim()) return
-  
+
   router.push({
     name: 'mba3-consultas-pedido-redistribucion',
     params: { id: encodeURIComponent(pedidoIdInput.value.trim()) }

@@ -397,7 +397,7 @@ export const pedidosService = {
   },
 
   /**
-   * Descarta (elimina) un pedido en estado BORRADOR sin datos aguas abajo.
+   * Descarta (elimina) un pedido desde la interfaz Cargar Plantilla.
    * DELETE /api/pedidos/{pedido_id}
    * Respuestas: 204 éxito; 400/404/409 con detail.message o detail.error.
    *
@@ -409,6 +409,22 @@ export const pedidosService = {
     } catch (error: any) {
       console.error('❌ [descartarPedido] Error:', error)
       throw createEnrichedError(error, 'Error al descartar pedido')
+    }
+  },
+
+  /**
+   * Cancela (elimina) un pedido desde la interfaz Redistribución.
+   * Misma acción que descartar a nivel de persistencia: elimina el pedido de la base de datos.
+   * El backend puede diferenciar este flujo (p. ej. notificación a EL RAYO) si expone un endpoint distinto.
+   *
+   * @param pedidoId ID del pedido (UUID)
+   */
+  async cancelarPedido(pedidoId: string): Promise<void> {
+    try {
+      await mba3Api.delete(`/api/pedidos/${encodeURIComponent(pedidoId)}`)
+    } catch (error: any) {
+      console.error('❌ [cancelarPedido] Error:', error)
+      throw createEnrichedError(error, 'Error al cancelar pedido')
     }
   },
 

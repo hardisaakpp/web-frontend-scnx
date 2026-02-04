@@ -1,6 +1,33 @@
 <template>
+  <!-- Overlay de bloqueo durante la carga de plantilla Excel -->
+  <Teleport to="body">
+    <div
+      v-if="uploading"
+      class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center"
+      @click.prevent
+      @mousedown.prevent
+      @mouseup.prevent
+      @touchstart.prevent
+      @touchmove.prevent
+      @touchend.prevent
+    >
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-8 max-w-md mx-4 text-center transition-colors duration-300">
+        <div class="flex flex-col items-center gap-4">
+          <svg class="animate-spin h-12 w-12 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <div>
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2 transition-colors duration-300">Cargando Plantilla Excel</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-300 transition-colors duration-300">Por favor espera mientras se procesa el archivo...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </Teleport>
+
   <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-    <div class="space-y-6">
+    <div class="space-y-6" :class="{ 'pointer-events-none opacity-75': uploading }">
       <!-- Header -->
       <div class="flex items-center justify-between flex-wrap gap-4">
         <div>
@@ -28,7 +55,9 @@
           </div>
         </div>
         <div class="flex items-center gap-3">
+          <!-- Temporalmente oculto: Crear pedido -->
           <button
+            v-if="false"
             @click="router.push('/mba3-consultas/pedidos/crear')"
             class="px-4 py-2 bg-emerald-600 dark:bg-emerald-500 text-white rounded-lg hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors text-sm font-medium flex items-center gap-2"
           >
@@ -36,6 +65,21 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
             Crear pedido
+          </button>
+          <button
+            @click="openFileSelector"
+            :disabled="uploading"
+            class="px-4 py-2 bg-emerald-600 dark:bg-emerald-500 text-white rounded-lg hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center gap-2"
+            title="Cargar plantilla Excel"
+          >
+            <svg v-if="!uploading" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            <svg v-else class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            {{ uploading ? 'Cargando...' : 'Cargar Plantillas Excel' }}
           </button>
           <!-- Toggle Auto-Refresh -->
           <label class="flex items-center gap-2 cursor-pointer">
@@ -349,6 +393,14 @@
           </div>
         </div>
       </div>
+
+      <!-- Modal para errores de validación del archivo -->
+      <UploadErrorModal
+        v-model="showErrorModal"
+        :upload-error-info="uploadErrorInfo"
+        :show-data-protection-message="true"
+        @apply-corrections="aplicarCorreccionesYContinuar"
+      />
     </div>
   </div>
 </template>
@@ -358,11 +410,40 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
+import { useFileUpload } from '../composables/useFileUpload'
+import UploadErrorModal from '../components/UploadErrorModal.vue'
 import type { PedidosListadoResponse, PedidoResumido, PedidosListadoFiltros, PedidosListadoMetadata } from '../types'
 import { formatDate } from '../utils/formatters'
 
 const router = useRouter()
 const toast = useToast()
+
+// Carga de plantillas Excel (redirige a cargar-plantilla/:id tras subir)
+const fileUploadComposable = useFileUpload({ redirectToCargarPlantilla: true })
+const {
+  uploading,
+  openFileSelector,
+  showErrorModal,
+  uploadErrorInfo,
+  archivoOriginal: archivoOriginalDelComposable,
+  reintentarConCorrecciones
+} = fileUploadComposable
+
+async function aplicarCorreccionesYContinuar(correcciones: Record<string, string>): Promise<void> {
+  const archivo = archivoOriginalDelComposable.value
+  if (!archivo) {
+    toast.error('Error', 'No se encontró el archivo original. Por favor, vuelve a subir el archivo.')
+    return
+  }
+  try {
+    showErrorModal.value = false
+    await reintentarConCorrecciones(archivo, correcciones)
+  } catch (error: any) {
+    console.error('❌ Error al aplicar correcciones:', error)
+    if (uploadErrorInfo.value) showErrorModal.value = true
+    toast.error('Error al aplicar correcciones', error.message || 'No se pudo procesar el archivo con las correcciones aplicadas')
+  }
+}
 
 const pedidos = ref<PedidoResumido[]>([])
 const loading = ref(false)

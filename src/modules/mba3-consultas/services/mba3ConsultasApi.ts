@@ -1203,12 +1203,19 @@ export const mba3ConsultasService = {
   },
 
   /**
-   * Descarta (elimina) un pedido en estado BORRADOR sin datos aguas abajo.
-   * DELETE /api/pedidos/{pedido_id}. Respuestas: 204 éxito; 400/404/409 con detail.
+   * Descarta (elimina) un pedido desde Cargar Plantilla. DELETE /api/pedidos/{pedido_id}.
    * @param pedidoId ID del pedido (UUID)
    */
   async descartarPedido(pedidoId: string): Promise<void> {
     return pedidosService.descartarPedido(pedidoId)
+  },
+
+  /**
+   * Cancela (elimina) un pedido desde Redistribución. Misma acción que descartar a nivel de BD.
+   * @param pedidoId ID del pedido (UUID)
+   */
+  async cancelarPedido(pedidoId: string): Promise<void> {
+    return pedidosService.cancelarPedido(pedidoId)
   },
 
   /**
