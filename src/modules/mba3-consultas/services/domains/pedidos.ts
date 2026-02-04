@@ -398,7 +398,7 @@ export const pedidosService = {
 
   /**
    * Descarta (elimina) un pedido desde la interfaz Cargar Plantilla.
-   * DELETE /api/pedidos/{pedido_id}
+   * DELETE /api/pedidos/{pedido_id} (sin notificar_el_rayo → no envía correo).
    * Respuestas: 204 éxito; 400/404/409 con detail.message o detail.error.
    *
    * @param pedidoId ID del pedido (UUID)
@@ -413,15 +413,16 @@ export const pedidosService = {
   },
 
   /**
-   * Cancela (elimina) un pedido desde la interfaz Redistribución.
-   * Misma acción que descartar a nivel de persistencia: elimina el pedido de la base de datos.
-   * El backend puede diferenciar este flujo (p. ej. notificación a EL RAYO) si expone un endpoint distinto.
+   * Cancela (elimina) un pedido desde la interfaz Redistribución y notifica a EL RAYO por correo.
+   * DELETE /api/pedidos/{pedido_id}?notificar_el_rayo=true
    *
    * @param pedidoId ID del pedido (UUID)
    */
   async cancelarPedido(pedidoId: string): Promise<void> {
     try {
-      await mba3Api.delete(`/api/pedidos/${encodeURIComponent(pedidoId)}`)
+      await mba3Api.delete(
+        `/api/pedidos/${encodeURIComponent(pedidoId)}?notificar_el_rayo=true`
+      )
     } catch (error: any) {
       console.error('❌ [cancelarPedido] Error:', error)
       throw createEnrichedError(error, 'Error al cancelar pedido')
