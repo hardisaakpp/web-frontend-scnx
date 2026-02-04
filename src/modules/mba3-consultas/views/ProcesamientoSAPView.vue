@@ -290,12 +290,12 @@
                       {{ (producto.total_linea_original ?? producto.subtotal_original) !== null ? formatCurrency(producto.total_linea_original ?? producto.subtotal_original ?? 0) : 'N/A' }}
                     </template>
                     
-                    <!-- Columna Unidad -->
+                    <!-- Columna Unidad: solo mostrar si hay al menos una unidad (original o SAP) -->
                     <template v-else-if="column.key === 'unidad'">
-                      <div class="flex flex-col items-center gap-1">
-                        <span class="text-xs text-gray-500 dark:text-gray-400">{{ producto.unidad_original || 'N/A' }}</span>
-                        <span class="text-xs">→</span>
-                        <span class="text-xs font-medium">{{ producto.unidad_sap || 'N/A' }}</span>
+                      <div v-if="producto.unidad_original || producto.unidad_sap" class="flex flex-col items-center gap-1">
+                        <span class="text-xs text-gray-500 dark:text-gray-400">{{ producto.unidad_original || '' }}</span>
+                        <span v-if="producto.unidad_original && producto.unidad_sap" class="text-xs">→</span>
+                        <span class="text-xs font-medium">{{ producto.unidad_sap || '' }}</span>
                       </div>
                     </template>
                     

@@ -125,8 +125,19 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
-    path: '/mba3-consultas/cargar-plantilla/:id?',
+    path: '/mba3-consultas/cargar-plantilla',
     name: 'mba3-consultas-cargar-plantilla',
+    component: () => import('./views/CargarPlantillaListadoView.vue'),
+    meta: { 
+      requiresAuth: true,
+      title: 'Cargar Plantilla - MABEL TRADING',
+      icon: 'DocumentArrowUpIcon',
+      permissions: ['mabel.view']
+    }
+  },
+  {
+    path: '/mba3-consultas/cargar-plantilla/:id',
+    name: 'mba3-consultas-cargar-plantilla-detalle',
     component: () => import('./views/CargarPlantillaView.vue'),
     meta: { 
       requiresAuth: true,

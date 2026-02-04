@@ -52,7 +52,20 @@
         @search-blur="handleSearchBlur"
         @descargar-plano-mba="handleDescargarPlanoMba"
         @crear-pedido="handleCrearPedido"
-      />
+      >
+        <template #leading>
+          <button
+            type="button"
+            @click="router.push('/mba3-consultas/cargar-plantilla')"
+            class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 hover:border-gray-400 dark:hover:border-gray-500 transition-colors"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Volver
+          </button>
+        </template>
+      </PedidoHeaderActions>
 
       <!-- Enviar / Descartar / Finalizado (solo cuando hay pedido cargado) -->
       <div v-if="pedido && !loading" class="flex items-center justify-end gap-3">
