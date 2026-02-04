@@ -49,7 +49,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import('./views/PedidosListView.vue'),
     meta: { 
       requiresAuth: true,
-      title: 'Listado de Pedidos',
+      title: 'Listado de Pedidos - EL RAYO',
       icon: 'DocumentTextIcon',
       permissions: ['odcsap.view']
     }
@@ -60,7 +60,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import('./views/PedidoDetalleView.vue'),
     meta: { 
       requiresAuth: true,
-      title: 'Detalle del Pedido',
+      title: 'Detalle del Pedido - EL RAYO',
       icon: 'DocumentTextIcon',
       permissions: ['odcsap.view']
     }

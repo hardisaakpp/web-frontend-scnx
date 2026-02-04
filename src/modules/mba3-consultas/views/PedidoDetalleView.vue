@@ -642,7 +642,7 @@ const {
 // Extraer variables del composable de redistribución
 // Ahora se acceden directamente desde redistribucion.productosRedistribucion, etc.
 
-const tituloInterfaz = 'Detalle del Pedido'
+const tituloInterfaz = 'Detalle del Pedido - EL RAYO'
 
 
 // ⭐ FASE 4: Computed para resumen de redistribución

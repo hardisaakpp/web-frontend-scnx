@@ -6,7 +6,7 @@
         <div>
           <div class="flex items-center gap-3">
             <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-              {{ esModoElRayo ? 'Listado de Pedidos - EL RAYO' : 'Listado de Pedidos' }}
+              Listado de Pedidos - EL RAYO
             </h1>
             <span v-if="esModoElRayo" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
               EL RAYO
