@@ -322,8 +322,9 @@ export function useRedistribucion(options: {
   }
 
   /**
-   * Valida y corrige cantidad al perder el foco
-   * ⭐ MEJORADO: Validaciones y correcciones más robustas con feedback al usuario
+   * Valida cantidad al perder el foco (sin corrección automática)
+   * Solo aplica correcciones mínimas para valores inválidos (negativos, decimales)
+   * NO ajusta automáticamente cuando excede el total confirmado - el usuario tiene control total
    */
   function validarYCorregirCantidad(producto: ProductoRedistribucion, tienda: DistribucionTiendaEditada) {
     if (!tienda || !producto) return
@@ -331,7 +332,7 @@ export function useRedistribucion(options: {
     let valorCorregido = false
     let mensajeCorreccion = ''
     
-    // Asegurar que no sea negativo
+    // Solo corregir valores claramente inválidos (negativos)
     if (tienda.cantidad_asignada < 0) {
       tienda.cantidad_asignada = 0
       valorCorregido = true
@@ -345,31 +346,23 @@ export function useRedistribucion(options: {
       mensajeCorreccion = 'Cantidad decimal redondeada a número entero'
     }
     
-    // Validar límite máximo
+    // Validar límite máximo (protección contra valores absurdos)
     if (tienda.cantidad_asignada > 1000000) {
       tienda.cantidad_asignada = 1000000
       valorCorregido = true
       mensajeCorreccion = 'Cantidad ajustada al límite máximo (1,000,000)'
     }
     
-    // Calcular suma actual
-    const sumaActual = producto.distribucion_tiendas.reduce((sum, t) => sum + (t.cantidad_asignada || 0), 0)
-    
-    // Si excede, ajustar automáticamente la tienda actual para que no exceda
-    if (sumaActual > producto.cantidad_confirmada) {
-      const exceso = sumaActual - producto.cantidad_confirmada
-      const nuevoValor = Math.max(0, tienda.cantidad_asignada - exceso)
-      tienda.cantidad_asignada = nuevoValor
-      valorCorregido = true
-      mensajeCorreccion = `Cantidad ajustada para no exceder el total confirmado (${formatNumber(producto.cantidad_confirmada)}). Se redujo en ${formatNumber(exceso)} unidades.`
-    }
+    // ⭐ ELIMINADO: Ya NO se ajusta automáticamente cuando excede el total confirmado
+    // El usuario tiene control total sobre los valores y verá el indicador visual de error
+    // en la columna "Diferencia" si el total distribuido excede el confirmado
     
     // Mostrar feedback si se corrigió algo
     if (valorCorregido && mensajeCorreccion) {
       toast.info('Valor corregido', mensajeCorreccion)
     }
     
-    // Recalcular diferencias
+    // Recalcular diferencias (solo para actualizar indicadores visuales)
     recalcularDiferencias()
   }
 

@@ -93,7 +93,7 @@
               v-if="isColumnVisible('costo_unitario')"
               class="bg-gray-50 dark:bg-gray-900 px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 min-w-[120px]"
             >
-              Costo Unit.
+              Precio
             </th>
             
             <!-- Columnas de tiendas/bodegas (dinámicas) - siempre visibles -->
@@ -454,7 +454,7 @@ const availableColumns: ColumnConfig[] = [
   { key: 'codigo', label: 'Código', visible: true, align: 'left', format: 'text', fixed: true },
   { key: 'producto', label: 'Producto', visible: true, align: 'left', format: 'text', fixed: true },
   { key: 'total_confirmado', label: 'Total Confirmado', visible: true, align: 'right', format: 'number', fixed: true },
-  { key: 'costo_unitario', label: 'PRECIO', visible: true, align: 'right', format: 'currency', fixed: true },
+  { key: 'costo_unitario', label: 'Precio', visible: true, align: 'right', format: 'currency', fixed: true },
   { key: 'total_distribuido', label: 'Total Distribuido', visible: true, align: 'right', format: 'number' },
   { key: 'diferencia', label: 'Diferencia', visible: true, align: 'right', format: 'number' }
 ]
