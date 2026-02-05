@@ -220,7 +220,7 @@
           <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             <template v-for="producto in productosArray" :key="producto.codigo_producto">
               <!-- Fila Principal del Producto -->
-              <!-- Fila Principal: Resalta primero modificaciones (ámbar), luego diferencia (verde/amarillo/rojo) -->
+              <!-- Fila Principal: Resalta primero modificaciones (ámbar), luego diferencia (verde/rojo) -->
               <!-- ⭐ IMPORTANTE: El resaltado ámbar debe aparecer inmediatamente si el producto tiene modificaciones del flujo anterior (EL RAYO) -->
               <tr 
                 :class="[
@@ -229,10 +229,9 @@
                   // ⭐ PRIORIDAD 1: Resaltar productos con modificaciones del flujo anterior (EL RAYO)
                   // Esto debe aparecer inmediatamente al cargar la página, no solo después de distribuir
                   tieneModificaciones(producto) ? 'bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 dark:border-amber-400' :
-                  // ⭐ PRIORIDAD 2: Resaltar según el estado de la distribución (rojo si |diferencia| >= 1)
+                  // ⭐ PRIORIDAD 2: Resaltar según el estado de la distribución (rojo si diferencia !== 0)
                   producto.diferencia === 0 ? 'bg-green-50 dark:bg-gray-700/30' :
-                  (producto.diferencia <= -1 || producto.diferencia >= 1) ? 'bg-red-50 dark:bg-red-900/10' :
-                  'bg-yellow-50 dark:bg-yellow-900/10'
+                  'bg-red-50 dark:bg-red-900/10'
                 ]"
               >
                 <td
@@ -328,11 +327,9 @@
                       class="px-2 py-1 text-xs font-medium rounded-full"
                       :class="producto.diferencia === 0 
                         ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' 
-                        : (producto.diferencia <= -1 || producto.diferencia >= 1)
-                        ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
-                        : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'"
+                        : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'"
                     >
-                      {{ producto.diferencia === 0 ? '✓ Completo' : producto.diferencia < 0 ? '⚠ Falta' : '✗ Excede' }}
+                      {{ producto.diferencia === 0 ? '✓ Completo' : producto.diferencia < 0 ? '✗ Falta' : '✗ Excede' }}
                     </span>
                   </template>
                   
@@ -486,7 +483,7 @@
                             </td>
                             <td class="px-4 py-3"></td>
                             <td class="px-4 py-3 whitespace-nowrap text-right">
-                              <div class="text-sm font-bold" :class="producto.diferencia === 0 ? 'text-green-600 dark:text-green-400' : (producto.diferencia <= -1 || producto.diferencia >= 1) ? 'text-red-600 dark:text-red-400' : 'text-yellow-600 dark:text-yellow-400'">
+                              <div class="text-sm font-bold" :class="producto.diferencia === 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
                                 {{ formatNumber(producto.cantidad_distribuida) }}
                               </div>
                               <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">

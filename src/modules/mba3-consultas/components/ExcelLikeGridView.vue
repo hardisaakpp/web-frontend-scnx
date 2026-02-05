@@ -147,17 +147,16 @@
               // ⭐ PRIORIDAD 1: Resaltar productos con modificaciones del flujo anterior (EL RAYO)
               // Esto debe aparecer SIEMPRE al cargar la página, no solo después de sincronizar
               tieneModificaciones(producto) ? 'bg-amber-100 dark:bg-amber-900/60 row-modified-amber border-l-4 border-amber-500 dark:border-amber-400' :
-              // ⭐ PRIORIDAD 2: Resaltar según el estado de la distribución (rojo si |diferencia| >= 1)
+              // ⭐ PRIORIDAD 2: Resaltar según el estado de la distribución (rojo si diferencia !== 0)
               producto.diferencia === 0 ? 'bg-green-50 dark:bg-gray-700/30' :
-              (producto.diferencia <= -1 || producto.diferencia >= 1) ? 'bg-red-50 dark:bg-red-900/10' :
-              'bg-yellow-50 dark:bg-yellow-900/10'
+              'bg-red-50 dark:bg-red-900/10'
             ]"
           >
             <!-- Columnas fijas - fondo completamente opaco -->
             <td
               v-if="isColumnVisible('numero')"
               class="sticky left-0 z-[5] px-4 py-3 text-sm font-medium text-gray-500 dark:text-gray-400 text-center whitespace-nowrap border-r border-gray-200 dark:border-gray-700 fixed-column-bg"
-              :class="producto.error ? 'fixed-bg-error' : tieneModificaciones(producto) ? 'fixed-bg-amber' : producto.diferencia === 0 ? 'fixed-bg-green' : (producto.diferencia <= -1 || producto.diferencia >= 1) ? 'fixed-bg-red' : 'fixed-bg-yellow'"
+              :class="producto.error ? 'fixed-bg-error' : tieneModificaciones(producto) ? 'fixed-bg-amber' : producto.diferencia === 0 ? 'fixed-bg-green' : 'fixed-bg-red'"
             >
               {{ index + 1 }}
             </td>
@@ -166,7 +165,7 @@
               class="sticky z-[5] px-4 py-3 text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap border-r border-gray-200 dark:border-gray-700 fixed-column-bg"
               :class="[
                 getStickyLeftClass('codigo'),
-                producto.error ? 'fixed-bg-error' : tieneModificaciones(producto) ? 'fixed-bg-amber' : producto.diferencia === 0 ? 'fixed-bg-green' : (producto.diferencia <= -1 || producto.diferencia >= 1) ? 'fixed-bg-red' : 'fixed-bg-yellow'
+                producto.error ? 'fixed-bg-error' : tieneModificaciones(producto) ? 'fixed-bg-amber' : producto.diferencia === 0 ? 'fixed-bg-green' : 'fixed-bg-red'
               ]"
             >
               {{ producto.codigo_producto }}
@@ -176,7 +175,7 @@
               :class="[
                 'sticky z-[5] px-4 py-3 text-sm text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700 fixed-column-bg',
                 getStickyLeftClass('producto'),
-                producto.error ? 'fixed-bg-error' : tieneModificaciones(producto) ? 'fixed-bg-amber' : producto.diferencia === 0 ? 'fixed-bg-green' : (producto.diferencia <= -1 || producto.diferencia >= 1) ? 'fixed-bg-red' : 'fixed-bg-yellow'
+                producto.error ? 'fixed-bg-error' : tieneModificaciones(producto) ? 'fixed-bg-amber' : producto.diferencia === 0 ? 'fixed-bg-green' : 'fixed-bg-red'
               ]"
             >
               <div class="max-w-[200px] truncate" :title="producto.descripcion">
@@ -188,7 +187,7 @@
               :class="[
                 'sticky z-[5] px-4 py-3 text-sm font-semibold text-blue-600 dark:text-blue-400 text-right whitespace-nowrap border-r border-gray-200 dark:border-gray-700 fixed-column-bg',
                 getStickyLeftClass('total_confirmado'),
-                producto.error ? 'fixed-bg-error' : tieneModificaciones(producto) ? 'fixed-bg-amber' : producto.diferencia === 0 ? 'fixed-bg-green' : (producto.diferencia <= -1 || producto.diferencia >= 1) ? 'fixed-bg-red' : 'fixed-bg-yellow'
+                producto.error ? 'fixed-bg-error' : tieneModificaciones(producto) ? 'fixed-bg-amber' : producto.diferencia === 0 ? 'fixed-bg-green' : 'fixed-bg-red'
               ]"
             >
               {{ formatNumber(producto.cantidad_confirmada) }}
@@ -204,19 +203,19 @@
                   ? 'fixed-bg-amber'
                   : tieneCostoModificado(producto) 
                   ? 'bg-amber-50 dark:bg-amber-900/20 border-l-2 border-amber-500 dark:border-amber-400 text-amber-900 dark:text-amber-200 font-semibold costo-modificado'
-                  : producto.diferencia === 0 ? 'fixed-bg-green' : (producto.diferencia <= -1 || producto.diferencia >= 1) ? 'fixed-bg-red' : 'fixed-bg-yellow',
+                  : producto.diferencia === 0 ? 'fixed-bg-green' : 'fixed-bg-red',
                 !producto.error && !tieneModificaciones(producto) && !tieneCostoModificado(producto) ? 'text-gray-900 dark:text-white' : ''
               ]"
             >
               {{ producto.costo_unitario ? formatCurrency(producto.costo_unitario) : '-' }}
             </td>
             
-            <!-- Celdas de tiendas (editables): resaltar en rojo cuando la celda tiene 1 o más (igual que DIFERENCIA >= 1) -->
+            <!-- Celdas de tiendas (editables): resaltar en rojo cuando la diferencia del producto !== 0 -->
             <td
               v-for="tienda in tiendasUnicas"
               :key="`${producto.codigo_producto}-${tienda.codigo}`"
               class="px-4 py-2 text-right transition-colors"
-              :class="getCantidadTienda(producto, tienda.codigo) >= 1 ? 'bg-red-50 dark:bg-red-900/10' : ''"
+              :class="producto.diferencia !== 0 ? 'bg-red-50 dark:bg-red-900/10' : ''"
             >
               <input
                 v-if="!soloLectura"

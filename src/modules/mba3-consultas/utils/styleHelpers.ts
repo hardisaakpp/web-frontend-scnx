@@ -75,10 +75,10 @@ export function getPrecioClass(original: number | null, ajustado: number | null)
 
 /**
  * Retorna las clases CSS para diferencia de redistribución.
- * Rojo cuando diferencia >= 1 (excede) o <= -1 (falta); verde cuando es 0 (completo).
+ * Rojo cuando diferencia !== 0 (ya sea positivo o negativo); verde cuando es 0 (completo).
  */
 export function getDiferenciaClass(diferencia: number): string {
-  if (diferencia <= -1 || diferencia >= 1) return 'text-red-600 dark:text-red-400 font-medium' // Falta o excede
+  if (diferencia !== 0) return 'text-red-600 dark:text-red-400 font-medium' // Falta (negativo) o excede (positivo)
   return 'text-green-600 dark:text-green-400' // Completo (diferencia === 0)
 }
 
