@@ -168,20 +168,28 @@
                 {{ producto.descripcion }}
               </div>
             </td>
+            <!-- Total Confirmado: resaltar en ámbar si fue modificado en el flujo de EL RAYO -->
             <td
               v-if="isColumnVisible('total_confirmado')"
               :class="[
-                'sticky z-[5] px-4 py-3 text-sm font-semibold text-blue-600 dark:text-blue-400 text-right whitespace-nowrap border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800',
-                getStickyLeftClass('total_confirmado')
+                'sticky z-[5] px-4 py-3 text-sm font-semibold text-right whitespace-nowrap border-r border-gray-200 dark:border-gray-700',
+                getStickyLeftClass('total_confirmado'),
+                tieneTotalConfirmadoModificado(producto) 
+                  ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-200 border-l-2 border-amber-500 dark:border-amber-400' 
+                  : 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400'
               ]"
             >
               {{ formatNumber(producto.cantidad_confirmada) }}
             </td>
+            <!-- Precio: resaltar en ámbar si fue modificado en el flujo de EL RAYO -->
             <td
               v-if="isColumnVisible('costo_unitario')"
               :class="[
-                'sticky z-[5] px-4 py-3 text-sm font-medium text-gray-900 dark:text-white text-right whitespace-nowrap border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800',
-                getStickyLeftClass('costo_unitario')
+                'sticky z-[5] px-4 py-3 text-sm font-medium text-right whitespace-nowrap border-r border-gray-200 dark:border-gray-700',
+                getStickyLeftClass('costo_unitario'),
+                tienePrecioModificado(producto) 
+                  ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-200 border-l-2 border-amber-500 dark:border-amber-400' 
+                  : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white'
               ]"
             >
               {{ producto.costo_unitario ? formatCurrency(producto.costo_unitario) : '-' }}
@@ -550,10 +558,12 @@ function tieneModificaciones(producto: ProductoRedistribucion): boolean {
 }
 
 /**
- * Verifica si un producto tiene modificaciones en costo unitario
+ * Verifica si un producto tiene modificaciones en costo unitario (columna "Precio")
  * ⭐ MEJORADO: Usa el computed reactivo para asegurar que el resaltado se aplique siempre
+ * 
+ * Mapping: costo_doc_sin_iva (EL RAYO) → costo_unitario / "Precio" (Redistribución)
  */
-function tieneCostoModificado(producto: ProductoRedistribucion): boolean {
+function tienePrecioModificado(producto: ProductoRedistribucion): boolean {
   // ⭐ PRIORIDAD 1: Usar campo del backend si está disponible
   if (producto.costo_modificado_manual === true) {
     return true
@@ -572,6 +582,34 @@ function tieneCostoModificado(producto: ProductoRedistribucion): boolean {
   
   // Verificar si hay una modificación para costo_doc_sin_iva
   const key = `${detallePedido.pedido_detalle_id}:costo_doc_sin_iva`
+  return columnasModificadasValue.has(key)
+}
+
+/**
+ * Verifica si un producto tiene modificaciones en total (columna "Total Confirmado")
+ * ⭐ NUEVO: Resaltado específico para la columna Total Confirmado
+ * 
+ * Mapping: total (EL RAYO) → total_confirmado / "Total Confirmado" (Redistribución)
+ */
+function tieneTotalConfirmadoModificado(producto: ProductoRedistribucion): boolean {
+  // ⭐ PRIORIDAD 1: Usar campo del backend si está disponible
+  if (producto.total_modificado_manual === true) {
+    return true
+  }
+  
+  // ⭐ PRIORIDAD 2: Usar el computed reactivo para verificar columnasModificadas
+  const columnasModificadasValue = props.columnasModificadas?.value
+  if (!columnasModificadasValue || !props.pedido?.detalles) return false
+  
+  // Buscar el detalle del pedido que corresponde a este producto
+  const detallePedido = props.pedido.detalles.find(
+    (d: any) => d.codigo_interno === producto.codigo_producto
+  )
+  
+  if (!detallePedido?.pedido_detalle_id) return false
+  
+  // Verificar si hay una modificación para total
+  const key = `${detallePedido.pedido_detalle_id}:total`
   return columnasModificadasValue.has(key)
 }
 
