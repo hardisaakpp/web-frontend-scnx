@@ -99,24 +99,25 @@
           <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Módulos</p>
         </div>
 
-
         <!-- Caja Chica -->
         <router-link
+          v-if="hasModuleAccess('cajachica')"
           to="/caja-chica"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
-            'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/50': $route.path === '/caja-chica',
-            'text-slate-300 hover:bg-slate-800/50 hover:text-white': $route.path !== '/caja-chica'
+            'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/50': $route.path.startsWith('/caja-chica'),
+            'text-slate-300 hover:bg-slate-800/50 hover:text-white': !$route.path.startsWith('/caja-chica')
           }"
           :title="isSidebarCollapsed ? 'Caja Chica' : ''"
         >
           <div class="absolute inset-0 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-          <DocumentCheckIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path === '/caja-chica' }" />
+          <DocumentCheckIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/caja-chica') }" />
           <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Caja Chica</span>
         </router-link>
 
         <!-- Contabilidad -->
         <router-link
+          v-if="hasModuleAccess('contabilidad')"
           to="/contabilidad"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
@@ -132,6 +133,7 @@
 
         <!-- Depósitos -->
         <router-link
+          v-if="hasModuleAccess('depositos')"
           to="/depositos"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
@@ -147,6 +149,7 @@
 
         <!-- Reportes -->
         <router-link
+          v-if="hasModuleAccess('reportes')"
           to="/reportes"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
@@ -162,7 +165,7 @@
 
         <!-- Conciliación -->
         <router-link
-          v-if="(authStore.userRoles?.includes('Admin') || authStore.hasPermission('conciliacion.view'))"
+          v-if="hasModuleAccess('conciliacion')"
           to="/conciliacion"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
@@ -178,7 +181,7 @@
 
         <!-- Integración MBA3-SAP -->
         <router-link
-          v-if="(authStore.userRoles?.includes('Admin') || authStore.hasPermission('mba3-consultas.view'))"
+          v-if="hasModuleAccess('mba3-consultas') || hasModuleAccess('mba3')"
           to="/mba3-consultas"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
@@ -193,23 +196,23 @@
         </router-link>
 
         <!-- Separador Administración -->
-        <div v-if="authStore.isAdmin" v-show="!isSidebarCollapsed" class="px-3 py-2 my-3">
+        <div v-if="hasModuleAccess('usuarios') || hasModuleAccess('roles') || hasModuleAccess('permisos') || authStore.isAdmin" v-show="!isSidebarCollapsed" class="px-3 py-2 my-3">
           <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Administración</p>
         </div>
 
-        <!-- Usuarios (Solo Admin) -->
+        <!-- Usuarios -->
         <router-link
-          v-if="authStore.isAdmin"
-          to="/usuarios"
+          v-if="hasModuleAccess('usuarios')"
+          to="/users"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
-            'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/50': $route.path === '/usuarios',
-            'text-slate-300 hover:bg-slate-800/50 hover:text-white': $route.path !== '/usuarios'
+            'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/50': $route.path.startsWith('/users'),
+            'text-slate-300 hover:bg-slate-800/50 hover:text-white': !$route.path.startsWith('/users')
           }"
           :title="isSidebarCollapsed ? 'Usuarios' : ''"
         >
           <div class="absolute inset-0 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-          <UsersIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path === '/usuarios' }" />
+          <UsersIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/users') }" />
           <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Usuarios</span>
         </router-link>
 
@@ -278,7 +281,7 @@
       ]"
     >
       <!-- Mobile Header -->
-      <header class="bg-white dark:bg-gray-800 shadow md:hidden sticky top-0 z-10 transition-colors duration-300">
+      <header v-if="!$route.path.startsWith('/users')" class="bg-white dark:bg-gray-800 shadow md:hidden sticky top-0 z-10 transition-colors duration-300">
         <div class="px-4 py-3 flex items-center justify-between">
           <button
             @click="isSidebarOpen = !isSidebarOpen"
@@ -300,7 +303,7 @@
       </header>
 
       <!-- Desktop Header -->
-      <header class="hidden md:block bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-10 transition-colors duration-300">
+      <header v-if="!$route.path.startsWith('/users')" class="hidden md:block bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-10 transition-colors duration-300">
         <div class="px-6 py-4 flex items-center justify-between">
           <h1 class="text-2xl font-semibold text-gray-800 dark:text-white">
             {{ pageTitle }}
@@ -331,6 +334,7 @@
 </template>
 
 <script setup lang="ts">
+// @ts-ignore
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { 
@@ -468,6 +472,18 @@ const pageTitle = computed(() => {
 const logout = () => {
   authStore.logout()
   router.push('/login')
+}
+
+// Función helper para verificar si el usuario tiene algún permiso de un módulo
+const hasModuleAccess = (moduleName: string): boolean => {
+  // Admin tiene acceso a todo
+  if (authStore.userRoles?.includes('Admin')) {
+    return true
+  }
+  
+  // Verificar si tiene algún permiso del módulo (modulo.*)
+  const permissions = authStore.userPermissions || []
+  return permissions.some(permission => permission.startsWith(`${moduleName}.`))
 }
 
 // Cargar preferencias del sidebar al montar

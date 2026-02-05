@@ -4,12 +4,11 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/usuarios',
     name: 'usuarios',
-    component: () => import('./views/UsuariosView.vue'),
+    component: () => import('./views/UsuariosTestView.vue'),
     meta: { 
       requiresAuth: true,
       title: 'Usuarios',
-      icon: 'UserGroupIcon',
-      role: 'Admin'  // Solo administradores
+      icon: 'UserGroupIcon'
     }
   },
   {

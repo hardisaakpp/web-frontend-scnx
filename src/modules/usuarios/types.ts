@@ -93,11 +93,42 @@ export interface UsuariosState {
   selectedUsuario: Usuario | null
   loading: boolean
   error: string | null
+  total: number
+  currentPage: number
+  pageSize: number
+  totalPages: number
 }
 
 export interface RolesState {
   roles: Rol[]
   selectedRol: Rol | null
+  loading: boolean
+  error: string | null
+}
+
+export interface PermisosState {
+  permisos: Permiso[]
+  selectedPermiso: Permiso | null
+  loading: boolean
+  error: string | null
+}
+
+// ============= FILTROS Y PAGINACIÓN =============
+export interface UsuarioFiltros {
+  search?: string
+  role?: string
+  isActive?: boolean
+  page?: number
+  pageSize?: number
+}
+
+export interface PaginatedResponse<T> {
+  data: T[]
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
+}
   loading: boolean
   error: string | null
 }
