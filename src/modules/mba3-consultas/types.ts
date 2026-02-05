@@ -905,6 +905,8 @@ export interface PedidoCompleto {
   puede_cancelar_pedido?: boolean
   /** true si se puede confirmar redistribución (estados 4-REDISTRIBUCION, 5-RESPUESTA_PROVEEDOR_CARGADA, 6-CONFIRMADO_PROVEEDOR, 8-EN_AJUSTE_MABEL, 9-REDISTRIBUIDO); false para CANCELADO y otros estados */
   puede_confirmar_redistribucion?: boolean
+  /** true si se puede finalizar el pedido (solo cuando estado_id === 17 = DESPACHAR Y FACTURAR). Backend: GET /api/pedidos/{id} y GET /api/plantillas/{numero_pedido} */
+  puede_finalizar?: boolean
 }
 
 // ========== Respuesta del Proveedor (Fase 3) ==========

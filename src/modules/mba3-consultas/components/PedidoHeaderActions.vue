@@ -102,21 +102,6 @@
         {{ generandoOC ? 'Generando...' : 'Generar Orden de Compra' }}
       </button>
       <button
-        v-if="!esModoMabelTrading && !hideConfirmAndDownload"
-        @click="$emit('confirmar')"
-        :disabled="loading || !pedido || confirmando || confirmarDeshabilitado"
-        class="px-4 py-2 bg-purple-600 dark:bg-purple-500 text-white rounded-lg hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
-      >
-        <svg v-if="!confirmando" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <svg v-else class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        {{ confirmando ? 'Confirmando...' : 'Confirmar' }}
-      </button>
-      <button
         v-if="showDespacharYFacturar && puedeDespacharYFacturar"
         type="button"
         @click="$emit('update-estado', 'DESPACHAR Y FACTURAR')"
@@ -126,6 +111,24 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
         Despachar y Facturar
+      </button>
+      <!-- Botón Finalizar Pedido (estado DESPACHAR Y FACTURAR → FINALIZADO) -->
+      <button
+        v-if="showFinalizarPedido && puedeFinalizarPedido"
+        type="button"
+        @click="$emit('finalizar-pedido')"
+        :disabled="finalizandoPedido"
+        class="px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-medium"
+        title="Marcar el pedido como Finalizado"
+      >
+        <svg v-if="!finalizandoPedido" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+        </svg>
+        <svg v-else class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        {{ finalizandoPedido ? 'Finalizando...' : 'Finalizar Pedido' }}
       </button>
       <button
         v-if="puedeDescargarCsv"
@@ -162,6 +165,22 @@
         </svg>
         {{ descargandoExcelOriginal ? 'Descargando...' : 'Descargar Excel Original' }}
       </button>
+      <!-- Botón Confirmar (movido al final, junto a Descargar Excel Original) -->
+      <button
+        v-if="!esModoMabelTrading && !hideConfirmAndDownload"
+        @click="$emit('confirmar')"
+        :disabled="loading || !pedido || confirmando || confirmarDeshabilitado"
+        class="px-4 py-2 bg-purple-600 dark:bg-purple-500 text-white rounded-lg hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+      >
+        <svg v-if="!confirmando" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <svg v-else class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        {{ confirmando ? 'Confirmando...' : 'Confirmar' }}
+      </button>
     </div>
   </div>
 </template>
@@ -179,6 +198,7 @@ const props = defineProps<{
   confirmando?: boolean
   descargandoCsv?: boolean
   descargandoExcelOriginal?: boolean
+  finalizandoPedido?: boolean
   canGenerarOC: boolean
   esModoMabelTrading: boolean
   pedido: any
@@ -193,6 +213,10 @@ const props = defineProps<{
   puedeDescargarCsv?: boolean
   /** Indica si existe el archivo Excel original en storage (MinIO/S3) para mostrar botón de descarga */
   tieneArchivoOriginal?: boolean
+  /** Indica si se puede finalizar el pedido (flag puede_finalizar del backend, true cuando estado_id === 17) */
+  puedeFinalizarPedido?: boolean
+  /** Mostrar botón "Finalizar Pedido" (solo en vista Cargar Plantilla, no en Detalle del Pedido) */
+  showFinalizarPedido?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -206,6 +230,7 @@ const emit = defineEmits<{
   'update-estado': [estado: string]
   'descargar-csv': []
   'descargar-excel-original': []
+  'finalizar-pedido': []
 }>()
 
 const pedidoIdInputModel = defineModel<string>('pedidoIdInput', { default: '' })

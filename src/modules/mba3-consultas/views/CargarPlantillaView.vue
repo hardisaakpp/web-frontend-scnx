@@ -45,6 +45,9 @@
         :hide-confirm-and-download="true"
         :show-crear-pedido="false"
         :hide-cargar-plantillas="!pedido"
+        :show-finalizar-pedido="true"
+        :puede-finalizar-pedido="puedeFinalizarPedido"
+        :finalizando-pedido="finalizandoPedido"
         @cargar-plantillas="goToCargarPlantillas"
         @generar-oc="handleGenerarOCDesdePedido"
         @confirmar="handleConfirmar"
@@ -52,6 +55,7 @@
         @search-blur="handleSearchBlur"
         @descargar-plano-mba="handleDescargarPlanoMba"
         @crear-pedido="handleCrearPedido"
+        @finalizar-pedido="handleFinalizarPedido"
       >
         <template #leading>
           <button
@@ -685,6 +689,45 @@ const showBotonFinalizado = computed(() =>
   numeroPedido.value === NUMERO_PEDIDO_FINALIZADO && pedido.value?.cabecera?.estado_id === 17
 )
 const finalizando = ref(false)
+
+// ⭐ Botón "Finalizar Pedido" en PedidoHeaderActions (usa flag puede_finalizar del backend)
+const finalizandoPedido = ref(false)
+const puedeFinalizarPedido = computed(() => pedido.value?.puede_finalizar === true)
+
+async function handleFinalizarPedido() {
+  const pedidoId = pedido.value?.cabecera?.pedido_id
+  if (!pedidoId) {
+    toast.error('Error', 'No hay pedido para finalizar')
+    return
+  }
+  if (finalizandoPedido.value) return
+
+  finalizandoPedido.value = true
+  toast.info('Finalizando pedido...', 'Por favor espera')
+
+  try {
+    const actualizado = await mba3ConsultasService.marcarFinalizado(pedidoId)
+    pedido.value = actualizado
+    toast.success('Pedido finalizado', 'El pedido se ha marcado como Finalizado correctamente.')
+    await loadPedido()
+  } catch (e: any) {
+    console.error('Error al finalizar pedido:', e)
+    const status = e.response?.status
+    const data = e.response?.data
+    const errorCode = data?.error
+    const detail = data?.detail
+    const msg = (typeof detail === 'object' && detail?.message) ? detail.message : (typeof detail === 'string' ? detail : null) ?? data?.message ?? e.message
+
+    if (status === 400 && (errorCode === 'estado_no_despachar_y_facturar' || msg?.includes('Despachar y Facturar'))) {
+      toast.error('Estado incorrecto', 'Solo se puede finalizar un pedido cuando está en estado "Despachar y Facturar".')
+    } else {
+      toast.error('Error al finalizar', msg || 'No se pudo finalizar el pedido.')
+    }
+    await loadPedido()
+  } finally {
+    finalizandoPedido.value = false
+  }
+}
 
 // ⭐ Detectar el modo de interfaz según query params
 const esModoMabelTrading = computed(() => {
