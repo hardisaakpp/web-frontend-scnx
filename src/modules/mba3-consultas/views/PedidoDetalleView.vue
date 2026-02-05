@@ -40,6 +40,7 @@
         :generando-o-c="generandoOC"
         :confirmando="confirmando"
         :descargando-csv="descargandoCsv"
+        :descargando-excel-original="descargandoExcelOriginal"
         :can-generar-o-c="canGenerarOC"
         :es-modo-mabel-trading="false"
         :pedido="pedido"
@@ -48,6 +49,7 @@
         :hide-cargar-plantillas="true"
         :show-despachar-y-facturar="true"
         :puede-descargar-csv="puedeDescargarCsv"
+        :tiene-archivo-original="tieneArchivoOriginal"
         @cargar-plantillas="goToCargarPlantillas"
         @generar-oc="handleGenerarOCDesdePedido"
         @confirmar="handleConfirmar"
@@ -56,6 +58,7 @@
         @search-blur="handleSearchBlur"
         @descargar-plano-mba="handleDescargarPlanoMba"
         @descargar-csv="handleDescargarCsv"
+        @descargar-excel-original="handleDescargarExcelOriginal"
       >
         <template #leading>
           <button
@@ -373,7 +376,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { useTablePreferences } from '@/composables/useTablePreferences'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
-import type { PedidoCompleto, ReporteDiferenciasResponse, UploadPlantillaResponse, ExportarMBAParams } from '../types'
+import type { PedidoCompleto, ReporteDiferenciasResponse, UploadPlantillaResponse, ExportarMBAParams, InfoArchivoPlantillaResponse } from '../types'
 // Utilidades extraídas
 import {
   formatDate,
@@ -442,6 +445,9 @@ const showColumnSelector = ref(false)
 const confirmando = ref(false)
 const eliminando = ref(false)
 const descargandoCsv = ref(false)
+const descargandoExcelOriginal = ref(false)
+const tieneArchivoOriginal = ref(false)
+const infoArchivoOriginal = ref<InfoArchivoPlantillaResponse | null>(null)
 const draggedColumnKey = ref<string | null>(null)
 const dragOverColumnKey = ref<string | null>(null)
 
@@ -1101,6 +1107,79 @@ async function handleDescargarCsv() {
   }
 }
 
+// Función para verificar si existe el archivo Excel original en MinIO/S3
+async function verificarArchivoOriginal() {
+  if (!pedido.value?.cabecera?.pedido_id) {
+    tieneArchivoOriginal.value = false
+    infoArchivoOriginal.value = null
+    return
+  }
+
+  try {
+    const response = await mba3ConsultasService.getInfoArchivoPlantilla(pedido.value.cabecera.pedido_id)
+    tieneArchivoOriginal.value = response.existe
+    infoArchivoOriginal.value = response
+    if (import.meta.env.DEV && response.existe) {
+      console.log('📁 [PedidoDetalleView] Archivo original disponible:', response.archivo?.nombre_original)
+    }
+  } catch (e: any) {
+    console.warn('⚠️ [PedidoDetalleView] Error al verificar archivo original:', e.message)
+    tieneArchivoOriginal.value = false
+    infoArchivoOriginal.value = null
+  }
+}
+
+// Función para descargar el archivo Excel original desde MinIO/S3
+async function handleDescargarExcelOriginal() {
+  if (!pedido.value?.cabecera?.pedido_id) {
+    toast.error('Error', 'No hay pedido para descargar')
+    return
+  }
+
+  // Prevenir múltiples clics
+  if (descargandoExcelOriginal.value) return
+
+  const pedidoId = pedido.value.cabecera.pedido_id
+  const nombreOriginal = infoArchivoOriginal.value?.archivo?.nombre_original
+
+  descargandoExcelOriginal.value = true
+  toast.info('Descargando archivo...', 'Por favor espera')
+
+  try {
+    const blob = await mba3ConsultasService.descargarExcelOriginal(pedidoId)
+    
+    // Usar el nombre original si está disponible, sino generar uno
+    const nombreArchivo = nombreOriginal || `plantilla_original_${pedido.value.cabecera.numero_pedido?.replace(/[^a-zA-Z0-9.-]/g, '_') || pedidoId}.xlsx`
+    
+    // Crear URL del blob y descargar
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = nombreArchivo
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    
+    toast.success('Descarga completada', 'El archivo Excel original se ha descargado correctamente')
+  } catch (e: any) {
+    console.error('Error al descargar Excel original:', e)
+    
+    const status = e.response?.status
+    const data = e.response?.data
+    const detail = data?.detail
+    const message = detail?.message || data?.message || e.message
+    
+    if (status === 404) {
+      toast.error('Archivo no encontrado', 'No existe archivo Excel original para este pedido')
+    } else {
+      toast.error('Error al descargar', message || 'Ocurrió un error inesperado al descargar el archivo')
+    }
+  } finally {
+    descargandoExcelOriginal.value = false
+  }
+}
+
 // Función para eliminar pedido (desde Detalle del Pedido - estado GESTIONAR PEDIDO)
 async function handleEliminarPedido() {
   if (!pedido.value?.cabecera?.pedido_id) {
@@ -1301,6 +1380,20 @@ watch(
     }
   },
   { immediate: false }
+)
+
+// Watch para verificar si existe el archivo original cuando cambia el pedido
+watch(
+  () => pedido.value?.cabecera?.pedido_id,
+  async (newPedidoId) => {
+    if (newPedidoId) {
+      await verificarArchivoOriginal()
+    } else {
+      tieneArchivoOriginal.value = false
+      infoArchivoOriginal.value = null
+    }
+  },
+  { immediate: true }
 )
 
 // Inicializar redistribución cuando el pedido tenga respuesta_proveedor (GET distribucion si existe, si no desde respuesta_proveedor)

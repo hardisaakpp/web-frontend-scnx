@@ -18,7 +18,7 @@ import type {
 } from '../types'
 import type { OrdenCompraResponse, OrdenCompraLogResponse, RemisionResponse } from '../types'
 import type { HealthResponse, ProcesoResponse } from '../types'
-import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, SkuHomologacionCreateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstado, ProcesoEstadoResponse, SugerenciaProducto, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuRequest, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, PedidoCompleto, CargarRespuestaProveedorResponse, RespuestaProveedorResponse, ProcesarConfirmacionResponse, ReporteDiferenciasResponse, IntegracionSAPResponse, ActualizarCostoPedidoResponse, AjusteDetalle, ResumenConfirmacion, GuardarModificacionesColumnasRequest, GuardarModificacionesColumnasResponse, ObtenerModificacionesColumnasResponse, ProcesamientoSAPResponse, PedidosListadoResponse, CrearOCDesdePedidoResponse, CrearPedidoRequest, CrearPedidoResponse, ModificarPedidoCabeceraRequest, ModificarPedidoCabeceraResponse, TienePedidosResponse } from '../types'
+import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, SkuHomologacionCreateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstado, ProcesoEstadoResponse, SugerenciaProducto, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuRequest, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, PedidoCompleto, CargarRespuestaProveedorResponse, RespuestaProveedorResponse, ProcesarConfirmacionResponse, ReporteDiferenciasResponse, IntegracionSAPResponse, ActualizarCostoPedidoResponse, AjusteDetalle, ResumenConfirmacion, GuardarModificacionesColumnasRequest, GuardarModificacionesColumnasResponse, ObtenerModificacionesColumnasResponse, ProcesamientoSAPResponse, PedidosListadoResponse, CrearOCDesdePedidoResponse, CrearPedidoRequest, CrearPedidoResponse, ModificarPedidoCabeceraRequest, ModificarPedidoCabeceraResponse, TienePedidosResponse, InfoArchivoPlantillaResponse } from '../types'
 
 // ⭐ REEXPORTAR CONFIGURACIÓN Y UTILIDADES REFACTORIZADAS
 export { mba3Api, API_BASE_URL } from './config/axiosConfig'
@@ -1511,6 +1511,31 @@ export const mba3ConsultasService = {
    */
   async tienePedidos(): Promise<TienePedidosResponse> {
     return pedidosService.tienePedidos()
+  },
+
+  // ========== Storage de Archivos (MinIO/S3) ==========
+
+  /**
+   * Obtiene información del archivo Excel original almacenado en MinIO/S3
+   * Permite verificar si existe el archivo antes de mostrar el botón de descarga.
+   * GET /api/plantillas/{pedido_id}/info-archivo
+   * @param pedidoId ID del pedido (UUID)
+   * @returns Información del archivo o indicador de que no existe
+   * @deprecated Usar pedidosService.getInfoArchivoPlantilla() directamente
+   */
+  async getInfoArchivoPlantilla(pedidoId: string): Promise<InfoArchivoPlantillaResponse> {
+    return pedidosService.getInfoArchivoPlantilla(pedidoId)
+  },
+
+  /**
+   * Descarga el archivo Excel original almacenado en MinIO/S3
+   * GET /api/plantillas/{pedido_id}/descargar-original
+   * @param pedidoId ID del pedido (UUID)
+   * @returns Blob del archivo Excel original
+   * @deprecated Usar pedidosService.descargarExcelOriginal() directamente
+   */
+  async descargarExcelOriginal(pedidoId: string): Promise<Blob> {
+    return pedidosService.descargarExcelOriginal(pedidoId)
   },
 }
 

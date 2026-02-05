@@ -30,7 +30,8 @@ import type {
   PedidosListadoResponse,
   TienePedidosResponse,
   CrearOCDesdePedidoResponse,
-  DistribucionPedidoResponse
+  DistribucionPedidoResponse,
+  InfoArchivoPlantillaResponse
 } from '../../types'
 
 export const pedidosService = {
@@ -921,6 +922,68 @@ export const pedidosService = {
         tiene_pedidos: false,
         message: error.message || 'Error desconocido al verificar existencia de pedidos'
       }
+    }
+  },
+
+  // ========== Storage de Archivos (MinIO/S3) ==========
+
+  /**
+   * Obtiene información del archivo Excel original almacenado en MinIO/S3
+   * 
+   * Permite verificar si existe el archivo antes de mostrar el botón de descarga.
+   * GET /api/plantillas/{pedido_id}/info-archivo
+   * 
+   * @param pedidoId ID del pedido (UUID)
+   * @returns Información del archivo o indicador de que no existe
+   */
+  async getInfoArchivoPlantilla(pedidoId: string): Promise<InfoArchivoPlantillaResponse> {
+    try {
+      const response = await mba3Api.get<InfoArchivoPlantillaResponse>(
+        `/api/plantillas/${encodeURIComponent(pedidoId)}/info-archivo`
+      )
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [getInfoArchivoPlantilla] Error:', error)
+      
+      // Si es 404, el archivo no existe
+      if (error.response?.status === 404) {
+        return {
+          existe: false,
+          message: 'No existe archivo de plantilla para este pedido'
+        }
+      }
+
+      throw createEnrichedError(error, 'Error al obtener información del archivo de plantilla')
+    }
+  },
+
+  /**
+   * Descarga el archivo Excel original almacenado en MinIO/S3
+   * 
+   * GET /api/plantillas/{pedido_id}/descargar-original
+   * 
+   * @param pedidoId ID del pedido (UUID)
+   * @returns Blob del archivo Excel original
+   */
+  async descargarExcelOriginal(pedidoId: string): Promise<Blob> {
+    try {
+      const response = await mba3Api.get<Blob>(
+        `/api/plantillas/${encodeURIComponent(pedidoId)}/descargar-original`,
+        { 
+          responseType: 'blob',
+          timeout: 60000 // 60 segundos para archivos grandes
+        }
+      )
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [descargarExcelOriginal] Error:', error)
+      
+      // Si es 404, el archivo no existe
+      if (error.response?.status === 404) {
+        throw new Error('No existe archivo de plantilla original para este pedido')
+      }
+
+      throw createEnrichedError(error, 'Error al descargar el archivo Excel original')
     }
   },
 }

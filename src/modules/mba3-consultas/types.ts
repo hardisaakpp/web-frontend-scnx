@@ -1318,3 +1318,33 @@ export const EXPORTAR_MBA_DEFAULTS: Partial<ExportarMBAParams> = {
   consolidado: false,
   incluir_encabezado: true,
 }
+
+// ========== Info Archivo Plantilla (Storage MinIO/S3) ==========
+
+/**
+ * Información del archivo de plantilla almacenado en MinIO/S3
+ * Respuesta de GET /api/plantillas/{pedido_id}/info-archivo
+ */
+export interface InfoArchivoPlantilla {
+  archivo_id: string
+  pedido_id: string
+  nombre_original: string
+  nombre_storage: string
+  content_type: string
+  tamanio_bytes: number
+  hash_md5?: string | null
+  fecha_subida: string
+  subido_por: string
+  descargas_count: number
+  ultima_descarga?: string | null
+}
+
+/**
+ * Respuesta del endpoint GET /api/plantillas/{pedido_id}/info-archivo
+ */
+export interface InfoArchivoPlantillaResponse {
+  existe: boolean
+  archivo?: InfoArchivoPlantilla
+  url_descarga?: string
+  message?: string
+}
