@@ -42,8 +42,9 @@
               Pedido: <span class="font-medium text-gray-900 dark:text-white">{{ pedido.cabecera.numero_pedido }}</span>
             </p>
           </div>
-          <div v-if="!soloLectura" class="flex items-center gap-3">
+          <div class="flex items-center gap-3">
             <button
+              v-if="!soloLectura"
               type="button"
               @click="router.push('/mba3-consultas/redistribucion')"
               class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 hover:border-gray-400 dark:hover:border-gray-500 transition-colors"
@@ -54,7 +55,24 @@
               Volver
             </button>
             <button
-              v-if="pedido"
+              v-if="soloLectura && pedido && tieneDistribucionConfirmada"
+              type="button"
+              @click="handleDescargarDistribucionExcel"
+              :disabled="descargandoRedistribucion"
+              class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-green-600 dark:bg-green-500 rounded-lg shadow-sm hover:bg-green-700 dark:hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Descargar distribución por tiendas en formato Excel"
+            >
+              <svg v-if="!descargandoRedistribucion" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <svg v-else class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              {{ descargandoRedistribucion ? 'Descargando...' : 'Descargar Redistribución' }}
+            </button>
+            <button
+              v-if="!soloLectura && pedido"
               type="button"
               @click="handleCancelar"
               :disabled="cancelando || (pedido != null && pedido.puede_cancelar_pedido === false)"
@@ -69,7 +87,7 @@
               </svg>
               {{ cancelando ? 'Cancelando...' : 'Cancelar Pedido' }}
             </button>
-            <div class="relative">
+            <div v-if="!soloLectura" class="relative">
               <input
                 v-model="pedidoIdInput"
                 @keyup.enter="goToPedido"
@@ -173,6 +191,7 @@ const toast = useToast()
 
 const pedido = ref<PedidoCompleto | null>(null)
 const pedidoIdInput = ref('')
+const descargandoRedistribucion = ref(false)
 
 // ⭐ Set para rastrear columnas modificadas (para resaltado en redistribución)
 const columnasModificadas: Ref<Set<string>> = ref<Set<string>>(new Set())
@@ -295,6 +314,60 @@ async function guardarBorradorRedistribucion() {
 
 async function confirmarRedistribucion() {
   await redistribucion.confirmarRedistribucion(puedeConfirmarRedistribucion)
+}
+
+// Verificar si tiene distribución confirmada
+const tieneDistribucionConfirmada = computed(() => {
+  if (!pedido.value) return false
+  // Verificar si hay productos de redistribución cargados
+  return redistribucion.productosRedistribucion.value.length > 0
+})
+
+// Descargar distribución en formato Excel
+async function handleDescargarDistribucionExcel() {
+  const pedidoId = pedido.value?.cabecera?.pedido_id
+  if (!pedidoId) {
+    toast.error('Error', 'No hay pedido para descargar')
+    return
+  }
+
+  if (descargandoRedistribucion.value) return
+
+  descargandoRedistribucion.value = true
+  toast.info('Generando archivo Excel...', 'Por favor espera')
+
+  try {
+    const blob = await mba3ConsultasService.descargarDistribucionExcel(pedidoId)
+    
+    // Crear nombre de archivo con timestamp
+    const numeroPedidoDisplay = pedido.value.cabecera.numero_pedido
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+    const nombreArchivo = `distribucion_${numeroPedidoDisplay.replace(/[^a-zA-Z0-9.-]/g, '_')}_${timestamp}.xlsx`
+    
+    // Crear URL del blob y descargar
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = nombreArchivo
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    
+    toast.success('Descarga completada', 'El archivo de distribución se ha descargado correctamente')
+  } catch (e: any) {
+    console.error('Error al descargar distribución Excel:', e)
+    
+    const message = extractErrorMessage(e)
+    
+    if (e.response?.status === 404) {
+      toast.error('Sin distribución', 'No se encontró distribución confirmada para este pedido')
+    } else {
+      toast.error('Error al descargar', message || 'Ocurrió un error al descargar el archivo de distribución')
+    }
+  } finally {
+    descargandoRedistribucion.value = false
+  }
 }
 
 // Cancelar (descartar) pedido: misma lógica que Descartar en Cargar Plantilla. Elimina el pedido y notifica a EL RAYO.

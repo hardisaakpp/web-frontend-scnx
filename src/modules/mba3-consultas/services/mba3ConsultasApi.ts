@@ -1232,6 +1232,18 @@ export const mba3ConsultasService = {
   },
 
   /**
+   * Descarga la distribución por tiendas en formato Excel
+   * GET /api/pedidos/{pedido_id}/distribucion/descargar-excel
+   * Genera archivo Excel con distribución confirmada (3 hojas).
+   * @param pedidoId ID del pedido (UUID)
+   * @param version Versión específica (opcional)
+   * @returns Blob del archivo Excel
+   */
+  async descargarDistribucionExcel(pedidoId: string, version?: number): Promise<Blob> {
+    return pedidosService.descargarDistribucionExcel(pedidoId, version)
+  },
+
+  /**
    * Cancela (elimina) un pedido desde Redistribución. Misma acción que descartar a nivel de BD.
    * @param pedidoId ID del pedido (UUID)
    */

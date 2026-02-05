@@ -452,6 +452,30 @@ export const pedidosService = {
   },
 
   /**
+   * Descarga la distribución por tiendas en formato Excel
+   * GET /api/pedidos/{pedido_id}/distribucion/descargar-excel
+   * Genera archivo Excel con distribución confirmada (3 hojas).
+   * Respuestas: 200 con archivo Excel; 404 con detail.message.
+   *
+   * @param pedidoId ID del pedido (UUID)
+   * @param version Versión específica (opcional, por defecto última)
+   * @returns Blob del archivo Excel
+   */
+  async descargarDistribucionExcel(pedidoId: string, version?: number): Promise<Blob> {
+    try {
+      const params = version != null ? `?version=${version}` : ''
+      const response = await mba3Api.get<Blob>(
+        `/api/pedidos/${encodeURIComponent(pedidoId)}/distribucion/descargar-excel${params}`,
+        { responseType: 'blob' }
+      )
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [descargarDistribucionExcel] Error:', error)
+      throw createEnrichedError(error, 'Error al descargar distribución Excel')
+    }
+  },
+
+  /**
    * Cancela un pedido cambiando su estado a CANCELADO (estado_id = 19) y notifica a EL RAYO por correo.
    * El pedido NO se elimina, solo cambia de estado.
    * POST /api/pedidos/{pedido_id}/cancelar
