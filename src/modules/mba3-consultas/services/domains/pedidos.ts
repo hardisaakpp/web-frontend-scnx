@@ -33,7 +33,9 @@ import type {
   DistribucionPedidoResponse,
   InfoArchivoPlantillaResponse,
   BuscarPlantillasResponse,
-  PlantillasPedidosResponse
+  PlantillasPedidosResponse,
+  ListadoArchivosOriginalesResponse,
+  EliminarArchivoOriginalResponse
 } from '../../types'
 
 export const pedidosService = {
@@ -1058,6 +1060,60 @@ export const pedidosService = {
       }
 
       throw createEnrichedError(error, 'Error al descargar el archivo Excel original')
+    }
+  },
+
+  /**
+   * Obtiene el listado de archivos Excel originales almacenados en MinIO/S3
+   * 
+   * GET /api/plantillas/archivos
+   * 
+   * @param limit Límite de resultados (opcional, default 100)
+   * @param soloActivos Si solo devuelve archivos activos (opcional, default true)
+   * @returns Lista de archivos originales
+   */
+  async getListadoArchivosOriginales(limit?: number, soloActivos?: boolean): Promise<ListadoArchivosOriginalesResponse> {
+    try {
+      const params: Record<string, any> = {}
+      if (limit != null) params.limit = limit
+      if (soloActivos != null) params.solo_activos = soloActivos
+
+      const url = buildUrlWithParams('/api/plantillas/archivos', params)
+      const response = await mba3Api.get<ListadoArchivosOriginalesResponse>(url)
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [getListadoArchivosOriginales] Error:', error)
+      throw createEnrichedError(error, 'Error al obtener listado de archivos originales')
+    }
+  },
+
+  /**
+   * Elimina un archivo Excel original del storage MinIO/S3
+   * 
+   * DELETE /api/plantillas/archivos/{archivo_id}
+   * 
+   * @param archivoId ID del archivo a eliminar
+   * @param eliminarFisicamente Si se elimina también del MinIO (opcional, default false = soft delete)
+   * @returns Resultado de la eliminación
+   */
+  async eliminarArchivoOriginal(archivoId: string, eliminarFisicamente?: boolean): Promise<EliminarArchivoOriginalResponse> {
+    try {
+      const params = eliminarFisicamente ? '?eliminar_fisicamente=true' : ''
+      const response = await mba3Api.delete<EliminarArchivoOriginalResponse>(
+        `/api/plantillas/archivos/${encodeURIComponent(archivoId)}${params}`
+      )
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [eliminarArchivoOriginal] Error:', error)
+      
+      if (error.response?.status === 404) {
+        throw new Error('El archivo no existe o ya fue eliminado')
+      }
+      if (error.response?.status === 403) {
+        throw new Error('No tiene permisos para eliminar este archivo')
+      }
+
+      throw createEnrichedError(error, 'Error al eliminar el archivo original')
     }
   },
 }

@@ -174,7 +174,7 @@
               @click="odcConsultasAbierto = !odcConsultasAbierto"
               class="w-full px-4 py-3 flex items-center justify-between gap-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
             >
-              <span class="font-medium text-gray-900 dark:text-white text-sm">Información ODC</span>
+              <span class="font-medium text-gray-900 dark:text-white text-sm">Información Pedidos y ODC</span>
               <svg
                 class="w-5 h-5 text-gray-500 dark:text-gray-400 flex-shrink-0 transition-transform duration-200"
                 :class="{ 'rotate-180': odcConsultasAbierto }"
@@ -190,7 +190,7 @@
               :style="{ gridTemplateRows: odcConsultasAbierto ? '1fr' : '0fr' }"
             >
               <div class="min-h-0 overflow-hidden">
-                <div class="p-3 grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div class="p-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                   <!-- Órdenes de Compra -->
                   <button
                     @click="$router.push('/mba3-consultas/ordenes-compra')"
@@ -244,6 +244,25 @@
                       <div class="flex-1 min-w-0">
                         <div class="font-medium text-gray-900 dark:text-white text-sm">Reporte de Diferencias</div>
                         <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Ver diferencias pedido vs confirmado</div>
+                      </div>
+                    </div>
+                  </button>
+
+                  <!-- Listado Pedidos Originales: capability can_view_plantillas_originales (mabel.view o admin) -->
+                  <button
+                    v-if="authStore.canViewPlantillasOriginales"
+                    @click="showListadoPedidosOriginalesModal = true"
+                    class="bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-600 p-4 hover:border-gray-300 dark:hover:border-gray-500 hover:shadow-sm transition-all text-left"
+                  >
+                    <div class="flex items-start gap-3">
+                      <div class="w-8 h-8 rounded bg-cyan-50 dark:bg-cyan-900/30 flex items-center justify-center flex-shrink-0">
+                        <svg class="w-4 h-4 text-cyan-600 dark:text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                        </svg>
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <div class="font-medium text-gray-900 dark:text-white text-sm">Listado Pedidos Originales</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Archivos Excel en storage</div>
                       </div>
                     </div>
                   </button>
@@ -352,6 +371,12 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal Listado Pedidos Originales -->
+    <ListadoPedidosOriginalesModal
+      :visible="showListadoPedidosOriginalesModal"
+      @close="showListadoPedidosOriginalesModal = false"
+    />
   </div>
 </template>
 
@@ -362,6 +387,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useOrdenesCompraStore } from '../stores/ordenesCompraStore'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import { useToast } from '@/composables/useToast'
+import ListadoPedidosOriginalesModal from '../components/ListadoPedidosOriginalesModal.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -369,10 +395,11 @@ const ordenesCompraStore = useOrdenesCompraStore()
 const toast = useToast()
 
 const loadingDespachos = ref(false)
-const odcConsultasAbierto = ref(true)
+const odcConsultasAbierto = ref(false)
 const showProcesamientoSAPModal = ref(false)
 const pedidoProcesamientoSAP = ref('')
 const loadingProcesamientoSAP = ref(false)
+const showListadoPedidosOriginalesModal = ref(false)
 
 // Función para cargar despachos antes de navegar
 async function cargarDespachos() {

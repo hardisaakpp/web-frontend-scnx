@@ -1385,3 +1385,45 @@ export interface PlantillasPedidosResponse {
   data: PedidoResumido[]
   metadata: PedidosListadoMetadata
 }
+
+// ========== Listado de Archivos Originales (MinIO/S3) ==========
+
+/**
+ * Archivo Excel original almacenado en MinIO/S3
+ * Respuesta de GET /api/plantillas/archivos
+ */
+export interface ArchivoOriginalItem {
+  archivo_id: string
+  pedido_id: string
+  numero_pedido: string
+  nombre_original: string
+  nombre_storage: string
+  content_type: string
+  tamanio_bytes: number
+  hash_md5?: string | null
+  fecha_subida: string
+  subido_por: string
+  descargas_count: number
+  ultima_descarga?: string | null
+  activo: boolean
+}
+
+/**
+ * Respuesta del endpoint GET /api/plantillas/archivos
+ */
+export interface ListadoArchivosOriginalesResponse {
+  status: 'success'
+  data: ArchivoOriginalItem[]
+  total: number
+  message?: string
+}
+
+/**
+ * Respuesta del endpoint DELETE /api/plantillas/archivos/{archivo_id}
+ */
+export interface EliminarArchivoOriginalResponse {
+  status: 'success'
+  message: string
+  archivo_id: string
+  eliminado_fisicamente: boolean
+}

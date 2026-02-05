@@ -22,6 +22,8 @@ export interface AuthCapabilities {
   can_view_order_list?: boolean
   /** true solo con permiso mabel.view. Cargar Plantilla, Redistribución, Procesamiento SAP, Procesos, Homologaciones. */
   mabel_view?: boolean
+  /** true con permiso mabel.view o admin. Botón "Listado Pedidos Originales" para ver/descargar/eliminar archivos Excel en MinIO. */
+  can_view_plantillas_originales?: boolean
   [key: string]: boolean | undefined
 }
 
@@ -203,7 +205,9 @@ export const useAuthStore = defineStore('auth', {
     /** true solo si capabilities.can_view_order_list === true (permiso odcsap.view). Botón "Listado de Pedidos". Ver docs/FRONTEND.md § 0.5.7.2. */
     canViewOrderList: (state): boolean => state.capabilities?.can_view_order_list === true,
     /** true solo si capabilities.mabel_view === true (permiso mabel.view). Cargar Plantilla, Redistribución, Procesamiento SAP, Procesos, Homologaciones. Solo leer de capabilities. */
-    canViewMabel: (state): boolean => state.capabilities?.mabel_view === true
+    canViewMabel: (state): boolean => state.capabilities?.mabel_view === true,
+    /** true solo si capabilities.can_view_plantillas_originales === true (permiso mabel.view o admin). Botón "Listado Pedidos Originales" en sección Información ODC. */
+    canViewPlantillasOriginales: (state): boolean => state.capabilities?.can_view_plantillas_originales === true
   },
 
   actions: {
