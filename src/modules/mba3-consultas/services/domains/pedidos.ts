@@ -31,7 +31,8 @@ import type {
   TienePedidosResponse,
   CrearOCDesdePedidoResponse,
   DistribucionPedidoResponse,
-  InfoArchivoPlantillaResponse
+  InfoArchivoPlantillaResponse,
+  BuscarPlantillasResponse
 } from '../../types'
 
 export const pedidosService = {
@@ -188,6 +189,47 @@ export const pedidosService = {
     } catch (error: any) {
       console.error('❌ [getUltimoPedido] Error al obtener último pedido:', error)
       throw createEnrichedError(error, 'Error desconocido al obtener último pedido')
+    }
+  },
+
+  /**
+   * Busca plantillas/pedidos por número de pedido (búsqueda parcial)
+   * 
+   * Este endpoint está diseñado para el campo de búsqueda de "Cargar Plantilla":
+   * - Realiza búsqueda parcial (ej: "P-12" encuentra "P-12.08 - 12 - 2025")
+   * - Incluye pedidos en estado BORRADOR
+   * - Filtra por el usuario actual
+   * - No requiere otros campos de filtro
+   * 
+   * Requiere permiso: mba3-consultas.facturas.view
+   * 
+   * @param numeroPedido Texto de búsqueda (parcial o completo)
+   * @returns Lista de pedidos que coinciden con la búsqueda
+   */
+  async buscarPlantillas(numeroPedido: string): Promise<BuscarPlantillasResponse> {
+    try {
+      const response = await mba3Api.get<BuscarPlantillasResponse>(
+        `/api/plantillas/buscar`,
+        {
+          params: { numero_pedido: numeroPedido },
+          timeout: 10000 // 10 segundos para búsqueda rápida
+        }
+      )
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [buscarPlantillas] Error al buscar plantillas:', error)
+      
+      // Si no hay resultados, devolver respuesta vacía
+      if (error.response?.status === 404) {
+        return {
+          status: 'success',
+          data: [],
+          total: 0,
+          query: numeroPedido
+        }
+      }
+      
+      throw createEnrichedError(error, 'Error desconocido al buscar plantillas')
     }
   },
 

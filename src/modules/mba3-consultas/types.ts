@@ -1348,3 +1348,28 @@ export interface InfoArchivoPlantillaResponse {
   url_descarga?: string
   message?: string
 }
+
+// ========== Búsqueda de Plantillas (Cargar Plantilla) ==========
+
+/**
+ * Resultado de búsqueda de plantillas por número de pedido
+ * Usado en el input de búsqueda de "Cargar Plantilla"
+ */
+export interface BuscarPlantillaResultado {
+  pedido_id: string
+  numero_pedido: string
+  estado: string
+  fecha_pedido: string | null
+  proveedor_nombre: string | null
+  creado_en: string | null
+}
+
+/**
+ * Respuesta del endpoint GET /api/plantillas/buscar?numero_pedido={query}
+ */
+export interface BuscarPlantillasResponse {
+  status: 'success'
+  data: BuscarPlantillaResultado[]
+  total: number
+  query: string
+}
