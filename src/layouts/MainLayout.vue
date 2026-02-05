@@ -99,6 +99,22 @@
           <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Módulos</p>
         </div>
 
+
+        <!-- Caja Chica -->
+        <router-link
+          to="/caja-chica"
+          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
+          :class="{
+            'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/50': $route.path === '/caja-chica',
+            'text-slate-300 hover:bg-slate-800/50 hover:text-white': $route.path !== '/caja-chica'
+          }"
+          :title="isSidebarCollapsed ? 'Caja Chica' : ''"
+        >
+          <div class="absolute inset-0 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <DocumentCheckIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path === '/caja-chica' }" />
+          <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Caja Chica</span>
+        </router-link>
+
         <!-- Contabilidad -->
         <router-link
           to="/contabilidad"
