@@ -1373,3 +1373,13 @@ export interface BuscarPlantillasResponse {
   total: number
   query: string
 }
+
+/**
+ * Respuesta del endpoint GET /api/plantillas/pedidos
+ * Este endpoint incluye pedidos en estado BORRADOR (a diferencia de GET /api/pedidos)
+ */
+export interface PlantillasPedidosResponse {
+  status: 'success'
+  data: PedidoResumido[]
+  metadata: PedidosListadoMetadata
+}

@@ -32,7 +32,8 @@ import type {
   CrearOCDesdePedidoResponse,
   DistribucionPedidoResponse,
   InfoArchivoPlantillaResponse,
-  BuscarPlantillasResponse
+  BuscarPlantillasResponse,
+  PlantillasPedidosResponse
 } from '../../types'
 
 export const pedidosService = {
@@ -230,6 +231,37 @@ export const pedidosService = {
       }
       
       throw createEnrichedError(error, 'Error desconocido al buscar plantillas')
+    }
+  },
+
+  /**
+   * Obtiene la lista de pedidos para la página "Cargar Plantilla"
+   * 
+   * A diferencia de getPedidosListado (que usa GET /api/pedidos):
+   * - INCLUYE pedidos en estado BORRADOR
+   * - Filtra automáticamente por el usuario actual
+   * - Diseñado específicamente para la interfaz de "Cargar Plantilla"
+   * 
+   * GET /api/plantillas/pedidos
+   * 
+   * Requiere permiso: mba3-consultas.facturas.view
+   * 
+   * @param filtros Filtros opcionales (estado, numero_pedido, limit, offset)
+   * @returns Lista de pedidos con metadata de paginación
+   */
+  async getPlantillasPedidos(filtros?: {
+    estado?: string
+    numero_pedido?: string
+    limit?: number
+    offset?: number
+  }): Promise<PlantillasPedidosResponse> {
+    try {
+      const url = buildUrlWithParams('/api/plantillas/pedidos', filtros || {})
+      const response = await mba3Api.get<PlantillasPedidosResponse>(url)
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [getPlantillasPedidos] Error:', error)
+      throw createEnrichedError(error, 'Error al obtener pedidos de plantillas')
     }
   },
 

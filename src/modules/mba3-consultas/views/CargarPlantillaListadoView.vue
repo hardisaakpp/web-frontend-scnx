@@ -476,7 +476,7 @@ import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import { useFileUpload } from '../composables/useFileUpload'
 import UploadErrorModal from '../components/UploadErrorModal.vue'
-import type { PedidosListadoResponse, PedidoResumido, PedidosListadoFiltros, PedidosListadoMetadata, BuscarPlantillaResultado } from '../types'
+import type { PedidosListadoResponse, PedidoResumido, PedidosListadoFiltros, PedidosListadoMetadata, BuscarPlantillaResultado, PlantillasPedidosResponse } from '../types'
 import { formatDate } from '../utils/formatters'
 
 const router = useRouter()
@@ -723,8 +723,11 @@ async function cargarPedidos() {
   loading.value = true
   error.value = null
   try {
-    const response: PedidosListadoResponse = await mba3ConsultasService.getPedidosListado({
-      ...filtros.value,
+    // ⭐ Usar getPlantillasPedidos en lugar de getPedidosListado
+    // El endpoint /api/plantillas/pedidos INCLUYE pedidos BORRADOR y filtra por usuario
+    const response: PlantillasPedidosResponse = await mba3ConsultasService.getPlantillasPedidos({
+      estado: filtros.value.estado || undefined,
+      numero_pedido: filtros.value.numero_pedido || undefined,
       limit: metadata.value.limit,
       offset: metadata.value.offset
     })
