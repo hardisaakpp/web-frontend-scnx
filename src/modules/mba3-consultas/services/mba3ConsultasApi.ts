@@ -1221,6 +1221,17 @@ export const mba3ConsultasService = {
   },
 
   /**
+   * Descarga un pedido en formato CSV (compatible con Excel)
+   * GET /api/pedidos/{pedido_id}/descargar-csv
+   * Solo válido en estado CONFIRMADO (4).
+   * @param pedidoId ID del pedido (UUID)
+   * @returns Blob del archivo CSV
+   */
+  async descargarPedidoCsv(pedidoId: string): Promise<Blob> {
+    return pedidosService.descargarPedidoCsv(pedidoId)
+  },
+
+  /**
    * Cancela (elimina) un pedido desde Redistribución. Misma acción que descartar a nivel de BD.
    * @param pedidoId ID del pedido (UUID)
    */

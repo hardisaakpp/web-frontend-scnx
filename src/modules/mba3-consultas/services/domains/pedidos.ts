@@ -430,6 +430,28 @@ export const pedidosService = {
   },
 
   /**
+   * Descarga un pedido en formato CSV (compatible con Excel)
+   * GET /api/pedidos/{pedido_id}/descargar-csv
+   * Solo válido en estado CONFIRMADO (4).
+   * Respuestas: 200 con archivo CSV; 400/404 con detail.message.
+   *
+   * @param pedidoId ID del pedido (UUID)
+   * @returns Blob del archivo CSV
+   */
+  async descargarPedidoCsv(pedidoId: string): Promise<Blob> {
+    try {
+      const response = await mba3Api.get<Blob>(
+        `/api/pedidos/${encodeURIComponent(pedidoId)}/descargar-csv`,
+        { responseType: 'blob' }
+      )
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [descargarPedidoCsv] Error:', error)
+      throw createEnrichedError(error, 'Error al descargar CSV del pedido')
+    }
+  },
+
+  /**
    * Cancela un pedido cambiando su estado a CANCELADO (estado_id = 19) y notifica a EL RAYO por correo.
    * El pedido NO se elimina, solo cambia de estado.
    * POST /api/pedidos/{pedido_id}/cancelar

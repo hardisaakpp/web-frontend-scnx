@@ -39,7 +39,7 @@
         :loading="loading"
         :generando-o-c="generandoOC"
         :confirmando="confirmando"
-        :eliminando="eliminando"
+        :descargando-csv="descargandoCsv"
         :can-generar-o-c="canGenerarOC"
         :es-modo-mabel-trading="false"
         :pedido="pedido"
@@ -47,7 +47,7 @@
         :hide-confirm-and-download="false"
         :hide-cargar-plantillas="true"
         :show-despachar-y-facturar="true"
-        :puede-eliminar="puedeEliminar"
+        :puede-descargar-csv="puedeDescargarCsv"
         @cargar-plantillas="goToCargarPlantillas"
         @generar-oc="handleGenerarOCDesdePedido"
         @confirmar="handleConfirmar"
@@ -55,7 +55,7 @@
         @go-to-pedido="goToPedido"
         @search-blur="handleSearchBlur"
         @descargar-plano-mba="handleDescargarPlanoMba"
-        @eliminar="handleEliminarPedido"
+        @descargar-csv="handleDescargarCsv"
       >
         <template #leading>
           <button
@@ -306,6 +306,33 @@
             </table>
           </div>
         </div>
+
+        <!-- Botón Eliminar Pedido (parte inferior) - Estado GESTIONAR PEDIDO -->
+        <div 
+          v-if="puedeEliminar" 
+          class="mt-6 pb-6 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 pt-6"
+        >
+          <div class="text-sm text-gray-600 dark:text-gray-400">
+            <p class="font-medium">⚠️ Zona de peligro</p>
+            <p class="text-xs mt-1">Esta acción es permanente y no se puede deshacer</p>
+          </div>
+          <button
+            type="button"
+            @click="handleEliminarPedido"
+            :disabled="eliminando"
+            class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-red-600 dark:bg-red-500 rounded-lg shadow-sm hover:bg-red-700 dark:hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Eliminar este pedido permanentemente"
+          >
+            <svg v-if="!eliminando" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            <svg v-else class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            {{ eliminando ? 'Eliminando...' : 'Eliminar Pedido' }}
+          </button>
+        </div>
       </div>
     </div>
 
@@ -332,7 +359,7 @@
     <SimpleConfirmModal
       :is-open="showConfirmacionModal"
       title="Pedido confirmado"
-      message="El pedido se ha confirmado correctamente. Será redirigido al inicio."
+      message="El pedido se ha confirmado correctamente."
       confirm-label="Aceptar"
       @close="handleCerrarModalConfirmacion"
     />
@@ -414,6 +441,7 @@ const columnasModificadas = ref<Set<string>>(new Set())
 const showColumnSelector = ref(false)
 const confirmando = ref(false)
 const eliminando = ref(false)
+const descargandoCsv = ref(false)
 const draggedColumnKey = ref<string | null>(null)
 const dragOverColumnKey = ref<string | null>(null)
 
@@ -758,6 +786,14 @@ const puedeEliminar = computed(() => {
   return estadoId === 3
 })
 
+// Permitir descargar CSV solo en estado CONFIRMADO (estado_id = 4)
+const puedeDescargarCsv = computed(() => {
+  const cabecera = pedido.value?.cabecera
+  if (!cabecera) return false
+  const estadoId = cabecera.estado_id != null ? Number(cabecera.estado_id) : null
+  return estadoId === 4
+})
+
 // Funciones de carga y gestión del pedido ahora están en el composable usePedidoDetalle
 
 // Inicializar composable de carga de archivos
@@ -998,7 +1034,71 @@ async function handleConfirmar() {
 
 function handleCerrarModalConfirmacion() {
   showConfirmacionModal.value = false
-  router.push('/mba3-consultas')
+  // El usuario permanece en la misma página (Detalle del Pedido)
+  // No se realiza redirección
+}
+
+// Función para descargar pedido en formato CSV (estado CONFIRMADO)
+async function handleDescargarCsv() {
+  if (!pedido.value?.cabecera?.pedido_id) {
+    toast.error('Error', 'No hay pedido para descargar')
+    return
+  }
+
+  // Prevenir múltiples clics
+  if (descargandoCsv.value) return
+
+  const pedidoId = pedido.value.cabecera.pedido_id
+  const numeroPedidoDisplay = pedido.value.cabecera.numero_pedido
+
+  descargandoCsv.value = true
+  toast.info('Generando archivo...', 'Por favor espera')
+
+  try {
+    const blob = await mba3ConsultasService.descargarPedidoCsv(pedidoId)
+    
+    // Crear nombre de archivo con timestamp
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+    const nombreArchivo = `pedido_${numeroPedidoDisplay.replace(/[^a-zA-Z0-9.-]/g, '_')}_${timestamp}.csv`
+    
+    // Crear URL del blob y descargar
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = nombreArchivo
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    
+    toast.success('Descarga completada', 'El archivo CSV se ha descargado correctamente')
+  } catch (e: any) {
+    console.error('Error al descargar CSV:', e)
+    
+    const status = e.response?.status
+    const data = e.response?.data
+    const detail = data?.detail
+    const errorCode = detail?.error
+    const message = detail?.message || data?.message || e.message
+    
+    if (status === 400) {
+      // Estado no permitido
+      if (errorCode === 'estado_no_confirmado' || message?.includes('CONFIRMADO')) {
+        toast.error(
+          'Estado no permitido',
+          'El pedido debe estar en estado CONFIRMADO para descargar el archivo CSV.'
+        )
+      } else {
+        toast.error('Error al descargar', message || 'No se pudo descargar el archivo CSV')
+      }
+    } else if (status === 404) {
+      toast.error('Pedido no encontrado', 'El pedido no existe')
+    } else {
+      toast.error('Error al descargar', message || 'Ocurrió un error inesperado al descargar el archivo')
+    }
+  } finally {
+    descargandoCsv.value = false
+  }
 }
 
 // Función para eliminar pedido (desde Detalle del Pedido - estado GESTIONAR PEDIDO)
