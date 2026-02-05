@@ -148,8 +148,8 @@
               // Esto debe aparecer SIEMPRE al cargar la página, no solo después de sincronizar
               tieneModificaciones(producto) ? 'bg-amber-100 dark:bg-amber-900/60 row-modified-amber border-l-4 border-amber-500 dark:border-amber-400' :
               // ⭐ PRIORIDAD 2: Resaltar según el estado de la distribución (rojo si diferencia !== 0)
-              producto.diferencia === 0 ? 'bg-green-50 dark:bg-gray-700/30' :
-              'bg-red-50 dark:bg-red-900/10'
+              producto.diferencia === 0 ? 'bg-green-50 dark:bg-green-900/30' :
+              'bg-red-50 dark:bg-red-900/30'
             ]"
           >
             <!-- Columnas fijas - fondo completamente opaco -->
@@ -210,12 +210,12 @@
               {{ producto.costo_unitario ? formatCurrency(producto.costo_unitario) : '-' }}
             </td>
             
-            <!-- Celdas de tiendas (editables): resaltar en rojo cuando la diferencia del producto !== 0 -->
+            <!-- Celdas de tiendas (editables): resaltar según diferencia del producto -->
             <td
               v-for="tienda in tiendasUnicas"
               :key="`${producto.codigo_producto}-${tienda.codigo}`"
               class="px-4 py-2 text-right transition-colors"
-              :class="producto.diferencia !== 0 ? 'bg-red-50 dark:bg-red-900/10' : ''"
+              :class="producto.diferencia === 0 ? 'bg-green-50 dark:bg-green-900/30' : 'bg-red-50 dark:bg-red-900/30'"
             >
               <input
                 v-if="!soloLectura"
@@ -788,7 +788,7 @@ td.fixed-column-bg.costo-modificado {
 
 /* Modo oscuro - fondos completamente opacos */
 .dark td.fixed-bg-green {
-  background-color: rgb(55 65 81) !important; /* gray-700 completamente opaco - filas completas en modo oscuro */
+  background-color: rgb(20 83 45) !important; /* green-900 completamente opaco - filas completas en modo oscuro */
 }
 
 .dark td.fixed-bg-yellow {

@@ -230,8 +230,8 @@
                   // Esto debe aparecer inmediatamente al cargar la página, no solo después de distribuir
                   tieneModificaciones(producto) ? 'bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 dark:border-amber-400' :
                   // ⭐ PRIORIDAD 2: Resaltar según el estado de la distribución (rojo si diferencia !== 0)
-                  producto.diferencia === 0 ? 'bg-green-50 dark:bg-gray-700/30' :
-                  'bg-red-50 dark:bg-red-900/10'
+                  producto.diferencia === 0 ? 'bg-green-50 dark:bg-green-900/30' :
+                  'bg-red-50 dark:bg-red-900/30'
                 ]"
               >
                 <td
