@@ -137,45 +137,31 @@
         
         <!-- Body -->
         <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-          <!-- ⭐ IMPORTANTE: El resaltado ámbar debe aparecer inmediatamente si el producto tiene modificaciones del flujo anterior (EL RAYO) -->
+          <!-- Filas de productos - los colores se aplican solo a las columnas dinámicas (tiendas) -->
           <tr
             v-for="(producto, index) in productosArray"
             :key="producto.codigo_producto"
-            :class="[
-              'transition-colors',
-              producto.error ? 'bg-gray-100 dark:bg-gray-700/30' :
-              // ⭐ PRIORIDAD 1: Resaltar productos con modificaciones del flujo anterior (EL RAYO)
-              // Esto debe aparecer SIEMPRE al cargar la página, no solo después de sincronizar
-              tieneModificaciones(producto) ? 'bg-amber-100 dark:bg-amber-900/60 row-modified-amber border-l-4 border-amber-500 dark:border-amber-400' :
-              // ⭐ PRIORIDAD 2: Resaltar según el estado de la distribución (rojo si diferencia !== 0)
-              producto.diferencia === 0 ? 'bg-green-50 dark:bg-green-900/30' :
-              'bg-red-50 dark:bg-red-900/30'
-            ]"
+            class="transition-colors"
           >
-            <!-- Columnas fijas - fondo completamente opaco -->
+            <!-- Columnas fijas - fondo neutro sin colores de estado -->
             <td
               v-if="isColumnVisible('numero')"
-              class="sticky left-0 z-[5] px-4 py-3 text-sm font-medium text-gray-500 dark:text-gray-400 text-center whitespace-nowrap border-r border-gray-200 dark:border-gray-700 fixed-column-bg"
-              :class="producto.error ? 'fixed-bg-error' : tieneModificaciones(producto) ? 'fixed-bg-amber' : producto.diferencia === 0 ? 'fixed-bg-green' : 'fixed-bg-red'"
+              class="sticky left-0 z-[5] px-4 py-3 text-sm font-medium text-gray-500 dark:text-gray-400 text-center whitespace-nowrap border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
             >
               {{ index + 1 }}
             </td>
             <td
               v-if="isColumnVisible('codigo')"
-              class="sticky z-[5] px-4 py-3 text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap border-r border-gray-200 dark:border-gray-700 fixed-column-bg"
-              :class="[
-                getStickyLeftClass('codigo'),
-                producto.error ? 'fixed-bg-error' : tieneModificaciones(producto) ? 'fixed-bg-amber' : producto.diferencia === 0 ? 'fixed-bg-green' : 'fixed-bg-red'
-              ]"
+              class="sticky z-[5] px-4 py-3 text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+              :class="getStickyLeftClass('codigo')"
             >
               {{ producto.codigo_producto }}
             </td>
             <td
               v-if="isColumnVisible('producto')"
               :class="[
-                'sticky z-[5] px-4 py-3 text-sm text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700 fixed-column-bg',
-                getStickyLeftClass('producto'),
-                producto.error ? 'fixed-bg-error' : tieneModificaciones(producto) ? 'fixed-bg-amber' : producto.diferencia === 0 ? 'fixed-bg-green' : 'fixed-bg-red'
+                'sticky z-[5] px-4 py-3 text-sm text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800',
+                getStickyLeftClass('producto')
               ]"
             >
               <div class="max-w-[200px] truncate" :title="producto.descripcion">
@@ -185,9 +171,8 @@
             <td
               v-if="isColumnVisible('total_confirmado')"
               :class="[
-                'sticky z-[5] px-4 py-3 text-sm font-semibold text-blue-600 dark:text-blue-400 text-right whitespace-nowrap border-r border-gray-200 dark:border-gray-700 fixed-column-bg',
-                getStickyLeftClass('total_confirmado'),
-                producto.error ? 'fixed-bg-error' : tieneModificaciones(producto) ? 'fixed-bg-amber' : producto.diferencia === 0 ? 'fixed-bg-green' : 'fixed-bg-red'
+                'sticky z-[5] px-4 py-3 text-sm font-semibold text-blue-600 dark:text-blue-400 text-right whitespace-nowrap border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800',
+                getStickyLeftClass('total_confirmado')
               ]"
             >
               {{ formatNumber(producto.cantidad_confirmada) }}
@@ -195,16 +180,8 @@
             <td
               v-if="isColumnVisible('costo_unitario')"
               :class="[
-                'sticky z-[5] px-4 py-3 text-sm font-medium text-right whitespace-nowrap border-r border-gray-200 dark:border-gray-700 fixed-column-bg',
-                getStickyLeftClass('costo_unitario'),
-                producto.error 
-                  ? 'fixed-bg-error'
-                  : tieneModificaciones(producto) 
-                  ? 'fixed-bg-amber'
-                  : tieneCostoModificado(producto) 
-                  ? 'bg-amber-50 dark:bg-amber-900/20 border-l-2 border-amber-500 dark:border-amber-400 text-amber-900 dark:text-amber-200 font-semibold costo-modificado'
-                  : producto.diferencia === 0 ? 'fixed-bg-green' : 'fixed-bg-red',
-                !producto.error && !tieneModificaciones(producto) && !tieneCostoModificado(producto) ? 'text-gray-900 dark:text-white' : ''
+                'sticky z-[5] px-4 py-3 text-sm font-medium text-gray-900 dark:text-white text-right whitespace-nowrap border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800',
+                getStickyLeftClass('costo_unitario')
               ]"
             >
               {{ producto.costo_unitario ? formatCurrency(producto.costo_unitario) : '-' }}
