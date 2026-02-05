@@ -903,6 +903,8 @@ export interface PedidoCompleto {
   puede_descartar?: boolean
   /** true si se puede cancelar (Redistribución); false desde estado Confirmado redistribución (estado_id ≥ 10). Backend: GET /api/pedidos/{id} */
   puede_cancelar_pedido?: boolean
+  /** true si se puede confirmar redistribución (estados 4-REDISTRIBUCION, 5-RESPUESTA_PROVEEDOR_CARGADA, 6-CONFIRMADO_PROVEEDOR, 8-EN_AJUSTE_MABEL, 9-REDISTRIBUIDO); false para CANCELADO y otros estados */
+  puede_confirmar_redistribucion?: boolean
 }
 
 // ========== Respuesta del Proveedor (Fase 3) ==========

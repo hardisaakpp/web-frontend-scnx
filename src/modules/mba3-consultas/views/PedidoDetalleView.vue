@@ -767,10 +767,9 @@ const confirmarDeshabilitadoPorEstado = computed(() => {
   return ESTADOS_YA_CONFIRMADOS.includes(estado)
 })
 
-// Deshabilitar "Confirmar Redistribución" cuando la redistribución ya está confirmada (docs/FRONTEND.md §1.3.1)
-const ESTADOS_REDISTRIBUCION_YA_CONFIRMADA = ['CONFIRMADO REDISTRIBUCION', 'PEDIDO_CONFIRMADO', 'PROCESADO_SAP']
+// Deshabilitar "Confirmar Redistribución" usando el flag del backend (incluye CANCELADO y estados ya confirmados)
 const confirmarRedistribucionDeshabilitadoPorEstado = computed(() =>
-  ESTADOS_REDISTRIBUCION_YA_CONFIRMADA.includes(pedido.value?.cabecera?.estado ?? '')
+  pedido.value?.puede_confirmar_redistribucion === false
 )
 
 // Solo permitir editar COSTO UNIT., TOTAL y COMENTARIO en estado GESTIONAR PEDIDO (docs/FRONTEND.md §0.5.8.2)

@@ -933,10 +933,9 @@ const puedeConfirmarRedistribucion = computed(() => {
          redistribucion.productosRedistribucion.value.every(p => !p.error)
 })
 
-// Deshabilitar "Confirmar Redistribución" cuando ya está confirmada (docs/FRONTEND.md §1.3.1)
-const ESTADOS_REDISTRIBUCION_YA_CONFIRMADA = ['CONFIRMADO REDISTRIBUCION', 'PEDIDO_CONFIRMADO', 'PROCESADO_SAP']
+// Deshabilitar "Confirmar Redistribución" usando el flag del backend (incluye CANCELADO y estados ya confirmados)
 const confirmarRedistribucionDeshabilitadoPorEstado = computed(() =>
-  ESTADOS_REDISTRIBUCION_YA_CONFIRMADA.includes(pedido.value?.cabecera?.estado ?? '')
+  pedido.value?.puede_confirmar_redistribucion === false
 )
 
 const canGenerarOC = computed(() => {
