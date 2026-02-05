@@ -39,6 +39,7 @@
         :loading="loading"
         :generando-o-c="generandoOC"
         :confirmando="confirmando"
+        :eliminando="eliminando"
         :can-generar-o-c="canGenerarOC"
         :es-modo-mabel-trading="false"
         :pedido="pedido"
@@ -46,6 +47,7 @@
         :hide-confirm-and-download="false"
         :hide-cargar-plantillas="true"
         :show-despachar-y-facturar="true"
+        :puede-eliminar="puedeEliminar"
         @cargar-plantillas="goToCargarPlantillas"
         @generar-oc="handleGenerarOCDesdePedido"
         @confirmar="handleConfirmar"
@@ -53,6 +55,7 @@
         @go-to-pedido="goToPedido"
         @search-blur="handleSearchBlur"
         @descargar-plano-mba="handleDescargarPlanoMba"
+        @eliminar="handleEliminarPedido"
       >
         <template #leading>
           <button
@@ -410,6 +413,7 @@ const columnasModificadas = ref<Set<string>>(new Set())
 // Gestión de columnas visibles en la tabla
 const showColumnSelector = ref(false)
 const confirmando = ref(false)
+const eliminando = ref(false)
 const draggedColumnKey = ref<string | null>(null)
 const dragOverColumnKey = ref<string | null>(null)
 
@@ -746,6 +750,14 @@ const puedeEditarCostoTotalComentario = computed(() => {
   return false
 })
 
+// Permitir eliminar pedido solo en estado GESTIONAR PEDIDO (estado_id = 3)
+const puedeEliminar = computed(() => {
+  const cabecera = pedido.value?.cabecera
+  if (!cabecera) return false
+  const estadoId = cabecera.estado_id != null ? Number(cabecera.estado_id) : null
+  return estadoId === 3
+})
+
 // Funciones de carga y gestión del pedido ahora están en el composable usePedidoDetalle
 
 // Inicializar composable de carga de archivos
@@ -987,6 +999,81 @@ async function handleConfirmar() {
 function handleCerrarModalConfirmacion() {
   showConfirmacionModal.value = false
   router.push('/mba3-consultas')
+}
+
+// Función para eliminar pedido (desde Detalle del Pedido - estado GESTIONAR PEDIDO)
+async function handleEliminarPedido() {
+  if (!pedido.value?.cabecera?.pedido_id) {
+    toast.error('Error', 'No hay pedido para eliminar')
+    return
+  }
+
+  // Prevenir múltiples clics
+  if (eliminando.value) return
+
+  const pedidoId = pedido.value.cabecera.pedido_id
+  const numeroPedidoDisplay = pedido.value.cabecera.numero_pedido
+  const estadoNombre = pedido.value.cabecera.estado_nombre || pedido.value.cabecera.estado
+
+  // Confirmación del usuario
+  const confirmado = window.confirm(
+    `¿Estás seguro de que deseas eliminar este pedido?\n\n` +
+    `Pedido: ${numeroPedidoDisplay}\n` +
+    `Estado: ${estadoNombre}\n\n` +
+    `Esta acción no se puede deshacer y el pedido será eliminado permanentemente.`
+  )
+
+  if (!confirmado) return
+
+  eliminando.value = true
+  toast.info('Eliminando pedido...', 'Por favor espera')
+
+  try {
+    await mba3ConsultasService.eliminarPedido(pedidoId)
+    
+    toast.success('Pedido eliminado', 'El pedido ha sido eliminado exitosamente')
+    
+    // Redirigir a la lista de pedidos después de un breve delay
+    setTimeout(() => {
+      router.push('/mba3-consultas/pedidos')
+    }, 1500)
+  } catch (e: any) {
+    console.error('Error al eliminar pedido:', e)
+    
+    const status = e.response?.status
+    const data = e.response?.data
+    const detail = data?.detail
+    const errorCode = detail?.error
+    const message = detail?.message || data?.message || e.message
+    
+    if (status === 400) {
+      // Estado no permitido
+      if (errorCode === 'estado_no_permitido' || message?.includes('estado')) {
+        toast.error(
+          'Estado no permitido',
+          'No se puede eliminar el pedido. Solo se permite eliminar pedidos en estado Gestionar Pedido.'
+        )
+      } else {
+        toast.error('Error al eliminar', message || 'No se pudo eliminar el pedido')
+      }
+    } else if (status === 409) {
+      // Tiene datos asociados (respuesta proveedor, redistribución, ODC)
+      toast.error(
+        'Pedido con datos asociados',
+        message || 'El pedido tiene información asociada (respuesta de proveedor, redistribución u ODC) y no puede eliminarse.'
+      )
+    } else if (status === 404) {
+      toast.error('Pedido no encontrado', 'El pedido no existe o ya fue eliminado')
+      // Redirigir a la lista después de un error 404
+      setTimeout(() => {
+        router.push('/mba3-consultas/pedidos')
+      }, 1500)
+    } else {
+      toast.error('Error al eliminar', message || 'Ocurrió un error inesperado al eliminar el pedido')
+    }
+  } finally {
+    eliminando.value = false
+  }
 }
 
 // ⭐ HU-08: Función para abrir el modal de exportación MBA

@@ -413,16 +413,36 @@ export const pedidosService = {
   },
 
   /**
-   * Cancela (elimina) un pedido desde la interfaz Redistribución y notifica a EL RAYO por correo.
-   * DELETE /api/pedidos/{pedido_id}?notificar_el_rayo=true
+   * Elimina un pedido desde la interfaz Detalle del Pedido (botón "Eliminar Pedido").
+   * DELETE /api/pedidos/{pedido_id}/eliminar
+   * Solo válido en estado GESTIONAR PEDIDO (3). No envía email a EL RAYO.
+   * Respuestas: 204 éxito; 400/404/409 con detail.message o detail.error.
    *
    * @param pedidoId ID del pedido (UUID)
    */
-  async cancelarPedido(pedidoId: string): Promise<void> {
+  async eliminarPedido(pedidoId: string): Promise<void> {
     try {
-      await mba3Api.delete(
-        `/api/pedidos/${encodeURIComponent(pedidoId)}?notificar_el_rayo=true`
+      await mba3Api.delete(`/api/pedidos/${encodeURIComponent(pedidoId)}/eliminar`)
+    } catch (error: any) {
+      console.error('❌ [eliminarPedido] Error:', error)
+      throw createEnrichedError(error, 'Error al eliminar pedido')
+    }
+  },
+
+  /**
+   * Cancela un pedido cambiando su estado a CANCELADO (estado_id = 19) y notifica a EL RAYO por correo.
+   * El pedido NO se elimina, solo cambia de estado.
+   * POST /api/pedidos/{pedido_id}/cancelar
+   *
+   * @param pedidoId ID del pedido (UUID)
+   * @returns El pedido actualizado con estado CANCELADO
+   */
+  async cancelarPedido(pedidoId: string): Promise<PedidoCompleto> {
+    try {
+      const response = await mba3Api.post<PedidoCompleto>(
+        `/api/pedidos/${encodeURIComponent(pedidoId)}/cancelar`
       )
+      return response.data
     } catch (error: any) {
       console.error('❌ [cancelarPedido] Error:', error)
       throw createEnrichedError(error, 'Error al cancelar pedido')

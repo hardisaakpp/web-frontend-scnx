@@ -1211,10 +1211,20 @@ export const mba3ConsultasService = {
   },
 
   /**
+   * Elimina un pedido desde Detalle del Pedido (botón "Eliminar Pedido").
+   * DELETE /api/pedidos/{pedido_id}/eliminar
+   * Solo válido en estado GESTIONAR PEDIDO (3). No envía email a EL RAYO.
+   * @param pedidoId ID del pedido (UUID)
+   */
+  async eliminarPedido(pedidoId: string): Promise<void> {
+    return pedidosService.eliminarPedido(pedidoId)
+  },
+
+  /**
    * Cancela (elimina) un pedido desde Redistribución. Misma acción que descartar a nivel de BD.
    * @param pedidoId ID del pedido (UUID)
    */
-  async cancelarPedido(pedidoId: string): Promise<void> {
+  async cancelarPedido(pedidoId: string): Promise<PedidoCompleto> {
     return pedidosService.cancelarPedido(pedidoId)
   },
 

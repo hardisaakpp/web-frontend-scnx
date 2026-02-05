@@ -44,10 +44,20 @@
           </div>
           <div v-if="!soloLectura" class="flex items-center gap-3">
             <button
+              type="button"
+              @click="router.push('/mba3-consultas/redistribucion')"
+              class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 hover:border-gray-400 dark:hover:border-gray-500 transition-colors"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              Volver
+            </button>
+            <button
               v-if="pedido"
               type="button"
               @click="handleCancelar"
-              :disabled="cancelando"
+              :disabled="cancelando || (pedido != null && pedido.puede_cancelar_pedido === false)"
               class="px-4 py-2 border border-red-300 dark:border-red-600 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               <svg v-if="!cancelando" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -295,16 +305,19 @@ async function handleCancelar() {
     toast.warning('Sin pedido', 'No hay pedido para cancelar')
     return
   }
-  if (!confirm('¿Cancelar y descartar este pedido? Se eliminará por completo y se notificará a EL RAYO. Podrás volver a cargarlo desde cero.')) {
+  if (!confirm('¿Cancelar este pedido? El pedido cambiará su estado a CANCELADO y permanecerá en el sistema. Se notificará a EL RAYO.')) {
     return
   }
   cancelando.value = true
   try {
-    await mba3ConsultasService.cancelarPedido(pedidoId)
-    pedido.value = null
-    error.value = null
-    router.push('/mba3-consultas/cargar-plantilla')
-    toast.success('Pedido cancelado', 'El pedido se ha cancelado y eliminado correctamente. EL RAYO ha sido notificado.')
+    const pedidoActualizado = await mba3ConsultasService.cancelarPedido(pedidoId)
+    // Actualizar el pedido en la vista con el nuevo estado CANCELADO
+    if (pedido.value) {
+      pedido.value.cabecera.estado = pedidoActualizado.cabecera.estado
+      pedido.value.cabecera.estado_id = pedidoActualizado.cabecera.estado_id
+      pedido.value.puede_cancelar_pedido = pedidoActualizado.puede_cancelar_pedido
+    }
+    toast.success('Pedido cancelado', 'El pedido se ha cancelado correctamente. EL RAYO ha sido notificado.')
   } catch (e: any) {
     toast.error('Error al cancelar pedido', extractErrorMessage(e))
   } finally {

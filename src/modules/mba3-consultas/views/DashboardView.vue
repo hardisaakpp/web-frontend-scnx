@@ -86,9 +86,8 @@
         <!-- Revisar Redistribución: EL RAYO, solo lectura (odcsap.view). Al lado de Redistribución. -->
         <button
           v-if="authStore.canViewOrderList"
-          @click="irARevisarRedistribucion"
-          :disabled="cargandoUltimoRedistribucion"
-          class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left disabled:opacity-50 disabled:cursor-not-allowed"
+          @click="router.push({ name: 'mba3-consultas-revisar-redistribucion' })"
+          class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left"
         >
           <div class="flex items-start gap-3">
             <div class="w-8 h-8 rounded bg-sky-50 dark:bg-sky-900/30 flex items-center justify-center flex-shrink-0">
@@ -99,12 +98,6 @@
             <div class="flex-1 min-w-0">
               <div class="font-medium text-gray-900 dark:text-white text-sm">Revisar Redistribución</div>
               <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">EL RAYO - Ver distribucion por tienda</div>
-              <div v-if="cargandoUltimoRedistribucion" class="text-xs text-sky-600 dark:text-sky-400 mt-2 flex items-center gap-1">
-                <svg class="animate-spin w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                Cargando...
-              </div>
             </div>
           </div>
         </button>
@@ -380,27 +373,6 @@ const odcConsultasAbierto = ref(true)
 const showProcesamientoSAPModal = ref(false)
 const pedidoProcesamientoSAP = ref('')
 const loadingProcesamientoSAP = ref(false)
-const cargandoUltimoRedistribucion = ref(false)
-
-async function irARevisarRedistribucion() {
-  cargandoUltimoRedistribucion.value = true
-  try {
-    const ultimo = await mba3ConsultasService.getUltimoPedidoRedistribucion(true)
-    const num = ultimo?.numero_pedido
-    if (num) {
-      router.push({
-        path: `/mba3-consultas/pedidos/${encodeURIComponent(num)}/redistribucion`,
-        query: { soloLectura: '1' }
-      })
-    } else {
-      toast.warning('Sin pedido', 'No hay pedido con redistribución para revisar')
-    }
-  } catch (e: any) {
-    toast.error('Error', e.message || 'No se pudo cargar el último pedido')
-  } finally {
-    cargandoUltimoRedistribucion.value = false
-  }
-}
 
 // Función para cargar despachos antes de navegar
 async function cargarDespachos() {

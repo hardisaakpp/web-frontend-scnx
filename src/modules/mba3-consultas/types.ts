@@ -901,6 +901,8 @@ export interface PedidoCompleto {
   respuesta_proveedor?: RespuestaProveedor  // Incluido si incluir_respuesta=true
   /** true si el pedido está en BORRADOR o NUEVO PEDIDO; false en el resto (p. ej. GESTIONAR PEDIDO). Backend: GET plantillas/ultimo, GET plantillas/{id}, POST .../gestionar */
   puede_descartar?: boolean
+  /** true si se puede cancelar (Redistribución); false desde estado Confirmado redistribución (estado_id ≥ 10). Backend: GET /api/pedidos/{id} */
+  puede_cancelar_pedido?: boolean
 }
 
 // ========== Respuesta del Proveedor (Fase 3) ==========

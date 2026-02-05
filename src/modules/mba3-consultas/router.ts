@@ -160,12 +160,23 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/mba3-consultas/redistribucion',
     name: 'mba3-consultas-redistribucion',
-    component: () => import('./views/MabelTradingRedistribucionView.vue'),
+    component: () => import('./views/RedistribucionListadoView.vue'),
     meta: { 
       requiresAuth: true,
       title: 'Redistribución - MABEL TRADING',
       icon: 'ChartBarIcon',
       permissions: ['mabel.view']
+    }
+  },
+  {
+    path: '/mba3-consultas/revisar-redistribucion',
+    name: 'mba3-consultas-revisar-redistribucion',
+    component: () => import('./views/RevisarRedistribucionListadoView.vue'),
+    meta: { 
+      requiresAuth: true,
+      title: 'Revisar Redistribución - EL RAYO',
+      icon: 'ChartBarIcon',
+      permissions: ['odcsap.view']
     }
   },
   {
