@@ -49,9 +49,15 @@
           v-if="editable"
           v-model="fechaPedidoLocal"
           type="date"
+          :disabled="!fechasEditables"
           @blur="actualizarFechaPedido"
           @keydown.enter="actualizarFechaPedido"
-          class="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+          :class="[
+            'mt-1 w-full px-3 py-2 border rounded-lg text-sm',
+            fechasEditables
+              ? 'border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white'
+              : 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+          ]"
         />
         <p v-else class="mt-1 text-sm text-gray-900 dark:text-white">{{ formatDate(pedido.cabecera.fecha_pedido) }}</p>
       </div>
@@ -63,10 +69,24 @@
               type="checkbox"
               id="entrega-inmediato"
               :checked="fechaEntregaLocal === 'INMEDIATO'"
+              :disabled="!fechasEditables"
               @change="handleInmediatoChange"
-              class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600"
+              :class="[
+                'w-4 h-4 rounded',
+                fechasEditables
+                  ? 'text-indigo-600 border-gray-300 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 cursor-pointer'
+                  : 'text-gray-400 border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 cursor-not-allowed'
+              ]"
             />
-            <label for="entrega-inmediato" class="text-sm text-gray-700 dark:text-gray-200 cursor-pointer">
+            <label 
+              for="entrega-inmediato" 
+              :class="[
+                'text-sm',
+                fechasEditables
+                  ? 'text-gray-700 dark:text-gray-200 cursor-pointer'
+                  : 'text-gray-400 dark:text-gray-500 cursor-not-allowed'
+              ]"
+            >
               INMEDIATO
             </label>
           </div>
@@ -74,13 +94,24 @@
             v-if="fechaEntregaLocal !== 'INMEDIATO'"
             v-model="fechaEntregaLocal"
             type="date"
+            :disabled="!fechasEditables"
             @blur="actualizarFechaEntrega"
             @keydown.enter="actualizarFechaEntrega"
-            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+            :class="[
+              'w-full px-3 py-2 border rounded-lg text-sm',
+              fechasEditables
+                ? 'border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white'
+                : 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+            ]"
           />
           <div
             v-else
-            class="w-full px-3 py-2 border border-indigo-300 dark:border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg text-sm text-indigo-900 dark:text-indigo-100 font-medium"
+            :class="[
+              'w-full px-3 py-2 border rounded-lg text-sm font-medium',
+              fechasEditables
+                ? 'border-indigo-300 dark:border-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-900 dark:text-indigo-100'
+                : 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400'
+            ]"
           >
             INMEDIATO
           </div>
@@ -170,7 +201,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import type { PedidoCompleto } from '../types'
 import { formatDate, formatEstadoPedido } from '../utils/formatters'
 import { getEstadoPedidoBadgeClass } from '../utils/styleHelpers'
@@ -182,7 +213,37 @@ const props = defineProps<{
   editable?: boolean
   /** Si false, el estado del pedido se muestra solo lectura (badge) aunque editable sea true. Por defecto true. */
   editableEstado?: boolean
+  /** 
+   * Si true, permite editar fechas cuando el estado sea GESTIONAR_PEDIDO (estado_id = 3).
+   * Por defecto false (solo editable en BORRADOR).
+   * Usar true en la interfaz de detalle de pedido (/pedidos/{id}).
+   * Usar false en la interfaz de cargar plantilla (/cargar-plantilla/{id}).
+   */
+  permitirEdicionFechasEnGestionar?: boolean
 }>()
+
+/**
+ * Los campos de Fecha de Pedido, Fecha de Entrega y checkbox INMEDIATO
+ * son editables según el estado del pedido:
+ * - BORRADOR (estado_id = 1): siempre editable
+ * - GESTIONAR_PEDIDO (estado_id = 3): editable solo si permitirEdicionFechasEnGestionar es true
+ * - Otros estados: no editable
+ */
+const fechasEditables = computed(() => {
+  const estadoId = props.pedido?.cabecera?.estado_id
+  
+  // Si no tiene estado definido, permitir edición
+  if (estadoId === undefined || estadoId === null) return true
+  
+  // En BORRADOR (estado_id = 1): siempre editable
+  if (estadoId === 1) return true
+  
+  // En GESTIONAR_PEDIDO (estado_id = 3): editable solo si permitirEdicionFechasEnGestionar es true
+  if (estadoId === 3 && props.permitirEdicionFechasEnGestionar) return true
+  
+  // En cualquier otro estado: no editable
+  return false
+})
 
 const emit = defineEmits<{
   'copy-to-clipboard': [text: string]
@@ -223,16 +284,22 @@ watch(() => props.pedido, (newPedido) => {
 
 // Funciones para actualizar valores
 function actualizarFechaPedido() {
+  // No actualizar si las fechas no son editables (estado >= NUEVO_PEDIDO)
+  if (!fechasEditables.value) return
   emit('update-fecha-pedido', fechaPedidoLocal.value || null)
 }
 
 function actualizarFechaEntrega() {
+  // No actualizar si las fechas no son editables (estado >= NUEVO_PEDIDO)
+  if (!fechasEditables.value) return
   if (fechaEntregaLocal.value !== 'INMEDIATO') {
     emit('update-fecha-entrega', fechaEntregaLocal.value || null)
   }
 }
 
 function handleInmediatoChange(event: Event) {
+  // No actualizar si las fechas no son editables (estado >= NUEVO_PEDIDO)
+  if (!fechasEditables.value) return
   const target = event.target as HTMLInputElement
   if (target.checked) {
     fechaEntregaLocal.value = 'INMEDIATO'

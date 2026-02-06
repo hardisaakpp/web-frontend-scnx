@@ -169,6 +169,7 @@
           :copy-feedback="copyFeedback"
           :editable="true"
           :default-expanded="true"
+          :permitir-edicion-fechas-en-gestionar="true"
           @copy-to-clipboard="copyToClipboard"
           @update-fecha-pedido="handleUpdateFechaPedido"
           @update-fecha-entrega="handleUpdateFechaEntrega"
