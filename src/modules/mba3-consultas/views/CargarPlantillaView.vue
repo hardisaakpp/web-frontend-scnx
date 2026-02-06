@@ -626,10 +626,14 @@ async function handleEnviar() {
   enviando.value = true
   try {
     const data = await mba3ConsultasService.enviarPedido(pedidoId)
+    // Actualizar tanto el estado como el estado_id para que la interfaz refleje el cambio
     if (pedido.value?.cabecera) {
       pedido.value.cabecera.estado = data.estado_nombre
+      pedido.value.cabecera.estado_id = data.estado_id
     }
     toast.success('Pedido enviado', data.message || 'El pedido se ha enviado correctamente')
+    // Recargar el pedido completo para asegurar sincronización de todos los campos
+    await loadPedido()
   } catch (e: any) {
     toast.error('Error al enviar', extractErrorMessage(e))
   } finally {
