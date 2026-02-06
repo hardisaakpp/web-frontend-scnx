@@ -17,8 +17,7 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        //target: 'http://172.30.159.208:5053', // Alex
-        target: 'http://210.17.1.53:5053', // Apps pruebas
+        target: 'http://192.168.2.12:8080',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path
