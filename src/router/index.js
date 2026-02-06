@@ -4,6 +4,7 @@ import MainLayout from '@/layouts/MainLayout.vue'
 
 // Import module routes
 import mba3ConsultasRoutes from '@/modules/mba3-consultas/router'
+import usuariosRoutes from '@/modules/usuarios/router'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -79,6 +80,8 @@ const router = createRouter({
         },
         // MBA3 Consultas routes
         ...mba3ConsultasRoutes,
+        // Usuarios routes
+        ...usuariosRoutes,
         {
           path: '/unauthorized',
           name: 'Unauthorized',
