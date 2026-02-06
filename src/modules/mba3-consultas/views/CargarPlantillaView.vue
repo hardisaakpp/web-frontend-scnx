@@ -319,6 +319,7 @@
           :editable="!esModoMabelTrading"
           :editable-estado="false"
           :default-expanded="!esModoMabelTrading"
+          :show-inmediato-option="true"
           @copy-to-clipboard="copyToClipboard"
           @update-fecha-pedido="handleUpdateFechaPedido"
           @update-fecha-entrega="handleUpdateFechaEntrega"

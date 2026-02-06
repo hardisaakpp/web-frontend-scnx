@@ -531,8 +531,9 @@
         <div v-if="!soloLectura" class="flex items-center gap-3">
           <button
             @click="$emit('guardar-borrador')"
-            :disabled="guardandoRedistribucionValue || productosArray.length === 0"
+            :disabled="guardandoRedistribucionValue || productosArray.length === 0 || guardarBorradorDeshabilitadoPorEstado"
             class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300 flex items-center gap-2"
+            :title="guardarBorradorDeshabilitadoPorEstado ? 'Solo se puede guardar borrador en estado Confirmado por El Rayo' : 'Guardar progreso actual para continuar más tarde'"
           >
             <svg v-if="!guardandoRedistribucionValue" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
@@ -619,11 +620,13 @@ interface Props {
   confirmandoRedistribucion: Ref<boolean>
   /** Si true, el botón "Confirmar Redistribución" va deshabilitado al cargar (p. ej. cabecera.estado === 'CONFIRMADO REDISTRIBUCION' o 'PEDIDO_CONFIRMADO'). Ver docs/FRONTEND.md §1.3.1 */
   confirmarDeshabilitadoPorEstado?: boolean
+  /** Si true, el botón "Guardar Borrador" va deshabilitado (solo se permite en estado CONFIRMADO POR EL RAYO = 4) */
+  guardarBorradorDeshabilitadoPorEstado?: boolean
   columnasModificadas?: Ref<Set<string>>
   /** Si true, muestra el botón "Enviar ODC a SAP" (proceso completo) */
   showEnviarOdcSap?: boolean
-  /** Ref que indica si está enviando a SAP */
-  enviandoOdcSap?: Ref<boolean>
+  /** Boolean que indica si está enviando a SAP */
+  enviandoOdcSap?: boolean
 }
 
 interface Emits {
@@ -638,7 +641,7 @@ interface Emits {
   (e: 'enviar-odc-sap'): void
 }
 
-const props = withDefaults(defineProps<Props>(), { confirmarDeshabilitadoPorEstado: false, soloLectura: false })
+const props = withDefaults(defineProps<Props>(), { confirmarDeshabilitadoPorEstado: false, guardarBorradorDeshabilitadoPorEstado: false, soloLectura: false })
 const emit = defineEmits<Emits>()
 
 // Estado para el modo de vista
@@ -754,7 +757,7 @@ const productosExpandidosSet = computed(() => props.productosExpandidos.value)
 // Unwrap de refs booleanos para TypeScript
 const guardandoRedistribucionValue = computed(() => props.guardandoRedistribucion.value)
 const confirmandoRedistribucionValue = computed(() => props.confirmandoRedistribucion.value)
-const enviandoOdcSapValue = computed(() => props.enviandoOdcSap?.value ?? false)
+const enviandoOdcSapValue = computed(() => props.enviandoOdcSap ?? false)
 
 // Computed para resumen de redistribución
 const resumenRedistribucion = computed(() => {

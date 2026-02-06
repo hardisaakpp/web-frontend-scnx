@@ -192,22 +192,49 @@ export function useRedistribucion(options: {
   }
 
   /**
-   * Carga la redistribución: intenta primero GET /api/pedidos/{pedido_id}/distribucion (lo guardado).
-   * Si hay datos, rellena la vista con ellos; si no, inicializa desde respuesta_proveedor + pedido.detalles.
+   * Carga la redistribución con la siguiente prioridad:
+   * 1. Primero intenta cargar un BORRADOR guardado (permite continuar trabajo en progreso)
+   * 2. Si no hay borrador, intenta cargar la distribución confirmada desde GET /api/pedidos/{pedido_id}/distribucion
+   * 3. Si no hay nada guardado, inicializa desde respuesta_proveedor + pedido.detalles
+   * 
+   * Esta prioridad garantiza que el usuario no pierda su progreso si guardó un borrador
+   * antes de refrescar la página o si el token expiró.
    */
   async function cargarYInicializarRedistribucion(): Promise<void> {
+    const numeroPedido = options.numeroPedido.value
     const pedidoId = options.pedido.value?.cabecera?.pedido_id
+
+    // 1. Primero intentar cargar borrador guardado (prioridad máxima)
+    if (numeroPedido) {
+      const borradorCargado = await cargarBorradorSiExiste()
+      if (borradorCargado) {
+        if (import.meta.env.DEV) {
+          console.log('📦 [cargarYInicializarRedistribucion] Usando borrador guardado')
+        }
+        return
+      }
+    }
+
+    // 2. Si no hay borrador, intentar cargar distribución confirmada
     if (pedidoId) {
       try {
         const data = await mba3ConsultasService.getDistribucion(pedidoId)
         if (data?.productos?.length > 0) {
           productosRedistribucion.value = mapDistribucionResponseToProductos(data)
           recalcularDiferencias()
+          if (import.meta.env.DEV) {
+            console.log('📦 [cargarYInicializarRedistribucion] Usando distribución confirmada')
+          }
           return
         }
       } catch (_) {
         // Sin distribución guardada o error: seguir con inicialización desde pedido
       }
+    }
+
+    // 3. Inicializar desde respuesta_proveedor + pedido.detalles (datos originales)
+    if (import.meta.env.DEV) {
+      console.log('📦 [cargarYInicializarRedistribucion] Inicializando desde datos originales del pedido')
     }
     inicializarProductosRedistribucion()
   }
@@ -649,23 +676,92 @@ export function useRedistribucion(options: {
   }
 
   /**
-   * Guarda borrador de redistribución
+   * Guarda borrador de redistribución en el backend
+   * 
+   * Permite al usuario guardar su progreso sin confirmar la redistribución.
+   * Los datos se persisten en la base de datos, no en sessionStorage,
+   * por lo que se mantienen incluso si la página se refresca o el token expira.
    */
   async function guardarBorradorRedistribucion() {
     if (!options.pedido.value || !options.numeroPedido.value) return
     
     guardandoRedistribucion.value = true
     try {
-      // TODO: Implementar endpoint para guardar borrador
-      // Por ahora, guardar en sessionStorage
-      const storageKey = `redistribucion_borrador_${options.numeroPedido.value}`
-      sessionStorage.setItem(storageKey, JSON.stringify(productosRedistribucion.value))
+      // Preparar datos para enviar al backend
+      const ajustes_detalle = productosRedistribucion.value.map(producto => ({
+        codigo_producto: producto.codigo_producto,
+        descripcion: producto.descripcion,
+        cantidad_solicitada: producto.cantidad_solicitada,
+        cantidad_confirmada: producto.cantidad_confirmada,
+        cantidad_ajustada: producto.cantidad_distribuida,
+        distribucion_tiendas: producto.distribucion_tiendas.map(t => ({
+          tienda_codigo: t.tienda_codigo,
+          tienda_nombre: t.tienda_nombre,
+          cantidad: t.cantidad_asignada
+        })),
+        costo_original: producto.costo_unitario,
+        costo_ajustado: producto.costo_unitario,
+        cambio_precio: false
+      }))
+
+      // Llamar al endpoint del backend para guardar el borrador
+      await mba3ConsultasService.guardarBorradorRedistribucion(
+        options.numeroPedido.value,
+        ajustes_detalle
+      )
       
-      toast.success('Borrador guardado', 'La redistribución se ha guardado como borrador')
+      toast.success('Borrador guardado', 'La redistribución se ha guardado. Puede continuar más tarde sin perder el progreso.')
     } catch (e: any) {
+      console.error('Error al guardar borrador:', e)
       toast.error('Error al guardar', e.message || 'No se pudo guardar el borrador')
     } finally {
       guardandoRedistribucion.value = false
+    }
+  }
+
+  /**
+   * Intenta cargar un borrador guardado previamente desde el backend.
+   * Si existe un borrador, lo aplica a productosRedistribucion.
+   * 
+   * @returns true si se cargó un borrador, false si no había borrador
+   */
+  async function cargarBorradorSiExiste(): Promise<boolean> {
+    const numero = options.numeroPedido.value
+    if (!numero) return false
+
+    try {
+      const borrador = await mba3ConsultasService.obtenerBorradorRedistribucion(numero)
+      
+      // Verificar si hay datos en el borrador
+      if (borrador.ajustes_detalle && borrador.ajustes_detalle.length > 0) {
+        // Aplicar los datos del borrador
+        productosRedistribucion.value = mapAjustesDetalleToProductos(borrador.ajustes_detalle)
+        recalcularDiferencias()
+        
+        // Notificar al usuario que se restauró el borrador
+        const fechaGuardado = borrador.fecha_guardado 
+          ? new Date(borrador.fecha_guardado).toLocaleString('es-CO', { 
+              dateStyle: 'short', 
+              timeStyle: 'short' 
+            })
+          : 'fecha desconocida'
+        
+        toast.info('Borrador recuperado', `Se ha restaurado el borrador guardado el ${fechaGuardado}`)
+        
+        if (import.meta.env.DEV) {
+          console.log(`📦 [useRedistribucion] Borrador cargado desde backend para ${numero}`)
+          console.log(`   Fecha: ${fechaGuardado}`)
+          console.log(`   Productos: ${borrador.ajustes_detalle.length}`)
+        }
+        
+        return true
+      }
+      
+      return false
+    } catch (e: any) {
+      // Si hay error al cargar el borrador, simplemente continuar sin él
+      console.warn('⚠️ [useRedistribucion] No se pudo cargar borrador:', e.message)
+      return false
     }
   }
 
@@ -772,6 +868,7 @@ export function useRedistribucion(options: {
     inicializarProductosRedistribucion,
     cargarYInicializarRedistribucion,
     cargarRedistribucionSoloLectura,
+    cargarBorradorSiExiste,
     recalcularDiferencias,
     validarProducto,
     validarCantidadTienda,

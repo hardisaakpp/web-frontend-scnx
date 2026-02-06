@@ -847,6 +847,97 @@ export const pedidosService = {
   },
 
   /**
+   * Guarda un borrador de redistribución
+   * 
+   * Permite al usuario guardar su progreso sin confirmar la redistribución.
+   * NO cambia el estado del pedido - solo persiste los datos.
+   * El usuario puede recuperar el borrador más tarde con obtenerBorradorRedistribucion().
+   * 
+   * POST /api/pedidos/{numero_pedido}/redistribucion/borrador
+   * 
+   * Requiere permiso: mabel.view
+   * 
+   * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
+   * @param ajustesDetalle Array de ajustes de redistribución
+   * @returns Resultado del guardado con fecha
+   */
+  async guardarBorradorRedistribucion(
+    numeroPedido: string,
+    ajustesDetalle: AjusteDetalle[]
+  ): Promise<{
+    status: string
+    message: string
+    pedido_id: string
+    numero_pedido: string
+    fecha_guardado: string
+  }> {
+    try {
+      const response = await mba3Api.post(
+        `/api/pedidos/${encodeURIComponent(numeroPedido)}/redistribucion/borrador`,
+        { ajustes_detalle: ajustesDetalle }
+      )
+      return response.data as {
+        status: string
+        message: string
+        pedido_id: string
+        numero_pedido: string
+        fecha_guardado: string
+      }
+    } catch (error: any) {
+      console.error('❌ [guardarBorradorRedistribucion] Error:', error)
+      throw createEnrichedError(error, 'Error al guardar borrador de redistribución')
+    }
+  },
+
+  /**
+   * Obtiene el borrador de redistribución guardado previamente
+   * 
+   * Permite recuperar el progreso del usuario si guardó un borrador antes.
+   * Si no hay borrador guardado, devuelve ajustes_detalle vacío.
+   * 
+   * GET /api/pedidos/{numero_pedido}/redistribucion/borrador
+   * 
+   * Requiere permiso: mabel.view
+   * 
+   * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
+   * @returns Borrador guardado con fecha o respuesta vacía si no existe
+   */
+  async obtenerBorradorRedistribucion(
+    numeroPedido: string
+  ): Promise<{
+    status: string
+    ajustes_detalle: AjusteDetalle[]
+    fecha_guardado: string | null
+    message?: string
+  }> {
+    try {
+      const response = await mba3Api.get(
+        `/api/pedidos/${encodeURIComponent(numeroPedido)}/redistribucion/borrador`
+      )
+      return response.data as {
+        status: string
+        ajustes_detalle: AjusteDetalle[]
+        fecha_guardado: string | null
+        message?: string
+      }
+    } catch (error: any) {
+      console.error('❌ [obtenerBorradorRedistribucion] Error:', error)
+      
+      // Si es 404 (por compatibilidad con versiones anteriores), devolver respuesta vacía
+      if (error.response?.status === 404) {
+        return {
+          status: 'success',
+          ajustes_detalle: [],
+          fecha_guardado: null,
+          message: 'No hay borrador guardado para este pedido'
+        }
+      }
+      
+      throw createEnrichedError(error, 'Error al obtener borrador de redistribución')
+    }
+  },
+
+  /**
    * Obtiene la distribución (cantidad por tienda) guardada para un pedido.
    * GET /api/pedidos/{pedido_id}/distribucion. Sin version = última versión.
    *

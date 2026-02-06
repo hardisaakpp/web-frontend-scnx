@@ -18,7 +18,9 @@ vi.mock('vue-router', async (importOriginal) => {
 vi.mock('@/modules/mba3-consultas/services/mba3ConsultasApi', () => ({
   mba3ConsultasService: {
     guardarBorradorRedistribucion: vi.fn(),
-    confirmarRedistribucion: vi.fn()
+    obtenerBorradorRedistribucion: vi.fn(),
+    confirmarRedistribucion: vi.fn(),
+    getDistribucion: vi.fn()
   }
 }))
 
@@ -406,6 +408,178 @@ describe('useRedistribucion', () => {
 
       expect(guardarBorradorRedistribucion).toBeDefined()
       expect(typeof guardarBorradorRedistribucion).toBe('function')
+    })
+
+    it('should call backend service to save draft', async () => {
+      mockPedido.value = {
+        cabecera: { pedido_id: '1', numero_pedido: 'P-12.48 - 01 - 2026' } as any,
+        detalles: [
+          {
+            codigo_interno: 'PROD-001',
+            tiendas: [{ codigo: 'T01', nombre: 'Tienda 1', cantidad: 10 }]
+          } as any
+        ],
+        respuesta_proveedor: {
+          detalles: [
+            {
+              codigo_producto: 'PROD-001',
+              descripcion: 'Producto Test',
+              cantidad_solicitada_total: 10,
+              cantidad_confirmada_total: 10,
+              costo_doc_sin_iva_ajustado: 100,
+              pedido_detalle_id: 1
+            }
+          ]
+        } as any
+      }
+
+      vi.mocked(mba3ConsultasService.guardarBorradorRedistribucion).mockResolvedValue({
+        status: 'success',
+        message: 'Borrador guardado correctamente',
+        pedido_id: '1',
+        numero_pedido: 'P-12.48 - 01 - 2026',
+        fecha_guardado: '2026-02-05T10:00:00Z'
+      })
+
+      const { inicializarProductosRedistribucion, guardarBorradorRedistribucion, guardandoRedistribucion } = useRedistribucion({
+        pedido: mockPedido,
+        numeroPedido: mockNumeroPedido,
+        esModoMabelTrading: mockEsModoMabelTrading
+      })
+
+      inicializarProductosRedistribucion()
+      await guardarBorradorRedistribucion()
+
+      expect(mba3ConsultasService.guardarBorradorRedistribucion).toHaveBeenCalledWith(
+        'P-12.48 - 01 - 2026',
+        expect.arrayContaining([
+          expect.objectContaining({
+            codigo_producto: 'PROD-001'
+          })
+        ])
+      )
+      expect(mockToast.success).toHaveBeenCalledWith(
+        'Borrador guardado',
+        expect.stringContaining('sin perder el progreso')
+      )
+      expect(guardandoRedistribucion.value).toBe(false)
+    })
+
+    it('should show error toast on failure', async () => {
+      mockPedido.value = {
+        cabecera: { pedido_id: '1', numero_pedido: 'P-12.48 - 01 - 2026' } as any,
+        detalles: [],
+        respuesta_proveedor: { detalles: [] } as any
+      }
+
+      vi.mocked(mba3ConsultasService.guardarBorradorRedistribucion).mockRejectedValue(
+        new Error('Error de conexión')
+      )
+
+      const { guardarBorradorRedistribucion, guardandoRedistribucion } = useRedistribucion({
+        pedido: mockPedido,
+        numeroPedido: mockNumeroPedido,
+        esModoMabelTrading: mockEsModoMabelTrading
+      })
+
+      await guardarBorradorRedistribucion()
+
+      expect(mockToast.error).toHaveBeenCalledWith(
+        'Error al guardar',
+        'Error de conexión'
+      )
+      expect(guardandoRedistribucion.value).toBe(false)
+    })
+  })
+
+  describe('cargarBorradorSiExiste', () => {
+    it('should load draft from backend if exists', async () => {
+      mockPedido.value = {
+        cabecera: { pedido_id: '1', numero_pedido: 'P-12.48 - 01 - 2026' } as any,
+        detalles: [],
+        respuesta_proveedor: { detalles: [] } as any
+      }
+
+      vi.mocked(mba3ConsultasService.obtenerBorradorRedistribucion).mockResolvedValue({
+        status: 'success',
+        ajustes_detalle: [
+          {
+            codigo_producto: 'PROD-001',
+            descripcion: 'Producto del Borrador',
+            cantidad_solicitada: 20,
+            cantidad_confirmada: 20,
+            cantidad_ajustada: 20,
+            distribucion_tiendas: [
+              { tienda_codigo: 'T01', tienda_nombre: 'Tienda 1', cantidad: 20 }
+            ]
+          }
+        ],
+        fecha_guardado: '2026-02-05T10:00:00Z'
+      })
+
+      const { cargarBorradorSiExiste, productosRedistribucion } = useRedistribucion({
+        pedido: mockPedido,
+        numeroPedido: mockNumeroPedido,
+        esModoMabelTrading: mockEsModoMabelTrading
+      })
+
+      const result = await cargarBorradorSiExiste()
+
+      expect(result).toBe(true)
+      expect(productosRedistribucion.value).toHaveLength(1)
+      expect(productosRedistribucion.value[0].codigo_producto).toBe('PROD-001')
+      expect(mockToast.info).toHaveBeenCalledWith(
+        'Borrador recuperado',
+        expect.stringContaining('restaurado')
+      )
+    })
+
+    it('should return false if no draft exists', async () => {
+      mockPedido.value = {
+        cabecera: { pedido_id: '1', numero_pedido: 'P-12.48 - 01 - 2026' } as any,
+        detalles: [],
+        respuesta_proveedor: { detalles: [] } as any
+      }
+
+      vi.mocked(mba3ConsultasService.obtenerBorradorRedistribucion).mockResolvedValue({
+        status: 'success',
+        ajustes_detalle: [],
+        fecha_guardado: null,
+        message: 'No hay borrador guardado para este pedido'
+      })
+
+      const { cargarBorradorSiExiste, productosRedistribucion } = useRedistribucion({
+        pedido: mockPedido,
+        numeroPedido: mockNumeroPedido,
+        esModoMabelTrading: mockEsModoMabelTrading
+      })
+
+      const result = await cargarBorradorSiExiste()
+
+      expect(result).toBe(false)
+      expect(productosRedistribucion.value).toHaveLength(0)
+    })
+
+    it('should return false on error', async () => {
+      mockPedido.value = {
+        cabecera: { pedido_id: '1', numero_pedido: 'P-12.48 - 01 - 2026' } as any,
+        detalles: [],
+        respuesta_proveedor: { detalles: [] } as any
+      }
+
+      vi.mocked(mba3ConsultasService.obtenerBorradorRedistribucion).mockRejectedValue(
+        new Error('Error de red')
+      )
+
+      const { cargarBorradorSiExiste } = useRedistribucion({
+        pedido: mockPedido,
+        numeroPedido: mockNumeroPedido,
+        esModoMabelTrading: mockEsModoMabelTrading
+      })
+
+      const result = await cargarBorradorSiExiste()
+
+      expect(result).toBe(false)
     })
   })
 

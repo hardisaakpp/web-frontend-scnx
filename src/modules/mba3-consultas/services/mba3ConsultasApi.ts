@@ -1355,6 +1355,39 @@ export const mba3ConsultasService = {
   },
 
   /**
+   * Guarda un borrador de redistribución
+   * 
+   * Permite al usuario guardar su progreso sin confirmar la redistribución.
+   * NO cambia el estado del pedido - solo persiste los datos.
+   * El usuario puede recuperar el borrador más tarde con obtenerBorradorRedistribucion().
+   * 
+   * @param numeroPedido Número de pedido
+   * @param ajustesDetalle Array de ajustes de redistribución
+   * @returns Resultado del guardado con fecha
+   * @deprecated Usar pedidosService.guardarBorradorRedistribucion() directamente
+   */
+  async guardarBorradorRedistribucion(
+    numeroPedido: string,
+    ajustesDetalle: import('../types').AjusteDetalle[]
+  ) {
+    return pedidosService.guardarBorradorRedistribucion(numeroPedido, ajustesDetalle)
+  },
+
+  /**
+   * Obtiene el borrador de redistribución guardado previamente
+   * 
+   * Permite recuperar el progreso del usuario si guardó un borrador antes.
+   * Si no hay borrador guardado, devuelve ajustes_detalle vacío.
+   * 
+   * @param numeroPedido Número de pedido
+   * @returns Borrador guardado con fecha o respuesta vacía si no existe
+   * @deprecated Usar pedidosService.obtenerBorradorRedistribucion() directamente
+   */
+  async obtenerBorradorRedistribucion(numeroPedido: string) {
+    return pedidosService.obtenerBorradorRedistribucion(numeroPedido)
+  },
+
+  /**
    * Obtiene la distribución guardada (cantidad por tienda) para un pedido.
    * GET /api/pedidos/{pedido_id}/distribucion. Sin version = última versión.
    * @param pedidoId UUID del pedido

@@ -250,6 +250,7 @@
         :guardando-redistribucion="redistribucion.guardandoRedistribucion"
         :confirmando-redistribucion="redistribucion.confirmandoRedistribucion"
         :confirmar-deshabilitado-por-estado="confirmarDeshabilitadoPorEstado"
+        :guardar-borrador-deshabilitado-por-estado="guardarBorradorDeshabilitadoPorEstado"
         :columnas-modificadas="columnasModificadas as unknown as Ref<Set<string>>"
         :show-enviar-odc-sap="showEnviarOdcSap"
         :enviando-odc-sap="enviandoOdcSap"
@@ -448,6 +449,15 @@ const puedeConfirmarRedistribucion = computed(() => {
 const confirmarDeshabilitadoPorEstado = computed(() =>
   pedido.value?.puede_confirmar_redistribucion === false
 )
+
+// ⭐ Deshabilitar "Guardar Borrador" si el estado NO es CONFIRMADO POR EL RAYO (estado_id = 4)
+// Solo se puede guardar borrador cuando el pedido está en estado CONFIRMADO POR EL RAYO.
+// Una vez que se confirma la redistribución (estado 10) o se envía a SAP (estado 12), el botón se deshabilita.
+const guardarBorradorDeshabilitadoPorEstado = computed(() => {
+  const estadoId = pedido.value?.cabecera?.estado_id
+  // Solo habilitado en estado 4 (CONFIRMADO POR EL RAYO)
+  return estadoId !== 4
+})
 
 // ⭐ Mostrar botón "Enviar ODC a SAP" solo cuando estado es CONFIRMADO POR EL RAYO (estado_id = 4)
 // Este botón ejecuta el proceso completo: Redistribución + Generar ODC + Enviar a SAP

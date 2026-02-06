@@ -64,7 +64,8 @@
       <div>
         <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Fecha de Entrega</label>
         <div v-if="editable" class="mt-1 space-y-2">
-          <div class="flex items-center gap-2">
+          <!-- Checkbox INMEDIATO: solo mostrar si showInmediatoOption !== false -->
+          <div v-if="showInmediatoOption !== false" class="flex items-center gap-2">
             <input
               type="checkbox"
               id="entrega-inmediato"
@@ -90,8 +91,9 @@
               INMEDIATO
             </label>
           </div>
+          <!-- Input de fecha: mostrar si showInmediatoOption es false, o si no está seleccionado INMEDIATO -->
           <input
-            v-if="fechaEntregaLocal !== 'INMEDIATO'"
+            v-if="showInmediatoOption === false || fechaEntregaLocal !== 'INMEDIATO'"
             v-model="fechaEntregaLocal"
             type="date"
             :disabled="!fechasEditables"
@@ -104,8 +106,9 @@
                 : 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed'
             ]"
           />
+          <!-- Badge INMEDIATO: solo mostrar si showInmediatoOption !== false y está seleccionado INMEDIATO -->
           <div
-            v-else
+            v-else-if="showInmediatoOption !== false && fechaEntregaLocal === 'INMEDIATO'"
             :class="[
               'w-full px-3 py-2 border rounded-lg text-sm font-medium',
               fechasEditables
@@ -220,6 +223,13 @@ const props = defineProps<{
    * Usar false en la interfaz de cargar plantilla (/cargar-plantilla/{id}).
    */
   permitirEdicionFechasEnGestionar?: boolean
+  /**
+   * Si true, muestra el checkbox INMEDIATO para la fecha de entrega.
+   * Por defecto true.
+   * Usar false en la interfaz de detalle de pedido (/pedidos/{id}).
+   * Usar true en la interfaz de cargar plantilla (/cargar-plantilla/{id}).
+   */
+  showInmediatoOption?: boolean
 }>()
 
 /**
@@ -230,10 +240,28 @@ const props = defineProps<{
  * - Otros estados: no editable
  */
 const fechasEditables = computed(() => {
-  const estadoId = props.pedido?.cabecera?.estado_id
+  const estadoIdRaw = props.pedido?.cabecera?.estado_id
+  const estadoNombre = props.pedido?.cabecera?.estado
+  
+  // DEBUG: Log para diagnosticar el problema
+  if (import.meta.env.DEV) {
+    console.log('🔍 [PedidoCabecera] fechasEditables check:', {
+      estadoIdRaw,
+      estadoNombre,
+      tipoEstadoId: typeof estadoIdRaw,
+      editable: props.editable,
+      permitirEdicionFechasEnGestionar: props.permitirEdicionFechasEnGestionar
+    })
+  }
   
   // Si no tiene estado definido, permitir edición
-  if (estadoId === undefined || estadoId === null) return true
+  if (estadoIdRaw === undefined || estadoIdRaw === null) return true
+  
+  // Normalizar a número (el backend podría devolver string o number)
+  const estadoId = typeof estadoIdRaw === 'string' ? parseInt(estadoIdRaw, 10) : estadoIdRaw
+  
+  // Si no se pudo parsear, permitir edición (caso edge)
+  if (isNaN(estadoId)) return true
   
   // En BORRADOR (estado_id = 1): siempre editable
   if (estadoId === 1) return true
@@ -299,14 +327,31 @@ function actualizarFechaEntrega() {
 
 function handleInmediatoChange(event: Event) {
   // No actualizar si las fechas no son editables (estado >= NUEVO_PEDIDO)
-  if (!fechasEditables.value) return
+  if (!fechasEditables.value) {
+    if (import.meta.env.DEV) {
+      console.log('🚫 [PedidoCabecera] handleInmediatoChange bloqueado: fechasEditables es false')
+    }
+    return
+  }
   const target = event.target as HTMLInputElement
+  
+  if (import.meta.env.DEV) {
+    console.log('✅ [PedidoCabecera] handleInmediatoChange:', {
+      checked: target.checked,
+      fechaEntregaLocalAntes: fechaEntregaLocal.value
+    })
+  }
+  
   if (target.checked) {
     fechaEntregaLocal.value = 'INMEDIATO'
     emit('update-fecha-entrega', 'INMEDIATO')
   } else {
     fechaEntregaLocal.value = null
     emit('update-fecha-entrega', null)
+  }
+  
+  if (import.meta.env.DEV) {
+    console.log('✅ [PedidoCabecera] fechaEntregaLocal después:', fechaEntregaLocal.value)
   }
 }
 
