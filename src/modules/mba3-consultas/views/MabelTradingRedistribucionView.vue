@@ -27,7 +27,7 @@
       </div>
     </Teleport>
 
-    <!-- Modal de bloqueo al enviar ODC a SAP (proceso completo: redistribución + ODC + SAP) -->
+    <!-- Modal de bloqueo al enviar ODC a SAP con barra de progreso -->
     <Teleport to="body">
       <div
         v-if="enviandoOdcSap"
@@ -39,22 +39,81 @@
         @touchmove.prevent
         @touchend.prevent
       >
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-8 max-w-md mx-4 text-center">
-          <div class="flex flex-col items-center gap-4">
-            <svg class="animate-spin h-12 w-12 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <div>
-              <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Enviando ODC a SAP</h3>
-              <p class="text-sm text-gray-600 dark:text-gray-300">
-                Ejecutando proceso completo:<br/>
-                1. Confirmar redistribución<br/>
-                2. Generar orden de compra<br/>
-                3. Enviar a SAP Service Layer
-              </p>
-              <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">No cierre esta ventana. Este proceso puede tomar hasta 3 minutos.</p>
+        <div class="bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl rounded-2xl shadow-2xl p-8 max-w-md mx-4 text-center transition-all duration-300 border border-white/30 dark:border-gray-600/30 relative overflow-hidden">
+          <!-- Efecto de fondo animado -->
+          <div class="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-indigo-600/5 pointer-events-none"></div>
+          <div class="absolute inset-0 overflow-hidden pointer-events-none">
+            <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"></div>
+          </div>
+          
+          <div class="relative z-10 flex flex-col items-center gap-5">
+            <!-- Spinner con efecto de pulso -->
+            <div class="relative">
+              <svg class="animate-spin h-14 w-14 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <div class="absolute inset-0 border-2 border-blue-300/30 dark:border-blue-500/30 rounded-full animate-ping"></div>
             </div>
+            
+            <div class="w-full">
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2 transition-colors duration-300">Enviando ODC a SAP</h3>
+              <p class="text-sm text-gray-600 dark:text-gray-300 mb-4 transition-colors duration-300">{{ sapMessage || 'Preparando proceso...' }}</p>
+              
+              <!-- Barra de progreso -->
+              <div class="w-full space-y-2">
+                <div class="flex items-center justify-between text-sm">
+                  <span class="text-gray-600 dark:text-gray-400 font-medium">Progreso del proceso</span>
+                  <span class="text-blue-600 dark:text-blue-400 font-bold">{{ sapProgress }}%</span>
+                </div>
+                <div class="w-full h-3 bg-gray-200/80 dark:bg-gray-700/80 rounded-full overflow-hidden shadow-inner">
+                  <div
+                    class="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-500 transition-all duration-300 ease-out shadow-lg relative overflow-hidden"
+                    :style="{ width: `${sapProgress}%` }"
+                  >
+                    <!-- Efecto shimmer sobre la barra -->
+                    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-shimmer"></div>
+                    <!-- Efecto de pulso en la barra -->
+                    <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Indicadores de fase (3 pasos) -->
+            <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+              <div class="flex items-center gap-1">
+                <div :class="[
+                  'w-2 h-2 rounded-full transition-colors duration-300',
+                  sapFase === 'redistribucion' || sapFase === 'generando' || sapFase === 'enviando' || sapFase === 'complete' 
+                    ? 'bg-blue-500' 
+                    : 'bg-gray-300 dark:bg-gray-600'
+                ]"></div>
+                <span>Redistribuir</span>
+              </div>
+              <div class="w-4 h-px bg-gray-300 dark:bg-gray-600"></div>
+              <div class="flex items-center gap-1">
+                <div :class="[
+                  'w-2 h-2 rounded-full transition-colors duration-300',
+                  sapFase === 'generando' || sapFase === 'enviando' || sapFase === 'complete' 
+                    ? 'bg-blue-500' 
+                    : 'bg-gray-300 dark:bg-gray-600'
+                ]"></div>
+                <span>Generar ODC</span>
+              </div>
+              <div class="w-4 h-px bg-gray-300 dark:bg-gray-600"></div>
+              <div class="flex items-center gap-1">
+                <div :class="[
+                  'w-2 h-2 rounded-full transition-colors duration-300',
+                  sapFase === 'enviando' || sapFase === 'complete' 
+                    ? 'bg-blue-500' 
+                    : 'bg-gray-300 dark:bg-gray-600'
+                ]"></div>
+                <span>Enviar SAP</span>
+              </div>
+            </div>
+            
+            <p class="text-xs text-gray-500 dark:text-gray-400">No cierre esta ventana. Este proceso puede tomar hasta 3 minutos.</p>
           </div>
         </div>
       </div>
@@ -222,7 +281,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, nextTick, type Ref } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick, type Ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService, extractErrorMessage } from '../services/mba3ConsultasApi'
@@ -241,6 +300,63 @@ const pedido = ref<PedidoCompleto | null>(null)
 const pedidoIdInput = ref('')
 const descargandoRedistribucion = ref(false)
 const enviandoOdcSap = ref(false)
+
+// ⭐ NUEVO: Variables de progreso para envío ODC a SAP
+const sapProgress = ref(0)
+const sapFase = ref<'idle' | 'redistribucion' | 'generando' | 'enviando' | 'complete'>('idle')
+const sapMessage = ref('')
+
+// Intervalo para simulación de progreso
+let sapProgressInterval: ReturnType<typeof setInterval> | null = null
+
+function resetSapProgress() {
+  sapProgress.value = 0
+  sapFase.value = 'idle'
+  sapMessage.value = ''
+  if (sapProgressInterval) {
+    clearInterval(sapProgressInterval)
+    sapProgressInterval = null
+  }
+}
+
+function startSapProgressSimulation() {
+  resetSapProgress()
+  sapFase.value = 'redistribucion'
+  sapMessage.value = 'Confirmando redistribución...'
+  
+  let currentProgress = 0
+  
+  sapProgressInterval = setInterval(() => {
+    if (currentProgress < 95) {
+      // Progreso más lento a medida que avanza
+      const increment = currentProgress < 30 ? 3 : (currentProgress < 60 ? 2 : (currentProgress < 80 ? 1 : 0.5))
+      currentProgress = Math.min(95, currentProgress + increment)
+      sapProgress.value = Math.round(currentProgress)
+      
+      // Actualizar fase y mensaje según el progreso
+      if (currentProgress < 33) {
+        sapFase.value = 'redistribucion'
+        sapMessage.value = 'Confirmando redistribución...'
+      } else if (currentProgress < 66) {
+        sapFase.value = 'generando'
+        sapMessage.value = 'Generando orden de compra...'
+      } else {
+        sapFase.value = 'enviando'
+        sapMessage.value = 'Enviando a SAP Service Layer...'
+      }
+    }
+  }, 500)
+}
+
+function completeSapProgress() {
+  if (sapProgressInterval) {
+    clearInterval(sapProgressInterval)
+    sapProgressInterval = null
+  }
+  sapProgress.value = 100
+  sapFase.value = 'complete'
+  sapMessage.value = 'Proceso completado'
+}
 
 // ⭐ Set para rastrear columnas modificadas (para resaltado en redistribución)
 const columnasModificadas: Ref<Set<string>> = ref<Set<string>>(new Set())
@@ -399,6 +515,8 @@ async function handleEnviarOdcSap() {
   if (!confirmar) return
 
   enviandoOdcSap.value = true
+  // ⭐ Iniciar simulación de progreso
+  startSapProgressSimulation()
   toast.info('Procesando...', 'Ejecutando proceso completo SAP. Por favor espere.')
 
   try {
@@ -421,6 +539,9 @@ async function handleEnviarOdcSap() {
 
     // Llamar al endpoint de proceso completo
     const response = await mba3ConsultasService.procesoCompletoSAP(numeroPedido.value, ajustes_detalle)
+
+    // ⭐ Completar progreso al 100%
+    completeSapProgress()
 
     if (response.status === 'success') {
       // Éxito total: actualizar estado del pedido en memoria
@@ -475,6 +596,10 @@ async function handleEnviarOdcSap() {
     }
   } finally {
     enviandoOdcSap.value = false
+    // ⭐ Resetear progreso después de un pequeño delay
+    setTimeout(() => {
+      resetSapProgress()
+    }, 500)
   }
 }
 
@@ -690,5 +815,14 @@ onMounted(async () => {
   }
 
   await cargarRedistribucionSinPedido()
+})
+
+// ⭐ Cleanup al desmontar componente
+onUnmounted(() => {
+  // Limpiar intervalo de progreso SAP si existe
+  if (sapProgressInterval) {
+    clearInterval(sapProgressInterval)
+    sapProgressInterval = null
+  }
 })
 </script>

@@ -1,5 +1,5 @@
 <template>
-  <!-- Overlay de bloqueo durante la carga de plantilla Excel -->
+  <!-- Overlay de bloqueo durante la carga de plantilla Excel con barra de progreso -->
   <Teleport to="body">
     <div
       v-if="uploading"
@@ -11,15 +11,80 @@
       @touchmove.prevent
       @touchend.prevent
     >
-      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-8 max-w-md mx-4 text-center transition-colors duration-300">
-        <div class="flex flex-col items-center gap-4">
-          <svg class="animate-spin h-12 w-12 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          <div>
+      <div class="bg-white/95 dark:bg-gray-800/95 backdrop-blur-xl rounded-2xl shadow-2xl p-8 max-w-md mx-4 text-center transition-all duration-300 border border-white/30 dark:border-gray-600/30 relative overflow-hidden">
+        <!-- Efecto de fondo animado -->
+        <div class="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-emerald-600/5 pointer-events-none"></div>
+        <div class="absolute inset-0 overflow-hidden pointer-events-none">
+          <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"></div>
+        </div>
+        
+        <div class="relative z-10 flex flex-col items-center gap-5">
+          <!-- Spinner con efecto de pulso -->
+          <div class="relative">
+            <svg class="animate-spin h-14 w-14 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <div class="absolute inset-0 border-2 border-emerald-300/30 dark:border-emerald-500/30 rounded-full animate-ping"></div>
+          </div>
+          
+          <div class="w-full">
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2 transition-colors duration-300">Cargando Plantilla Excel</h3>
-            <p class="text-sm text-gray-600 dark:text-gray-300 transition-colors duration-300">Por favor espera mientras se procesa el archivo...</p>
+            <p class="text-sm text-gray-600 dark:text-gray-300 mb-4 transition-colors duration-300">{{ uploadMessage || 'Preparando archivo...' }}</p>
+            
+            <!-- Barra de progreso -->
+            <div class="w-full space-y-2">
+              <div class="flex items-center justify-between text-sm">
+                <span class="text-gray-600 dark:text-gray-400 font-medium">
+                  {{ uploadFase === 'upload' ? 'Subiendo archivo' : (uploadFase === 'processing' ? 'Procesando en servidor' : 'Preparando') }}
+                </span>
+                <span class="text-emerald-600 dark:text-emerald-400 font-bold">{{ uploadProgress }}%</span>
+              </div>
+              <div class="w-full h-3 bg-gray-200/80 dark:bg-gray-700/80 rounded-full overflow-hidden shadow-inner">
+                <div
+                  class="h-full bg-gradient-to-r from-emerald-500 via-emerald-400 to-emerald-500 transition-all duration-300 ease-out shadow-lg relative overflow-hidden"
+                  :style="{ width: `${uploadProgress}%` }"
+                >
+                  <!-- Efecto shimmer sobre la barra -->
+                  <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-shimmer"></div>
+                  <!-- Efecto de pulso en la barra -->
+                  <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Indicadores de fase -->
+          <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+            <div class="flex items-center gap-1">
+              <div :class="[
+                'w-2 h-2 rounded-full transition-colors duration-300',
+                uploadFase === 'upload' || uploadFase === 'processing' || uploadFase === 'complete' 
+                  ? 'bg-emerald-500' 
+                  : 'bg-gray-300 dark:bg-gray-600'
+              ]"></div>
+              <span>Subir</span>
+            </div>
+            <div class="w-4 h-px bg-gray-300 dark:bg-gray-600"></div>
+            <div class="flex items-center gap-1">
+              <div :class="[
+                'w-2 h-2 rounded-full transition-colors duration-300',
+                uploadFase === 'processing' || uploadFase === 'complete' 
+                  ? 'bg-emerald-500' 
+                  : 'bg-gray-300 dark:bg-gray-600'
+              ]"></div>
+              <span>Validar</span>
+            </div>
+            <div class="w-4 h-px bg-gray-300 dark:bg-gray-600"></div>
+            <div class="flex items-center gap-1">
+              <div :class="[
+                'w-2 h-2 rounded-full transition-colors duration-300',
+                uploadFase === 'complete' 
+                  ? 'bg-emerald-500' 
+                  : 'bg-gray-300 dark:bg-gray-600'
+              ]"></div>
+              <span>Guardar</span>
+            </div>
           </div>
         </div>
       </div>
@@ -597,7 +662,11 @@ const {
   showErrorModal,
   uploadErrorInfo,
   archivoOriginal: archivoOriginalDelComposable,
-  reintentarConCorrecciones
+  reintentarConCorrecciones,
+  // ⭐ NUEVO: Variables de progreso de carga
+  uploadProgress,
+  uploadFase,
+  uploadMessage
 } = fileUploadComposable
 
 async function aplicarCorreccionesYContinuar(correcciones: Record<string, string>): Promise<void> {
@@ -664,11 +733,16 @@ function getEstadoLabel(estado: string): string {
     'ORDEN_COMPRA_CREADA': 'OC Creada',
     'ENVIADA_SAP': 'Enviada SAP',
     'CONFIRMADO_ENVIADO': 'Confirmado y Enviado',
+    'CONFIRMADO Y ENVIADO': 'Confirmado y Enviado',
+    'CONFIRMADO_Y_ENVIADO': 'Confirmado y Enviado',
+    'ENVIADA': 'Confirmado y Enviado',
     'DESPACHAR Y FACTURAR': 'Despachar y Facturar',
     'DESPACHAR_Y_FACTURAR': 'Despachar y Facturar',
     'FINALIZADO': 'Finalizado',
     'CERRADO': 'Cerrado',
-    'CANCELADO': 'Cancelado'
+    'CANCELADO': 'Cancelado',
+    'CONFIRMADO POR EL RAYO': 'Confirmado por El Rayo',
+    'CONFIRMADO_POR_EL_RAYO': 'Confirmado por El Rayo'
   }
   return labels[estado] || estado
 }
@@ -693,11 +767,17 @@ function getEstadoBadgeClass(estado: string): string {
     'ORDEN_COMPRA_CREADA': `bg-fuchsia-100 text-fuchsia-800 ${darkClasses} dark:bg-fuchsia-900/50 dark:text-fuchsia-200`,
     'ENVIADA_SAP': `bg-purple-100 text-purple-800 ${darkClasses} dark:bg-purple-900/50 dark:text-purple-200`,
     'CONFIRMADO_ENVIADO': `bg-emerald-100 text-emerald-800 ${darkClasses} dark:bg-emerald-900/50 dark:text-emerald-200`,
+    'CONFIRMADO Y ENVIADO': `bg-emerald-100 text-emerald-800 ${darkClasses} dark:bg-emerald-900/50 dark:text-emerald-200`,
+    'CONFIRMADO_Y_ENVIADO': `bg-emerald-100 text-emerald-800 ${darkClasses} dark:bg-emerald-900/50 dark:text-emerald-200`,
+    'Confirmado y Enviado': `bg-emerald-100 text-emerald-800 ${darkClasses} dark:bg-emerald-900/50 dark:text-emerald-200`,
+    'ENVIADA': `bg-emerald-100 text-emerald-800 ${darkClasses} dark:bg-emerald-900/50 dark:text-emerald-200`,
     'DESPACHAR Y FACTURAR': `bg-orange-100 text-orange-800 ${darkClasses} dark:bg-orange-900/50 dark:text-orange-200`,
     'DESPACHAR_Y_FACTURAR': `bg-orange-100 text-orange-800 ${darkClasses} dark:bg-orange-900/50 dark:text-orange-200`,
     'FINALIZADO': `bg-lime-100 text-lime-800 ${darkClasses} dark:bg-lime-900/50 dark:text-lime-200`,
     'CERRADO': `bg-stone-100 text-stone-700 ${darkClasses} dark:bg-stone-600 dark:text-stone-200`,
-    'CANCELADO': `bg-rose-100 text-rose-800 ${darkClasses} dark:bg-rose-900/50 dark:text-rose-200`
+    'CANCELADO': `bg-rose-100 text-rose-800 ${darkClasses} dark:bg-rose-900/50 dark:text-rose-200`,
+    'CONFIRMADO POR EL RAYO': `bg-pink-100 text-pink-800 ${darkClasses} dark:bg-pink-900/50 dark:text-pink-200`,
+    'CONFIRMADO_POR_EL_RAYO': `bg-pink-100 text-pink-800 ${darkClasses} dark:bg-pink-900/50 dark:text-pink-200`
   }
   return `${baseClasses} ${classes[estado] || `bg-gray-100 text-gray-800 ${darkClasses} dark:bg-gray-700 dark:text-gray-200`}`
 }

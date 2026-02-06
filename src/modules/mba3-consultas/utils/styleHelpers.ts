@@ -46,7 +46,9 @@ export function getEstadoPedidoBadgeClass(estado: string | undefined): string {
     'ORDEN_COMPRA_CREADA': `bg-fuchsia-100 text-fuchsia-800 ${badgeDark} dark:bg-fuchsia-900/50 dark:text-fuchsia-200`,
     'ENVIADA_SAP': `bg-purple-100 text-purple-800 ${badgeDark} dark:bg-purple-900/50 dark:text-purple-200`,
     'CERRADO': `bg-stone-100 text-stone-700 ${badgeDark} dark:bg-stone-600 dark:text-stone-200`,
-    'CANCELADO': `bg-rose-100 text-rose-800 ${badgeDark} dark:bg-rose-900/50 dark:text-rose-200`
+    'CANCELADO': `bg-rose-100 text-rose-800 ${badgeDark} dark:bg-rose-900/50 dark:text-rose-200`,
+    'CONFIRMADO POR EL RAYO': `bg-pink-100 text-pink-800 ${badgeDark} dark:bg-pink-900/50 dark:text-pink-200`,
+    'CONFIRMADO_POR_EL_RAYO': `bg-pink-100 text-pink-800 ${badgeDark} dark:bg-pink-900/50 dark:text-pink-200`
   }
   return classes[estado] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
 }

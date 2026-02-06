@@ -474,11 +474,16 @@ function getEstadoLabel(estado: string): string {
     'ORDEN_COMPRA_CREADA': 'OC Creada',
     'ENVIADA_SAP': 'Enviada SAP',
     'CONFIRMADO_ENVIADO': 'Confirmado y Enviado',
+    'CONFIRMADO Y ENVIADO': 'Confirmado y Enviado',
+    'CONFIRMADO_Y_ENVIADO': 'Confirmado y Enviado',
+    'ENVIADA': 'Confirmado y Enviado',
     'DESPACHAR Y FACTURAR': 'Despachar y Facturar',
     'DESPACHAR_Y_FACTURAR': 'Despachar y Facturar',
     'FINALIZADO': 'Finalizado',
     'CERRADO': 'Cerrado',
-    'CANCELADO': 'Cancelado'
+    'CANCELADO': 'Cancelado',
+    'CONFIRMADO POR EL RAYO': 'Confirmado por El Rayo',
+    'CONFIRMADO_POR_EL_RAYO': 'Confirmado por El Rayo'
   }
   return labels[estado] || estado
 }
@@ -505,11 +510,17 @@ function getEstadoBadgeClass(estado: string): string {
     'ORDEN_COMPRA_CREADA': `bg-fuchsia-100 text-fuchsia-800 ${darkClasses} dark:bg-fuchsia-900/50 dark:text-fuchsia-200`,
     'ENVIADA_SAP': `bg-purple-100 text-purple-800 ${darkClasses} dark:bg-purple-900/50 dark:text-purple-200`,
     'CONFIRMADO_ENVIADO': `bg-emerald-100 text-emerald-800 ${darkClasses} dark:bg-emerald-900/50 dark:text-emerald-200`,
+    'CONFIRMADO Y ENVIADO': `bg-emerald-100 text-emerald-800 ${darkClasses} dark:bg-emerald-900/50 dark:text-emerald-200`,
+    'CONFIRMADO_Y_ENVIADO': `bg-emerald-100 text-emerald-800 ${darkClasses} dark:bg-emerald-900/50 dark:text-emerald-200`,
+    'Confirmado y Enviado': `bg-emerald-100 text-emerald-800 ${darkClasses} dark:bg-emerald-900/50 dark:text-emerald-200`,
+    'ENVIADA': `bg-emerald-100 text-emerald-800 ${darkClasses} dark:bg-emerald-900/50 dark:text-emerald-200`,
     'DESPACHAR Y FACTURAR': `bg-orange-100 text-orange-800 ${darkClasses} dark:bg-orange-900/50 dark:text-orange-200`,
     'DESPACHAR_Y_FACTURAR': `bg-orange-100 text-orange-800 ${darkClasses} dark:bg-orange-900/50 dark:text-orange-200`,
     'FINALIZADO': `bg-lime-100 text-lime-800 ${darkClasses} dark:bg-lime-900/50 dark:text-lime-200`,
     'CERRADO': `bg-stone-100 text-stone-700 ${darkClasses} dark:bg-stone-600 dark:text-stone-200`,
-    'CANCELADO': `bg-rose-100 text-rose-800 ${darkClasses} dark:bg-rose-900/50 dark:text-rose-200`
+    'CANCELADO': `bg-rose-100 text-rose-800 ${darkClasses} dark:bg-rose-900/50 dark:text-rose-200`,
+    'CONFIRMADO POR EL RAYO': `bg-pink-100 text-pink-800 ${darkClasses} dark:bg-pink-900/50 dark:text-pink-200`,
+    'CONFIRMADO_POR_EL_RAYO': `bg-pink-100 text-pink-800 ${darkClasses} dark:bg-pink-900/50 dark:text-pink-200`
   }
 
   return `${baseClasses} ${classes[estado] || `bg-gray-100 text-gray-800 ${darkClasses} dark:bg-gray-700 dark:text-gray-200`}`

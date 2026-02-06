@@ -804,22 +804,31 @@ export const mba3ConsultasService = {
   /**
    * Sube y procesa un archivo Excel de plantilla
    * Requiere permiso: mba3-consultas.proceso.execute
+   * @param file Archivo Excel con la plantilla
+   * @param onProgress Callback opcional para reportar progreso (0-100%)
    * @deprecated Usar pedidosService.uploadPlantilla() directamente
    */
-  async uploadPlantilla(file: File): Promise<UploadPlantillaResponse> {
-    return pedidosService.uploadPlantilla(file)
+  async uploadPlantilla(
+    file: File,
+    onProgress?: (progress: number, fase: 'upload' | 'processing') => void
+  ): Promise<UploadPlantillaResponse> {
+    return pedidosService.uploadPlantilla(file, onProgress)
   },
 
   /**
    * ⭐ NUEVO: Sube una plantilla Excel con correcciones de códigos aplicadas
    * Similar a uploadPlantilla pero acepta un mapa de correcciones {codigo_original: codigo_sap_corregido}
+   * @param file Archivo Excel con la plantilla
+   * @param correcciones Mapa de correcciones de códigos
+   * @param onProgress Callback opcional para reportar progreso (0-100%)
    * @deprecated Usar pedidosService.uploadPlantillaConCorrecciones() directamente
    */
   async uploadPlantillaConCorrecciones(
     file: File,
-    correcciones: Record<string, string>
+    correcciones: Record<string, string>,
+    onProgress?: (progress: number, fase: 'upload' | 'processing') => void
   ): Promise<UploadPlantillaResponse> {
-    return pedidosService.uploadPlantillaConCorrecciones(file, correcciones)
+    return pedidosService.uploadPlantillaConCorrecciones(file, correcciones, onProgress)
   },
 
   /**

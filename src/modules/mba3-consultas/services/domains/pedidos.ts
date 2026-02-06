@@ -11,6 +11,14 @@
  */
 
 import { mba3Api } from '../config/axiosConfig'
+
+// Tipo para eventos de progreso de axios
+interface UploadProgressEvent {
+  loaded: number
+  total?: number
+  progress?: number
+  bytes?: number
+}
 import { validateFile } from '../utils/fileValidator'
 import { createEnrichedError, normalizeValidationResponse } from '../utils/errorHandler'
 import { buildUrlWithParams } from '../utils/urlBuilder'
@@ -48,18 +56,43 @@ export const pedidosService = {
    * @param file Archivo Excel con la plantilla
    * @returns Resultado de la validación y procesamiento
    */
-  async uploadPlantilla(file: File): Promise<UploadPlantillaResponse> {
+  /**
+   * Callback para reportar progreso de carga de archivos
+   * @param progress Porcentaje de progreso (0-100)
+   * @param fase Fase actual: 'upload' (subiendo archivo) o 'processing' (procesando en servidor)
+   */
+  async uploadPlantilla(
+    file: File,
+    onProgress?: (progress: number, fase: 'upload' | 'processing') => void
+  ): Promise<UploadPlantillaResponse> {
     try {
       validateFile(file)
 
       const formData = new FormData()
       formData.append('file', file)
 
+      // Configuración con soporte para progreso de upload
+      const config = {
+        timeout: 120000, // 2 minutos - sincronizado con backend (login MBA3, validación SAP, etc.)
+        onUploadProgress: (progressEvent: UploadProgressEvent) => {
+          if (onProgress && progressEvent.total) {
+            // Fase de upload: 0-70% del progreso total
+            const uploadPercent = Math.round((progressEvent.loaded / progressEvent.total) * 70)
+            onProgress(uploadPercent, 'upload')
+          }
+        }
+      }
+      
       const response = await mba3Api.post<UploadPlantillaResponse>(
         '/api/plantillas/upload',
         formData,
-        { timeout: 120000 } // 2 minutos - sincronizado con backend (login MBA3, validación SAP, etc.)
+        config as Parameters<typeof mba3Api.post>[2]
       )
+
+      // Upload completado, notificar 100%
+      if (onProgress) {
+        onProgress(100, 'processing')
+      }
 
       return normalizeValidationResponse(response.data)
     } catch (error: any) {
@@ -90,19 +123,39 @@ export const pedidosService = {
    */
   async uploadPlantillaConCorrecciones(
     file: File,
-    correcciones: Record<string, string>
+    correcciones: Record<string, string>,
+    onProgress?: (progress: number, fase: 'upload' | 'processing') => void
   ): Promise<UploadPlantillaResponse> {
     try {
       const formData = new FormData()
       formData.append('file', file)
       formData.append('correcciones_codigos', JSON.stringify(correcciones))
       
-      const response = await mba3Api.post<UploadPlantillaResponse>('/api/plantillas/upload', formData, {
+      // Configuración con soporte para progreso de upload
+      const config = {
         headers: {
           'Content-Type': 'multipart/form-data'
         },
-        timeout: 120000 // 2 minutos
-      })
+        timeout: 120000, // 2 minutos
+        onUploadProgress: (progressEvent: UploadProgressEvent) => {
+          if (onProgress && progressEvent.total) {
+            // Fase de upload: 0-70% del progreso total
+            const uploadPercent = Math.round((progressEvent.loaded / progressEvent.total) * 70)
+            onProgress(uploadPercent, 'upload')
+          }
+        }
+      }
+      
+      const response = await mba3Api.post<UploadPlantillaResponse>(
+        '/api/plantillas/upload', 
+        formData, 
+        config as Parameters<typeof mba3Api.post>[2]
+      )
+
+      // Upload completado, notificar 100%
+      if (onProgress) {
+        onProgress(100, 'processing')
+      }
 
       return normalizeValidationResponse(response.data)
     } catch (error: any) {

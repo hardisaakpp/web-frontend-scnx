@@ -278,12 +278,19 @@
                       {{ (producto.total_linea_original ?? producto.subtotal_original) !== null ? formatCurrency(producto.total_linea_original ?? producto.subtotal_original ?? 0) : 'N/A' }}
                     </template>
                     
-                    <!-- Columna Unidad: solo mostrar si hay al menos una unidad (original o SAP) -->
+                    <!-- Columna Unidad/Pack: mostrar solo si hay valor, y evitar duplicados si son iguales -->
                     <template v-else-if="column.key === 'unidad'">
                       <div v-if="producto.unidad_original || producto.unidad_sap" class="flex flex-col items-center gap-1">
-                        <span class="text-xs text-gray-500 dark:text-gray-400">{{ producto.unidad_original || '' }}</span>
-                        <span v-if="producto.unidad_original && producto.unidad_sap" class="text-xs">→</span>
-                        <span class="text-xs font-medium">{{ producto.unidad_sap || '' }}</span>
+                        <!-- Si son iguales o solo hay uno, mostrar solo el valor SAP (o el original si no hay SAP) -->
+                        <template v-if="producto.unidad_original === producto.unidad_sap || !producto.unidad_original || !producto.unidad_sap">
+                          <span class="text-xs font-medium">{{ producto.unidad_sap || producto.unidad_original || '' }}</span>
+                        </template>
+                        <!-- Si son diferentes, mostrar ambos con flecha -->
+                        <template v-else>
+                          <span class="text-xs text-gray-500 dark:text-gray-400">{{ producto.unidad_original }}</span>
+                          <span class="text-xs">→</span>
+                          <span class="text-xs font-medium">{{ producto.unidad_sap }}</span>
+                        </template>
                       </div>
                     </template>
                     

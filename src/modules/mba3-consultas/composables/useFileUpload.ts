@@ -1,5 +1,6 @@
 /**
  * Composable para manejar la carga de archivos Excel (plantillas)
+ * ⭐ Con soporte para progreso de carga y procesamiento
  */
 import { ref, Ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
@@ -11,6 +12,8 @@ import type { UploadPlantillaResponse, PedidoCompleto } from '../types'
 const ALLOWED_FILE_EXTENSIONS = ['.xlsx', '.xls'] as const
 const MAX_FILE_SIZE_MB = 10
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
+// ⭐ Intervalo para simulación de progreso durante procesamiento del servidor
+const PROCESSING_PROGRESS_INTERVAL_MS = 500
 
 export interface UploadErrorInfo {
   title?: string
@@ -70,6 +73,87 @@ export function useFileUpload(options: {
   const uploadErrorInfo = ref<UploadErrorInfo | null>(null)
   // ⭐ NUEVO: Guardar archivo original para posible reintento con correcciones
   const archivoOriginal = ref<File | null>(null)
+  
+  // ⭐ NUEVO: Variables para el progreso de carga
+  const uploadProgress = ref(0)
+  const uploadFase = ref<'idle' | 'upload' | 'processing' | 'complete'>('idle')
+  const uploadMessage = ref('')
+  let processingProgressInterval: ReturnType<typeof setInterval> | null = null
+  
+  /**
+   * Actualiza el mensaje de estado según la fase actual
+   */
+  function updateUploadMessage(fase: 'upload' | 'processing', progress: number) {
+    if (fase === 'upload') {
+      uploadMessage.value = progress < 50 
+        ? 'Subiendo archivo al servidor...' 
+        : 'Finalizando carga del archivo...'
+    } else {
+      if (progress < 80) {
+        uploadMessage.value = 'Validando estructura del archivo...'
+      } else if (progress < 90) {
+        uploadMessage.value = 'Verificando códigos en SAP...'
+      } else if (progress < 95) {
+        uploadMessage.value = 'Guardando datos del pedido...'
+      } else {
+        uploadMessage.value = 'Finalizando procesamiento...'
+      }
+    }
+  }
+  
+  /**
+   * Inicia la simulación de progreso durante el procesamiento del servidor
+   * El progreso va de 70% a 95% mientras esperamos la respuesta
+   */
+  function startProcessingProgressSimulation() {
+    // Limpiar intervalo anterior si existe
+    if (processingProgressInterval) {
+      clearInterval(processingProgressInterval)
+    }
+    
+    uploadFase.value = 'processing'
+    let currentProgress = 70
+    
+    processingProgressInterval = setInterval(() => {
+      // Incrementar progreso gradualmente hasta 95%
+      if (currentProgress < 95) {
+        // Incremento más lento a medida que se acerca al 95%
+        const increment = currentProgress < 85 ? 2 : (currentProgress < 92 ? 1 : 0.5)
+        currentProgress = Math.min(95, currentProgress + increment)
+        uploadProgress.value = Math.round(currentProgress)
+        updateUploadMessage('processing', currentProgress)
+      }
+    }, PROCESSING_PROGRESS_INTERVAL_MS)
+  }
+  
+  /**
+   * Detiene la simulación de progreso y marca como completado
+   */
+  function stopProcessingProgressSimulation(success: boolean = true) {
+    if (processingProgressInterval) {
+      clearInterval(processingProgressInterval)
+      processingProgressInterval = null
+    }
+    
+    if (success) {
+      uploadProgress.value = 100
+      uploadFase.value = 'complete'
+      uploadMessage.value = 'Procesamiento completado'
+    }
+  }
+  
+  /**
+   * Reinicia el estado de progreso
+   */
+  function resetProgress() {
+    uploadProgress.value = 0
+    uploadFase.value = 'idle'
+    uploadMessage.value = ''
+    if (processingProgressInterval) {
+      clearInterval(processingProgressInterval)
+      processingProgressInterval = null
+    }
+  }
 
   /**
    * Valida un archivo antes de subirlo
@@ -692,9 +776,29 @@ export function useFileUpload(options: {
    */
   async function uploadFile(file: File) {
     uploading.value = true
+    resetProgress()
+    uploadFase.value = 'upload'
+    uploadMessage.value = 'Preparando archivo...'
     
     try {
-      const response: UploadPlantillaResponse = await mba3ConsultasService.uploadPlantilla(file)
+      // ⭐ Callback para actualizar el progreso
+      const handleProgress = (progress: number, fase: 'upload' | 'processing') => {
+        if (fase === 'upload') {
+          uploadProgress.value = progress
+          uploadFase.value = 'upload'
+          updateUploadMessage('upload', progress)
+          
+          // Cuando el upload llega al 70%, iniciar simulación de procesamiento
+          if (progress >= 70) {
+            startProcessingProgressSimulation()
+          }
+        } else if (fase === 'processing') {
+          // La respuesta llegó, detener simulación y marcar como completado
+          stopProcessingProgressSimulation(true)
+        }
+      }
+      
+      const response: UploadPlantillaResponse = await mba3ConsultasService.uploadPlantilla(file, handleProgress)
       
       // ⭐ Limpiar archivo original si la carga fue exitosa
       if (response.status === 'success') {
@@ -806,6 +910,9 @@ export function useFileUpload(options: {
         }
       }
     } catch (e: any) {
+      // ⭐ Detener simulación de progreso en caso de error
+      stopProcessingProgressSimulation(false)
+      
       const errorInfo = processUploadError(e, file.name)
       uploadErrorInfo.value = errorInfo
       showErrorModal.value = true
@@ -838,6 +945,10 @@ export function useFileUpload(options: {
       }
     } finally {
       uploading.value = false
+      // ⭐ Pequeño delay antes de resetear el progreso para que el usuario vea el 100%
+      setTimeout(() => {
+        resetProgress()
+      }, 500)
     }
   }
   
@@ -857,12 +968,31 @@ export function useFileUpload(options: {
     }
     
     uploading.value = true
+    resetProgress()
+    uploadFase.value = 'upload'
+    uploadMessage.value = 'Preparando archivo con correcciones...'
     
     try {
+      // ⭐ Callback para actualizar el progreso
+      const handleProgress = (progress: number, fase: 'upload' | 'processing') => {
+        if (fase === 'upload') {
+          uploadProgress.value = progress
+          uploadFase.value = 'upload'
+          updateUploadMessage('upload', progress)
+          
+          if (progress >= 70) {
+            startProcessingProgressSimulation()
+          }
+        } else if (fase === 'processing') {
+          stopProcessingProgressSimulation(true)
+        }
+      }
+      
       // Llamar al servicio con correcciones
       const response: UploadPlantillaResponse = await mba3ConsultasService.uploadPlantillaConCorrecciones(
         file,
-        correcciones
+        correcciones,
+        handleProgress
       )
       
       // Limpiar archivo original después del éxito
@@ -919,6 +1049,9 @@ export function useFileUpload(options: {
         }
       }
     } catch (e: any) {
+      // ⭐ Detener simulación de progreso en caso de error
+      stopProcessingProgressSimulation(false)
+      
       // Si hay error en el reintento, procesar el error normalmente
       const errorInfo = processUploadError(e, file.name)
       uploadErrorInfo.value = errorInfo
@@ -937,6 +1070,10 @@ export function useFileUpload(options: {
       throw e
     } finally {
       uploading.value = false
+      // ⭐ Pequeño delay antes de resetear el progreso
+      setTimeout(() => {
+        resetProgress()
+      }, 500)
     }
   }
 
@@ -945,6 +1082,10 @@ export function useFileUpload(options: {
     if (fileInput.value) {
       fileInput.value.remove()
       fileInput.value = null
+    }
+    // ⭐ Limpiar intervalo de progreso si existe
+    if (processingProgressInterval) {
+      clearInterval(processingProgressInterval)
     }
   })
 
@@ -955,7 +1096,11 @@ export function useFileUpload(options: {
     openFileSelector,
     uploadFile,
     validateFile,
-    reintentarConCorrecciones,  // ⭐ NUEVO: Exportar función de reintento
-    archivoOriginal  // ⭐ NUEVO: Exportar archivo original para acceso externo
+    reintentarConCorrecciones,
+    archivoOriginal,
+    // ⭐ NUEVO: Exportar variables de progreso
+    uploadProgress,
+    uploadFase,
+    uploadMessage
   }
 }

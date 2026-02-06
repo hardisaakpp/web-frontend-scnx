@@ -110,7 +110,9 @@ export function formatEstadoPedido(estado: string | undefined): string {
     'ORDEN_COMPRA_CREADA': 'OC Creada',
     'ENVIADA_SAP': 'Enviada SAP',
     'CERRADO': 'Cerrado',
-    'CANCELADO': 'Cancelado'
+    'CANCELADO': 'Cancelado',
+    'CONFIRMADO POR EL RAYO': 'Confirmado por El Rayo',
+    'CONFIRMADO_POR_EL_RAYO': 'Confirmado por El Rayo'
   }
   return estados[estado] || estado
 }
