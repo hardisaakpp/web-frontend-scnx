@@ -27,9 +27,42 @@
       </div>
     </Teleport>
 
+    <!-- Modal de bloqueo al enviar ODC a SAP (proceso completo: redistribución + ODC + SAP) -->
+    <Teleport to="body">
+      <div
+        v-if="enviandoOdcSap"
+        class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center"
+        @click.prevent
+        @mousedown.prevent
+        @mouseup.prevent
+        @touchstart.prevent
+        @touchmove.prevent
+        @touchend.prevent
+      >
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-8 max-w-md mx-4 text-center">
+          <div class="flex flex-col items-center gap-4">
+            <svg class="animate-spin h-12 w-12 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <div>
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Enviando ODC a SAP</h3>
+              <p class="text-sm text-gray-600 dark:text-gray-300">
+                Ejecutando proceso completo:<br/>
+                1. Confirmar redistribución<br/>
+                2. Generar orden de compra<br/>
+                3. Enviar a SAP Service Layer
+              </p>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">No cierre esta ventana. Este proceso puede tomar hasta 3 minutos.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
     <div
       class="space-y-6"
-      :class="{ 'pointer-events-none opacity-75': redistribucion.confirmandoRedistribucion.value }"
+      :class="{ 'pointer-events-none opacity-75': redistribucion.confirmandoRedistribucion.value || enviandoOdcSap }"
     >
       <!-- Header -->
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6">
@@ -158,6 +191,8 @@
         :confirmando-redistribucion="redistribucion.confirmandoRedistribucion"
         :confirmar-deshabilitado-por-estado="confirmarDeshabilitadoPorEstado"
         :columnas-modificadas="columnasModificadas as unknown as Ref<Set<string>>"
+        :show-enviar-odc-sap="showEnviarOdcSap"
+        :enviando-odc-sap="enviandoOdcSap"
         @toggle-expandir-producto="toggleExpandirProducto"
         @actualizar-cantidad-tienda="actualizarCantidadTienda"
         @validar-y-corregir-cantidad="validarYCorregirCantidad"
@@ -166,6 +201,7 @@
         @resetear-distribucion="resetearDistribucion"
         @guardar-borrador="guardarBorradorRedistribucion"
         @confirmar-redistribucion="confirmarRedistribucion"
+        @enviar-odc-sap="handleEnviarOdcSap"
       />
 
       <!-- Sin pedido: solo búsqueda manual por número -->
@@ -203,6 +239,7 @@ const toast = useToast()
 const pedido = ref<PedidoCompleto | null>(null)
 const pedidoIdInput = ref('')
 const descargandoRedistribucion = ref(false)
+const enviandoOdcSap = ref(false)
 
 // ⭐ Set para rastrear columnas modificadas (para resaltado en redistribución)
 const columnasModificadas: Ref<Set<string>> = ref<Set<string>>(new Set())
@@ -293,6 +330,13 @@ const confirmarDeshabilitadoPorEstado = computed(() =>
   pedido.value?.puede_confirmar_redistribucion === false
 )
 
+// ⭐ Mostrar botón "Enviar ODC a SAP" solo cuando estado es CONFIRMADO POR EL RAYO (estado_id = 4)
+// Este botón ejecuta el proceso completo: Redistribución + Generar ODC + Enviar a SAP
+const showEnviarOdcSap = computed(() => {
+  const estadoId = pedido.value?.cabecera?.estado_id
+  return estadoId === 4 // CONFIRMADO POR EL RAYO
+})
+
 // Funciones de redistribución
 function toggleExpandirProducto(codigoProducto: string) {
   redistribucion.toggleExpandirProducto(codigoProducto)
@@ -324,6 +368,113 @@ async function guardarBorradorRedistribucion() {
 
 async function confirmarRedistribucion() {
   await redistribucion.confirmarRedistribucion(puedeConfirmarRedistribucion)
+}
+
+/**
+ * ⭐ Proceso completo: Redistribución + Generar ODC + Enviar a SAP
+ * Este handler ejecuta los 3 pasos en un solo endpoint
+ */
+async function handleEnviarOdcSap() {
+  if (!puedeConfirmarRedistribucion.value) {
+    toast.warning('Validación requerida', 'Debe completar la redistribución correctamente antes de enviar a SAP')
+    return
+  }
+
+  if (!pedido.value || !numeroPedido.value) {
+    toast.error('Error', 'No hay pedido cargado')
+    return
+  }
+
+  // Confirmación del usuario
+  const confirmar = confirm(
+    '¿Está seguro de enviar la ODC a SAP?\n\n' +
+    'Este proceso ejecutará los siguientes pasos:\n' +
+    '1. Confirmar la redistribución\n' +
+    '2. Generar la Orden de Compra\n' +
+    '3. Enviar la ODC a SAP Service Layer\n\n' +
+    'Este proceso no se puede deshacer.'
+  )
+  
+  if (!confirmar) return
+
+  enviandoOdcSap.value = true
+  toast.info('Procesando...', 'Ejecutando proceso completo SAP. Por favor espere.')
+
+  try {
+    // Preparar datos de ajustes (mismo formato que confirmarRedistribucion)
+    const ajustes_detalle = redistribucion.productosRedistribucion.value.map(producto => ({
+      codigo_producto: producto.codigo_producto,
+      descripcion: producto.descripcion,
+      cantidad_solicitada: producto.cantidad_solicitada,
+      cantidad_confirmada: producto.cantidad_confirmada,
+      cantidad_ajustada: producto.cantidad_distribuida,
+      distribucion_tiendas: producto.distribucion_tiendas.map(t => ({
+        tienda_codigo: t.tienda_codigo,
+        tienda_nombre: t.tienda_nombre,
+        cantidad: t.cantidad_asignada
+      })),
+      costo_original: producto.costo_unitario,
+      costo_ajustado: producto.costo_unitario,
+      cambio_precio: false
+    }))
+
+    // Llamar al endpoint de proceso completo
+    const response = await mba3ConsultasService.procesoCompletoSAP(numeroPedido.value, ajustes_detalle)
+
+    if (response.status === 'success') {
+      // Éxito total: actualizar estado del pedido en memoria
+      const cabecera = pedido.value?.cabecera
+      if (cabecera) {
+        cabecera.estado_id = 10 // CONFIRMADO REDISTRIBUCION
+        cabecera.estado = 'CONFIRMADO REDISTRIBUCION'
+      }
+
+      toast.success(
+        '¡Proceso completado!',
+        `ODC enviada a SAP. DocNum: ${response.envio_sap?.doc_num ?? 'N/A'}`
+      )
+
+      // Redirigir a la pantalla de Procesar ODC - MABEL TRADING
+      router.push({ name: 'mba3-consultas-proceso' })
+    } else if (response.status === 'partial') {
+      // Éxito parcial: mostrar en qué paso falló
+      const pasoFallido = response.paso_fallido ?? 'desconocido'
+      const errorMsg = response.error ?? 'Error desconocido'
+      
+      toast.warning(
+        `Proceso incompleto (falló en: ${pasoFallido})`,
+        errorMsg
+      )
+
+      // Si al menos se confirmó la redistribución, actualizar estado
+      if (response.redistribucion) {
+        const cabecera = pedido.value?.cabecera
+        if (cabecera) {
+          cabecera.estado_id = 10
+          cabecera.estado = 'CONFIRMADO REDISTRIBUCION'
+        }
+      }
+    } else {
+      // Error total
+      toast.error('Error en proceso SAP', response.message || 'Ocurrió un error inesperado')
+    }
+  } catch (e: any) {
+    console.error('Error al ejecutar proceso completo SAP:', e)
+    
+    // Verificar si hay respuesta parcial en el error
+    if (e.response?.data?.status === 'partial') {
+      const data = e.response.data
+      toast.warning(
+        `Proceso incompleto (falló en: ${data.paso_fallido ?? 'desconocido'})`,
+        data.error ?? data.message ?? 'Error desconocido'
+      )
+    } else {
+      const message = extractErrorMessage(e)
+      toast.error('Error al enviar a SAP', message || 'No se pudo completar el proceso')
+    }
+  } finally {
+    enviandoOdcSap.value = false
+  }
 }
 
 // Verificar si tiene distribución confirmada
