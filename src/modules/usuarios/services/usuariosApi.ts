@@ -137,6 +137,12 @@ export const permisosService = {
     return response.data
   },
 
+  // Obtener permisos por rol
+  async getPermisosPorRol(roleName: string): Promise<Permiso[]> {
+    const response = await api.get<Permiso[]>(`/Permissions/role/${roleName}`)
+    return response.data
+  },
+
   // Crear permiso
   async createPermiso(data: CreatePermisoDto): Promise<Permiso> {
     const response = await api.post<Permiso>('/Permissions', data)

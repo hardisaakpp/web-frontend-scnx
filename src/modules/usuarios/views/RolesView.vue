@@ -13,13 +13,40 @@
       </button>
     </div>
 
-    <div v-if="rolesStore.loading" class="text-center py-12">
-      <p class="text-gray-500">Cargando roles...</p>
+    <div class="bg-white rounded-lg shadow p-6">
+      <div class="text-sm font-semibold text-gray-900 mb-2">Consultar permisos por rol</div>
+      <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <input
+          v-model.trim="roleQuery"
+          type="text"
+          placeholder="Nombre del rol"
+          class="w-full sm:flex-1 rounded border border-gray-200 px-3 py-2 text-sm text-gray-900"
+        />
+        <button
+          type="button"
+          class="rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700 disabled:opacity-50"
+          :disabled="roleQueryLoading || !roleQuery"
+          @click="fetchRolePermissions"
+        >
+          Buscar
+        </button>
+      </div>
+      <div v-if="roleQueryError" class="mt-2 text-sm text-red-600">{{ roleQueryError }}</div>
+      <div v-else-if="roleQueryLoading" class="mt-2 text-sm text-gray-500">Cargando permisos...</div>
+      <div v-else-if="roleQueryPermissions.length > 0" class="mt-3 flex flex-wrap gap-2">
+        <span
+          v-for="permiso in roleQueryPermissions"
+          :key="permiso.id"
+          class="rounded bg-gray-100 px-2 py-1 text-xs text-gray-700"
+        >
+          {{ permiso.key }}
+        </span>
+      </div>
+      <div v-else-if="roleQuerySearched" class="mt-2 text-sm text-gray-500">Sin permisos para este rol.</div>
     </div>
 
-    <div v-else-if="rolesStore.error" class="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-      <p class="text-red-600 mb-2">{{ rolesStore.error }}</p>
-      <button @click="rolesStore.fetchRoles" class="text-indigo-600 hover:underline">Reintentar</button>
+    <div v-if="rolesStore.loading" class="text-center py-12">
+      <p class="text-gray-500">Cargando roles...</p>
     </div>
 
     <div v-else-if="rolesStore.roles.length === 0" class="bg-white rounded-lg shadow p-12 text-center">
@@ -168,6 +195,7 @@ import { ref, onMounted } from 'vue'
 import { Dialog, DialogPanel, DialogTitle, TransitionRoot } from '@headlessui/vue'
 import { useRolesStore } from '../stores/rolesStore'
 import { usePermisosStore } from '../stores/permisosStore'
+import { permisosService } from '../services/usuariosApi'
 import type { Rol } from '../types'
 import AsignarPermisosModal from '../components/AsignarPermisosModal.vue'
 
@@ -178,6 +206,11 @@ const showRolModal = ref(false)
 const showPermisosModal = ref(false)
 const selectedRol = ref<Rol | null>(null)
 const rolForm = ref({ name: '', description: '' })
+const roleQuery = ref('')
+const roleQueryPermissions = ref<Rol['permissions']>([])
+const roleQueryLoading = ref(false)
+const roleQueryError = ref('')
+const roleQuerySearched = ref(false)
 
 onMounted(async () => {
   await Promise.all([
@@ -256,6 +289,24 @@ const handleRemoverPermiso = async (permisoId: number) => {
     } catch (error) {
       // Error ya manejado en el store
     }
+  }
+}
+
+const fetchRolePermissions = async () => {
+  if (!roleQuery.value) {
+    roleQueryError.value = 'Ingresa un rol valido.'
+    return
+  }
+  roleQueryLoading.value = true
+  roleQueryError.value = ''
+  roleQuerySearched.value = true
+  roleQueryPermissions.value = []
+  try {
+    roleQueryPermissions.value = await permisosService.getPermisosPorRol(roleQuery.value)
+  } catch (error: any) {
+    roleQueryError.value = error?.message || 'No se pudo cargar los permisos del rol.'
+  } finally {
+    roleQueryLoading.value = false
   }
 }
 </script>
