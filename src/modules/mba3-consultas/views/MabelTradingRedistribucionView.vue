@@ -176,6 +176,7 @@
         v-if="pedido"
         :pedido="pedido"
         :copy-feedback="copyFeedback"
+        :default-expanded="soloLectura"
         @copy-to-clipboard="copyToClipboard"
       />
 

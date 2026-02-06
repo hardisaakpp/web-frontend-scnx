@@ -870,6 +870,9 @@ export interface PedidoCabecera {
   creado_en: string | null
   estado?: string  // Estado del pedido: "PENDIENTE_CONFIRMACION_PROVEEDOR", "RESPUESTA_PROVEEDOR_CARGADA", "CONFIRMADO_PROVEEDOR", "CONFIRMADO REDISTRIBUCION", "PEDIDO_CONFIRMADO", "PROCESADO_SAP", "CONFIRMADO_ENVIADO", "DESPACHAR Y FACTURAR"
   estado_id?: number  // ID del estado en BD (ej. 12 = CONFIRMADO_ENVIADO, 17 = DESPACHAR Y FACTURAR)
+  // ⭐ Campos de SAP (disponibles cuando estado_id = 12 CONFIRMADO_ENVIADO)
+  numero_oc_sap?: string | null  // Número de OC en SAP (DocNum)
+  doc_entry?: number | null      // DocEntry de SAP para trazabilidad
 }
 
 export interface TiendaDistribucion {
