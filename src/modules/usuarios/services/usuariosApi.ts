@@ -1,4 +1,4 @@
-import api from '@/plugins/axios'
+import api from '@/services/api'
 import type { 
   Usuario, 
   CreateUsuarioDto, 
@@ -114,7 +114,14 @@ export const rolesService = {
 export const permisosService = {
   // Obtener todos los permisos
   async getPermisos(): Promise<Permiso[]> {
-    const response = await api.get<Permiso[]>('/Permissions')
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token') || ''
+    const authHeader = token ? `Bearer ${token}` : ''
+    if (authHeader) {
+      api.defaults.headers.common['Authorization'] = authHeader
+    }
+    const response = await api.get<Permiso[]>('/Permissions', {
+      headers: authHeader ? { Authorization: authHeader } : undefined
+    })
     return response.data
   },
 
