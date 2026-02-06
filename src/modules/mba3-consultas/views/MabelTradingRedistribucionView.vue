@@ -1,6 +1,6 @@
 <template>
   <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-    <!-- Modal de bloqueo al confirmar redistribución (sincronizado con backend hasta que termina) -->
+    <!-- Modal de bloqueo al convertir a unidades SAP (sincronizado con backend hasta que termina) -->
     <Teleport to="body">
       <div
         v-if="redistribucion.confirmandoRedistribucion.value"
@@ -19,8 +19,8 @@
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
             <div>
-              <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Confirmando redistribución</h3>
-              <p class="text-sm text-gray-600 dark:text-gray-300">Espere mientras se procesa en el servidor. No cierre esta ventana.</p>
+              <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Convirtiendo a Unidades SAP</h3>
+              <p class="text-sm text-gray-600 dark:text-gray-300">Procesando redistribución y calculando conversiones. No cierre esta ventana.</p>
             </div>
           </div>
         </div>
