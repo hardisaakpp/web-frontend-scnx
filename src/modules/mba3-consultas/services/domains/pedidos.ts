@@ -35,7 +35,8 @@ import type {
   BuscarPlantillasResponse,
   PlantillasPedidosResponse,
   ListadoArchivosOriginalesResponse,
-  EliminarArchivoOriginalResponse
+  EliminarArchivoOriginalResponse,
+  ProcesoCompletoSAPResponse
 } from '../../types'
 
 export const pedidosService = {
@@ -725,6 +726,43 @@ export const pedidosService = {
     } catch (error: any) {
       console.error('❌ [confirmarRedistribucion] Error:', error)
       throw createEnrichedError(error, 'Error desconocido al confirmar redistribución')
+    }
+  },
+
+  /**
+   * Ejecuta el proceso completo: Redistribución + Generar ODC + Enviar a SAP
+   * 
+   * Este endpoint ejecuta los 3 pasos en secuencia:
+   * 1. Confirmar Redistribución
+   * 2. Generar ODC desde el pedido
+   * 3. Enviar ODC a SAP Service Layer
+   * 
+   * Requiere permiso: mba3-consultas.proceso.execute
+   * 
+   * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
+   * @param ajustesDetalle Array de ajustes de redistribución
+   * @returns Resultado del proceso completo con detalles de cada paso
+   */
+  async procesoCompletoSAP(
+    numeroPedido: string,
+    ajustesDetalle: AjusteDetalle[]
+  ): Promise<ProcesoCompletoSAPResponse> {
+    try {
+      const response = await mba3Api.post<ProcesoCompletoSAPResponse>(
+        `/api/pedidos/${encodeURIComponent(numeroPedido)}/proceso-completo-sap`,
+        { ajustes_detalle: ajustesDetalle },
+        { timeout: 180000 } // 3 minutos - proceso largo que incluye llamada a SAP
+      )
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [procesoCompletoSAP] Error:', error)
+      
+      // Si hay respuesta parcial, devolverla
+      if (error.response?.data?.status === 'partial') {
+        return error.response.data as ProcesoCompletoSAPResponse
+      }
+      
+      throw createEnrichedError(error, 'Error al ejecutar proceso completo SAP')
     }
   },
 

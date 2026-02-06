@@ -462,6 +462,7 @@ async function cargarPedidos() {
   try {
     const response: PedidosListadoResponse = await mba3ConsultasService.getPedidosListado({
       ...filtros.value,
+      solo_redistribucion: true, // Excluir BORRADOR, NUEVO PEDIDO, GESTIONAR PEDIDO y CANCELADO
       limit: metadata.value.limit,
       offset: metadata.value.offset
     })

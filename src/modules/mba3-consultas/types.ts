@@ -1060,6 +1060,50 @@ export interface ProcesarConfirmacionResponse {
   ajustes_detalle: AjusteDetalle[]
 }
 
+// ========== Proceso Completo SAP (Redistribución + ODC + Envío SAP) ==========
+
+/**
+ * Detalle del resultado del envío a SAP
+ */
+export interface ProcesoCompletoSAPDetalleODC {
+  oc_id: string
+  success: boolean
+  doc_num: number | null
+  doc_entry: number | null
+  error: string | null
+  message?: string | null
+  solicitudes_transferencia?: SolicitudesTransferencia | null
+}
+
+/**
+ * Respuesta del endpoint POST /api/pedidos/{numero_pedido}/proceso-completo-sap
+ * Ejecuta los 3 pasos: Confirmar Redistribución → Generar ODC → Enviar a SAP
+ */
+export interface ProcesoCompletoSAPResponse {
+  status: 'success' | 'partial' | 'error'
+  message: string
+  pedido_id: string
+  numero_pedido: string
+  /** Información de la redistribución confirmada (Paso 1) */
+  redistribucion?: {
+    version_confirmada: number
+    productos_redistribuidos: number
+  }
+  /** Información de la ODC generada (Paso 2) */
+  odc_generada?: {
+    oc_id: string
+    detalles_insertados: number
+  }
+  /** Resultado del envío a SAP (Paso 3) */
+  envio_sap?: ProcesoCompletoSAPDetalleODC
+  /** Resumen de cantidades */
+  resumen?: ResumenConfirmacion
+  /** Si hubo error parcial, indica en qué paso falló */
+  paso_fallido?: 'redistribucion' | 'generar_odc' | 'enviar_sap'
+  /** Mensaje de error si falló algún paso */
+  error?: string
+}
+
 
 export interface CrearOCDesdePedidoResponse {
   status: 'success' | 'error'
@@ -1283,6 +1327,8 @@ export interface PedidosListadoFiltros {
   creado_por?: string
   limit?: number
   offset?: number
+  /** Si true, excluye BORRADOR, NUEVO PEDIDO, GESTIONAR PEDIDO y CANCELADO (solo muestra estado_id >= 4 y != 19) */
+  solo_redistribucion?: boolean
 }
 
 // ========== HU-08: Exportación de Pedidos a Formato MBA ==========

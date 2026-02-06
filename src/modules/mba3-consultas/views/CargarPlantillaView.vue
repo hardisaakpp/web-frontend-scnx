@@ -178,6 +178,8 @@
           :confirmando-redistribucion="redistribucion.confirmandoRedistribucion"
           :confirmar-deshabilitado-por-estado="confirmarRedistribucionDeshabilitadoPorEstado"
           :columnas-modificadas="columnasModificadas as unknown as Ref<Set<string>>"
+          :show-enviar-odc-sap="true"
+          :enviando-odc-sap="enviandoOdcSap"
           @toggle-expandir-producto="toggleExpandirProducto"
           @actualizar-cantidad-tienda="actualizarCantidadTienda"
           @validar-y-corregir-cantidad="validarYCorregirCantidad"
@@ -186,6 +188,7 @@
           @resetear-distribucion="resetearDistribucion"
           @guardar-borrador="guardarBorradorRedistribucion"
           @confirmar-redistribucion="confirmarRedistribucion"
+          @enviar-odc-sap="handleEnviarOdcSap"
         />
 
         <!-- Detalles del pedido (tabla de productos) -->
@@ -693,6 +696,9 @@ const finalizando = ref(false)
 // ⭐ Botón "Finalizar Pedido" en PedidoHeaderActions (usa flag puede_finalizar del backend)
 const finalizandoPedido = ref(false)
 const puedeFinalizarPedido = computed(() => pedido.value?.puede_finalizar === true)
+
+// ⭐ Botón "Enviar ODC a SAP" (proceso completo: redistribución + ODC + SAP)
+const enviandoOdcSap = ref(false)
 
 async function handleFinalizarPedido() {
   const pedidoId = pedido.value?.cabecera?.pedido_id
@@ -1295,6 +1301,107 @@ async function guardarBorradorRedistribucion() {
 
 async function confirmarRedistribucion() {
   await redistribucion.confirmarRedistribucion(puedeConfirmarRedistribucion)
+}
+
+/**
+ * Ejecuta el proceso completo: Redistribución + Generar ODC + Enviar a SAP
+ */
+async function handleEnviarOdcSap() {
+  if (!pedido.value || !numeroPedido.value) {
+    toast.error('Error', 'No hay pedido seleccionado')
+    return
+  }
+
+  if (enviandoOdcSap.value) return
+
+  // Preparar los ajustes de redistribución
+  const ajustesDetalle = redistribucion.productosRedistribucion.value.map(producto => ({
+    codigo_producto: producto.codigo_producto,
+    descripcion: producto.descripcion,
+    cantidad_solicitada: producto.cantidad_solicitada,
+    cantidad_confirmada: producto.cantidad_confirmada,
+    cantidad_ajustada: producto.cantidad_distribuida,
+    distribucion_tiendas: producto.tiendas.map(tienda => ({
+      tienda_codigo: tienda.tienda_codigo,
+      tienda_nombre: tienda.tienda_nombre,
+      cantidad: tienda.cantidad_editada
+    })),
+    costo_original: producto.costo_unitario,
+    costo_ajustado: producto.costo_unitario,
+    cambio_precio: false
+  }))
+
+  enviandoOdcSap.value = true
+  toast.info('Procesando...', 'Confirmando redistribución y enviando ODC a SAP')
+
+  try {
+    const resultado = await mba3ConsultasService.procesoCompletoSAP(numeroPedido.value, ajustesDetalle)
+
+    if (resultado.status === 'success') {
+      const docNum = resultado.envio_sap?.doc_num
+      toast.success(
+        'Proceso completado',
+        docNum 
+          ? `ODC enviada exitosamente a SAP. DocNum: ${docNum}`
+          : 'ODC procesada correctamente en SAP'
+      )
+      
+      // Mostrar información de Solicitudes de Transferencia si existen
+      if (resultado.envio_sap?.solicitudes_transferencia) {
+        const st = resultado.envio_sap.solicitudes_transferencia
+        if (st.transferencias_creadas > 0) {
+          toast.success(
+            'Solicitudes de Transferencia',
+            `Se crearon ${st.transferencias_creadas} de ${st.total_tiendas} solicitudes de transferencia`
+          )
+        }
+      }
+      
+      // Recargar el pedido para actualizar el estado
+      await loadPedido()
+    } else if (resultado.status === 'partial') {
+      // Error parcial - mostrar qué paso falló
+      const pasoFallido = resultado.paso_fallido
+      const mensaje = resultado.error || resultado.message
+      
+      toast.warning(
+        `Error en paso: ${pasoFallido}`,
+        mensaje || 'El proceso no se completó totalmente'
+      )
+      
+      // Si la redistribución y ODC se completaron, mostrar info
+      if (resultado.redistribucion) {
+        toast.info('Redistribución confirmada', `Versión: ${resultado.redistribucion.version_confirmada}`)
+      }
+      if (resultado.odc_generada) {
+        toast.info('ODC generada', `ID: ${resultado.odc_generada.oc_id}`)
+      }
+      
+      await loadPedido()
+    } else {
+      toast.error('Error', resultado.message || 'No se pudo completar el proceso')
+    }
+  } catch (e: any) {
+    console.error('Error al enviar ODC a SAP:', e)
+    
+    // Verificar si es una respuesta parcial
+    if (e.response?.data?.status === 'partial') {
+      const resultado = e.response.data
+      toast.warning(
+        `Error en paso: ${resultado.paso_fallido}`,
+        resultado.error || resultado.message || 'El proceso no se completó totalmente'
+      )
+    } else {
+      toast.error(
+        'Error al enviar a SAP',
+        e.message || 'Ocurrió un error al procesar la solicitud'
+      )
+    }
+    
+    await loadPedido()
+  } finally {
+    enviandoOdcSap.value = false
+  }
 }
 
 // Función copyToClipboard ahora está en el composable usePedidoDetalle

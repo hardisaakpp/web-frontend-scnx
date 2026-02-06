@@ -401,6 +401,27 @@ async function handleCancelar() {
       pedido.value.puede_cancelar_pedido = pedidoActualizado.puede_cancelar_pedido
     }
     toast.success('Pedido cancelado', 'El pedido se ha cancelado correctamente. EL RAYO ha sido notificado.')
+    
+    // Redirigir según el número de pedidos disponibles para redistribución
+    try {
+      const response = await mba3ConsultasService.getPedidosListado({
+        solo_redistribucion: true,
+        limit: 1,
+        offset: 0
+      })
+      
+      if (response.metadata.total >= 1) {
+        // Hay pedidos disponibles: ir al listado de redistribución
+        router.push('/mba3-consultas/redistribucion')
+      } else {
+        // No hay pedidos: ir al dashboard de mba3-consultas
+        router.push('/mba3-consultas')
+      }
+    } catch (redirectError) {
+      // Si falla la verificación, redirigir al dashboard por defecto
+      console.warn('Error al verificar pedidos para redirección:', redirectError)
+      router.push('/mba3-consultas')
+    }
   } catch (e: any) {
     toast.error('Error al cancelar pedido', extractErrorMessage(e))
   } finally {
