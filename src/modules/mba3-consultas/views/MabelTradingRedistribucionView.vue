@@ -289,12 +289,14 @@ import type { PedidoCompleto } from '../types'
 import type { ProductoRedistribucion, DistribucionTiendaEditada } from '../utils/redistribucionHelpers'
 import { usePedidoDetalle } from '../composables/usePedidoDetalle'
 import { useRedistribucion } from '../composables/useRedistribucion'
+import { useProcesoStore } from '../stores/procesoStore'
 import PedidoCabecera from '../components/PedidoCabecera.vue'
 import RedistribucionTiendas from '../components/RedistribucionTiendas.vue'
 
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
+const procesoStore = useProcesoStore()
 
 const pedido = ref<PedidoCompleto | null>(null)
 const pedidoIdInput = ref('')
@@ -551,10 +553,18 @@ async function handleEnviarOdcSap() {
         cabecera.estado = 'CONFIRMADO REDISTRIBUCION'
       }
 
-      toast.success(
-        '¡Proceso completado!',
-        `ODC enviada a SAP. DocNum: ${response.envio_sap?.doc_num ?? 'N/A'}`
-      )
+      // ⭐ Guardar resultado en el store para mostrar modal en /proceso
+      procesoStore.setSAPResultadoPendiente({
+        detalle: response.envio_sap ? {
+          success: true,
+          doc_num: response.envio_sap.doc_num,
+          doc_entry: response.envio_sap.doc_entry,
+          message: response.message
+        } : null,
+        solicitudesTransferencia: response.envio_sap?.solicitudes_transferencia || null,
+        estadoGeneral: 'success',
+        numeroPedido: numeroPedido.value
+      })
 
       // Redirigir a la pantalla de Procesar ODC - MABEL TRADING
       router.push({ name: 'mba3-consultas-proceso' })
@@ -563,10 +573,21 @@ async function handleEnviarOdcSap() {
       const pasoFallido = response.paso_fallido ?? 'desconocido'
       const errorMsg = response.error ?? 'Error desconocido'
       
-      toast.warning(
-        `Proceso incompleto (falló en: ${pasoFallido})`,
-        errorMsg
-      )
+      // ⭐ Guardar resultado parcial en el store
+      procesoStore.setSAPResultadoPendiente({
+        detalle: response.envio_sap ? {
+          success: !!response.envio_sap.doc_num,
+          doc_num: response.envio_sap.doc_num,
+          doc_entry: response.envio_sap.doc_entry,
+          error: errorMsg
+        } : {
+          success: false,
+          error: errorMsg
+        },
+        solicitudesTransferencia: response.envio_sap?.solicitudes_transferencia || null,
+        estadoGeneral: 'partial',
+        numeroPedido: numeroPedido.value
+      })
 
       // Si al menos se confirmó la redistribución, actualizar estado
       if (response.redistribucion) {
@@ -576,6 +597,9 @@ async function handleEnviarOdcSap() {
           cabecera.estado = 'CONFIRMADO REDISTRIBUCION'
         }
       }
+      
+      // Redirigir para mostrar el modal con los resultados
+      router.push({ name: 'mba3-consultas-proceso' })
     } else {
       // Error total
       toast.error('Error en proceso SAP', response.message || 'Ocurrió un error inesperado')

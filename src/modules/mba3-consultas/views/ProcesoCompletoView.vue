@@ -1864,6 +1864,21 @@ onMounted(async () => {
   
   // Asegurar que el componente FolderTabs tenga el valor correcto
   await nextTick()
+  
+  // ⭐ NUEVO: Verificar si hay resultados pendientes de envío SAP para mostrar modal
+  if (procesoStore.hasSAPResultadoPendiente && procesoStore.sapResultadoPendiente) {
+    const resultado = procesoStore.sapResultadoPendiente
+    integracionSAPDetalle.value = resultado.detalle
+    integracionSAPSolicitudes.value = resultado.solicitudesTransferencia
+    integracionSAPEstado.value = resultado.estadoGeneral
+    
+    // Mostrar modal después de un pequeño delay
+    await new Promise(resolve => setTimeout(resolve, 300))
+    showIntegracionSAPModal.value = true
+    
+    // Limpiar el resultado pendiente
+    procesoStore.clearSAPResultadoPendiente()
+  }
 })
 
 // Watch para query params de navegación desde OrdenCompraTable

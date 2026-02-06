@@ -1,6 +1,6 @@
 <template>
   <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-    <!-- Modal de bloqueo al generar ODC (sincronizado con backend hasta que termina) -->
+    <!-- Modal de bloqueo al generar ODC -->
     <Teleport to="body">
       <div
         v-if="generandoOC"
@@ -21,7 +21,6 @@
             <div>
               <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Generando orden de compra</h3>
               <p class="text-sm text-gray-600 dark:text-gray-300">Espere mientras se procesa en el servidor. No cierre esta ventana.</p>
-              <p v-if="progressStep" class="text-xs text-gray-500 dark:text-gray-400 mt-2">{{ progressStep }}</p>
             </div>
           </div>
         </div>
@@ -55,7 +54,7 @@
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            {{ generandoOC ? `Generando... ${progressStep}` : 'Generar ODC' }}
+            {{ generandoOC ? 'Generando...' : 'Generar ODC' }}
           </button>
         </div>
       </div>
@@ -78,50 +77,6 @@
           <div class="flex-1">
             <p class="text-sm font-semibold text-red-900 dark:text-red-200">Error al cargar el procesamiento SAP</p>
             <p class="text-sm text-red-800 dark:text-red-300 mt-1">{{ error }}</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- ⭐ MEJORA: Indicador de progreso mejorado -->
-      <div v-if="generandoOC" class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6">
-        <div class="space-y-4">
-          <div class="flex items-center justify-between">
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Generando Orden de Compra</h3>
-            <span class="text-sm text-gray-600 dark:text-gray-400">{{ progressPercentage }}%</span>
-          </div>
-          
-          <!-- Barra de progreso animada -->
-          <div class="w-full h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-            <div
-              class="h-full bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 transition-all duration-500 ease-out relative"
-              :style="{ width: `${progressPercentage}%` }"
-            >
-              <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
-            </div>
-          </div>
-
-          <!-- Pasos del proceso -->
-          <div class="space-y-2">
-            <div
-              v-for="(step, index) in progressSteps"
-              :key="index"
-              class="flex items-center gap-3 text-sm"
-              :class="step.status === 'completed' ? 'text-green-600 dark:text-green-400' : step.status === 'active' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'"
-            >
-              <div class="flex-shrink-0">
-                <svg v-if="step.status === 'completed'" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                </svg>
-                <svg v-else-if="step.status === 'active'" class="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <span :class="step.status === 'active' ? 'font-semibold' : ''">{{ step.label }}</span>
-            </div>
           </div>
         </div>
       </div>

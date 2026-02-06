@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
+import type { IntegracionSAPDetalle, SolicitudesTransferencia } from '../types'
 
 // Estado del proceso de generación de ODC
 type ODCProcessState = 
@@ -10,6 +11,14 @@ type ODCProcessState =
   | 'ready'          // Proceso completo, datos listos
   | 'error'          // Error en algún paso
 
+// Tipo para el resultado del envío a SAP desde redistribución
+interface SAPResultadoPendiente {
+  detalle: IntegracionSAPDetalle | null
+  solicitudesTransferencia: SolicitudesTransferencia | null
+  estadoGeneral: 'success' | 'partial' | 'error'
+  numeroPedido: string
+}
+
 export const useProcesoStore = defineStore('mba3Proceso', () => {
   // Estados básicos (mantener compatibilidad con código existente)
   const loading = ref(false)
@@ -17,6 +26,9 @@ export const useProcesoStore = defineStore('mba3Proceso', () => {
   const currentStep = ref<string | null>(null)
   const resultados = ref<any>(null)
   const progress = ref(0)
+  
+  // ⭐ NUEVO: Resultado pendiente de envío SAP para mostrar en modal
+  const sapResultadoPendiente = ref<SAPResultadoPendiente | null>(null)
 
   // ========== Estado del proceso ODC ==========
   const odcProcessState = ref<ODCProcessState>('idle')
@@ -258,6 +270,18 @@ export const useProcesoStore = defineStore('mba3Proceso', () => {
     resetODCProcess()
   }
 
+  // ⭐ NUEVO: Funciones para manejar resultado pendiente de SAP
+  function setSAPResultadoPendiente(resultado: SAPResultadoPendiente) {
+    sapResultadoPendiente.value = resultado
+  }
+
+  function clearSAPResultadoPendiente() {
+    sapResultadoPendiente.value = null
+  }
+
+  // Computed: ¿Hay resultado pendiente de mostrar?
+  const hasSAPResultadoPendiente = computed(() => sapResultadoPendiente.value !== null)
+
   return {
     // Estados básicos (compatibilidad)
     loading,
@@ -289,6 +313,12 @@ export const useProcesoStore = defineStore('mba3Proceso', () => {
     completeODCProcess,
     setODCProcessError,
     setODCProcessId,
+    
+    // ⭐ NUEVO: Resultado pendiente de SAP (para mostrar modal en /proceso)
+    sapResultadoPendiente,
+    hasSAPResultadoPendiente,
+    setSAPResultadoPendiente,
+    clearSAPResultadoPendiente,
   }
 })
 
