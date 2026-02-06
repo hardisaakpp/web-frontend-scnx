@@ -54,21 +54,13 @@
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Estado</label>
-              <select
-                v-model="filtros.estado"
-                @keyup.enter="aplicarFiltros"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 text-sm"
-              >
-                <option value="">Todos los estados</option>
-                <option value="PENDIENTE_CONFIRMACION_PROVEEDOR">Pendiente Confirmación Proveedor</option>
-                <option value="RESPUESTA_PROVEEDOR_CARGADA">Respuesta Proveedor Cargada</option>
-                <option value="CONFIRMADO_PROVEEDOR">Confirmado Proveedor</option>
-                <option value="ORDEN_COMPRA_CREADA">Orden Compra Creada</option>
-                <option value="ENVIADA_SAP">Enviada SAP</option>
-                <option value="CONFIRMADO_ENVIADO">Confirmado Enviado</option>
-                <option value="CERRADO">Cerrado</option>
-                <option value="CANCELADO">Cancelado</option>
-              </select>
+              <!-- Estado fijo: solo pedidos CONFIRMADO_ENVIADO para esta interfaz de solo lectura -->
+              <div class="w-full px-3 py-2 border border-emerald-300 dark:border-emerald-600 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-sm flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span class="font-medium">Confirmado y Enviado</span>
+              </div>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fecha Desde</label>
@@ -383,8 +375,11 @@ async function cargarPedidos() {
   loading.value = true
   error.value = null
   try {
+    // Solo mostrar pedidos con estado CONFIRMADO_ENVIADO (estado_id=12)
+    // según las indicaciones del backend para esta interfaz de solo lectura
     const response: PedidosListadoResponse = await mba3ConsultasService.getPedidosListado({
       ...filtros.value,
+      estado: 'CONFIRMADO_ENVIADO',
       limit: metadata.value.limit,
       offset: metadata.value.offset
     })
