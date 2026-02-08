@@ -63,6 +63,16 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/caja-chica/asignacion-almacenes',
+    name: 'caja-chica-asignacion-almacenes',
+    component: () => import('./views/AsignacionAlmacenesUsuariosView.vue'),
+    meta: { 
+      requiresAuth: true,
+      title: 'Asignacion de almacenes',
+      permissions: ['cajachica.almacenes.view']
+    },
+  },
+  {
     path: '/caja-chica/formas-pago',
     name: 'caja-chica-formas-pago',
     component: () => import('./views/FormasPagoView.vue'),
