@@ -69,7 +69,15 @@
             :disabled="!canAddGroup"
             @click="addGroup"
           >
-            Agregar grupo
+            {{ editingGroupId ? 'Guardar cambios' : 'Agregar grupo' }}
+          </button>
+          <button
+            v-if="editingGroupId"
+            type="button"
+            class="rounded border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm text-gray-700 dark:text-gray-300"
+            @click="resetForm"
+          >
+            Cancelar
           </button>
           <span v-if="formError" class="text-sm text-red-600 dark:text-red-400">{{ formError }}</span>
         </div>
@@ -101,6 +109,13 @@
                   {{ grupo.almacenes.join(', ') }}
                 </td>
                 <td class="px-4 py-3 text-right">
+                  <button
+                    type="button"
+                    class="mr-2 rounded border border-blue-200 dark:border-blue-900/40 bg-blue-50 dark:bg-blue-900/20 px-3 py-1 text-xs text-blue-700 dark:text-blue-300 hover:border-blue-300"
+                    @click="editGroup(grupo)"
+                  >
+                    Editar
+                  </button>
                   <button
                     type="button"
                     class="rounded border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-900/20 px-3 py-1 text-xs text-red-700 dark:text-red-300 hover:border-red-300"
@@ -137,6 +152,7 @@ interface AlmacenItem {
 const groupName = ref('')
 const groupDescription = ref('')
 const formError = ref('')
+const editingGroupId = ref<number | null>(null)
 const grupos = ref<GrupoAlmacenForm[]>([])
 const almacenSearch = ref('')
 const almacenes = ref<AlmacenItem[]>([])
@@ -152,6 +168,14 @@ const cajaChicaApi = axios.create({
 })
 
 const canAddGroup = computed(() => groupName.value.trim() && selectedAlmacenes.value.length > 0)
+
+const resetForm = () => {
+  groupName.value = ''
+  groupDescription.value = ''
+  almacenSearch.value = ''
+  selectedAlmacenes.value = []
+  editingGroupId.value = null
+}
 
 const addGroup = async () => {
   formError.value = ''
@@ -169,27 +193,42 @@ const addGroup = async () => {
   }
 
   try {
-    const response = await cajaChicaApi.post('/GrupoAlmacenes', {
+    const payloadToSend = {
       Nombre: nombre,
       Descripcion: groupDescription.value.trim(),
       Almacenes: almacenes
-    })
-    const payload = response.data as any
-    grupos.value.unshift({
-      id: payload?.id ?? Date.now(),
-      nombre: payload?.nombre ?? nombre,
-      descripcion: payload?.descripcion ?? groupDescription.value.trim(),
-      almacenes: Array.isArray(payload?.almacenes) ? payload.almacenes : almacenes
-    })
-  } catch {
-    formError.value = 'No se pudo guardar el grupo.'
+    }
+
+    if (editingGroupId.value) {
+      const response = await cajaChicaApi.put(`/GrupoAlmacenes/${editingGroupId.value}`, payloadToSend)
+      const payload = response.data as any
+      grupos.value = grupos.value.map(grupo =>
+        grupo.id === editingGroupId.value
+          ? {
+              id: payload?.id ?? grupo.id,
+              nombre: payload?.nombre ?? nombre,
+              descripcion: payload?.descripcion ?? groupDescription.value.trim(),
+              almacenes: Array.isArray(payload?.almacenes) ? payload.almacenes : almacenes
+            }
+          : grupo
+      )
+    } else {
+      const response = await cajaChicaApi.post('/GrupoAlmacenes', payloadToSend)
+      const payload = response.data as any
+      grupos.value.unshift({
+        id: payload?.id ?? Date.now(),
+        nombre: payload?.nombre ?? nombre,
+        descripcion: payload?.descripcion ?? groupDescription.value.trim(),
+        almacenes: Array.isArray(payload?.almacenes) ? payload.almacenes : almacenes
+      })
+    }
+  } catch (err: any) {
+    const message = err?.response?.data?.message || err?.response?.data
+    formError.value = message || 'No se pudo guardar el grupo.'
     return
   }
 
-  groupName.value = ''
-  groupDescription.value = ''
-  almacenSearch.value = ''
-  selectedAlmacenes.value = []
+  resetForm()
 }
 
 const removeGroup = async (id: number) => {
@@ -199,6 +238,16 @@ const removeGroup = async (id: number) => {
   } catch {
     formError.value = 'No se pudo eliminar el grupo.'
   }
+}
+
+const editGroup = (grupo: GrupoAlmacenForm) => {
+  editingGroupId.value = grupo.id
+  groupName.value = grupo.nombre
+  groupDescription.value = grupo.descripcion
+  selectedAlmacenes.value = grupo.almacenes.map(cod => ({
+    codAlmacen: cod,
+    nombre: cod
+  }))
 }
 
 onMounted(() => {
