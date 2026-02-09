@@ -1544,10 +1544,10 @@ async function handleEnviarOdcSap() {
     cantidad_solicitada: producto.cantidad_solicitada,
     cantidad_confirmada: producto.cantidad_confirmada,
     cantidad_ajustada: producto.cantidad_distribuida,
-    distribucion_tiendas: producto.tiendas.map(tienda => ({
+    distribucion_tiendas: producto.distribucion_tiendas.map(tienda => ({
       tienda_codigo: tienda.tienda_codigo,
       tienda_nombre: tienda.tienda_nombre,
-      cantidad: tienda.cantidad_editada
+      cantidad: tienda.cantidad_asignada
     })),
     costo_original: producto.costo_unitario,
     costo_ajustado: producto.costo_unitario,

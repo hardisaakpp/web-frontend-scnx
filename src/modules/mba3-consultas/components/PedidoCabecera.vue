@@ -106,9 +106,9 @@
                 : 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed'
             ]"
           />
-          <!-- Badge INMEDIATO: solo mostrar si showInmediatoOption !== false y está seleccionado INMEDIATO -->
+          <!-- Badge INMEDIATO: se muestra cuando showInmediatoOption !== false y está seleccionado INMEDIATO (implícito por v-else) -->
           <div
-            v-else-if="showInmediatoOption !== false && fechaEntregaLocal === 'INMEDIATO'"
+            v-else
             :class="[
               'w-full px-3 py-2 border rounded-lg text-sm font-medium',
               fechasEditables

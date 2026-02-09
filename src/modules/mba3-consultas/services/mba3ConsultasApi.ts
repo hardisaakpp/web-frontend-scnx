@@ -1530,16 +1530,7 @@ export const mba3ConsultasService = {
    * @returns Lista de pedidos con metadata de paginación
    * @deprecated Usar pedidosService.getPedidosListado() directamente
    */
-  async getPedidosListado(filtros?: {
-    estado?: string
-    fecha_desde?: string
-    fecha_hasta?: string
-    proveedor_nombre?: string
-    numero_pedido?: string
-    creado_por?: string
-    limit?: number
-    offset?: number
-  }): Promise<import('../types').PedidosListadoResponse> {
+  async getPedidosListado(filtros?: import('../types').PedidosListadoFiltros): Promise<import('../types').PedidosListadoResponse> {
     return pedidosService.getPedidosListado(filtros)
   },
 

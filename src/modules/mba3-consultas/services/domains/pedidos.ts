@@ -36,6 +36,7 @@ import type {
   GuardarModificacionesColumnasResponse,
   ObtenerModificacionesColumnasResponse,
   PedidosListadoResponse,
+  PedidosListadoFiltros,
   TienePedidosResponse,
   CrearOCDesdePedidoResponse,
   DistribucionPedidoResponse,
@@ -1066,16 +1067,7 @@ export const pedidosService = {
    * @param filtros Filtros de búsqueda
    * @returns Lista de pedidos con paginación
    */
-  async getPedidosListado(filtros?: {
-    estado?: string
-    fecha_desde?: string
-    fecha_hasta?: string
-    proveedor_nombre?: string
-    numero_pedido?: string
-    creado_por?: string
-    limit?: number
-    offset?: number
-  }): Promise<PedidosListadoResponse> {
+  async getPedidosListado(filtros?: PedidosListadoFiltros): Promise<PedidosListadoResponse> {
     try {
       const url = buildUrlWithParams('/api/pedidos', filtros || {})
       const response = await mba3Api.get<PedidosListadoResponse>(url)

@@ -1126,7 +1126,7 @@ async function handleDescargarCsv() {
   if (descargandoCsv.value) return
 
   const pedidoId = pedido.value.cabecera.pedido_id
-  const numeroPedidoDisplay = pedido.value.cabecera.numero_pedido
+  const numeroPedidoDisplay = pedido.value.cabecera.numero_pedido ?? 'pedido'
 
   descargandoCsv.value = true
   toast.info('Generando archivo...', 'Por favor espera')
@@ -1263,7 +1263,7 @@ async function handleEliminarPedido() {
 
   const pedidoId = pedido.value.cabecera.pedido_id
   const numeroPedidoDisplay = pedido.value.cabecera.numero_pedido
-  const estadoNombre = pedido.value.cabecera.estado_nombre || pedido.value.cabecera.estado
+  const estadoNombre = pedido.value.cabecera.estado
 
   // Confirmación del usuario
   const confirmado = window.confirm(

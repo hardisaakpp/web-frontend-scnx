@@ -509,6 +509,9 @@ describe('useRedistribucion', () => {
             cantidad_solicitada: 20,
             cantidad_confirmada: 20,
             cantidad_ajustada: 20,
+            costo_original: 10.00,
+            costo_ajustado: 10.00,
+            cambio_precio: false,
             distribucion_tiendas: [
               { tienda_codigo: 'T01', tienda_nombre: 'Tienda 1', cantidad: 20 }
             ]

@@ -286,7 +286,7 @@ import { ref, computed, watch, onMounted, onUnmounted, nextTick, type Ref } from
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService, extractErrorMessage } from '../services/mba3ConsultasApi'
-import type { PedidoCompleto } from '../types'
+import type { PedidoCompleto, IntegracionSAPDetalle } from '../types'
 import type { ProductoRedistribucion, DistribucionTiendaEditada } from '../utils/redistribucionHelpers'
 import { usePedidoDetalle } from '../composables/usePedidoDetalle'
 import { useRedistribucion } from '../composables/useRedistribucion'
@@ -567,10 +567,15 @@ async function handleEnviarOdcSap() {
       procesoStore.setSAPResultadoPendiente({
         detalle: response.envio_sap ? {
           success: true,
+          oc_id: '',
           doc_num: response.envio_sap.doc_num,
           doc_entry: response.envio_sap.doc_entry,
-          message: response.message
-        } : null,
+          message: response.message,
+          error: null,
+          error_message: null,
+          error_code: null,
+          error_source: null
+        } as IntegracionSAPDetalle : null,
         solicitudesTransferencia: response.envio_sap?.solicitudes_transferencia || null,
         estadoGeneral: 'success',
         numeroPedido: numeroPedido.value
@@ -587,13 +592,25 @@ async function handleEnviarOdcSap() {
       procesoStore.setSAPResultadoPendiente({
         detalle: response.envio_sap ? {
           success: !!response.envio_sap.doc_num,
+          oc_id: '',
           doc_num: response.envio_sap.doc_num,
           doc_entry: response.envio_sap.doc_entry,
-          error: errorMsg
-        } : {
+          message: null,
+          error: errorMsg,
+          error_message: errorMsg,
+          error_code: null,
+          error_source: null
+        } as IntegracionSAPDetalle : {
           success: false,
-          error: errorMsg
-        },
+          oc_id: '',
+          doc_num: null,
+          doc_entry: null,
+          message: null,
+          error: errorMsg,
+          error_message: errorMsg,
+          error_code: null,
+          error_source: null
+        } as IntegracionSAPDetalle,
         solicitudesTransferencia: response.envio_sap?.solicitudes_transferencia || null,
         estadoGeneral: 'partial',
         numeroPedido: numeroPedido.value
@@ -661,7 +678,7 @@ async function handleDescargarDistribucionExcel() {
     const blob = await mba3ConsultasService.descargarDistribucionExcel(pedidoId)
     
     // Crear nombre de archivo con timestamp
-    const numeroPedidoDisplay = pedido.value.cabecera.numero_pedido
+    const numeroPedidoDisplay = pedido.value?.cabecera?.numero_pedido ?? 'pedido'
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
     const nombreArchivo = `distribucion_${numeroPedidoDisplay.replace(/[^a-zA-Z0-9.-]/g, '_')}_${timestamp}.xlsx`
     
