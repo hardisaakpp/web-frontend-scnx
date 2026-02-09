@@ -341,11 +341,13 @@ import { useAuthStore } from '../stores/auth'
 import { useThemeStore } from '../stores/theme'
 import ToastContainer from '../components/ToastContainer.vue'
 import { userPreferencesService } from '@/services/userPreferencesService'
+import { useNotificaciones } from '@/composables/useNotificaciones'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const themeStore = useThemeStore()
+const { connect: connectNotificaciones, disconnect: disconnectNotificaciones } = useNotificaciones()
 const isSidebarOpen = ref(false)
 const isSidebarCollapsed = ref(false)
 
@@ -460,6 +462,20 @@ onMounted(async () => {
     await authStore.fetchMe()
   }
   loadSidebarPreferences()
+  
+  // 📢 Conectar al sistema de notificaciones en tiempo real (SSE)
+  if (authStore.isAuthenticated) {
+    connectNotificaciones()
+  }
+})
+
+// Observar cambios de autenticación para conectar/desconectar notificaciones
+watch(() => authStore.isAuthenticated, (isAuth) => {
+  if (isAuth) {
+    connectNotificaciones()
+  } else {
+    disconnectNotificaciones()
+  }
 })
 
 // Guardar preferencias cuando cambia el estado del sidebar

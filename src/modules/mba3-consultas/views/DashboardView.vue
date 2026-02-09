@@ -135,33 +135,14 @@
               </svg>
             </div>
             <div class="flex-1 min-w-0">
-              <div class="font-medium text-gray-900 dark:text-white text-sm">Procesos</div>
-              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">MABEL TRADING - Migración y procesamiento</div>
+              <div class="font-medium text-gray-900 dark:text-white text-sm">ODC a SAP</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">MABEL TRADING - Generar ODC y enviar a SAP</div>
               <div v-if="loadingDespachos" class="text-xs text-indigo-600 dark:text-indigo-400 mt-2 flex items-center gap-1">
                 <svg class="animate-spin w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
                 Cargando...
               </div>
-            </div>
-          </div>
-        </button>
-
-        <!-- Homologaciones: capability mabel_view (mabel.view). Solo capabilities. -->
-        <button
-          v-if="authStore.canViewMabel"
-          @click="$router.push('/mba3-consultas/homologaciones')"
-          class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left"
-        >
-          <div class="flex items-start gap-3">
-            <div class="w-8 h-8 rounded bg-violet-50 dark:bg-violet-900/30 flex items-center justify-center flex-shrink-0">
-              <svg class="w-4 h-4 text-violet-600 dark:text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-              </svg>
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="font-medium text-gray-900 dark:text-white text-sm">Homologaciones</div>
-              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">SKUs no coincidentes</div>
             </div>
           </div>
         </button>
@@ -248,9 +229,9 @@
                     </div>
                   </button>
 
-                  <!-- Listado Pedidos Originales: capability can_view_plantillas_originales (mabel.view o admin) -->
+                  <!-- Listado Pedidos Originales: capability can_view_plantillas_originales (mabel.view o admin) o odcsap.view (EL RAYO) -->
                   <button
-                    v-if="authStore.canViewPlantillasOriginales"
+                    v-if="authStore.canViewPlantillasOriginales || authStore.canViewOrderList"
                     @click="showListadoPedidosOriginalesModal = true"
                     class="bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-600 p-4 hover:border-gray-300 dark:hover:border-gray-500 hover:shadow-sm transition-all text-left"
                   >
@@ -263,6 +244,25 @@
                       <div class="flex-1 min-w-0">
                         <div class="font-medium text-gray-900 dark:text-white text-sm">Listado Pedidos Originales</div>
                         <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Archivos Excel en storage</div>
+                      </div>
+                    </div>
+                  </button>
+
+                  <!-- Homologaciones: capability mabel_view (mabel.view) o odcsap.view (EL RAYO). Ambos usuarios. -->
+                  <button
+                    v-if="authStore.canViewMabel || authStore.canViewOrderList"
+                    @click="$router.push('/mba3-consultas/homologaciones')"
+                    class="bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-600 p-4 hover:border-gray-300 dark:hover:border-gray-500 hover:shadow-sm transition-all text-left"
+                  >
+                    <div class="flex items-start gap-3">
+                      <div class="w-8 h-8 rounded bg-violet-50 dark:bg-violet-900/30 flex items-center justify-center flex-shrink-0">
+                        <svg class="w-4 h-4 text-violet-600 dark:text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                        </svg>
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <div class="font-medium text-gray-900 dark:text-white text-sm">Homologaciones</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">SKUs no coincidentes</div>
                       </div>
                     </div>
                   </button>
