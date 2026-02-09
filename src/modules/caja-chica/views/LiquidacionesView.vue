@@ -244,20 +244,17 @@ const createLiquidacion = async () => {
 
   try {
     await cajaChicaApi.post('/Liquidaciones', {
-      IdLiquidacion: 0,
-      FechaCreacion: new Date().toISOString(),
-      FechaUltimaModificacion: null,
+      IdUsuario: userId,
       CodAlmacen: selectedCodAlmacen.value,
       Marca: marca.value,
       Empresa: empresa.value,
       CedulaCustodio: cedulaCustodio.value,
       NombreCustodio: nombreCustodio.value,
       FormatoDePago: formatoDePago.value,
+      Estado: 'BORRADOR',
       NumeroLiquidacion: '',
       Autorizacion: '',
-      DatosBancarios: '',
-      Estado: 'BORRADOR',
-      IdUsuario: userId
+      DatosBancarios: ''
     })
 
     formSuccess.value = 'Liquidacion creada.'
