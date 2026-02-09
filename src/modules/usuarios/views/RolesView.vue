@@ -36,16 +36,54 @@
       </div>
       <div v-if="roleQueryError" class="mt-2 text-sm text-red-600">{{ roleQueryError }}</div>
       <div v-else-if="roleQueryLoading" class="mt-2 text-sm text-gray-500">Cargando permisos...</div>
-      <div v-else-if="roleQueryPermissions.length > 0" class="mt-3 flex flex-wrap gap-2">
-        <span
-          v-for="permiso in roleQueryPermissions"
-          :key="permiso.id"
-          class="rounded bg-gray-100 px-2 py-1 text-xs text-gray-700"
-        >
-          {{ permiso.key }}
-        </span>
+      <div v-else-if="roleQuerySearched" class="mt-3 space-y-3">
+        <!-- Permisos actuales -->
+        <div v-if="roleQueryPermissions.length > 0">
+          <div class="text-xs font-medium text-gray-600 mb-2">Permisos asignados:</div>
+          <div class="flex flex-wrap gap-2">
+            <span
+              v-for="permiso in roleQueryPermissions"
+              :key="permiso.id"
+              class="inline-flex items-center gap-2 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm"
+            >
+              {{ permiso.key }}
+              <button 
+                @click="() => handleRemoverPermisoConsulta(permiso.id)" 
+                class="hover:text-red-600"
+                :disabled="roleQueryLoading"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </span>
+          </div>
+        </div>
+        <div v-else class="text-sm text-gray-500">Sin permisos asignados.</div>
+        
+        <!-- Asignar nuevo permiso -->
+        <div class="border-t pt-3">
+          <div class="text-xs font-medium text-gray-600 mb-2">Asignar nuevo permiso:</div>
+          <div class="flex gap-2">
+            <select
+              v-model="selectedPermissionToAssign"
+              class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm"
+            >
+              <option value="">Seleccionar permiso para asignar...</option>
+              <option v-for="permiso in permisosDisponiblesParaRol" :key="permiso.id" :value="permiso.id">
+                [{{ permiso.module }}] {{ permiso.key }} - {{ permiso.description }}
+              </option>
+            </select>
+            <button
+              @click="handleAsignarPermisoConsulta"
+              :disabled="!selectedPermissionToAssign || roleQueryLoading"
+              class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 text-sm"
+            >
+              Asignar
+            </button>
+          </div>
+        </div>
       </div>
-      <div v-else-if="roleQuerySearched" class="mt-2 text-sm text-gray-500">Sin permisos para este rol.</div>
     </div>
 
 
@@ -117,7 +155,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { Dialog, DialogPanel, DialogTitle, TransitionRoot } from '@headlessui/vue'
 import { useRolesStore } from '../stores/rolesStore'
 import { usePermisosStore } from '../stores/permisosStore'
@@ -137,6 +175,11 @@ const roleQueryPermissions = ref<Rol['permissions']>([])
 const roleQueryLoading = ref(false)
 const roleQueryError = ref('')
 const roleQuerySearched = ref(false)
+const selectedPermissionToAssign = ref<number | ''>('')
+
+const permisosDisponiblesParaRol = computed(() => 
+  permisosStore.permisos.filter(p => !roleQueryPermissions.value.some(rp => rp.id === p.id))
+)
 
 onMounted(async () => {
   await Promise.all([
@@ -215,6 +258,29 @@ const handleRemoverPermiso = async (permisoId: number) => {
     } catch (error) {
       // Error ya manejado en el store
     }
+  }
+}
+
+const handleAsignarPermisoConsulta = async () => {
+  if (!selectedPermissionToAssign.value || !roleQuery.value) return
+  try {
+    await rolesStore.asignarPermiso(roleQuery.value, selectedPermissionToAssign.value as number)
+    // Refresh the permissions
+    await fetchRolePermissions()
+    selectedPermissionToAssign.value = ''
+  } catch (error) {
+    // Error handled in store
+  }
+}
+
+const handleRemoverPermisoConsulta = async (permisoId: number) => {
+  if (!roleQuery.value) return
+  try {
+    await rolesStore.removerPermiso(roleQuery.value, permisoId)
+    // Refresh the permissions
+    await fetchRolePermissions()
+  } catch (error) {
+    // Error handled in store
   }
 }
 
