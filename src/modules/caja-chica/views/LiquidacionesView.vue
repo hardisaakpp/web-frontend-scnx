@@ -150,6 +150,12 @@
                     >
                       Editar
                     </button>
+                    <router-link
+                      class="text-blue-600 hover:text-blue-700 text-xs font-medium"
+                      :to="`/caja-chica/liquidaciones/${item.idLiquidacion}/detalle`"
+                    >
+                      Detalles
+                    </router-link>
                     <button
                       type="button"
                       class="text-red-600 hover:text-red-700 text-xs font-medium"

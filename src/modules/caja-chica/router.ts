@@ -23,6 +23,16 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/caja-chica/liquidaciones/:id/detalle',
+    name: 'caja-chica-liquidaciones-detalle',
+    component: () => import('./views/LiquidacionDetalleView.vue'),
+    meta: { 
+      requiresAuth: true,
+      title: 'Detalle de Liquidacion',
+      permissions: ['cajachica.liquidaciones.view']
+    },
+  },
+  {
     path: '/caja-chica/aprobaciones',
     name: 'caja-chica-aprobaciones',
     component: () => import('./views/AprobacionesView.vue'),
