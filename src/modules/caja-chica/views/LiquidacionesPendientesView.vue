@@ -4,7 +4,7 @@
       <div class="flex items-center justify-between">
         <div>
           <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Liquidaciones pendientes</h1>
-          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Solicitudes en estado PENDIENTE</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Solicitudes en revision y contabilidad</p>
         </div>
         <router-link
           class="rounded border border-gray-200 dark:border-gray-700 text-sm px-3 py-1.5"
@@ -118,7 +118,7 @@ const loadPendientes = async () => {
     const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
     pendientes.value = items
       .map(normalizeLiquidacion)
-      .filter(item => item.estado.toUpperCase() === 'PENDIENTE')
+      .filter(item => ['SUPERVISION', 'CONTABILIDAD'].includes(item.estado.toUpperCase()))
   } catch {
     error.value = 'No se pudieron cargar las liquidaciones pendientes.'
   } finally {

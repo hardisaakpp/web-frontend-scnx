@@ -31,52 +31,146 @@
         <div v-else-if="pendientes.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
           No hay aprobaciones pendientes.
         </div>
-        <div v-else class="overflow-x-auto">
-          <table class="min-w-full text-sm">
-            <thead>
-              <tr class="text-left text-xs uppercase text-gray-500 dark:text-gray-400">
-                <th class="py-2 pr-3">Id</th>
-                <th class="py-2 pr-3">Detalle</th>
-                <th class="py-2 pr-3">Monto</th>
-                <th class="py-2 pr-3">Nivel</th>
-                <th class="py-2 pr-3">Fecha</th>
-                <th class="py-2 pr-3">Estado</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-              <tr v-for="item in pendientes" :key="item.idAprobacion">
-                <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.idAprobacion }}</td>
-                <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.idDetalle }}</td>
-                <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ formatAmount(item.montoAprobado) }}</td>
-                <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.nivelAprobacion }}</td>
-                <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ formatDate(item.fechaAprobacion) }}</td>
-                <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.estado }}</td>
-              </tr>
-            </tbody>
-          </table>
+        <div v-else class="space-y-6">
+          <div
+            v-for="group in groupedPendientes"
+            :key="group.idLiquidacion"
+            class="rounded border border-gray-200 dark:border-gray-700"
+          >
+            <div class="flex items-center justify-between bg-gray-50 dark:bg-gray-900 px-4 py-3">
+              <div>
+                <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Liquidacion #{{ group.idLiquidacion }}</h3>
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                  {{ group.totalItems }} detalles pendientes · Tienda: {{ group.codAlmacen }} · Custodio: {{ group.nombreCustodio }} · Fecha: {{ formatDate(group.fechaCreacion) }}
+                </p>
+              </div>
+              <div class="text-xs text-gray-500 dark:text-gray-400">Total: {{ formatAmount(group.totalMonto) }}</div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="min-w-full text-sm">
+                <thead>
+                  <tr class="text-left text-xs uppercase text-gray-500 dark:text-gray-400">
+                    <th class="py-2 pr-3 pl-4">Id</th>
+                    <th class="py-2 pr-3">Detalle</th>
+                    <th class="py-2 pr-3">Gasto</th>
+                    <th class="py-2 pr-3">Total</th>
+                    <th class="py-2 pr-3">Monto aprobado</th>
+                    <th class="py-2 pr-3">Comentario</th>
+                    <th class="py-2 pr-3">Nivel</th>
+                    <th class="py-2 pr-3">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                  <tr v-for="item in group.items" :key="item.idAprobacion">
+                    <td class="py-2 pr-3 pl-4 text-gray-700 dark:text-gray-200">{{ item.idAprobacion }}</td>
+                    <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.idDetalle }}</td>
+                    <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.nombreGasto }}</td>
+                    <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ formatAmount(item.total) }}</td>
+                    <td class="py-2 pr-3">
+                      <input
+                        v-model="decisions[item.idAprobacion].montoAprobado"
+                        type="number"
+                        step="0.01"
+                        class="w-28 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-xs text-gray-900 dark:text-white"
+                      />
+                    </td>
+                    <td class="py-2 pr-3">
+                      <input
+                        v-model="decisions[item.idAprobacion].observacion"
+                        type="text"
+                        placeholder="Comentario"
+                        class="w-48 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-xs text-gray-900 dark:text-white"
+                      />
+                    </td>
+                    <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.nivelAprobacion }}</td>
+                    <td class="py-2 pr-3">
+                      <div class="flex items-center gap-2">
+                        <button
+                          type="button"
+                          class="text-emerald-600 hover:text-emerald-700 text-xs font-medium disabled:opacity-50"
+                          :disabled="actionLoadingId === item.idAprobacion"
+                          @click="approve(item)"
+                        >
+                          Aprobar
+                        </button>
+                        <button
+                          type="button"
+                          class="text-red-600 hover:text-red-700 text-xs font-medium disabled:opacity-50"
+                          :disabled="actionLoadingId === item.idAprobacion"
+                          @click="reject(item)"
+                        >
+                          Rechazar
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
+
+        <div v-if="actionError" class="mt-3 text-sm text-red-600 dark:text-red-400">{{ actionError }}</div>
+        <div v-else-if="actionSuccess" class="mt-3 text-sm text-emerald-600 dark:text-emerald-400">{{ actionSuccess }}</div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from '@vue/runtime-core'
+import { computed, onMounted, ref } from '@vue/runtime-core'
 import axios from 'axios'
 
 interface AprobacionItem {
   idAprobacion: number
   idDetalle: number
-  idUsuario: string
-  montoAprobado: number
-  fechaAprobacion: string
-  estado: string
+  idLiquidacion: number
+  codAlmacen: string
+  nombreCustodio: string
+  fechaCreacion: string
+  nombreGasto: string
+  concepto: string
+  total: number
   nivelAprobacion: number
+  estado: string
+}
+
+interface DecisionState {
+  montoAprobado: string
+  observacion: string
 }
 
 const loading = ref(false)
 const error = ref('')
+const actionError = ref('')
+const actionSuccess = ref('')
+const actionLoadingId = ref<number | null>(null)
 const pendientes = ref<AprobacionItem[]>([])
+const decisions = ref<Record<number, DecisionState>>({})
+
+const groupedPendientes = computed(() => {
+  const groups = new Map<number, AprobacionItem[]>()
+  pendientes.value.forEach(item => {
+    if (!groups.has(item.idLiquidacion)) {
+      groups.set(item.idLiquidacion, [])
+    }
+    groups.get(item.idLiquidacion)?.push(item)
+  })
+
+  return Array.from(groups.entries()).map(([idLiquidacion, items]) => {
+    const totalMonto = items.reduce((acc, item) => acc + item.total, 0)
+    const base = items[0]
+    return {
+      idLiquidacion,
+      items,
+      totalMonto,
+      totalItems: items.length,
+      codAlmacen: base?.codAlmacen || '',
+      nombreCustodio: base?.nombreCustodio || '',
+      fechaCreacion: base?.fechaCreacion || ''
+    }
+  })
+})
 
 const cajaChicaApi = axios.create({
   baseURL: import.meta.env.VITE_CAJA_CHICA_API_URL || 'http://localhost:8080/api',
@@ -112,25 +206,47 @@ const normalizeString = (value: any) => String(value ?? '').trim()
 const normalizeAprobacion = (item: any): AprobacionItem => ({
   idAprobacion: Number(item.idAprobacion ?? item.IdAprobacion ?? 0),
   idDetalle: Number(item.idDetalle ?? item.IdDetalle ?? 0),
-  idUsuario: normalizeString(item.idUsuario ?? item.IdUsuario ?? ''),
-  montoAprobado: Number(item.montoAprobado ?? item.MontoAprobado ?? 0),
-  fechaAprobacion: String(item.fechaAprobacion ?? item.FechaAprobacion ?? ''),
-  estado: normalizeString(item.estado ?? item.Estado ?? ''),
-  nivelAprobacion: Number(item.nivelAprobacion ?? item.NivelAprobacion ?? 0)
+  idLiquidacion: Number(item.idLiquidacion ?? item.IdLiquidacion ?? 0),
+  codAlmacen: normalizeString(item.codAlmacen ?? item.CodAlmacen ?? ''),
+  nombreCustodio: normalizeString(item.nombreCustodio ?? item.NombreCustodio ?? ''),
+  fechaCreacion: String(item.fechaCreacion ?? item.FechaCreacion ?? ''),
+  nombreGasto: normalizeString(item.nombreGasto ?? item.NombreGasto ?? ''),
+  concepto: normalizeString(item.concepto ?? item.Concepto ?? ''),
+  total: Number(item.total ?? item.Total ?? 0),
+  nivelAprobacion: Number(item.nivelAprobacion ?? item.NivelAprobacion ?? 0),
+  estado: normalizeString(item.estado ?? item.Estado ?? '')
 })
+
+const ensureDecision = (item: AprobacionItem) => {
+  if (!decisions.value[item.idAprobacion]) {
+    decisions.value[item.idAprobacion] = {
+      montoAprobado: item.total.toFixed(2),
+      observacion: ''
+    }
+  }
+}
 
 const loadPendientes = async () => {
   loading.value = true
   error.value = ''
+  actionError.value = ''
+  actionSuccess.value = ''
+  decisions.value = {}
   try {
-    const response = await cajaChicaApi.get('/Aprobaciones')
+    const userId = getCurrentUserId()
+    if (!userId) {
+      error.value = 'No se encontro el usuario logeado.'
+      return
+    }
+
+    const response = await cajaChicaApi.get(`/Aprobaciones/pendientes/${userId}`)
     const payload = response.data as any
     const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
-    const userId = getCurrentUserId()
-    pendientes.value = items
+    const normalized = items
       .map(normalizeAprobacion)
       .filter(item => item.estado.toUpperCase() === 'PENDIENTE')
-      .filter(item => userId && String(item.idUsuario) === userId)
+    normalized.forEach(ensureDecision)
+    pendientes.value = normalized
   } catch {
     error.value = 'No se pudieron cargar las aprobaciones pendientes.'
   } finally {
@@ -138,8 +254,50 @@ const loadPendientes = async () => {
   }
 }
 
+const approve = async (item: AprobacionItem) => {
+  actionError.value = ''
+  actionSuccess.value = ''
+  actionLoadingId.value = item.idAprobacion
+  try {
+    const decision = decisions.value[item.idAprobacion]
+    const monto = Number(decision?.montoAprobado ?? item.total)
+    await cajaChicaApi.post(`/Aprobaciones/${item.idAprobacion}/aprobar`, {
+      MontoAprobado: Number.isNaN(monto) ? item.total : monto,
+      Observacion: decision?.observacion || ''
+    })
+    actionSuccess.value = 'Aprobacion registrada.'
+    await loadPendientes()
+  } catch (err: any) {
+    const message = err?.response?.data?.message || err?.response?.data
+    actionError.value = message || 'No se pudo aprobar la solicitud.'
+  } finally {
+    actionLoadingId.value = null
+  }
+}
+
+const reject = async (item: AprobacionItem) => {
+  actionError.value = ''
+  actionSuccess.value = ''
+  actionLoadingId.value = item.idAprobacion
+  try {
+    const decision = decisions.value[item.idAprobacion]
+    const monto = Number(decision?.montoAprobado ?? 0)
+    await cajaChicaApi.post(`/Aprobaciones/${item.idAprobacion}/rechazar`, {
+      MontoAprobado: Number.isNaN(monto) ? 0 : monto,
+      Observacion: decision?.observacion || ''
+    })
+    actionSuccess.value = 'Aprobacion rechazada.'
+    await loadPendientes()
+  } catch (err: any) {
+    const message = err?.response?.data?.message || err?.response?.data
+    actionError.value = message || 'No se pudo rechazar la solicitud.'
+  } finally {
+    actionLoadingId.value = null
+  }
+}
+
 const formatAmount = (value: number) => value.toFixed(2)
-const formatDate = (value: string) => value ? value.substring(0, 10) : ''
+const formatDate = (value: string) => (value ? value.substring(0, 10) : '')
 
 onMounted(() => {
   loadPendientes()

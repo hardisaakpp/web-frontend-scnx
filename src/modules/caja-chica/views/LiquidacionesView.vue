@@ -317,14 +317,6 @@ interface LiquidacionItem {
   datosBancarios: string
 }
 
-interface LiquidacionDetalleItem {
-  idDetalle: number
-}
-
-interface AdjuntoItem {
-  idAdjunto: number
-}
-
 const authStore = useAuthStore()
 const selectedCodAlmacen = ref('')
 const nombreCustodio = ref('')
@@ -536,24 +528,6 @@ const loadBorradores = async () => {
   }
 }
 
-const fetchDetalles = async (idLiquidacion: number) => {
-  const response = await cajaChicaApi.get(`/Liquidaciones/${idLiquidacion}/detalle`)
-  const payload = response.data as any
-  const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
-  return items.map((item: any) => ({
-    idDetalle: Number(item.idDetalle ?? item.IdDetalle ?? 0)
-  })) as LiquidacionDetalleItem[]
-}
-
-const fetchAdjuntos = async (idDetalle: number) => {
-  const response = await cajaChicaApi.get(`/Adjuntos/por-detalle/${idDetalle}`)
-  const payload = response.data as any
-  const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
-  return items.map((item: any) => ({
-    idAdjunto: Number(item.idAdjunto ?? item.IdAdjunto ?? 0)
-  })) as AdjuntoItem[]
-}
-
 const createLiquidacion = async () => {
   if (!canSubmit.value) return
   formError.value = ''
@@ -677,39 +651,10 @@ const sendLiquidacion = async (item: LiquidacionItem) => {
   sendingId.value = item.idLiquidacion
 
   try {
-    const detalles = await fetchDetalles(item.idLiquidacion)
-    if (detalles.length === 0) {
-      sendError.value = 'Debe registrar al menos un detalle antes de enviar.'
-      return
-    }
-
-    for (const detalle of detalles) {
-      const adjuntos = await fetchAdjuntos(detalle.idDetalle)
-      if (adjuntos.length === 0) {
-        sendError.value = 'Cada detalle debe tener al menos un adjunto.'
-        return
-      }
-    }
-
     const confirmed = window.confirm('Estas seguro de enviar esta liquidacion?')
     if (!confirmed) return
 
-    await cajaChicaApi.put(`/Liquidaciones/${item.idLiquidacion}`, {
-      IdLiquidacion: item.idLiquidacion,
-      IdUsuario: item.idUsuario,
-      FechaCreacion: item.fechaCreacion || new Date().toISOString(),
-      FechaUltimaModificacion: new Date().toISOString(),
-      CodAlmacen: item.codAlmacen,
-      Marca: item.marca,
-      Empresa: item.empresa,
-      CedulaCustodio: item.cedulaCustodio,
-      NombreCustodio: item.nombreCustodio,
-      FormatoDePago: item.formatoDePago,
-      NumeroLiquidacion: item.numeroLiquidacion || '',
-      Autorizacion: item.autorizacion || '',
-      DatosBancarios: item.datosBancarios || '',
-      Estado: 'PENDIENTE'
-    })
+    await cajaChicaApi.post(`/Liquidaciones/${item.idLiquidacion}/enviar`)
 
     sendSuccess.value = 'Liquidacion enviada.'
     await loadBorradores()
