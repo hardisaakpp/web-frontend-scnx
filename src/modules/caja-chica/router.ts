@@ -63,6 +63,16 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/caja-chica/aprobaciones-pendientes',
+    name: 'caja-chica-aprobaciones-pendientes',
+    component: () => import('./views/AprobacionesPendientesView.vue'),
+    meta: { 
+      requiresAuth: true,
+      title: 'Aprobaciones pendientes',
+      permissions: ['cajachica.aprobaciones.view']
+    },
+  },
+  {
     path: '/caja-chica/catalogo-gastos',
     name: 'caja-chica-catalogo-gastos',
     component: () => import('./views/CatalogoGastosView.vue'),

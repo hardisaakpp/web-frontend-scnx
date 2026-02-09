@@ -77,6 +77,23 @@
         </router-link>
 
         <router-link
+          to="/caja-chica/aprobaciones-pendientes"
+          class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left block"
+        >
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded bg-orange-50 dark:bg-orange-900/30 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-gray-900 dark:text-white text-sm">Aprobaciones pendientes</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Pendientes por aprobar</div>
+            </div>
+          </div>
+        </router-link>
+
+        <router-link
           to="/caja-chica/almacenes"
           class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left block"
         >
