@@ -11,7 +11,22 @@
 
       <!-- Formulario -->
       <div class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-5">
-        <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Nueva liquidacion</h2>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Completa la cabecera para crear un borrador</p>
+          </div>
+          <button
+            type="button"
+            class="rounded border border-gray-200 dark:border-gray-700 text-sm px-3 py-1.5"
+            :aria-expanded="isCreateOpen"
+            @click="isCreateOpen = !isCreateOpen"
+          >
+            {{ isCreateOpen ? 'Ocultar' : 'Mostrar' }}
+          </button>
+        </div>
+
+        <div v-if="isCreateOpen" class="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div>
             <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Almacen asignado</label>
             <select
@@ -71,7 +86,7 @@
             />
           </div>
         </div>
-        <div class="mt-4 flex items-center gap-3">
+        <div v-if="isCreateOpen" class="mt-4 flex items-center gap-3">
           <button
             type="button"
             class="rounded bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2 disabled:opacity-50"
@@ -290,6 +305,7 @@ const formError = ref('')
 const formSuccess = ref('')
 const loading = ref(false)
 const loadError = ref('')
+const isCreateOpen = ref(true)
 const asignados = ref<UsuarioAlmacenItem[]>([])
 const almacenes = ref<AlmacenItem[]>([])
 const borradores = ref<LiquidacionItem[]>([])
