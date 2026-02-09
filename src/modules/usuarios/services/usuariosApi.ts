@@ -70,8 +70,17 @@ export const usuariosService = {
 export const rolesService = {
   // Obtener todos los roles
   async getRoles(): Promise<Rol[]> {
-    const response = await api.get<Rol[]>('/Roles')
-    return response.data
+    const response = await api.get<any[]>('/Roles')
+    // Mapear a la estructura Rol esperada
+    return response.data.map(r => ({
+      id: r.id,
+      name: r.name,
+      description: r.description || '',
+      normalizedName: r.normalizedName || r.normalized_name || '',
+      createdAt: r.createdAt || '',
+      permissions: [], // Se llenará después
+      usersCount: r.usersCount || 0
+    }))
   },
 
   // Obtener un rol por ID
@@ -161,13 +170,13 @@ export const permisosService = {
   },
 
   // Asignar permiso a rol
-  async asignarPermiso(data: AsignarPermisoDto): Promise<void> {
-    await api.post('/Permissions/assign', data)
+    async asignarPermiso(data: AsignarPermisoDto): Promise<void> {
+      await api.post('/permissions/assign', data)
   },
 
   // Remover permiso de rol
-  async removerPermiso(data: RemoverPermisoDto): Promise<void> {
-    await api.post('/Permissions/remove', data)
+    async removerPermiso(data: RemoverPermisoDto): Promise<void> {
+      await api.delete('/permissions/unassign', { data })
   },
 
   // Obtener permisos de un usuario (derivados de sus roles)
