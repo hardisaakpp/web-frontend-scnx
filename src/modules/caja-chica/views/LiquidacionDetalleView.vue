@@ -149,6 +149,8 @@
           </button>
         </div>
 
+        <input ref="fileInput" type="file" class="hidden" @change="handleFileChange" />
+
         <div v-if="loadingDetalles" class="text-sm text-gray-500 dark:text-gray-400">Cargando detalles...</div>
         <div v-else-if="detalleError" class="text-sm text-red-600 dark:text-red-400">{{ detalleError }}</div>
         <div v-else-if="detalles.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
@@ -169,6 +171,7 @@
                 <th class="py-2 pr-3">Subtotal sin IVA</th>
                 <th class="py-2 pr-3">IVA</th>
                 <th class="py-2 pr-3">Total</th>
+                <th class="py-2 pr-3">Adjuntos</th>
                 <th class="py-2 pr-3">Acciones</th>
               </tr>
             </thead>
@@ -185,6 +188,40 @@
                 <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ formatAmount(item.subtotalSinIva) }}</td>
                 <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ formatAmount(item.iva) }}</td>
                 <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ formatAmount(item.total) }}</td>
+                <td class="py-2 pr-3">
+                  <div class="flex flex-col gap-1">
+                    <button
+                      type="button"
+                      class="text-blue-600 hover:text-blue-700 text-xs font-medium"
+                      @click="triggerUpload(item.idDetalle)"
+                    >
+                      Adjuntar
+                    </button>
+                    <div v-if="adjuntosByDetalle[item.idDetalle]?.length" class="flex flex-col">
+                      <div
+                        v-for="adjunto in adjuntosByDetalle[item.idDetalle]"
+                        :key="adjunto.idAdjunto"
+                        class="flex items-center gap-2"
+                      >
+                        <a
+                          class="text-xs text-gray-600 hover:text-gray-800 dark:text-gray-300"
+                          :href="buildAdjuntoUrl(adjunto.rutaArchivo)"
+                          target="_blank"
+                          rel="noopener"
+                        >
+                          {{ formatAdjuntoName(adjunto.rutaArchivo) }}
+                        </a>
+                        <button
+                          type="button"
+                          class="text-xs text-red-600 hover:text-red-700"
+                          @click="deleteAdjunto(adjunto, item.idDetalle)"
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </td>
                 <td class="py-2 pr-3">
                   <div class="flex items-center gap-2">
                     <button
@@ -210,6 +247,7 @@
                 <td class="py-2 pr-3 font-semibold text-gray-700 dark:text-gray-200">{{ formatAmount(totalSubtotalSinIva) }}</td>
                 <td class="py-2 pr-3 font-semibold text-gray-700 dark:text-gray-200">{{ formatAmount(totalIva) }}</td>
                 <td class="py-2 pr-3 font-semibold text-gray-700 dark:text-gray-200">{{ formatAmount(totalTotal) }}</td>
+                <td class="py-2 pr-3"></td>
                 <td class="py-2 pr-3"></td>
               </tr>
             </tbody>
@@ -377,6 +415,13 @@ interface LiquidacionDetalleItem {
   total: number
 }
 
+interface AdjuntoItem {
+  idAdjunto: number
+  idDetalle: number
+  rutaArchivo: string
+  fechaSubida: string
+}
+
 const route = useRoute()
 const liquidacionId = computed(() => Number(route.params.id || 0))
 
@@ -414,6 +459,10 @@ const editIva = ref('')
 const editTotal = ref('')
 const editDetalleError = ref('')
 const editDetalleSuccess = ref('')
+const adjuntosByDetalle = ref<Record<number, AdjuntoItem[]>>({})
+const uploadTargetId = ref<number | null>(null)
+const fileInput = ref<HTMLInputElement | null>(null)
+const uploadError = ref('')
 
 const cajaChicaApi = axios.create({
   baseURL: import.meta.env.VITE_CAJA_CHICA_API_URL || 'http://localhost:8080/api',
@@ -421,6 +470,9 @@ const cajaChicaApi = axios.create({
     'Content-Type': 'application/json'
   }
 })
+
+const apiBaseUrl = (import.meta.env.VITE_CAJA_CHICA_API_URL || 'http://localhost:8080/api').replace(/\/+$/, '')
+const fileBaseUrl = apiBaseUrl.endsWith('/api') ? apiBaseUrl.slice(0, -4) : apiBaseUrl
 
 const hasValue = (value: string | number) => String(value ?? '').trim() !== ''
 
@@ -497,11 +549,34 @@ const loadDetalles = async () => {
     const payload = response.data as any
     const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
     detalles.value = items.map(normalizeDetalle)
+    await loadAdjuntosForDetalles()
   } catch {
     detalleError.value = 'No se pudieron cargar los detalles.'
   } finally {
     loadingDetalles.value = false
   }
+}
+
+const loadAdjuntosForDetalle = async (idDetalle: number) => {
+  if (!idDetalle) return
+  try {
+    const response = await cajaChicaApi.get(`/Adjuntos/por-detalle/${idDetalle}`)
+    const payload = response.data as any
+    const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
+    adjuntosByDetalle.value[idDetalle] = items.map((item: any) => ({
+      idAdjunto: Number(item.idAdjunto ?? item.IdAdjunto ?? 0),
+      idDetalle: Number(item.idDetalle ?? item.IdDetalle ?? idDetalle),
+      rutaArchivo: String(item.rutaArchivo ?? item.RutaArchivo ?? ''),
+      fechaSubida: String(item.fechaSubida ?? item.FechaSubida ?? '')
+    }))
+  } catch {
+    adjuntosByDetalle.value[idDetalle] = []
+  }
+}
+
+const loadAdjuntosForDetalles = async () => {
+  const tasks = detalles.value.map(item => loadAdjuntosForDetalle(item.idDetalle))
+  await Promise.all(tasks)
 }
 
 const addDetalle = async () => {
@@ -628,6 +703,58 @@ const deleteDetalle = async (item: LiquidacionDetalleItem) => {
   } catch (err: any) {
     const message = err?.response?.data?.message || err?.response?.data
     detalleError.value = message || 'No se pudo eliminar el detalle.'
+  }
+}
+
+const triggerUpload = (idDetalle: number) => {
+  uploadTargetId.value = idDetalle
+  uploadError.value = ''
+  fileInput.value?.click()
+}
+
+const handleFileChange = async (event: Event) => {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file || uploadTargetId.value === null) return
+  uploadError.value = ''
+
+  const formData = new FormData()
+  formData.append('idDetalle', String(uploadTargetId.value))
+  formData.append('file', file)
+
+  try {
+    await cajaChicaApi.post('/Adjuntos/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    await loadAdjuntosForDetalle(uploadTargetId.value)
+  } catch (err: any) {
+    const message = err?.response?.data?.message || err?.response?.data
+    uploadError.value = message || 'No se pudo subir el adjunto.'
+  } finally {
+    input.value = ''
+    uploadTargetId.value = null
+  }
+}
+
+const buildAdjuntoUrl = (ruta: string) => {
+  if (!ruta) return '#'
+  return ruta.startsWith('http') ? ruta : `${fileBaseUrl}${ruta}`
+}
+
+const formatAdjuntoName = (ruta: string) => {
+  if (!ruta) return ''
+  const parts = ruta.split('/')
+  return parts[parts.length - 1]
+}
+
+const deleteAdjunto = async (adjunto: AdjuntoItem, idDetalle: number) => {
+  uploadError.value = ''
+  try {
+    await cajaChicaApi.delete(`/Adjuntos/${adjunto.idAdjunto}`)
+    await loadAdjuntosForDetalle(idDetalle)
+  } catch (err: any) {
+    const message = err?.response?.data?.message || err?.response?.data
+    uploadError.value = message || 'No se pudo eliminar el adjunto.'
   }
 }
 
