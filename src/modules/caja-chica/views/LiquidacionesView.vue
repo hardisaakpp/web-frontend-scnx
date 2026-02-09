@@ -7,6 +7,12 @@
           <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Liquidaciones</h1>
           <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Gestión de liquidaciones de caja chica</p>
         </div>
+        <router-link
+          class="rounded border border-gray-200 dark:border-gray-700 text-sm px-3 py-1.5"
+          to="/caja-chica"
+        >
+          Volver
+        </router-link>
       </div>
 
       <!-- Formulario -->

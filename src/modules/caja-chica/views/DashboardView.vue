@@ -9,7 +9,7 @@
 
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <router-link
-          to="/caja-chica/liquidaciones"
+           to="/caja-chica/liquidaciones"
           class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left block"
         >
           <div class="flex items-start gap-3">
@@ -26,7 +26,7 @@
         </router-link>
 
         <router-link
-          to="/caja-chica/liquidaciones"
+           to="/caja-chica/liquidaciones-pendientes"
           class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left block"
         >
           <div class="flex items-start gap-3">

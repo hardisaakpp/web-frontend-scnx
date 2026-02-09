@@ -23,6 +23,16 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/caja-chica/liquidaciones-pendientes',
+    name: 'caja-chica-liquidaciones-pendientes',
+    component: () => import('./views/LiquidacionesPendientesView.vue'),
+    meta: { 
+      requiresAuth: true,
+      title: 'Liquidaciones pendientes',
+      permissions: ['cajachica.liquidaciones.view']
+    },
+  },
+  {
     path: '/caja-chica/liquidaciones/:id/detalle',
     name: 'caja-chica-liquidaciones-detalle',
     component: () => import('./views/LiquidacionDetalleView.vue'),
