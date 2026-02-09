@@ -9,7 +9,7 @@ const routes: RouteRecordRaw[] = [
       requiresAuth: true,
       title: 'Caja Chica',
       icon: 'BanknotesIcon',
-      permissions: ['cajachica.view']
+      permissions: ['cajachica.liquidacion.view']
     },
   },
   {
