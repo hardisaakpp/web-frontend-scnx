@@ -15,8 +15,22 @@
       </div>
 
       <div class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-5">
-        <h2 class="text-sm font-semibold text-gray-900 dark:text-white mb-4">Agregar detalle</h2>
-        <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Agregar detalle</h2>
+            <p class="text-xs text-gray-500 dark:text-gray-400">Registra un gasto en la liquidacion</p>
+          </div>
+          <button
+            type="button"
+            class="rounded border border-gray-200 dark:border-gray-700 text-sm px-3 py-1.5"
+            :aria-expanded="isAddOpen"
+            @click="isAddOpen = !isAddOpen"
+          >
+            {{ isAddOpen ? 'Ocultar' : 'Mostrar' }}
+          </button>
+        </div>
+
+        <div v-if="isAddOpen" class="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div class="lg:col-span-2">
             <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Gasto *</label>
             <select
@@ -123,7 +137,7 @@
             />
           </div>
         </div>
-        <div class="mt-4 flex items-center gap-3">
+        <div v-if="isAddOpen" class="mt-4 flex items-center gap-3">
           <button
             type="button"
             class="rounded bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2 disabled:opacity-50"
@@ -431,6 +445,7 @@ const loadingDetalles = ref(false)
 const detalleError = ref('')
 const formError = ref('')
 const formSuccess = ref('')
+const isAddOpen = ref(false)
 
 const selectedGastoId = ref('')
 const nombreGasto = ref('')
