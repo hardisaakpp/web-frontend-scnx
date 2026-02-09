@@ -187,7 +187,6 @@
                   :key="producto.pedido_detalle_id"
                   :class="[
                     'hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors',
-                    !producto.esta_homologado ? 'bg-yellow-50 dark:bg-yellow-900/20' : '',
                     producto.tiene_error ? 'bg-red-50 dark:bg-red-900/20' : ''
                   ]"
                 >
