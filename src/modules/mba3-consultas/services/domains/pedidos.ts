@@ -922,9 +922,7 @@ export const pedidosService = {
         message?: string
       }
     } catch (error: any) {
-      console.error('❌ [obtenerBorradorRedistribucion] Error:', error)
-      
-      // Si es 404 (por compatibilidad con versiones anteriores), devolver respuesta vacía
+      // Si es 404, no hay borrador guardado - es un caso esperado, devolver respuesta vacía
       if (error.response?.status === 404) {
         return {
           status: 'success',
@@ -934,6 +932,8 @@ export const pedidosService = {
         }
       }
       
+      // Solo loguear error para casos realmente inesperados
+      console.error('❌ [obtenerBorradorRedistribucion] Error:', error)
       throw createEnrichedError(error, 'Error al obtener borrador de redistribución')
     }
   },

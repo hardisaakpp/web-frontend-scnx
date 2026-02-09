@@ -76,7 +76,8 @@ mba3Api.interceptors.response.use(
     const isExpected404 = error.response?.status === 404 && (
       url.includes('/api/plantillas/ultimo') || // No hay pedidos es válido
       url.includes('/api/plantillas/') || // Pedido no encontrado es válido
-      url.includes('/api/pedidos/ultimo-redistribucion') // No hay último para redistribución es válido
+      url.includes('/api/pedidos/ultimo-redistribucion') || // No hay último para redistribución es válido
+      url.includes('/redistribucion/borrador') // No hay borrador guardado es válido
     )
 
     // Solo loguear errores que no sean 404 esperados (solo en desarrollo)
