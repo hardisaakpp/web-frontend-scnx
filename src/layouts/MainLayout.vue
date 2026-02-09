@@ -16,9 +16,9 @@
       ]"
     >
       <!-- Header del Sidebar -->
-      <div class="flex items-center justify-between p-5 border-b border-slate-700/50 bg-gradient-to-r from-indigo-600/10 to-purple-600/10 backdrop-blur-sm">
+      <div class="flex items-center justify-between p-5 border-b border-slate-700/50 bg-gradient-to-r from-blue-600/10 to-sky-500/10 backdrop-blur-sm">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-sky-500 flex items-center justify-center shadow-lg">
             <span class="text-white font-bold text-lg">SC</span>
           </div>
           <div v-show="!isSidebarCollapsed" class="transition-opacity duration-300">
@@ -33,7 +33,7 @@
       <!-- Toggle Button (Solo desktop) -->
       <button
         @click="isSidebarCollapsed = !isSidebarCollapsed"
-        class="hidden md:flex absolute -right-4 top-24 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 border-2 border-slate-800 rounded-full p-2 shadow-lg hover:shadow-xl transition-all duration-300 z-40 hover:scale-110"
+        class="hidden md:flex absolute -right-4 top-24 bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-700 hover:to-sky-600 border-2 border-slate-800 rounded-full p-2 shadow-lg hover:shadow-xl transition-all duration-300 z-40 hover:scale-110"
         title="Contraer/Expandir"
       >
         <ChevronLeftIcon v-if="!isSidebarCollapsed" class="h-4 w-4 text-white" />
@@ -52,12 +52,12 @@
           to="/dashboard"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
-            'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/50': $route.path === '/dashboard',
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path === '/dashboard',
             'text-slate-300 hover:bg-slate-800/50 hover:text-white': $route.path !== '/dashboard'
           }"
           :title="isSidebarCollapsed ? 'Dashboard' : ''"
         >
-          <div class="absolute inset-0 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
           <HomeIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path === '/dashboard' }" />
           <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Dashboard</span>
         </router-link>
@@ -68,12 +68,12 @@
           to="/admin"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
-            'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/50': $route.path === '/admin',
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path === '/admin',
             'text-slate-300 hover:bg-slate-800/50 hover:text-white': $route.path !== '/admin'
           }"
           :title="isSidebarCollapsed ? 'Panel de Admin' : ''"
         >
-          <div class="absolute inset-0 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
           <UserGroupIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path === '/admin' }" />
           <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Panel de Admin</span>
         </router-link>
@@ -84,12 +84,12 @@
           to="/user"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
-            'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/50': $route.path === '/user',
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path === '/user',
             'text-slate-300 hover:bg-slate-800/50 hover:text-white': $route.path !== '/user'
           }"
           :title="isSidebarCollapsed ? 'Panel de Usuario' : ''"
         >
-          <div class="absolute inset-0 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
           <UserIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path === '/user' }" />
           <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Panel de Usuario</span>
         </router-link>
@@ -104,12 +104,12 @@
           to="/contabilidad"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
-            'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/50': $route.path === '/contabilidad',
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path === '/contabilidad',
             'text-slate-300 hover:bg-slate-800/50 hover:text-white': $route.path !== '/contabilidad'
           }"
           :title="isSidebarCollapsed ? 'Contabilidad' : ''"
         >
-          <div class="absolute inset-0 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
           <CalculatorIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path === '/contabilidad' }" />
           <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Contabilidad</span>
         </router-link>
@@ -119,12 +119,12 @@
           to="/depositos"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
-            'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/50': $route.path === '/depositos',
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path === '/depositos',
             'text-slate-300 hover:bg-slate-800/50 hover:text-white': $route.path !== '/depositos'
           }"
           :title="isSidebarCollapsed ? 'Depósitos' : ''"
         >
-          <div class="absolute inset-0 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
           <BuildingLibraryIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path === '/depositos' }" />
           <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Depósitos</span>
         </router-link>
@@ -134,12 +134,12 @@
           to="/reportes"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
-            'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/50': $route.path === '/reportes',
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path === '/reportes',
             'text-slate-300 hover:bg-slate-800/50 hover:text-white': $route.path !== '/reportes'
           }"
           :title="isSidebarCollapsed ? 'Reportes' : ''"
         >
-          <div class="absolute inset-0 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
           <DocumentChartBarIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path === '/reportes' }" />
           <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Reportes</span>
         </router-link>
@@ -150,12 +150,12 @@
           to="/conciliacion"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
-            'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/50': $route.path === '/conciliacion',
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path === '/conciliacion',
             'text-slate-300 hover:bg-slate-800/50 hover:text-white': $route.path !== '/conciliacion'
           }"
           :title="isSidebarCollapsed ? 'Conciliación' : ''"
         >
-          <div class="absolute inset-0 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
           <ClipboardDocumentCheckIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path === '/conciliacion' }" />
           <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Conciliación</span>
         </router-link>
@@ -166,12 +166,12 @@
           to="/mba3-consultas"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
-            'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/50': $route.path.startsWith('/mba3-consultas'),
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/mba3-consultas'),
             'text-slate-300 hover:bg-slate-800/50 hover:text-white': !$route.path.startsWith('/mba3-consultas')
           }"
           :title="isSidebarCollapsed ? 'Gestión ODC SAP' : ''"
         >
-          <div class="absolute inset-0 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
           <ArrowsRightLeftIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/mba3-consultas') }" />
           <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Gestión ODC SAP</span>
         </router-link>
@@ -187,12 +187,12 @@
           to="/usuarios"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
-            'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/50': $route.path === '/usuarios',
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path === '/usuarios',
             'text-slate-300 hover:bg-slate-800/50 hover:text-white': $route.path !== '/usuarios'
           }"
           :title="isSidebarCollapsed ? 'Usuarios' : ''"
         >
-          <div class="absolute inset-0 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
           <UsersIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path === '/usuarios' }" />
           <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Usuarios</span>
         </router-link>
@@ -203,12 +203,12 @@
           to="/roles"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
-            'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/50': $route.path === '/roles',
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path === '/roles',
             'text-slate-300 hover:bg-slate-800/50 hover:text-white': $route.path !== '/roles'
           }"
           :title="isSidebarCollapsed ? 'Roles' : ''"
         >
-          <div class="absolute inset-0 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
           <ShieldCheckIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path === '/roles' }" />
           <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Roles</span>
         </router-link>
@@ -219,12 +219,12 @@
           to="/permisos"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
-            'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/50': $route.path === '/permisos',
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path === '/permisos',
             'text-slate-300 hover:bg-slate-800/50 hover:text-white': $route.path !== '/permisos'
           }"
           :title="isSidebarCollapsed ? 'Permisos' : ''"
         >
-          <div class="absolute inset-0 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
           <LockClosedIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path === '/permisos' }" />
           <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Permisos</span>
         </router-link>
@@ -234,7 +234,7 @@
       <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-700/50 bg-slate-900/50 backdrop-blur-sm">
         <div v-show="!isSidebarCollapsed" class="mb-3 px-2">
           <div class="flex items-center gap-3 p-2 rounded-lg bg-slate-800/50">
-            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-xs font-bold">
+            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-sky-500 flex items-center justify-center text-xs font-bold">
               {{ authStore.userName?.charAt(0).toUpperCase() || 'U' }}
             </div>
             <div class="flex-1 min-w-0">

@@ -28,15 +28,44 @@ export function formatDate(dateString: string | null): string {
       return trimmedValue
     }
     
-    // Es una fecha válida, formatearla
+    // Es una fecha válida, formatearla (timeZone: 'UTC' evita desfase de -1 día
+    // porque new Date("2026-02-09") se parsea como medianoche UTC y sin esto
+    // toLocaleDateString lo convierte a hora local restando horas)
     return date.toLocaleDateString('es-ES', {
       year: 'numeric',
       month: '2-digit',
-      day: '2-digit'
+      day: '2-digit',
+      timeZone: 'UTC'
     })
   } catch {
     // Si falla el parseo, retornar el valor original
     return trimmedValue
+  }
+}
+
+/**
+ * Formatea una fecha+hora (DATETIME) para mostrar fecha y hora.
+ * Ideal para campos como creado_en que son timestamps del sistema.
+ */
+export function formatDateTime(dateString: string | null): string {
+  if (!dateString) return 'N/A'
+
+  try {
+    const date = new Date(dateString)
+
+    if (isNaN(date.getTime())) {
+      return dateString.trim()
+    }
+
+    return date.toLocaleString('es-ES', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  } catch {
+    return dateString.trim()
   }
 }
 

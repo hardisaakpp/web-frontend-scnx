@@ -299,7 +299,7 @@
                   Número de Pedido
                 </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Fecha
+                  Fecha Pedido
                 </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Proveedor
@@ -311,10 +311,10 @@
                   Comprador
                 </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Creado En
+                  Fecha Creación
                 </th>
-                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Acciones
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Fecha Modificación
                 </th>
               </tr>
             </thead>
@@ -323,9 +323,10 @@
                 v-for="pedido in (filtroSoloPendientes ? pedidos.filter(p => requiereAccion(p.estado)) : pedidos)"
                 :key="pedido.pedido_id"
                 :class="[
-                  'hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors',
+                  'hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer',
                   requiereAccion(pedido.estado) && esModoElRayo ? 'bg-orange-50/30 dark:bg-orange-900/10 border-l-4 border-orange-500 dark:border-orange-400' : ''
                 ]"
+                @click="verDetalle(pedido.pedido_id)"
               >
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                   {{ pedido.numero_pedido }}
@@ -357,16 +358,10 @@
                   {{ pedido.comprador_nombre || '-' }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
-                  {{ pedido.creado_en ? formatDate(pedido.creado_en) : '-' }}
+                  {{ pedido.creado_en ? formatDateTime(pedido.creado_en) : '-' }}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button
-                    @click="verDetalle(pedido.pedido_id)"
-                    :disabled="verDetalleCargandoId === pedido.pedido_id"
-                    class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {{ verDetalleCargandoId === pedido.pedido_id ? 'Abriendo...' : 'Ver Detalle' }}
-                  </button>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                  {{ pedido.modificado_fecha ? formatDateTime(pedido.modificado_fecha) : '-' }}
                 </td>
               </tr>
             </tbody>
@@ -409,7 +404,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService, extractErrorMessage } from '../services/mba3ConsultasApi'
 import type { PedidosListadoResponse, PedidoResumido, PedidosListadoFiltros, PedidosListadoMetadata } from '../types'
-import { formatDate } from '../utils/formatters'
+import { formatDate, formatDateTime } from '../utils/formatters'
 
 const router = useRouter()
 const route = useRoute()
