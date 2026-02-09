@@ -150,6 +150,14 @@
                     >
                       Editar
                     </button>
+                    <button
+                      type="button"
+                      class="text-indigo-600 hover:text-indigo-700 text-xs font-medium disabled:opacity-50"
+                      :disabled="sendingId === item.idLiquidacion"
+                      @click="sendLiquidacion(item)"
+                    >
+                      Enviar
+                    </button>
                     <router-link
                       class="text-blue-600 hover:text-blue-700 text-xs font-medium"
                       :to="`/caja-chica/liquidaciones/${item.idLiquidacion}/detalle`"
@@ -169,6 +177,9 @@
             </tbody>
           </table>
         </div>
+
+        <div v-if="sendError" class="mt-3 text-sm text-red-600 dark:text-red-400">{{ sendError }}</div>
+        <div v-else-if="sendSuccess" class="mt-3 text-sm text-emerald-600 dark:text-emerald-400">{{ sendSuccess }}</div>
 
         <div v-if="editingId" class="mt-6 border-t border-gray-200 dark:border-gray-700 pt-4">
           <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Editar cabecera</h3>
@@ -300,6 +311,14 @@ interface LiquidacionItem {
   datosBancarios: string
 }
 
+interface LiquidacionDetalleItem {
+  idDetalle: number
+}
+
+interface AdjuntoItem {
+  idAdjunto: number
+}
+
 const authStore = useAuthStore()
 const selectedCodAlmacen = ref('')
 const nombreCustodio = ref('')
@@ -328,12 +347,26 @@ const editAutorizacion = ref('')
 const editDatosBancarios = ref('')
 const editError = ref('')
 const editSuccess = ref('')
+const sendError = ref('')
+const sendSuccess = ref('')
+const sendingId = ref<number | null>(null)
 
 const cajaChicaApi = axios.create({
   baseURL: import.meta.env.VITE_CAJA_CHICA_API_URL || 'http://localhost:8080/api',
   headers: {
     'Content-Type': 'application/json'
   }
+})
+
+cajaChicaApi.interceptors.request.use(config => {
+  const token = localStorage.getItem('token')
+  if (token) {
+    config.headers = {
+      ...config.headers,
+      Authorization: `Bearer ${token}`
+    }
+  }
+  return config
 })
 
 const getCurrentUserId = (): string => {
@@ -497,6 +530,24 @@ const loadBorradores = async () => {
   }
 }
 
+const fetchDetalles = async (idLiquidacion: number) => {
+  const response = await cajaChicaApi.get(`/Liquidaciones/${idLiquidacion}/detalle`)
+  const payload = response.data as any
+  const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
+  return items.map((item: any) => ({
+    idDetalle: Number(item.idDetalle ?? item.IdDetalle ?? 0)
+  })) as LiquidacionDetalleItem[]
+}
+
+const fetchAdjuntos = async (idDetalle: number) => {
+  const response = await cajaChicaApi.get(`/Adjuntos/por-detalle/${idDetalle}`)
+  const payload = response.data as any
+  const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
+  return items.map((item: any) => ({
+    idAdjunto: Number(item.idAdjunto ?? item.IdAdjunto ?? 0)
+  })) as AdjuntoItem[]
+}
+
 const createLiquidacion = async () => {
   if (!canSubmit.value) return
   formError.value = ''
@@ -611,6 +662,56 @@ const deleteLiquidacion = async (item: LiquidacionItem) => {
   } catch (err: any) {
     const message = err?.response?.data?.message || err?.response?.data
     borradorError.value = message || 'No se pudo eliminar la liquidacion.'
+  }
+}
+
+const sendLiquidacion = async (item: LiquidacionItem) => {
+  sendError.value = ''
+  sendSuccess.value = ''
+  sendingId.value = item.idLiquidacion
+
+  try {
+    const detalles = await fetchDetalles(item.idLiquidacion)
+    if (detalles.length === 0) {
+      sendError.value = 'Debe registrar al menos un detalle antes de enviar.'
+      return
+    }
+
+    for (const detalle of detalles) {
+      const adjuntos = await fetchAdjuntos(detalle.idDetalle)
+      if (adjuntos.length === 0) {
+        sendError.value = 'Cada detalle debe tener al menos un adjunto.'
+        return
+      }
+    }
+
+    const confirmed = window.confirm('Estas seguro de enviar esta liquidacion?')
+    if (!confirmed) return
+
+    await cajaChicaApi.put(`/Liquidaciones/${item.idLiquidacion}`, {
+      IdLiquidacion: item.idLiquidacion,
+      IdUsuario: item.idUsuario,
+      FechaCreacion: item.fechaCreacion || new Date().toISOString(),
+      FechaUltimaModificacion: new Date().toISOString(),
+      CodAlmacen: item.codAlmacen,
+      Marca: item.marca,
+      Empresa: item.empresa,
+      CedulaCustodio: item.cedulaCustodio,
+      NombreCustodio: item.nombreCustodio,
+      FormatoDePago: item.formatoDePago,
+      NumeroLiquidacion: item.numeroLiquidacion || '',
+      Autorizacion: item.autorizacion || '',
+      DatosBancarios: item.datosBancarios || '',
+      Estado: 'PENDIENTE'
+    })
+
+    sendSuccess.value = 'Liquidacion enviada.'
+    await loadBorradores()
+  } catch (err: any) {
+    const message = err?.response?.data?.message || err?.response?.data
+    sendError.value = message || 'No se pudo enviar la liquidacion.'
+  } finally {
+    sendingId.value = null
   }
 }
 
