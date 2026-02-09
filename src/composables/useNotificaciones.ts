@@ -87,7 +87,7 @@ export function useNotificaciones() {
     try {
       abortController = new AbortController()
 
-      const response = await fetch(`${API_BASE_URL}/api/notificaciones/stream`, {
+      const response = await fetch(`${API_BASE_URL}/notificaciones/stream`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'text/event-stream',
