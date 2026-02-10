@@ -172,6 +172,7 @@
           :default-expanded="true"
           :permitir-edicion-fechas-en-gestionar="true"
           :show-inmediato-option="false"
+          :fecha-pedido-editable="false"
           @copy-to-clipboard="copyToClipboard"
           @update-fecha-pedido="handleUpdateFechaPedido"
           @update-fecha-entrega="handleUpdateFechaEntrega"

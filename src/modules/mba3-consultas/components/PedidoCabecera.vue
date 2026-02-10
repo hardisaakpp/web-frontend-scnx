@@ -57,7 +57,7 @@
       <div>
         <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Fecha de Pedido</label>
         <input
-          v-if="editable"
+          v-if="editable && fechaPedidoEditable !== false"
           v-model="fechaPedidoLocal"
           type="date"
           :disabled="!fechasEditables"
@@ -241,6 +241,12 @@ const props = defineProps<{
    * Usar true en la interfaz de cargar plantilla (/cargar-plantilla/{id}).
    */
   showInmediatoOption?: boolean
+  /**
+   * Si false, la fecha de pedido se muestra como solo lectura (texto) aunque editable sea true.
+   * Por defecto true.
+   * Usar false en la interfaz de detalle de pedido (/pedidos/{id}).
+   */
+  fechaPedidoEditable?: boolean
 }>()
 
 /**
