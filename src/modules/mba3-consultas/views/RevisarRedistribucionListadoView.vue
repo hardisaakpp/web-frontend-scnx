@@ -269,9 +269,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
+import { lastNotification } from '@/composables/useNotificaciones'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import type { PedidosListadoResponse, PedidoResumido, PedidosListadoFiltros, PedidosListadoMetadata } from '../types'
 import { formatDate, formatDateTime } from '../utils/formatters'
@@ -437,6 +438,16 @@ function abrirRevisar(pedido: PedidoResumido) {
 }
 
 onMounted(() => {
+  cargarPedidos()
+})
+
+// ⭐ Watch para recargar lista cuando llega una notificación SSE relevante
+// (ej: ODC enviada a SAP, pedido confirmado, cancelado, etc.)
+watch(lastNotification, (notification) => {
+  if (!notification) return
+  if (import.meta.env.DEV) {
+    console.log('🔄 [RevisarRedistribucionListadoView] Notificación SSE recibida, recargando lista...', notification.metadata?.accion)
+  }
   cargarPedidos()
 })
 </script>
