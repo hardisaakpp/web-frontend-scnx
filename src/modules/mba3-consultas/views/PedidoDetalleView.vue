@@ -110,6 +110,7 @@
         :es-modo-mabel-trading="false"
         :pedido="pedido"
         :confirmar-deshabilitado="confirmarDeshabilitadoPorEstado"
+        :es-inmediato-sin-fecha="esInmediatoSinFecha"
         :hide-confirm-and-download="false"
         :hide-cargar-plantillas="true"
         :show-despachar-y-facturar="true"
@@ -831,7 +832,25 @@ const confirmarDeshabilitadoPorEstado = computed(() => {
   const estado = cabecera.estado ?? ''
   if (estadoId === 4 || estado === 'CONFIRMADO') return true
   if (estadoId != null && estadoId >= 4) return true
-  return ESTADOS_YA_CONFIRMADOS.includes(estado)
+  if (ESTADOS_YA_CONFIRMADOS.includes(estado)) return true
+
+  // Si la fecha de entrega es "INMEDIATO", el usuario debe seleccionar una fecha real antes de confirmar
+  const fechaEntrega = cabecera.fecha_entrega?.trim()?.toUpperCase()
+  if (fechaEntrega === 'INMEDIATO') return true
+
+  return false
+})
+
+// Indica si el botón está deshabilitado específicamente porque el pedido es INMEDIATO y falta seleccionar fecha de entrega
+const esInmediatoSinFecha = computed(() => {
+  const cabecera = pedido.value?.cabecera
+  if (!cabecera) return false
+  const estadoId = cabecera.estado_id != null ? Number(cabecera.estado_id) : null
+  // Solo aplica si el pedido NO está ya confirmado (estado_id < 4)
+  if (estadoId != null && estadoId >= 4) return false
+  if (ESTADOS_YA_CONFIRMADOS.includes(cabecera.estado ?? '')) return false
+  const fechaEntrega = cabecera.fecha_entrega?.trim()?.toUpperCase()
+  return fechaEntrega === 'INMEDIATO'
 })
 
 // Deshabilitar "Confirmar Redistribución" usando el flag del backend (incluye CANCELADO y estados ya confirmados)
