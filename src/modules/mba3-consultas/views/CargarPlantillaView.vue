@@ -745,7 +745,6 @@ const availableColumns: ColumnConfig[] = [
   { key: 'numero', label: '#', visible: true, align: 'center', format: 'number', fixed: true },
   { key: 'codigo_interno', label: 'Código', visible: true, align: 'left', format: 'text' },
   { key: 'descripcion_sap', label: 'Descripción', visible: true, align: 'left', format: 'text' },
-  { key: 'marca', label: 'Marca', visible: true, align: 'left', format: 'text' },
   { key: 'codigo_barras', label: 'Código de Barras', visible: false, align: 'left', format: 'text' },
   { key: 'pack', label: 'Pack', visible: false, align: 'left', format: 'text' },
   { key: 'costo_doc_sin_iva', label: 'Costo Unit.', visible: true, align: 'right', format: 'currency' },
@@ -1706,30 +1705,39 @@ watch(
 // ⭐ Watch para recargar pedido cuando llega una notificación SSE relevante
 // (ej: otro usuario confirma el pedido que tenemos abierto → recargar para deshabilitar botones)
 watch(lastNotification, async (notification) => {
-  if (!notification || !pedido.value) return
+  if (!notification) return
 
-  const pedidoActual = pedido.value.cabecera
   const meta = notification.metadata
   if (!meta.pedido_id && !meta.numero_pedido) return
 
-  // Solo reaccionar si la notificación es sobre el pedido que tenemos abierto
-  const coincide =
-    (meta.pedido_id && meta.pedido_id === pedidoActual.pedido_id) ||
-    (meta.numero_pedido && meta.numero_pedido === pedidoActual.numero_pedido)
+  // Si hay un pedido cargado, verificar si la notificación es sobre ese pedido
+  if (pedido.value) {
+    const pedidoActual = pedido.value.cabecera
+    const coincide =
+      (meta.pedido_id && meta.pedido_id === pedidoActual.pedido_id) ||
+      (meta.numero_pedido && meta.numero_pedido === pedidoActual.numero_pedido)
 
-  if (coincide) {
+    if (coincide) {
+      if (import.meta.env.DEV) {
+        console.log('🔄 [CargarPlantillaView] Notificación SSE recibida para pedido actual:', meta.accion)
+      }
+
+      // Si el pedido fue eliminado, redirigir a cargar-plantilla (el pedido ya no existe)
+      if (meta.accion === 'pedido_eliminado' || meta.accion === 'pedido_descartado' || meta.accion === 'pedido_cancelado') {
+        pedido.value = null
+        router.push('/mba3-consultas/cargar-plantilla')
+        return
+      }
+
+      await loadPedido()
+    }
+  } else {
+    // Sin pedido cargado (URL base /cargar-plantilla): recargar último pedido
+    // para mostrar datos actualizados si otro usuario modificó el estado
     if (import.meta.env.DEV) {
-      console.log('🔄 [CargarPlantillaView] Notificación SSE recibida para pedido actual:', meta.accion)
+      console.log('🔄 [CargarPlantillaView] Notificación SSE recibida sin pedido cargado, recargando último pedido...', meta.accion)
     }
-
-    // Si el pedido fue eliminado, redirigir a cargar-plantilla (el pedido ya no existe)
-    if (meta.accion === 'pedido_eliminado' || meta.accion === 'pedido_descartado' || meta.accion === 'pedido_cancelado') {
-      pedido.value = null
-      router.push('/mba3-consultas/cargar-plantilla')
-      return
-    }
-
-    await loadPedido()
+    await cargarUltimoPedido()
   }
 })
 

@@ -587,7 +587,6 @@ const availableColumns: ColumnConfig[] = [
   { key: 'numero', label: '#', visible: true, align: 'center', format: 'number', fixed: true },
   { key: 'codigo_interno', label: 'Código', visible: true, align: 'left', format: 'text' },
   { key: 'descripcion_sap', label: 'Descripción', visible: true, align: 'left', format: 'text' },
-  { key: 'marca', label: 'Marca', visible: false, align: 'left', format: 'text' },
   { key: 'codigo_barras', label: 'Código de Barras', visible: false, align: 'left', format: 'text' },
   { key: 'pack', label: 'Pack', visible: false, align: 'left', format: 'text' },
   { key: 'costo_doc_sin_iva', label: 'Costo Unit.', visible: true, align: 'right', format: 'currency' },
