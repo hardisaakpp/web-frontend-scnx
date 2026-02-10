@@ -402,6 +402,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useToast } from '@/composables/useToast'
+import { lastNotification } from '@/composables/useNotificaciones'
 import { mba3ConsultasService, extractErrorMessage } from '../services/mba3ConsultasApi'
 import type { PedidosListadoResponse, PedidoResumido, PedidosListadoFiltros, PedidosListadoMetadata } from '../types'
 import { formatDate, formatDateTime } from '../utils/formatters'
@@ -706,6 +707,21 @@ watch(
     }
   }
 )
+
+// ⭐ Watch para recargar lista cuando llega una notificación SSE relevante
+// (ej: nuevo pedido ingresado, pedido confirmado, pedido cancelado, etc.)
+watch(lastNotification, (notification) => {
+  if (!notification) return
+
+  const accion = notification.metadata?.accion
+  if (!accion) return
+
+  // Recargar la lista para cualquier acción que cambie estado de pedidos
+  if (import.meta.env.DEV) {
+    console.log('🔄 [PedidosListView] Notificación SSE recibida, recargando lista...', accion)
+  }
+  cargarPedidos()
+})
 
 // Limpiar polling al desmontar
 onUnmounted(() => {

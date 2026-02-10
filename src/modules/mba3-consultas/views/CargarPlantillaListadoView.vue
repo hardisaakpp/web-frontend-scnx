@@ -530,7 +530,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
@@ -538,6 +538,7 @@ import { useFileUpload } from '../composables/useFileUpload'
 import UploadErrorModal from '../components/UploadErrorModal.vue'
 import type { PedidosListadoResponse, PedidoResumido, PedidosListadoFiltros, PedidosListadoMetadata, BuscarPlantillaResultado, PlantillasPedidosResponse } from '../types'
 import { formatDate, formatDateTime } from '../utils/formatters'
+import { lastNotification } from '@/composables/useNotificaciones'
 
 const router = useRouter()
 const toast = useToast()
@@ -887,6 +888,15 @@ function toggleAutoRefresh() {
   if (autoRefreshEnabled.value) startPolling()
   else stopPolling()
 }
+
+// Recargar listado automáticamente cuando llega una notificación de pedido eliminado
+watch(lastNotification, (notif) => {
+  if (!notif) return
+  const accion = notif.metadata?.accion
+  if (accion === 'pedido_eliminado') {
+    cargarPedidos()
+  }
+})
 
 onMounted(() => {
   cargarPedidos()
