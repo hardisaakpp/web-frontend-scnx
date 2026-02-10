@@ -4,6 +4,7 @@
 import { ref, Ref, type ComputedRef, triggerRef } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
+import { useAuthStore } from '@/stores/auth'
 import { formatNumber } from '../utils/formatters'
 import type { ProductoRedistribucion, DistribucionTiendaEditada } from '../utils/redistribucionHelpers'
 import { esBodega } from '../utils/redistribucionHelpers'
@@ -22,6 +23,7 @@ export function useRedistribucion(options: {
 }) {
   const toast = useToast()
   const router = useRouter()
+  const authStore = useAuthStore()
 
   const productosRedistribucion = ref<ProductoRedistribucion[]>([])
   const productosExpandidos = ref<Set<string>>(new Set())
@@ -205,7 +207,8 @@ export function useRedistribucion(options: {
     const pedidoId = options.pedido.value?.cabecera?.pedido_id
 
     // 1. Primero intentar cargar borrador guardado (prioridad máxima)
-    if (numeroPedido) {
+    // Solo usuarios con mabel.view pueden tener borradores (odcsap.view no crea borradores)
+    if (numeroPedido && authStore.canViewMabel) {
       const borradorCargado = await cargarBorradorSiExiste()
       if (borradorCargado) {
         if (import.meta.env.DEV) {
