@@ -1719,8 +1719,16 @@ watch(lastNotification, async (notification) => {
 
   if (coincide) {
     if (import.meta.env.DEV) {
-      console.log('🔄 [CargarPlantillaView] Notificación SSE recibida para pedido actual, recargando...', meta.accion)
+      console.log('🔄 [CargarPlantillaView] Notificación SSE recibida para pedido actual:', meta.accion)
     }
+
+    // Si el pedido fue eliminado, redirigir a cargar-plantilla (el pedido ya no existe)
+    if (meta.accion === 'pedido_eliminado' || meta.accion === 'pedido_descartado' || meta.accion === 'pedido_cancelado') {
+      pedido.value = null
+      router.push('/mba3-consultas/cargar-plantilla')
+      return
+    }
+
     await loadPedido()
   }
 })
