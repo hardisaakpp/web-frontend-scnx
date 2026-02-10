@@ -18,11 +18,11 @@
  * @date 2026-02-09
  */
 
-import { ref, onUnmounted } from 'vue'
+import { ref, onUnmounted, type Ref } from 'vue'
 import { useToast } from '@/composables/useToast'
 
 /** Estructura de una notificación recibida del backend */
-interface SSENotification {
+export interface SSENotification {
   id: string
   type: 'success' | 'error' | 'info' | 'warning'
   title: string
@@ -39,6 +39,14 @@ interface SSENotification {
 
 /** URL base de la API MBA3 */
 const API_BASE_URL = import.meta.env.VITE_MBA3_API_BASE_URL || 'http://localhost:8000'
+
+/**
+ * Ref global (a nivel de módulo) con la última notificación recibida.
+ * Compartido entre todas las instancias de useNotificaciones.
+ * Las vistas pueden importar esto y hacer watch() para reaccionar
+ * a notificaciones en tiempo real (ej: recargar pedido cuando otro usuario lo modifica).
+ */
+export const lastNotification: Ref<SSENotification | null> = ref(null)
 
 /** Intervalo de reconexión en milisegundos (5 segundos) */
 const RECONNECT_INTERVAL = 5000
@@ -212,6 +220,9 @@ export function useNotificaciones() {
     if (import.meta.env.DEV) {
       console.log('📢 [Notificaciones] Notificación recibida:', notification)
     }
+
+    // Actualizar ref global para que las vistas puedan reaccionar
+    lastNotification.value = notification
 
     // Mostrar toast según el tipo
     const duration = notification.type === 'error' ? 10000 : 7000

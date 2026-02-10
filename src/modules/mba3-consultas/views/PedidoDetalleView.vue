@@ -443,6 +443,7 @@
 import { ref, computed, onMounted, onActivated, onUnmounted, watch, nextTick, Teleport, type Ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
+import { lastNotification } from '@/composables/useNotificaciones'
 import { useTablePreferences } from '@/composables/useTablePreferences'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import type { PedidoCompleto, ReporteDiferenciasResponse, UploadPlantillaResponse, ExportarMBAParams, InfoArchivoPlantillaResponse } from '../types'
@@ -1502,6 +1503,28 @@ watch(
 )
 
 // ⭐ ELIMINADO: Watchers antiguos (el composable maneja esto automáticamente)
+
+// ⭐ Watch para recargar pedido cuando llega una notificación SSE relevante
+// (ej: otro usuario modifica el estado del pedido que tenemos abierto → recargar para sincronizar)
+watch(lastNotification, async (notification) => {
+  if (!notification || !pedido.value) return
+
+  const pedidoActual = pedido.value.cabecera
+  const meta = notification.metadata
+  if (!meta.pedido_id && !meta.numero_pedido) return
+
+  // Solo reaccionar si la notificación es sobre el pedido que tenemos abierto
+  const coincide =
+    (meta.pedido_id && meta.pedido_id === pedidoActual.pedido_id) ||
+    (meta.numero_pedido && meta.numero_pedido === pedidoActual.numero_pedido)
+
+  if (coincide) {
+    if (import.meta.env.DEV) {
+      console.log('🔄 [PedidoDetalleView] Notificación SSE recibida para pedido actual, recargando...', meta.accion)
+    }
+    await loadPedido()
+  }
+})
 
 // Cleanup: eliminar listener del dropdown cuando el componente se destruye
 // El composable useFileUpload maneja el cleanup del fileInput
