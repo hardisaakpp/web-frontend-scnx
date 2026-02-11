@@ -6,53 +6,6 @@
         <!-- Título y contador -->
         <div class="flex items-center gap-3">
           <h2 class="text-lg font-semibold text-gray-900 dark:text-white transition-colors duration-300">Órdenes de Compra</h2>
-          <span v-if="selectedOrdenes.length > 0" class="px-3 py-1 bg-emerald-600 text-white rounded-full text-sm font-medium">
-            {{ selectedOrdenes.length }} seleccionadas
-          </span>
-        </div>
-        
-        <!-- Acciones en lote -->
-        <div v-if="ordenesSeleccionables.length > 0 && !readOnly" class="flex items-center gap-2">
-          <button
-            @click="handleIntegrarSeleccionadas"
-            class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center gap-2"
-            :disabled="props.loading || sendingMultiple || !hasPendientesSeleccionadas"
-          >
-            <svg v-if="sendingMultiple" class="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
-            {{ sendingMultiple ? `Enviando ${ordenesSeleccionables.length}...` : `Enviar ${ordenesSeleccionables.length} a SAP` }}
-          </button>
-          <button
-            v-if="allowDelete"
-            @click="handleEliminarSeleccionadas"
-            class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center gap-2"
-            :disabled="loading || deleting || ordenesEliminables.length === 0"
-            :title="ordenesNoEliminables.length > 0 ? `${ordenesNoEliminables.length} ODC creada(s) no se pueden eliminar` : ''"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-            {{ deleting ? 'Eliminando...' : ordenesEliminables.length > 0 ? `Eliminar ${ordenesEliminables.length}` : `Eliminar (${ordenesNoEliminables.length} bloqueadas)` }}
-          </button>
-          <button
-            @click="clearSelection"
-            class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors text-sm font-medium"
-          >
-            Limpiar selección
-          </button>
-        </div>
-        <div v-else-if="selectedOrdenes.length > 0 && readOnly" class="flex items-center gap-2">
-          <span class="text-sm text-gray-500">{{ selectedOrdenes.length }} seleccionada(s)</span>
-          <button
-            @click="clearSelection"
-            class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors text-sm font-medium"
-          >
-            Limpiar selección
-          </button>
         </div>
       </div>
       
@@ -204,17 +157,6 @@
         <thead class="bg-gray-50 dark:bg-gray-700/50 transition-colors duration-300">
           <tr>
             <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider transition-colors duration-300 w-12">#</th>
-            <th class="px-6 py-3 text-left">
-              <input
-                type="checkbox"
-                :checked="allSelected"
-                :indeterminate="someSelected"
-                @change="toggleSelectAll"
-                :disabled="!hasSelectableOrdenes"
-                class="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                :title="!hasSelectableOrdenes ? 'No hay ODCs seleccionables (todas están enviadas o tienen error)' : 'Seleccionar todas las ODCs pendientes'"
-              />
-            </th>
             <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider transition-colors duration-300 w-12">
               Detalles
             </th>
@@ -260,16 +202,6 @@
           >
             <td class="px-4 py-4 whitespace-nowrap text-sm text-center text-gray-500 dark:text-gray-400 font-medium">
               {{ ((props.currentPage || 1) - 1) * (props.pageSize || sortedOrdenes.length) + ocIndex + 1 }}
-            </td>
-            <td class="px-6 py-4 whitespace-nowrap">
-              <input
-                type="checkbox"
-                :checked="isSelected(oc.oc_id)"
-                @change="toggleSelect(oc.oc_id)"
-                :disabled="oc.estado !== 'PENDIENTE'"
-                class="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                :title="oc.estado === 'ENVIADA' ? 'Esta ODC ya fue enviada a SAP' : oc.estado === 'ERROR' ? 'Esta ODC tiene un error y no se puede enviar' : ''"
-              />
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-center align-middle">
               <button
@@ -417,42 +349,26 @@
               </td>
             </template>
             <td v-if="!props.readOnly" class="px-6 py-4 whitespace-nowrap text-sm">
-              <!-- Si tiene doc_entry, ya fue enviada - mostrar mensaje -->
-              <div v-if="oc.doc_entry !== null && oc.doc_entry !== undefined" class="flex flex-col gap-1">
-                <div class="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-xs font-medium flex items-center gap-2 transition-colors duration-300">
-                  <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span>Ya enviada (Entry: {{ oc.doc_entry }})</span>
-                </div>
-                <button
-                  v-if="oc.numero_oc_sap"
-                  @click="copyToClipboard(`DocEntry: ${oc.doc_entry}, DocNum: ${oc.numero_oc_sap}`)"
-                  class="text-xs text-gray-500 hover:text-gray-700 underline"
-                  title="Copiar información de SAP"
-                >
-                  Copiar info SAP
-                </button>
-              </div>
-              <!-- Si está pendiente y no tiene doc_entry, mostrar botones de acción -->
-              <div v-else-if="oc.estado === 'PENDIENTE'">
-                <!-- Botón Enviar -->
-                <button 
-                  @click="handleIntegrar(oc.referencia_despacho, oc.oc_id)" 
-                  class="px-3 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium"
-                  :disabled="loading || sendingOcId === oc.oc_id"
-                  title="Enviar a SAP"
-                >
-                  {{ sendingOcId === oc.oc_id ? 'Enviando...' : 'Enviar' }}
-                </button>
-              </div>
-              <span v-else class="text-gray-400 italic">-</span>
+              <button
+                @click="handleDescargarPDF(oc)"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/30 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                :disabled="downloadingPdfOcId === oc.oc_id"
+                title="Descargar PDF de la ODC"
+              >
+                <svg v-if="downloadingPdfOcId === oc.oc_id" class="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                {{ downloadingPdfOcId === oc.oc_id ? 'Descargando...' : 'Descargar PDF' }}
+              </button>
             </td>
           </tr>
           
           <!-- Fila expandible con detalles -->
           <tr v-if="detallesExpandidos.has(oc.oc_id)">
-            <td :colspan="visibleColumnsCount + (props.readOnly ? 3 : 4)" class="px-6 py-4 bg-gray-50/80 dark:bg-gray-900/50 border-l-4 border-emerald-500 dark:border-emerald-400">
+            <td :colspan="visibleColumnsCount + (props.readOnly ? 2 : 3)" class="px-6 py-4 bg-gray-50/80 dark:bg-gray-900/50 border-l-4 border-emerald-500 dark:border-emerald-400">
               <div v-if="loadingDetalles[oc.oc_id]" class="flex items-center justify-center py-4">
                 <svg class="animate-spin h-5 w-5 text-emerald-500 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -557,6 +473,9 @@ const deleting = ref(false)
 
 // Estado para rastrear qué ODC individual se está enviando
 const sendingOcId = ref<string | null>(null)
+
+// Estado para rastrear qué ODC se está descargando como PDF
+const downloadingPdfOcId = ref<string | null>(null)
 
 // Estado para rastrear cuando se están enviando múltiples ODC
 const sendingMultiple = ref(false)
@@ -1030,6 +949,32 @@ async function handleIntegrar(referenciaDespacho: string, ocId: string) {
   }
 }
 
+
+async function handleDescargarPDF(oc: OrdenCompra) {
+  if (downloadingPdfOcId.value === oc.oc_id) return
+
+  try {
+    downloadingPdfOcId.value = oc.oc_id
+    const blob = await mba3ConsultasService.descargarODCPDF(oc.oc_id)
+    
+    // Crear URL temporal y disparar descarga
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `ODC_${oc.numero_oc_sap || oc.oc_id.substring(0, 8)}.pdf`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+    
+    toast.success('PDF descargado exitosamente')
+  } catch (error: any) {
+    console.error('Error al descargar PDF:', error)
+    toast.error('Error al descargar PDF', error.message || 'No se pudo generar el PDF de la orden de compra')
+  } finally {
+    downloadingPdfOcId.value = null
+  }
+}
 
 function handleIntegrarSeleccionadas() {
   if (sendingMultiple.value || props.loading) {

@@ -46,6 +46,17 @@ export const ordenesCompraService = {
   },
 
   /**
+   * Descargar el PDF de una orden de compra
+   */
+  async downloadODCPDF(ocId: string): Promise<Blob> {
+    const response = await mba3Api.get(`/ordenes-compra/${ocId}/pdf`, {
+      responseType: 'blob',
+      timeout: 60000, // 60s para generación de PDF
+    })
+    return response.data
+  },
+
+  /**
    * Obtener logs de órdenes de compra con filtros opcionales
    */
   async getOrdenesCompraLogs(

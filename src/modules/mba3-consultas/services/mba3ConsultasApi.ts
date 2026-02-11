@@ -763,6 +763,20 @@ export const mba3ConsultasService = {
     }
   },
 
+  // Descargar PDF de una ODC
+  async descargarODCPDF(ocId: string): Promise<Blob> {
+    try {
+      const response = await mba3Api.get(`/ordenes-compra/${ocId}/pdf`, {
+        responseType: 'blob',
+        timeout: 60000,
+      })
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [descargarODCPDF] Error al descargar PDF:', error)
+      throw new Error(`No se pudo descargar el PDF de la ODC. Error: ${error.message}`)
+    }
+  },
+
   // Actualizar SKU en un detalle de ODC
   async actualizarSkuDetalle(
     ocId: string,
