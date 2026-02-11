@@ -208,7 +208,12 @@ export function useRedistribucion(options: {
 
     // 1. Primero intentar cargar borrador guardado (prioridad máxima)
     // Solo usuarios con mabel.view pueden tener borradores (odcsap.view no crea borradores)
-    if (numeroPedido && authStore.canViewMabel) {
+    // ⭐ FIX: Usar fallback a permisos persistidos (localStorage) para evitar race condition
+    // en reload completo (F5), donde capabilities aún no están cargadas cuando se ejecuta
+    // esta función. authStore.canViewMabel depende de capabilities (GET /Auth/me),
+    // pero hasPermission('mabel.view') lee de userPermissions que tiene fallback a localStorage.
+    const tieneMabelView = authStore.canViewMabel || authStore.hasPermission('mabel.view')
+    if (numeroPedido && tieneMabelView) {
       const borradorCargado = await cargarBorradorSiExiste()
       if (borradorCargado) {
         if (import.meta.env.DEV) {

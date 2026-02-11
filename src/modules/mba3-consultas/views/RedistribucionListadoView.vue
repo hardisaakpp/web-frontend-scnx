@@ -257,6 +257,7 @@
             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead class="bg-gray-50 dark:bg-gray-900">
                 <tr>
+                  <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-12">#</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Número de Pedido</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fecha</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Proveedor</th>
@@ -269,7 +270,7 @@
               </thead>
               <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 <tr
-                  v-for="pedido in (filtroSoloPendientes ? pedidos.filter(p => requiereAccion(p.estado)) : pedidos)"
+                  v-for="(pedido, index) in (filtroSoloPendientes ? pedidos.filter(p => requiereAccion(p.estado)) : pedidos)"
                   :key="pedido.pedido_id"
                   :class="[
                     'hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer',
@@ -277,6 +278,9 @@
                   ]"
                   @click="abrirRedistribucion(pedido)"
                 >
+                  <td class="px-4 py-4 whitespace-nowrap text-sm text-center text-gray-500 dark:text-gray-400 font-medium">
+                    {{ metadata.offset + index + 1 }}
+                  </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                     {{ pedido.numero_pedido }}
                   </td>

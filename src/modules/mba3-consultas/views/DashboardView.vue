@@ -102,25 +102,6 @@
           </div>
         </button>
 
-        <!-- Procesamiento SAP: capability mabel_view (mabel.view). Solo capabilities. -->
-        <button
-          v-if="authStore.canViewMabel"
-          @click="showProcesamientoSAPModal = true"
-          class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left"
-        >
-          <div class="flex items-start gap-3">
-            <div class="w-8 h-8 rounded bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0">
-              <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="font-medium text-gray-900 dark:text-white text-sm">Procesamiento SAP</div>
-              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">MABEL TRADING - Ver pedidos confirmados</div>
-            </div>
-          </div>
-        </button>
-
         <!-- Procesos: capability mabel_view (mabel.view). Solo capabilities. -->
         <button
           v-if="authStore.canViewMabel"
@@ -244,6 +225,25 @@
                       <div class="flex-1 min-w-0">
                         <div class="font-medium text-gray-900 dark:text-white text-sm">Listado Pedidos Originales</div>
                         <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Archivos Excel en storage</div>
+                      </div>
+                    </div>
+                  </button>
+
+                  <!-- Procesamiento SAP: capability mabel_view (mabel.view). Solo capabilities. -->
+                  <button
+                    v-if="authStore.canViewMabel"
+                    @click="showProcesamientoSAPModal = true"
+                    class="bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-600 p-4 hover:border-gray-300 dark:hover:border-gray-500 hover:shadow-sm transition-all text-left"
+                  >
+                    <div class="flex items-start gap-3">
+                      <div class="w-8 h-8 rounded bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0">
+                        <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                        </svg>
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <div class="font-medium text-gray-900 dark:text-white text-sm">Procesamiento SAP</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">MABEL TRADING - Ver pedidos confirmados</div>
                       </div>
                     </div>
                   </button>
