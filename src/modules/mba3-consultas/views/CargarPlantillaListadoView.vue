@@ -448,6 +448,7 @@
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Comprador</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fecha Creación</th>
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fecha Modificación</th>
+                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Modificado Por</th>
                 </tr>
               </thead>
               <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
@@ -486,6 +487,9 @@
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
                     {{ pedido.modificado_fecha ? formatDateTime(pedido.modificado_fecha) : '-' }}
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                    {{ pedido.modificado_por || '-' }}
                   </td>
                 </tr>
               </tbody>

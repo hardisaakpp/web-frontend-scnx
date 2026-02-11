@@ -1291,6 +1291,7 @@ export interface PedidoResumido {
   estado: string
   creado_en: string
   modificado_fecha: string | null
+  modificado_por: string | null
 }
 
 /**
