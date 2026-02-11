@@ -104,6 +104,7 @@
         :loading="loading"
         :generando-o-c="generandoOC"
         :confirmando="confirmando"
+        :descargando-pedido="descargandoPedido"
         :descargando-csv="descargandoCsv"
         :descargando-excel-original="descargandoExcelOriginal"
         :can-generar-o-c="canGenerarOC"
@@ -114,8 +115,9 @@
         :hide-confirm-and-download="false"
         :hide-cargar-plantillas="true"
         :show-despachar-y-facturar="true"
+        :puede-descargar-pedido="puedeDescargarPedido"
         :puede-descargar-csv="puedeDescargarCsv"
-        :tiene-archivo-original="tieneArchivoOriginal"
+        :tiene-archivo-original="false"
         @cargar-plantillas="goToCargarPlantillas"
         @generar-oc="handleGenerarOCDesdePedido"
         @confirmar="handleConfirmar"
@@ -123,6 +125,7 @@
         @go-to-pedido="goToPedido"
         @search-blur="handleSearchBlur"
         @descargar-plano-mba="handleDescargarPlanoMba"
+        @descargar-pedido="handleDescargarPedido"
         @descargar-csv="handleDescargarCsv"
         @descargar-excel-original="handleDescargarExcelOriginal"
       >
@@ -514,6 +517,7 @@ const columnasModificadas = ref<Set<string>>(new Set())
 const showColumnSelector = ref(false)
 const confirmando = ref(false)
 const eliminando = ref(false)
+const descargandoPedido = ref(false)
 const descargandoCsv = ref(false)
 const descargandoExcelOriginal = ref(false)
 const tieneArchivoOriginal = ref(false)
@@ -886,6 +890,14 @@ const puedeDescargarCsv = computed(() => {
   return estadoId === 4
 })
 
+// Permitir descargar pedido desde estado GESTIONAR PEDIDO (estado_id >= 3) en adelante
+const puedeDescargarPedido = computed(() => {
+  const cabecera = pedido.value?.cabecera
+  if (!cabecera) return false
+  const estadoId = cabecera.estado_id != null ? Number(cabecera.estado_id) : null
+  return estadoId !== null && estadoId >= 3
+})
+
 
 // Funciones de carga y gestión del pedido ahora están en el composable usePedidoDetalle
 
@@ -1133,6 +1145,63 @@ function handleCerrarModalConfirmacion() {
   showConfirmacionModal.value = false
   // El usuario permanece en la misma página (Detalle del Pedido)
   // No se realiza redirección
+}
+
+// Función para descargar pedido en formato Excel (desde estado GESTIONAR PEDIDO)
+async function handleDescargarPedido() {
+  if (!pedido.value?.cabecera?.pedido_id) {
+    toast.error('Error', 'No hay pedido para descargar')
+    return
+  }
+
+  // Prevenir múltiples clics
+  if (descargandoPedido.value) return
+
+  const pedidoId = pedido.value.cabecera.pedido_id
+
+  descargandoPedido.value = true
+  toast.info('Generando archivo...', 'Por favor espera')
+
+  try {
+    const blob = await mba3ConsultasService.descargarPedido(pedidoId)
+
+    // Crear URL del blob y descargar con el nombre fijo especificado
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'Descargar Pedido.xlsx'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+
+    toast.success('Descarga completada', 'El archivo Excel se ha descargado correctamente')
+  } catch (e: any) {
+    console.error('Error al descargar pedido:', e)
+
+    const status = e.response?.status
+    const data = e.response?.data
+    const detail = data?.detail
+    const errorCode = detail?.error
+    const message = detail?.message || data?.message || e.message
+
+    if (status === 400) {
+      if (errorCode === 'estado_no_permitido') {
+        toast.error(
+          'Estado no permitido',
+          'El pedido debe estar en estado GESTIONAR PEDIDO o superior para descargar.'
+        )
+      } else {
+        toast.error('Error al descargar', message || 'No se pudo descargar el archivo')
+      }
+    } else if (status === 404) {
+      toast.error('Pedido no encontrado', 'El pedido no existe')
+    } else {
+      toast.error('Error al descargar', message || 'Ocurrió un error inesperado al descargar el archivo')
+    }
+  } finally {
+    descargandoPedido.value = false
+  }
 }
 
 // Función para descargar pedido en formato CSV (estado CONFIRMADO)

@@ -1230,6 +1230,17 @@ export const mba3ConsultasService = {
   },
 
   /**
+   * Descarga un pedido como Excel con estructura de "Descargar Pedido"
+   * GET /api/pedidos/{pedido_id}/descargar-pedido
+   * Válido desde estado GESTIONAR PEDIDO (3) en adelante.
+   * @param pedidoId ID del pedido (UUID)
+   * @returns Blob del archivo Excel
+   */
+  async descargarPedido(pedidoId: string): Promise<Blob> {
+    return pedidosService.descargarPedido(pedidoId)
+  },
+
+  /**
    * Descarga un pedido en formato CSV (compatible con Excel)
    * GET /api/pedidos/{pedido_id}/descargar-csv
    * Solo válido en estado CONFIRMADO (4).

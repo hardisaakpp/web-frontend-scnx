@@ -562,6 +562,29 @@ export const pedidosService = {
   },
 
   /**
+   * Descarga un pedido en formato Excel con estructura de "Descargar Pedido"
+   * GET /api/pedidos/{pedido_id}/descargar-pedido
+   * Válido desde estado GESTIONAR PEDIDO (3) en adelante.
+   * Genera un Excel con cabecera tipo formulario + tabla de productos.
+   * Respuestas: 200 con archivo Excel; 400/404 con detail.message.
+   *
+   * @param pedidoId ID del pedido (UUID)
+   * @returns Blob del archivo Excel
+   */
+  async descargarPedido(pedidoId: string): Promise<Blob> {
+    try {
+      const response = await mba3Api.get<Blob>(
+        `/api/pedidos/${encodeURIComponent(pedidoId)}/descargar-pedido`,
+        { responseType: 'blob' }
+      )
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [descargarPedido] Error:', error)
+      throw createEnrichedError(error, 'Error al descargar pedido')
+    }
+  },
+
+  /**
    * Descarga un pedido en formato CSV (compatible con Excel)
    * GET /api/pedidos/{pedido_id}/descargar-csv
    * Solo válido en estado CONFIRMADO (4).
