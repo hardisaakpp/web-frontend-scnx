@@ -203,6 +203,7 @@
       <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
         <thead class="bg-gray-50 dark:bg-gray-700/50 transition-colors duration-300">
           <tr>
+            <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider transition-colors duration-300 w-12">#</th>
             <th class="px-6 py-3 text-left">
               <input
                 type="checkbox"
@@ -248,7 +249,7 @@
           </tr>
         </thead>
         <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700 transition-colors duration-300">
-          <template v-for="oc in sortedOrdenes" :key="oc.oc_id">
+          <template v-for="(oc, ocIndex) in sortedOrdenes" :key="oc.oc_id">
           <tr 
             class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-300"
             :class="[
@@ -257,6 +258,9 @@
             ]"
             :title="hasRowIssues(oc).issues.length > 0 ? 'Problemas: ' + hasRowIssues(oc).issues.join(', ') : ''"
           >
+            <td class="px-4 py-4 whitespace-nowrap text-sm text-center text-gray-500 dark:text-gray-400 font-medium">
+              {{ ((props.currentPage || 1) - 1) * (props.pageSize || sortedOrdenes.length) + ocIndex + 1 }}
+            </td>
             <td class="px-6 py-4 whitespace-nowrap">
               <input
                 type="checkbox"
@@ -448,7 +452,7 @@
           
           <!-- Fila expandible con detalles -->
           <tr v-if="detallesExpandidos.has(oc.oc_id)">
-            <td :colspan="visibleColumnsCount + (props.readOnly ? 2 : 3)" class="px-6 py-4 bg-gray-50/80 dark:bg-gray-900/50 border-l-4 border-emerald-500 dark:border-emerald-400">
+            <td :colspan="visibleColumnsCount + (props.readOnly ? 3 : 4)" class="px-6 py-4 bg-gray-50/80 dark:bg-gray-900/50 border-l-4 border-emerald-500 dark:border-emerald-400">
               <div v-if="loadingDetalles[oc.oc_id]" class="flex items-center justify-center py-4">
                 <svg class="animate-spin h-5 w-5 text-emerald-500 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
