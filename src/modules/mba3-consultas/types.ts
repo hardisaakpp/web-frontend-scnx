@@ -859,7 +859,7 @@ export interface PedidoCabecera {
   fecha_pedido: string | null
   fecha_entrega: string | null
   forma_pago: string | null
-  odc: string | null
+  mensaje: string | null
   proveedor_nombre: string | null
   comprador_nombre: string | null
   comprador_codigo: string | null
@@ -1280,7 +1280,7 @@ export interface PedidoResumido {
   fecha_pedido: string | null
   fecha_entrega: string | null
   forma_pago: string | null
-  odc: string | null
+  mensaje: string | null
   proveedor_nombre: string | null
   comprador_nombre: string | null
   comprador_codigo: string | null

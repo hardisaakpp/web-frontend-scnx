@@ -425,7 +425,7 @@
       :is-open="showExportarMBAModal"
       :numero-pedido="numeroPedido || ''"
       :bodega-default="pedido?.cabecera?.origen_traslado || ''"
-      :odc-default="pedido?.cabecera?.odc || ''"
+      :odc-default="pedido?.cabecera?.mensaje || ''"
       @close="showExportarMBAModal = false"
       @exportar="handleExportarMBA"
     />

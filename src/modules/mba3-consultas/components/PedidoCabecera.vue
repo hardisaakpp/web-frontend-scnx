@@ -144,6 +144,10 @@
         <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Forma de Pago</label>
         <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ pedido.cabecera.forma_pago || 'N/A' }}</p>
       </div>
+      <div v-if="pedido.cabecera.mensaje">
+        <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Mensaje</label>
+        <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ pedido.cabecera.mensaje }}</p>
+      </div>
       <div v-if="pedido.cabecera.estado || editable">
         <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Estado del Pedido</label>
         <!-- Editable: select con todos los estados -->
