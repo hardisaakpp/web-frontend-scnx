@@ -1336,6 +1336,21 @@ export interface PedidosListadoFiltros {
   solo_redistribucion?: boolean
 }
 
+// ========== Estados de Pedido (dropdown dinámico) ==========
+
+/** Representa un estado de pedido devuelto por GET /api/pedidos/estados */
+export interface EstadoPedidoOption {
+  id: number
+  nombre: string
+  orden: number
+}
+
+/** Respuesta del endpoint GET /api/pedidos/estados */
+export interface EstadosPedidoResponse {
+  status: string
+  data: EstadoPedidoOption[]
+}
+
 // ========== HU-08: Exportación de Pedidos a Formato MBA ==========
 
 /**

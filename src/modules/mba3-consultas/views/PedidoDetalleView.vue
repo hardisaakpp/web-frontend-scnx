@@ -1151,7 +1151,7 @@ function handleCerrarModalConfirmacion() {
   // No se realiza redirección
 }
 
-// Función para descargar pedido en formato Excel (desde estado GESTIONAR PEDIDO)
+// Función para descargar pedido ORIGINAL en formato Excel (valores antes de ediciones)
 async function handleDescargarPedido() {
   if (!pedido.value?.cabecera?.pedido_id) {
     toast.error('Error', 'No hay pedido para descargar')
@@ -1167,13 +1167,13 @@ async function handleDescargarPedido() {
   toast.info('Generando archivo...', 'Por favor espera')
 
   try {
-    const blob = await mba3ConsultasService.descargarPedido(pedidoId)
+    const blob = await mba3ConsultasService.descargarPedidoOriginal(pedidoId)
 
     // Crear URL del blob y descargar con el nombre fijo especificado
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'Descargar Pedido.xlsx'
+    a.download = 'Descargar Pedido Original.xlsx'
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -1181,25 +1181,40 @@ async function handleDescargarPedido() {
 
     toast.success('Descarga completada', 'El archivo Excel se ha descargado correctamente')
   } catch (e: any) {
-    console.error('Error al descargar pedido:', e)
+    console.error('Error al descargar pedido original:', e)
 
-    const status = e.response?.status
-    const data = e.response?.data
-    const detail = data?.detail
-    const errorCode = detail?.error
-    const message = detail?.message || data?.message || e.message
+    // El blob de error necesita ser parseado como JSON
+    let status = e.response?.status
+    let errorCode = ''
+    let message = ''
 
-    if (status === 400) {
-      if (errorCode === 'estado_no_permitido') {
-        toast.error(
-          'Estado no permitido',
-          'El pedido debe estar en estado GESTIONAR PEDIDO o superior para descargar.'
+    try {
+      if (e.response?.data instanceof Blob) {
+        const text = await e.response.data.text()
+        const parsed = JSON.parse(text)
+        errorCode = parsed?.detail?.error || ''
+        message = parsed?.detail?.message || parsed?.message || ''
+      } else {
+        const data = e.response?.data
+        const detail = data?.detail
+        errorCode = detail?.error || ''
+        message = detail?.message || data?.message || e.message || ''
+      }
+    } catch {
+      message = e.message || 'Error desconocido'
+    }
+
+    if (status === 404) {
+      if (errorCode === 'sin_snapshot_original') {
+        toast.warning(
+          'Sin datos originales',
+          'Este pedido fue creado antes de la activación de esta funcionalidad. No se dispone de los datos originales.'
         )
       } else {
-        toast.error('Error al descargar', message || 'No se pudo descargar el archivo')
+        toast.error('Pedido no encontrado', 'El pedido no existe')
       }
-    } else if (status === 404) {
-      toast.error('Pedido no encontrado', 'El pedido no existe')
+    } else if (status === 400) {
+      toast.error('Error al descargar', message || 'No se pudo descargar el archivo')
     } else {
       toast.error('Error al descargar', message || 'Ocurrió un error inesperado al descargar el archivo')
     }

@@ -45,7 +45,8 @@ import type {
   PlantillasPedidosResponse,
   ListadoArchivosOriginalesResponse,
   EliminarArchivoOriginalResponse,
-  ProcesoCompletoSAPResponse
+  ProcesoCompletoSAPResponse,
+  EstadosPedidoResponse
 } from '../../types'
 
 export const pedidosService = {
@@ -582,6 +583,29 @@ export const pedidosService = {
     } catch (error: any) {
       console.error('❌ [descargarPedido] Error:', error)
       throw createEnrichedError(error, 'Error al descargar pedido')
+    }
+  },
+
+  /**
+   * Descarga un pedido con los valores ORIGINALES (antes de ediciones) en formato Excel.
+   * GET /api/pedidos/{pedido_id}/descargar-pedido-original
+   * Lee de las tablas pedido_original y pedido_detalle_original.
+   * Mismo formato que descargarPedido pero con datos inmutables del momento del envío.
+   * Respuestas: 200 con archivo Excel; 404 si no existe snapshot original.
+   *
+   * @param pedidoId ID del pedido (UUID)
+   * @returns Blob del archivo Excel
+   */
+  async descargarPedidoOriginal(pedidoId: string): Promise<Blob> {
+    try {
+      const response = await mba3Api.get<Blob>(
+        `/api/pedidos/${encodeURIComponent(pedidoId)}/descargar-pedido-original`,
+        { responseType: 'blob' }
+      )
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [descargarPedidoOriginal] Error:', error)
+      throw createEnrichedError(error, 'Error al descargar pedido original')
     }
   },
 
@@ -1312,6 +1336,29 @@ export const pedidosService = {
       }
 
       throw createEnrichedError(error, 'Error al eliminar el archivo original')
+    }
+  },
+
+  /**
+   * Obtiene la lista de estados de pedido disponibles para dropdowns de filtros.
+   * 
+   * GET /api/pedidos/estados?contexto={contexto}
+   * 
+   * @param contexto Contexto que determina qué estados devolver:
+   *   - 'pedidos': Excluye BORRADOR (para listado general de pedidos)
+   *   - 'redistribucion': Solo estados del flujo de redistribución (estado_id 4-14)
+   *   - 'cargar-plantilla': Todos los estados incluyendo BORRADOR
+   *   - undefined: Todos los estados activos
+   * @returns Lista de estados con id, nombre y orden
+   */
+  async getEstadosPedido(contexto?: 'pedidos' | 'redistribucion' | 'cargar-plantilla'): Promise<EstadosPedidoResponse> {
+    try {
+      const params = contexto ? `?contexto=${contexto}` : ''
+      const response = await mba3Api.get<EstadosPedidoResponse>(`/api/pedidos/estados${params}`)
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [getEstadosPedido] Error al obtener estados:', error)
+      throw createEnrichedError(error, 'Error al obtener los estados de pedido')
     }
   },
 }

@@ -18,7 +18,7 @@ import type {
 } from '../types'
 import type { OrdenCompraResponse, OrdenCompraLogResponse, RemisionResponse } from '../types'
 import type { HealthResponse, ProcesoResponse } from '../types'
-import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, SkuHomologacionCreateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstado, ProcesoEstadoResponse, SugerenciaProducto, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuRequest, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, PedidoCompleto, CargarRespuestaProveedorResponse, RespuestaProveedorResponse, ProcesarConfirmacionResponse, ReporteDiferenciasResponse, IntegracionSAPResponse, ActualizarCostoPedidoResponse, AjusteDetalle, ResumenConfirmacion, GuardarModificacionesColumnasRequest, GuardarModificacionesColumnasResponse, ObtenerModificacionesColumnasResponse, ProcesamientoSAPResponse, PedidosListadoResponse, CrearOCDesdePedidoResponse, CrearPedidoRequest, CrearPedidoResponse, ModificarPedidoCabeceraRequest, ModificarPedidoCabeceraResponse, TienePedidosResponse, InfoArchivoPlantillaResponse, BuscarPlantillasResponse, PlantillasPedidosResponse, ProcesoCompletoSAPResponse } from '../types'
+import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, SkuHomologacionCreateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstado, ProcesoEstadoResponse, SugerenciaProducto, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuRequest, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, PedidoCompleto, CargarRespuestaProveedorResponse, RespuestaProveedorResponse, ProcesarConfirmacionResponse, ReporteDiferenciasResponse, IntegracionSAPResponse, ActualizarCostoPedidoResponse, AjusteDetalle, ResumenConfirmacion, GuardarModificacionesColumnasRequest, GuardarModificacionesColumnasResponse, ObtenerModificacionesColumnasResponse, ProcesamientoSAPResponse, PedidosListadoResponse, CrearOCDesdePedidoResponse, CrearPedidoRequest, CrearPedidoResponse, ModificarPedidoCabeceraRequest, ModificarPedidoCabeceraResponse, TienePedidosResponse, InfoArchivoPlantillaResponse, BuscarPlantillasResponse, PlantillasPedidosResponse, ProcesoCompletoSAPResponse, EstadosPedidoResponse } from '../types'
 
 // ⭐ REEXPORTAR CONFIGURACIÓN Y UTILIDADES REFACTORIZADAS
 export { mba3Api, API_BASE_URL } from './config/axiosConfig'
@@ -766,7 +766,7 @@ export const mba3ConsultasService = {
   // Descargar PDF de una ODC
   async descargarODCPDF(ocId: string): Promise<Blob> {
     try {
-      const response = await mba3Api.get(`/ordenes-compra/${ocId}/pdf`, {
+      const response = await mba3Api.get<Blob>(`/ordenes-compra/${ocId}/pdf`, {
         responseType: 'blob',
         timeout: 60000,
       })
@@ -1255,6 +1255,17 @@ export const mba3ConsultasService = {
   },
 
   /**
+   * Descarga un pedido con los valores ORIGINALES (antes de ediciones) en formato Excel.
+   * GET /api/pedidos/{pedido_id}/descargar-pedido-original
+   * Lee de las tablas pedido_original y pedido_detalle_original.
+   * @param pedidoId ID del pedido (UUID)
+   * @returns Blob del archivo Excel
+   */
+  async descargarPedidoOriginal(pedidoId: string): Promise<Blob> {
+    return pedidosService.descargarPedidoOriginal(pedidoId)
+  },
+
+  /**
    * Descarga un pedido en formato CSV (compatible con Excel)
    * GET /api/pedidos/{pedido_id}/descargar-csv
    * Solo válido en estado CONFIRMADO (4).
@@ -1651,6 +1662,18 @@ export const mba3ConsultasService = {
     offset?: number
   }): Promise<PlantillasPedidosResponse> {
     return pedidosService.getPlantillasPedidos(filtros)
+  },
+
+  /**
+   * Obtiene la lista de estados de pedido para dropdowns de filtros.
+   * 
+   * GET /api/pedidos/estados?contexto={contexto}
+   * @param contexto Contexto que determina qué estados devolver
+   * @returns Lista de estados con id, nombre y orden
+   * @deprecated Usar pedidosService.getEstadosPedido() directamente
+   */
+  async getEstadosPedido(contexto?: 'pedidos' | 'redistribucion' | 'cargar-plantilla'): Promise<EstadosPedidoResponse> {
+    return pedidosService.getEstadosPedido(contexto)
   },
 }
 

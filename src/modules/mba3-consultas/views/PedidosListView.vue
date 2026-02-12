@@ -113,14 +113,13 @@
               class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 text-sm"
             >
               <option value="">Todos los estados</option>
-              <option value="PENDIENTE_CONFIRMACION_PROVEEDOR">Pendiente Confirmación Proveedor</option>
-              <option value="RESPUESTA_PROVEEDOR_CARGADA">Respuesta Proveedor Cargada</option>
-              <option value="CONFIRMADO_PROVEEDOR">Confirmado Proveedor</option>
-              <option value="ORDEN_COMPRA_CREADA">Orden Compra Creada</option>
-              <option value="ENVIADA_SAP">Enviada SAP</option>
-              <option value="CONFIRMADO_ENVIADO">Confirmado Enviado</option>
-              <option value="CERRADO">Cerrado</option>
-              <option value="CANCELADO">Cancelado</option>
+              <option
+                v-for="estado in estadosDisponibles"
+                :key="estado.id"
+                :value="estado.nombre"
+              >
+                {{ getEstadoLabel(estado.nombre) }}
+              </option>
             </select>
           </div>
 
@@ -296,35 +295,107 @@
             <thead class="bg-gray-50 dark:bg-gray-900">
               <tr>
                 <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-12">#</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Número de Pedido
+                <th 
+                  @click="toggleSort('numero_pedido')"
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                >
+                  <div class="flex items-center gap-1">
+                    Número de Pedido
+                    <span class="inline-flex flex-col leading-none text-gray-400 dark:text-gray-500">
+                      <svg :class="['w-3 h-3 -mb-0.5', sortColumn === 'numero_pedido' && sortDirection === 'asc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg>
+                      <svg :class="['w-3 h-3 -mt-0.5', sortColumn === 'numero_pedido' && sortDirection === 'desc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                    </span>
+                  </div>
                 </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Fecha Pedido
+                <th 
+                  @click="toggleSort('fecha_pedido')"
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                >
+                  <div class="flex items-center gap-1">
+                    Fecha Pedido
+                    <span class="inline-flex flex-col leading-none text-gray-400 dark:text-gray-500">
+                      <svg :class="['w-3 h-3 -mb-0.5', sortColumn === 'fecha_pedido' && sortDirection === 'asc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg>
+                      <svg :class="['w-3 h-3 -mt-0.5', sortColumn === 'fecha_pedido' && sortDirection === 'desc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                    </span>
+                  </div>
                 </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Proveedor
+                <th 
+                  @click="toggleSort('proveedor_nombre')"
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                >
+                  <div class="flex items-center gap-1">
+                    Proveedor
+                    <span class="inline-flex flex-col leading-none text-gray-400 dark:text-gray-500">
+                      <svg :class="['w-3 h-3 -mb-0.5', sortColumn === 'proveedor_nombre' && sortDirection === 'asc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg>
+                      <svg :class="['w-3 h-3 -mt-0.5', sortColumn === 'proveedor_nombre' && sortDirection === 'desc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                    </span>
+                  </div>
                 </th>
-                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Estado
+                <th 
+                  @click="toggleSort('estado')"
+                  class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                >
+                  <div class="flex items-center justify-center gap-1">
+                    Estado
+                    <span class="inline-flex flex-col leading-none text-gray-400 dark:text-gray-500">
+                      <svg :class="['w-3 h-3 -mb-0.5', sortColumn === 'estado' && sortDirection === 'asc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg>
+                      <svg :class="['w-3 h-3 -mt-0.5', sortColumn === 'estado' && sortDirection === 'desc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                    </span>
+                  </div>
                 </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Comprador
+                <th 
+                  @click="toggleSort('comprador_nombre')"
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                >
+                  <div class="flex items-center gap-1">
+                    Comprador
+                    <span class="inline-flex flex-col leading-none text-gray-400 dark:text-gray-500">
+                      <svg :class="['w-3 h-3 -mb-0.5', sortColumn === 'comprador_nombre' && sortDirection === 'asc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg>
+                      <svg :class="['w-3 h-3 -mt-0.5', sortColumn === 'comprador_nombre' && sortDirection === 'desc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                    </span>
+                  </div>
                 </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Fecha Creación
+                <th 
+                  @click="toggleSort('creado_en')"
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                >
+                  <div class="flex items-center gap-1">
+                    Fecha Creación
+                    <span class="inline-flex flex-col leading-none text-gray-400 dark:text-gray-500">
+                      <svg :class="['w-3 h-3 -mb-0.5', sortColumn === 'creado_en' && sortDirection === 'asc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg>
+                      <svg :class="['w-3 h-3 -mt-0.5', sortColumn === 'creado_en' && sortDirection === 'desc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                    </span>
+                  </div>
                 </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Fecha Modificación
+                <th 
+                  @click="toggleSort('modificado_fecha')"
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                >
+                  <div class="flex items-center gap-1">
+                    Fecha Modificación
+                    <span class="inline-flex flex-col leading-none text-gray-400 dark:text-gray-500">
+                      <svg :class="['w-3 h-3 -mb-0.5', sortColumn === 'modificado_fecha' && sortDirection === 'asc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg>
+                      <svg :class="['w-3 h-3 -mt-0.5', sortColumn === 'modificado_fecha' && sortDirection === 'desc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                    </span>
+                  </div>
                 </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Modificado Por
+                <th 
+                  @click="toggleSort('modificado_por')"
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                >
+                  <div class="flex items-center gap-1">
+                    Modificado Por
+                    <span class="inline-flex flex-col leading-none text-gray-400 dark:text-gray-500">
+                      <svg :class="['w-3 h-3 -mb-0.5', sortColumn === 'modificado_por' && sortDirection === 'asc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg>
+                      <svg :class="['w-3 h-3 -mt-0.5', sortColumn === 'modificado_por' && sortDirection === 'desc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                    </span>
+                  </div>
                 </th>
               </tr>
             </thead>
             <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               <tr
-                v-for="(pedido, index) in (filtroSoloPendientes ? pedidos.filter(p => requiereAccion(p.estado)) : pedidos)"
+                v-for="(pedido, index) in sortedPedidos"
                 :key="pedido.pedido_id"
                 :class="[
                   'hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer',
@@ -414,7 +485,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { lastNotification } from '@/composables/useNotificaciones'
 import { mba3ConsultasService, extractErrorMessage } from '../services/mba3ConsultasApi'
-import type { PedidosListadoResponse, PedidoResumido, PedidosListadoFiltros, PedidosListadoMetadata } from '../types'
+import type { PedidosListadoResponse, PedidoResumido, PedidosListadoFiltros, PedidosListadoMetadata, EstadoPedidoOption } from '../types'
 import { formatDate, formatDateTime } from '../utils/formatters'
 
 const router = useRouter()
@@ -424,6 +495,7 @@ const toast = useToast()
 const pedidos = ref<PedidoResumido[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
+const estadosDisponibles = ref<EstadoPedidoOption[]>([])
 const PAGE_SIZE = 10
 const metadata = ref<PedidosListadoMetadata>({
   total: 0,
@@ -435,6 +507,11 @@ const metadata = ref<PedidosListadoMetadata>({
 // Estados de colapso (por defecto abiertos)
 const filtrosColapsados = ref(true)
 const pedidosColapsados = ref(false)
+
+// Ordenamiento de columnas
+type SortDirection = 'asc' | 'desc' | null
+const sortColumn = ref<string | null>(null)
+const sortDirection = ref<SortDirection>(null)
 
 // Detectar si es modo El Rayo desde query params
 const esModoElRayo = computed(() => {
@@ -567,6 +644,76 @@ const contadorPedidosPendientes = computed(() => {
   const pedidosPendientes = pedidos.value.filter(p => requiereAccion(p.estado))
   return pedidosPendientes.length
 })
+
+// Función para alternar el ordenamiento de una columna
+function toggleSort(column: string) {
+  if (sortColumn.value === column) {
+    // Ciclo: asc -> desc -> sin orden
+    if (sortDirection.value === 'asc') {
+      sortDirection.value = 'desc'
+    } else if (sortDirection.value === 'desc') {
+      sortColumn.value = null
+      sortDirection.value = null
+    }
+  } else {
+    sortColumn.value = column
+    sortDirection.value = 'asc'
+  }
+}
+
+// Columnas de tipo fecha para ordenar correctamente
+const dateColumns = ['fecha_pedido', 'creado_en', 'modificado_fecha']
+
+// Pedidos ordenados (computed)
+const sortedPedidos = computed(() => {
+  // Primero aplicar el filtro de pendientes si está activo
+  const lista = filtroSoloPendientes.value
+    ? pedidos.value.filter(p => requiereAccion(p.estado))
+    : pedidos.value
+
+  if (!sortColumn.value || !sortDirection.value) {
+    return lista
+  }
+
+  const col = sortColumn.value
+  const dir = sortDirection.value
+  const isDate = dateColumns.includes(col)
+
+  return [...lista].sort((a: any, b: any) => {
+    let valA = a[col]
+    let valB = b[col]
+
+    // Manejar valores nulos/undefined
+    if (valA == null && valB == null) return 0
+    if (valA == null) return dir === 'asc' ? 1 : -1
+    if (valB == null) return dir === 'asc' ? -1 : 1
+
+    if (isDate) {
+      // Comparar como fechas
+      const dateA = new Date(valA).getTime()
+      const dateB = new Date(valB).getTime()
+      return dir === 'asc' ? dateA - dateB : dateB - dateA
+    }
+
+    // Comparar como texto (case insensitive)
+    const strA = String(valA).toLowerCase()
+    const strB = String(valB).toLowerCase()
+    if (strA < strB) return dir === 'asc' ? -1 : 1
+    if (strA > strB) return dir === 'asc' ? 1 : -1
+    return 0
+  })
+})
+
+// Cargar estados disponibles para el dropdown de filtros
+async function cargarEstados() {
+  try {
+    const response = await mba3ConsultasService.getEstadosPedido('pedidos')
+    estadosDisponibles.value = response.data
+  } catch (e: any) {
+    console.error('Error al cargar estados:', e)
+    // Si falla, el dropdown quedará vacío pero no bloquea la UI
+  }
+}
 
 // Cargar pedidos
 async function cargarPedidos() {
@@ -702,6 +849,7 @@ function toggleAutoRefresh() {
 
 // Cargar datos al montar
 onMounted(() => {
+  cargarEstados()
   // Si es modo El Rayo, activar filtro de pendientes por defecto
   if (esModoElRayo.value) {
     filtroSoloPendientes.value = true

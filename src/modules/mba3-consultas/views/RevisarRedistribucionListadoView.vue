@@ -195,19 +195,75 @@
               <thead class="bg-gray-50 dark:bg-gray-900">
                 <tr>
                   <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-12">#</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Número de Pedido</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fecha</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Proveedor</th>
-                  <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Estado</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Comprador</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fecha Creación</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fecha Modificación</th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Modificado Por</th>
+                  <th @click="toggleSort('numero_pedido')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                    <div class="flex items-center gap-1">Número de Pedido
+                      <span class="inline-flex flex-col leading-none text-gray-400 dark:text-gray-500">
+                        <svg :class="['w-3 h-3 -mb-0.5', sortColumn === 'numero_pedido' && sortDirection === 'asc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg>
+                        <svg :class="['w-3 h-3 -mt-0.5', sortColumn === 'numero_pedido' && sortDirection === 'desc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                      </span>
+                    </div>
+                  </th>
+                  <th @click="toggleSort('fecha_pedido')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                    <div class="flex items-center gap-1">Fecha
+                      <span class="inline-flex flex-col leading-none text-gray-400 dark:text-gray-500">
+                        <svg :class="['w-3 h-3 -mb-0.5', sortColumn === 'fecha_pedido' && sortDirection === 'asc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg>
+                        <svg :class="['w-3 h-3 -mt-0.5', sortColumn === 'fecha_pedido' && sortDirection === 'desc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                      </span>
+                    </div>
+                  </th>
+                  <th @click="toggleSort('proveedor_nombre')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                    <div class="flex items-center gap-1">Proveedor
+                      <span class="inline-flex flex-col leading-none text-gray-400 dark:text-gray-500">
+                        <svg :class="['w-3 h-3 -mb-0.5', sortColumn === 'proveedor_nombre' && sortDirection === 'asc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg>
+                        <svg :class="['w-3 h-3 -mt-0.5', sortColumn === 'proveedor_nombre' && sortDirection === 'desc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                      </span>
+                    </div>
+                  </th>
+                  <th @click="toggleSort('estado')" class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                    <div class="flex items-center justify-center gap-1">Estado
+                      <span class="inline-flex flex-col leading-none text-gray-400 dark:text-gray-500">
+                        <svg :class="['w-3 h-3 -mb-0.5', sortColumn === 'estado' && sortDirection === 'asc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg>
+                        <svg :class="['w-3 h-3 -mt-0.5', sortColumn === 'estado' && sortDirection === 'desc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                      </span>
+                    </div>
+                  </th>
+                  <th @click="toggleSort('comprador_nombre')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                    <div class="flex items-center gap-1">Comprador
+                      <span class="inline-flex flex-col leading-none text-gray-400 dark:text-gray-500">
+                        <svg :class="['w-3 h-3 -mb-0.5', sortColumn === 'comprador_nombre' && sortDirection === 'asc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg>
+                        <svg :class="['w-3 h-3 -mt-0.5', sortColumn === 'comprador_nombre' && sortDirection === 'desc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                      </span>
+                    </div>
+                  </th>
+                  <th @click="toggleSort('creado_en')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                    <div class="flex items-center gap-1">Fecha Creación
+                      <span class="inline-flex flex-col leading-none text-gray-400 dark:text-gray-500">
+                        <svg :class="['w-3 h-3 -mb-0.5', sortColumn === 'creado_en' && sortDirection === 'asc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg>
+                        <svg :class="['w-3 h-3 -mt-0.5', sortColumn === 'creado_en' && sortDirection === 'desc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                      </span>
+                    </div>
+                  </th>
+                  <th @click="toggleSort('modificado_fecha')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                    <div class="flex items-center gap-1">Fecha Modificación
+                      <span class="inline-flex flex-col leading-none text-gray-400 dark:text-gray-500">
+                        <svg :class="['w-3 h-3 -mb-0.5', sortColumn === 'modificado_fecha' && sortDirection === 'asc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg>
+                        <svg :class="['w-3 h-3 -mt-0.5', sortColumn === 'modificado_fecha' && sortDirection === 'desc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                      </span>
+                    </div>
+                  </th>
+                  <th @click="toggleSort('modificado_por')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                    <div class="flex items-center gap-1">Modificado Por
+                      <span class="inline-flex flex-col leading-none text-gray-400 dark:text-gray-500">
+                        <svg :class="['w-3 h-3 -mb-0.5', sortColumn === 'modificado_por' && sortDirection === 'asc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg>
+                        <svg :class="['w-3 h-3 -mt-0.5', sortColumn === 'modificado_por' && sortDirection === 'desc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+                      </span>
+                    </div>
+                  </th>
                 </tr>
               </thead>
               <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 <tr
-                  v-for="(pedido, index) in pedidos"
+                  v-for="(pedido, index) in sortedPedidos"
                   :key="pedido.pedido_id"
                   class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer"
                   @click="abrirRevisar(pedido)"
@@ -277,7 +333,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { lastNotification } from '@/composables/useNotificaciones'
@@ -301,6 +357,11 @@ const metadata = ref<PedidosListadoMetadata>({
 
 const filtrosColapsados = ref(true)
 const pedidosColapsados = ref(false)
+
+// Ordenamiento de columnas
+type SortDirection = 'asc' | 'desc' | null
+const sortColumn = ref<string | null>(null)
+const sortDirection = ref<SortDirection>(null)
 
 const filtros = ref<PedidosListadoFiltros>({
   estado: '',
@@ -389,6 +450,56 @@ function esProveedorElRayo(proveedorNombre: string | null | undefined): boolean 
   const nombreUpper = proveedorNombre.toUpperCase()
   return nombreUpper.includes('EL RAYO') || nombreUpper.includes('RAYO')
 }
+
+// Función para alternar el ordenamiento de una columna
+function toggleSort(column: string) {
+  if (sortColumn.value === column) {
+    if (sortDirection.value === 'asc') {
+      sortDirection.value = 'desc'
+    } else if (sortDirection.value === 'desc') {
+      sortColumn.value = null
+      sortDirection.value = null
+    }
+  } else {
+    sortColumn.value = column
+    sortDirection.value = 'asc'
+  }
+}
+
+// Columnas de tipo fecha para ordenar correctamente
+const dateColumns = ['fecha_pedido', 'creado_en', 'modificado_fecha']
+
+// Pedidos ordenados (computed)
+const sortedPedidos = computed(() => {
+  if (!sortColumn.value || !sortDirection.value) {
+    return pedidos.value
+  }
+
+  const col = sortColumn.value
+  const dir = sortDirection.value
+  const isDate = dateColumns.includes(col)
+
+  return [...pedidos.value].sort((a: any, b: any) => {
+    let valA = a[col]
+    let valB = b[col]
+
+    if (valA == null && valB == null) return 0
+    if (valA == null) return dir === 'asc' ? 1 : -1
+    if (valB == null) return dir === 'asc' ? -1 : 1
+
+    if (isDate) {
+      const dateA = new Date(valA).getTime()
+      const dateB = new Date(valB).getTime()
+      return dir === 'asc' ? dateA - dateB : dateB - dateA
+    }
+
+    const strA = String(valA).toLowerCase()
+    const strB = String(valB).toLowerCase()
+    if (strA < strB) return dir === 'asc' ? -1 : 1
+    if (strA > strB) return dir === 'asc' ? 1 : -1
+    return 0
+  })
+})
 
 async function cargarPedidos() {
   loading.value = true
