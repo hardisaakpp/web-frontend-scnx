@@ -1234,13 +1234,13 @@ export const mba3ConsultasService = {
   },
 
   /**
-   * Elimina un pedido desde Detalle del Pedido (botón "Eliminar Pedido").
-   * DELETE /api/pedidos/{pedido_id}/eliminar
-   * Solo válido en estado GESTIONAR PEDIDO (3). No envía email a EL RAYO.
+   * Cancela un pedido desde Detalle del Pedido (botón "Cancelar Pedido").
+   * POST /api/pedidos/{pedido_id}/cancelar-por-el-rayo
+   * Solo válido en estado GESTIONAR PEDIDO (3). Cambia estado a CANCELADO POR EL RAYO (20).
    * @param pedidoId ID del pedido (UUID)
    */
-  async eliminarPedido(pedidoId: string): Promise<void> {
-    return pedidosService.eliminarPedido(pedidoId)
+  async cancelarPedidoPorElRayo(pedidoId: string): Promise<any> {
+    return pedidosService.cancelarPedidoPorElRayo(pedidoId)
   },
 
   /**

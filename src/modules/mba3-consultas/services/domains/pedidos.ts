@@ -545,19 +545,20 @@ export const pedidosService = {
   },
 
   /**
-   * Elimina un pedido desde la interfaz Detalle del Pedido (botón "Eliminar Pedido").
-   * DELETE /api/pedidos/{pedido_id}/eliminar
-   * Solo válido en estado GESTIONAR PEDIDO (3). No envía email a EL RAYO.
-   * Respuestas: 204 éxito; 400/404/409 con detail.message o detail.error.
+   * Cancela un pedido desde la interfaz Detalle del Pedido (botón "Cancelar Pedido").
+   * POST /api/pedidos/{pedido_id}/cancelar-por-el-rayo
+   * Solo válido en estado GESTIONAR PEDIDO (3). Cambia estado a CANCELADO POR EL RAYO (20).
+   * No elimina el pedido de la base de datos.
    *
    * @param pedidoId ID del pedido (UUID)
    */
-  async eliminarPedido(pedidoId: string): Promise<void> {
+  async cancelarPedidoPorElRayo(pedidoId: string): Promise<any> {
     try {
-      await mba3Api.delete(`/api/pedidos/${encodeURIComponent(pedidoId)}/eliminar`)
+      const response = await mba3Api.post(`/api/pedidos/${encodeURIComponent(pedidoId)}/cancelar-por-el-rayo`)
+      return response.data
     } catch (error: any) {
-      console.error('❌ [eliminarPedido] Error:', error)
-      throw createEnrichedError(error, 'Error al eliminar pedido')
+      console.error('❌ [cancelarPedidoPorElRayo] Error:', error)
+      throw createEnrichedError(error, 'Error al cancelar pedido')
     }
   },
 

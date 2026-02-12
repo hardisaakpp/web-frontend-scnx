@@ -382,30 +382,30 @@
           </div>
         </div>
 
-        <!-- Botón Eliminar Pedido (parte inferior) - Estado GESTIONAR PEDIDO -->
+        <!-- Botón Cancelar Pedido (parte inferior) - Estado GESTIONAR PEDIDO -->
         <div 
-          v-if="puedeEliminar" 
+          v-if="puedeCancelarPorElRayo" 
           class="mt-6 pb-6 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 pt-6"
         >
           <div class="text-sm text-gray-600 dark:text-gray-400 max-w-2xl">
-            <p class="font-medium">⚠️ Zona de peligro</p>
-            <p class="text-xs mt-1">Esta acción es irreversible y no puede deshacerse. Úsela únicamente cuando sea solicitada expresamente por MABEL TRADING.</p>
+            <p class="font-medium">⚠️ Cancelar pedido</p>
+            <p class="text-xs mt-1">El pedido cambiará a estado "Cancelado por EL RAYO". Úselo únicamente cuando sea solicitada expresamente por MABEL TRADING.</p>
           </div>
           <button
             type="button"
-            @click="handleEliminarPedido"
-            :disabled="eliminando"
+            @click="handleCancelarPorElRayo"
+            :disabled="cancelandoPorElRayo"
             class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-red-600 dark:bg-red-500 rounded-lg shadow-sm hover:bg-red-700 dark:hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-            title="Eliminar este pedido permanentemente"
+            title="Cancelar este pedido"
           >
-            <svg v-if="!eliminando" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            <svg v-if="!cancelandoPorElRayo" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
             </svg>
             <svg v-else class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            {{ eliminando ? 'Eliminando...' : 'Eliminar Pedido' }}
+            {{ cancelandoPorElRayo ? 'Cancelando...' : 'Cancelar Pedido' }}
           </button>
         </div>
       </div>
@@ -516,7 +516,7 @@ const columnasModificadas = ref<Set<string>>(new Set())
 // Gestión de columnas visibles en la tabla
 const showColumnSelector = ref(false)
 const confirmando = ref(false)
-const eliminando = ref(false)
+const cancelandoPorElRayo = ref(false)
 const descargandoPedido = ref(false)
 const descargandoCsv = ref(false)
 const descargandoExcelOriginal = ref(false)
@@ -828,13 +828,17 @@ const ESTADOS_YA_CONFIRMADOS = [
   'PEDIDO_CONFIRMADO',
   'CONFIRMADO_ENVIADO',
   'PROCESADO_SAP',
-  'REDISTRIBUCION'
+  'REDISTRIBUCION',
+  'CANCELADO POR EL RAYO',
+  'CANCELADO_POR_EL_RAYO'
 ]
 const confirmarDeshabilitadoPorEstado = computed(() => {
   const cabecera = pedido.value?.cabecera
   if (!cabecera) return false
   const estadoId = cabecera.estado_id != null ? Number(cabecera.estado_id) : null
   const estado = cabecera.estado ?? ''
+  // Cancelado por EL RAYO (estado_id 20)
+  if (estadoId === 20) return true
   if (estadoId === 4 || estado === 'CONFIRMADO') return true
   if (estadoId != null && estadoId >= 4) return true
   if (ESTADOS_YA_CONFIRMADOS.includes(estado)) return true
@@ -874,8 +878,8 @@ const puedeEditarCostoTotalComentario = computed(() => {
   return false
 })
 
-// Permitir eliminar pedido solo en estado GESTIONAR PEDIDO (estado_id = 3)
-const puedeEliminar = computed(() => {
+// Permitir cancelar pedido por EL RAYO solo en estado GESTIONAR PEDIDO (estado_id = 3)
+const puedeCancelarPorElRayo = computed(() => {
   const cabecera = pedido.value?.cabecera
   if (!cabecera) return false
   const estadoId = cabecera.estado_id != null ? Number(cabecera.estado_id) : null
@@ -1340,15 +1344,15 @@ async function handleDescargarExcelOriginal() {
   }
 }
 
-// Función para eliminar pedido (desde Detalle del Pedido - estado GESTIONAR PEDIDO)
-async function handleEliminarPedido() {
+// Función para cancelar pedido por EL RAYO (desde Detalle del Pedido - estado GESTIONAR PEDIDO)
+async function handleCancelarPorElRayo() {
   if (!pedido.value?.cabecera?.pedido_id) {
-    toast.error('Error', 'No hay pedido para eliminar')
+    toast.error('Error', 'No hay pedido para cancelar')
     return
   }
 
   // Prevenir múltiples clics
-  if (eliminando.value) return
+  if (cancelandoPorElRayo.value) return
 
   const pedidoId = pedido.value.cabecera.pedido_id
   const numeroPedidoDisplay = pedido.value.cabecera.numero_pedido
@@ -1356,28 +1360,29 @@ async function handleEliminarPedido() {
 
   // Confirmación del usuario
   const confirmado = window.confirm(
-    `¿Estás seguro de que deseas eliminar este pedido?\n\n` +
+    `¿Estás seguro de que deseas cancelar este pedido?\n\n` +
     `Pedido: ${numeroPedidoDisplay}\n` +
     `Estado: ${estadoNombre}\n\n` +
-    `Esta acción no se puede deshacer y el pedido será eliminado permanentemente.`
+    `El pedido cambiará a estado "Cancelado por EL RAYO".`
   )
 
   if (!confirmado) return
 
-  eliminando.value = true
-  toast.info('Eliminando pedido...', 'Por favor espera')
+  cancelandoPorElRayo.value = true
+  toast.info('Cancelando pedido...', 'Por favor espera')
 
   try {
-    await mba3ConsultasService.eliminarPedido(pedidoId)
+    await mba3ConsultasService.cancelarPedidoPorElRayo(pedidoId)
     
-    toast.success('Pedido eliminado', 'El pedido ha sido eliminado exitosamente')
+    toast.success('Pedido cancelado', 'El pedido ha sido cancelado por EL RAYO exitosamente')
     
-    // Redirigir a la lista de pedidos después de un breve delay
-    setTimeout(() => {
-      router.push('/mba3-consultas/pedidos')
-    }, 1500)
+    // Actualizar el estado en memoria para reflejar el cambio sin recargar
+    if (pedido.value?.cabecera) {
+      pedido.value.cabecera.estado = 'CANCELADO POR EL RAYO'
+      pedido.value.cabecera.estado_id = 20
+    }
   } catch (e: any) {
-    console.error('Error al eliminar pedido:', e)
+    console.error('Error al cancelar pedido:', e)
     
     const status = e.response?.status
     const data = e.response?.data
@@ -1386,32 +1391,21 @@ async function handleEliminarPedido() {
     const message = detail?.message || data?.message || e.message
     
     if (status === 400) {
-      // Estado no permitido
       if (errorCode === 'estado_no_permitido' || message?.includes('estado')) {
         toast.error(
           'Estado no permitido',
-          'No se puede eliminar el pedido. Solo se permite eliminar pedidos en estado Gestionar Pedido.'
+          'No se puede cancelar el pedido. Solo se permite cancelar pedidos en estado Gestionar Pedido.'
         )
       } else {
-        toast.error('Error al eliminar', message || 'No se pudo eliminar el pedido')
+        toast.error('Error al cancelar', message || 'No se pudo cancelar el pedido')
       }
-    } else if (status === 409) {
-      // Tiene datos asociados (respuesta proveedor, redistribución, ODC)
-      toast.error(
-        'Pedido con datos asociados',
-        message || 'El pedido tiene información asociada (respuesta de proveedor, redistribución u ODC) y no puede eliminarse.'
-      )
     } else if (status === 404) {
-      toast.error('Pedido no encontrado', 'El pedido no existe o ya fue eliminado')
-      // Redirigir a la lista después de un error 404
-      setTimeout(() => {
-        router.push('/mba3-consultas/pedidos')
-      }, 1500)
+      toast.error('Pedido no encontrado', 'El pedido no existe')
     } else {
-      toast.error('Error al eliminar', message || 'Ocurrió un error inesperado al eliminar el pedido')
+      toast.error('Error al cancelar', message || 'Ocurrió un error inesperado al cancelar el pedido')
     }
   } finally {
-    eliminando.value = false
+    cancelandoPorElRayo.value = false
   }
 }
 

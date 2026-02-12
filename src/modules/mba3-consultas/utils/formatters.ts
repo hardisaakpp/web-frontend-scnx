@@ -140,6 +140,8 @@ export function formatEstadoPedido(estado: string | undefined): string {
     'ENVIADA_SAP': 'Enviada SAP',
     'CERRADO': 'Cerrado',
     'CANCELADO': 'Cancelado',
+    'CANCELADO POR EL RAYO': 'Cancelado por El Rayo',
+    'CANCELADO_POR_EL_RAYO': 'Cancelado por El Rayo',
     'CONFIRMADO POR EL RAYO': 'Confirmado por El Rayo',
     'CONFIRMADO_POR_EL_RAYO': 'Confirmado por El Rayo'
   }

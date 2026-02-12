@@ -745,6 +745,8 @@ function getEstadoLabel(estado: string): string {
     'FINALIZADO': 'Finalizado',
     'CERRADO': 'Cerrado',
     'CANCELADO': 'Cancelado',
+    'CANCELADO POR EL RAYO': 'Cancelado por El Rayo',
+    'CANCELADO_POR_EL_RAYO': 'Cancelado por El Rayo',
     'CONFIRMADO POR EL RAYO': 'Confirmado por El Rayo',
     'CONFIRMADO_POR_EL_RAYO': 'Confirmado por El Rayo'
   }
@@ -780,6 +782,8 @@ function getEstadoBadgeClass(estado: string): string {
     'FINALIZADO': `bg-lime-100 text-lime-800 ${darkClasses} dark:bg-lime-900/50 dark:text-lime-200`,
     'CERRADO': `bg-stone-100 text-stone-700 ${darkClasses} dark:bg-stone-600 dark:text-stone-200`,
     'CANCELADO': `bg-rose-100 text-rose-800 ${darkClasses} dark:bg-rose-900/50 dark:text-rose-200`,
+    'CANCELADO POR EL RAYO': `bg-rose-100 text-rose-800 ${darkClasses} dark:bg-rose-900/50 dark:text-rose-200`,
+    'CANCELADO_POR_EL_RAYO': `bg-rose-100 text-rose-800 ${darkClasses} dark:bg-rose-900/50 dark:text-rose-200`,
     'CONFIRMADO POR EL RAYO': `bg-pink-100 text-pink-800 ${darkClasses} dark:bg-pink-900/50 dark:text-pink-200`,
     'CONFIRMADO_POR_EL_RAYO': `bg-pink-100 text-pink-800 ${darkClasses} dark:bg-pink-900/50 dark:text-pink-200`
   }
