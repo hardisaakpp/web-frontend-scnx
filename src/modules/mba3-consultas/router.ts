@@ -4,13 +4,15 @@ import type { RouteRecordRaw } from 'vue-router'
  * Permisos simplificados para el módulo MBA3 Consultas:
  * 
  * - odcsap.view: Acceso a funcionalidades de EL RAYO
- *   → Gestionar Pedido, Listado de Pedidos, Detalle del Pedido
+ *   → Gestionar Pedido, Listado de Pedidos, Detalle del Pedido,
+ *     Revisar Redistribución, ODC a SAP (Proceso Completo)
  * 
  * - mabel.view: Acceso a funcionalidades de MABEL TRADING
- *   → Cargar Plantilla, Redistribución, Procesamiento SAP, Procesos,
- *     Homologaciones, Órdenes de Compra, Remisiones, ODC Errores, etc.
+ *   → Cargar Plantilla, Redistribución, Procesamiento SAP,
+ *     Homologaciones, Órdenes de Compra, Remisiones, ODC Errores,
+ *     ODC a SAP (Proceso Completo), etc.
  * 
- * El dashboard permite acceso con cualquiera de los dos permisos.
+ * El dashboard y ODC a SAP permiten acceso con cualquiera de los dos permisos.
  */
 
 const routes: RouteRecordRaw[] = [
@@ -86,9 +88,9 @@ const routes: RouteRecordRaw[] = [
     component: () => import('./views/ProcesoCompletoView.vue'),
     meta: { 
       requiresAuth: true,
-      title: 'Procesar ODC - MABEL TRADING',
+      title: 'ODC a SAP',
       icon: 'CogIcon',
-      permissions: ['mabel.view']
+      permissions: ['mabel.view', 'odcsap.view']
     }
   },
   {

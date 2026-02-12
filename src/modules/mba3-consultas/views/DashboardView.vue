@@ -102,9 +102,9 @@
           </div>
         </button>
 
-        <!-- Procesos: capability mabel_view (mabel.view). Solo capabilities. -->
+        <!-- ODC a SAP: capability mabel_view (mabel.view) o can_manage_order (odcsap.view). Ambos permisos. -->
         <button
-          v-if="authStore.canViewMabel"
+          v-if="authStore.canViewMabel || authStore.canManageOrder"
           @click="navigateToProceso"
           :disabled="loadingDespachos"
           class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left disabled:opacity-50 disabled:cursor-not-allowed"
@@ -117,7 +117,7 @@
             </div>
             <div class="flex-1 min-w-0">
               <div class="font-medium text-gray-900 dark:text-white text-sm">ODC a SAP</div>
-              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">MABEL TRADING - Generar ODC y enviar a SAP</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Generar ODC y enviar a SAP</div>
               <div v-if="loadingDespachos" class="text-xs text-indigo-600 dark:text-indigo-400 mt-2 flex items-center gap-1">
                 <svg class="animate-spin w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
