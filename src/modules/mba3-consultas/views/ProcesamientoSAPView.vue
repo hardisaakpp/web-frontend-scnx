@@ -660,6 +660,7 @@ async function loadProcesamientoSAP() {
           fecha_pedido: null,
           fecha_entrega: null,
           forma_pago: null,
+          mensaje: null,
           odc: null,
           proveedor_nombre: null,
           comprador_nombre: null,

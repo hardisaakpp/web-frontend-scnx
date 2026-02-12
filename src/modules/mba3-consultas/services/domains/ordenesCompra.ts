@@ -53,7 +53,7 @@ export const ordenesCompraService = {
       responseType: 'blob',
       timeout: 60000, // 60s para generación de PDF
     })
-    return response.data
+    return response.data as Blob
   },
 
   /**
