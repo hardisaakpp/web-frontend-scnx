@@ -1,10 +1,12 @@
 <template>
-  <Layout>
-    <div class="px-4 py-6 sm:px-0">
-      <h1 class="text-2xl font-bold text-gray-900 mb-6">Gestión de Usuarios</h1>
-      <div class="bg-white shadow overflow-hidden sm:rounded-lg">
-        <div class="px-4 py-5 sm:p-6">
-          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div class="space-y-4">
+      <div>
+        <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Gestión de Usuarios</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Accesos rápidos para administrar usuarios, permisos y roles</p>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <button
               type="button"
               @click="$router.push('/usuarios/users')"
@@ -56,13 +58,7 @@
                 </div>
               </div>
             </button>
-          </div>
-        </div>
       </div>
     </div>
-  </Layout>
+  </div>
 </template>
-
-<script setup>
-import Layout from '@/components/Layout.vue'
-</script>

@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import api from '../plugins/axios'
 import { jwtDecode } from 'jwt-decode'
-import axios from 'axios'
 
 interface User {
   id: string
@@ -17,6 +16,8 @@ interface AuthState {
   user: string | null
   role: string | null
   userData: User | null
+  loading: boolean
+  error: string | null
 }
 
 interface LoginCredentials {
@@ -51,7 +52,9 @@ export const useAuthStore = defineStore('auth', {
     token: localStorage.getItem('token'),
     user: null,
     role: null,
-    userData: null
+    userData: null,
+    loading: false,
+    error: null
   }),
 
   getters: {
@@ -160,6 +163,21 @@ export const useAuthStore = defineStore('auth', {
       }
       return ''
     },
+    userEmail: (state): string => {
+      if (state.userData?.email) {
+        return state.userData.email
+      }
+      try {
+        const userStr = localStorage.getItem('user')
+        if (userStr) {
+          const user = JSON.parse(userStr) as User
+          return user.email || ''
+        }
+      } catch {
+        return ''
+      }
+      return ''
+    },
     fullName: (state): string => {
       if (state.userData?.fullName) {
         return state.userData.fullName
@@ -180,6 +198,9 @@ export const useAuthStore = defineStore('auth', {
 
   actions: {
     async login(credentials: LoginCredentials): Promise<boolean> {
+      this.loading = true
+      this.error = null
+
       try {
         // Transformar el body para que coincida con la API
         const requestBody = {
@@ -207,7 +228,10 @@ export const useAuthStore = defineStore('auth', {
         return true
       } catch (error) {
         console.error('Login failed:', error)
+        this.error = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Error al iniciar sesión'
         return false
+      } finally {
+        this.loading = false
       }
     },
 
@@ -217,6 +241,8 @@ export const useAuthStore = defineStore('auth', {
       this.user = null
       this.role = null
       this.userData = null
+      this.error = null
+      this.loading = false
 
       // Remove from storage
       localStorage.removeItem('token')

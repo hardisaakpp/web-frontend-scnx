@@ -115,54 +115,6 @@
           <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Caja Chica</span>
         </router-link>
 
-        <!-- Contabilidad -->
-        <router-link
-          v-if="hasModuleAccess('contabilidad')"
-          to="/contabilidad"
-          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
-          :class="{
-            'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/50': $route.path === '/contabilidad',
-            'text-slate-300 hover:bg-slate-800/50 hover:text-white': $route.path !== '/contabilidad'
-          }"
-          :title="isSidebarCollapsed ? 'Contabilidad' : ''"
-        >
-          <div class="absolute inset-0 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-          <CalculatorIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path === '/contabilidad' }" />
-          <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Contabilidad</span>
-        </router-link>
-
-        <!-- Depósitos -->
-        <router-link
-          v-if="hasModuleAccess('depositos')"
-          to="/depositos"
-          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
-          :class="{
-            'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/50': $route.path === '/depositos',
-            'text-slate-300 hover:bg-slate-800/50 hover:text-white': $route.path !== '/depositos'
-          }"
-          :title="isSidebarCollapsed ? 'Depósitos' : ''"
-        >
-          <div class="absolute inset-0 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-          <BuildingLibraryIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path === '/depositos' }" />
-          <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Depósitos</span>
-        </router-link>
-
-        <!-- Reportes -->
-        <router-link
-          v-if="hasModuleAccess('reportes')"
-          to="/reportes"
-          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
-          :class="{
-            'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/50': $route.path === '/reportes',
-            'text-slate-300 hover:bg-slate-800/50 hover:text-white': $route.path !== '/reportes'
-          }"
-          :title="isSidebarCollapsed ? 'Reportes' : ''"
-        >
-          <div class="absolute inset-0 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-          <DocumentChartBarIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path === '/reportes' }" />
-          <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Reportes</span>
-        </router-link>
-
         <!-- Conciliación -->
         <router-link
           v-if="hasModuleAccess('conciliacion')"
@@ -281,7 +233,7 @@
       ]"
     >
       <!-- Mobile Header -->
-      <header v-if="!$route.path.startsWith('/users')" class="bg-white dark:bg-gray-800 shadow md:hidden sticky top-0 z-10 transition-colors duration-300">
+      <header class="bg-white dark:bg-gray-800 shadow md:hidden sticky top-0 z-10 transition-colors duration-300">
         <div class="px-4 py-3 flex items-center justify-between">
           <button
             @click="isSidebarOpen = !isSidebarOpen"
@@ -303,7 +255,7 @@
       </header>
 
       <!-- Desktop Header -->
-      <header v-if="!$route.path.startsWith('/users')" class="hidden md:block bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-10 transition-colors duration-300">
+      <header class="hidden md:block bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-10 transition-colors duration-300">
         <div class="px-6 py-4 flex items-center justify-between">
           <h1 class="text-2xl font-semibold text-gray-800 dark:text-white">
             {{ pageTitle }}
@@ -343,9 +295,6 @@ import {
   UserGroupIcon,
   UserIcon,
   UsersIcon,
-  CalculatorIcon,
-  BuildingLibraryIcon,
-  DocumentChartBarIcon,
   ArrowsRightLeftIcon,
   DocumentCheckIcon,
   ClipboardDocumentCheckIcon,
@@ -455,9 +404,6 @@ const pageTitle = computed(() => {
     '/dashboard': 'Dashboard',
     '/admin': 'Panel de Administración',
     '/user': 'Panel de Usuario',
-    '/contabilidad': 'Contabilidad',
-    '/depositos': 'Depósitos',
-    '/reportes': 'Reportes',
     '/conciliacion': 'Conciliación',
     '/mba3-consultas': 'Integración MBA3-SAP',
     '/mba3-consultas/ordenes-compra': 'Órdenes de Compra',

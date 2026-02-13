@@ -4,7 +4,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/usuarios',
     name: 'usuarios',
-    component: () => import('./views/UsuariosTestView.vue'),
+    component: () => import('../../views/Users.vue'),
     meta: { 
       requiresAuth: true,
       title: 'Usuarios',

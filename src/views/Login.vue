@@ -87,6 +87,7 @@
 
 <script setup>
 import { reactive } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
 import { SunIcon, MoonIcon } from '@heroicons/vue/24/outline'
@@ -94,6 +95,7 @@ import { SunIcon, MoonIcon } from '@heroicons/vue/24/outline'
 const appName = import.meta.env.VITE_APP_NAME
 const authStore = useAuthStore()
 const themeStore = useThemeStore()
+const router = useRouter()
 
 const form = reactive({
   username: '',
@@ -103,7 +105,15 @@ const form = reactive({
 
 const handleLogin = async () => {
   try {
-    await authStore.login(form.username, form.password, form.useActiveDirectory)
+    const success = await authStore.login({
+      username: form.username,
+      password: form.password,
+      useActiveDirectory: form.useActiveDirectory
+    })
+
+    if (success) {
+      router.push('/dashboard')
+    }
   } catch (error) {
     console.error('Login failed:', error)
   }
