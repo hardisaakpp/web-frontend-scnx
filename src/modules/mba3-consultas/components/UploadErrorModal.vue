@@ -11,25 +11,16 @@
       <!-- Encabezado del modal con color según tipo de error -->
       <div :class="[
         'px-6 py-4 border-b flex items-center justify-between transition-colors duration-300',
-        uploadErrorInfo?.error_code === 'NUMERO_PEDIDO_DUPLICADO' || uploadErrorInfo?.title?.includes('duplicado') ? 'bg-orange-50 dark:bg-orange-900/30 border-orange-200 dark:border-orange-800' :
-        uploadErrorInfo?.title?.includes('SAP') ? 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800' :
-        uploadErrorInfo?.title?.includes('formato') ? 'bg-yellow-50 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-800' :
-        'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800'
+        getErrorStyle.header
       ]">
         <div class="flex items-center gap-3">
           <div :class="[
             'flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center',
-            uploadErrorInfo?.error_code === 'NUMERO_PEDIDO_DUPLICADO' || uploadErrorInfo?.title?.includes('duplicado') ? 'bg-orange-100 dark:bg-orange-900' :
-            uploadErrorInfo?.title?.includes('SAP') ? 'bg-red-100 dark:bg-red-900' :
-            uploadErrorInfo?.title?.includes('formato') ? 'bg-yellow-100 dark:bg-yellow-900' :
-            'bg-red-100 dark:bg-red-900'
+            getErrorStyle.iconBg
           ]">
             <svg :class="[
               'w-6 h-6',
-              uploadErrorInfo?.error_code === 'NUMERO_PEDIDO_DUPLICADO' || uploadErrorInfo?.title?.includes('duplicado') ? 'text-orange-600 dark:text-orange-400' :
-              uploadErrorInfo?.title?.includes('SAP') ? 'text-red-600 dark:text-red-400' :
-              uploadErrorInfo?.title?.includes('formato') ? 'text-yellow-600 dark:text-yellow-400' :
-              'text-red-600 dark:text-red-400'
+              getErrorStyle.iconColor
             ]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
@@ -37,10 +28,7 @@
           <div>
             <h3 :class="[
               'text-lg font-semibold',
-              uploadErrorInfo?.error_code === 'NUMERO_PEDIDO_DUPLICADO' || uploadErrorInfo?.title?.includes('duplicado') ? 'text-orange-900 dark:text-orange-200' :
-              uploadErrorInfo?.title?.includes('SAP') ? 'text-red-900 dark:text-red-200' :
-              uploadErrorInfo?.title?.includes('formato') ? 'text-yellow-900 dark:text-yellow-200' :
-              'text-red-900 dark:text-red-200'
+              getErrorStyle.titleColor
             ]">{{ uploadErrorInfo?.title || 'Error al cargar archivo Excel' }}</h3>
             <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">El archivo no pudo ser procesado</p>
           </div>
@@ -152,8 +140,195 @@
             </div>
           </div>
 
-          <!-- Mensaje de error principal (se oculta si ya mostramos el error de duplicado específico) -->
-          <div v-if="!(uploadErrorInfo?.error_code === 'NUMERO_PEDIDO_DUPLICADO' && uploadErrorInfo?.numero_pedido)" 
+          <!-- ⭐ Sección específica para formato Excel inválido -->
+          <div v-if="uploadErrorInfo?.error_code === 'FORMATO_EXCEL_INVALIDO'" 
+               class="bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-900/30 dark:to-amber-900/30 border-2 border-yellow-300 dark:border-yellow-700 rounded-lg p-6 transition-colors duration-300">
+            <div class="flex items-start gap-4">
+              <div class="flex-shrink-0">
+                <div class="w-12 h-12 bg-yellow-100 dark:bg-yellow-900 rounded-full flex items-center justify-center">
+                  <svg class="w-6 h-6 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+              </div>
+              <div class="flex-1">
+                <h4 class="text-base font-bold text-yellow-900 dark:text-yellow-200 mb-3">
+                  Formato Excel Inválido
+                </h4>
+                <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-yellow-200 dark:border-yellow-700 mb-4">
+                  <p class="text-sm text-gray-700 dark:text-gray-300 mb-3">
+                    El archivo Excel no contiene la estructura requerida. El archivo debe tener las siguientes hojas:
+                  </p>
+                  <div class="space-y-2">
+                    <div class="flex items-center gap-2 bg-yellow-50 dark:bg-yellow-900/40 rounded-lg p-2 border border-yellow-200 dark:border-yellow-600">
+                      <svg class="w-4 h-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span class="text-sm font-semibold font-mono text-yellow-900 dark:text-yellow-100">cabecera</span>
+                      <span class="text-xs text-gray-600 dark:text-gray-400">(Información general del pedido)</span>
+                    </div>
+                    <div class="flex items-center gap-2 bg-yellow-50 dark:bg-yellow-900/40 rounded-lg p-2 border border-yellow-200 dark:border-yellow-600">
+                      <svg class="w-4 h-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span class="text-sm font-semibold font-mono text-yellow-900 dark:text-yellow-100">detalle</span>
+                      <span class="text-xs text-gray-600 dark:text-gray-400">(Productos y distribuciones)</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="space-y-2">
+                  <p class="text-sm font-semibold text-gray-900 dark:text-white">
+                    ¿Cómo solucionarlo?
+                  </p>
+                  <ul class="text-sm text-gray-700 dark:text-gray-300 space-y-2 ml-1">
+                    <li class="flex items-start gap-2">
+                      <svg class="w-4 h-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                      <span>Descarga la plantilla oficial del sistema</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <svg class="w-4 h-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                      <span>Verifica que las hojas se llamen exactamente <strong class="font-mono">cabecera</strong> y <strong class="font-mono">detalle</strong></span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <svg class="w-4 h-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                      <span>No elimines ni renombres las hojas de la plantilla</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <svg class="w-4 h-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                      <span>Asegúrate de usar el formato .xlsx o .xls</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ⭐ Sección específica para archivo sin datos -->
+          <div v-if="uploadErrorInfo?.error_code === 'ARCHIVO_SIN_DATOS'" 
+               class="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/30 border-2 border-amber-300 dark:border-amber-700 rounded-lg p-6 transition-colors duration-300">
+            <div class="flex items-start gap-4">
+              <div class="flex-shrink-0">
+                <div class="w-12 h-12 bg-amber-100 dark:bg-amber-900 rounded-full flex items-center justify-center">
+                  <svg class="w-6 h-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                  </svg>
+                </div>
+              </div>
+              <div class="flex-1">
+                <h4 class="text-base font-bold text-amber-900 dark:text-amber-200 mb-3">
+                  Archivo Sin Datos Válidos
+                </h4>
+                <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-amber-200 dark:border-amber-700 mb-4">
+                  <p class="text-sm text-gray-700 dark:text-gray-300">
+                    El archivo Excel está vacío o no contiene productos válidos para procesar. El pedido debe incluir al menos un producto con su información completa.
+                  </p>
+                </div>
+                <div class="space-y-2">
+                  <p class="text-sm font-semibold text-gray-900 dark:text-white">
+                    ¿Qué revisar?
+                  </p>
+                  <ul class="text-sm text-gray-700 dark:text-gray-300 space-y-2 ml-1">
+                    <li class="flex items-start gap-2">
+                      <svg class="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                      <span>Verifica que la hoja <strong class="font-mono">detalle</strong> contenga productos</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <svg class="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                      <span>Asegúrate de que cada producto tenga código, cantidad y distribución</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <svg class="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                      <span>Revisa que no haya filas vacías entre los productos</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <svg class="w-4 h-4 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                      <span>Confirma que las cantidades sean valores numéricos válidos</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ⭐ Sección específica para formato de respuesta proveedor inválido -->
+          <div v-if="uploadErrorInfo?.error_code === 'FORMATO_RESPUESTA_PROVEEDOR_INVALIDO'" 
+               class="bg-gradient-to-r from-red-50 to-pink-50 dark:from-red-900/30 dark:to-pink-900/30 border-2 border-red-300 dark:border-red-700 rounded-lg p-6 transition-colors duration-300">
+            <div class="flex items-start gap-4">
+              <div class="flex-shrink-0">
+                <div class="w-12 h-12 bg-red-100 dark:bg-red-900 rounded-full flex items-center justify-center">
+                  <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+              </div>
+              <div class="flex-1">
+                <h4 class="text-base font-bold text-red-900 dark:text-red-200 mb-3">
+                  Formato de Respuesta Proveedor Inválido
+                </h4>
+                <div class="bg-white dark:bg-gray-800 rounded-lg p-4 border border-red-200 dark:border-red-700 mb-4">
+                  <p class="text-sm text-gray-700 dark:text-gray-300 mb-3">
+                    El archivo de respuesta del proveedor no contiene la hoja requerida. El archivo debe incluir una hoja llamada:
+                  </p>
+                  <div class="flex items-center gap-2 bg-red-50 dark:bg-red-900/40 rounded-lg p-3 border border-red-200 dark:border-red-600">
+                    <svg class="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span class="text-base font-bold font-mono text-red-900 dark:text-red-100">RESUMEN</span>
+                  </div>
+                </div>
+                <div class="space-y-2">
+                  <p class="text-sm font-semibold text-gray-900 dark:text-white">
+                    ¿Cómo corregirlo?
+                  </p>
+                  <ul class="text-sm text-gray-700 dark:text-gray-300 space-y-2 ml-1">
+                    <li class="flex items-start gap-2">
+                      <svg class="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                      <span>Verifica que el archivo del proveedor contenga una hoja llamada <strong class="font-mono">RESUMEN</strong></span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <svg class="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                      <span>El nombre de la hoja debe estar en mayúsculas</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <svg class="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                      <span>Solicita al proveedor que use el formato correcto de respuesta</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                      <svg class="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                      <span>Si el problema persiste, contacta al área de sistemas</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mensaje de error principal (se oculta si ya mostramos un error específico) -->
+          <div v-if="!shouldHideGenericMessage" 
                class="bg-white dark:bg-gray-900 border-2 border-red-200 dark:border-red-800 rounded-lg p-4 transition-colors duration-300">
             <div class="flex items-start gap-3">
               <svg class="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -502,6 +677,115 @@ const sugerenciasEstado = ref<Record<string, 'idle' | 'buscando' | 'completado' 
 const correccionesSeleccionadas = ref<Record<string, string>>({})
 const limiteSugerenciasMostradas = ref<Record<string, number>>({})
 const aplicandoCorrecciones = ref(false)
+
+/**
+ * ⭐ Computed: Determina los estilos del modal según el tipo de error
+ */
+const getErrorStyle = computed(() => {
+  const errorCode = props.uploadErrorInfo?.error_code
+  const title = props.uploadErrorInfo?.title || ''
+  
+  // Estilos por código de error específico
+  if (errorCode === 'NUMERO_PEDIDO_DUPLICADO') {
+    return {
+      header: 'bg-orange-50 dark:bg-orange-900/30 border-orange-200 dark:border-orange-800',
+      iconBg: 'bg-orange-100 dark:bg-orange-900',
+      iconColor: 'text-orange-600 dark:text-orange-400',
+      titleColor: 'text-orange-900 dark:text-orange-200'
+    }
+  }
+  
+  if (errorCode === 'FORMATO_EXCEL_INVALIDO') {
+    return {
+      header: 'bg-yellow-50 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-800',
+      iconBg: 'bg-yellow-100 dark:bg-yellow-900',
+      iconColor: 'text-yellow-600 dark:text-yellow-400',
+      titleColor: 'text-yellow-900 dark:text-yellow-200'
+    }
+  }
+  
+  if (errorCode === 'ARCHIVO_SIN_DATOS') {
+    return {
+      header: 'bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800',
+      iconBg: 'bg-amber-100 dark:bg-amber-900',
+      iconColor: 'text-amber-600 dark:text-amber-400',
+      titleColor: 'text-amber-900 dark:text-amber-200'
+    }
+  }
+  
+  if (errorCode === 'FORMATO_RESPUESTA_PROVEEDOR_INVALIDO') {
+    return {
+      header: 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800',
+      iconBg: 'bg-red-100 dark:bg-red-900',
+      iconColor: 'text-red-600 dark:text-red-400',
+      titleColor: 'text-red-900 dark:text-red-200'
+    }
+  }
+  
+  // Fallback a detección por título (compatibilidad con versiones anteriores)
+  if (title.includes('duplicado')) {
+    return {
+      header: 'bg-orange-50 dark:bg-orange-900/30 border-orange-200 dark:border-orange-800',
+      iconBg: 'bg-orange-100 dark:bg-orange-900',
+      iconColor: 'text-orange-600 dark:text-orange-400',
+      titleColor: 'text-orange-900 dark:text-orange-200'
+    }
+  }
+  
+  if (title.includes('SAP')) {
+    return {
+      header: 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800',
+      iconBg: 'bg-red-100 dark:bg-red-900',
+      iconColor: 'text-red-600 dark:text-red-400',
+      titleColor: 'text-red-900 dark:text-red-200'
+    }
+  }
+  
+  if (title.includes('formato')) {
+    return {
+      header: 'bg-yellow-50 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-800',
+      iconBg: 'bg-yellow-100 dark:bg-yellow-900',
+      iconColor: 'text-yellow-600 dark:text-yellow-400',
+      titleColor: 'text-yellow-900 dark:text-yellow-200'
+    }
+  }
+  
+  // Estilo por defecto (error genérico)
+  return {
+    header: 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800',
+    iconBg: 'bg-red-100 dark:bg-red-900',
+    iconColor: 'text-red-600 dark:text-red-400',
+    titleColor: 'text-red-900 dark:text-red-200'
+  }
+})
+
+/**
+ * ⭐ Computed: Determina si se debe ocultar el mensaje genérico
+ * Se oculta cuando hay un mensaje específico para el código de error
+ */
+const shouldHideGenericMessage = computed(() => {
+  const errorCode = props.uploadErrorInfo?.error_code
+  const numeroPedido = props.uploadErrorInfo?.numero_pedido
+  
+  // Ocultar si hay un mensaje específico para estos códigos de error
+  if (errorCode === 'NUMERO_PEDIDO_DUPLICADO' && numeroPedido) {
+    return true
+  }
+  
+  if (errorCode === 'FORMATO_EXCEL_INVALIDO') {
+    return true
+  }
+  
+  if (errorCode === 'ARCHIVO_SIN_DATOS') {
+    return true
+  }
+  
+  if (errorCode === 'FORMATO_RESPUESTA_PROVEEDOR_INVALIDO') {
+    return true
+  }
+  
+  return false
+})
 
 /**
  * Cierra el modal

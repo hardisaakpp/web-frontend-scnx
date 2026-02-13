@@ -551,8 +551,22 @@ export function useFileUpload(options: {
     const isFormatError = errorMessageStr.toLowerCase().includes('formato') ||
                           errorMessageStr.toLowerCase().includes('estructura')
 
-    // Ajustar título y mensaje según tipo de error
-    if (isSAPError) {
+    // ⭐ NUEVO: Extraer error_code del backend para títulos específicos
+    const errorCode = e.response?.data?.error_code || 
+                      e.response?.data?.data?.error_code ||
+                      e.response?.data?.error_tipo
+    
+    // ⭐ MEJORADO: Títulos específicos basados en error_code
+    if (errorCode === 'FORMATO_EXCEL_INVALIDO') {
+      errorTitle = 'Formato Excel Inválido'
+      errorMessage = `El archivo Excel no contiene la estructura requerida.\n\nEl archivo debe tener las hojas 'cabecera' y 'detalle' con los datos del pedido.\n\n⚠️ Verifica que estés usando la plantilla oficial del sistema.`
+    } else if (errorCode === 'ARCHIVO_SIN_DATOS') {
+      errorTitle = 'Archivo Sin Datos Válidos'
+      errorMessage = `El archivo Excel está vacío o no contiene productos válidos.\n\nEl pedido debe incluir al menos un producto con su información completa.\n\n⚠️ Revisa que la hoja 'detalle' contenga productos y que tengan todos los campos requeridos.`
+    } else if (errorCode === 'FORMATO_RESPUESTA_PROVEEDOR_INVALIDO') {
+      errorTitle = 'Formato de Respuesta Proveedor Inválido'
+      errorMessage = `El archivo de respuesta del proveedor no contiene la hoja requerida.\n\nEl archivo debe incluir una hoja llamada 'RESUMEN'.\n\n⚠️ Solicita al proveedor que use el formato correcto de respuesta.`
+    } else if (isSAPError) {
       // ✅ Determinar si es producto, tienda o bodega
       const totalErrores = productosNoEncontradosSAP.length + tiendasNoEncontradasSAP.length + bodegasNoEncontradasSAP.length
       const tiposErrores: string[] = []
@@ -715,7 +729,7 @@ export function useFileUpload(options: {
           errorMessage = errorMessageStr || `Uno o más códigos del archivo no fueron encontrados en SAP.\n\nVerifica que todos los códigos estén correctamente registrados en SAP.`
         }
       }
-    } else if (isDuplicateError) {
+    } else if (errorCode === 'NUMERO_PEDIDO_DUPLICADO' || isDuplicateError) {
       errorTitle = 'Número de pedido duplicado'
       // ⭐ MEJORADO: Primero intentar obtener el número de pedido del backend
       let numeroPedido = e.response?.data?.numero_pedido || 
@@ -730,7 +744,8 @@ export function useFileUpload(options: {
       } else {
         errorMessage = `El número de pedido que intentaste utilizar ya existe en el sistema.\n\nNo es posible cargar un pedido con un número de pedido duplicado. Por favor, verifica el número de pedido e intenta con un número diferente.`
       }
-    } else if (isFormatError) {
+    } else if (isFormatError && !errorCode) {
+      // Solo usar detección de formato si no hay error_code específico
       errorTitle = 'Error de formato'
       errorMessage = `El archivo Excel no tiene el formato correcto o está incompleto.\n\nAsegúrate de usar la plantilla oficial y completar todos los campos requeridos.`
     } else if ((e as any).isBusinessException) {
@@ -744,13 +759,8 @@ export function useFileUpload(options: {
     // 2. En data.data.validacion_sap (cuando viene de BusinessException con exc.data)
     const validacionSap = e.response?.data?.validacion_sap || e.response?.data?.data?.validacion_sap
     
-    // ⭐ NUEVO: Extraer error_code del backend
-    const errorCode = e.response?.data?.error_code || 
-                      e.response?.data?.data?.error_code ||
-                      e.response?.data?.error_tipo
-    
     // ⭐ NUEVO: Extraer numero_pedido si es un error de duplicado
-    const numeroPedidoFromBackend = isDuplicateError ? (
+    const numeroPedidoFromBackend = (isDuplicateError || errorCode === 'NUMERO_PEDIDO_DUPLICADO') ? (
       e.response?.data?.numero_pedido || 
       e.response?.data?.data?.numero_pedido
     ) : undefined
