@@ -176,7 +176,20 @@ export const permisosService = {
 
   // Remover permiso de rol
     async removerPermiso(data: RemoverPermisoDto): Promise<void> {
-      await api.delete('/Permissions/unassign', { data })
+      try {
+        await api.delete(`/Permissions/role/${encodeURIComponent(data.roleName)}/permission/${data.permissionId}`)
+      } catch (error: any) {
+        const status = error?.response?.status
+        if (status === 404 || status === 405) {
+          await api.request({
+            method: 'delete',
+            url: '/Permissions/unassign',
+            data
+          })
+          return
+        }
+        throw error
+      }
   },
 
   // Obtener permisos de un usuario (derivados de sus roles)
