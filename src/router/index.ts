@@ -9,6 +9,9 @@ import ForbiddenView from '../views/ForbiddenView.vue'
 
 // Import module routes
 
+import contabilidadRoutes from '../modules/contabilidad/router'
+import depositosRoutes from '../modules/depositos/router'
+import reportesRoutes from '../modules/reportes/router'
 import conciliacionRoutes from '../modules/conciliacion/router'
 import usuariosRoutes from '../modules/usuarios/router'
 import mba3ConsultasRoutes from '../modules/mba3-consultas/router'
@@ -58,6 +61,9 @@ const router = createRouter({
           meta: { requiresAuth: true }
         },
         // Module routes - auto imported
+        ...contabilidadRoutes,
+        ...depositosRoutes,
+        ...reportesRoutes,
         ...conciliacionRoutes, // Conciliación module
         ...usuariosRoutes,
         ...mba3ConsultasRoutes,

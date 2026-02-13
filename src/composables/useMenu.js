@@ -19,6 +19,24 @@ export function useMenu() {
         permissions: ['users.view']
       },
       {
+        name: 'Depósitos',
+        icon: 'CreditCardIcon',
+        path: '/depositos',
+        permissions: ['depositos.view']
+      },
+      {
+        name: 'Contabilidad',
+        icon: 'CalculatorIcon',
+        path: '/contabilidad',
+        permissions: ['contabilidad.view']
+      },
+      {
+        name: 'Reportes',
+        icon: 'ChartBarIcon',
+        path: '/reportes',
+        permissions: ['reportes.view']
+      },
+      {
         name: 'Conciliación',
         icon: 'ScaleIcon',
         path: '/conciliacion',
