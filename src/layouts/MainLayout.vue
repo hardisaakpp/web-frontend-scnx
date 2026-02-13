@@ -18,9 +18,11 @@
       <!-- Header del Sidebar -->
       <div class="flex items-center justify-between p-5 border-b border-slate-700/50 bg-gradient-to-r from-blue-600/10 to-sky-500/10 backdrop-blur-sm">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-sky-500 flex items-center justify-center shadow-lg">
-            <span class="text-white font-bold text-lg">SC</span>
-          </div>
+          <img 
+            src="/favicon.png" 
+            alt="Logo de la empresa" 
+            class="w-10 h-10 object-contain"
+          />
           <div v-show="!isSidebarCollapsed" class="transition-opacity duration-300">
             <h2 class="text-xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
               SCNexus
