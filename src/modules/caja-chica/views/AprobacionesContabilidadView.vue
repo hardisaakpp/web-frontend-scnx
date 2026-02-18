@@ -85,13 +85,40 @@
                     <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.nombreGasto }}</td>
                     <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ formatAmount(item.total) }}</td>
                     <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">
-                      {{ getSupervisorEstado(item.idDetalle) }}
+                      <div class="space-y-1">
+                        <div v-if="getSupervisorDecisions(item.idDetalle).length === 0">-</div>
+                        <div
+                          v-for="(decision, index) in getSupervisorDecisions(item.idDetalle)"
+                          :key="`${item.idDetalle}-estado-${index}`"
+                          class="text-xs"
+                        >
+                          {{ decision.estado || '-' }}
+                        </div>
+                      </div>
                     </td>
                     <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">
-                      {{ getSupervisorMonto(item.idDetalle) }}
+                      <div class="space-y-1">
+                        <div v-if="getSupervisorDecisions(item.idDetalle).length === 0">-</div>
+                        <div
+                          v-for="(decision, index) in getSupervisorDecisions(item.idDetalle)"
+                          :key="`${item.idDetalle}-monto-${index}`"
+                          class="text-xs"
+                        >
+                          {{ formatAmount(decision.montoAprobado) }}
+                        </div>
+                      </div>
                     </td>
                     <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">
-                      {{ getSupervisorObservacion(item.idDetalle) }}
+                      <div class="space-y-1">
+                        <div v-if="getSupervisorDecisions(item.idDetalle).length === 0">-</div>
+                        <div
+                          v-for="(decision, index) in getSupervisorDecisions(item.idDetalle)"
+                          :key="`${item.idDetalle}-obs-${index}`"
+                          class="text-xs"
+                        >
+                          {{ decision.observacion || '-' }}
+                        </div>
+                      </div>
                     </td>
                     <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">
                       {{ hasSupervisorNovedad(item) ? 'Si' : 'No' }}
@@ -169,6 +196,7 @@ interface SupervisorDecision {
   observacion: string
   estado: string
   fechaAprobacion?: string
+  idUsuario?: string
 }
 
 interface DecisionState {
@@ -184,7 +212,7 @@ const actionLoadingId = ref<number | null>(null)
 const pendientes = ref<AprobacionItem[]>([])
 const decisions = ref<Record<number, DecisionState>>({})
 const openGroups = ref<Record<number, boolean>>({})
-const supervisorByDetalle = ref<Record<number, SupervisorDecision>>({})
+const supervisorByDetalle = ref<Record<number, SupervisorDecision[]>>({})
 
 const groupedPendientes = computed(() => {
   const groups = new Map<number, AprobacionItem[]>()
@@ -265,14 +293,16 @@ const normalizeSupervisorDecision = (item: any): SupervisorDecision => ({
   montoAprobado: Number(item.montoAprobado ?? item.MontoAprobado ?? 0),
   observacion: normalizeString(item.observacion ?? item.Observacion ?? ''),
   estado: normalizeString(item.estado ?? item.Estado ?? ''),
-  fechaAprobacion: item.fechaAprobacion ?? item.FechaAprobacion
+  fechaAprobacion: item.fechaAprobacion ?? item.FechaAprobacion,
+  idUsuario: item.idUsuario ?? item.IdUsuario
 })
 
 const ensureDecision = (item: AprobacionItem) => {
   if (!decisions.value[item.idAprobacion]) {
-    const supervisor = supervisorByDetalle.value[item.idDetalle]
-    const montoBase = supervisor?.montoAprobado && supervisor.montoAprobado > 0
-      ? supervisor.montoAprobado
+    const supervisorDecisions = supervisorByDetalle.value[item.idDetalle] || []
+    const lastDecision = supervisorDecisions[supervisorDecisions.length - 1]
+    const montoBase = lastDecision?.montoAprobado && lastDecision.montoAprobado > 0
+      ? lastDecision.montoAprobado
       : item.total
     decisions.value[item.idAprobacion] = {
       montoAprobado: montoBase.toFixed(2),
@@ -291,24 +321,26 @@ const loadSupervisorDecisions = async (detalleIds: number[]) => {
   const payload = response.data as any
   const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
 
-  const result: Record<number, SupervisorDecision> = {}
+  const result: Record<number, SupervisorDecision[]> = {}
   items.forEach((item: any) => {
     const idDetalle = Number(item.idDetalle ?? item.IdDetalle ?? 0)
     const nivel = Number(item.nivelAprobacion ?? item.NivelAprobacion ?? 0)
     if (!detalleIds.includes(idDetalle) || nivel !== 1) return
 
     const decision = normalizeSupervisorDecision(item)
-    const current = result[idDetalle]
-    if (!current) {
-      result[idDetalle] = decision
-      return
+    if (!result[idDetalle]) {
+      result[idDetalle] = []
     }
+    result[idDetalle].push(decision)
+  })
 
-    const currentDate = current.fechaAprobacion ? new Date(current.fechaAprobacion).getTime() : 0
-    const candidateDate = decision.fechaAprobacion ? new Date(decision.fechaAprobacion).getTime() : 0
-    if (candidateDate >= currentDate) {
-      result[idDetalle] = decision
-    }
+  Object.keys(result).forEach(key => {
+    const id = Number(key)
+    result[id].sort((a, b) => {
+      const aTime = a.fechaAprobacion ? new Date(a.fechaAprobacion).getTime() : 0
+      const bTime = b.fechaAprobacion ? new Date(b.fechaAprobacion).getTime() : 0
+      return aTime - bTime
+    })
   })
 
   supervisorByDetalle.value = result
@@ -395,28 +427,16 @@ const reject = async (item: AprobacionItem) => {
   }
 }
 
-const getSupervisorEstado = (idDetalle: number) => {
-  const decision = supervisorByDetalle.value[idDetalle]
-  return decision?.estado || '-'
-}
-
-const getSupervisorMonto = (idDetalle: number) => {
-  const decision = supervisorByDetalle.value[idDetalle]
-  if (!decision) return '-'
-  return formatAmount(decision.montoAprobado)
-}
-
-const getSupervisorObservacion = (idDetalle: number) => {
-  const decision = supervisorByDetalle.value[idDetalle]
-  return decision?.observacion || '-'
-}
+const getSupervisorDecisions = (idDetalle: number) => supervisorByDetalle.value[idDetalle] || []
 
 const hasSupervisorNovedad = (item: AprobacionItem) => {
-  const decision = supervisorByDetalle.value[item.idDetalle]
-  if (!decision) return false
-  const changedMonto = decision.montoAprobado > 0 && decision.montoAprobado !== item.total
-  const hasObs = Boolean(decision.observacion?.trim())
-  return changedMonto || hasObs
+  const decisionsList = supervisorByDetalle.value[item.idDetalle] || []
+  if (!decisionsList.length) return false
+  return decisionsList.some(decision => {
+    const changedMonto = decision.montoAprobado > 0 && decision.montoAprobado !== item.total
+    const hasObs = Boolean(decision.observacion?.trim())
+    return changedMonto || hasObs
+  })
 }
 
 const formatAmount = (value: number) => value.toFixed(2)
