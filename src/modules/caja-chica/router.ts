@@ -83,6 +83,16 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/caja-chica/aprobaciones-contabilidad-historial',
+    name: 'caja-chica-aprobaciones-contabilidad-historial',
+    component: () => import('./views/AprobacionesContabilidadHistorialView.vue'),
+    meta: { 
+      requiresAuth: true,
+      title: 'Historial contabilidad',
+      permissions: ['cajachica.aprobaciones.view']
+    },
+  },
+  {
     path: '/caja-chica/catalogo-gastos',
     name: 'caja-chica-catalogo-gastos',
     component: () => import('./views/CatalogoGastosView.vue'),

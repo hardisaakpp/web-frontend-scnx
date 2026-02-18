@@ -111,6 +111,23 @@
         </router-link>
 
         <router-link
+          to="/caja-chica/aprobaciones-contabilidad-historial"
+          class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left block"
+        >
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded bg-cyan-50 dark:bg-cyan-900/30 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-cyan-600 dark:text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5h6M9 9h6M9 13h6M9 17h6M5 5h.01M5 9h.01M5 13h.01M5 17h.01" />
+              </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-gray-900 dark:text-white text-sm">Historial contabilidad</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Ver aprobaciones realizadas</div>
+            </div>
+          </div>
+        </router-link>
+
+        <router-link
           to="/caja-chica/almacenes"
           class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left block"
         >
