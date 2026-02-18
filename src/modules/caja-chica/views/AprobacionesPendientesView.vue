@@ -44,9 +44,18 @@
                   {{ group.totalItems }} detalles pendientes · Tienda: {{ group.codAlmacen }} · Custodio: {{ group.nombreCustodio }} · Fecha: {{ formatDate(group.fechaCreacion) }}
                 </p>
               </div>
-              <div class="text-xs text-gray-500 dark:text-gray-400">Total: {{ formatAmount(group.totalMonto) }}</div>
+              <div class="flex items-center gap-3">
+                <div class="text-xs text-gray-500 dark:text-gray-400">Total: {{ formatAmount(group.totalMonto) }}</div>
+                <button
+                  type="button"
+                  class="rounded border border-gray-200 dark:border-gray-700 px-2 py-1 text-xs text-gray-700 dark:text-gray-300"
+                  @click="toggleGroup(group.idLiquidacion)"
+                >
+                  {{ isGroupOpen(group.idLiquidacion) ? 'Ocultar' : 'Ver' }}
+                </button>
+              </div>
             </div>
-            <div class="overflow-x-auto">
+            <div v-if="isGroupOpen(group.idLiquidacion)" class="overflow-x-auto">
               <table class="min-w-full text-sm">
                 <thead>
                   <tr class="text-left text-xs uppercase text-gray-500 dark:text-gray-400">
@@ -78,7 +87,7 @@
                       <input
                         v-model="decisions[item.idAprobacion].observacion"
                         type="text"
-                        placeholder="Comentario"
+                        placeholder="Comentario de aprobacion o negacion"
                         class="w-48 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-xs text-gray-900 dark:text-white"
                       />
                     </td>
@@ -99,7 +108,7 @@
                           :disabled="actionLoadingId === item.idAprobacion"
                           @click="reject(item)"
                         >
-                          Rechazar
+                          Negar
                         </button>
                       </div>
                     </td>
@@ -118,7 +127,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from '@vue/runtime-core'
+import { computed, onMounted, ref } from 'vue'
 import axios from 'axios'
 
 interface AprobacionItem {
@@ -147,6 +156,7 @@ const actionSuccess = ref('')
 const actionLoadingId = ref<number | null>(null)
 const pendientes = ref<AprobacionItem[]>([])
 const decisions = ref<Record<number, DecisionState>>({})
+const openGroups = ref<Record<number, boolean>>({})
 
 const groupedPendientes = computed(() => {
   const groups = new Map<number, AprobacionItem[]>()
@@ -171,6 +181,12 @@ const groupedPendientes = computed(() => {
     }
   })
 })
+
+const isGroupOpen = (idLiquidacion: number) => openGroups.value[idLiquidacion] !== false
+
+const toggleGroup = (idLiquidacion: number) => {
+  openGroups.value[idLiquidacion] = !isGroupOpen(idLiquidacion)
+}
 
 const cajaChicaApi = axios.create({
   baseURL: import.meta.env.VITE_CAJA_CHICA_API_URL || 'http://localhost:8080/api',
@@ -242,11 +258,17 @@ const loadPendientes = async () => {
     const response = await cajaChicaApi.get(`/Aprobaciones/pendientes/${userId}`)
     const payload = response.data as any
     const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
-    const normalized = items
+    const normalized: AprobacionItem[] = items
       .map(normalizeAprobacion)
       .filter(item => item.estado.toUpperCase() === 'PENDIENTE')
     normalized.forEach(ensureDecision)
     pendientes.value = normalized
+    openGroups.value = normalized.reduce<Record<number, boolean>>((acc, item) => {
+      if (acc[item.idLiquidacion] === undefined) {
+        acc[item.idLiquidacion] = true
+      }
+      return acc
+    }, {})
   } catch {
     error.value = 'No se pudieron cargar las aprobaciones pendientes.'
   } finally {
