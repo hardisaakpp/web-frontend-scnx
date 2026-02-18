@@ -45,7 +45,21 @@
                 </p>
               </div>
               <div class="flex items-center gap-3">
+                <div class="text-xs text-gray-500 dark:text-gray-400">
+                  Integracion: {{ getIntegracionEstado(group.idLiquidacion) }}
+                </div>
+                <div v-if="getIntegracionReferencia(group.idLiquidacion)" class="text-xs text-gray-500 dark:text-gray-400">
+                  Ref: {{ getIntegracionReferencia(group.idLiquidacion) }}
+                </div>
                 <div class="text-xs text-gray-500 dark:text-gray-400">Total: {{ formatAmount(group.totalMonto) }}</div>
+                <button
+                  type="button"
+                  class="rounded border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-1 text-xs text-emerald-700 dark:text-emerald-300 disabled:opacity-50"
+                  :disabled="integrationLoading[group.idLiquidacion] || isIntegrado(group.idLiquidacion)"
+                  @click="integrarLiquidacion(group.idLiquidacion)"
+                >
+                  {{ integrationLoading[group.idLiquidacion] ? 'Integrando...' : 'Integrar' }}
+                </button>
                 <button
                   type="button"
                   class="rounded border border-gray-200 dark:border-gray-700 px-2 py-1 text-xs text-gray-700 dark:text-gray-300"
@@ -105,14 +119,19 @@ interface LiquidacionItem {
   codAlmacen: string
   nombreCustodio: string
   fechaCreacion: string
+  cedulaCustodio: string
+  estado: string
 }
 
 interface LiquidacionDetalleItem {
   idDetalle: number
   idLiquidacion: number
+  idGasto: string
   nombreGasto: string
   concepto: string
   total: number
+  subtotalConIva: number
+  subtotalSinIva: number
 }
 
 interface AprobacionItem {
@@ -142,13 +161,30 @@ interface HistorialItem {
   fechaCreacion: string
 }
 
+interface IntegracionEstadoItem {
+  estado: string
+  docEntry?: string
+  docNum?: string
+  mensaje?: string
+}
+
 const loading = ref(false)
 const error = ref('')
 const historial = ref<HistorialItem[]>([])
 const openGroups = ref<Record<number, boolean>>({})
+const detallesByLiquidacion = ref<Record<number, LiquidacionDetalleItem[]>>({})
+const integraciones = ref<Record<number, IntegracionEstadoItem>>({})
+const integrationLoading = ref<Record<number, boolean>>({})
 
 const cajaChicaApi = axios.create({
   baseURL: import.meta.env.VITE_CAJA_CHICA_API_URL || 'http://localhost:8080/api',
+  headers: {
+    'Content-Type': 'application/json'
+  }
+})
+
+const slayerApi = axios.create({
+  baseURL: import.meta.env.VITE_SLAYER_API_URL || 'http://localhost:5001/api',
   headers: {
     'Content-Type': 'application/json'
   }
@@ -182,15 +218,20 @@ const normalizeLiquidacion = (item: any): LiquidacionItem => ({
   idLiquidacion: Number(item.idLiquidacion ?? item.IdLiquidacion ?? 0),
   codAlmacen: normalizeString(item.codAlmacen ?? item.CodAlmacen ?? ''),
   nombreCustodio: normalizeString(item.nombreCustodio ?? item.NombreCustodio ?? ''),
-  fechaCreacion: String(item.fechaCreacion ?? item.FechaCreacion ?? '')
+  fechaCreacion: String(item.fechaCreacion ?? item.FechaCreacion ?? ''),
+  cedulaCustodio: normalizeString(item.cedulaCustodio ?? item.CedulaCustodio ?? ''),
+  estado: normalizeString(item.estado ?? item.Estado ?? '')
 })
 
 const normalizeDetalle = (item: any): LiquidacionDetalleItem => ({
   idDetalle: Number(item.idDetalle ?? item.IdDetalle ?? 0),
   idLiquidacion: Number(item.idLiquidacion ?? item.IdLiquidacion ?? 0),
+  idGasto: normalizeString(item.idGasto ?? item.IdGasto ?? ''),
   nombreGasto: normalizeString(item.nombreGasto ?? item.NombreGasto ?? ''),
   concepto: normalizeString(item.concepto ?? item.Concepto ?? ''),
-  total: Number(item.total ?? item.Total ?? 0)
+  total: Number(item.total ?? item.Total ?? 0),
+  subtotalConIva: Number(item.subtotal_Con_Iva ?? item.Subtotal_Con_Iva ?? item.subtotalConIva ?? 0),
+  subtotalSinIva: Number(item.subtotal_Sin_Iva ?? item.Subtotal_Sin_Iva ?? item.subtotalSinIva ?? 0)
 })
 
 const normalizeAprobacion = (item: any): AprobacionItem => ({
@@ -234,6 +275,124 @@ const toggleGroup = (idLiquidacion: number) => {
   openGroups.value[idLiquidacion] = !isGroupOpen(idLiquidacion)
 }
 
+const isIntegrado = (idLiquidacion: number) => integraciones.value[idLiquidacion]?.estado === 'INTEGRADO'
+
+const getIntegracionEstado = (idLiquidacion: number) => {
+  return integraciones.value[idLiquidacion]?.estado || 'PENDIENTE'
+}
+
+const getIntegracionReferencia = (idLiquidacion: number) => {
+  const entry = integraciones.value[idLiquidacion]
+  if (!entry) return ''
+  if (entry.docNum) return entry.docNum
+  if (entry.docEntry) return entry.docEntry
+  return ''
+}
+
+const buildDocDate = () => {
+  const now = new Date()
+  return now.toISOString().substring(0, 10)
+}
+
+const buildDocumentLines = (detalles: LiquidacionDetalleItem[]) => {
+  return detalles.map(detalle => {
+    const taxCode = detalle.subtotalConIva > 0 ? 'IVA' : 'IVA0'
+    return {
+      AccountCode: detalle.idGasto,
+      LineTotal: detalle.total,
+      TaxCode: taxCode
+    }
+  })
+}
+
+const integrarLiquidacion = async (idLiquidacion: number) => {
+  if (integrationLoading.value[idLiquidacion]) return
+
+  const detalles = detallesByLiquidacion.value[idLiquidacion] || []
+  if (!detalles.length) {
+    error.value = 'No se encontraron detalles para integrar.'
+    return
+  }
+
+  const liquidacion = liquidacionesMap.value[idLiquidacion]
+  if (!liquidacion || !liquidacion.cedulaCustodio) {
+    error.value = 'No se encontro la cedula del custodio.'
+    return
+  }
+
+  integrationLoading.value[idLiquidacion] = true
+  error.value = ''
+  try {
+    const docDate = buildDocDate()
+    const payload = {
+      CardCode: liquidacion.cedulaCustodio,
+      DocType: 'dDocument_Service',
+      DocDate: docDate,
+      DocDueDate: docDate,
+      TaxDate: docDate,
+      Comments: `Liquidacion ${idLiquidacion} Caja Chica`,
+      DocumentLines: buildDocumentLines(detalles)
+    }
+
+    const response = await slayerApi.post('/LiquidacionesCompras', payload)
+    const docEntry = response.data?.docEntry
+    const docNum = response.data?.docNum
+    const mensaje = response.data?.message || 'Integracion exitosa.'
+
+    await cajaChicaApi.post('/Integraciones/Compras', {
+      idLiquidacion,
+      estado: 'INTEGRADO',
+      docEntry,
+      docNum,
+      mensaje
+    })
+
+    integraciones.value[idLiquidacion] = {
+      estado: 'INTEGRADO',
+      docEntry,
+      docNum,
+      mensaje
+    }
+  } catch (err: any) {
+    const mensaje = err?.response?.data?.message || err?.response?.data || 'No se pudo integrar la liquidacion.'
+    error.value = mensaje
+    await cajaChicaApi.post('/Integraciones/Compras', {
+      idLiquidacion,
+      estado: 'ERROR',
+      mensaje
+    })
+    integraciones.value[idLiquidacion] = {
+      estado: 'ERROR',
+      mensaje
+    }
+  } finally {
+    integrationLoading.value[idLiquidacion] = false
+  }
+}
+
+const loadIntegraciones = async (idLiquidaciones: number[]) => {
+  const entries: Record<number, IntegracionEstadoItem> = {}
+  await Promise.all(idLiquidaciones.map(async id => {
+    try {
+      const response = await cajaChicaApi.get(`/Integraciones/Compras/${id}`)
+      const payload = response.data || {}
+      entries[id] = {
+        estado: payload.estado || 'PENDIENTE',
+        docEntry: payload.docEntry,
+        docNum: payload.docNum,
+        mensaje: payload.mensaje
+      }
+    } catch {
+      entries[id] = {
+        estado: 'PENDIENTE'
+      }
+    }
+  }))
+  integraciones.value = entries
+}
+
+const liquidacionesMap = ref<Record<number, LiquidacionItem>>({})
+
 const loadHistorial = async () => {
   loading.value = true
   error.value = ''
@@ -276,6 +435,19 @@ const loadHistorial = async () => {
       liquidacionMap.set(liquidacion.idLiquidacion, liquidacion)
     })
 
+    liquidacionesMap.value = liquidaciones.reduce<Record<number, LiquidacionItem>>((acc, liquidacion) => {
+      acc[liquidacion.idLiquidacion] = liquidacion
+      return acc
+    }, {})
+
+    detallesByLiquidacion.value = detalles.reduce<Record<number, LiquidacionDetalleItem[]>>((acc, detalle) => {
+      if (!acc[detalle.idLiquidacion]) {
+        acc[detalle.idLiquidacion] = []
+      }
+      acc[detalle.idLiquidacion].push(detalle)
+      return acc
+    }, {})
+
     historial.value = aprobaciones.map(aprobacion => {
       const detalle = detalleMap.get(aprobacion.idDetalle)
       const liquidacion = detalle ? liquidacionMap.get(detalle.idLiquidacion) : undefined
@@ -302,6 +474,9 @@ const loadHistorial = async () => {
       }
       return acc
     }, {})
+
+    const ids = Array.from(new Set(historial.value.map(item => item.idLiquidacion))).filter(id => id > 0)
+    await loadIntegraciones(ids)
   } catch {
     error.value = 'No se pudo cargar el historial de contabilidad.'
   } finally {
