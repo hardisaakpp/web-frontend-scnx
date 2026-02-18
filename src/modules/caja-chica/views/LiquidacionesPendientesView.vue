@@ -39,6 +39,7 @@
                 <th class="py-2 pr-3">Almacen</th>
                 <th class="py-2 pr-3">Custodio</th>
                 <th class="py-2 pr-3">Fecha</th>
+                <th class="py-2 pr-3">Nivel</th>
                 <th class="py-2 pr-3">Acciones</th>
               </tr>
             </thead>
@@ -48,6 +49,7 @@
                 <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.codAlmacen }}</td>
                 <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.nombreCustodio }}</td>
                 <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.fechaCreacion }}</td>
+                <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ getNivelAprobacion(item.estado) }}</td>
                 <td class="py-2 pr-3">
                   <router-link
                     class="text-blue-600 hover:text-blue-700 text-xs font-medium"
@@ -66,7 +68,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from '@vue/runtime-core'
+import { onMounted, ref } from 'vue'
 import axios from 'axios'
 
 interface LiquidacionItem {
@@ -108,6 +110,13 @@ const normalizeLiquidacion = (item: any): LiquidacionItem => ({
   nombreCustodio: normalizeString(item.nombreCustodio ?? item.NombreCustodio ?? ''),
   fechaCreacion: String(item.fechaCreacion ?? item.FechaCreacion ?? '')
 })
+
+const getNivelAprobacion = (estado: string) => {
+  const normalized = normalizeString(estado).toUpperCase()
+  if (normalized === 'SUPERVISION') return 'Supervision'
+  if (normalized === 'CONTABILIDAD') return 'Contabilidad'
+  return normalized || '-'
+}
 
 const loadPendientes = async () => {
   loading.value = true
