@@ -126,10 +126,24 @@
           <div v-else-if="rolesError" class="text-sm text-red-600 dark:text-red-400">{{ rolesError }}</div>
           <ul v-else class="space-y-2">
             <li v-if="roles.length === 0" class="text-sm text-gray-600 dark:text-gray-300">Sin roles asignados.</li>
-            <li v-for="role in roles" :key="role" class="text-sm text-gray-800 dark:text-gray-200">
-              {{ role }}
+            <li
+              v-for="role in roles"
+              :key="role"
+              class="flex items-center justify-between gap-2 text-sm text-gray-800 dark:text-gray-200"
+            >
+              <span>{{ role }}</span>
+              <button
+                type="button"
+                class="rounded border border-rose-200 dark:border-rose-800 bg-rose-50 dark:bg-rose-900/30 px-2 py-1 text-xs text-rose-700 dark:text-rose-300 hover:border-rose-300 dark:hover:border-rose-700 disabled:opacity-50"
+                :disabled="removeLoading"
+                @click="removeRole(role)"
+              >
+                Quitar
+              </button>
             </li>
           </ul>
+          <div v-if="removeError" class="text-xs text-red-600 dark:text-red-400">{{ removeError }}</div>
+          <div v-else-if="removeSuccess" class="text-xs text-emerald-600 dark:text-emerald-400">{{ removeSuccess }}</div>
         </div>
       </div>
     </div>
@@ -156,6 +170,9 @@ const roleToAssign = ref('')
 const assignLoading = ref(false)
 const assignError = ref('')
 const assignSuccess = ref('')
+const removeLoading = ref(false)
+const removeError = ref('')
+const removeSuccess = ref('')
 const selectedUserId = ref('')
 
 const getValue = (user: UserRecord, keys: string[]) => {
@@ -207,7 +224,7 @@ const loadUsers = async () => {
   loading.value = true
   error.value = ''
   try {
-    const response = await api.get('http://192.168.2.12:8080/api/Users')
+    const response = await api.get('/Users')
     const payload = response.data
     if (Array.isArray(payload)) {
       users.value = payload
@@ -259,8 +276,10 @@ const openRoles = async (user: UserRecord) => {
   roleToAssign.value = ''
   assignError.value = ''
   assignSuccess.value = ''
+  removeError.value = ''
+  removeSuccess.value = ''
   try {
-    const response = await api.get(`http://192.168.2.12:8080/api/Users/${id}/roles`)
+    const response = await api.get(`/Users/${id}/roles`)
     const payload = response.data
     if (Array.isArray(payload)) {
       roles.value = payload.map(normalizeRole).filter(Boolean)
@@ -291,7 +310,7 @@ const assignRole = async () => {
   assignError.value = ''
   assignSuccess.value = ''
   try {
-    await api.post(`http://192.168.2.12:8080/api/Users/${selectedUserId.value}/roles`, {
+    await api.post(`/Users/${selectedUserId.value}/roles`, {
       role: roleToAssign.value
     })
     assignSuccess.value = 'Rol asignado correctamente.'
@@ -305,11 +324,38 @@ const assignRole = async () => {
   }
 }
 
+const removeRole = async (role: string) => {
+  if (!selectedUserId.value) {
+    removeError.value = 'Selecciona un usuario valido.'
+    return
+  }
+  if (!role) {
+    removeError.value = 'Selecciona un rol valido.'
+    return
+  }
+
+  removeLoading.value = true
+  removeError.value = ''
+  removeSuccess.value = ''
+  try {
+    await api.delete(`/Users/${selectedUserId.value}/roles/${encodeURIComponent(role)}`)
+    removeSuccess.value = 'Rol eliminado correctamente.'
+    await openRoles({ id: selectedUserId.value })
+  } catch (err: unknown) {
+    const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+    removeError.value = message || 'No se pudo quitar el rol.'
+  } finally {
+    removeLoading.value = false
+  }
+}
+
 const closeRoles = () => {
   rolesOpen.value = false
   assignError.value = ''
   assignSuccess.value = ''
   roleToAssign.value = ''
+  removeError.value = ''
+  removeSuccess.value = ''
 }
 
 watch([searchQuery, pageSize], () => {
