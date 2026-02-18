@@ -581,7 +581,7 @@ async function handleEnviarOdcSap() {
         numeroPedido: numeroPedido.value
       })
 
-      // Redirigir a la pantalla de Procesar ODC - MABEL TRADING
+      // Redirigir a la pantalla de Procesar ODC
       router.push({ name: 'mba3-consultas-proceso' })
     } else if (response.status === 'partial') {
       // Éxito parcial: mostrar en qué paso falló

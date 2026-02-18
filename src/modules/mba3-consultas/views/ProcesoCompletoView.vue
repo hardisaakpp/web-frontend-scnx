@@ -580,7 +580,7 @@ const tabs = computed<Tab[]>(() => {
   const tabsArray: Tab[] = []
   tabsArray.push({
     id: 'procesar-oc',
-    label: 'Procesar ODC - MABEL TRADING',
+    label: 'Procesar ODC',
     badge: totalOrdenesProcesarOC > 0 ? totalOrdenesProcesarOC : undefined,
     color: 'emerald'
   })
@@ -1945,7 +1945,7 @@ function getStepStatus(step: string): 'pending' | 'active' | 'completed' | 'erro
 function getStepTitle(step: string): string {
   const titles: Record<string, string> = {
     'migrar': 'Importar despachos',
-    'procesar-oc': 'Procesar ODC - MABEL TRADING'
+    'procesar-oc': 'Procesar ODC'
   }
   return titles[step] || step
 }

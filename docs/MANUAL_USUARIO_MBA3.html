@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>MANUAL_USUARIO_MBA3.md</title>
+<meta http-equiv="Content-type" content="text/html;charset=UTF-8">
+
+<style>
+/* https://github.com/microsoft/vscode/blob/master/extensions/markdown-language-features/media/markdown.css */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+body {
+	font-family: var(--vscode-markdown-font-family, -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif);
+	font-size: var(--vscode-markdown-font-size, 14px);
+	padding: 0 26px;
+	line-height: var(--vscode-markdown-line-height, 22px);
+	word-wrap: break-word;
+}
+
+#code-csp-warning {
+	position: fixed;
+	top: 0;
+	right: 0;
+	color: white;
+	margin: 16px;
+	text-align: center;
+	font-size: 12px;
+	font-family: sans-serif;
+	background-color:#444444;
+	cursor: pointer;
+	padding: 6px;
+	box-shadow: 1px 1px 1px rgba(0,0,0,.25);
+}
+
+#code-csp-warning:hover {
+	text-decoration: none;
+	background-color:#007acc;
+	box-shadow: 2px 2px 2px rgba(0,0,0,.25);
+}
+
+body.scrollBeyondLastLine {
+	margin-bottom: calc(100vh - 22px);
+}
+
+body.showEditorSelection .code-line {
+	position: relative;
+}
+
+body.showEditorSelection .code-active-line:before,
+body.showEditorSelection .code-line:hover:before {
+	content: "";
+	display: block;
+	position: absolute;
+	top: 0;
+	left: -12px;
+	height: 100%;
+}
+
+body.showEditorSelection li.code-active-line:before,
+body.showEditorSelection li.code-line:hover:before {
+	left: -30px;
+}
+
+.vscode-light.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.15);
+}
+
+.vscode-light.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(0, 0, 0, 0.40);
+}
+
+.vscode-light.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-dark.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.4);
+}
+
+.vscode-dark.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 255, 255, 0.60);
+}
+
+.vscode-dark.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+.vscode-high-contrast.showEditorSelection .code-active-line:before {
+	border-left: 3px solid rgba(255, 160, 0, 0.7);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line:hover:before {
+	border-left: 3px solid rgba(255, 160, 0, 1);
+}
+
+.vscode-high-contrast.showEditorSelection .code-line .code-line:hover:before {
+	border-left: none;
+}
+
+img {
+	max-width: 100%;
+	max-height: 100%;
+}
+
+a {
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+a:focus,
+input:focus,
+select:focus,
+textarea:focus {
+	outline: 1px solid -webkit-focus-ring-color;
+	outline-offset: -1px;
+}
+
+hr {
+	border: 0;
+	height: 2px;
+	border-bottom: 2px solid;
+}
+
+h1 {
+	padding-bottom: 0.3em;
+	line-height: 1.2;
+	border-bottom-width: 1px;
+	border-bottom-style: solid;
+}
+
+h1, h2, h3 {
+	font-weight: normal;
+}
+
+table {
+	border-collapse: collapse;
+}
+
+table > thead > tr > th {
+	text-align: left;
+	border-bottom: 1px solid;
+}
+
+table > thead > tr > th,
+table > thead > tr > td,
+table > tbody > tr > th,
+table > tbody > tr > td {
+	padding: 5px 10px;
+}
+
+table > tbody > tr + tr > td {
+	border-top: 1px solid;
+}
+
+blockquote {
+	margin: 0 7px 0 5px;
+	padding: 0 16px 0 10px;
+	border-left-width: 5px;
+	border-left-style: solid;
+}
+
+code {
+	font-family: Menlo, Monaco, Consolas, "Droid Sans Mono", "Courier New", monospace, "Droid Sans Fallback";
+	font-size: 1em;
+	line-height: 1.357em;
+}
+
+body.wordWrap pre {
+	white-space: pre-wrap;
+}
+
+pre:not(.hljs),
+pre.hljs code > div {
+	padding: 16px;
+	border-radius: 3px;
+	overflow: auto;
+}
+
+pre code {
+	color: var(--vscode-editor-foreground);
+	tab-size: 4;
+}
+
+/** Theming */
+
+.vscode-light pre {
+	background-color: rgba(220, 220, 220, 0.4);
+}
+
+.vscode-dark pre {
+	background-color: rgba(10, 10, 10, 0.4);
+}
+
+.vscode-high-contrast pre {
+	background-color: rgb(0, 0, 0);
+}
+
+.vscode-high-contrast h1 {
+	border-color: rgb(0, 0, 0);
+}
+
+.vscode-light table > thead > tr > th {
+	border-color: rgba(0, 0, 0, 0.69);
+}
+
+.vscode-dark table > thead > tr > th {
+	border-color: rgba(255, 255, 255, 0.69);
+}
+
+.vscode-light h1,
+.vscode-light hr,
+.vscode-light table > tbody > tr + tr > td {
+	border-color: rgba(0, 0, 0, 0.18);
+}
+
+.vscode-dark h1,
+.vscode-dark hr,
+.vscode-dark table > tbody > tr + tr > td {
+	border-color: rgba(255, 255, 255, 0.18);
+}
+
+</style>
+
+<style>
+/* Tomorrow Theme */
+/* http://jmblog.github.com/color-themes-for-google-code-highlightjs */
+/* Original theme - https://github.com/chriskempson/tomorrow-theme */
+
+/* Tomorrow Comment */
+.hljs-comment,
+.hljs-quote {
+	color: #8e908c;
+}
+
+/* Tomorrow Red */
+.hljs-variable,
+.hljs-template-variable,
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-regexp,
+.hljs-deletion {
+	color: #c82829;
+}
+
+/* Tomorrow Orange */
+.hljs-number,
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-literal,
+.hljs-type,
+.hljs-params,
+.hljs-meta,
+.hljs-link {
+	color: #f5871f;
+}
+
+/* Tomorrow Yellow */
+.hljs-attribute {
+	color: #eab700;
+}
+
+/* Tomorrow Green */
+.hljs-string,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-addition {
+	color: #718c00;
+}
+
+/* Tomorrow Blue */
+.hljs-title,
+.hljs-section {
+	color: #4271ae;
+}
+
+/* Tomorrow Purple */
+.hljs-keyword,
+.hljs-selector-tag {
+	color: #8959a8;
+}
+
+.hljs {
+	display: block;
+	overflow-x: auto;
+	color: #4d4d4c;
+	padding: 0.5em;
+}
+
+.hljs-emphasis {
+	font-style: italic;
+}
+
+.hljs-strong {
+	font-weight: bold;
+}
+</style>
+
+<style>
+/*
+ * Markdown PDF CSS
+ */
+
+ body {
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", "Ubuntu", "Droid Sans", sans-serif, "Meiryo";
+	padding: 0 12px;
+}
+
+pre {
+	background-color: #f8f8f8;
+	border: 1px solid #cccccc;
+	border-radius: 3px;
+	overflow-x: auto;
+	white-space: pre-wrap;
+	overflow-wrap: break-word;
+}
+
+pre:not(.hljs) {
+	padding: 23px;
+	line-height: 19px;
+}
+
+blockquote {
+	background: rgba(127, 127, 127, 0.1);
+	border-color: rgba(0, 122, 204, 0.5);
+}
+
+.emoji {
+	height: 1.4em;
+}
+
+code {
+	font-size: 14px;
+	line-height: 19px;
+}
+
+/* for inline code */
+:not(pre):not(.hljs) > code {
+	color: #C9AE75; /* Change the old color so it seems less like an error */
+	font-size: inherit;
+}
+
+/* Page Break : use <div class="page"/> to insert page break
+-------------------------------------------------------- */
+.page {
+	page-break-after: always;
+}
+
+</style>
+
+<script src="https://unpkg.com/mermaid/dist/mermaid.min.js"></script>
+</head>
+<body>
+  <script>
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: document.body.classList.contains('vscode-dark') || document.body.classList.contains('vscode-high-contrast')
+          ? 'dark'
+          : 'default'
+    });
+  </script>
+<h1 id="manual-de-usuario--gesti%C3%B3n-odc-sap">Manual de Usuario — Gestión ODC SAP</h1>
+<p><strong>Módulo MBA3 Consultas — SCNexus</strong></p>
+<hr>
+<h2 id="1-introducci%C3%B3n">1. Introducción</h2>
+<p>Este manual describe el uso del módulo <strong>Gestión ODC SAP</strong> dentro de SCNexus. Este módulo permite gestionar pedidos, cargar plantillas Excel, distribuir cantidades por tienda, generar órdenes de compra y enviarlas a SAP.</p>
+<h3 id="11-tipos-de-usuario">1.1 Tipos de usuario</h3>
+<p>Hay dos perfiles principales según los permisos asignados:</p>
+<table>
+<thead>
+<tr>
+<th>Perfil</th>
+<th>Permiso</th>
+<th>Descripción</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>EL RAYO</strong></td>
+<td><code>odcsap.view</code></td>
+<td>Gestionar pedidos, ver listados, revisar redistribución (solo lectura) y generar ODC</td>
+</tr>
+<tr>
+<td><strong>MABEL TRADING</strong></td>
+<td><code>mabel.view</code></td>
+<td>Flujo completo: cargar plantillas, redistribuir, procesamiento SAP, homologaciones, órdenes de compra, etc.</td>
+</tr>
+</tbody>
+</table>
+<p>Algunos usuarios pueden tener ambos permisos y ver todas las opciones.</p>
+<hr>
+<h2 id="2-acceso-al-m%C3%B3dulo">2. Acceso al módulo</h2>
+<ol>
+<li>Inicie sesión en SCNexus con su usuario y contraseña.</li>
+<li>En el menú lateral (sidebar), pulse <strong>Gestión ODC SAP</strong>.</li>
+<li>Se mostrará el <strong>Dashboard</strong> del módulo.</li>
+</ol>
+<hr>
+<h2 id="3-dashboard-de-gesti%C3%B3n-odc-sap">3. Dashboard de Gestión ODC SAP</h2>
+<p>El dashboard es la pantalla principal con botones de acceso rápido a cada funcionalidad. Los botones que ve dependen de su permiso.</p>
+<h3 id="31-botones-principales-visibles-seg%C3%BAn-permiso">3.1 Botones principales (visibles según permiso)</h3>
+<h4 id="para-el-rayo-odcsapview">Para EL RAYO (<code>odcsap.view</code>)</h4>
+<table>
+<thead>
+<tr>
+<th>Botón</th>
+<th>Descripción</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Listado de Pedidos</strong></td>
+<td>Ver todos los pedidos con filtros</td>
+</tr>
+<tr>
+<td><strong>Revisar Redistribución</strong></td>
+<td>Ver la distribución por tienda (solo lectura)</td>
+</tr>
+<tr>
+<td><strong>ODC a SAP</strong></td>
+<td>Generar órdenes de compra y enviar a SAP</td>
+</tr>
+</tbody>
+</table>
+<h4 id="para-mabel-trading-mabelview">Para MABEL TRADING (<code>mabel.view</code>)</h4>
+<table>
+<thead>
+<tr>
+<th>Botón</th>
+<th>Descripción</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Cargar Plantilla</strong></td>
+<td>Gestionar y cargar plantillas Excel</td>
+</tr>
+<tr>
+<td><strong>Redistribución</strong></td>
+<td>Distribuir cantidades por tienda</td>
+</tr>
+<tr>
+<td><strong>ODC a SAP</strong></td>
+<td>Procesos de integración</td>
+</tr>
+<tr>
+<td><strong>Procesamiento SAP</strong></td>
+<td>Ver pedidos confirmados y generar ODC (por número de pedido)</td>
+</tr>
+<tr>
+<td><strong>Homologaciones</strong></td>
+<td>Administrar SKUs no coincidentes MBA3-SAP</td>
+</tr>
+</tbody>
+</table>
+<h4 id="compartidos-ambos-perfiles">Compartidos (ambos perfiles)</h4>
+<table>
+<thead>
+<tr>
+<th>Botón</th>
+<th>Descripción</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>ODC a SAP</strong></td>
+<td>Generar ODC y enviar a SAP</td>
+</tr>
+</tbody>
+</table>
+<h3 id="32-secci%C3%B3n-%22informaci%C3%B3n-pedidos-y-odc%22">3.2 Sección &quot;Información Pedidos y ODC&quot;</h3>
+<p>Al hacer clic en <strong>&quot;Información Pedidos y ODC&quot;</strong> se expande un grupo de opciones:</p>
+<table>
+<thead>
+<tr>
+<th>Opción</th>
+<th>Permiso</th>
+<th>Descripción</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Órdenes de Compra</strong></td>
+<td>MABEL TRADING</td>
+<td>Historial completo de órdenes</td>
+</tr>
+<tr>
+<td><strong>ODC con Errores</strong></td>
+<td>MABEL TRADING</td>
+<td>Corregir SKUs de órdenes con error</td>
+</tr>
+<tr>
+<td><strong>Reporte de Diferencias</strong></td>
+<td>MABEL TRADING</td>
+<td>Ver diferencias pedido vs confirmado</td>
+</tr>
+<tr>
+<td><strong>Listado Pedidos Originales</strong></td>
+<td>MABEL / EL RAYO</td>
+<td>Archivos Excel originales en storage</td>
+</tr>
+<tr>
+<td><strong>Procesamiento SAP</strong></td>
+<td>MABEL TRADING</td>
+<td>Buscar pedido por número para ver su procesamiento SAP</td>
+</tr>
+<tr>
+<td><strong>Homologaciones</strong></td>
+<td>MABEL / EL RAYO</td>
+<td>SKUs no homologados entre MBA3 y SAP</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="4-gestionar-pedido-el-rayo">4. Gestionar Pedido (EL RAYO)</h2>
+<p><strong>Ruta:</strong> Dashboard → <strong>Gestionar Pedido</strong></p>
+<h3 id="41-descripci%C3%B3n">4.1 Descripción</h3>
+<p>Permite buscar un pedido por número, ver su detalle, editar cantidades, costos y fechas, y confirmar la respuesta del proveedor.</p>
+<h3 id="42-pasos">4.2 Pasos</h3>
+<ol>
+<li>Escriba el número de pedido en el campo de búsqueda (ej: <code>P-12.48 - 12 - 2025</code>).</li>
+<li>Presione <strong>Enter</strong> o haga clic en el botón de buscar.</li>
+<li>Verá la cabecera del pedido (proveedor, fechas, estado) y la tabla de productos.</li>
+<li>Puede:
+<ul>
+<li><strong>Editar cantidades y costos</strong> en los campos editables.</li>
+<li><strong>Modificar fechas</strong> de pedido y entrega.</li>
+<li><strong>Confirmar</strong> (cuando aplique) para crear la respuesta del proveedor.</li>
+<li><strong>Volver</strong> al listado de pedidos.</li>
+</ul>
+</li>
+</ol>
+<h3 id="43-redistribuci%C3%B3n-en-detalle-el-rayo">4.3 Redistribución en detalle (EL RAYO)</h3>
+<p>En el detalle del pedido puede ver la <strong>Redistribución por tienda</strong> en modo <strong>solo lectura</strong>. No puede modificar las cantidades; solo revisar lo que MABEL TRADING ha configurado.</p>
+<hr>
+<h2 id="5-listado-de-pedidos-el-rayo">5. Listado de Pedidos (EL RAYO)</h2>
+<p><strong>Ruta:</strong> Dashboard → <strong>Listado de Pedidos</strong></p>
+<h3 id="51-descripci%C3%B3n">5.1 Descripción</h3>
+<p>Muestra todos los pedidos con filtros por estado, fechas, proveedor y número de pedido.</p>
+<h3 id="52-uso-de-filtros">5.2 Uso de filtros</h3>
+<ol>
+<li>Haga clic en <strong>Filtros de Búsqueda</strong> para expandir.</li>
+<li>Opciones:
+<ul>
+<li><strong>Solo pedidos que requieren acción</strong>: muestra pedidos pendientes de confirmación.</li>
+<li><strong>Estado</strong>: filtro por estado del pedido.</li>
+<li><strong>Fecha Desde / Fecha Hasta</strong>: rango de fechas.</li>
+<li><strong>Proveedor</strong>: nombre de proveedor.</li>
+<li><strong>Número de Pedido</strong>: búsqueda directa.</li>
+</ul>
+</li>
+<li>Use <strong>Actualizar</strong> para refrescar los resultados.</li>
+<li>Opción <strong>Auto-actualizar</strong>: recarga periódicamente la lista.</li>
+</ol>
+<h3 id="53-acciones-en-la-tabla">5.3 Acciones en la tabla</h3>
+<ul>
+<li><strong>Ver detalle</strong>: clic en el número de pedido o en la fila para abrir el detalle completo.</li>
+</ul>
+<h3 id="54-estados-del-pedido-referencia">5.4 Estados del pedido (referencia)</h3>
+<table>
+<thead>
+<tr>
+<th>Estado</th>
+<th>Significado</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Borrador</td>
+<td>Pedido en edición</td>
+</tr>
+<tr>
+<td>Gestionar Pedido</td>
+<td>Disponible para EL RAYO</td>
+</tr>
+<tr>
+<td>Pendiente Confirmación</td>
+<td>Pendiente de confirmación del proveedor</td>
+</tr>
+<tr>
+<td>Respuesta Cargada</td>
+<td>Respuesta del proveedor cargada</td>
+</tr>
+<tr>
+<td>Confirmado por Proveedor</td>
+<td>Confirmado por proveedor</td>
+</tr>
+<tr>
+<td>Redistribución</td>
+<td>En redistribución por tienda</td>
+</tr>
+<tr>
+<td>Confirmado redistribución</td>
+<td>Redistribución confirmada</td>
+</tr>
+<tr>
+<td>Pedido Confirmado</td>
+<td>Pedido confirmado</td>
+</tr>
+<tr>
+<td>Procesado SAP</td>
+<td>Procesado en SAP</td>
+</tr>
+<tr>
+<td>Confirmado y Enviado</td>
+<td>Confirmado y enviado</td>
+</tr>
+<tr>
+<td>Despachar y Facturar</td>
+<td>Listo para despacho</td>
+</tr>
+<tr>
+<td>Finalizado</td>
+<td>Proceso terminado</td>
+</tr>
+<tr>
+<td>Cancelado</td>
+<td>Pedido cancelado</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="6-revisar-redistribuci%C3%B3n-el-rayo">6. Revisar Redistribución (EL RAYO)</h2>
+<p><strong>Ruta:</strong> Dashboard → <strong>Revisar Redistribución</strong></p>
+<h3 id="61-descripci%C3%B3n">6.1 Descripción</h3>
+<p>Lista pedidos con redistribución confirmada para revisar la distribución por tienda en <strong>modo solo lectura</strong>. No se pueden editar cantidades.</p>
+<h3 id="62-pasos">6.2 Pasos</h3>
+<ol>
+<li>Use los filtros (fechas, proveedor, número de pedido) para localizar el pedido.</li>
+<li>Haga clic en el pedido para ver su <strong>redistribución por tienda</strong>.</li>
+<li>Verá las cantidades asignadas a cada tienda sin posibilidad de modificación.</li>
+</ol>
+<hr>
+<h2 id="7-cargar-plantilla-mabel-trading">7. Cargar Plantilla (MABEL TRADING)</h2>
+<p><strong>Ruta:</strong> Dashboard → <strong>Cargar Plantilla</strong></p>
+<h3 id="71-descripci%C3%B3n">7.1 Descripción</h3>
+<p>Permite seleccionar un pedido para cargar una plantilla Excel, editarla o continuar el flujo. Incluye pedidos en estado Borrador y con plantilla ya cargada.</p>
+<h3 id="72-pasos-para-cargar-una-plantilla">7.2 Pasos para cargar una plantilla</h3>
+<ol>
+<li>En el listado, localice el pedido o use los filtros.</li>
+<li>Haga clic en el pedido para abrir su detalle.</li>
+<li>Arrastre el archivo Excel al área de carga o selecciónelo con <strong>&quot;Seleccionar archivo&quot;</strong>.</li>
+<li>Espere a que termine el proceso (subida, validación, guardado).</li>
+<li>Una vez cargado, podrá editar cantidades y continuar hacia Redistribución.</li>
+</ol>
+<h3 id="73-listado-de-pedidos-en-cargar-plantilla">7.3 Listado de pedidos en Cargar Plantilla</h3>
+<ul>
+<li>Filtros por <strong>Estado</strong>, <strong>Fecha</strong>, <strong>Proveedor</strong>, <strong>Número de pedido</strong>.</li>
+<li>Indicador de <strong>pedidos pendientes de acción</strong>.</li>
+<li>Opción <strong>Auto-actualizar</strong> para refrescar automáticamente.</li>
+</ul>
+<hr>
+<h2 id="8-redistribuci%C3%B3n-mabel-trading">8. Redistribución (MABEL TRADING)</h2>
+<p><strong>Ruta:</strong> Dashboard → <strong>Redistribución</strong></p>
+<h3 id="81-descripci%C3%B3n">8.1 Descripción</h3>
+<p>Distribuir las cantidades de productos por tienda a partir de la respuesta del proveedor. El pedido debe estar en estado <strong>RESPUESTA_PROVEEDOR_CARGADA</strong> (Respuesta Cargada).</p>
+<h3 id="82-pasos">8.2 Pasos</h3>
+<ol>
+<li>Al entrar, el sistema puede redirigir automáticamente al <strong>último pedido</strong> listo para redistribuir.</li>
+<li>Si no hay uno, use el buscador o la <strong>lista de pedidos confirmados</strong> para elegir un pedido.</li>
+<li>En la pantalla de redistribución verá:
+<ul>
+<li>Cabecera del pedido.</li>
+<li>Tabla con productos y columnas por tienda.</li>
+</ul>
+</li>
+<li>Puede:
+<ul>
+<li><strong>Editar cantidades</strong> por tienda manualmente.</li>
+<li><strong>Distribuir proporcionalmente</strong>: repartir automáticamente según la plantilla original.</li>
+<li><strong>Copiar distribución original</strong>: usar las cantidades originales.</li>
+<li><strong>Resetear distribución</strong>: volver al estado inicial.</li>
+</ul>
+</li>
+<li>Haga clic en <strong>Confirmar Redistribución</strong> para guardar los cambios.</li>
+<li>Tras confirmar, el pedido pasa a estado <strong>PEDIDO_CONFIRMADO</strong> y podrá seguir el flujo de Procesamiento SAP.</li>
+</ol>
+<h3 id="83-filtros-en-redistribuci%C3%B3n">8.3 Filtros en Redistribución</h3>
+<ul>
+<li><strong>Solo pedidos que requieren acción</strong></li>
+<li>Estado, fechas, proveedor, número de pedido</li>
+</ul>
+<hr>
+<h2 id="9-odc-a-sap-ambos-perfiles">9. ODC a SAP (ambos perfiles)</h2>
+<p><strong>Ruta:</strong> Dashboard → <strong>ODC a SAP</strong></p>
+<h3 id="91-descripci%C3%B3n">9.1 Descripción</h3>
+<p>Pantalla con varias pestañas para gestionar pedidos confirmados, despachos y envío a SAP. Aquí se genera la orden de compra (ODC) y se envía a SAP.</p>
+<h3 id="92-pesta%C3%B1as-principales">9.2 Pestañas principales</h3>
+<h4 id="pedidos-confirmados">Pedidos Confirmados</h4>
+<ul>
+<li>Lista de pedidos con redistribución confirmada y listos para generar ODC.</li>
+<li>Botón <strong>Generar ODC</strong> por pedido.</li>
+<li>Botón <strong>Actualizar</strong> para recargar la lista.</li>
+</ul>
+<h4 id="despachos--procesos-de-integraci%C3%B3n">Despachos / Procesos de integración</h4>
+<ul>
+<li>Gestión de despachos y envío a SAP.</li>
+<li>Selección de despachos pendientes.</li>
+<li>Ejecución del proceso de integración para enviar a SAP.</li>
+</ul>
+<h3 id="93-flujo-t%C3%ADpico">9.3 Flujo típico</h3>
+<ol>
+<li>Ir a <strong>Pedidos Confirmados</strong>.</li>
+<li>Localizar el pedido deseado.</li>
+<li>Hacer clic en <strong>Generar ODC</strong>.</li>
+<li>Esperar a que se genere la orden de compra.</li>
+<li>En la pestaña de <strong>Procesos</strong>, enviar la ODC a SAP si corresponde.</li>
+</ol>
+<hr>
+<h2 id="10-procesamiento-sap-mabel-trading">10. Procesamiento SAP (MABEL TRADING)</h2>
+<p><strong>Ruta:</strong> Dashboard → Información Pedidos y ODC → <strong>Procesamiento SAP</strong></p>
+<h3 id="101-descripci%C3%B3n">10.1 Descripción</h3>
+<p>Se abre un modal para buscar un pedido por número y ver su procesamiento SAP (productos homologados, errores, etc.).</p>
+<h3 id="102-pasos">10.2 Pasos</h3>
+<ol>
+<li>Haga clic en <strong>Procesamiento SAP</strong> en el dashboard.</li>
+<li>Ingrese el <strong>número de pedido</strong> (ej: <code>P-12.48 - 12 - 2025</code>).</li>
+<li>Presione <strong>Enter</strong> o <strong>Buscar</strong>.</li>
+<li>Se mostrará la pantalla con:
+<ul>
+<li>Cabecera del pedido.</li>
+<li>Tabla de productos procesados con estado (homologados, no homologados, con error).</li>
+<li>Botón <strong>Generar ODC</strong> si aplica.</li>
+</ul>
+</li>
+</ol>
+<h3 id="103-filtros-en-la-tabla">10.3 Filtros en la tabla</h3>
+<ul>
+<li><strong>Todos</strong>, <strong>Homologados</strong>, <strong>No Homologados</strong>, <strong>Con Errores</strong>.</li>
+<li>Selector de <strong>Columnas</strong> para mostrar u ocultar columnas.</li>
+</ul>
+<hr>
+<h2 id="11-homologaciones-mabel-trading--el-rayo">11. Homologaciones (MABEL TRADING / EL RAYO)</h2>
+<p><strong>Ruta:</strong> Dashboard → <strong>Homologaciones</strong> o Información Pedidos y ODC → <strong>Homologaciones</strong></p>
+<h3 id="111-descripci%C3%B3n">11.1 Descripción</h3>
+<p>Administra las homologaciones de SKU que no coinciden entre MBA3 y SAP. Permite vincular un SKU MBA3 con un SKU SAP.</p>
+<h3 id="112-pasos">11.2 Pasos</h3>
+<ol>
+<li>Use <strong>Buscar SKU</strong> para localizar un SKU específico.</li>
+<li>Use los filtros: <strong>Estado</strong> (Pendiente, Homologado, Error), <strong>Tiene Diferencias</strong>, <strong>Tiene Datos SAP</strong>.</li>
+<li>En la tabla verá:
+<ul>
+<li>SKU MBA3.</li>
+<li>SKU SAP (si existe).</li>
+<li>Estado.</li>
+<li>Acciones para homologar o editar.</li>
+</ul>
+</li>
+<li>Use <strong>Sincronizar</strong> para actualizar las homologaciones desde el backend.</li>
+</ol>
+<hr>
+<h2 id="12-%C3%B3rdenes-de-compra-mabel-trading">12. Órdenes de Compra (MABEL TRADING)</h2>
+<p><strong>Ruta:</strong> Dashboard → Información Pedidos y ODC → <strong>Órdenes de Compra</strong></p>
+<h3 id="121-descripci%C3%B3n">12.1 Descripción</h3>
+<p>Historial completo de órdenes de compra generadas: pendientes, enviadas y con error.</p>
+<h3 id="122-uso">12.2 Uso</h3>
+<ul>
+<li>Filtro por estado: <strong>Todos</strong>, <strong>Pendientes</strong>, <strong>Enviadas</strong>, <strong>Con Error</strong>.</li>
+<li><strong>Exportar CSV</strong> para descargar los datos.</li>
+<li><strong>Actualizar</strong> para refrescar.</li>
+<li>Paginación para navegar por las páginas.</li>
+</ul>
+<hr>
+<h2 id="13-odc-con-errores-mabel-trading">13. ODC con Errores (MABEL TRADING)</h2>
+<p><strong>Ruta:</strong> Dashboard → Información Pedidos y ODC → <strong>ODC con Errores</strong></p>
+<h3 id="131-descripci%C3%B3n">13.1 Descripción</h3>
+<p>Lista de órdenes de compra que no se pudieron enviar a SAP, generalmente por SKUs no homologados o errores de SAP.</p>
+<h3 id="132-pasos-para-corregir">13.2 Pasos para corregir</h3>
+<ol>
+<li>Revise la tabla: OC ID, Proveedor, Fecha, Mensaje de error, Código de error.</li>
+<li>Resuelva el problema en <strong>Homologaciones</strong> si el error es de SKU.</li>
+<li>Vuelva a intentar el envío desde <strong>ODC a SAP</strong> o <strong>Procesos de integración</strong>.</li>
+</ol>
+<hr>
+<h2 id="14-reporte-de-diferencias-mabel-trading">14. Reporte de Diferencias (MABEL TRADING)</h2>
+<p><strong>Ruta:</strong> Dashboard → Información Pedidos y ODC → <strong>Reporte de Diferencias</strong></p>
+<h3 id="141-descripci%C3%B3n">14.1 Descripción</h3>
+<p>Muestra las diferencias entre lo solicitado en el pedido y lo confirmado por el proveedor.</p>
+<h3 id="142-pasos">14.2 Pasos</h3>
+<ol>
+<li>Ingrese el <strong>número de pedido</strong>.</li>
+<li>Presione <strong>Enter</strong> o haga clic en <strong>Buscar</strong>.</li>
+<li>Verá el reporte con:
+<ul>
+<li>Diferencias por producto.</li>
+<li>Cantidades solicitadas vs confirmadas.</li>
+</ul>
+</li>
+<li>Use <strong>Exportar</strong> (si está disponible) para descargar.</li>
+</ol>
+<hr>
+<h2 id="15-listado-pedidos-originales-mabel--el-rayo">15. Listado Pedidos Originales (MABEL / EL RAYO)</h2>
+<p><strong>Ruta:</strong> Dashboard → Información Pedidos y ODC → <strong>Listado Pedidos Originales</strong></p>
+<h3 id="151-descripci%C3%B3n">15.1 Descripción</h3>
+<p>Muestra los archivos Excel originales cargados en el sistema (storage).</p>
+<h3 id="152-acciones">15.2 Acciones</h3>
+<ul>
+<li>Ver la lista de archivos.</li>
+<li>Descargar.</li>
+<li>Eliminar (según permisos).</li>
+</ul>
+<hr>
+<h2 id="16-detalle-del-pedido--acciones-comunes">16. Detalle del Pedido — Acciones comunes</h2>
+<p>En el detalle de un pedido (accesible desde Listado, Gestionar Pedido, Redistribución, etc.) encontrará:</p>
+<h3 id="161-botones-frecuentes">16.1 Botones frecuentes</h3>
+<table>
+<thead>
+<tr>
+<th>Botón</th>
+<th>Cuándo aparece</th>
+<th>Acción</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Confirmar</strong></td>
+<td>EL RAYO, pedido en estado apropiado</td>
+<td>Crear respuesta del proveedor</td>
+</tr>
+<tr>
+<td><strong>Generar ODC</strong></td>
+<td>Pedido con redistribución confirmada</td>
+<td>Generar orden de compra</td>
+</tr>
+<tr>
+<td><strong>Confirmar Redistribución</strong></td>
+<td>MABEL, pedido con redistribución editable</td>
+<td>Guardar redistribución</td>
+</tr>
+<tr>
+<td><strong>Despachar y Facturar</strong></td>
+<td>Pedido en CONFIRMADO_ENVIADO</td>
+<td>Marcar para despacho</td>
+</tr>
+<tr>
+<td><strong>Finalizar</strong></td>
+<td>Pedido en Despachar y Facturar</td>
+<td>Marcar como finalizado</td>
+</tr>
+<tr>
+<td><strong>Descargar Plano MBA</strong></td>
+<td>Según permisos</td>
+<td>Descargar archivo de exportación</td>
+</tr>
+<tr>
+<td><strong>Descargar Pedido</strong></td>
+<td>Según permisos</td>
+<td>Descargar datos del pedido</td>
+</tr>
+<tr>
+<td><strong>Descargar CSV</strong></td>
+<td>Según permisos</td>
+<td>Exportar a CSV</td>
+</tr>
+</tbody>
+</table>
+<h3 id="162-informaci%C3%B3n-mostrada">16.2 Información mostrada</h3>
+<ul>
+<li><strong>Cabecera</strong>: número de pedido, proveedor, fechas, estado.</li>
+<li><strong>Productos</strong>: SKU, descripción, cantidades, costos.</li>
+<li><strong>Redistribución por tienda</strong>: cantidades por tienda (editable para MABEL, solo lectura para EL RAYO).</li>
+</ul>
+<hr>
+<h2 id="17-consejos-y-buenas-pr%C3%A1cticas">17. Consejos y buenas prácticas</h2>
+<ol>
+<li><strong>Auto-actualizar</strong>: Active esta opción en listados largos para mantener la información actualizada.</li>
+<li><strong>Filtros</strong>: Use &quot;Solo pedidos que requieren acción&quot; para centrarse en lo pendiente.</li>
+<li><strong>Número de pedido</strong>: El formato típico es <code>P-12.48 - 12 - 2025</code>; respete espacios y guiones al buscar.</li>
+<li><strong>Homologaciones</strong>: Revise periódicamente ODC con Errores y Homologaciones para evitar bloqueos en el envío a SAP.</li>
+<li><strong>Redistribución</strong>: Confirme la redistribución solo cuando las cantidades por tienda estén correctas.</li>
+</ol>
+<hr>
+<h2 id="18-resoluci%C3%B3n-de-problemas">18. Resolución de problemas</h2>
+<table>
+<thead>
+<tr>
+<th>Problema</th>
+<th>Posible solución</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>No veo el botón X</td>
+<td>Verifique que su usuario tiene el permiso adecuado (EL RAYO o MABEL TRADING).</td>
+</tr>
+<tr>
+<td>Error al cargar plantilla</td>
+<td>Verifique formato Excel esperado y que el archivo no esté corrupto.</td>
+</tr>
+<tr>
+<td>ODC con error de SKU</td>
+<td>Vaya a Homologaciones y complete la homologación del SKU.</td>
+</tr>
+<tr>
+<td>Pedido no aparece en listado</td>
+<td>Revise filtros (estado, fechas). Pruebe con &quot;Solo pedidos que requieren acción&quot; desmarcado.</td>
+</tr>
+<tr>
+<td>Botón Confirmar deshabilitado</td>
+<td>El pedido puede estar ya confirmado; revise el estado.</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2 id="19-glosario">19. Glosario</h2>
+<table>
+<thead>
+<tr>
+<th>Término</th>
+<th>Definición</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>ODC</strong></td>
+<td>Orden de Compra</td>
+</tr>
+<tr>
+<td><strong>SAP</strong></td>
+<td>Sistema ERP corporativo</td>
+</tr>
+<tr>
+<td><strong>MBA3</strong></td>
+<td>Sistema de gestión de pedidos</td>
+</tr>
+<tr>
+<td><strong>SKU</strong></td>
+<td>Código único de producto</td>
+</tr>
+<tr>
+<td><strong>Homologación</strong></td>
+<td>Correspondencia entre un SKU MBA3 y un SKU SAP</td>
+</tr>
+<tr>
+<td><strong>Redistribución</strong></td>
+<td>Asignación de cantidades por tienda</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<p><em>Documento generado para el módulo MBA3-consultas de SCNexus. Consulte con el administrador del sistema ante dudas sobre permisos o configuración.</em></p>
+
+</body>
+</html>

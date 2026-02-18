@@ -20,6 +20,7 @@
 
 import { ref, onUnmounted, type Ref } from 'vue'
 import { useToast } from '@/composables/useToast'
+import { useAuthStore } from '@/stores/auth'
 
 /** Estructura de una notificación recibida del backend */
 export interface SSENotification {
@@ -56,6 +57,7 @@ const MAX_RECONNECT_ATTEMPTS = 10
 
 export function useNotificaciones() {
   const toast = useToast()
+  const authStore = useAuthStore()
 
   /** Estado de la conexión SSE */
   const isConnected = ref(false)
@@ -215,10 +217,20 @@ export function useNotificaciones() {
 
   /**
    * Procesa una notificación recibida y muestra un toast.
+   * Solo muestra si el usuario actual tiene el permiso indicado en target_permission,
+   * para soportar envío por permiso (mismo permiso + permiso opuesto) desde el backend.
    */
   function handleNotification(notification: SSENotification) {
     if (import.meta.env.DEV) {
       console.log('📢 [Notificaciones] Notificación recibida:', notification)
+    }
+
+    const targetPermission = notification.target_permission
+    if (targetPermission && !authStore.hasPermission(targetPermission)) {
+      if (import.meta.env.DEV) {
+        console.debug('📢 [Notificaciones] Omitida (usuario sin permiso)', targetPermission)
+      }
+      return
     }
 
     // Actualizar ref global para que las vistas puedan reaccionar
