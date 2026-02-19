@@ -171,8 +171,9 @@
                     </div>
                   </button>
 
-                  <!-- ODC con Errores -->
+                  <!-- ODC con Errores (solo visible en desarrollo; oculto en producción) -->
                   <button
+                    v-if="isDev"
                     @click="$router.push('/mba3-consultas/odc-errores')"
                     class="bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-600 p-4 hover:border-gray-300 dark:hover:border-gray-500 hover:shadow-sm transition-all text-left"
                   >
@@ -192,8 +193,9 @@
                     </div>
                   </button>
 
-                  <!-- Reporte de Diferencias -->
+                  <!-- Reporte de Diferencias (solo visible en desarrollo; oculto en producción) -->
                   <button
+                    v-if="isDev"
                     @click="$router.push('/mba3-consultas/reporte-diferencias')"
                     class="bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-600 p-4 hover:border-gray-300 dark:hover:border-gray-500 hover:shadow-sm transition-all text-left"
                   >
@@ -393,6 +395,9 @@ const router = useRouter()
 const authStore = useAuthStore()
 const ordenesCompraStore = useOrdenesCompraStore()
 const toast = useToast()
+
+/** Solo en desarrollo: mostrar botones ODC con Errores y Reporte de Diferencias (ocultos en producción) */
+const isDev = import.meta.env.DEV
 
 const loadingDespachos = ref(false)
 const odcConsultasAbierto = ref(false)

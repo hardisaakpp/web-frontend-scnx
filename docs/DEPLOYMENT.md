@@ -72,11 +72,14 @@ Esto iniciará un servidor local para probar el build de producción antes del d
 
 **Ejemplo de configuración Nginx:**
 
+El archivo de sitio suele estar en `/etc/nginx/sites-available/scnexus`. Para editarlo: `sudo nano /etc/nginx/sites-available/scnexus`.
+
 ```nginx
 server {
     listen 80;
     server_name scnexus.tu-dominio.com;
     
+    # Ruta donde Nginx sirve el frontend (ajustar según el servidor, ej. /storage/scnexus/dist o /var/www/scnexus/dist)
     root /var/www/scnexus/dist;
     index index.html;
     
@@ -97,6 +100,41 @@ server {
     add_header X-XSS-Protection "1; mode=block" always;
 }
 ```
+
+#### Procedimiento en servidor de producción (Nginx)
+
+Pasos habituales en el servidor donde está el proyecto y Nginx:
+
+1. **Entrar al directorio del proyecto** (ruta donde está el repo, ej. `/storage/scnexus/`):
+
+   ```bash
+   cd /storage/scnexus/
+   ```
+
+2. **Generar el build de producción:**
+
+   ```bash
+   npm run build
+   ```
+
+   Los archivos se generan en `dist/`.
+
+3. **Reemplazar el contenido desplegado:** copiar o reemplazar el contenido de `dist/` en la ruta que tenga configurada `root` en Nginx para este sitio (la misma ruta indicada en `/etc/nginx/sites-available/scnexus`). Si el `root` apunta a ese mismo proyecto, suele ser reemplazar la carpeta `dist/` del proyecto; si apunta a otra ruta, copiar ahí el contenido de `dist/`.
+
+4. **Comprobar la configuración de Nginx y recargar:**
+
+   ```bash
+   sudo nginx -t
+   sudo systemctl reload nginx
+   ```
+
+5. **Si necesitas cambiar la configuración del sitio:**
+
+   ```bash
+   sudo nano /etc/nginx/sites-available/scnexus
+   ```
+
+   Después de guardar, volver a ejecutar `sudo nginx -t` y `sudo systemctl reload nginx`.
 
 ### Opción 2: CDN / Hosting Estático
 
@@ -143,14 +181,15 @@ Asegúrate de configurar los siguientes headers en tu servidor:
 
 ## 🔄 Actualización
 
-Para actualizar la aplicación en producción:
+Para actualizar la aplicación en producción (con Nginx en servidor):
 
-1. Hacer pull de los últimos cambios
-2. Actualizar dependencias: `npm ci`
-3. Verificar `.env.production`
-4. Ejecutar build: `npm run build`
-5. Desplegar nueva versión de `dist/`
-6. Verificar que todo funciona correctamente
+1. En el servidor, ir al directorio del proyecto: `cd /storage/scnexus/` (o la ruta donde esté el repo).
+2. Hacer pull de los últimos cambios y, si aplica, actualizar dependencias: `npm ci`.
+3. Verificar `.env.production`.
+4. Ejecutar build: `npm run build`.
+5. Reemplazar el contenido desplegado: copiar el contenido de `dist/` a la ruta que tenga configurada `root` en Nginx para este sitio.
+6. Comprobar y recargar Nginx: `sudo nginx -t` y `sudo systemctl reload nginx`.
+7. Verificar que la aplicación funciona correctamente en el navegador.
 
 ## 📝 Notas Importantes
 
@@ -181,5 +220,5 @@ Para actualizar la aplicación en producción:
 
 ---
 
-**Última actualización:** Enero 2026  
+**Última actualización:** Febrero 2026  
 **Versión:** 2.0.0
