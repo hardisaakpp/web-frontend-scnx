@@ -39,18 +39,8 @@
           </div>
         </div>
         
-        <!-- Filtros rápidos -->
+        <!-- Acciones (Columnas) -->
         <div class="flex items-center gap-2">
-          <button
-            @click="showAdvancedFilters = !showAdvancedFilters"
-            class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium flex items-center gap-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-            </svg>
-            Filtros
-          </button>
-          
           <button
             @click="showColumnSelector = !showColumnSelector"
             class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium flex items-center gap-2 relative bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
@@ -101,45 +91,6 @@
             />
             <span class="text-sm text-gray-700 dark:text-gray-200 transition-colors duration-300">{{ column.label }}</span>
           </label>
-        </div>
-      </div>
-      
-      <!-- Filtros avanzados -->
-      <div v-if="showAdvancedFilters" class="mt-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600 transition-colors duration-300">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1 transition-colors duration-300">Fecha desde</label>
-            <input
-              v-model="filtroFechaDesde"
-              type="date"
-              class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-300"
-            />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1 transition-colors duration-300">Fecha hasta</label>
-            <input
-              v-model="filtroFechaHasta"
-              type="date"
-              class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-300"
-            />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1 transition-colors duration-300">Número ODC SAP</label>
-            <input
-              v-model="filtroNumeroOC"
-              type="text"
-              placeholder="Buscar por número ODC SAP"
-              class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors duration-300"
-            />
-          </div>
-        </div>
-        <div class="mt-4 flex justify-end gap-2">
-          <button
-            @click="limpiarFiltros"
-            class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors duration-300"
-          >
-            Limpiar filtros
-          </button>
         </div>
       </div>
     </div>
@@ -268,10 +219,10 @@
               <td v-else-if="columnKey === 'fecha_generacion'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 transition-colors duration-300">
                 <div>{{ formatDate(oc.fecha_generacion) }}</div>
               </td>
-              <!-- Fecha Creación -->
+              <!-- Fecha Creación (con hora) -->
               <td v-else-if="columnKey === 'created_at'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 transition-colors duration-300">
                 <div v-if="oc.created_at" class="space-y-0.5">
-                  <div>{{ formatDate(oc.created_at) }}</div>
+                  <div>{{ formatDateTime(oc.created_at) }}</div>
                   <div class="text-xs text-gray-500 dark:text-gray-400 transition-colors duration-300">{{ getTimeAgo(oc.created_at) }}</div>
                 </div>
                 <span v-else class="text-gray-400 dark:text-gray-500 italic transition-colors duration-300">-</span>
@@ -500,7 +451,6 @@ const searchQuery = ref('')
 const filtroFechaDesde = ref('')
 const filtroFechaHasta = ref('')
 const filtroNumeroOC = ref('')
-const showAdvancedFilters = ref(false)
 const showColumnSelector = ref(false)
 
 // Columnas disponibles
@@ -903,7 +853,6 @@ function limpiarFiltros() {
   filtroFechaDesde.value = ''
   filtroFechaHasta.value = ''
   filtroNumeroOC.value = ''
-  showAdvancedFilters.value = false
 }
 
 
@@ -1073,6 +1022,22 @@ function formatDate(dateString: string): string {
     const year = date.getFullYear()
     
     return `${day}/${month}/${year}`
+  } catch {
+    return dateString
+  }
+}
+
+function formatDateTime(dateString: string): string {
+  if (!dateString) return '-'
+  try {
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) return dateString
+    const day = String(date.getDate()).padStart(2, '0')
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const year = date.getFullYear()
+    const hours = String(date.getHours()).padStart(2, '0')
+    const minutes = String(date.getMinutes()).padStart(2, '0')
+    return `${day}/${month}/${year} ${hours}:${minutes}`
   } catch {
     return dateString
   }
