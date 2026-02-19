@@ -583,10 +583,7 @@ function limpiarColumnasModificadasEnStorage() {
   }
 }
 
-// ⭐ EXTENSIÓN DEL TIPO: Agregar comentario al tipo PedidoDetalle localmente
-// La interfaz ColumnConfig ahora está importada desde utils/formatters
-
-// ⭐ CAMBIO: Array estático en lugar de ref
+// Por defecto: #, CÓDIGO, DESCRIPCIÓN, COSTO UNIT., TOTAL, COMENTARIO (dev y prod)
 const availableColumns: ColumnConfig[] = [
   { key: 'numero', label: '#', visible: true, align: 'center', format: 'number', fixed: true },
   { key: 'codigo_interno', label: 'Código', visible: true, align: 'left', format: 'text' },

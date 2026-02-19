@@ -1,6 +1,6 @@
 <template>
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden border border-gray-200 dark:border-gray-700 transition-colors duration-300">
-    <!-- Header con búsqueda y acciones -->
+    <!-- Header con acciones -->
     <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 transition-colors duration-300">
       <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <!-- Título y contador -->
@@ -9,37 +9,8 @@
         </div>
       </div>
       
-      <!-- Búsqueda y filtros -->
+      <!-- Acciones (Columnas) -->
       <div class="mt-4 flex flex-col md:flex-row gap-3">
-        <!-- Búsqueda -->
-        <div class="flex-1">
-          <div class="relative">
-            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            <input
-              v-model="searchQuery"
-              type="text"
-              placeholder="Buscar en todos los campos..."
-              class="block w-full pl-10 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors duration-300"
-              :class="searchQuery ? 'pr-10' : 'pr-3'"
-            />
-            <button
-              v-if="searchQuery"
-              @click="searchQuery = ''"
-              class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition-colors"
-              title="Limpiar búsqueda"
-            >
-              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
-        
-        <!-- Acciones (Columnas) -->
         <div class="flex items-center gap-2">
           <button
             @click="showColumnSelector = !showColumnSelector"
@@ -100,7 +71,7 @@
       <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
       </svg>
-      <p class="mt-2 text-sm">{{ searchQuery ? 'No se encontraron órdenes con los filtros aplicados' : 'No se encontraron órdenes de compra' }}</p>
+      <p class="mt-2 text-sm">No se encontraron órdenes de compra</p>
     </div>
 
     <div v-else class="overflow-x-auto">
@@ -446,25 +417,24 @@ const detallesExpandidos = ref<Set<string>>(new Set())
 const detallesPorOC = ref<Record<string, DetalleOC[]>>({})
 const loadingDetalles = ref<Record<string, boolean>>({})
 
-// Búsqueda y filtros
-const searchQuery = ref('')
+// Filtros
 const filtroFechaDesde = ref('')
 const filtroFechaHasta = ref('')
 const filtroNumeroOC = ref('')
 const showColumnSelector = ref(false)
 
-// Columnas disponibles
+// Columnas disponibles. Por defecto: #, DETALLES, NÚMERO PEDIDO, FECHA CREACIÓN, ESTADO, NÚMERO ODC SAP, RESPUESTA SAP, ACCIONES
 const availableColumns = [
-  { key: 'oc_id', label: 'ODC ID', default: true },
-  { key: 'origen', label: 'Origen', default: true },  // ⭐ NUEVO - Pedido vs Despacho
-  { key: 'referencia_despacho', label: 'Referencia Despacho', default: true },
-  { key: 'fecha_generacion', label: 'Fecha Generación', default: true },
-  { key: 'created_at', label: 'Fecha Creación', default: props.readOnly || false },
-  { key: 'fecha_procesado', label: 'Fecha Procesado', default: props.readOnly || false },
+  { key: 'oc_id', label: 'ODC ID', default: false },
+  { key: 'origen', label: 'Origen', default: false },
+  { key: 'referencia_despacho', label: 'Número Pedido', default: true },
+  { key: 'fecha_generacion', label: 'Fecha Generación', default: false },
+  { key: 'created_at', label: 'Fecha Creación', default: true },
+  { key: 'fecha_procesado', label: 'Fecha Procesado', default: false },
   { key: 'estado', label: 'Estado', default: true },
-  { key: 'numero_oc_sap', label: 'Número ODC SAP', default: false },
-  { key: 'doc_entry', label: 'DocEntry SAP', default: false },  // ⭐ NUEVO - Para trazabilidad
-  { key: 'respuesta_sap', label: 'Respuesta SAP', default: props.readOnly || false },
+  { key: 'numero_oc_sap', label: 'Número ODC SAP', default: true },
+  { key: 'doc_entry', label: 'DocEntry SAP', default: false },
+  { key: 'respuesta_sap', label: 'Respuesta SAP', default: true },
 ]
 
 // Configuración de columnas usando composable híbrido
@@ -612,47 +582,6 @@ const filteredOrdenes = computed(() => {
     return []
   }
   let filtered = [...props.ordenesCompra]
-  
-  // Búsqueda por texto en todos los campos
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(oc => {
-      // Función auxiliar para convertir valores a string y buscar
-      const searchInField = (value: any): boolean => {
-        if (value === null || value === undefined) return false
-        return String(value).toLowerCase().includes(query)
-      }
-      
-      // Función auxiliar para formatear fechas y buscar
-      const searchInDate = (dateString: string | null | undefined): boolean => {
-        if (!dateString) return false
-        try {
-          const date = new Date(dateString)
-          const formattedDate = formatDate(dateString).toLowerCase()
-          const timeAgo = getTimeAgo(dateString).toLowerCase()
-          return formattedDate.includes(query) || timeAgo.includes(query) || dateString.toLowerCase().includes(query)
-        } catch {
-          return dateString.toLowerCase().includes(query)
-        }
-      }
-      
-      return (
-        searchInField(oc.oc_id) ||
-        searchInField(oc.referencia_despacho) ||
-        searchInField(oc.numero_oc_sap) ||
-        searchInField(oc.respuesta_sap) ||
-        searchInField(oc.estado) ||
-        searchInField(oc.proveedor) ||
-        searchInField(oc.despacho_id) ||
-        searchInDate(oc.fecha_generacion) ||
-        searchInDate(oc.fecha_procesado) ||
-        searchInDate(oc.created_at) ||
-        searchInField(oc.error_message) ||
-        searchInField(oc.error_code) ||
-        searchInField(oc.error_source)
-      )
-    })
-  }
   
   // Filtro por fecha
   if (filtroFechaDesde.value) {
@@ -849,7 +778,6 @@ function sortBy(field: string) {
 }
 
 function limpiarFiltros() {
-  searchQuery.value = ''
   filtroFechaDesde.value = ''
   filtroFechaHasta.value = ''
   filtroNumeroOC.value = ''
