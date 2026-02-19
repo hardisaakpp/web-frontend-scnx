@@ -213,7 +213,10 @@
                   column.key === 'progreso' ? 'text-center min-w-[140px]' :
                   column.key === 'estado' ? 'text-center' :
                   column.key === 'acciones' ? 'text-center' :
-                  'text-right'
+                  'text-right',
+                  column.key === 'expand' ? 'sticky left-0 z-10 bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[4px_0_6px_-2px_rgba(0,0,0,0.2)]' : '',
+                  column.key === 'codigo' ? 'sticky left-8 z-10 min-w-[120px] bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[4px_0_6px_-2px_rgba(0,0,0,0.2)]' : '',
+                  column.key === 'diferencia' ? 'sticky right-0 z-10 min-w-[120px] bg-gray-50 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.2)]' : ''
                 ]"
               >
                 {{ column.label }}
@@ -251,7 +254,10 @@
                     column.key === 'progreso' ? 'whitespace-nowrap' :
                     column.key === 'estado' ? 'whitespace-nowrap text-center' :
                     column.key === 'acciones' ? 'whitespace-nowrap text-center' :
-                    ''
+                    '',
+                    column.key === 'expand' ? 'sticky left-0 z-10 border-r border-gray-200 dark:border-gray-700 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[4px_0_6px_-2px_rgba(0,0,0,0.2)] ' + (producto.error ? 'bg-gray-100 dark:bg-gray-700/30' : tieneModificaciones(producto) ? 'bg-amber-50 dark:bg-amber-900/20' : producto.diferencia === 0 ? 'bg-green-50 dark:bg-green-900/30' : 'bg-red-50 dark:bg-red-900/30') : '',
+                    column.key === 'codigo' ? 'sticky left-8 z-10 min-w-[120px] border-r border-gray-200 dark:border-gray-700 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[4px_0_6px_-2px_rgba(0,0,0,0.2)] ' + (producto.error ? 'bg-gray-100 dark:bg-gray-700/30' : tieneModificaciones(producto) ? 'bg-amber-50 dark:bg-amber-900/20' : producto.diferencia === 0 ? 'bg-green-50 dark:bg-green-900/30' : 'bg-red-50 dark:bg-red-900/30') : '',
+                    column.key === 'diferencia' ? 'sticky right-0 z-10 min-w-[120px] border-l border-gray-200 dark:border-gray-700 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.2)] ' + (producto.error ? 'bg-gray-100 dark:bg-gray-700/30' : tieneModificaciones(producto) ? 'bg-amber-50 dark:bg-amber-900/20' : producto.diferencia === 0 ? 'bg-green-50 dark:bg-green-900/30' : 'bg-red-50 dark:bg-red-900/30') : ''
                   ]"
                 >
                   <!-- Columna Expand -->
