@@ -19,6 +19,7 @@
           Buscar SKU
         </button>
         <button
+          v-if="isDev"
           @click="sincronizarHomologaciones"
           :disabled="store.loading"
           class="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center gap-2"
@@ -416,6 +417,9 @@ import type { SkuHomologacion, SkuHomologacionUpdateRequest } from '../types'
 const route = useRoute()
 const store = useHomologacionesStore()
 const toast = useToast()
+
+// Mostrar botón Sincronizar solo en desarrollo; oculto en producción
+const isDev = import.meta.env.DEV
 
 // Estado local
 const skuSearch = ref('')
