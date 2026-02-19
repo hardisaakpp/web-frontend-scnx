@@ -512,8 +512,8 @@
       </div>
     </div>
     
-    <!-- Barra de Acciones Sticky Bottom -->
-    <div v-if="pedidoValue?.respuesta_proveedor" class="sticky bottom-0 z-[5] bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-6 py-4 shadow-lg">
+    <!-- Barra de Acciones Sticky Bottom: z-[50] para quedar por encima de la columna sticky Diferencia (z-10) -->
+    <div v-if="pedidoValue?.respuesta_proveedor" class="sticky bottom-0 z-[50] bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-6 py-4 shadow-lg">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -554,8 +554,14 @@
             {{ guardandoRedistribucionValue ? 'Guardando...' : 'Guardar Borrador' }}
           </button>
           
-          <!-- Botón Enviar ODC a SAP (proceso completo: redistribución + ODC + SAP) -->
-          <div v-if="showEnviarOdcSap" class="relative group">
+          <!-- Botón Enviar ODC a SAP: tooltip con Teleport a body para que siempre quede por encima de la columna Diferencia -->
+          <div
+            v-if="showEnviarOdcSap"
+            ref="enviarOdcSapTriggerRef"
+            class="relative"
+            @mouseenter="mostrarTooltipEnviarOdcSap = true; actualizarPosicionTooltipEnviarOdcSap()"
+            @mouseleave="mostrarTooltipEnviarOdcSap = false"
+          >
             <button
               @click="$emit('enviar-odc-sap')"
               :disabled="!puedeConfirmarRedistribucion || enviandoOdcSapValue || confirmarDeshabilitadoPorEstado"
@@ -570,16 +576,19 @@
               </svg>
               {{ enviandoOdcSapValue ? 'Enviando a SAP...' : 'Enviar ODC a SAP' }}
             </button>
-            <!-- Tooltip explicativo -->
-            <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-72 p-3 bg-gray-900 dark:bg-gray-800 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 pointer-events-none">
-              <div class="font-semibold mb-1">Generar Orden de Compra y Solicitudes de Transferencia</div>
-              <div class="text-gray-300">
-                Este proceso generará la Orden de Compra en SAP, creará las Solicitudes de Transferencia por tienda, realizará validaciones y conversiones de unidades, y enviará notificaciones al personal de El Rayo.
+            <Teleport to="body">
+              <div
+                v-show="mostrarTooltipEnviarOdcSap"
+                class="fixed w-72 p-3 bg-gray-900 dark:bg-gray-800 text-white text-xs rounded-lg shadow-xl border border-gray-700 pointer-events-none transition-opacity duration-200 z-[9999]"
+                :style="estiloTooltipEnviarOdcSap"
+              >
+                <div class="font-semibold mb-1">Generar Orden de Compra y Solicitudes de Transferencia</div>
+                <div class="text-gray-300">
+                  Este proceso generará la Orden de Compra en SAP, creará las Solicitudes de Transferencia por tienda, realizará validaciones y conversiones de unidades, y enviará notificaciones al personal de El Rayo.
+                </div>
+                <div class="absolute top-full left-1/2 -translate-x-1/2 mt-0 border-4 border-transparent border-t-gray-900 dark:border-t-gray-800"></div>
               </div>
-              <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-full">
-                <div class="border-4 border-transparent border-t-gray-900 dark:border-t-gray-800"></div>
-              </div>
-            </div>
+            </Teleport>
           </div>
         </div>
       </div>
@@ -588,7 +597,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted, watch, type Ref } from 'vue'
+import { computed, ref, nextTick, onMounted, onUnmounted, watch, type Ref } from 'vue'
 import type { PedidoCompleto } from '../types'
 import type { ProductoRedistribucion, DistribucionTiendaEditada } from '../utils/redistribucionHelpers'
 import { formatNumber, formatCurrency, type ColumnConfig } from '../utils/formatters'
@@ -642,6 +651,22 @@ const modoVista = ref<'compacta' | 'excel'>('excel')
 
 // ⭐ Gestión de columnas visibles en la tabla
 const showColumnSelector = ref(false)
+
+// Tooltip "Enviar ODC a SAP": Teleport a body para que quede siempre sobre la columna Diferencia
+const enviarOdcSapTriggerRef = ref<HTMLElement | null>(null)
+const mostrarTooltipEnviarOdcSap = ref(false)
+const estiloTooltipEnviarOdcSap = ref<{ left: string; bottom: string }>({ left: '0', bottom: '0' })
+function actualizarPosicionTooltipEnviarOdcSap() {
+  nextTick(() => {
+    const el = enviarOdcSapTriggerRef.value
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    const tooltipWidth = 288 // w-72 = 18rem
+    const left = Math.max(8, Math.min(window.innerWidth - tooltipWidth - 8, rect.left + rect.width / 2 - tooltipWidth / 2))
+    const bottom = window.innerHeight - rect.top + 12
+    estiloTooltipEnviarOdcSap.value = { left: `${left}px`, bottom: `${bottom}px` }
+  })
+}
 
 // Definir columnas disponibles para la tabla de redistribución
 const availableColumns: ColumnConfig[] = [
