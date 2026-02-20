@@ -789,6 +789,8 @@ export interface UploadPlantillaResponse {
     uploaded_by: string
     uploaded_at: string
   }
+  /** Códigos de producto corregidos al aplicar sugerencias (para resaltar celdas en la tabla) */
+  correcciones_aplicadas?: Array<{ codigo_original: string; codigo_corregido: string }>
 }
 
 // ========== Crear Pedido Manual (HU-01) ==========

@@ -57,7 +57,7 @@ export interface UploadErrorInfo {
 }
 
 export function useFileUpload(options: {
-  onUploadSuccess?: (numeroPedido: string) => void | Promise<void>
+  onUploadSuccess?: (numeroPedido: string, response?: UploadPlantillaResponse) => void | Promise<void>
   onUploadError?: (error: UploadErrorInfo) => void
   loadPedido?: () => Promise<void>
   pedido?: Ref<PedidoCompleto | null>
@@ -893,7 +893,7 @@ export function useFileUpload(options: {
       
       // Llamar callback de éxito si existe
       if (numeroPedido && options?.onUploadSuccess) {
-        await options.onUploadSuccess(numeroPedido)
+        await options.onUploadSuccess(numeroPedido, response)
       }
       
       // Redirigir o recargar según corresponda
@@ -1032,7 +1032,7 @@ export function useFileUpload(options: {
       
       // Llamar callback de éxito si existe
       if (numeroPedido && options?.onUploadSuccess) {
-        await options.onUploadSuccess(numeroPedido)
+        await options.onUploadSuccess(numeroPedido, response)
       }
       
       // Redirigir o recargar según corresponda

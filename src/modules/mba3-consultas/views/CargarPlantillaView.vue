@@ -443,13 +443,14 @@
                     :class="[
                       'px-4 py-4 text-sm',
                       column.align === 'right' ? 'text-right whitespace-nowrap' : column.align === 'center' ? 'text-center whitespace-nowrap' : '',
-                      // ⭐ Resaltado persistente para columnas modificadas (no aplicar a columna numero)
                       isColumnaModificada(detalle.pedido_detalle_id, column.key) && column.key !== 'numero'
-                        ? 'bg-amber-50 dark:bg-amber-900/20 border-l-2 border-amber-500 dark:border-amber-400' 
+                        ? 'bg-amber-50 dark:bg-amber-900/20 border-l-2 border-amber-500 dark:border-amber-400'
+                        : '',
+                      column.key === 'codigo_interno' && codigosCorregidosHighlight.has(detalle.codigo_interno)
+                        ? 'bg-emerald-50 dark:bg-emerald-900/25 border-l-2 border-emerald-500 dark:border-emerald-400'
                         : '',
                       column.key === 'numero' ? 'font-medium text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/50' :
                       column.key === 'codigo_interno' ? 'font-medium text-gray-900 dark:text-white whitespace-nowrap' :
-                      // ⭐ En Cargar Plantilla, los campos costo_doc_sin_iva, total y comentario NO son editables
                       column.key === 'total' ? 'font-medium text-gray-900 dark:text-white' :
                       column.key === 'descripcion_sap' ? 'text-gray-900 dark:text-white' :
                       column.key === 'costo_doc_sin_iva' ? '' :
@@ -506,7 +507,7 @@
                     ]"
                   >
                     <template v-if="column.key === 'numero'">
-                      <!-- Dejar vacío para la columna de numeración -->
+                      <span class="sr-only"></span>
                     </template>
                     <template v-else-if="column.key === 'costo_doc_sin_iva'">
                       {{ formatCurrency(totalesCostoUnitario) }}
@@ -521,7 +522,7 @@
                       <span class="text-gray-600 dark:text-gray-400 font-medium">TOTALES</span>
                     </template>
                     <template v-else>
-                      <!-- Dejar vacío para otras columnas -->
+                      <span class="sr-only"></span>
                     </template>
                   </td>
                 </tr>
@@ -1214,12 +1215,20 @@ const canGenerarOC = computed(() => {
 
 // Funciones de carga y gestión del pedido ahora están en el composable usePedidoDetalle
 
+// Códigos de producto corregidos al aplicar sugerencias (para resaltar la celda en la tabla)
+const codigosCorregidosHighlight = ref<Set<string>>(new Set())
+
 // Inicializar composable de carga de archivos
 const fileUploadComposable = useFileUpload({
   pedido,
   loadPedido: () => pedidoDetalle.loadPedido(),
   redirectToCargarPlantilla: true, // Tras subir plantilla, permanecer en /mba3-consultas/cargar-plantilla/:id
-  onUploadSuccess: async (numeroPedido) => {
+  onUploadSuccess: async (numeroPedido, response) => {
+    if (response?.correcciones_aplicadas?.length) {
+      codigosCorregidosHighlight.value = new Set(response.correcciones_aplicadas.map(c => c.codigo_corregido))
+    } else {
+      codigosCorregidosHighlight.value = new Set()
+    }
     if (numeroPedido && numeroPedido !== pedido.value?.cabecera.numero_pedido) {
       await pedidoDetalle.loadPedido()
     }
