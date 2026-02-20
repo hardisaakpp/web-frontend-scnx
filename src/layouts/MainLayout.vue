@@ -264,7 +264,7 @@
       ]"
     >
       <!-- Mobile Header -->
-      <header class="bg-white dark:bg-gray-800 shadow md:hidden sticky top-0 z-10 transition-colors duration-300">
+      <header class="bg-white dark:bg-gray-800 shadow md:hidden sticky top-0 z-30 transition-colors duration-300">
         <div class="px-4 py-3 flex items-center justify-between">
           <button
             @click="isSidebarOpen = !isSidebarOpen"
@@ -286,7 +286,7 @@
       </header>
 
       <!-- Desktop Header -->
-      <header class="hidden md:block bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-10 transition-colors duration-300">
+      <header class="hidden md:block bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-30 transition-colors duration-300">
         <div class="px-6 py-4 flex items-center justify-between">
           <h1 class="text-2xl font-semibold text-gray-800 dark:text-white">
             {{ pageTitle }}
