@@ -258,10 +258,10 @@ const loadAprobacionesContabilidad = async () => {
   const payload = response.data as any
   const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
   const aprobaciones = items.map(normalizeAprobacion)
-    .filter(item => item.nivelAprobacion === 2 && item.estado.toUpperCase() === 'APROBADO')
+    .filter((item: AprobacionItem) => item.nivelAprobacion === 2 && item.estado.toUpperCase() === 'APROBADO')
 
   const map: Record<number, AprobacionItem> = {}
-  aprobaciones.forEach(item => {
+  aprobaciones.forEach((item: AprobacionItem) => {
     const current = map[item.idDetalle]
     if (!current) {
       map[item.idDetalle] = item
@@ -312,7 +312,7 @@ const loadAprobadas = async () => {
     const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
     aprobadas.value = items
       .map(normalizeLiquidacion)
-      .filter(item => item.estado.toUpperCase() === 'APROBADO')
+      .filter((item: LiquidacionItem) => item.estado.toUpperCase() === 'APROBADO')
     openItems.value = {}
     detallesByLiquidacion.value = {}
     detalleLoading.value = {}

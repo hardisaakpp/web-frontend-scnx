@@ -364,8 +364,8 @@ const loadPendientes = async () => {
     const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
     const normalized: AprobacionItem[] = items
       .map(normalizeAprobacion)
-      .filter(item => item.estado.toUpperCase() === 'PENDIENTE')
-      .filter(item => item.nivelAprobacion === 2)
+      .filter((item: AprobacionItem) => item.estado.toUpperCase() === 'PENDIENTE')
+      .filter((item: AprobacionItem) => item.nivelAprobacion === 2)
 
     pendientes.value = normalized
     const detalleIds = normalized.map(item => item.idDetalle)

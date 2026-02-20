@@ -127,7 +127,7 @@ const loadPendientes = async () => {
     const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
     pendientes.value = items
       .map(normalizeLiquidacion)
-      .filter(item => ['SUPERVISION', 'CONTABILIDAD'].includes(item.estado.toUpperCase()))
+      .filter((item: LiquidacionItem) => ['SUPERVISION', 'CONTABILIDAD'].includes(item.estado.toUpperCase()))
   } catch {
     error.value = 'No se pudieron cargar las liquidaciones pendientes.'
   } finally {

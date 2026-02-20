@@ -163,9 +163,16 @@ interface HistorialItem {
 
 interface IntegracionEstadoItem {
   estado: string
-  docEntry?: string
-  docNum?: string
+  docEntry?: string | number
+  docNum?: string | number
   mensaje?: string
+}
+
+/** Respuesta de Slayer al integrar liquidación */
+interface SlayerIntegracionResponse {
+  docEntry?: number
+  docNum?: number
+  message?: string
 }
 
 const loading = ref(false)
@@ -334,10 +341,11 @@ const integrarLiquidacion = async (idLiquidacion: number) => {
       DocumentLines: buildDocumentLines(detalles)
     }
 
-    const response = await slayerApi.post('/LiquidacionesCompras', payload)
-    const docEntry = response.data?.docEntry
-    const docNum = response.data?.docNum
-    const mensaje = response.data?.message || 'Integracion exitosa.'
+    const response = await slayerApi.post<SlayerIntegracionResponse>('/LiquidacionesCompras', payload)
+    const data = response.data as SlayerIntegracionResponse
+    const docEntry = data?.docEntry
+    const docNum = data?.docNum
+    const mensaje = data?.message || 'Integracion exitosa.'
 
     await cajaChicaApi.post('/Integraciones/Compras', {
       idLiquidacion,
@@ -374,8 +382,8 @@ const loadIntegraciones = async (idLiquidaciones: number[]) => {
   const entries: Record<number, IntegracionEstadoItem> = {}
   await Promise.all(idLiquidaciones.map(async id => {
     try {
-      const response = await cajaChicaApi.get(`/Integraciones/Compras/${id}`)
-      const payload = response.data || {}
+      const response = await cajaChicaApi.get<IntegracionEstadoItem>(`/Integraciones/Compras/${id}`)
+      const payload = (response.data || {}) as Partial<IntegracionEstadoItem>
       entries[id] = {
         estado: payload.estado || 'PENDIENTE',
         docEntry: payload.docEntry,
@@ -415,32 +423,32 @@ const loadHistorial = async () => {
 
     const aprobaciones = (Array.isArray(aprobacionesPayload) ? aprobacionesPayload : aprobacionesPayload?.data || [])
       .map(normalizeAprobacion)
-      .filter(item => item.idUsuario === userId)
-      .filter(item => item.nivelAprobacion === 2)
-      .filter(item => ['APROBADO', 'RECHAZADO'].includes(item.estado.toUpperCase()))
+      .filter((item: AprobacionItem) => item.idUsuario === userId)
+      .filter((item: AprobacionItem) => item.nivelAprobacion === 2)
+      .filter((item: AprobacionItem) => ['APROBADO', 'RECHAZADO'].includes(item.estado.toUpperCase()))
 
-    const detalles = (Array.isArray(detallesPayload) ? detallesPayload : detallesPayload?.data || [])
+    const detalles: LiquidacionDetalleItem[] = (Array.isArray(detallesPayload) ? detallesPayload : detallesPayload?.data || [])
       .map(normalizeDetalle)
 
-    const liquidaciones = (Array.isArray(liquidacionesPayload) ? liquidacionesPayload : liquidacionesPayload?.data || [])
+    const liquidaciones: LiquidacionItem[] = (Array.isArray(liquidacionesPayload) ? liquidacionesPayload : liquidacionesPayload?.data || [])
       .map(normalizeLiquidacion)
 
     const detalleMap = new Map<number, LiquidacionDetalleItem>()
-    detalles.forEach(detalle => {
+    detalles.forEach((detalle: LiquidacionDetalleItem) => {
       detalleMap.set(detalle.idDetalle, detalle)
     })
 
     const liquidacionMap = new Map<number, LiquidacionItem>()
-    liquidaciones.forEach(liquidacion => {
+    liquidaciones.forEach((liquidacion: LiquidacionItem) => {
       liquidacionMap.set(liquidacion.idLiquidacion, liquidacion)
     })
 
-    liquidacionesMap.value = liquidaciones.reduce<Record<number, LiquidacionItem>>((acc, liquidacion) => {
+    liquidacionesMap.value = liquidaciones.reduce<Record<number, LiquidacionItem>>((acc: Record<number, LiquidacionItem>, liquidacion: LiquidacionItem) => {
       acc[liquidacion.idLiquidacion] = liquidacion
       return acc
     }, {})
 
-    detallesByLiquidacion.value = detalles.reduce<Record<number, LiquidacionDetalleItem[]>>((acc, detalle) => {
+    detallesByLiquidacion.value = detalles.reduce<Record<number, LiquidacionDetalleItem[]>>((acc: Record<number, LiquidacionDetalleItem[]>, detalle: LiquidacionDetalleItem) => {
       if (!acc[detalle.idLiquidacion]) {
         acc[detalle.idLiquidacion] = []
       }
@@ -448,7 +456,7 @@ const loadHistorial = async () => {
       return acc
     }, {})
 
-    historial.value = aprobaciones.map(aprobacion => {
+    historial.value = aprobaciones.map((aprobacion: AprobacionItem) => {
       const detalle = detalleMap.get(aprobacion.idDetalle)
       const liquidacion = detalle ? liquidacionMap.get(detalle.idLiquidacion) : undefined
       return {

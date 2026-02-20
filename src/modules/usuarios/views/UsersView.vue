@@ -225,7 +225,7 @@ const loadUsers = async () => {
   error.value = ''
   try {
     const response = await api.get('/Users')
-    const payload = response.data
+    const payload = response.data as UserRecord[] | { data?: UserRecord[]; users?: UserRecord[] }
     if (Array.isArray(payload)) {
       users.value = payload
     } else if (Array.isArray(payload?.data)) {
@@ -280,7 +280,7 @@ const openRoles = async (user: UserRecord) => {
   removeSuccess.value = ''
   try {
     const response = await api.get(`/Users/${id}/roles`)
-    const payload = response.data
+    const payload = response.data as unknown[] | { data?: unknown[]; roles?: unknown[] }
     if (Array.isArray(payload)) {
       roles.value = payload.map(normalizeRole).filter(Boolean)
     } else if (Array.isArray(payload?.data)) {
