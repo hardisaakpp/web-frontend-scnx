@@ -1,8 +1,9 @@
 <template>
   <div class="min-h-screen flex items-center justify-center bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
     <div class="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow">
-      <div>
-        <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+      <div class="flex flex-col items-center">
+        <img :src="logoUrl" alt="Logo" class="h-16 w-auto mb-4" />
+        <h2 class="mt-2 text-center text-3xl font-extrabold text-gray-900">
           Iniciar Sesión
         </h2>
       </div>
@@ -58,6 +59,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { LockClosedIcon } from '@heroicons/vue/24/solid'
 import { useAuthStore } from '../stores/auth'
+import logoUrl from '@/assets/logo.png'
 
 const router = useRouter()
 const authStore = useAuthStore()

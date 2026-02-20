@@ -11,7 +11,8 @@
     </button>
 
     <div class="max-w-md w-full bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-gray-900/50 p-8 transition-colors duration-300">
-      <div class="text-center mb-8">
+      <div class="text-center mb-8 flex flex-col items-center">
+        <img :src="logoUrl" alt="Logo" class="h-16 w-auto mb-4" />
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{{ appName }}</h1>
         <p class="text-gray-600 dark:text-gray-400 mt-2">Iniciar Sesión</p>
       </div>
@@ -91,6 +92,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
 import { SunIcon, MoonIcon } from '@heroicons/vue/24/outline'
+import logoUrl from '@/assets/logo.png'
 
 const appName = import.meta.env.VITE_APP_NAME
 const router = useRouter()

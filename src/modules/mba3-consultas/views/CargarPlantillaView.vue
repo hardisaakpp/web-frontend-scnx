@@ -446,7 +446,7 @@
                       isColumnaModificada(detalle.pedido_detalle_id, column.key) && column.key !== 'numero'
                         ? 'bg-amber-50 dark:bg-amber-900/20 border-l-2 border-amber-500 dark:border-amber-400'
                         : '',
-                      column.key === 'codigo_interno' && codigosCorregidosHighlight.has(detalle.codigo_interno)
+                      column.key === 'codigo_interno' && detalle.codigo_interno != null && codigosCorregidosHighlight.has(detalle.codigo_interno)
                         ? 'bg-emerald-50 dark:bg-emerald-900/25 border-l-2 border-emerald-500 dark:border-emerald-400'
                         : '',
                       column.key === 'numero' ? 'font-medium text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/50' :
