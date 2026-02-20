@@ -133,9 +133,9 @@
           <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Conciliación</span>
         </router-link>
 
-        <!-- Gestión ODC SAP: visible con odc.view, odcsap.view o mabel.view (EL RAYO o MABEL TRADING) -->
+        <!-- Gestión ODC SAP: visible con odc.view (canViewOdcSap), odcsap.view (canManageOrder/canViewOrderList) o mabel.view (canViewMabel) -->
         <router-link
-          v-if="hasModuleAccess('mba3-consultas') || hasModuleAccess('mba3')"
+          v-if="authStore.canViewOdcSap || authStore.canManageOrder || authStore.canViewOrderList || authStore.canViewMabel"
           to="/mba3-consultas"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
