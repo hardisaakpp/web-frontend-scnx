@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { Rol, CreateRolDto, UpdateRolDto, Permiso, AsignarPermisoDto } from '../types'
 import { rolesService, permisosService } from '../services/usuariosApi'
+import { usePermisosStore } from './permisosStore'
 
 export const useRolesStore = defineStore('roles', () => {
   // State
@@ -9,6 +10,8 @@ export const useRolesStore = defineStore('roles', () => {
   const selectedRol = ref<Rol | null>(null)
   const loading = ref(false)
   const error = ref<string | null>(null)
+
+  const permisosStore = usePermisosStore()
 
   // Getters
   const rolesOrdenados = computed(() => 

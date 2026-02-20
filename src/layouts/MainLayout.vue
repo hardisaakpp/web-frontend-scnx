@@ -101,54 +101,25 @@
           <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Módulos</p>
         </div>
 
-        <!-- Contabilidad -->
+        <!-- Caja Chica -->
         <router-link
-          to="/contabilidad"
+          v-if="hasModuleAccess('cajachica')"
+          to="/caja-chica"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
-            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path === '/contabilidad',
-            'text-slate-300 hover:bg-slate-800/50 hover:text-white': $route.path !== '/contabilidad'
+            'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/50': $route.path.startsWith('/caja-chica'),
+            'text-slate-300 hover:bg-slate-800/50 hover:text-white': !$route.path.startsWith('/caja-chica')
           }"
-          :title="isSidebarCollapsed ? 'Contabilidad' : ''"
+          :title="isSidebarCollapsed ? 'Caja Chica' : ''"
         >
-          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-          <CalculatorIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path === '/contabilidad' }" />
-          <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Contabilidad</span>
-        </router-link>
-
-        <!-- Depósitos -->
-        <router-link
-          to="/depositos"
-          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
-          :class="{
-            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path === '/depositos',
-            'text-slate-300 hover:bg-slate-800/50 hover:text-white': $route.path !== '/depositos'
-          }"
-          :title="isSidebarCollapsed ? 'Depósitos' : ''"
-        >
-          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-          <BuildingLibraryIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path === '/depositos' }" />
-          <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Depósitos</span>
-        </router-link>
-
-        <!-- Reportes -->
-        <router-link
-          to="/reportes"
-          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
-          :class="{
-            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path === '/reportes',
-            'text-slate-300 hover:bg-slate-800/50 hover:text-white': $route.path !== '/reportes'
-          }"
-          :title="isSidebarCollapsed ? 'Reportes' : ''"
-        >
-          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-          <DocumentChartBarIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path === '/reportes' }" />
-          <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Reportes</span>
+          <div class="absolute inset-0 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <DocumentCheckIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/caja-chica') }" />
+          <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Caja Chica</span>
         </router-link>
 
         <!-- Conciliación -->
         <router-link
-          v-if="(authStore.userRoles?.includes('Admin') || authStore.hasPermission('conciliacion.view'))"
+          v-if="hasModuleAccess('conciliacion')"
           to="/conciliacion"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
@@ -164,7 +135,7 @@
 
         <!-- Gestión ODC SAP: visible con odc.view, odcsap.view o mabel.view (EL RAYO o MABEL TRADING) -->
         <router-link
-          v-if="authStore.canViewOdcSap || authStore.canManageOrder || authStore.canViewMabel"
+          v-if="hasModuleAccess('mba3-consultas') || hasModuleAccess('mba3')"
           to="/mba3-consultas"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
@@ -179,23 +150,23 @@
         </router-link>
 
         <!-- Separador Administración -->
-        <div v-if="authStore.isAdmin" v-show="!isSidebarCollapsed" class="px-3 py-2 my-3">
+        <div v-if="hasModuleAccess('usuarios') || hasModuleAccess('roles') || hasModuleAccess('permisos') || authStore.isAdmin" v-show="!isSidebarCollapsed" class="px-3 py-2 my-3">
           <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Administración</p>
         </div>
 
-        <!-- Usuarios (Solo Admin) -->
+        <!-- Usuarios -->
         <router-link
-          v-if="authStore.isAdmin"
-          to="/usuarios"
+          v-if="hasModuleAccess('usuarios')"
+          to="/users"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
-            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path === '/usuarios',
-            'text-slate-300 hover:bg-slate-800/50 hover:text-white': $route.path !== '/usuarios'
+            'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/50': $route.path.startsWith('/users'),
+            'text-slate-300 hover:bg-slate-800/50 hover:text-white': !$route.path.startsWith('/users')
           }"
           :title="isSidebarCollapsed ? 'Usuarios' : ''"
         >
-          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-          <UsersIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path === '/usuarios' }" />
+          <div class="absolute inset-0 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <UsersIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/users') }" />
           <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Usuarios</span>
         </router-link>
 
@@ -317,6 +288,7 @@
 </template>
 
 <script setup lang="ts">
+// @ts-ignore
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { 
@@ -325,9 +297,6 @@ import {
   UserGroupIcon,
   UserIcon,
   UsersIcon,
-  CalculatorIcon,
-  BuildingLibraryIcon,
-  DocumentChartBarIcon,
   ArrowsRightLeftIcon,
   DocumentCheckIcon,
   ClipboardDocumentCheckIcon,
@@ -439,9 +408,6 @@ const pageTitle = computed(() => {
     '/dashboard': 'Dashboard',
     '/admin': 'Panel de Administración',
     '/user': 'Panel de Usuario',
-    '/contabilidad': 'Contabilidad',
-    '/depositos': 'Depósitos',
-    '/reportes': 'Reportes',
     '/conciliacion': 'Conciliación',
     '/mba3-consultas': 'Gestión ODC SAP',
     '/mba3-consultas/ordenes-compra': 'Órdenes de Compra',
@@ -456,6 +422,30 @@ const pageTitle = computed(() => {
 const logout = () => {
   authStore.logout()
   router.push('/login')
+}
+
+// Función helper para verificar si el usuario tiene algún permiso de un módulo
+const hasModuleAccess = (moduleName: string): boolean => {
+  // Admin tiene acceso a todo
+  if (authStore.userRoles?.includes('Admin')) {
+    return true
+  }
+  
+  // Verificar si tiene algún permiso del módulo (modulo.*)
+  const permissions = authStore.userPermissions || []
+  return permissions.some(permission => permission.startsWith(`${moduleName}.`))
+}
+
+// Función helper para verificar si el usuario tiene algún permiso de un módulo
+const hasModuleAccess = (moduleName: string): boolean => {
+  // Admin tiene acceso a todo
+  if (authStore.userRoles?.includes('Admin')) {
+    return true
+  }
+  
+  // Verificar si tiene algún permiso del módulo (modulo.*)
+  const permissions = authStore.userPermissions || []
+  return permissions.some(permission => permission.startsWith(`${moduleName}.`))
 }
 
 // Cargar preferencias del sidebar al montar y asegurar capabilities (p. ej. tras recarga)

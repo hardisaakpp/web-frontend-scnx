@@ -13,88 +13,79 @@
       </button>
     </div>
 
-    <div v-if="rolesStore.loading" class="text-center py-12">
-      <p class="text-gray-500">Cargando roles...</p>
-    </div>
-
-    <div v-else-if="rolesStore.error" class="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-      <p class="text-red-600 mb-2">{{ rolesStore.error }}</p>
-      <button @click="rolesStore.fetchRoles" class="text-indigo-600 hover:underline">Reintentar</button>
-    </div>
-
-    <div v-else-if="rolesStore.roles.length === 0" class="bg-white rounded-lg shadow p-12 text-center">
-      <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-      </svg>
-      <h3 class="mt-2 text-sm font-medium text-gray-900">No hay roles</h3>
-      <p class="mt-1 text-sm text-gray-500">Comienza creando un nuevo rol</p>
-      <button
-        @click="openCreateModal"
-        class="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-      >
-        + Crear Primer Rol
-      </button>
-    </div>
-
-    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <div
-        v-for="rol in rolesStore.rolesOrdenados"
-        :key="rol.id"
-        class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
-      >
-        <div class="flex items-start justify-between mb-4">
-          <div>
-            <h3 class="text-lg font-semibold text-gray-900">{{ rol.name }}</h3>
-            <p v-if="rol.description" class="text-sm text-gray-500 mt-1">{{ rol.description }}</p>
-          </div>
-          <div class="flex gap-2">
-            <button @click="openPermisosModal(rol)" class="text-green-600 hover:text-green-900" title="Gestionar permisos">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-            </button>
-            <button @click="openEditModal(rol)" class="text-blue-600 hover:text-blue-900" title="Editar">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-            </button>
-            <button @click="handleDelete(rol)" class="text-red-600 hover:text-red-900" title="Eliminar">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        <div class="border-t pt-4">
-          <div class="flex items-center justify-between text-sm mb-2">
-            <span class="text-gray-600">Permisos:</span>
-            <span class="font-semibold text-indigo-600">{{ rol.permissions?.length || 0 }}</span>
-          </div>
-          <div v-if="rol.permissions && rol.permissions.length > 0" class="flex flex-wrap gap-1 mt-2">
+    <div class="bg-white rounded-lg shadow p-6">
+      <div class="text-sm font-semibold text-gray-900 mb-2">Consultar permisos por rol</div>
+      <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <select
+          v-model="roleQuery"
+          class="w-full sm:flex-1 rounded border border-gray-200 px-3 py-2 text-sm text-gray-900"
+        >
+          <option value="" disabled>Selecciona un rol</option>
+          <option v-for="rol in rolesStore.rolesOrdenados" :key="rol.id" :value="rol.name">
+            {{ rol.name }}
+          </option>
+        </select>
+        <button
+          type="button"
+          class="rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700 disabled:opacity-50"
+          :disabled="roleQueryLoading || !roleQuery"
+          @click="fetchRolePermissions"
+        >
+          Buscar
+        </button>
+      </div>
+      <div v-if="roleQueryError" class="mt-2 text-sm text-red-600">{{ roleQueryError }}</div>
+      <div v-else-if="roleQueryLoading" class="mt-2 text-sm text-gray-500">Cargando permisos...</div>
+      <div v-else-if="roleQuerySearched" class="mt-3 space-y-3">
+        <!-- Permisos actuales -->
+        <div v-if="roleQueryPermissions.length > 0">
+          <div class="text-xs font-medium text-gray-600 mb-2">Permisos asignados:</div>
+          <div class="flex flex-wrap gap-2">
             <span
-              v-for="permiso in rol.permissions.slice(0, 3)"
+              v-for="permiso in roleQueryPermissions"
               :key="permiso.id"
-              class="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded"
+              class="inline-flex items-center gap-2 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm"
             >
               {{ permiso.key }}
-            </span>
-            <span v-if="rol.permissions.length > 3" class="text-xs px-2 py-1 bg-gray-200 text-gray-600 rounded">
-              +{{ rol.permissions.length - 3 }} más
+              <button 
+                @click="() => handleRemoverPermisoConsulta(permiso.id)" 
+                class="hover:text-red-600"
+                :disabled="roleQueryLoading"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </span>
           </div>
         </div>
-
-        <div v-if="rol.usersCount !== undefined" class="mt-4 pt-4 border-t">
-          <div class="flex items-center text-sm text-gray-600">
-            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-            </svg>
-            {{ rol.usersCount }} {{ rol.usersCount === 1 ? 'usuario' : 'usuarios' }}
+        <div v-else class="text-sm text-gray-500">Sin permisos asignados.</div>
+        
+        <!-- Asignar nuevo permiso -->
+        <div class="border-t pt-3">
+          <div class="text-xs font-medium text-gray-600 mb-2">Asignar nuevo permiso:</div>
+          <div class="flex gap-2">
+            <select
+              v-model="selectedPermissionToAssign"
+              class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm"
+            >
+              <option value="">Seleccionar permiso para asignar...</option>
+              <option v-for="permiso in permisosDisponiblesParaRol" :key="permiso.id" :value="permiso.id">
+                [{{ permiso.module }}] {{ permiso.key }} - {{ permiso.description }}
+              </option>
+            </select>
+            <button
+              @click="handleAsignarPermisoConsulta"
+              :disabled="!selectedPermissionToAssign || roleQueryLoading"
+              class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 text-sm"
+            >
+              Asignar
+            </button>
           </div>
         </div>
       </div>
     </div>
+
 
     <!-- Modal para crear/editar rol -->
     <TransitionRoot :show="showRolModal" as="template">
@@ -164,10 +155,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { Dialog, DialogPanel, DialogTitle, TransitionRoot } from '@headlessui/vue'
 import { useRolesStore } from '../stores/rolesStore'
 import { usePermisosStore } from '../stores/permisosStore'
+import { permisosService } from '../services/usuariosApi'
 import type { Rol } from '../types'
 import AsignarPermisosModal from '../components/AsignarPermisosModal.vue'
 
@@ -178,6 +170,16 @@ const showRolModal = ref(false)
 const showPermisosModal = ref(false)
 const selectedRol = ref<Rol | null>(null)
 const rolForm = ref({ name: '', description: '' })
+const roleQuery = ref('')
+const roleQueryPermissions = ref<Rol['permissions']>([])
+const roleQueryLoading = ref(false)
+const roleQueryError = ref('')
+const roleQuerySearched = ref(false)
+const selectedPermissionToAssign = ref<number | ''>('')
+
+const permisosDisponiblesParaRol = computed(() => 
+  permisosStore.permisos.filter(p => !roleQueryPermissions.value.some(rp => rp.id === p.id))
+)
 
 onMounted(async () => {
   await Promise.all([
@@ -256,6 +258,47 @@ const handleRemoverPermiso = async (permisoId: number) => {
     } catch (error) {
       // Error ya manejado en el store
     }
+  }
+}
+
+const handleAsignarPermisoConsulta = async () => {
+  if (!selectedPermissionToAssign.value || !roleQuery.value) return
+  try {
+    await rolesStore.asignarPermiso(roleQuery.value, selectedPermissionToAssign.value as number)
+    // Refresh the permissions
+    await fetchRolePermissions()
+    selectedPermissionToAssign.value = ''
+  } catch (error) {
+    // Error handled in store
+  }
+}
+
+const handleRemoverPermisoConsulta = async (permisoId: number) => {
+  if (!roleQuery.value) return
+  try {
+    await rolesStore.removerPermiso(roleQuery.value, permisoId)
+    // Refresh the permissions
+    await fetchRolePermissions()
+  } catch (error) {
+    // Error handled in store
+  }
+}
+
+const fetchRolePermissions = async () => {
+  if (!roleQuery.value) {
+    roleQueryError.value = 'Ingresa un rol valido.'
+    return
+  }
+  roleQueryLoading.value = true
+  roleQueryError.value = ''
+  roleQuerySearched.value = true
+  roleQueryPermissions.value = []
+  try {
+    roleQueryPermissions.value = await permisosService.getPermisosPorRol(roleQuery.value)
+  } catch (error: any) {
+    roleQueryError.value = error?.message || 'No se pudo cargar los permisos del rol.'
+  } finally {
+    roleQueryLoading.value = false
   }
 }
 </script>

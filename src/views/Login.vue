@@ -98,6 +98,7 @@ const appName = import.meta.env.VITE_APP_NAME
 const router = useRouter()
 const authStore = useAuthStore()
 const themeStore = useThemeStore()
+
 const isLoading = ref(false)
 const error = ref('')
 
@@ -116,16 +117,17 @@ const handleLogin = async () => {
       password: form.password,
       useActiveDirectory: form.useActiveDirectory
     })
+    
     if (success) {
       router.push('/')
     } else {
-      error.value = 'Credenciales inválidas'
+      error.value = authStore.error || 'Credenciales inválidas'
     }
   } catch (e) {
     if (import.meta.env.DEV) {
       console.error('Login failed:', e)
     }
-    error.value = 'Error al iniciar sesión'
+    error.value = authStore.error || 'Error al iniciar sesión'
   } finally {
     isLoading.value = false
   }

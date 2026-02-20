@@ -1,7 +1,6 @@
 import { defineStore } from 'pinia'
 import api from '../plugins/axios'
 import { jwtDecode } from 'jwt-decode'
-import axios from 'axios'
 
 interface User {
   id: string
@@ -34,6 +33,8 @@ interface AuthState {
   userData: User | null
   /** Rellenado por fetchMe() desde GET /Auth/me. Usar solo capabilities para visibilidad del botón "Gestión ODC SAP". */
   capabilities: AuthCapabilities | null
+  loading: boolean
+  error: string | null
 }
 
 interface LoginCredentials {
@@ -75,7 +76,9 @@ export const useAuthStore = defineStore('auth', {
     user: null,
     role: null,
     userData: null,
-    capabilities: null
+    capabilities: null,
+    loading: false,
+    error: null
   }),
 
   getters: {
@@ -182,6 +185,21 @@ export const useAuthStore = defineStore('auth', {
       }
       return ''
     },
+    userEmail: (state): string => {
+      if (state.userData?.email) {
+        return state.userData.email
+      }
+      try {
+        const userStr = localStorage.getItem('user')
+        if (userStr) {
+          const user = JSON.parse(userStr) as User
+          return user.email || ''
+        }
+      } catch {
+        return ''
+      }
+      return ''
+    },
     fullName: (state): string => {
       if (state.userData?.fullName) {
         return state.userData.fullName
@@ -212,6 +230,9 @@ export const useAuthStore = defineStore('auth', {
 
   actions: {
     async login(credentials: LoginCredentials): Promise<boolean> {
+      this.loading = true
+      this.error = null
+
       try {
         // Transformar el body para que coincida con la API
         const requestBody = {
@@ -219,7 +240,7 @@ export const useAuthStore = defineStore('auth', {
           password: credentials.password,
           useActiveDirectory: credentials.useActiveDirectory ?? false
         }
-        
+
         const response = await api.post<LoginResponse>('/Auth/login', requestBody)
         const { token, user } = response.data
 
@@ -242,7 +263,10 @@ export const useAuthStore = defineStore('auth', {
         if (import.meta.env.DEV) {
           console.error('Login failed:', error)
         }
+        this.error = (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Error al iniciar sesión'
         return false
+      } finally {
+        this.loading = false
       }
     },
 
@@ -276,6 +300,8 @@ export const useAuthStore = defineStore('auth', {
       this.role = null
       this.userData = null
       this.capabilities = null
+      this.error = null
+      this.loading = false
 
       // Remove from storage
       localStorage.removeItem('token')
@@ -306,7 +332,7 @@ export const useAuthStore = defineStore('auth', {
       if (token) {
         try {
           const decoded = jwtDecode<JwtPayload>(token)
-          
+
           // Verificar si el token ha expirado
           if (decoded.exp * 1000 < Date.now()) {
             this.logout()
@@ -316,7 +342,7 @@ export const useAuthStore = defineStore('auth', {
           this.token = token
           this.user = decoded.unique_name
           this.role = decoded.role[0] || null
-          
+
           // Cargar datos del usuario desde localStorage
           const userStr = localStorage.getItem('user')
           if (userStr) {
@@ -326,7 +352,7 @@ export const useAuthStore = defineStore('auth', {
               // Si no se puede parsear, mantener null
             }
           }
-          
+
           api.defaults.headers.common['Authorization'] = `Bearer ${token}`
         } catch {
           this.logout()

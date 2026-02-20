@@ -93,6 +93,10 @@ export interface UsuariosState {
   selectedUsuario: Usuario | null
   loading: boolean
   error: string | null
+  total: number
+  currentPage: number
+  pageSize: number
+  totalPages: number
 }
 
 export interface RolesState {
