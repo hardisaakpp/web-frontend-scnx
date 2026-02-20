@@ -128,7 +128,7 @@
             </th>
             <th
               v-if="isColumnVisible('diferencia')"
-              class="sticky right-0 z-10 px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-100 dark:bg-gray-800 min-w-[120px] border-l border-gray-200 dark:border-gray-700 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.08)] dark:shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.25)]"
+              class="sticky right-0 z-[5] px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-100 dark:bg-gray-800 min-w-[120px] border-l border-gray-200 dark:border-gray-700 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.08)] dark:shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.25)]"
             >
               Diferencia
             </th>
@@ -228,7 +228,7 @@
             </td>
             <td
               v-if="isColumnVisible('diferencia')"
-              class="sticky right-0 z-10 px-4 py-3 text-sm font-semibold text-right whitespace-nowrap min-w-[120px] bg-gray-50 dark:bg-gray-900/50 border-l border-gray-200 dark:border-gray-700 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.2)]"
+              class="sticky right-0 z-[5] px-4 py-3 text-sm font-semibold text-right whitespace-nowrap min-w-[120px] bg-gray-50 dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.2)]"
               :class="getDiferenciaClass(producto.diferencia)"
             >
               {{ producto.diferencia > 0 ? '+' : '' }}{{ formatNumber(producto.diferencia) }}
@@ -292,7 +292,7 @@
             </td>
             <td
               v-if="isColumnVisible('diferencia')"
-              class="sticky right-0 z-10 px-4 py-3 text-sm font-bold text-right min-w-[120px] bg-gray-100 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.08)] dark:shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.25)]"
+              class="sticky right-0 z-[5] px-4 py-3 text-sm font-bold text-right min-w-[120px] bg-gray-100 dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.08)] dark:shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.25)]"
               :class="getDiferenciaClass(totalesDiferencia)"
             >
               {{ totalesDiferencia > 0 ? '+' : '' }}{{ formatNumber(totalesDiferencia) }}

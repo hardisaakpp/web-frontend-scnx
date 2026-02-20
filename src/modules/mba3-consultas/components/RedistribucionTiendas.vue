@@ -66,7 +66,7 @@
     <!-- Barra de indicadores (sticky: hijo directo del contenedor principal para que permanezca visible al hacer scroll) -->
     <div
       v-if="pedidoValue?.respuesta_proveedor"
-      class="sticky top-16 z-10 grid grid-cols-1 md:grid-cols-3 gap-3 bg-white dark:bg-gray-800 px-6 py-3 border-b border-gray-200 dark:border-gray-700 shadow-sm"
+      class="sticky top-16 z-20 grid grid-cols-1 md:grid-cols-3 gap-3 bg-white dark:bg-gray-800 px-6 py-3 border-b border-gray-200 dark:border-gray-700 shadow-sm"
     >
       <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2.5 border border-blue-200 dark:border-blue-800">
         <label class="text-[10px] font-medium text-blue-600 dark:text-blue-400 uppercase leading-tight">Total Confirmado</label>
@@ -216,7 +216,7 @@
                   'text-right',
                   column.key === 'expand' ? 'sticky left-0 z-10 bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[4px_0_6px_-2px_rgba(0,0,0,0.2)]' : '',
                   column.key === 'codigo' ? 'sticky left-8 z-10 min-w-[120px] bg-gray-50 dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[4px_0_6px_-2px_rgba(0,0,0,0.2)]' : '',
-                  column.key === 'diferencia' ? 'sticky right-0 z-10 min-w-[120px] bg-gray-50 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.2)]' : ''
+                  column.key === 'diferencia' ? 'sticky right-0 z-[5] min-w-[120px] bg-gray-50 dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.2)]' : ''
                 ]"
               >
                 {{ column.label }}
@@ -257,7 +257,7 @@
                     '',
                     column.key === 'expand' ? 'sticky left-0 z-10 border-r border-gray-200 dark:border-gray-700 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[4px_0_6px_-2px_rgba(0,0,0,0.2)] ' + (producto.error ? 'bg-gray-100 dark:bg-gray-700/30' : tieneModificaciones(producto) ? 'bg-amber-50 dark:bg-amber-900/20' : producto.diferencia === 0 ? 'bg-green-50 dark:bg-green-900/30' : 'bg-red-50 dark:bg-red-900/30') : '',
                     column.key === 'codigo' ? 'sticky left-8 z-10 min-w-[120px] border-r border-gray-200 dark:border-gray-700 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[4px_0_6px_-2px_rgba(0,0,0,0.2)] ' + (producto.error ? 'bg-gray-100 dark:bg-gray-700/30' : tieneModificaciones(producto) ? 'bg-amber-50 dark:bg-amber-900/20' : producto.diferencia === 0 ? 'bg-green-50 dark:bg-green-900/30' : 'bg-red-50 dark:bg-red-900/30') : '',
-                    column.key === 'diferencia' ? 'sticky right-0 z-10 min-w-[120px] border-l border-gray-200 dark:border-gray-700 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.2)] ' + (producto.error ? 'bg-gray-100 dark:bg-gray-700/30' : tieneModificaciones(producto) ? 'bg-amber-50 dark:bg-amber-900/20' : producto.diferencia === 0 ? 'bg-green-50 dark:bg-green-900/30' : 'bg-red-50 dark:bg-red-900/30') : ''
+                    column.key === 'diferencia' ? 'sticky right-0 z-[5] min-w-[120px] border-l border-gray-200 dark:border-gray-700 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.2)] ' + (producto.error ? 'bg-gray-100 dark:bg-gray-700' : tieneModificaciones(producto) ? 'bg-amber-50 dark:bg-amber-900/80' : producto.diferencia === 0 ? 'bg-green-50 dark:bg-green-900/80' : 'bg-red-50 dark:bg-red-900/80') : ''
                   ]"
                 >
                   <!-- Columna Expand -->
