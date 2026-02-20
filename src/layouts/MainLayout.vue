@@ -436,18 +436,6 @@ const hasModuleAccess = (moduleName: string): boolean => {
   return permissions.some(permission => permission.startsWith(`${moduleName}.`))
 }
 
-// Función helper para verificar si el usuario tiene algún permiso de un módulo
-const hasModuleAccess = (moduleName: string): boolean => {
-  // Admin tiene acceso a todo
-  if (authStore.userRoles?.includes('Admin')) {
-    return true
-  }
-  
-  // Verificar si tiene algún permiso del módulo (modulo.*)
-  const permissions = authStore.userPermissions || []
-  return permissions.some(permission => permission.startsWith(`${moduleName}.`))
-}
-
 // Cargar preferencias del sidebar al montar y asegurar capabilities (p. ej. tras recarga)
 onMounted(async () => {
   if (authStore.token && !authStore.capabilities) {
