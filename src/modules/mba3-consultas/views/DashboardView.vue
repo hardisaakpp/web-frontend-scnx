@@ -136,7 +136,7 @@
               @click="odcConsultasAbierto = !odcConsultasAbierto"
               class="w-full px-4 py-3 flex items-center justify-between gap-2 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
             >
-              <span class="font-medium text-gray-900 dark:text-white text-sm">Información Pedidos y ODC</span>
+              <span class="font-medium text-gray-900 dark:text-white text-sm">Información Pedidos y ODC (EN DESARROLLO)</span>
               <svg
                 class="w-5 h-5 text-gray-500 dark:text-gray-400 flex-shrink-0 transition-transform duration-200"
                 :class="{ 'rotate-180': odcConsultasAbierto }"
