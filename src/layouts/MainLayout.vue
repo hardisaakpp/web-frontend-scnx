@@ -10,13 +10,13 @@
     <!-- Sidebar -->
     <aside
       :class="[
-        'fixed top-0 left-0 h-full bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-white transition-all duration-300 z-30 shadow-2xl',
+        'fixed top-0 left-0 h-full flex flex-col bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-white transition-all duration-300 z-30 shadow-2xl',
         isSidebarCollapsed ? 'w-20' : 'w-72',
         isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
       ]"
     >
       <!-- Header del Sidebar -->
-      <div class="flex items-center justify-between p-5 border-b border-slate-700/50 bg-gradient-to-r from-blue-600/10 to-sky-500/10 backdrop-blur-sm">
+      <div class="flex-shrink-0 flex items-center justify-between p-5 border-b border-slate-700/50 bg-gradient-to-r from-blue-600/10 to-sky-500/10 backdrop-blur-sm">
         <div class="flex items-center gap-3">
           <img 
             src="/favicon.png" 
@@ -43,7 +43,7 @@
       </button>
 
       <!-- Navigation -->
-      <nav class="p-4 space-y-1 overflow-y-auto h-[calc(100vh-180px)] custom-scrollbar">
+      <nav class="flex-1 min-h-0 overflow-y-auto p-4 pb-4 space-y-1 custom-scrollbar">
         <!-- Sección Principal -->
         <div v-show="!isSidebarCollapsed" class="px-3 py-2 mb-2">
           <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Principal</p>
@@ -204,7 +204,7 @@
       </nav>
 
       <!-- Footer del Sidebar -->
-      <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-700/50 bg-slate-900/50 backdrop-blur-sm">
+      <div class="flex-shrink-0 p-4 border-t border-slate-700/50 bg-slate-900/50 backdrop-blur-sm">
         <div v-show="!isSidebarCollapsed" class="mb-3 px-2">
           <div class="flex items-center gap-3 p-2 rounded-lg bg-slate-800/50">
             <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-sky-500 flex items-center justify-center text-xs font-bold">
