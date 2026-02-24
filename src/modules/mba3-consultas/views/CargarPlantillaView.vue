@@ -446,7 +446,7 @@
                       isColumnaModificada(detalle.pedido_detalle_id, column.key) && column.key !== 'numero'
                         ? 'bg-amber-50 dark:bg-amber-900/20 border-l-2 border-amber-500 dark:border-amber-400'
                         : '',
-                      column.key === 'codigo_interno' && detalle.codigo_interno != null && codigosCorregidosHighlight.has(detalle.codigo_interno)
+                      column.key === 'codigo_interno' && detalle.codigo_interno != null && isCodigoCorregidoHighlight(detalle.codigo_interno)
                         ? 'bg-emerald-50 dark:bg-emerald-900/25 border-l-2 border-emerald-500 dark:border-emerald-400'
                         : '',
                       column.key === 'numero' ? 'font-medium text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/50' :
@@ -592,7 +592,7 @@ import {
   type DistribucionTiendaEditada
 } from '../utils/redistribucionHelpers'
 // Composables
-import { useFileUpload } from '../composables/useFileUpload'
+import { useFileUpload, RESALTADO_CODIGOS_STORAGE_PREFIX } from '../composables/useFileUpload'
 import { useColumnManagement } from '../composables/useColumnManagement'
 import { usePedidoDetalle } from '../composables/usePedidoDetalle'
 import { useRedistribucion } from '../composables/useRedistribucion'
@@ -1216,7 +1216,31 @@ const canGenerarOC = computed(() => {
 // Funciones de carga y gestión del pedido ahora están en el composable usePedidoDetalle
 
 // Códigos de producto corregidos al aplicar sugerencias (para resaltar la celda en la tabla)
+// Origen de verdad: sessionStorage por numero_pedido (guardado en useFileUpload antes del redirect en flujo async)
 const codigosCorregidosHighlight = ref<Set<string>>(new Set())
+
+function syncCodigosResaltadoDesdeStorage(): void {
+  const num = numeroPedido.value
+  if (!num) {
+    codigosCorregidosHighlight.value = new Set()
+    return
+  }
+  try {
+    const raw = sessionStorage.getItem(RESALTADO_CODIGOS_STORAGE_PREFIX + num)
+    const correcciones = raw ? JSON.parse(raw) : []
+    const list = Array.isArray(correcciones) ? correcciones : []
+    codigosCorregidosHighlight.value = new Set(
+      list.map((c: any) => String(c.codigo_corregido ?? c.codigoCorregido ?? '').trim()).filter(Boolean)
+    )
+  } catch {
+    codigosCorregidosHighlight.value = new Set()
+  }
+}
+
+function isCodigoCorregidoHighlight(codigo: string | null | undefined): boolean {
+  if (codigo == null) return false
+  return codigosCorregidosHighlight.value.has(String(codigo).trim())
+}
 
 // Inicializar composable de carga de archivos
 const fileUploadComposable = useFileUpload({
@@ -1225,10 +1249,32 @@ const fileUploadComposable = useFileUpload({
   redirectToCargarPlantilla: true,
   useAsyncUpload: true, // Procesamiento en segundo plano (Celery), no bloquea la app
   onUploadSuccess: async (numeroPedido, response) => {
-    if (response?.correcciones_aplicadas?.length) {
-      codigosCorregidosHighlight.value = new Set(response.correcciones_aplicadas.map(c => c.codigo_corregido))
+    // Extraer correcciones: puede venir en response o dentro de response.resultado/result (según backend)
+    const payload = response?.resultado ?? (response as any)?.result ?? response
+    const correcciones = payload?.correcciones_aplicadas ?? payload?.correccionesAplicadas ?? response?.correcciones_aplicadas ?? (response as any)?.correccionesAplicadas ?? []
+    const list = Array.isArray(correcciones) ? correcciones : []
+
+    if (list.length > 0) {
+      // Normalizar códigos corregidos (soporta codigo_corregido y codigoCorregido) y trim para coincidencia en tabla
+      codigosCorregidosHighlight.value = new Set(
+        list.map((c: any) => String((c.codigo_corregido ?? c.codigoCorregido ?? '')).trim()).filter(Boolean)
+      )
+      // Persistir en sessionStorage para que tras redirect o al recargar la vista se mantenga el resaltado
+      if (numeroPedido) {
+        try {
+          sessionStorage.setItem(RESALTADO_CODIGOS_STORAGE_PREFIX + numeroPedido, JSON.stringify(list))
+        } catch {}
+      }
+      if (import.meta.env.DEV) console.log('[CargarPlantilla] correcciones_aplicadas aplicadas, resaltando códigos:', Array.from(codigosCorregidosHighlight.value))
+      await pedidoDetalle.loadPedido()
     } else {
       codigosCorregidosHighlight.value = new Set()
+      if (numeroPedido) {
+        try {
+          sessionStorage.setItem(RESALTADO_CODIGOS_STORAGE_PREFIX + numeroPedido, JSON.stringify([]))
+        } catch {}
+      }
+      if (import.meta.env.DEV) console.log('[CargarPlantilla] onUploadSuccess sin correcciones_aplicadas. response keys:', response ? Object.keys(response) : [])
     }
     if (numeroPedido && numeroPedido !== pedido.value?.cabecera.numero_pedido) {
       await pedidoDetalle.loadPedido()
@@ -1664,6 +1710,9 @@ onMounted(() => {
     loadPedido()
   }
   
+  // Sincronizar códigos a resaltar desde sessionStorage (flujo async: correcciones guardadas antes del redirect)
+  syncCodigosResaltadoDesdeStorage()
+  
   // ⭐ Las columnas modificadas se cargan automáticamente en loadPedido()
   // Agregar listener para cerrar dropdown al hacer click fuera
   document.addEventListener('click', handleClickOutsideColumnSelector)
@@ -1687,6 +1736,8 @@ onActivated(() => {
 watch(
   () => numeroPedido.value,
   async (newNumeroPedido, oldNumeroPedido) => {
+    // Sincronizar Set de códigos a resaltar desde sessionStorage (origen de verdad tras flujo async)
+    syncCodigosResaltadoDesdeStorage()
     // Solo recargar si el número de pedido realmente cambió y no es la carga inicial
     if (newNumeroPedido && newNumeroPedido !== oldNumeroPedido) {
       if (import.meta.env.DEV) console.log(`🔄 [PedidoDetalleView] Cambio de pedido detectado: ${oldNumeroPedido || '(ninguno)'} → ${newNumeroPedido}`)

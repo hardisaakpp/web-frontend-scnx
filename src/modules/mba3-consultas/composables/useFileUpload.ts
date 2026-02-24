@@ -14,6 +14,24 @@ const MAX_FILE_SIZE_MB = 10
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 // ⭐ Intervalo para simulación de progreso durante procesamiento del servidor
 const PROCESSING_PROGRESS_INTERVAL_MS = 500
+// Rutas explícitas tras subir plantilla / reintentar con correcciones (nunca usar caja-chica u otras rutas)
+const RUTA_CARGAR_PLANTILLA_BASE = '/mba3-consultas/cargar-plantilla'
+const RUTA_PEDIDOS_BASE = '/mba3-consultas/pedidos'
+
+/** Prefijo para guardar correcciones a resaltar por pedido (origen de verdad tras redirect en flujo async) */
+export const RESALTADO_CODIGOS_STORAGE_PREFIX = 'resaltado_codigos_'
+
+function saveCorreccionesParaResaltado(numeroPedido: string, response: UploadPlantillaResponse | undefined): void {
+  if (!numeroPedido) return
+  const payload = response?.resultado ?? (response as any)?.result ?? response
+  const correcciones = payload?.correcciones_aplicadas ?? payload?.correccionesAplicadas ?? response?.correcciones_aplicadas ?? (response as any)?.correccionesAplicadas
+  const list = Array.isArray(correcciones) ? correcciones : []
+  try {
+    sessionStorage.setItem(RESALTADO_CODIGOS_STORAGE_PREFIX + numeroPedido, JSON.stringify(list))
+  } catch (e) {
+    if (import.meta.env.DEV) console.warn('[useFileUpload] No se pudo guardar correcciones en sessionStorage:', e)
+  }
+}
 
 export interface UploadErrorInfo {
   title?: string
@@ -970,6 +988,11 @@ export function useFileUpload(options: {
         toast.warning('Plantilla procesada con advertencias', mensajeDetalle)
       }
       
+      // Guardar correcciones en sessionStorage antes de redirect para que la vista de destino pueda resaltar (flujo async)
+      if (numeroPedido) {
+        saveCorreccionesParaResaltado(numeroPedido, response)
+      }
+      
       // Llamar callback de éxito si existe
       if (numeroPedido && options?.onUploadSuccess) {
         await options.onUploadSuccess(numeroPedido, response)
@@ -978,13 +1001,10 @@ export function useFileUpload(options: {
       // Redirigir o recargar según corresponda
       if (numeroPedido) {
         const currentPedidoNumero = options?.pedido?.value?.cabecera.numero_pedido
-        const pathBase = options?.redirectToCargarPlantilla ? '/mba3-consultas/cargar-plantilla' : '/mba3-consultas/pedidos'
+        const pathBase = options?.redirectToCargarPlantilla ? RUTA_CARGAR_PLANTILLA_BASE : RUTA_PEDIDOS_BASE
         if (numeroPedido !== currentPedidoNumero) {
-          // Si el pedido cargado es diferente al actual, redirigir
-          // ⭐ Asegurar que la navegación se complete antes de continuar
+          // Si el pedido cargado es diferente al actual, redirigir a cargar-plantilla o pedidos (nunca a otra ruta)
           await router.push(`${pathBase}/${encodeURIComponent(numeroPedido)}`)
-          // ⭐ Pequeño delay para asegurar que el componente detecte el cambio de ruta
-          // Esto es necesario porque el watcher puede no ejecutarse inmediatamente
           await new Promise(resolve => setTimeout(resolve, 100))
         } else {
           // Recargar el pedido actual si hay callback
@@ -1135,14 +1155,21 @@ export function useFileUpload(options: {
         toast.warning('Plantilla procesada con advertencias', mensajeDetalle)
       }
       
+      // Guardar correcciones en sessionStorage antes de redirect para que la vista muestre el resaltado (flujo async)
+      if (numeroPedido) {
+        saveCorreccionesParaResaltado(numeroPedido, response)
+      }
+      
       if (numeroPedido && options?.onUploadSuccess) {
+        if (import.meta.env.DEV) console.log('[useFileUpload] reintentarConCorrecciones éxito, response:', { hasCorrecciones: !!(response as any).correcciones_aplicadas?.length, keys: Object.keys(response || {}) })
         await options.onUploadSuccess(numeroPedido, response)
       }
       
       if (numeroPedido) {
         const currentPedidoNumero = options?.pedido?.value?.cabecera.numero_pedido
-        const pathBase = options?.redirectToCargarPlantilla ? '/mba3-consultas/cargar-plantilla' : '/mba3-consultas/pedidos'
+        const pathBase = options?.redirectToCargarPlantilla ? RUTA_CARGAR_PLANTILLA_BASE : RUTA_PEDIDOS_BASE
         if (numeroPedido !== currentPedidoNumero) {
+          // Tras aplicar correcciones: redirigir a cargar-plantilla o pedidos para mostrar resaltado (nunca a caja-chica ni otras rutas)
           await router.push(`${pathBase}/${encodeURIComponent(numeroPedido)}`)
           await new Promise(resolve => setTimeout(resolve, 100))
         } else {

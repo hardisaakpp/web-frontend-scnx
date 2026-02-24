@@ -230,6 +230,12 @@ export const pedidosService = {
         if (data.status === 'processing') {
           return data as PlantillaProcesoEstado
         }
+        // Backend con Celery devuelve status 'completed' con el resultado en data.resultado o data.result
+        const estado = data as PlantillaProcesoEstado
+        const inner = estado.resultado ?? (data as any).result
+        if (data.status === 'completed' && inner && typeof inner === 'object') {
+          return normalizeValidationResponse(inner) as UploadPlantillaResponse
+        }
         if (data.status === 'success' || data.status === 'validation_error' || data.status === 'error') {
           return normalizeValidationResponse(data as UploadPlantillaResponse)
         }
