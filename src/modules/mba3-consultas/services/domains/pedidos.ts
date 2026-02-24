@@ -221,6 +221,10 @@ export const pedidosService = {
   /**
    * Obtiene el estado/resultado del procesamiento async de una plantilla (polling).
    * Usar el process_id devuelto por uploadPlantillaAsync.
+   * GET /api/plantillas/resultado/{process_id}:
+   * - status === 'processing': cuerpo con step, progress, message (sin resultado).
+   * - status === 'completed': el cuerpo de la respuesta ES el resultado (mismo formato que 200 sync): sin wrapper resultado/result.
+   * - status === 'error': HTTP 400 con message, error, validacion, validacion_sap (sugerencias para reintentar).
    */
   async getResultadoPlantilla(processId: string): Promise<PlantillaProcesoEstado | UploadPlantillaResponse> {
     try {
@@ -230,12 +234,11 @@ export const pedidosService = {
         if (data.status === 'processing') {
           return data as PlantillaProcesoEstado
         }
-        // Backend con Celery devuelve status 'completed' con el resultado en data.resultado o data.result
-        const estado = data as PlantillaProcesoEstado
-        const inner = estado.resultado ?? (data as any).result
-        if (data.status === 'completed' && inner && typeof inner === 'object') {
-          return normalizeValidationResponse(inner) as UploadPlantillaResponse
+        // status === 'completed': el cuerpo es el resultado completo (no hay wrapper resultado/result)
+        if (data.status === 'completed') {
+          return normalizeValidationResponse(data) as UploadPlantillaResponse
         }
+        // status === 'success' | 'validation_error' | 'error' (por si el backend devuelve así)
         if (data.status === 'success' || data.status === 'validation_error' || data.status === 'error') {
           return normalizeValidationResponse(data as UploadPlantillaResponse)
         }

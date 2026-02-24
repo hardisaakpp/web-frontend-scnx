@@ -23,6 +23,7 @@ export const RESALTADO_CODIGOS_STORAGE_PREFIX = 'resaltado_codigos_'
 
 function saveCorreccionesParaResaltado(numeroPedido: string, response: UploadPlantillaResponse | undefined): void {
   if (!numeroPedido) return
+  // GET resultado cuando status === 'completed': el cuerpo es el resultado (sin wrapper); correcciones_aplicadas en la raíz
   const payload = response?.resultado ?? (response as any)?.result ?? response
   const correcciones = payload?.correcciones_aplicadas ?? payload?.correccionesAplicadas ?? response?.correcciones_aplicadas ?? (response as any)?.correccionesAplicadas
   const list = Array.isArray(correcciones) ? correcciones : []
@@ -898,6 +899,7 @@ export function useFileUpload(options: {
         } catch (asyncErr: any) {
           if (asyncErr.response?.status === 503 && asyncErr.response?.data?.error === 'storage_required') {
             if (import.meta.env.DEV) console.warn('[useFileUpload] Async no disponible (503), usando upload síncrono')
+            toast.info('Procesamiento en segundo plano no disponible', 'Se usará carga síncrona. Espere unos instantes.')
             response = await mba3ConsultasService.uploadPlantilla(file, handleProgress)
           } else {
             throw asyncErr
@@ -1129,6 +1131,7 @@ export function useFileUpload(options: {
       } catch (asyncErr: any) {
         if (asyncErr.response?.status === 503 && asyncErr.response?.data?.error === 'storage_required') {
           if (import.meta.env.DEV) console.warn('[useFileUpload] Async no disponible (503), usando upload con correcciones síncrono')
+          toast.info('Procesamiento en segundo plano no disponible', 'Se aplicarán las correcciones en modo síncrono. Espere unos instantes.')
           response = await mba3ConsultasService.uploadPlantillaConCorrecciones(file, correcciones, handleProgress)
         } else {
           throw asyncErr
