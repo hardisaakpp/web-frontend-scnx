@@ -171,11 +171,9 @@ const busquedaManualRealizada = ref(false)
 // ⭐ Usar composable useFileUpload que muestra modal de error
 const fileUploadComposable = useFileUpload({
   onUploadSuccess: async (numeroPedido) => {
-    // Redirigir a la vista de detalle del pedido
-    // ⭐ El composable ya maneja la redirección, pero si se llama este callback,
-    // asegurarse de que la navegación se complete correctamente
     await router.push(`/mba3-consultas/pedidos/${encodeURIComponent(numeroPedido)}`)
-  }
+  },
+  useAsyncUpload: true // Procesamiento en segundo plano (Celery), no bloquea la app
 })
 
 const {

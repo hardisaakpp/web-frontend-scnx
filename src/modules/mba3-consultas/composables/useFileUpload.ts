@@ -6,7 +6,7 @@ import { ref, Ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
-import type { UploadPlantillaResponse, PedidoCompleto } from '../types'
+import type { UploadPlantillaResponse, PedidoCompleto, PlantillaProcesoEstado } from '../types'
 
 // Constantes de configuración
 const ALLOWED_FILE_EXTENSIONS = ['.xlsx', '.xls'] as const
@@ -63,6 +63,8 @@ export function useFileUpload(options: {
   pedido?: Ref<PedidoCompleto | null>
   /** Si es true, tras subir plantilla redirige a /mba3-consultas/cargar-plantilla/:id en lugar de /mba3-consultas/pedidos/:id */
   redirectToCargarPlantilla?: boolean
+  /** Si es true, usa upload-async (Celery): no bloquea la app; requiere Redis + Celery Worker + ENABLE_FILE_STORAGE en backend */
+  useAsyncUpload?: boolean
 } = {}) {
   const router = useRouter()
   const toast = useToast()
@@ -527,10 +529,54 @@ export function useFileUpload(options: {
       errorErrors.push(...(e as any).errors)
     }
 
+    // ⭐ Si el backend envió validacion_sap/validacion con no_encontrados, usar SOLO esos códigos
+    // (evitar falsos positivos del parsing del mensaje: "Existen códigos...", "Existen c", etc.)
+    const errorData = e.response?.data
+    const structuredNoEncontrados: string[] = [
+      ...(Array.isArray(errorData?.validacion_sap?.no_encontrados) ? errorData.validacion_sap.no_encontrados : []),
+      ...(Array.isArray(errorData?.validacion?.productos?.no_encontrados) ? errorData.validacion.productos.no_encontrados : []),
+      ...(Array.isArray(errorData?.data?.validacion_sap?.no_encontrados) ? errorData.data.validacion_sap.no_encontrados : []),
+      ...(Array.isArray(errorData?.data?.validacion?.productos?.no_encontrados) ? errorData.data.validacion.productos.no_encontrados : [])
+    ]
+    if (structuredNoEncontrados.length > 0) {
+      productosNoEncontradosSAP = [...new Set(structuredNoEncontrados)]
+      // Quitar entradas "Producto SAP" que no estén en la lista real (eran del parsing del mensaje)
+      for (let i = errorErrors.length - 1; i >= 0; i--) {
+        const err = errorErrors[i]
+        if (typeof err !== 'string' && err.campo === 'Producto SAP' && err.producto && !productosNoEncontradosSAP.includes(err.producto)) {
+          errorErrors.splice(i, 1)
+        }
+      }
+      // Asegurar una entrada por cada código real
+      const existingProductos = new Set(
+        (errorErrors.filter(er => typeof er !== 'string' && er.campo === 'Producto SAP') as Array<{ producto?: string }>).map(er => er.producto)
+      )
+      productosNoEncontradosSAP.forEach(codigo => {
+        if (!existingProductos.has(codigo)) {
+          errorErrors.push({ tipo: 'ERROR', campo: 'Producto SAP', mensaje: 'El código no existe en SAP', producto: codigo })
+        }
+      })
+    }
+
     // Eliminar duplicados de los códigos extraídos
     productosNoEncontradosSAP = [...new Set(productosNoEncontradosSAP)]
     tiendasNoEncontradasSAP = [...new Set(tiendasNoEncontradasSAP)]
     bodegasNoEncontradasSAP = [...new Set(bodegasNoEncontradasSAP)]
+
+    // ⭐ Filtrar falsos positivos: mensajes de error (formato, etc.) no son códigos de producto SAP
+    const looksLikeProductCode = (s: string): boolean => {
+      if (!s || typeof s !== 'string' || s.length > 35) return false
+      const lower = s.toLowerCase()
+      if (lower.includes('formato') || lower.includes('archivo') || lower.includes('excel') || lower.includes('estructura') || lower.includes('hoja') || lower.includes('cabecera') || lower.includes('detalle') || lower.includes('requerida')) return false
+      return /^[A-Za-z0-9.\s-]+$/.test(s.trim())
+    }
+    productosNoEncontradosSAP = productosNoEncontradosSAP.filter(looksLikeProductCode)
+    for (let i = errorErrors.length - 1; i >= 0; i--) {
+      const err = errorErrors[i]
+      if (typeof err !== 'string' && err.campo === 'Producto SAP' && err.producto && !looksLikeProductCode(err.producto)) {
+        errorErrors.splice(i, 1)
+      }
+    }
 
     // Identificar el tipo de error
     const isSAPError = productosNoEncontradosSAP.length > 0 || 
@@ -782,7 +828,7 @@ export function useFileUpload(options: {
   }
 
   /**
-   * Sube un archivo al servidor
+   * Sube un archivo al servidor (síncrono o async según useAsyncUpload)
    */
   async function uploadFile(file: File) {
     uploading.value = true
@@ -791,24 +837,57 @@ export function useFileUpload(options: {
     uploadMessage.value = 'Preparando archivo...'
     
     try {
-      // ⭐ Callback para actualizar el progreso
       const handleProgress = (progress: number, fase: 'upload' | 'processing') => {
         if (fase === 'upload') {
           uploadProgress.value = progress
           uploadFase.value = 'upload'
           updateUploadMessage('upload', progress)
-          
-          // Cuando el upload llega al 70%, iniciar simulación de procesamiento
-          if (progress >= 70) {
+          if (!options?.useAsyncUpload && progress >= 70) {
             startProcessingProgressSimulation()
           }
         } else if (fase === 'processing') {
-          // La respuesta llegó, detener simulación y marcar como completado
           stopProcessingProgressSimulation(true)
         }
       }
       
-      const response: UploadPlantillaResponse = await mba3ConsultasService.uploadPlantilla(file, handleProgress)
+      let response: UploadPlantillaResponse
+
+      if (options?.useAsyncUpload) {
+        try {
+          const accepted = await mba3ConsultasService.uploadPlantillaAsync(file, {}, handleProgress)
+          uploadFase.value = 'processing'
+          uploadMessage.value = accepted.message || 'Procesando plantilla en segundo plano...'
+          uploadProgress.value = 90
+          const pollIntervalMs = 2000
+          for (;;) {
+            await new Promise(r => setTimeout(r, pollIntervalMs))
+            const pollResult = await mba3ConsultasService.getResultadoPlantilla(accepted.process_id)
+            if (pollResult.status === 'processing') {
+              const estado = pollResult as PlantillaProcesoEstado
+              uploadMessage.value = estado.message || uploadMessage.value
+              uploadProgress.value = estado.progress ?? uploadProgress.value
+              continue
+            }
+            if (pollResult.status === 'error' && 'error' in pollResult) {
+              // Preservar el cuerpo de la respuesta (validacion_sap, validacion) para la UI de corrección de códigos
+              const err: any = new Error((pollResult as PlantillaProcesoEstado).error || (pollResult as PlantillaProcesoEstado).message)
+              err.response = { data: pollResult }
+              throw err
+            }
+            response = pollResult as UploadPlantillaResponse
+            break
+          }
+        } catch (asyncErr: any) {
+          if (asyncErr.response?.status === 503 && asyncErr.response?.data?.error === 'storage_required') {
+            if (import.meta.env.DEV) console.warn('[useFileUpload] Async no disponible (503), usando upload síncrono')
+            response = await mba3ConsultasService.uploadPlantilla(file, handleProgress)
+          } else {
+            throw asyncErr
+          }
+        }
+      } else {
+        response = await mba3ConsultasService.uploadPlantilla(file, handleProgress)
+      }
       
       // ⭐ Limpiar archivo original si la carga fue exitosa
       if (response.status === 'success') {
@@ -963,7 +1042,8 @@ export function useFileUpload(options: {
   }
   
   /**
-   * ⭐ NUEVA FUNCIONALIDAD: Reintenta la carga del archivo con correcciones de códigos aplicadas
+   * ⭐ Reintenta la carga del archivo con correcciones de códigos aplicadas (en segundo plano, async).
+   * Usa upload-async + polling igual que la primera subida; si async no está disponible (503), hace fallback a sync.
    */
   async function reintentarConCorrecciones(
     file: File,
@@ -983,13 +1063,11 @@ export function useFileUpload(options: {
     uploadMessage.value = 'Preparando archivo con correcciones...'
     
     try {
-      // ⭐ Callback para actualizar el progreso
       const handleProgress = (progress: number, fase: 'upload' | 'processing') => {
         if (fase === 'upload') {
           uploadProgress.value = progress
           uploadFase.value = 'upload'
           updateUploadMessage('upload', progress)
-          
           if (progress >= 70) {
             startProcessingProgressSimulation()
           }
@@ -998,20 +1076,48 @@ export function useFileUpload(options: {
         }
       }
       
-      // Llamar al servicio con correcciones
-      const response: UploadPlantillaResponse = await mba3ConsultasService.uploadPlantillaConCorrecciones(
-        file,
-        correcciones,
-        handleProgress
-      )
+      let response: UploadPlantillaResponse
+
+      try {
+        // ⭐ Subir con correcciones en segundo plano (upload-async + Celery)
+        const accepted = await mba3ConsultasService.uploadPlantillaAsync(
+          file,
+          { correcciones_codigos: correcciones },
+          handleProgress
+        )
+        uploadFase.value = 'processing'
+        uploadMessage.value = accepted.message || 'Aplicando correcciones en segundo plano...'
+        uploadProgress.value = 90
+        const pollIntervalMs = 2000
+        for (;;) {
+          await new Promise(r => setTimeout(r, pollIntervalMs))
+          const pollResult = await mba3ConsultasService.getResultadoPlantilla(accepted.process_id)
+          if (pollResult.status === 'processing') {
+            const estado = pollResult as PlantillaProcesoEstado
+            uploadMessage.value = estado.message || uploadMessage.value
+            uploadProgress.value = estado.progress ?? uploadProgress.value
+            continue
+          }
+          if (pollResult.status === 'error' && 'error' in pollResult) {
+            const err: any = new Error((pollResult as PlantillaProcesoEstado).error || (pollResult as PlantillaProcesoEstado).message)
+            err.response = { data: pollResult }
+            throw err
+          }
+          response = pollResult as UploadPlantillaResponse
+          break
+        }
+      } catch (asyncErr: any) {
+        if (asyncErr.response?.status === 503 && asyncErr.response?.data?.error === 'storage_required') {
+          if (import.meta.env.DEV) console.warn('[useFileUpload] Async no disponible (503), usando upload con correcciones síncrono')
+          response = await mba3ConsultasService.uploadPlantillaConCorrecciones(file, correcciones, handleProgress)
+        } else {
+          throw asyncErr
+        }
+      }
       
-      // Limpiar archivo original después del éxito
       archivoOriginal.value = null
       
-      // Obtener numero_pedido de la respuesta
       let numeroPedido = response.numero_pedido
-      
-      // Si no viene en la respuesta, intentar obtenerlo del pedido cargado usando pedido_id
       if (!numeroPedido && response.pedido_id && options?.pedido?.value) {
         try {
           const pedidoCompleto = await mba3ConsultasService.getPedido(response.pedido_id, false)
@@ -1021,7 +1127,6 @@ export function useFileUpload(options: {
         }
       }
       
-      // Mostrar mensaje de éxito
       const mensajeDetalle = `Correcciones aplicadas exitosamente.\n\nNúmero de pedido: ${numeroPedido || 'N/A'}\nArtículos: ${response.articulos_cargados}\nDistribuciones: ${response.distribuciones_cargadas}`
       
       if (response.status === 'success') {
@@ -1030,39 +1135,29 @@ export function useFileUpload(options: {
         toast.warning('Plantilla procesada con advertencias', mensajeDetalle)
       }
       
-      // Llamar callback de éxito si existe
       if (numeroPedido && options?.onUploadSuccess) {
         await options.onUploadSuccess(numeroPedido, response)
       }
       
-      // Redirigir o recargar según corresponda
       if (numeroPedido) {
         const currentPedidoNumero = options?.pedido?.value?.cabecera.numero_pedido
         const pathBase = options?.redirectToCargarPlantilla ? '/mba3-consultas/cargar-plantilla' : '/mba3-consultas/pedidos'
         if (numeroPedido !== currentPedidoNumero) {
-          // Si el pedido cargado es diferente al actual, redirigir
-          // ⭐ Asegurar que la navegación se complete antes de continuar
           await router.push(`${pathBase}/${encodeURIComponent(numeroPedido)}`)
-          // ⭐ Pequeño delay para asegurar que el componente detecte el cambio de ruta
-          // Esto es necesario porque el watcher puede no ejecutarse inmediatamente
           await new Promise(resolve => setTimeout(resolve, 100))
         } else {
-          // Recargar el pedido actual si hay callback
           if (options?.loadPedido) {
             await options.loadPedido()
           }
         }
       } else {
-        // Si no hay numeroPedido pero hay callback, intentar recargar
         if (options?.loadPedido) {
           await options.loadPedido()
         }
       }
     } catch (e: any) {
-      // ⭐ Detener simulación de progreso en caso de error
       stopProcessingProgressSimulation(false)
       
-      // Si hay error en el reintento, procesar el error normalmente
       const errorInfo = processUploadError(e, file.name)
       uploadErrorInfo.value = errorInfo
       showErrorModal.value = true
@@ -1076,11 +1171,9 @@ export function useFileUpload(options: {
         options.onUploadError(errorInfo)
       }
       
-      // Re-lanzar para que el componente pueda manejar el error
       throw e
     } finally {
       uploading.value = false
-      // ⭐ Pequeño delay antes de resetear el progreso
       setTimeout(() => {
         resetProgress()
       }, 500)

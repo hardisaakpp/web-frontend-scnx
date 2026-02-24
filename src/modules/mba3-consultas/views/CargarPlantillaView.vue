@@ -1222,7 +1222,8 @@ const codigosCorregidosHighlight = ref<Set<string>>(new Set())
 const fileUploadComposable = useFileUpload({
   pedido,
   loadPedido: () => pedidoDetalle.loadPedido(),
-  redirectToCargarPlantilla: true, // Tras subir plantilla, permanecer en /mba3-consultas/cargar-plantilla/:id
+  redirectToCargarPlantilla: true,
+  useAsyncUpload: true, // Procesamiento en segundo plano (Celery), no bloquea la app
   onUploadSuccess: async (numeroPedido, response) => {
     if (response?.correcciones_aplicadas?.length) {
       codigosCorregidosHighlight.value = new Set(response.correcciones_aplicadas.map(c => c.codigo_corregido))

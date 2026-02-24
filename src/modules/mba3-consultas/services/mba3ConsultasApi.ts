@@ -18,7 +18,7 @@ import type {
 } from '../types'
 import type { OrdenCompraResponse, OrdenCompraLogResponse, RemisionResponse } from '../types'
 import type { HealthResponse, ProcesoResponse } from '../types'
-import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, SkuHomologacionCreateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstado, ProcesoEstadoResponse, SugerenciaProducto, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuRequest, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, PedidoCompleto, CargarRespuestaProveedorResponse, RespuestaProveedorResponse, ProcesarConfirmacionResponse, ReporteDiferenciasResponse, IntegracionSAPResponse, ActualizarCostoPedidoResponse, AjusteDetalle, ResumenConfirmacion, GuardarModificacionesColumnasRequest, GuardarModificacionesColumnasResponse, ObtenerModificacionesColumnasResponse, ProcesamientoSAPResponse, PedidosListadoResponse, CrearOCDesdePedidoResponse, CrearPedidoRequest, CrearPedidoResponse, ModificarPedidoCabeceraRequest, ModificarPedidoCabeceraResponse, TienePedidosResponse, InfoArchivoPlantillaResponse, BuscarPlantillasResponse, PlantillasPedidosResponse, ProcesoCompletoSAPResponse, EstadosPedidoResponse } from '../types'
+import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, SkuHomologacionCreateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstado, ProcesoEstadoResponse, SugerenciaProducto, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuRequest, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, UploadPlantillaAsyncAcceptedResponse, PlantillaProcesoEstado, PedidoCompleto, CargarRespuestaProveedorResponse, RespuestaProveedorResponse, ProcesarConfirmacionResponse, ReporteDiferenciasResponse, IntegracionSAPResponse, ActualizarCostoPedidoResponse, AjusteDetalle, ResumenConfirmacion, GuardarModificacionesColumnasRequest, GuardarModificacionesColumnasResponse, ObtenerModificacionesColumnasResponse, ProcesamientoSAPResponse, PedidosListadoResponse, CrearOCDesdePedidoResponse, CrearPedidoRequest, CrearPedidoResponse, ModificarPedidoCabeceraRequest, ModificarPedidoCabeceraResponse, TienePedidosResponse, InfoArchivoPlantillaResponse, BuscarPlantillasResponse, PlantillasPedidosResponse, ProcesoCompletoSAPResponse, EstadosPedidoResponse } from '../types'
 
 // ⭐ REEXPORTAR CONFIGURACIÓN Y UTILIDADES REFACTORIZADAS
 export { mba3Api, API_BASE_URL } from './config/axiosConfig'
@@ -843,6 +843,33 @@ export const mba3ConsultasService = {
     onProgress?: (progress: number, fase: 'upload' | 'processing') => void
   ): Promise<UploadPlantillaResponse> {
     return pedidosService.uploadPlantillaConCorrecciones(file, correcciones, onProgress)
+  },
+
+  /**
+   * Sube una plantilla para procesamiento en segundo plano (Celery).
+   * Responde con process_id; el resultado se obtiene con getResultadoPlantilla(process_id).
+   * @deprecated Usar pedidosService.uploadPlantillaAsync() directamente
+   */
+  async uploadPlantillaAsync(
+    file: File,
+    opts?: {
+      validar?: boolean
+      bloquea_con_errores?: boolean
+      modo_tiendas?: 'validar_estricto' | 'crear_si_no_existe' | 'sincronizar_maestro'
+      confirmar_sincronizacion?: boolean
+      correcciones_codigos?: Record<string, string>
+    },
+    onProgress?: (progress: number, fase: 'upload' | 'processing') => void
+  ): Promise<UploadPlantillaAsyncAcceptedResponse> {
+    return pedidosService.uploadPlantillaAsync(file, opts, onProgress)
+  },
+
+  /**
+   * Obtiene el estado/resultado del procesamiento async de una plantilla (polling).
+   * @deprecated Usar pedidosService.getResultadoPlantilla() directamente
+   */
+  async getResultadoPlantilla(processId: string): Promise<PlantillaProcesoEstado | UploadPlantillaResponse> {
+    return pedidosService.getResultadoPlantilla(processId)
   },
 
   /**

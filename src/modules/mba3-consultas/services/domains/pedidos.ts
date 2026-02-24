@@ -24,6 +24,8 @@ import { createEnrichedError, normalizeValidationResponse } from '../utils/error
 import { buildUrlWithParams } from '../utils/urlBuilder'
 import type {
   UploadPlantillaResponse,
+  UploadPlantillaAsyncAcceptedResponse,
+  PlantillaProcesoEstado,
   PedidoCompleto,
   CrearPedidoRequest,
   CrearPedidoResponse,
@@ -172,6 +174,72 @@ export const pedidosService = {
       }
 
       throw createEnrichedError(error, 'Error desconocido al subir plantilla con correcciones')
+    }
+  },
+
+  /**
+   * Sube una plantilla para procesamiento en segundo plano (Celery).
+   * Responde de inmediato con process_id; el resultado se obtiene con getResultadoPlantilla(process_id).
+   * Requiere Redis + Celery Worker + ENABLE_FILE_STORAGE en el backend.
+   */
+  async uploadPlantillaAsync(
+    file: File,
+    opts?: {
+      validar?: boolean
+      bloquea_con_errores?: boolean
+      modo_tiendas?: 'validar_estricto' | 'crear_si_no_existe' | 'sincronizar_maestro'
+      confirmar_sincronizacion?: boolean
+      correcciones_codigos?: Record<string, string>
+    },
+    onProgress?: (progress: number, fase: 'upload' | 'processing') => void
+  ): Promise<UploadPlantillaAsyncAcceptedResponse> {
+    validateFile(file)
+    const formData = new FormData()
+    formData.append('file', file)
+    if (opts?.correcciones_codigos && Object.keys(opts.correcciones_codigos).length > 0) {
+      formData.append('correcciones_codigos', JSON.stringify(opts.correcciones_codigos))
+    }
+    const params = new URLSearchParams()
+    if (opts?.validar !== undefined) params.set('validar', String(opts.validar))
+    if (opts?.bloquea_con_errores !== undefined) params.set('bloquea_con_errores', String(opts.bloquea_con_errores))
+    if (opts?.modo_tiendas) params.set('modo_tiendas', opts.modo_tiendas)
+    if (opts?.confirmar_sincronizacion) params.set('confirmar_sincronizacion', 'true')
+    const url = `/api/plantillas/upload-async${params.toString() ? `?${params.toString()}` : ''}`
+    const config = {
+      timeout: 60000,
+      onUploadProgress: (progressEvent: UploadProgressEvent) => {
+        if (onProgress && progressEvent.total) {
+          const pct = Math.round((progressEvent.loaded / progressEvent.total) * 100)
+          onProgress(pct, 'upload')
+        }
+      }
+    }
+    const response = await mba3Api.post<UploadPlantillaAsyncAcceptedResponse>(url, formData, config as Parameters<typeof mba3Api.post>[2])
+    return response.data
+  },
+
+  /**
+   * Obtiene el estado/resultado del procesamiento async de una plantilla (polling).
+   * Usar el process_id devuelto por uploadPlantillaAsync.
+   */
+  async getResultadoPlantilla(processId: string): Promise<PlantillaProcesoEstado | UploadPlantillaResponse> {
+    try {
+      const response = await mba3Api.get<PlantillaProcesoEstado | UploadPlantillaResponse>(`/api/plantillas/resultado/${processId}`)
+      const data = response.data
+      if (data && typeof data === 'object' && 'status' in data) {
+        if (data.status === 'processing') {
+          return data as PlantillaProcesoEstado
+        }
+        if (data.status === 'success' || data.status === 'validation_error' || data.status === 'error') {
+          return normalizeValidationResponse(data as UploadPlantillaResponse)
+        }
+      }
+      return data as PlantillaProcesoEstado | UploadPlantillaResponse
+    } catch (error: any) {
+      if (error.response?.status === 400 && error.response?.data?.status === 'error') {
+        return error.response.data as PlantillaProcesoEstado
+      }
+      throw error
     }
   },
 

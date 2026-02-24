@@ -793,6 +793,27 @@ export interface UploadPlantillaResponse {
   correcciones_aplicadas?: Array<{ codigo_original: string; codigo_corregido: string }>
 }
 
+/** Respuesta de POST /api/plantillas/upload-async (procesamiento en segundo plano) */
+export interface UploadPlantillaAsyncAcceptedResponse {
+  status: 'accepted'
+  process_id: string
+  message: string
+  resultado_url: string
+  stream_url: string
+}
+
+/** Estado al consultar GET /api/plantillas/resultado/{process_id} (polling) */
+export interface PlantillaProcesoEstado {
+  status: 'processing' | 'completed' | 'error'
+  step?: string
+  progress?: number
+  message?: string
+  process_id?: string
+  /** Cuando status === 'completed', mismo formato que UploadPlantillaResponse */
+  resultado?: UploadPlantillaResponse
+  error?: string
+}
+
 // ========== Crear Pedido Manual (HU-01) ==========
 
 /**

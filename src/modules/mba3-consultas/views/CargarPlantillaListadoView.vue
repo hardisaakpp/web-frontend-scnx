@@ -713,8 +713,8 @@ function seleccionarResultado(resultado: BuscarPlantillaResultado) {
   router.push(`/mba3-consultas/cargar-plantilla/${encodeURIComponent(resultado.numero_pedido)}`)
 }
 
-// Carga de plantillas Excel (redirige a cargar-plantilla/:id tras subir)
-const fileUploadComposable = useFileUpload({ redirectToCargarPlantilla: true })
+// Carga de plantillas Excel (redirige a cargar-plantilla/:id tras subir). useAsyncUpload: no bloquea la app (Celery).
+const fileUploadComposable = useFileUpload({ redirectToCargarPlantilla: true, useAsyncUpload: true })
 const {
   uploading,
   openFileSelector,
