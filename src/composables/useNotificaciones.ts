@@ -165,8 +165,12 @@ export function useNotificaciones() {
         }
       }
     } catch (error: unknown) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        // Desconexión intencional, no reconectar
+      const err = error as { name?: string; message?: string }
+      if (
+        (error instanceof DOMException && error.name === 'AbortError') ||
+        err?.name === 'AbortError' ||
+        err?.message?.toLowerCase?.().includes('aborted')
+      ) {
         if (import.meta.env.DEV) {
           console.log('📢 [Notificaciones] Conexión SSE abortada intencionalmente')
         }
@@ -304,8 +308,11 @@ export function useNotificaciones() {
     if (reader) {
       try {
         reader.cancel()
-      } catch {
-        // Ignorar error al cancelar
+      } catch (e: unknown) {
+        const err = e as { name?: string; message?: string }
+        if (err?.name !== 'AbortError' && !err?.message?.toLowerCase?.().includes?.('aborted') && import.meta.env.DEV) {
+          console.warn('📢 [Notificaciones] Error al cancelar reader:', e)
+        }
       }
       reader = null
     }

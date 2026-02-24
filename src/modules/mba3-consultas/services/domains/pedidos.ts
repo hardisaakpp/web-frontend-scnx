@@ -48,6 +48,8 @@ import type {
   ListadoArchivosOriginalesResponse,
   EliminarArchivoOriginalResponse,
   ProcesoCompletoSAPResponse,
+  ProcesoCompletoSAPAsyncResponse,
+  ProcesoCompletoSAPResultadoPolling,
   EstadosPedidoResponse
 } from '../../types'
 
@@ -942,6 +944,44 @@ export const pedidosService = {
       }
       
       throw createEnrichedError(error, 'Error al ejecutar proceso completo SAP')
+    }
+  },
+
+  /**
+   * Inicia el proceso completo SAP en segundo plano (Celery).
+   * POST /api/pedidos/{numero_pedido}/proceso-completo-sap-async
+   * Respuesta 202 con process_id, resultado_url, stream_url. Luego consultar resultado por polling o SSE.
+   */
+  async procesoCompletoSAPAsync(
+    numeroPedido: string,
+    ajustesDetalle: AjusteDetalle[]
+  ): Promise<ProcesoCompletoSAPAsyncResponse> {
+    try {
+      const response = await mba3Api.post<ProcesoCompletoSAPAsyncResponse>(
+        `/api/pedidos/${encodeURIComponent(numeroPedido)}/proceso-completo-sap-async`,
+        { ajustes_detalle: ajustesDetalle },
+        { timeout: 15000 }
+      )
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [procesoCompletoSAPAsync] Error:', error)
+      throw createEnrichedError(error, 'Error al iniciar proceso completo SAP en segundo plano')
+    }
+  },
+
+  /**
+   * Consulta el resultado de un proceso SAP en segundo plano (polling).
+   * GET /api/pedidos/proceso-sap/resultado/{process_id}
+   */
+  async getProcesoSAPResultado(processId: string): Promise<ProcesoCompletoSAPResultadoPolling> {
+    try {
+      const response = await mba3Api.get<ProcesoCompletoSAPResultadoPolling>(
+        `/api/pedidos/proceso-sap/resultado/${encodeURIComponent(processId)}`
+      )
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [getProcesoSAPResultado] Error:', error)
+      throw createEnrichedError(error, 'Error al consultar resultado del proceso SAP')
     }
   },
 

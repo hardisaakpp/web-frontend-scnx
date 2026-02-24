@@ -183,6 +183,38 @@
     </div>
   </Teleport>
 
+  <!-- Modal de éxito SAP con botón Descargar PDF -->
+  <Teleport to="body">
+    <div
+      v-if="showSAPSuccessModal"
+      class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center"
+      @click.self="showSAPSuccessModal = false"
+    >
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 max-w-md mx-4 border border-gray-200 dark:border-gray-600">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Proceso completado</h3>
+        <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">{{ sapSuccessMessage || 'ODC enviada correctamente a SAP.' }}</p>
+        <div class="flex flex-col gap-2">
+          <button
+            v-if="sapSuccessOcId"
+            type="button"
+            class="w-full px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium disabled:opacity-50"
+            :disabled="descargandoSAPPDF"
+            @click="handleDescargarSAPPDF"
+          >
+            {{ descargandoSAPPDF ? 'Descargando...' : 'Descargar PDF' }}
+          </button>
+          <button
+            type="button"
+            class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
+            @click="showSAPSuccessModal = false"
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
+
   <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
     <div class="space-y-6" :class="{ 'pointer-events-none opacity-75': uploading || enviandoOdcSap }">
       <!-- Header con botones de acción -->
@@ -870,6 +902,14 @@ const sapMessage = ref('')
 
 // Intervalo para simulación de progreso
 let sapProgressInterval: ReturnType<typeof setInterval> | null = null
+// Intervalo de polling para proceso async SAP
+let sapPollingInterval: ReturnType<typeof setInterval> | null = null
+
+// Modal de éxito SAP y PDF
+const showSAPSuccessModal = ref(false)
+const sapSuccessOcId = ref<string | null>(null)
+const sapSuccessMessage = ref('')
+const descargandoSAPPDF = ref(false)
 
 function resetSapProgress() {
   sapProgress.value = 0
@@ -878,6 +918,10 @@ function resetSapProgress() {
   if (sapProgressInterval) {
     clearInterval(sapProgressInterval)
     sapProgressInterval = null
+  }
+  if (sapPollingInterval) {
+    clearInterval(sapPollingInterval)
+    sapPollingInterval = null
   }
 }
 
@@ -918,6 +962,27 @@ function completeSapProgress() {
   sapProgress.value = 100
   sapFase.value = 'complete'
   sapMessage.value = 'Proceso completado'
+}
+
+async function handleDescargarSAPPDF() {
+  const ocId = sapSuccessOcId.value
+  if (!ocId) return
+  descargandoSAPPDF.value = true
+  try {
+    const blob = await mba3ConsultasService.descargarODCPDF(ocId)
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `ODC_${ocId.substring(0, 8)}.pdf`
+    link.click()
+    URL.revokeObjectURL(url)
+    toast.success('Descarga completada', 'El PDF se ha descargado correctamente')
+    showSAPSuccessModal.value = false
+  } catch (e: any) {
+    toast.error('Error al descargar', e?.message || 'No se pudo descargar el PDF')
+  } finally {
+    descargandoSAPPDF.value = false
+  }
 }
 
 async function handleFinalizarPedido() {
@@ -1611,84 +1676,111 @@ async function handleEnviarOdcSap() {
   }))
 
   enviandoOdcSap.value = true
-  // ⭐ Iniciar simulación de progreso
   startSapProgressSimulation()
-  toast.info('Procesando...', 'Confirmando redistribución y enviando ODC a SAP')
+  toast.info('Procesando...', 'Proceso SAP en segundo plano. No cierre la ventana.')
 
   try {
-    const resultado = await mba3ConsultasService.procesoCompletoSAP(numeroPedido.value, ajustesDetalle)
+    const accepted = await mba3ConsultasService.procesoCompletoSAPAsync(numeroPedido.value, ajustesDetalle)
 
-    // ⭐ Completar progreso al 100%
-    completeSapProgress()
+    if (accepted.status !== 'accepted' || !accepted.process_id) {
+      toast.error('Error', 'No se pudo iniciar el proceso. Respuesta inesperada.')
+      return
+    }
 
-    if (resultado.status === 'success') {
-      const docNum = resultado.envio_sap?.doc_num
-      toast.success(
-        'Proceso completado',
-        docNum 
-          ? `ODC enviada exitosamente a SAP. DocNum: ${docNum}`
-          : 'ODC procesada correctamente en SAP'
-      )
-      
-      // Mostrar información de Solicitudes de Transferencia si existen
-      if (resultado.envio_sap?.solicitudes_transferencia) {
-        const st = resultado.envio_sap.solicitudes_transferencia
-        if (st.transferencias_creadas > 0) {
-          toast.success(
-            'Solicitudes de Transferencia',
-            `Se crearon ${st.transferencias_creadas} de ${st.total_tiendas} solicitudes de transferencia`
-          )
+    const processId = accepted.process_id
+
+    const poll = async () => {
+      try {
+        const result = await mba3ConsultasService.getProcesoSAPResultado(processId)
+        const data = result as Record<string, unknown>
+
+        const done =
+          data.process_status === 'completed' ||
+          data.progress === 100 ||
+          data.status === 'success' ||
+          data.status === 'partial' ||
+          data.status === 'completed'
+
+        if (result.status === 'error') {
+          if (sapPollingInterval) {
+            clearInterval(sapPollingInterval)
+            sapPollingInterval = null
+          }
+          enviandoOdcSap.value = false
+          resetSapProgress()
+          const msg = result.message || 'Error en el proceso'
+          const detalle = result.error_detalle || result.paso_fallido ? ` (${result.paso_fallido ?? ''} ${result.error_detalle ?? ''})`.trim() : ''
+          toast.error('Error al enviar a SAP', msg + detalle)
+          return
         }
+
+        if (done) {
+          if (sapPollingInterval) {
+            clearInterval(sapPollingInterval)
+            sapPollingInterval = null
+          }
+          completeSapProgress()
+
+          const response = result as import('@/modules/mba3-consultas/types').ProcesoCompletoSAPResponse
+          const innerStatus = (response as any).status === 'success' || (response as any).status === 'partial' || (response as any).status === 'error'
+            ? (response as any).status
+            : (response.envio_sap?.doc_num != null ? 'success' : response.error ? 'partial' : 'error')
+
+          if (innerStatus === 'success') {
+            const docNum = response.envio_sap?.doc_num
+            sapSuccessMessage.value = docNum
+              ? `ODC enviada exitosamente a SAP. DocNum: ${docNum}`
+              : (response.message || 'ODC procesada correctamente en SAP')
+            sapSuccessOcId.value = response.envio_sap?.oc_id ?? null
+            showSAPSuccessModal.value = true
+            if (response.envio_sap?.solicitudes_transferencia?.transferencias_creadas) {
+              const st = response.envio_sap.solicitudes_transferencia
+              toast.success('Solicitudes de Transferencia', `Se crearon ${st.transferencias_creadas} de ${st.total_tiendas} solicitudes`)
+            }
+            await loadPedido()
+          } else if (innerStatus === 'partial') {
+            toast.warning(
+              `Error en paso: ${response.paso_fallido ?? 'desconocido'}`,
+              response.error || response.message || 'El proceso no se completó totalmente'
+            )
+            if (response.redistribucion) toast.info('Redistribución confirmada', `Versión: ${response.redistribucion.version_confirmada}`)
+            if (response.odc_generada) toast.info('ODC generada', `ID: ${response.odc_generada.oc_id}`)
+            await loadPedido()
+          } else {
+            toast.error('Error', response.message || 'No se pudo completar el proceso')
+          }
+          enviandoOdcSap.value = false
+          setTimeout(resetSapProgress, 500)
+          return
+        }
+
+        if (data.message) sapMessage.value = String(data.message)
+        if (typeof data.progress === 'number') sapProgress.value = data.progress
+      } catch (pollErr: any) {
+        if (sapPollingInterval) {
+          clearInterval(sapPollingInterval)
+          sapPollingInterval = null
+        }
+        enviandoOdcSap.value = false
+        resetSapProgress()
+        toast.error('Error', pollErr?.response?.data?.message || pollErr?.message || 'Error al consultar el resultado')
       }
-      
-      // Recargar el pedido para actualizar el estado
-      await loadPedido()
-    } else if (resultado.status === 'partial') {
-      // Error parcial - mostrar qué paso falló
-      const pasoFallido = resultado.paso_fallido
-      const mensaje = resultado.error || resultado.message
-      
-      toast.warning(
-        `Error en paso: ${pasoFallido}`,
-        mensaje || 'El proceso no se completó totalmente'
-      )
-      
-      // Si la redistribución y ODC se completaron, mostrar info
-      if (resultado.redistribucion) {
-        toast.info('Redistribución confirmada', `Versión: ${resultado.redistribucion.version_confirmada}`)
-      }
-      if (resultado.odc_generada) {
-        toast.info('ODC generada', `ID: ${resultado.odc_generada.oc_id}`)
-      }
-      
-      await loadPedido()
-    } else {
-      toast.error('Error', resultado.message || 'No se pudo completar el proceso')
     }
+
+    await poll()
+    sapPollingInterval = setInterval(poll, 2000)
   } catch (e: any) {
-    console.error('Error al enviar ODC a SAP:', e)
-    
-    // Verificar si es una respuesta parcial
-    if (e.response?.data?.status === 'partial') {
-      const resultado = e.response.data
-      toast.warning(
-        `Error en paso: ${resultado.paso_fallido}`,
-        resultado.error || resultado.message || 'El proceso no se completó totalmente'
-      )
-    } else {
-      toast.error(
-        'Error al enviar a SAP',
-        e.message || 'Ocurrió un error al procesar la solicitud'
-      )
+    console.error('Error al iniciar proceso completo SAP:', e)
+    if (sapPollingInterval) {
+      clearInterval(sapPollingInterval)
+      sapPollingInterval = null
     }
-    
-    await loadPedido()
+    toast.error('Error al enviar a SAP', e?.response?.data?.message || e?.message || 'No se pudo iniciar el proceso')
   } finally {
-    enviandoOdcSap.value = false
-    // ⭐ Resetear progreso después de un pequeño delay
-    setTimeout(() => {
-      resetSapProgress()
-    }, 500)
+    if (!sapPollingInterval) {
+      enviandoOdcSap.value = false
+      setTimeout(resetSapProgress, 500)
+    }
   }
 }
 
@@ -1812,6 +1904,10 @@ onUnmounted(() => {
   if (sapProgressInterval) {
     clearInterval(sapProgressInterval)
     sapProgressInterval = null
+  }
+  if (sapPollingInterval) {
+    clearInterval(sapPollingInterval)
+    sapPollingInterval = null
   }
 })
 

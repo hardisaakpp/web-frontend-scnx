@@ -311,6 +311,8 @@ const sapMessage = ref('')
 
 // Intervalo para simulación de progreso
 let sapProgressInterval: ReturnType<typeof setInterval> | null = null
+// Intervalo de polling para proceso async SAP
+let sapPollingInterval: ReturnType<typeof setInterval> | null = null
 
 function resetSapProgress() {
   sapProgress.value = 0
@@ -319,6 +321,10 @@ function resetSapProgress() {
   if (sapProgressInterval) {
     clearInterval(sapProgressInterval)
     sapProgressInterval = null
+  }
+  if (sapPollingInterval) {
+    clearInterval(sapPollingInterval)
+    sapPollingInterval = null
   }
 }
 
@@ -527,9 +533,9 @@ async function handleEnviarOdcSap() {
   if (!confirmar) return
 
   enviandoOdcSap.value = true
-  // ⭐ Iniciar simulación de progreso
+  // ⭐ Iniciar simulación de progreso (se actualizará con mensajes reales vía polling)
   startSapProgressSimulation()
-  toast.info('Procesando...', 'Ejecutando proceso completo SAP. Por favor espere.')
+  toast.info('Procesando...', 'Proceso SAP en segundo plano. No cierre la ventana.')
 
   try {
     // Preparar datos de ajustes (mismo formato que confirmarRedistribucion)
@@ -549,108 +555,155 @@ async function handleEnviarOdcSap() {
       cambio_precio: false
     }))
 
-    // Llamar al endpoint de proceso completo
-    const response = await mba3ConsultasService.procesoCompletoSAP(numeroPedido.value, ajustes_detalle)
+    // ⭐ Llamar al endpoint ASYNC (202) en lugar del síncrono
+    const accepted = await mba3ConsultasService.procesoCompletoSAPAsync(numeroPedido.value, ajustes_detalle)
 
-    // ⭐ Completar progreso al 100%
-    completeSapProgress()
+    if (accepted.status !== 'accepted' || !accepted.process_id) {
+      toast.error('Error', 'No se pudo iniciar el proceso. Respuesta inesperada.')
+      return
+    }
 
-    if (response.status === 'success') {
-      // Éxito total: actualizar estado del pedido en memoria
-      const cabecera = pedido.value?.cabecera
-      if (cabecera) {
-        cabecera.estado_id = 10 // CONFIRMADO REDISTRIBUCION
-        cabecera.estado = 'CONFIRMADO REDISTRIBUCION'
-      }
+    const processId = accepted.process_id
 
-      // ⭐ Guardar resultado en el store para mostrar modal en /proceso
-      procesoStore.setSAPResultadoPendiente({
-        detalle: response.envio_sap ? {
-          success: true,
-          oc_id: '',
-          doc_num: response.envio_sap.doc_num,
-          doc_entry: response.envio_sap.doc_entry,
-          message: response.message,
-          error: null,
-          error_message: null,
-          error_code: null,
-          error_source: null
-        } as IntegracionSAPDetalle : null,
-        solicitudesTransferencia: response.envio_sap?.solicitudes_transferencia || null,
-        estadoGeneral: 'success',
-        numeroPedido: numeroPedido.value
-      })
+    // Polling cada 2 segundos hasta completed o error
+    const poll = async () => {
+      try {
+        const result = await mba3ConsultasService.getProcesoSAPResultado(processId)
+        const data = result as Record<string, unknown>
 
-      // Redirigir a la pantalla de Procesar ODC
-      router.push({ name: 'mba3-consultas-proceso' })
-    } else if (response.status === 'partial') {
-      // Éxito parcial: mostrar en qué paso falló
-      const pasoFallido = response.paso_fallido ?? 'desconocido'
-      const errorMsg = response.error ?? 'Error desconocido'
-      
-      // ⭐ Guardar resultado parcial en el store
-      procesoStore.setSAPResultadoPendiente({
-        detalle: response.envio_sap ? {
-          success: !!response.envio_sap.doc_num,
-          oc_id: '',
-          doc_num: response.envio_sap.doc_num,
-          doc_entry: response.envio_sap.doc_entry,
-          message: null,
-          error: errorMsg,
-          error_message: errorMsg,
-          error_code: null,
-          error_source: null
-        } as IntegracionSAPDetalle : {
-          success: false,
-          oc_id: '',
-          doc_num: null,
-          doc_entry: null,
-          message: null,
-          error: errorMsg,
-          error_message: errorMsg,
-          error_code: null,
-          error_source: null
-        } as IntegracionSAPDetalle,
-        solicitudesTransferencia: response.envio_sap?.solicitudes_transferencia || null,
-        estadoGeneral: 'partial',
-        numeroPedido: numeroPedido.value
-      })
+        // Proceso terminado: backend puede enviar process_status, progress 100, o status success/partial/completed
+        const done =
+          data.process_status === 'completed' ||
+          data.progress === 100 ||
+          data.status === 'success' ||
+          data.status === 'partial' ||
+          data.status === 'completed'
 
-      // Si al menos se confirmó la redistribución, actualizar estado
-      if (response.redistribucion) {
-        const cabecera = pedido.value?.cabecera
-        if (cabecera) {
-          cabecera.estado_id = 10
-          cabecera.estado = 'CONFIRMADO REDISTRIBUCION'
+        if (result.status === 'error') {
+          if (sapPollingInterval) {
+            clearInterval(sapPollingInterval)
+            sapPollingInterval = null
+          }
+          enviandoOdcSap.value = false
+          resetSapProgress()
+          const msg = result.message || 'Error en el proceso'
+          const detalle = result.error_detalle || result.paso_fallido ? ` (${result.paso_fallido ?? ''} ${result.error_detalle ?? ''})`.trim() : ''
+          toast.error('Error al enviar a SAP', msg + detalle)
+          return
         }
+
+        if (done) {
+          if (sapPollingInterval) {
+            clearInterval(sapPollingInterval)
+            sapPollingInterval = null
+          }
+          completeSapProgress()
+
+          // Backend puede devolver el mismo cuerpo que el síncrono (status success/partial/error) o status 'completed' con el resto de campos
+          const response = result as import('@/modules/mba3-consultas/types').ProcesoCompletoSAPResponse
+          const innerStatus = (response as any).status === 'success' || (response as any).status === 'partial' || (response as any).status === 'error'
+            ? (response as any).status
+            : (response.envio_sap?.doc_num != null ? 'success' : response.error ? 'partial' : 'error')
+
+          if (innerStatus === 'success') {
+            const cabecera = pedido.value?.cabecera
+            if (cabecera) {
+              cabecera.estado_id = 10
+              cabecera.estado = 'CONFIRMADO REDISTRIBUCION'
+            }
+            procesoStore.setSAPResultadoPendiente({
+              detalle: response.envio_sap ? {
+                success: true,
+                oc_id: response.envio_sap.oc_id ?? '',
+                doc_num: response.envio_sap.doc_num,
+                doc_entry: response.envio_sap.doc_entry,
+                message: response.message,
+                error: null,
+                error_message: null,
+                error_code: null,
+                error_source: null
+              } as IntegracionSAPDetalle : null,
+              solicitudesTransferencia: response.envio_sap?.solicitudes_transferencia || null,
+              estadoGeneral: 'success',
+              numeroPedido: numeroPedido.value
+            })
+            router.push({ name: 'mba3-consultas-proceso' })
+          } else if (innerStatus === 'partial') {
+            const pasoFallido = response.paso_fallido ?? 'desconocido'
+            const errorMsg = response.error ?? 'Error desconocido'
+            procesoStore.setSAPResultadoPendiente({
+              detalle: response.envio_sap ? {
+                success: !!response.envio_sap.doc_num,
+                oc_id: response.envio_sap.oc_id ?? '',
+                doc_num: response.envio_sap.doc_num,
+                doc_entry: response.envio_sap.doc_entry,
+                message: null,
+                error: errorMsg,
+                error_message: errorMsg,
+                error_code: null,
+                error_source: null
+              } as IntegracionSAPDetalle : {
+                success: false,
+                oc_id: '',
+                doc_num: null,
+                doc_entry: null,
+                message: null,
+                error: errorMsg,
+                error_message: errorMsg,
+                error_code: null,
+                error_source: null
+              } as IntegracionSAPDetalle,
+              solicitudesTransferencia: response.envio_sap?.solicitudes_transferencia || null,
+              estadoGeneral: 'partial',
+              numeroPedido: numeroPedido.value
+            })
+            if (response.redistribucion && pedido.value?.cabecera) {
+              pedido.value.cabecera.estado_id = 10
+              pedido.value.cabecera.estado = 'CONFIRMADO REDISTRIBUCION'
+            }
+            router.push({ name: 'mba3-consultas-proceso' })
+          } else {
+            toast.error('Error en proceso SAP', response.message || 'Ocurrió un error inesperado')
+          }
+          enviandoOdcSap.value = false
+          setTimeout(resetSapProgress, 500)
+          return
+        }
+
+        // Sigue en curso: actualizar mensaje y barra
+        if (data.message) sapMessage.value = String(data.message)
+        if (typeof data.progress === 'number') sapProgress.value = data.progress
+      } catch (pollErr: any) {
+        if (sapPollingInterval) {
+          clearInterval(sapPollingInterval)
+          sapPollingInterval = null
+        }
+        enviandoOdcSap.value = false
+        resetSapProgress()
+        const message = pollErr?.response?.data?.message || pollErr?.message || 'Error al consultar el resultado'
+        toast.error('Error', message)
       }
-      
-      // Redirigir para mostrar el modal con los resultados
-      router.push({ name: 'mba3-consultas-proceso' })
-    } else {
-      // Error total
-      toast.error('Error en proceso SAP', response.message || 'Ocurrió un error inesperado')
     }
+
+    // Primera consulta inmediata y luego cada 2s
+    await poll()
+    sapPollingInterval = setInterval(poll, 2000)
   } catch (e: any) {
-    console.error('Error al ejecutar proceso completo SAP:', e)
-    
-    // Verificar si hay respuesta parcial en el error
-    if (e.response?.data?.status === 'partial') {
-      const data = e.response.data
-      toast.warning(
-        `Proceso incompleto (falló en: ${data.paso_fallido ?? 'desconocido'})`,
-        data.error ?? data.message ?? 'Error desconocido'
-      )
-    } else {
-      const message = extractErrorMessage(e)
-      toast.error('Error al enviar a SAP', message || 'No se pudo completar el proceso')
+    console.error('Error al iniciar proceso completo SAP:', e)
+    if (sapPollingInterval) {
+      clearInterval(sapPollingInterval)
+      sapPollingInterval = null
     }
+    const message = e?.response?.data?.message || e?.message || 'No se pudo iniciar el proceso'
+    toast.error('Error al enviar a SAP', message || 'No se pudo completar el proceso')
   } finally {
-    enviandoOdcSap.value = false
-    // ⭐ Resetear progreso después de un pequeño delay
-    setTimeout(() => {
-      resetSapProgress()
-    }, 500)
+    // Solo cerrar estado si no quedó polling activo (el polling cierra enviandoOdcSap al terminar)
+    if (!sapPollingInterval) {
+      enviandoOdcSap.value = false
+      setTimeout(() => {
+        resetSapProgress()
+      }, 500)
+    }
   }
 }
 
@@ -870,10 +923,13 @@ onMounted(async () => {
 
 // ⭐ Cleanup al desmontar componente
 onUnmounted(() => {
-  // Limpiar intervalo de progreso SAP si existe
   if (sapProgressInterval) {
     clearInterval(sapProgressInterval)
     sapProgressInterval = null
+  }
+  if (sapPollingInterval) {
+    clearInterval(sapPollingInterval)
+    sapPollingInterval = null
   }
 })
 </script>

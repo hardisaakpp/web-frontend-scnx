@@ -1130,6 +1130,28 @@ export interface ProcesoCompletoSAPResponse {
   error?: string
 }
 
+/**
+ * Respuesta 202 del endpoint POST .../proceso-completo-sap-async
+ */
+export interface ProcesoCompletoSAPAsyncResponse {
+  status: 'accepted'
+  process_id: string
+  message: string
+  resultado_url: string
+  stream_url: string
+}
+
+/**
+ * Respuesta de GET .../proceso-sap/resultado/{process_id} (polling).
+ * Mientras corre: status === 'processing'. Al terminar el backend puede enviar:
+ * - process_status: "completed" y progress: 100, o
+ * - status: "success" | "partial" (cuerpo como ProcesoCompletoSAPResponse).
+ */
+export type ProcesoCompletoSAPResultadoPolling = (
+  | { status: 'processing'; step?: string; progress?: number; message?: string; process_id?: string; numero_pedido?: string; process_status?: string }
+  | (ProcesoCompletoSAPResponse & { status?: 'completed' | 'success' | 'partial'; process_status?: string; progress?: number })
+  | { status: 'error'; message: string; error_detalle?: string; paso_fallido?: string; process_id?: string; numero_pedido?: string }
+)
 
 export interface CrearOCDesdePedidoResponse {
   status: 'success' | 'error'
