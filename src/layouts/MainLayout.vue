@@ -433,7 +433,7 @@ const hasModuleAccess = (moduleName: string): boolean => {
   
   // Verificar si tiene algún permiso del módulo (modulo.*)
   const permissions = authStore.userPermissions || []
-  return permissions.some(permission => permission.startsWith(`${moduleName}.`))
+  return permissions.some((permission: string) => permission.startsWith(`${moduleName}.`))
 }
 
 // Cargar preferencias del sidebar al montar y asegurar capabilities (p. ej. tras recarga)
@@ -450,7 +450,7 @@ onMounted(async () => {
 })
 
 // Observar cambios de autenticación para conectar/desconectar notificaciones
-watch(() => authStore.isAuthenticated, (isAuth) => {
+watch(() => authStore.isAuthenticated, (isAuth: boolean) => {
   if (isAuth) {
     connectNotificaciones()
   } else {
@@ -464,7 +464,7 @@ watch(isSidebarCollapsed, () => {
 })
 
 // Sincronizar cuando el usuario se autentica
-watch(() => authStore.isAuthenticated, (isAuthenticated) => {
+watch(() => authStore.isAuthenticated, (isAuthenticated: boolean) => {
   if (isAuthenticated) {
     // Cargar preferencias del servidor cuando el usuario se autentica
     loadSidebarPreferences()
