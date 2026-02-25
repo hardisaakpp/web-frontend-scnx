@@ -16,12 +16,8 @@ mba3Api.interceptors.request.use(
   config => {
     const token = localStorage.getItem('token')
 
-    if (token) {
-      // Usar la misma sintaxis que funciona en api.js
-      if (!config.headers) {
-        config.headers = {}
-      }
-      config.headers.Authorization = `Bearer ${token}`
+    if (token && config.headers) {
+      config.headers['Authorization'] = `Bearer ${token}`
     }
 
     // Si es FormData, eliminar Content-Type para que axios lo establezca automáticamente con boundary

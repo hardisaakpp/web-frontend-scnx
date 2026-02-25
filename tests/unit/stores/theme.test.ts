@@ -13,10 +13,10 @@ describe('Theme Store', () => {
       setItem: vi.fn(),
       clear: vi.fn(),
     }
-    global.localStorage = localStorageMock as any
+    globalThis.localStorage = localStorageMock as unknown as Storage
     
     // Mock de document.documentElement
-    global.document.documentElement.classList = {
+    globalThis.document.documentElement.classList = {
       add: vi.fn(),
       remove: vi.fn(),
     } as any

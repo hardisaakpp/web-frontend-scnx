@@ -218,18 +218,10 @@ const cajaChicaApi = axios.create({
 
 cajaChicaApi.interceptors.request.use(config => {
   const token = localStorage.getItem('token') || sessionStorage.getItem('token')
-  if (!token) {
-    return config
+  if (token && config.headers) {
+    config.headers['Authorization'] = `Bearer ${token}`
   }
-
-  const headers = config.headers ?? {}
-  return {
-    ...config,
-    headers: {
-      ...headers,
-      Authorization: `Bearer ${token}`
-    }
-  }
+  return config
 })
 
 const loadUsuarios = async () => {

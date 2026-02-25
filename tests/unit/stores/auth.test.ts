@@ -29,7 +29,7 @@ describe('Auth Store', () => {
       removeItem: vi.fn(),
       clear: vi.fn(),
     }
-    global.localStorage = localStorageMock as any
+    globalThis.localStorage = localStorageMock as unknown as Storage
     
     // Limpiar mocks
     vi.clearAllMocks()
