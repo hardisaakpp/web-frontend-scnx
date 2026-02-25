@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref } from '@vue/reactivity'
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning'
 
@@ -38,7 +38,7 @@ export function useToast() {
   }
   
   const removeToast = (id: string) => {
-    const index = toasts.value.findIndex(t => t.id === id)
+    const index = toasts.value.findIndex((t: Toast) => t.id === id)
     if (index > -1) {
       toasts.value.splice(index, 1)
     }
