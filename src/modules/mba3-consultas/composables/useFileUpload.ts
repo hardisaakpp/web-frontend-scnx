@@ -898,7 +898,10 @@ export function useFileUpload(options: {
             break
           }
         } catch (asyncErr: any) {
-          if (asyncErr.response?.status === 503 && asyncErr.response?.data?.error === 'storage_required') {
+          const errorCode = asyncErr.response?.data?.error ?? asyncErr.response?.data?.detail?.error
+          const is503Unavailable = asyncErr.response?.status === 503 &&
+            (errorCode === 'storage_required' || errorCode === 'celery_unavailable')
+          if (is503Unavailable) {
             if (import.meta.env.DEV) console.warn('[useFileUpload] Async no disponible (503), usando upload síncrono')
             toast.info('Procesamiento en segundo plano no disponible', 'Se usará carga síncrona. Espere unos instantes.')
             response = await mba3ConsultasService.uploadPlantilla(file, handleProgress)
@@ -1130,7 +1133,10 @@ export function useFileUpload(options: {
           break
         }
       } catch (asyncErr: any) {
-        if (asyncErr.response?.status === 503 && asyncErr.response?.data?.error === 'storage_required') {
+        const errorCode = asyncErr.response?.data?.error ?? asyncErr.response?.data?.detail?.error
+        const is503Unavailable = asyncErr.response?.status === 503 &&
+          (errorCode === 'storage_required' || errorCode === 'celery_unavailable')
+        if (is503Unavailable) {
           if (import.meta.env.DEV) console.warn('[useFileUpload] Async no disponible (503), usando upload con correcciones síncrono')
           toast.info('Procesamiento en segundo plano no disponible', 'Se aplicarán las correcciones en modo síncrono. Espere unos instantes.')
           response = await mba3ConsultasService.uploadPlantillaConCorrecciones(file, correcciones, handleProgress)

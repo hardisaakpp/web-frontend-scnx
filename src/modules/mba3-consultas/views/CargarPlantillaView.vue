@@ -1648,8 +1648,40 @@ async function confirmarRedistribucion() {
   await redistribucion.confirmarRedistribucion(puedeConfirmarRedistribucion)
 }
 
+/** Aplica el resultado del proceso SAP en esta vista (modal éxito + loadPedido). */
+async function applySAPResponseCargarPlantilla(response: import('@/modules/mba3-consultas/types').ProcesoCompletoSAPResponse) {
+  const innerStatus = (response as any).status === 'success' || (response as any).status === 'partial' || (response as any).status === 'error'
+    ? (response as any).status
+    : (response.envio_sap?.doc_num != null ? 'success' : response.error ? 'partial' : 'error')
+
+  if (innerStatus === 'success') {
+    const docNum = response.envio_sap?.doc_num
+    sapSuccessMessage.value = docNum
+      ? `ODC enviada exitosamente a SAP. DocNum: ${docNum}`
+      : (response.message || 'ODC procesada correctamente en SAP')
+    sapSuccessOcId.value = response.envio_sap?.oc_id ?? null
+    showSAPSuccessModal.value = true
+    if (response.envio_sap?.solicitudes_transferencia?.transferencias_creadas) {
+      const st = response.envio_sap.solicitudes_transferencia
+      toast.success('Solicitudes de Transferencia', `Se crearon ${st.transferencias_creadas} de ${st.total_tiendas} solicitudes`)
+    }
+    await loadPedido()
+  } else if (innerStatus === 'partial') {
+    toast.warning(
+      `Error en paso: ${response.paso_fallido ?? 'desconocido'}`,
+      response.error || response.message || 'El proceso no se completó totalmente'
+    )
+    if (response.redistribucion) toast.info('Redistribución confirmada', `Versión: ${response.redistribucion.version_confirmada}`)
+    if (response.odc_generada) toast.info('ODC generada', `ID: ${response.odc_generada.oc_id}`)
+    await loadPedido()
+  } else {
+    toast.error('Error', response.message || 'No se pudo completar el proceso')
+  }
+}
+
 /**
- * Ejecuta el proceso completo: Redistribución + Generar ODC + Enviar a SAP
+ * Ejecuta el proceso completo: Redistribución + Generar ODC + Enviar a SAP.
+ * Intenta async (Celery); si backend responde 503 (Redis/Celery no disponible), fallback a sync.
  */
 async function handleEnviarOdcSap() {
   if (!pedido.value || !numeroPedido.value) {
@@ -1659,7 +1691,6 @@ async function handleEnviarOdcSap() {
 
   if (enviandoOdcSap.value) return
 
-  // Preparar los ajustes de redistribución
   const ajustesDetalle = redistribucion.productosRedistribucion.value.map(producto => ({
     codigo_producto: producto.codigo_producto,
     descripcion: producto.descripcion,
@@ -1681,95 +1712,85 @@ async function handleEnviarOdcSap() {
   toast.info('Procesando...', 'Proceso SAP en segundo plano. No cierre la ventana.')
 
   try {
-    const accepted = await mba3ConsultasService.procesoCompletoSAPAsync(numeroPedido.value, ajustesDetalle)
+    try {
+      const accepted = await mba3ConsultasService.procesoCompletoSAPAsync(numeroPedido.value, ajustesDetalle)
 
-    if (accepted.status !== 'accepted' || !accepted.process_id) {
-      toast.error('Error', 'No se pudo iniciar el proceso. Respuesta inesperada.')
-      return
-    }
+      if (accepted.status !== 'accepted' || !accepted.process_id) {
+        toast.error('Error', 'No se pudo iniciar el proceso. Respuesta inesperada.')
+        return
+      }
 
-    const processId = accepted.process_id
+      const processId = accepted.process_id
 
-    const poll = async () => {
-      try {
-        const result = await mba3ConsultasService.getProcesoSAPResultado(processId)
-        const data = result as Record<string, unknown>
+      const poll = async () => {
+        try {
+          const result = await mba3ConsultasService.getProcesoSAPResultado(processId)
+          const data = result as Record<string, unknown>
 
-        const done =
-          data.process_status === 'completed' ||
-          data.progress === 100 ||
-          data.status === 'success' ||
-          data.status === 'partial' ||
-          data.status === 'completed'
+          const done =
+            data.process_status === 'completed' ||
+            data.progress === 100 ||
+            data.status === 'success' ||
+            data.status === 'partial' ||
+            data.status === 'completed'
 
-        if (result.status === 'error') {
+          if (result.status === 'error') {
+            if (sapPollingInterval) {
+              clearInterval(sapPollingInterval)
+              sapPollingInterval = null
+            }
+            enviandoOdcSap.value = false
+            resetSapProgress()
+            const msg = result.message || 'Error en el proceso'
+            const detalle = result.error_detalle || result.paso_fallido ? ` (${result.paso_fallido ?? ''} ${result.error_detalle ?? ''})`.trim() : ''
+            toast.error('Error al enviar a SAP', msg + detalle)
+            return
+          }
+
+          if (done) {
+            if (sapPollingInterval) {
+              clearInterval(sapPollingInterval)
+              sapPollingInterval = null
+            }
+            completeSapProgress()
+            await applySAPResponseCargarPlantilla(result as import('@/modules/mba3-consultas/types').ProcesoCompletoSAPResponse)
+            enviandoOdcSap.value = false
+            setTimeout(resetSapProgress, 500)
+            return
+          }
+
+          if (data.message) sapMessage.value = String(data.message)
+          if (typeof data.progress === 'number') sapProgress.value = data.progress
+        } catch (pollErr: any) {
           if (sapPollingInterval) {
             clearInterval(sapPollingInterval)
             sapPollingInterval = null
           }
           enviandoOdcSap.value = false
           resetSapProgress()
-          const msg = result.message || 'Error en el proceso'
-          const detalle = result.error_detalle || result.paso_fallido ? ` (${result.paso_fallido ?? ''} ${result.error_detalle ?? ''})`.trim() : ''
-          toast.error('Error al enviar a SAP', msg + detalle)
-          return
+          toast.error('Error', pollErr?.response?.data?.message || pollErr?.message || 'Error al consultar el resultado')
         }
-
-        if (done) {
-          if (sapPollingInterval) {
-            clearInterval(sapPollingInterval)
-            sapPollingInterval = null
-          }
-          completeSapProgress()
-
-          const response = result as import('@/modules/mba3-consultas/types').ProcesoCompletoSAPResponse
-          const innerStatus = (response as any).status === 'success' || (response as any).status === 'partial' || (response as any).status === 'error'
-            ? (response as any).status
-            : (response.envio_sap?.doc_num != null ? 'success' : response.error ? 'partial' : 'error')
-
-          if (innerStatus === 'success') {
-            const docNum = response.envio_sap?.doc_num
-            sapSuccessMessage.value = docNum
-              ? `ODC enviada exitosamente a SAP. DocNum: ${docNum}`
-              : (response.message || 'ODC procesada correctamente en SAP')
-            sapSuccessOcId.value = response.envio_sap?.oc_id ?? null
-            showSAPSuccessModal.value = true
-            if (response.envio_sap?.solicitudes_transferencia?.transferencias_creadas) {
-              const st = response.envio_sap.solicitudes_transferencia
-              toast.success('Solicitudes de Transferencia', `Se crearon ${st.transferencias_creadas} de ${st.total_tiendas} solicitudes`)
-            }
-            await loadPedido()
-          } else if (innerStatus === 'partial') {
-            toast.warning(
-              `Error en paso: ${response.paso_fallido ?? 'desconocido'}`,
-              response.error || response.message || 'El proceso no se completó totalmente'
-            )
-            if (response.redistribucion) toast.info('Redistribución confirmada', `Versión: ${response.redistribucion.version_confirmada}`)
-            if (response.odc_generada) toast.info('ODC generada', `ID: ${response.odc_generada.oc_id}`)
-            await loadPedido()
-          } else {
-            toast.error('Error', response.message || 'No se pudo completar el proceso')
-          }
-          enviandoOdcSap.value = false
-          setTimeout(resetSapProgress, 500)
-          return
-        }
-
-        if (data.message) sapMessage.value = String(data.message)
-        if (typeof data.progress === 'number') sapProgress.value = data.progress
-      } catch (pollErr: any) {
-        if (sapPollingInterval) {
-          clearInterval(sapPollingInterval)
-          sapPollingInterval = null
-        }
-        enviandoOdcSap.value = false
-        resetSapProgress()
-        toast.error('Error', pollErr?.response?.data?.message || pollErr?.message || 'Error al consultar el resultado')
       }
-    }
 
-    await poll()
-    sapPollingInterval = setInterval(poll, 2000)
+      await poll()
+      sapPollingInterval = setInterval(poll, 2000)
+    } catch (asyncErr: any) {
+      const errorCode = asyncErr?.response?.data?.error ?? asyncErr?.response?.data?.detail?.error
+      const is503Unavailable = asyncErr?.response?.status === 503 &&
+        (errorCode === 'storage_required' || errorCode === 'celery_unavailable')
+      if (is503Unavailable) {
+        if (import.meta.env.DEV) console.warn('[handleEnviarOdcSap] Async no disponible (503), usando proceso SAP síncrono')
+        toast.info('Proceso en segundo plano no disponible', 'Se ejecutará en modo síncrono. No cierre la ventana.')
+        sapMessage.value = 'Ejecutando proceso en modo síncrono...'
+        const response = await mba3ConsultasService.procesoCompletoSAP(numeroPedido.value, ajustesDetalle)
+        completeSapProgress()
+        await applySAPResponseCargarPlantilla(response)
+        enviandoOdcSap.value = false
+        setTimeout(resetSapProgress, 500)
+        return
+      }
+      throw asyncErr
+    }
   } catch (e: any) {
     console.error('Error al iniciar proceso completo SAP:', e)
     if (sapPollingInterval) {
