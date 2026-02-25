@@ -204,7 +204,7 @@
                   >
                     <!-- Columna Número -->
                     <template v-if="column.key === 'numero'">
-                      {{ index + 1 }}
+                      {{ Number(index) + 1 }}
                     </template>
                     
                     <!-- Columna Código -->
@@ -452,7 +452,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, watch } from '@vue/reactivity'
+import { onMounted, onUnmounted } from '@vue/runtime-core'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { useTablePreferences } from '@/composables/useTablePreferences'

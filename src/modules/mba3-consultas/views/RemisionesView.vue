@@ -80,7 +80,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from '@vue/reactivity'
+import { onMounted } from '@vue/runtime-core'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import RemisionesTable from '../components/RemisionesTable.vue'

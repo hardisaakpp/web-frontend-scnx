@@ -213,7 +213,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch } from '@vue/reactivity'
 import { Dialog, DialogPanel, DialogTitle, TransitionRoot, TransitionChild } from '@headlessui/vue'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
@@ -251,7 +251,7 @@ const form = ref<Omit<SkuHomologacionCreateRequest, 'sku_mba3'>>({
   estado: 'PENDIENTE',
 })
 
-watch(() => props.isOpen, (newValue) => {
+watch(() => props.isOpen, (newValue: boolean) => {
   if (!newValue) {
     // Limpiar formulario al cerrar
     resetForm()

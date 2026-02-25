@@ -32,7 +32,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed } from '@vue/reactivity'
 
 interface BarChartData {
   label: string
@@ -48,7 +48,7 @@ interface Props {
 const props = defineProps<Props>()
 
 const total = computed(() => {
-  return props.data.reduce((sum, item) => sum + item.value, 0)
+  return props.data.reduce((sum: number, item: BarChartData) => sum + item.value, 0)
 })
 
 function percentage(value: number): number {

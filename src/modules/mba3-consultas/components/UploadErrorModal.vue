@@ -647,7 +647,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onUnmounted } from 'vue'
+import { ref, computed, watch } from '@vue/reactivity'
+import { nextTick, onUnmounted } from '@vue/runtime-core'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import type { SugerenciaSkuSap, SugerenciasSkuResponse } from '../types'
 import { formatError } from '../utils/formatters'
@@ -893,13 +894,13 @@ async function buscarSugerenciasAutomaticas(): Promise<void> {
     if (detalle && 'sugerencias_sap' in detalle) {
       if (Array.isArray(detalle.sugerencias_sap) && detalle.sugerencias_sap.length > 0) {
         // ⭐ Usar sugerencias del backend (ya están formateadas)
-        sugerenciasPorCodigo.value[codigo] = detalle.sugerencias_sap.map(s => ({
+        sugerenciasPorCodigo.value[codigo] = detalle.sugerencias_sap.map((s): SugerenciaSkuSap => ({
           codigo: s.codigo,
           nombre: s.nombre,
           pack: s.pack || '',
           group_code: s.group_code,
           group_name: s.group_name || '',
-          estado: (s.estado === 'activo' || s.estado === 'inactivo') ? s.estado : 'inactivo' as 'activo' | 'inactivo',
+          estado: ((s.estado === 'activo' || s.estado === 'inactivo') ? s.estado : 'inactivo') as 'activo' | 'inactivo',
           score: s.score,
           score_porcentaje: s.score_porcentaje,
           motivos: s.motivos || []

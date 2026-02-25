@@ -1,7 +1,8 @@
 /**
  * Composable para gestionar la edición inline de columnas (costo, total, comentario)
  */
-import { ref, Ref, nextTick, computed } from 'vue'
+import { ref, Ref, computed } from '@vue/reactivity'
+import { nextTick } from '@vue/runtime-core'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import { formatCurrency, formatNumber } from '../utils/formatters'

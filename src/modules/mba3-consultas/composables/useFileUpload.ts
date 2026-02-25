@@ -2,7 +2,8 @@
  * Composable para manejar la carga de archivos Excel (plantillas)
  * ⭐ Con soporte para progreso de carga y procesamiento
  */
-import { ref, Ref, onUnmounted } from 'vue'
+import { ref, Ref } from '@vue/reactivity'
+import { onUnmounted } from '@vue/runtime-core'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
@@ -21,11 +22,11 @@ const RUTA_PEDIDOS_BASE = '/mba3-consultas/pedidos'
 /** Prefijo para guardar correcciones a resaltar por pedido (origen de verdad tras redirect en flujo async) */
 export const RESALTADO_CODIGOS_STORAGE_PREFIX = 'resaltado_codigos_'
 
-function saveCorreccionesParaResaltado(numeroPedido: string, response: UploadPlantillaResponse | undefined): void {
+function saveCorreccionesParaResaltado(numeroPedido: string, response: UploadPlantillaResponse | PlantillaProcesoEstado | undefined): void {
   if (!numeroPedido) return
   // GET resultado cuando status === 'completed': el cuerpo es el resultado (sin wrapper); correcciones_aplicadas en la raíz
-  const payload = response?.resultado ?? (response as any)?.result ?? response
-  const correcciones = payload?.correcciones_aplicadas ?? payload?.correccionesAplicadas ?? response?.correcciones_aplicadas ?? (response as any)?.correccionesAplicadas
+  const payload = (response && 'resultado' in response ? response.resultado : undefined) ?? (response as any)?.result ?? response
+  const correcciones = payload?.correcciones_aplicadas ?? payload?.correccionesAplicadas ?? (response && 'correcciones_aplicadas' in response ? response.correcciones_aplicadas : undefined) ?? (response as any)?.correccionesAplicadas
   const list = Array.isArray(correcciones) ? correcciones : []
   try {
     sessionStorage.setItem(RESALTADO_CODIGOS_STORAGE_PREFIX + numeroPedido, JSON.stringify(list))

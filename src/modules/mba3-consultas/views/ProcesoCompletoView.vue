@@ -446,7 +446,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { ref, computed, watch } from '@vue/reactivity'
+import { onMounted, onUnmounted, nextTick } from '@vue/runtime-core'
 import { useRoute } from 'vue-router'
 import { useProcesoStore } from '../stores/procesoStore'
 import { useOrdenesCompraStore } from '../stores/ordenesCompraStore'
@@ -596,7 +597,7 @@ const hayOrdenesCompra = computed(() => {
 
 // Computed para transformar las órdenes de compra al formato esperado por DespachosTable
 const ordenesCompraParaDespachos = computed(() => {
-  return ordenesCompraStore.ordenesCompra.map(oc => ({
+  return ordenesCompraStore.ordenesCompra.map((oc: OrdenCompra) => ({
     despacho_id: oc.despacho_id ?? undefined,
     referencia_despacho: oc.referencia_despacho || undefined
   }))
@@ -1443,9 +1444,9 @@ async function handleIntegrarOC(referenciaDespacho: string, almacenDestinoParam?
         ordenesCompraStore.ordenesCompra = [...ordenesCompraStore.ordenesCompra]
         
         // Actualizar las estadísticas del store manualmente
-        const pendientes = ordenesCompraStore.ordenesCompra.filter(o => o.estado === 'PENDIENTE').length
-        const enviadas = ordenesCompraStore.ordenesCompra.filter(o => o.estado === 'ENVIADA').length
-        const errores = ordenesCompraStore.ordenesCompra.filter(o => o.estado === 'ERROR').length
+        const pendientes = ordenesCompraStore.ordenesCompra.filter((o: OrdenCompra) => o.estado === 'PENDIENTE').length
+        const enviadas = ordenesCompraStore.ordenesCompra.filter((o: OrdenCompra) => o.estado === 'ENVIADA').length
+        const errores = ordenesCompraStore.ordenesCompra.filter((o: OrdenCompra) => o.estado === 'ERROR').length
         
         // Asegurar que Vue detecte los cambios
         await nextTick()

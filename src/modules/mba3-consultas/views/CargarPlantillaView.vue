@@ -588,7 +588,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onActivated, onUnmounted, watch, nextTick, Teleport, type Ref } from 'vue'
+import { ref, computed, watch, type Ref } from '@vue/reactivity'
+import { onMounted, onActivated, onUnmounted, nextTick, Teleport } from '@vue/runtime-core'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { lastNotification } from '@/composables/useNotificaciones'
@@ -845,7 +846,7 @@ watch(
   () => visibleColumns.value,
   (newVisible) => {
     if (!newVisible.includes('numero')) {
-      visibleColumns.value = ['numero', ...newVisible.filter(key => key !== 'numero')]
+      visibleColumns.value = ['numero', ...newVisible.filter((key: string) => key !== 'numero')]
       savePreferences()
     }
   },
@@ -1314,8 +1315,8 @@ const fileUploadComposable = useFileUpload({
   redirectToCargarPlantilla: true,
   useAsyncUpload: true, // Procesamiento en segundo plano (Celery), no bloquea la app
   onUploadSuccess: async (numeroPedido, response) => {
-    // Extraer correcciones: puede venir en response o dentro de response.resultado/result (según backend)
-    const payload = response?.resultado ?? (response as any)?.result ?? response
+    // Extraer correcciones: puede venir en response o dentro de response.resultado/result (async GET devuelve PlantillaProcesoEstado)
+    const payload = (response != null && 'resultado' in response ? (response as { resultado?: UploadPlantillaResponse }).resultado : undefined) ?? (response as any)?.result ?? response
     const correcciones = payload?.correcciones_aplicadas ?? payload?.correccionesAplicadas ?? response?.correcciones_aplicadas ?? (response as any)?.correccionesAplicadas ?? []
     const list = Array.isArray(correcciones) ? correcciones : []
 

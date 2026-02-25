@@ -244,7 +244,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch } from '@vue/reactivity'
 import { Dialog, DialogPanel, DialogTitle, TransitionRoot, TransitionChild } from '@headlessui/vue'
 import type { ExportarMBAParams } from '../types'
 import { EXPORTAR_MBA_DEFAULTS } from '../types'
@@ -286,7 +286,7 @@ const isFormValid = computed(() => {
 })
 
 // Pre-cargar valores del pedido cuando se abre el modal
-watch(() => props.isOpen, (isOpen) => {
+watch(() => props.isOpen, (isOpen: boolean) => {
   if (isOpen) {
     // Pre-cargar bodega si está disponible
     if (props.bodegaDefault) {

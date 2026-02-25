@@ -317,7 +317,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch } from '@vue/reactivity'
+import { onMounted } from '@vue/runtime-core'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import type { OrdenCompra, SugerenciaSkuSap, DetalleOC } from '../types'
@@ -372,7 +373,7 @@ function extraerSkuDelError(errorMessage?: string | null, errorCode?: string | n
 }
 
 // Cuando se abre el modal, cargar detalles y extraer SKU
-watch(() => props.odc, async (odc) => {
+watch(() => props.odc, async (odc: OrdenCompra | null) => {
   if (odc) {
     // Cargar detalles de la ODC
     await cargarDetallesOC()

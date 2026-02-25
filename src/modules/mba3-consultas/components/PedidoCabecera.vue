@@ -219,7 +219,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed } from '@vue/reactivity'
 import type { PedidoCompleto } from '../types'
 import { formatDate, formatEstadoPedido } from '../utils/formatters'
 import { getEstadoPedidoBadgeClass } from '../utils/styleHelpers'

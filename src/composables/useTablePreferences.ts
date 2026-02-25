@@ -1,4 +1,5 @@
-import { ref, watch, computed, onMounted } from 'vue'
+import { ref, watch, computed } from '@vue/reactivity'
+import { onMounted } from '@vue/runtime-core'
 import { userPreferencesService, type TablePreferences } from '@/services/userPreferencesService'
 import { useAuthStore } from '@/stores/auth'
 
@@ -249,12 +250,12 @@ export function useTablePreferences(options: UseTablePreferencesOptions) {
    */
   const orderedVisibleColumns = computed(() => {
     // Filtrar solo columnas visibles y disponibles
-    const validOrder = columnOrder.value.filter(key => 
+    const validOrder = columnOrder.value.filter((key: string) => 
       visibleColumns.value.includes(key)
     )
     
     // Agregar columnas visibles que no están en el orden (nuevas columnas)
-    const missingColumns = visibleColumns.value.filter(key => !validOrder.includes(key))
+    const missingColumns = visibleColumns.value.filter((key: string) => !validOrder.includes(key))
     
     return [...validOrder, ...missingColumns]
   })
@@ -319,7 +320,7 @@ export function useTablePreferences(options: UseTablePreferencesOptions) {
   })
 
   // Sincronizar cuando el usuario se autentica
-  watch(() => authStore.isAuthenticated, (isAuthenticated) => {
+  watch(() => authStore.isAuthenticated, (isAuthenticated: boolean) => {
     if (isAuthenticated) {
       // Cargar preferencias del servidor cuando el usuario se autentica
       loadPreferences()

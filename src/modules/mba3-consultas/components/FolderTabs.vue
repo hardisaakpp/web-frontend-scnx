@@ -12,7 +12,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch } from '@vue/reactivity'
 import type { Tab } from '../types'
 
 const props = withDefaults(defineProps<{
@@ -38,7 +38,7 @@ function selectTab(tabId: string) {
   emit('tab-changed', tabId)
 }
 
-watch(() => props.defaultTab, (newTab) => {
+watch(() => props.defaultTab, (newTab: string | undefined) => {
   if (newTab && newTab !== activeTab.value) {
     activeTab.value = newTab
   }

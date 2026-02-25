@@ -22,5 +22,5 @@
     "allowSyntheticDefaultImports": true
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.vue", "src/**/*.js", "src/env.d.ts", "tests/**/*.ts"],
-  "exclude": ["node_modules", "dist", "**/*.tsbuildinfo"]
+  "exclude": ["node_modules", "dist", "**/*.tsbuildinfo", "tests/e2e","tests/unit"]
 }

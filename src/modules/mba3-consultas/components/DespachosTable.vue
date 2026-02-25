@@ -518,7 +518,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch } from '@vue/reactivity'
 import { useRouter } from 'vue-router'
 import type { Despacho, DespachoDetalle } from '../types'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
@@ -583,7 +583,7 @@ function tieneODC(despacho: Despacho): boolean {
   }
   
   // Verificar si existe una ODC con el mismo despacho_id o referencia_despacho que coincida con codigo_factura
-  return props.ordenesCompra.some(oc => 
+  return props.ordenesCompra.some((oc: { despacho_id?: string; referencia_despacho?: string }) => 
     oc.despacho_id === despacho.despacho_id || 
     oc.referencia_despacho === despacho.codigo_factura ||
     oc.referencia_despacho === despacho.despacho_id
@@ -636,8 +636,8 @@ watch([visibleColumns, columnOrder], () => {
 // Watch para limpiar la selección de despachos que ya no son seleccionables (tienen ODC, están anulados, o tienen advertencias/errores)
 watch(() => props.despachos, () => {
   // Remover de la selección los despachos que ya no son seleccionables
-  selectedDespachos.value = selectedDespachos.value.filter(despachoId => {
-    const despacho = props.despachos.find(d => d.despacho_id === despachoId)
+  selectedDespachos.value = selectedDespachos.value.filter((despachoId: string) => {
+    const despacho = props.despachos.find((d: Despacho) => d.despacho_id === despachoId)
     if (!despacho || despacho.anulada || tieneODC(despacho)) {
       return false
     }
@@ -647,11 +647,11 @@ watch(() => props.despachos, () => {
 }, { deep: true })
 
 // Watch para aplicar búsqueda inicial cuando se navega desde OrdenCompraTable
-watch(() => props.initialSearch, async (newSearch) => {
+watch(() => props.initialSearch, async (newSearch: string | undefined) => {
   if (newSearch) {
     searchQuery.value = newSearch
     // Expandir automáticamente el despacho si se encuentra
-    const despacho = props.despachos.find(d => 
+    const despacho = props.despachos.find((d: Despacho) => 
       d.despacho_id === newSearch || 
       d.codigo_factura === newSearch
     )
@@ -781,7 +781,7 @@ const filteredDespachos = computed(() => {
   // Búsqueda por texto
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(d => {
+    filtered = filtered.filter((d: Despacho) => {
       // Búsqueda en campos del despacho principal
       const matchDespacho = 
         (d.numero_factura && String(d.numero_factura).includes(query)) ||
@@ -790,7 +790,7 @@ const filteredDespachos = computed(() => {
       // Búsqueda en detalles (despacho_detalles)
       let matchDetalles = false
       if (d.despacho_detalles && d.despacho_detalles.length > 0) {
-        matchDetalles = d.despacho_detalles.some(detalle =>
+        matchDetalles = d.despacho_detalles.some((detalle: DespachoDetalle) =>
           (detalle.sku && detalle.sku.toLowerCase().includes(query)) ||
           (detalle.nombre_producto && detalle.nombre_producto.toLowerCase().includes(query)) ||
           (detalle.tipo_linea && detalle.tipo_linea.toLowerCase().includes(query))
@@ -804,23 +804,23 @@ const filteredDespachos = computed(() => {
   // Filtro por fecha
   if (filtroFechaDesde.value) {
     const fechaDesde = new Date(filtroFechaDesde.value)
-    filtered = filtered.filter(d => new Date(d.fecha_despacho) >= fechaDesde)
+    filtered = filtered.filter((d: Despacho) => new Date(d.fecha_despacho) >= fechaDesde)
   }
   
   if (filtroFechaHasta.value) {
     const fechaHasta = new Date(filtroFechaHasta.value)
     fechaHasta.setHours(23, 59, 59, 999)
-    filtered = filtered.filter(d => new Date(d.fecha_despacho) <= fechaHasta)
+    filtered = filtered.filter((d: Despacho) => new Date(d.fecha_despacho) <= fechaHasta)
   }
   
   // Filtro por estado
   if (filtroEstado.value) {
     if (filtroEstado.value === 'anulado') {
-      filtered = filtered.filter(d => d.anulada === true)
+      filtered = filtered.filter((d: Despacho) => d.anulada === true)
     } else if (filtroEstado.value === 'confirmado') {
-      filtered = filtered.filter(d => d.confirmado === true && d.anulada === false)
+      filtered = filtered.filter((d: Despacho) => d.confirmado === true && d.anulada === false)
     } else if (filtroEstado.value === 'pendiente') {
-      filtered = filtered.filter(d => d.confirmado === false && d.anulada === false)
+      filtered = filtered.filter((d: Despacho) => d.confirmado === false && d.anulada === false)
     }
   }
   
@@ -875,7 +875,7 @@ const sortedDespachos = computed(() => {
 
 // Watch para emitir el conteo de despachos filtrados cuando cambie
 // Debe estar después de la definición de filteredDespachos
-watch(() => filteredDespachos.value, (newFiltered) => {
+watch(() => filteredDespachos.value, (newFiltered: Despacho[]) => {
   try {
     if (newFiltered && Array.isArray(newFiltered)) {
       emit('filtered-count-changed', newFiltered.length)
@@ -968,7 +968,7 @@ async function cargarDetalles(despachoId: string) {
   loadingDetalles.value[despachoId] = true
   try {
     // Primero verificar si los detalles ya vienen en el despacho (campo despacho_detalles)
-    const despacho = props.despachos.find(d => d.despacho_id === despachoId)
+    const despacho = props.despachos.find((d: Despacho) => d.despacho_id === despachoId)
     if (despacho?.despacho_detalles && despacho.despacho_detalles.length > 0) {
       if (import.meta.env.DEV) console.log(`✅ [cargarDetalles] Detalles encontrados en despacho ${despachoId}:`, despacho.despacho_detalles.length)
       detallesPorDespacho.value[despachoId] = despacho.despacho_detalles
@@ -995,14 +995,14 @@ async function cargarDetalles(despachoId: string) {
 
 function getTotalSubtotalSAP(despachoId: string): number {
   const detalles = detallesPorDespacho.value[despachoId] || []
-  return detalles.reduce((total, detalle) => {
+  return detalles.reduce((total: number, detalle: DespachoDetalle) => {
     return total + (detalle.subtotal_sap || 0)
   }, 0)
 }
 
 function getTotalLineaMBA3(despachoId: string): number {
   const detalles = detallesPorDespacho.value[despachoId] || []
-  return detalles.reduce((total, detalle) => {
+  return detalles.reduce((total: number, detalle: DespachoDetalle) => {
     return total + (detalle.total_linea_mba3 || 0)
   }, 0)
 }
@@ -1040,7 +1040,7 @@ function isSelected(despachoId: string): boolean {
 }
 
 function toggleSelect(despachoId: string) {
-  const despacho = props.despachos.find(d => d.despacho_id === despachoId)
+  const despacho = props.despachos.find((d: Despacho) => d.despacho_id === despachoId)
   
   // No permitir seleccionar despachos anulados, que ya tienen ODC, o que tienen advertencias/errores
   if (!despacho || despacho.anulada || tieneODC(despacho)) {
@@ -1067,7 +1067,7 @@ function toggleSelectAll() {
   
   if (allSelected.value) {
     // Deseleccionar todas las seleccionables
-    selectableDespachos.value.forEach(d => {
+    selectableDespachos.value.forEach((d: Despacho) => {
       const index = selectedDespachos.value.indexOf(d.despacho_id)
       if (index > -1) {
         selectedDespachos.value.splice(index, 1)
@@ -1075,7 +1075,7 @@ function toggleSelectAll() {
     })
   } else {
     // Seleccionar todas las seleccionables
-    selectableDespachos.value.forEach(d => {
+    selectableDespachos.value.forEach((d: Despacho) => {
       if (!selectedDespachos.value.includes(d.despacho_id)) {
         selectedDespachos.value.push(d.despacho_id)
       }
@@ -1089,7 +1089,7 @@ function clearSelection() {
 
 // Computed para obtener despachos seleccionables (no anulados, sin ODC, y sin advertencias/errores)
 const selectableDespachos = computed(() => {
-  return filteredDespachos.value.filter(d => {
+  return filteredDespachos.value.filter((d: Despacho) => {
     if (d.anulada || tieneODC(d)) {
       return false
     }
@@ -1105,11 +1105,11 @@ const hasSelectableDespachos = computed(() => {
 
 const allSelected = computed(() => {
   return hasSelectableDespachos.value && 
-         selectableDespachos.value.every(d => selectedDespachos.value.includes(d.despacho_id))
+         selectableDespachos.value.every((d: Despacho) => selectedDespachos.value.includes(d.despacho_id))
 })
 
 const someSelected = computed(() => {
-  return selectableDespachos.value.some(d => selectedDespachos.value.includes(d.despacho_id)) && !allSelected.value
+  return selectableDespachos.value.some((d: Despacho) => selectedDespachos.value.includes(d.despacho_id)) && !allSelected.value
 })
 
 // Funciones de acción
@@ -1141,8 +1141,8 @@ function handleGenerarODCMultiples() {
   }
   
   // Filtrar despachos que ya tienen ODC
-  const despachosSinODC = selectedDespachos.value.filter(despachoId => {
-    const despacho = props.despachos.find(d => d.despacho_id === despachoId)
+  const despachosSinODC = selectedDespachos.value.filter((despachoId: string) => {
+    const despacho = props.despachos.find((d: Despacho) => d.despacho_id === despachoId)
     return despacho && !tieneODC(despacho)
   })
   
@@ -1230,7 +1230,7 @@ function hasRowIssues(despacho: Despacho): { hasErrors: boolean; hasWarnings: bo
     let detallesConAdvertencias = 0
     const detallesIssuesList: string[] = []
 
-    detalles.forEach((detalle, index) => {
+    detalles.forEach((detalle: DespachoDetalle, index: number) => {
       const detalleIssues = hasDetalleIssues(detalle)
       
       if (detalleIssues.hasErrors) {

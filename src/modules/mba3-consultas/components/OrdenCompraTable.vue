@@ -123,7 +123,7 @@
             :title="hasRowIssues(oc).issues.length > 0 ? 'Problemas: ' + hasRowIssues(oc).issues.join(', ') : ''"
           >
             <td class="px-4 py-4 whitespace-nowrap text-sm text-center text-gray-500 dark:text-gray-400 font-medium">
-              {{ ((props.currentPage || 1) - 1) * (props.pageSize || sortedOrdenes.length) + ocIndex + 1 }}
+              {{ ((props.currentPage || 1) - 1) * (props.pageSize || sortedOrdenes.length) + Number(ocIndex) + 1 }}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-center align-middle">
               <button
@@ -361,7 +361,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch } from '@vue/reactivity'
+import { onMounted, onUnmounted } from '@vue/runtime-core'
 import { useRouter } from 'vue-router'
 import type { OrdenCompra, DetalleOC } from '../types'
 import { useToast } from '@/composables/useToast'
@@ -459,14 +460,14 @@ const {
 watch(() => props.ordenesCompra, (newOrdenes) => {
   // Remover de la selección las ODCs que no están pendientes
   selectedOrdenes.value = selectedOrdenes.value.filter(ocId => {
-    const oc = newOrdenes.find(o => o.oc_id === ocId)
+    const oc = newOrdenes.find((o: OrdenCompra) => o.oc_id === ocId)
     return oc && oc.estado === 'PENDIENTE'
   })
   
   // IMPORTANTE: Limpiar sendingOcId si la orden cambió de estado
   // Esto fuerza que el botón se actualice visualmente cuando el estado cambia de PENDIENTE a ENVIADA/ERROR
   if (sendingOcId.value) {
-    const ordenEnviada = newOrdenes.find(o => o.oc_id === sendingOcId.value)
+    const ordenEnviada = newOrdenes.find((o: OrdenCompra) => o.oc_id === sendingOcId.value)
     
     if (ordenEnviada && ordenEnviada.estado !== 'PENDIENTE') {
       // La orden ya no está pendiente, limpiar el estado de envío para que el botón desaparezca
@@ -672,23 +673,23 @@ const hasSelectableOrdenes = computed(() => {
 // Excluir las que ya tienen doc_entry (ya fueron enviadas)
 const ordenesSeleccionables = computed(() => {
   return selectedOrdenes.value.filter(id => {
-    const oc = props.ordenesCompra.find(o => o.oc_id === id)
+    const oc = props.ordenesCompra.find((o: OrdenCompra) => o.oc_id === id)
     return oc && oc.estado === 'PENDIENTE' && (oc.doc_entry === null || oc.doc_entry === undefined)
   })
 })
 
 const allSelected = computed(() => {
   return hasSelectableOrdenes.value && 
-         selectableOrdenes.value.every(oc => selectedOrdenes.value.includes(oc.oc_id))
+         selectableOrdenes.value.every((oc: OrdenCompra) => selectedOrdenes.value.includes(oc.oc_id))
 })
 
 const someSelected = computed(() => {
-  return selectableOrdenes.value.some(oc => selectedOrdenes.value.includes(oc.oc_id)) && !allSelected.value
+  return selectableOrdenes.value.some((oc: OrdenCompra) => selectedOrdenes.value.includes(oc.oc_id)) && !allSelected.value
 })
 
 const hasPendientesSeleccionadas = computed(() => {
   return ordenesSeleccionables.value.some(id => {
-    const oc = props.ordenesCompra.find(o => o.oc_id === id)
+    const oc = props.ordenesCompra.find((o: OrdenCompra) => o.oc_id === id)
     return oc && oc.estado === 'PENDIENTE'
   })
 })
@@ -706,7 +707,7 @@ const todasSeleccionadasTienenAlmacen = computed(() => {
 const ordenesEliminables = computed(() => {
   if (!props.allowDelete) return []
   return selectedOrdenes.value.filter(ocId => {
-    const oc = props.ordenesCompra.find(o => o.oc_id === ocId)
+    const oc = props.ordenesCompra.find((o: OrdenCompra) => o.oc_id === ocId)
     return oc && !oc.created_at
   })
 })
@@ -715,7 +716,7 @@ const ordenesEliminables = computed(() => {
 const ordenesNoEliminables = computed(() => {
   if (!props.allowDelete) return []
   return selectedOrdenes.value.filter(ocId => {
-    const oc = props.ordenesCompra.find(o => o.oc_id === ocId)
+    const oc = props.ordenesCompra.find((o: OrdenCompra) => o.oc_id === ocId)
     return oc && oc.created_at
   })
 })
@@ -726,7 +727,7 @@ function isSelected(ocId: string): boolean {
 }
 
 function toggleSelect(ocId: string) {
-  const oc = props.ordenesCompra.find(o => o.oc_id === ocId)
+  const oc = props.ordenesCompra.find((o: OrdenCompra) => o.oc_id === ocId)
   
   // Solo permitir seleccionar ODCs con estado PENDIENTE
   if (!oc || oc.estado !== 'PENDIENTE') {
@@ -800,7 +801,7 @@ async function handleIntegrar(referenciaDespacho: string, ocId: string) {
   }
   
   // Encontrar la OC para validar
-  const oc = props.ordenesCompra.find(o => o.oc_id === ocId)
+  const oc = props.ordenesCompra.find((o: OrdenCompra) => o.oc_id === ocId)
   
   // ⚠️ Validar que no tenga doc_entry (ya fue enviada)
   if (oc && oc.doc_entry !== null && oc.doc_entry !== undefined) {
@@ -867,7 +868,7 @@ function handleIntegrarSeleccionadas() {
   // Obtener datos de las órdenes seleccionadas
   const ordenesSeleccionadasData = ordenesSeleccionables.value
     .map(id => {
-      const oc = props.ordenesCompra.find(o => o.oc_id === id)
+      const oc = props.ordenesCompra.find((o: OrdenCompra) => o.oc_id === id)
       const almacen = selectedAlmacen.value[id]
       return { oc, almacen, id }
     })
@@ -910,12 +911,12 @@ function handleEliminarSeleccionadas() {
   
   // Filtrar las ODC que tienen created_at (no se pueden eliminar)
   const ordenesAEliminar = selectedOrdenes.value.filter(ocId => {
-    const oc = props.ordenesCompra.find(o => o.oc_id === ocId)
+    const oc = props.ordenesCompra.find((o: OrdenCompra) => o.oc_id === ocId)
     return oc && !oc.created_at
   })
   
   const ordenesConCreatedAt = selectedOrdenes.value.filter(ocId => {
-    const oc = props.ordenesCompra.find(o => o.oc_id === ocId)
+    const oc = props.ordenesCompra.find((o: OrdenCompra) => o.oc_id === ocId)
     return oc && oc.created_at
   })
   

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed } from '@vue/reactivity'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import type { OrdenCompra } from '../types'
 

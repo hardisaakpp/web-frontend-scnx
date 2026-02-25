@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 
 /**
  * Test E2E para el flujo de Login
@@ -10,12 +10,12 @@ import { test, expect } from '@playwright/test'
  */
 
 test.describe('Login Flow', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page }: { page: Page }) => {
     // Navegar a la página de login antes de cada test
     await page.goto('/login')
   })
 
-  test('should display login form', async ({ page }) => {
+  test('should display login form', async ({ page }: { page: Page }) => {
     // Verificar que el formulario de login está visible
     await expect(page.getByRole('heading', { name: /iniciar sesión|login/i })).toBeVisible()
     
@@ -27,7 +27,7 @@ test.describe('Login Flow', () => {
     await expect(page.getByRole('button', { name: /iniciar sesión|login/i })).toBeVisible()
   })
 
-  test('should show error with invalid credentials', async ({ page }) => {
+  test('should show error with invalid credentials', async ({ page }: { page: Page }) => {
     // Llenar el formulario con credenciales inválidas
     await page.getByLabel(/usuario|email/i).fill('usuario-invalido')
     await page.getByLabel(/contraseña|password/i).fill('password-incorrecta')
@@ -43,7 +43,7 @@ test.describe('Login Flow', () => {
     await expect(page).toHaveURL(/.*login/)
   })
 
-  test('should login successfully with valid credentials', async ({ page }) => {
+  test('should login successfully with valid credentials', async ({ page }: { page: Page }) => {
     // ⚠️ IMPORTANTE: Estos valores deben ser credenciales de un usuario de TEST
     // En producción, usar variables de entorno o un usuario de pruebas dedicado
     const testUsername = process.env.TEST_USERNAME || 'test-user'
@@ -67,7 +67,7 @@ test.describe('Login Flow', () => {
     await expect(page.locator('body')).toContainText(/dashboard|inicio/i)
   })
 
-  test('should persist session after page reload', async ({ page }) => {
+  test('should persist session after page reload', async ({ page }: { page: Page }) => {
     const testUsername = process.env.TEST_USERNAME || 'test-user'
     const testPassword = process.env.TEST_PASSWORD || 'test-password'
     
@@ -86,7 +86,7 @@ test.describe('Login Flow', () => {
     await expect(page).not.toHaveURL(/.*login/)
   })
 
-  test('should logout successfully', async ({ page }) => {
+  test('should logout successfully', async ({ page }: { page: Page }) => {
     const testUsername = process.env.TEST_USERNAME || 'test-user'
     const testPassword = process.env.TEST_PASSWORD || 'test-password'
     

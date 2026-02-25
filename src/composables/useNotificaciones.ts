@@ -18,7 +18,8 @@
  * @date 2026-02-09
  */
 
-import { ref, onUnmounted, type Ref } from 'vue'
+import { ref, type Ref } from '@vue/reactivity'
+import { onUnmounted } from '@vue/runtime-core'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 

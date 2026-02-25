@@ -145,7 +145,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onActivated, watch, nextTick, Teleport } from 'vue'
+import { ref, computed, watch } from '@vue/reactivity'
+import { onMounted, onActivated, nextTick, Teleport } from '@vue/runtime-core'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'

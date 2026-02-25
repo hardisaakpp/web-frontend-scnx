@@ -1,7 +1,7 @@
 /**
  * Composable para manejar la redistribución de productos a tiendas
  */
-import { ref, Ref, type ComputedRef, triggerRef } from 'vue'
+import { ref, Ref, type ComputedRef, triggerRef } from '@vue/reactivity'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'

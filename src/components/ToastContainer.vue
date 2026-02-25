@@ -70,7 +70,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed } from '@vue/reactivity'
 import { CheckCircleIcon, XCircleIcon, InformationCircleIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/solid'
 import { useToast, type Toast } from '@/composables/useToast'
 

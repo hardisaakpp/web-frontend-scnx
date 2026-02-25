@@ -443,7 +443,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onActivated, onUnmounted, watch, nextTick, Teleport, type Ref } from 'vue'
+import { ref, computed, watch, type Ref } from '@vue/reactivity'
+import { onMounted, onActivated, onUnmounted, nextTick, Teleport } from '@vue/runtime-core'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { lastNotification } from '@/composables/useNotificaciones'
@@ -655,7 +656,7 @@ watch(
   () => visibleColumns.value,
   (newVisible) => {
     if (!newVisible.includes('numero')) {
-      visibleColumns.value = ['numero', ...newVisible.filter(key => key !== 'numero')]
+      visibleColumns.value = ['numero', ...newVisible.filter((key: string) => key !== 'numero')]
       savePreferences()
     }
   },

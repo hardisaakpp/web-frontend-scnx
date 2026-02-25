@@ -129,7 +129,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, watch } from '@vue/reactivity'
+import { onMounted, nextTick } from '@vue/runtime-core'
 import { useRoute, useRouter } from 'vue-router'
 import { useOrdenesCompraStore } from '../stores/ordenesCompraStore'
 import { useToast } from '@/composables/useToast'

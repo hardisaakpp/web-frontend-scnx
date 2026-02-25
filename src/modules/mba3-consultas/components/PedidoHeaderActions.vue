@@ -190,7 +190,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, type Ref } from 'vue'
+import { computed, type Ref } from '@vue/reactivity'
 
 const props = defineProps<{
   tituloInterfaz: string

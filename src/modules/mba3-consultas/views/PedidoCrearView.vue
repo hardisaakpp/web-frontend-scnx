@@ -320,7 +320,7 @@
               class="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-900/50"
             >
               <div class="flex items-center justify-between mb-4">
-                <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Artículo {{ index + 1 }}</h3>
+                <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Artículo {{ Number(index) + 1 }}</h3>
                 <button
                   type="button"
                   @click="eliminarArticulo(index)"
@@ -521,7 +521,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, Teleport } from 'vue'
+import { ref, computed, watch } from '@vue/reactivity'
+import { onMounted, Teleport } from '@vue/runtime-core'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'

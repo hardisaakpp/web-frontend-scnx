@@ -148,7 +148,7 @@
               v-if="isColumnVisible('numero')"
               class="sticky left-0 z-[5] px-4 py-3 text-sm font-medium text-gray-500 dark:text-gray-400 text-center whitespace-nowrap border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
             >
-              {{ index + 1 }}
+              {{ Number(index) + 1 }}
             </td>
             <td
               v-if="isColumnVisible('codigo')"
@@ -324,8 +324,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
-import type { Ref } from 'vue'
+import { computed, ref, watch, type Ref } from '@vue/reactivity'
+import { onMounted, onUnmounted } from '@vue/runtime-core'
 import type { ProductoRedistribucion, DistribucionTiendaEditada } from '../utils/redistribucionHelpers'
 import { formatNumber, formatCurrency, type ColumnConfig } from '../utils/formatters'
 import { getDiferenciaClass } from '../utils/styleHelpers'
@@ -373,7 +373,7 @@ const productosConModificaciones = computed(() => {
     return map
   }
   
-  productosArray.value.forEach(producto => {
+  productosArray.value.forEach((producto: ProductoRedistribucion) => {
     // ⭐ PRIORIDAD 1: Usar campos del backend si están disponibles
     if (producto.costo_modificado_manual === true || producto.total_modificado_manual === true) {
       map.set(producto.codigo_producto, true)
@@ -419,7 +419,7 @@ const productosConModificaciones = computed(() => {
 // Esto asegura que el resaltado se actualice inmediatamente cuando se carguen las columnas
 watch(
   () => props.columnasModificadas?.value,
-  (newValue) => {
+  (newValue: Set<string> | undefined) => {
     if (newValue) {
       if (import.meta.env.DEV) console.log(`🔄 [ExcelLikeGridView] Columnas modificadas actualizadas: ${newValue.size} modificaciones`)
       // Acceder al computed para forzar su recálculo
@@ -621,8 +621,8 @@ function tieneTotalConfirmadoModificado(producto: ProductoRedistribucion): boole
 const tiendasUnicas = computed(() => {
   const tiendasMap = new Map<string, { codigo: string; nombre: string }>()
   
-  productosArray.value.forEach(producto => {
-    producto.distribucion_tiendas.forEach(tienda => {
+  productosArray.value.forEach((producto: ProductoRedistribucion) => {
+    producto.distribucion_tiendas.forEach((tienda: DistribucionTiendaEditada) => {
       if (!tiendasMap.has(tienda.tienda_codigo)) {
         // ⭐ El código viene de la fila 2 del Excel (ej: "RL-CD", "OUT-CD", "REG-CD", códigos de tiendas)
         // ⭐ El nombre viene de la fila 1 del Excel (ej: "Roland", "Descuentón", "Región", nombres de tiendas)
@@ -654,22 +654,22 @@ function getCantidadTienda(producto: ProductoRedistribucion, tiendaCodigo: strin
 
 // Obtener total por tienda
 function getTotalTienda(tiendaCodigo: string): number {
-  return productosArray.value.reduce((sum, producto) => {
+  return productosArray.value.reduce((sum: number, producto: ProductoRedistribucion) => {
     return sum + getCantidadTienda(producto, tiendaCodigo)
   }, 0)
 }
 
 // Totales generales
 const totalesConfirmado = computed(() => {
-  return productosArray.value.reduce((sum, p) => sum + p.cantidad_confirmada, 0)
+  return productosArray.value.reduce((sum: number, p: ProductoRedistribucion) => sum + p.cantidad_confirmada, 0)
 })
 
 const totalesCostoUnitario = computed(() => {
-  return productosArray.value.reduce((sum, p) => sum + (p.costo_unitario || 0), 0)
+  return productosArray.value.reduce((sum: number, p: ProductoRedistribucion) => sum + (p.costo_unitario || 0), 0)
 })
 
 const totalesDistribuido = computed(() => {
-  return productosArray.value.reduce((sum, p) => sum + p.cantidad_distribuida, 0)
+  return productosArray.value.reduce((sum: number, p: ProductoRedistribucion) => sum + p.cantidad_distribuida, 0)
 })
 
 const totalesDiferencia = computed(() => {
@@ -678,7 +678,7 @@ const totalesDiferencia = computed(() => {
 
 // Productos con error
 const productosConError = computed(() => {
-  return productosArray.value.filter(p => p.error)
+  return productosArray.value.filter((p: ProductoRedistribucion) => p.error)
 })
 
 // Clases para input según validación

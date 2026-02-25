@@ -406,7 +406,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from '@vue/reactivity'
+import { onMounted } from '@vue/runtime-core'
 import { useRoute } from 'vue-router'
 import { useHomologacionesStore } from '../stores/homologacionesStore'
 import { useToast } from '@/composables/useToast'
@@ -441,7 +442,7 @@ const paginatedHomologaciones = computed(() => {
   
   // Si no hay filtro de estado y el checkbox está desmarcado, excluir homologados
   if (!mostrarHomologados.value) {
-    return store.homologaciones.filter(h => h.estado !== 'HOMOLOGADO')
+    return store.homologaciones.filter((h: SkuHomologacion) => h.estado !== 'HOMOLOGADO')
   }
   
   // Si el checkbox está marcado, mostrar todos

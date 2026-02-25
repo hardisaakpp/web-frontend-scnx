@@ -41,7 +41,7 @@
             class="flex items-center justify-between p-2 rounded hover:bg-gray-50"
           >
             <div class="flex items-center gap-2">
-              <span class="text-sm font-medium text-gray-500">#{{ index + 1 }}</span>
+              <span class="text-sm font-medium text-gray-500">#{{ Number(index) + 1 }}</span>
               <span class="text-sm text-gray-900">{{ proveedor.nombre }}</span>
             </div>
             <span class="text-sm font-semibold text-red-600">{{ proveedor.count }} error(es)</span>
@@ -53,7 +53,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed } from '@vue/reactivity'
 import type { OrdenCompra } from '../types'
 
 interface Props {
@@ -63,13 +63,13 @@ interface Props {
 const props = defineProps<Props>()
 
 const ordenesConError = computed(() => {
-  return props.ordenes.filter(oc => oc.estado === 'ERROR')
+  return props.ordenes.filter((oc: OrdenCompra) => oc.estado === 'ERROR')
 })
 
 const totalErrors = computed(() => ordenesConError.value.length)
 
 const uniqueProveedores = computed(() => {
-  const proveedores = new Set(ordenesConError.value.map(oc => oc.proveedor))
+  const proveedores = new Set(ordenesConError.value.map((oc: OrdenCompra) => oc.proveedor))
   return proveedores.size
 })
 
@@ -81,7 +81,7 @@ const errorRate = computed(() => {
 const topProveedores = computed(() => {
   const proveedorCounts: Record<string, number> = {}
   
-  ordenesConError.value.forEach(oc => {
+  ordenesConError.value.forEach((oc: OrdenCompra) => {
     proveedorCounts[oc.proveedor] = (proveedorCounts[oc.proveedor] || 0) + 1
   })
   

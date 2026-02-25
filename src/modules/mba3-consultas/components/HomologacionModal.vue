@@ -192,7 +192,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch } from '@vue/reactivity'
 import { Dialog, DialogPanel, DialogTitle, TransitionRoot, TransitionChild } from '@headlessui/vue'
 import type { SkuHomologacion, SkuHomologacionUpdateRequest } from '../types'
 

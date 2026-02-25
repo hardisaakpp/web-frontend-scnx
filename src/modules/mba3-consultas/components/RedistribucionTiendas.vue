@@ -588,8 +588,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, nextTick, onMounted, onUnmounted, watch, type Ref } from 'vue'
-import type { PedidoCompleto } from '../types'
+import { computed, ref, watch, type Ref } from '@vue/reactivity'
+import { nextTick, onMounted, onUnmounted } from '@vue/runtime-core'
+import type { PedidoCompleto, PedidoDetalle } from '../types'
 import type { ProductoRedistribucion, DistribucionTiendaEditada } from '../utils/redistribucionHelpers'
 import { formatNumber, formatCurrency, type ColumnConfig } from '../utils/formatters'
 import { getDiferenciaClass } from '../utils/styleHelpers'
@@ -779,9 +780,9 @@ const resumenRedistribucion = computed(() => {
     }
   }
   
-  const total_solicitado = productosArray.value.reduce((sum, p) => sum + p.cantidad_solicitada, 0)
-  const total_confirmado = productosArray.value.reduce((sum, p) => sum + p.cantidad_confirmada, 0)
-  const total_distribuido = productosArray.value.reduce((sum, p) => sum + p.cantidad_distribuida, 0)
+  const total_solicitado = productosArray.value.reduce((sum: number, p: ProductoRedistribucion) => sum + p.cantidad_solicitada, 0)
+  const total_confirmado = productosArray.value.reduce((sum: number, p: ProductoRedistribucion) => sum + p.cantidad_confirmada, 0)
+  const total_distribuido = productosArray.value.reduce((sum: number, p: ProductoRedistribucion) => sum + p.cantidad_distribuida, 0)
   const diferencia_pendiente = total_confirmado - total_distribuido
   
   return {
@@ -795,8 +796,8 @@ const resumenRedistribucion = computed(() => {
 // Validar si se puede confirmar
 const puedeConfirmarRedistribucion = computed(() => {
   return resumenRedistribucion.value.diferencia_pendiente === 0 &&
-         productosArray.value.every(p => p.diferencia === 0) &&
-         productosArray.value.every(p => !p.error)
+         productosArray.value.every((p: ProductoRedistribucion) => p.diferencia === 0) &&
+         productosArray.value.every((p: ProductoRedistribucion) => !p.error)
 })
 
 /**
@@ -817,7 +818,7 @@ const productosConModificaciones = computed(() => {
     return map
   }
   
-  productosArray.value.forEach(producto => {
+  productosArray.value.forEach((producto: ProductoRedistribucion) => {
     // ⭐ PRIORIDAD 1: Usar campos del backend si están disponibles
     if (producto.costo_modificado_manual === true || producto.total_modificado_manual === true) {
       map.set(producto.codigo_producto, true)
@@ -827,7 +828,7 @@ const productosConModificaciones = computed(() => {
     // ⭐ PRIORIDAD 2: Verificar columnasModificadas (heredar del flujo anterior - EL RAYO)
     // Esta es la fuente principal para heredar el resaltado del flujo anterior
     const detallePedido = pedidoDetalles.find(
-      d => d.codigo_interno === producto.codigo_producto
+      (d: PedidoDetalle) => d.codigo_interno === producto.codigo_producto
     )
     
     if (!detallePedido?.pedido_detalle_id) {

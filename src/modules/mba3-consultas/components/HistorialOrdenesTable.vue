@@ -178,7 +178,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch } from '@vue/reactivity'
 import type { OrdenCompraLog } from '../types'
 import { isSapError, getSapErrorMessage } from '../composables/useSapErrorMessages'
 import { useTablePreferences } from '@/composables/useTablePreferences'
@@ -248,10 +248,10 @@ const allAvailableColumns = computed(() => {
   // Extraer todas las claves únicas de todos los logs
   const allKeys = new Set<string>()
   
-  props.ordenesCompra.forEach(log => {
-    Object.keys(log).forEach(key => {
+  props.ordenesCompra.forEach((log: OrdenCompraLog) => {
+    Object.keys(log).forEach((key: string) => {
       // Excluir campos que ya están en baseColumns o que son objetos complejos
-      if (!baseColumns.find(col => col.key === key) && 
+      if (!baseColumns.find((col: { key: string }) => col.key === key) && 
           key !== 'metadata' && 
           typeof log[key] !== 'object') {
         allKeys.add(key)
@@ -281,23 +281,23 @@ const allAvailableColumns = computed(() => {
 })
 
 // Watch para agregar nuevas columnas detectadas con su valor default
-watch(allAvailableColumns, (newColumns) => {
+watch(allAvailableColumns, (newColumns: { key: string; label: string; default: boolean }[]) => {
   const currentVisible = visibleColumns.value
-  const availableKeys = newColumns.map(col => col.key)
+  const availableKeys = newColumns.map((col: { key: string }) => col.key)
   
   // Agregar nuevas columnas con default: true si no están ya visibles
-  newColumns.forEach(col => {
+  newColumns.forEach((col: { key: string; default: boolean }) => {
     if (col.default && !currentVisible.includes(col.key) && availableKeys.includes(col.key)) {
       currentVisible.push(col.key)
     }
   })
   
   // Remover columnas que ya no existen
-  visibleColumns.value = currentVisible.filter(key => availableKeys.includes(key))
+  visibleColumns.value = currentVisible.filter((key: string) => availableKeys.includes(key))
   
   // Actualizar el orden: mantener el orden existente y agregar nuevas columnas al final
-  const currentOrder = columnOrder.value.filter(key => availableKeys.includes(key))
-  const missingInOrder = availableKeys.filter(key => !currentOrder.includes(key))
+  const currentOrder = columnOrder.value.filter((key: string) => availableKeys.includes(key))
+  const missingInOrder = availableKeys.filter((key: string) => !currentOrder.includes(key))
   columnOrder.value = [...currentOrder, ...missingInOrder]
 }, { deep: true })
 
@@ -308,7 +308,7 @@ const visibleColumnsCount = computed(() => visibleColumns.value.length)
 const visibleLogColumns = computed(() => {
   // Obtener las columnas en el orden especificado
   const orderedKeys = orderedVisibleColumnsFromComposable.value
-  const columnsMap = new Map(allAvailableColumns.value.map(col => [col.key, col]))
+  const columnsMap = new Map(allAvailableColumns.value.map((col: { key: string; label: string; default: boolean }) => [col.key, col]))
   
   // Retornar columnas en el orden correcto
   return orderedKeys
@@ -323,7 +323,7 @@ const logColumns = computed(() => {
 
 // Funciones de utilidad para manejo de columnas
 function selectAllColumns() {
-  const allKeys = allAvailableColumns.value.map(col => col.key)
+  const allKeys = allAvailableColumns.value.map((col: { key: string }) => col.key)
   visibleColumns.value = [...allKeys]
   columnOrder.value = [...allKeys]
 }
@@ -541,7 +541,7 @@ const filteredOrdenes = computed(() => {
   }
 
   const query = searchQuery.value.toLowerCase()
-  return props.ordenesCompra.filter(log => {
+  return props.ordenesCompra.filter((log: OrdenCompraLog) => {
     // Buscar en todos los campos del log
     for (const key in log) {
       const value = log[key]

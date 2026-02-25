@@ -212,7 +212,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed } from '@vue/reactivity'
 import { Dialog, DialogPanel, DialogTitle, TransitionRoot, TransitionChild } from '@headlessui/vue'
 import type { IntegracionSAPDetalle, SolicitudesTransferencia } from '../types'
 

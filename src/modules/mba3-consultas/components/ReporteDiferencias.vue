@@ -97,10 +97,10 @@
     </div>
 
     <!-- Distribución por tienda (expandible) -->
-    <div v-if="reporteDiferencias.detalle.some(item => item.distribucion_tiendas && item.distribucion_tiendas.length > 0)" class="mt-6">
+    <div v-if="tieneDistribucionPorTienda" class="mt-6">
       <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Distribución por Tienda</h3>
       <div class="space-y-4">
-        <details v-for="item in reporteDiferencias.detalle.filter(i => i.distribucion_tiendas && i.distribucion_tiendas.length > 0)" :key="item.codigo_producto" class="border border-gray-200 dark:border-gray-700 rounded-lg transition-colors duration-300">
+        <details v-for="item in detalleConDistribucion" :key="item.codigo_producto" class="border border-gray-200 dark:border-gray-700 rounded-lg transition-colors duration-300">
           <summary class="px-4 py-3 bg-gray-50 dark:bg-gray-900 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 text-sm font-medium text-gray-900 dark:text-white transition-colors">
             {{ item.codigo_producto }} - {{ item.descripcion }}
           </summary>
@@ -120,13 +120,22 @@
 </template>
 
 <script setup lang="ts">
-import type { ReporteDiferenciasResponse } from '../types'
+import { computed } from '@vue/reactivity'
+import type { ReporteDiferenciasResponse, DiferenciaReporte } from '../types'
 import { formatNumber, formatCurrency, formatPorcentaje } from '../utils/formatters'
 import { getDiferenciaClass, getPorcentajeClass, getPorcentajeDiferenciaClass } from '../utils/styleHelpers'
 
-defineProps<{
+const props = defineProps<{
   reporteDiferencias: ReporteDiferenciasResponse | null
 }>()
+
+const tieneDistribucionPorTienda = computed(() =>
+  (props.reporteDiferencias?.detalle.some((item: DiferenciaReporte) => item.distribucion_tiendas && item.distribucion_tiendas.length > 0) ?? false)
+)
+
+const detalleConDistribucion = computed(() =>
+  (props.reporteDiferencias?.detalle.filter((i: DiferenciaReporte) => i.distribucion_tiendas && i.distribucion_tiendas.length > 0) ?? [])
+)
 
 defineEmits<{
   exportar: []

@@ -1,7 +1,7 @@
 /**
  * Composable para manejar la carga y gestión del pedido
  */
-import { ref, Ref, computed } from 'vue'
+import { ref, Ref, computed } from '@vue/reactivity'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'

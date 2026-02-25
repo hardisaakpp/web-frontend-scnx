@@ -30,7 +30,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref } from '@vue/reactivity';
+import { onMounted } from '@vue/runtime-core';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();

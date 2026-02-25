@@ -6,7 +6,7 @@
  * En producción: envía errores a servicio de monitoreo (Sentry, LogRocket, etc.)
  */
 
-import type { App, ComponentPublicInstance } from 'vue'
+import type { App, ComponentPublicInstance } from '@vue/runtime-core'
 
 export interface ErrorContext {
   error: unknown
@@ -54,7 +54,7 @@ export function setupErrorHandler(app: App) {
   const isDev = import.meta.env.DEV
 
   // Manejador de errores no capturados
-  app.config.errorHandler = (err, instance, info) => {
+  app.config.errorHandler = (err: unknown, instance: ComponentPublicInstance | null, info: string) => {
     logError({
       error: err,
       component: instance,
@@ -66,7 +66,7 @@ export function setupErrorHandler(app: App) {
   }
 
   // Manejador de warnings de Vue
-  app.config.warnHandler = (msg, instance, trace) => {
+  app.config.warnHandler = (msg: string, instance: ComponentPublicInstance | null, trace: string) => {
     if (isDev) {
       console.group('⚠️ Vue Warning')
       console.warn(msg)

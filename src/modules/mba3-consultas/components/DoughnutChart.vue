@@ -66,7 +66,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed } from '@vue/reactivity'
 
 interface DoughnutChartData {
   label: string
@@ -82,7 +82,7 @@ interface Props {
 const props = defineProps<Props>()
 
 const total = computed(() => {
-  return props.data.reduce((sum, item) => sum + item.value, 0)
+  return props.data.reduce((sum: number, item: DoughnutChartData) => sum + item.value, 0)
 })
 
 const circumference = computed(() => {
@@ -93,7 +93,7 @@ const segments = computed(() => {
   if (total.value === 0) return []
   
   let currentOffset = 0
-  return props.data.map(item => {
+  return props.data.map((item: DoughnutChartData) => {
     const percentage = item.value / total.value
     const dashLength = percentage * circumference.value
     const offset = circumference.value - currentOffset

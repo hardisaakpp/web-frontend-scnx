@@ -282,7 +282,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch } from '@vue/reactivity'
 import type { Remision } from '../types'
 import { useTablePreferences } from '@/composables/useTablePreferences'
 import { formatDate } from '../utils/formatters'

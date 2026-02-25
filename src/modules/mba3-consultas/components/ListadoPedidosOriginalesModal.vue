@@ -226,7 +226,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch } from '@vue/reactivity'
 import { pedidosService } from '../services/domains/pedidos'
 import { useToast } from '@/composables/useToast'
 import type { ArchivoOriginalItem } from '../types'

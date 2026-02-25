@@ -282,7 +282,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, nextTick, type Ref } from 'vue'
+import { ref, computed, watch, type Ref } from '@vue/reactivity'
+import { onMounted, onUnmounted, nextTick } from '@vue/runtime-core'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService, extractErrorMessage } from '../services/mba3ConsultasApi'
