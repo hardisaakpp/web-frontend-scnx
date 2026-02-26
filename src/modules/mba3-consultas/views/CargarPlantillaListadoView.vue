@@ -715,7 +715,12 @@ function seleccionarResultado(resultado: BuscarPlantillaResultado) {
 }
 
 // Carga de plantillas Excel (redirige a cargar-plantilla/:id tras subir). useAsyncUpload: no bloquea la app (Celery).
-const fileUploadComposable = useFileUpload({ redirectToCargarPlantilla: true, useAsyncUpload: true })
+// onUploadSuccess: refrescar lista para que al volver desde el detalle el nuevo pedido esté visible.
+const fileUploadComposable = useFileUpload({
+  redirectToCargarPlantilla: true,
+  useAsyncUpload: true,
+  onUploadSuccess: () => { cargarPedidos() }
+})
 const {
   uploading,
   openFileSelector,

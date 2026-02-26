@@ -929,16 +929,20 @@ export function useFileUpload(options: {
         response = await mba3ConsultasService.uploadPlantilla(file, handleProgress)
       }
       
-      // ⭐ Limpiar archivo original si la carga fue exitosa
-      if (response.status === 'success') {
+      // Pedido guardado: success o validation_error con pedido_id (backend puede devolver 200 con advertencias)
+      const pedidoGuardado = response.status === 'success' || (response.pedido_id && response.status === 'validation_error')
+
+      // ⭐ Limpiar archivo original si la carga fue exitosa (incl. guardado con advertencias)
+      if (pedidoGuardado) {
         archivoOriginal.value = null
       }
       
-      // Obtener numero_pedido de la respuesta
-      let numeroPedido = response.numero_pedido
+      // Obtener numero_pedido de la respuesta (puede venir en la raíz o en resultado, según backend)
+      const resAny = response as any
+      let numeroPedido = response.numero_pedido ?? resAny.resultado?.numero_pedido ?? resAny.result?.numero_pedido
       
-      // Si no viene en la respuesta, intentar obtenerlo del pedido cargado usando pedido_id
-      if (!numeroPedido && response.pedido_id && options?.pedido?.value) {
+      // Si no viene en la respuesta, intentar obtenerlo del pedido cargado usando pedido_id (necesario para redirigir)
+      if (!numeroPedido && response.pedido_id) {
         try {
           const pedidoCompleto = await mba3ConsultasService.getPedido(response.pedido_id, false)
           numeroPedido = pedidoCompleto.cabecera.numero_pedido || undefined
@@ -1007,7 +1011,14 @@ export function useFileUpload(options: {
           toast.success('Plantilla procesada exitosamente', mensajeDetalle)
         }
       } else if (response.status === 'validation_error') {
-        toast.warning('Plantilla procesada con advertencias', mensajeDetalle)
+        if (response.pedido_id) {
+          toast.warning(
+            'Plantilla procesada y guardada con advertencias. Revisa el detalle si lo deseas.',
+            mensajeDetalle
+          )
+        } else {
+          toast.warning('Plantilla procesada con advertencias', mensajeDetalle)
+        }
       }
       
       // Guardar correcciones en sessionStorage antes de redirect para que la vista de destino pueda resaltar (flujo async)
@@ -1025,8 +1036,8 @@ export function useFileUpload(options: {
         const currentPedidoNumero = options?.pedido?.value?.cabecera.numero_pedido
         const pathBase = options?.redirectToCargarPlantilla ? RUTA_CARGAR_PLANTILLA_BASE : RUTA_PEDIDOS_BASE
         if (numeroPedido !== currentPedidoNumero) {
-          // Si el pedido cargado es diferente al actual, redirigir a cargar-plantilla o pedidos (nunca a otra ruta)
-          await router.push(`${pathBase}/${encodeURIComponent(numeroPedido)}`)
+          // Si el pedido cargado es diferente al actual, redirigir con replace para no dejar listado en el historial (flujo Celery)
+          await router.replace(`${pathBase}/${encodeURIComponent(numeroPedido)}`)
           await new Promise(resolve => setTimeout(resolve, 100))
         } else {
           // Recargar el pedido actual si hay callback
@@ -1178,7 +1189,8 @@ export function useFileUpload(options: {
       
       archivoOriginal.value = null
       
-      let numeroPedido = response.numero_pedido
+      const resAnyReintento = response as any
+      let numeroPedido = response.numero_pedido ?? resAnyReintento.resultado?.numero_pedido ?? resAnyReintento.result?.numero_pedido
       if (!numeroPedido && response.pedido_id && options?.pedido?.value) {
         try {
           const pedidoCompleto = await mba3ConsultasService.getPedido(response.pedido_id, false)
@@ -1210,8 +1222,8 @@ export function useFileUpload(options: {
         const currentPedidoNumero = options?.pedido?.value?.cabecera.numero_pedido
         const pathBase = options?.redirectToCargarPlantilla ? RUTA_CARGAR_PLANTILLA_BASE : RUTA_PEDIDOS_BASE
         if (numeroPedido !== currentPedidoNumero) {
-          // Tras aplicar correcciones: redirigir a cargar-plantilla o pedidos para mostrar resaltado (nunca a caja-chica ni otras rutas)
-          await router.push(`${pathBase}/${encodeURIComponent(numeroPedido)}`)
+          // Tras aplicar correcciones: redirigir con replace (flujo Celery)
+          await router.replace(`${pathBase}/${encodeURIComponent(numeroPedido)}`)
           await new Promise(resolve => setTimeout(resolve, 100))
         } else {
           if (options?.loadPedido) {

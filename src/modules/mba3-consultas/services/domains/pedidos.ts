@@ -105,9 +105,20 @@ export const pedidosService = {
       console.error('❌ [uploadPlantilla] Error al subir plantilla:', error)
       console.error('❌ [uploadPlantilla] Response data:', error.response?.data)
 
-      // Si el backend retorna 400 con validación, devolverlo como resultado manejable
-      if (error.response?.status === 400 && error.response?.data?.status === 'validation_error') {
-        const data = normalizeValidationResponse(error.response.data)
+      const status = error.response?.status
+      const body = error.response?.data
+
+      // Si el backend retorna 400 pero el pedido sí se guardó (pedido_id presente), tratar como éxito
+      if (status === 400 && body?.pedido_id) {
+        const data = normalizeValidationResponse(body)
+        data.status = 'success'
+        data.message = data.message || 'Plantilla procesada y guardada con advertencias. Revisa el detalle si lo deseas.'
+        return data as UploadPlantillaResponse
+      }
+
+      // Si el backend retorna 400 con validación (sin pedido_id), devolverlo como resultado manejable
+      if (status === 400 && body?.status === 'validation_error') {
+        const data = normalizeValidationResponse(body)
         if (!data.message && data.detail) {
           data.message = data.detail
         }
@@ -166,9 +177,19 @@ export const pedidosService = {
       return normalizeValidationResponse(response.data)
     } catch (error: any) {
       console.error('❌ [uploadPlantillaConCorrecciones] Error:', error)
-      
-      if (error.response?.status === 400 && error.response?.data?.status === 'validation_error') {
-        const data = normalizeValidationResponse(error.response.data)
+
+      const status = error.response?.status
+      const body = error.response?.data
+
+      if (status === 400 && body?.pedido_id) {
+        const data = normalizeValidationResponse(body)
+        data.status = 'success'
+        data.message = data.message || 'Plantilla procesada y guardada con advertencias. Revisa el detalle si lo deseas.'
+        return data as UploadPlantillaResponse
+      }
+
+      if (status === 400 && body?.status === 'validation_error') {
+        const data = normalizeValidationResponse(body)
         if (!data.message && data.detail) {
           data.message = data.detail
         }

@@ -151,6 +151,42 @@ Condicionar la visibilidad solo con la capability o con el getter:
 
 **Cuándo cargar capabilities:** Al inicio de la app (p. ej. en `initializeAuth`), tras login y al restaurar sesión (token en localStorage). Asegurar que en rutas donde se usen estos botones ya se haya llamado a `/api/auth/me` antes de renderizar. Si no se llama o falla (p. ej. 401), `capabilities` queda vacío o sin cargar → `mabel_view` será falsy → esos cinco botones no se muestran.
 
+### 0.5.12.2 Upload asíncrono (Celery): actualizar la interfaz al terminar
+
+Con **Celery**, la carga usa `POST /api/plantillas/upload-async`, que responde **202** con un `process_id`. El resultado **no** viene en esa respuesta: la tarea se ejecuta en segundo plano y el resultado se obtiene después. Si el frontend solo hace el POST y no consulta el estado/resultado, nunca sabe cuándo termina ni obtiene `numero_pedido` ni los datos para actualizar la pantalla.
+
+**Pasos obligatorios en frontend:**
+
+1. **Tras recibir 202**  
+   Guardar `process_id` de la respuesta.
+
+2. **Consultar el resultado hasta que termine**  
+   - **Polling:** `GET /api/plantillas/resultado/{process_id}` cada 1–2 s.  
+   - **SSE (recomendado si el backend lo expone):** `GET /api/plantillas/stream/{process_id}` y reaccionar a los eventos.
+
+3. **Cuando el proceso termina bien**  
+   - Backend responde **200** y el cuerpo es el resultado (incluye `numero_pedido`, `status: "success"`, etc.).  
+   - Con ese resultado el frontend debe:  
+     - Refrescar la lista de pedidos: `GET /api/plantillas/pedidos` (p. ej. en `onUploadSuccess` en la vista listado).  
+     - Navegar a `/mba3-consultas/cargar-plantilla/{numero_pedido}` con **`router.replace`** (no `push`) para no dejar el listado en el historial.  
+     - La vista de detalle (`CargarPlantillaView`) carga los datos del pedido por `:id` (p. ej. con `GET /api/plantillas/{numero_pedido}` o `getPedido`).
+
+4. **Si termina con error**  
+   Backend responde **400**; el frontend debe mostrar el mensaje y, si aplica, la UI de corrección con `validacion_sap` / `error_data`.
+
+**Implementación en este repo (Vue):**
+
+- El composable `useFileUpload` con `useAsyncUpload: true` ya hace polling a `getResultadoPlantilla(process_id)` cada 2 s.  
+- Tras éxito: extrae `numero_pedido` (también de `response.resultado` si viene anidado), llama `onUploadSuccess`, luego `router.replace` a `cargar-plantilla/:id`.  
+- En `CargarPlantillaListadoView` se pasa `onUploadSuccess: () => cargarPedidos()` para refrescar la lista al terminar Celery.
+
+**Checklist para que la información se cargue automáticamente al terminar Celery:**
+
+- [ ] Tras 202, guardar `process_id` y no tratar la respuesta como resultado final.  
+- [ ] Polling (o SSE) a resultado hasta `status !== 'processing'`.  
+- [ ] Éxito = 200 con cuerpo con `numero_pedido` y `status === 'success'` (o `'completed'` normalizado); error = 400.  
+- [ ] Al éxito: refrescar lista de pedidos, navegar con `replace` a `cargar-plantilla/{numero_pedido}`, y cargar datos del pedido en esa vista.
+
 ---
 
 ## 1. Interfaz Redistribución: cargar último pedido para redistribución

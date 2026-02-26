@@ -1416,7 +1416,7 @@ export const mba3ConsultasService = {
   async procesoCompletoSAPAsync(
     numeroPedido: string,
     ajustesDetalle: AjusteDetalle[]
-  ): Promise<ProcesoCompletoSAPAsyncResponse> {
+  ): Promise<ProcesoCompletoSAPAsyncResponse | ProcesoCompletoSAPResponse> {
     return pedidosService.procesoCompletoSAPAsync(numeroPedido, ajustesDetalle)
   },
 
