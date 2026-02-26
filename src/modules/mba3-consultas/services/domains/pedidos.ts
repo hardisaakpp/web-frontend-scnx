@@ -208,7 +208,7 @@ export const pedidosService = {
     if (opts?.confirmar_sincronizacion) params.set('confirmar_sincronizacion', 'true')
     const url = `/api/plantillas/upload-async${params.toString() ? `?${params.toString()}` : ''}`
     const config = {
-      timeout: 60000,
+      timeout: 120000, // 2 min: backend puede ejecutar sync (fallback) y tardar ~1–2 min
       onUploadProgress: (progressEvent: UploadProgressEvent) => {
         if (onProgress && progressEvent.total) {
           const pct = Math.round((progressEvent.loaded / progressEvent.total) * 100)
@@ -950,17 +950,19 @@ export const pedidosService = {
   /**
    * Inicia el proceso completo SAP en segundo plano (Celery).
    * POST /api/pedidos/{numero_pedido}/proceso-completo-sap-async
-   * Respuesta 202 con process_id, resultado_url, stream_url. Luego consultar resultado por polling o SSE.
+   * - 202: proceso encolado, usar process_id para polling (GET proceso-sap/resultado/{process_id}).
+   * - 200: resultado ya completo (fallback sync o force_sync); body tiene fallback, process_id: null, async: false.
+   * Timeout 2 min para cubrir el caso en que el backend ejecuta en sync (~40s).
    */
   async procesoCompletoSAPAsync(
     numeroPedido: string,
     ajustesDetalle: AjusteDetalle[]
-  ): Promise<ProcesoCompletoSAPAsyncResponse> {
+  ): Promise<ProcesoCompletoSAPAsyncResponse | ProcesoCompletoSAPResponse> {
     try {
-      const response = await mba3Api.post<ProcesoCompletoSAPAsyncResponse>(
+      const response = await mba3Api.post<ProcesoCompletoSAPAsyncResponse | ProcesoCompletoSAPResponse>(
         `/api/pedidos/${encodeURIComponent(numeroPedido)}/proceso-completo-sap-async`,
         { ajustes_detalle: ajustesDetalle },
-        { timeout: 15000 }
+        { timeout: 120000 }
       )
       return response.data
     } catch (error: any) {

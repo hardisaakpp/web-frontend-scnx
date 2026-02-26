@@ -513,10 +513,11 @@ function applySAPResponse(response: ProcesoCompletoSAPResponse) {
     : (response.envio_sap?.doc_num != null ? 'success' : response.error ? 'partial' : 'error')
 
   if (innerStatus === 'success') {
+    // Backend actualiza a "Confirmado y enviado" (estado_id 12) cuando PASO 3 termina bien; reflejar en UI.
     const cabecera = pedido.value?.cabecera
     if (cabecera) {
-      cabecera.estado_id = 10
-      cabecera.estado = 'CONFIRMADO REDISTRIBUCION'
+      cabecera.estado_id = 12
+      cabecera.estado = 'CONFIRMADO_ENVIADO'
     }
     procesoStore.setSAPResultadoPendiente({
       detalle: response.envio_sap ? {
@@ -624,6 +625,17 @@ async function handleEnviarOdcSap() {
     try {
       const accepted = await mba3ConsultasService.procesoCompletoSAPAsync(numeroPedido.value, ajustes_detalle)
 
+      // Respuesta 200 con resultado completo (fallback sync o force_sync): no hacer polling
+      const isSyncResult = (accepted as any).fallback === 'sync' || (accepted as any).async === false || (accepted as any).process_id == null
+      if (isSyncResult) {
+        completeSapProgress()
+        await new Promise(r => setTimeout(r, 400))
+        applySAPResponse(accepted as unknown as ProcesoCompletoSAPResponse)
+        enviandoOdcSap.value = false
+        setTimeout(resetSapProgress, 500)
+        return
+      }
+
       if (accepted.status !== 'accepted' || !accepted.process_id) {
         toast.error('Error', 'No se pudo iniciar el proceso. Respuesta inesperada.')
         return
@@ -636,9 +648,9 @@ async function handleEnviarOdcSap() {
           const result = await mba3ConsultasService.getProcesoSAPResultado(processId)
           const data = result as Record<string, unknown>
 
+          // Solo considerar terminado cuando el backend envía el resultado final (status terminal).
+          // No cerrar solo por progress 100 o process_status 'completed' (pueden llegar antes del resultado real).
           const done =
-            data.process_status === 'completed' ||
-            data.progress === 100 ||
             data.status === 'success' ||
             data.status === 'partial' ||
             data.status === 'completed'
@@ -662,6 +674,7 @@ async function handleEnviarOdcSap() {
               sapPollingInterval = null
             }
             completeSapProgress()
+            await new Promise(r => setTimeout(r, 400))
             applySAPResponse(result as ProcesoCompletoSAPResponse)
             enviandoOdcSap.value = false
             setTimeout(resetSapProgress, 500)
@@ -694,6 +707,7 @@ async function handleEnviarOdcSap() {
         sapMessage.value = 'Ejecutando proceso en modo síncrono...'
         const response = await mba3ConsultasService.procesoCompletoSAP(numeroPedido.value, ajustes_detalle)
         completeSapProgress()
+        await new Promise(r => setTimeout(r, 400))
         applySAPResponse(response)
         enviandoOdcSap.value = false
         setTimeout(resetSapProgress, 500)
@@ -888,8 +902,10 @@ watch(
       pedidoIdInput.value = ''
       cargarColumnasModificadasDesdeStorage()
     }
-    // Navegación a /redistribucion sin id: limpiar pedido y cargar último + lista
-    if (!newId && oldId !== undefined) {
+    // Solo cargar último pedido cuando seguimos en la ruta de redistribución de pedido sin id.
+    // No ejecutar al navegar fuera (dashboard, etc.): comprobar path para evitar toast/redirect indebidos.
+    const sigueEnRedistribucionPedido = route.path.startsWith('/mba3-consultas/pedidos/') && route.path.includes('/redistribucion')
+    if (!newId && oldId !== undefined && sigueEnRedistribucionPedido) {
       pedido.value = null
       await cargarRedistribucionSinPedido()
     }
@@ -929,8 +945,10 @@ onMounted(async () => {
     }
     return
   }
-
-  await cargarRedistribucionSinPedido()
+  // Solo cargar último pedido si realmente estamos en la ruta sin id (ruta con :id debería tener id)
+  if (route.name === 'mba3-consultas-pedido-redistribucion') {
+    await cargarRedistribucionSinPedido()
+  }
 })
 
 // ⭐ Cleanup al desmontar componente

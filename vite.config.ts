@@ -17,6 +17,13 @@ export default defineConfig({
   server: {
     port: 3000,
     proxy: {
+      // MBA3 Consultas (ODC SAP, plantillas, pedidos, etc.) → backend local :8000 (evita CORS en dev).
+      '/mba3-api': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/mba3-api/, '')
+      },
       // /Auth/me → mba3-consultas (capabilities). Debe ir antes que /api.
       '/api/Auth/me': {
         target: 'http://localhost:8000',

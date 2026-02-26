@@ -793,13 +793,19 @@ export interface UploadPlantillaResponse {
   correcciones_aplicadas?: Array<{ codigo_original: string; codigo_corregido: string }>
 }
 
-/** Respuesta de POST /api/plantillas/upload-async (procesamiento en segundo plano) */
+/**
+ * Respuesta de POST /api/plantillas/upload-async.
+ * - 202: status 'accepted', process_id presente → hay que hacer polling a GET /api/plantillas/resultado/{process_id}.
+ * - 200 (fallback sync): process_id null, async false, cuerpo = resultado completo → no hacer polling.
+ */
 export interface UploadPlantillaAsyncAcceptedResponse {
   status: 'accepted'
-  process_id: string
-  message: string
-  resultado_url: string
-  stream_url: string
+  process_id: string | null
+  message?: string
+  resultado_url?: string
+  stream_url?: string
+  /** Si false, el cuerpo de la respuesta 200 es el resultado final (no hacer polling). */
+  async?: boolean
 }
 
 /** Estado al consultar GET /api/plantillas/resultado/{process_id} (polling) */

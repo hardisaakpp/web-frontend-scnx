@@ -7,6 +7,7 @@ import { onUnmounted } from '@vue/runtime-core'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
+import { normalizeValidationResponse } from '../services/utils/errorHandler'
 import type { UploadPlantillaResponse, PedidoCompleto, PlantillaProcesoEstado } from '../types'
 
 // Constantes de configuración
@@ -875,27 +876,42 @@ export function useFileUpload(options: {
       if (options?.useAsyncUpload) {
         try {
           const accepted = await mba3ConsultasService.uploadPlantillaAsync(file, {}, handleProgress)
-          uploadFase.value = 'processing'
-          uploadMessage.value = accepted.message || 'Procesando plantilla en segundo plano...'
-          uploadProgress.value = 90
-          const pollIntervalMs = 2000
-          for (;;) {
-            await new Promise(r => setTimeout(r, pollIntervalMs))
-            const pollResult = await mba3ConsultasService.getResultadoPlantilla(accepted.process_id)
-            if (pollResult.status === 'processing') {
-              const estado = pollResult as PlantillaProcesoEstado
-              uploadMessage.value = estado.message || uploadMessage.value
-              uploadProgress.value = estado.progress ?? uploadProgress.value
-              continue
+          // Backend puede devolver 200 con resultado completo (fallback sync: process_id null, async false) — no hacer polling
+          const isResultadoInmediato = (accepted as any).fallback === 'sync' || accepted.async === false || accepted.process_id == null || accepted.process_id === ''
+          if (isResultadoInmediato) {
+            stopProcessingProgressSimulation(true)
+            uploadProgress.value = 100
+            uploadFase.value = 'complete'
+            uploadMessage.value = 'Procesamiento completado'
+            await new Promise(r => setTimeout(r, 400))
+            response = normalizeValidationResponse(accepted as any) as UploadPlantillaResponse
+          } else {
+            uploadFase.value = 'processing'
+            uploadMessage.value = accepted.message || 'Procesando plantilla en segundo plano...'
+            uploadProgress.value = 90
+            const pollIntervalMs = 2000
+            for (;;) {
+              await new Promise(r => setTimeout(r, pollIntervalMs))
+              const pollResult = await mba3ConsultasService.getResultadoPlantilla(accepted.process_id!)
+              if (pollResult.status === 'processing') {
+                const estado = pollResult as PlantillaProcesoEstado
+                uploadMessage.value = estado.message || uploadMessage.value
+                uploadProgress.value = estado.progress ?? uploadProgress.value
+                continue
+              }
+              if (pollResult.status === 'error' && 'error' in pollResult) {
+                // Preservar el cuerpo de la respuesta (validacion_sap, validacion) para la UI de corrección de códigos
+                const err: any = new Error((pollResult as PlantillaProcesoEstado).error || (pollResult as PlantillaProcesoEstado).message)
+                err.response = { data: pollResult }
+                throw err
+              }
+              uploadProgress.value = 100
+              uploadFase.value = 'complete'
+              uploadMessage.value = 'Procesamiento completado'
+              await new Promise(r => setTimeout(r, 400))
+              response = pollResult as UploadPlantillaResponse
+              break
             }
-            if (pollResult.status === 'error' && 'error' in pollResult) {
-              // Preservar el cuerpo de la respuesta (validacion_sap, validacion) para la UI de corrección de códigos
-              const err: any = new Error((pollResult as PlantillaProcesoEstado).error || (pollResult as PlantillaProcesoEstado).message)
-              err.response = { data: pollResult }
-              throw err
-            }
-            response = pollResult as UploadPlantillaResponse
-            break
           }
         } catch (asyncErr: any) {
           const errorCode = asyncErr.response?.data?.error ?? asyncErr.response?.data?.detail?.error
@@ -1111,26 +1127,41 @@ export function useFileUpload(options: {
           { correcciones_codigos: correcciones },
           handleProgress
         )
-        uploadFase.value = 'processing'
-        uploadMessage.value = accepted.message || 'Aplicando correcciones en segundo plano...'
-        uploadProgress.value = 90
-        const pollIntervalMs = 2000
-        for (;;) {
-          await new Promise(r => setTimeout(r, pollIntervalMs))
-          const pollResult = await mba3ConsultasService.getResultadoPlantilla(accepted.process_id)
-          if (pollResult.status === 'processing') {
-            const estado = pollResult as PlantillaProcesoEstado
-            uploadMessage.value = estado.message || uploadMessage.value
-            uploadProgress.value = estado.progress ?? uploadProgress.value
-            continue
+        // Backend puede devolver 200 con resultado completo (fallback sync: process_id null, async false) — no hacer polling
+        const isResultadoInmediato = (accepted as any).fallback === 'sync' || accepted.async === false || accepted.process_id == null || accepted.process_id === ''
+        if (isResultadoInmediato) {
+          stopProcessingProgressSimulation(true)
+          uploadProgress.value = 100
+          uploadFase.value = 'complete'
+          uploadMessage.value = 'Procesamiento completado'
+          await new Promise(r => setTimeout(r, 400))
+          response = normalizeValidationResponse(accepted as any) as UploadPlantillaResponse
+        } else {
+          uploadFase.value = 'processing'
+          uploadMessage.value = accepted.message || 'Aplicando correcciones en segundo plano...'
+          uploadProgress.value = 90
+          const pollIntervalMs = 2000
+          for (;;) {
+            await new Promise(r => setTimeout(r, pollIntervalMs))
+            const pollResult = await mba3ConsultasService.getResultadoPlantilla(accepted.process_id!)
+            if (pollResult.status === 'processing') {
+              const estado = pollResult as PlantillaProcesoEstado
+              uploadMessage.value = estado.message || uploadMessage.value
+              uploadProgress.value = estado.progress ?? uploadProgress.value
+              continue
+            }
+            if (pollResult.status === 'error' && 'error' in pollResult) {
+              const err: any = new Error((pollResult as PlantillaProcesoEstado).error || (pollResult as PlantillaProcesoEstado).message)
+              err.response = { data: pollResult }
+              throw err
+            }
+            uploadProgress.value = 100
+            uploadFase.value = 'complete'
+            uploadMessage.value = 'Procesamiento completado'
+            await new Promise(r => setTimeout(r, 400))
+            response = pollResult as UploadPlantillaResponse
+            break
           }
-          if (pollResult.status === 'error' && 'error' in pollResult) {
-            const err: any = new Error((pollResult as PlantillaProcesoEstado).error || (pollResult as PlantillaProcesoEstado).message)
-            err.response = { data: pollResult }
-            throw err
-          }
-          response = pollResult as UploadPlantillaResponse
-          break
         }
       } catch (asyncErr: any) {
         const errorCode = asyncErr.response?.data?.error ?? asyncErr.response?.data?.detail?.error

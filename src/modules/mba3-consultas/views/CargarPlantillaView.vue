@@ -1715,6 +1715,17 @@ async function handleEnviarOdcSap() {
     try {
       const accepted = await mba3ConsultasService.procesoCompletoSAPAsync(numeroPedido.value, ajustesDetalle)
 
+      // Respuesta 200 con resultado completo (fallback sync o force_sync): no hacer polling
+      const isSyncResult = (accepted as any).fallback === 'sync' || (accepted as any).async === false || (accepted as any).process_id == null
+      if (isSyncResult) {
+        completeSapProgress()
+        await new Promise(r => setTimeout(r, 400))
+        await applySAPResponseCargarPlantilla(accepted as unknown as import('@/modules/mba3-consultas/types').ProcesoCompletoSAPResponse)
+        enviandoOdcSap.value = false
+        setTimeout(resetSapProgress, 500)
+        return
+      }
+
       if (accepted.status !== 'accepted' || !accepted.process_id) {
         toast.error('Error', 'No se pudo iniciar el proceso. Respuesta inesperada.')
         return
@@ -1724,17 +1735,17 @@ async function handleEnviarOdcSap() {
 
       const poll = async () => {
         try {
-          const result = await mba3ConsultasService.getProcesoSAPResultado(processId)
-          const data = result as Record<string, unknown>
+        const result = await mba3ConsultasService.getProcesoSAPResultado(processId)
+        const data = result as Record<string, unknown>
 
-          const done =
-            data.process_status === 'completed' ||
-            data.progress === 100 ||
-            data.status === 'success' ||
-            data.status === 'partial' ||
-            data.status === 'completed'
+        // Solo considerar terminado cuando el backend envía el resultado final (status terminal).
+        // No cerrar solo por progress 100 o process_status 'completed' (pueden llegar antes del resultado real).
+        const done =
+          data.status === 'success' ||
+          data.status === 'partial' ||
+          data.status === 'completed'
 
-          if (result.status === 'error') {
+        if (result.status === 'error') {
             if (sapPollingInterval) {
               clearInterval(sapPollingInterval)
               sapPollingInterval = null
@@ -1753,6 +1764,7 @@ async function handleEnviarOdcSap() {
               sapPollingInterval = null
             }
             completeSapProgress()
+            await new Promise(r => setTimeout(r, 400))
             await applySAPResponseCargarPlantilla(result as import('@/modules/mba3-consultas/types').ProcesoCompletoSAPResponse)
             enviandoOdcSap.value = false
             setTimeout(resetSapProgress, 500)
@@ -1784,6 +1796,7 @@ async function handleEnviarOdcSap() {
         sapMessage.value = 'Ejecutando proceso en modo síncrono...'
         const response = await mba3ConsultasService.procesoCompletoSAP(numeroPedido.value, ajustesDetalle)
         completeSapProgress()
+        await new Promise(r => setTimeout(r, 400))
         await applySAPResponseCargarPlantilla(response)
         enviandoOdcSap.value = false
         setTimeout(resetSapProgress, 500)
