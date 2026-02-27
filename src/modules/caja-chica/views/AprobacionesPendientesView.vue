@@ -253,7 +253,21 @@
           </div>
 
           <div class="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
-            <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-3">Adjuntos</div>
+            <div class="flex items-center justify-between mb-3">
+              <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Adjuntos</div>
+              <button
+                v-if="selectedAdjunto"
+                type="button"
+                class="inline-flex items-center justify-center rounded-md border border-gray-300 dark:border-gray-600 bg-white/60 dark:bg-gray-800/60 px-2 py-1 text-[11px] text-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                @click.stop="downloadAdjunto"
+              >
+                <svg class="w-3.5 h-3.5 mr-1" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path d="M10 2a.75.75 0 01.75.75v8.19l2.47-2.47a.75.75 0 111.06 1.06l-3.75 3.75a.75.75 0 01-1.06 0L5.72 9.53a.75.75 0 111.06-1.06l2.47 2.47V2.75A.75.75 0 0110 2z" />
+                  <path d="M4.25 12.5a.75.75 0 01.75.75v1.5A1.25 1.25 0 006.25 16h7.5A1.25 1.25 0 0015 14.75v-1.5a.75.75 0 011.5 0v1.5A2.75 2.75 0 0113.75 17h-7.5A2.75 2.75 0 013.5 14.75v-1.5a.75.75 0 01.75-.75z" />
+                </svg>
+                <span>Descargar</span>
+              </button>
+            </div>
             <div v-if="selectedItem && loadingAdjuntosMap[selectedItem.idDetalle]" class="text-sm text-gray-500 dark:text-gray-400">
               Cargando adjuntos...
             </div>
@@ -418,7 +432,7 @@
           </div>
           <div class="flex-1 flex items-center justify-center bg-black/60 rounded-lg p-2">
             <template v-if="isImageFile(selectedAdjunto.rutaArchivo)">
-              <div class="max-h-[80vh] max-w-full overflow-auto">
+              <div class="max-h-[80vh] max-w-full overflow-auto" @wheel.passive="handleImageWheel">
                 <img
                   :src="buildAdjuntoUrl(selectedAdjunto.rutaArchivo)"
                   alt="Adjunto"
@@ -971,6 +985,20 @@ async function downloadAdjunto() {
   } catch (err) {
     console.error('Error al descargar el adjunto', err)
     alert('No se pudo descargar el archivo. Verifique su conexión o intente nuevamente.')
+  }
+}
+
+function handleImageWheel(event: WheelEvent) {
+  // Usamos Alt + rueda para zoom, sin interferir con el scroll normal
+  if (!event.altKey) return
+  if (!selectedAdjunto.value || !isImageFile(selectedAdjunto.value.rutaArchivo)) return
+
+  const delta = event.deltaY
+  const step = 0.1
+  if (delta > 0) {
+    zoomLevel.value = Math.max(0.5, zoomLevel.value - step)
+  } else if (delta < 0) {
+    zoomLevel.value = Math.min(3, zoomLevel.value + step)
   }
 }
 
