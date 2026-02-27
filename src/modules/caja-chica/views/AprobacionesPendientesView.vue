@@ -254,19 +254,64 @@
 
           <div class="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
             <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-3">Adjuntos</div>
-            <div v-if="selectedItem && loadingAdjuntosMap[selectedItem.idDetalle]" class="text-sm text-gray-500 dark:text-gray-400">Cargando adjuntos...</div>
+            <div v-if="selectedItem && loadingAdjuntosMap[selectedItem.idDetalle]" class="text-sm text-gray-500 dark:text-gray-400">
+              Cargando adjuntos...
+            </div>
             <div v-else-if="selectedItem && (adjuntosListByDetalle[selectedItem.idDetalle]?.length)">
-              <div class="space-y-2">
-                <a
-                  v-for="adj in adjuntosListByDetalle[selectedItem.idDetalle]"
-                  :key="adj.idAdjunto"
-                  class="block text-sm text-indigo-600 hover:text-indigo-700 truncate"
-                  :href="buildAdjuntoUrl(adj.rutaArchivo)"
-                  target="_blank"
-                  rel="noopener"
-                >
-                  {{ formatAdjuntoName(adj.rutaArchivo) }}
-                </a>
+              <div class="space-y-3">
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    v-for="adj in adjuntosListByDetalle[selectedItem.idDetalle]"
+                    :key="adj.idAdjunto"
+                    type="button"
+                    class="px-2 py-1 rounded-lg border text-xs truncate max-w-[220px] transition-colors"
+                    :class="
+                      selectedAdjunto?.idAdjunto === adj.idAdjunto
+                        ? 'bg-emerald-50 border-emerald-300 text-emerald-800 dark:bg-emerald-900/40 dark:border-emerald-600 dark:text-emerald-200'
+                        : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-700'
+                    "
+                    @click="selectedAdjuntoId = adj.idAdjunto"
+                  >
+                    {{ formatAdjuntoName(adj.rutaArchivo) }}
+                  </button>
+                </div>
+
+                <div class="mt-2 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/40 min-h-[200px] flex items-center justify-center overflow-hidden cursor-zoom-in"
+                  @click="selectedAdjunto && openAdjuntoFull()">
+                  <template v-if="selectedAdjunto">
+                    <template v-if="isImageFile(selectedAdjunto.rutaArchivo)">
+                      <img
+                        :src="buildAdjuntoUrl(selectedAdjunto.rutaArchivo)"
+                        alt="Vista previa del adjunto"
+                        class="max-h-64 max-w-full object-contain"
+                      />
+                    </template>
+                    <template v-else-if="isPdfFile(selectedAdjunto.rutaArchivo)">
+                      <iframe
+                        :src="buildAdjuntoUrl(selectedAdjunto.rutaArchivo)"
+                        class="w-full h-64 rounded-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700"
+                      ></iframe>
+                    </template>
+                    <template v-else>
+                      <div class="text-xs text-gray-500 dark:text-gray-400 text-center px-4 space-y-2">
+                        <p>No se puede previsualizar este tipo de archivo.</p>
+                        <a
+                          :href="buildAdjuntoUrl(selectedAdjunto.rutaArchivo)"
+                          target="_blank"
+                          rel="noopener"
+                          class="inline-flex items-center justify-center px-3 py-1.5 rounded-md border border-gray-300 dark:border-gray-600 text-xs text-indigo-600 dark:text-indigo-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                        >
+                          Abrir en nueva pestaña
+                        </a>
+                      </div>
+                    </template>
+                  </template>
+                  <template v-else>
+                    <div class="text-xs text-gray-500 dark:text-gray-400 text-center px-4">
+                      Selecciona un adjunto de la lista para previsualizarlo.
+                    </div>
+                  </template>
+                </div>
               </div>
             </div>
             <div v-else class="text-sm text-gray-500 dark:text-gray-400">Sin adjuntos.</div>
@@ -326,6 +371,82 @@
           </div>
         </div>
       </aside>
+
+      <div
+        v-if="showAdjuntoFull && selectedAdjunto"
+        class="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 px-4"
+        @click.self="closeAdjuntoFull"
+      >
+        <div class="relative max-w-5xl w-full max-h-[90vh] bg-gray-900 rounded-xl border border-gray-700 p-3 flex flex-col gap-3">
+          <div class="flex items-center justify-between text-xs text-gray-300 gap-3">
+            <span class="truncate">{{ formatAdjuntoName(selectedAdjunto.rutaArchivo) }}</span>
+            <div class="flex items-center gap-2 shrink-0">
+              <div class="flex items-center gap-1 mr-2">
+                <button
+                  type="button"
+                  class="px-1.5 py-0.5 rounded border border-gray-600 text-[11px] text-gray-200 hover:bg-gray-800 disabled:opacity-40"
+                  :disabled="!isImageFile(selectedAdjunto.rutaArchivo) || zoomLevel <= 50 / 100"
+                  @click.stop="isImageFile(selectedAdjunto.rutaArchivo) && (zoomLevel = Math.max(0.5, zoomLevel - 0.25))"
+                >
+                  -
+                </button>
+                <span class="min-w-[3rem] text-center">{{ zoomPercent }}%</span>
+                <button
+                  type="button"
+                  class="px-1.5 py-0.5 rounded border border-gray-600 text-[11px] text-gray-200 hover:bg-gray-800 disabled:opacity-40"
+                  :disabled="!isImageFile(selectedAdjunto.rutaArchivo) || zoomLevel >= 300 / 100"
+                  @click.stop="isImageFile(selectedAdjunto.rutaArchivo) && (zoomLevel = Math.min(3, zoomLevel + 0.25))"
+                >
+                  +
+                </button>
+              </div>
+              <a
+                :href="buildAdjuntoUrl(selectedAdjunto.rutaArchivo)"
+                download
+                class="px-2 py-1 rounded-md border border-gray-500 text-xs text-gray-100 hover:bg-gray-800"
+              >
+                Descargar
+              </a>
+              <button
+                type="button"
+                class="px-2 py-1 rounded-md border border-gray-600 text-xs text-gray-200 hover:bg-gray-800"
+                @click="closeAdjuntoFull"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+          <div class="flex-1 flex items-start justify-start overflow-auto bg-black/60 rounded-lg p-2">
+            <template v-if="isImageFile(selectedAdjunto.rutaArchivo)">
+              <img
+                :src="buildAdjuntoUrl(selectedAdjunto.rutaArchivo)"
+                alt="Adjunto"
+                class="max-h-[80vh] max-w-full object-contain"
+                :style="{ transform: `scale(${zoomLevel})`, transformOrigin: 'top left' }"
+              />
+            </template>
+            <template v-else-if="isPdfFile(selectedAdjunto.rutaArchivo)">
+              <iframe
+                :src="buildAdjuntoUrl(selectedAdjunto.rutaArchivo)"
+                class="w-full h-[80vh] rounded-md bg-white"
+              ></iframe>
+            </template>
+            <template v-else>
+              <div class="text-xs text-gray-300 text-center space-y-2 px-4">
+                <p>No se puede previsualizar este tipo de archivo aquí.</p>
+                <a
+                  :href="buildAdjuntoUrl(selectedAdjunto.rutaArchivo)"
+                  target="_blank"
+                  rel="noopener"
+                  class="inline-flex items-center justify-center px-3 py-1.5 rounded-md border border-gray-400 text-xs text-indigo-200 hover:bg-gray-800"
+                >
+                  Abrir en nueva pestaña
+                </a>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
     </div>
   </Teleport>
 </template>
@@ -456,9 +577,23 @@ const selectedDetalle = computed(() => {
 
 const adjuntosListByDetalle = ref<Record<number, AdjuntoItem[]>>({})
 const loadingAdjuntosMap = ref<Record<number, boolean>>({})
+const selectedAdjuntoId = ref<number | null>(null)
+const selectedAdjunto = computed(() => {
+  if (!selectedItem.value) return null
+  const detalleId = selectedItem.value.idDetalle
+  const list = adjuntosListByDetalle.value[detalleId] || []
+  if (!list.length) return null
+  const found = list.find(a => a.idAdjunto === selectedAdjuntoId.value)
+  return found || list[0]
+})
+
+const showAdjuntoFull = ref(false)
+const zoomLevel = ref(1)
+const zoomPercent = computed(() => Math.round(zoomLevel.value * 100))
 
 function openDetalle(idLiquidacion: number, item: AprobacionItem) {
   ensureDecision(item)
+  selectedAdjuntoId.value = null
   selectedContext.value = { idLiquidacion, item }
   showDetallePanel.value = true
   void loadAdjuntosForDetalle(item.idDetalle)
@@ -467,6 +602,7 @@ function openDetalle(idLiquidacion: number, item: AprobacionItem) {
 function closeDetalle() {
   showDetallePanel.value = false
   selectedContext.value = null
+  selectedAdjuntoId.value = null
 }
 
 function closeColumnSelectorOnClickOutside(e: MouseEvent) {
@@ -698,6 +834,9 @@ const formatAdjuntoName = (ruta: string) => {
   return parts[parts.length - 1]
 }
 
+const isImageFile = (ruta: string) => /\.(png|jpe?g|gif|webp)$/i.test(ruta)
+const isPdfFile = (ruta: string) => /\.pdf$/i.test(ruta)
+
 const getCurrentUserId = (): string => {
   try {
     const userStr = localStorage.getItem('user')
@@ -786,6 +925,17 @@ watch(showDetallePanel, (isOpen) => {
     document.body.classList.remove('overflow-hidden')
   }
 })
+
+function openAdjuntoFull() {
+  if (!selectedAdjunto.value) return
+  showAdjuntoFull.value = true
+  zoomLevel.value = 1
+}
+
+function closeAdjuntoFull() {
+  showAdjuntoFull.value = false
+  zoomLevel.value = 1
+}
 
 const loadPendientes = async () => {
   loading.value = true
