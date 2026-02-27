@@ -85,12 +85,16 @@
             />
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">N° Autorizacion</label>
-            <input
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Tipo Documento</label>
+            <select
               v-model.trim="numeroAutorizacion"
-              type="text"
               class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
-            />
+            >
+              <option value="">Seleccionar tipo documento</option>
+              <option value="Factura">Factura</option>
+              <option value="Nota de Venta">Nota de Venta</option>
+              <option value="Recibo">Recibo</option>
+            </select>
           </div>
           <div>
             <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Concepto *</label>
@@ -179,7 +183,7 @@
                 <th class="py-2 pr-3">RUC</th>
                 <th class="py-2 pr-3">Proveedor</th>
                 <th class="py-2 pr-3">N° Comprobante</th>
-                <th class="py-2 pr-3">N° Autorizacion</th>
+                <th class="py-2 pr-3">Tipo Documento</th>
                 <th class="py-2 pr-3">Concepto</th>
                 <th class="py-2 pr-3">Subtotal con IVA</th>
                 <th class="py-2 pr-3">Subtotal sin IVA</th>
@@ -325,12 +329,16 @@
               />
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">N° Autorizacion</label>
-              <input
+              <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Tipo Documento</label>
+              <select
                 v-model.trim="editNumeroAutorizacion"
-                type="text"
                 class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
-              />
+              >
+                <option value="">Seleccionar tipo documento</option>
+                <option value="Factura">Factura</option>
+                <option value="Nota de Venta">Nota de Venta</option>
+                <option value="Recibo">Recibo</option>
+              </select>
             </div>
             <div>
               <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Concepto *</label>

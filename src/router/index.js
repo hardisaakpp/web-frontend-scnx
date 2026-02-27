@@ -4,6 +4,7 @@ import MainLayout from '@/layouts/MainLayout.vue'
 
 // Import module routes
 import mba3ConsultasRoutes from '@/modules/mba3-consultas/router'
+import cajaChicaRoutes from '@/modules/caja-chica/router'
 import usuariosRoutes from '@/modules/usuarios/router'
 
 const router = createRouter({
@@ -92,6 +93,8 @@ const router = createRouter({
         },
         // MBA3 Consultas routes
         ...mba3ConsultasRoutes,
+        // Caja Chica
+        ...cajaChicaRoutes,
         // Usuarios / Roles / Permisos (módulo administración)
         ...usuariosRoutes,
         {

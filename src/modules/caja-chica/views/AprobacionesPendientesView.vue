@@ -57,60 +57,78 @@
             </div>
             <div v-if="isGroupOpen(group.idLiquidacion)" class="overflow-x-auto">
               <table class="min-w-full text-sm">
-                <thead>
+                <thead class="bg-gray-50 dark:bg-gray-900">
                   <tr class="text-left text-xs uppercase text-gray-500 dark:text-gray-400">
-                    <th class="py-2 pr-3 pl-4">Id</th>
-                    <th class="py-2 pr-3">Detalle</th>
-                    <th class="py-2 pr-3">Gasto</th>
-                    <th class="py-2 pr-3">Total</th>
-                    <th class="py-2 pr-3">Monto aprobado</th>
-                    <th class="py-2 pr-3">Comentario</th>
-                    <th class="py-2 pr-3">Nivel</th>
-                    <th class="py-2 pr-3">Acciones</th>
+                    <th
+                      v-for="column in orderedVisibleColumns"
+                      :key="column.key"
+                      :draggable="!column.fixed"
+                      :class="[
+                        'py-2 pr-3 select-none',
+                        column.key === 'id' ? 'pl-4' : '',
+                        column.fixed ? 'cursor-default' : 'cursor-move',
+                        draggedColumnKey === column.key ? 'opacity-50 bg-indigo-100 dark:bg-indigo-900' : '',
+                        dragOverColumnKey === column.key && draggedColumnKey !== null ? 'border-l-4 border-indigo-500' : ''
+                      ]"
+                      @dragstart="!column.fixed && handleDragStart($event, column.key)"
+                      @dragover.prevent="!column.fixed && handleDragOver($event, column.key)"
+                      @dragleave="!column.fixed && handleDragLeave()"
+                      @drop.prevent="!column.fixed && handleDrop($event, column.key)"
+                      @dragend="!column.fixed && handleDragEnd()"
+                    >
+                      {{ column.label }}
+                    </th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                   <tr v-for="item in group.items" :key="item.idAprobacion">
-                    <td class="py-2 pr-3 pl-4 text-gray-700 dark:text-gray-200">{{ item.idAprobacion }}</td>
-                    <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.idDetalle }}</td>
-                    <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.nombreGasto }}</td>
-                    <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ formatAmount(item.total) }}</td>
-                    <td class="py-2 pr-3">
-                      <input
-                        v-model="decisions[item.idAprobacion].montoAprobado"
-                        type="number"
-                        step="0.01"
-                        class="w-28 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-xs text-gray-900 dark:text-white"
-                      />
-                    </td>
-                    <td class="py-2 pr-3">
-                      <input
-                        v-model="decisions[item.idAprobacion].observacion"
-                        type="text"
-                        placeholder="Comentario de aprobacion o negacion"
-                        class="w-48 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-xs text-gray-900 dark:text-white"
-                      />
-                    </td>
-                    <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.nivelAprobacion }}</td>
-                    <td class="py-2 pr-3">
-                      <div class="flex items-center gap-2">
-                        <button
-                          type="button"
-                          class="text-emerald-600 hover:text-emerald-700 text-xs font-medium disabled:opacity-50"
-                          :disabled="actionLoadingId === item.idAprobacion"
-                          @click="approve(item)"
-                        >
-                          Aprobar
-                        </button>
-                        <button
-                          type="button"
-                          class="text-red-600 hover:text-red-700 text-xs font-medium disabled:opacity-50"
-                          :disabled="actionLoadingId === item.idAprobacion"
-                          @click="reject(item)"
-                        >
-                          Negar
-                        </button>
-                      </div>
+                    <td
+                      v-for="column in orderedVisibleColumns"
+                      :key="column.key"
+                      :class="[
+                        'py-2 pr-3 text-gray-700 dark:text-gray-200',
+                        column.key === 'id' ? 'pl-4' : ''
+                      ]"
+                    >
+                      <template v-if="column.key === 'montoAprobado'">
+                        <input
+                          v-model="decisions[item.idAprobacion].montoAprobado"
+                          type="number"
+                          step="0.01"
+                          class="w-28 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-xs text-gray-900 dark:text-white"
+                        />
+                      </template>
+                      <template v-else-if="column.key === 'comentario'">
+                        <input
+                          v-model="decisions[item.idAprobacion].observacion"
+                          type="text"
+                          placeholder="Comentario de aprobacion o negacion"
+                          class="w-48 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-xs text-gray-900 dark:text-white"
+                        />
+                      </template>
+                      <template v-else-if="column.key === 'acciones'">
+                        <div class="flex items-center gap-2">
+                          <button
+                            type="button"
+                            class="text-emerald-600 hover:text-emerald-700 text-xs font-medium disabled:opacity-50"
+                            :disabled="actionLoadingId === item.idAprobacion"
+                            @click="approve(item)"
+                          >
+                            Aprobar
+                          </button>
+                          <button
+                            type="button"
+                            class="text-red-600 hover:text-red-700 text-xs font-medium disabled:opacity-50"
+                            :disabled="actionLoadingId === item.idAprobacion"
+                            @click="reject(item)"
+                          >
+                            Negar
+                          </button>
+                        </div>
+                      </template>
+                      <template v-else>
+                        {{ getCellValue(group, item, column.key) }}
+                      </template>
                     </td>
                   </tr>
                 </tbody>
@@ -129,6 +147,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import axios from 'axios'
+import { useTablePreferences } from '@/composables/useTablePreferences'
+
+interface ColumnConfig {
+  key: string
+  label: string
+  fixed: boolean
+}
 
 interface AprobacionItem {
   idAprobacion: number
@@ -144,6 +169,19 @@ interface AprobacionItem {
   estado: string
 }
 
+interface DetalleItem {
+  idDetalle: number
+  fechaConsumo: string
+  ruc: string
+  nombreProveedor: string
+  numeroComprobante: string
+  tipoDocumento: string
+  concepto: string
+  subtotalConIva: number
+  subtotalSinIva: number
+  iva: number
+}
+
 interface DecisionState {
   montoAprobado: string
   observacion: string
@@ -157,6 +195,138 @@ const actionLoadingId = ref<number | null>(null)
 const pendientes = ref<AprobacionItem[]>([])
 const decisions = ref<Record<number, DecisionState>>({})
 const openGroups = ref<Record<number, boolean>>({})
+const detallesByLiquidacion = ref<Record<number, DetalleItem[]>>({})
+const adjuntosByDetalle = ref<Record<number, number>>({})
+
+const availableColumns: ColumnConfig[] = [
+  { key: 'id', label: 'Id', fixed: false },
+  { key: 'detalle', label: 'Detalle', fixed: false },
+  { key: 'gasto', label: 'Gasto', fixed: false },
+  { key: 'fechaConsumo', label: 'Fecha consumo', fixed: false },
+  { key: 'ruc', label: 'RUC', fixed: false },
+  { key: 'proveedor', label: 'Proveedor', fixed: false },
+  { key: 'numeroComprobante', label: 'N° Comprobante', fixed: false },
+  { key: 'tipoDocumento', label: 'Tipo Documento', fixed: false },
+  { key: 'concepto', label: 'Concepto', fixed: false },
+  { key: 'subtotalConIva', label: 'Subtotal con IVA', fixed: false },
+  { key: 'subtotalSinIva', label: 'Subtotal sin IVA', fixed: false },
+  { key: 'iva', label: 'IVA', fixed: false },
+  { key: 'total', label: 'Total', fixed: false },
+  { key: 'adjuntos', label: 'Adjuntos', fixed: false },
+  { key: 'montoAprobado', label: 'Monto aprobado', fixed: true },
+  { key: 'comentario', label: 'Comentario', fixed: true },
+  { key: 'nivel', label: 'Nivel', fixed: true },
+  { key: 'acciones', label: 'Acciones', fixed: true }
+]
+
+const defaultVisibleColumns = availableColumns.map(col => col.key)
+const defaultColumnOrder = availableColumns.map(col => col.key)
+
+const {
+  visibleColumns,
+  columnOrder,
+  orderedVisibleColumns: orderedVisibleColumnKeys,
+  savePreferences
+} = useTablePreferences({
+  tableId: 'caja-chica-aprobaciones-pendientes',
+  defaultVisibleColumns,
+  defaultColumnOrder,
+  enableFilters: false,
+  enablePageSize: false
+})
+
+const orderedVisibleColumns = computed(() => {
+  const ordered = orderedVisibleColumnKeys.value
+    .map(key => availableColumns.find(col => col.key === key))
+    .filter((col): col is ColumnConfig => col !== undefined)
+  const fixedColumns = ordered.filter(col => col.fixed)
+  const nonFixedColumns = ordered.filter(col => !col.fixed)
+  return [...nonFixedColumns, ...fixedColumns]
+})
+
+const draggedColumnKey = ref<string | null>(null)
+const dragOverColumnKey = ref<string | null>(null)
+
+function handleDragStart(event: DragEvent, columnKey: string) {
+  const column = availableColumns.find(col => col.key === columnKey)
+  if (column?.fixed) return
+  draggedColumnKey.value = columnKey
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', columnKey)
+  }
+}
+
+function handleDragOver(event: DragEvent, columnKey: string) {
+  event.preventDefault()
+  if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
+  if (draggedColumnKey.value !== null && draggedColumnKey.value !== columnKey) {
+    const target = availableColumns.find(col => col.key === columnKey)
+    if (!target?.fixed) dragOverColumnKey.value = columnKey
+  } else {
+    dragOverColumnKey.value = null
+  }
+}
+
+function handleDragLeave() {}
+
+function handleDrop(event: DragEvent, targetColumnKey: string) {
+  event.preventDefault()
+  if (!draggedColumnKey.value || draggedColumnKey.value === targetColumnKey) {
+    draggedColumnKey.value = null
+    dragOverColumnKey.value = null
+    return
+  }
+  const draggedColumn = availableColumns.find(col => col.key === draggedColumnKey.value)
+  const targetColumn = availableColumns.find(col => col.key === targetColumnKey)
+  if (draggedColumn?.fixed || targetColumn?.fixed) {
+    draggedColumnKey.value = null
+    dragOverColumnKey.value = null
+    return
+  }
+  const fullOrder = [...columnOrder.value]
+  const draggedIndexInFull = fullOrder.indexOf(draggedColumnKey.value)
+  const targetIndexInFull = fullOrder.indexOf(targetColumnKey)
+  if (draggedIndexInFull === -1 || targetIndexInFull === -1) {
+    draggedColumnKey.value = null
+    dragOverColumnKey.value = null
+    return
+  }
+  fullOrder.splice(draggedIndexInFull, 1)
+  const adjustedTarget = targetIndexInFull > draggedIndexInFull ? targetIndexInFull - 1 : targetIndexInFull
+  fullOrder.splice(adjustedTarget, 0, draggedColumnKey.value)
+  columnOrder.value = fullOrder
+  savePreferences()
+  draggedColumnKey.value = null
+  dragOverColumnKey.value = null
+}
+
+function handleDragEnd() {
+  draggedColumnKey.value = null
+  dragOverColumnKey.value = null
+}
+
+function getCellValue(group: { idLiquidacion: number }, item: AprobacionItem, columnKey: string): string | number {
+  const d = getDetalle(group.idLiquidacion, item.idDetalle)
+  switch (columnKey) {
+    case 'id': return item.idAprobacion
+    case 'detalle': return item.idDetalle
+    case 'gasto': return item.nombreGasto
+    case 'fechaConsumo': return formatDate(d?.fechaConsumo ?? '')
+    case 'ruc': return d?.ruc ?? '-'
+    case 'proveedor': return d?.nombreProveedor ?? '-'
+    case 'numeroComprobante': return d?.numeroComprobante ?? '-'
+    case 'tipoDocumento': return d?.tipoDocumento || '-'
+    case 'concepto': return d?.concepto ?? item.concepto ?? '-'
+    case 'subtotalConIva': return d != null ? formatAmount(d.subtotalConIva) : '-'
+    case 'subtotalSinIva': return d != null ? formatAmount(d.subtotalSinIva) : '-'
+    case 'iva': return d != null ? formatAmount(d.iva) : '-'
+    case 'total': return formatAmount(item.total)
+    case 'adjuntos': return adjuntosByDetalle.value[item.idDetalle] ?? 0
+    case 'nivel': return item.nivelAprobacion
+    default: return ''
+  }
+}
 
 const groupedPendientes = computed(() => {
   const groups = new Map<number, AprobacionItem[]>()
@@ -188,6 +358,9 @@ const toggleGroup = (idLiquidacion: number) => {
   openGroups.value[idLiquidacion] = !isGroupOpen(idLiquidacion)
 }
 
+const getDetalle = (idLiquidacion: number, idDetalle: number): DetalleItem | undefined =>
+  detallesByLiquidacion.value[idLiquidacion]?.find(d => d.idDetalle === idDetalle)
+
 const cajaChicaApi = axios.create({
   baseURL: import.meta.env.VITE_CAJA_CHICA_API_URL || 'http://localhost:8080/api',
   headers: {
@@ -215,6 +388,19 @@ const getCurrentUserId = (): string => {
 }
 
 const normalizeString = (value: any) => String(value ?? '').trim()
+
+const normalizeDetalle = (item: any): DetalleItem => ({
+  idDetalle: Number(item.idDetalle ?? item.IdDetalle ?? 0),
+  fechaConsumo: String(item.fechaConsumo ?? item.FechaConsumo ?? ''),
+  ruc: normalizeString(item.ruc ?? item.Ruc ?? ''),
+  nombreProveedor: normalizeString(item.nombreProveedor ?? item.NombreProveedor ?? ''),
+  numeroComprobante: normalizeString(item.numeroComprobante ?? item.NumeroComprobante ?? ''),
+  tipoDocumento: normalizeString(item.numeroAutorizacion ?? item.NumeroAutorizacion ?? ''),
+  concepto: normalizeString(item.concepto ?? item.Concepto ?? ''),
+  subtotalConIva: Number(item.subtotal_Con_Iva ?? item.Subtotal_Con_Iva ?? item.subtotalConIva ?? 0),
+  subtotalSinIva: Number(item.subtotal_Sin_Iva ?? item.Subtotal_Sin_Iva ?? item.subtotalSinIva ?? 0),
+  iva: Number(item.iva ?? item.Iva ?? 0)
+})
 
 const normalizeAprobacion = (item: any): AprobacionItem => ({
   idAprobacion: Number(item.idAprobacion ?? item.IdAprobacion ?? 0),
@@ -266,6 +452,29 @@ const loadPendientes = async () => {
       }
       return acc
     }, {})
+    detallesByLiquidacion.value = {}
+    adjuntosByDetalle.value = {}
+    const liquidacionIds = [...new Set(normalized.map(p => p.idLiquidacion))]
+    for (const idLiq of liquidacionIds) {
+      try {
+        const res = await cajaChicaApi.get(`/Liquidaciones/${idLiq}/detalle`)
+        const payload = res.data as any
+        const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
+        detallesByLiquidacion.value[idLiq] = items.map(normalizeDetalle)
+        for (const d of detallesByLiquidacion.value[idLiq]) {
+          try {
+            const adjRes = await cajaChicaApi.get(`/Adjuntos/por-detalle/${d.idDetalle}`)
+            const adjPayload = adjRes.data as any
+            const adjList = Array.isArray(adjPayload) ? adjPayload : Array.isArray(adjPayload?.data) ? adjPayload.data : []
+            adjuntosByDetalle.value[d.idDetalle] = adjList.length
+          } catch {
+            adjuntosByDetalle.value[d.idDetalle] = 0
+          }
+        }
+      } catch {
+        detallesByLiquidacion.value[idLiq] = []
+      }
+    }
   } catch {
     error.value = 'No se pudieron cargar las aprobaciones pendientes.'
   } finally {
