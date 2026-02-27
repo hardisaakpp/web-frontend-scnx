@@ -16,7 +16,7 @@
 
       <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm p-6">
         <div class="flex items-center justify-between mb-4">
-          <h2 class="text-sm font-semibold text-gray-900 dark:text-white border-l-4 border-emerald-500 pl-3">Listado</h2>
+          <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Listado</h2>
           <div class="flex items-center gap-3 flex-wrap">
             <div ref="columnSelectorWrapRef" class="flex items-center gap-2 relative">
               <button
@@ -172,7 +172,7 @@
   <Teleport to="body">
     <div v-if="showDetallePanel" class="fixed inset-0 z-[100]">
       <div class="absolute inset-0 bg-black/40" @click="closeDetalle"></div>
-      <aside class="absolute right-0 top-0 h-full w-full sm:w-[520px] bg-white dark:bg-gray-800 shadow-2xl border-l border-gray-200 dark:border-gray-700 flex flex-col">
+      <aside class="absolute right-0 top-0 h-full w-full sm:w-[520px] bg-white dark:bg-gray-800 shadow-2xl flex flex-col">
         <div class="flex items-start justify-between gap-3 p-4 border-b border-gray-200 dark:border-gray-700">
           <div class="min-w-0">
             <div class="text-xs text-gray-500 dark:text-gray-400">Detalle aprobación</div>
@@ -231,11 +231,11 @@
               </div>
 
               <div>
-                <dt class="text-xs text-gray-500 dark:text-gray-400">Subtotal con IVA</dt>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Subtotal Base 15</dt>
                 <dd class="text-sm text-gray-900 dark:text-white">{{ selectedDetalle ? formatAmount(selectedDetalle.subtotalConIva) : '-' }}</dd>
               </div>
               <div>
-                <dt class="text-xs text-gray-500 dark:text-gray-400">Subtotal sin IVA</dt>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Subtotal Base 0</dt>
                 <dd class="text-sm text-gray-900 dark:text-white">{{ selectedDetalle ? formatAmount(selectedDetalle.subtotalSinIva) : '-' }}</dd>
               </div>
               <div>
@@ -275,7 +275,7 @@
               <div class="space-y-3">
                 <div class="flex flex-wrap gap-2">
                   <button
-                    v-for="adj in adjuntosListByDetalle[selectedItem.idDetalle]"
+                    v-for="(adj, index) in adjuntosListByDetalle[selectedItem.idDetalle]"
                     :key="adj.idAdjunto"
                     type="button"
                     class="px-2 py-1 rounded-lg border text-xs truncate max-w-[220px] transition-colors"
@@ -284,9 +284,10 @@
                         ? 'bg-emerald-50 border-emerald-300 text-emerald-800 dark:bg-emerald-900/40 dark:border-emerald-600 dark:text-emerald-200'
                         : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-700'
                     "
+                    :title="formatAdjuntoName(adj.rutaArchivo)"
                     @click="selectedAdjuntoId = adj.idAdjunto"
                   >
-                    {{ formatAdjuntoName(adj.rutaArchivo) }}
+                    Adjunto {{ index + 1 }}
                   </button>
                 </div>
 
@@ -307,16 +308,11 @@
                       ></iframe>
                     </template>
                     <template v-else>
-                      <div class="text-xs text-gray-500 dark:text-gray-400 text-center px-4 space-y-2">
-                        <p>No se puede previsualizar este tipo de archivo.</p>
-                        <a
-                          :href="buildAdjuntoUrl(selectedAdjunto.rutaArchivo)"
-                          target="_blank"
-                          rel="noopener"
-                          class="inline-flex items-center justify-center px-3 py-1.5 rounded-md border border-gray-300 dark:border-gray-600 text-xs text-indigo-600 dark:text-indigo-300 hover:bg-gray-100 dark:hover:bg-gray-800"
-                        >
-                          Abrir en nueva pestaña
-                        </a>
+                      <div class="w-full h-full flex items-center justify-center text-xs text-gray-500 dark:text-gray-300 px-4 text-center">
+                        <p>
+                          Previsualización no disponible para este tipo de archivo.
+                          Usa el botón <span class="font-semibold">Descargar</span> para abrirlo en tu equipo.
+                        </p>
                       </div>
                     </template>
                   </template>
@@ -538,8 +534,8 @@ const availableColumns: ColumnConfig[] = [
   { key: 'numeroComprobante', label: 'N° Comprobante', fixed: false },
   { key: 'tipoDocumento', label: 'Tipo Documento', fixed: false },
   { key: 'concepto', label: 'Concepto', fixed: false },
-  { key: 'subtotalConIva', label: 'Subtotal con IVA', fixed: false },
-  { key: 'subtotalSinIva', label: 'Subtotal sin IVA', fixed: false },
+  { key: 'subtotalConIva', label: 'Subtotal Base 15', fixed: false },
+  { key: 'subtotalSinIva', label: 'Subtotal Base 0', fixed: false },
   { key: 'iva', label: 'IVA', fixed: false },
   { key: 'total', label: 'Total', fixed: false },
   { key: 'adjuntos', label: 'Adjuntos', fixed: false },

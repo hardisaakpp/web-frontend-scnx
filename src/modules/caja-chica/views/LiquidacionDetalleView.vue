@@ -16,7 +16,7 @@
 
       <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm p-6">
         <div class="flex items-center justify-between mb-4">
-          <div class="border-l-4 border-emerald-500 pl-3">
+          <div>
             <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Agregar detalle</h2>
             <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Registra un gasto en la liquidación</p>
           </div>
@@ -105,7 +105,7 @@
             />
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Subtotal con IVA *</label>
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Subtotal Base 15 *</label>
             <input
               v-model="subtotalConIva"
               type="number"
@@ -114,7 +114,7 @@
             />
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Subtotal sin IVA *</label>
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Subtotal Base 0 *</label>
             <input
               v-model="subtotalSinIva"
               type="number"
@@ -128,7 +128,8 @@
               v-model="iva"
               type="number"
               step="0.01"
-              class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
+              readonly
+              class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-700 dark:text-gray-300"
             />
           </div>
           <div>
@@ -137,7 +138,8 @@
               v-model="total"
               type="number"
               step="0.01"
-              class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
+              readonly
+              class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-700 dark:text-gray-300"
             />
           </div>
         </div>
@@ -157,7 +159,7 @@
 
       <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm p-6">
         <div class="flex items-center justify-between mb-4">
-          <h2 class="text-sm font-semibold text-gray-900 dark:text-white border-l-4 border-emerald-500 pl-3">Detalles actuales</h2>
+          <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Detalles actuales</h2>
           <button
             type="button"
             class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700/50 text-gray-700 dark:text-gray-200 text-sm px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
@@ -185,8 +187,8 @@
                 <th class="py-3 px-4">N° Comprobante</th>
                 <th class="py-3 px-4">Tipo Documento</th>
                 <th class="py-3 px-4">Concepto</th>
-                <th class="py-3 px-4">Subtotal con IVA</th>
-                <th class="py-3 px-4">Subtotal sin IVA</th>
+                <th class="py-3 px-4">Subtotal Base 15</th>
+                <th class="py-3 px-4">Subtotal Base 0</th>
                 <th class="py-3 px-4">IVA</th>
                 <th class="py-3 px-4">Total</th>
                 <th class="py-3 px-4">Adjuntos</th>
@@ -349,7 +351,7 @@
               />
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Subtotal con IVA *</label>
+              <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Subtotal Base 15 *</label>
               <input
                 v-model="editSubtotalConIva"
                 type="number"
@@ -358,7 +360,7 @@
               />
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Subtotal sin IVA *</label>
+              <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Subtotal Base 0 *</label>
               <input
                 v-model="editSubtotalSinIva"
                 type="number"
@@ -372,7 +374,8 @@
                 v-model="editIva"
                 type="number"
                 step="0.01"
-                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
+                readonly
+                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-700 dark:text-gray-300"
               />
             </div>
             <div>
@@ -381,7 +384,8 @@
                 v-model="editTotal"
                 type="number"
                 step="0.01"
-                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
+                readonly
+                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-700 dark:text-gray-300"
               />
             </div>
           </div>
@@ -537,6 +541,7 @@ const canUpdateDetalle = computed(() =>
 
 const normalizeString = (value: any) => String(value ?? '').trim()
 const toNumber = (value: string) => Number(String(value || '0').replace(',', '.')) || 0
+const IVA_RATE = 0.15
 
 const normalizeDetalle = (item: any): LiquidacionDetalleItem => ({
   idDetalle: Number(item.idDetalle ?? item.IdDetalle ?? 0),
@@ -789,6 +794,38 @@ const deleteAdjunto = async (adjunto: AdjuntoItem, idDetalle: number) => {
     uploadError.value = message || 'No se pudo eliminar el adjunto.'
   }
 }
+
+watch([subtotalConIva, subtotalSinIva], ([conIva, sinIva]) => {
+  const hasCon = hasValue(conIva)
+  const hasSin = hasValue(sinIva)
+  if (!hasCon && !hasSin) {
+    iva.value = ''
+    total.value = ''
+    return
+  }
+  const baseCon = toNumber(conIva)
+  const baseSin = toNumber(sinIva)
+  const ivaCalc = baseCon * IVA_RATE
+  iva.value = ivaCalc.toFixed(2)
+  const totalCalc = baseCon + baseSin + ivaCalc
+  total.value = totalCalc.toFixed(2)
+})
+
+watch([editSubtotalConIva, editSubtotalSinIva], ([conIva, sinIva]) => {
+  const hasCon = hasValue(conIva)
+  const hasSin = hasValue(sinIva)
+  if (!hasCon && !hasSin) {
+    editIva.value = ''
+    editTotal.value = ''
+    return
+  }
+  const baseCon = toNumber(conIva)
+  const baseSin = toNumber(sinIva)
+  const ivaCalc = baseCon * IVA_RATE
+  editIva.value = ivaCalc.toFixed(2)
+  const totalCalc = baseCon + baseSin + ivaCalc
+  editTotal.value = totalCalc.toFixed(2)
+})
 
 watch(selectedGastoId, () => {
   const selected = catalogoGastos.value.find(item => item.idGasto === selectedGastoId.value)

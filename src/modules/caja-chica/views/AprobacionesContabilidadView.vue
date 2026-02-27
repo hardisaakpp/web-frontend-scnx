@@ -69,7 +69,7 @@
                     <th class="py-2 pr-3">Detalle</th>
                     <th class="py-2 pr-3">Gasto</th>
                     <th class="py-2 pr-3">Total</th>
-                    <th class="py-2 pr-3">Supervisor</th>
+                    <th class="py-2 pr-3">Usuario</th>
                     <th class="py-2 pr-3">Monto supervisor</th>
                     <th class="py-2 pr-3">Obs. supervisor</th>
                     <th class="py-2 pr-3">Novedad</th>
