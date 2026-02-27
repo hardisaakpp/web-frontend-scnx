@@ -505,6 +505,12 @@ cajaChicaApi.interceptors.request.use(config => {
 const apiBaseUrl = (import.meta.env.VITE_CAJA_CHICA_API_URL || 'http://localhost:8080/api').replace(/\/+$/, '')
 const fileBaseUrl = apiBaseUrl.endsWith('/api') ? apiBaseUrl.slice(0, -4) : apiBaseUrl
 
+const buildAdjuntoUrl = (ruta: string) => {
+  if (!ruta) return '#'
+  if (ruta.startsWith('http')) return ruta
+  if (ruta.startsWith('/uploads')) return ruta
+  return `${fileBaseUrl}${ruta}`
+}
 const hasValue = (value: string | number) => String(value ?? '').trim() !== ''
 
 const canAddDetalle = computed(() =>
@@ -765,11 +771,6 @@ const handleFileChange = async (event: Event) => {
     input.value = ''
     uploadTargetId.value = null
   }
-}
-
-const buildAdjuntoUrl = (ruta: string) => {
-  if (!ruta) return '#'
-  return ruta.startsWith('http') ? ruta : `${fileBaseUrl}${ruta}`
 }
 
 const formatAdjuntoName = (ruta: string) => {

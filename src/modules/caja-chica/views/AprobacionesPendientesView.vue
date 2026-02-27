@@ -400,13 +400,13 @@
                   +
                 </button>
               </div>
-              <a
-                :href="buildAdjuntoUrl(selectedAdjunto.rutaArchivo)"
-                download
+              <button
+                type="button"
                 class="px-2 py-1 rounded-md border border-gray-500 text-xs text-gray-100 hover:bg-gray-800"
+                @click="downloadAdjunto"
               >
                 Descargar
-              </a>
+              </button>
               <button
                 type="button"
                 class="px-2 py-1 rounded-md border border-gray-600 text-xs text-gray-200 hover:bg-gray-800"
@@ -416,14 +416,16 @@
               </button>
             </div>
           </div>
-          <div class="flex-1 flex items-start justify-start overflow-auto bg-black/60 rounded-lg p-2">
+          <div class="flex-1 flex items-center justify-center bg-black/60 rounded-lg p-2">
             <template v-if="isImageFile(selectedAdjunto.rutaArchivo)">
-              <img
-                :src="buildAdjuntoUrl(selectedAdjunto.rutaArchivo)"
-                alt="Adjunto"
-                class="max-h-[80vh] max-w-full object-contain"
-                :style="{ transform: `scale(${zoomLevel})`, transformOrigin: 'top left' }"
-              />
+              <div class="max-h-[80vh] max-w-full overflow-auto">
+                <img
+                  :src="buildAdjuntoUrl(selectedAdjunto.rutaArchivo)"
+                  alt="Adjunto"
+                  class="object-contain"
+                  :style="{ transform: `scale(${zoomLevel})`, transformOrigin: 'top left' }"
+                />
+              </div>
             </template>
             <template v-else-if="isPdfFile(selectedAdjunto.rutaArchivo)">
               <iframe
@@ -825,7 +827,12 @@ const fileBaseUrl = apiBaseUrl.endsWith('/api') ? apiBaseUrl.slice(0, -4) : apiB
 
 const buildAdjuntoUrl = (ruta: string) => {
   if (!ruta) return '#'
-  return ruta.startsWith('http') ? ruta : `${fileBaseUrl}${ruta}`
+  // Si ya es una URL absoluta, la usamos tal cual
+  if (ruta.startsWith('http')) return ruta
+  // Rutas de adjuntos como "/uploads/..." se resuelven de forma relativa
+  if (ruta.startsWith('/uploads')) return ruta
+  // Fallback para otros casos (si el backend devuelve rutas distintas)
+  return `${fileBaseUrl}${ruta}`
 }
 
 const formatAdjuntoName = (ruta: string) => {
@@ -935,6 +942,36 @@ function openAdjuntoFull() {
 function closeAdjuntoFull() {
   showAdjuntoFull.value = false
   zoomLevel.value = 1
+}
+
+async function downloadAdjunto() {
+  if (!selectedAdjunto.value) return
+
+  try {
+    const url = buildAdjuntoUrl(selectedAdjunto.value.rutaArchivo)
+    const token = localStorage.getItem('token')
+
+    const response = await fetch(url, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined
+    })
+
+    if (!response.ok) {
+      throw new Error('No se pudo descargar el archivo.')
+    }
+
+    const blob = await response.blob()
+    const blobUrl = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = blobUrl
+    link.download = formatAdjuntoName(selectedAdjunto.value.rutaArchivo) || 'archivo'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(blobUrl)
+  } catch (err) {
+    console.error('Error al descargar el adjunto', err)
+    alert('No se pudo descargar el archivo. Verifique su conexión o intente nuevamente.')
+  }
 }
 
 const loadPendientes = async () => {

@@ -37,6 +37,13 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path
+      },
+      // Archivos estáticos de Caja Chica (ej: /uploads/...) → backend http://localhost:8080
+      '/uploads': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path
       }
     }
   },
