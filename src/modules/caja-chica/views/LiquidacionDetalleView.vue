@@ -178,35 +178,35 @@
           <table class="min-w-full text-sm">
             <thead class="sticky top-0 z-10 bg-gray-50 dark:bg-gray-700/50 shadow-sm">
               <tr class="text-left text-xs font-medium uppercase tracking-wider text-gray-600 dark:text-gray-300">
-                <th class="py-2 pr-3">Nombre Gasto</th>
-                <th class="py-2 pr-3">Fecha Consumo</th>
-                <th class="py-2 pr-3">RUC</th>
-                <th class="py-2 pr-3">Proveedor</th>
-                <th class="py-2 pr-3">N° Comprobante</th>
-                <th class="py-2 pr-3">Tipo Documento</th>
-                <th class="py-2 pr-3">Concepto</th>
-                <th class="py-2 pr-3">Subtotal con IVA</th>
-                <th class="py-2 pr-3">Subtotal sin IVA</th>
-                <th class="py-2 pr-3">IVA</th>
-                <th class="py-2 pr-3">Total</th>
-                <th class="py-2 pr-3">Adjuntos</th>
-                <th class="py-2 pr-3">Acciones</th>
+                <th class="py-3 px-4">Nombre Gasto</th>
+                <th class="py-3 px-4">Fecha Consumo</th>
+                <th class="py-3 px-4">RUC</th>
+                <th class="py-3 px-4">Proveedor</th>
+                <th class="py-3 px-4">N° Comprobante</th>
+                <th class="py-3 px-4">Tipo Documento</th>
+                <th class="py-3 px-4">Concepto</th>
+                <th class="py-3 px-4">Subtotal con IVA</th>
+                <th class="py-3 px-4">Subtotal sin IVA</th>
+                <th class="py-3 px-4">IVA</th>
+                <th class="py-3 px-4">Total</th>
+                <th class="py-3 px-4">Adjuntos</th>
+                <th class="py-3 px-4">Acciones</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-200 dark:divide-gray-600">
               <tr v-for="item in detalles" :key="item.idDetalle" class="hover:bg-gray-50/50 dark:hover:bg-gray-700/30 transition-colors">
-                <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.nombreGasto }}</td>
-                <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ formatDate(item.fechaConsumo) }}</td>
-                <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.ruc }}</td>
-                <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.nombreProveedor }}</td>
-                <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.numeroComprobante }}</td>
-                <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.numeroAutorizacion }}</td>
-                <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.concepto }}</td>
-                <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ formatAmount(item.subtotalConIva) }}</td>
-                <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ formatAmount(item.subtotalSinIva) }}</td>
-                <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ formatAmount(item.iva) }}</td>
-                <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ formatAmount(item.total) }}</td>
-                <td class="py-2 pr-3">
+                <td class="py-3 px-4 text-gray-700 dark:text-gray-200">{{ item.nombreGasto }}</td>
+                <td class="py-3 px-4 text-gray-700 dark:text-gray-200">{{ formatDate(item.fechaConsumo) }}</td>
+                <td class="py-3 px-4 text-gray-700 dark:text-gray-200">{{ item.ruc }}</td>
+                <td class="py-3 px-4 text-gray-700 dark:text-gray-200">{{ item.nombreProveedor }}</td>
+                <td class="py-3 px-4 text-gray-700 dark:text-gray-200">{{ item.numeroComprobante }}</td>
+                <td class="py-3 px-4 text-gray-700 dark:text-gray-200">{{ item.numeroAutorizacion }}</td>
+                <td class="py-3 px-4 text-gray-700 dark:text-gray-200">{{ item.concepto }}</td>
+                <td class="py-3 px-4 text-gray-700 dark:text-gray-200">{{ formatAmount(item.subtotalConIva) }}</td>
+                <td class="py-3 px-4 text-gray-700 dark:text-gray-200">{{ formatAmount(item.subtotalSinIva) }}</td>
+                <td class="py-3 px-4 text-gray-700 dark:text-gray-200">{{ formatAmount(item.iva) }}</td>
+                <td class="py-3 px-4 text-gray-700 dark:text-gray-200">{{ formatAmount(item.total) }}</td>
+                <td class="py-3 px-4">
                   <div class="flex flex-col gap-1">
                     <button
                       type="button"
@@ -240,7 +240,7 @@
                     </div>
                   </div>
                 </td>
-                <td class="py-2 pr-3">
+                <td class="py-3 px-4">
                   <div class="flex items-center gap-2">
                     <button
                       type="button"
@@ -260,13 +260,13 @@
                 </td>
               </tr>
               <tr class="bg-gray-50 dark:bg-gray-900">
-                <td class="py-2 pr-3 text-right font-semibold text-gray-700 dark:text-gray-200" colspan="7">Totales</td>
-                <td class="py-2 pr-3 font-semibold text-gray-700 dark:text-gray-200">{{ formatAmount(totalSubtotalConIva) }}</td>
-                <td class="py-2 pr-3 font-semibold text-gray-700 dark:text-gray-200">{{ formatAmount(totalSubtotalSinIva) }}</td>
-                <td class="py-2 pr-3 font-semibold text-gray-700 dark:text-gray-200">{{ formatAmount(totalIva) }}</td>
-                <td class="py-2 pr-3 font-semibold text-gray-700 dark:text-gray-200">{{ formatAmount(totalTotal) }}</td>
-                <td class="py-2 pr-3"></td>
-                <td class="py-2 pr-3"></td>
+                <td class="py-3 px-4 text-right font-semibold text-gray-700 dark:text-gray-200" colspan="7">Totales</td>
+                <td class="py-3 px-4 font-semibold text-gray-700 dark:text-gray-200">{{ formatAmount(totalSubtotalConIva) }}</td>
+                <td class="py-3 px-4 font-semibold text-gray-700 dark:text-gray-200">{{ formatAmount(totalSubtotalSinIva) }}</td>
+                <td class="py-3 px-4 font-semibold text-gray-700 dark:text-gray-200">{{ formatAmount(totalIva) }}</td>
+                <td class="py-3 px-4 font-semibold text-gray-700 dark:text-gray-200">{{ formatAmount(totalTotal) }}</td>
+                <td class="py-3 px-4"></td>
+                <td class="py-3 px-4"></td>
               </tr>
             </tbody>
           </table>

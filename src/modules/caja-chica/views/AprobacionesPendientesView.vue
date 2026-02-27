@@ -17,13 +17,57 @@
       <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm p-6">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-sm font-semibold text-gray-900 dark:text-white border-l-4 border-emerald-500 pl-3">Listado</h2>
-          <button
-            type="button"
-            class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700/50 text-gray-700 dark:text-gray-200 text-sm px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            @click="loadPendientes"
-          >
-            Refrescar
-          </button>
+          <div class="flex items-center gap-3 flex-wrap">
+            <div ref="columnSelectorWrapRef" class="flex items-center gap-2 relative">
+              <button
+                type="button"
+                class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700/50 text-gray-700 dark:text-gray-200 text-sm px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-2"
+                :class="{ 'ring-2 ring-emerald-500/50': showColumnSelector }"
+                @click="showColumnSelector = !showColumnSelector"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                </svg>
+                Columnas
+              </button>
+              <div
+                v-if="showColumnSelector"
+                class="absolute right-0 top-full mt-2 w-56 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl shadow-lg z-50 p-3"
+                @click.stop
+              >
+                <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-2 px-1">Mostrar columnas</div>
+                <div class="space-y-1 max-h-72 overflow-y-auto">
+                  <label
+                    v-for="column in availableColumnsWithVisibility"
+                    :key="column.key"
+                    :class="[
+                      'flex items-center gap-2 px-2 py-2 rounded-lg transition-colors cursor-pointer',
+                      column.fixed
+                        ? 'opacity-60 bg-gray-50 dark:bg-gray-900 cursor-not-allowed'
+                        : 'hover:bg-gray-50 dark:hover:bg-gray-700'
+                    ]"
+                  >
+                    <input
+                      type="checkbox"
+                      :checked="column.visible"
+                      :disabled="column.fixed"
+                      class="w-4 h-4 text-emerald-600 border-gray-300 dark:border-gray-600 rounded focus:ring-emerald-500"
+                      @change="!column.fixed && toggleColumnVisibility(column.key)"
+                    />
+                    <span class="text-sm text-gray-700 dark:text-gray-200">{{ column.label }}</span>
+                    <span v-if="column.fixed" class="text-xs text-gray-400 ml-1">(fija)</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700/50 text-gray-700 dark:text-gray-200 text-sm px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              @click="loadPendientes"
+            >
+              Refrescar
+            </button>
+          </div>
         </div>
 
         <div v-if="loading" class="text-sm text-gray-500 dark:text-gray-400">Cargando aprobaciones...</div>
@@ -56,22 +100,20 @@
               </div>
             </div>
             <div v-if="isGroupOpen(group.idLiquidacion)" class="overflow-x-auto">
-              <table class="min-w-full text-sm">
+              <table class="min-w-full text-xs">
                 <thead class="sticky top-0 z-10 bg-gray-50 dark:bg-gray-700/50 shadow-sm">
-                  <tr class="text-left text-xs font-medium uppercase tracking-wider text-gray-600 dark:text-gray-300">
+                  <tr class="text-left font-medium uppercase tracking-wider text-gray-600 dark:text-gray-300 text-[10px]">
                     <th
-                      v-for="column in orderedVisibleColumns"
+                      v-for="column in tableColumns"
                       :key="column.key"
-                      :draggable="!column.fixed"
                       :class="[
-                        'py-2 pr-3 select-none',
-                        column.key === 'id' ? 'pl-4' : '',
-                        column.fixed ? 'cursor-default' : 'cursor-move',
-                        draggedColumnKey === column.key ? 'opacity-50 bg-indigo-100 dark:bg-indigo-900' : '',
-                        dragOverColumnKey === column.key && draggedColumnKey !== null ? 'border-l-4 border-indigo-500' : '',
+                        'select-none py-1.5',
+                        column.key === 'id' ? 'pl-3' : 'pl-2',
+                        column.key === 'acciones' ? 'pr-2' : 'pr-2',
                         getStickyThClass(column)
                       ]"
                       :style="getStickyStyle(column)"
+                      :draggable="!column.fixed"
                       @dragstart="!column.fixed && handleDragStart($event, column.key)"
                       @dragover.prevent="!column.fixed && handleDragOver($event, column.key)"
                       @dragleave="!column.fixed && handleDragLeave()"
@@ -85,50 +127,30 @@
                 <tbody class="divide-y divide-gray-200 dark:divide-gray-600">
                   <tr v-for="item in group.items" :key="item.idAprobacion" class="hover:bg-gray-50/50 dark:hover:bg-gray-700/30 transition-colors">
                     <td
-                      v-for="column in orderedVisibleColumns"
+                      v-for="column in tableColumns"
                       :key="column.key"
                       :class="[
-                        'py-2 pr-3 text-gray-700 dark:text-gray-200',
-                        column.key === 'id' ? 'pl-4' : '',
+                        'py-1.5 text-gray-700 dark:text-gray-200',
+                        column.key === 'id' ? 'pl-3' : 'pl-2',
+                        column.key === 'acciones' ? 'pr-2' : 'pr-2',
                         getStickyTdClass(column)
                       ]"
                       :style="getStickyStyle(column)"
                     >
                       <template v-if="column.key === 'montoAprobado'">
-                        <input
-                          v-model="decisions[item.idAprobacion].montoAprobado"
-                          type="number"
-                          step="0.01"
-                          class="w-28 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-2 py-1 text-xs text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                        />
+                        {{ decisions[item.idAprobacion]?.montoAprobado ?? formatAmount(item.total) }}
                       </template>
                       <template v-else-if="column.key === 'comentario'">
-                        <input
-                          v-model="decisions[item.idAprobacion].observacion"
-                          type="text"
-                          placeholder="Comentario de aprobacion o negacion"
-                          class="w-48 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-2 py-1 text-xs text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-                        />
+                        {{ decisions[item.idAprobacion]?.observacion || '-' }}
                       </template>
                       <template v-else-if="column.key === 'acciones'">
-                        <div class="flex items-center gap-2">
-                          <button
-                            type="button"
-                            class="text-emerald-600 hover:text-emerald-700 text-xs font-medium disabled:opacity-50 transition-colors"
-                            :disabled="actionLoadingId === item.idAprobacion"
-                            @click="approve(item)"
-                          >
-                            Aprobar
-                          </button>
-                          <button
-                            type="button"
-                            class="text-red-600 hover:text-red-700 text-xs font-medium disabled:opacity-50 transition-colors"
-                            :disabled="actionLoadingId === item.idAprobacion"
-                            @click="reject(item)"
-                          >
-                            Negar
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700/50 px-2 py-1 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                          @click="openDetalle(group.idLiquidacion, item)"
+                        >
+                          Ver detalle
+                        </button>
                       </template>
                       <template v-else>
                         {{ getCellValue(group, item, column.key) }}
@@ -146,10 +168,170 @@
       </div>
     </div>
   </div>
+
+  <Teleport to="body">
+    <div v-if="showDetallePanel" class="fixed inset-0 z-[100]">
+      <div class="absolute inset-0 bg-black/40" @click="closeDetalle"></div>
+      <aside class="absolute right-0 top-0 h-full w-full sm:w-[520px] bg-white dark:bg-gray-800 shadow-2xl border-l border-gray-200 dark:border-gray-700 flex flex-col">
+        <div class="flex items-start justify-between gap-3 p-4 border-b border-gray-200 dark:border-gray-700">
+          <div class="min-w-0">
+            <div class="text-xs text-gray-500 dark:text-gray-400">Detalle aprobación</div>
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white truncate">
+              #{{ selectedItem?.idAprobacion || '-' }}
+            </h3>
+            <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Liquidación #{{ selectedItem?.idLiquidacion || '-' }} · Detalle #{{ selectedItem?.idDetalle || '-' }} · Nivel {{ selectedItem?.nivelAprobacion ?? '-' }}
+            </div>
+          </div>
+          <button
+            type="button"
+            class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700/50 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            @click="closeDetalle"
+          >
+            Cerrar
+          </button>
+        </div>
+
+        <div class="p-4 overflow-y-auto space-y-5">
+          <div class="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-900/20 p-4">
+            <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-3">Información</div>
+            <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+              <div>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Gasto</dt>
+                <dd class="text-sm text-gray-900 dark:text-white">{{ selectedItem?.nombreGasto || '-' }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Total</dt>
+                <dd class="text-sm text-gray-900 dark:text-white">{{ selectedItem ? formatAmount(selectedItem.total) : '-' }}</dd>
+              </div>
+
+              <div>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Fecha consumo</dt>
+                <dd class="text-sm text-gray-900 dark:text-white">{{ selectedDetalle ? formatDate(selectedDetalle.fechaConsumo) : '-' }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">RUC</dt>
+                <dd class="text-sm text-gray-900 dark:text-white">{{ selectedDetalle?.ruc || '-' }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Proveedor</dt>
+                <dd class="text-sm text-gray-900 dark:text-white">{{ selectedDetalle?.nombreProveedor || '-' }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">N° Comprobante</dt>
+                <dd class="text-sm text-gray-900 dark:text-white">{{ selectedDetalle?.numeroComprobante || '-' }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Tipo Documento</dt>
+                <dd class="text-sm text-gray-900 dark:text-white">{{ selectedDetalle?.tipoDocumento || '-' }}</dd>
+              </div>
+              <div class="sm:col-span-2">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Concepto</dt>
+                <dd class="text-sm text-gray-900 dark:text-white">{{ selectedDetalle?.concepto || selectedItem?.concepto || '-' }}</dd>
+              </div>
+
+              <div>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Subtotal con IVA</dt>
+                <dd class="text-sm text-gray-900 dark:text-white">{{ selectedDetalle ? formatAmount(selectedDetalle.subtotalConIva) : '-' }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Subtotal sin IVA</dt>
+                <dd class="text-sm text-gray-900 dark:text-white">{{ selectedDetalle ? formatAmount(selectedDetalle.subtotalSinIva) : '-' }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">IVA</dt>
+                <dd class="text-sm text-gray-900 dark:text-white">{{ selectedDetalle ? formatAmount(selectedDetalle.iva) : '-' }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Adjuntos</dt>
+                <dd class="text-sm text-gray-900 dark:text-white">
+                  <span v-if="selectedItem">{{ adjuntosByDetalle[selectedItem.idDetalle] ?? 0 }}</span>
+                  <span v-else>-</span>
+                </dd>
+              </div>
+            </dl>
+          </div>
+
+          <div class="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+            <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-3">Adjuntos</div>
+            <div v-if="selectedItem && loadingAdjuntosMap[selectedItem.idDetalle]" class="text-sm text-gray-500 dark:text-gray-400">Cargando adjuntos...</div>
+            <div v-else-if="selectedItem && (adjuntosListByDetalle[selectedItem.idDetalle]?.length)">
+              <div class="space-y-2">
+                <a
+                  v-for="adj in adjuntosListByDetalle[selectedItem.idDetalle]"
+                  :key="adj.idAdjunto"
+                  class="block text-sm text-indigo-600 hover:text-indigo-700 truncate"
+                  :href="buildAdjuntoUrl(adj.rutaArchivo)"
+                  target="_blank"
+                  rel="noopener"
+                >
+                  {{ formatAdjuntoName(adj.rutaArchivo) }}
+                </a>
+              </div>
+            </div>
+            <div v-else class="text-sm text-gray-500 dark:text-gray-400">Sin adjuntos.</div>
+          </div>
+
+          <div class="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+            <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-3">Aprobación</div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Monto aprobado</label>
+                <input
+                  v-if="selectedItem"
+                  v-model="decisions[selectedItem.idAprobacion].montoAprobado"
+                  type="number"
+                  step="0.01"
+                  class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                />
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Nivel</label>
+                <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white">
+                  {{ selectedItem?.nivelAprobacion ?? '-' }}
+                </div>
+              </div>
+              <div class="sm:col-span-2">
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Comentario</label>
+                <input
+                  v-if="selectedItem"
+                  v-model="decisions[selectedItem.idAprobacion].observacion"
+                  type="text"
+                  placeholder="Comentario de aprobación o negación"
+                  class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                />
+              </div>
+            </div>
+
+            <div class="mt-4 flex items-center justify-end gap-2">
+              <button
+                v-if="selectedItem"
+                type="button"
+                class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700/50 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+                :disabled="actionLoadingId === selectedItem.idAprobacion"
+                @click="reject(selectedItem)"
+              >
+                Negar
+              </button>
+              <button
+                v-if="selectedItem"
+                type="button"
+                class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                :disabled="actionLoadingId === selectedItem.idAprobacion"
+                @click="approve(selectedItem)"
+              >
+                Aprobar
+              </button>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref, watch, nextTick } from 'vue'
 import axios from 'axios'
 import { useTablePreferences } from '@/composables/useTablePreferences'
 
@@ -184,6 +366,13 @@ interface DetalleItem {
   subtotalConIva: number
   subtotalSinIva: number
   iva: number
+}
+
+interface AdjuntoItem {
+  idAdjunto: number
+  idDetalle: number
+  rutaArchivo: string
+  fechaSubida: string
 }
 
 interface DecisionState {
@@ -223,7 +412,9 @@ const availableColumns: ColumnConfig[] = [
   { key: 'acciones', label: 'Acciones', fixed: true }
 ]
 
-const defaultVisibleColumns = availableColumns.map(col => col.key)
+// Por defecto solo mostramos un resumen compacto;
+// el usuario puede activar más columnas desde el selector.
+const defaultVisibleColumns = ['id', 'fechaConsumo', 'gasto', 'total', 'acciones']
 const defaultColumnOrder = availableColumns.map(col => col.key)
 
 const {
@@ -247,6 +438,81 @@ const orderedVisibleColumns = computed(() => {
   const nonFixedColumns = ordered.filter(col => !col.fixed)
   return [...nonFixedColumns, ...fixedColumns]
 })
+
+// Columnas efectivamente visibles y ordenadas (no fijas primero, luego fijas)
+const tableColumns = orderedVisibleColumns
+
+const showColumnSelector = ref(false)
+const columnSelectorWrapRef = ref<HTMLElement | null>(null)
+
+const showDetallePanel = ref(false)
+const selectedContext = ref<{ idLiquidacion: number; item: AprobacionItem } | null>(null)
+const selectedItem = computed(() => selectedContext.value?.item ?? null)
+const selectedDetalle = computed(() => {
+  if (!selectedContext.value) return undefined
+  const { idLiquidacion, item } = selectedContext.value
+  return detallesByLiquidacion.value[idLiquidacion]?.find(d => d.idDetalle === item.idDetalle)
+})
+
+const adjuntosListByDetalle = ref<Record<number, AdjuntoItem[]>>({})
+const loadingAdjuntosMap = ref<Record<number, boolean>>({})
+
+function openDetalle(idLiquidacion: number, item: AprobacionItem) {
+  ensureDecision(item)
+  selectedContext.value = { idLiquidacion, item }
+  showDetallePanel.value = true
+  void loadAdjuntosForDetalle(item.idDetalle)
+}
+
+function closeDetalle() {
+  showDetallePanel.value = false
+  selectedContext.value = null
+}
+
+function closeColumnSelectorOnClickOutside(e: MouseEvent) {
+  if (columnSelectorWrapRef.value && !columnSelectorWrapRef.value.contains(e.target as Node)) {
+    showColumnSelector.value = false
+    document.removeEventListener('click', closeColumnSelectorOnClickOutside)
+  }
+}
+
+watch(showColumnSelector, (isOpen) => {
+  if (isOpen) {
+    nextTick(() => document.addEventListener('click', closeColumnSelectorOnClickOutside))
+  } else {
+    document.removeEventListener('click', closeColumnSelectorOnClickOutside)
+  }
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', closeColumnSelectorOnClickOutside)
+  document.removeEventListener('keydown', onDetalleKeydown)
+  document.body.classList.remove('overflow-hidden')
+})
+
+const availableColumnsWithVisibility = computed(() =>
+  availableColumns.map(col => ({
+    ...col,
+    visible: col.fixed ? true : visibleColumns.value.includes(col.key)
+  }))
+)
+
+function toggleColumnVisibility(columnKey: string) {
+  const column = availableColumns.find(col => col.key === columnKey)
+  if (column?.fixed) return
+  const current = visibleColumns.value
+  const index = current.indexOf(columnKey)
+  const visibleNonFixed = current.filter(
+    key => !availableColumns.find(c => c.key === key)?.fixed
+  )
+  if (index > -1 && visibleNonFixed.length <= 1) return
+  if (index > -1) {
+    visibleColumns.value = current.filter(k => k !== columnKey)
+  } else {
+    visibleColumns.value = [...current, columnKey]
+  }
+  savePreferences()
+}
 
 const draggedColumnKey = ref<string | null>(null)
 const dragOverColumnKey = ref<string | null>(null)
@@ -367,13 +633,13 @@ const getDetalle = (idLiquidacion: number, idDetalle: number): DetalleItem | und
 
 const fixedColumnStickyRight: Record<string, string> = {
   acciones: '0',
-  nivel: '11rem',
-  comentario: '15rem',
-  montoAprobado: '27rem'
+  nivel: '8.5rem',
+  comentario: '12.5rem',
+  montoAprobado: '24.5rem'
 }
 
 const fixedColumnMinWidth: Record<string, string> = {
-  acciones: '11rem',
+  acciones: '8.5rem',
   nivel: '4rem',
   comentario: '12rem',
   montoAprobado: '7rem'
@@ -418,6 +684,20 @@ cajaChicaApi.interceptors.request.use(config => {
   return config
 })
 
+const apiBaseUrl = (import.meta.env.VITE_CAJA_CHICA_API_URL || 'http://localhost:8080/api').replace(/\/+$/, '')
+const fileBaseUrl = apiBaseUrl.endsWith('/api') ? apiBaseUrl.slice(0, -4) : apiBaseUrl
+
+const buildAdjuntoUrl = (ruta: string) => {
+  if (!ruta) return '#'
+  return ruta.startsWith('http') ? ruta : `${fileBaseUrl}${ruta}`
+}
+
+const formatAdjuntoName = (ruta: string) => {
+  if (!ruta) return ''
+  const parts = ruta.split('/')
+  return parts[parts.length - 1]
+}
+
 const getCurrentUserId = (): string => {
   try {
     const userStr = localStorage.getItem('user')
@@ -458,7 +738,7 @@ const normalizeAprobacion = (item: any): AprobacionItem => ({
   estado: normalizeString(item.estado ?? item.Estado ?? '')
 })
 
-const ensureDecision = (item: AprobacionItem) => {
+function ensureDecision(item: AprobacionItem) {
   if (!decisions.value[item.idAprobacion]) {
     decisions.value[item.idAprobacion] = {
       montoAprobado: item.total.toFixed(2),
@@ -466,6 +746,46 @@ const ensureDecision = (item: AprobacionItem) => {
     }
   }
 }
+
+async function loadAdjuntosForDetalle(idDetalle: number) {
+  if (!idDetalle) return
+  if (adjuntosListByDetalle.value[idDetalle]) return
+  if (loadingAdjuntosMap.value[idDetalle]) return
+
+  loadingAdjuntosMap.value = { ...loadingAdjuntosMap.value, [idDetalle]: true }
+  try {
+    const response = await cajaChicaApi.get(`/Adjuntos/por-detalle/${idDetalle}`)
+    const payload = response.data as any
+    const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
+    adjuntosListByDetalle.value = {
+      ...adjuntosListByDetalle.value,
+      [idDetalle]: items.map((item: any) => ({
+        idAdjunto: Number(item.idAdjunto ?? item.IdAdjunto ?? 0),
+        idDetalle: Number(item.idDetalle ?? item.IdDetalle ?? idDetalle),
+        rutaArchivo: String(item.rutaArchivo ?? item.RutaArchivo ?? ''),
+        fechaSubida: String(item.fechaSubida ?? item.FechaSubida ?? '')
+      }))
+    }
+  } catch {
+    adjuntosListByDetalle.value = { ...adjuntosListByDetalle.value, [idDetalle]: [] }
+  } finally {
+    loadingAdjuntosMap.value = { ...loadingAdjuntosMap.value, [idDetalle]: false }
+  }
+}
+
+function onDetalleKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape') closeDetalle()
+}
+
+watch(showDetallePanel, (isOpen) => {
+  if (isOpen) {
+    document.addEventListener('keydown', onDetalleKeydown)
+    document.body.classList.add('overflow-hidden')
+  } else {
+    document.removeEventListener('keydown', onDetalleKeydown)
+    document.body.classList.remove('overflow-hidden')
+  }
+})
 
 const loadPendientes = async () => {
   loading.value = true
@@ -536,6 +856,7 @@ const approve = async (item: AprobacionItem) => {
       Observacion: decision?.observacion || ''
     })
     actionSuccess.value = 'Aprobacion registrada.'
+    closeDetalle()
     await loadPendientes()
   } catch (err: any) {
     const message = err?.response?.data?.message || err?.response?.data
@@ -557,6 +878,7 @@ const reject = async (item: AprobacionItem) => {
       Observacion: decision?.observacion || ''
     })
     actionSuccess.value = 'Aprobacion rechazada.'
+    closeDetalle()
     await loadPendientes()
   } catch (err: any) {
     const message = err?.response?.data?.message || err?.response?.data
