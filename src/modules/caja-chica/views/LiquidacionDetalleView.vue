@@ -1,28 +1,28 @@
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
     <div class="space-y-6">
-      <div class="flex items-center justify-between">
+      <div class="flex items-center justify-between pb-4 border-b border-gray-200 dark:border-gray-600">
         <div>
-          <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Detalle de Liquidacion #{{ liquidacionId }}</h1>
+          <h1 class="text-2xl font-semibold text-gray-900 dark:text-white tracking-tight">Detalle de Liquidación #{{ liquidacionId }}</h1>
           <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Agregar gastos y revisar el detalle</p>
         </div>
         <router-link
-          class="rounded border border-gray-200 dark:border-gray-700 text-sm px-3 py-1.5"
+          class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700/50 text-gray-700 dark:text-gray-200 text-sm px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           to="/caja-chica/liquidaciones"
         >
           Volver
         </router-link>
       </div>
 
-      <div class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-5">
+      <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm p-6">
         <div class="flex items-center justify-between mb-4">
-          <div>
+          <div class="border-l-4 border-emerald-500 pl-3">
             <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Agregar detalle</h2>
-            <p class="text-xs text-gray-500 dark:text-gray-400">Registra un gasto en la liquidacion</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Registra un gasto en la liquidación</p>
           </div>
           <button
             type="button"
-            class="rounded border border-gray-200 dark:border-gray-700 text-sm px-3 py-1.5"
+            class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700/50 text-gray-700 dark:text-gray-200 text-sm px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             :aria-expanded="isAddOpen"
             @click="isAddOpen = !isAddOpen"
           >
@@ -35,7 +35,7 @@
             <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Gasto *</label>
             <select
               v-model="selectedGastoId"
-              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+              class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
             >
               <option value="">Seleccionar gasto</option>
               <option v-for="gasto in catalogoGastos" :key="gasto.idGasto" :value="gasto.idGasto">
@@ -49,7 +49,7 @@
               v-model="nombreGasto"
               type="text"
               readonly
-              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-700 dark:text-gray-300"
+              class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-700 dark:text-gray-300"
             />
           </div>
           <div>
@@ -57,7 +57,7 @@
             <input
               v-model="fechaConsumo"
               type="date"
-              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+              class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
             />
           </div>
           <div>
@@ -65,7 +65,7 @@
             <input
               v-model.trim="ruc"
               type="text"
-              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+              class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
             />
           </div>
           <div>
@@ -73,7 +73,7 @@
             <input
               v-model.trim="proveedor"
               type="text"
-              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+              class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
             />
           </div>
           <div>
@@ -81,14 +81,14 @@
             <input
               v-model.trim="numeroComprobante"
               type="text"
-              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+              class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
             />
           </div>
           <div>
             <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Tipo Documento</label>
             <select
               v-model.trim="numeroAutorizacion"
-              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+              class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
             >
               <option value="">Seleccionar tipo documento</option>
               <option value="Factura">Factura</option>
@@ -101,7 +101,7 @@
             <input
               v-model.trim="concepto"
               type="text"
-              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+              class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
             />
           </div>
           <div>
@@ -110,7 +110,7 @@
               v-model="subtotalConIva"
               type="number"
               step="0.01"
-              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+              class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
             />
           </div>
           <div>
@@ -119,7 +119,7 @@
               v-model="subtotalSinIva"
               type="number"
               step="0.01"
-              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+              class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
             />
           </div>
           <div>
@@ -128,7 +128,7 @@
               v-model="iva"
               type="number"
               step="0.01"
-              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+              class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
             />
           </div>
           <div>
@@ -137,30 +137,30 @@
               v-model="total"
               type="number"
               step="0.01"
-              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+              class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
             />
           </div>
         </div>
         <div v-if="isAddOpen" class="mt-4 flex items-center gap-3">
           <button
             type="button"
-            class="rounded bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2 disabled:opacity-50"
+            class="rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-4 py-2 shadow-sm hover:shadow transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             :disabled="!canAddDetalle"
             @click="addDetalle"
           >
             Agregar detalle
           </button>
           <span v-if="formError" class="text-sm text-red-600 dark:text-red-400">{{ formError }}</span>
-          <span v-else-if="formSuccess" class="text-sm text-emerald-600 dark:text-emerald-400">{{ formSuccess }}</span>
+          <span v-else-if="formSuccess" class="text-sm text-emerald-600 dark:text-emerald-500">{{ formSuccess }}</span>
         </div>
       </div>
 
-      <div class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-5">
+      <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm p-6">
         <div class="flex items-center justify-between mb-4">
-          <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Detalles actuales</h2>
+          <h2 class="text-sm font-semibold text-gray-900 dark:text-white border-l-4 border-emerald-500 pl-3">Detalles actuales</h2>
           <button
             type="button"
-            class="rounded border border-gray-200 dark:border-gray-700 text-sm px-3 py-1.5"
+            class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700/50 text-gray-700 dark:text-gray-200 text-sm px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             @click="loadDetalles"
           >
             Refrescar
@@ -176,8 +176,8 @@
         </div>
         <div v-else class="overflow-x-auto">
           <table class="min-w-full text-sm">
-            <thead>
-              <tr class="text-left text-xs uppercase text-gray-500 dark:text-gray-400">
+            <thead class="sticky top-0 z-10 bg-gray-50 dark:bg-gray-700/50 shadow-sm">
+              <tr class="text-left text-xs font-medium uppercase tracking-wider text-gray-600 dark:text-gray-300">
                 <th class="py-2 pr-3">Nombre Gasto</th>
                 <th class="py-2 pr-3">Fecha Consumo</th>
                 <th class="py-2 pr-3">RUC</th>
@@ -193,8 +193,8 @@
                 <th class="py-2 pr-3">Acciones</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-              <tr v-for="item in detalles" :key="item.idDetalle">
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-600">
+              <tr v-for="item in detalles" :key="item.idDetalle" class="hover:bg-gray-50/50 dark:hover:bg-gray-700/30 transition-colors">
                 <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.nombreGasto }}</td>
                 <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ formatDate(item.fechaConsumo) }}</td>
                 <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.ruc }}</td>
@@ -279,7 +279,7 @@
               <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Gasto *</label>
               <select
                 v-model="editGastoId"
-                class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
               >
                 <option value="">Seleccionar gasto</option>
                 <option v-for="gasto in catalogoGastos" :key="gasto.idGasto" :value="gasto.idGasto">
@@ -293,7 +293,7 @@
                 v-model="editNombreGasto"
                 type="text"
                 readonly
-                class="w-full rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-700 dark:text-gray-300"
+                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-700 dark:text-gray-300"
               />
             </div>
             <div>
@@ -301,7 +301,7 @@
               <input
                 v-model="editFechaConsumo"
                 type="date"
-                class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
               />
             </div>
             <div>
@@ -309,7 +309,7 @@
               <input
                 v-model.trim="editRuc"
                 type="text"
-                class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
               />
             </div>
             <div>
@@ -317,7 +317,7 @@
               <input
                 v-model.trim="editProveedor"
                 type="text"
-                class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
               />
             </div>
             <div>
@@ -325,14 +325,14 @@
               <input
                 v-model.trim="editNumeroComprobante"
                 type="text"
-                class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
               />
             </div>
             <div>
               <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Tipo Documento</label>
               <select
                 v-model.trim="editNumeroAutorizacion"
-                class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
               >
                 <option value="">Seleccionar tipo documento</option>
                 <option value="Factura">Factura</option>
@@ -345,7 +345,7 @@
               <input
                 v-model.trim="editConcepto"
                 type="text"
-                class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
               />
             </div>
             <div>
@@ -354,7 +354,7 @@
                 v-model="editSubtotalConIva"
                 type="number"
                 step="0.01"
-                class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
               />
             </div>
             <div>
@@ -363,7 +363,7 @@
                 v-model="editSubtotalSinIva"
                 type="number"
                 step="0.01"
-                class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
               />
             </div>
             <div>
@@ -372,7 +372,7 @@
                 v-model="editIva"
                 type="number"
                 step="0.01"
-                class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
               />
             </div>
             <div>
@@ -381,7 +381,7 @@
                 v-model="editTotal"
                 type="number"
                 step="0.01"
-                class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
               />
             </div>
           </div>

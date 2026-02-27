@@ -1,25 +1,25 @@
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <div class="max-w-full mx-auto px-2 sm:px-4 lg:px-6 py-6">
     <div class="space-y-6">
-      <div class="flex items-center justify-between">
+      <div class="flex items-center justify-between pb-4 border-b border-gray-200 dark:border-gray-600">
         <div>
-          <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Aprobaciones pendientes</h1>
+          <h1 class="text-2xl font-semibold text-gray-900 dark:text-white tracking-tight">Aprobaciones pendientes</h1>
           <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Pendientes por aprobar para tu usuario</p>
         </div>
         <router-link
-          class="rounded border border-gray-200 dark:border-gray-700 text-sm px-3 py-1.5"
+          class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700/50 text-gray-700 dark:text-gray-200 text-sm px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
           to="/caja-chica"
         >
           Volver
         </router-link>
       </div>
 
-      <div class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-5">
+      <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm p-6">
         <div class="flex items-center justify-between mb-4">
-          <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Listado</h2>
+          <h2 class="text-sm font-semibold text-gray-900 dark:text-white border-l-4 border-emerald-500 pl-3">Listado</h2>
           <button
             type="button"
-            class="rounded border border-gray-200 dark:border-gray-700 text-sm px-3 py-1.5"
+            class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700/50 text-gray-700 dark:text-gray-200 text-sm px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             @click="loadPendientes"
           >
             Refrescar
@@ -35,9 +35,9 @@
           <div
             v-for="group in groupedPendientes"
             :key="group.idLiquidacion"
-            class="rounded border border-gray-200 dark:border-gray-700"
+            class="rounded-xl border border-gray-200 dark:border-gray-600 overflow-hidden"
           >
-            <div class="flex items-center justify-between bg-gray-50 dark:bg-gray-900 px-4 py-3">
+            <div class="flex items-center justify-between bg-gray-50 dark:bg-gray-700/50 px-4 py-3 border-b border-gray-200 dark:border-gray-600">
               <div>
                 <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Liquidacion #{{ group.idLiquidacion }}</h3>
                 <p class="text-xs text-gray-500 dark:text-gray-400">
@@ -48,7 +48,7 @@
                 <div class="text-xs text-gray-500 dark:text-gray-400">Total: {{ formatAmount(group.totalMonto) }}</div>
                 <button
                   type="button"
-                  class="rounded border border-gray-200 dark:border-gray-700 px-2 py-1 text-xs text-gray-700 dark:text-gray-300"
+                  class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600/50 px-2 py-1 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
                   @click="toggleGroup(group.idLiquidacion)"
                 >
                   {{ isGroupOpen(group.idLiquidacion) ? 'Ocultar' : 'Ver' }}
@@ -57,8 +57,8 @@
             </div>
             <div v-if="isGroupOpen(group.idLiquidacion)" class="overflow-x-auto">
               <table class="min-w-full text-sm">
-                <thead class="bg-gray-50 dark:bg-gray-900">
-                  <tr class="text-left text-xs uppercase text-gray-500 dark:text-gray-400">
+                <thead class="sticky top-0 z-10 bg-gray-50 dark:bg-gray-700/50 shadow-sm">
+                  <tr class="text-left text-xs font-medium uppercase tracking-wider text-gray-600 dark:text-gray-300">
                     <th
                       v-for="column in orderedVisibleColumns"
                       :key="column.key"
@@ -68,8 +68,10 @@
                         column.key === 'id' ? 'pl-4' : '',
                         column.fixed ? 'cursor-default' : 'cursor-move',
                         draggedColumnKey === column.key ? 'opacity-50 bg-indigo-100 dark:bg-indigo-900' : '',
-                        dragOverColumnKey === column.key && draggedColumnKey !== null ? 'border-l-4 border-indigo-500' : ''
+                        dragOverColumnKey === column.key && draggedColumnKey !== null ? 'border-l-4 border-indigo-500' : '',
+                        getStickyThClass(column)
                       ]"
+                      :style="getStickyStyle(column)"
                       @dragstart="!column.fixed && handleDragStart($event, column.key)"
                       @dragover.prevent="!column.fixed && handleDragOver($event, column.key)"
                       @dragleave="!column.fixed && handleDragLeave()"
@@ -80,22 +82,24 @@
                     </th>
                   </tr>
                 </thead>
-                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                  <tr v-for="item in group.items" :key="item.idAprobacion">
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-600">
+                  <tr v-for="item in group.items" :key="item.idAprobacion" class="hover:bg-gray-50/50 dark:hover:bg-gray-700/30 transition-colors">
                     <td
                       v-for="column in orderedVisibleColumns"
                       :key="column.key"
                       :class="[
                         'py-2 pr-3 text-gray-700 dark:text-gray-200',
-                        column.key === 'id' ? 'pl-4' : ''
+                        column.key === 'id' ? 'pl-4' : '',
+                        getStickyTdClass(column)
                       ]"
+                      :style="getStickyStyle(column)"
                     >
                       <template v-if="column.key === 'montoAprobado'">
                         <input
                           v-model="decisions[item.idAprobacion].montoAprobado"
                           type="number"
                           step="0.01"
-                          class="w-28 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-xs text-gray-900 dark:text-white"
+                          class="w-28 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-2 py-1 text-xs text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                         />
                       </template>
                       <template v-else-if="column.key === 'comentario'">
@@ -103,14 +107,14 @@
                           v-model="decisions[item.idAprobacion].observacion"
                           type="text"
                           placeholder="Comentario de aprobacion o negacion"
-                          class="w-48 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-xs text-gray-900 dark:text-white"
+                          class="w-48 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-2 py-1 text-xs text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
                         />
                       </template>
                       <template v-else-if="column.key === 'acciones'">
                         <div class="flex items-center gap-2">
                           <button
                             type="button"
-                            class="text-emerald-600 hover:text-emerald-700 text-xs font-medium disabled:opacity-50"
+                            class="text-emerald-600 hover:text-emerald-700 text-xs font-medium disabled:opacity-50 transition-colors"
                             :disabled="actionLoadingId === item.idAprobacion"
                             @click="approve(item)"
                           >
@@ -118,7 +122,7 @@
                           </button>
                           <button
                             type="button"
-                            class="text-red-600 hover:text-red-700 text-xs font-medium disabled:opacity-50"
+                            class="text-red-600 hover:text-red-700 text-xs font-medium disabled:opacity-50 transition-colors"
                             :disabled="actionLoadingId === item.idAprobacion"
                             @click="reject(item)"
                           >
@@ -138,7 +142,7 @@
         </div>
 
         <div v-if="actionError" class="mt-3 text-sm text-red-600 dark:text-red-400">{{ actionError }}</div>
-        <div v-else-if="actionSuccess" class="mt-3 text-sm text-emerald-600 dark:text-emerald-400">{{ actionSuccess }}</div>
+        <div v-else-if="actionSuccess" class="mt-3 text-sm text-emerald-600 dark:text-emerald-500">{{ actionSuccess }}</div>
       </div>
     </div>
   </div>
@@ -360,6 +364,44 @@ const toggleGroup = (idLiquidacion: number) => {
 
 const getDetalle = (idLiquidacion: number, idDetalle: number): DetalleItem | undefined =>
   detallesByLiquidacion.value[idLiquidacion]?.find(d => d.idDetalle === idDetalle)
+
+const fixedColumnStickyRight: Record<string, string> = {
+  acciones: '0',
+  nivel: '11rem',
+  comentario: '15rem',
+  montoAprobado: '27rem'
+}
+
+const fixedColumnMinWidth: Record<string, string> = {
+  acciones: '11rem',
+  nivel: '4rem',
+  comentario: '12rem',
+  montoAprobado: '7rem'
+}
+
+function getStickyThClass(column: ColumnConfig): string {
+  if (!column.fixed) return ''
+  const right = fixedColumnStickyRight[column.key]
+  const minW = fixedColumnMinWidth[column.key]
+  if (!right || !minW) return ''
+  return 'sticky z-10 bg-gray-50 dark:bg-gray-900 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]'
+}
+
+function getStickyTdClass(column: ColumnConfig): string {
+  if (!column.fixed) return ''
+  const right = fixedColumnStickyRight[column.key]
+  const minW = fixedColumnMinWidth[column.key]
+  if (!right || !minW) return ''
+  return 'sticky z-10 bg-white dark:bg-gray-800 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]'
+}
+
+function getStickyStyle(column: ColumnConfig): { right?: string; minWidth?: string } {
+  if (!column.fixed) return {}
+  const right = fixedColumnStickyRight[column.key]
+  const minW = fixedColumnMinWidth[column.key]
+  if (!right || !minW) return {}
+  return { right, minWidth: minW }
+}
 
 const cajaChicaApi = axios.create({
   baseURL: import.meta.env.VITE_CAJA_CHICA_API_URL || 'http://localhost:8080/api',
