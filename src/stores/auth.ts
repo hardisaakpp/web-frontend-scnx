@@ -96,11 +96,12 @@ interface LoginResponse {
 }
 
 interface JwtPayload {
-  unique_name: string
-  role: string[]
-  iss: string
-  aud: string
   exp: number
+  iss?: string
+  aud?: string
+  unique_name?: string
+  role?: string[] | string
+  [claim: string]: unknown
 }
 
 /** Respuesta de GET /Auth/me. capabilities.can_view_odc_sap es true solo con permiso odc.view (sin admin override). */
@@ -326,9 +327,29 @@ export const useAuthStore = defineStore('auth', {
         if (import.meta.env.DEV) {
           console.error('fetchMe failed:', err)
         }
+
         const status = (err as { response?: { status?: number } })?.response?.status
+
+        // Solo cerrar sesión si realmente hay un problema con el token (expirado o inválido).
         if (status === 401) {
-          this.logout()
+          try {
+            const token = this.token || localStorage.getItem('token')
+            if (!token) {
+              this.logout()
+              return
+            }
+
+            const decoded = jwtDecode<JwtPayload>(token)
+
+            // Si el token ya expiró, cerrar sesión.
+            if (decoded.exp * 1000 < Date.now()) {
+              this.logout()
+            }
+            // Si el token sigue siendo válido, no hacer logout: el error es del microservicio, no de la sesión global.
+          } catch {
+            // Si no se puede decodificar el token, considerarlo inválido y cerrar sesión.
+            this.logout()
+          }
         }
       }
     },
@@ -374,6 +395,9 @@ export const useAuthStore = defineStore('auth', {
         try {
           const decoded = jwtDecode<JwtPayload>(token)
 
+          const CLAIM_NAME = 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'
+          const CLAIM_ROLE = 'http://schemas.microsoft.com/ws/2008/06/identity/claims/role'
+
           // Verificar si el token ha expirado
           if (decoded.exp * 1000 < Date.now()) {
             this.logout()
@@ -381,8 +405,27 @@ export const useAuthStore = defineStore('auth', {
           }
 
           this.token = token
-          this.user = decoded.unique_name
-          this.role = decoded.role[0] || null
+
+          // Usuario: preferir claims .NET; fallback a tokens "simples" si existieran
+          const userFromClaims =
+            (typeof decoded[CLAIM_NAME] === 'string' ? (decoded[CLAIM_NAME] as string) : undefined) ||
+            (typeof decoded.unique_name === 'string' ? decoded.unique_name : undefined) ||
+            (typeof decoded.name === 'string' ? (decoded.name as string) : undefined)
+
+          this.user = userFromClaims || null
+
+          // Roles: preferir claim .NET; fallback a "role" si existiera
+          const roleClaim =
+            decoded[CLAIM_ROLE] ??
+            decoded.role
+
+          const roles = Array.isArray(roleClaim)
+            ? roleClaim.filter((r): r is string => typeof r === 'string')
+            : typeof roleClaim === 'string'
+              ? [roleClaim]
+              : []
+
+          this.role = roles[0] || null
 
           // Cargar datos del usuario desde localStorage
           const userStr = localStorage.getItem('user')
