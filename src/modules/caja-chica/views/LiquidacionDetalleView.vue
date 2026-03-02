@@ -105,7 +105,7 @@
             />
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Subtotal Base 15 *</label>
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Subtotal Base 15% *</label>
             <input
               v-model="subtotalConIva"
               type="number"
@@ -114,7 +114,7 @@
             />
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Subtotal Base 0 *</label>
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Subtotal Base 0% *</label>
             <input
               v-model="subtotalSinIva"
               type="number"
@@ -351,7 +351,7 @@
               />
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Subtotal Base 15 *</label>
+              <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Subtotal Base 15% *</label>
               <input
                 v-model="editSubtotalConIva"
                 type="number"
@@ -360,7 +360,7 @@
               />
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Subtotal Base 0 *</label>
+              <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Subtotal Base 0% *</label>
               <input
                 v-model="editSubtotalSinIva"
                 type="number"

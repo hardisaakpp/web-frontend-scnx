@@ -234,11 +234,11 @@
                 <dd class="text-sm text-gray-900 dark:text-white">{{ selectedDetalle?.tipoDocumento || '-' }}</dd>
               </div>
               <div>
-                <dt class="text-xs text-gray-500 dark:text-gray-400">Subtotal Base 15</dt>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Subtotal Base 15%</dt>
                 <dd class="text-sm text-gray-900 dark:text-white">{{ selectedDetalle ? formatAmount(selectedDetalle.subtotalConIva) : '-' }}</dd>
               </div>
               <div>
-                <dt class="text-xs text-gray-500 dark:text-gray-400">Subtotal Base 0</dt>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Subtotal Base 0%</dt>
                 <dd class="text-sm text-gray-900 dark:text-white">{{ selectedDetalle ? formatAmount(selectedDetalle.subtotalSinIva) : '-' }}</dd>
               </div>
               <div>
@@ -269,6 +269,10 @@
                   :key="index"
                   class="text-xs rounded-lg border border-gray-200 dark:border-gray-600 p-2 bg-white dark:bg-gray-800"
                 >
+                  <div class="flex justify-between gap-2">
+                    <span class="text-gray-500 dark:text-gray-400">Supervisor:</span>
+                    <span class="text-gray-900 dark:text-white">{{ getUserLabel(decision.idUsuario) }}</span>
+                  </div>
                   <div class="flex justify-between gap-2">
                     <span class="text-gray-500 dark:text-gray-400">Estado:</span>
                     <span class="text-gray-900 dark:text-white">{{ decision.estado || '-' }}</span>
@@ -427,6 +431,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount, ref, watch, nextTick } from 'vue'
 import axios from 'axios'
+import api from '@/services/api'
 import { useTablePreferences } from '@/composables/useTablePreferences'
 
 interface ColumnConfig {
@@ -470,6 +475,11 @@ interface SupervisorDecision {
   idUsuario?: string
 }
 
+interface UserOption {
+  id: string
+  label: string
+}
+
 interface AdjuntoItem {
   idAdjunto: number
   idDetalle: number
@@ -493,6 +503,8 @@ const openGroups = ref<Record<number, boolean>>({})
 const supervisorByDetalle = ref<Record<number, SupervisorDecision[]>>({})
 const detallesByLiquidacion = ref<Record<number, DetalleItem[]>>({})
 const adjuntosByDetalle = ref<Record<number, number>>({})
+const usuarios = ref<UserOption[]>([])
+const usuariosById = ref<Record<string, UserOption>>({})
 
 const availableColumns: ColumnConfig[] = [
   { key: 'id', label: 'Id', fixed: false },
@@ -504,21 +516,21 @@ const availableColumns: ColumnConfig[] = [
   { key: 'numeroComprobante', label: 'N° Comprobante', fixed: false },
   { key: 'tipoDocumento', label: 'Tipo documento', fixed: false },
   { key: 'concepto', label: 'Concepto', fixed: false },
-  { key: 'subtotalConIva', label: 'Subtotal Base 15', fixed: false },
-  { key: 'subtotalSinIva', label: 'Subtotal Base 0', fixed: false },
+  { key: 'subtotalConIva', label: 'Subtotal Base 15%', fixed: false },
+  { key: 'subtotalSinIva', label: 'Subtotal Base 0%', fixed: false },
   { key: 'iva', label: 'IVA', fixed: false },
   { key: 'total', label: 'Total', fixed: false },
-  { key: 'usuario', label: 'Usuario', fixed: false },
+  { key: 'usuario', label: 'Supervisor', fixed: false },
   { key: 'montoSupervisor', label: 'Monto supervisor', fixed: false },
   { key: 'obsSupervisor', label: 'Obs. supervisor', fixed: false },
   { key: 'novedad', label: 'Novedad', fixed: false },
   { key: 'montoFinal', label: 'Monto final', fixed: true },
-  { key: 'comentario', label: 'Comentario', fixed: true },
   { key: 'nivel', label: 'Nivel', fixed: true },
+  { key: 'comentario', label: 'Comentario', fixed: true },
   { key: 'acciones', label: 'Acciones', fixed: true }
 ]
 
-const defaultVisibleColumns = ['id', 'gasto', 'total', 'novedad', 'acciones']
+const defaultVisibleColumns = ['id', 'gasto', 'total', 'novedad', 'montoFinal', 'nivel', 'comentario', 'acciones']
 const defaultColumnOrder = availableColumns.map(col => col.key)
 
 const {
@@ -538,9 +550,9 @@ const orderedVisibleColumns = computed(() => {
   const ordered = orderedVisibleColumnKeys.value
     .map(key => availableColumns.find(col => col.key === key))
     .filter((col): col is ColumnConfig => col !== undefined)
-  const fixedColumns = ordered.filter(col => col.fixed)
   const nonFixedColumns = ordered.filter(col => !col.fixed)
-  return [...nonFixedColumns, ...fixedColumns]
+  const allFixedColumns = availableColumns.filter(col => col.fixed)
+  return [...nonFixedColumns, ...allFixedColumns]
 })
 
 const tableColumns = orderedVisibleColumns
@@ -686,7 +698,7 @@ function getCellValue(group: { idLiquidacion: number }, item: AprobacionItem, co
     case 'total':
       return formatAmount(item.total)
     case 'usuario':
-      return list.length ? list.map(dec => dec.estado || '-').join(', ') : '-'
+      return list.length ? list.map(dec => getUserLabel(dec.idUsuario)).join(', ') : '-'
     case 'montoSupervisor':
       return list.length ? list.map(dec => formatAmount(dec.montoAprobado)).join(', ') : '-'
     case 'obsSupervisor':
@@ -730,8 +742,8 @@ const toggleGroup = (idLiquidacion: number) => {
 
 const fixedColumnStickyRight: Record<string, string> = {
   acciones: '0',
-  nivel: '8.5rem',
-  comentario: '12.5rem',
+  comentario: '8.5rem',
+  nivel: '20.5rem',
   montoFinal: '24.5rem'
 }
 const fixedColumnMinWidth: Record<string, string> = {
@@ -741,12 +753,15 @@ const fixedColumnMinWidth: Record<string, string> = {
   montoFinal: '7rem'
 }
 
+const stickyThClass = 'select-none py-1.5 pl-2 pr-2 sticky z-10 bg-gray-50 dark:bg-gray-900 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]'
+const stickyTdClass = 'py-1.5 pl-2 pr-2 sticky z-10 bg-white dark:bg-gray-800 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]'
+
 function getStickyThClass(column: ColumnConfig): string {
   if (!column.fixed) return ''
   const right = fixedColumnStickyRight[column.key]
   const minW = fixedColumnMinWidth[column.key]
   if (!right || !minW) return ''
-  return 'sticky z-10 bg-gray-50 dark:bg-gray-900 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]'
+  return stickyThClass
 }
 
 function getStickyTdClass(column: ColumnConfig): string {
@@ -754,7 +769,7 @@ function getStickyTdClass(column: ColumnConfig): string {
   const right = fixedColumnStickyRight[column.key]
   const minW = fixedColumnMinWidth[column.key]
   if (!right || !minW) return ''
-  return 'sticky z-10 bg-white dark:bg-gray-800 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.1)]'
+  return stickyTdClass
 }
 
 function getStickyStyle(column: ColumnConfig): { right?: string; minWidth?: string } {
@@ -809,6 +824,22 @@ const getCurrentUserId = (): string => {
 }
 
 const normalizeString = (value: any) => String(value ?? '').trim()
+
+const normalizeUser = (user: any): UserOption => {
+  const id = String(user.id ?? user.Id ?? user.idUsuario ?? user.IdUsuario ?? '')
+  const userName = String(user.userName ?? user.UsuarioNombre ?? user.username ?? '').trim()
+  const fullName = String(user.fullName ?? user.Nombre ?? user.name ?? '').trim()
+  const email = String(user.email ?? user.Correo ?? user.mail ?? '').trim()
+  const base = fullName || userName || email || id
+  const label = email && base !== email ? `${base} (${email})` : base
+  return { id, label }
+}
+
+const getUserLabel = (id?: string) => {
+  if (!id) return '-'
+  const user = usuariosById.value[id]
+  return user?.label || id || '-'
+}
 
 const normalizeDetalle = (item: any): DetalleItem => ({
   idDetalle: Number(item.idDetalle ?? item.IdDetalle ?? 0),
@@ -1062,6 +1093,23 @@ const loadPendientes = async () => {
   }
 }
 
+const loadUsuarios = async () => {
+  try {
+    const response = await api.get('/Users')
+    const payload = response.data as any
+    const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
+    const mapped: UserOption[] = items.map(normalizeUser)
+    usuarios.value = mapped
+    usuariosById.value = mapped.reduce((acc: Record<string, UserOption>, user: UserOption) => {
+      if (user.id) acc[user.id] = user
+      return acc
+    }, {} as Record<string, UserOption>)
+  } catch {
+    usuarios.value = []
+    usuariosById.value = {}
+  }
+}
+
 const approve = async (item: AprobacionItem) => {
   actionError.value = ''
   actionSuccess.value = ''
@@ -1111,5 +1159,6 @@ const formatDate = (value: string) => (value ? value.substring(0, 10) : '')
 
 onMounted(() => {
   loadPendientes()
+  loadUsuarios()
 })
 </script>
