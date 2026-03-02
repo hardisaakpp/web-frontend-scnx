@@ -33,7 +33,8 @@ export default defineConfig({
       },
       // Login y resto de /api → Core (Apps pruebas).
       '/api': {
-        target: 'http://210.17.1.53:5053', // Apps pruebas / Core
+        //target: 'http://210.17.1.53:5053', // Apps pruebas / Core
+        target: 'http://192.168.2.12:8080', // Core con AD
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path

@@ -2,6 +2,45 @@ import { defineStore } from 'pinia'
 import api from '../plugins/axios'
 import { jwtDecode } from 'jwt-decode'
 
+/** Timeout ID para redirigir al login cuando caduca el token. Se limpia en logout. */
+let expiryTimeoutId: ReturnType<typeof setTimeout> | null = null
+
+const LOGIN_REDIRECT_URL =
+  (import.meta.env.VITE_LOGIN_REDIRECT_URL as string) || `${typeof window !== 'undefined' ? window.location.origin : ''}/login`
+
+/** Programa logout y redirección al login cuando el token expire (60 s antes). */
+function scheduleRedirectOnTokenExpiry(token: string, store: { logout: () => void }): void {
+  if (expiryTimeoutId) {
+    clearTimeout(expiryTimeoutId)
+    expiryTimeoutId = null
+  }
+  try {
+    const decoded = jwtDecode<JwtPayload>(token)
+    const expiresAtMs = decoded.exp * 1000
+    const msUntilExpire = expiresAtMs - Date.now()
+    if (msUntilExpire <= 0) {
+      store.logout()
+      if (typeof window !== 'undefined') window.location.href = LOGIN_REDIRECT_URL
+      return
+    }
+    const redirectMs = Math.max(0, msUntilExpire - 60_000) // 60 s antes de caducar
+    expiryTimeoutId = setTimeout(() => {
+      expiryTimeoutId = null
+      store.logout()
+      if (typeof window !== 'undefined') window.location.href = LOGIN_REDIRECT_URL
+    }, redirectMs)
+  } catch {
+    // Token inválido; no programar
+  }
+}
+
+function clearExpiryTimeout(): void {
+  if (expiryTimeoutId) {
+    clearTimeout(expiryTimeoutId)
+    expiryTimeoutId = null
+  }
+}
+
 interface User {
   id: string
   userName: string
@@ -257,6 +296,7 @@ export const useAuthStore = defineStore('auth', {
         // Configure axios
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`
 
+        scheduleRedirectOnTokenExpiry(token, this)
         await this.fetchMe()
         return true
       } catch (error) {
@@ -294,6 +334,7 @@ export const useAuthStore = defineStore('auth', {
     },
 
     logout(): void {
+      clearExpiryTimeout()
       // Clear state
       this.token = null
       this.user = null
@@ -354,6 +395,7 @@ export const useAuthStore = defineStore('auth', {
           }
 
           api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+          scheduleRedirectOnTokenExpiry(token, this)
         } catch {
           this.logout()
         }
