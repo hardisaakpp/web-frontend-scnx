@@ -179,7 +179,7 @@
                   : 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400'
               ]"
             >
-              {{ formatNumber(producto.cantidad_confirmada) }}
+              {{ formatNumberWithDecimals(producto.cantidad_confirmada, decimalPlaces) }}
             </td>
             <!-- Precio: resaltar en ámbar si fue modificado en el flujo de EL RAYO -->
             <td
@@ -200,7 +200,7 @@
               v-for="tienda in tiendasUnicas"
               :key="`${producto.codigo_producto}-${tienda.codigo}`"
               class="px-4 py-2 text-right transition-colors"
-              :class="producto.diferencia === 0 ? 'bg-green-50 dark:bg-green-900/30' : 'bg-red-50 dark:bg-red-900/30'"
+              :class="cercaDeCeroDiferencia(producto.diferencia) ? 'bg-green-50 dark:bg-green-900/30' : 'bg-red-50 dark:bg-red-900/30'"
             >
               <input
                 v-if="!soloLectura"
@@ -209,13 +209,13 @@
                 @input="handleCantidadChange(producto, tienda.codigo, $event)"
                 @blur="handleBlur(producto, tienda.codigo)"
                 min="0"
-                step="1"
+                step="any"
                 class="w-full max-w-[100px] ml-auto px-2 py-1.5 text-sm text-right border rounded focus:outline-none focus:ring-2 transition-colors"
                 :class="getInputClass(producto, tienda.codigo)"
                 placeholder="0"
               />
               <span v-else class="block w-full max-w-[100px] ml-auto px-2 py-1.5 text-sm text-right text-gray-900 dark:text-white">
-                {{ formatNumber(getCantidadTienda(producto, tienda.codigo)) }}
+                {{ formatNumberWithDecimals(getCantidadTienda(producto, tienda.codigo), decimalPlaces) }}
               </span>
             </td>
             
@@ -224,14 +224,14 @@
               v-if="isColumnVisible('total_distribuido')"
               class="px-4 py-3 text-sm font-semibold text-purple-600 dark:text-purple-400 text-right whitespace-nowrap bg-gray-50 dark:bg-gray-900/50 border-l-2 border-gray-300 dark:border-gray-600"
             >
-              {{ formatNumber(producto.cantidad_distribuida) }}
+              {{ formatNumberWithDecimals(producto.cantidad_distribuida, decimalPlaces) }}
             </td>
             <td
               v-if="isColumnVisible('diferencia')"
               class="sticky right-0 z-[5] px-4 py-3 text-sm font-semibold text-right whitespace-nowrap min-w-[120px] bg-gray-50 dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.2)]"
               :class="getDiferenciaClass(producto.diferencia)"
             >
-              {{ producto.diferencia > 0 ? '+' : '' }}{{ formatNumber(producto.diferencia) }}
+              {{ producto.diferencia > 0 ? '+' : '' }}{{ formatNumberWithDecimals(producto.diferencia, decimalPlaces) }}
             </td>
           </tr>
         </tbody>
@@ -266,7 +266,7 @@
                 getStickyLeftClass('total_confirmado')
               ]"
             >
-              {{ formatNumber(totalesConfirmado) }}
+              {{ formatNumberWithDecimals(totalesConfirmado, decimalPlaces) }}
             </td>
             <td
               v-if="isColumnVisible('costo_unitario')"
@@ -282,20 +282,20 @@
               :key="`total-${tienda.codigo}`"
               class="px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white text-right"
             >
-              {{ formatNumber(getTotalTienda(tienda.codigo)) }}
+              {{ formatNumberWithDecimals(getTotalTienda(tienda.codigo), decimalPlaces) }}
             </td>
             <td
               v-if="isColumnVisible('total_distribuido')"
               class="px-4 py-3 text-sm font-bold text-purple-600 dark:text-purple-400 text-right border-l-2 border-gray-300 dark:border-gray-600"
             >
-              {{ formatNumber(totalesDistribuido) }}
+              {{ formatNumberWithDecimals(totalesDistribuido, decimalPlaces) }}
             </td>
             <td
               v-if="isColumnVisible('diferencia')"
               class="sticky right-0 z-[5] px-4 py-3 text-sm font-bold text-right min-w-[120px] bg-gray-100 dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.08)] dark:shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.25)]"
               :class="getDiferenciaClass(totalesDiferencia)"
             >
-              {{ totalesDiferencia > 0 ? '+' : '' }}{{ formatNumber(totalesDiferencia) }}
+              {{ totalesDiferencia > 0 ? '+' : '' }}{{ formatNumberWithDecimals(totalesDiferencia, decimalPlaces) }}
             </td>
           </tr>
         </tfoot>
@@ -327,7 +327,7 @@
 import { computed, ref, watch, type Ref } from '@vue/reactivity'
 import { onMounted, onUnmounted } from '@vue/runtime-core'
 import type { ProductoRedistribucion, DistribucionTiendaEditada } from '../utils/redistribucionHelpers'
-import { formatNumber, formatCurrency, type ColumnConfig } from '../utils/formatters'
+import { formatNumberWithDecimals, formatCurrency, type ColumnConfig } from '../utils/formatters'
 import { getDiferenciaClass } from '../utils/styleHelpers'
 import { useTablePreferences } from '@/composables/useTablePreferences'
 
@@ -336,6 +336,8 @@ interface Props {
   showTotals?: boolean
   /** Si true, las celdas de cantidad son solo lectura */
   soloLectura?: boolean
+  /** Número de decimales a mostrar en cantidades (0-4). Por defecto 2. */
+  decimalPlaces?: number
   columnasModificadas?: Ref<Set<string>>
   pedido?: any
 }
@@ -347,13 +349,19 @@ interface Emits {
 
 const props = withDefaults(defineProps<Props>(), {
   showTotals: true,
-  soloLectura: false
+  soloLectura: false,
+  decimalPlaces: 2
 })
 
 const emit = defineEmits<Emits>()
 
 // Computed para obtener productos como array (ya que viene como Ref)
 const productosArray = computed(() => props.productos.value || [])
+
+/** Para cantidades decimales: considerar "completo" cuando la diferencia es redondeo (tolerancia 1e-6) */
+function cercaDeCeroDiferencia(val: number): boolean {
+  return Math.abs(val) < 1e-6
+}
 
 /**
  * ⭐ Computed que mapea cada producto a si tiene modificaciones
@@ -646,10 +654,13 @@ const tiendasUnicas = computed(() => {
   return tiendasOrdenadas
 })
 
-// Obtener cantidad de una tienda específica para un producto
+// Obtener cantidad de una tienda específica para un producto (preserva decimales, p. ej. 0.5)
 function getCantidadTienda(producto: ProductoRedistribucion, tiendaCodigo: string): number {
   const tienda = producto.distribucion_tiendas.find(t => t.tienda_codigo === tiendaCodigo)
-  return tienda?.cantidad_asignada || 0
+  const v = tienda?.cantidad_asignada
+  if (v === null || v === undefined) return 0
+  const num = Number(v)
+  return Number.isNaN(num) ? 0 : num
 }
 
 // Obtener total por tienda
@@ -693,11 +704,9 @@ function getInputClass(producto: ProductoRedistribucion, tiendaCodigo: string): 
     return 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20 text-red-900 dark:text-red-200 focus:ring-red-500 dark:focus:ring-red-400'
   }
   
-  // ⭐ VALIDACIÓN VISUAL: Resaltar en rojo cuando el total exceda la cantidad confirmada
-  // Esto indica al usuario que debe corregir (ajustar bodegas o tiendas manualmente)
-  // Ya que las bodegas no se ajustan automáticamente, el usuario puede aumentar tiendas
-  // sin que se reste de las bodegas, lo que puede hacer que el total exceda lo confirmado
-  const esValido = producto.cantidad_distribuida <= producto.cantidad_confirmada
+  // ⭐ VALIDACIÓN VISUAL: Resaltar en rojo cuando el total exceda la cantidad confirmada (tolerancia 1e-6 por redondeo float)
+  const TOLERANCIA = 1e-6
+  const esValido = producto.cantidad_distribuida <= producto.cantidad_confirmada + TOLERANCIA
   
   if (esValido) {
     return 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-purple-500 dark:focus:ring-purple-400'

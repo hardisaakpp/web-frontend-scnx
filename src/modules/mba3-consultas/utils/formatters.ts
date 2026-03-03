@@ -70,13 +70,31 @@ export function formatDateTime(dateString: string | null): string {
 }
 
 /**
- * Formatea un número con separadores de miles
+ * Formatea un número con separadores de miles.
+ * Usa hasta 4 decimales cuando el valor tiene parte decimal (p. ej. 0.5 → "0,5"), para redistribución y totales.
  */
 export function formatNumber(value: number | null | undefined): string {
   // Distinguir explícitamente entre 0 y null/undefined
   if (value === null || value === undefined) return 'N/A'
   // El valor 0 es válido y debe mostrarse como "0"
-  return new Intl.NumberFormat('es-ES').format(value)
+  const hasDecimals = value % 1 !== 0
+  return new Intl.NumberFormat('es-ES', {
+    minimumFractionDigits: hasDecimals ? 1 : 0,
+    maximumFractionDigits: 4
+  }).format(value)
+}
+
+/**
+ * Formatea un número con un número fijo de decimales (0 a 4).
+ * Útil para la vista de redistribución cuando el usuario quiere aumentar o disminuir decimales visibles.
+ */
+export function formatNumberWithDecimals(value: number | null | undefined, decimals: number): string {
+  if (value === null || value === undefined) return 'N/A'
+  const d = Math.max(0, Math.min(4, Math.round(decimals)))
+  return new Intl.NumberFormat('es-ES', {
+    minimumFractionDigits: d,
+    maximumFractionDigits: d
+  }).format(value)
 }
 
 /**
