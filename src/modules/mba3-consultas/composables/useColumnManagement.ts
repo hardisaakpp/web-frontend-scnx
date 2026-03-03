@@ -174,9 +174,7 @@ export function useColumnManagement(
       }
       
       // Redondear a 4 decimales para evitar ruido de punto flotante (alineado con backend)
-      if (fieldType !== 'comentario') {
-        newValue = Math.round(newValue * 1e4) / 1e4
-      }
+      newValue = Math.round(newValue * 1e4) / 1e4
       
       // Validar rangos razonables
       if (fieldType === 'costo' && newValue > 1000000) {

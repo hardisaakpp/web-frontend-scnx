@@ -15,6 +15,7 @@ export default defineConfig({
   },
   // Configuración del servidor de desarrollo (solo se usa en desarrollo)
   server: {
+    host: '0.0.0.0',
     port: 3000,
     proxy: {
       // MBA3 Consultas (ODC SAP, plantillas, pedidos, etc.) → backend local :8000 (evita CORS en dev).
