@@ -129,7 +129,7 @@
         <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Decimales:</span>
         <div class="inline-flex rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 p-0.5">
           <button
-            v-for="d in [0, 1, 2, 3, 4]"
+            v-for="d in [0, 1]"
             :key="d"
             type="button"
             @click="decimalPlaces = d"
