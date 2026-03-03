@@ -527,23 +527,29 @@ export function useRedistribucion(options: {
     const target = event.target as HTMLInputElement
     // Aceptar coma como separador decimal (p. ej. "2,5" → 2.5)
     const raw = (target.value || '').toString().replace(',', '.')
+    // Si el usuario está escribiendo un decimal (p. ej. "2." o "2,"), no actualizar el modelo aún para no perder el punto.
+    // En blur sí commitear (p. ej. "2." → 2).
+    if ((raw.endsWith('.') || raw.endsWith(',')) && (event as FocusEvent).type !== 'blur') {
+      target.value = raw.replace(',', '.')
+      return
+    }
     let nuevoValor = parseFloat(raw) || 0
-    
+
     const producto = productosRedistribucion.value.find(p => p.codigo_producto === codigoProducto)
     if (!producto) return
-    
+
     // ⭐ VALIDACIÓN: Validar formato del código de tienda
     if (!tiendaCodigo || typeof tiendaCodigo !== 'string' || tiendaCodigo.trim().length === 0) {
       toast.warning('Código de tienda inválido', 'El código de tienda no puede estar vacío')
       return
     }
-    
+
     // Buscar la tienda existente
     let tienda = producto.distribucion_tiendas.find(t => t.tienda_codigo === tiendaCodigo)
-    
+
     // Guardar valor anterior para calcular diferencia
     const valorAnterior = tienda?.cantidad_asignada || 0
-    
+
     // ⭐ Si la tienda no existe, crearla automáticamente
     if (!tienda) {
       const nombreTienda = obtenerNombreTienda(tiendaCodigo)
@@ -557,7 +563,7 @@ export function useRedistribucion(options: {
       }
       producto.distribucion_tiendas.push(tienda)
     }
-    
+
     // ⭐ Validar y corregir valor (se permiten decimales, p. ej. 0.5)
     if (isNaN(nuevoValor) || nuevoValor < 0) {
       target.value = '0'

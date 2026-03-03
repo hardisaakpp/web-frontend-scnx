@@ -484,7 +484,8 @@
                                 @blur="validarYCorregirCantidad(producto, tienda)"
                                 min="0"
                                 max="1000000"
-                                step="any"
+                                step="0.0001"
+                                inputmode="decimal"
                                 class="w-full max-w-[120px] ml-auto px-3 py-2 text-sm text-right border rounded-lg focus:outline-none focus:ring-2 transition-colors"
                                 :class="validarCantidadTiendaLocal(producto, tienda) 
                                   ? 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-purple-500 dark:focus:ring-purple-400' 
@@ -650,7 +651,7 @@ interface Props {
 interface Emits {
   (e: 'toggle-expandir-producto', codigoProducto: string): void
   (e: 'actualizar-cantidad-tienda', codigoProducto: string, tiendaCodigo: string, event: Event): void
-  (e: 'validar-y-corregir-cantidad', producto: ProductoRedistribucion, tienda: DistribucionTiendaEditada): void
+  (e: 'validar-y-corregir-cantidad', producto: ProductoRedistribucion, tienda: DistribucionTiendaEditada, event?: Event): void
   (e: 'distribuir-proporcionalmente', codigoProducto: string): void
   (e: 'copiar-distribucion-original', codigoProducto: string): void
   (e: 'resetear-distribucion', codigoProducto: string): void
@@ -925,7 +926,11 @@ function handleActualizarCantidadTienda(codigoProducto: string, tiendaCodigo: st
   actualizarCantidadTienda(codigoProducto, tiendaCodigo, event)
 }
 
-function handleValidarYCorregirCantidad(producto: ProductoRedistribucion, tienda: DistribucionTiendaEditada) {
+function handleValidarYCorregirCantidad(producto: ProductoRedistribucion, tienda: DistribucionTiendaEditada, event?: Event) {
+  // Al hacer blur, commitear primero el valor del input (p. ej. "2." → 2) para que se actualice el modelo
+  if (event) {
+    actualizarCantidadTienda(producto.codigo_producto, tienda.tienda_codigo, event)
+  }
   validarYCorregirCantidad(producto, tienda)
 }
 

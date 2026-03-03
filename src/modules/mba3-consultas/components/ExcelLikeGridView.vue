@@ -207,12 +207,14 @@
                 type="number"
                 :value="getCantidadTienda(producto, tienda.codigo)"
                 @input="handleCantidadChange(producto, tienda.codigo, $event)"
-                @blur="handleBlur(producto, tienda.codigo)"
+                @blur="handleBlur(producto, tienda.codigo, $event)"
                 min="0"
-                step="any"
+                step="0.0001"
+                inputmode="decimal"
                 class="w-full max-w-[100px] ml-auto px-2 py-1.5 text-sm text-right border rounded focus:outline-none focus:ring-2 transition-colors"
                 :class="getInputClass(producto, tienda.codigo)"
                 placeholder="0"
+                title="Cantidad (se permiten decimales, ej. 2,5)"
               />
               <span v-else class="block w-full max-w-[100px] ml-auto px-2 py-1.5 text-sm text-right text-gray-900 dark:text-white">
                 {{ formatNumberWithDecimals(getCantidadTienda(producto, tienda.codigo), decimalPlaces) }}
@@ -344,7 +346,7 @@ interface Props {
 
 interface Emits {
   (e: 'actualizar-cantidad-tienda', codigoProducto: string, tiendaCodigo: string, event: Event): void
-  (e: 'validar-y-corregir-cantidad', producto: ProductoRedistribucion, tienda: DistribucionTiendaEditada): void
+  (e: 'validar-y-corregir-cantidad', producto: ProductoRedistribucion, tienda: DistribucionTiendaEditada, event?: Event): void
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -722,10 +724,10 @@ function handleCantidadChange(producto: ProductoRedistribucion, tiendaCodigo: st
 }
 
 // Handler para blur (validar y corregir)
-function handleBlur(producto: ProductoRedistribucion, tiendaCodigo: string) {
+function handleBlur(producto: ProductoRedistribucion, tiendaCodigo: string, event?: Event) {
   const tienda = producto.distribucion_tiendas.find(t => t.tienda_codigo === tiendaCodigo)
   if (tienda) {
-    emit('validar-y-corregir-cantidad', producto, tienda)
+    emit('validar-y-corregir-cantidad', producto, tienda, event)
   }
 }
 
