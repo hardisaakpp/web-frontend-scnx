@@ -209,7 +209,7 @@
                 @input="handleCantidadChange(producto, tienda.codigo, $event)"
                 @blur="handleBlur(producto, tienda.codigo, $event)"
                 min="0"
-                step="0.0001"
+                :step="stepParaDecimales"
                 inputmode="decimal"
                 class="w-full max-w-[100px] ml-auto px-2 py-1.5 text-sm text-right border rounded focus:outline-none focus:ring-2 transition-colors"
                 :class="getInputClass(producto, tienda.codigo)"
@@ -356,6 +356,11 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const emit = defineEmits<Emits>()
+
+/** Step del input según decimales seleccionados: 0→1, 1→0.1, 2→0.01, 3→0.001, 4→0.0001 */
+const stepParaDecimales = computed(() =>
+  props.decimalPlaces === 0 ? 1 : Math.pow(10, -props.decimalPlaces)
+)
 
 // Computed para obtener productos como array (ya que viene como Ref)
 const productosArray = computed(() => props.productos.value || [])

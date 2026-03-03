@@ -484,7 +484,7 @@
                                 @blur="validarYCorregirCantidad(producto, tienda)"
                                 min="0"
                                 max="1000000"
-                                step="0.0001"
+                                :step="stepParaCantidad"
                                 inputmode="decimal"
                                 class="w-full max-w-[120px] ml-auto px-3 py-2 text-sm text-right border rounded-lg focus:outline-none focus:ring-2 transition-colors"
                                 :class="validarCantidadTiendaLocal(producto, tienda) 
@@ -668,6 +668,11 @@ const modoVista = ref<'compacta' | 'excel'>('excel')
 
 /** Número de decimales a mostrar en cantidades (0-4). Aumentar o disminuir en vista Matriz. */
 const decimalPlaces = ref(2)
+
+/** Step del input de cantidad según decimales: 0→1, 1→0.1, 2→0.01, 3→0.001, 4→0.0001 */
+const stepParaCantidad = computed(() =>
+  decimalPlaces.value === 0 ? 1 : Math.pow(10, -decimalPlaces.value)
+)
 
 // ⭐ Gestión de columnas visibles en la tabla
 const showColumnSelector = ref(false)
