@@ -173,8 +173,12 @@ export function useColumnManagement(
         return
       }
       
-      // Redondear a 4 decimales para evitar ruido de punto flotante (alineado con backend)
-      newValue = Math.round(newValue * 1e4) / 1e4
+      // Total: solo múltiplos de 0.5 (0, 0.5, 1, 1.5, 2…). Costo: 4 decimales.
+      if (isTotal) {
+        newValue = Math.round(newValue * 2) / 2
+      } else {
+        newValue = Math.round(newValue * 1e4) / 1e4
+      }
       
       // Validar rangos razonables
       if (fieldType === 'costo' && newValue > 1000000) {
@@ -342,7 +346,8 @@ export function useColumnManagement(
   }
 
   /**
-   * Maneja las teclas durante la edición (Enter para guardar, Escape para cancelar)
+   * Maneja las teclas durante la edición (Enter para guardar, Escape para cancelar).
+   * Para TOTAL: solo permite dígitos (no punto ni coma); valores con decimales se hacen con las flechas del input.
    */
   function manejarTeclasEdicion(event: KeyboardEvent) {
     if (event.key === 'Enter') {
@@ -351,6 +356,12 @@ export function useColumnManagement(
     } else if (event.key === 'Escape') {
       event.preventDefault()
       cancelarEdicion()
+    } else if (editingCell.value?.fieldType === 'total') {
+      // Solo permitir dígitos 0-9 y teclas de control (no punto, coma, e, -, +)
+      const allowedKeys = ['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', 'Home', 'End']
+      if (allowedKeys.includes(event.key)) return
+      if (/^[0-9]$/.test(event.key)) return
+      event.preventDefault()
     }
   }
 

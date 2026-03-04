@@ -482,17 +482,18 @@
                                 :value="cantidadAsignadaNumero(tienda)"
                                 @input="actualizarCantidadTienda(producto.codigo_producto, tienda.tienda_codigo, $event)"
                                 @blur="validarYCorregirCantidad(producto, tienda)"
+                                @keydown="bloquearTeclasNoNumerosCantidad($event)"
                                 min="0"
                                 max="1000000"
-                                :step="stepParaCantidad"
-                                inputmode="decimal"
+                                step="0.5"
+                                inputmode="numeric"
                                 class="w-full max-w-[120px] ml-auto px-3 py-2 text-sm text-right border rounded-lg focus:outline-none focus:ring-2 transition-colors"
                                 :class="validarCantidadTiendaLocal(producto, tienda) 
                                   ? 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-purple-500 dark:focus:ring-purple-400' 
                                   : 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20 text-red-900 dark:text-red-200 focus:ring-red-500 dark:focus:ring-red-400'"
                                 placeholder="0"
                                 :title="validarCantidadTiendaLocal(producto, tienda) 
-                                  ? `Cantidad válida (máximo: ${formatNumber(producto.cantidad_confirmada)})` 
+                                  ? `Solo múltiplos de 0,5. Máximo: ${formatNumber(producto.cantidad_confirmada)}` 
                                   : 'Cantidad inválida: excede el total confirmado o límite máximo'"
                               />
                               <span v-else class="block w-full max-w-[120px] ml-auto px-3 py-2 text-sm text-right text-gray-900 dark:text-white">
@@ -666,13 +667,8 @@ const emit = defineEmits<Emits>()
 // Estado para el modo de vista
 const modoVista = ref<'compacta' | 'excel'>('excel')
 
-/** Número de decimales a mostrar en cantidades (0-4). Aumentar o disminuir en vista Matriz. */
-const decimalPlaces = ref(2)
-
-/** Step del input de cantidad según decimales: 0→1, 1→0.1, 2→0.01, 3→0.001, 4→0.0001 */
-const stepParaCantidad = computed(() =>
-  decimalPlaces.value === 0 ? 1 : Math.pow(10, -decimalPlaces.value)
-)
+/** Número de decimales a mostrar en cantidades (solo 0 o 1). Por defecto 1. No aplica a la columna Precio. */
+const decimalPlaces = ref(1)
 
 // ⭐ Gestión de columnas visibles en la tabla
 const showColumnSelector = ref(false)
@@ -948,6 +944,14 @@ const TOLERANCIA_SUMA = 1e-6
 /** Para cantidades decimales: considerar "completo" cuando la diferencia es redondeo (evitar falsos negativos) */
 function cercaDeCero(val: number): boolean {
   return Math.abs(val) < TOLERANCIA_SUMA
+}
+
+/** Bloquea punto, coma, e, E, - y + en inputs de cantidad (solo múltiplos de 0,5; decimales con flechas). */
+function bloquearTeclasNoNumerosCantidad(event: KeyboardEvent) {
+  const allowed = ['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', 'Home', 'End']
+  if (allowed.includes(event.key)) return
+  if (/^[0-9]$/.test(event.key)) return
+  event.preventDefault()
 }
 
 /** Valor numérico de cantidad_asignada para el input (preserva decimales, p. ej. 0.5) */

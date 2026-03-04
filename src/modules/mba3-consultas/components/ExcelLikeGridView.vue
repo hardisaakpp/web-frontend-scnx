@@ -208,13 +208,14 @@
                 :value="getCantidadTienda(producto, tienda.codigo)"
                 @input="handleCantidadChange(producto, tienda.codigo, $event)"
                 @blur="handleBlur(producto, tienda.codigo, $event)"
+                @keydown="bloquearTeclasNoNumerosCantidad($event)"
                 min="0"
-                :step="stepParaDecimales"
-                inputmode="decimal"
+                step="0.5"
+                inputmode="numeric"
                 class="w-full max-w-[100px] ml-auto px-2 py-1.5 text-sm text-right border rounded focus:outline-none focus:ring-2 transition-colors"
                 :class="getInputClass(producto, tienda.codigo)"
                 placeholder="0"
-                title="Cantidad (se permiten decimales, ej. 2,5)"
+                title="Solo múltiplos de 0,5. Escriba números; use flechas para 0,5, 1,5…"
               />
               <span v-else class="block w-full max-w-[100px] ml-auto px-2 py-1.5 text-sm text-right text-gray-900 dark:text-white">
                 {{ formatNumberWithDecimals(getCantidadTienda(producto, tienda.codigo), decimalPlaces) }}
@@ -338,7 +339,7 @@ interface Props {
   showTotals?: boolean
   /** Si true, las celdas de cantidad son solo lectura */
   soloLectura?: boolean
-  /** Número de decimales a mostrar en cantidades (0-4). Por defecto 2. */
+  /** Número de decimales a mostrar en cantidades (0 o 1). Por defecto 1. No aplica a la columna Precio (siempre formato moneda). */
   decimalPlaces?: number
   columnasModificadas?: Ref<Set<string>>
   pedido?: any
@@ -352,15 +353,10 @@ interface Emits {
 const props = withDefaults(defineProps<Props>(), {
   showTotals: true,
   soloLectura: false,
-  decimalPlaces: 2
+  decimalPlaces: 1
 })
 
 const emit = defineEmits<Emits>()
-
-/** Step del input según decimales seleccionados: 0→1, 1→0.1, 2→0.01, 3→0.001, 4→0.0001 */
-const stepParaDecimales = computed(() =>
-  props.decimalPlaces === 0 ? 1 : Math.pow(10, -props.decimalPlaces)
-)
 
 // Computed para obtener productos como array (ya que viene como Ref)
 const productosArray = computed(() => props.productos.value || [])
@@ -721,6 +717,14 @@ function getInputClass(producto: ProductoRedistribucion, tiendaCodigo: string): 
     // Resaltar en rojo para indicar que necesita corrección
     return 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20 text-red-900 dark:text-red-200 focus:ring-red-500 dark:focus:ring-red-400'
   }
+}
+
+/** Bloquea punto, coma, e, E, - y + en inputs de cantidad (solo múltiplos de 0,5; decimales con flechas). */
+function bloquearTeclasNoNumerosCantidad(event: KeyboardEvent) {
+  const allowed = ['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', 'Home', 'End']
+  if (allowed.includes(event.key)) return
+  if (/^[0-9]$/.test(event.key)) return
+  event.preventDefault()
 }
 
 // Handler para cambio de cantidad

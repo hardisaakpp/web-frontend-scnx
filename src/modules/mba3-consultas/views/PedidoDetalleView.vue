@@ -319,11 +319,13 @@
                         :data-editing-cell="detalle.pedido_detalle_id"
                         v-model="editingCell.value"
                         type="number"
-                        :step="editingCell.fieldType === 'total' ? 'any' : '0.01'"
+                        :step="editingCell.fieldType === 'total' ? '0.5' : '0.01'"
+                        :inputmode="editingCell.fieldType === 'total' ? 'numeric' : 'decimal'"
                         min="0"
                         @blur="guardarEdicion"
                         @keydown="manejarTeclasEdicion"
                         @click.stop
+                        :title="editingCell.fieldType === 'total' ? 'Solo múltiplos de 0,5. Escriba números; use flechas para 0,5, 1,5…' : undefined"
                         class="w-full px-2 py-1 border border-blue-500 dark:border-blue-400 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
                       />
                       <textarea

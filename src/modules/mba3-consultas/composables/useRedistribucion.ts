@@ -343,9 +343,8 @@ export function useRedistribucion(options: {
   }
 
   /**
-   * Valida cantidad al perder el foco (sin corrección automática)
-   * Solo aplica correcciones mínimas para valores inválidos (negativos, límite máximo).
-   * ⭐ Se permiten cantidades decimales (p. ej. 0.5).
+   * Valida cantidad al perder el foco.
+   * Solo múltiplos de 0.5 (0, 0.5, 1, 1.5…). Corrige negativos, máximo y redondea a 0.5.
    */
   function validarYCorregirCantidad(producto: ProductoRedistribucion, tienda: DistribucionTiendaEditada) {
     if (!tienda || !producto) return
@@ -353,19 +352,26 @@ export function useRedistribucion(options: {
     let valorCorregido = false
     let mensajeCorreccion = ''
     
+    // Redondear al múltiplo de 0.5 más cercano
+    let val = Number(tienda.cantidad_asignada)
+    if (isNaN(val)) val = 0
+    val = Math.round(val * 2) / 2
+    
     // Solo corregir valores claramente inválidos (negativos)
-    if (tienda.cantidad_asignada < 0) {
-      tienda.cantidad_asignada = 0
+    if (val < 0) {
+      val = 0
       valorCorregido = true
       mensajeCorreccion = 'Cantidad negativa corregida a 0'
     }
     
     // Validar límite máximo (protección contra valores absurdos)
-    if (tienda.cantidad_asignada > 1000000) {
-      tienda.cantidad_asignada = 1000000
+    if (val > 1000000) {
+      val = 1000000
       valorCorregido = true
       mensajeCorreccion = 'Cantidad ajustada al límite máximo (1,000,000)'
     }
+    
+    tienda.cantidad_asignada = val
     
     // ⭐ ELIMINADO: Ya NO se ajusta automáticamente cuando excede el total confirmado
     // El usuario tiene control total sobre los valores y verá el indicador visual de error
@@ -564,13 +570,13 @@ export function useRedistribucion(options: {
       producto.distribucion_tiendas.push(tienda)
     }
 
-    // ⭐ Validar y corregir valor (se permiten decimales, p. ej. 0.5)
+    // ⭐ Solo múltiplos de 0.5 (0, 0.5, 1, 1.5, 2…); validar y corregir
     if (isNaN(nuevoValor) || nuevoValor < 0) {
       target.value = '0'
       tienda.cantidad_asignada = 0
     } else {
-      // Redondear a 4 decimales para evitar ruido de punto flotante (alineado con backend)
-      nuevoValor = Math.round(nuevoValor * 1e4) / 1e4
+      // Redondear al múltiplo de 0.5 más cercano
+      nuevoValor = Math.round(nuevoValor * 2) / 2
       if (nuevoValor > 1000000) {
         nuevoValor = 1000000
         target.value = '1000000'
