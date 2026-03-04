@@ -243,6 +243,9 @@ export function useColumnManagement(
         if (response.costo_nuevo !== undefined) {
           detalle.costo_doc_sin_iva = response.costo_nuevo
         }
+        if (response.totales) {
+          pedido.value.totales = response.totales
+        }
         
         marcarColumnaModificada(detalleId, 'costo_doc_sin_iva')
         
@@ -262,6 +265,9 @@ export function useColumnManagement(
         
         if (response.total_nuevo !== undefined) {
           detalle.total = response.total_nuevo
+        }
+        if (response.totales) {
+          pedido.value.totales = response.totales
         }
         
         marcarColumnaModificada(detalleId, 'total')

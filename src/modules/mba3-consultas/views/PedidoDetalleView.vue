@@ -665,27 +665,26 @@ watch(
   { immediate: true }
 )
 
-// ⭐ NUEVO: Computed para calcular totales de la tabla
+// ⭐ Totales: usar pedido.totales del backend cuando exista; si no, recalcular desde detalles (fallback)
 const totalesCostoUnitario = computed(() => {
+  const t = pedido.value?.totales
+  if (t != null && typeof t.total_costo_unitario === 'number') return t.total_costo_unitario
   if (!pedido.value?.detalles) return 0
-  return pedido.value.detalles.reduce((sum: number, detalle: any) => {
-    return sum + (detalle.costo_doc_sin_iva || 0)
-  }, 0)
+  return pedido.value.detalles.reduce((sum: number, detalle: any) => sum + (detalle.costo_doc_sin_iva || 0), 0)
 })
 
 const totalesSubtotal = computed(() => {
+  const t = pedido.value?.totales
+  if (t != null && typeof t.total_subtotal === 'number') return t.total_subtotal
   if (!pedido.value?.detalles) return 0
-  return pedido.value.detalles.reduce((sum: number, detalle: any) => {
-    return sum + (detalle.subtotal || 0)
-  }, 0)
+  return pedido.value.detalles.reduce((sum: number, detalle: any) => sum + (detalle.subtotal || 0), 0)
 })
 
-
 const totalesTotal = computed(() => {
+  const t = pedido.value?.totales
+  if (t != null && typeof t.total_total === 'number') return t.total_total
   if (!pedido.value?.detalles) return 0
-  return pedido.value.detalles.reduce((sum: number, detalle: any) => {
-    return sum + (detalle.total || 0)
-  }, 0)
+  return pedido.value.detalles.reduce((sum: number, detalle: any) => sum + (detalle.total || 0), 0)
 })
 
 // El parámetro de ruta ahora es numero_pedido
