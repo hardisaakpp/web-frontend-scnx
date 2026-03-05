@@ -121,17 +121,17 @@
                   <!-- Resumen -->
                   <div class="mb-4 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
                     <div class="flex items-center gap-2 text-sm">
-                      <span v-if="solicitudesTransferencia.transferencias_errores === 0" class="text-green-600 dark:text-green-400 font-medium">
-                        ✅ {{ solicitudesTransferencia.transferencias_creadas }} de {{ solicitudesTransferencia.total_tiendas }} creadas exitosamente
+                      <span v-if="solicitudesTransferencia?.transferencias_errores === 0" class="text-green-600 dark:text-green-400 font-medium">
+                        ✅ {{ solicitudesTransferencia?.transferencias_creadas }} de {{ solicitudesTransferencia?.total_tiendas }} creadas exitosamente
                       </span>
                       <span v-else class="text-yellow-600 dark:text-yellow-400 font-medium">
-                        ⚠️ {{ solicitudesTransferencia.transferencias_creadas }} exitosas, {{ solicitudesTransferencia.transferencias_errores }} con errores
+                        ⚠️ {{ solicitudesTransferencia?.transferencias_creadas }} exitosas, {{ solicitudesTransferencia?.transferencias_errores }} con errores
                       </span>
                     </div>
                   </div>
 
                   <!-- Caso especial: Sin Solicitudes de Transferencia -->
-                  <div v-if="solicitudesTransferencia.total_tiendas === 0 && solicitudesTransferencia.transferencias_creadas === 0" class="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <div v-if="(solicitudesTransferencia?.total_tiendas === 0) && (solicitudesTransferencia?.transferencias_creadas === 0)" class="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800">
                     <div class="flex items-start gap-2 text-sm text-blue-800 dark:text-blue-200">
                       <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -143,9 +143,9 @@
                   </div>
 
                   <!-- Lista de Tiendas -->
-                  <div v-else-if="solicitudesTransferencia.resultados && solicitudesTransferencia.resultados.length > 0" class="space-y-2 max-h-96 overflow-y-auto">
+                  <div v-else-if="solicitudesTransferencia?.resultados?.length" class="space-y-2 max-h-96 overflow-y-auto">
                     <div
-                      v-for="(resultado, index) in solicitudesTransferencia.resultados"
+                      v-for="(resultado, index) in (solicitudesTransferencia?.resultados ?? [])"
                       :key="`${resultado.tienda_id}-${index}`"
                       class="p-3 rounded-lg border"
                       :class="resultado.success 
