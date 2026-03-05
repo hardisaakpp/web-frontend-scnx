@@ -105,6 +105,7 @@
         :generando-o-c="generandoOC"
         :confirmando="confirmando"
         :descargando-pedido="descargandoPedido"
+        :descargando-plano-mba="descargandoPlanoMba"
         :descargando-csv="descargandoCsv"
         :descargando-excel-original="descargandoExcelOriginal"
         :can-generar-o-c="canGenerarOC"
@@ -421,17 +422,6 @@
       @apply-corrections="aplicarCorreccionesYContinuar"
     />
 
-    <!-- HU-08: Modal para exportar pedido a formato MBA -->
-    <ExportarMBAModal
-      ref="exportarMBAModalRef"
-      :is-open="showExportarMBAModal"
-      :numero-pedido="numeroPedido || ''"
-      :bodega-default="pedido?.cabecera?.origen_traslado || ''"
-      :odc-default="pedido?.cabecera?.mensaje || ''"
-      @close="showExportarMBAModal = false"
-      @exportar="handleExportarMBA"
-    />
-
     <!-- Modal de confirmación: pedido confirmado (tras clic en Confirmar) -->
     <SimpleConfirmModal
       :is-open="showConfirmacionModal"
@@ -452,7 +442,7 @@ import { useToast } from '@/composables/useToast'
 import { lastNotification } from '@/composables/useNotificaciones'
 import { useTablePreferences } from '@/composables/useTablePreferences'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
-import type { PedidoCompleto, ReporteDiferenciasResponse, UploadPlantillaResponse, ExportarMBAParams, InfoArchivoPlantillaResponse } from '../types'
+import type { PedidoCompleto, ReporteDiferenciasResponse, UploadPlantillaResponse, InfoArchivoPlantillaResponse } from '../types'
 // Utilidades extraídas
 import {
   formatDate,
@@ -492,7 +482,6 @@ import PedidoHeaderActions from '../components/PedidoHeaderActions.vue'
 import PedidoCabecera from '../components/PedidoCabecera.vue'
 import RedistribucionTiendas from '../components/RedistribucionTiendas.vue'
 import UploadErrorModal from '../components/UploadErrorModal.vue'
-import ExportarMBAModal from '../components/ExportarMBAModal.vue'
 import SimpleConfirmModal from '../components/SimpleConfirmModal.vue'
 
 // Constantes de configuración
@@ -507,9 +496,8 @@ const toast = useToast()
 
 const pedido = ref<PedidoCompleto | null>(null)
 
-// ⭐ HU-08: Estado del modal de exportación MBA
-const showExportarMBAModal = ref(false)
-const exportarMBAModalRef = ref<InstanceType<typeof ExportarMBAModal> | null>(null)
+// ⭐ HU-08: Descarga directa del archivo plano MBA (sin modal)
+const descargandoPlanoMba = ref(false)
 
 // Modal de confirmación tras "Confirmar" (pedido confirmado)
 const showConfirmacionModal = ref(false)
@@ -1424,49 +1412,31 @@ async function handleCancelarPorElRayo() {
   }
 }
 
-// ⭐ HU-08: Función para abrir el modal de exportación MBA
-function handleDescargarPlanoMba() {
+// ⭐ HU-08: Descarga directa del archivo plano MBA (un clic, sin modal)
+async function handleDescargarPlanoMba() {
   if (!pedido.value || !numeroPedido.value) {
     toast.error('Error', 'No hay pedido seleccionado')
     return
   }
-  showExportarMBAModal.value = true
-}
-
-// ⭐ HU-08: Función para ejecutar la exportación con los parámetros del modal
-async function handleExportarMBA(params: ExportarMBAParams) {
-  if (!pedido.value || !numeroPedido.value) {
-    toast.error('Error', 'No hay pedido seleccionado')
-    return
-  }
-  
-  // Indicar al modal que está exportando
-  exportarMBAModalRef.value?.setExportando(true)
-  
+  if (descargandoPlanoMba.value) return
+  descargandoPlanoMba.value = true
   try {
-    toast.info('Generando archivo...', 'Preparando descarga del pedido en formato MBA')
-    
-    const blob = await mba3ConsultasService.exportarPedidoPlanoMba(numeroPedido.value, params.formato || 'txt')
-    
-    // Crear URL del blob y descargar
+    const blob = await mba3ConsultasService.exportarPedidoPlanoMba(numeroPedido.value, 'txt')
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    // Nombre del archivo: pedido_mba_{numero_pedido}_{fecha}.txt
     const nombreArchivo = `pedido_mba_${numeroPedido.value.replace(/[^a-zA-Z0-9.-]/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`
     a.download = nombreArchivo
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
-    
     toast.success('Descarga completada', 'El archivo se ha descargado correctamente')
-    showExportarMBAModal.value = false
   } catch (e: any) {
     console.error('Error al descargar pedido plano:', e)
     toast.error('Error al descargar', e.message || 'No se pudo descargar el archivo')
   } finally {
-    exportarMBAModalRef.value?.setExportando(false)
+    descargandoPlanoMba.value = false
   }
 }
 
