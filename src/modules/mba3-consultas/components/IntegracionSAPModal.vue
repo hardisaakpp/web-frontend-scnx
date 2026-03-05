@@ -103,15 +103,21 @@
                   </div>
                 </div>
 
-                <!-- Sección 2: Solicitudes de Transferencia (ITR) -->
-                <div v-if="solicitudesTransferencia" class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                <!-- Sección 2: Solicitudes de Transferencia (ITR) - oculta momentáneamente (quitar v-if para mostrar) -->
+                <div v-if="false" class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
                   <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
                     <svg class="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                     </svg>
                     Solicitudes de Transferencia (ITR)
                   </h3>
-                  
+
+                  <!-- Sin datos de solicitudes -->
+                  <div v-if="!solicitudesTransferencia" class="p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400">
+                    No hay información de Solicitudes de Transferencia para este resultado.
+                  </div>
+
+                  <template v-else>
                   <!-- Resumen -->
                   <div class="mb-4 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
                     <div class="flex items-center gap-2 text-sm">
@@ -191,6 +197,7 @@
                       </div>
                     </div>
                   </div>
+                  </template>
                 </div>
               </div>
 

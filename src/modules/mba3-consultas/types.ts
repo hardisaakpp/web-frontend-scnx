@@ -209,6 +209,7 @@ export interface IntegracionSAPResponse {
   metadata?: {
     detalles?: IntegracionSAPDetalle[]
     pedidos_cerrados?: PedidoCerrado[]  // ⭐ Opcional (Fase 6) - Pedidos que se cerraron después de enviar ODC
+    solicitudes_transferencia?: SolicitudesTransferencia  // Algunos backends envían ITR a nivel metadata
     [key: string]: any
   }
   [key: string]: any
