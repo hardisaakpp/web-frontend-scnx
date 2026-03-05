@@ -363,7 +363,7 @@
                       <!-- Dejar vacío para la columna de numeración -->
                     </template>
                     <template v-else-if="column.key === 'costo_doc_sin_iva'">
-                      {{ formatCurrency(totalesCostoUnitario) }}
+                      {{ formatCurrencyWithDecimals(totalesCostoUnitario, 4) }}
                     </template>
                     <template v-else-if="column.key === 'subtotal'">
                       {{ formatNumber(totalesSubtotal) }}
@@ -458,6 +458,7 @@ import {
   formatDate,
   formatNumber,
   formatCurrency,
+  formatCurrencyWithDecimals,
   formatPorcentaje,
   formatEstadoPedido,
   formatColumnValue,

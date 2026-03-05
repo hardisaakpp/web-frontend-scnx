@@ -328,10 +328,10 @@
                           {{ detalle.unidad_sap }}
                         </td>
                         <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 dark:text-white">
-                          {{ formatCurrency(detalle.precio_unitario) }}
+                          {{ formatCurrencyWithDecimals(detalle.precio_unitario, 4) }}
                         </td>
                         <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-medium text-gray-900 dark:text-white">
-                          {{ formatCurrency(detalle.total_linea) }}
+                          {{ formatCurrencyWithDecimals(detalle.total_linea, 4) }}
                         </td>
                       </tr>
                       <!-- Fila de totales -->
@@ -340,7 +340,7 @@
                           Total:
                         </td>
                         <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 dark:text-white">
-                          {{ formatCurrency(getTotalDetalles(oc.oc_id)) }}
+                          {{ formatCurrencyWithDecimals(getTotalDetalles(oc.oc_id), 4) }}
                         </td>
                       </tr>
                     </tbody>
@@ -368,7 +368,7 @@ import type { OrdenCompra, DetalleOC } from '../types'
 import { useToast } from '@/composables/useToast'
 import { useTablePreferences } from '@/composables/useTablePreferences'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
-import { formatNumber, formatCurrency } from '../utils/formatters'
+import { formatNumber, formatCurrencyWithDecimals } from '../utils/formatters'
 
 const props = defineProps<{
   ordenesCompra: OrdenCompra[]

@@ -192,7 +192,7 @@
                   : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white'
               ]"
             >
-              {{ producto.costo_unitario ? formatCurrency(producto.costo_unitario) : '-' }}
+              {{ producto.costo_unitario != null ? formatCurrencyWithDecimals(producto.costo_unitario, 4) : '-' }}
             </td>
             
             <!-- Celdas de tiendas (editables): resaltar según diferencia del producto -->
@@ -278,7 +278,7 @@
                 getStickyLeftClass('costo_unitario')
               ]"
             >
-              {{ formatCurrency(totalesCostoUnitario) }}
+              {{ formatCurrencyWithDecimals(totalesCostoUnitario, 4) }}
             </td>
             <td
               v-for="tienda in tiendasUnicas"
@@ -330,7 +330,7 @@
 import { computed, ref, watch, type Ref } from '@vue/reactivity'
 import { onMounted, onUnmounted } from '@vue/runtime-core'
 import type { ProductoRedistribucion, DistribucionTiendaEditada } from '../utils/redistribucionHelpers'
-import { formatNumberWithDecimals, formatCurrency, type ColumnConfig } from '../utils/formatters'
+import { formatNumberWithDecimals, formatCurrencyWithDecimals, type ColumnConfig } from '../utils/formatters'
 import { getDiferenciaClass } from '../utils/styleHelpers'
 import { useTablePreferences } from '@/composables/useTablePreferences'
 

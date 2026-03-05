@@ -98,7 +98,7 @@ export function formatNumberWithDecimals(value: number | null | undefined, decim
 }
 
 /**
- * Formatea un número como moneda USD
+ * Formatea un número como moneda USD (2 decimales por defecto)
  */
 export function formatCurrency(value: number | null | undefined): string {
   // Distinguir explícitamente entre 0 y null/undefined
@@ -107,6 +107,21 @@ export function formatCurrency(value: number | null | undefined): string {
   return new Intl.NumberFormat('es-ES', {
     style: 'currency',
     currency: 'USD'
+  }).format(value)
+}
+
+/**
+ * Formatea un número como moneda USD con hasta N decimales.
+ * Útil para columna COSTO UNIT. en Productos del pedido (hasta 4 decimales).
+ */
+export function formatCurrencyWithDecimals(value: number | null | undefined, maxFractionDigits: number = 4): string {
+  if (value === null || value === undefined) return 'N/A'
+  const digits = Math.max(0, Math.min(4, Math.round(maxFractionDigits)))
+  return new Intl.NumberFormat('es-ES', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: digits
   }).format(value)
 }
 
@@ -229,6 +244,10 @@ export function formatColumnValue(detalle: any, column: ColumnConfig, index?: nu
   // Nota: El valor 0 pasará por aquí y se formateará correctamente
   switch (column.format) {
     case 'currency':
+      // Columna COSTO UNIT. (costo_doc_sin_iva): hasta 4 decimales
+      if (column.key === 'costo_doc_sin_iva') {
+        return formatCurrencyWithDecimals(value, 4)
+      }
       return formatCurrency(value)
     case 'number':
       return formatNumber(value)
