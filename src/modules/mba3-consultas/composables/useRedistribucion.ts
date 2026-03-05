@@ -31,12 +31,24 @@ export function useRedistribucion(options: {
   const confirmandoRedistribucion = ref(false)
 
   /**
+   * Ordena productos por referencia (codigo_producto) y opcionalmente por pedido_detalle_id.
+   * Alinea con el orden que devuelve el backend en redistribución (inicial, borrador, solo lectura).
+   */
+  function ordenarProductosPorReferencia(productos: ProductoRedistribucion[]): ProductoRedistribucion[] {
+    return [...productos].sort((a, b) => {
+      const cmp = (a.codigo_producto || '').localeCompare(b.codigo_producto || '', undefined, { sensitivity: 'base' })
+      if (cmp !== 0) return cmp
+      return (a.pedido_detalle_id || '').localeCompare(b.pedido_detalle_id || '', undefined, { sensitivity: 'base' })
+    })
+  }
+
+  /**
    * Mapea la respuesta de GET /api/pedidos/{pedido_id}/distribucion a ProductoRedistribucion[].
    * Opcionalmente toma costo y flags de pedido.respuesta_proveedor si existe.
    */
   function mapDistribucionResponseToProductos(data: DistribucionPedidoResponse): ProductoRedistribucion[] {
     const detallesRespuesta = options.pedido.value?.respuesta_proveedor?.detalles ?? []
-    return data.productos.map(p => {
+    const result = data.productos.map(p => {
       const detalleRespuesta = detallesRespuesta.find(d => d.codigo_producto === p.codigo_interno)
       const costo = detalleRespuesta?.costo_doc_sin_iva_ajustado ?? detalleRespuesta?.costo_doc_sin_iva_original ?? null
       const distribucion_tiendas: DistribucionTiendaEditada[] = (p.distribuciones ?? []).map(d => {
@@ -67,6 +79,7 @@ export function useRedistribucion(options: {
         total_modificado_manual: detalleRespuesta?.total_modificado_manual ?? false
       }
     })
+    return ordenarProductosPorReferencia(result)
   }
 
   /**
@@ -77,8 +90,8 @@ export function useRedistribucion(options: {
       productosRedistribucion.value = []
       return
     }
-    
-    productosRedistribucion.value = options.pedido.value.respuesta_proveedor.detalles.map(detalle => {
+
+    const mapped = options.pedido.value.respuesta_proveedor.detalles.map(detalle => {
       // Obtener distribución original desde pedido.detalles si existe
       const detallePedido = options.pedido.value?.detalles.find(
         d => d.codigo_interno === detalle.codigo_producto
@@ -137,7 +150,8 @@ export function useRedistribucion(options: {
         total_modificado_manual: detalle.total_modificado_manual || false
       }
     })
-    
+    productosRedistribucion.value = ordenarProductosPorReferencia(mapped)
+
     // Recalcular diferencias iniciales
     recalcularDiferencias()
   }
@@ -146,7 +160,7 @@ export function useRedistribucion(options: {
    * Mapea ajustes_detalle (BorradorResponse de GET .../redistribucion/inicial?solo_lectura=1) a ProductoRedistribucion[].
    */
   function mapAjustesDetalleToProductos(ajustes: AjusteDetalle[]): ProductoRedistribucion[] {
-    return ajustes.map(a => {
+    const result = ajustes.map(a => {
       const distribucion_tiendas: DistribucionTiendaEditada[] = (a.distribucion_tiendas ?? []).map(t => {
         const cantidad = t.cantidad ?? 0
         return {
@@ -172,6 +186,7 @@ export function useRedistribucion(options: {
         expandido: false
       }
     })
+    return ordenarProductosPorReferencia(result)
   }
 
   /**
