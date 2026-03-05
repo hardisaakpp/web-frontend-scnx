@@ -176,14 +176,23 @@
               </td>
               <!-- Referencia Despacho -->
               <td v-else-if="columnKey === 'referencia_despacho'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 transition-colors duration-300">
-                <button
-                  v-if="oc.referencia_despacho"
-                  @click="handleVerEnDespachos(oc.referencia_despacho)"
-                  class="font-mono px-2 py-1 text-xs font-medium rounded-full bg-violet-100 dark:bg-violet-900/50 text-violet-800 dark:text-violet-200 cursor-pointer transition-all duration-200 hover:scale-105 hover:bg-violet-200 dark:hover:bg-violet-900/70"
-                  :title="`Ver despacho: ${oc.referencia_despacho}`"
-                >
-                  {{ oc.referencia_despacho }}
-                </button>
+                <div v-if="oc.referencia_despacho" class="inline-flex items-center gap-2">
+                  <span
+                    class="font-mono px-2 py-1 text-xs font-medium rounded-full bg-violet-100 dark:bg-violet-900/50 text-violet-800 dark:text-violet-200"
+                    :title="oc.referencia_despacho"
+                  >
+                    {{ oc.referencia_despacho }}
+                  </span>
+                  <button
+                    @click="copyToClipboard(oc.referencia_despacho)"
+                    class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-300"
+                    title="Copiar referencia"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  </button>
+                </div>
                 <span v-else class="text-gray-400 dark:text-gray-500 italic transition-colors duration-300">-</span>
               </td>
               <!-- Fecha Generación -->

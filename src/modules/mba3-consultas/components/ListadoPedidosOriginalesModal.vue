@@ -57,8 +57,33 @@
           <p class="text-gray-400 dark:text-gray-500 text-sm mt-1">Los archivos Excel originales aparecerán aquí cuando se carguen plantillas</p>
         </div>
 
-        <!-- Tabla de archivos -->
-        <div v-else class="overflow-x-auto">
+        <!-- Buscador + Tabla de archivos -->
+        <div v-else class="space-y-4">
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400 dark:text-gray-500">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </span>
+            <input
+              v-model.trim="busqueda"
+              type="search"
+              placeholder="Buscar por número de pedido o nombre de archivo..."
+              class="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 dark:focus:ring-cyan-400 dark:focus:border-cyan-400"
+            />
+            <button
+              v-if="busqueda"
+              type="button"
+              @click="busqueda = ''"
+              class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              title="Limpiar búsqueda"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div class="overflow-x-auto">
           <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead class="bg-gray-50 dark:bg-gray-700/50">
               <tr>
@@ -84,14 +109,26 @@
             </thead>
             <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               <tr
-                v-for="archivo in archivos"
+                v-for="archivo in archivosFiltrados"
                 :key="archivo.archivo_id"
                 class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
               >
                 <td class="px-4 py-3 whitespace-nowrap">
-                  <span class="text-sm font-medium text-gray-900 dark:text-white">
-                    {{ archivo.numero_pedido }}
-                  </span>
+                  <div class="inline-flex items-center gap-2">
+                    <span class="text-sm font-medium text-gray-900 dark:text-white">
+                      {{ archivo.numero_pedido }}
+                    </span>
+                    <button
+                      type="button"
+                      @click="copyToClipboard(archivo.numero_pedido)"
+                      class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                      title="Copiar número de pedido"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    </button>
+                  </div>
                 </td>
                 <td class="px-4 py-3">
                   <div class="flex items-center gap-2">
@@ -130,34 +167,31 @@
                       </svg>
                       <span>Descargar</span>
                     </button>
-                    <!-- Botón Eliminar -->
-                    <button
-                      @click="confirmarEliminar(archivo)"
-                      :disabled="eliminando === archivo.archivo_id"
-                      class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Eliminar archivo"
-                    >
-                      <svg v-if="eliminando === archivo.archivo_id" class="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                      <span>Eliminar</span>
-                    </button>
                   </div>
                 </td>
               </tr>
             </tbody>
           </table>
+          </div>
+          <!-- Sin resultados de búsqueda -->
+          <div
+            v-if="busqueda && archivosFiltrados.length === 0"
+            class="text-center py-8 text-gray-500 dark:text-gray-400 text-sm"
+          >
+            No hay archivos que coincidan con "{{ busqueda }}".
+          </div>
         </div>
       </div>
 
       <!-- Footer del modal -->
       <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0">
         <div class="text-sm text-gray-500 dark:text-gray-400">
-          {{ archivos.length }} archivo(s) encontrado(s)
+          <template v-if="busqueda">
+            {{ archivosFiltrados.length }} de {{ archivos.length }} archivo(s)
+          </template>
+          <template v-else>
+            {{ archivos.length }} archivo(s) encontrado(s)
+          </template>
         </div>
         <div class="flex items-center gap-3">
           <button
@@ -226,7 +260,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from '@vue/reactivity'
+import { ref, watch, computed } from '@vue/reactivity'
 import { pedidosService } from '../services/domains/pedidos'
 import { useToast } from '@/composables/useToast'
 import type { ArchivoOriginalItem } from '../types'
@@ -248,6 +282,18 @@ const archivos = ref<ArchivoOriginalItem[]>([])
 const descargando = ref<string | null>(null)
 const eliminando = ref<string | null>(null)
 const archivoAEliminar = ref<ArchivoOriginalItem | null>(null)
+const busqueda = ref('')
+
+// Lista filtrada por buscador (número de pedido o nombre de archivo)
+const archivosFiltrados = computed(() => {
+  const q = busqueda.value.trim().toLowerCase()
+  if (!q) return archivos.value
+  return archivos.value.filter(
+    (a) =>
+      (a.numero_pedido && String(a.numero_pedido).toLowerCase().includes(q)) ||
+      (a.nombre_original && a.nombre_original.toLowerCase().includes(q))
+  )
+})
 
 // Cargar archivos cuando se abre el modal
 watch(() => props.visible, (newVal) => {
@@ -332,6 +378,15 @@ async function ejecutarEliminar() {
 
 function closeModal() {
   emit('close')
+}
+
+async function copyToClipboard(text: string) {
+  try {
+    await navigator.clipboard.writeText(String(text ?? ''))
+    toast.success('Copiado', 'Número de pedido copiado al portapapeles')
+  } catch {
+    toast.error('Error', 'No se pudo copiar')
+  }
 }
 
 // Helpers
