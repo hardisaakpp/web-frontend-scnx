@@ -81,7 +81,7 @@ export const ordenesCompraService = {
       }
 
       const url = buildUrlWithParams('/ordenes-compra/logs', params)
-      const response = await mba3Api.get<OrdenCompraLogResponse>(url)
+      const response = await mba3Api.get<OrdenCompraLogResponse>(url, { timeout: 60000 })
       return response.data
     } catch (error: any) {
       // Si el método GET no está permitido (405), intentar con POST
@@ -103,7 +103,7 @@ export const ordenesCompraService = {
             body.fecha_hasta = filters.fechaHasta
           }
 
-          const response = await mba3Api.post<OrdenCompraLogResponse>('/ordenes-compra/logs', body)
+          const response = await mba3Api.post<OrdenCompraLogResponse>('/ordenes-compra/logs', body, { timeout: 60000 })
           return response.data
         } catch (postError: any) {
           // Si POST tampoco funciona, lanzar un error más descriptivo
