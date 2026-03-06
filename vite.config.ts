@@ -32,10 +32,9 @@ export default defineConfig({
         secure: false,
         rewrite: (path) => path
       },
-      // Login y resto de /api → Core (Apps pruebas).
+      // Login y resto de /api → Core local en desarrollo
       '/api': {
-        //target: 'http://210.17.1.53:5053', // Apps pruebas / Core
-        target: 'http://192.168.2.12:8080', // Core con AD
+        target: 'http://localhost:5053', // Core local
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path

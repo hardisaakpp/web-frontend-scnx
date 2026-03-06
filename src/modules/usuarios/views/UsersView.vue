@@ -289,8 +289,26 @@ const openRoles = async (user: UserRecord) => {
       roles.value = payload.roles.map(normalizeRole).filter(Boolean)
     }
   } catch (err: unknown) {
-    const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-    rolesError.value = message || 'No se pudo cargar los roles del usuario.'
+    const axiosError = err as { response?: { status?: number; data?: { message?: string } } }
+    const status = axiosError?.response?.status
+    const message = axiosError?.response?.data?.message
+    
+    console.error('Error al cargar roles:', {
+      status,
+      message,
+      userId: id,
+      endpoint: `/Users/${id}/roles`
+    })
+    
+    if (status === 403) {
+      rolesError.value = 'No tienes permisos para ver roles de usuarios. Se requiere el rol "Admin".'
+    } else if (status === 401) {
+      rolesError.value = 'No estás autenticado. Por favor, inicia sesión nuevamente.'
+    } else if (status === 404) {
+      rolesError.value = 'Usuario no encontrado.'
+    } else {
+      rolesError.value = message || `No se pudo cargar los roles del usuario (código ${status || 'desconocido'})`
+    }
   } finally {
     rolesLoading.value = false
   }
@@ -317,8 +335,35 @@ const assignRole = async () => {
     roleToAssign.value = ''
     await openRoles({ id: selectedUserId.value })
   } catch (err: unknown) {
-    const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-    assignError.value = message || 'No se pudo asignar el rol.'
+    const axiosError = err as { response?: { status?: number; data?: { message?: string; errors?: unknown[] } } }
+    const status = axiosError?.response?.status
+    const message = axiosError?.response?.data?.message
+    const errors = axiosError?.response?.data?.errors
+    
+    console.error('Error al asignar rol:', {
+      status,
+      message,
+      errors,
+      userId: selectedUserId.value,
+      role: roleToAssign.value,
+      endpoint: `/Users/${selectedUserId.value}/roles`
+    })
+    
+    if (status === 403) {
+      assignError.value = 'No tienes permisos para asignar roles. Se requiere el rol "Admin".'
+    } else if (status === 401) {
+      assignError.value = 'No estás autenticado. Por favor, inicia sesión nuevamente.'
+    } else if (status === 400) {
+      if (errors && Array.isArray(errors)) {
+        assignError.value = `Error: ${errors.map((e: any) => e.description || e).join(', ')}`
+      } else {
+        assignError.value = message || 'Datos inválidos. Verifica que el rol existe.'
+      }
+    } else if (status === 404) {
+      assignError.value = 'Usuario no encontrado.'
+    } else {
+      assignError.value = message || `Error al asignar el rol (código ${status || 'desconocido'})`
+    }
   } finally {
     assignLoading.value = false
   }
@@ -342,8 +387,35 @@ const removeRole = async (role: string) => {
     removeSuccess.value = 'Rol eliminado correctamente.'
     await openRoles({ id: selectedUserId.value })
   } catch (err: unknown) {
-    const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-    removeError.value = message || 'No se pudo quitar el rol.'
+    const axiosError = err as { response?: { status?: number; data?: { message?: string; errors?: unknown[] } } }
+    const status = axiosError?.response?.status
+    const message = axiosError?.response?.data?.message
+    const errors = axiosError?.response?.data?.errors
+    
+    console.error('Error al remover rol:', {
+      status,
+      message,
+      errors,
+      userId: selectedUserId.value,
+      role,
+      endpoint: `/Users/${selectedUserId.value}/roles/${encodeURIComponent(role)}`
+    })
+    
+    if (status === 403) {
+      removeError.value = 'No tienes permisos para quitar roles. Se requiere el rol "Admin".'
+    } else if (status === 401) {
+      removeError.value = 'No estás autenticado. Por favor, inicia sesión nuevamente.'
+    } else if (status === 400) {
+      if (errors && Array.isArray(errors)) {
+        removeError.value = `Error: ${errors.map((e: any) => e.description || e).join(', ')}`
+      } else {
+        removeError.value = message || 'Datos inválidos. Verifica que el rol existe y está asignado al usuario.'
+      }
+    } else if (status === 404) {
+      removeError.value = 'Usuario o rol no encontrado.'
+    } else {
+      removeError.value = message || `Error al quitar el rol (código ${status || 'desconocido'})`
+    }
   } finally {
     removeLoading.value = false
   }
