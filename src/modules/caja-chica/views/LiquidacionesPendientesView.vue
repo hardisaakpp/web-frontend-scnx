@@ -1,17 +1,18 @@
 <template>
   <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <button
+      type="button"
+      class="mb-4 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 hover:underline"
+      @click="volver"
+    >
+      <span aria-hidden="true">←</span> Volver
+    </button>
     <div class="space-y-6">
       <div class="flex items-center justify-between">
         <div>
           <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Liquidaciones pendientes</h1>
           <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Solicitudes en revision y contabilidad</p>
         </div>
-        <router-link
-          class="rounded border border-gray-200 dark:border-gray-700 text-sm px-3 py-1.5"
-          to="/caja-chica"
-        >
-          Volver
-        </router-link>
       </div>
 
       <div class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-5">
@@ -70,6 +71,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import axios from 'axios'
+import { useRouter } from 'vue-router'
 
 interface LiquidacionItem {
   idLiquidacion: number
@@ -82,6 +84,11 @@ interface LiquidacionItem {
 const loading = ref(false)
 const error = ref('')
 const pendientes = ref<LiquidacionItem[]>([])
+const router = useRouter()
+
+const volver = () => {
+  router.back()
+}
 
 const cajaChicaApi = axios.create({
   baseURL: import.meta.env.VITE_CAJA_CHICA_API_URL || 'http://localhost:8080/api',

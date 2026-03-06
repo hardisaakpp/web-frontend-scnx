@@ -1,5 +1,12 @@
 <template>
   <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <button
+      type="button"
+      class="mb-4 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 hover:underline"
+      @click="volver"
+    >
+      <span aria-hidden="true">←</span> Volver
+    </button>
     <div class="space-y-4">
       <!-- Header -->
       <div>
@@ -16,5 +23,11 @@
 </template>
 
 <script setup lang="ts">
-// Vista de aprobaciones
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+
+const volver = () => {
+  router.back()
+}
 </script>

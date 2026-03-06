@@ -1,17 +1,18 @@
 <template>
   <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <button
+      type="button"
+      class="mb-4 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 hover:underline"
+      @click="volver"
+    >
+      <span aria-hidden="true">←</span> Volver
+    </button>
     <div class="space-y-6">
       <div class="flex items-center justify-between pb-4 border-b border-gray-200 dark:border-gray-600">
         <div>
           <h1 class="text-2xl font-semibold text-gray-900 dark:text-white tracking-tight">Detalle de Liquidación #{{ liquidacionId }}</h1>
           <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Agregar gastos y revisar el detalle</p>
         </div>
-        <router-link
-          class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700/50 text-gray-700 dark:text-gray-200 text-sm px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-          to="/caja-chica/liquidaciones"
-        >
-          Volver
-        </router-link>
       </div>
 
       <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm p-6">
@@ -416,7 +417,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from '@vue/runtime-core'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 
 interface CatalogoGastoItem {
@@ -449,7 +450,12 @@ interface AdjuntoItem {
 }
 
 const route = useRoute()
+const router = useRouter()
 const liquidacionId = computed(() => Number(route.params.id || 0))
+
+const volver = () => {
+  router.back()
+}
 
 const catalogoGastos = ref<CatalogoGastoItem[]>([])
 const detalles = ref<LiquidacionDetalleItem[]>([])

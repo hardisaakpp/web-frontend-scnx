@@ -1,5 +1,12 @@
 <template>
   <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <button
+      type="button"
+      class="mb-4 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 hover:underline"
+      @click="volver"
+    >
+      <span aria-hidden="true">←</span> Volver
+    </button>
     <div class="space-y-6">
       <!-- Header -->
       <div>
@@ -128,6 +135,7 @@
 import { computed, onMounted, ref } from '@vue/runtime-core'
 import axios from 'axios'
 import api from '@/services/api'
+import { useRouter } from 'vue-router'
 
 type UserRecord = Record<string, unknown>
 type AlmacenRecord = Record<string, unknown>
@@ -152,6 +160,11 @@ const selectedUserId = ref('')
 const selectedCodAlmacen = ref('')
 const filterUserId = ref('')
 const userSearch = ref('')
+const router = useRouter()
+
+const volver = () => {
+  router.back()
+}
 
 const getUserIdValue = (user: UserRecord): string => {
   const id = user.IdUsuario ?? user.idUsuario ?? user.id ?? ''

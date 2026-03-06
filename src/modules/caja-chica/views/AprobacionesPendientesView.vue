@@ -1,17 +1,18 @@
 <template>
   <div class="max-w-full mx-auto px-2 sm:px-4 lg:px-6 py-6">
+    <button
+      type="button"
+      class="mb-4 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 hover:underline"
+      @click="volver"
+    >
+      <span aria-hidden="true">←</span> Volver
+    </button>
     <div class="space-y-6">
       <div class="flex items-center justify-between pb-4 border-b border-gray-200 dark:border-gray-600">
         <div>
           <h1 class="text-2xl font-semibold text-gray-900 dark:text-white tracking-tight">Aprobaciones pendientes</h1>
           <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Pendientes por aprobar para tu usuario</p>
         </div>
-        <router-link
-          class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700/50 text-gray-700 dark:text-gray-200 text-sm px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-          to="/caja-chica"
-        >
-          Volver
-        </router-link>
       </div>
 
       <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm p-6">
@@ -467,6 +468,7 @@
 import { computed, onMounted, onBeforeUnmount, ref, watch, nextTick } from 'vue'
 import axios from 'axios'
 import { useTablePreferences } from '@/composables/useTablePreferences'
+import { useRouter } from 'vue-router'
 
 interface ColumnConfig {
   key: string
@@ -519,6 +521,11 @@ const actionError = ref('')
 const actionSuccess = ref('')
 const actionLoadingId = ref<number | null>(null)
 const pendientes = ref<AprobacionItem[]>([])
+const router = useRouter()
+
+const volver = () => {
+  router.back()
+}
 const decisions = ref<Record<number, DecisionState>>({})
 const openGroups = ref<Record<number, boolean>>({})
 const detallesByLiquidacion = ref<Record<number, DetalleItem[]>>({})

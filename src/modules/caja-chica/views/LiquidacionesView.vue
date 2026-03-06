@@ -1,5 +1,12 @@
 <template>
   <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <button
+      type="button"
+      class="mb-4 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 hover:underline"
+      @click="volver"
+    >
+      <span aria-hidden="true">←</span> Volver
+    </button>
     <div class="space-y-6">
       <!-- Header -->
       <div class="flex items-center justify-between">
@@ -7,12 +14,6 @@
           <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Liquidaciones</h1>
           <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Gestión de liquidaciones de caja chica</p>
         </div>
-        <router-link
-          class="rounded border border-gray-200 dark:border-gray-700 text-sm px-3 py-1.5"
-          to="/caja-chica"
-        >
-          Volver
-        </router-link>
       </div>
 
       <!-- Formulario -->
@@ -290,6 +291,7 @@
 import { computed, onMounted, ref, watch } from '@vue/runtime-core'
 import axios from 'axios'
 import { useAuthStore } from '@/stores/auth'
+import { useRouter } from 'vue-router'
 
 interface UsuarioAlmacenItem {
   codAlmacen: string
@@ -318,6 +320,7 @@ interface LiquidacionItem {
 }
 
 const authStore = useAuthStore()
+const router = useRouter()
 const selectedCodAlmacen = ref('')
 const nombreCustodio = ref('')
 const cedulaCustodio = ref('')
@@ -348,6 +351,10 @@ const editSuccess = ref('')
 const sendError = ref('')
 const sendSuccess = ref('')
 const sendingId = ref<number | null>(null)
+
+const volver = () => {
+  router.back()
+}
 
 const cajaChicaApi = axios.create({
   baseURL: import.meta.env.VITE_CAJA_CHICA_API_URL || 'http://localhost:8080/api',
