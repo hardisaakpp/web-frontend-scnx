@@ -45,6 +45,13 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path
+      },
+      // API del Maestro de Artículos (FastAPI o similar en puerto 8001)
+      '/maestro-api': {
+        target: 'http://localhost:8001',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/maestro-api/, '')
       }
     }
   },

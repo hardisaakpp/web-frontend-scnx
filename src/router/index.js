@@ -6,6 +6,7 @@ import MainLayout from '@/layouts/MainLayout.vue'
 import mba3ConsultasRoutes from '@/modules/mba3-consultas/router'
 import cajaChicaRoutes from '@/modules/caja-chica/router'
 import usuariosRoutes from '@/modules/usuarios/router'
+import articuloMaestroRoutes from '@/modules/articulo-maestro/router'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -29,7 +30,7 @@ const router = createRouter({
           path: 'dashboard',
           name: 'dashboard',
           component: () => import('@/views/Dashboard.vue'),
-          meta: { 
+          meta: {
             requiresAuth: true,
             permissions: []
           }
@@ -50,7 +51,7 @@ const router = createRouter({
           path: '/users',
           name: 'Users',
           component: () => import('@/views/Users.vue'),
-          meta: { 
+          meta: {
             requiresAuth: true,
             permissions: ['users.view']
           }
@@ -59,7 +60,7 @@ const router = createRouter({
           path: '/depositos',
           name: 'Depositos',
           component: () => import('@/views/Depositos.vue'),
-          meta: { 
+          meta: {
             requiresAuth: true,
             permissions: ['depositos.view']
           }
@@ -68,7 +69,7 @@ const router = createRouter({
           path: '/contabilidad',
           name: 'Contabilidad',
           component: () => import('@/views/Contabilidad.vue'),
-          meta: { 
+          meta: {
             requiresAuth: true,
             permissions: ['contabilidad.view']
           }
@@ -77,7 +78,7 @@ const router = createRouter({
           path: '/reportes',
           name: 'Reportes',
           component: () => import('@/views/Reportes.vue'),
-          meta: { 
+          meta: {
             requiresAuth: true,
             permissions: ['reportes.view']
           }
@@ -86,7 +87,7 @@ const router = createRouter({
           path: '/conciliacion',
           name: 'Conciliacion',
           component: () => import('@/modules/conciliacion/views/ConciliacionView.vue'),
-          meta: { 
+          meta: {
             requiresAuth: true,
             permissions: ['conciliacion.view']
           }
@@ -97,6 +98,8 @@ const router = createRouter({
         ...cajaChicaRoutes,
         // Usuarios / Roles / Permisos (módulo administración)
         ...usuariosRoutes,
+        // Articulo Maestro
+        ...articuloMaestroRoutes,
         {
           path: '/unauthorized',
           name: 'Unauthorized',
@@ -133,12 +136,12 @@ router.beforeEach((to, from, next) => {
     // Verificar si es admin desde userRoles
     const user = authService.getUser()
     const isAdmin = user?.roles?.includes('Admin') || false
-    
+
     if (!isAdmin) {
-      const hasPermission = requiredPermissions.some(p => 
+      const hasPermission = requiredPermissions.some(p =>
         authService.hasPermission(p)
       )
-      
+
       if (!hasPermission) {
         return next('/unauthorized')
       }

@@ -13,6 +13,7 @@ import conciliacionRoutes from '../modules/conciliacion/router'
 import usuariosRoutes from '../modules/usuarios/router'
 import mba3ConsultasRoutes from '../modules/mba3-consultas/router'
 import cajaChicaRoutes from '../modules/caja-chica/router'
+import articuloMaestroRoutes from '../modules/articulo-maestro/router'
 
 console.log('🔍 DEBUG usuariosRoutes:', usuariosRoutes)
 console.log('🔍 DEBUG cajaChicaRoutes:', cajaChicaRoutes)
@@ -62,6 +63,7 @@ const router = createRouter({
         ...usuariosRoutes,
         ...mba3ConsultasRoutes,
         ...cajaChicaRoutes,
+        ...articuloMaestroRoutes,
         {
           path: 'forbidden',
           name: 'forbidden',
@@ -82,8 +84,8 @@ if (import.meta.env.DEV) {
 // ⚠️ SECURITY: Control explícito del acceso sin autenticación
 // En producción, DEBE ser false. En desarrollo, puede ser true para facilitar testing.
 // Se puede sobrescribir con variable de entorno VITE_ALLOW_UNAUTHENTICATED=true
-const ALLOW_UNAUTHENTICATED = 
-  import.meta.env.DEV && 
+const ALLOW_UNAUTHENTICATED =
+  import.meta.env.DEV &&
   import.meta.env.VITE_ALLOW_UNAUTHENTICATED !== 'false'
 
 // Navigation guard
