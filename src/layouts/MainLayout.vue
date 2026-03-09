@@ -426,14 +426,13 @@ const logout = () => {
 
 // Función helper para verificar si el usuario tiene algún permiso de un módulo
 const hasModuleAccess = (moduleName: string): boolean => {
-  // Admin tiene acceso a todo
-  if (authStore.userRoles?.includes('Admin')) {
-    return true
-  }
-  
-  // Verificar si tiene algún permiso del módulo (modulo.*)
+  // Verificar si tiene algún permiso del módulo (modulo.*) - case insensitive
+  // No hay excepciones para Admin - debe tener permisos explícitos
   const permissions = authStore.userPermissions || []
-  return permissions.some((permission: string) => permission.startsWith(`${moduleName}.`))
+  const normalizedModule = moduleName.toLowerCase()
+  return permissions.some((permission: string) => 
+    permission.toLowerCase().startsWith(`${normalizedModule}.`)
+  )
 }
 
 // Cargar preferencias del sidebar al montar y asegurar capabilities (p. ej. tras recarga)
