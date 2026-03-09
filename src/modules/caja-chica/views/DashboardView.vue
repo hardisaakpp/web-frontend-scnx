@@ -126,7 +126,7 @@
         <router-link
           to="/caja-chica/aprobaciones-pendientes"
           class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left block"
-          v-if="canViewAprobaciones"
+          v-if="canViewAprobacionesSupervisor"
         >
           <div class="flex items-start gap-3">
             <div class="w-8 h-8 rounded bg-orange-50 dark:bg-orange-900/30 flex items-center justify-center flex-shrink-0">
@@ -144,7 +144,7 @@
         <router-link
           to="/caja-chica/aprobaciones-contabilidad"
           class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left block"
-          v-if="canViewAprobaciones"
+          v-if="canViewAprobacionesContabilidad"
         >
           <div class="flex items-start gap-3">
             <div class="w-8 h-8 rounded bg-teal-50 dark:bg-teal-900/30 flex items-center justify-center flex-shrink-0">
@@ -162,7 +162,7 @@
         <router-link
           to="/caja-chica/aprobaciones-contabilidad-historial"
           class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left block"
-          v-if="canViewAprobaciones"
+          v-if="canViewAprobacionesContabilidadHistorial"
         >
           <div class="flex items-start gap-3">
             <div class="w-8 h-8 rounded bg-cyan-50 dark:bg-cyan-900/30 flex items-center justify-center flex-shrink-0">
@@ -202,6 +202,18 @@ const canViewLiquidaciones = computed(() =>
 
 const canViewAprobaciones = computed(() =>
   authStore.hasAnyPermission(['cajachica.aprobaciones.view'])
+)
+
+const canViewAprobacionesSupervisor = computed(() =>
+  authStore.hasAnyPermission(['cajachica.aprobaciones.supervisor.view', 'cajachica.aprobaciones.supervisor.approve', 'cajachica.aprobaciones.supervisor.history'])
+)
+
+const canViewAprobacionesContabilidad = computed(() =>
+  authStore.hasAnyPermission(['cajachica.aprobaciones.contabilidad.view', 'cajachica.aprobaciones.contabilidad.approve'])
+)
+
+const canViewAprobacionesContabilidadHistorial = computed(() =>
+  authStore.hasAnyPermission(['cajachica.aprobaciones.contabilidad.history'])
 )
 
 const canViewCatalogo = computed(() =>
