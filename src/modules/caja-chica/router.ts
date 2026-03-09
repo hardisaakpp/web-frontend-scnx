@@ -18,6 +18,12 @@ const routes: RouteRecordRaw[] = [
         'cajachica.almacenes.view',
         'cajachica.catalogo.view',
         'cajachica.aprobaciones.view',
+        'cajachica.aprobaciones.supervisor.view',
+        'cajachica.aprobaciones.supervisor.approve',
+        'cajachica.aprobaciones.supervisor.history',
+        'cajachica.aprobaciones.contabilidad.view',
+        'cajachica.aprobaciones.contabilidad.approve',
+        'cajachica.aprobaciones.contabilidad.history',
         'cajachica.formas-pago.view',
         'cajachica.empresas.view',
         'cajachica.grupos-almacenes.view',
@@ -88,7 +94,7 @@ const routes: RouteRecordRaw[] = [
     meta: { 
       requiresAuth: true,
       title: 'Aprobaciones pendientes',
-      permissions: ['cajachica.aprobaciones.view']
+      permissions: ['cajachica.aprobaciones.supervisor.view']
     },
   },
   {
@@ -98,7 +104,7 @@ const routes: RouteRecordRaw[] = [
     meta: { 
       requiresAuth: true,
       title: 'Aprobaciones contabilidad',
-      permissions: ['cajachica.aprobaciones.view']
+      permissions: ['cajachica.aprobaciones.contabilidad.view']
     },
   },
   {
@@ -108,7 +114,7 @@ const routes: RouteRecordRaw[] = [
     meta: { 
       requiresAuth: true,
       title: 'Historial contabilidad',
-      permissions: ['cajachica.aprobaciones.view']
+      permissions: ['cajachica.aprobaciones.contabilidad.history']
     },
   },
   {
