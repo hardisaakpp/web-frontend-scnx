@@ -98,6 +98,16 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/caja-chica/aprobaciones-supervisor-historial',
+    name: 'caja-chica-aprobaciones-supervisor-historial',
+    component: () => import('./views/AprobacionesSupervisorHistorialView.vue'),
+    meta: { 
+      requiresAuth: true,
+      title: 'Historial supervisor',
+      permissions: ['cajachica.aprobaciones.supervisor.history']
+    },
+  },
+  {
     path: '/caja-chica/aprobaciones-contabilidad',
     name: 'caja-chica-aprobaciones-contabilidad',
     component: () => import('./views/AprobacionesContabilidadView.vue'),

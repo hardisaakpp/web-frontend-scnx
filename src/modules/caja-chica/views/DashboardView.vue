@@ -142,6 +142,24 @@
         </router-link>
 
         <router-link
+          to="/caja-chica/aprobaciones-supervisor-historial"
+          class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left block"
+          v-if="canViewAprobacionesSupervisorsHistory"
+        >
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded bg-lime-50 dark:bg-lime-900/30 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-lime-600 dark:text-lime-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-gray-900 dark:text-white text-sm">Historial supervisor</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Ver aprobaciones realizadas</div>
+            </div>
+          </div>
+        </router-link>
+
+        <router-link
           to="/caja-chica/aprobaciones-contabilidad"
           class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left block"
           v-if="canViewAprobacionesContabilidad"
@@ -206,6 +224,10 @@ const canViewAprobaciones = computed(() =>
 
 const canViewAprobacionesSupervisor = computed(() =>
   authStore.hasAnyPermission(['cajachica.aprobaciones.supervisor.view', 'cajachica.aprobaciones.supervisor.approve', 'cajachica.aprobaciones.supervisor.history'])
+)
+
+const canViewAprobacionesSupervisorsHistory = computed(() =>
+  authStore.hasAnyPermission(['cajachica.aprobaciones.supervisor.history'])
 )
 
 const canViewAprobacionesContabilidad = computed(() =>
