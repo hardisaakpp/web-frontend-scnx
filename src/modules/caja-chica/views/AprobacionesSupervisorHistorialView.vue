@@ -32,46 +32,67 @@
         <div v-else-if="historial.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
           No hay aprobaciones o rechazos registrados.
         </div>
-        <div v-else class="overflow-x-auto">
-          <table class="min-w-full text-sm">
-            <thead class="sticky top-0 z-10 bg-gray-50 dark:bg-gray-700/50 shadow-sm">
-              <tr class="text-left text-xs font-medium uppercase tracking-wider text-gray-600 dark:text-gray-300">
-                <th class="py-3 px-4">Liquidación</th>
-                <th class="py-3 px-4">Detalle</th>
-                <th class="py-3 px-4">Gasto</th>
-                <th class="py-3 px-4">Concepto</th>
-                <th class="py-3 px-4">Monto Total</th>
-                <th class="py-3 px-4">Monto Aprobado</th>
-                <th class="py-3 px-4">Estado</th>
-                <th class="py-3 px-4">Comentario</th>
-                <th class="py-3 px-4">Fecha y Hora</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-200 dark:divide-gray-600">
-              <tr v-for="item in historial" :key="item.idAprobacion" class="hover:bg-gray-50/50 dark:hover:bg-gray-700/30">
-                <td class="py-3 px-4 text-gray-700 dark:text-gray-200 font-medium">#{{ item.idLiquidacion }}</td>
-                <td class="py-3 px-4 text-gray-700 dark:text-gray-200">{{ item.idDetalle }}</td>
-                <td class="py-3 px-4 text-gray-700 dark:text-gray-200">{{ item.nombreGasto }}</td>
-                <td class="py-3 px-4 text-gray-700 dark:text-gray-200">{{ item.concepto }}</td>
-                <td class="py-3 px-4 text-gray-700 dark:text-gray-200">{{ formatAmount(item.total) }}</td>
-                <td class="py-3 px-4 text-gray-700 dark:text-gray-200 font-semibold">{{ formatAmount(item.montoAprobado) }}</td>
-                <td class="py-3 px-4">
-                  <span
-                    :class="[
-                      'px-2 py-1 rounded-full text-xs font-medium',
-                      item.estado === 'RECHAZADO'
-                        ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300'
-                        : 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
-                    ]"
-                  >
-                    {{ item.estado }}
-                  </span>
-                </td>
-                <td class="py-3 px-4 text-gray-700 dark:text-gray-200 text-xs">{{ item.observacion || '-' }}</td>
-                <td class="py-3 px-4 text-gray-700 dark:text-gray-200 text-xs whitespace-nowrap">{{ formatDateTime(item.fechaAprobacion) }}</td>
-              </tr>
-            </tbody>
-          </table>
+        <div v-else class="space-y-4">
+          <div
+            v-for="group in groupedHistorial"
+            :key="group.idLiquidacion"
+            class="rounded border border-gray-200 dark:border-gray-700"
+          >
+            <div class="flex items-center justify-between bg-gray-50 dark:bg-gray-900 px-4 py-3">
+              <div class="flex-1">
+                <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Liquidacion #{{ group.idLiquidacion }}</h3>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {{ group.items.length }} detalles · Monto total: {{ formatAmount(group.totalMonto) }}
+                </p>
+              </div>
+              <button
+                type="button"
+                class="rounded border border-gray-200 dark:border-gray-700 px-2 py-1 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                @click="toggleGroup(group.idLiquidacion)"
+              >
+                {{ isGroupOpen(group.idLiquidacion) ? 'Ocultar' : 'Ver' }}
+              </button>
+            </div>
+            <div v-if="isGroupOpen(group.idLiquidacion)" class="overflow-x-auto">
+              <table class="min-w-full text-sm">
+                <thead>
+                  <tr class="text-left text-xs uppercase text-gray-500 dark:text-gray-400 bg-gray-50/50 dark:bg-gray-900/50">
+                    <th class="py-2 pr-3 pl-4">Detalle</th>
+                    <th class="py-2 pr-3">Gasto</th>
+                    <th class="py-2 pr-3">Concepto</th>
+                    <th class="py-2 pr-3">Monto Total</th>
+                    <th class="py-2 pr-3">Monto Aprobado</th>
+                    <th class="py-2 pr-3">Estado</th>
+                    <th class="py-2 pr-3">Comentario</th>
+                    <th class="py-2 pr-3">Fecha y Hora</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                  <tr v-for="item in group.items" :key="item.idAprobacion" class="hover:bg-gray-50/50 dark:hover:bg-gray-700/30">
+                    <td class="py-2 pr-3 pl-4 text-gray-700 dark:text-gray-200">{{ item.idDetalle }}</td>
+                    <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.nombreGasto }}</td>
+                    <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.concepto }}</td>
+                    <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ formatAmount(item.total) }}</td>
+                    <td class="py-2 pr-3 text-gray-700 dark:text-gray-200 font-semibold">{{ formatAmount(item.montoAprobado) }}</td>
+                    <td class="py-2 pr-3">
+                      <span
+                        :class="[
+                          'px-2 py-1 rounded-full text-xs font-medium inline-block',
+                          item.estado === 'RECHAZADO'
+                            ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+                            : 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300'
+                        ]"
+                      >
+                        {{ item.estado }}
+                      </span>
+                    </td>
+                    <td class="py-2 pr-3 text-gray-700 dark:text-gray-200 text-xs">{{ item.observacion || '-' }}</td>
+                    <td class="py-2 pr-3 text-gray-700 dark:text-gray-200 text-xs whitespace-nowrap">{{ formatDateTime(item.fechaAprobacion) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
 
         <div v-if="!loading && historial.length > 0" class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
@@ -146,6 +167,7 @@ const volver = () => {
 const loading = ref(false)
 const error = ref('')
 const historial = ref<HistorialItem[]>([])
+const openGroups = ref<Record<number, boolean>>({})
 
 const cajaChicaApi = axios.create({
   baseURL: import.meta.env.VITE_CAJA_CHICA_API_URL || 'http://localhost:8080/api',
@@ -207,6 +229,31 @@ const totalMontoAprobado = computed(() =>
   historial.value.reduce((acc, item) => acc + item.montoAprobado, 0)
 )
 
+const groupedHistorial = computed(() => {
+  const groups = new Map<number, HistorialItem[]>()
+  historial.value.forEach(item => {
+    if (!groups.has(item.idLiquidacion)) {
+      groups.set(item.idLiquidacion, [])
+    }
+    groups.get(item.idLiquidacion)?.push(item)
+  })
+
+  return Array.from(groups.entries()).map(([idLiquidacion, items]) => {
+    const totalMonto = items.reduce((acc, item) => acc + item.montoAprobado, 0)
+    return {
+      idLiquidacion,
+      items,
+      totalMonto
+    }
+  }).sort((a, b) => b.idLiquidacion - a.idLiquidacion)
+})
+
+const isGroupOpen = (idLiquidacion: number) => openGroups.value[idLiquidacion] !== false
+
+const toggleGroup = (idLiquidacion: number) => {
+  openGroups.value[idLiquidacion] = !isGroupOpen(idLiquidacion)
+}
+
 const loadHistorial = async () => {
   loading.value = true
   error.value = ''
@@ -258,6 +305,13 @@ const loadHistorial = async () => {
       const dateB = new Date(b.fechaAprobacion).getTime()
       return dateB - dateA
     })
+
+    openGroups.value = historial.value.reduce<Record<number, boolean>>((acc, item) => {
+      if (item.idLiquidacion && acc[item.idLiquidacion] === undefined) {
+        acc[item.idLiquidacion] = true
+      }
+      return acc
+    }, {})
   } catch {
     error.value = 'No se pudo cargar el historial de aprobaciones.'
   } finally {
