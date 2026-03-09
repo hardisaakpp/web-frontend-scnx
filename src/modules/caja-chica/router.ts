@@ -13,7 +13,16 @@ const routes: RouteRecordRaw[] = [
         'cajachica.liquidacion.view',
         'cajachica.liquidaciones.view',
         'cajachica.liquidacion.create',
-        'cajachica.liquidaciones.create'
+        'cajachica.liquidaciones.create',
+        'cajachica.aprobadores.view',
+        'cajachica.almacenes.view',
+        'cajachica.catalogo.view',
+        'cajachica.aprobaciones.view',
+        'cajachica.formas-pago.view',
+        'cajachica.empresas.view',
+        'cajachica.grupos-almacenes.view',
+        'cajachica.usuarios-almacenes.view',
+        'cajachica.adjuntos.view'
       ]
     },
   },
