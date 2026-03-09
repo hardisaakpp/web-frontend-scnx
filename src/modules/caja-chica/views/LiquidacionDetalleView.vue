@@ -66,6 +66,9 @@
             <input
               v-model.trim="ruc"
               type="text"
+              maxlength="13"
+              pattern="[0-9]*"
+              inputmode="numeric"
               class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
             />
           </div>
@@ -86,7 +89,7 @@
             />
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Tipo Documento</label>
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Tipo Documento *</label>
             <select
               v-model.trim="numeroAutorizacion"
               class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
@@ -312,6 +315,9 @@
               <input
                 v-model.trim="editRuc"
                 type="text"
+                maxlength="13"
+                pattern="[0-9]*"
+                inputmode="numeric"
                 class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
               />
             </div>
@@ -332,7 +338,7 @@
               />
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Tipo Documento</label>
+              <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Tipo Documento *</label>
               <select
                 v-model.trim="editNumeroAutorizacion"
                 class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
@@ -526,23 +532,27 @@ const hasValue = (value: string | number) => String(value ?? '').trim() !== ''
 const canAddDetalle = computed(() =>
   liquidacionId.value > 0 &&
   selectedGastoId.value.trim() &&
+  numeroAutorizacion.value.trim() &&
   proveedor.value.trim() &&
   concepto.value.trim() &&
   hasValue(subtotalConIva.value) &&
   hasValue(subtotalSinIva.value) &&
   hasValue(iva.value) &&
-  hasValue(total.value)
+  hasValue(total.value) &&
+  toNumber(total.value) > 0
 )
 
 const canUpdateDetalle = computed(() =>
   editingDetalleId.value !== null &&
   editGastoId.value.trim() &&
+  editNumeroAutorizacion.value.trim() &&
   editProveedor.value.trim() &&
   editConcepto.value.trim() &&
   hasValue(editSubtotalConIva.value) &&
   hasValue(editSubtotalSinIva.value) &&
   hasValue(editIva.value) &&
-  hasValue(editTotal.value)
+  hasValue(editTotal.value) &&
+  toNumber(editTotal.value) > 0
 )
 
 const normalizeString = (value: any) => String(value ?? '').trim()
