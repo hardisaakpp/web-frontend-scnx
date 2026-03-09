@@ -9,7 +9,12 @@ const routes: RouteRecordRaw[] = [
       requiresAuth: true,
       title: 'Caja Chica',
       icon: 'BanknotesIcon',
-      permissions: ['cajachica.liquidacion.view']
+      permissions: [
+        'cajachica.liquidacion.view',
+        'cajachica.liquidaciones.view',
+        'cajachica.liquidacion.create',
+        'cajachica.liquidaciones.create'
+      ]
     },
   },
   {
@@ -19,7 +24,12 @@ const routes: RouteRecordRaw[] = [
     meta: { 
       requiresAuth: true,
       title: 'Liquidaciones',
-      permissions: ['cajachica.liquidaciones.view']
+      permissions: [
+        'cajachica.liquidacion.view',
+        'cajachica.liquidaciones.view',
+        'cajachica.liquidacion.create',
+        'cajachica.liquidaciones.create'
+      ]
     },
   },
   {
