@@ -16,7 +16,31 @@
       </div>
 
       <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm p-6">
-        <div class="flex items-center justify-between mb-4">
+        <div class="mb-4">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Filtros</h2>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Fecha desde</label>
+              <input
+                v-model="fechaDesde"
+                type="date"
+                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+              />
+            </div>
+            <div>
+              <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Fecha hasta</label>
+              <input
+                v-model="fechaHasta"
+                type="date"
+                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-between mb-4 pt-4 border-t border-gray-200 dark:border-gray-600">
           <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Listado</h2>
           <div class="flex items-center gap-3 flex-wrap">
             <div ref="columnSelectorWrapRef" class="flex items-center gap-2 relative">
@@ -73,8 +97,8 @@
 
         <div v-if="loading" class="text-sm text-gray-500 dark:text-gray-400">Cargando historial...</div>
         <div v-else-if="error" class="text-sm text-red-600 dark:text-red-400">{{ error }}</div>
-        <div v-else-if="historial.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
-          No hay aprobaciones o rechazos registrados.
+        <div v-else-if="historialFiltrado.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
+          No hay aprobaciones o rechazos registrados{{ (fechaDesde || fechaHasta) ? ' para el rango de fechas seleccionado' : '' }}.
         </div>
         <div v-else class="space-y-6">
           <div
@@ -86,7 +110,7 @@
               <div class="flex-1">
                 <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Liquidacion #{{ group.idLiquidacion }}</h3>
                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {{ group.items.length }} detalles · Monto total: {{ formatAmount(group.totalMonto) }}
+                  {{ group.items.length }} detalles · Tienda: {{ group.codAlmacen || '-' }} · Custodio: {{ group.nombreCustodio || '-' }} · Fecha: {{ formatDate(group.fechaCreacion) }} · Monto total: {{ formatAmount(group.totalMonto) }}
                 </p>
               </div>
               <button
@@ -160,11 +184,11 @@
           </div>
         </div>
 
-        <div v-if="!loading && historial.length > 0" class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+        <div v-if="!loading && historialFiltrado.length > 0" class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
             <div>
               <div class="text-xs text-gray-500 dark:text-gray-400">Total registros</div>
-              <div class="text-lg font-semibold text-gray-900 dark:text-white">{{ historial.length }}</div>
+              <div class="text-lg font-semibold text-gray-900 dark:text-white">{{ historialFiltrado.length }}</div>
             </div>
             <div>
               <div class="text-xs text-gray-500 dark:text-gray-400">Aprobados</div>
@@ -513,6 +537,13 @@ interface HistorialItem {
   fechaAprobacion: string
 }
 
+interface LiquidacionInfo {
+  idLiquidacion: number
+  codAlmacen: string
+  nombreCustodio: string
+  fechaCreacion: string
+}
+
 interface AdjuntoItem {
   idAdjunto: number
   idDetalle: number
@@ -530,6 +561,11 @@ const loading = ref(false)
 const error = ref('')
 const historial = ref<HistorialItem[]>([])
 const openGroups = ref<Record<number, boolean>>({})
+const liquidacionesInfo = ref<Record<number, LiquidacionInfo>>({})
+
+// Filtros de fecha - por defecto última semana
+const fechaHasta = ref('')
+const fechaDesde = ref('')
 
 const showDetallePanel = ref(false)
 const selectedItem = ref<HistorialItem | null>(null)
@@ -725,20 +761,34 @@ const normalizeAprobacion = (item: any): AprobacionItem => ({
 })
 
 const aprobadasCount = computed(() => 
-  historial.value.filter(item => item.estado === 'APROBADO').length
+  historialFiltrado.value.filter(item => item.estado === 'APROBADO').length
 )
 
 const rechazadasCount = computed(() =>
-  historial.value.filter(item => item.estado === 'RECHAZADO').length
+  historialFiltrado.value.filter(item => item.estado === 'RECHAZADO').length
 )
 
 const totalMontoAprobado = computed(() =>
-  historial.value.reduce((acc, item) => acc + item.montoAprobado, 0)
+  historialFiltrado.value.reduce((acc, item) => acc + item.montoAprobado, 0)
 )
+
+const historialFiltrado = computed(() => {
+  if (!fechaDesde.value && !fechaHasta.value) return historial.value
+  
+  return historial.value.filter(item => {
+    if (!item.fechaAprobacion) return false
+    const fecha = item.fechaAprobacion.substring(0, 10) // YYYY-MM-DD
+    
+    if (fechaDesde.value && fecha < fechaDesde.value) return false
+    if (fechaHasta.value && fecha > fechaHasta.value) return false
+    
+    return true
+  })
+})
 
 const groupedHistorial = computed(() => {
   const groups = new Map<number, HistorialItem[]>()
-  historial.value.forEach(item => {
+  historialFiltrado.value.forEach(item => {
     if (!groups.has(item.idLiquidacion)) {
       groups.set(item.idLiquidacion, [])
     }
@@ -747,10 +797,14 @@ const groupedHistorial = computed(() => {
 
   return Array.from(groups.entries()).map(([idLiquidacion, items]) => {
     const totalMonto = items.reduce((acc, item) => acc + item.montoAprobado, 0)
+    const liquidacionInfo = liquidacionesInfo.value[idLiquidacion]
     return {
       idLiquidacion,
       items,
-      totalMonto
+      totalMonto,
+      codAlmacen: liquidacionInfo?.codAlmacen || '',
+      nombreCustodio: liquidacionInfo?.nombreCustodio || '',
+      fechaCreacion: liquidacionInfo?.fechaCreacion || ''
     }
   }).sort((a, b) => b.idLiquidacion - a.idLiquidacion)
 })
@@ -889,13 +943,30 @@ const loadHistorial = async () => {
       return
     }
 
-    const [aprobacionesRes, detallesRes] = await Promise.all([
+    const [aprobacionesRes, detallesRes, liquidacionesRes] = await Promise.all([
       cajaChicaApi.get('/Aprobaciones'),
-      cajaChicaApi.get('/LiquidacionesDetalle')
+      cajaChicaApi.get('/LiquidacionesDetalle'),
+      cajaChicaApi.get('/Liquidaciones')
     ])
 
     const aprobacionesPayload = aprobacionesRes.data as any
     const detallesPayload = detallesRes.data as any
+    const liquidacionesPayload = liquidacionesRes.data as any
+
+    // Procesar liquidaciones
+    const liquidaciones = (Array.isArray(liquidacionesPayload) ? liquidacionesPayload : liquidacionesPayload?.data || [])
+    liquidacionesInfo.value = {}
+    liquidaciones.forEach((liq: any) => {
+      const idLiq = Number(liq.idLiquidacion ?? liq.IdLiquidacion ?? 0)
+      if (idLiq) {
+        liquidacionesInfo.value[idLiq] = {
+          idLiquidacion: idLiq,
+          codAlmacen: normalizeString(liq.codAlmacen ?? liq.CodAlmacen ?? ''),
+          nombreCustodio: normalizeString(liq.nombreCustodio ?? liq.NombreCustodio ?? ''),
+          fechaCreacion: String(liq.fechaCreacion ?? liq.FechaCreacion ?? '')
+        }
+      }
+    })
 
     const aprobaciones = (Array.isArray(aprobacionesPayload) ? aprobacionesPayload : aprobacionesPayload?.data || [])
       .map(normalizeAprobacion)
@@ -960,6 +1031,16 @@ const loadHistorial = async () => {
   }
 }
 
+// Inicializar fechas por defecto (última semana)
+const initializeDateFilters = () => {
+  const hoy = new Date()
+  const haceUnaSemana = new Date()
+  haceUnaSemana.setDate(hoy.getDate() - 7)
+  
+  fechaHasta.value = hoy.toISOString().substring(0, 10)
+  fechaDesde.value = haceUnaSemana.toISOString().substring(0, 10)
+}
+
 const formatAmount = (value: number) => value.toFixed(2)
 const formatDate = (value: string) => (value ? value.substring(0, 10) : '')
 const formatDateTime = (value: string) => {
@@ -979,6 +1060,7 @@ const formatDateTime = (value: string) => {
 }
 
 onMounted(() => {
+  initializeDateFilters()
   loadHistorial()
 })
 </script>
