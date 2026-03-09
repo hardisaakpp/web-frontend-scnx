@@ -396,11 +396,13 @@ const assignedAlmacenes = computed(() => {
 })
 
 const borradoresFiltrados = computed(() => {
+  const currentUserId = getCurrentUserId()
   const assignedSet = new Set(asignados.value.map(item => item.codAlmacen))
   return borradores.value.filter(item => {
     const isBorrador = item.estado.toUpperCase() === 'BORRADOR'
     const isAssigned = assignedSet.size === 0 || assignedSet.has(item.codAlmacen)
-    return isBorrador && isAssigned
+    const isCurrentUser = item.idUsuario === currentUserId
+    return isBorrador && isAssigned && isCurrentUser
   })
 })
 

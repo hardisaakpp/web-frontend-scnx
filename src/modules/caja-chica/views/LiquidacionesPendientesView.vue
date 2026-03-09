@@ -72,9 +72,13 @@
 import { onMounted, ref } from 'vue'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
 
 interface LiquidacionItem {
   idLiquidacion: number
+  idUsuario: string
   estado: string
   codAlmacen: string
   nombreCustodio: string
@@ -107,8 +111,21 @@ cajaChicaApi.interceptors.request.use(config => {
 
 const normalizeString = (value: any) => String(value ?? '').trim()
 
+const getCurrentUserId = (): string => {
+  if (authStore.userData?.id) return authStore.userData.id
+  try {
+    const userStr = localStorage.getItem('user')
+    if (!userStr) return ''
+    const user = JSON.parse(userStr) as { id?: string }
+    return user.id || ''
+  } catch {
+    return ''
+  }
+}
+
 const normalizeLiquidacion = (item: any): LiquidacionItem => ({
   idLiquidacion: Number(item.idLiquidacion ?? item.IdLiquidacion ?? 0),
+  idUsuario: normalizeString(item.idUsuario ?? item.IdUsuario ?? ''),
   estado: normalizeString(item.estado ?? item.Estado ?? ''),
   codAlmacen: normalizeString(item.codAlmacen ?? item.CodAlmacen ?? ''),
   nombreCustodio: normalizeString(item.nombreCustodio ?? item.NombreCustodio ?? ''),
@@ -126,12 +143,16 @@ const loadPendientes = async () => {
   loading.value = true
   error.value = ''
   try {
+    const currentUserId = getCurrentUserId()
     const response = await cajaChicaApi.get('/Liquidaciones')
     const payload = response.data as any
     const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
     pendientes.value = items
       .map(normalizeLiquidacion)
-      .filter((item: LiquidacionItem) => ['SUPERVISION', 'CONTABILIDAD'].includes(item.estado.toUpperCase()))
+      .filter((item: LiquidacionItem) => 
+        ['SUPERVISION', 'CONTABILIDAD'].includes(item.estado.toUpperCase()) && 
+        item.idUsuario === currentUserId
+      )
   } catch {
     error.value = 'No se pudieron cargar las liquidaciones pendientes.'
   } finally {

@@ -133,9 +133,13 @@
 import { computed, onMounted, ref } from 'vue'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
 
 interface LiquidacionItem {
   idLiquidacion: number
+  idUsuario: string
   estado: string
   codAlmacen: string
   nombreCustodio: string
@@ -192,8 +196,21 @@ cajaChicaApi.interceptors.request.use(config => {
 
 const normalizeString = (value: any) => String(value ?? '').trim()
 
+const getCurrentUserId = (): string => {
+  if (authStore.userData?.id) return authStore.userData.id
+  try {
+    const userStr = localStorage.getItem('user')
+    if (!userStr) return ''
+    const user = JSON.parse(userStr) as { id?: string }
+    return user.id || ''
+  } catch {
+    return ''
+  }
+}
+
 const normalizeLiquidacion = (item: any): LiquidacionItem => ({
   idLiquidacion: Number(item.idLiquidacion ?? item.IdLiquidacion ?? 0),
+  idUsuario: normalizeString(item.idUsuario ?? item.IdUsuario ?? ''),
   estado: normalizeString(item.estado ?? item.Estado ?? ''),
   codAlmacen: normalizeString(item.codAlmacen ?? item.CodAlmacen ?? ''),
   nombreCustodio: normalizeString(item.nombreCustodio ?? item.NombreCustodio ?? ''),
@@ -218,13 +235,15 @@ const normalizeAprobacion = (item: any): AprobacionItem => ({
 })
 
 const filteredAprobadas = computed(() => {
+  const currentUserId = getCurrentUserId()
   const from = filterFrom.value ? new Date(filterFrom.value).getTime() : null
   const to = filterTo.value ? new Date(filterTo.value).getTime() : null
   return aprobadas.value.filter(item => {
+    const isCurrentUser = item.idUsuario === currentUserId
     const time = item.fechaCreacion ? new Date(item.fechaCreacion).getTime() : null
     if (from && time && time < from) return false
     if (to && time && time > to + 24 * 60 * 60 * 1000 - 1) return false
-    return true
+    return isCurrentUser
   })
 })
 
@@ -310,13 +329,14 @@ const loadAprobadas = async () => {
   loading.value = true
   error.value = ''
   try {
+    const currentUserId = getCurrentUserId()
     await loadAprobacionesContabilidad()
     const response = await cajaChicaApi.get('/Liquidaciones')
     const payload = response.data as any
     const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
     aprobadas.value = items
       .map(normalizeLiquidacion)
-      .filter((item: LiquidacionItem) => item.estado.toUpperCase() === 'APROBADO')
+      .filter((item: LiquidacionItem) => item.estado.toUpperCase() === 'APROBADO' && item.idUsuario === currentUserId)
     openItems.value = {}
     detallesByLiquidacion.value = {}
     detalleLoading.value = {}
