@@ -512,6 +512,31 @@ const detallesByLiquidacion = ref<Record<number, DetalleItem[]>>({})
 const adjuntosByDetalle = ref<Record<number, number>>({})
 const usuarios = ref<UserOption[]>([])
 const usuariosById = ref<Record<string, UserOption>>({})
+// Cache para nombres de usuario locales
+const localUserNames = ref<Record<string, string>>({})
+const localUserLoading = ref<Record<string, boolean>>({})
+
+async function fetchLocalUserName(id?: string) {
+  if (!id) return '-';
+  if (localUserNames.value[id] || localUserLoading.value[id]) return;
+  localUserLoading.value[id] = true;
+  try {
+    // Usa el cliente API configurado del frontend para evitar puertos hardcodeados.
+    const base = String(api.defaults.baseURL || '/api').replace(/\/+$/, '');
+    const url = `${base}/Admin/user-local-name/${id}`;
+    console.log('[SupervisorName] idUsuario:', id);
+    console.log('[SupervisorName] endpoint:', url);
+    const resp = await api.get(`/Admin/user-local-name/${id}`);
+    console.log('[SupervisorName] resultado endpoint:', resp.data);
+    localUserNames.value[id] = resp.data.fullName || id;
+  } catch (err) {
+    console.error('[SupervisorName] error endpoint:', err);
+    const fallback = usuariosById.value[id]?.label || '-';
+    localUserNames.value[id] = fallback;
+  } finally {
+    localUserLoading.value[id] = false;
+  }
+}
 
 const availableColumns: ColumnConfig[] = [
   { key: 'id', label: 'Id', fixed: false },
@@ -843,9 +868,19 @@ const normalizeUser = (user: any): UserOption => {
 }
 
 const getUserLabel = (id?: string) => {
-  if (!id) return '-'
-  const user = usuariosById.value[id]
-  return user?.label || id || '-'
+  if (!id) return '-';
+  // Si ya está en el caché local, mostrarlo
+  if (localUserNames.value[id]) return localUserNames.value[id];
+  // Fallback inmediato con usuarios ya cargados
+  if (usuariosById.value[id]?.label) {
+    localUserNames.value[id] = usuariosById.value[id].label;
+    return localUserNames.value[id];
+  }
+  // Si está cargando, mostrar '...'
+  if (localUserLoading.value[id]) return 'Cargando...';
+  // Lanzar la carga y mostrar estado de carga
+  fetchLocalUserName(id);
+  return 'Cargando...';
 }
 
 const normalizeDetalle = (item: any): DetalleItem => ({
