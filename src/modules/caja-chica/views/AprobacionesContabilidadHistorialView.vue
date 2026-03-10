@@ -82,6 +82,7 @@
                     <th class="py-2 pr-3">Monto</th>
                     <th class="py-2 pr-3">Comentario</th>
                     <th class="py-2 pr-3">Fecha</th>
+                    <th class="py-2 pr-3">Acciones</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -100,6 +101,15 @@
                     <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ formatAmount(item.montoAprobado) }}</td>
                     <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.observacion || '-' }}</td>
                     <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ formatDate(item.fechaAprobacion) }}</td>
+                    <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">
+                      <button
+                        type="button"
+                        class="rounded border border-gray-200 dark:border-gray-700 px-2 py-1 text-xs text-gray-700 dark:text-gray-300"
+                        @click="openDetalle(item)"
+                      >
+                        Ver detalle
+                      </button>
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -109,6 +119,179 @@
       </div>
     </div>
   </div>
+
+  <Teleport to="body">
+    <div v-if="showDetallePanel" class="fixed inset-0 z-[100]">
+      <div class="absolute inset-0 bg-black/40" @click="closeDetalle"></div>
+      <aside class="absolute right-0 top-0 h-full w-full sm:w-[520px] bg-white dark:bg-gray-800 shadow-2xl flex flex-col">
+        <div class="flex items-start justify-between gap-3 p-4 border-b border-gray-200 dark:border-gray-700">
+          <div class="min-w-0">
+            <div class="text-xs text-gray-500 dark:text-gray-400">Detalle historial contabilidad</div>
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-white truncate">
+              #{{ selectedItem?.idAprobacion || '-' }}
+            </h3>
+            <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Liquidacion #{{ selectedItem?.idLiquidacion || '-' }} · Detalle #{{ selectedItem?.idDetalle || '-' }}
+            </div>
+          </div>
+          <button
+            type="button"
+            class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700/50 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            @click="closeDetalle"
+          >
+            Cerrar
+          </button>
+        </div>
+
+        <div class="p-4 overflow-y-auto space-y-5">
+          <div class="rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50/60 dark:bg-gray-900/20 p-4">
+            <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-3">Informacion</div>
+            <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+              <div>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Gasto</dt>
+                <dd class="text-sm text-gray-900 dark:text-white">{{ selectedItem?.nombreGasto || '-' }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Estado</dt>
+                <dd class="text-sm text-gray-900 dark:text-white">{{ selectedItem?.estado || '-' }}</dd>
+              </div>
+              <div class="sm:col-span-2">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Concepto</dt>
+                <dd class="text-sm text-gray-900 dark:text-white">{{ selectedItem?.concepto || '-' }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Total solicitado</dt>
+                <dd class="text-sm text-gray-900 dark:text-white">{{ selectedItem ? formatAmount(selectedItem.total) : '-' }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Monto aprobado</dt>
+                <dd class="text-sm text-gray-900 dark:text-white">{{ selectedItem ? formatAmount(selectedItem.montoAprobado) : '-' }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Fecha aprobacion</dt>
+                <dd class="text-sm text-gray-900 dark:text-white">{{ selectedItem ? formatDate(selectedItem.fechaAprobacion) : '-' }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Tienda</dt>
+                <dd class="text-sm text-gray-900 dark:text-white">{{ selectedItem?.codAlmacen || '-' }}</dd>
+              </div>
+              <div class="sm:col-span-2">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Comentario</dt>
+                <dd class="text-sm text-gray-900 dark:text-white">{{ selectedItem?.observacion || '-' }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Adjuntos</dt>
+                <dd class="text-sm text-gray-900 dark:text-white">
+                  <span v-if="selectedItem">{{ adjuntosByDetalle[selectedItem.idDetalle] ?? 0 }}</span>
+                  <span v-else>-</span>
+                </dd>
+              </div>
+            </dl>
+          </div>
+
+          <div class="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+            <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-3">Detalle de consumo</div>
+            <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+              <div>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Subtotal Base 15%</dt>
+                <dd class="text-sm text-gray-900 dark:text-white">{{ selectedDetalle ? formatAmount(selectedDetalle.subtotalConIva) : '-' }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Subtotal Base 0%</dt>
+                <dd class="text-sm text-gray-900 dark:text-white">{{ selectedDetalle ? formatAmount(selectedDetalle.subtotalSinIva) : '-' }}</dd>
+              </div>
+              <div>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Total detalle</dt>
+                <dd class="text-sm text-gray-900 dark:text-white">{{ selectedDetalle ? formatAmount(selectedDetalle.total) : '-' }}</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div class="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+            <div class="flex items-center justify-between mb-3">
+              <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Adjuntos</div>
+              <button
+                v-if="selectedAdjunto"
+                type="button"
+                class="inline-flex items-center justify-center rounded-md border border-gray-300 dark:border-gray-600 bg-white/60 dark:bg-gray-800/60 px-2 py-1 text-[11px] text-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                @click.stop="downloadAdjunto"
+              >
+                Descargar
+              </button>
+            </div>
+            <div v-if="selectedItem && loadingAdjuntosMap[selectedItem.idDetalle]" class="text-sm text-gray-500 dark:text-gray-400">
+              Cargando adjuntos...
+            </div>
+            <div v-else-if="selectedItem && (adjuntosListByDetalle[selectedItem.idDetalle]?.length)">
+              <div class="space-y-3">
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    v-for="(adj, index) in adjuntosListByDetalle[selectedItem.idDetalle]"
+                    :key="adj.idAdjunto"
+                    type="button"
+                    class="px-2 py-1 rounded-lg border text-xs truncate max-w-[220px] transition-colors"
+                    :class="selectedAdjunto?.idAdjunto === adj.idAdjunto
+                      ? 'bg-emerald-50 border-emerald-300 text-emerald-800 dark:bg-emerald-900/40 dark:border-emerald-600 dark:text-emerald-200'
+                      : 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-700'"
+                    :title="formatAdjuntoName(adj.rutaArchivo)"
+                    @click="selectedAdjuntoId = adj.idAdjunto"
+                  >
+                    Adjunto {{ index + 1 }}
+                  </button>
+                </div>
+
+                <div
+                  class="mt-2 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/40 min-h-[200px] flex items-center justify-center overflow-hidden cursor-zoom-in"
+                  @click="selectedAdjunto && openAdjuntoFull()"
+                >
+                  <template v-if="selectedAdjunto">
+                    <template v-if="isImageFile(selectedAdjunto.rutaArchivo)">
+                      <img :src="buildAdjuntoUrl(selectedAdjunto.rutaArchivo)" alt="Vista previa" class="max-h-64 max-w-full object-contain" />
+                    </template>
+                    <template v-else-if="isPdfFile(selectedAdjunto.rutaArchivo)">
+                      <iframe :src="buildAdjuntoUrl(selectedAdjunto.rutaArchivo)" class="w-full h-64 rounded-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700"></iframe>
+                    </template>
+                    <template v-else>
+                      <div class="w-full h-full flex items-center justify-center text-xs text-gray-500 dark:text-gray-300 px-4 text-center">
+                        Previsualizacion no disponible. Usa Descargar.
+                      </div>
+                    </template>
+                  </template>
+                  <template v-else>
+                    <div class="text-xs text-gray-500 dark:text-gray-400 text-center px-4">Selecciona un adjunto para previsualizarlo.</div>
+                  </template>
+                </div>
+              </div>
+            </div>
+            <div v-else class="text-sm text-gray-500 dark:text-gray-400">Sin adjuntos.</div>
+          </div>
+        </div>
+      </aside>
+
+      <div v-if="showAdjuntoFull && selectedAdjunto" class="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 px-4" @click.self="closeAdjuntoFull">
+        <div class="relative max-w-5xl w-full max-h-[90vh] bg-gray-900 rounded-xl border border-gray-700 p-3 flex flex-col gap-3">
+          <div class="flex items-center justify-between text-xs text-gray-300 gap-3">
+            <span class="truncate">{{ formatAdjuntoName(selectedAdjunto.rutaArchivo) }}</span>
+            <div class="flex items-center gap-2 shrink-0">
+              <button type="button" class="px-2 py-1 rounded-md border border-gray-500 text-xs text-gray-100 hover:bg-gray-800" @click="downloadAdjunto">Descargar</button>
+              <button type="button" class="px-2 py-1 rounded-md border border-gray-600 text-xs text-gray-200 hover:bg-gray-800" @click="closeAdjuntoFull">Cerrar</button>
+            </div>
+          </div>
+          <div class="flex-1 flex items-center justify-center bg-black/60 rounded-lg p-2 overflow-auto">
+            <template v-if="isImageFile(selectedAdjunto.rutaArchivo)">
+              <img :src="buildAdjuntoUrl(selectedAdjunto.rutaArchivo)" alt="Adjunto" class="max-h-[80vh] max-w-full object-contain" />
+            </template>
+            <template v-else-if="isPdfFile(selectedAdjunto.rutaArchivo)">
+              <iframe :src="buildAdjuntoUrl(selectedAdjunto.rutaArchivo)" class="w-full h-[80vh] rounded-md bg-white"></iframe>
+            </template>
+            <template v-else>
+              <a :href="buildAdjuntoUrl(selectedAdjunto.rutaArchivo)" target="_blank" rel="noopener" class="text-indigo-300 hover:underline">Abrir en nueva pestana</a>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -170,6 +353,13 @@ interface IntegracionEstadoItem {
   mensaje?: string
 }
 
+interface AdjuntoItem {
+  idAdjunto: number
+  idDetalle: number
+  rutaArchivo: string
+  fechaSubida: string
+}
+
 const router = useRouter()
 
 const volver = () => {
@@ -190,6 +380,28 @@ const openGroups = ref<Record<number, boolean>>({})
 const detallesByLiquidacion = ref<Record<number, LiquidacionDetalleItem[]>>({})
 const integraciones = ref<Record<number, IntegracionEstadoItem>>({})
 const integrationLoading = ref<Record<number, boolean>>({})
+const adjuntosByDetalle = ref<Record<number, number>>({})
+const adjuntosListByDetalle = ref<Record<number, AdjuntoItem[]>>({})
+const loadingAdjuntosMap = ref<Record<number, boolean>>({})
+const selectedAdjuntoId = ref<number | null>(null)
+const showAdjuntoFull = ref(false)
+const showDetallePanel = ref(false)
+const selectedItem = ref<HistorialItem | null>(null)
+
+const selectedDetalle = computed(() => {
+  if (!selectedItem.value) return undefined
+  const detalles = detallesByLiquidacion.value[selectedItem.value.idLiquidacion] || []
+  return detalles.find(d => d.idDetalle === selectedItem.value?.idDetalle)
+})
+
+const selectedAdjunto = computed(() => {
+  if (!selectedItem.value) return null
+  const detalleId = selectedItem.value.idDetalle
+  const list = adjuntosListByDetalle.value[detalleId] || []
+  if (!list.length) return null
+  const found = list.find(a => a.idAdjunto === selectedAdjuntoId.value)
+  return found || list[0]
+})
 
 const cajaChicaApi = axios.create({
   baseURL: import.meta.env.VITE_CAJA_CHICA_API_URL || 'http://localhost:8080/api',
@@ -204,6 +416,25 @@ const slayerApi = axios.create({
     'Content-Type': 'application/json'
   }
 })
+
+const apiBaseUrl = (import.meta.env.VITE_CAJA_CHICA_API_URL || 'http://localhost:8080/api').replace(/\/+$/, '')
+const fileBaseUrl = apiBaseUrl.endsWith('/api') ? apiBaseUrl.slice(0, -4) : apiBaseUrl
+
+const buildAdjuntoUrl = (ruta: string) => {
+  if (!ruta) return '#'
+  if (ruta.startsWith('http')) return ruta
+  if (ruta.startsWith('/uploads')) return ruta
+  return `${fileBaseUrl}${ruta}`
+}
+
+const formatAdjuntoName = (ruta: string) => {
+  if (!ruta) return ''
+  const parts = ruta.split('/')
+  return parts[parts.length - 1]
+}
+
+const isImageFile = (ruta: string) => /\.(png|jpe?g|gif|webp)$/i.test(ruta)
+const isPdfFile = (ruta: string) => /\.pdf$/i.test(ruta)
 
 cajaChicaApi.interceptors.request.use(config => {
   const token = localStorage.getItem('token')
@@ -461,6 +692,19 @@ const loadHistorial = async () => {
       return acc
     }, {})
 
+    // Contador de adjuntos por detalle para mostrar en el panel de solo lectura.
+    adjuntosByDetalle.value = {}
+    for (const d of detalles) {
+      try {
+        const adjRes = await cajaChicaApi.get(`/Adjuntos/por-detalle/${d.idDetalle}`)
+        const adjPayload = adjRes.data as any
+        const adjList = Array.isArray(adjPayload) ? adjPayload : Array.isArray(adjPayload?.data) ? adjPayload.data : []
+        adjuntosByDetalle.value[d.idDetalle] = adjList.length
+      } catch {
+        adjuntosByDetalle.value[d.idDetalle] = 0
+      }
+    }
+
     historial.value = aprobaciones.map((aprobacion: AprobacionItem) => {
       const detalle = detalleMap.get(aprobacion.idDetalle)
       const liquidacion = detalle ? liquidacionMap.get(detalle.idLiquidacion) : undefined
@@ -495,6 +739,74 @@ const loadHistorial = async () => {
   } finally {
     loading.value = false
   }
+}
+
+async function loadAdjuntosForDetalle(idDetalle: number) {
+  if (!idDetalle) return
+  if (adjuntosListByDetalle.value[idDetalle]) return
+  if (loadingAdjuntosMap.value[idDetalle]) return
+  loadingAdjuntosMap.value = { ...loadingAdjuntosMap.value, [idDetalle]: true }
+  try {
+    const response = await cajaChicaApi.get(`/Adjuntos/por-detalle/${idDetalle}`)
+    const payload = response.data as any
+    const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
+    adjuntosListByDetalle.value = {
+      ...adjuntosListByDetalle.value,
+      [idDetalle]: items.map((item: any) => ({
+        idAdjunto: Number(item.idAdjunto ?? item.IdAdjunto ?? 0),
+        idDetalle: Number(item.idDetalle ?? item.IdDetalle ?? idDetalle),
+        rutaArchivo: String(item.rutaArchivo ?? item.RutaArchivo ?? ''),
+        fechaSubida: String(item.fechaSubida ?? item.FechaSubida ?? '')
+      }))
+    }
+  } catch {
+    adjuntosListByDetalle.value = { ...adjuntosListByDetalle.value, [idDetalle]: [] }
+  } finally {
+    loadingAdjuntosMap.value = { ...loadingAdjuntosMap.value, [idDetalle]: false }
+  }
+}
+
+async function downloadAdjunto() {
+  if (!selectedAdjunto.value) return
+  try {
+    const url = buildAdjuntoUrl(selectedAdjunto.value.rutaArchivo)
+    const token = localStorage.getItem('token')
+    const response = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : undefined })
+    if (!response.ok) throw new Error('No se pudo descargar el archivo.')
+    const blob = await response.blob()
+    const blobUrl = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = blobUrl
+    link.download = formatAdjuntoName(selectedAdjunto.value.rutaArchivo) || 'archivo'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(blobUrl)
+  } catch {
+    alert('No se pudo descargar el archivo.')
+  }
+}
+
+function openAdjuntoFull() {
+  if (!selectedAdjunto.value) return
+  showAdjuntoFull.value = true
+}
+
+function closeAdjuntoFull() {
+  showAdjuntoFull.value = false
+}
+
+const openDetalle = async (item: HistorialItem) => {
+  selectedItem.value = item
+  selectedAdjuntoId.value = null
+  showDetallePanel.value = true
+  await loadAdjuntosForDetalle(item.idDetalle)
+}
+
+const closeDetalle = () => {
+  showDetallePanel.value = false
+  selectedItem.value = null
+  selectedAdjuntoId.value = null
 }
 
 const formatAmount = (value: number) => value.toFixed(2)
