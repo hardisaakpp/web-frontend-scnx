@@ -180,7 +180,7 @@ const volver = () => {
 }
 
 const cajaChicaApi = axios.create({
-  baseURL: import.meta.env.VITE_CAJA_CHICA_API_URL || 'http://localhost:8080/api',
+  baseURL: import.meta.env.VITE_CAJA_CHICA_API_URL || '/caja-chica-api',
   headers: {
     'Content-Type': 'application/json'
   }

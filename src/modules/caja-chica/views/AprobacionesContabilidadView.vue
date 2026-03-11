@@ -813,7 +813,7 @@ function getStickyStyle(column: ColumnConfig): { right?: string; minWidth?: stri
 }
 
 const cajaChicaApi = axios.create({
-  baseURL: import.meta.env.VITE_CAJA_CHICA_API_URL || 'http://localhost:8080/api',
+  baseURL: import.meta.env.VITE_CAJA_CHICA_API_URL || '/caja-chica-api',
   headers: { 'Content-Type': 'application/json' }
 })
 
@@ -825,7 +825,7 @@ cajaChicaApi.interceptors.request.use(config => {
   return config
 })
 
-const apiBaseUrl = (import.meta.env.VITE_CAJA_CHICA_API_URL || 'http://localhost:8080/api').replace(/\/+$/, '')
+const apiBaseUrl = (import.meta.env.VITE_CAJA_CHICA_API_URL || '/caja-chica-api').replace(/\/+$/, '')
 const fileBaseUrl = apiBaseUrl.endsWith('/api') ? apiBaseUrl.slice(0, -4) : apiBaseUrl
 
 const buildAdjuntoUrl = (ruta: string) => {

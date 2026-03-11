@@ -32,12 +32,33 @@ export default defineConfig({
         secure: false,
         rewrite: (path) => path
       },
+      // Preferencias de usuario (persistencia UI) → mba3-consultas
+      '/api/users/preferences': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path
+      },
+      // Stream SSE de notificaciones → mba3-consultas
+      '/notificaciones': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path
+      },
       // Login y resto de /api → Core local en desarrollo
       '/api': {
         target: 'http://localhost:5053', // Core local
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path
+      },
+      // Caja Chica API via mismo host del frontend (evita localhost del navegador cliente remoto)
+      '/caja-chica-api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/caja-chica-api/, '/api')
       },
       // Archivos estáticos de Caja Chica (ej: /uploads/...) → backend http://localhost:8080
       '/uploads': {
