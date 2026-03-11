@@ -1181,32 +1181,14 @@ async function handleGenerarODCMultiples(despachoIds: string[]) {
 async function handleVerDetalleSAP(oc: OrdenCompra) {
   if (!oc) return
 
-  // Si tenemos en memoria un resultado de integración con múltiples ITR (varios DocNum),
-  // siempre reutilizamos ese resultado completo para que el modal muestre la misma tabla.
-  if (integracionSAPSolicitudes.value) {
-    const st = integracionSAPSolicitudes.value
-    const itrs = st.itrs_por_tienda && st.itrs_por_tienda.length
-      ? st.itrs_por_tienda
-      : (st.resultados ?? []).filter((r: { doc_num?: number | null }) => r.doc_num != null)
-
-    if (itrs.length > 1) {
-      showIntegracionSAPModal.value = true
-      return
-    }
-  }
-
-  // Si el último detalle de integración en memoria corresponde a esta OC,
-  // reutilizamos exactamente el mismo detalle + solicitudesTransferencia.
-  if (integracionSAPDetalle.value && (
-    integracionSAPDetalle.value.oc_id === oc.oc_id ||
-    (integracionSAPDetalle.value.numero_oc_sap && integracionSAPDetalle.value.numero_oc_sap === (oc.numero_oc_sap ?? null)) ||
-    (integracionSAPDetalle.value.doc_entry != null && integracionSAPDetalle.value.doc_entry === (oc.doc_entry ?? null))
-  )) {
+  // 1) Si ya tenemos en memoria el detalle para ESTA OC, reutilizarlo tal cual
+  if (integracionSAPDetalle.value && integracionSAPDetalle.value.oc_id === oc.oc_id) {
+    integracionSAPEstado.value = integracionSAPDetalle.value.success ? 'success' : 'error'
     showIntegracionSAPModal.value = true
     return
   }
 
-  // Sin datos en memoria: obtener detalle desde GET /ordenes-compra/{oc_id}/integracion-sap
+  // 2) No hay detalle en memoria (o es de otra OC): pedirlo al backend
   try {
     const response = await mba3ConsultasService.getIntegracionSAP(oc.oc_id)
     const envio = response.envio_sap
@@ -1246,7 +1228,7 @@ async function handleVerDetalleSAP(oc: OrdenCompra) {
     }
   }
 
-  // Fallback: detalle mínimo solo con datos de la OC (sin ITR)
+  // 3) Fallback: detalle mínimo solo con datos de la OC (sin ITR)
   const detalle: IntegracionSAPDetalle = {
     oc_id: oc.oc_id,
     proveedor: oc.proveedor_nombre ?? undefined,
