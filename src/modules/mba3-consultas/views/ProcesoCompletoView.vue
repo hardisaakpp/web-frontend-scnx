@@ -1198,7 +1198,7 @@ async function handleVerDetalleSAP(oc: OrdenCompra) {
 
     const detalle: IntegracionSAPDetalle = {
       oc_id: envio.oc_id,
-      proveedor: (envio as { proveedor?: string }).proveedor ?? oc.proveedor_nombre ?? undefined,
+      proveedor: (envio as { proveedor?: string }).proveedor ?? oc.proveedor ?? undefined,
       success: envio.success,
       doc_entry: envio.doc_entry ?? null,
       doc_num: envio.doc_num ?? null,
@@ -1231,7 +1231,7 @@ async function handleVerDetalleSAP(oc: OrdenCompra) {
   // 3) Fallback: detalle mínimo solo con datos de la OC (sin ITR)
   const detalle: IntegracionSAPDetalle = {
     oc_id: oc.oc_id,
-    proveedor: oc.proveedor_nombre ?? undefined,
+    proveedor: oc.proveedor ?? undefined,
     success: true,
     doc_entry: oc.doc_entry ?? null,
     doc_num: oc.doc_num ?? null,

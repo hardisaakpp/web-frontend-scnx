@@ -121,11 +121,11 @@
                   <!-- Resumen -->
                   <div class="mb-4 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
                     <div class="flex items-center gap-2 text-sm">
-                      <span v-if="solicitudesTransferencia?.transferencias_errores === 0" class="text-green-600 dark:text-green-400 font-medium">
-                        ✅ {{ solicitudesTransferencia?.transferencias_creadas }} de {{ solicitudesTransferencia?.total_tiendas }} creadas exitosamente
-                      </span>
-                      <span v-else class="text-yellow-600 dark:text-yellow-400 font-medium">
-                        ⚠️ {{ solicitudesTransferencia?.transferencias_creadas }} exitosas, {{ solicitudesTransferencia?.transferencias_errores }} con errores
+                      <span
+                        :class="solicitudesTransferencia?.transferencias_errores === 0 ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'"
+                        class="font-medium"
+                      >
+                        {{ resumenSolicitudesTexto }}
                       </span>
                     </div>
                   </div>
@@ -226,6 +226,21 @@ const mensajeExito = computed(() => {
   }
   if (filasCount !== 1) return 'Proceso completado exitosamente.'
   return d.message ?? null
+})
+
+const resumenSolicitudesTexto = computed(() => {
+  const st = props.solicitudesTransferencia
+  if (!st) return ''
+
+  if (st.transferencias_errores === 0) {
+    return `✅ ${st.transferencias_creadas} de ${st.total_tiendas} creadas exitosamente`
+  }
+
+  if (import.meta.env.PROD) {
+    return `✅ ${st.transferencias_creadas} de ${st.total_tiendas} creadas`
+  }
+
+  return `⚠️ ${st.transferencias_creadas} exitosas, ${st.transferencias_errores} con errores`
 })
 
 // Filas para la tabla ITR: preferir itrs_por_tienda del backend; si no, derivar de resultados
