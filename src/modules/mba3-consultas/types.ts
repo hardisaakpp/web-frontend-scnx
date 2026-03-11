@@ -132,7 +132,8 @@ export interface OrdenCompra {
   fecha_generacion: string
   estado: 'PENDIENTE' | 'ENVIADA' | 'ERROR'
   numero_oc_sap: string | null
-  doc_entry: number | null    // ⭐ NUEVO - DocEntry de SAP (importante para trazabilidad)
+  doc_entry: number | null    // ⭐ DocEntry de SAP (importante para trazabilidad)
+  doc_num?: number | null     // ⭐ DocNum de SAP (número de documento en SAP)
   referencia_despacho: string
   created_at: string
   fecha_procesado?: string | null
@@ -175,8 +176,9 @@ export interface IntegracionSAPDetalle {
   oc_id: string
   proveedor?: string
   success: boolean
-  doc_entry: number | null        // ⭐ NUEVO - DocEntry de SAP
-  doc_num: number | null
+  doc_entry: number | null        // DocEntry de SAP
+  doc_num: number | null          // DocNum de SAP (número de documento en SAP)
+  numero_oc_sap?: string | null   // Num ODC (desde orden_compra_cabecera.numero_oc_sap)
   message?: string | null          // Mensaje de éxito
   error: string | null             // Mensaje de error (puede contener múltiples errores separados por ';')
   error_message: string | null     // Alias de error (para compatibilidad)
@@ -1112,6 +1114,7 @@ export interface ProcesoCompletoSAPDetalleODC {
   success: boolean
   doc_num: number | null
   doc_entry: number | null
+  numero_oc_sap?: string | null  // Num ODC (orden_compra_cabecera.numero_oc_sap)
   error: string | null
   message?: string | null
   solicitudes_transferencia?: SolicitudesTransferencia | null
@@ -1138,6 +1141,8 @@ export interface ProcesoCompletoSAPResponse {
   }
   /** Resultado del envío a SAP (Paso 3) */
   envio_sap?: ProcesoCompletoSAPDetalleODC
+  /** Solicitudes de Transferencia (ITR) creadas; puede venir en raíz o en envio_sap */
+  solicitudes_transferencia?: SolicitudesTransferencia
   /** Resumen de cantidades */
   resumen?: ResumenConfirmacion
   /** Si hubo error parcial, indica en qué paso falló */
@@ -1248,6 +1253,17 @@ export interface ObtenerModificacionesColumnasResponse {
 // ========== Procesamiento SAP (Post-Confirmación) ==========
 
 /**
+ * Conversión por tienda/bodega dentro de un producto del procesamiento SAP
+ */
+export interface ConversionPorTiendaItem {
+  tienda_codigo: string
+  tienda_nombre: string
+  es_bodega: boolean
+  cantidad_asignada: number
+  cantidad_sap: number
+}
+
+/**
  * Item individual de producto procesado con SAP
  */
 export interface ProductoSAPProcesamientoItem {
@@ -1277,6 +1293,8 @@ export interface ProductoSAPProcesamientoItem {
   tiene_error: boolean
   error_mensaje: string | null
   fecha_procesamiento: string
+  /** Distribución por tienda/bodega con cantidades asignadas y convertidas a SAP */
+  distribucion_conversion?: ConversionPorTiendaItem[] | null
 }
 
 /**
@@ -1320,6 +1338,12 @@ export interface SolicitudTransferenciaResultado {
   error: string | null
 }
 
+/** Una entrada por ITR para la tabla del modal (DocNum + código tienda) */
+export interface ItrPorTienda {
+  doc_num: number
+  tienda_codigo: string
+}
+
 /**
  * Información de Solicitudes de Transferencia creadas automáticamente
  */
@@ -1330,6 +1354,8 @@ export interface SolicitudesTransferencia {
   transferencias_creadas: number
   transferencias_errores: number
   resultados: SolicitudTransferenciaResultado[]
+  /** Lista para el modal: una entrada por ITR con DocNum y tienda (rellenado por backend) */
+  itrs_por_tienda?: ItrPorTienda[]
 }
 
 // ========== Listado de Pedidos con Filtros (HU-02, HU-07) ==========

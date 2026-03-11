@@ -297,7 +297,7 @@ import { onMounted, onUnmounted, nextTick } from '@vue/runtime-core'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService, extractErrorMessage } from '../services/mba3ConsultasApi'
-import type { PedidoCompleto, IntegracionSAPDetalle, ProcesoCompletoSAPResponse } from '../types'
+import type { PedidoCompleto, IntegracionSAPDetalle, ProcesoCompletoSAPResponse, SolicitudesTransferencia } from '../types'
 import type { ProductoRedistribucion, DistribucionTiendaEditada } from '../utils/redistribucionHelpers'
 import { usePedidoDetalle } from '../composables/usePedidoDetalle'
 import { useRedistribucion } from '../composables/useRedistribucion'
@@ -516,11 +516,33 @@ async function confirmarRedistribucion() {
   await redistribucion.confirmarRedistribucion(puedeConfirmarRedistribucion)
 }
 
+/** Construye solicitudesTransferencia desde envio_sap, raíz o envio_sap.resultado (formato alternativo). */
+function getSolicitudesTransferencia(response: ProcesoCompletoSAPResponse): SolicitudesTransferencia | null {
+  const fromEnvio = response.envio_sap?.solicitudes_transferencia
+  if (fromEnvio) return fromEnvio
+  const fromRoot = response.solicitudes_transferencia
+  if (fromRoot) return fromRoot
+  const resultado = (response.envio_sap as any)?.resultado
+  if (resultado && Array.isArray(resultado.resultados) && resultado.resultados.length > 0) {
+    return {
+      success: resultado.success === true,
+      pedido_id: (response as any).pedido_id ?? '',
+      total_tiendas: resultado.total_tiendas ?? resultado.resultados.length,
+      transferencias_creadas: resultado.transferencias_creadas ?? resultado.resultados.filter((r: any) => r.success).length,
+      transferencias_errores: resultado.transferencias_errores ?? 0,
+      resultados: resultado.resultados
+    }
+  }
+  return null
+}
+
 /** Aplica el resultado del proceso SAP (compartido entre flujo async y fallback sync). */
 function applySAPResponse(response: ProcesoCompletoSAPResponse) {
   const innerStatus = (response as any).status === 'success' || (response as any).status === 'partial' || (response as any).status === 'error'
     ? (response as any).status
     : (response.envio_sap?.doc_num != null ? 'success' : response.error ? 'partial' : 'error')
+
+  const solicitudesTransferencia = getSolicitudesTransferencia(response)
 
   if (innerStatus === 'success') {
     // Backend actualiza a "Confirmado y enviado" (estado_id 12) cuando PASO 3 termina bien; reflejar en UI.
@@ -535,13 +557,14 @@ function applySAPResponse(response: ProcesoCompletoSAPResponse) {
         oc_id: response.envio_sap.oc_id ?? '',
         doc_num: response.envio_sap.doc_num,
         doc_entry: response.envio_sap.doc_entry,
+        numero_oc_sap: (response.envio_sap as any).numero_oc_sap ?? null,
         message: response.message,
         error: null,
         error_message: null,
         error_code: null,
         error_source: null
       } as IntegracionSAPDetalle : null,
-      solicitudesTransferencia: response.envio_sap?.solicitudes_transferencia || null,
+      solicitudesTransferencia: solicitudesTransferencia || null,
       estadoGeneral: 'success',
       numeroPedido: numeroPedido.value
     })
@@ -554,6 +577,7 @@ function applySAPResponse(response: ProcesoCompletoSAPResponse) {
         oc_id: response.envio_sap.oc_id ?? '',
         doc_num: response.envio_sap.doc_num,
         doc_entry: response.envio_sap.doc_entry,
+        numero_oc_sap: (response.envio_sap as any).numero_oc_sap ?? null,
         message: null,
         error: errorMsg,
         error_message: errorMsg,
@@ -570,7 +594,7 @@ function applySAPResponse(response: ProcesoCompletoSAPResponse) {
         error_code: null,
         error_source: null
       } as IntegracionSAPDetalle,
-      solicitudesTransferencia: response.envio_sap?.solicitudes_transferencia || null,
+      solicitudesTransferencia: solicitudesTransferencia || null,
       estadoGeneral: 'partial',
       numeroPedido: numeroPedido.value
     })

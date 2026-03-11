@@ -1208,8 +1208,35 @@ async function handleIntegrarOC(referenciaDespacho: string, almacenDestinoParam?
     
     // ✅ ACTUALIZAR ESTADO LOCAL INMEDIATAMENTE basándose en la respuesta
     const metadata = response?.metadata || {}
-    const detalles = metadata.detalles || []
-    
+    let detalles = metadata.detalles || []
+    // Normalizar formato alternativo del backend: { resultado, oc_id, oc_doc_num } → detalle + solicitudes
+    if (detalles.length === 0 && response?.resultado && typeof response.resultado === 'object' && response.oc_id) {
+      const res = response.resultado as { success?: boolean; resultados?: Array<{ doc_entry?: number; doc_num?: number }> }
+      const firstResult = res.resultados?.[0]
+      const resp = response as any
+      const envioSap = resp.envio_sap ?? resp
+      detalles = [{
+        oc_id: response.oc_id as string,
+        success: res.success === true,
+        doc_entry: firstResult?.doc_entry ?? envioSap.doc_entry ?? null,
+        doc_num: firstResult?.doc_num ?? envioSap.doc_num ?? resp.oc_doc_num ?? null,
+        numero_oc_sap: envioSap.numero_oc_sap ?? resp.numero_oc_sap ?? null,
+        message: 'Enviada exitosamente',
+        error: null,
+        error_message: null,
+        error_code: null,
+        error_source: null,
+        solicitudes_transferencia: {
+          success: res.success === true,
+          pedido_id: (response as any).pedido_id ?? '',
+          total_tiendas: (res as any).total_tiendas ?? (res.resultados?.length ?? 0),
+          transferencias_creadas: (res as any).transferencias_creadas ?? 0,
+          transferencias_errores: (res as any).transferencias_errores ?? 0,
+          resultados: (res as any).resultados ?? []
+        }
+      }]
+    }
+
     if (detalles.length > 0) {
       const detalle = detalles[0]
       const success = detalle.success === true
@@ -1225,14 +1252,16 @@ async function handleIntegrarOC(referenciaDespacho: string, almacenDestinoParam?
         
         if (success) {
           ordenActualizada.estado = 'ENVIADA'
-          ordenActualizada.numero_oc_sap = detalle.doc_num?.toString() || null
-          ordenActualizada.doc_entry = detalle.doc_entry || null  // ⭐ Actualizar doc_entry
+          ordenActualizada.numero_oc_sap = detalle.numero_oc_sap ?? detalle.doc_num?.toString() ?? null
+          ordenActualizada.doc_entry = detalle.doc_entry || null
+          ordenActualizada.doc_num = detalle.doc_num ?? null
           ordenActualizada.fecha_procesado = new Date().toISOString()
           ordenActualizada.respuesta_sap = detalle.message || 'Enviada exitosamente'
           
-          const docInfo = detalle.doc_entry 
-            ? `DocEntry: ${detalle.doc_entry}${detalle.doc_num ? `, DocNum: ${detalle.doc_num}` : ''}`
-            : (detalle.doc_num ? `DocNum: ${detalle.doc_num}` : 'N/A')
+          const numOdc = detalle.numero_oc_sap ?? (detalle.doc_num != null ? String(detalle.doc_num) : null)
+          const docInfo = detalle.doc_entry
+            ? `DocEntry: ${detalle.doc_entry}${numOdc != null ? `, Num ODC: ${numOdc}` : ''}`
+            : (numOdc != null ? `Num ODC: ${numOdc}` : 'N/A')
           toast.success('Orden enviada', docInfo)
         } else {
           ordenActualizada.estado = 'ERROR'
@@ -1472,8 +1501,9 @@ async function handleIntegrarOCMultiples(referencias: string[]) {
             
             if (success) {
               ordenActualizada.estado = 'ENVIADA'
-              ordenActualizada.numero_oc_sap = detalle.doc_num?.toString() || null
-              ordenActualizada.doc_entry = detalle.doc_entry || null  // ⭐ Actualizar doc_entry
+              ordenActualizada.numero_oc_sap = detalle.numero_oc_sap ?? detalle.doc_num?.toString() ?? null
+              ordenActualizada.doc_entry = detalle.doc_entry || null
+              ordenActualizada.doc_num = detalle.doc_num ?? null
               ordenActualizada.fecha_procesado = new Date().toISOString()
               ordenActualizada.respuesta_sap = detalle.message || 'Enviada exitosamente'
               successCount++

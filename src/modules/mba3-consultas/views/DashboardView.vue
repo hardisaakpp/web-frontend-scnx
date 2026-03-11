@@ -231,10 +231,10 @@
                     </div>
                   </button>
 
-                  <!-- Procesamiento SAP: capability mabel_view (mabel.view). Solo capabilities. -->
+                  <!-- Procesamiento SAP: capability mabel_view (mabel.view). Navega a lista de pedidos. -->
                   <button
                     v-if="authStore.canViewMabel"
-                    @click="showProcesamientoSAPModal = true"
+                    @click="$router.push('/mba3-consultas/procesamiento-sap')"
                     class="bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-600 p-4 hover:border-gray-300 dark:hover:border-gray-500 hover:shadow-sm transition-all text-left"
                   >
                     <div class="flex items-start gap-3">
@@ -297,14 +297,13 @@
       </div>
     </div>
 
-    <!-- Modal para buscar procesamiento SAP -->
+    <!-- Modal para buscar procesamiento SAP (no usado: botón navega a lista) -->
     <div
       v-if="showProcesamientoSAPModal"
       class="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4"
       @click.self="closeProcesamientoSAPModal"
     >
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-md w-full">
-        <!-- Header del modal -->
         <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
           <div>
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Buscar Procesamiento SAP</h3>
@@ -402,10 +401,19 @@ const isDev = import.meta.env.DEV
 
 const loadingDespachos = ref(false)
 const odcConsultasAbierto = ref(false)
+// (Modal Procesamiento SAP retirado: se navega a lista /mba3-consultas/procesamiento-sap)
 const showProcesamientoSAPModal = ref(false)
 const pedidoProcesamientoSAP = ref('')
 const loadingProcesamientoSAP = ref(false)
 const showListadoPedidosOriginalesModal = ref(false)
+
+function closeProcesamientoSAPModal() {
+  showProcesamientoSAPModal.value = false
+  pedidoProcesamientoSAP.value = ''
+}
+async function navigateToProcesamientoSAP() {
+  // Navegación movida a lista; este modal ya no se usa
+}
 
 // Función para cargar despachos antes de navegar
 async function cargarDespachos() {
@@ -426,42 +434,6 @@ async function cargarDespachos() {
 async function navigateToProceso() {
   await cargarDespachos()
   router.push('/mba3-consultas/proceso')
-}
-
-// Función para navegar a procesamiento SAP
-async function navigateToProcesamientoSAP() {
-  if (!pedidoProcesamientoSAP.value.trim()) {
-    toast.warning('Campo requerido', 'Por favor ingrese un número de pedido')
-    return
-  }
-
-  loadingProcesamientoSAP.value = true
-
-  try {
-    // Verificar que el procesamiento SAP existe antes de navegar
-    await mba3ConsultasService.getProcesamientoSAP(pedidoProcesamientoSAP.value.trim())
-    
-    // Si existe, navegar a la vista
-    router.push({
-      name: 'mba3-consultas-pedido-procesamiento-sap',
-      params: { id: encodeURIComponent(pedidoProcesamientoSAP.value.trim()) }
-    })
-    
-    // Cerrar modal y limpiar input
-    closeProcesamientoSAPModal()
-  } catch (error: any) {
-    console.error('Error al verificar procesamiento SAP:', error)
-    toast.error('Error', error.message || 'No se pudo encontrar el procesamiento SAP para este pedido')
-  } finally {
-    loadingProcesamientoSAP.value = false
-  }
-}
-
-// Cerrar modal
-function closeProcesamientoSAPModal() {
-  showProcesamientoSAPModal.value = false
-  pedidoProcesamientoSAP.value = ''
-  loadingProcesamientoSAP.value = false
 }
 
 onMounted(async () => {

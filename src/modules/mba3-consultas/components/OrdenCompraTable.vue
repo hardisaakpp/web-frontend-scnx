@@ -93,6 +93,7 @@
               @dragend="handleDragEnd"
               :class="[
                 'px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-grab transition-colors duration-300',
+                (columnKey === 'numero_oc_sap' || columnKey === 'doc_num') ? 'min-w-[10rem] w-40' : '',
                 isColumnSortable(columnKey) ? 'hover:bg-gray-100 dark:hover:bg-gray-600' : 'hover:bg-gray-50 dark:hover:bg-gray-700',
                 draggedColumn === columnKey ? 'opacity-50 cursor-grabbing' : '',
                 dragOverColumn === columnKey && draggedColumn !== columnKey ? 'bg-emerald-100 dark:bg-emerald-900/30 border-l-4 border-emerald-500 dark:border-emerald-400' : ''
@@ -243,7 +244,7 @@
                 </div>
               </td>
               <!-- Número ODC SAP -->
-              <td v-else-if="columnKey === 'numero_oc_sap'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 transition-colors duration-300">
+              <td v-else-if="columnKey === 'numero_oc_sap'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 transition-colors duration-300 min-w-[10rem] w-40">
                 <div v-if="oc.numero_oc_sap" class="flex items-center gap-2">
                   <span class="font-mono">{{ oc.numero_oc_sap }}</span>
                   <span v-if="oc.doc_entry" class="text-xs text-gray-500 dark:text-gray-400 transition-colors duration-300">(Entry: {{ oc.doc_entry }})</span>
@@ -256,6 +257,12 @@
                   <span class="font-mono font-semibold text-emerald-700 dark:text-emerald-400 transition-colors duration-300">{{ oc.doc_entry }}</span>
                   <span class="px-1.5 py-0.5 text-xs font-medium bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 rounded transition-colors duration-300" title="OC ya enviada a SAP">✓</span>
                 </div>
+                <span v-else class="text-gray-400 dark:text-gray-500 italic transition-colors duration-300">-</span>
+              </td>
+              <!-- Docnum (SAP) -->
+              <td v-else-if="columnKey === 'doc_num'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 transition-colors duration-300">
+                <span v-if="oc.doc_num != null" class="font-mono">{{ oc.doc_num }}</span>
+                <span v-else-if="oc.numero_oc_sap" class="font-mono text-gray-600 dark:text-gray-400">{{ oc.numero_oc_sap }}</span>
                 <span v-else class="text-gray-400 dark:text-gray-500 italic transition-colors duration-300">-</span>
               </td>
               <!-- Respuesta SAP -->
@@ -431,6 +438,7 @@ const availableColumns = [
   { key: 'estado', label: 'Estado', default: true },
   { key: 'numero_oc_sap', label: 'Número ODC SAP', default: true },
   { key: 'doc_entry', label: 'DocEntry SAP', default: false },
+  { key: 'doc_num', label: 'Num ODC', default: true },
   { key: 'respuesta_sap', label: 'Respuesta SAP', default: true },
 ]
 
@@ -500,7 +508,7 @@ function getColumnLabel(key: string): string {
 
 function isColumnSortable(key: string): boolean {
   // Columnas no ordenables
-  return !['estado', 'numero_oc_sap', 'doc_entry', 'respuesta_sap', 'origen'].includes(key)
+  return !['estado', 'numero_oc_sap', 'doc_entry', 'doc_num', 'respuesta_sap', 'origen'].includes(key)
 }
 
 function selectAllColumns() {
@@ -803,7 +811,7 @@ async function handleIntegrar(referenciaDespacho: string, ocId: string) {
   if (oc && oc.doc_entry !== null && oc.doc_entry !== undefined) {
     toast.warning(
       'OC ya enviada', 
-      `Esta OC ya fue enviada a SAP (DocEntry: ${oc.doc_entry}${oc.numero_oc_sap ? `, DocNum: ${oc.numero_oc_sap}` : ''}). No se puede reenviar.`
+      `Esta OC ya fue enviada a SAP (DocEntry: ${oc.doc_entry}${oc.numero_oc_sap ? `, Num ODC: ${oc.numero_oc_sap}` : ''}). No se puede reenviar.`
     )
     return
   }

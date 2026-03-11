@@ -183,16 +183,51 @@
     </div>
   </Teleport>
 
-  <!-- Modal de éxito SAP con botón Descargar PDF -->
+  <!-- Modal de éxito SAP con botón Descargar PDF y tabla de Solicitudes de Transferencia -->
   <Teleport to="body">
     <div
       v-if="showSAPSuccessModal"
-      class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center"
+      class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
       @click.self="showSAPSuccessModal = false"
     >
-      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 max-w-md mx-4 border border-gray-200 dark:border-gray-600">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 max-w-2xl w-full mx-auto border border-gray-200 dark:border-gray-600 max-h-[90vh] overflow-y-auto">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Proceso completado</h3>
         <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">{{ sapSuccessMessage || 'ODC enviada correctamente a SAP.' }}</p>
+
+        <!-- Tabla Solicitudes de Transferencia (ITR): DocNum, Tienda, Nombre -->
+        <div
+          v-if="sapSuccessSolicitudesTransferencia?.resultados?.length"
+          class="mb-4 rounded-lg border border-gray-200 dark:border-gray-600 overflow-hidden"
+        >
+          <div class="px-3 py-2 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-600">
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Solicitudes de Transferencia ({{ sapSuccessSolicitudesTransferencia.transferencias_creadas }} de {{ sapSuccessSolicitudesTransferencia.total_tiendas }})
+            </span>
+          </div>
+          <div class="overflow-x-auto max-h-48 overflow-y-auto">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+              <thead class="bg-gray-50 dark:bg-gray-900/50 sticky top-0">
+                <tr>
+                  <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">DocNum (ITR)</th>
+                  <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tienda</th>
+                  <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nombre</th>
+                </tr>
+              </thead>
+              <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                <tr
+                  v-for="r in sapSuccessSolicitudesTransferencia.resultados"
+                  :key="r.tienda_codigo"
+                  class="hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                >
+                  <td class="px-3 py-2 whitespace-nowrap text-gray-900 dark:text-white font-medium">{{ r.doc_num ?? '—' }}</td>
+                  <td class="px-3 py-2 whitespace-nowrap text-gray-700 dark:text-gray-300">{{ r.tienda_codigo }}</td>
+                  <td class="px-3 py-2 text-gray-700 dark:text-gray-300">{{ r.tienda_nombre ?? '—' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         <div class="flex flex-col gap-2">
           <button
             v-if="sapSuccessOcId"
@@ -206,7 +241,7 @@
           <button
             type="button"
             class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
-            @click="showSAPSuccessModal = false"
+            @click="closeSAPSuccessModal"
           >
             Cerrar
           </button>
@@ -238,6 +273,8 @@
         :show-finalizar-pedido="true"
         :puede-finalizar-pedido="puedeFinalizarPedido"
         :finalizando-pedido="finalizandoPedido"
+        :show-volver="true"
+        @volver="router.push('/mba3-consultas/cargar-plantilla')"
         @cargar-plantillas="goToCargarPlantillas"
         @generar-oc="handleGenerarOCDesdePedido"
         @confirmar="handleConfirmar"
@@ -246,20 +283,7 @@
         @descargar-plano-mba="handleDescargarPlanoMba"
         @crear-pedido="handleCrearPedido"
         @finalizar-pedido="handleFinalizarPedido"
-      >
-        <template #leading>
-          <button
-            type="button"
-            @click="router.push('/mba3-consultas/cargar-plantilla')"
-            class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 hover:border-gray-400 dark:hover:border-gray-500 transition-colors"
-          >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            Volver
-          </button>
-        </template>
-      </PedidoHeaderActions>
+      />
 
       <!-- Enviar / Descartar / Finalizado (solo cuando hay pedido cargado) -->
       <div v-if="pedido && !loading" class="flex items-center justify-end gap-3">
@@ -901,6 +925,7 @@ let sapPollingInterval: ReturnType<typeof setInterval> | null = null
 const showSAPSuccessModal = ref(false)
 const sapSuccessOcId = ref<string | null>(null)
 const sapSuccessMessage = ref('')
+const sapSuccessSolicitudesTransferencia = ref<import('@/modules/mba3-consultas/types').SolicitudesTransferencia | null>(null)
 const descargandoSAPPDF = ref(false)
 
 function resetSapProgress() {
@@ -969,12 +994,17 @@ async function handleDescargarSAPPDF() {
     link.click()
     URL.revokeObjectURL(url)
     toast.success('Descarga completada', 'El PDF se ha descargado correctamente')
-    showSAPSuccessModal.value = false
+    closeSAPSuccessModal()
   } catch (e: any) {
     toast.error('Error al descargar', e?.message || 'No se pudo descargar el PDF')
   } finally {
     descargandoSAPPDF.value = false
   }
+}
+
+function closeSAPSuccessModal() {
+  showSAPSuccessModal.value = false
+  sapSuccessSolicitudesTransferencia.value = null
 }
 
 async function handleFinalizarPedido() {
@@ -1630,12 +1660,14 @@ async function applySAPResponseCargarPlantilla(response: import('@/modules/mba3-
   if (innerStatus === 'success') {
     const docNum = response.envio_sap?.doc_num
     sapSuccessMessage.value = docNum
-      ? `ODC enviada exitosamente a SAP. DocNum: ${docNum}`
+      ? `ODC enviada exitosamente a SAP. Num ODC: ${docNum}`
       : (response.message || 'ODC procesada correctamente en SAP')
     sapSuccessOcId.value = response.envio_sap?.oc_id ?? null
+    sapSuccessSolicitudesTransferencia.value =
+      response.solicitudes_transferencia ?? response.envio_sap?.solicitudes_transferencia ?? null
     showSAPSuccessModal.value = true
-    if (response.envio_sap?.solicitudes_transferencia?.transferencias_creadas) {
-      const st = response.envio_sap.solicitudes_transferencia
+    if (sapSuccessSolicitudesTransferencia.value?.transferencias_creadas) {
+      const st = sapSuccessSolicitudesTransferencia.value
       toast.success('Solicitudes de Transferencia', `Se crearon ${st.transferencias_creadas} de ${st.total_tiendas} solicitudes`)
     }
     await loadPedido()

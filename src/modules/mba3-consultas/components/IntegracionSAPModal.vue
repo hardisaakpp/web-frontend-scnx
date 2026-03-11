@@ -71,14 +71,17 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                       <span class="font-medium text-gray-900 dark:text-white">
-                        OC #{{ detalle.doc_num }} enviada exitosamente
+                        OC enviada exitosamente
                       </span>
                     </div>
-                    <div v-if="detalle.doc_entry" class="text-xs text-gray-600 dark:text-gray-400 ml-7">
+                    <div v-if="detalle.doc_entry != null" class="text-xs text-gray-600 dark:text-gray-400 ml-7">
                       DocEntry: {{ detalle.doc_entry }}
                     </div>
-                    <div v-if="detalle.message" class="text-xs text-gray-600 dark:text-gray-400 ml-7">
-                      {{ detalle.message }}
+                    <div class="text-xs text-gray-600 dark:text-gray-400 ml-7">
+                      Num ODC: {{ detalle.numero_oc_sap ?? '—' }}
+                    </div>
+                    <div v-if="mensajeExito" class="text-xs text-gray-600 dark:text-gray-400 ml-7">
+                      {{ mensajeExito }}
                     </div>
                   </div>
                   
@@ -103,8 +106,8 @@
                   </div>
                 </div>
 
-                <!-- Sección 2: Solicitudes de Transferencia (ITR) - oculta momentáneamente (quitar v-if para mostrar) -->
-                <div v-if="false" class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                <!-- Sección 2: Solicitudes de Transferencia (ITR) - doc_num, tienda_codigo, tienda_nombre -->
+                <div v-if="solicitudesTransferencia" class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
                   <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
                     <svg class="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
@@ -112,12 +115,6 @@
                     Solicitudes de Transferencia (ITR)
                   </h3>
 
-                  <!-- Sin datos de solicitudes -->
-                  <div v-if="!solicitudesTransferencia" class="p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400">
-                    No hay información de Solicitudes de Transferencia para este resultado.
-                  </div>
-
-                  <template v-else>
                   <!-- Resumen -->
                   <div class="mb-4 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
                     <div class="flex items-center gap-2 text-sm">
@@ -130,7 +127,7 @@
                     </div>
                   </div>
 
-                  <!-- Caso especial: Sin Solicitudes de Transferencia -->
+                  <!-- Caso: Sin Solicitudes de Transferencia -->
                   <div v-if="(solicitudesTransferencia?.total_tiendas === 0) && (solicitudesTransferencia?.transferencias_creadas === 0)" class="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800">
                     <div class="flex items-start gap-2 text-sm text-blue-800 dark:text-blue-200">
                       <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -142,62 +139,33 @@
                     </div>
                   </div>
 
-                  <!-- Lista de Tiendas -->
-                  <div v-else-if="solicitudesTransferencia?.resultados?.length" class="space-y-2 max-h-96 overflow-y-auto">
-                    <div
-                      v-for="(resultado, index) in (solicitudesTransferencia?.resultados ?? [])"
-                      :key="`${resultado.tienda_id}-${index}`"
-                      class="p-3 rounded-lg border"
-                      :class="resultado.success 
-                        ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' 
-                        : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'"
-                    >
-                      <div class="flex items-start gap-2">
-                        <svg 
-                          v-if="resultado.success"
-                          class="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" 
-                          fill="none" 
-                          stroke="currentColor" 
-                          viewBox="0 0 24 24"
-                        >
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <svg 
-                          v-else
-                          class="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" 
-                          fill="none" 
-                          stroke="currentColor" 
-                          viewBox="0 0 24 24"
-                        >
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <div class="flex-1 min-w-0">
-                          <div class="flex items-center gap-2 flex-wrap">
-                            <span class="font-medium text-gray-900 dark:text-white">
-                              {{ resultado.tienda_codigo }}
-                            </span>
-                            <span v-if="resultado.tienda_nombre" class="text-sm text-gray-600 dark:text-gray-400">
-                              - {{ resultado.tienda_nombre }}
-                            </span>
-                          </div>
-                          
-                          <div v-if="resultado.success" class="mt-1 space-y-1">
-                            <div class="text-sm text-gray-700 dark:text-gray-300">
-                              ITR #{{ resultado.doc_num }}
-                            </div>
-                            <div v-if="resultado.doc_entry" class="text-xs text-gray-600 dark:text-gray-400">
-                              DocEntry: {{ resultado.doc_entry }}
-                            </div>
-                          </div>
-                          
-                          <div v-else-if="resultado.error" class="mt-1 text-sm text-red-800 dark:text-red-300">
-                            {{ resultado.error }}
-                          </div>
-                        </div>
-                      </div>
+                  <!-- Tabla: solo tienda_codigo y doc_num; se muestra cuando hay más de 1 ITR -->
+                  <div v-else-if="filasItr.length > 1" class="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <div class="overflow-x-auto max-h-64 overflow-y-auto">
+                      <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+                        <thead class="bg-gray-100 dark:bg-gray-800/80 sticky top-0">
+                          <tr>
+                            <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">DocNum</th>
+                            <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tienda</th>
+                          </tr>
+                        </thead>
+                        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                          <tr
+                            v-for="(fila, index) in filasItr"
+                            :key="`itr-${fila.tienda_codigo}-${fila.doc_num}-${index}`"
+                            class="hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                          >
+                            <td class="px-4 py-2 whitespace-nowrap font-medium text-gray-900 dark:text-white">
+                              {{ fila.doc_num }}
+                            </td>
+                            <td class="px-4 py-2 whitespace-nowrap text-gray-700 dark:text-gray-300">
+                              {{ fila.tienda_codigo }}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
                     </div>
                   </div>
-                  </template>
                 </div>
               </div>
 
@@ -243,6 +211,30 @@ const tituloModal = computed(() => {
   } else {
     return '❌ Error en Integración con SAP'
   }
+})
+
+// Mensaje de éxito: "con DocNum" solo cuando hay exactamente 1 solicitud de transferencia (ITR)
+const mensajeExito = computed(() => {
+  const d = props.detalle
+  if (!d?.success) return null
+  const filasCount = filasItr.value.length
+  if (d.doc_num != null && filasCount === 1) {
+    return `Proceso completado exitosamente. ODC enviada a SAP con DocNum: ${d.doc_num}`
+  }
+  if (filasCount !== 1) return 'Proceso completado exitosamente.'
+  return d.message ?? null
+})
+
+// Filas para la tabla ITR: preferir itrs_por_tienda del backend; si no, derivar de resultados
+const filasItr = computed(() => {
+  const st = props.solicitudesTransferencia
+  if (!st) return []
+  const itrs = st.itrs_por_tienda
+  if (itrs?.length) return itrs
+  const res = st.resultados ?? []
+  return res
+    .filter((r: { doc_num?: number | null }) => r.doc_num != null)
+    .map((r: { doc_num: number | null; tienda_codigo: string }) => ({ doc_num: r.doc_num!, tienda_codigo: r.tienda_codigo }))
 })
 
 function handleClose() {
