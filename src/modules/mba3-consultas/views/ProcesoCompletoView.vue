@@ -251,6 +251,7 @@
               @integrar="handleIntegrarOC"
               @integrar-multiples="handleIntegrarOCMultiples"
               @filtered-count-changed="handleFilteredOCCountChanged"
+              @ver-detalle-sap="handleVerDetalleSAP"
               ref="ordenCompraTableRef"
             />
 
@@ -1175,6 +1176,98 @@ async function handleGenerarODCMultiples(despachoIds: string[]) {
     generandoODC.value = false
     progresoGenerarODC.value = 0
   }
+}
+
+async function handleVerDetalleSAP(oc: OrdenCompra) {
+  if (!oc) return
+
+  // Si tenemos en memoria un resultado de integración con múltiples ITR (varios DocNum),
+  // siempre reutilizamos ese resultado completo para que el modal muestre la misma tabla.
+  if (integracionSAPSolicitudes.value) {
+    const st = integracionSAPSolicitudes.value
+    const itrs = st.itrs_por_tienda && st.itrs_por_tienda.length
+      ? st.itrs_por_tienda
+      : (st.resultados ?? []).filter((r: { doc_num?: number | null }) => r.doc_num != null)
+
+    if (itrs.length > 1) {
+      showIntegracionSAPModal.value = true
+      return
+    }
+  }
+
+  // Si el último detalle de integración en memoria corresponde a esta OC,
+  // reutilizamos exactamente el mismo detalle + solicitudesTransferencia.
+  if (integracionSAPDetalle.value && (
+    integracionSAPDetalle.value.oc_id === oc.oc_id ||
+    (integracionSAPDetalle.value.numero_oc_sap && integracionSAPDetalle.value.numero_oc_sap === (oc.numero_oc_sap ?? null)) ||
+    (integracionSAPDetalle.value.doc_entry != null && integracionSAPDetalle.value.doc_entry === (oc.doc_entry ?? null))
+  )) {
+    showIntegracionSAPModal.value = true
+    return
+  }
+
+  // Sin datos en memoria: obtener detalle desde GET /ordenes-compra/{oc_id}/integracion-sap
+  try {
+    const response = await mba3ConsultasService.getIntegracionSAP(oc.oc_id)
+    const envio = response.envio_sap
+    if (!envio) {
+      throw new Error('Respuesta sin envio_sap')
+    }
+
+    const detalle: IntegracionSAPDetalle = {
+      oc_id: envio.oc_id,
+      proveedor: (envio as { proveedor?: string }).proveedor ?? oc.proveedor_nombre ?? undefined,
+      success: envio.success,
+      doc_entry: envio.doc_entry ?? null,
+      doc_num: envio.doc_num ?? null,
+      numero_oc_sap: envio.numero_oc_sap ?? null,
+      message: envio.message ?? oc.respuesta_sap ?? 'Enviada exitosamente',
+      error: envio.error ?? null,
+      error_message: envio.error ?? null,
+      error_code: null,
+      error_source: null,
+      solicitudes_transferencia: null,
+      sap_response: null,
+      sap_error_details: null,
+    }
+
+    integracionSAPDetalle.value = detalle
+    integracionSAPSolicitudes.value =
+      response.solicitudes_transferencia ?? envio.solicitudes_transferencia ?? null
+    integracionSAPEstado.value = envio.success ? 'success' : 'error'
+    showIntegracionSAPModal.value = true
+    return
+  } catch (err: any) {
+    if (err?.response?.status === 404) {
+      if (import.meta.env.DEV) console.debug('[handleVerDetalleSAP] No hay integración SAP para esta OC (404), mostrando detalle mínimo')
+    } else {
+      console.warn('[handleVerDetalleSAP] Error al obtener integración SAP:', err)
+      toast.warning('No se pudo cargar el detalle de integración', err?.response?.data?.detail ?? err?.message ?? 'Error desconocido')
+    }
+  }
+
+  // Fallback: detalle mínimo solo con datos de la OC (sin ITR)
+  const detalle: IntegracionSAPDetalle = {
+    oc_id: oc.oc_id,
+    proveedor: oc.proveedor_nombre ?? undefined,
+    success: true,
+    doc_entry: oc.doc_entry ?? null,
+    doc_num: oc.doc_num ?? null,
+    numero_oc_sap: oc.numero_oc_sap ?? null,
+    message: oc.respuesta_sap || 'Enviada exitosamente',
+    error: null,
+    error_message: null,
+    error_code: null,
+    error_source: null,
+    solicitudes_transferencia: null,
+    sap_response: null,
+    sap_error_details: null,
+  }
+
+  integracionSAPDetalle.value = detalle
+  integracionSAPSolicitudes.value = null
+  integracionSAPEstado.value = 'success'
+  showIntegracionSAPModal.value = true
 }
 
 // Funciones de integración individuales

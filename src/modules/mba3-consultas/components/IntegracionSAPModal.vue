@@ -80,6 +80,9 @@
                     <div class="text-xs text-gray-600 dark:text-gray-400 ml-7">
                       Num ODC: {{ detalle.numero_oc_sap ?? '—' }}
                     </div>
+                    <div v-if="detalle.doc_num != null && !solicitudesTransferencia" class="text-xs text-gray-600 dark:text-gray-400 ml-7">
+                      DocNum: {{ detalle.doc_num }}
+                    </div>
                     <div v-if="mensajeExito" class="text-xs text-gray-600 dark:text-gray-400 ml-7">
                       {{ mensajeExito }}
                     </div>

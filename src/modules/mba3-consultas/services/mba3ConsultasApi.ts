@@ -18,7 +18,7 @@ import type {
 } from '../types'
 import type { OrdenCompraResponse, OrdenCompraLogResponse, RemisionResponse } from '../types'
 import type { HealthResponse, ProcesoResponse } from '../types'
-import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, SkuHomologacionCreateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstado, ProcesoEstadoResponse, SugerenciaProducto, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuRequest, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, UploadPlantillaAsyncAcceptedResponse, PlantillaProcesoEstado, PedidoCompleto, CargarRespuestaProveedorResponse, RespuestaProveedorResponse, ProcesarConfirmacionResponse, ReporteDiferenciasResponse, IntegracionSAPResponse, ActualizarCostoPedidoResponse, AjusteDetalle, ResumenConfirmacion, GuardarModificacionesColumnasRequest, GuardarModificacionesColumnasResponse, ObtenerModificacionesColumnasResponse, ProcesamientoSAPResponse, PedidosListadoResponse, CrearOCDesdePedidoResponse, CrearPedidoRequest, CrearPedidoResponse, ModificarPedidoCabeceraRequest, ModificarPedidoCabeceraResponse, TienePedidosResponse, InfoArchivoPlantillaResponse, BuscarPlantillasResponse, PlantillasPedidosResponse, ProcesoCompletoSAPResponse, ProcesoCompletoSAPAsyncResponse, ProcesoCompletoSAPResultadoPolling, EstadosPedidoResponse } from '../types'
+import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, SkuHomologacionCreateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstado, ProcesoEstadoResponse, SugerenciaProducto, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuRequest, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, UploadPlantillaAsyncAcceptedResponse, PlantillaProcesoEstado, PedidoCompleto, CargarRespuestaProveedorResponse, RespuestaProveedorResponse, ProcesarConfirmacionResponse, ReporteDiferenciasResponse, IntegracionSAPResponse, ActualizarCostoPedidoResponse, AjusteDetalle, ResumenConfirmacion, GuardarModificacionesColumnasRequest, GuardarModificacionesColumnasResponse, ObtenerModificacionesColumnasResponse, ProcesamientoSAPResponse, PedidosListadoResponse, CrearOCDesdePedidoResponse, CrearPedidoRequest, CrearPedidoResponse, ModificarPedidoCabeceraRequest, ModificarPedidoCabeceraResponse, TienePedidosResponse, InfoArchivoPlantillaResponse, BuscarPlantillasResponse, PlantillasPedidosResponse, ProcesoCompletoSAPResponse, ProcesoCompletoSAPAsyncResponse, ProcesoCompletoSAPResultadoPolling, IntegracionSAPPorOCResponse, EstadosPedidoResponse } from '../types'
 
 // ⭐ REEXPORTAR CONFIGURACIÓN Y UTILIDADES REFACTORIZADAS
 export { mba3Api, API_BASE_URL } from './config/axiosConfig'
@@ -775,6 +775,16 @@ export const mba3ConsultasService = {
       console.error('❌ [descargarODCPDF] Error al descargar PDF:', error)
       throw new Error(`No se pudo descargar el PDF de la ODC. Error: ${error.message}`)
     }
+  },
+
+  /**
+   * Obtener detalle de integración SAP por oc_id (GET /ordenes-compra/{oc_id}/integracion-sap).
+   * Usado para rellenar el modal al hacer clic en "Num ODC" cuando no hay datos en memoria.
+   * 404 si no existe registro de envío para esa OC.
+   */
+  async getIntegracionSAP(ocId: string): Promise<IntegracionSAPPorOCResponse> {
+    const response = await mba3Api.get<IntegracionSAPPorOCResponse>(`/ordenes-compra/${ocId}/integracion-sap`)
+    return response.data
   },
 
   // Actualizar SKU en un detalle de ODC

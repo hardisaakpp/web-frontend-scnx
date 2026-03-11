@@ -1121,6 +1121,15 @@ export interface ProcesoCompletoSAPDetalleODC {
 }
 
 /**
+ * Respuesta del endpoint GET /ordenes-compra/{oc_id}/integracion-sap
+ * Usado para rellenar el modal de integración SAP al hacer clic en "Num ODC" (cuando no hay datos en memoria).
+ */
+export interface IntegracionSAPPorOCResponse {
+  envio_sap: ProcesoCompletoSAPDetalleODC
+  solicitudes_transferencia?: SolicitudesTransferencia
+}
+
+/**
  * Respuesta del endpoint POST /api/pedidos/{numero_pedido}/proceso-completo-sap
  * Ejecuta los 3 pasos: Confirmar Redistribución → Generar ODC → Enviar a SAP
  */
