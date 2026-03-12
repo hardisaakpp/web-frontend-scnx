@@ -67,13 +67,11 @@
         <div v-show="!filtrosColapsados" class="p-6">
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Estado</label>
-              <!-- Estado fijo: solo pedidos CONFIRMADO_ENVIADO para esta interfaz de solo lectura -->
-              <div class="w-full px-3 py-2 border border-emerald-300 dark:border-emerald-600 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-sm flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span class="font-medium">Confirmado y Enviado</span>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Estados incluidos</label>
+              <!-- Estados incluidos: flujo de redistribución en adelante (usa flag solo_redistribucion en backend) -->
+              <div class="w-full px-3 py-2 border border-emerald-300 dark:border-emerald-600 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-xs leading-snug">
+                Esta vista muestra pedidos del flujo de redistribución en adelante
+                (incluye Confirmado, Confirmado y Enviado, Despachar y Facturar, Finalizado, etc., excluye borradores y cancelados).
               </div>
             </div>
             <div>
@@ -353,7 +351,13 @@ import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { lastNotification } from '@/composables/useNotificaciones'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
-import type { PedidosListadoResponse, PedidoResumido, PedidosListadoFiltros, PedidosListadoMetadata } from '../types'
+import type {
+  PedidosListadoResponse,
+  PedidoResumido,
+  PedidosListadoFiltros,
+  PedidosListadoMetadata,
+  PedidoCompleto,
+} from '../types'
 import { formatDate, formatDateTime } from '../utils/formatters'
 
 const router = useRouter()
@@ -385,6 +389,7 @@ const filtros = ref<PedidosListadoFiltros>({
   proveedor_nombre: '',
   numero_pedido: '',
   creado_por: '',
+  solo_redistribucion: true,
   limit: PAGE_SIZE,
   offset: 0
 })
@@ -520,16 +525,43 @@ async function cargarPedidos() {
   loading.value = true
   error.value = null
   try {
-    // Solo mostrar pedidos con estado CONFIRMADO_ENVIADO (estado_id=12)
-    // según las indicaciones del backend para esta interfaz de solo lectura
-    const response: PedidosListadoResponse = await mba3ConsultasService.getPedidosListado({
-      ...filtros.value,
-      estado: 'CONFIRMADO_ENVIADO',
-      limit: metadata.value.limit,
-      offset: metadata.value.offset
+    // Usar listado de pedidos confirmados (>= 10 y no cancelados) del backend
+    const page = Math.floor(metadata.value.offset / metadata.value.limit) + 1
+    const response = await mba3ConsultasService.getPedidosConfirmados({
+      page,
+      pageSize: metadata.value.limit,
     })
-    pedidos.value = response.data
-    metadata.value = response.metadata
+
+    // Mapear PedidoCompleto → PedidoResumido para reutilizar la tabla actual
+    pedidos.value = (response.data || []).map((p: PedidoCompleto): PedidoResumido => {
+      const c = p.cabecera
+      return {
+        pedido_id: c.pedido_id,
+        numero_pedido: c.numero_pedido ?? '',
+        fecha_pedido: c.fecha_pedido,
+        fecha_entrega: c.fecha_entrega,
+        forma_pago: c.forma_pago,
+        mensaje: c.mensaje,
+        proveedor_nombre: c.proveedor_nombre,
+        comprador_nombre: c.comprador_nombre,
+        comprador_codigo: c.comprador_codigo,
+        origen_traslado: c.origen_traslado,
+        serie: c.serie,
+        archivo_nombre: c.archivo_nombre,
+        creado_por: c.creado_por,
+        estado: c.estado ?? '',
+        creado_en: c.creado_en ?? '',
+        modificado_fecha: null,
+        modificado_por: null,
+      }
+    })
+
+    metadata.value = {
+      total: response.total || 0,
+      limit: response.pageSize || metadata.value.limit,
+      offset: ((response.page || 1) - 1) * (response.pageSize || metadata.value.limit),
+      has_more: (response.page || 1) < (response.totalPages || 1),
+    }
   } catch (e: any) {
     console.error('Error al cargar pedidos:', e)
     error.value = e.message || 'No se pudieron cargar los pedidos'
@@ -553,6 +585,7 @@ function limpiarFiltros() {
     proveedor_nombre: '',
     numero_pedido: '',
     creado_por: '',
+    solo_redistribucion: true,
     limit: PAGE_SIZE,
     offset: 0
   }
