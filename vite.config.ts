@@ -48,6 +48,7 @@ export default defineConfig({
       },
       // API del Maestro de Artículos (FastAPI o similar en puerto 8001)
       '/maestro-api': {
+        //target: 'http://210.17.1.55:8004',
         target: 'http://localhost:8001',
         changeOrigin: true,
         secure: false,

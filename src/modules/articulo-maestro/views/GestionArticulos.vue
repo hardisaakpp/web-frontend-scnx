@@ -37,25 +37,73 @@
                 
                 <!-- Filters and Controls -->
                 <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
-                    <div class="text-sm text-gray-600 dark:text-gray-300 font-medium">
-                        Total encontrados: <span class="font-bold text-gray-900 dark:text-white">{{ filteredArticulos.length }}</span> 
-                        <span class="text-gray-400 font-normal ml-1">de {{ totalCount }}</span>
+                    <div class="flex flex-col gap-1">
+                        <div class="text-sm text-gray-600 dark:text-gray-300 font-medium">
+                            Total encontrados: <span class="font-bold text-gray-900 dark:text-white">{{ filteredArticulos.length }}</span> 
+                            <span class="text-gray-400 font-normal ml-1">de {{ totalCount }}</span>
+                        </div>
+                        <div class="text-[10px] text-gray-400">
+                            {{ hiddenColumns.size > 0 ? `${hiddenColumns.size} columnas ocultas` : 'Todas las columnas visibles' }}
+                        </div>
                     </div>
-                    <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                    <div class="flex flex-wrap gap-2 items-center">
+                        <!-- Column Visibility Popover -->
+                        <Popover v-slot="{ open }" class="relative">
+                            <PopoverButton :class="open ? 'bg-gray-100 dark:bg-gray-700' : ''" class="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors outline-none">
+                                <ViewColumnsIcon class="h-4 w-4" />
+                                <span>Columnas</span>
+                            </PopoverButton>
+
+                            <transition
+                                enter-active-class="transition duration-200 ease-out"
+                                enter-from-class="translate-y-1 opacity-0"
+                                enter-to-class="translate-y-0 opacity-100"
+                                leave-active-class="transition duration-150 ease-in"
+                                leave-from-class="translate-y-0 opacity-100"
+                                leave-to-class="translate-y-1 opacity-0"
+                            >
+                                <PopoverPanel class="absolute right-0 z-20 mt-2 w-72 origin-top-right rounded-xl bg-white dark:bg-gray-800 shadow-2xl ring-1 ring-black ring-opacity-5 focus:outline-none border border-gray-200 dark:border-gray-700">
+                                    <div class="p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center">
+                                        <h3 class="font-semibold text-gray-900 dark:text-white text-xs uppercase tracking-wider">Visibilidad de Columnas</h3>
+                                        <div class="flex gap-3">
+                                            <button @click="resetColumns" class="text-[10px] text-blue-600 hover:text-blue-800 font-medium whitespace-nowrap">Mostrar todas</button>
+                                            <button @click="hideAllColumns" class="text-[10px] text-rose-600 hover:text-rose-800 font-medium whitespace-nowrap">Ocultar todas</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="max-h-80 overflow-y-auto p-2 grid grid-cols-1 gap-1">
+                                        <button 
+                                            v-for="col in allColumns" 
+                                            :key="col.key"
+                                            @click="toggleColumn(col.key)"
+                                            class="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg text-left transition-colors"
+                                        >
+                                            <div :class="!hiddenColumns.has(col.key) ? 'bg-blue-600 border-blue-600' : 'bg-transparent border-gray-300 dark:border-gray-600'" class="w-4 h-4 rounded border flex items-center justify-center transition-colors">
+                                                <CheckIcon v-if="!hiddenColumns.has(col.key)" class="h-3 w-3 text-white" />
+                                            </div>
+                                            <span :class="!hiddenColumns.has(col.key) ? 'text-gray-900 dark:text-white' : 'text-gray-400'" class="text-xs truncate">{{ col.label }}</span>
+                                        </button>
+                                    </div>
+                                </PopoverPanel>
+                            </transition>
+                        </Popover>
+
                         <input
                             v-model.trim="searchQuery"
                             type="text"
-                            placeholder="Buscar por código o nombre..."
-                            class="w-full sm:w-64 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                            placeholder="Buscar..."
+                            class="w-full sm:w-48 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white outline-none transition-all"
                         />
-                        <select v-model.number="pageSize" class="w-full sm:w-32 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all cursor-pointer">
+                        <select v-model.number="pageSize" class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white outline-none transition-all cursor-pointer">
                             <option :value="5">5 filas</option>
                             <option :value="10">10 filas</option>
                             <option :value="20">20 filas</option>
                             <option :value="50">50 filas</option>
+                            <option :value="100">100 filas</option>
                         </select>
                     </div>
                 </div>
+
 
                 <!-- States -->
                 <div v-if="loading" class="py-8 text-center text-sm text-gray-500 dark:text-gray-400">
@@ -71,276 +119,52 @@
                 
                 <!-- Table -->
                 <div v-else class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
-                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 table-fixed">
                         <thead class="bg-gray-50 dark:bg-gray-900/50">
                             <tr>
-                                
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">CODIGO INTERNO</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">CODIGO DE BARRAS</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">GENERO</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">DESCRIPCION SAP</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">DESCRIPCION ETIQUETA</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">DESCRIPCION FACTURA</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">COD COLOR PRIMARIO</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">COLOR PRIMARIO</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">COD COLOR SECUNDARIO</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">COLOR SECUNDARIO</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">REFERENCIA</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">TALLA</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">MATERIAL</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">COMPOSICION</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">LINEA</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">CATEGORIA</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">SECCION</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">ATRIBUTO UNICO TEXTIL/CALZADO</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">ATRIBUTO UNICO 2</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">UNIDAD DE VENTA (PACK)</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">CODIGO PROVEEDOR</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">MARCA</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">NOMBRE COLECCION</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">ESTATUS DE PERMANENCIA</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">ORIGEN DE COMPRA</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">PAIS DE ORIGEN</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">LEAD TIME PROVEEDOR (DIAS)</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">CANTIDAD MINIMA DE COMPRA</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">ENVIO DIRECTO A TIENDA DESDE PROVEEDOR</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">UNIDAD DE EMPAQUE - OUTER</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">UNIDAD DE EMPAQUE - INNER</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">CANAL DE VENTA</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">REGION DE VENTA</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">COSTO DE ARRANQUE</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">PVP</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">LIQUIDACION</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">NOMBRE GRUPO DE ARTICULOS</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">NEGOCIO</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">ItemType</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">EvalSystem</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">GLMethod</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">ByWh</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">PrchseItem</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">SellItem</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">InvntItem</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">VATLiable</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">WTLiable</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">IndirctTax</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">TaxCodeAR</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">TaxCodeAP</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">FirmCode</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">ShipType</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">ManBtchNum</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">PlaningSys</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">PrcrmntMtd</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">InvntryUom</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">BuyUnitMsr</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">NumInBuy</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">SalUnitMsr</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">NumInSale</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">U_TIPO_BIEN</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">QryGroup63</th>
-                                <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-max whitespace-nowrap">Columna1</th>
-                                <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Acciones</th>
+                                <th 
+                                    v-for="col in visibleColumns" 
+                                    :key="col.key"
+                                    @click="toggleSort(col.key)"
+                                    class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[150px] whitespace-nowrap cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group"
+                                >
+                                    <div class="flex items-center gap-1">
+                                        {{ col.label }}
+                                        <div class="flex flex-col opacity-0 group-hover:opacity-100 transition-opacity" :class="{ 'opacity-100': sortKey === col.key }">
+                                            <ChevronUpIcon class="h-2 w-2" :class="sortKey === col.key && sortOrder === 'asc' ? 'text-blue-600' : 'text-gray-400'" />
+                                            <ChevronDownIcon class="h-2 w-2" :class="sortKey === col.key && sortOrder === 'desc' ? 'text-blue-600' : 'text-gray-400'" />
+                                        </div>
+                                    </div>
+                                </th>
+                                <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-32 sticky right-0 bg-gray-50 dark:bg-gray-900 z-10 shadow-[-4px_0_4px_rgba(0,0,0,0.05)]">Acciones</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
-                            <tr v-for="articulo in pagedArticulos" :key="articulo.id" class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.itemCode || '-' }}
+                            <tr v-for="articulo in pagedArticulos" :key="articulo.id" class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group">
+                                <td 
+                                    v-for="col in visibleColumns" 
+                                    :key="col.key"
+                                    class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 truncate"
+                                >
+                                    <template v-if="col.key === 'uPrArq' || col.key === 'price'">
+                                        ${{ (articulo[col.key] || 0).toFixed(2) }}
+                                    </template>
+                                    <template v-else-if="col.key === 'uGen'">
+                                        {{ (articulo[col.key] || '-').toString().toUpperCase() }}
+                                    </template>
+                                    <template v-else>
+                                        {{ articulo[col.key] !== null && articulo[col.key] !== undefined ? articulo[col.key] : '-' }}
+                                    </template>
                                 </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.barCode || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.uGEN || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.foreignName || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.uDescEcomm || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.itemName || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.uCodColor || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.uIxxColores || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.uCodColSecu || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.uColorSecu || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.uSxxSkuSinTalla || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.uIxxTalla || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.uIxxMaterial || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.uIxxComposicion || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.uNv3 || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.uNv2 || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.uNv1 || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.uAtrMed || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.uAtrUni || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.uIxxPack || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.uCodPvr || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.uMarca || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.uNomColeccion || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.uReposicion || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.uOrigen || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.uPOri || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.leadTime || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.minOrderQuantity || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.uTipAbs || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.uUnidadDespacho || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.uDespIn || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.uCanalVenta || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.uRegion || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.uPrArq || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-900 dark:text-white font-medium whitespace-nowrap">
-                                    ${{ articulo.price !== null && articulo.price !== undefined ? articulo.price : '0.00' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.uLiq || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.itemsGroupCode || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.uIxxMarca || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.itemType || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.costAccountingMethod || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.glMethod || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.manageStockByWarehouse || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.purchaseItem || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.salesItem || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.inventoryItem || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.vatLiable || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.wtLiable || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.indirectTax || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.arTaxCode || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.apTaxCode || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.manufacturer || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.shipType || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.manageBatchNumbers || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.planningSystem || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.procurementMethod || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.inventoryUom || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.purchaseUnit || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.purchaseItemsPerUnit || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.salesUnit || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.salesItemsPerUnit || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.uTipoBien || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.properties63 || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 min-w-max whitespace-nowrap">
-                                    {{ articulo.properties64 || '-' }}
-                                </td>
-                                <td class="px-4 py-3 text-sm text-right whitespace-nowrap">
+                                <td class="px-4 py-3 text-sm text-right whitespace-nowrap sticky right-0 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700/50 z-10 shadow-[-4px_0_4px_rgba(0,0,0,0.05)]">
                                     <button
-                                        class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium mr-3 transition-colors"
+                                        class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium mr-3 transition-colors text-xs"
                                         @click="router.push(`/articulo-maestro/editar/${articulo.itemCode}`)"
                                     >
                                         Editar
                                     </button>
                                     <button
-                                        class="text-rose-600 hover:text-rose-800 dark:text-rose-400 dark:hover:text-rose-300 font-medium transition-colors"
+                                        class="text-rose-600 hover:text-rose-800 dark:text-rose-400 dark:hover:text-rose-300 font-medium transition-colors text-xs"
                                         :disabled="deletingCode === articulo.itemCode"
                                         @click="handleDelete(articulo.itemCode)"
                                     >
@@ -351,6 +175,7 @@
                         </tbody>
                     </table>
                 </div>
+
 
                 <!-- Pagination Footer -->
                 <div v-if="filteredArticulos.length > 0" class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-gray-200 dark:border-gray-700 pt-4">
@@ -443,22 +268,62 @@
                     </div>
 
                     <!-- Resultados -->
-                    <div v-if="cargaResults" class="space-y-3">
-                        <div class="flex gap-3">
-                            <div class="flex-1 rounded-lg p-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 text-center">
-                                <p class="text-2xl font-bold text-emerald-700 dark:text-emerald-400">{{ cargaResults.success_count }}</p>
-                                <p class="text-xs text-emerald-600 dark:text-emerald-500">Exitosos</p>
-                            </div>
-                            <div class="flex-1 rounded-lg p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-center">
-                                <p class="text-2xl font-bold text-red-700 dark:text-red-400">{{ cargaResults.error_count }}</p>
-                                <p class="text-xs text-red-600 dark:text-red-500">Con errores</p>
-                            </div>
-                            <div class="flex-1 rounded-lg p-3 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 text-center">
-                                <p class="text-2xl font-bold text-gray-700 dark:text-gray-300">{{ cargaResults.total }}</p>
-                                <p class="text-xs text-gray-500">Total</p>
+                    <div v-if="cargaResults" class="space-y-4">
+
+                        <!-- Banner: Errores (Todo o Nada) -->
+                        <div v-if="cargaResults.error_count > 0" class="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 overflow-hidden">
+                            <div class="flex items-start gap-3 px-4 py-3">
+                                <svg class="h-5 w-5 text-red-500 dark:text-red-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                <div>
+                                    <p class="text-sm font-semibold text-red-800 dark:text-red-300">No se importó ningún artículo</p>
+                                    <p class="text-xs text-red-600 dark:text-red-400 mt-0.5">
+                                        {{ cargaResults.mensaje || 'Se encontraron errores de validación. Corrige los problemas señalados e intenta de nuevo.' }}
+                                    </p>
+                                </div>
                             </div>
                         </div>
-                        <div class="max-h-52 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700">
+
+                        <!-- Banner: Éxito -->
+                        <div v-else class="rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 overflow-hidden">
+                            <div class="flex items-start gap-3 px-4 py-3">
+                                <svg class="h-5 w-5 text-emerald-500 dark:text-emerald-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                <div>
+                                    <p class="text-sm font-semibold text-emerald-800 dark:text-emerald-300">Carga exitosa</p>
+                                    <p class="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">
+                                        Se importaron correctamente <strong>{{ cargaResults.success_count }}</strong> artículos.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Detalle de errores por fila (solo cuando hay errores) -->
+                        <div v-if="cargaResults.errores && cargaResults.errores.length > 0" class="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                            <div class="bg-gray-50 dark:bg-gray-900/50 px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+                                <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                                    Detalle de errores ({{ cargaResults.errores.length }})
+                                </p>
+                            </div>
+                            <div class="divide-y divide-gray-100 dark:divide-gray-800">
+                                <div v-for="err in cargaResults.errores" :key="err.fila" class="px-4 py-3 flex flex-col gap-1.5">
+                                    <!-- Fila + ItemCode -->
+                                    <div class="flex items-center gap-2">
+                                        <span class="inline-flex items-center rounded bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wide">Fila {{ err.fila }}</span>
+                                        <span class="text-sm font-mono font-medium text-gray-900 dark:text-white">{{ err.item_code || '(sin código)' }}</span>
+                                    </div>
+                                    <!-- Errores desglosados -->
+                                    <ul class="flex flex-wrap gap-1.5">
+                                        <li v-for="(msg, i) in parseErrors(err.error)" :key="i"
+                                            class="inline-flex items-center gap-1 rounded-md bg-red-100 dark:bg-red-900/30 px-2 py-1 text-xs text-red-700 dark:text-red-300">
+                                            <svg class="h-3 w-3 shrink-0 text-red-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
+                                            {{ msg }}
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Detalle de éxito (solo cuando fue exitoso y hay results) -->
+                        <div v-if="cargaResults.error_count === 0 && cargaResults.results && cargaResults.results.length > 0" class="max-h-52 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700">
                             <table class="w-full text-xs">
                                 <thead class="bg-gray-50 dark:bg-gray-900/50 sticky top-0">
                                     <tr>
@@ -471,18 +336,16 @@
                                     <tr v-for="r in cargaResults.results" :key="r.item_code">
                                         <td class="px-3 py-1.5 font-mono text-gray-900 dark:text-white">{{ r.item_code }}</td>
                                         <td class="px-3 py-1.5">
-                                            <span :class="r.success ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'" class="font-medium">
-                                                {{ r.success ? '✓ OK' : '✗ Error' }}
-                                            </span>
+                                            <span class="text-emerald-600 dark:text-emerald-400 font-medium">✓ OK</span>
                                         </td>
-                                        <td class="px-3 py-1.5 text-gray-500 dark:text-gray-400">{{ r.message || '-' }}</td>
+                                        <td class="px-3 py-1.5 text-gray-500 dark:text-gray-400">{{ r.message || 'Creado correctamente' }}</td>
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
                     </div>
 
-                    <!-- Error general -->
+                    <!-- Error general (red, servidor, etc.) -->
                     <div v-if="cargaError" class="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-400">
                         {{ cargaError }}
                     </div>
@@ -518,6 +381,13 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
+import { Popover, PopoverButton, PopoverPanel } from '@headlessui/vue'
+import { 
+    ChevronUpIcon, 
+    ChevronDownIcon, 
+    ViewColumnsIcon,
+    CheckIcon
+} from '@heroicons/vue/20/solid'
 import { useArticuloStore } from '../stores/articuloStore'
 import { articuloService } from '../services/articuloService'
 import type { CargaMasivaResponse } from '../services/articuloService'
@@ -548,6 +418,109 @@ const page = computed({
 
 const totalCount = computed(() => store.pagination.total)
 
+// ─── Columnas y Visibilidad ───
+const allColumns = [
+    { key: 'itemCode', label: 'CODIGO INTERNO' },
+    { key: 'barCode', label: 'CODIGO DE BARRAS' },
+    { key: 'uGen', label: 'GENERO' },
+    { key: 'foreignName', label: 'DESCRIPCION SAP' },
+    { key: 'uDescEcomm', label: 'DESCRIPCION ETIQUETA' },
+    { key: 'itemName', label: 'DESCRIPCION FACTURA' },
+    { key: 'uCodColor', label: 'COD COLOR PRIMARIO' },
+    { key: 'uIxxColores', label: 'COLOR PRIMARIO' },
+    { key: 'uCodColSecu', label: 'COD COLOR SECUNDARIO' },
+    { key: 'uColorSecu', label: 'COLOR SECUNDARIO' },
+    { key: 'uSxxSkuSinTalla', label: 'REFERENCIA' },
+    { key: 'uIxxTalla', label: 'TALLA' },
+    { key: 'uIxxMaterial', label: 'MATERIAL' },
+    { key: 'uIxxComposicion', label: 'COMPOSICION' },
+    { key: 'uNv3', label: 'LINEA' },
+    { key: 'uNv2', label: 'CATEGORIA' },
+    { key: 'uNv1', label: 'SECCION' },
+    { key: 'uAtrMed', label: 'ATRIBUTO UNICO TEXTIL/CALZADO' },
+    { key: 'uAtrUni', label: 'ATRIBUTO UNICO 2' },
+    { key: 'uIxxPack', label: 'UNIDAD DE VENTA (PACK)' },
+    { key: 'uCodPvr', label: 'CODIGO PROVEEDOR' },
+    { key: 'uMarca', label: 'MARCA' },
+    { key: 'uNomColeccion', label: 'NOMBRE COLECCION' },
+    { key: 'uReposicion', label: 'ESTATUS DE PERMANENCIA' },
+    { key: 'uOrigen', label: 'ORIGEN DE COMPRA' },
+    { key: 'uPOri', label: 'PAIS DE ORIGEN' },
+    { key: 'leadTime', label: 'LEAD TIME PROVEEDOR (DIAS)' },
+    { key: 'minOrderQuantity', label: 'CANTIDAD MINIMA DE COMPRA' },
+    { key: 'uTipAbs', label: 'ENVIO DIRECTO A TIENDA' },
+    { key: 'uUnidadDespacho', label: 'UNIDAD DE EMPAQUE - OUTER' },
+    { key: 'uDespIn', label: 'UNIDAD DE EMPAQUE - INNER' },
+    { key: 'uCanalVenta', label: 'CANAL DE VENTA' },
+    { key: 'uRegion', label: 'REGION DE VENTA' },
+    { key: 'uPrArq', label: 'COSTO DE ARRANQUE' },
+    { key: 'price', label: 'PVP' },
+    { key: 'uLiq', label: 'LIQUIDACION' },
+    { key: 'itemsGroupCode', label: 'GRUPO ARTICULOS' },
+    { key: 'uIxxMarca', label: 'NEGOCIO' },
+    { key: 'itemType', label: 'ItemType' },
+    { key: 'costAccountingMethod', label: 'EvalSystem' },
+    { key: 'glMethod', label: 'GLMethod' },
+    { key: 'manageStockByWarehouse', label: 'ByWh' },
+    { key: 'purchaseItem', label: 'PrchseItem' },
+    { key: 'salesItem', label: 'SellItem' },
+    { key: 'inventoryItem', label: 'InvntItem' },
+    { key: 'vatLiable', label: 'VATLiable' },
+    { key: 'wtLiable', label: 'WTLiable' },
+    { key: 'indirectTax', label: 'IndirctTax' },
+    { key: 'arTaxCode', label: 'TaxCodeAR' },
+    { key: 'apTaxCode', label: 'TaxCodeAP' },
+    { key: 'manufacturer', label: 'FirmCode' },
+    { key: 'shipType', label: 'ShipType' },
+    { key: 'manageBatchNumbers', label: 'ManBtchNum' },
+    { key: 'planningSystem', label: 'PlaningSys' },
+    { key: 'procurementMethod', label: 'PrcrmntMtd' },
+    { key: 'inventoryUom', label: 'InvntryUom' },
+    { key: 'purchaseUnit', label: 'BuyUnitMsr' },
+    { key: 'purchaseItemsPerUnit', label: 'NumInBuy' },
+    { key: 'salesUnit', label: 'SalUnitMsr' },
+    { key: 'salesItemsPerUnit', label: 'NumInSale' },
+    { key: 'uTipoBien', label: 'U_TIPO_BIEN' },
+    { key: 'properties63', label: 'QryGroup63' },
+    { key: 'properties64', label: 'Columna1' },
+]
+
+const hiddenColumns = ref<Set<string>>(new Set())
+
+const visibleColumns = computed(() => 
+    allColumns.filter(col => !hiddenColumns.value.has(col.key))
+)
+
+function toggleColumn(key: string) {
+    if (hiddenColumns.value.has(key)) {
+        hiddenColumns.value.delete(key)
+    } else {
+        hiddenColumns.value.add(key)
+    }
+}
+
+function resetColumns() {
+    hiddenColumns.value.clear()
+}
+
+function hideAllColumns() {
+    allColumns.forEach(col => hiddenColumns.value.add(col.key))
+}
+
+
+// ─── Ordenamiento ───
+const sortKey = ref<string>('itemCode')
+const sortOrder = ref<'asc' | 'desc'>('asc')
+
+function toggleSort(key: string) {
+    if (sortKey.value === key) {
+        sortOrder.value = sortOrder.value === 'asc' ? 'desc' : 'asc'
+    } else {
+        sortKey.value = key
+        sortOrder.value = 'asc'
+    }
+}
+
 // 1. Filtrar artículos en base a la búsqueda en la vista, aunque ya vengan paginados del servidor.
 // Como el backend devuelve todos y simulamos paginacion real:
 const filteredArticulos = computed(() => {
@@ -558,14 +531,35 @@ const filteredArticulos = computed(() => {
     // Casting temporal para saltarnos el type-checking de camelCase vs PascalCase
     const artlist = articulos.value as any[]
 
-    if (!query) {
-        return artlist
+    let result = artlist
+    if (query) {
+        result = artlist.filter(articulo => {
+            const cod = articulo.itemCode || ''
+            const nom = articulo.itemName || ''
+            return cod.toLowerCase().includes(query) || nom.toLowerCase().includes(query)
+        })
     }
-    return artlist.filter(articulo => {
-        const cod = articulo.itemCode || ''
-        const nom = articulo.itemName || ''
-        return cod.toLowerCase().includes(query) || nom.toLowerCase().includes(query)
-    })
+
+    // Aplicar ordenamiento
+    if (sortKey.value) {
+        result = [...result].sort((a, b) => {
+            const valA = a[sortKey.value]
+            const valB = b[sortKey.value]
+            if (valA === valB) return 0
+            if (valA === null || valA === undefined) return 1
+            if (valB === null || valB === undefined) return -1
+            
+            let comparison = 0
+            if (typeof valA === 'number' && typeof valB === 'number') {
+                comparison = valA - valB
+            } else {
+                comparison = String(valA).localeCompare(String(valB))
+            }
+            return sortOrder.value === 'asc' ? comparison : -comparison
+        })
+    }
+
+    return result
 })
 
 const totalPages = computed(() => Math.max(1, Math.ceil(filteredArticulos.value.length / pageSize.value)))
@@ -633,11 +627,11 @@ function closeCargaModal() {
     showCargaModal.value = false
     selectedFile.value = null
     cargaError.value = ''
-    // Si hubo resultados, recargar la tabla al cerrar
-    if (cargaResults.value) {
-        cargaResults.value = null
+    // Solo recargar la tabla si la carga fue exitosa (sin errores)
+    if (cargaResults.value && cargaResults.value.error_count === 0) {
         store.fetchArticulos()
     }
+    cargaResults.value = null
 }
 
 function onFileSelect(event: Event) {
@@ -677,13 +671,28 @@ async function handleUpload() {
     cargaError.value = ''
     cargaResults.value = null
     try {
+        // El servicio normaliza tanto respuestas 200 como errores 422 de validación
         cargaResults.value = await articuloService.cargaMasiva(selectedFile.value)
     } catch (err: unknown) {
+        // Solo llega aquí si fue un error de red/servidor (no de validación)
         const axiosErr = err as { response?: { data?: { detail?: string } } }
-        cargaError.value = axiosErr?.response?.data?.detail || 'Error al procesar el archivo. Verifica el formato.'
+        cargaError.value = axiosErr?.response?.data?.detail || 'Error al procesar el archivo. Verifica el formato e inténtalo de nuevo.'
         console.error(err)
     } finally {
         uploading.value = false
     }
+}
+
+/**
+ * Toma un string de errores del backend que puede venir como:
+ * "itemName: Campo requerido; itemsGroupCode: El valor debe ser un número; ..."
+ * y lo separa en un array de mensajes individuales legibles.
+ */
+function parseErrors(errorStr: string): string[] {
+    if (!errorStr) return []
+    return errorStr
+        .split(';')
+        .map(s => s.trim())
+        .filter(s => s.length > 0)
 }
 </script>

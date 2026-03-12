@@ -47,6 +47,20 @@
                         </button>
                     </div>
                 </div>
+                <!-- Card: Filtrar por Código -->
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                        <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Filtrar por Código</h2>
+                    </div>
+                    <div class="px-6 py-5 space-y-4">
+                        <input 
+                            v-model="searchCode" 
+                            type="text"
+                            class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 text-sm focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Buscar ItemCode..."
+                        />
+                    </div>
+                </div>
 
                 <!-- Card: Leyenda de Estados -->
                 <div class="bg-blue-50 dark:bg-blue-900/10 rounded-xl p-5 border border-blue-100 dark:border-blue-800/50">
@@ -97,22 +111,22 @@
                                 :disabled="selectedCount === 0 || processingAction"
                                 class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded-lg disabled:opacity-50 transition-colors shadow-sm"
                             >
-                                Crear en SAP
+                                Sincronizar con SAP
                             </button>
-                            <button 
+                            <!-- <button 
                                 @click="handleBulkAction('update')"
                                 :disabled="selectedCount === 0 || processingAction"
                                 class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg disabled:opacity-50 transition-colors shadow-sm"
                             >
                                 Actualizar en SAP
-                            </button>
-                            <button 
+                            </button> -->
+                            <!-- <button 
                                 @click="handleBulkAction('delete')"
                                 :disabled="selectedCount === 0 || processingAction"
                                 class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-lg disabled:opacity-50 transition-colors shadow-sm"
                             >
                                 Eliminar de SAP
-                            </button>
+                            </button> -->
                         </div>
                     </div>
 
@@ -155,7 +169,7 @@
                                 </tr>
 
                                 <tr 
-                                    v-for="art in pendingArticulos" 
+                                    v-for="art in filteredArticulos" 
                                     :key="art.itemCode"
                                     class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
                                     :class="selectedCodes.includes(art.itemCode) ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''"
@@ -285,6 +299,7 @@ import type { SapSyncResponse } from '../services/articuloService'
 const pendingArticulos = ref<Articulo[]>([])
 const loadingPending = ref(false)
 const selectedCodes = ref<string[]>([])
+const searchCode = ref('')
 const pullCodes = ref('')
 const processingPull = ref(false)
 const processingAction = ref(false)
@@ -300,6 +315,17 @@ const allSelected = computed(() =>
     pendingArticulos.value.length > 0 && 
     selectedCodes.value.length === pendingArticulos.value.length
 )
+
+const filteredArticulos = computed(() => {
+    if (!searchCode.value) return pendingArticulos.value
+    const q = searchCode.value.trim().toUpperCase()
+    return pendingArticulos.value.filter(a => {
+        // Buscamos en itemCode (camelCase) o ItemCode (PascualCase) de forma segura
+        const code = (a.itemCode || a.ItemCode || '').toString().toUpperCase()
+        const name = (a.itemName || a.ItemName || '').toString().toUpperCase()
+        return code.includes(q) || name.includes(q)
+    })
+})
 
 // Cargar pendientes al montar
 onMounted(() => {
@@ -367,7 +393,7 @@ async function handleBulkAction(action: 'create' | 'update' | 'delete') {
     if (selectedCodes.value.length === 0) return
     
     const confirmMsg = {
-        'create': '¿Deseas enviar a crear estos artículos en SAP?',
+        'create': '¿Deseas sincronizar (crear o actualizar) estos artículos en SAP?',
         'update': '¿Deseas actualizar estos artículos en SAP con la info local?',
         'delete': '¿Deseas intentar ELIMINAR estos artículos de SAP?'
     }[action]

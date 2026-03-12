@@ -74,18 +74,21 @@
                         </div>
                         <div class="form-field">
                             <label>Talla</label>
-                            <select v-model="form.uIxxTalla">
-                                <option value="">-- Seleccionar --</option>
-                                <option v-for="item in cats.talla" :key="item.codigo" :value="item.codigo">{{ item.nombre }}</option>
-                            </select>
+                            <SearchableSelect
+                                v-model="form.uIxxTalla"
+                                :options="cats.talla"
+                                placeholder="Seleccionar talla..."
+                            />
                         </div>
                         <div class="form-field">
                             <label>Género</label>
-                            <select v-model="form.uGen">
-                                <option value="">-- Seleccionar --</option>
-                                <option v-for="item in cats.genero" :key="item.codigo" :value="item.codigo">{{ item.nombre }}</option>
-                            </select>
+                            <SearchableSelect
+                                v-model="form.uGen"
+                                :options="cats.genero"
+                                placeholder="Seleccionar género..."
+                            />
                         </div>
+
                         <div class="form-field sm:col-span-2">
                             <label>Descripción SAP (ForeignName)</label>
                             <input v-model="form.foreignName" type="text" placeholder="Nombre en idioma extranjero" />
@@ -100,11 +103,14 @@
                     <div v-show="activeTab === 'cat'" class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div class="form-field required">
                             <label>Negocio (U_IXX_MARCA)</label>
-                            <select v-model="form.uIxxMarca" required>
-                                <option value="">-- Seleccionar --</option>
-                                <option v-for="item in cats.negocio" :key="item.codigo" :value="item.codigo">{{ item.nombre }}</option>
-                            </select>
+                            <SearchableSelect
+                                v-model="form.uIxxMarca"
+                                :options="cats.negocio"
+                                placeholder="Seleccionar negocio..."
+                                required
+                            />
                         </div>
+
                         <div class="form-field">
                             <label>Marca</label>
                             <input v-model="form.uMarca" type="text" placeholder="Ej: ROLLY" />
@@ -113,63 +119,78 @@
                         <!-- Jerarquía en cascada: Sección → Categoría → Línea -->
                         <div class="form-field">
                             <label>Sección (U_NV1)</label>
-                            <select v-model="form.uNv1" @change="onSeccionChange">
-                                <option value="">-- Seleccionar --</option>
-                                <option v-for="s in cats.secciones" :key="s" :value="s">{{ s }}</option>
-                            </select>
+                            <SearchableSelect
+                                v-model="form.uNv1"
+                                :options="cats.secciones"
+                                placeholder="Seleccionar sección..."
+                                @change="onSeccionChange"
+                            />
                         </div>
                         <div class="form-field">
                             <label>Categoría (U_NV2)</label>
-                            <select v-model="form.uNv2" @change="onCategoriaChange" :disabled="!form.uNv1">
-                                <option value="">-- Seleccionar --</option>
-                                <option v-for="c in cats.categorias" :key="c" :value="c">{{ c }}</option>
-                            </select>
+                            <SearchableSelect
+                                v-model="form.uNv2"
+                                :options="cats.categorias"
+                                placeholder="Seleccionar categoría..."
+                                :disabled="!form.uNv1"
+                                @change="onCategoriaChange"
+                            />
                         </div>
                         <div class="form-field">
                             <label>Línea (U_NV3)</label>
-                            <select v-model="form.uNv3" :disabled="!form.uNv2">
-                                <option value="">-- Seleccionar --</option>
-                                <option v-for="l in cats.lineas" :key="l" :value="l">{{ l }}</option>
-                            </select>
+                            <SearchableSelect
+                                v-model="form.uNv3"
+                                :options="cats.lineas"
+                                placeholder="Seleccionar línea..."
+                                :disabled="!form.uNv2"
+                            />
                         </div>
+
                         <div class="form-field">
                             <label>Nombre Colección</label>
-                            <select v-model="form.uNomColeccion">
-                                <option value="">-- Seleccionar --</option>
-                                <option v-for="item in cats.coleccion" :key="item.codigo" :value="item.codigo">{{ item.nombre }}</option>
-                            </select>
+                            <SearchableSelect
+                                v-model="form.uNomColeccion"
+                                :options="cats.coleccion"
+                                placeholder="Seleccionar colección..."
+                            />
                         </div>
                         <div class="form-field">
                             <label>Estatus de Permanencia</label>
-                            <select v-model="form.uReposicion">
-                                <option value="">-- Seleccionar --</option>
-                                <option v-for="item in cats.permanencia" :key="item.codigo" :value="item.codigo">{{ item.nombre }}</option>
-                            </select>
+                            <SearchableSelect
+                                v-model="form.uReposicion"
+                                :options="cats.permanencia"
+                                placeholder="Seleccionar estatus..."
+                            />
                         </div>
                         <div class="form-field">
                             <label>Canal de Venta</label>
-                            <select v-model="form.uCanalVenta">
-                                <option value="">-- Seleccionar --</option>
-                                <option v-for="item in cats.canal" :key="item.codigo" :value="item.codigo">{{ item.nombre }}</option>
-                            </select>
+                            <SearchableSelect
+                                v-model="form.uCanalVenta"
+                                :options="cats.canal"
+                                placeholder="Seleccionar canal..."
+                            />
                         </div>
                         <div class="form-field">
                             <label>Región de Venta</label>
-                            <select v-model="form.uRegion">
-                                <option value="">-- Seleccionar --</option>
-                                <option v-for="item in cats.region" :key="item.codigo" :value="item.codigo">{{ item.nombre }}</option>
-                            </select>
+                            <SearchableSelect
+                                v-model="form.uRegion"
+                                :options="cats.region"
+                                placeholder="Seleccionar región..."
+                            />
                         </div>
+
                     </div>
 
                     <!-- Tab: Color y Material -->
                     <div v-show="activeTab === 'mat'" class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div class="form-field">
                             <label>Color Primario</label>
-                            <select @change="onColorPrimarioChange($event)">
-                                <option value="">-- Seleccionar --</option>
-                                <option v-for="item in cats.color" :key="item.codigo" :value="item.codigo" :selected="String(form.uCodColor) === item.codigo">{{ item.nombre }}</option>
-                            </select>
+                            <SearchableSelect
+                                :modelValue="form.uCodColor"
+                                :options="cats.color"
+                                placeholder="Seleccionar color..."
+                                @change="onColorPrimarioChangeManual"
+                            />
                         </div>
                         <div class="form-field">
                             <label>Cód. Color Primario</label>
@@ -178,11 +199,14 @@
                         </div>
                         <div class="form-field">
                             <label>Color Secundario</label>
-                            <select @change="onColorSecundarioChange($event)">
-                                <option value="">-- Seleccionar --</option>
-                                <option v-for="item in cats.color" :key="item.codigo" :value="item.codigo" :selected="String(form.uCodColSecu) === item.codigo">{{ item.nombre }}</option>
-                            </select>
+                            <SearchableSelect
+                                :modelValue="form.uCodColSecu"
+                                :options="cats.color"
+                                placeholder="Seleccionar color..."
+                                @change="onColorSecundarioChangeManual"
+                            />
                         </div>
+
                         <div class="form-field">
                             <label>Cód. Color Secundario</label>
                             <input :value="form.uCodColSecu ?? '-'" type="text" disabled />
@@ -200,18 +224,23 @@
                         <!-- Cascada: Línea de Atributo → Atributo Único -->
                         <div class="form-field">
                             <label>Línea de Atributo</label>
-                            <select v-model="selectedLineaAtributo" @change="onLineaAtributoChange">
-                                <option value="">-- Seleccionar línea --</option>
-                                <option v-for="l in cats.lineasAtributo" :key="l" :value="l">{{ l }}</option>
-                            </select>
+                            <SearchableSelect
+                                v-model="selectedLineaAtributo"
+                                :options="cats.lineasAtributo"
+                                placeholder="Seleccionar línea..."
+                                @change="onLineaAtributoChange"
+                            />
                         </div>
                         <div class="form-field">
                             <label>Atributo Único Textil/Calzado</label>
-                            <select v-model="form.uAtrMed" :disabled="!selectedLineaAtributo">
-                                <option value="">-- Seleccionar --</option>
-                                <option v-for="a in cats.atributos" :key="a" :value="a">{{ a }}</option>
-                            </select>
+                            <SearchableSelect
+                                v-model="form.uAtrMed"
+                                :options="cats.atributos"
+                                placeholder="Seleccionar atributo..."
+                                :disabled="!selectedLineaAtributo"
+                            />
                         </div>
+
                         <div class="form-field">
                             <label>Atributo Único 2</label>
                             <input v-model="form.uAtrUni" type="text" placeholder="Atributo adicional" />
@@ -226,33 +255,38 @@
                         </div>
                         <div class="form-field">
                             <label>Origen de Compra</label>
-                            <select v-model="form.uOrigen">
-                                <option value="">-- Seleccionar --</option>
-                                <option v-for="item in cats.origen" :key="item.codigo" :value="item.codigo">{{ item.nombre }}</option>
-                            </select>
+                            <SearchableSelect
+                                v-model="form.uOrigen"
+                                :options="cats.origen"
+                                placeholder="Seleccionar origen..."
+                            />
                         </div>
                         <div class="form-field">
                             <label>País de Origen</label>
-                            <select v-model="form.uPOri">
-                                <option value="">-- Seleccionar --</option>
-                                <option v-for="item in cats.pais" :key="item.codigo" :value="item.codigo">{{ item.nombre }}</option>
-                            </select>
+                            <SearchableSelect
+                                v-model="form.uPOri"
+                                :options="cats.pais"
+                                placeholder="Seleccionar país..."
+                            />
                         </div>
+
                         <div class="form-field">
                             <label>Lead Time Proveedor (días)</label>
                             <input v-model.number="form.leadTime" type="number" placeholder="0" min="0" />
                         </div>
                         <div class="form-field">
                             <label>Cantidad Mínima de Compra</label>
-                            <input v-model.number="form.minOrderQuantity" type="number" placeholder="1" min="1" />
+                            <input v-model.number="form.minOrderQuantity" type="number" placeholder="1" min="0" />
                         </div>
                         <div class="form-field">
                             <label>Envío Directo a Tienda</label>
-                            <select v-model="form.uTipAbs">
-                                <option value="">-- Seleccionar --</option>
-                                <option v-for="item in cats.envio" :key="item.codigo" :value="item.codigo">{{ item.nombre }}</option>
-                            </select>
+                            <SearchableSelect
+                                v-model="form.uTipAbs"
+                                :options="cats.envio"
+                                placeholder="Seleccionar tipo..."
+                            />
                         </div>
+
                         <div class="form-field">
                             <label>Unidad de Empaque - Outer</label>
                             <input v-model.number="form.uUnidadDespacho" type="number" placeholder="0" />
@@ -275,11 +309,13 @@
                         </div>
                         <div class="form-field">
                             <label>Liquidación</label>
-                            <select v-model="form.uLiq">
-                                <option value="">-- Seleccionar --</option>
-                                <option v-for="item in cats.liquidacion" :key="item.codigo" :value="item.codigo">{{ item.nombre }}</option>
-                            </select>
+                            <SearchableSelect
+                                v-model="form.uLiq"
+                                :options="cats.liquidacion"
+                                placeholder="Seleccionar..."
+                            />
                         </div>
+
                     </div>
 
                     <!-- Tab: Config. SAP / Impuestos -->
@@ -388,7 +424,7 @@
                         </div>
                         <div class="form-field">
                             <label>Unidades por Compra</label>
-                            <input v-model.number="form.purchaseItemsPerUnit" type="number" placeholder="1" min="1" />
+                            <input v-model.number="form.purchaseItemsPerUnit" type="number" placeholder="1" min="0" />
                         </div>
                         <div class="form-field">
                             <label>Unidad de Venta</label>
@@ -396,7 +432,7 @@
                         </div>
                         <div class="form-field">
                             <label>Unidades por Venta</label>
-                            <input v-model.number="form.salesItemsPerUnit" type="number" placeholder="1" min="1" />
+                            <input v-model.number="form.salesItemsPerUnit" type="number" placeholder="1" min="0" />
                         </div>
                         <div class="form-field">
                             <label>Gestión por Lotes</label>
@@ -451,10 +487,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { articuloService, catalogoService } from '../services/articuloService'
-import type { CatalogoItem } from '../services/articuloService'
+import type { CatalogoItem, JerarquiaItem } from '../services/articuloService'
+import SearchableSelect from '../components/SearchableSelect.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -486,11 +523,11 @@ const cats = ref<{
     region: CatalogoItem[]
     liquidacion: CatalogoItem[]
     negocio: CatalogoItem[]
-    secciones: string[]
-    categorias: string[]
-    lineas: string[]
-    lineasAtributo: string[]
-    atributos: string[]
+    secciones: JerarquiaItem[]
+    categorias: JerarquiaItem[]
+    lineas: JerarquiaItem[]
+    lineasAtributo: JerarquiaItem[]
+    atributos: JerarquiaItem[]
 }>({
     talla: [], genero: [], color: [], coleccion: [], permanencia: [],
     origen: [], pais: [], envio: [], canal: [], region: [],
@@ -555,29 +592,26 @@ async function onCategoriaChange() {
     }
 }
 
-function onColorPrimarioChange(event: Event) {
-    const codigo = (event.target as HTMLSelectElement).value
-    if (!codigo) {
+function onColorPrimarioChangeManual(item: CatalogoItem | null) {
+    if (!item) {
         form.value.uCodColor = null
         form.value.uIxxColores = ''
         return
     }
-    const found = cats.value.color.find(c => c.codigo === codigo)
-    form.value.uCodColor = Number(codigo)
-    form.value.uIxxColores = found ? found.nombre : ''
+    form.value.uCodColor = Number(item.codigo)
+    form.value.uIxxColores = item.nombre
 }
 
-function onColorSecundarioChange(event: Event) {
-    const codigo = (event.target as HTMLSelectElement).value
-    if (!codigo) {
+function onColorSecundarioChangeManual(item: CatalogoItem | null) {
+    if (!item) {
         form.value.uCodColSecu = null
         form.value.uColorSecu = ''
         return
     }
-    const found = cats.value.color.find(c => c.codigo === codigo)
-    form.value.uCodColSecu = Number(codigo)
-    form.value.uColorSecu = found ? found.nombre : ''
+    form.value.uCodColSecu = Number(item.codigo)
+    form.value.uColorSecu = item.nombre
 }
+
 
 async function onLineaAtributoChange() {
     form.value.uAtrMed = ''
@@ -651,7 +685,7 @@ const form = ref({
     purchaseItemsPerUnit: 1,
     salesUnit: '',
     salesItemsPerUnit: 1,
-    uTipoBien: '',
+    uTipoBien: 'B',
     properties63: 'N',
     properties64: 'N',
 })
@@ -662,21 +696,42 @@ const submitting = ref(false)
 const submitError = ref('')
 
 // En edición: cargar los datos del artículo desde la API y pre-poblar la jerarquía de catálogos
+// Shortcuts
+const handleKeydown = (e: KeyboardEvent) => {
+    // Ctrl + S: Guardar
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault()
+        handleSubmit()
+    }
+    // Escape: Cancelar
+    if (e.key === 'Escape') {
+        router.push('/articulo-maestro/lista')
+    }
+    // Ctrl + 1..5: Cambiar pestañas
+    if (e.ctrlKey && e.key >= '1' && e.key <= '5') {
+        e.preventDefault()
+        activeTab.value = tabs[parseInt(e.key) - 1].id
+    }
+}
+
 onMounted(async () => {
+    window.addEventListener('keydown', handleKeydown)
     await cargarCatalogos()
+    // ... rest of logic
+
 
     if (isEdit.value) {
         const itemCode = route.params.itemCode as string
         loadingData.value = true
         try {
             const articulo = await articuloService.getArticuloByCode(itemCode)
-            // Rellenar el form con los datos recibidos
+            // Rellenar el form con los datos ya normalizados por el servicio
             Object.keys(form.value).forEach(key => {
                 const k = key as keyof typeof form.value
                 if (articulo && key in articulo) {
-                    const val = (articulo as Record<string, unknown>)[key]
+                    const val = (articulo as any)[key]
                     if (val !== undefined && val !== null) {
-                        (form.value as Record<string, unknown>)[k] = val
+                        (form.value as any)[k] = val
                     }
                 }
             })
@@ -692,11 +747,11 @@ onMounted(async () => {
             // Si el artículo tiene un atributo único, intentar encontrar la línea de atributo correspondiente
             if (form.value.uAtrMed && cats.value.lineasAtributo.length > 0) {
                 // Intentar buscar en cada línea cuál contiene el atributo guardado
-                for (const linea of cats.value.lineasAtributo) {
+                for (const lineaItem of cats.value.lineasAtributo) {
                     try {
-                        const attrs = await catalogoService.getAtributos(linea)
-                        if (attrs.includes(form.value.uAtrMed)) {
-                            selectedLineaAtributo.value = linea
+                        const attrs = await catalogoService.getAtributos(lineaItem.nombre)
+                        if (attrs.some(a => a.nombre === form.value.uAtrMed)) {
+                            selectedLineaAtributo.value = lineaItem.nombre
                             cats.value.atributos = attrs
                             break
                         }
@@ -720,6 +775,9 @@ async function handleSubmit() {
     // Construir el payload omitiendo nulos y strings vacíos opcionales
     const payload: Record<string, unknown> = {}
     Object.entries(form.value).forEach(([key, val]) => {
+        // No enviar el código de artículo en el body del PATCH (se envía en la URL)
+        if (key === 'itemCode' && isEdit.value) return
+        
         if (val === '' || val === null || val === undefined) return
         payload[key] = val
     })
@@ -747,6 +805,10 @@ async function handleSubmit() {
         submitting.value = false
     }
 }
+
+onUnmounted(() => {
+    window.removeEventListener('keydown', handleKeydown)
+})
 </script>
 
 <style scoped>

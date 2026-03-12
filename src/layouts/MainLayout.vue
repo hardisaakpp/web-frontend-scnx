@@ -151,6 +151,7 @@
 
         <!-- Artículo Maestro -->
         <router-link
+          v-if="hasModuleAccess('articulomaestro')"
           to="/articulo-maestro"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
@@ -163,6 +164,7 @@
           <CubeIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/articulo-maestro') }" />
           <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Artículo Maestro</span>
         </router-link>
+
 
         <!-- Separador Administración -->
         <div v-if="hasModuleAccess('usuarios') || hasModuleAccess('roles') || hasModuleAccess('permisos') || authStore.isAdmin" v-show="!isSidebarCollapsed" class="px-3 py-2 my-3">

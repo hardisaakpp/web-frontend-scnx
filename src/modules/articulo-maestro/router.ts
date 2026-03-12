@@ -7,9 +7,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('./views/DashboardView.vue'),
         meta: {
             title: 'Artículos Maestros',
-            icon: 'CubeIcon'
-
+            icon: 'CubeIcon',
+            requiresAuth: true,
+            permissions: ['articulomaestro.view']
         }
+
     },
     {
         path: '/articulo-maestro/lista',
@@ -17,8 +19,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('./views/GestionArticulos.vue'),
         meta: {
             title: 'Lista de Artículo',
-            icon: 'CubeIcon'
+            icon: 'CubeIcon',
+            requiresAuth: true,
+            permissions: ['articulomaestro.articulos']
         }
+
     },
     {
         path: '/articulo-maestro/nuevo',
@@ -26,8 +31,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('./views/FormularioArticulo.vue'),
         meta: {
             title: 'Nuevo Artículo',
-            icon: 'CubeIcon'
+            icon: 'CubeIcon',
+            requiresAuth: true,
+            permissions: ['articulomaestro.articulos']
         }
+
     },
     {
         path: '/articulo-maestro/editar/:itemCode',
@@ -35,8 +43,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('./views/FormularioArticulo.vue'),
         meta: {
             title: 'Editar Artículo',
-            icon: 'CubeIcon'
+            icon: 'CubeIcon',
+            requiresAuth: true,
+            permissions: ['articulomaestro.articulos']
         }
+
     },
     {
         path: '/articulo-maestro/migracion',
@@ -44,7 +55,21 @@ const routes: RouteRecordRaw[] = [
         component: () => import('./views/MigracionSAP.vue'),
         meta: {
             title: 'Sincronización a SAP',
-            icon: 'CubeIcon'
+            icon: 'CubeIcon',
+            requiresAuth: true,
+            permissions: ['articulomaestro.migracion']
+        }
+
+    },
+    {
+        path: '/articulo-maestro/eliminacion',
+        name: 'articulo-maestro-eliminacion',
+        component: () => import('./views/EliminacionSAP.vue'),
+        meta: {
+            title: 'Eliminación en SAP',
+            icon: 'CubeIcon',
+            requiresAuth: true,
+            permissions: ['articulomaestro.eliminacionSAP']
         }
     },
     {
@@ -53,8 +78,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('./views/HistorialCRUD.vue'),
         meta: {
             title: 'Historial de Artículos Locales',
-            icon: 'CubeIcon'
+            icon: 'CubeIcon',
+            requiresAuth: true,
+            permissions: ['articulomaestro.historialCRUD']
         }
+
     },
     {
         path: '/articulo-maestro/historial-sap',
@@ -62,8 +90,23 @@ const routes: RouteRecordRaw[] = [
         component: () => import('./views/HistorialSAP.vue'),
         meta: {
             title: 'Historial de Artículos SAP',
-            icon: 'CubeIcon'
+            icon: 'CubeIcon',
+            requiresAuth: true,
+            permissions: ['articulomaestro.historialSAP']
         }
+
+    },
+    {
+        path: '/articulo-maestro/catalogos',
+        name: 'articulo-maestro-catalogos',
+        component: () => import('./views/GestionCatalogos.vue'),
+        meta: {
+            title: 'Gestión de Catálogos',
+            icon: 'CubeIcon',
+            requiresAuth: true,
+            permissions: ['articulomaestro.catalogos']
+        }
+
     }
 ]
 
