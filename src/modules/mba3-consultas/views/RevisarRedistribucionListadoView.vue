@@ -535,6 +535,15 @@ async function cargarPedidos() {
     // Mapear PedidoCompleto → PedidoResumido para reutilizar la tabla actual
     pedidos.value = (response.data || []).map((p: PedidoCompleto): PedidoResumido => {
       const c = p.cabecera
+      const root: any = p as any
+
+      // Algunos campos (como modificado_fecha / modificado_por) solo vienen en el listado general.
+      // Intentamos leerlos del nivel raíz y, si no existen, usamos creado_en / creado_por como fallback.
+      const modificadoFecha =
+        root.modificado_fecha ?? c.modificado_fecha ?? c.creado_en ?? null
+      const modificadoPor =
+        root.modificado_por ?? c.modificado_por ?? c.creado_por ?? null
+
       return {
         pedido_id: c.pedido_id,
         numero_pedido: c.numero_pedido ?? '',
@@ -551,8 +560,8 @@ async function cargarPedidos() {
         creado_por: c.creado_por,
         estado: c.estado ?? '',
         creado_en: c.creado_en ?? '',
-        modificado_fecha: null,
-        modificado_por: null,
+        modificado_fecha: modificadoFecha,
+        modificado_por: modificadoPor,
       }
     })
 
