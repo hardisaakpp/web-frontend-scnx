@@ -591,17 +591,17 @@ const resolveCardCodeByCedula = async (cedula: string) => {
   return cedulaNormalizada
 }
 
-const resolveCostingCode2 = (codAlmacen: string) => {
-  const normalized = normalizeString(codAlmacen).toUpperCase()
-  if (!normalized) return ''
-
-  const marcaMap: Record<string, string> = {
-    RL: 'ROL',
-    ROL: 'ROL'
+const fetchMarcaContab = async (codAlmacen: string): Promise<string> => {
+  try {
+    const response = await cajaChicaApi.get<{ marcaContab: string }>(
+      `/Liquidaciones/almacen/${encodeURIComponent(codAlmacen)}`
+    )
+    return response.data?.marcaContab || ''
+  } catch {
+    // Si no se encuentra el almacen, se usa el prefijo como fallback
+    const prefix = codAlmacen.toUpperCase().split('-')[0]
+    return prefix
   }
-
-  const prefix = normalized.split('-')[0]
-  return marcaMap[prefix] || prefix
 }
 
 const getTaxCode = (detalle: LiquidacionDetalleItem) => (detalle.subtotalConIva > 0 ? 'IVA_15' : 'IVA_0')
@@ -610,7 +610,7 @@ const getUCodSt = (detalles: LiquidacionDetalleItem[]) => {
   return detalles.some(detalle => detalle.subtotalConIva > 0) ? '01' : '02'
 }
 
-const buildDocumentLines = (detalles: LiquidacionDetalleItem[], codAlmacen: string) => {
+const buildDocumentLines = (detalles: LiquidacionDetalleItem[], codAlmacen: string, marcaContab: string) => {
   const grouped = new Map<string, {
     accountCode: string
     itemDescription: string
@@ -647,7 +647,7 @@ const buildDocumentLines = (detalles: LiquidacionDetalleItem[], codAlmacen: stri
       unitPrice: item.unitPrice,
       taxCode: item.hasIva ? 'IVA_15' : 'IVA_0',
       costingCode: codAlmacen,
-      costingCode2: resolveCostingCode2(codAlmacen),
+      costingCode2: marcaContab,
       costingCode3: 'COME'
     }
   })
@@ -673,8 +673,11 @@ const integrarLiquidacion = async (idLiquidacion: number) => {
   try {
     const docDate = buildDocDate()
     const codAlmacen = normalizeString(liquidacion.codAlmacen)
-    const cardCodeCustodio = await resolveCardCodeByCedula(liquidacion.cedulaCustodio)
-    const documentLines = buildDocumentLines(detalles, codAlmacen)
+    const [cardCodeCustodio, marcaContab] = await Promise.all([
+      resolveCardCodeByCedula(liquidacion.cedulaCustodio),
+      fetchMarcaContab(codAlmacen)
+    ])
+    const documentLines = buildDocumentLines(detalles, codAlmacen, marcaContab)
     const payload = {
       cardCode: cardCodeCustodio,
       series: 217,
