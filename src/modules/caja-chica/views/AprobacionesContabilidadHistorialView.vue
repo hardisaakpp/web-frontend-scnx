@@ -537,13 +537,64 @@ const buildDocDate = () => {
   return now.toISOString().substring(0, 10)
 }
 
-const buildDocumentLines = (detalles: LiquidacionDetalleItem[]) => {
-  return detalles.map(detalle => {
-    const taxCode = detalle.subtotalConIva > 0 ? 'IVA' : 'IVA0'
+const resolveCostingCode2 = (codAlmacen: string) => {
+  const normalized = normalizeString(codAlmacen).toUpperCase()
+  if (!normalized) return ''
+
+  const marcaMap: Record<string, string> = {
+    RL: 'ROL',
+    ROL: 'ROL'
+  }
+
+  const prefix = normalized.split('-')[0]
+  return marcaMap[prefix] || prefix
+}
+
+const getTaxCode = (detalle: LiquidacionDetalleItem) => (detalle.subtotalConIva > 0 ? 'IVA_15' : 'IVA_0')
+
+const getUCodSt = (detalles: LiquidacionDetalleItem[]) => {
+  return detalles.some(detalle => detalle.subtotalConIva > 0) ? '01' : '02'
+}
+
+const buildDocumentLines = (detalles: LiquidacionDetalleItem[], codAlmacen: string) => {
+  const grouped = new Map<string, {
+    accountCode: string
+    itemDescription: string
+    quantity: number
+    unitPrice: number
+    hasIva: boolean
+  }>()
+
+  for (const detalle of detalles) {
+    const accountCode = normalizeString(detalle.idGasto)
+    if (!accountCode) continue
+
+    const current = grouped.get(accountCode)
+    if (current) {
+      current.quantity += 1
+      current.unitPrice += Number(detalle.total || 0)
+      current.hasIva = current.hasIva || detalle.subtotalConIva > 0
+    } else {
+      grouped.set(accountCode, {
+        accountCode,
+        itemDescription: detalle.nombreGasto || detalle.concepto || '',
+        quantity: 1,
+        unitPrice: Number(detalle.total || 0),
+        hasIva: detalle.subtotalConIva > 0
+      })
+    }
+  }
+
+  return Array.from(grouped.values()).map(item => {
     return {
-      AccountCode: detalle.idGasto,
-      LineTotal: detalle.total,
-      TaxCode: taxCode
+      accountCode: item.accountCode,
+      itemDescription: item.itemDescription,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      taxCode: item.hasIva ? 'IVA_15' : 'IVA_0',
+      costingCode: codAlmacen,
+      costingCode2: resolveCostingCode2(codAlmacen),
+      costingCode3: 'COME'
     }
   })
 }
@@ -567,15 +618,27 @@ const integrarLiquidacion = async (idLiquidacion: number) => {
   error.value = ''
   try {
     const docDate = buildDocDate()
+    const codAlmacen = normalizeString(liquidacion.codAlmacen)
+    const documentLines = buildDocumentLines(detalles, codAlmacen)
     const payload = {
-      CardCode: liquidacion.cedulaCustodio,
-      DocType: 'dDocument_Service',
-      DocDate: docDate,
-      DocDueDate: docDate,
-      TaxDate: docDate,
-      Comments: `Liquidacion ${idLiquidacion} Caja Chica`,
-      DocumentLines: buildDocumentLines(detalles)
+      cardCode: liquidacion.cedulaCustodio,
+      series: 217,
+      docDate,
+      docDueDate: docDate,
+      taxDate: docDate,
+      comments: 'LIQUIDACION DE COMPRA ',
+      docType: 'dDocument_Service',
+      docCurrency: 'USD',
+      journalMemo: `REPOSICION CAJA CHICA LLP PORTAL ${codAlmacen}`.trim(),
+      u_COD_ST: getUCodSt(detalles),
+      u_tipo_comprob: '03',
+      u_ORIGEN: 'C',
+      u_SER_EST: '001',
+      u_SER_PE: '100',
+      documentLines
     }
+
+    console.log('[Integracion][Payload LiquidacionesCompras]', payload)
 
     const response = await slayerApi.post<SlayerIntegracionResponse>('/LiquidacionesCompras', payload)
     const data = response.data as SlayerIntegracionResponse
