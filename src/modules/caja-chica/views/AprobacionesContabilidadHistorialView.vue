@@ -379,7 +379,45 @@ const volver = () => {
 interface SlayerIntegracionResponse {
   docEntry?: number
   docNum?: number
+  DocEntry?: number
+  DocNum?: number
   message?: string
+  Message?: string
+}
+
+const parseIntegracionResultado = (raw: unknown) => {
+  const data = (raw ?? {}) as any
+
+  const extractFromText = (text: string, key: 'DocEntry' | 'DocNum') => {
+    const re = new RegExp(`${key}\\s*[:=]\\s*([0-9]+)`, 'i')
+    const match = re.exec(text)
+    return match?.[1]
+  }
+
+  const toValue = (value: unknown) => {
+    if (value === null || value === undefined) return undefined
+    const normalized = String(value).trim()
+    return normalized || undefined
+  }
+
+  if (typeof raw === 'string') {
+    const msg = raw
+    return {
+      docEntry: toValue(extractFromText(msg, 'DocEntry')),
+      docNum: toValue(extractFromText(msg, 'DocNum')),
+      mensaje: msg
+    }
+  }
+
+  const mensaje = String(data?.message ?? data?.Message ?? '').trim()
+  const docEntry = toValue(data?.docEntry ?? data?.DocEntry ?? extractFromText(mensaje, 'DocEntry'))
+  const docNum = toValue(data?.docNum ?? data?.DocNum ?? extractFromText(mensaje, 'DocNum'))
+
+  return {
+    docEntry,
+    docNum,
+    mensaje: mensaje || 'Integracion exitosa.'
+  }
 }
 
 const loading = ref(false)
@@ -709,11 +747,8 @@ const integrarLiquidacion = async (idLiquidacion: number) => {
 
     console.log('[Integracion][Payload Liquidaciones]', JSON.stringify(payload, null, 2))
 
-    const response = await slayerApi.post<SlayerIntegracionResponse>('/Liquidaciones', payload)
-    const data = response.data as SlayerIntegracionResponse
-    const docEntry = data?.docEntry
-    const docNum = data?.docNum
-    const mensaje = data?.message || 'Integracion exitosa.'
+    const response = await slayerApi.post<SlayerIntegracionResponse | string>('/Liquidaciones', payload)
+    const { docEntry, docNum, mensaje } = parseIntegracionResultado(response.data)
 
     console.log('[Integracion][Respuesta OK]', { docEntry, docNum, mensaje })
 
@@ -763,12 +798,12 @@ const loadIntegraciones = async (idLiquidaciones: number[]) => {
   await Promise.all(idLiquidaciones.map(async id => {
     try {
       const response = await cajaChicaApi.get<IntegracionEstadoItem>(`/Integraciones/Compras/${id}`)
-      const payload = (response.data || {}) as Partial<IntegracionEstadoItem>
+      const payload = (response.data || {}) as any
       entries[id] = {
-        estado: payload.estado || 'PENDIENTE',
-        docEntry: payload.docEntry,
-        docNum: payload.docNum,
-        mensaje: payload.mensaje
+        estado: payload.estado || payload.Estado || 'PENDIENTE',
+        docEntry: payload.docEntry ?? payload.DocEntry,
+        docNum: payload.docNum ?? payload.DocNum,
+        mensaje: payload.mensaje ?? payload.Mensaje
       }
     } catch {
       entries[id] = {
