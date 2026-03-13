@@ -83,6 +83,7 @@ const props = defineProps<{
   placeholder?: string
   disabled?: boolean
   required?: boolean
+  valueKey?: keyof Option
 }>()
 
 const emit = defineEmits(['update:modelValue', 'change'])
@@ -95,11 +96,14 @@ const selectedOption = computed({
     if (props.modelValue === null || props.modelValue === undefined || props.modelValue === '') return null
     
     // Buscar la opción que coincida con el valor
-    const found = props.options.find(opt => 
-      (opt.codigo !== undefined && String(opt.codigo) === String(props.modelValue)) || 
-      (opt.id !== undefined && opt.id === props.modelValue) ||
-      (opt.nombre === props.modelValue)
-    )
+    const found = props.options.find(opt => {
+      if (props.valueKey) {
+        return String(opt[props.valueKey]) === String(props.modelValue)
+      }
+      return (opt.codigo !== undefined && String(opt.codigo) === String(props.modelValue)) || 
+             (opt.id !== undefined && opt.id === props.modelValue) ||
+             (opt.nombre === props.modelValue)
+    })
     return found || null
   },
   set: (val: any) => {
@@ -108,8 +112,8 @@ const selectedOption = computed({
       emit('change', null)
       return
     }
-    // Prioridad: codigo > id > nombre
-    const newValue = val.codigo ?? val.id ?? val.nombre
+    // Prioridad: valueKey > codigo > id > nombre
+    const newValue = props.valueKey ? val[props.valueKey] : (val.codigo ?? val.id ?? val.nombre)
     emit('update:modelValue', newValue)
     emit('change', val)
   }

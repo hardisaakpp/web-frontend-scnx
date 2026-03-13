@@ -96,6 +96,11 @@ function normalizeObject(obj: any): any {
 }
 
 apiMaestro.interceptors.response.use((response) => {
+    // Si la respuesta es un Blob (archivo), no normalizamos
+    if (response.data instanceof Blob) {
+        return response
+    }
+
     if (response.data) {
         if (Array.isArray(response.data)) {
             response.data = response.data.map(normalizeObject)
@@ -168,10 +173,18 @@ export const articuloService = {
     // Descargar plantilla Excel para carga masiva
     downloadTemplate: async () => {
         const response = await apiMaestro.get('/api/v1/articulos/template/download', {
-            responseType: 'blob'
+            responseType: 'blob',
+            headers: {
+                'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, */*'
+            }
         })
-        // Crear enlace de descarga temporal
-        const url = window.URL.createObjectURL(new Blob([response.data as BlobPart]))
+        
+        // El interceptor ya asegura que si es un Blob lo deja pasar tal cual
+        const blob = new Blob([response.data as BlobPart], { 
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+        })
+        
+        const url = window.URL.createObjectURL(blob)
         const link = document.createElement('a')
         link.href = url
         link.setAttribute('download', 'plantilla_articulos.xlsx')

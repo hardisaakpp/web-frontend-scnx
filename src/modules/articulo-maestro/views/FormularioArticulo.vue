@@ -124,6 +124,7 @@
                                 :options="cats.secciones"
                                 placeholder="Seleccionar sección..."
                                 @change="onSeccionChange"
+                                valueKey="nombre"
                             />
                         </div>
                         <div class="form-field">
@@ -134,6 +135,7 @@
                                 placeholder="Seleccionar categoría..."
                                 :disabled="!form.uNv1"
                                 @change="onCategoriaChange"
+                                valueKey="nombre"
                             />
                         </div>
                         <div class="form-field">
@@ -143,6 +145,7 @@
                                 :options="cats.lineas"
                                 placeholder="Seleccionar línea..."
                                 :disabled="!form.uNv2"
+                                valueKey="nombre"
                             />
                         </div>
 
@@ -229,6 +232,7 @@
                                 :options="cats.lineasAtributo"
                                 placeholder="Seleccionar línea..."
                                 @change="onLineaAtributoChange"
+                                valueKey="nombre"
                             />
                         </div>
                         <div class="form-field">
@@ -238,6 +242,7 @@
                                 :options="cats.atributos"
                                 placeholder="Seleccionar atributo..."
                                 :disabled="!selectedLineaAtributo"
+                                valueKey="nombre"
                             />
                         </div>
 
@@ -774,12 +779,28 @@ async function handleSubmit() {
 
     // Construir el payload omitiendo nulos y strings vacíos opcionales
     const payload: Record<string, unknown> = {}
+    
+    // Lista de campos que sí deben ser enviados como numéricos
+    const numericFields = [
+        'uCodColor', 'uCodColSecu', 'leadTime', 'minOrderQuantity',
+        'uUnidadDespacho', 'uDespIn', 'uPrArq', 'price',
+        'itemsGroupCode', 'manufacturer', 'shipType',
+        'purchaseItemsPerUnit', 'salesItemsPerUnit'
+    ]
+
     Object.entries(form.value).forEach(([key, val]) => {
         // No enviar el código de artículo en el body del PATCH (se envía en la URL)
         if (key === 'itemCode' && isEdit.value) return
         
         if (val === '' || val === null || val === undefined) return
-        payload[key] = val
+        
+        // Pydantic strictness: forzar a string los campos que backend espera como texto 
+        // pero que Catálogos/jerarquías pudieron asignar como número.
+        if (typeof val === 'number' && !numericFields.includes(key)) {
+            payload[key] = String(val)
+        } else {
+            payload[key] = val
+        }
     })
 
     try {
