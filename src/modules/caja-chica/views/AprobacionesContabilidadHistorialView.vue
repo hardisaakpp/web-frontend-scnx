@@ -27,10 +27,51 @@
           </button>
         </div>
 
+        <div class="mb-4 grid grid-cols-1 sm:grid-cols-4 gap-3">
+          <label class="text-xs text-gray-600 dark:text-gray-300">
+            Desde
+            <input
+              v-model="fechaDesde"
+              type="date"
+              class="mt-1 w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1.5 text-sm"
+            />
+          </label>
+          <label class="text-xs text-gray-600 dark:text-gray-300">
+            Hasta
+            <input
+              v-model="fechaHasta"
+              type="date"
+              class="mt-1 w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1.5 text-sm"
+            />
+          </label>
+          <label class="text-xs text-gray-600 dark:text-gray-300">
+            Integracion
+            <select
+              v-model="filtroIntegracion"
+              class="mt-1 w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1.5 text-sm"
+            >
+              <option value="PENDIENTES">Solo pendientes</option>
+              <option value="TODOS">Todos</option>
+            </select>
+          </label>
+          <div class="flex items-end">
+            <button
+              type="button"
+              class="w-full rounded border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-sm"
+              @click="resetFiltros()"
+            >
+              Reset filtros
+            </button>
+          </div>
+        </div>
+
         <div v-if="loading" class="text-sm text-gray-500 dark:text-gray-400">Cargando historial...</div>
         <div v-else-if="error" class="text-sm text-red-600 dark:text-red-400">{{ error }}</div>
         <div v-else-if="historial.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
           No hay aprobaciones o negaciones registradas.
+        </div>
+        <div v-else-if="groupedHistorial.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
+          No hay registros para el filtro seleccionado.
         </div>
         <div v-else class="space-y-6">
           <div
@@ -539,6 +580,35 @@ const normalizeAprobacion = (item: any): AprobacionItem => ({
   fechaAprobacion: String(item.fechaAprobacion ?? item.FechaAprobacion ?? '')
 })
 
+const formatDateInput = (value: Date) => {
+  const y = value.getFullYear()
+  const m = String(value.getMonth() + 1).padStart(2, '0')
+  const d = String(value.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+const today = new Date()
+const threeDaysAgo = new Date(today)
+threeDaysAgo.setDate(today.getDate() - 2)
+
+const fechaDesde = ref(formatDateInput(threeDaysAgo))
+const fechaHasta = ref(formatDateInput(today))
+const filtroIntegracion = ref<'PENDIENTES' | 'TODOS'>('PENDIENTES')
+
+const getDateOnly = (value: string) => {
+  const normalized = normalizeString(value)
+  return normalized ? normalized.substring(0, 10) : ''
+}
+
+const resetFiltros = () => {
+  const now = new Date()
+  const start = new Date(now)
+  start.setDate(now.getDate() - 2)
+  fechaDesde.value = formatDateInput(start)
+  fechaHasta.value = formatDateInput(now)
+  filtroIntegracion.value = 'PENDIENTES'
+}
+
 const groupedHistorial = computed(() => {
   const groups = new Map<number, HistorialItem[]>()
   historial.value.forEach(item => {
@@ -548,7 +618,7 @@ const groupedHistorial = computed(() => {
     groups.get(item.idLiquidacion)?.push(item)
   })
 
-  return Array.from(groups.entries()).map(([idLiquidacion, items]) => {
+  const allGroups = Array.from(groups.entries()).map(([idLiquidacion, items]) => {
     const totalMonto = items.reduce((acc, item) => acc + item.montoAprobado, 0)
     const base = items[0]
     return {
@@ -560,6 +630,19 @@ const groupedHistorial = computed(() => {
       nombreCustodio: base?.nombreCustodio || '-',
       fechaCreacion: base?.fechaCreacion || ''
     }
+  })
+
+  return allGroups.filter(group => {
+    const fecha = getDateOnly(group.fechaCreacion)
+    if (fechaDesde.value && fecha && fecha < fechaDesde.value) return false
+    if (fechaHasta.value && fecha && fecha > fechaHasta.value) return false
+
+    if (filtroIntegracion.value === 'PENDIENTES') {
+      const estado = getIntegracionEstado(group.idLiquidacion).toUpperCase()
+      if (estado === 'INTEGRADO') return false
+    }
+
+    return true
   })
 })
 
@@ -689,7 +772,12 @@ const getUCodSt = (detalles: LiquidacionDetalleItem[]) => {
   return detalles.some(detalle => detalle.subtotalConIva > 0) ? '01' : '02'
 }
 
-const buildDocumentLines = (detalles: LiquidacionDetalleItem[], codAlmacen: string, marcaContab: string) => {
+const buildDocumentLines = (
+  detalles: LiquidacionDetalleItem[],
+  codAlmacen: string,
+  marcaContab: string,
+  montoAprobadoByDetalle: Record<number, number>
+) => {
   const grouped = new Map<string, {
     accountCode: string
     itemDescription: string
@@ -699,20 +787,23 @@ const buildDocumentLines = (detalles: LiquidacionDetalleItem[], codAlmacen: stri
   }>()
 
   for (const detalle of detalles) {
+    const montoAprobado = Number(montoAprobadoByDetalle[detalle.idDetalle] ?? 0)
+    if (montoAprobado <= 0) continue
+
     const accountCode = normalizeString(detalle.idGasto)
     if (!accountCode) continue
 
     const current = grouped.get(accountCode)
     if (current) {
       current.quantity += 1
-      current.unitPrice += Number(detalle.total || 0)
+      current.unitPrice += montoAprobado
       current.hasIva = current.hasIva || detalle.subtotalConIva > 0
     } else {
       grouped.set(accountCode, {
         accountCode,
         itemDescription: detalle.nombreGasto || detalle.concepto || '',
         quantity: 1,
-        unitPrice: Number(detalle.total || 0),
+        unitPrice: montoAprobado,
         hasIva: detalle.subtotalConIva > 0
       })
     }
@@ -750,13 +841,25 @@ const integrarLiquidacion = async (idLiquidacion: number) => {
   integrationLoading.value[idLiquidacion] = true
   error.value = ''
   try {
+    const aprobacionesByDetalle = historial.value
+      .filter(item => item.idLiquidacion === idLiquidacion)
+      .reduce<Record<number, number>>((acc, item) => {
+        const estado = normalizeString(item.estado).toUpperCase()
+        acc[item.idDetalle] = estado === 'APROBADO' ? Number(item.montoAprobado || 0) : 0
+        return acc
+      }, {})
+
     const docDate = buildDocDate()
     const codAlmacen = normalizeString(liquidacion.codAlmacen)
     const [cardCodeCustodio, marcaContab] = await Promise.all([
       resolveCardCodeByCedula(liquidacion.cedulaCustodio),
       fetchMarcaContab(codAlmacen)
     ])
-    const documentLines = buildDocumentLines(detalles, codAlmacen, marcaContab)
+    const documentLines = buildDocumentLines(detalles, codAlmacen, marcaContab, aprobacionesByDetalle)
+    if (!documentLines.length) {
+      error.value = 'No hay valores aprobados por contabilidad para integrar.'
+      return
+    }
     const payload = {
       CardCode: cardCodeCustodio,
       Series: 217,
