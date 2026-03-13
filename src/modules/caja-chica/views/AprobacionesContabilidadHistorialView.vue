@@ -537,6 +537,60 @@ const buildDocDate = () => {
   return now.toISOString().substring(0, 10)
 }
 
+const CUSTODIO_CARD_CODE_STORAGE_KEY = 'cajaChicaCustodioCardCodes'
+
+const getStoredCardCodeByCedula = (cedula: string) => {
+  const cedulaNormalizada = normalizeString(cedula)
+  if (!cedulaNormalizada) return ''
+
+  try {
+    const raw = localStorage.getItem(CUSTODIO_CARD_CODE_STORAGE_KEY)
+    if (!raw) return ''
+    const parsed = JSON.parse(raw) as Record<string, string>
+    return normalizeString(parsed?.[cedulaNormalizada])
+  } catch {
+    return ''
+  }
+}
+
+const saveCardCodeByCedula = (cedula: string, cardCode: string) => {
+  const cedulaNormalizada = normalizeString(cedula)
+  const cardCodeNormalizado = normalizeString(cardCode)
+  if (!cedulaNormalizada || !cardCodeNormalizado) return
+
+  try {
+    const raw = localStorage.getItem(CUSTODIO_CARD_CODE_STORAGE_KEY)
+    const existing = raw ? JSON.parse(raw) : {}
+    const map = typeof existing === 'object' && existing ? existing : {}
+    map[cedulaNormalizada] = cardCodeNormalizado
+    localStorage.setItem(CUSTODIO_CARD_CODE_STORAGE_KEY, JSON.stringify(map))
+  } catch {
+    // Si no se puede guardar localmente, se mantiene el flujo de integración.
+  }
+}
+
+const resolveCardCodeByCedula = async (cedula: string) => {
+  const cedulaNormalizada = normalizeString(cedula)
+  if (!cedulaNormalizada) return ''
+
+  const stored = getStoredCardCodeByCedula(cedulaNormalizada)
+  if (stored) return stored
+
+  try {
+    const response = await cajaChicaApi.get(`/Liquidaciones/validar-custodio/${encodeURIComponent(cedulaNormalizada)}`)
+    const payload = response.data as any
+    const cardCode = normalizeString(payload?.cardCode ?? payload?.CardCode ?? '')
+    if (cardCode) {
+      saveCardCodeByCedula(cedulaNormalizada, cardCode)
+      return cardCode
+    }
+  } catch {
+    // Si falla la consulta, se usa cédula como fallback para no bloquear la integración.
+  }
+
+  return cedulaNormalizada
+}
+
 const resolveCostingCode2 = (codAlmacen: string) => {
   const normalized = normalizeString(codAlmacen).toUpperCase()
   if (!normalized) return ''
@@ -619,9 +673,10 @@ const integrarLiquidacion = async (idLiquidacion: number) => {
   try {
     const docDate = buildDocDate()
     const codAlmacen = normalizeString(liquidacion.codAlmacen)
+    const cardCodeCustodio = await resolveCardCodeByCedula(liquidacion.cedulaCustodio)
     const documentLines = buildDocumentLines(detalles, codAlmacen)
     const payload = {
-      cardCode: liquidacion.cedulaCustodio,
+      cardCode: cardCodeCustodio,
       series: 217,
       docDate,
       docDueDate: docDate,

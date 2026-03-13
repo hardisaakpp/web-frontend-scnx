@@ -52,6 +52,7 @@
               v-model.trim="nombreCustodio"
               type="text"
               placeholder="Nombre completo"
+              readonly
               class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
             />
           </div>
@@ -62,6 +63,16 @@
               type="text"
               placeholder="Identificacion"
               class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+              @blur="validateCreateCustodio"
+            />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">CardCode custodio (SAP)</label>
+            <input
+              v-model="cardCodeCustodio"
+              type="text"
+              readonly
+              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-700 dark:text-gray-300"
             />
           </div>
           <div>
@@ -208,6 +219,7 @@
               <input
                 v-model.trim="editNombreCustodio"
                 type="text"
+                readonly
                 class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
               />
             </div>
@@ -217,6 +229,16 @@
                 v-model.trim="editCedulaCustodio"
                 type="text"
                 class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                @blur="validateEditCustodio"
+              />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">CardCode custodio (SAP)</label>
+              <input
+                v-model="editCardCodeCustodio"
+                type="text"
+                readonly
+                class="w-full rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-700 dark:text-gray-300"
               />
             </div>
             <div>
@@ -319,11 +341,18 @@ interface LiquidacionItem {
   datosBancarios: string
 }
 
+interface ProveedorSapLookupItem {
+  cardCode: string
+  cardName: string
+  licTradNum: string
+}
+
 const authStore = useAuthStore()
 const router = useRouter()
 const selectedCodAlmacen = ref('')
 const nombreCustodio = ref('')
 const cedulaCustodio = ref('')
+const cardCodeCustodio = ref('')
 const formatoDePago = ref('Transferencia')
 const empresa = ref('')
 const marca = ref('')
@@ -341,6 +370,7 @@ const editingId = ref<number | null>(null)
 const editCodAlmacen = ref('')
 const editNombreCustodio = ref('')
 const editCedulaCustodio = ref('')
+const editCardCodeCustodio = ref('')
 const editFormatoDePago = ref('Transferencia')
 const editEmpresa = ref('')
 const editMarca = ref('')
@@ -410,6 +440,7 @@ const canSubmit = computed(() =>
   selectedCodAlmacen.value.trim() &&
   nombreCustodio.value.trim() &&
   cedulaCustodio.value.trim() &&
+  cardCodeCustodio.value.trim() &&
   formatoDePago.value.trim() &&
   empresa.value.trim() &&
   marca.value.trim()
@@ -420,10 +451,88 @@ const canUpdate = computed(() =>
   editCodAlmacen.value.trim() &&
   editNombreCustodio.value.trim() &&
   editCedulaCustodio.value.trim() &&
+  editCardCodeCustodio.value.trim() &&
   editFormatoDePago.value.trim() &&
   editEmpresa.value.trim() &&
   editMarca.value.trim()
 )
+
+const CUSTODIO_CARD_CODE_STORAGE_KEY = 'cajaChicaCustodioCardCodes'
+
+const saveCustodioCardCode = (cedula: string, cardCode: string) => {
+  const cedulaNormalizada = cedula.trim()
+  const cardCodeNormalizado = cardCode.trim()
+  if (!cedulaNormalizada || !cardCodeNormalizado) return
+
+  try {
+    const raw = localStorage.getItem(CUSTODIO_CARD_CODE_STORAGE_KEY)
+    const existing = raw ? JSON.parse(raw) : {}
+    const map = typeof existing === 'object' && existing ? existing : {}
+    map[cedulaNormalizada] = cardCodeNormalizado
+    localStorage.setItem(CUSTODIO_CARD_CODE_STORAGE_KEY, JSON.stringify(map))
+  } catch {
+    // Si falla el almacenamiento local, no se bloquea el flujo de la pantalla.
+  }
+}
+
+const lookupCustodioByCedula = async (cedula: string): Promise<ProveedorSapLookupItem> => {
+  const cedulaNormalizada = cedula.trim()
+  const response = await cajaChicaApi.get(`/Liquidaciones/validar-custodio/${encodeURIComponent(cedulaNormalizada)}`)
+  const payload = response.data as any
+  const cardCode = String(payload?.cardCode ?? payload?.CardCode ?? '').trim()
+  const cardName = String(payload?.cardName ?? payload?.CardName ?? '').trim()
+  const licTradNum = String(payload?.licTradNum ?? payload?.LicTradNum ?? cedulaNormalizada).trim()
+
+  if (!cardCode || !cardName) {
+    throw new Error('Respuesta invalida al validar custodio.')
+  }
+
+  return { cardCode, cardName, licTradNum }
+}
+
+const validateCreateCustodio = async () => {
+  const cedula = cedulaCustodio.value.trim()
+  if (!cedula) {
+    nombreCustodio.value = ''
+    cardCodeCustodio.value = ''
+    return
+  }
+
+  try {
+    const proveedor = await lookupCustodioByCedula(cedula)
+    nombreCustodio.value = proveedor.cardName
+    cardCodeCustodio.value = proveedor.cardCode
+    saveCustodioCardCode(cedula, proveedor.cardCode)
+    formError.value = ''
+  } catch (err: any) {
+    const message = err?.response?.data?.message || err?.response?.data || err?.message || 'No se encontro custodio en proveedores SAP.'
+    nombreCustodio.value = ''
+    cardCodeCustodio.value = ''
+    formError.value = String(message)
+  }
+}
+
+const validateEditCustodio = async () => {
+  const cedula = editCedulaCustodio.value.trim()
+  if (!cedula) {
+    editNombreCustodio.value = ''
+    editCardCodeCustodio.value = ''
+    return
+  }
+
+  try {
+    const proveedor = await lookupCustodioByCedula(cedula)
+    editNombreCustodio.value = proveedor.cardName
+    editCardCodeCustodio.value = proveedor.cardCode
+    saveCustodioCardCode(cedula, proveedor.cardCode)
+    editError.value = ''
+  } catch (err: any) {
+    const message = err?.response?.data?.message || err?.response?.data || err?.message || 'No se encontro custodio en proveedores SAP.'
+    editNombreCustodio.value = ''
+    editCardCodeCustodio.value = ''
+    editError.value = String(message)
+  }
+}
 
 const updateMarca = () => {
   const selected = almacenes.value.find(item => item.codAlmacen === selectedCodAlmacen.value)
@@ -566,6 +675,7 @@ const createLiquidacion = async () => {
     updateMarca()
     nombreCustodio.value = ''
     cedulaCustodio.value = ''
+    cardCodeCustodio.value = ''
     formatoDePago.value = 'Transferencia'
   } catch (err: any) {
     const message = err?.response?.data?.message || err?.response?.data
@@ -578,6 +688,7 @@ const startEdit = (item: LiquidacionItem) => {
   editCodAlmacen.value = item.codAlmacen
   editNombreCustodio.value = item.nombreCustodio
   editCedulaCustodio.value = item.cedulaCustodio
+  editCardCodeCustodio.value = ''
   editFormatoDePago.value = item.formatoDePago || 'Transferencia'
   editEmpresa.value = item.empresa
   editMarca.value = item.marca
@@ -585,6 +696,7 @@ const startEdit = (item: LiquidacionItem) => {
   editDatosBancarios.value = item.datosBancarios
   editError.value = ''
   editSuccess.value = ''
+  void validateEditCustodio()
 }
 
 const cancelEdit = () => {
@@ -592,6 +704,7 @@ const cancelEdit = () => {
   editCodAlmacen.value = ''
   editNombreCustodio.value = ''
   editCedulaCustodio.value = ''
+  editCardCodeCustodio.value = ''
   editFormatoDePago.value = 'Transferencia'
   editEmpresa.value = ''
   editMarca.value = ''
@@ -682,7 +795,17 @@ watch(selectedCodAlmacen, () => {
   updateMarca()
 })
 
+watch(cedulaCustodio, () => {
+  nombreCustodio.value = ''
+  cardCodeCustodio.value = ''
+})
+
 watch(editCodAlmacen, () => {
   updateEditMarca()
+})
+
+watch(editCedulaCustodio, () => {
+  editNombreCustodio.value = ''
+  editCardCodeCustodio.value = ''
 })
 </script>
