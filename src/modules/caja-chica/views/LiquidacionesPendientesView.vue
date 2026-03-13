@@ -54,7 +54,7 @@
                 <td class="py-2 pr-3">
                   <router-link
                     class="text-blue-600 hover:text-blue-700 text-xs font-medium"
-                    :to="`/caja-chica/liquidaciones/${item.idLiquidacion}/detalle`"
+                    :to="{ path: `/caja-chica/liquidaciones/${item.idLiquidacion}/detalle`, query: { readonly: '1' } }"
                   >
                     Detalles
                   </router-link>

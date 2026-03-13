@@ -11,11 +11,13 @@
       <div class="flex items-center justify-between pb-4 border-b border-gray-200 dark:border-gray-600">
         <div>
           <h1 class="text-2xl font-semibold text-gray-900 dark:text-white tracking-tight">Detalle de Liquidación #{{ liquidacionId }}</h1>
-          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Agregar gastos y revisar el detalle</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            {{ isReadOnly ? 'Vista solo lectura del detalle.' : 'Agregar gastos y revisar el detalle' }}
+          </p>
         </div>
       </div>
 
-      <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm p-6">
+      <div v-if="!isReadOnly" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm p-6">
         <div class="flex items-center justify-between mb-4">
           <div>
             <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Agregar detalle</h2>
@@ -199,7 +201,7 @@
                 <th class="py-3 px-4">IVA</th>
                 <th class="py-3 px-4">Total</th>
                 <th class="py-3 px-4">Adjuntos</th>
-                <th class="py-3 px-4">Acciones</th>
+                <th v-if="!isReadOnly" class="py-3 px-4">Acciones</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-200 dark:divide-gray-600">
@@ -218,6 +220,7 @@
                 <td class="py-3 px-4">
                   <div class="flex flex-col gap-1">
                     <button
+                      v-if="!isReadOnly"
                       type="button"
                       class="text-blue-600 hover:text-blue-700 text-xs font-medium"
                       @click="triggerUpload(item.idDetalle)"
@@ -239,6 +242,7 @@
                           {{ formatAdjuntoName(adjunto.rutaArchivo) }}
                         </a>
                         <button
+                          v-if="!isReadOnly"
                           type="button"
                           class="text-xs text-red-600 hover:text-red-700"
                           @click="deleteAdjunto(adjunto, item.idDetalle)"
@@ -249,7 +253,7 @@
                     </div>
                   </div>
                 </td>
-                <td class="py-3 px-4">
+                <td v-if="!isReadOnly" class="py-3 px-4">
                   <div class="flex items-center gap-2">
                     <button
                       type="button"
@@ -275,13 +279,13 @@
                 <td class="py-3 px-4 font-semibold text-gray-700 dark:text-gray-200">{{ formatAmount(totalIva) }}</td>
                 <td class="py-3 px-4 font-semibold text-gray-700 dark:text-gray-200">{{ formatAmount(totalTotal) }}</td>
                 <td class="py-3 px-4"></td>
-                <td class="py-3 px-4"></td>
+                <td v-if="!isReadOnly" class="py-3 px-4"></td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <div v-if="editingDetalleId" class="mt-6 border-t border-gray-200 dark:border-gray-700 pt-4">
+        <div v-if="!isReadOnly && editingDetalleId" class="mt-6 border-t border-gray-200 dark:border-gray-700 pt-4">
           <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Editar detalle</h3>
           <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <div class="lg:col-span-2">
@@ -464,6 +468,7 @@ interface AdjuntoItem {
 const route = useRoute()
 const router = useRouter()
 const liquidacionId = computed(() => Number(route.params.id || 0))
+const isReadOnly = computed(() => String(route.query.readonly ?? '').toLowerCase() === '1')
 
 const volver = () => {
   router.back()
@@ -536,6 +541,7 @@ const buildAdjuntoUrl = (ruta: string) => {
 const hasValue = (value: string | number) => String(value ?? '').trim() !== ''
 
 const canAddDetalle = computed(() =>
+  !isReadOnly.value &&
   liquidacionId.value > 0 &&
   selectedGastoId.value.trim() &&
   numeroAutorizacion.value.trim() &&
@@ -549,6 +555,7 @@ const canAddDetalle = computed(() =>
 )
 
 const canUpdateDetalle = computed(() =>
+  !isReadOnly.value &&
   editingDetalleId.value !== null &&
   editGastoId.value.trim() &&
   editNumeroAutorizacion.value.trim() &&
@@ -644,6 +651,7 @@ const loadAdjuntosForDetalles = async () => {
 }
 
 const addDetalle = async () => {
+  if (isReadOnly.value) return
   if (!canAddDetalle.value) return
   formError.value = ''
   formSuccess.value = ''
@@ -685,6 +693,7 @@ const addDetalle = async () => {
 }
 
 const startEditDetalle = (item: LiquidacionDetalleItem) => {
+  if (isReadOnly.value) return
   editingDetalleId.value = item.idDetalle
   editGastoId.value = item.idGasto
   editNombreGasto.value = item.nombreGasto
@@ -721,6 +730,7 @@ const cancelEditDetalle = () => {
 }
 
 const updateDetalle = async () => {
+  if (isReadOnly.value) return
   if (!canUpdateDetalle.value || editingDetalleId.value === null) return
   editDetalleError.value = ''
   editDetalleSuccess.value = ''
@@ -759,6 +769,7 @@ const updateDetalle = async () => {
 }
 
 const deleteDetalle = async (item: LiquidacionDetalleItem) => {
+  if (isReadOnly.value) return
   editDetalleError.value = ''
   editDetalleSuccess.value = ''
   try {
@@ -771,12 +782,14 @@ const deleteDetalle = async (item: LiquidacionDetalleItem) => {
 }
 
 const triggerUpload = (idDetalle: number) => {
+  if (isReadOnly.value) return
   uploadTargetId.value = idDetalle
   uploadError.value = ''
   fileInput.value?.click()
 }
 
 const handleFileChange = async (event: Event) => {
+  if (isReadOnly.value) return
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file || uploadTargetId.value === null) return
@@ -807,6 +820,7 @@ const formatAdjuntoName = (ruta: string) => {
 }
 
 const deleteAdjunto = async (adjunto: AdjuntoItem, idDetalle: number) => {
+  if (isReadOnly.value) return
   uploadError.value = ''
   try {
     await cajaChicaApi.delete(`/Adjuntos/${adjunto.idAdjunto}`)
