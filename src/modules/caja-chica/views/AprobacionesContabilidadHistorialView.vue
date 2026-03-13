@@ -41,6 +41,15 @@
             <div class="flex items-center justify-between bg-gray-50 dark:bg-gray-900 px-4 py-3">
               <div>
                 <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Liquidacion #{{ group.idLiquidacion }}</h3>
+                <div
+                  v-if="integrationMessages[group.idLiquidacion]"
+                  class="mt-1 text-xs font-medium rounded px-2 py-0.5 inline-block"
+                  :class="integrationMessages[group.idLiquidacion].tipo === 'ok'
+                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+                    : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'"
+                >
+                  {{ integrationMessages[group.idLiquidacion].texto }}
+                </div>
                 <p class="text-xs text-gray-500 dark:text-gray-400">
                   {{ group.totalItems }} detalles · Tienda: {{ group.codAlmacen }} · Custodio: {{ group.nombreCustodio }} · Fecha: {{ formatDate(group.fechaCreacion) }}
                 </p>
@@ -380,6 +389,7 @@ const openGroups = ref<Record<number, boolean>>({})
 const detallesByLiquidacion = ref<Record<number, LiquidacionDetalleItem[]>>({})
 const integraciones = ref<Record<number, IntegracionEstadoItem>>({})
 const integrationLoading = ref<Record<number, boolean>>({})
+const integrationMessages = ref<Record<number, { tipo: 'ok' | 'error'; texto: string }>>({})
 const adjuntosByDetalle = ref<Record<number, number>>({})
 const adjuntosListByDetalle = ref<Record<number, AdjuntoItem[]>>({})
 const loadingAdjuntosMap = ref<Record<number, boolean>>({})
@@ -641,14 +651,14 @@ const buildDocumentLines = (detalles: LiquidacionDetalleItem[], codAlmacen: stri
 
   return Array.from(grouped.values()).map(item => {
     return {
-      accountCode: item.accountCode,
-      itemDescription: item.itemDescription,
-      quantity: item.quantity,
-      unitPrice: item.unitPrice,
-      taxCode: item.hasIva ? 'IVA_15' : 'IVA_0',
-      costingCode: codAlmacen,
-      costingCode2: marcaContab,
-      costingCode3: 'COME'
+      AccountCode: item.accountCode,
+      ItemDescription: item.itemDescription,
+      Quantity: item.quantity,
+      UnitPrice: item.unitPrice,
+      TaxCode: item.hasIva ? 'IVA_15' : 'IVA_0',
+      CostingCode: codAlmacen,
+      CostingCode2: marcaContab,
+      CostingCode3: 'COME'
     }
   })
 }
@@ -679,30 +689,32 @@ const integrarLiquidacion = async (idLiquidacion: number) => {
     ])
     const documentLines = buildDocumentLines(detalles, codAlmacen, marcaContab)
     const payload = {
-      cardCode: cardCodeCustodio,
-      series: 217,
-      docDate,
-      docDueDate: docDate,
-      taxDate: docDate,
-      comments: 'LIQUIDACION DE COMPRA ',
-      docType: 'dDocument_Service',
-      docCurrency: 'USD',
-      journalMemo: `REPOSICION CAJA CHICA LLP PORTAL ${codAlmacen}`.trim(),
-      u_COD_ST: getUCodSt(detalles),
-      u_tipo_comprob: '03',
-      u_ORIGEN: 'C',
-      u_SER_EST: '001',
-      u_SER_PE: '100',
-      documentLines
+      CardCode: cardCodeCustodio,
+      Series: 217,
+      DocDate: docDate,
+      DocDueDate: docDate,
+      TaxDate: docDate,
+      Comments: 'LIQUIDACION DE COMPRA',
+      DocType: 'dDocument_Service',
+      DocCurrency: 'USD',
+      JournalMemo: `REPOSICION CAJA CHICA LLP PORTAL ${codAlmacen}`.trim(),
+      U_COD_ST: getUCodSt(detalles),
+      U_tipo_comprob: '03',
+      U_ORIGEN: 'C',
+      U_SER_EST: '001',
+      U_SER_PE: '100',
+      DocumentLines: documentLines
     }
 
-    console.log('[Integracion][Payload LiquidacionesCompras]', payload)
+    console.log('[Integracion][Payload LiquidacionesCompras]', JSON.stringify(payload, null, 2))
 
     const response = await slayerApi.post<SlayerIntegracionResponse>('/LiquidacionesCompras', payload)
     const data = response.data as SlayerIntegracionResponse
     const docEntry = data?.docEntry
     const docNum = data?.docNum
     const mensaje = data?.message || 'Integracion exitosa.'
+
+    console.log('[Integracion][Respuesta OK]', { docEntry, docNum, mensaje })
 
     await cajaChicaApi.post('/Integraciones/Compras', {
       idLiquidacion,
@@ -718,8 +730,14 @@ const integrarLiquidacion = async (idLiquidacion: number) => {
       docNum,
       mensaje
     }
+    integrationMessages.value[idLiquidacion] = {
+      tipo: 'ok',
+      texto: `Liquidacion creada. DocEntry: ${docEntry}, DocNum: ${docNum}.`
+    }
   } catch (err: any) {
-    const mensaje = err?.response?.data?.message || err?.response?.data || 'No se pudo integrar la liquidacion.'
+    const rawMsg = err?.response?.data?.message || err?.response?.data
+    const mensaje = typeof rawMsg === 'string' ? rawMsg : JSON.stringify(rawMsg) || 'No se pudo integrar la liquidacion.'
+    console.error('[Integracion][Error]', { idLiquidacion, mensaje, err })
     error.value = mensaje
     await cajaChicaApi.post('/Integraciones/Compras', {
       idLiquidacion,
@@ -729,6 +747,10 @@ const integrarLiquidacion = async (idLiquidacion: number) => {
     integraciones.value[idLiquidacion] = {
       estado: 'ERROR',
       mensaje
+    }
+    integrationMessages.value[idLiquidacion] = {
+      tipo: 'error',
+      texto: mensaje
     }
   } finally {
     integrationLoading.value[idLiquidacion] = false
