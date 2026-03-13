@@ -60,6 +60,13 @@ export default defineConfig({
         secure: false,
         rewrite: (path) => path.replace(/^\/caja-chica-api/, '/api')
       },
+      // Integracion SAP Slayer -> http://localhost:5110/api (evita CORS en navegador)
+      '/slayer-api': {
+        target: 'http://localhost:5110',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/slayer-api/, '/api')
+      },
       // Archivos estáticos de Caja Chica (ej: /uploads/...) → backend http://localhost:8080
       '/uploads': {
         target: 'http://localhost:8080',

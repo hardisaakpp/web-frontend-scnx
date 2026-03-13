@@ -421,7 +421,8 @@ const cajaChicaApi = axios.create({
 })
 
 const slayerApi = axios.create({
-  baseURL: import.meta.env.VITE_SLAYER_API_URL || 'http://localhost:5001/api',
+  // En desarrollo se fuerza proxy local para evitar CORS del navegador
+  baseURL: '/slayer-api',
   headers: {
     'Content-Type': 'application/json'
   }
@@ -706,9 +707,9 @@ const integrarLiquidacion = async (idLiquidacion: number) => {
       DocumentLines: documentLines
     }
 
-    console.log('[Integracion][Payload LiquidacionesCompras]', JSON.stringify(payload, null, 2))
+    console.log('[Integracion][Payload Liquidaciones]', JSON.stringify(payload, null, 2))
 
-    const response = await slayerApi.post<SlayerIntegracionResponse>('/LiquidacionesCompras', payload)
+    const response = await slayerApi.post<SlayerIntegracionResponse>('/Liquidaciones', payload)
     const data = response.data as SlayerIntegracionResponse
     const docEntry = data?.docEntry
     const docNum = data?.docNum
