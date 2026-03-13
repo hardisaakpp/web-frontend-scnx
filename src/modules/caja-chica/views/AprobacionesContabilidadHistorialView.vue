@@ -42,13 +42,13 @@
               <div>
                 <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Liquidacion #{{ group.idLiquidacion }}</h3>
                 <div
-                  v-if="integrationMessages[group.idLiquidacion]"
+                  v-if="getIntegrationMessage(group.idLiquidacion)"
                   class="mt-1 text-xs font-medium rounded px-2 py-0.5 inline-block"
-                  :class="integrationMessages[group.idLiquidacion].tipo === 'ok'
+                  :class="getIntegrationMessage(group.idLiquidacion)?.tipo === 'ok'
                     ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
                     : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'"
                 >
-                  {{ integrationMessages[group.idLiquidacion].texto }}
+                  {{ getIntegrationMessage(group.idLiquidacion)?.texto }}
                 </div>
                 <p class="text-xs text-gray-500 dark:text-gray-400">
                   {{ group.totalItems }} detalles · Tienda: {{ group.codAlmacen }} · Custodio: {{ group.nombreCustodio }} · Fecha: {{ formatDate(group.fechaCreacion) }}
@@ -385,7 +385,7 @@ interface SlayerIntegracionResponse {
   Message?: string
 }
 
-const parseIntegracionResultado = (raw: unknown) => {
+const parseIntegracionResultado = (raw: unknown, fallbackText?: string) => {
   const data = (raw ?? {}) as any
 
   const extractFromText = (text: string, key: 'DocEntry' | 'DocNum') => {
@@ -410,13 +410,15 @@ const parseIntegracionResultado = (raw: unknown) => {
   }
 
   const mensaje = String(data?.message ?? data?.Message ?? '').trim()
-  const docEntry = toValue(data?.docEntry ?? data?.DocEntry ?? extractFromText(mensaje, 'DocEntry'))
-  const docNum = toValue(data?.docNum ?? data?.DocNum ?? extractFromText(mensaje, 'DocNum'))
+  const rawText = String(fallbackText || '').trim()
+  const textSource = `${mensaje} ${rawText}`.trim()
+  const docEntry = toValue(data?.docEntry ?? data?.DocEntry ?? extractFromText(textSource, 'DocEntry'))
+  const docNum = toValue(data?.docNum ?? data?.DocNum ?? extractFromText(textSource, 'DocNum'))
 
   return {
     docEntry,
     docNum,
-    mensaje: mensaje || 'Integracion exitosa.'
+    mensaje: mensaje || rawText || 'Integracion exitosa.'
   }
 }
 
@@ -579,6 +581,34 @@ const getIntegracionReferencia = (idLiquidacion: number) => {
   if (entry.docNum) return entry.docNum
   if (entry.docEntry) return entry.docEntry
   return ''
+}
+
+const getIntegrationMessage = (idLiquidacion: number) => {
+  const runtime = integrationMessages.value[idLiquidacion]
+  if (runtime) return runtime
+
+  const persisted = integraciones.value[idLiquidacion]
+  if (!persisted) return null
+
+  const estado = String(persisted.estado || '').toUpperCase()
+  if (estado === 'INTEGRADO') {
+    const textoPersistido = normalizeString(persisted.mensaje)
+    if (textoPersistido) return { tipo: 'ok' as const, texto: textoPersistido }
+
+    const docEntry = normalizeString(persisted.docEntry)
+    const docNum = normalizeString(persisted.docNum)
+    if (docEntry || docNum) {
+      return { tipo: 'ok' as const, texto: `Liquidacion creada. DocEntry: ${docEntry || '-'}, DocNum: ${docNum || '-'}.` }
+    }
+
+    return { tipo: 'ok' as const, texto: 'Liquidacion integrada correctamente.' }
+  }
+
+  if (estado === 'ERROR') {
+    return { tipo: 'error' as const, texto: normalizeString(persisted.mensaje) || 'Error en la integracion. Reintenta.' }
+  }
+
+  return null
 }
 
 const buildDocDate = () => {
@@ -748,7 +778,8 @@ const integrarLiquidacion = async (idLiquidacion: number) => {
     console.log('[Integracion][Payload Liquidaciones]', JSON.stringify(payload, null, 2))
 
     const response = await slayerApi.post<SlayerIntegracionResponse | string>('/Liquidaciones', payload)
-    const { docEntry, docNum, mensaje } = parseIntegracionResultado(response.data)
+    const responseText = normalizeString((response as any)?.request?.responseText)
+    const { docEntry, docNum, mensaje } = parseIntegracionResultado(response.data, responseText)
 
     console.log('[Integracion][Respuesta OK]', { docEntry, docNum, mensaje })
 
@@ -766,9 +797,12 @@ const integrarLiquidacion = async (idLiquidacion: number) => {
       docNum,
       mensaje
     }
+    const okTexto = docEntry || docNum
+      ? `Liquidacion creada. DocEntry: ${docEntry || '-'}, DocNum: ${docNum || '-'}.`
+      : mensaje
     integrationMessages.value[idLiquidacion] = {
       tipo: 'ok',
-      texto: `Liquidacion creada. DocEntry: ${docEntry}, DocNum: ${docNum}.`
+      texto: okTexto
     }
   } catch (err: any) {
     const rawMsg = err?.response?.data?.message || err?.response?.data
