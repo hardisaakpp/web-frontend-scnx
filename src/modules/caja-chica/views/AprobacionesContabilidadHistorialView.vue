@@ -345,7 +345,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
 
@@ -963,50 +963,65 @@ const loadHistorial = async () => {
       return
     }
 
-    const [aprobacionesRes, detallesRes, liquidacionesRes] = await Promise.all([
-      cajaChicaApi.get('/Aprobaciones'),
-      cajaChicaApi.get('/LiquidacionesDetalle'),
-      cajaChicaApi.get('/Liquidaciones')
-    ])
-
-    const aprobacionesPayload = aprobacionesRes.data as any
-    const detallesPayload = detallesRes.data as any
-    const liquidacionesPayload = liquidacionesRes.data as any
-
-    const aprobaciones = (Array.isArray(aprobacionesPayload) ? aprobacionesPayload : aprobacionesPayload?.data || [])
-      .map(normalizeAprobacion)
-      .filter((item: AprobacionItem) => item.idUsuario === userId)
-      .filter((item: AprobacionItem) => item.nivelAprobacion === 2)
-      .filter((item: AprobacionItem) => ['APROBADO', 'RECHAZADO'].includes(item.estado.toUpperCase()))
-
-    const detalles: LiquidacionDetalleItem[] = (Array.isArray(detallesPayload) ? detallesPayload : detallesPayload?.data || [])
-      .map(normalizeDetalle)
-
-    const liquidaciones: LiquidacionItem[] = (Array.isArray(liquidacionesPayload) ? liquidacionesPayload : liquidacionesPayload?.data || [])
-      .map(normalizeLiquidacion)
-
-    const detalleMap = new Map<number, LiquidacionDetalleItem>()
-    detalles.forEach((detalle: LiquidacionDetalleItem) => {
-      detalleMap.set(detalle.idDetalle, detalle)
+    const response = await cajaChicaApi.get('/Aprobaciones/historial-contabilidad', {
+      params: {
+        idUsuario: userId,
+        fechaDesde: fechaDesde.value,
+        fechaHasta: fechaHasta.value,
+        soloPendientes: filtroIntegracion.value === 'PENDIENTES'
+      }
     })
 
-    const liquidacionMap = new Map<number, LiquidacionItem>()
-    liquidaciones.forEach((liquidacion: LiquidacionItem) => {
-      liquidacionMap.set(liquidacion.idLiquidacion, liquidacion)
-    })
+    const payload = response.data as any
+    const rows = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
 
-    liquidacionesMap.value = liquidaciones.reduce<Record<number, LiquidacionItem>>((acc: Record<number, LiquidacionItem>, liquidacion: LiquidacionItem) => {
-      acc[liquidacion.idLiquidacion] = liquidacion
+    const detalles = rows.map((item: any) => ({
+      idDetalle: Number(item.idDetalle ?? item.IdDetalle ?? 0),
+      idLiquidacion: Number(item.idLiquidacion ?? item.IdLiquidacion ?? 0),
+      idGasto: normalizeString(item.idGasto ?? item.IdGasto ?? ''),
+      nombreGasto: normalizeString(item.nombreGasto ?? item.NombreGasto ?? ''),
+      concepto: normalizeString(item.concepto ?? item.Concepto ?? ''),
+      total: Number(item.total ?? item.Total ?? 0),
+      subtotalConIva: Number(item.subtotalConIva ?? item.SubtotalConIva ?? item.subtotal_Con_Iva ?? 0),
+      subtotalSinIva: Number(item.subtotalSinIva ?? item.SubtotalSinIva ?? item.subtotal_Sin_Iva ?? 0)
+    })) as LiquidacionDetalleItem[]
+
+    liquidacionesMap.value = (rows as any[]).reduce((acc: Record<number, LiquidacionItem>, item: any) => {
+      const idLiquidacion = Number(item.idLiquidacion ?? item.IdLiquidacion ?? 0)
+      if (!idLiquidacion || acc[idLiquidacion]) return acc
+      acc[idLiquidacion] = {
+        idLiquidacion,
+        codAlmacen: normalizeString(item.codAlmacen ?? item.CodAlmacen ?? ''),
+        nombreCustodio: normalizeString(item.nombreCustodio ?? item.NombreCustodio ?? ''),
+        fechaCreacion: String(item.fechaCreacion ?? item.FechaCreacion ?? ''),
+        cedulaCustodio: normalizeString(item.cedulaCustodio ?? item.CedulaCustodio ?? ''),
+        estado: normalizeString(item.estadoLiquidacion ?? item.EstadoLiquidacion ?? item.estado ?? item.Estado ?? '')
+      }
       return acc
-    }, {})
+    }, {} as Record<number, LiquidacionItem>)
 
     detallesByLiquidacion.value = detalles.reduce<Record<number, LiquidacionDetalleItem[]>>((acc: Record<number, LiquidacionDetalleItem[]>, detalle: LiquidacionDetalleItem) => {
       if (!acc[detalle.idLiquidacion]) {
         acc[detalle.idLiquidacion] = []
       }
-      acc[detalle.idLiquidacion].push(detalle)
+      if (!acc[detalle.idLiquidacion].some(d => d.idDetalle === detalle.idDetalle)) {
+        acc[detalle.idLiquidacion].push(detalle)
+      }
       return acc
     }, {})
+
+    const integracionByLiquidacion = (rows as any[]).reduce((acc: Record<number, IntegracionEstadoItem>, item: any) => {
+      const idLiquidacion = Number(item.idLiquidacion ?? item.IdLiquidacion ?? 0)
+      if (!idLiquidacion || acc[idLiquidacion]) return acc
+      acc[idLiquidacion] = {
+        estado: normalizeString(item.estadoIntegracion ?? item.EstadoIntegracion ?? 'PENDIENTE') || 'PENDIENTE',
+        docEntry: item.docEntry ?? item.DocEntry,
+        docNum: item.docNum ?? item.DocNum,
+        mensaje: normalizeString(item.mensajeIntegracion ?? item.MensajeIntegracion ?? '')
+      }
+      return acc
+    }, {} as Record<number, IntegracionEstadoItem>)
+    integraciones.value = integracionByLiquidacion
 
     // Contador de adjuntos por detalle para mostrar en el panel de solo lectura.
     adjuntosByDetalle.value = {}
@@ -1021,25 +1036,21 @@ const loadHistorial = async () => {
       }
     }
 
-    historial.value = aprobaciones.map((aprobacion: AprobacionItem) => {
-      const detalle = detalleMap.get(aprobacion.idDetalle)
-      const liquidacion = detalle ? liquidacionMap.get(detalle.idLiquidacion) : undefined
-      return {
-        idAprobacion: aprobacion.idAprobacion,
-        idDetalle: aprobacion.idDetalle,
-        idLiquidacion: detalle?.idLiquidacion || 0,
-        nombreGasto: detalle?.nombreGasto || '-',
-        concepto: detalle?.concepto || '-',
-        total: detalle?.total || 0,
-        estado: aprobacion.estado,
-        montoAprobado: aprobacion.montoAprobado,
-        observacion: aprobacion.observacion,
-        fechaAprobacion: aprobacion.fechaAprobacion || '',
-        codAlmacen: liquidacion?.codAlmacen || '-',
-        nombreCustodio: liquidacion?.nombreCustodio || '-',
-        fechaCreacion: liquidacion?.fechaCreacion || ''
-      }
-    })
+    historial.value = rows.map((item: any) => ({
+      idAprobacion: Number(item.idAprobacion ?? item.IdAprobacion ?? 0),
+      idDetalle: Number(item.idDetalle ?? item.IdDetalle ?? 0),
+      idLiquidacion: Number(item.idLiquidacion ?? item.IdLiquidacion ?? 0),
+      nombreGasto: normalizeString(item.nombreGasto ?? item.NombreGasto ?? '-'),
+      concepto: normalizeString(item.concepto ?? item.Concepto ?? '-'),
+      total: Number(item.total ?? item.Total ?? 0),
+      estado: normalizeString(item.estado ?? item.Estado ?? ''),
+      montoAprobado: Number(item.montoAprobado ?? item.MontoAprobado ?? 0),
+      observacion: normalizeString(item.observacion ?? item.Observacion ?? ''),
+      fechaAprobacion: String(item.fechaAprobacion ?? item.FechaAprobacion ?? ''),
+      codAlmacen: normalizeString(item.codAlmacen ?? item.CodAlmacen ?? '-'),
+      nombreCustodio: normalizeString(item.nombreCustodio ?? item.NombreCustodio ?? '-'),
+      fechaCreacion: String(item.fechaCreacion ?? item.FechaCreacion ?? '')
+    }))
 
     openGroups.value = historial.value.reduce<Record<number, boolean>>((acc, item) => {
       if (item.idLiquidacion && acc[item.idLiquidacion] === undefined) {
@@ -1049,7 +1060,11 @@ const loadHistorial = async () => {
     }, {})
 
     const ids = Array.from(new Set(historial.value.map(item => item.idLiquidacion))).filter(id => id > 0)
-    await loadIntegraciones(ids)
+    ids.forEach(id => {
+      if (!integraciones.value[id]) {
+        integraciones.value[id] = { estado: 'PENDIENTE' }
+      }
+    })
   } catch {
     error.value = 'No se pudo cargar el historial de contabilidad.'
   } finally {
@@ -1129,6 +1144,10 @@ const formatAmount = (value: number) => value.toFixed(2)
 const formatDate = (value: string) => (value ? value.substring(0, 10) : '')
 
 onMounted(() => {
+  loadHistorial()
+})
+
+watch([fechaDesde, fechaHasta, filtroIntegracion], () => {
   loadHistorial()
 })
 </script>
