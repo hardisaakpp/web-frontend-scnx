@@ -900,6 +900,8 @@ export interface PedidoCabecera {
   archivo_nombre: string
   creado_por: string | null
   creado_en: string | null
+  modificado_fecha?: string | null
+  modificado_por?: string | null
   estado?: string  // Estado del pedido: "PENDIENTE_CONFIRMACION_PROVEEDOR", "RESPUESTA_PROVEEDOR_CARGADA", "CONFIRMADO_PROVEEDOR", "CONFIRMADO REDISTRIBUCION", "PEDIDO_CONFIRMADO", "PROCESADO_SAP", "CONFIRMADO_ENVIADO", "DESPACHAR Y FACTURAR"
   estado_id?: number  // ID del estado en BD (ej. 12 = CONFIRMADO_ENVIADO, 17 = DESPACHAR Y FACTURAR)
   // ⭐ Campos de SAP (disponibles cuando estado_id = 12 CONFIRMADO_ENVIADO)

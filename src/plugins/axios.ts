@@ -1,30 +1,47 @@
 import axios from 'axios'
 
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
+type AxiosInstanceType = ReturnType<typeof axios.create>
+
+const baseConfig = {
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
   },
   withCredentials: true
+}
+
+/** Core API: login, Auth y resto de endpoints del Core. */
+const coreApi = axios.create({
+  ...baseConfig,
+  baseURL: import.meta.env.VITE_CORE_API_URL || import.meta.env.VITE_API_URL || '/api',
 })
 
-// Request: inyectar token en cada petición (refresh, etc.)
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token')
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
-    return config
-  },
-  (error) => Promise.reject(error)
-)
+/** MBA3 API: /Auth/me, capabilities, preferencias (microservicio distinto al Core). */
+export const mba3Api = axios.create({
+  ...baseConfig,
+  baseURL: import.meta.env.VITE_MBA3_API_URL || '/api',
+})
 
-// Response: no borrar token aquí; el store decide cuándo hacer logout en 401
-api.interceptors.response.use(
-  (response) => response,
-  (error) => Promise.reject(error)
-)
+function addAuthInterceptor(instance: AxiosInstanceType): void {
+  instance.interceptors.request.use(
+    (config: any) => {
+      const token = localStorage.getItem('token')
+      if (token && config?.headers) {
+        config.headers.Authorization = `Bearer ${token}`
+      }
+      return config
+    },
+    (error: any) => Promise.reject(error)
+  )
+  instance.interceptors.response.use(
+    (response: any) => response,
+    (error: any) => Promise.reject(error)
+  )
+}
 
+addAuthInterceptor(coreApi)
+addAuthInterceptor(mba3Api)
+
+/** API principal: apunta al Core (retrocompatibilidad con código que usa "api"). */
+const api = coreApi
 export default api

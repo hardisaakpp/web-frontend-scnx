@@ -562,7 +562,7 @@ async function cargarPedidos() {
         archivo_nombre: c.archivo_nombre,
         creado_por: c.creado_por,
         estado: c.estado ?? root.estado ?? '',
-        creado_en: c.creado_en ?? null,
+        creado_en: c.creado_en ?? '',
         modificado_fecha: modificadoFecha,
         modificado_por: modificadoPor,
       }
