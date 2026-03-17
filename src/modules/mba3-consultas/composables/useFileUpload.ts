@@ -622,9 +622,52 @@ export function useFileUpload(options: {
     const errorCode = e.response?.data?.error_code || 
                       e.response?.data?.data?.error_code ||
                       e.response?.data?.error_tipo
-    
-    // ⭐ MEJORADO: Títulos específicos basados en error_code
-    if (errorCode === 'FORMATO_EXCEL_INVALIDO') {
+
+    // ⭐ Validación de longitud: numero_pedido y mensaje permiten hasta 100 caracteres
+    const lower = errorMessageStr.toLowerCase()
+    const fromMessageStr = (
+      (lower.includes('100') && (lower.includes('caracteres') || lower.includes('carácter'))) ||
+      lower.includes('excede los 100') ||
+      lower.includes('no puede exceder 100') ||
+      lower.includes('máximo 100 caracteres') ||
+      lower.includes('máx. 100 caracteres')
+    ) && (
+      lower.includes('numero_pedido') || lower.includes('número de pedido') || lower.includes('numero de pedido') ||
+      lower.includes('mensaje') || lower.includes('campo')
+    )
+    const fromErroresArray = errorErrors.some(err => {
+      if (typeof err !== 'string' && err?.campo != null && err?.mensaje != null) {
+        const m = String(err.mensaje).toLowerCase()
+        const c = String(err.campo).toLowerCase()
+        return (m.includes('100') && (m.includes('caracteres') || m.includes('carácter'))) &&
+          (c.includes('numero_pedido') || c.includes('mensaje'))
+      }
+      return false
+    })
+    const isLongitudError = fromMessageStr || fromErroresArray
+    if (isLongitudError) {
+      const camposAfectados: string[] = []
+      if (lower.includes('numero_pedido') || lower.includes('número de pedido') || lower.includes('numero de pedido')) {
+        camposAfectados.push('Número de pedido')
+      }
+      if (lower.includes('mensaje')) {
+        camposAfectados.push('Mensaje')
+      }
+      errorErrors.forEach(err => {
+        if (typeof err !== 'string' && err?.campo != null) {
+          const c = String(err.campo).toLowerCase()
+          if (c.includes('numero_pedido') && !camposAfectados.includes('Número de pedido')) {
+            camposAfectados.push('Número de pedido')
+          }
+          if (c.includes('mensaje') && !camposAfectados.includes('Mensaje')) {
+            camposAfectados.push('Mensaje')
+          }
+        }
+      })
+      if (camposAfectados.length === 0) camposAfectados.push('Número de pedido', 'Mensaje')
+      errorTitle = 'Longitud de campo excedida'
+      errorMessage = `Los siguientes campos no pueden superar los 100 caracteres:\n\n   • ${[...new Set(camposAfectados)].join('\n   • ')}\n\nPor favor, acorte el texto en la plantilla Excel (hoja "cabecera") o en el formulario y vuelva a intentar.`
+    } else if (errorCode === 'FORMATO_EXCEL_INVALIDO') {
       errorTitle = 'Formato Excel Inválido'
       errorMessage = `El archivo Excel no contiene la estructura requerida.\n\nEl archivo debe tener las hojas 'cabecera' y 'detalle' con los datos del pedido.\n\n⚠️ Verifica que estés usando la plantilla oficial del sistema.`
     } else if (errorCode === 'ARCHIVO_SIN_DATOS') {

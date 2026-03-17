@@ -1474,8 +1474,22 @@ async function handleIntegrarOC(referenciaDespacho: string, almacenDestinoParam?
     if (detalles.length > 0) {
       const detalle = detalles[0]
       integracionSAPDetalle.value = detalle
-      integracionSAPSolicitudes.value = detalle.solicitudes_transferencia || null
-      
+      // Leer ITR: puede venir en detalle, en metadata o en la raíz de la respuesta (según backend)
+      integracionSAPSolicitudes.value =
+        detalle.solicitudes_transferencia ??
+        response?.metadata?.solicitudes_transferencia ??
+        response?.solicitudes_transferencia ??
+        null
+      if (import.meta.env.DEV && !integracionSAPSolicitudes.value) {
+        console.debug('[Integración SAP] solicitudes_transferencia no encontrado. Respuesta:', {
+          enDetalle: !!detalle.solicitudes_transferencia,
+          enMetadata: !!response?.metadata?.solicitudes_transferencia,
+          enRaiz: !!response?.solicitudes_transferencia,
+          keysDetalle: Object.keys(detalle),
+          keysMetadata: response?.metadata ? Object.keys(response.metadata) : []
+        })
+      }
+
       // Determinar estado general
       const status = response?.status || (detalle.success ? 'success' : 'error')
       if (status === 'partial' || (detalle.success && integracionSAPSolicitudes.value && integracionSAPSolicitudes.value.transferencias_errores > 0)) {

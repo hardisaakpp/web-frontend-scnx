@@ -151,40 +151,36 @@ export function useColumnManagement(
         return
       }
     } else {
-      // Para 'total' solo acepta enteros, para 'costo' acepta decimales
+      // Costo y total aceptan decimales (p. ej. 0.5); el backend persiste float
       const isTotal = fieldType === 'total'
       
       // Si el campo está vacío, tratar como 0 (permitir 0 explícitamente)
       if (newValueStr === '' || newValueStr.trim() === '') {
         newValue = 0
       } else {
-        newValue = isTotal ? parseInt(newValueStr, 10) : parseFloat(newValueStr)
+        newValue = parseFloat(newValueStr)
       }
       
       // Validar que sea un número válido (incluyendo 0)
       if (isNaN(newValue)) {
-        toast.warning('Valor inválido', isTotal 
-          ? 'Por favor ingresa un número entero válido (puede ser 0)' 
-          : 'Por favor ingresa un número válido (puede ser 0)')
+        toast.warning('Valor inválido', 'Por favor ingresa un número válido (puede ser 0). Se permiten decimales.')
         return
       }
       
       // Validar que no sea negativo (0 está permitido explícitamente)
       if (newValue < 0) {
-        toast.warning('Valor inválido', isTotal 
-          ? 'Por favor ingresa un número entero mayor o igual a 0' 
-          : 'Por favor ingresa un número válido mayor o igual a 0')
+        toast.warning('Valor inválido', 'Por favor ingresa un número mayor o igual a 0.')
         return
       }
       
-      // ⭐ VALIDACIÓN MEJORADA: Para total, validar que sea realmente un entero
-      // Solo validar si hay un punto decimal y el valor no es 0
-      if (isTotal && newValue !== 0 && newValueStr.includes('.') && parseFloat(newValueStr) % 1 !== 0) {
-        toast.warning('Valor inválido', 'El total debe ser un número entero (sin decimales). El valor 0 está permitido.')
-        return
+      // Total: solo múltiplos de 0.5 (0, 0.5, 1, 1.5, 2…). Costo: 4 decimales.
+      if (isTotal) {
+        newValue = Math.round(newValue * 2) / 2
+      } else {
+        newValue = Math.round(newValue * 1e4) / 1e4
       }
       
-      // ⭐ VALIDACIÓN MEJORADA: Validar rangos razonables
+      // Validar rangos razonables
       if (fieldType === 'costo' && newValue > 1000000) {
         toast.warning('Costo excede límite', 'El costo unitario no puede exceder 1,000,000. Por favor, verifique el valor.')
         return
@@ -247,6 +243,9 @@ export function useColumnManagement(
         if (response.costo_nuevo !== undefined) {
           detalle.costo_doc_sin_iva = response.costo_nuevo
         }
+        if (response.totales) {
+          pedido.value.totales = response.totales
+        }
         
         marcarColumnaModificada(detalleId, 'costo_doc_sin_iva')
         
@@ -266,6 +265,9 @@ export function useColumnManagement(
         
         if (response.total_nuevo !== undefined) {
           detalle.total = response.total_nuevo
+        }
+        if (response.totales) {
+          pedido.value.totales = response.totales
         }
         
         marcarColumnaModificada(detalleId, 'total')
@@ -350,7 +352,8 @@ export function useColumnManagement(
   }
 
   /**
-   * Maneja las teclas durante la edición (Enter para guardar, Escape para cancelar)
+   * Maneja las teclas durante la edición (Enter para guardar, Escape para cancelar).
+   * Para TOTAL: solo permite dígitos (no punto ni coma); valores con decimales se hacen con las flechas del input.
    */
   function manejarTeclasEdicion(event: KeyboardEvent) {
     if (event.key === 'Enter') {
@@ -359,6 +362,12 @@ export function useColumnManagement(
     } else if (event.key === 'Escape') {
       event.preventDefault()
       cancelarEdicion()
+    } else if (editingCell.value?.fieldType === 'total') {
+      // Solo permitir dígitos 0-9 y teclas de control (no punto, coma, e, -, +)
+      const allowedKeys = ['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', 'Home', 'End']
+      if (allowedKeys.includes(event.key)) return
+      if (/^[0-9]$/.test(event.key)) return
+      event.preventDefault()
     }
   }
 

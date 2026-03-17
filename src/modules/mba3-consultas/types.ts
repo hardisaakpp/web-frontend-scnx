@@ -209,6 +209,7 @@ export interface IntegracionSAPResponse {
   metadata?: {
     detalles?: IntegracionSAPDetalle[]
     pedidos_cerrados?: PedidoCerrado[]  // ⭐ Opcional (Fase 6) - Pedidos que se cerraron después de enviar ODC
+    solicitudes_transferencia?: SolicitudesTransferencia  // Algunos backends envían ITR a nivel metadata
     [key: string]: any
   }
   [key: string]: any
@@ -927,9 +928,18 @@ export interface PedidoDetalle {
   tiendas: TiendaDistribucion[]
 }
 
+/** Totales calculados en el backend para la tabla de detalles (suma de costo_doc_sin_iva, subtotal, total). */
+export interface TotalesDetalles {
+  total_costo_unitario: number
+  total_subtotal: number
+  total_total: number
+}
+
 export interface PedidoCompleto {
   cabecera: PedidoCabecera
   detalles: PedidoDetalle[]
+  /** Totales de la tabla de detalles; viene del GET y de las respuestas PATCH costo/total. */
+  totales?: TotalesDetalles
   respuesta_proveedor?: RespuestaProveedor  // Incluido si incluir_respuesta=true
   /** true si el pedido está en BORRADOR o NUEVO PEDIDO; false en el resto (p. ej. GESTIONAR PEDIDO). Backend: GET plantillas/ultimo, GET plantillas/{id}, POST .../gestionar */
   puede_descartar?: boolean
@@ -1185,6 +1195,8 @@ export interface ActualizarCostoPedidoResponse {
   costo_actualizado?: number
   // ⭐ Campo para actualización de comentario
   comentario_nuevo?: string | null
+  /** Totales recalculados por el backend tras PATCH costo/total; el front los usa para la fila de totales. */
+  totales?: TotalesDetalles
 }
 
 // ⭐ HU-06: Tipos para actualizar cabecera del pedido

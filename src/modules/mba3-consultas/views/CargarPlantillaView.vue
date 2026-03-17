@@ -228,6 +228,7 @@
         :loading="loading"
         :generando-o-c="generandoOC"
         :confirmando="confirmando"
+        :descargando-plano-mba="descargandoPlanoMba"
         :can-generar-o-c="canGenerarOC"
         :es-modo-mabel-trading="esModoMabelTrading"
         :pedido="pedido"
@@ -500,11 +501,13 @@
                         :data-editing-cell="detalle.pedido_detalle_id"
                         v-model="editingCell.value"
                         type="number"
-                        :step="editingCell.fieldType === 'total' ? '1' : '0.01'"
+                        :step="editingCell.fieldType === 'total' ? '0.5' : '0.01'"
+                        :inputmode="editingCell.fieldType === 'total' ? 'numeric' : 'decimal'"
                         min="0"
                         @blur="guardarEdicion"
                         @keydown="manejarTeclasEdicion"
                         @click.stop
+                        :title="editingCell.fieldType === 'total' ? 'Solo múltiplos de 0,5. Escriba números; use flechas para 0,5, 1,5…' : undefined"
                         class="w-full px-2 py-1 border border-blue-500 dark:border-blue-400 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
                       />
                       <textarea
@@ -542,7 +545,7 @@
                       <span class="sr-only"></span>
                     </template>
                     <template v-else-if="column.key === 'costo_doc_sin_iva'">
-                      {{ formatCurrency(totalesCostoUnitario) }}
+                      {{ formatCurrencyWithDecimals(totalesCostoUnitario, 4) }}
                     </template>
                     <template v-else-if="column.key === 'subtotal'">
                       {{ formatNumber(totalesSubtotal) }}
@@ -573,17 +576,6 @@
       @apply-corrections="aplicarCorreccionesYContinuar"
     />
 
-    <!-- HU-08: Modal para exportar pedido a formato MBA -->
-    <ExportarMBAModal
-      ref="exportarMBAModalRef"
-      :is-open="showExportarMBAModal"
-      :numero-pedido="numeroPedido || ''"
-      :bodega-default="pedido?.cabecera?.origen_traslado || ''"
-      :odc-default="pedido?.cabecera?.mensaje || ''"
-      @close="showExportarMBAModal = false"
-      @exportar="handleExportarMBA"
-    />
-
   </div>
 </template>
 
@@ -595,12 +587,13 @@ import { useToast } from '@/composables/useToast'
 import { lastNotification } from '@/composables/useNotificaciones'
 import { useTablePreferences } from '@/composables/useTablePreferences'
 import { mba3ConsultasService, extractErrorMessage } from '../services/mba3ConsultasApi'
-import type { PedidoCompleto, ReporteDiferenciasResponse, UploadPlantillaResponse, ExportarMBAParams } from '../types'
+import type { PedidoCompleto, ReporteDiferenciasResponse, UploadPlantillaResponse } from '../types'
 // Utilidades extraídas
 import {
   formatDate,
   formatNumber,
   formatCurrency,
+  formatCurrencyWithDecimals,
   formatPorcentaje,
   formatEstadoPedido,
   formatColumnValue,
@@ -634,7 +627,6 @@ import PedidoHeaderActions from '../components/PedidoHeaderActions.vue'
 import PedidoCabecera from '../components/PedidoCabecera.vue'
 import RedistribucionTiendas from '../components/RedistribucionTiendas.vue'
 import UploadErrorModal from '../components/UploadErrorModal.vue'
-import ExportarMBAModal from '../components/ExportarMBAModal.vue'
 
 // Constantes de configuración
 const SCROLL_DELAY_MS = 100
@@ -701,8 +693,8 @@ async function handleDescartar() {
 const pedido = ref<PedidoCompleto | null>(null)
 
 // ⭐ HU-08: Estado del modal de exportación MBA
-const showExportarMBAModal = ref(false)
-const exportarMBAModalRef = ref<InstanceType<typeof ExportarMBAModal> | null>(null)
+// ⭐ HU-08: Descarga directa del archivo plano MBA (un clic, sin modal)
+const descargandoPlanoMba = ref(false)
 
 // ⭐ Set para rastrear columnas modificadas (formato: "detalleId:columnKey")
 const columnasModificadas = ref<Set<string>>(new Set())
@@ -853,27 +845,26 @@ watch(
   { immediate: true }
 )
 
-// ⭐ NUEVO: Computed para calcular totales de la tabla
+// ⭐ Totales: usar pedido.totales del backend cuando exista; si no, recalcular desde detalles (fallback)
 const totalesCostoUnitario = computed(() => {
+  const t = pedido.value?.totales
+  if (t != null && typeof t.total_costo_unitario === 'number') return t.total_costo_unitario
   if (!pedido.value?.detalles) return 0
-  return pedido.value.detalles.reduce((sum: number, detalle: any) => {
-    return sum + (detalle.costo_doc_sin_iva || 0)
-  }, 0)
+  return pedido.value.detalles.reduce((sum: number, detalle: any) => sum + (detalle.costo_doc_sin_iva || 0), 0)
 })
 
 const totalesSubtotal = computed(() => {
+  const t = pedido.value?.totales
+  if (t != null && typeof t.total_subtotal === 'number') return t.total_subtotal
   if (!pedido.value?.detalles) return 0
-  return pedido.value.detalles.reduce((sum: number, detalle: any) => {
-    return sum + (detalle.subtotal || 0)
-  }, 0)
+  return pedido.value.detalles.reduce((sum: number, detalle: any) => sum + (detalle.subtotal || 0), 0)
 })
 
-
 const totalesTotal = computed(() => {
+  const t = pedido.value?.totales
+  if (t != null && typeof t.total_total === 'number') return t.total_total
   if (!pedido.value?.detalles) return 0
-  return pedido.value.detalles.reduce((sum: number, detalle: any) => {
-    return sum + (detalle.total || 0)
-  }, 0)
+  return pedido.value.detalles.reduce((sum: number, detalle: any) => sum + (detalle.total || 0), 0)
 })
 
 // El parámetro de ruta ahora es numero_pedido
@@ -1564,49 +1555,31 @@ async function handleConfirmar() {
   // Si hay un error y no se redirige, ya se resetea en el catch
 }
 
-// ⭐ HU-08: Función para abrir el modal de exportación MBA
-function handleDescargarPlanoMba() {
+// ⭐ HU-08: Descarga directa del archivo plano MBA (un clic, sin modal)
+async function handleDescargarPlanoMba() {
   if (!pedido.value || !numeroPedido.value) {
     toast.error('Error', 'No hay pedido seleccionado')
     return
   }
-  showExportarMBAModal.value = true
-}
-
-// ⭐ HU-08: Función para ejecutar la exportación con los parámetros del modal
-async function handleExportarMBA(params: ExportarMBAParams) {
-  if (!pedido.value || !numeroPedido.value) {
-    toast.error('Error', 'No hay pedido seleccionado')
-    return
-  }
-  
-  // Indicar al modal que está exportando
-  exportarMBAModalRef.value?.setExportando(true)
-  
+  if (descargandoPlanoMba.value) return
+  descargandoPlanoMba.value = true
   try {
-    toast.info('Generando archivo...', 'Preparando descarga del pedido en formato MBA')
-    
-    const blob = await mba3ConsultasService.exportarPedidoPlanoMba(numeroPedido.value, params.formato || 'txt')
-    
-    // Crear URL del blob y descargar
+    const blob = await mba3ConsultasService.exportarPedidoPlanoMba(numeroPedido.value, 'txt')
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    // Nombre del archivo: pedido_mba_{numero_pedido}_{fecha}.txt
     const nombreArchivo = `pedido_mba_${numeroPedido.value.replace(/[^a-zA-Z0-9.-]/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`
     a.download = nombreArchivo
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
-    
     toast.success('Descarga completada', 'El archivo se ha descargado correctamente')
-    showExportarMBAModal.value = false
   } catch (e: any) {
     console.error('Error al descargar pedido plano:', e)
     toast.error('Error al descargar', e.message || 'No se pudo descargar el archivo')
   } finally {
-    exportarMBAModalRef.value?.setExportando(false)
+    descargandoPlanoMba.value = false
   }
 }
 

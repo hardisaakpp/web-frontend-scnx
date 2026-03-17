@@ -70,17 +70,35 @@ export function formatDateTime(dateString: string | null): string {
 }
 
 /**
- * Formatea un número con separadores de miles
+ * Formatea un número con separadores de miles.
+ * Usa hasta 4 decimales cuando el valor tiene parte decimal (p. ej. 0.5 → "0,5"), para redistribución y totales.
  */
 export function formatNumber(value: number | null | undefined): string {
   // Distinguir explícitamente entre 0 y null/undefined
   if (value === null || value === undefined) return 'N/A'
   // El valor 0 es válido y debe mostrarse como "0"
-  return new Intl.NumberFormat('es-ES').format(value)
+  const hasDecimals = value % 1 !== 0
+  return new Intl.NumberFormat('es-ES', {
+    minimumFractionDigits: hasDecimals ? 1 : 0,
+    maximumFractionDigits: 4
+  }).format(value)
 }
 
 /**
- * Formatea un número como moneda USD
+ * Formatea un número con un número fijo de decimales (0 a 4).
+ * Útil para la vista de redistribución cuando el usuario quiere aumentar o disminuir decimales visibles.
+ */
+export function formatNumberWithDecimals(value: number | null | undefined, decimals: number): string {
+  if (value === null || value === undefined) return 'N/A'
+  const d = Math.max(0, Math.min(4, Math.round(decimals)))
+  return new Intl.NumberFormat('es-ES', {
+    minimumFractionDigits: d,
+    maximumFractionDigits: d
+  }).format(value)
+}
+
+/**
+ * Formatea un número como moneda USD (2 decimales por defecto)
  */
 export function formatCurrency(value: number | null | undefined): string {
   // Distinguir explícitamente entre 0 y null/undefined
@@ -89,6 +107,21 @@ export function formatCurrency(value: number | null | undefined): string {
   return new Intl.NumberFormat('es-ES', {
     style: 'currency',
     currency: 'USD'
+  }).format(value)
+}
+
+/**
+ * Formatea un número como moneda USD con hasta N decimales.
+ * Útil para columna COSTO UNIT. en Productos del pedido (hasta 4 decimales).
+ */
+export function formatCurrencyWithDecimals(value: number | null | undefined, maxFractionDigits: number = 4): string {
+  if (value === null || value === undefined) return 'N/A'
+  const digits = Math.max(0, Math.min(4, Math.round(maxFractionDigits)))
+  return new Intl.NumberFormat('es-ES', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: digits
   }).format(value)
 }
 
@@ -211,6 +244,10 @@ export function formatColumnValue(detalle: any, column: ColumnConfig, index?: nu
   // Nota: El valor 0 pasará por aquí y se formateará correctamente
   switch (column.format) {
     case 'currency':
+      // Columna COSTO UNIT. (costo_doc_sin_iva): hasta 4 decimales
+      if (column.key === 'costo_doc_sin_iva') {
+        return formatCurrencyWithDecimals(value, 4)
+      }
       return formatCurrency(value)
     case 'number':
       return formatNumber(value)

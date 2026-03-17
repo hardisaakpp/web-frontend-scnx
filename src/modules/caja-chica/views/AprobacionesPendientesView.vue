@@ -231,11 +231,11 @@
               </div>
 
               <div>
-                <dt class="text-xs text-gray-500 dark:text-gray-400">Subtotal Base 15</dt>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Subtotal Base 15%</dt>
                 <dd class="text-sm text-gray-900 dark:text-white">{{ selectedDetalle ? formatAmount(selectedDetalle.subtotalConIva) : '-' }}</dd>
               </div>
               <div>
-                <dt class="text-xs text-gray-500 dark:text-gray-400">Subtotal Base 0</dt>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Subtotal Base 0%</dt>
                 <dd class="text-sm text-gray-900 dark:text-white">{{ selectedDetalle ? formatAmount(selectedDetalle.subtotalSinIva) : '-' }}</dd>
               </div>
               <div>
@@ -534,8 +534,8 @@ const availableColumns: ColumnConfig[] = [
   { key: 'numeroComprobante', label: 'N° Comprobante', fixed: false },
   { key: 'tipoDocumento', label: 'Tipo Documento', fixed: false },
   { key: 'concepto', label: 'Concepto', fixed: false },
-  { key: 'subtotalConIva', label: 'Subtotal Base 15', fixed: false },
-  { key: 'subtotalSinIva', label: 'Subtotal Base 0', fixed: false },
+  { key: 'subtotalConIva', label: 'Subtotal Base 15%', fixed: false },
+  { key: 'subtotalSinIva', label: 'Subtotal Base 0%', fixed: false },
   { key: 'iva', label: 'IVA', fixed: false },
   { key: 'total', label: 'Total', fixed: false },
   { key: 'adjuntos', label: 'Adjuntos', fixed: false },

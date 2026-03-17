@@ -224,12 +224,12 @@
                     
                     <!-- Columna Precio Unitario Original -->
                     <template v-else-if="column.key === 'precio_unitario_original'">
-                      {{ producto.precio_unitario_original ? formatCurrency(producto.precio_unitario_original) : 'N/A' }}
+                      {{ producto.precio_unitario_original != null ? formatCurrencyWithDecimals(producto.precio_unitario_original, 4) : 'N/A' }}
                     </template>
                     
                     <!-- Columna Subtotal Pedido -->
                     <template v-else-if="column.key === 'subtotal_pedido'">
-                      {{ (producto.total_linea_original ?? producto.subtotal_original) !== null ? formatCurrency(producto.total_linea_original ?? producto.subtotal_original ?? 0) : 'N/A' }}
+                      {{ (producto.total_linea_original ?? producto.subtotal_original) != null ? formatCurrencyWithDecimals(producto.total_linea_original ?? producto.subtotal_original ?? 0, 4) : 'N/A' }}
                     </template>
                     
                     <!-- Columna Unidad/Pack: mostrar solo si hay valor, y evitar duplicados si son iguales -->
@@ -255,12 +255,12 @@
                     
                     <!-- Columna Precio Unitario SAP -->
                     <template v-else-if="column.key === 'precio_unitario_sap'">
-                      {{ producto.precio_unitario_sap ? formatCurrency(producto.precio_unitario_sap) : 'N/A' }}
+                      {{ producto.precio_unitario_sap != null ? formatCurrencyWithDecimals(producto.precio_unitario_sap, 4) : 'N/A' }}
                     </template>
                     
                     <!-- Columna Subtotal SAP -->
                     <template v-else-if="column.key === 'subtotal_sap'">
-                      {{ (producto.total_linea_sap ?? producto.subtotal_sap) !== null ? formatCurrency(producto.total_linea_sap ?? producto.subtotal_sap ?? 0) : 'N/A' }}
+                      {{ (producto.total_linea_sap ?? producto.subtotal_sap) != null ? formatCurrencyWithDecimals(producto.total_linea_sap ?? producto.subtotal_sap ?? 0, 4) : 'N/A' }}
                     </template>
                   </td>
                 </tr>
@@ -285,12 +285,12 @@
                     
                     <!-- Columna Subtotal Pedido -->
                     <template v-else-if="column.key === 'subtotal_pedido'">
-                      {{ formatCurrency(totalesSubtotalPedido) }}
+                      {{ formatCurrencyWithDecimals(totalesSubtotalPedido, 4) }}
                     </template>
                     
                     <!-- Columna Subtotal SAP -->
                     <template v-else-if="column.key === 'subtotal_sap'">
-                      {{ formatCurrency(totalesSubtotalSAP) }}
+                      {{ formatCurrencyWithDecimals(totalesSubtotalSAP, 4) }}
                     </template>
                     
                     <!-- Todas las demás columnas vacías -->
@@ -459,7 +459,7 @@ import { useToast } from '@/composables/useToast'
 import { useTablePreferences } from '@/composables/useTablePreferences'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import type { ProcesamientoSAPResponse, PedidoCompleto, SolicitudesTransferencia } from '../types'
-import { formatDate, formatNumber, formatCurrency, type ColumnConfig } from '../utils/formatters'
+import { formatDate, formatNumber, formatCurrencyWithDecimals, type ColumnConfig } from '../utils/formatters'
 import PedidoCabecera from '../components/PedidoCabecera.vue'
 import SapErrorDetailModal from '../components/SapErrorDetailModal.vue'
 

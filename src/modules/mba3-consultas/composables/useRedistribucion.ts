@@ -31,12 +31,24 @@ export function useRedistribucion(options: {
   const confirmandoRedistribucion = ref(false)
 
   /**
+   * Ordena productos por referencia (codigo_producto) y opcionalmente por pedido_detalle_id.
+   * Alinea con el orden que devuelve el backend en redistribución (inicial, borrador, solo lectura).
+   */
+  function ordenarProductosPorReferencia(productos: ProductoRedistribucion[]): ProductoRedistribucion[] {
+    return [...productos].sort((a, b) => {
+      const cmp = (a.codigo_producto || '').localeCompare(b.codigo_producto || '', undefined, { sensitivity: 'base' })
+      if (cmp !== 0) return cmp
+      return (a.pedido_detalle_id || '').localeCompare(b.pedido_detalle_id || '', undefined, { sensitivity: 'base' })
+    })
+  }
+
+  /**
    * Mapea la respuesta de GET /api/pedidos/{pedido_id}/distribucion a ProductoRedistribucion[].
    * Opcionalmente toma costo y flags de pedido.respuesta_proveedor si existe.
    */
   function mapDistribucionResponseToProductos(data: DistribucionPedidoResponse): ProductoRedistribucion[] {
     const detallesRespuesta = options.pedido.value?.respuesta_proveedor?.detalles ?? []
-    return data.productos.map(p => {
+    const result = data.productos.map(p => {
       const detalleRespuesta = detallesRespuesta.find(d => d.codigo_producto === p.codigo_interno)
       const costo = detalleRespuesta?.costo_doc_sin_iva_ajustado ?? detalleRespuesta?.costo_doc_sin_iva_original ?? null
       const distribucion_tiendas: DistribucionTiendaEditada[] = (p.distribuciones ?? []).map(d => {
@@ -67,6 +79,7 @@ export function useRedistribucion(options: {
         total_modificado_manual: detalleRespuesta?.total_modificado_manual ?? false
       }
     })
+    return ordenarProductosPorReferencia(result)
   }
 
   /**
@@ -77,8 +90,8 @@ export function useRedistribucion(options: {
       productosRedistribucion.value = []
       return
     }
-    
-    productosRedistribucion.value = options.pedido.value.respuesta_proveedor.detalles.map(detalle => {
+
+    const mapped = options.pedido.value.respuesta_proveedor.detalles.map(detalle => {
       // Obtener distribución original desde pedido.detalles si existe
       const detallePedido = options.pedido.value?.detalles.find(
         d => d.codigo_interno === detalle.codigo_producto
@@ -137,7 +150,8 @@ export function useRedistribucion(options: {
         total_modificado_manual: detalle.total_modificado_manual || false
       }
     })
-    
+    productosRedistribucion.value = ordenarProductosPorReferencia(mapped)
+
     // Recalcular diferencias iniciales
     recalcularDiferencias()
   }
@@ -146,7 +160,7 @@ export function useRedistribucion(options: {
    * Mapea ajustes_detalle (BorradorResponse de GET .../redistribucion/inicial?solo_lectura=1) a ProductoRedistribucion[].
    */
   function mapAjustesDetalleToProductos(ajustes: AjusteDetalle[]): ProductoRedistribucion[] {
-    return ajustes.map(a => {
+    const result = ajustes.map(a => {
       const distribucion_tiendas: DistribucionTiendaEditada[] = (a.distribucion_tiendas ?? []).map(t => {
         const cantidad = t.cantidad ?? 0
         return {
@@ -172,6 +186,7 @@ export function useRedistribucion(options: {
         expandido: false
       }
     })
+    return ordenarProductosPorReferencia(result)
   }
 
   /**
@@ -274,13 +289,16 @@ export function useRedistribucion(options: {
     triggerRef(productosRedistribucion)
   }
 
+  /** Tolerancia para comparar sumas de cantidades (evitar errores de redondeo float) */
+  const TOLERANCIA_SUMA = 1e-6
+
   /**
    * Valida un producto
-   * ⭐ MEJORADO: Validaciones más estrictas (enteros, rangos, formato)
+   * ⭐ Acepta cantidades decimales (p. ej. 0.5); validación con tolerancia de redondeo
    */
   function validarProducto(producto: ProductoRedistribucion): string | undefined {
     // Validar que la cantidad distribuida no exceda la confirmada
-    if (producto.cantidad_distribuida > producto.cantidad_confirmada) {
+    if (producto.cantidad_distribuida > producto.cantidad_confirmada + TOLERANCIA_SUMA) {
       const exceso = producto.cantidad_distribuida - producto.cantidad_confirmada
       return `La suma distribuida (${formatNumber(producto.cantidad_distribuida)}) excede el total confirmado (${formatNumber(producto.cantidad_confirmada)}) por ${formatNumber(exceso)} unidades. Debe reducir las cantidades asignadas.`
     }
@@ -290,28 +308,14 @@ export function useRedistribucion(options: {
       return 'No se permiten cantidades negativas. Por favor, revise las cantidades asignadas.'
     }
     
-    // Validar que todas las cantidades sean enteros (no decimales)
-    const tieneDecimales = producto.distribucion_tiendas.some(t => {
-      const cantidad = t.cantidad_asignada
-      return cantidad % 1 !== 0
-    })
-    if (tieneDecimales) {
-      return 'Las cantidades asignadas deben ser números enteros (sin decimales). Por favor, corrija los valores decimales.'
-    }
-    
-    // Validar que la cantidad distribuida total sea entero
-    if (producto.cantidad_distribuida % 1 !== 0) {
-      return `La suma total distribuida (${producto.cantidad_distribuida}) debe ser un número entero.`
-    }
-    
     // Validar rangos razonables (máximo 1,000,000 por tienda)
     const excedeLimite = producto.distribucion_tiendas.some(t => t.cantidad_asignada > 1000000)
     if (excedeLimite) {
       return 'Una o más cantidades asignadas exceden el límite máximo permitido (1,000,000 unidades por tienda).'
     }
     
-    // Validar que no falte distribuir
-    if (producto.diferencia < 0) {
+    // Validar que no falte distribuir (con tolerancia para redondeo float)
+    if (producto.diferencia < -TOLERANCIA_SUMA) {
       return `Faltan ${formatNumber(Math.abs(producto.diferencia))} unidades por distribuir. La suma debe ser exactamente ${formatNumber(producto.cantidad_confirmada)}.`
     }
     
@@ -320,16 +324,13 @@ export function useRedistribucion(options: {
 
   /**
    * Valida cantidad de tienda individual
-   * ⭐ MEJORADO: Validaciones más estrictas (enteros, rangos)
+   * ⭐ Acepta decimales (p. ej. 0.5)
    */
   function validarCantidadTienda(producto: ProductoRedistribucion, tienda: DistribucionTiendaEditada): boolean {
     const cantidad = tienda.cantidad_asignada
     
     // No puede ser negativo
     if (cantidad < 0) return false
-    
-    // Debe ser un número entero (no decimal)
-    if (cantidad % 1 !== 0) return false
     
     // No puede exceder el límite máximo por tienda
     if (cantidad > 1000000) return false
@@ -357,9 +358,8 @@ export function useRedistribucion(options: {
   }
 
   /**
-   * Valida cantidad al perder el foco (sin corrección automática)
-   * Solo aplica correcciones mínimas para valores inválidos (negativos, decimales)
-   * NO ajusta automáticamente cuando excede el total confirmado - el usuario tiene control total
+   * Valida cantidad al perder el foco.
+   * Solo múltiplos de 0.5 (0, 0.5, 1, 1.5…). Corrige negativos, máximo y redondea a 0.5.
    */
   function validarYCorregirCantidad(producto: ProductoRedistribucion, tienda: DistribucionTiendaEditada) {
     if (!tienda || !producto) return
@@ -367,26 +367,26 @@ export function useRedistribucion(options: {
     let valorCorregido = false
     let mensajeCorreccion = ''
     
+    // Redondear al múltiplo de 0.5 más cercano
+    let val = Number(tienda.cantidad_asignada)
+    if (isNaN(val)) val = 0
+    val = Math.round(val * 2) / 2
+    
     // Solo corregir valores claramente inválidos (negativos)
-    if (tienda.cantidad_asignada < 0) {
-      tienda.cantidad_asignada = 0
+    if (val < 0) {
+      val = 0
       valorCorregido = true
       mensajeCorreccion = 'Cantidad negativa corregida a 0'
     }
     
-    // Asegurar que sea entero (redondear si es decimal)
-    if (tienda.cantidad_asignada % 1 !== 0) {
-      tienda.cantidad_asignada = Math.round(tienda.cantidad_asignada)
-      valorCorregido = true
-      mensajeCorreccion = 'Cantidad decimal redondeada a número entero'
-    }
-    
     // Validar límite máximo (protección contra valores absurdos)
-    if (tienda.cantidad_asignada > 1000000) {
-      tienda.cantidad_asignada = 1000000
+    if (val > 1000000) {
+      val = 1000000
       valorCorregido = true
       mensajeCorreccion = 'Cantidad ajustada al límite máximo (1,000,000)'
     }
+    
+    tienda.cantidad_asignada = val
     
     // ⭐ ELIMINADO: Ya NO se ajusta automáticamente cuando excede el total confirmado
     // El usuario tiene control total sobre los valores y verá el indicador visual de error
@@ -546,23 +546,31 @@ export function useRedistribucion(options: {
    */
   function actualizarCantidadTienda(codigoProducto: string, tiendaCodigo: string, event: Event) {
     const target = event.target as HTMLInputElement
-    let nuevoValor = parseFloat(target.value) || 0
-    
+    // Aceptar coma como separador decimal (p. ej. "2,5" → 2.5)
+    const raw = (target.value || '').toString().replace(',', '.')
+    // Si el usuario está escribiendo un decimal (p. ej. "2." o "2,"), no actualizar el modelo aún para no perder el punto.
+    // En blur sí commitear (p. ej. "2." → 2).
+    if ((raw.endsWith('.') || raw.endsWith(',')) && (event as FocusEvent).type !== 'blur') {
+      target.value = raw.replace(',', '.')
+      return
+    }
+    let nuevoValor = parseFloat(raw) || 0
+
     const producto = productosRedistribucion.value.find(p => p.codigo_producto === codigoProducto)
     if (!producto) return
-    
+
     // ⭐ VALIDACIÓN: Validar formato del código de tienda
     if (!tiendaCodigo || typeof tiendaCodigo !== 'string' || tiendaCodigo.trim().length === 0) {
       toast.warning('Código de tienda inválido', 'El código de tienda no puede estar vacío')
       return
     }
-    
+
     // Buscar la tienda existente
     let tienda = producto.distribucion_tiendas.find(t => t.tienda_codigo === tiendaCodigo)
-    
+
     // Guardar valor anterior para calcular diferencia
     const valorAnterior = tienda?.cantidad_asignada || 0
-    
+
     // ⭐ Si la tienda no existe, crearla automáticamente
     if (!tienda) {
       const nombreTienda = obtenerNombreTienda(tiendaCodigo)
@@ -576,26 +584,21 @@ export function useRedistribucion(options: {
       }
       producto.distribucion_tiendas.push(tienda)
     }
-    
-    // ⭐ VALIDACIÓN MEJORADA: Validar y corregir valor
+
+    // ⭐ Solo múltiplos de 0.5 (0, 0.5, 1, 1.5, 2…); validar y corregir
     if (isNaN(nuevoValor) || nuevoValor < 0) {
       target.value = '0'
       tienda.cantidad_asignada = 0
     } else {
-      // ⭐ Validar que sea entero (redondear si es decimal)
-      if (nuevoValor % 1 !== 0) {
-        nuevoValor = Math.round(nuevoValor)
-        target.value = nuevoValor.toString()
-        toast.info('Valor ajustado', 'Las cantidades deben ser números enteros. Se ha redondeado automáticamente.')
-      }
-      
-      // ⭐ Validar límite máximo
+      // Redondear al múltiplo de 0.5 más cercano
+      nuevoValor = Math.round(nuevoValor * 2) / 2
       if (nuevoValor > 1000000) {
         nuevoValor = 1000000
         target.value = '1000000'
         toast.warning('Límite máximo', 'La cantidad máxima permitida por tienda es 1,000,000 unidades')
+      } else {
+        target.value = nuevoValor.toString()
       }
-      
       tienda.cantidad_asignada = nuevoValor
     }
     
@@ -616,8 +619,14 @@ export function useRedistribucion(options: {
     }
   }
 
+  /** Redondea a 4 decimales (alineado con backend) */
+  function round4(x: number): number {
+    return Math.round(x * 1e4) / 1e4
+  }
+
   /**
    * Distribuye proporcionalmente
+   * ⭐ Soporta cantidades decimales (p. ej. 0.5); usa round4 y ajusta la última tienda para que la suma coincida.
    */
   function distribuirProporcionalmente(codigoProducto: string) {
     const producto = productosRedistribucion.value.find(p => p.codigo_producto === codigoProducto)
@@ -625,28 +634,31 @@ export function useRedistribucion(options: {
     
     const totalOriginal = producto.distribucion_tiendas.reduce((sum, t) => sum + t.cantidad_original, 0)
     const cantidadConfirmada = producto.cantidad_confirmada
-    
+    const n = producto.distribucion_tiendas.length
+
     if (totalOriginal === 0) {
-      // Si no hay distribución original, distribuir equitativamente
-      const cantidadPorTienda = Math.floor(cantidadConfirmada / producto.distribucion_tiendas.length)
-      const resto = cantidadConfirmada % producto.distribucion_tiendas.length
-      
+      // Sin distribución original: repartir equitativamente con decimales
+      const porTienda = cantidadConfirmada / n
       producto.distribucion_tiendas.forEach((tienda, index) => {
-        tienda.cantidad_asignada = cantidadPorTienda + (index < resto ? 1 : 0)
+        if (index < n - 1) {
+          tienda.cantidad_asignada = round4(porTienda)
+        } else {
+          // Última tienda: asignar el resto para que la suma sea exactamente cantidadConfirmada
+          const sumaAntes = producto.distribucion_tiendas.slice(0, n - 1).reduce((s, t) => s + t.cantidad_asignada, 0)
+          tienda.cantidad_asignada = round4(cantidadConfirmada - sumaAntes)
+        }
       })
     } else {
-      // Distribuir proporcionalmente según la distribución original
-      producto.distribucion_tiendas.forEach(tienda => {
+      // Distribuir proporcionalmente según la distribución original (con decimales)
+      producto.distribucion_tiendas.forEach((tienda, index) => {
         const proporcion = tienda.cantidad_original / totalOriginal
-        tienda.cantidad_asignada = Math.round(cantidadConfirmada * proporcion)
+        if (index < n - 1) {
+          tienda.cantidad_asignada = round4(cantidadConfirmada * proporcion)
+        } else {
+          const sumaAntes = producto.distribucion_tiendas.slice(0, n - 1).reduce((s, t) => s + t.cantidad_asignada, 0)
+          tienda.cantidad_asignada = round4(cantidadConfirmada - sumaAntes)
+        }
       })
-      
-      // Ajustar redondeo: sumar/disminuir la diferencia al primer elemento
-      const sumaActual = producto.distribucion_tiendas.reduce((sum, t) => sum + t.cantidad_asignada, 0)
-      const diferencia = cantidadConfirmada - sumaActual
-      if (diferencia !== 0 && producto.distribucion_tiendas.length > 0) {
-        producto.distribucion_tiendas[0].cantidad_asignada += diferencia
-      }
     }
     
     recalcularDiferencias()

@@ -155,9 +155,11 @@
                 name="numero_pedido"
                 autocomplete="on"
                 required
+                maxlength="100"
                 placeholder="Ej: P-12.48 - 12 - 2025"
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
               />
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Máx. 100 caracteres</p>
             </div>
 
             <div>
@@ -906,6 +908,15 @@ async function handleSubmit() {
     return
   }
 
+  const numeroPedidoVal = formData.value.cabecera.numero_pedido!.trim()
+  if (numeroPedidoVal.length > 100) {
+    toast.error(
+      'Longitud de campo excedida',
+      'El campo "Número de pedido" no puede superar los 100 caracteres. Por favor, acorte el texto e intente de nuevo.'
+    )
+    return
+  }
+
   creating.value = true
   error.value = ''
 
@@ -1027,21 +1038,37 @@ async function handleSubmit() {
     toast.warning('Pedido creado', 'El pedido se creó pero no se pudo obtener su información completa')
   } catch (e: any) {
     console.error('Error al crear pedido:', e)
-    const errorMessage = e.message || 'Error desconocido al crear el pedido'
-    
+    const errorMessage = e.message || e.response?.data?.message || e.response?.data?.error || e.response?.data?.detail || 'Error desconocido al crear el pedido'
+    const errorStr = typeof errorMessage === 'string' ? errorMessage : String(errorMessage)
+    const lowerErr = errorStr.toLowerCase()
+
+    // Detectar error de longitud (numero_pedido o mensaje > 100 caracteres)
+    const isLongitudError = (lowerErr.includes('100') && (lowerErr.includes('caracteres') || lowerErr.includes('carácter'))) &&
+      (lowerErr.includes('numero_pedido') || lowerErr.includes('número de pedido') || lowerErr.includes('mensaje') || lowerErr.includes('campo'))
+    const erroresArray = e.response?.data?.errores
+    const hasErroresLongitud = Array.isArray(erroresArray) && erroresArray.some((err: any) => {
+      const m = (err?.mensaje ?? err).toString().toLowerCase()
+      const c = (err?.campo ?? '').toString().toLowerCase()
+      return (m.includes('100') && m.includes('caracteres')) && (c.includes('numero_pedido') || c.includes('mensaje'))
+    })
+
+    if (isLongitudError || hasErroresLongitud) {
+      error.value = 'El campo "Número de pedido" (y/o "Mensaje" si aplica) no puede superar los 100 caracteres. Por favor, acorte el texto e intente de nuevo.'
+      toast.error('Longitud de campo excedida', error.value)
+      return
+    }
+
     // Detectar específicamente el error de número de pedido duplicado
-    const isDuplicateError = errorMessage.toLowerCase().includes('número de pedido') && 
-                           errorMessage.toLowerCase().includes('ya existe') ||
-                           errorMessage.toLowerCase().includes('numero de pedido') && 
-                           errorMessage.toLowerCase().includes('ya existe') ||
-                           errorMessage.toLowerCase().includes('duplicado') ||
+    const isDuplicateError = lowerErr.includes('número de pedido') && lowerErr.includes('ya existe') ||
+                           lowerErr.includes('numero de pedido') && lowerErr.includes('ya existe') ||
+                           lowerErr.includes('duplicado') ||
                            e.response?.data?.error_tipo === 'numero_pedido_duplicado'
     
     if (isDuplicateError) {
       // Extraer el número de pedido del mensaje si está disponible
-      const numeroPedidoMatch = errorMessage.match(/['"]([^'"]+)['"]/)?.[1] || 
-                                errorMessage.match(/número de pedido ['"]([^'"]+)['"]/i)?.[1] ||
-                                errorMessage.match(/numero de pedido ['"]([^'"]+)['"]/i)?.[1]
+      const numeroPedidoMatch = errorStr.match(/['"]([^'"]+)['"]/)?.[1] || 
+                                errorStr.match(/número de pedido ['"]([^'"]+)['"]/i)?.[1] ||
+                                errorStr.match(/numero de pedido ['"]([^'"]+)['"]/i)?.[1]
       
       if (numeroPedidoMatch) {
         error.value = `El número de pedido "${numeroPedidoMatch}" ya existe en el sistema. No es posible cargar un pedido con un número de pedido duplicado. Por favor, verifica el número de pedido e intenta con un número diferente.`
@@ -1052,7 +1079,7 @@ async function handleSubmit() {
       }
     } else {
       // Manejar otros errores normalmente
-      error.value = errorMessage
+      error.value = errorStr
       toast.error('Error al crear pedido', error.value)
     }
   } finally {

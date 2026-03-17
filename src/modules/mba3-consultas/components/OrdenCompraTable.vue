@@ -176,14 +176,23 @@
               </td>
               <!-- Referencia Despacho -->
               <td v-else-if="columnKey === 'referencia_despacho'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 transition-colors duration-300">
-                <button
-                  v-if="oc.referencia_despacho"
-                  @click="handleVerEnDespachos(oc.referencia_despacho)"
-                  class="font-mono px-2 py-1 text-xs font-medium rounded-full bg-violet-100 dark:bg-violet-900/50 text-violet-800 dark:text-violet-200 cursor-pointer transition-all duration-200 hover:scale-105 hover:bg-violet-200 dark:hover:bg-violet-900/70"
-                  :title="`Ver despacho: ${oc.referencia_despacho}`"
-                >
-                  {{ oc.referencia_despacho }}
-                </button>
+                <div v-if="oc.referencia_despacho" class="inline-flex items-center gap-2">
+                  <span
+                    class="font-mono px-2 py-1 text-xs font-medium rounded-full bg-violet-100 dark:bg-violet-900/50 text-violet-800 dark:text-violet-200"
+                    :title="oc.referencia_despacho"
+                  >
+                    {{ oc.referencia_despacho }}
+                  </span>
+                  <button
+                    @click="copyToClipboard(oc.referencia_despacho)"
+                    class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-300"
+                    title="Copiar referencia"
+                  >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  </button>
+                </div>
                 <span v-else class="text-gray-400 dark:text-gray-500 italic transition-colors duration-300">-</span>
               </td>
               <!-- Fecha Generación -->
@@ -209,15 +218,14 @@
               <!-- Estado -->
               <td v-else-if="columnKey === 'estado'" class="px-6 py-4 whitespace-nowrap">
                 <div class="relative group inline-block">
-                  <button
+                  <span
                     v-if="oc.estado === 'ENVIADA' || oc.estado === 'ERROR'"
-                    @click="handleVerEnHistorial(oc.oc_id)"
                     :class="getEstadoClass(oc.estado)"
-                    class="cursor-pointer transition-all duration-200 hover:scale-105"
-                    :title="'Ver en historial: ' + oc.oc_id"
+                    class="relative z-10"
+                    :title="oc.estado"
                   >
                     {{ oc.estado }}
-                  </button>
+                  </span>
                   <span
                     v-else
                     :class="getEstadoClass(oc.estado)"
@@ -225,7 +233,8 @@
                   >
                     {{ oc.estado }}
                   </span>
-                  <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 ease-in-out pointer-events-none whitespace-nowrap z-[9999]">
+                  <!-- Tooltip detrás del botón (z-0) para no interceptar clics; pointer-events-none por si acaso -->
+                  <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 ease-in-out pointer-events-none whitespace-nowrap z-0">
                     {{ oc.estado === 'ENVIADA' || oc.estado === 'ERROR' ? `Ver detalles en historial: ${oc.oc_id}` : getEstadoTooltip(oc) }}
                     <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-1">
                       <div class="border-4 border-transparent border-t-gray-900"></div>
@@ -251,21 +260,8 @@
               </td>
               <!-- Respuesta SAP -->
               <td v-else-if="columnKey === 'respuesta_sap'" class="px-6 py-4 text-sm text-gray-900 dark:text-gray-100 transition-colors duration-300">
-                <div v-if="oc.respuesta_sap" class="max-w-xs">
-                  <div class="flex items-start gap-2">
-                    <div class="flex-1">
-                      <div class="text-xs font-medium text-gray-700 dark:text-gray-300 break-words transition-colors duration-300">{{ oc.respuesta_sap }}</div>
-                    </div>
-                    <button
-                      @click="copyToClipboard(oc.respuesta_sap || '')"
-                      class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0 transition-colors duration-300"
-                      title="Copiar respuesta"
-                    >
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                      </svg>
-                    </button>
-                  </div>
+                <div v-if="oc.respuesta_sap" class="max-w-xs text-xs font-medium text-gray-700 dark:text-gray-300 break-words transition-colors duration-300">
+                  {{ oc.respuesta_sap }}
                 </div>
                 <span v-else class="text-gray-400 dark:text-gray-500 italic transition-colors duration-300">-</span>
               </td>
@@ -328,10 +324,10 @@
                           {{ detalle.unidad_sap }}
                         </td>
                         <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 dark:text-white">
-                          {{ formatCurrency(detalle.precio_unitario) }}
+                          {{ formatCurrencyWithDecimals(detalle.precio_unitario, 4) }}
                         </td>
                         <td class="px-4 py-3 whitespace-nowrap text-sm text-right font-medium text-gray-900 dark:text-white">
-                          {{ formatCurrency(detalle.total_linea) }}
+                          {{ formatCurrencyWithDecimals(detalle.total_linea, 4) }}
                         </td>
                       </tr>
                       <!-- Fila de totales -->
@@ -340,7 +336,7 @@
                           Total:
                         </td>
                         <td class="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 dark:text-white">
-                          {{ formatCurrency(getTotalDetalles(oc.oc_id)) }}
+                          {{ formatCurrencyWithDecimals(getTotalDetalles(oc.oc_id), 4) }}
                         </td>
                       </tr>
                     </tbody>
@@ -368,7 +364,7 @@ import type { OrdenCompra, DetalleOC } from '../types'
 import { useToast } from '@/composables/useToast'
 import { useTablePreferences } from '@/composables/useTablePreferences'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
-import { formatNumber, formatCurrency } from '../utils/formatters'
+import { formatNumber, formatCurrencyWithDecimals } from '../utils/formatters'
 
 const props = defineProps<{
   ordenesCompra: OrdenCompra[]

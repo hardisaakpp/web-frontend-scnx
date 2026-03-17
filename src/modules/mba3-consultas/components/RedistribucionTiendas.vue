@@ -66,12 +66,13 @@
     <!-- Barra de indicadores (sticky: hijo directo del contenedor principal para que permanezca visible al hacer scroll) -->
     <div
       v-if="pedidoValue?.respuesta_proveedor"
-      class="sticky top-16 z-20 grid grid-cols-1 md:grid-cols-3 gap-3 bg-white dark:bg-gray-800 px-6 py-3 border-b border-gray-200 dark:border-gray-700 shadow-sm"
+      class="sticky top-16 z-20 bg-white dark:bg-gray-800 px-6 py-3 border-b border-gray-200 dark:border-gray-700 shadow-sm space-y-3"
     >
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
       <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2.5 border border-blue-200 dark:border-blue-800">
         <label class="text-[10px] font-medium text-blue-600 dark:text-blue-400 uppercase leading-tight">Total Confirmado</label>
         <p class="mt-0.5 text-lg font-bold text-blue-900 dark:text-blue-200 leading-tight">
-          {{ formatNumber(resumenRedistribucion.total_confirmado) }}
+          {{ formatNumberWithDecimals(resumenRedistribucion.total_confirmado, decimalPlaces) }}
         </p>
         <p class="text-[10px] text-blue-700 dark:text-blue-300 mt-0.5 leading-tight">
           Ajustado por EL RAYO
@@ -80,7 +81,7 @@
       <div class="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-2.5 border border-purple-200 dark:border-purple-800">
         <label class="text-[10px] font-medium text-purple-600 dark:text-purple-400 uppercase leading-tight">Total Distribuido</label>
         <p class="mt-0.5 text-lg font-bold text-purple-900 dark:text-purple-200 leading-tight">
-          {{ formatNumber(resumenRedistribucion.total_distribuido) }}
+          {{ formatNumberWithDecimals(resumenRedistribucion.total_distribuido, decimalPlaces) }}
         </p>
         <p class="text-[10px] text-purple-700 dark:text-purple-300 mt-0.5 leading-tight">
           Repartido entre tiendas
@@ -88,7 +89,7 @@
       </div>
       <div 
         class="rounded-lg p-2.5 border-2"
-        :class="resumenRedistribucion.diferencia_pendiente === 0 
+        :class="cercaDeCero(resumenRedistribucion.diferencia_pendiente) 
           ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700' 
           : resumenRedistribucion.diferencia_pendiente < 0
           ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700'
@@ -96,31 +97,53 @@
       >
         <label 
           class="text-[10px] font-medium uppercase leading-tight"
-          :class="resumenRedistribucion.diferencia_pendiente === 0 
+          :class="cercaDeCero(resumenRedistribucion.diferencia_pendiente) 
             ? 'text-green-600 dark:text-green-400' 
             : resumenRedistribucion.diferencia_pendiente < 0
             ? 'text-yellow-600 dark:text-yellow-400'
             : 'text-red-600 dark:text-red-400'"
         >
-          {{ resumenRedistribucion.diferencia_pendiente === 0 ? '✓ Completo' : resumenRedistribucion.diferencia_pendiente < 0 ? '⚠ Falta' : '✗ Excede' }}
+          {{ cercaDeCero(resumenRedistribucion.diferencia_pendiente) ? '✓ Completo' : resumenRedistribucion.diferencia_pendiente < 0 ? '⚠ Falta' : '✗ Excede' }}
         </label>
         <p 
           class="mt-0.5 text-lg font-bold leading-tight"
-          :class="resumenRedistribucion.diferencia_pendiente === 0 
+          :class="cercaDeCero(resumenRedistribucion.diferencia_pendiente) 
             ? 'text-green-900 dark:text-green-200' 
             : resumenRedistribucion.diferencia_pendiente < 0
             ? 'text-yellow-900 dark:text-yellow-200'
             : 'text-red-900 dark:text-red-200'"
         >
-          {{ resumenRedistribucion.diferencia_pendiente > 0 ? '+' : '' }}{{ formatNumber(resumenRedistribucion.diferencia_pendiente) }}
+          {{ resumenRedistribucion.diferencia_pendiente > 0 ? '+' : '' }}{{ formatNumberWithDecimals(resumenRedistribucion.diferencia_pendiente, decimalPlaces) }}
         </p>
-        <p class="text-[10px] mt-0.5 leading-tight" :class="resumenRedistribucion.diferencia_pendiente === 0 
+        <p class="text-[10px] mt-0.5 leading-tight" :class="cercaDeCero(resumenRedistribucion.diferencia_pendiente) 
           ? 'text-green-700 dark:text-green-300' 
           : resumenRedistribucion.diferencia_pendiente < 0
           ? 'text-yellow-700 dark:text-yellow-300'
           : 'text-red-700 dark:text-red-300'">
-          {{ resumenRedistribucion.diferencia_pendiente === 0 ? 'Listo para confirmar' : resumenRedistribucion.diferencia_pendiente < 0 ? 'Faltan por distribuir' : 'Excede el total' }}
+          {{ cercaDeCero(resumenRedistribucion.diferencia_pendiente) ? 'Listo para confirmar' : resumenRedistribucion.diferencia_pendiente < 0 ? 'Faltan por distribuir' : 'Excede el total' }}
         </p>
+      </div>
+      </div>
+      <!-- Control de decimales (solo en vista Matriz) -->
+      <div v-if="modoVista === 'excel'" class="flex items-center gap-2 pt-1 border-t border-gray-200 dark:border-gray-700">
+        <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Decimales:</span>
+        <div class="inline-flex rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 p-0.5">
+          <button
+            v-for="d in [0, 1]"
+            :key="d"
+            type="button"
+            @click="decimalPlaces = d"
+            :class="[
+              'px-2.5 py-1 text-xs font-medium rounded-md transition-colors',
+              decimalPlaces === d
+                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+            ]"
+            :title="d === 0 ? 'Solo enteros' : `${d} decimal(es)`"
+          >
+            {{ d }}
+          </button>
+        </div>
       </div>
     </div>
 
@@ -192,6 +215,7 @@
           :productos="productosRedistribucion"
           :show-totals="true"
           :solo-lectura="soloLectura"
+          :decimal-places="decimalPlaces"
           :columnas-modificadas="columnasModificadas"
           :pedido="pedidoValue"
           @actualizar-cantidad-tienda="handleActualizarCantidadTienda"
@@ -236,7 +260,7 @@
                   // Esto debe aparecer inmediatamente al cargar la página, no solo después de distribuir
                   tieneModificaciones(producto) ? 'bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 dark:border-amber-400' :
                   // ⭐ PRIORIDAD 2: Resaltar según el estado de la distribución (rojo si diferencia !== 0)
-                  producto.diferencia === 0 ? 'bg-green-50 dark:bg-green-900/30' :
+                  cercaDeCero(producto.diferencia) ? 'bg-green-50 dark:bg-green-900/30' :
                   'bg-red-50 dark:bg-red-900/30'
                 ]"
               >
@@ -255,9 +279,9 @@
                     column.key === 'estado' ? 'whitespace-nowrap text-center' :
                     column.key === 'acciones' ? 'whitespace-nowrap text-center' :
                     '',
-                    column.key === 'expand' ? 'sticky left-0 z-10 border-r border-gray-200 dark:border-gray-700 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[4px_0_6px_-2px_rgba(0,0,0,0.2)] ' + (producto.error ? 'bg-gray-100 dark:bg-gray-700/30' : tieneModificaciones(producto) ? 'bg-amber-50 dark:bg-amber-900/20' : producto.diferencia === 0 ? 'bg-green-50 dark:bg-green-900/30' : 'bg-red-50 dark:bg-red-900/30') : '',
-                    column.key === 'codigo' ? 'sticky left-8 z-10 min-w-[120px] border-r border-gray-200 dark:border-gray-700 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[4px_0_6px_-2px_rgba(0,0,0,0.2)] ' + (producto.error ? 'bg-gray-100 dark:bg-gray-700/30' : tieneModificaciones(producto) ? 'bg-amber-50 dark:bg-amber-900/20' : producto.diferencia === 0 ? 'bg-green-50 dark:bg-green-900/30' : 'bg-red-50 dark:bg-red-900/30') : '',
-                    column.key === 'diferencia' ? 'sticky right-0 z-[5] min-w-[120px] border-l border-gray-200 dark:border-gray-700 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.2)] ' + (producto.error ? 'bg-gray-100 dark:bg-gray-700' : tieneModificaciones(producto) ? 'bg-amber-50 dark:bg-amber-900/80' : producto.diferencia === 0 ? 'bg-green-50 dark:bg-green-900/80' : 'bg-red-50 dark:bg-red-900/80') : ''
+                    column.key === 'expand' ? 'sticky left-0 z-10 border-r border-gray-200 dark:border-gray-700 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[4px_0_6px_-2px_rgba(0,0,0,0.2)] ' + (producto.error ? 'bg-gray-100 dark:bg-gray-700/30' : tieneModificaciones(producto) ? 'bg-amber-50 dark:bg-amber-900/20' : cercaDeCero(producto.diferencia) ? 'bg-green-50 dark:bg-green-900/30' : 'bg-red-50 dark:bg-red-900/30') : '',
+                    column.key === 'codigo' ? 'sticky left-8 z-10 min-w-[120px] border-r border-gray-200 dark:border-gray-700 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[4px_0_6px_-2px_rgba(0,0,0,0.2)] ' + (producto.error ? 'bg-gray-100 dark:bg-gray-700/30' : tieneModificaciones(producto) ? 'bg-amber-50 dark:bg-amber-900/20' : cercaDeCero(producto.diferencia) ? 'bg-green-50 dark:bg-green-900/30' : 'bg-red-50 dark:bg-red-900/30') : '',
+                    column.key === 'diferencia' ? 'sticky right-0 z-[5] min-w-[120px] border-l border-gray-200 dark:border-gray-700 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.2)] ' + (producto.error ? 'bg-gray-100 dark:bg-gray-700' : tieneModificaciones(producto) ? 'bg-amber-50 dark:bg-amber-900/80' : cercaDeCero(producto.diferencia) ? 'bg-green-50 dark:bg-green-900/80' : 'bg-red-50 dark:bg-red-900/80') : ''
                   ]"
                 >
                   <!-- Columna Expand -->
@@ -334,11 +358,11 @@
                   <template v-else-if="column.key === 'estado'">
                     <span 
                       class="px-2 py-1 text-xs font-medium rounded-full"
-                      :class="producto.diferencia === 0 
+                      :class="cercaDeCero(producto.diferencia) 
                         ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' 
                         : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'"
                     >
-                      {{ producto.diferencia === 0 ? '✓ Completo' : producto.diferencia < 0 ? '✗ Falta' : '✗ Excede' }}
+                      {{ cercaDeCero(producto.diferencia) ? '✓ Completo' : producto.diferencia < 0 ? '✗ Falta' : '✗ Excede' }}
                     </span>
                   </template>
                   
@@ -455,23 +479,25 @@
                               <input
                                 v-if="!soloLectura"
                                 type="number"
-                                :value="tienda.cantidad_asignada"
+                                :value="cantidadAsignadaNumero(tienda)"
                                 @input="actualizarCantidadTienda(producto.codigo_producto, tienda.tienda_codigo, $event)"
                                 @blur="validarYCorregirCantidad(producto, tienda)"
+                                @keydown="bloquearTeclasNoNumerosCantidad($event)"
                                 min="0"
                                 max="1000000"
-                                step="1"
+                                step="0.5"
+                                inputmode="numeric"
                                 class="w-full max-w-[120px] ml-auto px-3 py-2 text-sm text-right border rounded-lg focus:outline-none focus:ring-2 transition-colors"
                                 :class="validarCantidadTiendaLocal(producto, tienda) 
                                   ? 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-purple-500 dark:focus:ring-purple-400' 
                                   : 'border-red-300 dark:border-red-600 bg-red-50 dark:bg-red-900/20 text-red-900 dark:text-red-200 focus:ring-red-500 dark:focus:ring-red-400'"
                                 placeholder="0"
                                 :title="validarCantidadTiendaLocal(producto, tienda) 
-                                  ? `Cantidad válida (máximo: ${formatNumber(producto.cantidad_confirmada)})` 
+                                  ? `Solo múltiplos de 0,5. Máximo: ${formatNumber(producto.cantidad_confirmada)}` 
                                   : 'Cantidad inválida: excede el total confirmado o límite máximo'"
                               />
                               <span v-else class="block w-full max-w-[120px] ml-auto px-3 py-2 text-sm text-right text-gray-900 dark:text-white">
-                                {{ formatNumber(tienda.cantidad_asignada) }}
+                                {{ formatNumber(cantidadAsignadaNumero(tienda)) }}
                               </span>
                             </td>
                           </tr>
@@ -483,7 +509,7 @@
                             </td>
                             <td class="px-4 py-3"></td>
                             <td class="px-4 py-3 whitespace-nowrap text-right">
-                              <div class="text-sm font-bold" :class="producto.diferencia === 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
+                              <div class="text-sm font-bold" :class="cercaDeCero(producto.diferencia) ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
                                 {{ formatNumber(producto.cantidad_distribuida) }}
                               </div>
                               <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
@@ -592,7 +618,7 @@ import { computed, ref, watch, type Ref } from '@vue/reactivity'
 import { nextTick, onMounted, onUnmounted } from '@vue/runtime-core'
 import type { PedidoCompleto, PedidoDetalle } from '../types'
 import type { ProductoRedistribucion, DistribucionTiendaEditada } from '../utils/redistribucionHelpers'
-import { formatNumber, formatCurrency, type ColumnConfig } from '../utils/formatters'
+import { formatNumber, formatNumberWithDecimals, formatCurrency, type ColumnConfig } from '../utils/formatters'
 import { getDiferenciaClass } from '../utils/styleHelpers'
 import { 
   getProgresoPorcentaje, 
@@ -626,7 +652,7 @@ interface Props {
 interface Emits {
   (e: 'toggle-expandir-producto', codigoProducto: string): void
   (e: 'actualizar-cantidad-tienda', codigoProducto: string, tiendaCodigo: string, event: Event): void
-  (e: 'validar-y-corregir-cantidad', producto: ProductoRedistribucion, tienda: DistribucionTiendaEditada): void
+  (e: 'validar-y-corregir-cantidad', producto: ProductoRedistribucion, tienda: DistribucionTiendaEditada, event?: Event): void
   (e: 'distribuir-proporcionalmente', codigoProducto: string): void
   (e: 'copiar-distribucion-original', codigoProducto: string): void
   (e: 'resetear-distribucion', codigoProducto: string): void
@@ -640,6 +666,9 @@ const emit = defineEmits<Emits>()
 
 // Estado para el modo de vista
 const modoVista = ref<'compacta' | 'excel'>('excel')
+
+/** Número de decimales a mostrar en cantidades (solo 0 o 1). Por defecto 1. No aplica a la columna Precio. */
+const decimalPlaces = ref(1)
 
 // ⭐ Gestión de columnas visibles en la tabla
 const showColumnSelector = ref(false)
@@ -795,8 +824,8 @@ const resumenRedistribucion = computed(() => {
 
 // Validar si se puede confirmar
 const puedeConfirmarRedistribucion = computed(() => {
-  return resumenRedistribucion.value.diferencia_pendiente === 0 &&
-         productosArray.value.every((p: ProductoRedistribucion) => p.diferencia === 0) &&
+  return cercaDeCero(resumenRedistribucion.value.diferencia_pendiente) &&
+         productosArray.value.every((p: ProductoRedistribucion) => cercaDeCero(p.diferencia)) &&
          productosArray.value.every((p: ProductoRedistribucion) => !p.error)
 })
 
@@ -898,12 +927,39 @@ function handleActualizarCantidadTienda(codigoProducto: string, tiendaCodigo: st
   actualizarCantidadTienda(codigoProducto, tiendaCodigo, event)
 }
 
-function handleValidarYCorregirCantidad(producto: ProductoRedistribucion, tienda: DistribucionTiendaEditada) {
+function handleValidarYCorregirCantidad(producto: ProductoRedistribucion, tienda: DistribucionTiendaEditada, event?: Event) {
+  // Al hacer blur, commitear primero el valor del input (p. ej. "2." → 2) para que se actualice el modelo
+  if (event) {
+    actualizarCantidadTienda(producto.codigo_producto, tienda.tienda_codigo, event)
+  }
   validarYCorregirCantidad(producto, tienda)
 }
 
 function validarYCorregirCantidad(producto: ProductoRedistribucion, tienda: DistribucionTiendaEditada) {
   emit('validar-y-corregir-cantidad', producto, tienda)
+}
+
+const TOLERANCIA_SUMA = 1e-6
+
+/** Para cantidades decimales: considerar "completo" cuando la diferencia es redondeo (evitar falsos negativos) */
+function cercaDeCero(val: number): boolean {
+  return Math.abs(val) < TOLERANCIA_SUMA
+}
+
+/** Bloquea punto, coma, e, E, - y + en inputs de cantidad (solo múltiplos de 0,5; decimales con flechas). */
+function bloquearTeclasNoNumerosCantidad(event: KeyboardEvent) {
+  const allowed = ['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', 'Home', 'End']
+  if (allowed.includes(event.key)) return
+  if (/^[0-9]$/.test(event.key)) return
+  event.preventDefault()
+}
+
+/** Valor numérico de cantidad_asignada para el input (preserva decimales, p. ej. 0.5) */
+function cantidadAsignadaNumero(tienda: DistribucionTiendaEditada): number {
+  const v = tienda?.cantidad_asignada
+  if (v === null || v === undefined) return 0
+  const num = Number(v)
+  return Number.isNaN(num) ? 0 : num
 }
 
 function validarCantidadTiendaLocal(producto: ProductoRedistribucion, tienda: DistribucionTiendaEditada): boolean {
@@ -915,20 +971,14 @@ function validarCantidadTiendaLocal(producto: ProductoRedistribucion, tienda: Di
     return sum + (t.cantidad_asignada || 0)
   }, 0)
   
-  // ⭐ ACTUALIZADO: Permitir que el total exceda la cantidad confirmada cuando hay bodegas
-  // Ya que las bodegas no se ajustan automáticamente, el usuario puede aumentar tiendas
-  // sin que se reste de las bodegas, lo que puede hacer que el total exceda lo confirmado
+  // ⭐ Permitir que el total exceda la cantidad confirmada cuando hay bodegas
   const tieneBodegas = producto.distribucion_tiendas.some(t => t.es_bodega && (t.cantidad_asignada || 0) > 0)
   
-  // Si hay bodegas, permitir que el total exceda (el usuario debe ajustar manualmente las bodegas)
-  // Si no hay bodegas, mantener la validación estricta
   if (tieneBodegas) {
-    // Con bodegas: permitir exceder (advertencia visual, no bloqueo)
     return true
-  } else {
-    // Sin bodegas: validación estricta (no puede exceder)
-    return sumaActual <= producto.cantidad_confirmada
   }
+  // Sin bodegas: no puede exceder (con tolerancia por redondeo float)
+  return sumaActual <= producto.cantidad_confirmada + TOLERANCIA_SUMA
 }
 
 function distribuirProporcionalmente(codigoProducto: string) {
