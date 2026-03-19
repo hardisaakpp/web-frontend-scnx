@@ -6,12 +6,7 @@ import { fileURLToPath, URL } from 'node:url'
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
 
-  // En servidor de pruebas: VITE_MBA3_PROXY_TARGET=http://210.17.1.55:8000 (MBA3 en otro host).
-  // En local: no definir o localhost:8000.
-  const mba3Target = env.VITE_MBA3_PROXY_TARGET || 'http://localhost:8000'
-  const maestroTarget = env.VITE_MAESTRO_API_TARGET || 'http://localhost:8004'
-
-  return {
+  return ({
     plugins: [vue()],
     resolve: {
       alias: {
@@ -23,25 +18,25 @@ export default defineConfig(({ mode }) => {
     },
     // Configuración del servidor de desarrollo (solo se usa en desarrollo)
     server: {
-      host: '0.0.0.0',
       port: 3000,
       proxy: {
-        // MBA3 Consultas (ODC SAP, plantillas, pedidos, etc.). En servidor de pruebas apuntar a 210.17.1.55:8000.
+        // MBA3 Consultas (ODC SAP, plantillas, pedidos, etc.) → backend local :8000 (evita CORS en dev).
         '/mba3-api': {
-          target: mba3Target,
+          target: 'http://localhost:8000',
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path.replace(/^\/mba3-api/, '')
         },
         // /Auth/me → mba3-consultas (capabilities). Debe ir antes que /api.
         '/api/Auth/me': {
-          target: mba3Target,
+          target: 'http://localhost:8000',
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path
         },
         // Login y resto de /api → Core (Apps pruebas).
         '/api': {
+          //target: 'http://210.17.1.53:5053', // Apps pruebas / Core
           target: 'http://192.168.2.12:8080', // Core con AD
           changeOrigin: true,
           secure: false,
@@ -54,9 +49,9 @@ export default defineConfig(({ mode }) => {
           secure: false,
           rewrite: (path) => path
         },
-        // API del Maestro de Artículos. En servidor de pruebas: VITE_MAESTRO_API_TARGET=http://210.17.1.55:8004/
+        // API del Maestro de Artículos
         '/maestro-api': {
-          target: maestroTarget,
+          target: env.VITE_MAESTRO_API_TARGET,
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path.replace(/^\/maestro-api/, '')
@@ -84,5 +79,5 @@ export default defineConfig(({ mode }) => {
       },
       chunkSizeWarningLimit: 500 // Reducido de 1000 para detectar problemas de bundle size más temprano
     }
-  }
+  })
 })

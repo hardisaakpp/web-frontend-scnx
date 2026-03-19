@@ -149,6 +149,23 @@
           <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Gestión ODC SAP</span>
         </router-link>
 
+        <!-- Artículo Maestro -->
+        <router-link
+          v-if="hasModuleAccess('articulomaestro')"
+          to="/articulo-maestro"
+          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
+          :class="{
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/articulo-maestro'),
+            'text-slate-300 hover:bg-slate-800/50 hover:text-white': !$route.path.startsWith('/articulo-maestro')
+          }"
+          :title="isSidebarCollapsed ? 'Artículo Maestro' : ''"
+        >
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <CubeIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/articulo-maestro') }" />
+          <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Artículo Maestro</span>
+        </router-link>
+
+
         <!-- Separador Administración -->
         <div v-if="hasModuleAccess('usuarios') || hasModuleAccess('roles') || hasModuleAccess('permisos') || authStore.isAdmin" v-show="!isSidebarCollapsed" class="px-3 py-2 my-3">
           <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Administración</p>
@@ -306,7 +323,8 @@ import {
   ShieldCheckIcon,
   LockClosedIcon,
   SunIcon,
-  MoonIcon
+  MoonIcon,
+  CubeIcon
 } from '@heroicons/vue/24/outline'
 import { useAuthStore } from '../stores/auth'
 import { useThemeStore } from '../stores/theme'

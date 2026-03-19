@@ -36,3 +36,6 @@ Thumbs.db
 
 # Build artifacts
 *.tsbuildinfo
+
+# Temporary files
+*.tmp
