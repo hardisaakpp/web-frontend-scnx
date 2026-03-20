@@ -320,9 +320,8 @@ const filteredArticulos = computed(() => {
     if (!searchCode.value) return pendingArticulos.value
     const q = searchCode.value.trim().toUpperCase()
     return pendingArticulos.value.filter(a => {
-        // Buscamos en itemCode (camelCase) o ItemCode (PascualCase) de forma segura
-        const code = (a.itemCode || a.ItemCode || '').toString().toUpperCase()
-        const name = (a.itemName || a.ItemName || '').toString().toUpperCase()
+        const code = (a.itemCode || '').toString().toUpperCase()
+        const name = (a.itemName || '').toString().toUpperCase()
         return code.includes(q) || name.includes(q)
     })
 })

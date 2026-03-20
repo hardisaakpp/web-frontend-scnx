@@ -46,10 +46,10 @@ export const useArticuloStore = defineStore('articuloMaestro', {
             }
         },
 
-        async fetchArticuloById(id: number) {
+        async fetchArticuloById(itemCode: string) {
             this.loading = true
             try {
-                this.selectedArticulo = await articuloService.getArticuloById(id)
+                this.selectedArticulo = await articuloService.getArticuloByCode(itemCode)
             } catch (err: any) {
                 this.error = err.response?.data?.detail || 'Error al cargar el detalle del artículo'
             } finally {
@@ -68,9 +68,9 @@ export const useArticuloStore = defineStore('articuloMaestro', {
             this.fetchArticulos()
         },
 
-        async syncToSap(id: number) {
+        async syncToSap(itemCode: string) {
             try {
-                await articuloService.sincronizarConSap(id)
+                await articuloService.sincronizarConSap(itemCode)
                 await this.fetchArticulos() // Refrescar lista
                 return true
             } catch (err: any) {

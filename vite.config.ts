@@ -22,14 +22,14 @@ export default defineConfig(({ mode }) => {
       proxy: {
         // MBA3 Consultas (ODC SAP, plantillas, pedidos, etc.) → backend local :8000 (evita CORS en dev).
         '/mba3-api': {
-          target: 'http://localhost:8000',
+          target: env.VITE_MBA3_PROXY_TARGET,
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path.replace(/^\/mba3-api/, '')
         },
         // /Auth/me → mba3-consultas (capabilities). Debe ir antes que /api.
         '/api/Auth/me': {
-          target: 'http://localhost:8000',
+          target: env.VITE_MBA3_PROXY_TARGET,
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path
@@ -37,7 +37,7 @@ export default defineConfig(({ mode }) => {
         // Login y resto de /api → Core (Apps pruebas).
         '/api': {
           //target: 'http://210.17.1.53:5053', // Apps pruebas / Core
-          target: 'http://192.168.2.12:8080', // Core con AD
+          target: env.VITE_CORE_PROXY_TARGET, // Core con AD
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path
