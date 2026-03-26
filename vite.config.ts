@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { fileURLToPath, URL } from 'node:url'
 
@@ -80,21 +80,22 @@ export default defineConfig({
   // Development console.logs are now protected by import.meta.env.DEV checks
   // Production build will be smaller because DEV-conditional logs are never reached
 
-  // Configuración de build para producción
-  build: {
-    outDir: 'dist',
-    assetsDir: 'assets',
-    sourcemap: false, // Deshabilitar sourcemaps en producción para seguridad
-    minify: 'esbuild', // Usar esbuild (más rápido, viene incluido con Vite)
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          'vue-vendor': ['vue', 'vue-router', 'pinia'],
-          'ui-vendor': ['@headlessui/vue', '@heroicons/vue'],
-          'utils-vendor': ['axios', 'jwt-decode']
+    // Configuración de build para producción
+    build: {
+      outDir: 'dist',
+      assetsDir: 'assets',
+      sourcemap: false, // Deshabilitar sourcemaps en producción para seguridad
+      minify: 'esbuild', // Usar esbuild (más rápido, viene incluido con Vite)
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'vue-vendor': ['vue', 'vue-router', 'pinia'],
+            'ui-vendor': ['@headlessui/vue', '@heroicons/vue'],
+            'utils-vendor': ['axios', 'jwt-decode']
+          }
         }
-      }
-    },
-    chunkSizeWarningLimit: 500 // Reducido de 1000 para detectar problemas de bundle size más temprano
-  }
+      },
+      chunkSizeWarningLimit: 500 // Reducido de 1000 para detectar problemas de bundle size más temprano
+    }
+  })
 })
