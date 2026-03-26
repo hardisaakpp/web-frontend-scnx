@@ -18,13 +18,24 @@
       <div class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-5">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Listado</h2>
-          <button
-            type="button"
-            class="rounded border border-gray-200 dark:border-gray-700 text-sm px-3 py-1.5"
-            @click="loadPendientes"
-          >
-            Refrescar
-          </button>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              class="rounded border border-gray-200 dark:border-gray-700 text-sm px-3 py-1.5 flex items-center gap-1 disabled:opacity-50"
+              :disabled="pendientes.length === 0"
+              @click="downloadPdf"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+              PDF
+            </button>
+            <button
+              type="button"
+              class="rounded border border-gray-200 dark:border-gray-700 text-sm px-3 py-1.5"
+              @click="loadPendientes"
+            >
+              Refrescar
+            </button>
+          </div>
         </div>
 
         <div v-if="loading" class="text-sm text-gray-500 dark:text-gray-400">Cargando liquidaciones...</div>
@@ -158,6 +169,103 @@ const loadPendientes = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const downloadPdf = async () => {
+  if (pendientes.value.length === 0) return
+  const esc = (s: string | number | undefined | null) =>
+    String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  const fmt = (v: string) => v ? v.substring(0, 10) : '-'
+  const fmtAmt = (v: number) => v != null ? v.toFixed(2) : '0.00'
+
+  const CSS = `
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Helvetica Neue',Arial,sans-serif;font-size:11px;color:#1a1a1a;background:#fff;padding:20px}
+    .liquidacion{border:1px solid #d1d5db;border-radius:6px;margin-bottom:28px;overflow:hidden;page-break-inside:avoid}
+    .cabecera{background:#1e3a5f;color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+    .cabecera h2{font-size:13px;font-weight:700;margin-bottom:2px}
+    .cabecera .sub{font-size:10px;opacity:.8}
+    .cabecera .badge{background:rgba(255,255,255,.18);border-radius:4px;padding:3px 8px;font-size:10px;font-weight:600;white-space:nowrap}
+    .meta{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-bottom:1px solid #e5e7eb}
+    .meta-item{padding:8px 14px;border-right:1px solid #e5e7eb}
+    .meta-item:last-child{border-right:none}
+    .meta-label{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:2px}
+    .meta-value{font-size:11px;font-weight:600;color:#111}
+    .section-title{background:#f9fafb;padding:6px 14px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#374151;border-bottom:1px solid #e5e7eb}
+    table{width:100%;border-collapse:collapse}
+    th{background:#f3f4f6;text-align:left;padding:6px 10px;font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:#6b7280;border-bottom:1px solid #e5e7eb}
+    td{padding:5px 10px;border-bottom:1px solid #f3f4f6;vertical-align:top;font-size:10px}
+    tr:last-child td{border-bottom:none}
+    .amount{text-align:right;font-variant-numeric:tabular-nums}
+    .no-data{padding:10px 14px;font-size:10px;color:#9ca3af;font-style:italic}
+    .footer-bar{background:#f9fafb;padding:8px 14px;display:flex;justify-content:flex-end;gap:24px;border-top:1px solid #e5e7eb}
+    .footer-bar span{font-size:10px;color:#6b7280}
+    .footer-bar strong{font-size:11px;color:#111}
+    @media print{body{padding:8mm}@page{size:A4;margin:10mm}.liquidacion{margin-bottom:16px}}
+  `
+
+  let sectionsHtml = ''
+  for (const item of pendientes.value) {
+    let detallesHtml = ''
+    try {
+      const res = await cajaChicaApi.get(`/Liquidaciones/${item.idLiquidacion}/detalle`)
+      const payload = res.data as any
+      const detalles: any[] = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
+      if (detalles.length > 0) {
+        const filas = detalles.map(d => {
+          const nombreGasto = esc(d.nombreGasto ?? d.NombreGasto ?? '-')
+          const concepto = esc(d.concepto ?? d.Concepto ?? '-')
+          const proveedor = esc(d.nombreProveedor ?? d.NombreProveedor ?? '-')
+          const ruc = esc(d.ruc ?? d.Ruc ?? '-')
+          const comprobante = esc(d.numeroComprobante ?? d.NumeroComprobante ?? '-')
+          const fechaCons = fmt(String(d.fechaConsumo ?? d.FechaConsumo ?? ''))
+          const subConIva = fmtAmt(Number(d.subtotal_Con_Iva ?? d.subtotalConIva ?? 0))
+          const subSinIva = fmtAmt(Number(d.subtotal_Sin_Iva ?? d.subtotalSinIva ?? 0))
+          const iva = fmtAmt(Number(d.iva ?? d.Iva ?? 0))
+          const total = fmtAmt(Number(d.total ?? d.Total ?? 0))
+          return `<tr><td>${nombreGasto}</td><td>${concepto}</td><td>${proveedor}</td><td>${ruc}</td><td>${comprobante}</td><td>${fechaCons}</td><td class="amount">${subConIva}</td><td class="amount">${subSinIva}</td><td class="amount">${iva}</td><td class="amount">${total}</td></tr>`
+        }).join('')
+        const totalLiq = detalles.reduce((a, d) => a + Number(d.total ?? d.Total ?? 0), 0)
+        detallesHtml = `
+          <div class="section-title">Detalle de gastos</div>
+          <table><thead><tr><th>Gasto</th><th>Concepto</th><th>Proveedor</th><th>RUC</th><th>Comprobante</th><th>Fecha</th><th>Base 15%</th><th>Base 0%</th><th>IVA</th><th>Total</th></tr></thead><tbody>${filas}</tbody></table>
+          <div class="footer-bar"><span>Total gastos&nbsp;<strong>$${fmtAmt(totalLiq)}</strong></span></div>`
+      } else {
+        detallesHtml = `<div class="section-title">Detalle de gastos</div><div class="no-data">Sin detalles registrados.</div>`
+      }
+    } catch {
+      detallesHtml = `<div class="section-title">Detalle de gastos</div><div class="no-data">No se pudieron cargar los detalles.</div>`
+    }
+    sectionsHtml += `
+      <div class="liquidacion">
+        <div class="cabecera">
+          <div><div class="sub">Liquidación de caja chica</div><h2>Liquidación #${esc(item.idLiquidacion)}</h2></div>
+          <div class="badge">${esc(getNivelAprobacion(item.estado))}</div>
+        </div>
+        <div class="meta">
+          <div class="meta-item"><div class="meta-label">Almacén / Tienda</div><div class="meta-value">${esc(item.codAlmacen || '-')}</div></div>
+          <div class="meta-item"><div class="meta-label">Custodio</div><div class="meta-value">${esc(item.nombreCustodio || '-')}</div></div>
+          <div class="meta-item"><div class="meta-label">Fecha creación</div><div class="meta-value">${fmt(item.fechaCreacion)}</div></div>
+          <div class="meta-item"><div class="meta-label">Estado</div><div class="meta-value">${esc(item.estado)}</div></div>
+        </div>
+        ${detallesHtml}
+      </div>`
+  }
+
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Liquidaciones Pendientes</title><style>${CSS}</style></head><body>
+    <div style="margin-bottom:16px;border-bottom:2px solid #1e3a5f;padding-bottom:8px;display:flex;justify-content:space-between;align-items:flex-end">
+      <div><div style="font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#6b7280">Reporte</div><div style="font-size:16px;font-weight:700;color:#1e3a5f">Liquidaciones Pendientes</div></div>
+      <div style="text-align:right;font-size:10px;color:#6b7280">Generado: ${new Date().toLocaleString('es-ES')}<br>${pendientes.value.length} liquidación(es)</div>
+    </div>
+    ${sectionsHtml}
+  </body></html>`
+
+  const win = window.open('', '_blank')
+  if (!win) { alert('Por favor permite ventanas emergentes para descargar el PDF.'); return }
+  win.document.write(html)
+  win.document.close()
+  win.focus()
+  setTimeout(() => { win.print() }, 600)
 }
 
 onMounted(() => {

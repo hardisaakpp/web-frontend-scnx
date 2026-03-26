@@ -87,6 +87,15 @@
             </div>
             <button
               type="button"
+              class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700/50 text-gray-700 dark:text-gray-200 text-sm px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-1 disabled:opacity-50"
+              :disabled="historialFiltrado.length === 0"
+              @click="downloadPdf"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+              PDF
+            </button>
+            <button
+              type="button"
               class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700/50 text-gray-700 dark:text-gray-200 text-sm px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               @click="loadHistorial"
             >
@@ -113,13 +122,23 @@
                   {{ group.items.length }} detalles · Tienda: {{ group.codAlmacen || '-' }} · Custodio: {{ group.nombreCustodio || '-' }} · Fecha: {{ formatDate(group.fechaCreacion) }} · Monto total: {{ formatAmount(group.totalMonto) }}
                 </p>
               </div>
-              <button
-                type="button"
-                class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600/50 px-2 py-1 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
-                @click="toggleGroup(group.idLiquidacion)"
-              >
-                {{ isGroupOpen(group.idLiquidacion) ? 'Ocultar' : 'Ver' }}
-              </button>
+              <div class="flex items-center gap-2">
+                <button
+                  type="button"
+                  class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600/50 px-2 py-1 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors flex items-center gap-1"
+                  @click="downloadLiquidacionPdf(group.idLiquidacion)"
+                >
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                  PDF
+                </button>
+                <button
+                  type="button"
+                  class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600/50 px-2 py-1 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+                  @click="toggleGroup(group.idLiquidacion)"
+                >
+                  {{ isGroupOpen(group.idLiquidacion) ? 'Ocultar' : 'Ver' }}
+                </button>
+              </div>
             </div>
             <div v-if="isGroupOpen(group.idLiquidacion)" class="overflow-x-auto">
               <table class="min-w-full text-xs">
@@ -1057,6 +1076,284 @@ const formatDateTime = (value: string) => {
   } catch {
     return value.substring(0, 16)
   }
+}
+
+const downloadLiquidacionPdf = (idLiquidacion: number) => {
+  const esc = (s: string | number | undefined | null) =>
+    String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  const fmt = (v: string | undefined | null) => (v ? String(v).substring(0, 10) : '-')
+  const fmtAmt = (v: number | undefined | null) => {
+    const n = Number(v ?? 0)
+    return Number.isNaN(n) ? '0.00' : n.toFixed(2)
+  }
+
+  const liqInfo = liquidacionesInfo.value[idLiquidacion]
+  const aprobaciones = historialFiltrado.value.filter(h => h.idLiquidacion === idLiquidacion)
+  const aprobCount = aprobaciones.filter(h => h.estado === 'APROBADO').length
+  const rechazCount = aprobaciones.filter(h => h.estado === 'RECHAZADO').length
+  const totalSolicitado = aprobaciones.reduce((a, h) => a + h.total, 0)
+  const totalAprobado = aprobaciones.reduce((a, h) => a + h.montoAprobado, 0)
+  const filtro = (fechaDesde.value || fechaHasta.value)
+    ? `${fechaDesde.value || '-'} al ${fechaHasta.value || '-'}`
+    : 'Sin filtro'
+
+  const CSS = `
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Helvetica Neue',Arial,sans-serif;font-size:11px;color:#1a1a1a;background:#fff;padding:24px}
+    .header-doc{border-bottom:3px solid #1e40af;padding-bottom:12px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:flex-end}
+    .header-doc .title-block .label{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#1e40af;font-weight:600}
+    .header-doc .title-block h1{font-size:20px;font-weight:800;color:#1e1b4b;line-height:1.1}
+    .header-doc .meta-right{text-align:right;font-size:10px;color:#6b7280;line-height:1.6}
+    .section{border:1px solid #e5e7eb;border-radius:6px;margin-bottom:20px;overflow:hidden}
+    .section-head{background:#1e40af;color:#fff;padding:9px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;display:flex;justify-content:space-between;align-items:center}
+    .section-head.green{background:#065f46}
+    .section-head .badge{background:rgba(255,255,255,.2);border-radius:3px;padding:2px 7px;font-size:9px;font-weight:700;letter-spacing:.4px}
+    .stats-row{display:flex;gap:18px;font-size:10px;color:rgba(255,255,255,.85)}
+    .stats-row span strong{font-weight:700;color:#fff}
+    .grid4{display:grid;grid-template-columns:repeat(4,1fr)}
+    .grid3{display:grid;grid-template-columns:repeat(3,1fr)}
+    .meta-cell{padding:9px 14px;border-right:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb}
+    .meta-cell:last-child{border-right:none}
+    .meta-label{font-size:8.5px;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:2px}
+    .meta-value{font-size:11px;font-weight:600;color:#111}
+    table{width:100%;border-collapse:collapse}
+    th{background:#f3f4f6;text-align:left;padding:6px 10px;font-size:8.5px;text-transform:uppercase;letter-spacing:.4px;color:#6b7280;border-bottom:1px solid #e5e7eb}
+    td{padding:5px 10px;border-bottom:1px solid #f3f4f6;vertical-align:top;font-size:10px;color:#374151}
+    tr:last-child td{border-bottom:none}
+    .amount{text-align:right;font-variant-numeric:tabular-nums;font-family:'Courier New',monospace;font-size:10px}
+    .aprobado{color:#059669;font-weight:600}
+    .rechazado{color:#dc2626;font-weight:600}
+    .footer-totals{background:#f9fafb;padding:10px 14px;display:flex;justify-content:flex-end;gap:28px;border-top:2px solid #e5e7eb}
+    .total-item{text-align:right}
+    .total-label{font-size:9px;text-transform:uppercase;color:#6b7280;letter-spacing:.4px}
+    .total-value{font-size:13px;font-weight:700;color:#111}
+    .total-value.primary{color:#1e40af}
+    .no-data{padding:10px 14px;font-size:10px;color:#9ca3af;font-style:italic}
+    @media print{body{padding:8mm}@page{size:A4;margin:10mm}}
+  `
+
+  // --- CABECERA ---
+  const cabeceraHtml = `
+    <div class="section">
+      <div class="section-head"><span>Cabecera de la liquidación</span><span class="badge">#${esc(idLiquidacion)}</span></div>
+      <div class="grid4">
+        <div class="meta-cell"><div class="meta-label">Almacén / Tienda</div><div class="meta-value">${esc(liqInfo?.codAlmacen || '-')}</div></div>
+        <div class="meta-cell"><div class="meta-label">Custodio</div><div class="meta-value">${esc(liqInfo?.nombreCustodio || '-')}</div></div>
+        <div class="meta-cell"><div class="meta-label">Fecha creación</div><div class="meta-value">${fmt(liqInfo?.fechaCreacion)}</div></div>
+        <div class="meta-cell"><div class="meta-label">Período filtrado</div><div class="meta-value" style="font-size:10px;font-weight:400">${esc(filtro)}</div></div>
+      </div>
+      <div class="grid4">
+        <div class="meta-cell"><div class="meta-label"># Ítems</div><div class="meta-value">${aprobaciones.length}</div></div>
+        <div class="meta-cell"><div class="meta-label">Aprobados</div><div class="meta-value aprobado">${aprobCount}</div></div>
+        <div class="meta-cell"><div class="meta-label">Rechazados</div><div class="meta-value rechazado">${rechazCount}</div></div>
+        <div class="meta-cell"><div class="meta-label">Total aprobado</div><div class="meta-value primary" style="color:#1e40af">$${fmtAmt(totalAprobado)}</div></div>
+      </div>
+    </div>`
+
+  // --- DETALLE DE GASTOS (desde detallesByIdDetalle) ---
+  const detalleIds = [...new Set(aprobaciones.map(h => h.idDetalle))]
+  let detallesRows = ''
+  detalleIds.forEach(idDetalle => {
+    const d = detallesByIdDetalle.value[idDetalle]
+    const adjCount = adjuntosByDetalle.value[idDetalle] ?? 0
+    const iva = d ? (d.total - d.subtotalConIva - d.subtotalSinIva) : 0
+    detallesRows += `<tr>
+      <td>${esc(idDetalle)}</td>
+      <td>${esc(d?.nombreGasto ?? '-')}</td>
+      <td>${esc(d?.concepto ?? '-')}</td>
+      <td>${esc(d?.nombreProveedor ?? '-')}</td>
+      <td>${esc(d?.ruc ?? '-')}</td>
+      <td>${esc(d?.numeroComprobante ?? '-')}</td>
+      <td>${esc(d?.tipoDocumento ?? '-')}</td>
+      <td>${fmt(d?.fechaConsumo ?? '')}</td>
+      <td class="amount">${d ? fmtAmt(d.subtotalConIva) : '-'}</td>
+      <td class="amount">${d ? fmtAmt(d.subtotalSinIva) : '-'}</td>
+      <td class="amount">${d ? fmtAmt(iva < 0 ? 0 : iva) : '-'}</td>
+      <td class="amount">${d ? fmtAmt(d.total) : '-'}</td>
+      <td style="text-align:right">${adjCount}</td>
+    </tr>`
+  })
+  const detalleHtml = `
+    <div class="section">
+      <div class="section-head green"><span>Detalle de gastos</span><span class="stats-row"><span>Ítems: <strong>${detalleIds.length}</strong></span><span>Total: <strong>$${fmtAmt(totalSolicitado)}</strong></span></span></div>
+      <table><thead><tr>
+        <th>#Det.</th><th>Gasto</th><th>Concepto</th><th>Proveedor</th><th>RUC</th><th>Comprobante</th><th>Tipo doc.</th><th>F. Consumo</th>
+        <th>Base 15%</th><th>Base 0%</th><th>IVA</th><th>Total</th><th>Adj.</th>
+      </tr></thead><tbody>${detallesRows || '<tr><td colspan="13" class="no-data">Sin detalles cargados.</td></tr>'}</tbody></table>
+      <div class="footer-totals">
+        <div class="total-item"><div class="total-label">Total solicitado</div><div class="total-value">$${fmtAmt(totalSolicitado)}</div></div>
+      </div>
+    </div>`
+
+  // --- APROBACIONES ---
+  let aprobRows = ''
+  aprobaciones.forEach(h => {
+    const estadoClass = h.estado === 'RECHAZADO' ? 'rechazado' : 'aprobado'
+    aprobRows += `<tr>
+      <td>${esc(h.idAprobacion)}</td>
+      <td>${esc(h.idDetalle)}</td>
+      <td>${esc(h.nombreGasto)}</td>
+      <td>${esc(h.concepto)}</td>
+      <td class="amount">${fmtAmt(h.total)}</td>
+      <td class="amount">${fmtAmt(h.montoAprobado)}</td>
+      <td class="${estadoClass}">${esc(h.estado)}</td>
+      <td>${esc(h.observacion || '-')}</td>
+      <td>${formatDateTime(h.fechaAprobacion)}</td>
+    </tr>`
+  })
+  const aprobHtml = `
+    <div class="section">
+      <div class="section-head"><span>Aprobaciones / Rechazos supervisor</span><span class="stats-row"><span>Aprobados: <strong>${aprobCount}</strong></span><span>Rechazados: <strong>${rechazCount}</strong></span><span>Total aprobado: <strong>$${fmtAmt(totalAprobado)}</strong></span></span></div>
+      <table><thead><tr>
+        <th>Aprob.</th><th>#Det.</th><th>Gasto</th><th>Concepto</th>
+        <th>Total</th><th>Monto aprobado</th><th>Estado</th><th>Comentario</th><th>Fecha y hora</th>
+      </tr></thead><tbody>${aprobRows || '<tr><td colspan="9" class="no-data">Sin aprobaciones.</td></tr>'}</tbody></table>
+      <div class="footer-totals">
+        <div class="total-item"><div class="total-label">Total solicitado</div><div class="total-value">$${fmtAmt(totalSolicitado)}</div></div>
+        <div class="total-item"><div class="total-label">Total aprobado supervisor</div><div class="total-value primary">$${fmtAmt(totalAprobado)}</div></div>
+      </div>
+    </div>`
+
+  const generado = new Date().toLocaleString('es-ES')
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Liquidacion #${idLiquidacion}</title><style>${CSS}</style></head><body>
+    <div class="header-doc">
+      <div class="title-block">
+        <div class="label">Historial Supervisor</div>
+        <h1>Liquidación #${esc(idLiquidacion)}</h1>
+      </div>
+      <div class="meta-right">
+        Tienda: <strong>${esc(liqInfo?.codAlmacen || '-')}</strong><br>
+        Custodio: <strong>${esc(liqInfo?.nombreCustodio || '-')}</strong><br>
+        Generado: ${generado}
+      </div>
+    </div>
+    ${cabeceraHtml}
+    ${detalleHtml}
+    ${aprobHtml}
+  </body></html>`
+
+  const win = window.open('', '_blank')
+  if (!win) { alert('Por favor permite ventanas emergentes para descargar el PDF.'); return }
+  win.document.write(html)
+  win.document.close()
+  win.focus()
+  setTimeout(() => { win.print() }, 600)
+}
+
+const downloadPdf = () => {
+  const groups = groupedHistorial.value
+  if (groups.length === 0) return
+  const esc = (s: string | number | undefined | null) =>
+    String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  const fmt = (v: string) => v ? v.substring(0, 10) : '-'
+  const fmtAmt = (v: number) => v != null ? v.toFixed(2) : '0.00'
+
+  const CSS = `
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Helvetica Neue',Arial,sans-serif;font-size:11px;color:#1a1a1a;background:#fff;padding:20px}
+    .liquidacion{border:1px solid #d1d5db;border-radius:6px;margin-bottom:28px;overflow:hidden;page-break-inside:avoid}
+    .cabecera{background:#1e40af;color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+    .cabecera h2{font-size:13px;font-weight:700;margin-bottom:2px}
+    .cabecera .sub{font-size:10px;opacity:.8}
+    .cabecera .stats{display:flex;gap:14px;margin-top:4px}
+    .cabecera .stat{font-size:10px;opacity:.85}
+    .cabecera .stat strong{font-weight:700;opacity:1}
+    .meta{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-bottom:1px solid #e5e7eb}
+    .meta-item{padding:8px 14px;border-right:1px solid #e5e7eb}
+    .meta-item:last-child{border-right:none}
+    .meta-label{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:2px}
+    .meta-value{font-size:11px;font-weight:600;color:#111}
+    .section-title{background:#f9fafb;padding:6px 14px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#374151;border-bottom:1px solid #e5e7eb}
+    table{width:100%;border-collapse:collapse}
+    th{background:#f3f4f6;text-align:left;padding:6px 10px;font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:#6b7280;border-bottom:1px solid #e5e7eb}
+    td{padding:5px 10px;border-bottom:1px solid #f3f4f6;vertical-align:top;font-size:10px}
+    tr:last-child td{border-bottom:none}
+    .amount{text-align:right;font-variant-numeric:tabular-nums}
+    .aprobado{color:#059669;font-weight:600}
+    .rechazado{color:#dc2626;font-weight:600}
+    .no-data{padding:10px 14px;font-size:10px;color:#9ca3af;font-style:italic}
+    .footer-bar{background:#f9fafb;padding:8px 14px;display:flex;justify-content:flex-end;gap:24px;border-top:1px solid #e5e7eb}
+    .footer-bar span{font-size:10px;color:#6b7280}
+    .footer-bar strong{font-size:11px;color:#111}
+    @media print{body{padding:8mm}@page{size:A4;margin:10mm}.liquidacion{margin-bottom:16px}}
+  `
+
+  let sectionsHtml = ''
+  const filtro = (fechaDesde.value || fechaHasta.value)
+    ? `${fechaDesde.value || '-'} al ${fechaHasta.value || '-'}`
+    : 'Sin filtro de fechas'
+
+  groups.forEach(group => {
+    const aprobCount = group.items.filter(i => i.estado === 'APROBADO').length
+    const rechazCount = group.items.filter(i => i.estado === 'RECHAZADO').length
+    const totalMonto = group.items.reduce((a, i) => a + i.montoAprobado, 0)
+
+    const filas = group.items.map(item => {
+      const d = detallesByIdDetalle.value[item.idDetalle]
+      const estadoClass = item.estado === 'RECHAZADO' ? 'rechazado' : 'aprobado'
+      return `<tr>
+        <td>${esc(item.idDetalle)}</td>
+        <td>${esc(item.nombreGasto)}</td>
+        <td>${esc(d?.concepto ?? item.concepto ?? '-')}</td>
+        <td>${esc(d?.nombreProveedor ?? '-')}</td>
+        <td>${esc(d?.ruc ?? '-')}</td>
+        <td>${esc(d?.numeroComprobante ?? '-')}</td>
+        <td>${fmt(String(d?.fechaConsumo ?? ''))}</td>
+        <td class="amount">${d ? fmtAmt(d.subtotalConIva) : '-'}</td>
+        <td class="amount">${d ? fmtAmt(d.subtotalSinIva) : '-'}</td>
+        <td class="amount">${d ? fmtAmt(d.iva) : '-'}</td>
+        <td class="amount">${fmtAmt(item.total)}</td>
+        <td class="amount">${fmtAmt(item.montoAprobado)}</td>
+        <td class="${estadoClass}">${esc(item.estado)}</td>
+        <td>${esc(item.observacion || '-')}</td>
+        <td>${formatDateTime(item.fechaAprobacion)}</td>
+      </tr>`
+    }).join('')
+
+    sectionsHtml += `
+      <div class="liquidacion">
+        <div class="cabecera">
+          <div>
+            <div class="sub">Historial supervisor — Liquidación de caja chica</div>
+            <h2>Liquidación #${esc(group.idLiquidacion)}</h2>
+            <div class="stats">
+              <span class="stat">Aprobados: <strong>${aprobCount}</strong></span>
+              <span class="stat">Rechazados: <strong>${rechazCount}</strong></span>
+              <span class="stat">Monto total: <strong>$${fmtAmt(totalMonto)}</strong></span>
+            </div>
+          </div>
+        </div>
+        <div class="meta">
+          <div class="meta-item"><div class="meta-label">Almacén / Tienda</div><div class="meta-value">${esc(group.codAlmacen || '-')}</div></div>
+          <div class="meta-item"><div class="meta-label">Custodio</div><div class="meta-value">${esc(group.nombreCustodio || '-')}</div></div>
+          <div class="meta-item"><div class="meta-label">Fecha creación</div><div class="meta-value">${fmt(group.fechaCreacion)}</div></div>
+          <div class="meta-item"><div class="meta-label">Período</div><div class="meta-value">${esc(filtro)}</div></div>
+        </div>
+        <div class="section-title">Ítems aprobados / rechazados</div>
+        <table><thead><tr>
+          <th>#Det.</th><th>Gasto</th><th>Concepto</th><th>Proveedor</th><th>RUC</th><th>Comprobante</th><th>F. Consumo</th>
+          <th>Base 15%</th><th>Base 0%</th><th>IVA</th><th>Total</th><th>Monto aprobado</th><th>Estado</th><th>Comentario</th><th>Fecha aprobación</th>
+        </tr></thead><tbody>${filas}</tbody></table>
+        <div class="footer-bar">
+          <span>Total aprobado&nbsp;<strong>$${fmtAmt(totalMonto)}</strong></span>
+        </div>
+      </div>`
+  })
+
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Historial Supervisor</title><style>${CSS}</style></head><body>
+    <div style="margin-bottom:16px;border-bottom:2px solid #1e40af;padding-bottom:8px;display:flex;justify-content:space-between;align-items:flex-end">
+      <div><div style="font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#6b7280">Reporte</div><div style="font-size:16px;font-weight:700;color:#1e40af">Historial de Aprobaciones — Supervisor</div></div>
+      <div style="text-align:right;font-size:10px;color:#6b7280">Generado: ${new Date().toLocaleString('es-ES')}<br>Período: ${esc(filtro)} &middot; ${groups.length} liquidación(es)</div>
+    </div>
+    ${sectionsHtml}
+  </body></html>`
+
+  const win = window.open('', '_blank')
+  if (!win) { alert('Por favor permite ventanas emergentes para descargar el PDF.'); return }
+  win.document.write(html)
+  win.document.close()
+  win.focus()
+  setTimeout(() => { win.print() }, 600)
 }
 
 onMounted(() => {

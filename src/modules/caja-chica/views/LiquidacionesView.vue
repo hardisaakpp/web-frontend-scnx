@@ -20,7 +20,7 @@
       <div class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-5">
         <div class="flex items-center justify-between mb-4">
           <div>
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Nueva liquidacion</h2>
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Nueva liquidación</h2>
             <p class="text-xs text-gray-500 dark:text-gray-400">Completa la cabecera para crear un borrador</p>
           </div>
           <button
@@ -35,12 +35,12 @@
 
         <div v-if="isCreateOpen" class="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Almacen asignado</label>
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Almacén asignado*</label>
             <select
               v-model="selectedCodAlmacen"
               class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
             >
-              <option value="">Seleccionar almacen</option>
+              <option value="">Seleccionar almacén</option>
               <option v-for="almacen in assignedAlmacenes" :key="almacen.codAlmacen" :value="almacen.codAlmacen">
                 {{ almacen.label }}
               </option>
@@ -57,7 +57,7 @@
             />
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Cedula custodio</label>
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Cédula custodio*</label>
             <input
               v-model.trim="cedulaCustodio"
               type="text"
@@ -76,7 +76,7 @@
             />
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Forma de pago</label>
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Forma de pago*</label>
             <select
               v-model="formatoDePago"
               class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
@@ -111,7 +111,7 @@
             :disabled="!canSubmit"
             @click="createLiquidacion"
           >
-            Crear liquidacion
+            Crear liquidación
           </button>
           <span v-if="formError" class="text-sm text-red-600 dark:text-red-400">{{ formError }}</span>
           <span v-else-if="formSuccess" class="text-sm text-emerald-600 dark:text-emerald-400">{{ formSuccess }}</span>
@@ -147,7 +147,7 @@
             <thead>
               <tr class="text-left text-xs uppercase text-gray-500 dark:text-gray-400">
                 <th class="py-2 pr-3">Id</th>
-                <th class="py-2 pr-3">Almacen</th>
+                <th class="py-2 pr-3">Almacén</th>
                 <th class="py-2 pr-3">Custodio</th>
                 <th class="py-2 pr-3">Fecha</th>
                 <th class="py-2 pr-3">Acciones</th>
@@ -224,7 +224,7 @@
               />
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Cedula custodio</label>
+              <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Cédula custodio</label>
               <input
                 v-model.trim="editCedulaCustodio"
                 type="text"
