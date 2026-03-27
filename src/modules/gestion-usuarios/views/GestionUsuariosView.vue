@@ -11,18 +11,7 @@
     </div>
 
     <section class="bg-white dark:bg-gray-800 rounded-xl shadow p-6 space-y-4">
-      <div class="flex items-center justify-between gap-3">
-        <div>
-          <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Personal de Tiendas</h2>
-          <p class="text-sm text-gray-600 dark:text-gray-300">CRUD básico de empleados por tienda.</p>
-        </div>
-        <button
-          class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium"
-          @click="resetForm"
-        >
-          Nuevo empleado
-        </button>
-      </div>
+      <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Personal de Tiendas</h2>
 
       <form class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3" @submit.prevent="applyFilters">
         <input
@@ -79,11 +68,26 @@
       </form>
     </section>
 
-    <section class="bg-white dark:bg-gray-800 rounded-xl shadow p-6">
-      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-        {{ form.id ? 'Editar empleado' : 'Nuevo empleado' }}
-      </h3>
-      <form class="grid grid-cols-1 md:grid-cols-2 gap-3" @submit.prevent="saveEmployee">
+    <section class="bg-white dark:bg-gray-800 rounded-xl shadow p-6 space-y-4">
+      <div class="flex items-center justify-between gap-3">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          {{ form.id ? 'Editar empleado' : 'Nuevo empleado' }}
+        </h3>
+        <button
+          type="button"
+          class="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-sm"
+          :aria-expanded="!isNewEmployeeCollapsed"
+          @click="toggleNewEmployeeCollapse"
+        >
+          {{ isNewEmployeeCollapsed ? 'Mostrar' : 'Ocultar' }}
+        </button>
+      </div>
+
+      <form
+        v-show="!isNewEmployeeCollapsed"
+        class="grid grid-cols-1 md:grid-cols-2 gap-3"
+        @submit.prevent="saveEmployee"
+      >
         <input
           v-model="form.cedula_identidad"
           type="text"
@@ -152,24 +156,38 @@
         </div>
         <div class="flex flex-col gap-1">
           <label class="text-xs text-gray-500 dark:text-gray-400">Estado</label>
-          <select
-            v-model.number="form.estado"
-            class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+          <button
+            type="button"
+            role="switch"
+            :aria-checked="form.estado === 1"
+            class="w-full px-3 py-2 rounded-lg border transition-colors"
+            :class="
+              form.estado === 1
+                ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                : 'border-gray-300 bg-gray-50 text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100'
+            "
+            @click="toggleEstado"
           >
-            <option :value="1">Activo</option>
-            <option :value="0">Inactivo</option>
-          </select>
+            Estado: {{ form.estado === 1 ? 'Activo' : 'Inactivo' }}
+          </button>
         </div>
         <div class="flex flex-col gap-1">
           <label class="text-xs text-gray-500 dark:text-gray-400">Encargado</label>
-          <select
-            v-model.number="form.encargado"
+          <button
+            type="button"
+            role="switch"
+            :aria-checked="form.encargado === 1"
             :disabled="form.estado === 0"
-            class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 disabled:opacity-60 disabled:cursor-not-allowed"
+            class="w-full px-3 py-2 rounded-lg border transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            :class="
+              form.encargado === 1
+                ? 'border-emerald-500 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                : 'border-gray-300 bg-gray-50 text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100'
+            "
+            @click="toggleEncargado"
           >
-            <option :value="0">No</option>
-            <option :value="1">Sí</option>
-          </select>
+            Encargado: {{ form.encargado === 1 ? 'Sí' : 'No' }}
+          </button>
           <p v-if="form.estado === 0" class="text-xs text-gray-500 dark:text-gray-400">Inactivo: no puede ser encargado.</p>
         </div>
 
@@ -205,49 +223,113 @@
               <th class="py-2 pr-3">Tienda</th>
               <th class="py-2 pr-3">Encargado</th>
               <th class="py-2 pr-3">Estado</th>
-              <th class="py-2 pr-3">Acciones</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="employee in employees" :key="employee.id" class="border-b dark:border-gray-800">
-              <td class="py-2 pr-3">{{ employee.cedula_identidad }}</td>
-              <td class="py-2 pr-3">{{ employee.nombre }}</td>
-              <td class="py-2 pr-3">{{ employee.correo }}</td>
-              <td class="py-2 pr-3">{{ employee.cargo }}</td>
-              <td class="py-2 pr-3">{{ employee.codigo_tienda }}</td>
+            <tr
+              v-for="employee in employees"
+              :key="employee.id"
+              class="border-b dark:border-gray-800 hover:bg-slate-50 dark:hover:bg-slate-900/30"
+            >
+              <td class="py-2 pr-3 cursor-pointer" title="Doble clic para editar" @dblclick="startInlineEdit(employee, 'cedula_identidad')">
+                <input
+                  v-if="isInlineEditing(employee, 'cedula_identidad')"
+                  v-model="inlineEdit.value"
+                  class="w-full px-2 py-1 rounded border border-blue-400 dark:border-blue-500 bg-white dark:bg-gray-900"
+                  @keydown.enter.prevent="saveInlineEdit(employee)"
+                  @keydown.esc.prevent="cancelInlineEdit"
+                  @blur="saveInlineEdit(employee)"
+                />
+                <span v-else>{{ employee.cedula_identidad }}</span>
+              </td>
+              <td class="py-2 pr-3 cursor-pointer" title="Doble clic para editar" @dblclick="startInlineEdit(employee, 'nombre')">
+                <input
+                  v-if="isInlineEditing(employee, 'nombre')"
+                  v-model="inlineEdit.value"
+                  class="w-full px-2 py-1 rounded border border-blue-400 dark:border-blue-500 bg-white dark:bg-gray-900"
+                  @keydown.enter.prevent="saveInlineEdit(employee)"
+                  @keydown.esc.prevent="cancelInlineEdit"
+                  @blur="saveInlineEdit(employee)"
+                />
+                <span v-else>{{ employee.nombre }}</span>
+              </td>
+              <td class="py-2 pr-3 cursor-pointer" title="Doble clic para editar" @dblclick="startInlineEdit(employee, 'correo')">
+                <input
+                  v-if="isInlineEditing(employee, 'correo')"
+                  v-model="inlineEdit.value"
+                  type="email"
+                  class="w-full px-2 py-1 rounded border border-blue-400 dark:border-blue-500 bg-white dark:bg-gray-900"
+                  @keydown.enter.prevent="saveInlineEdit(employee)"
+                  @keydown.esc.prevent="cancelInlineEdit"
+                  @blur="saveInlineEdit(employee)"
+                />
+                <span v-else>{{ employee.correo }}</span>
+              </td>
+              <td class="py-2 pr-3 cursor-pointer" title="Doble clic para editar" @dblclick="startInlineEdit(employee, 'cargo')">
+                <select
+                  v-if="isInlineEditing(employee, 'cargo')"
+                  v-model="inlineEdit.value"
+                  class="w-full px-2 py-1 rounded border border-blue-400 dark:border-blue-500 bg-white dark:bg-gray-900"
+                  @change="saveInlineEdit(employee)"
+                  @blur="saveInlineEdit(employee)"
+                >
+                  <option v-for="c in cargoOptions" :key="c" :value="c">{{ c }}</option>
+                </select>
+                <span v-else>{{ employee.cargo }}</span>
+              </td>
+              <td class="py-2 pr-3 cursor-pointer" title="Doble clic para editar" @dblclick="startInlineEdit(employee, 'codigo_tienda')">
+                <select
+                  v-if="isInlineEditing(employee, 'codigo_tienda')"
+                  v-model="inlineEdit.value"
+                  class="w-full px-2 py-1 rounded border border-blue-400 dark:border-blue-500 bg-white dark:bg-gray-900"
+                  @change="saveInlineEdit(employee)"
+                  @blur="saveInlineEdit(employee)"
+                >
+                  <option v-for="a in almacenesOptions" :key="a.cod_almacen" :value="a.cod_almacen">
+                    {{ a.label }} — {{ a.cod_almacen }}
+                  </option>
+                </select>
+                <span v-else>{{ tiendaLabel(employee.codigo_tienda) }}</span>
+              </td>
               <td class="py-2 pr-3">
-                <span
-                  class="inline-flex px-2 py-1 rounded text-xs"
+                <button
+                  type="button"
+                  role="switch"
+                  :aria-checked="employee.encargado === 1"
+                  :disabled="loading || employee.estado === 0"
+                  class="inline-flex items-center justify-center min-w-14 px-3 py-1.5 rounded-full text-xs font-medium border"
                   :class="
-                    employee.encargado === 1 ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-600'
+                    employee.encargado === 1
+                      ? 'border-amber-400 bg-amber-100 text-amber-800 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+                      : 'border-gray-300 bg-gray-100 text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300'
                   "
+                  @click="toggleEmployeeEncargado(employee)"
+                  @dblclick.stop
                 >
                   {{ employee.encargado === 1 ? 'Sí' : 'No' }}
-                </span>
+                </button>
               </td>
               <td class="py-2 pr-3">
-                <span
-                  class="inline-flex px-2 py-1 rounded text-xs"
-                  :class="employee.estado === 1 ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-700'"
+                <button
+                  type="button"
+                  role="switch"
+                  :aria-checked="employee.estado === 1"
+                  :disabled="loading"
+                  class="inline-flex items-center justify-center min-w-16 px-3 py-1.5 rounded-full text-xs font-medium border"
+                  :class="
+                    employee.estado === 1
+                      ? 'border-emerald-400 bg-emerald-100 text-emerald-700 dark:border-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                      : 'border-gray-300 bg-gray-100 text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300'
+                  "
+                  @click="toggleEmployeeEstado(employee)"
+                  @dblclick.stop
                 >
                   {{ employee.estado === 1 ? 'Activo' : 'Inactivo' }}
-                </span>
-              </td>
-              <td class="py-2 pr-3">
-                <div class="flex gap-2">
-                  <button class="text-blue-600 hover:underline" @click="editEmployee(employee)">Editar</button>
-                  <button
-                    class="text-red-600 hover:underline"
-                    :disabled="employee.estado === 0"
-                    @click="removeEmployee(employee)"
-                  >
-                    Inactivar
-                  </button>
-                </div>
+                </button>
               </td>
             </tr>
             <tr v-if="!employees.length">
-              <td colspan="8" class="py-4 text-center text-gray-500 dark:text-gray-300">
+              <td colspan="7" class="py-4 text-center text-gray-500 dark:text-gray-300">
                 No hay empleados para mostrar.
               </td>
             </tr>
@@ -301,6 +383,7 @@ const loading = ref(false)
 const catalogsLoading = ref(true)
 const serverDown = ref(false)
 const errorMessage = ref('')
+const isNewEmployeeCollapsed = ref(false)
 const employees = ref<StoreEmployee[]>([])
 const total = ref(0)
 /** Opciones de cargo (API `meta=cargos` o fallback local). */
@@ -310,6 +393,16 @@ const almacenesOptions = ref<AlmacenOption[]>([])
 /** Texto del input de búsqueda para tienda (puede ser nombre o código). */
 const storeSearchText = ref('')
 const storeInputRef = ref<HTMLInputElement | null>(null)
+type InlineField = 'cedula_identidad' | 'nombre' | 'correo' | 'cargo' | 'codigo_tienda'
+const inlineEdit = reactive<{
+  id: number | null
+  field: InlineField | ''
+  value: string
+}>({
+  id: null,
+  field: '',
+  value: ''
+})
 
 const filters = reactive({
   page: 1,
@@ -374,6 +467,7 @@ function tiendaLabel(cod: string): string {
 }
 
 function resetForm() {
+  isNewEmployeeCollapsed.value = false
   form.id = null
   form.cedula_identidad = ''
   form.correo = ''
@@ -433,6 +527,7 @@ async function fetchEmployees() {
 }
 
 function editEmployee(employee: StoreEmployee) {
+  isNewEmployeeCollapsed.value = false
   form.id = employee.id
   form.cedula_identidad = employee.cedula_identidad || ''
   form.correo = employee.correo || ''
@@ -444,6 +539,61 @@ function editEmployee(employee: StoreEmployee) {
   form.encargado = normalizeEncargado(employee.encargado)
   if (form.estado === 0) {
     form.encargado = 0
+  }
+}
+
+function isInlineEditing(employee: StoreEmployee, field: InlineField): boolean {
+  return inlineEdit.id === employee.id && inlineEdit.field === field
+}
+
+function startInlineEdit(employee: StoreEmployee, field: InlineField) {
+  if (loading.value) return
+  inlineEdit.id = employee.id
+  inlineEdit.field = field
+  inlineEdit.value = String(employee[field] ?? '')
+}
+
+function cancelInlineEdit() {
+  inlineEdit.id = null
+  inlineEdit.field = ''
+  inlineEdit.value = ''
+}
+
+async function saveInlineEdit(employee: StoreEmployee) {
+  if (!isInlineEditing(employee, inlineEdit.field as InlineField)) return
+  const field = inlineEdit.field as InlineField
+  let value = inlineEdit.value.trim()
+  if (field === 'cargo' && !isValidCargo(value)) {
+    errorMessage.value = 'Cargo inválido.'
+    cancelInlineEdit()
+    return
+  }
+  if (!value) {
+    errorMessage.value = 'El valor no puede estar vacío.'
+    cancelInlineEdit()
+    return
+  }
+  const current = String(employee[field] ?? '').trim()
+  if (current === value) {
+    cancelInlineEdit()
+    return
+  }
+
+  loading.value = true
+  errorMessage.value = ''
+  try {
+    const payload = {
+      [field]: value,
+      usuario_actual: currentUser.value
+    } as Record<string, string>
+    await updateStoreEmployee(employee.id, payload)
+    ;(employee as unknown as Record<string, unknown>)[field] = value
+    cancelInlineEdit()
+  } catch (error: unknown) {
+    errorMessage.value = parseApiError(error, 'No se pudo guardar la edición inline.')
+    cancelInlineEdit()
+  } finally {
+    loading.value = false
   }
 }
 
@@ -489,6 +639,19 @@ function onStoreSearchInput() {
 function clearStoreSelection() {
   storeSearchText.value = ''
   form.codigo_tienda = ''
+}
+
+function toggleEstado() {
+  form.estado = form.estado === 1 ? 0 : 1
+}
+
+function toggleEncargado() {
+  if (form.estado === 0) return
+  form.encargado = form.encargado === 1 ? 0 : 1
+}
+
+function toggleNewEmployeeCollapse() {
+  isNewEmployeeCollapsed.value = !isNewEmployeeCollapsed.value
 }
 
 watch(
@@ -551,6 +714,48 @@ async function removeEmployee(employee: StoreEmployee) {
     await fetchEmployees()
   } catch (error: unknown) {
     errorMessage.value = parseApiError(error, 'No se pudo inactivar el empleado.')
+  } finally {
+    loading.value = false
+  }
+}
+
+async function toggleEmployeeEncargado(employee: StoreEmployee) {
+  if (!employee.id || employee.estado === 0 || loading.value) return
+
+  loading.value = true
+  errorMessage.value = ''
+  try {
+    const nextEncargado = employee.encargado === 1 ? 0 : 1
+    await updateStoreEmployee(employee.id, {
+      encargado: nextEncargado,
+      usuario_actual: currentUser.value
+    })
+    employee.encargado = nextEncargado
+  } catch (error: unknown) {
+    errorMessage.value = parseApiError(error, 'No se pudo actualizar el estado de encargado.')
+  } finally {
+    loading.value = false
+  }
+}
+
+async function toggleEmployeeEstado(employee: StoreEmployee) {
+  if (!employee.id || loading.value) return
+
+  loading.value = true
+  errorMessage.value = ''
+  try {
+    const nextEstado = employee.estado === 1 ? 0 : 1
+    // Regla de negocio: si pasa a inactivo, encargado debe quedar en 0.
+    const nextEncargado = nextEstado === 0 ? 0 : employee.encargado
+    await updateStoreEmployee(employee.id, {
+      estado: nextEstado,
+      encargado: nextEncargado,
+      usuario_actual: currentUser.value
+    })
+    employee.estado = nextEstado
+    employee.encargado = nextEncargado
+  } catch (error: unknown) {
+    errorMessage.value = parseApiError(error, 'No se pudo actualizar el estado del empleado.')
   } finally {
     loading.value = false
   }
