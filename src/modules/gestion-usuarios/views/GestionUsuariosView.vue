@@ -115,16 +115,20 @@
         </select>
         <div class="flex flex-col gap-1">
           <label class="text-xs text-gray-500 dark:text-gray-400">Tienda (código almacén)</label>
-          <select
-            v-model="form.codigo_tienda"
+          <input
+            v-model="storeSearchText"
+            list="store-options"
+            type="text"
             required
+            placeholder="Buscar tienda por nombre o código"
             class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-          >
-            <option value="" disabled>{{ almacenesOptions.length ? 'Seleccione tienda' : 'Cargando tiendas…' }}</option>
+            @change="onStoreSearchChange"
+          />
+          <datalist id="store-options">
             <option v-for="a in tiendaOptionsForForm" :key="a.cod_almacen" :value="a.cod_almacen">
-              {{ a.label }} — {{ a.cod_almacen }}
+              {{ a.label }}
             </option>
-          </select>
+          </datalist>
           <p v-if="!almacenesOptions.length && !catalogsLoading" class="text-xs text-amber-700 dark:text-amber-300">
             No se pudo cargar el catálogo de tiendas. Revisa <code class="text-xs">meta=almacenes</code>.
           </p>
@@ -283,6 +287,8 @@ const total = ref(0)
 const cargoOptions = ref<StoreEmployeeCargo[]>([...STORE_EMPLOYEE_CARGOS])
 /** Combo tiendas: valor = cod_almacen → campo `codigo_tienda`. */
 const almacenesOptions = ref<AlmacenOption[]>([])
+/** Texto del input de búsqueda para tienda (puede ser nombre o código). */
+const storeSearchText = ref('')
 
 const filters = reactive({
   page: 1,
@@ -355,6 +361,7 @@ function resetForm() {
   form.codigo_tienda = ''
   form.estado = 1
   form.encargado = 0
+  storeSearchText.value = ''
 }
 
 function applyFilters() {
@@ -411,11 +418,37 @@ function editEmployee(employee: StoreEmployee) {
   form.nombre = employee.nombre || ''
   form.cargo = (employee.cargo || '').trim()
   form.codigo_tienda = employee.codigo_tienda || ''
+  storeSearchText.value = form.codigo_tienda
   form.estado = Number(employee.estado ?? 1)
   form.encargado = normalizeEncargado(employee.encargado)
   if (form.estado === 0) {
     form.encargado = 0
   }
+}
+
+/**
+ * Permite buscar por letras (nombre) o código y guardar siempre `codigo_tienda`.
+ */
+function onStoreSearchChange() {
+  const raw = storeSearchText.value.trim().toLowerCase()
+  if (!raw) {
+    form.codigo_tienda = ''
+    return
+  }
+  const byCode = almacenesOptions.value.find((a) => a.cod_almacen.toLowerCase() === raw)
+  if (byCode) {
+    form.codigo_tienda = byCode.cod_almacen
+    storeSearchText.value = byCode.cod_almacen
+    return
+  }
+  const byLabel = almacenesOptions.value.find((a) => a.label.toLowerCase().includes(raw))
+  if (byLabel) {
+    form.codigo_tienda = byLabel.cod_almacen
+    storeSearchText.value = byLabel.cod_almacen
+    return
+  }
+  // Si no hay match en catálogo, se mantiene lo escrito como código manual.
+  form.codigo_tienda = storeSearchText.value.trim()
 }
 
 watch(
@@ -504,6 +537,9 @@ onMounted(async () => {
 
   if (!form.cargo && cargoOptions.value.length) {
     form.cargo = cargoOptions.value[0]
+  }
+  if (!storeSearchText.value && form.codigo_tienda) {
+    storeSearchText.value = form.codigo_tienda
   }
   catalogsLoading.value = false
   await fetchEmployees()
