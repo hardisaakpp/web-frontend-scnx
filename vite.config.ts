@@ -36,7 +36,6 @@ export default defineConfig(({ mode }) => {
         },
         // Login y resto de /api → Core (Apps pruebas).
         '/api': {
-          //target: 'http://210.17.1.53:5053', // Apps pruebas / Core
           target: env.VITE_CORE_PROXY_TARGET, // Core con AD
           changeOrigin: true,
           secure: false,
@@ -55,6 +54,13 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path.replace(/^\/maestro-api/, '')
+        },
+        // CRUD de empleados (módulo Gestión Usuarios)
+        '/employees-api': {
+          target: env.VITE_STORE_EMPLOYEES_PROXY_TARGET || 'http://localhost/klienteV1/cws/api',
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/employees-api/, '')
         }
       }
     },

@@ -165,6 +165,22 @@
           <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Artículo Maestro</span>
         </router-link>
 
+        <!-- Gestión Usuarios -->
+        <router-link
+          v-if="hasModuleAccess('gestionusuarios')"
+          to="/gestion-usuarios"
+          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
+          :class="{
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/gestion-usuarios'),
+            'text-slate-300 hover:bg-slate-800/50 hover:text-white': !$route.path.startsWith('/gestion-usuarios')
+          }"
+          :title="isSidebarCollapsed ? 'Gestión Usuarios' : ''"
+        >
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <IdentificationIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/gestion-usuarios') }" />
+          <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Gestión Usuarios</span>
+        </router-link>
+
 
         <!-- Separador Administración -->
         <div v-if="hasModuleAccess('usuarios') || hasModuleAccess('roles') || hasModuleAccess('permisos') || authStore.isAdmin" v-show="!isSidebarCollapsed" class="px-3 py-2 my-3">
@@ -324,7 +340,8 @@ import {
   LockClosedIcon,
   SunIcon,
   MoonIcon,
-  CubeIcon
+  CubeIcon,
+  IdentificationIcon
 } from '@heroicons/vue/24/outline'
 import { useAuthStore } from '../stores/auth'
 import { useThemeStore } from '../stores/theme'
@@ -428,6 +445,7 @@ const pageTitle = computed(() => {
     '/user': 'Panel de Usuario',
     '/conciliacion': 'Conciliación',
     '/mba3-consultas': 'Gestión ODC SAP',
+    '/gestion-usuarios': 'Gestión Usuarios',
     '/mba3-consultas/ordenes-compra': 'Órdenes de Compra',
     '/mba3-consultas/proceso': 'Enviar ODC a SAP',
     '/usuarios': 'Gestión de Usuarios',
