@@ -11,64 +11,6 @@
     </div>
 
     <section class="bg-white dark:bg-gray-800 rounded-xl shadow p-6 space-y-4">
-      <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Personal de Tiendas</h2>
-
-      <form class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3" @submit.prevent="applyFilters">
-        <input
-          v-model="filters.q"
-          type="text"
-          placeholder="Buscar por nombre, cédula o correo"
-          class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-        />
-        <select
-          v-model="filters.codigo_tienda"
-          class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-        >
-          <option value="">Todas las tiendas</option>
-          <option v-for="a in almacenesOptions" :key="a.cod_almacen" :value="a.cod_almacen">
-            {{ a.label }} — {{ a.cod_almacen }}
-          </option>
-        </select>
-        <select
-          v-model="filters.cargo"
-          class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-        >
-          <option value="">Todos los cargos</option>
-          <option v-for="c in cargoOptions" :key="c" :value="c">{{ c }}</option>
-        </select>
-        <select
-          v-model="filters.estado"
-          class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-        >
-          <option value="">Todos</option>
-          <option value="1">Activos</option>
-          <option value="0">Inactivos</option>
-        </select>
-        <select
-          v-model="filters.encargado"
-          class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-        >
-          <option value="">Encargado (todos)</option>
-          <option value="1">Sí</option>
-          <option value="0">No</option>
-        </select>
-
-        <div class="md:col-span-2 lg:col-span-3 xl:col-span-5 flex gap-2">
-          <button type="submit" class="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-800 text-white text-sm">
-            Filtrar
-          </button>
-          <button
-            type="button"
-            class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-sm"
-            @click="clearFilters"
-          >
-            Limpiar
-          </button>
-        </div>
-      </form>
-    </section>
-
-    <section class="bg-white dark:bg-gray-800 rounded-xl shadow p-6 space-y-4">
       <div class="flex items-center justify-between gap-3">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
           {{ form.id ? 'Editar empleado' : 'Nuevo empleado' }}
@@ -209,6 +151,59 @@
         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Empleados</h3>
         <p class="text-sm text-gray-500 dark:text-gray-300">Total: {{ total }}</p>
       </div>
+
+      <form class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2 mb-3" @submit.prevent="applyFilters">
+        <input
+          v-model="filters.q"
+          type="text"
+          placeholder="Buscar nombre, cédula o correo"
+          class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+        />
+        <select
+          v-model="filters.codigo_tienda"
+          class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+        >
+          <option value="">Tiendas</option>
+          <option v-for="a in almacenesOptions" :key="a.cod_almacen" :value="a.cod_almacen">
+            {{ a.label }} — {{ a.cod_almacen }}
+          </option>
+        </select>
+        <select
+          v-model="filters.cargo"
+          class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+        >
+          <option value="">Cargos</option>
+          <option v-for="c in cargoOptions" :key="c" :value="c">{{ c }}</option>
+        </select>
+        <select
+          v-model="filters.estado"
+          class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+        >
+          <option value="">Estado</option>
+          <option value="1">Activos</option>
+          <option value="0">Inactivos</option>
+        </select>
+        <select
+          v-model="filters.encargado"
+          class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+        >
+          <option value="">Encargado</option>
+          <option value="1">Sí</option>
+          <option value="0">No</option>
+        </select>
+        <div class="xl:col-span-5 flex gap-2">
+          <button type="submit" class="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-sm">
+            Filtrar
+          </button>
+          <button
+            type="button"
+            class="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-sm"
+            @click="clearFilters"
+          >
+            Limpiar
+          </button>
+        </div>
+      </form>
 
       <div v-if="errorMessage" class="mb-3 text-sm text-red-600 dark:text-red-400">{{ errorMessage }}</div>
 
