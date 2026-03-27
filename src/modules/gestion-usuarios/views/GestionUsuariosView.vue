@@ -115,15 +115,27 @@
         </select>
         <div class="flex flex-col gap-1">
           <label class="text-xs text-gray-500 dark:text-gray-400">Tienda (código almacén)</label>
-          <input
-            v-model="storeSearchText"
-            list="store-options"
-            type="text"
-            required
-            placeholder="Buscar tienda por nombre o código"
-            class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-            @change="onStoreSearchChange"
-          />
+          <div class="relative">
+            <input
+              v-model="storeSearchText"
+              list="store-options"
+              type="text"
+              required
+              placeholder="Buscar tienda por nombre o código"
+              class="w-full px-3 py-2 pr-9 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+              @change="onStoreSearchChange"
+            />
+            <button
+              v-if="storeSearchText"
+              type="button"
+              class="absolute inset-y-0 right-2 my-auto h-6 w-6 rounded text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+              title="Limpiar tienda"
+              aria-label="Limpiar tienda"
+              @click="clearStoreSelection"
+            >
+              x
+            </button>
+          </div>
           <datalist id="store-options">
             <option v-for="a in tiendaOptionsForForm" :key="a.cod_almacen" :value="a.cod_almacen">
               {{ a.label }}
@@ -449,6 +461,11 @@ function onStoreSearchChange() {
   }
   // Si no hay match en catálogo, se mantiene lo escrito como código manual.
   form.codigo_tienda = storeSearchText.value.trim()
+}
+
+function clearStoreSelection() {
+  storeSearchText.value = ''
+  form.codigo_tienda = ''
 }
 
 watch(
