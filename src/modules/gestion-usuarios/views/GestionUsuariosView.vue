@@ -13,7 +13,7 @@
     <section class="bg-white dark:bg-gray-800 rounded-xl shadow p-6 space-y-4">
       <div class="flex items-center justify-between gap-3">
         <div>
-          <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Gestión Usuarios</h2>
+          <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Personal de Tiendas</h2>
           <p class="text-sm text-gray-600 dark:text-gray-300">CRUD básico de empleados por tienda.</p>
         </div>
         <button
@@ -105,24 +105,29 @@
           placeholder="Nombre completo"
           class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 md:col-span-2"
         />
-        <select
-          v-model="form.cargo"
-          required
-          class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-        >
-          <option value="" disabled>Seleccione cargo</option>
-          <option v-for="c in cargoOptionsForForm" :key="c" :value="c">{{ c }}</option>
-        </select>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs text-gray-500 dark:text-gray-400">Cargo</label>
+          <select
+            v-model="form.cargo"
+            required
+            class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+          >
+            <option value="" disabled>Seleccione cargo</option>
+            <option v-for="c in cargoOptionsForForm" :key="c" :value="c">{{ c }}</option>
+          </select>
+        </div>
         <div class="flex flex-col gap-1">
           <label class="text-xs text-gray-500 dark:text-gray-400">Tienda (código almacén)</label>
           <div class="relative">
             <input
+              ref="storeInputRef"
               v-model="storeSearchText"
               list="store-options"
               type="text"
               required
               placeholder="Buscar tienda por nombre o código"
               class="w-full px-3 py-2 pr-9 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+              @input="onStoreSearchInput"
               @change="onStoreSearchChange"
             />
             <button
@@ -145,13 +150,16 @@
             No se pudo cargar el catálogo de tiendas. Revisa <code class="text-xs">meta=almacenes</code>.
           </p>
         </div>
-        <select
-          v-model.number="form.estado"
-          class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-        >
-          <option :value="1">Activo</option>
-          <option :value="0">Inactivo</option>
-        </select>
+        <div class="flex flex-col gap-1">
+          <label class="text-xs text-gray-500 dark:text-gray-400">Estado</label>
+          <select
+            v-model.number="form.estado"
+            class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+          >
+            <option :value="1">Activo</option>
+            <option :value="0">Inactivo</option>
+          </select>
+        </div>
         <div class="flex flex-col gap-1">
           <label class="text-xs text-gray-500 dark:text-gray-400">Encargado</label>
           <select
@@ -271,7 +279,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import {
   checkStoreEmployeesHealth,
@@ -301,6 +309,7 @@ const cargoOptions = ref<StoreEmployeeCargo[]>([...STORE_EMPLOYEE_CARGOS])
 const almacenesOptions = ref<AlmacenOption[]>([])
 /** Texto del input de búsqueda para tienda (puede ser nombre o código). */
 const storeSearchText = ref('')
+const storeInputRef = ref<HTMLInputElement | null>(null)
 
 const filters = reactive({
   page: 1,
@@ -461,6 +470,20 @@ function onStoreSearchChange() {
   }
   // Si no hay match en catálogo, se mantiene lo escrito como código manual.
   form.codigo_tienda = storeSearchText.value.trim()
+}
+
+/**
+ * Si el usuario selecciona una opción exacta (por código), cerrar popup inmediatamente.
+ */
+function onStoreSearchInput() {
+  const raw = storeSearchText.value.trim().toLowerCase()
+  if (!raw) return
+  const byCode = almacenesOptions.value.find((a) => a.cod_almacen.toLowerCase() === raw)
+  if (!byCode) return
+  form.codigo_tienda = byCode.cod_almacen
+  nextTick(() => {
+    storeInputRef.value?.blur()
+  })
 }
 
 function clearStoreSelection() {

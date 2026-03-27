@@ -1,4 +1,4 @@
-# Módulo de Gestión Usuarios
+# Módulo de Personal de Tiendas
 
 Módulo base para centralizar funcionalidades relacionadas con la gestión de usuarios.
 
@@ -34,7 +34,7 @@ Configuración en `router.ts`:
 - `name`: `gestion-usuarios`
 - `meta.requiresAuth`: `true`
 - `meta.permissions`: `['gestionusuarios.view']`
-- `meta.title`: `Gestión Usuarios`
+- `meta.title`: `Personal de Tiendas`
 
 ## Backend Integrado
 
@@ -103,7 +103,7 @@ Notas:
 
 El acceso se encuentra en la sección **Módulos** del sidebar con:
 
-- Etiqueta: `Gestión Usuarios`
+- Etiqueta: `Personal de Tiendas`
 - Ruta: `/gestion-usuarios`
 - Ícono: `IdentificationIcon`
 

@@ -165,7 +165,7 @@
           <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Artículo Maestro</span>
         </router-link>
 
-        <!-- Gestión Usuarios -->
+        <!-- Personal de Tiendas -->
         <router-link
           v-if="hasModuleAccess('gestionusuarios')"
           to="/gestion-usuarios"
@@ -174,11 +174,11 @@
             'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/gestion-usuarios'),
             'text-slate-300 hover:bg-slate-800/50 hover:text-white': !$route.path.startsWith('/gestion-usuarios')
           }"
-          :title="isSidebarCollapsed ? 'Gestión Usuarios' : ''"
+          :title="isSidebarCollapsed ? 'Personal de Tiendas' : ''"
         >
           <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
           <IdentificationIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/gestion-usuarios') }" />
-          <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Gestión Usuarios</span>
+          <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Personal de Tiendas</span>
         </router-link>
 
 
@@ -445,7 +445,7 @@ const pageTitle = computed(() => {
     '/user': 'Panel de Usuario',
     '/conciliacion': 'Conciliación',
     '/mba3-consultas': 'Gestión ODC SAP',
-    '/gestion-usuarios': 'Gestión Usuarios',
+    '/gestion-usuarios': 'Personal de Tiendas',
     '/mba3-consultas/ordenes-compra': 'Órdenes de Compra',
     '/mba3-consultas/proceso': 'Enviar ODC a SAP',
     '/usuarios': 'Gestión de Usuarios',

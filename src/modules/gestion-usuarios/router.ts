@@ -7,7 +7,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import('./views/GestionUsuariosView.vue'),
     meta: {
       requiresAuth: true,
-      title: 'Gestión Usuarios',
+      title: 'Personal de Tiendas',
       icon: 'IdentificationIcon',
       permissions: ['gestionusuarios.view']
     }
