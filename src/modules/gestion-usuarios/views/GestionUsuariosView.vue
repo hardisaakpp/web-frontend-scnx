@@ -148,16 +148,25 @@
         <p class="text-sm text-gray-500 dark:text-gray-300">Total: {{ total }}</p>
       </div>
 
-      <form class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2 mb-3" @submit.prevent="applyFilters">
+      <form
+        ref="filtersFormRef"
+        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2 mb-3"
+        @submit.prevent="applyFilters"
+      >
         <input
           v-model="filters.q"
           type="text"
           placeholder="Buscar nombre, cédula o correo"
           class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+          @focus="expandFilters"
+          @click="expandFilters"
+          @keydown.esc.prevent="collapseFilters"
         />
         <select
+          v-show="showCodigoTiendaFilter"
           v-model="filters.codigo_tienda"
-          class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+          class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 transform-gpu transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform"
+          :class="showCodigoTiendaFilter ? 'opacity-100 translate-x-0 blur-0' : 'opacity-0 translate-x-2 blur-[1px] pointer-events-none'"
         >
           <option value="">Tiendas</option>
           <option v-for="a in almacenesOptions" :key="a.cod_almacen" :value="a.cod_almacen">
@@ -165,23 +174,29 @@
           </option>
         </select>
         <select
+          v-show="showCargoFilter"
           v-model="filters.cargo"
-          class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+          class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 transform-gpu transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform"
+          :class="showCargoFilter ? 'opacity-100 translate-x-0 blur-0' : 'opacity-0 translate-x-2 blur-[1px] pointer-events-none'"
         >
           <option value="">Cargos</option>
           <option v-for="c in cargoOptions" :key="c" :value="c">{{ c }}</option>
         </select>
         <select
+          v-show="showEncargadoFilter"
           v-model="filters.encargado"
-          class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+          class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 transform-gpu transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform"
+          :class="showEncargadoFilter ? 'opacity-100 translate-x-0 blur-0' : 'opacity-0 translate-x-2 blur-[1px] pointer-events-none'"
         >
           <option value="">Encargado</option>
           <option value="1">Sí</option>
           <option value="0">No</option>
         </select>
         <select
+          v-show="showEstadoFilter"
           v-model="filters.estado"
-          class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+          class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 transform-gpu transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform"
+          :class="showEstadoFilter ? 'opacity-100 translate-x-0 blur-0' : 'opacity-0 translate-x-2 blur-[1px] pointer-events-none'"
         >
           <option value="">Estado</option>
           <option value="1">Activos</option>
@@ -352,7 +367,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import {
   checkStoreEmployeesHealth,
@@ -384,6 +399,13 @@ const almacenesOptions = ref<AlmacenOption[]>([])
 /** Texto del input de búsqueda para tienda (puede ser nombre o código). */
 const storeSearchText = ref('')
 const storeInputRef = ref<HTMLInputElement | null>(null)
+const filtersFormRef = ref<HTMLFormElement | null>(null)
+const filtersExpanded = ref(false)
+const showCodigoTiendaFilter = ref(false)
+const showCargoFilter = ref(false)
+const showEncargadoFilter = ref(false)
+const showEstadoFilter = ref(false)
+const expandTimers: number[] = []
 type InlineField = 'cedula_identidad' | 'nombre' | 'correo' | 'cargo' | 'codigo_tienda'
 const inlineEdit = reactive<{
   id: number | null
@@ -483,6 +505,43 @@ function clearFilters() {
   filters.encargado = ''
   filters.page = 1
   fetchEmployees()
+}
+
+function expandFilters() {
+  clearExpandTimers()
+  showCodigoTiendaFilter.value = false
+  showCargoFilter.value = false
+  showEncargadoFilter.value = false
+  showEstadoFilter.value = false
+  filtersExpanded.value = true
+  expandTimers.push(window.setTimeout(() => { showCodigoTiendaFilter.value = true }, 0))
+  expandTimers.push(window.setTimeout(() => { showCargoFilter.value = true }, 110))
+  expandTimers.push(window.setTimeout(() => { showEncargadoFilter.value = true }, 220))
+  expandTimers.push(window.setTimeout(() => { showEstadoFilter.value = true }, 330))
+}
+
+function collapseFilters() {
+  clearExpandTimers()
+  filtersExpanded.value = false
+  showCodigoTiendaFilter.value = false
+  showCargoFilter.value = false
+  showEncargadoFilter.value = false
+  showEstadoFilter.value = false
+}
+
+function clearExpandTimers() {
+  for (const timer of expandTimers) {
+    window.clearTimeout(timer)
+  }
+  expandTimers.length = 0
+}
+
+function handleGlobalClick(event: MouseEvent) {
+  if (!filtersExpanded.value) return
+  const target = event.target as Node | null
+  if (!target) return
+  if (filtersFormRef.value?.contains(target)) return
+  collapseFilters()
 }
 
 function goToPage(page: number) {
@@ -779,5 +838,14 @@ onMounted(async () => {
   }
   catalogsLoading.value = false
   await fetchEmployees()
+})
+
+onMounted(() => {
+  document.addEventListener('click', handleGlobalClick, true)
+})
+
+onBeforeUnmount(() => {
+  clearExpandTimers()
+  document.removeEventListener('click', handleGlobalClick, true)
 })
 </script>
