@@ -9,7 +9,7 @@ const routes: RouteRecordRaw[] = [
       requiresAuth: true,
       title: 'Personal de Tiendas',
       icon: 'IdentificationIcon',
-      permissions: ['gestionusuarios.view']
+      permissions: ['gestionusuarios.view', 'staff.view']
     }
   }
 ]

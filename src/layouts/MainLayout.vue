@@ -469,6 +469,12 @@ const hasModuleAccess = (moduleName: string): boolean => {
   
   // Verificar si tiene algún permiso del módulo (modulo.*)
   const permissions = authStore.userPermissions || []
+  // Compatibilidad: el módulo "Personal de Tiendas" también habilita con staff.view
+  if (moduleName === 'gestionusuarios') {
+    return permissions.some((permission: string) =>
+      permission.startsWith('gestionusuarios.') || permission === 'staff.view'
+    )
+  }
   return permissions.some((permission: string) => permission.startsWith(`${moduleName}.`))
 }
 

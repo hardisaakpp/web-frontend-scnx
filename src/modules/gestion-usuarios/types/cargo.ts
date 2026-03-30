@@ -4,6 +4,7 @@
 export const STORE_EMPLOYEE_CARGOS = [
   'Administrador de tienda',
   'Jefe de tienda',
+  'Director de tienda',
   'Asesor de ventas'
 ] as const
 

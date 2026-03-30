@@ -185,7 +185,7 @@ Activar tema oscuro y probar todos los escenarios
 npm run dev
 
 # Navegar a:
-http://localhost:5173/mba3-consultas/pedidos
+http://localhost:3000/mba3-consultas/pedidos
 
 # Probar subiendo archivos con errores específicos
 ```

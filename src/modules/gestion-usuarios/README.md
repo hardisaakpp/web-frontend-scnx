@@ -33,7 +33,7 @@ Configuración en `router.ts`:
 
 - `name`: `gestion-usuarios`
 - `meta.requiresAuth`: `true`
-- `meta.permissions`: `['gestionusuarios.view']`
+- `meta.permissions`: `['gestionusuarios.view', 'staff.view']`
 - `meta.title`: `Personal de Tiendas`
 
 ## Backend Integrado
@@ -42,12 +42,24 @@ Este módulo consume el endpoint CRUD (misma base URL; en desarrollo con Vite su
 
 - `GET` … `store_employees.php` (listado paginado y filtros)
 - `GET` … `store_employees.php?id={id}` (detalle)
-- `GET` … `store_employees.php?meta=cargos` → `{ ok: true, data: string[] }` (tres cargos exactos)
+- `GET` … `store_employees.php?meta=cargos` → `{ ok: true, data: string[] }` (cuatro cargos exactos)
 - `GET` … `store_employees.php?meta=almacenes` → `data[]` con filas de almacén; **`codigo_tienda`** se guarda con el valor del campo indicado en `meta.value_field` (p. ej. `cod_almacen`), etiqueta con `meta.label_field` (`nombre` / `label`). El campo `meta.source` es solo depuración.
 - `GET` … `store_employees.php?health=1` (opcional: comprobar disponibilidad del servicio)
 - `POST` … `store_employees.php`
 - `PUT|PATCH` … `store_employees.php`
 - `DELETE` … `store_employees.php?id={id}` (soft delete, `estado=0`)
+
+### Orden estándar de columnas (grid)
+
+En la tabla principal de `GestionUsuariosView.vue`, el orden estándar definido para columnas es:
+
+1. Cédula
+2. Nombre
+3. Tienda
+4. Cargo
+5. Correo
+6. Encargado
+7. Estado
 
 ### Valores de `cargo` (obligatorios)
 
@@ -55,6 +67,7 @@ Solo se envían y filtran estos valores exactos (ortografía y mayúsculas):
 
 - `Administrador de tienda`
 - `Jefe de tienda`
+- `Director de tienda`
 - `Asesor de ventas`
 
 El backend responde `422` si `cargo` no coincide. El formulario usa el catálogo anterior; si un registro antiguo tiene otro texto, aparece en el combo para poder corregirlo y guardar.
@@ -90,13 +103,14 @@ El proxy de Vite redirige `/employees-api/*` a `VITE_STORE_EMPLOYEES_PROXY_TARGE
 
 ## Permisos
 
-Para ver el módulo se requiere:
+Para ver el módulo se requiere al menos uno de:
 
 - `gestionusuarios.view`
+- `staff.view`
 
 Notas:
 
-- El botón en el sidebar se muestra si el usuario tiene al menos un permiso que inicie con `gestionusuarios.`.
+- El botón en el sidebar se muestra si el usuario tiene al menos un permiso que inicie con `gestionusuarios.` o si tiene `staff.view`.
 - Usuarios con rol `Admin` mantienen acceso total por la lógica global de autorización.
 
 ## Integración en Sidebar

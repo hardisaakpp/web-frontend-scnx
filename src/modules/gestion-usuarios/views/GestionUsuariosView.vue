@@ -38,32 +38,13 @@
           class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
         />
         <input
-          v-model="form.correo"
-          type="email"
-          required
-          placeholder="Correo"
-          class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-        />
-        <input
           v-model="form.nombre"
           type="text"
           required
           placeholder="Nombre completo"
-          class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 md:col-span-2"
+          class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
         />
         <div class="flex flex-col gap-1">
-          <label class="text-xs text-gray-500 dark:text-gray-400">Cargo</label>
-          <select
-            v-model="form.cargo"
-            required
-            class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-          >
-            <option value="" disabled>Seleccione cargo</option>
-            <option v-for="c in cargoOptionsForForm" :key="c" :value="c">{{ c }}</option>
-          </select>
-        </div>
-        <div class="flex flex-col gap-1">
-          <label class="text-xs text-gray-500 dark:text-gray-400">Tienda (código almacén)</label>
           <div class="relative">
             <input
               ref="storeInputRef"
@@ -97,24 +78,23 @@
           </p>
         </div>
         <div class="flex flex-col gap-1">
-          <label class="text-xs text-gray-500 dark:text-gray-400">Estado</label>
-          <button
-            type="button"
-            role="switch"
-            :aria-checked="form.estado === 1"
-            class="w-full px-3 py-2 rounded-lg border transition-colors"
-            :class="
-              form.estado === 1
-                ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                : 'border-gray-300 bg-gray-50 text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100'
-            "
-            @click="toggleEstado"
+          <select
+            v-model="form.cargo"
+            required
+            class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
           >
-            Estado: {{ form.estado === 1 ? 'Activo' : 'Inactivo' }}
-          </button>
+            <option value="" disabled>Seleccione cargo</option>
+            <option v-for="c in cargoOptionsForForm" :key="c" :value="c">{{ c }}</option>
+          </select>
         </div>
+        <input
+          v-model="form.correo"
+          type="email"
+          required
+          placeholder="Correo"
+          class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+        />
         <div class="flex flex-col gap-1">
-          <label class="text-xs text-gray-500 dark:text-gray-400">Encargado</label>
           <button
             type="button"
             role="switch"
@@ -131,6 +111,22 @@
             Encargado: {{ form.encargado === 1 ? 'Sí' : 'No' }}
           </button>
           <p v-if="form.estado === 0" class="text-xs text-gray-500 dark:text-gray-400">Inactivo: no puede ser encargado.</p>
+        </div>
+        <div class="flex flex-col gap-1">
+          <button
+            type="button"
+            role="switch"
+            :aria-checked="form.estado === 1"
+            class="w-full px-3 py-2 rounded-lg border transition-colors"
+            :class="
+              form.estado === 1
+                ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                : 'border-gray-300 bg-gray-50 text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100'
+            "
+            @click="toggleEstado"
+          >
+            Estado: {{ form.estado === 1 ? 'Activo' : 'Inactivo' }}
+          </button>
         </div>
 
         <div class="md:col-span-2 flex gap-2">
@@ -176,20 +172,20 @@
           <option v-for="c in cargoOptions" :key="c" :value="c">{{ c }}</option>
         </select>
         <select
-          v-model="filters.estado"
-          class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
-        >
-          <option value="">Estado</option>
-          <option value="1">Activos</option>
-          <option value="0">Inactivos</option>
-        </select>
-        <select
           v-model="filters.encargado"
           class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
         >
           <option value="">Encargado</option>
           <option value="1">Sí</option>
           <option value="0">No</option>
+        </select>
+        <select
+          v-model="filters.estado"
+          class="px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
+        >
+          <option value="">Estado</option>
+          <option value="1">Activos</option>
+          <option value="0">Inactivos</option>
         </select>
         <div class="xl:col-span-5 flex gap-2">
           <button type="submit" class="px-3 py-1.5 rounded-lg border border-gray-300 dark:border-gray-600 text-sm">
@@ -213,9 +209,9 @@
             <tr class="text-left border-b dark:border-gray-700">
               <th class="py-2 pr-3">Cédula</th>
               <th class="py-2 pr-3">Nombre</th>
-              <th class="py-2 pr-3">Correo</th>
-              <th class="py-2 pr-3">Cargo</th>
               <th class="py-2 pr-3">Tienda</th>
+              <th class="py-2 pr-3">Cargo</th>
+              <th class="py-2 pr-3">Correo</th>
               <th class="py-2 pr-3">Encargado</th>
               <th class="py-2 pr-3">Estado</th>
             </tr>
@@ -248,30 +244,6 @@
                 />
                 <span v-else>{{ employee.nombre }}</span>
               </td>
-              <td class="py-2 pr-3 cursor-pointer" title="Doble clic para editar" @dblclick="startInlineEdit(employee, 'correo')">
-                <input
-                  v-if="isInlineEditing(employee, 'correo')"
-                  v-model="inlineEdit.value"
-                  type="email"
-                  class="w-full px-2 py-1 rounded border border-blue-400 dark:border-blue-500 bg-white dark:bg-gray-900"
-                  @keydown.enter.prevent="saveInlineEdit(employee)"
-                  @keydown.esc.prevent="cancelInlineEdit"
-                  @blur="saveInlineEdit(employee)"
-                />
-                <span v-else>{{ employee.correo }}</span>
-              </td>
-              <td class="py-2 pr-3 cursor-pointer" title="Doble clic para editar" @dblclick="startInlineEdit(employee, 'cargo')">
-                <select
-                  v-if="isInlineEditing(employee, 'cargo')"
-                  v-model="inlineEdit.value"
-                  class="w-full px-2 py-1 rounded border border-blue-400 dark:border-blue-500 bg-white dark:bg-gray-900"
-                  @change="saveInlineEdit(employee)"
-                  @blur="saveInlineEdit(employee)"
-                >
-                  <option v-for="c in cargoOptions" :key="c" :value="c">{{ c }}</option>
-                </select>
-                <span v-else>{{ employee.cargo }}</span>
-              </td>
               <td class="py-2 pr-3 cursor-pointer" title="Doble clic para editar" @dblclick="startInlineEdit(employee, 'codigo_tienda')">
                 <select
                   v-if="isInlineEditing(employee, 'codigo_tienda')"
@@ -285,6 +257,30 @@
                   </option>
                 </select>
                 <span v-else>{{ tiendaLabel(employee.codigo_tienda) }}</span>
+              </td>
+              <td class="py-2 pr-3 cursor-pointer" title="Doble clic para editar" @dblclick="startInlineEdit(employee, 'cargo')">
+                <select
+                  v-if="isInlineEditing(employee, 'cargo')"
+                  v-model="inlineEdit.value"
+                  class="w-full px-2 py-1 rounded border border-blue-400 dark:border-blue-500 bg-white dark:bg-gray-900"
+                  @change="saveInlineEdit(employee)"
+                  @blur="saveInlineEdit(employee)"
+                >
+                  <option v-for="c in cargoOptions" :key="c" :value="c">{{ c }}</option>
+                </select>
+                <span v-else>{{ employee.cargo }}</span>
+              </td>
+              <td class="py-2 pr-3 cursor-pointer" title="Doble clic para editar" @dblclick="startInlineEdit(employee, 'correo')">
+                <input
+                  v-if="isInlineEditing(employee, 'correo')"
+                  v-model="inlineEdit.value"
+                  type="email"
+                  class="w-full px-2 py-1 rounded border border-blue-400 dark:border-blue-500 bg-white dark:bg-gray-900"
+                  @keydown.enter.prevent="saveInlineEdit(employee)"
+                  @keydown.esc.prevent="cancelInlineEdit"
+                  @blur="saveInlineEdit(employee)"
+                />
+                <span v-else>{{ employee.correo }}</span>
               </td>
               <td class="py-2 pr-3">
                 <button
@@ -660,7 +656,7 @@ watch(
 
 async function saveEmployee() {
   if (!isValidCargo(form.cargo)) {
-    errorMessage.value = 'Seleccione un cargo válido (Administrador de tienda, Jefe de tienda o Asesor de ventas).'
+    errorMessage.value = 'Seleccione un cargo válido (Administrador de tienda, Jefe de tienda, Director de tienda o Asesor de ventas).'
     return
   }
   if (!form.codigo_tienda.trim()) {

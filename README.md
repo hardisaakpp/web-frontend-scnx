@@ -24,7 +24,7 @@ npm run build
 npm run preview
 ```
 
-**Servidor de desarrollo:** http://localhost:5173
+**Servidor de desarrollo:** http://localhost:3000
 
 ## 📦 Estructura del Proyecto
 
