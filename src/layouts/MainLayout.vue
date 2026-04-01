@@ -354,10 +354,10 @@ import {
 import { useAuthStore } from '../stores/auth'
 import { useThemeStore } from '../stores/theme'
 import ToastContainer from '../components/ToastContainer.vue'
-import { userPreferencesService } from '@/services/userPreferencesService'
-import { useNotificaciones } from '@/composables/useNotificaciones'
-import { useOdcSapVolver } from '@/composables/useOdcSapVolver'
-import OdcSapVolverButton from '@/modules/mba3-consultas/components/OdcSapVolverButton.vue'
+import { userPreferencesService } from '../services/userPreferencesService'
+import { useNotificaciones } from '../composables/useNotificaciones'
+import { useOdcSapVolver } from '../composables/useOdcSapVolver'
+import OdcSapVolverButton from '../modules/mba3-consultas/components/OdcSapVolverButton.vue'
 
 const router = useRouter()
 const route = useRoute()

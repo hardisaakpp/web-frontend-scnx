@@ -1,12 +1,6 @@
 {
+  "extends": "./tsconfig.app.json",
   "compilerOptions": {
-    "forceConsistentCasingInFileNames": true,
-    "strict": true
-  },
-  "references": [
-    { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" },
-    { "path": "./tsconfig.e2e.json" },
-    { "path": "./tsconfig.test.json" }
-  ]
+    "forceConsistentCasingInFileNames": true
+  }
 }
