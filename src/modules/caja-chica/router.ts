@@ -9,7 +9,27 @@ const routes: RouteRecordRaw[] = [
       requiresAuth: true,
       title: 'Caja Chica',
       icon: 'BanknotesIcon',
-      permissions: ['cajachica.liquidacion.view']
+      permissions: [
+        'cajachica.liquidacion.view',
+        'cajachica.liquidaciones.view',
+        'cajachica.liquidacion.create',
+        'cajachica.liquidaciones.create',
+        'cajachica.aprobadores.view',
+        'cajachica.almacenes.view',
+        'cajachica.catalogo.view',
+        'cajachica.aprobaciones.view',
+        'cajachica.aprobaciones.supervisor.view',
+        'cajachica.aprobaciones.supervisor.approve',
+        'cajachica.aprobaciones.supervisor.history',
+        'cajachica.aprobaciones.contabilidad.view',
+        'cajachica.aprobaciones.contabilidad.approve',
+        'cajachica.aprobaciones.contabilidad.history',
+        'cajachica.formas-pago.view',
+        'cajachica.empresas.view',
+        'cajachica.grupos-almacenes.view',
+        'cajachica.usuarios-almacenes.view',
+        'cajachica.adjuntos.view'
+      ]
     },
   },
   {
@@ -19,7 +39,12 @@ const routes: RouteRecordRaw[] = [
     meta: { 
       requiresAuth: true,
       title: 'Liquidaciones',
-      permissions: ['cajachica.liquidaciones.view']
+      permissions: [
+        'cajachica.liquidacion.view',
+        'cajachica.liquidaciones.view',
+        'cajachica.liquidacion.create',
+        'cajachica.liquidaciones.create'
+      ]
     },
   },
   {
@@ -69,7 +94,17 @@ const routes: RouteRecordRaw[] = [
     meta: { 
       requiresAuth: true,
       title: 'Aprobaciones pendientes',
-      permissions: ['cajachica.aprobaciones.view']
+      permissions: ['cajachica.aprobaciones.supervisor.view']
+    },
+  },
+  {
+    path: '/caja-chica/aprobaciones-supervisor-historial',
+    name: 'caja-chica-aprobaciones-supervisor-historial',
+    component: () => import('./views/AprobacionesSupervisorHistorialView.vue'),
+    meta: { 
+      requiresAuth: true,
+      title: 'Historial supervisor',
+      permissions: ['cajachica.aprobaciones.supervisor.history']
     },
   },
   {
@@ -79,7 +114,7 @@ const routes: RouteRecordRaw[] = [
     meta: { 
       requiresAuth: true,
       title: 'Aprobaciones contabilidad',
-      permissions: ['cajachica.aprobaciones.view']
+      permissions: ['cajachica.aprobaciones.contabilidad.view']
     },
   },
   {
@@ -89,7 +124,7 @@ const routes: RouteRecordRaw[] = [
     meta: { 
       requiresAuth: true,
       title: 'Historial contabilidad',
-      permissions: ['cajachica.aprobaciones.view']
+      permissions: ['cajachica.aprobaciones.contabilidad.history']
     },
   },
   {

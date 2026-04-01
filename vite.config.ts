@@ -18,28 +18,50 @@ export default defineConfig(({ mode }) => {
     },
     // Configuración del servidor de desarrollo (solo se usa en desarrollo)
     server: {
+      host: '0.0.0.0',
       port: 3000,
       proxy: {
         // MBA3 Consultas (ODC SAP, plantillas, pedidos, etc.) → backend local :8000 (evita CORS en dev).
         '/mba3-api': {
-          target: env.VITE_MBA3_PROXY_TARGET,
+          target: env.VITE_MBA3_PROXY_TARGET || 'http://localhost:8000',
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path.replace(/^\/mba3-api/, '')
         },
         // /Auth/me → mba3-consultas (capabilities). Debe ir antes que /api.
         '/api/Auth/me': {
-          target: env.VITE_MBA3_PROXY_TARGET,
+          target: env.VITE_MBA3_PROXY_TARGET || 'http://localhost:8000',
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path
         },
-        // Login y resto de /api → Core (Apps pruebas).
-        '/api': {
-          target: env.VITE_CORE_PROXY_TARGET, // Core con AD
+        // Preferencias de usuario (persistencia UI) → mba3-consultas
+        '/api/users/preferences': {
+          target: env.VITE_MBA3_PROXY_TARGET || 'http://localhost:8000',
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path
+        },
+        // Stream SSE de notificaciones → mba3-consultas
+        '/notificaciones': {
+          target: env.VITE_MBA3_PROXY_TARGET || 'http://localhost:8000',
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path
+        },
+        // Caja Chica API via mismo host del frontend (evita localhost del navegador cliente remoto)
+        '/caja-chica-api': {
+          target: env.VITE_CAJA_CHICA_PROXY_TARGET || 'http://localhost:8080',
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/caja-chica-api/, '/api')
+        },
+        // Integracion SAP Slayer -> http://localhost:5110/api (evita CORS en navegador)
+        '/slayer-api': {
+          target: env.VITE_SLAYER_PROXY_TARGET || 'http://localhost:5110',
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/slayer-api/, '/api')
         },
         // Archivos estáticos de Caja Chica (ej: /uploads/...) → backend http://localhost:8080
         '/uploads': {
@@ -50,17 +72,17 @@ export default defineConfig(({ mode }) => {
         },
         // API del Maestro de Artículos
         '/maestro-api': {
-          target: env.VITE_MAESTRO_API_TARGET,
+          target: env.VITE_MAESTRO_API_TARGET || 'http://localhost:3100',
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path.replace(/^\/maestro-api/, '')
         },
-        // CRUD de empleados (módulo Gestión Usuarios)
-        '/employees-api': {
-          target: env.VITE_STORE_EMPLOYEES_PROXY_TARGET || 'http://localhost/klienteV1/cws/api',
+        // Login y resto de /api → Core local en desarrollo
+        '/api': {
+          target: env.VITE_CORE_PROXY_TARGET || 'http://localhost:5053',
           changeOrigin: true,
           secure: false,
-          rewrite: (path) => path.replace(/^\/employees-api/, '')
+          rewrite: (path) => path
         }
       }
     },

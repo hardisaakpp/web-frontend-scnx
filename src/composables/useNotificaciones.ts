@@ -41,6 +41,7 @@ export interface SSENotification {
 
 /** URL base de la API MBA3 */
 const API_BASE_URL = import.meta.env.VITE_MBA3_API_BASE_URL || 'http://localhost:8000'
+const SSE_ENABLED = String(import.meta.env.VITE_ENABLE_NOTIFICACIONES_SSE ?? 'false').toLowerCase() === 'true'
 
 /**
  * Ref global (a nivel de módulo) con la última notificación recibida.
@@ -83,6 +84,13 @@ export function useNotificaciones() {
    * Se reconecta automáticamente si la conexión se pierde.
    */
   async function connect() {
+    if (!SSE_ENABLED) {
+      if (import.meta.env.DEV) {
+        console.info('📢 [Notificaciones] SSE deshabilitado por VITE_ENABLE_NOTIFICACIONES_SSE')
+      }
+      return
+    }
+
     const token = localStorage.getItem('token')
     if (!token) {
       if (import.meta.env.DEV) {

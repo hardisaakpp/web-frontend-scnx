@@ -1,17 +1,18 @@
 <template>
   <div class="max-w-full mx-auto px-2 sm:px-4 lg:px-6 py-6">
+    <button
+      type="button"
+      class="mb-4 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 hover:underline"
+      @click="volver"
+    >
+      <span aria-hidden="true">←</span> Volver
+    </button>
     <div class="space-y-6">
       <div class="flex items-center justify-between pb-4 border-b border-gray-200 dark:border-gray-600">
         <div>
           <h1 class="text-2xl font-semibold text-gray-900 dark:text-white tracking-tight">Aprobaciones contabilidad</h1>
           <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Revisar novedades de supervisores y aprobar el valor final</p>
         </div>
-        <router-link
-          class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700/50 text-gray-700 dark:text-gray-200 text-sm px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-          to="/caja-chica"
-        >
-          Volver
-        </router-link>
       </div>
 
       <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm p-6">
@@ -60,6 +61,15 @@
                 </div>
               </div>
             </div>
+            <button
+              type="button"
+              class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700/50 text-gray-700 dark:text-gray-200 text-sm px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-1 disabled:opacity-50"
+              :disabled="groupedPendientes.length === 0"
+              @click="downloadPdf"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+              PDF
+            </button>
             <button
               type="button"
               class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700/50 text-gray-700 dark:text-gray-200 text-sm px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
@@ -433,6 +443,7 @@ import { computed, onMounted, onBeforeUnmount, ref, watch, nextTick } from 'vue'
 import axios from 'axios'
 import api from '@/services/api'
 import { useTablePreferences } from '@/composables/useTablePreferences'
+import { useRouter } from 'vue-router'
 
 interface ColumnConfig {
   key: string
@@ -498,6 +509,11 @@ const actionError = ref('')
 const actionSuccess = ref('')
 const actionLoadingId = ref<number | null>(null)
 const pendientes = ref<AprobacionItem[]>([])
+const router = useRouter()
+
+const volver = () => {
+  router.back()
+}
 const decisions = ref<Record<number, DecisionState>>({})
 const openGroups = ref<Record<number, boolean>>({})
 const supervisorByDetalle = ref<Record<number, SupervisorDecision[]>>({})
@@ -505,6 +521,31 @@ const detallesByLiquidacion = ref<Record<number, DetalleItem[]>>({})
 const adjuntosByDetalle = ref<Record<number, number>>({})
 const usuarios = ref<UserOption[]>([])
 const usuariosById = ref<Record<string, UserOption>>({})
+// Cache para nombres de usuario locales
+const localUserNames = ref<Record<string, string>>({})
+const localUserLoading = ref<Record<string, boolean>>({})
+
+async function fetchLocalUserName(id?: string) {
+  if (!id) return '-';
+  if (localUserNames.value[id] || localUserLoading.value[id]) return;
+  localUserLoading.value[id] = true;
+  try {
+    // Usa el cliente API configurado del frontend para evitar puertos hardcodeados.
+    const base = String(api.defaults.baseURL || '/api').replace(/\/+$/, '');
+    const url = `${base}/Admin/user-local-name/${id}`;
+    console.log('[SupervisorName] idUsuario:', id);
+    console.log('[SupervisorName] endpoint:', url);
+    const resp = await api.get(`/Admin/user-local-name/${id}`);
+    console.log('[SupervisorName] resultado endpoint:', resp.data);
+    localUserNames.value[id] = resp.data.fullName || id;
+  } catch (err) {
+    console.error('[SupervisorName] error endpoint:', err);
+    const fallback = usuariosById.value[id]?.label || '-';
+    localUserNames.value[id] = fallback;
+  } finally {
+    localUserLoading.value[id] = false;
+  }
+}
 
 const availableColumns: ColumnConfig[] = [
   { key: 'id', label: 'Id', fixed: false },
@@ -781,7 +822,7 @@ function getStickyStyle(column: ColumnConfig): { right?: string; minWidth?: stri
 }
 
 const cajaChicaApi = axios.create({
-  baseURL: import.meta.env.VITE_CAJA_CHICA_API_URL || 'http://localhost:8080/api',
+  baseURL: import.meta.env.VITE_CAJA_CHICA_API_URL || '/caja-chica-api',
   headers: { 'Content-Type': 'application/json' }
 })
 
@@ -793,7 +834,7 @@ cajaChicaApi.interceptors.request.use(config => {
   return config
 })
 
-const apiBaseUrl = (import.meta.env.VITE_CAJA_CHICA_API_URL || 'http://localhost:8080/api').replace(/\/+$/, '')
+const apiBaseUrl = (import.meta.env.VITE_CAJA_CHICA_API_URL || '/caja-chica-api').replace(/\/+$/, '')
 const fileBaseUrl = apiBaseUrl.endsWith('/api') ? apiBaseUrl.slice(0, -4) : apiBaseUrl
 
 const buildAdjuntoUrl = (ruta: string) => {
@@ -836,9 +877,19 @@ const normalizeUser = (user: any): UserOption => {
 }
 
 const getUserLabel = (id?: string) => {
-  if (!id) return '-'
-  const user = usuariosById.value[id]
-  return user?.label || id || '-'
+  if (!id) return '-';
+  // Si ya está en el caché local, mostrarlo
+  if (localUserNames.value[id]) return localUserNames.value[id];
+  // Fallback inmediato con usuarios ya cargados
+  if (usuariosById.value[id]?.label) {
+    localUserNames.value[id] = usuariosById.value[id].label;
+    return localUserNames.value[id];
+  }
+  // Si está cargando, mostrar '...'
+  if (localUserLoading.value[id]) return 'Cargando...';
+  // Lanzar la carga y mostrar estado de carga
+  fetchLocalUserName(id);
+  return 'Cargando...';
 }
 
 const normalizeDetalle = (item: any): DetalleItem => ({
@@ -1156,6 +1207,134 @@ const reject = async (item: AprobacionItem) => {
 
 const formatAmount = (value: number) => value.toFixed(2)
 const formatDate = (value: string) => (value ? value.substring(0, 10) : '')
+
+const downloadPdf = () => {
+  const groups = groupedPendientes.value
+  if (groups.length === 0) return
+  const esc = (s: string | number | undefined | null) =>
+    String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  const fmt = (v: string) => v ? v.substring(0, 10) : '-'
+  const fmtAmt = (v: number | string) => {
+    const n = Number(v)
+    return !Number.isNaN(n) ? n.toFixed(2) : '0.00'
+  }
+
+  const CSS = `
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Helvetica Neue',Arial,sans-serif;font-size:11px;color:#1a1a1a;background:#fff;padding:20px}
+    .liquidacion{border:1px solid #d1d5db;border-radius:6px;margin-bottom:28px;overflow:hidden;page-break-inside:avoid}
+    .cabecera{background:#7c3aed;color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+    .cabecera h2{font-size:13px;font-weight:700;margin-bottom:2px}
+    .cabecera .sub{font-size:10px;opacity:.8}
+    .cabecera .stats{display:flex;gap:14px;margin-top:4px}
+    .cabecera .stat{font-size:10px;opacity:.85}
+    .cabecera .stat strong{font-weight:700;opacity:1}
+    .meta{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-bottom:1px solid #e5e7eb}
+    .meta-item{padding:8px 14px;border-right:1px solid #e5e7eb}
+    .meta-item:last-child{border-right:none}
+    .meta-label{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:2px}
+    .meta-value{font-size:11px;font-weight:600;color:#111}
+    .section-title{background:#f9fafb;padding:6px 14px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#374151;border-bottom:1px solid #e5e7eb}
+    table{width:100%;border-collapse:collapse}
+    th{background:#f3f4f6;text-align:left;padding:6px 10px;font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:#6b7280;border-bottom:1px solid #e5e7eb}
+    td{padding:5px 10px;border-bottom:1px solid #f3f4f6;vertical-align:top;font-size:10px}
+    tr:last-child td{border-bottom:none}
+    .amount{text-align:right;font-variant-numeric:tabular-nums}
+    .novedad{color:#d97706;font-weight:600}
+    .no-novedad{color:#9ca3af}
+    .no-data{padding:10px 14px;font-size:10px;color:#9ca3af;font-style:italic}
+    .sup-decisions{font-size:9px;color:#6b7280;margin-top:2px}
+    .footer-bar{background:#f9fafb;padding:8px 14px;display:flex;justify-content:flex-end;gap:24px;border-top:1px solid #e5e7eb}
+    .footer-bar span{font-size:10px;color:#6b7280}
+    .footer-bar strong{font-size:11px;color:#111}
+    @media print{body{padding:8mm}@page{size:A4;margin:10mm}.liquidacion{margin-bottom:16px}}
+  `
+
+  let sectionsHtml = ''
+
+  groups.forEach(group => {
+    const totalInicial = group.items.reduce((a, i) => a + i.total, 0)
+    const totalFinal = group.items.reduce((a, i) => {
+      const monto = decisions.value[i.idAprobacion]?.montoAprobado
+      return a + (monto !== undefined ? Number(monto) : i.total)
+    }, 0)
+    const conNovedad = group.items.filter(i => hasSupervisorNovedad(i)).length
+
+    const filas = group.items.map(item => {
+      const d = detallesByLiquidacion.value[group.idLiquidacion]?.find(det => det.idDetalle === item.idDetalle)
+      const montoFinal = decisions.value[item.idAprobacion]?.montoAprobado ?? fmtAmt(item.total)
+      const novedad = hasSupervisorNovedad(item)
+      const supDecisions = getSupervisorDecisions(item.idDetalle)
+      const supHtml = supDecisions.length
+        ? supDecisions.map(sd => `${getUserLabel(sd.idUsuario)}: ${esc(sd.estado)} $${fmtAmt(sd.montoAprobado)}${sd.observacion ? ' — ' + esc(sd.observacion) : ''}`).join('<br>')
+        : '-'
+      return `<tr>
+        <td>${esc(item.idAprobacion)}</td>
+        <td>${esc(item.idDetalle)}</td>
+        <td>${esc(item.nombreGasto)}</td>
+        <td>${esc(d?.concepto ?? item.concepto ?? '-')}</td>
+        <td>${esc(d?.nombreProveedor ?? '-')}</td>
+        <td>${esc(d?.ruc ?? '-')}</td>
+        <td>${esc(d?.numeroComprobante ?? '-')}</td>
+        <td>${fmt(String(d?.fechaConsumo ?? ''))}</td>
+        <td class="amount">${d ? fmtAmt(d.subtotalConIva) : '-'}</td>
+        <td class="amount">${d ? fmtAmt(d.subtotalSinIva) : '-'}</td>
+        <td class="amount">${d ? fmtAmt(d.iva) : '-'}</td>
+        <td class="amount">${fmtAmt(item.total)}</td>
+        <td class="amount">${fmtAmt(montoFinal)}</td>
+        <td class="${novedad ? 'novedad' : 'no-novedad'}">${novedad ? 'Sí' : 'No'}</td>
+        <td class="amount">${esc(item.nivelAprobacion)}</td>
+        <td><div class="sup-decisions">${supHtml}</div></td>
+      </tr>`
+    }).join('')
+
+    sectionsHtml += `
+      <div class="liquidacion">
+        <div class="cabecera">
+          <div>
+            <div class="sub">Aprobaciones contabilidad — Liquidación de caja chica</div>
+            <h2>Liquidación #${esc(group.idLiquidacion)}</h2>
+            <div class="stats">
+              <span class="stat">Ítems: <strong>${group.totalItems}</strong></span>
+              <span class="stat">Con novedad: <strong>${conNovedad}</strong></span>
+              <span class="stat">Total inicial: <strong>$${fmtAmt(totalInicial)}</strong></span>
+              <span class="stat">Total final: <strong>$${fmtAmt(totalFinal)}</strong></span>
+            </div>
+          </div>
+        </div>
+        <div class="meta">
+          <div class="meta-item"><div class="meta-label">Almacén / Tienda</div><div class="meta-value">${esc(group.codAlmacen || '-')}</div></div>
+          <div class="meta-item"><div class="meta-label">Custodio</div><div class="meta-value">${esc(group.nombreCustodio || '-')}</div></div>
+          <div class="meta-item"><div class="meta-label">Fecha creación</div><div class="meta-value">${fmt(group.fechaCreacion)}</div></div>
+          <div class="meta-item"><div class="meta-label">Nivel aprobación</div><div class="meta-value">Contabilidad (Niv. 2)</div></div>
+        </div>
+        <div class="section-title">Ítems pendientes de aprobación</div>
+        <table><thead><tr>
+          <th>Aprobación</th><th>#Det.</th><th>Gasto</th><th>Concepto</th><th>Proveedor</th><th>RUC</th><th>Comprobante</th><th>F. Consumo</th>
+          <th>Base 15%</th><th>Base 0%</th><th>IVA</th><th>Total</th><th>Monto final</th><th>Novedad</th><th>Nivel</th><th>Supervisores</th>
+        </tr></thead><tbody>${filas}</tbody></table>
+        <div class="footer-bar">
+          <span>Total inicial&nbsp;<strong>$${fmtAmt(totalInicial)}</strong></span>
+          <span>Total final&nbsp;<strong>$${fmtAmt(totalFinal)}</strong></span>
+        </div>
+      </div>`
+  })
+
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Aprobaciones Contabilidad</title><style>${CSS}</style></head><body>
+    <div style="margin-bottom:16px;border-bottom:2px solid #7c3aed;padding-bottom:8px;display:flex;justify-content:space-between;align-items:flex-end">
+      <div><div style="font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#6b7280">Reporte</div><div style="font-size:16px;font-weight:700;color:#7c3aed">Aprobaciones Contabilidad</div></div>
+      <div style="text-align:right;font-size:10px;color:#6b7280">Generado: ${new Date().toLocaleString('es-ES')}<br>${groups.length} liquidación(es) pendientes</div>
+    </div>
+    ${sectionsHtml}
+  </body></html>`
+
+  const win = window.open('', '_blank')
+  if (!win) { alert('Por favor permite ventanas emergentes para descargar el PDF.'); return }
+  win.document.write(html)
+  win.document.close()
+  win.focus()
+  setTimeout(() => { win.print() }, 600)
+}
 
 onMounted(() => {
   loadPendientes()

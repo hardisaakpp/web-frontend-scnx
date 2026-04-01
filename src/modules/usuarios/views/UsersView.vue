@@ -12,6 +12,17 @@
             Total: <span class="font-semibold text-gray-900 dark:text-white">{{ totalCount }}</span>
           </div>
           <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <button
+              type="button"
+              class="rounded bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 disabled:opacity-50 flex items-center gap-2 justify-center"
+              :disabled="syncLoading"
+              @click="syncLdap"
+            >
+              <svg v-if="syncLoading" class="animate-spin h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span>{{ syncLoading ? 'Sincronizando...' : 'Sincronizar AD' }}</span>
+            </button>
             <input
               v-model.trim="searchQuery"
               type="text"
@@ -28,6 +39,35 @@
               <option :value="50">50</option>
             </select>
           </div>
+        </div>
+        <div v-if="syncSuccess" class="mb-4 text-sm text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 p-3 rounded">{{ syncSuccess }}</div>
+        <div v-if="syncError" class="mb-4 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded">{{ syncError }}</div>
+        
+        <!-- Búsqueda e importación de usuario específico -->
+        <div class="mb-4 p-4 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+          <div class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Buscar e importar usuario específico de AD</div>
+          <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <input
+              v-model.trim="searchUserTerm"
+              type="text"
+              placeholder="Buscar por usuario, email o nombre"
+              class="w-full sm:flex-1 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder:text-gray-400"
+              @keyup.enter="searchAndImportUser"
+            />
+            <button
+              type="button"
+              class="rounded bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium px-4 py-2 disabled:opacity-50 flex items-center gap-2 justify-center"
+              :disabled="searchUserLoading"
+              @click="searchAndImportUser"
+            >
+              <svg v-if="searchUserLoading" class="animate-spin h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span>{{ searchUserLoading ? 'Buscando...' : 'Importar' }}</span>
+            </button>
+          </div>
+          <div v-if="searchUserError" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ searchUserError }}</div>
+          <div v-if="searchUserSuccess" class="mt-2 text-sm text-emerald-600 dark:text-emerald-400">{{ searchUserSuccess }}</div>
         </div>
         <div v-if="loading" class="text-sm text-gray-600 dark:text-gray-300">Cargando usuarios...</div>
         <div v-else-if="error" class="text-sm text-red-600 dark:text-red-400">{{ error }}</div>
@@ -174,6 +214,13 @@ const removeLoading = ref(false)
 const removeError = ref('')
 const removeSuccess = ref('')
 const selectedUserId = ref('')
+const syncLoading = ref(false)
+const syncError = ref('')
+const syncSuccess = ref('')
+const searchUserTerm = ref('')
+const searchUserLoading = ref(false)
+const searchUserError = ref('')
+const searchUserSuccess = ref('')
 
 const getValue = (user: UserRecord, keys: string[]) => {
   for (const key of keys) {
@@ -289,8 +336,26 @@ const openRoles = async (user: UserRecord) => {
       roles.value = payload.roles.map(normalizeRole).filter(Boolean)
     }
   } catch (err: unknown) {
-    const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-    rolesError.value = message || 'No se pudo cargar los roles del usuario.'
+    const axiosError = err as { response?: { status?: number; data?: { message?: string } } }
+    const status = axiosError?.response?.status
+    const message = axiosError?.response?.data?.message
+    
+    console.error('Error al cargar roles:', {
+      status,
+      message,
+      userId: id,
+      endpoint: `/Users/${id}/roles`
+    })
+    
+    if (status === 403) {
+      rolesError.value = 'No tienes permisos para ver roles de usuarios. Se requiere el rol "Admin".'
+    } else if (status === 401) {
+      rolesError.value = 'No estás autenticado. Por favor, inicia sesión nuevamente.'
+    } else if (status === 404) {
+      rolesError.value = 'Usuario no encontrado.'
+    } else {
+      rolesError.value = message || `No se pudo cargar los roles del usuario (código ${status || 'desconocido'})`
+    }
   } finally {
     rolesLoading.value = false
   }
@@ -317,8 +382,35 @@ const assignRole = async () => {
     roleToAssign.value = ''
     await openRoles({ id: selectedUserId.value })
   } catch (err: unknown) {
-    const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-    assignError.value = message || 'No se pudo asignar el rol.'
+    const axiosError = err as { response?: { status?: number; data?: { message?: string; errors?: unknown[] } } }
+    const status = axiosError?.response?.status
+    const message = axiosError?.response?.data?.message
+    const errors = axiosError?.response?.data?.errors
+    
+    console.error('Error al asignar rol:', {
+      status,
+      message,
+      errors,
+      userId: selectedUserId.value,
+      role: roleToAssign.value,
+      endpoint: `/Users/${selectedUserId.value}/roles`
+    })
+    
+    if (status === 403) {
+      assignError.value = 'No tienes permisos para asignar roles. Se requiere el rol "Admin".'
+    } else if (status === 401) {
+      assignError.value = 'No estás autenticado. Por favor, inicia sesión nuevamente.'
+    } else if (status === 400) {
+      if (errors && Array.isArray(errors)) {
+        assignError.value = `Error: ${errors.map((e: any) => e.description || e).join(', ')}`
+      } else {
+        assignError.value = message || 'Datos inválidos. Verifica que el rol existe.'
+      }
+    } else if (status === 404) {
+      assignError.value = 'Usuario no encontrado.'
+    } else {
+      assignError.value = message || `Error al asignar el rol (código ${status || 'desconocido'})`
+    }
   } finally {
     assignLoading.value = false
   }
@@ -342,8 +434,35 @@ const removeRole = async (role: string) => {
     removeSuccess.value = 'Rol eliminado correctamente.'
     await openRoles({ id: selectedUserId.value })
   } catch (err: unknown) {
-    const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
-    removeError.value = message || 'No se pudo quitar el rol.'
+    const axiosError = err as { response?: { status?: number; data?: { message?: string; errors?: unknown[] } } }
+    const status = axiosError?.response?.status
+    const message = axiosError?.response?.data?.message
+    const errors = axiosError?.response?.data?.errors
+    
+    console.error('Error al remover rol:', {
+      status,
+      message,
+      errors,
+      userId: selectedUserId.value,
+      role,
+      endpoint: `/Users/${selectedUserId.value}/roles/${encodeURIComponent(role)}`
+    })
+    
+    if (status === 403) {
+      removeError.value = 'No tienes permisos para quitar roles. Se requiere el rol "Admin".'
+    } else if (status === 401) {
+      removeError.value = 'No estás autenticado. Por favor, inicia sesión nuevamente.'
+    } else if (status === 400) {
+      if (errors && Array.isArray(errors)) {
+        removeError.value = `Error: ${errors.map((e: any) => e.description || e).join(', ')}`
+      } else {
+        removeError.value = message || 'Datos inválidos. Verifica que el rol existe y está asignado al usuario.'
+      }
+    } else if (status === 404) {
+      removeError.value = 'Usuario o rol no encontrado.'
+    } else {
+      removeError.value = message || `Error al quitar el rol (código ${status || 'desconocido'})`
+    }
   } finally {
     removeLoading.value = false
   }
@@ -356,6 +475,48 @@ const closeRoles = () => {
   roleToAssign.value = ''
   removeError.value = ''
   removeSuccess.value = ''
+}
+
+const syncLdap = async () => {
+  syncLoading.value = true
+  syncError.value = ''
+  syncSuccess.value = ''
+  try {
+    await api.post('/Admin/sync-ldap')
+    syncSuccess.value = 'Sincronización completada. Los usuarios de AD han sido sincronizados.'
+    await loadUsers()
+  } catch (err: unknown) {
+    const axiosError = err as { response?: { status?: number; data?: { message?: string } } }
+    const message = axiosError?.response?.data?.message
+    syncError.value = message || 'No se pudo sincronizar los usuarios de AD.'
+  } finally {
+    syncLoading.value = false
+  }
+}
+
+const searchAndImportUser = async () => {
+  if (!searchUserTerm.value.trim()) {
+    searchUserError.value = 'Ingresa un nombre de usuario para buscar'
+    return
+  }
+
+  searchUserLoading.value = true
+  searchUserError.value = ''
+  searchUserSuccess.value = ''
+  try {
+    const response = await api.post('/Admin/search-and-import-user', {
+      searchTerm: searchUserTerm.value.trim()
+    })
+    searchUserSuccess.value = response.data.message
+    searchUserTerm.value = ''
+    await loadUsers()
+  } catch (err: unknown) {
+    const axiosError = err as { response?: { status?: number; data?: { message?: string } } }
+    const message = axiosError?.response?.data?.message
+    searchUserError.value = message || 'No se pudo importar el usuario.'
+  } finally {
+    searchUserLoading.value = false
+  }
 }
 
 watch([searchQuery, pageSize], () => {

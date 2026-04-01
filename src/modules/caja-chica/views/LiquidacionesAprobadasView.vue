@@ -1,29 +1,41 @@
 <template>
   <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <button
+      type="button"
+      class="mb-4 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 hover:underline"
+      @click="volver"
+    >
+      <span aria-hidden="true">←</span> Volver
+    </button>
     <div class="space-y-6">
       <div class="flex items-center justify-between">
         <div>
           <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Liquidaciones aprobadas</h1>
           <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Solicitudes en estado APROBADO</p>
         </div>
-        <router-link
-          class="rounded border border-gray-200 dark:border-gray-700 text-sm px-3 py-1.5"
-          to="/caja-chica"
-        >
-          Volver
-        </router-link>
       </div>
 
       <div class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-5">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Listado</h2>
-          <button
-            type="button"
-            class="rounded border border-gray-200 dark:border-gray-700 text-sm px-3 py-1.5"
-            @click="loadAprobadas"
-          >
-            Refrescar
-          </button>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              class="rounded border border-gray-200 dark:border-gray-700 text-sm px-3 py-1.5 flex items-center gap-1 disabled:opacity-50"
+              :disabled="filteredAprobadas.length === 0"
+              @click="downloadPdf"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+              PDF
+            </button>
+            <button
+              type="button"
+              class="rounded border border-gray-200 dark:border-gray-700 text-sm px-3 py-1.5"
+              @click="loadAprobadas"
+            >
+              Refrescar
+            </button>
+          </div>
         </div>
         <div class="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <div>
@@ -78,13 +90,23 @@
                 <div class="text-xs text-gray-500 dark:text-gray-400">
                   Contabilidad: {{ formatTotalDisplay(getContabilidadTotal(item.idLiquidacion)) }}
                 </div>
-                <button
-                  type="button"
-                  class="rounded border border-gray-200 dark:border-gray-700 px-2 py-1 text-xs text-gray-700 dark:text-gray-300"
-                  @click="toggleItem(item.idLiquidacion)"
-                >
-                  {{ isItemOpen(item.idLiquidacion) ? 'Ocultar' : 'Ver' }}
-                </button>
+                <div class="flex items-center gap-2">
+                  <button
+                    type="button"
+                    class="rounded border border-gray-200 dark:border-gray-700 px-2 py-1 text-xs flex items-center gap-1"
+                    @click="downloadLiquidacionPdf(item.idLiquidacion)"
+                  >
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    PDF
+                  </button>
+                  <button
+                    type="button"
+                    class="rounded border border-gray-200 dark:border-gray-700 px-2 py-1 text-xs text-gray-700 dark:text-gray-300"
+                    @click="toggleItem(item.idLiquidacion)"
+                  >
+                    {{ isItemOpen(item.idLiquidacion) ? 'Ocultar' : 'Ver' }}
+                  </button>
+                </div>
               </div>
             </div>
             <div v-if="isItemOpen(item.idLiquidacion)" class="overflow-x-auto">
@@ -103,6 +125,7 @@
                     <th class="py-2 pr-3">Total</th>
                     <th class="py-2 pr-3">Monto contabilidad</th>
                     <th class="py-2 pr-3">Obs. contabilidad</th>
+                    <th class="py-2 pr-3">Fecha aprobación</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -117,6 +140,9 @@
                     <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">
                       {{ getDetalleContabilidadObs(detalle.idDetalle) || '-' }}
                     </td>
+                    <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">
+                      {{ getContabilidadFecha(detalle.idDetalle) }}
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -129,11 +155,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import axios from 'axios'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+
+const authStore = useAuthStore()
 
 interface LiquidacionItem {
   idLiquidacion: number
+  idUsuario: string
   estado: string
   codAlmacen: string
   nombreCustodio: string
@@ -160,16 +191,23 @@ interface AprobacionItem {
 const loading = ref(false)
 const error = ref('')
 const aprobadas = ref<LiquidacionItem[]>([])
-const filterFrom = ref('')
-const filterTo = ref('')
+const router = useRouter()
+const _today = new Date()
+const _toISODate = (d: Date) => d.toISOString().substring(0, 10)
+const filterFrom = ref(_toISODate(new Date(_today.getFullYear(), _today.getMonth(), _today.getDate() - 3)))
+const filterTo = ref(_toISODate(_today))
 const openItems = ref<Record<number, boolean>>({})
 const detallesByLiquidacion = ref<Record<number, LiquidacionDetalleItem[]>>({})
 const detalleLoading = ref<Record<number, boolean>>({})
 const detalleError = ref<Record<number, string>>({})
 const contabilidadByDetalle = ref<Record<number, AprobacionItem>>({})
 
+const volver = () => {
+  router.back()
+}
+
 const cajaChicaApi = axios.create({
-  baseURL: import.meta.env.VITE_CAJA_CHICA_API_URL || 'http://localhost:8080/api',
+  baseURL: import.meta.env.VITE_CAJA_CHICA_API_URL || '/caja-chica-api',
   headers: {
     'Content-Type': 'application/json'
   }
@@ -185,8 +223,21 @@ cajaChicaApi.interceptors.request.use(config => {
 
 const normalizeString = (value: any) => String(value ?? '').trim()
 
+const getCurrentUserId = (): string => {
+  if (authStore.userData?.id) return authStore.userData.id
+  try {
+    const userStr = localStorage.getItem('user')
+    if (!userStr) return ''
+    const user = JSON.parse(userStr) as { id?: string }
+    return user.id || ''
+  } catch {
+    return ''
+  }
+}
+
 const normalizeLiquidacion = (item: any): LiquidacionItem => ({
   idLiquidacion: Number(item.idLiquidacion ?? item.IdLiquidacion ?? 0),
+  idUsuario: normalizeString(item.idUsuario ?? item.IdUsuario ?? ''),
   estado: normalizeString(item.estado ?? item.Estado ?? ''),
   codAlmacen: normalizeString(item.codAlmacen ?? item.CodAlmacen ?? ''),
   nombreCustodio: normalizeString(item.nombreCustodio ?? item.NombreCustodio ?? ''),
@@ -211,13 +262,15 @@ const normalizeAprobacion = (item: any): AprobacionItem => ({
 })
 
 const filteredAprobadas = computed(() => {
+  const currentUserId = getCurrentUserId()
   const from = filterFrom.value ? new Date(filterFrom.value).getTime() : null
   const to = filterTo.value ? new Date(filterTo.value).getTime() : null
   return aprobadas.value.filter(item => {
+    const isCurrentUser = item.idUsuario === currentUserId
     const time = item.fechaCreacion ? new Date(item.fechaCreacion).getTime() : null
     if (from && time && time < from) return false
     if (to && time && time > to + 24 * 60 * 60 * 1000 - 1) return false
-    return true
+    return isCurrentUser
   })
 })
 
@@ -225,6 +278,10 @@ const clearFilters = () => {
   filterFrom.value = ''
   filterTo.value = ''
 }
+
+watch([filterFrom, filterTo], () => {
+  loadAprobadas()
+})
 
 const isItemOpen = (idLiquidacion: number) => openItems.value[idLiquidacion] === true
 
@@ -303,13 +360,17 @@ const loadAprobadas = async () => {
   loading.value = true
   error.value = ''
   try {
+    const currentUserId = getCurrentUserId()
     await loadAprobacionesContabilidad()
-    const response = await cajaChicaApi.get('/Liquidaciones')
+    const params: Record<string, string> = {}
+    if (filterFrom.value) params.fechaDesde = filterFrom.value
+    if (filterTo.value) params.fechaHasta = filterTo.value
+    const response = await cajaChicaApi.get('/Liquidaciones', { params })
     const payload = response.data as any
     const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
     aprobadas.value = items
       .map(normalizeLiquidacion)
-      .filter((item: LiquidacionItem) => item.estado.toUpperCase() === 'APROBADO')
+      .filter((item: LiquidacionItem) => item.estado.toUpperCase() === 'APROBADO' && item.idUsuario === currentUserId)
     openItems.value = {}
     detallesByLiquidacion.value = {}
     detalleLoading.value = {}
@@ -324,6 +385,228 @@ const loadAprobadas = async () => {
 const formatAmount = (value: number) => value.toFixed(2)
 const formatTotalDisplay = (value: number | null) => (value === null ? '-' : formatAmount(value))
 const formatDate = (value: string) => (value ? value.substring(0, 10) : '')
+
+const getContabilidadFecha = (idDetalle: number): string => {
+  const dec = contabilidadByDetalle.value[idDetalle]
+  const fa = dec?.fechaAprobacion
+  return fa ? String(fa).substring(0, 10) : '-'
+}
+
+const downloadLiquidacionPdf = async (idLiquidacion: number) => {
+  const item = aprobadas.value.find(a => a.idLiquidacion === idLiquidacion)
+  if (!item) return
+  const esc = (s: string | number | undefined | null) =>
+    String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  const fmt = (v: string) => v ? v.substring(0, 10) : '-'
+  const fmtAmt = (v: number) => v != null ? v.toFixed(2) : '0.00'
+
+  if (!detallesByLiquidacion.value[idLiquidacion]) {
+    try {
+      const res = await cajaChicaApi.get(`/Liquidaciones/${idLiquidacion}/detalle`)
+      const p = res.data as any
+      const arr: any[] = Array.isArray(p) ? p : Array.isArray(p?.data) ? p.data : []
+      detallesByLiquidacion.value[idLiquidacion] = arr.map(normalizeDetalle)
+    } catch {
+      detallesByLiquidacion.value[idLiquidacion] = []
+    }
+  }
+
+  const detalles = detallesByLiquidacion.value[idLiquidacion] || []
+  const initialTotal = detalles.reduce((a, d) => a + d.total, 0)
+  const contabilidadTotal = detalles.reduce((a, d) => a + getDetalleContabilidadMonto(d.idDetalle, d.total), 0)
+
+  const CSS = `
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Helvetica Neue',Arial,sans-serif;font-size:11px;color:#1a1a1a;background:#fff;padding:20px}
+    .liquidacion{border:1px solid #d1d5db;border-radius:6px;overflow:hidden}
+    .cabecera{background:#065f46;color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+    .cabecera h2{font-size:13px;font-weight:700;margin-bottom:2px}
+    .cabecera .sub{font-size:10px;opacity:.8}
+    .cabecera .badge{background:rgba(255,255,255,.18);border-radius:4px;padding:3px 8px;font-size:10px;font-weight:600;white-space:nowrap}
+    .meta{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-bottom:1px solid #e5e7eb}
+    .meta-item{padding:8px 14px;border-right:1px solid #e5e7eb}
+    .meta-item:last-child{border-right:none}
+    .meta-label{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:2px}
+    .meta-value{font-size:11px;font-weight:600;color:#111}
+    .section-title{background:#f9fafb;padding:6px 14px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#374151;border-bottom:1px solid #e5e7eb}
+    table{width:100%;border-collapse:collapse}
+    th{background:#f3f4f6;text-align:left;padding:6px 10px;font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:#6b7280;border-bottom:1px solid #e5e7eb}
+    td{padding:5px 10px;border-bottom:1px solid #f3f4f6;vertical-align:top;font-size:10px}
+    tr:last-child td{border-bottom:none}
+    .amount{text-align:right;font-variant-numeric:tabular-nums}
+    .highlight{background:#f0fdf4}
+    .no-data{padding:10px 14px;font-size:10px;color:#9ca3af;font-style:italic}
+    .footer-bar{background:#f9fafb;padding:8px 14px;display:flex;justify-content:flex-end;gap:24px;border-top:1px solid #e5e7eb}
+    .footer-bar span{font-size:10px;color:#6b7280}
+    .footer-bar strong{font-size:11px;color:#111}
+    @media print{body{padding:8mm}@page{size:A4;margin:10mm}}
+  `
+
+  let detallesHtml = ''
+  if (detalles.length > 0) {
+    const filas = detalles.map(d => {
+      const monto = getDetalleContabilidadMonto(d.idDetalle, d.total)
+      const obs = getDetalleContabilidadObs(d.idDetalle)
+      const fechaAprob = getContabilidadFecha(d.idDetalle)
+      return `<tr>
+        <td>${esc(d.idDetalle)}</td>
+        <td>${esc(d.nombreGasto)}</td>
+        <td>${esc(d.concepto)}</td>
+        <td class="amount">${fmtAmt(d.total)}</td>
+        <td class="amount highlight">${fmtAmt(monto)}</td>
+        <td>${esc(obs || '-')}</td>
+        <td>${esc(fechaAprob)}</td>
+      </tr>`
+    }).join('')
+    detallesHtml = `
+      <div class="section-title">Detalle de gastos</div>
+      <table><thead><tr><th>#</th><th>Gasto</th><th>Concepto</th><th>Total inicial</th><th>Monto contabilidad</th><th>Obs. contabilidad</th><th>Fecha aprobación</th></tr></thead><tbody>${filas}</tbody></table>
+      <div class="footer-bar">
+        <span>Total inicial&nbsp;<strong>$${fmtAmt(initialTotal)}</strong></span>
+        <span>Total contabilidad&nbsp;<strong>$${fmtAmt(contabilidadTotal)}</strong></span>
+      </div>`
+  } else {
+    detallesHtml = `<div class="section-title">Detalle de gastos</div><div class="no-data">Sin detalles registrados.</div>`
+  }
+
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Liquidación #${item.idLiquidacion}</title><style>${CSS}</style></head><body>
+    <div style="margin-bottom:16px;border-bottom:2px solid #065f46;padding-bottom:8px;display:flex;justify-content:space-between;align-items:flex-end">
+      <div><div style="font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#6b7280">Reporte</div><div style="font-size:16px;font-weight:700;color:#065f46">Liquidación Aprobada</div></div>
+      <div style="text-align:right;font-size:10px;color:#6b7280">Generado: ${new Date().toLocaleString('es-ES')}</div>
+    </div>
+    <div class="liquidacion">
+      <div class="cabecera">
+        <div><div class="sub">Liquidación de caja chica — APROBADA</div><h2>Liquidación #${esc(item.idLiquidacion)}</h2></div>
+        <div class="badge">APROBADO</div>
+      </div>
+      <div class="meta">
+        <div class="meta-item"><div class="meta-label">Almacén / Tienda</div><div class="meta-value">${esc(item.codAlmacen || '-')}</div></div>
+        <div class="meta-item"><div class="meta-label">Custodio</div><div class="meta-value">${esc(item.nombreCustodio || '-')}</div></div>
+        <div class="meta-item"><div class="meta-label">Fecha creación</div><div class="meta-value">${fmt(item.fechaCreacion)}</div></div>
+        <div class="meta-item"><div class="meta-label">Estado</div><div class="meta-value">${esc(item.estado)}</div></div>
+      </div>
+      ${detallesHtml}
+    </div>
+  </body></html>`
+
+  const win = window.open('', '_blank')
+  if (!win) { alert('Por favor permite ventanas emergentes para descargar el PDF.'); return }
+  win.document.write(html)
+  win.document.close()
+  win.focus()
+  setTimeout(() => { win.print() }, 600)
+}
+
+const downloadPdf = async () => {
+  const items = filteredAprobadas.value
+  if (items.length === 0) return
+  const esc = (s: string | number | undefined | null) =>
+    String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  const fmt = (v: string) => v ? v.substring(0, 10) : '-'
+  const fmtAmt = (v: number) => v != null ? v.toFixed(2) : '0.00'
+
+  const CSS = `
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Helvetica Neue',Arial,sans-serif;font-size:11px;color:#1a1a1a;background:#fff;padding:20px}
+    .liquidacion{border:1px solid #d1d5db;border-radius:6px;margin-bottom:28px;overflow:hidden;page-break-inside:avoid}
+    .cabecera{background:#065f46;color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+    .cabecera h2{font-size:13px;font-weight:700;margin-bottom:2px}
+    .cabecera .sub{font-size:10px;opacity:.8}
+    .cabecera .badge{background:rgba(255,255,255,.18);border-radius:4px;padding:3px 8px;font-size:10px;font-weight:600;white-space:nowrap}
+    .meta{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-bottom:1px solid #e5e7eb}
+    .meta-item{padding:8px 14px;border-right:1px solid #e5e7eb}
+    .meta-item:last-child{border-right:none}
+    .meta-label{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:2px}
+    .meta-value{font-size:11px;font-weight:600;color:#111}
+    .section-title{background:#f9fafb;padding:6px 14px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#374151;border-bottom:1px solid #e5e7eb}
+    table{width:100%;border-collapse:collapse}
+    th{background:#f3f4f6;text-align:left;padding:6px 10px;font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:#6b7280;border-bottom:1px solid #e5e7eb}
+    td{padding:5px 10px;border-bottom:1px solid #f3f4f6;vertical-align:top;font-size:10px}
+    tr:last-child td{border-bottom:none}
+    .amount{text-align:right;font-variant-numeric:tabular-nums}
+    .highlight{background:#f0fdf4}
+    .no-data{padding:10px 14px;font-size:10px;color:#9ca3af;font-style:italic}
+    .footer-bar{background:#f9fafb;padding:8px 14px;display:flex;justify-content:flex-end;gap:24px;border-top:1px solid #e5e7eb}
+    .footer-bar span{font-size:10px;color:#6b7280}
+    .footer-bar strong{font-size:11px;color:#111}
+    @media print{body{padding:8mm}@page{size:A4;margin:10mm}.liquidacion{margin-bottom:16px}}
+  `
+
+  let sectionsHtml = ''
+  for (const item of items) {
+    // Cargar detalles si no están en memoria
+    if (!detallesByLiquidacion.value[item.idLiquidacion]) {
+      try {
+        const res = await cajaChicaApi.get(`/Liquidaciones/${item.idLiquidacion}/detalle`)
+        const p = res.data as any
+        const arr: any[] = Array.isArray(p) ? p : Array.isArray(p?.data) ? p.data : []
+        detallesByLiquidacion.value[item.idLiquidacion] = arr.map(normalizeDetalle)
+      } catch {
+        detallesByLiquidacion.value[item.idLiquidacion] = []
+      }
+    }
+    const detalles = detallesByLiquidacion.value[item.idLiquidacion] || []
+    const initialTotal = detalles.reduce((a, d) => a + d.total, 0)
+    const contabilidadTotal = detalles.reduce((a, d) => a + getDetalleContabilidadMonto(d.idDetalle, d.total), 0)
+
+    let detallesHtml = ''
+    if (detalles.length > 0) {
+      const filas = detalles.map(d => {
+        const monto = getDetalleContabilidadMonto(d.idDetalle, d.total)
+        const obs = getDetalleContabilidadObs(d.idDetalle)
+        const fechaAprob = getContabilidadFecha(d.idDetalle)
+        return `<tr>
+          <td>${esc(d.idDetalle)}</td>
+          <td>${esc(d.nombreGasto)}</td>
+          <td>${esc(d.concepto)}</td>
+          <td class="amount">${fmtAmt(d.total)}</td>
+          <td class="amount highlight">${fmtAmt(monto)}</td>
+          <td>${esc(obs || '-')}</td>
+          <td>${esc(fechaAprob)}</td>
+        </tr>`
+      }).join('')
+      detallesHtml = `
+        <div class="section-title">Detalle de gastos</div>
+        <table><thead><tr><th>#</th><th>Gasto</th><th>Concepto</th><th>Total inicial</th><th>Monto contabilidad</th><th>Obs. contabilidad</th><th>Fecha aprobación</th></tr></thead><tbody>${filas}</tbody></table>
+        <div class="footer-bar">
+          <span>Total inicial&nbsp;<strong>$${fmtAmt(initialTotal)}</strong></span>
+          <span>Total contabilidad&nbsp;<strong>$${fmtAmt(contabilidadTotal)}</strong></span>
+        </div>`
+    } else {
+      detallesHtml = `<div class="section-title">Detalle de gastos</div><div class="no-data">Sin detalles registrados.</div>`
+    }
+
+    sectionsHtml += `
+      <div class="liquidacion">
+        <div class="cabecera">
+          <div><div class="sub">Liquidación de caja chica — APROBADA</div><h2>Liquidación #${esc(item.idLiquidacion)}</h2></div>
+          <div class="badge">APROBADO</div>
+        </div>
+        <div class="meta">
+          <div class="meta-item"><div class="meta-label">Almacén / Tienda</div><div class="meta-value">${esc(item.codAlmacen || '-')}</div></div>
+          <div class="meta-item"><div class="meta-label">Custodio</div><div class="meta-value">${esc(item.nombreCustodio || '-')}</div></div>
+          <div class="meta-item"><div class="meta-label">Fecha creación</div><div class="meta-value">${fmt(item.fechaCreacion)}</div></div>
+          <div class="meta-item"><div class="meta-label">Estado</div><div class="meta-value">${esc(item.estado)}</div></div>
+        </div>
+        ${detallesHtml}
+      </div>`
+  }
+
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Liquidaciones Aprobadas</title><style>${CSS}</style></head><body>
+    <div style="margin-bottom:16px;border-bottom:2px solid #065f46;padding-bottom:8px;display:flex;justify-content:space-between;align-items:flex-end">
+      <div><div style="font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#6b7280">Reporte</div><div style="font-size:16px;font-weight:700;color:#065f46">Liquidaciones Aprobadas</div></div>
+      <div style="text-align:right;font-size:10px;color:#6b7280">Generado: ${new Date().toLocaleString('es-ES')}<br>${items.length} liquidación(es)</div>
+    </div>
+    ${sectionsHtml}
+  </body></html>`
+
+  const win = window.open('', '_blank')
+  if (!win) { alert('Por favor permite ventanas emergentes para descargar el PDF.'); return }
+  win.document.write(html)
+  win.document.close()
+  win.focus()
+  setTimeout(() => { win.print() }, 600)
+}
 
 onMounted(() => {
   loadAprobadas()

@@ -1,20 +1,23 @@
 <template>
   <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <button
+      type="button"
+      class="mb-4 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 hover:underline"
+      @click="volver"
+    >
+      <span aria-hidden="true">←</span> Volver
+    </button>
     <div class="space-y-6">
       <div class="flex items-center justify-between pb-4 border-b border-gray-200 dark:border-gray-600">
         <div>
           <h1 class="text-2xl font-semibold text-gray-900 dark:text-white tracking-tight">Detalle de Liquidación #{{ liquidacionId }}</h1>
-          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Agregar gastos y revisar el detalle</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            {{ isReadOnly ? 'Vista solo lectura del detalle.' : 'Agregar gastos y revisar el detalle' }}
+          </p>
         </div>
-        <router-link
-          class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700/50 text-gray-700 dark:text-gray-200 text-sm px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-          to="/caja-chica/liquidaciones"
-        >
-          Volver
-        </router-link>
       </div>
 
-      <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm p-6">
+      <div v-if="!isReadOnly" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm p-6">
         <div class="flex items-center justify-between mb-4">
           <div>
             <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Agregar detalle</h2>
@@ -65,6 +68,10 @@
             <input
               v-model.trim="ruc"
               type="text"
+              maxlength="13"
+              pattern="[0-9]*"
+              inputmode="numeric"
+              @input="ruc = onlyDigits(ruc)"
               class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
             />
           </div>
@@ -73,6 +80,7 @@
             <input
               v-model.trim="proveedor"
               type="text"
+              maxlength="200"
               class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
             />
           </div>
@@ -81,11 +89,15 @@
             <input
               v-model.trim="numeroComprobante"
               type="text"
+              maxlength="50"
+              pattern="[0-9]*"
+              inputmode="numeric"
+              @input="numeroComprobante = onlyDigits(numeroComprobante)"
               class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
             />
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Tipo Documento</label>
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Tipo Documento *</label>
             <select
               v-model.trim="numeroAutorizacion"
               class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
@@ -101,6 +113,7 @@
             <input
               v-model.trim="concepto"
               type="text"
+              maxlength="500"
               class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
             />
           </div>
@@ -192,7 +205,7 @@
                 <th class="py-3 px-4">IVA</th>
                 <th class="py-3 px-4">Total</th>
                 <th class="py-3 px-4">Adjuntos</th>
-                <th class="py-3 px-4">Acciones</th>
+                <th v-if="!isReadOnly" class="py-3 px-4">Acciones</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-200 dark:divide-gray-600">
@@ -211,6 +224,7 @@
                 <td class="py-3 px-4">
                   <div class="flex flex-col gap-1">
                     <button
+                      v-if="!isReadOnly"
                       type="button"
                       class="text-blue-600 hover:text-blue-700 text-xs font-medium"
                       @click="triggerUpload(item.idDetalle)"
@@ -232,6 +246,7 @@
                           {{ formatAdjuntoName(adjunto.rutaArchivo) }}
                         </a>
                         <button
+                          v-if="!isReadOnly"
                           type="button"
                           class="text-xs text-red-600 hover:text-red-700"
                           @click="deleteAdjunto(adjunto, item.idDetalle)"
@@ -242,7 +257,7 @@
                     </div>
                   </div>
                 </td>
-                <td class="py-3 px-4">
+                <td v-if="!isReadOnly" class="py-3 px-4">
                   <div class="flex items-center gap-2">
                     <button
                       type="button"
@@ -268,13 +283,13 @@
                 <td class="py-3 px-4 font-semibold text-gray-700 dark:text-gray-200">{{ formatAmount(totalIva) }}</td>
                 <td class="py-3 px-4 font-semibold text-gray-700 dark:text-gray-200">{{ formatAmount(totalTotal) }}</td>
                 <td class="py-3 px-4"></td>
-                <td class="py-3 px-4"></td>
+                <td v-if="!isReadOnly" class="py-3 px-4"></td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <div v-if="editingDetalleId" class="mt-6 border-t border-gray-200 dark:border-gray-700 pt-4">
+        <div v-if="!isReadOnly && editingDetalleId" class="mt-6 border-t border-gray-200 dark:border-gray-700 pt-4">
           <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Editar detalle</h3>
           <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <div class="lg:col-span-2">
@@ -311,6 +326,10 @@
               <input
                 v-model.trim="editRuc"
                 type="text"
+                maxlength="13"
+                pattern="[0-9]*"
+                inputmode="numeric"
+                @input="editRuc = onlyDigits(editRuc)"
                 class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
               />
             </div>
@@ -319,6 +338,7 @@
               <input
                 v-model.trim="editProveedor"
                 type="text"
+                maxlength="200"
                 class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
               />
             </div>
@@ -327,11 +347,15 @@
               <input
                 v-model.trim="editNumeroComprobante"
                 type="text"
+                maxlength="50"
+                pattern="[0-9]*"
+                inputmode="numeric"
+                @input="editNumeroComprobante = onlyDigits(editNumeroComprobante)"
                 class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
               />
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Tipo Documento</label>
+              <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Tipo Documento *</label>
               <select
                 v-model.trim="editNumeroAutorizacion"
                 class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
@@ -347,6 +371,7 @@
               <input
                 v-model.trim="editConcepto"
                 type="text"
+                maxlength="500"
                 class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
               />
             </div>
@@ -416,7 +441,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from '@vue/runtime-core'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import axios from 'axios'
 
 interface CatalogoGastoItem {
@@ -449,7 +474,13 @@ interface AdjuntoItem {
 }
 
 const route = useRoute()
+const router = useRouter()
 const liquidacionId = computed(() => Number(route.params.id || 0))
+const isReadOnly = computed(() => String(route.query.readonly ?? '').toLowerCase() === '1')
+
+const volver = () => {
+  router.back()
+}
 
 const catalogoGastos = ref<CatalogoGastoItem[]>([])
 const detalles = ref<LiquidacionDetalleItem[]>([])
@@ -492,7 +523,7 @@ const fileInput = ref<HTMLInputElement | null>(null)
 const uploadError = ref('')
 
 const cajaChicaApi = axios.create({
-  baseURL: import.meta.env.VITE_CAJA_CHICA_API_URL || 'http://localhost:8080/api',
+  baseURL: import.meta.env.VITE_CAJA_CHICA_API_URL || '/caja-chica-api',
   headers: {
     'Content-Type': 'application/json'
   }
@@ -506,7 +537,7 @@ cajaChicaApi.interceptors.request.use(config => {
   return config
 })
 
-const apiBaseUrl = (import.meta.env.VITE_CAJA_CHICA_API_URL || 'http://localhost:8080/api').replace(/\/+$/, '')
+const apiBaseUrl = (import.meta.env.VITE_CAJA_CHICA_API_URL || '/caja-chica-api').replace(/\/+$/, '')
 const fileBaseUrl = apiBaseUrl.endsWith('/api') ? apiBaseUrl.slice(0, -4) : apiBaseUrl
 
 const buildAdjuntoUrl = (ruta: string) => {
@@ -518,29 +549,36 @@ const buildAdjuntoUrl = (ruta: string) => {
 const hasValue = (value: string | number) => String(value ?? '').trim() !== ''
 
 const canAddDetalle = computed(() =>
+  !isReadOnly.value &&
   liquidacionId.value > 0 &&
   selectedGastoId.value.trim() &&
+  numeroAutorizacion.value.trim() &&
   proveedor.value.trim() &&
   concepto.value.trim() &&
   hasValue(subtotalConIva.value) &&
   hasValue(subtotalSinIva.value) &&
   hasValue(iva.value) &&
-  hasValue(total.value)
+  hasValue(total.value) &&
+  toNumber(total.value) > 0
 )
 
 const canUpdateDetalle = computed(() =>
+  !isReadOnly.value &&
   editingDetalleId.value !== null &&
   editGastoId.value.trim() &&
+  editNumeroAutorizacion.value.trim() &&
   editProveedor.value.trim() &&
   editConcepto.value.trim() &&
   hasValue(editSubtotalConIva.value) &&
   hasValue(editSubtotalSinIva.value) &&
   hasValue(editIva.value) &&
-  hasValue(editTotal.value)
+  hasValue(editTotal.value) &&
+  toNumber(editTotal.value) > 0
 )
 
 const normalizeString = (value: any) => String(value ?? '').trim()
 const toNumber = (value: string) => Number(String(value || '0').replace(',', '.')) || 0
+const onlyDigits = (value: string) => String(value ?? '').replace(/\D+/g, '')
 const IVA_RATE = 0.15
 
 const normalizeDetalle = (item: any): LiquidacionDetalleItem => ({
@@ -622,6 +660,7 @@ const loadAdjuntosForDetalles = async () => {
 }
 
 const addDetalle = async () => {
+  if (isReadOnly.value) return
   if (!canAddDetalle.value) return
   formError.value = ''
   formSuccess.value = ''
@@ -663,6 +702,7 @@ const addDetalle = async () => {
 }
 
 const startEditDetalle = (item: LiquidacionDetalleItem) => {
+  if (isReadOnly.value) return
   editingDetalleId.value = item.idDetalle
   editGastoId.value = item.idGasto
   editNombreGasto.value = item.nombreGasto
@@ -699,6 +739,7 @@ const cancelEditDetalle = () => {
 }
 
 const updateDetalle = async () => {
+  if (isReadOnly.value) return
   if (!canUpdateDetalle.value || editingDetalleId.value === null) return
   editDetalleError.value = ''
   editDetalleSuccess.value = ''
@@ -737,6 +778,7 @@ const updateDetalle = async () => {
 }
 
 const deleteDetalle = async (item: LiquidacionDetalleItem) => {
+  if (isReadOnly.value) return
   editDetalleError.value = ''
   editDetalleSuccess.value = ''
   try {
@@ -749,12 +791,14 @@ const deleteDetalle = async (item: LiquidacionDetalleItem) => {
 }
 
 const triggerUpload = (idDetalle: number) => {
+  if (isReadOnly.value) return
   uploadTargetId.value = idDetalle
   uploadError.value = ''
   fileInput.value?.click()
 }
 
 const handleFileChange = async (event: Event) => {
+  if (isReadOnly.value) return
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file || uploadTargetId.value === null) return
@@ -785,6 +829,7 @@ const formatAdjuntoName = (ruta: string) => {
 }
 
 const deleteAdjunto = async (adjunto: AdjuntoItem, idDetalle: number) => {
+  if (isReadOnly.value) return
   uploadError.value = ''
   try {
     await cajaChicaApi.delete(`/Adjuntos/${adjunto.idAdjunto}`)

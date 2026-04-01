@@ -428,7 +428,7 @@ const hasModuleAccess = (moduleName: string): boolean => {
     return true
   }
   
-  // Verificar si tiene algún permiso del módulo (modulo.*)
+  // Verificar si tiene algún permiso del módulo (modulo.*) - case insensitive
   const permissions = authStore.userPermissions || []
   // Compatibilidad: el módulo "Personal de Tiendas" también habilita con staff.view
   if (moduleName === 'gestionusuarios') {
@@ -436,7 +436,25 @@ const hasModuleAccess = (moduleName: string): boolean => {
       permission.startsWith('gestionusuarios.') || permission === 'staff.view'
     )
   }
-  return permissions.some((permission: string) => permission.startsWith(`${moduleName}.`))
+  const normalizedModule = moduleName.toLowerCase()
+  
+  return permissions.some((permission: string) => {
+    const normalizedPermission = permission.toLowerCase()
+    // Buscar tanto "usuarios." como "users."
+    if (moduleName.toLowerCase() === 'usuarios') {
+      return normalizedPermission.startsWith('usuarios.') || normalizedPermission.startsWith('users.')
+    }
+    // Buscar tanto "roles." como "roles."
+    if (moduleName.toLowerCase() === 'roles') {
+      return normalizedPermission.startsWith('roles.')
+    }
+    // Buscar tanto "permisos." como "permissions."
+    if (moduleName.toLowerCase() === 'permisos') {
+      return normalizedPermission.startsWith('permisos.') || normalizedPermission.startsWith('permissions.')
+    }
+    // Para otros módulos
+    return normalizedPermission.startsWith(`${normalizedModule}.`)
+  })
 }
 
 onMounted(async () => {

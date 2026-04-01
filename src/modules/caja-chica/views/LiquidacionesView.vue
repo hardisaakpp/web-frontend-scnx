@@ -1,5 +1,12 @@
 <template>
   <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <button
+      type="button"
+      class="mb-4 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 hover:underline"
+      @click="volver"
+    >
+      <span aria-hidden="true">←</span> Volver
+    </button>
     <div class="space-y-6">
       <!-- Header -->
       <div class="flex items-center justify-between">
@@ -7,19 +14,13 @@
           <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Liquidaciones</h1>
           <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Gestión de liquidaciones de caja chica</p>
         </div>
-        <router-link
-          class="rounded border border-gray-200 dark:border-gray-700 text-sm px-3 py-1.5"
-          to="/caja-chica"
-        >
-          Volver
-        </router-link>
       </div>
 
       <!-- Formulario -->
       <div class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-5">
         <div class="flex items-center justify-between mb-4">
           <div>
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Nueva liquidacion</h2>
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Nueva liquidación</h2>
             <p class="text-xs text-gray-500 dark:text-gray-400">Completa la cabecera para crear un borrador</p>
           </div>
           <button
@@ -34,12 +35,12 @@
 
         <div v-if="isCreateOpen" class="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Almacen asignado</label>
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Almacén asignado*</label>
             <select
               v-model="selectedCodAlmacen"
               class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
             >
-              <option value="">Seleccionar almacen</option>
+              <option value="">Seleccionar almacén</option>
               <option v-for="almacen in assignedAlmacenes" :key="almacen.codAlmacen" :value="almacen.codAlmacen">
                 {{ almacen.label }}
               </option>
@@ -51,20 +52,31 @@
               v-model.trim="nombreCustodio"
               type="text"
               placeholder="Nombre completo"
+              readonly
               class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
             />
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Cedula custodio</label>
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Cédula custodio*</label>
             <input
               v-model.trim="cedulaCustodio"
               type="text"
               placeholder="Identificacion"
               class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+              @blur="validateCreateCustodio"
             />
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Forma de pago</label>
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">CardCode custodio (SAP)</label>
+            <input
+              v-model="cardCodeCustodio"
+              type="text"
+              readonly
+              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-700 dark:text-gray-300"
+            />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Forma de pago*</label>
             <select
               v-model="formatoDePago"
               class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
@@ -99,7 +111,7 @@
             :disabled="!canSubmit"
             @click="createLiquidacion"
           >
-            Crear liquidacion
+            Crear liquidación
           </button>
           <span v-if="formError" class="text-sm text-red-600 dark:text-red-400">{{ formError }}</span>
           <span v-else-if="formSuccess" class="text-sm text-emerald-600 dark:text-emerald-400">{{ formSuccess }}</span>
@@ -135,7 +147,7 @@
             <thead>
               <tr class="text-left text-xs uppercase text-gray-500 dark:text-gray-400">
                 <th class="py-2 pr-3">Id</th>
-                <th class="py-2 pr-3">Almacen</th>
+                <th class="py-2 pr-3">Almacén</th>
                 <th class="py-2 pr-3">Custodio</th>
                 <th class="py-2 pr-3">Fecha</th>
                 <th class="py-2 pr-3">Acciones</th>
@@ -207,15 +219,26 @@
               <input
                 v-model.trim="editNombreCustodio"
                 type="text"
+                readonly
                 class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
               />
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Cedula custodio</label>
+              <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Cédula custodio</label>
               <input
                 v-model.trim="editCedulaCustodio"
                 type="text"
                 class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                @blur="validateEditCustodio"
+              />
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">CardCode custodio (SAP)</label>
+              <input
+                v-model="editCardCodeCustodio"
+                type="text"
+                readonly
+                class="w-full rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-700 dark:text-gray-300"
               />
             </div>
             <div>
@@ -290,6 +313,7 @@
 import { computed, onMounted, ref, watch } from '@vue/runtime-core'
 import axios from 'axios'
 import { useAuthStore } from '@/stores/auth'
+import { useRouter } from 'vue-router'
 
 interface UsuarioAlmacenItem {
   codAlmacen: string
@@ -317,10 +341,18 @@ interface LiquidacionItem {
   datosBancarios: string
 }
 
+interface ProveedorSapLookupItem {
+  cardCode: string
+  cardName: string
+  licTradNum: string
+}
+
 const authStore = useAuthStore()
+const router = useRouter()
 const selectedCodAlmacen = ref('')
 const nombreCustodio = ref('')
 const cedulaCustodio = ref('')
+const cardCodeCustodio = ref('')
 const formatoDePago = ref('Transferencia')
 const empresa = ref('')
 const marca = ref('')
@@ -338,6 +370,7 @@ const editingId = ref<number | null>(null)
 const editCodAlmacen = ref('')
 const editNombreCustodio = ref('')
 const editCedulaCustodio = ref('')
+const editCardCodeCustodio = ref('')
 const editFormatoDePago = ref('Transferencia')
 const editEmpresa = ref('')
 const editMarca = ref('')
@@ -349,8 +382,12 @@ const sendError = ref('')
 const sendSuccess = ref('')
 const sendingId = ref<number | null>(null)
 
+const volver = () => {
+  router.back()
+}
+
 const cajaChicaApi = axios.create({
-  baseURL: import.meta.env.VITE_CAJA_CHICA_API_URL || 'http://localhost:8080/api',
+  baseURL: import.meta.env.VITE_CAJA_CHICA_API_URL || '/caja-chica-api',
   headers: {
     'Content-Type': 'application/json'
   }
@@ -389,11 +426,13 @@ const assignedAlmacenes = computed(() => {
 })
 
 const borradoresFiltrados = computed(() => {
+  const currentUserId = getCurrentUserId()
   const assignedSet = new Set(asignados.value.map(item => item.codAlmacen))
   return borradores.value.filter(item => {
     const isBorrador = item.estado.toUpperCase() === 'BORRADOR'
     const isAssigned = assignedSet.size === 0 || assignedSet.has(item.codAlmacen)
-    return isBorrador && isAssigned
+    const isCurrentUser = item.idUsuario === currentUserId
+    return isBorrador && isAssigned && isCurrentUser
   })
 })
 
@@ -401,6 +440,7 @@ const canSubmit = computed(() =>
   selectedCodAlmacen.value.trim() &&
   nombreCustodio.value.trim() &&
   cedulaCustodio.value.trim() &&
+  cardCodeCustodio.value.trim() &&
   formatoDePago.value.trim() &&
   empresa.value.trim() &&
   marca.value.trim()
@@ -411,10 +451,88 @@ const canUpdate = computed(() =>
   editCodAlmacen.value.trim() &&
   editNombreCustodio.value.trim() &&
   editCedulaCustodio.value.trim() &&
+  editCardCodeCustodio.value.trim() &&
   editFormatoDePago.value.trim() &&
   editEmpresa.value.trim() &&
   editMarca.value.trim()
 )
+
+const CUSTODIO_CARD_CODE_STORAGE_KEY = 'cajaChicaCustodioCardCodes'
+
+const saveCustodioCardCode = (cedula: string, cardCode: string) => {
+  const cedulaNormalizada = cedula.trim()
+  const cardCodeNormalizado = cardCode.trim()
+  if (!cedulaNormalizada || !cardCodeNormalizado) return
+
+  try {
+    const raw = localStorage.getItem(CUSTODIO_CARD_CODE_STORAGE_KEY)
+    const existing = raw ? JSON.parse(raw) : {}
+    const map = typeof existing === 'object' && existing ? existing : {}
+    map[cedulaNormalizada] = cardCodeNormalizado
+    localStorage.setItem(CUSTODIO_CARD_CODE_STORAGE_KEY, JSON.stringify(map))
+  } catch {
+    // Si falla el almacenamiento local, no se bloquea el flujo de la pantalla.
+  }
+}
+
+const lookupCustodioByCedula = async (cedula: string): Promise<ProveedorSapLookupItem> => {
+  const cedulaNormalizada = cedula.trim()
+  const response = await cajaChicaApi.get(`/Liquidaciones/validar-custodio/${encodeURIComponent(cedulaNormalizada)}`)
+  const payload = response.data as any
+  const cardCode = String(payload?.cardCode ?? payload?.CardCode ?? '').trim()
+  const cardName = String(payload?.cardName ?? payload?.CardName ?? '').trim()
+  const licTradNum = String(payload?.licTradNum ?? payload?.LicTradNum ?? cedulaNormalizada).trim()
+
+  if (!cardCode || !cardName) {
+    throw new Error('Respuesta invalida al validar custodio.')
+  }
+
+  return { cardCode, cardName, licTradNum }
+}
+
+const validateCreateCustodio = async () => {
+  const cedula = cedulaCustodio.value.trim()
+  if (!cedula) {
+    nombreCustodio.value = ''
+    cardCodeCustodio.value = ''
+    return
+  }
+
+  try {
+    const proveedor = await lookupCustodioByCedula(cedula)
+    nombreCustodio.value = proveedor.cardName
+    cardCodeCustodio.value = proveedor.cardCode
+    saveCustodioCardCode(cedula, proveedor.cardCode)
+    formError.value = ''
+  } catch (err: any) {
+    const message = err?.response?.data?.message || err?.response?.data || err?.message || 'No se encontro custodio en proveedores SAP.'
+    nombreCustodio.value = ''
+    cardCodeCustodio.value = ''
+    formError.value = String(message)
+  }
+}
+
+const validateEditCustodio = async () => {
+  const cedula = editCedulaCustodio.value.trim()
+  if (!cedula) {
+    editNombreCustodio.value = ''
+    editCardCodeCustodio.value = ''
+    return
+  }
+
+  try {
+    const proveedor = await lookupCustodioByCedula(cedula)
+    editNombreCustodio.value = proveedor.cardName
+    editCardCodeCustodio.value = proveedor.cardCode
+    saveCustodioCardCode(cedula, proveedor.cardCode)
+    editError.value = ''
+  } catch (err: any) {
+    const message = err?.response?.data?.message || err?.response?.data || err?.message || 'No se encontro custodio en proveedores SAP.'
+    editNombreCustodio.value = ''
+    editCardCodeCustodio.value = ''
+    editError.value = String(message)
+  }
+}
 
 const updateMarca = () => {
   const selected = almacenes.value.find(item => item.codAlmacen === selectedCodAlmacen.value)
@@ -557,6 +675,7 @@ const createLiquidacion = async () => {
     updateMarca()
     nombreCustodio.value = ''
     cedulaCustodio.value = ''
+    cardCodeCustodio.value = ''
     formatoDePago.value = 'Transferencia'
   } catch (err: any) {
     const message = err?.response?.data?.message || err?.response?.data
@@ -569,6 +688,7 @@ const startEdit = (item: LiquidacionItem) => {
   editCodAlmacen.value = item.codAlmacen
   editNombreCustodio.value = item.nombreCustodio
   editCedulaCustodio.value = item.cedulaCustodio
+  editCardCodeCustodio.value = ''
   editFormatoDePago.value = item.formatoDePago || 'Transferencia'
   editEmpresa.value = item.empresa
   editMarca.value = item.marca
@@ -576,6 +696,7 @@ const startEdit = (item: LiquidacionItem) => {
   editDatosBancarios.value = item.datosBancarios
   editError.value = ''
   editSuccess.value = ''
+  void validateEditCustodio()
 }
 
 const cancelEdit = () => {
@@ -583,6 +704,7 @@ const cancelEdit = () => {
   editCodAlmacen.value = ''
   editNombreCustodio.value = ''
   editCedulaCustodio.value = ''
+  editCardCodeCustodio.value = ''
   editFormatoDePago.value = 'Transferencia'
   editEmpresa.value = ''
   editMarca.value = ''
@@ -673,7 +795,17 @@ watch(selectedCodAlmacen, () => {
   updateMarca()
 })
 
+watch(cedulaCustodio, () => {
+  nombreCustodio.value = ''
+  cardCodeCustodio.value = ''
+})
+
 watch(editCodAlmacen, () => {
   updateEditMarca()
+})
+
+watch(editCedulaCustodio, () => {
+  editNombreCustodio.value = ''
+  editCardCodeCustodio.value = ''
 })
 </script>
