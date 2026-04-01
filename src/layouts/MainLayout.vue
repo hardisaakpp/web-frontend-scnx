@@ -269,18 +269,28 @@
     >
       <!-- Mobile Header -->
       <header class="bg-white dark:bg-gray-800 shadow md:hidden sticky top-0 z-30 transition-colors duration-300">
-        <div class="px-4 py-3 flex items-center justify-between">
-          <button
-            @click="isSidebarOpen = !isSidebarOpen"
-            class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            aria-label="Toggle menu"
-          >
-            <Bars3Icon class="h-6 w-6 text-gray-800 dark:text-gray-200" />
-          </button>
-          <h1 class="text-xl font-semibold text-gray-800 dark:text-white">SCNexus</h1>
+        <div class="px-4 py-3 flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2 flex-shrink-0">
+            <button
+              @click="isSidebarOpen = !isSidebarOpen"
+              class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              aria-label="Toggle menu"
+            >
+              <Bars3Icon class="h-6 w-6 text-gray-800 dark:text-gray-200" />
+            </button>
+            <OdcSapVolverButton
+              v-if="odcSapVolverTarget"
+              :to="odcSapVolverTarget"
+              :title="odcSapVolverTitle"
+              class="!px-3 !py-1.5 text-xs"
+            />
+          </div>
+          <h1 class="text-xl font-semibold text-gray-800 dark:text-white truncate min-w-0 text-center flex-1">
+            SCNexus
+          </h1>
           <button
             @click="themeStore.toggleTheme()"
-            class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex-shrink-0"
             :title="themeStore.isDark ? 'Modo Claro' : 'Modo Oscuro'"
           >
             <SunIcon v-if="themeStore.isDark" class="h-5 w-5 text-yellow-400" />
@@ -291,11 +301,19 @@
 
       <!-- Desktop Header -->
       <header class="hidden md:block bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-30 transition-colors duration-300">
-        <div class="px-6 py-4 flex items-center justify-between">
-          <h1 class="text-2xl font-semibold text-gray-800 dark:text-white">
-            {{ pageTitle }}
-          </h1>
-          <div class="flex items-center gap-4">
+        <div class="px-6 py-4 flex items-center justify-between gap-4">
+          <div class="flex items-center gap-3 min-w-0 flex-1">
+            <OdcSapVolverButton
+              v-if="odcSapVolverTarget"
+              :to="odcSapVolverTarget"
+              :title="odcSapVolverTitle"
+              class="flex-shrink-0"
+            />
+            <h1 class="text-2xl font-semibold text-gray-800 dark:text-white truncate">
+              {{ pageTitle }}
+            </h1>
+          </div>
+          <div class="flex items-center gap-4 flex-shrink-0">
             <button
               @click="themeStore.toggleTheme()"
               class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 group"
@@ -348,12 +366,15 @@ import { useThemeStore } from '../stores/theme'
 import ToastContainer from '../components/ToastContainer.vue'
 import { userPreferencesService } from '@/services/userPreferencesService'
 import { useNotificaciones } from '@/composables/useNotificaciones'
+import { useOdcSapVolver } from '@/composables/useOdcSapVolver'
+import OdcSapVolverButton from '@/modules/mba3-consultas/components/OdcSapVolverButton.vue'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const themeStore = useThemeStore()
 const { connect: connectNotificaciones, disconnect: disconnectNotificaciones } = useNotificaciones()
+const { target: odcSapVolverTarget, title: odcSapVolverTitle } = useOdcSapVolver()
 const isSidebarOpen = ref(false)
 const isSidebarCollapsed = ref(false)
 

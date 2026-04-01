@@ -2,20 +2,9 @@
   <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
     <div class="space-y-6">
       <!-- Header -->
-      <div class="flex items-center justify-between">
-        <div>
-          <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Reporte de Diferencias</h1>
-          <p class="mt-1 text-sm text-gray-500 dark:text-gray-300">Visualiza y exporta reportes de diferencias entre pedidos solicitados y confirmados</p>
-        </div>
-        <button
-          @click="$router.push('/mba3-consultas')"
-          class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-700 dark:text-gray-300 text-sm font-medium flex items-center gap-2"
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          Volver al Dashboard
-        </button>
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Reporte de Diferencias</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-300">Visualiza y exporta reportes de diferencias entre pedidos solicitados y confirmados</p>
       </div>
 
       <!-- Buscar Pedido -->

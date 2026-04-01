@@ -273,8 +273,6 @@
         :show-finalizar-pedido="true"
         :puede-finalizar-pedido="puedeFinalizarPedido"
         :finalizando-pedido="finalizandoPedido"
-        :show-volver="true"
-        @volver="router.push('/mba3-consultas/cargar-plantilla')"
         @cargar-plantillas="goToCargarPlantillas"
         @generar-oc="handleGenerarOCDesdePedido"
         @confirmar="handleConfirmar"

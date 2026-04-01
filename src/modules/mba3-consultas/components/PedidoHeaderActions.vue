@@ -6,7 +6,6 @@
       </h1>
     </div>
     <div class="flex items-center gap-3">
-      <slot name="leading" />
       <!-- Búsqueda directa de pedidos -->
       <div class="relative">
         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -58,19 +57,6 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
         </svg>
         Crear Pedido Manual
-      </button>
-      <!-- Volver (al listado o al dashboard según la vista que use el componente) -->
-      <button
-        v-if="showVolver"
-        type="button"
-        @click="$emit('volver')"
-        class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 hover:border-gray-400 dark:hover:border-gray-500 transition-colors"
-        title="Volver al listado"
-      >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-        </svg>
-        Volver
       </button>
       <button
         v-if="!hideCargarPlantillas"
@@ -245,8 +231,6 @@ const props = defineProps<{
   puedeFinalizarPedido?: boolean
   /** Mostrar botón "Finalizar Pedido" (solo en vista Cargar Plantilla, no en Detalle del Pedido) */
   showFinalizarPedido?: boolean
-  /** Mostrar botón "Volver" (la vista que lo use define la ruta con @volver) */
-  showVolver?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -262,7 +246,6 @@ const emit = defineEmits<{
   'descargar-csv': []
   'descargar-excel-original': []
   'finalizar-pedido': []
-  'volver': []
 }>()
 
 const pedidoIdInputModel = defineModel<string>('pedidoIdInput', { default: '' })

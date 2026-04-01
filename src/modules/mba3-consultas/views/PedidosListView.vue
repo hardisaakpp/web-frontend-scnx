@@ -31,18 +31,6 @@
           </div>
         </div>
         <div class="flex items-center gap-3">
-          <!-- Botón Volver al dashboard MBA3 Consultas -->
-          <button
-            type="button"
-            @click="router.push('/mba3-consultas')"
-            class="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 hover:border-gray-400 dark:hover:border-gray-500 transition-colors"
-            title="Volver al listado"
-          >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            Volver
-          </button>
           <!-- Toggle Auto-Refresh -->
           <label class="flex items-center gap-2 cursor-pointer">
             <input
