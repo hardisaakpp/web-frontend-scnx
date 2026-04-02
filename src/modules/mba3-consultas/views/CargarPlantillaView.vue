@@ -291,25 +291,24 @@
           >
             {{ descartando ? 'Descartando...' : 'Descartar' }}
           </button>
+          <button
+            v-if="esPedidoBorrador"
+            type="button"
+            @click="handleEnviar"
+            :disabled="enviando"
+            class="shrink-0 px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {{ enviando ? 'Enviando...' : 'Enviar' }}
+          </button>
         </template>
       </PedidoHeaderActions>
 
-      <!-- Enviar / Finalizado (solo cuando hay pedido cargado; Descartar va en la fila de PedidoHeaderActions) -->
+      <!-- Finalizado (Enviar y Descartar van en la fila de PedidoHeaderActions) -->
       <div
-        v-if="pedido && !loading && (esPedidoBorrador || showBotonFinalizado)"
+        v-if="pedido && !loading && showBotonFinalizado"
         class="flex items-center justify-end gap-3"
       >
         <button
-          v-if="esPedidoBorrador"
-          type="button"
-          @click="handleEnviar"
-          :disabled="enviando"
-          class="px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {{ enviando ? 'Enviando...' : 'Enviar' }}
-        </button>
-        <button
-          v-if="showBotonFinalizado"
           type="button"
           @click="handleFinalizado"
           :disabled="finalizando"
