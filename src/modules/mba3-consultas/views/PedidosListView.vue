@@ -1,36 +1,38 @@
 <template>
   <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
     <div class="space-y-6">
-      <!-- Header -->
-      <div class="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <div class="flex items-center gap-3">
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-              Listado de Pedidos - EL RAYO
-            </h1>
-            <span v-if="esModoElRayo" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-              EL RAYO
-            </span>
-          </div>
-          <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            {{ esModoElRayo 
-              ? 'Seguimiento de pedidos pendientes que requieren tu acción' 
-              : 'Visualiza y filtra pedidos según estado, fechas, proveedor y más' 
-            }}
-          </p>
-          <!-- Contador de pedidos pendientes -->
-          <div v-if="contadorPedidosPendientes > 0" class="mt-2">
-            <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800">
-              <svg class="w-4 h-4 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <span class="text-sm font-semibold text-orange-800 dark:text-orange-200">
-                {{ contadorPedidosPendientes }} pedido{{ contadorPedidosPendientes !== 1 ? 's' : '' }} {{ esModoElRayo ? 'requieren tu acción' : 'requieren acción' }}
+      <!-- Header: fila título + fila de acciones (mismo orden que Cargar plantilla listado) -->
+      <div class="space-y-4">
+        <div class="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <div class="flex items-center gap-3">
+              <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+                Listado de Pedidos - EL RAYO
+              </h1>
+              <span v-if="esModoElRayo" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                EL RAYO
               </span>
+            </div>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              {{ esModoElRayo
+                ? 'Seguimiento de pedidos pendientes que requieren tu acción'
+                : 'Visualiza y filtra pedidos según estado, fechas, proveedor y más'
+              }}
+            </p>
+            <!-- Contador de pedidos pendientes -->
+            <div v-if="contadorPedidosPendientes > 0" class="mt-2">
+              <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800">
+                <svg class="w-4 h-4 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span class="text-sm font-semibold text-orange-800 dark:text-orange-200">
+                  {{ contadorPedidosPendientes }} pedido{{ contadorPedidosPendientes !== 1 ? 's' : '' }} {{ esModoElRayo ? 'requieren tu acción' : 'requieren acción' }}
+                </span>
+              </div>
             </div>
           </div>
         </div>
-        <div class="flex items-center gap-3">
+        <div class="flex w-full flex-wrap items-center justify-end gap-3">
           <!-- Toggle Auto-Refresh -->
           <label class="flex items-center gap-2 cursor-pointer">
             <input
@@ -55,6 +57,12 @@
             </svg>
             {{ loading ? 'Cargando...' : 'Actualizar' }}
           </button>
+          <OdcSapVolverButton
+            v-if="odcSapVolverTarget"
+            :to="odcSapVolverTarget"
+            :title="odcSapVolverTitle"
+            class="shrink-0"
+          />
         </div>
       </div>
 
@@ -488,10 +496,13 @@ import { lastNotification } from '@/composables/useNotificaciones'
 import { mba3ConsultasService, extractErrorMessage } from '../services/mba3ConsultasApi'
 import type { PedidosListadoResponse, PedidoResumido, PedidosListadoFiltros, PedidosListadoMetadata, EstadoPedidoOption } from '../types'
 import { formatDate, formatDateTime } from '../utils/formatters'
+import OdcSapVolverButton from '../components/OdcSapVolverButton.vue'
+import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
 
 const router = useRouter()
 const route = useRoute()
 const toast = useToast()
+const { target: odcSapVolverTarget, title: odcSapVolverTitle } = useOdcSapVolver()
 
 const pedidos = ref<PedidoResumido[]>([])
 const loading = ref(false)

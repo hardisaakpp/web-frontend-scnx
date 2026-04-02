@@ -118,6 +118,12 @@
                 <p class="text-sm text-gray-600 dark:text-gray-300 transition-colors duration-300">{{ getStepDescription('procesar-oc') }}</p>
               </div>
             </div>
+            <OdcSapVolverButton
+              v-if="odcSapVolverTarget"
+              :to="odcSapVolverTarget"
+              :title="odcSapVolverTitle"
+              class="relative z-10 shrink-0"
+            />
           </div>
 
           <!-- Barra de progreso para Procesar ODC / Integrar SAP -->
@@ -329,12 +335,15 @@ import DespachosTable from '../components/DespachosTable.vue'
 import OrdenCompraTable from '../components/OrdenCompraTable.vue'
 import SkeletonTable from '../components/SkeletonTable.vue'
 import IntegracionSAPModal from '../components/IntegracionSAPModal.vue'
+import OdcSapVolverButton from '../components/OdcSapVolverButton.vue'
 import type { IntegracionSAPDetalle, SolicitudesTransferencia } from '../types'
+import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
 
 const procesoStore = useProcesoStore()
 const ordenesCompraStore = useOrdenesCompraStore()
 const toast = useToast()
 const route = useRoute()
+const { target: odcSapVolverTarget, title: odcSapVolverTitle } = useOdcSapVolver()
 
 // Estados para modal de integración SAP
 const showIntegracionSAPModal = ref(false)

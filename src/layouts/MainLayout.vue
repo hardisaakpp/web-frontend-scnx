@@ -270,12 +270,6 @@
             >
               <Bars3Icon class="h-6 w-6 text-gray-800 dark:text-gray-200" />
             </button>
-            <OdcSapVolverButton
-              v-if="odcSapVolverTarget"
-              :to="odcSapVolverTarget"
-              :title="odcSapVolverTitle"
-              class="!px-3 !py-1.5 text-xs"
-            />
           </div>
           <h1 class="text-xl font-semibold text-gray-800 dark:text-white truncate min-w-0 text-center flex-1">
             SCNexus
@@ -295,12 +289,6 @@
       <header class="hidden md:block bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-30 transition-colors duration-300">
         <div class="px-6 py-4 flex items-center justify-between gap-4">
           <div class="flex items-center gap-3 min-w-0 flex-1">
-            <OdcSapVolverButton
-              v-if="odcSapVolverTarget"
-              :to="odcSapVolverTarget"
-              :title="odcSapVolverTitle"
-              class="flex-shrink-0"
-            />
             <h1 class="text-2xl font-semibold text-gray-800 dark:text-white truncate">
               {{ pageTitle }}
             </h1>
@@ -321,6 +309,15 @@
 
       <!-- Page Content -->
       <main class="p-4 md:p-6 lg:p-8 min-h-[calc(100vh-4rem)]">
+        <div
+          v-if="showOdcSapVolverInMainChrome && odcSapVolverTarget"
+          class="flex justify-end mb-4 -mt-1"
+        >
+          <OdcSapVolverButton
+            :to="odcSapVolverTarget"
+            :title="odcSapVolverTitle"
+          />
+        </div>
         <router-view></router-view>
       </main>
     </div>
@@ -365,6 +362,22 @@ const authStore = useAuthStore()
 const themeStore = useThemeStore()
 const { connect: connectNotificaciones, disconnect: disconnectNotificaciones } = useNotificaciones()
 const { target: odcSapVolverTarget, title: odcSapVolverTitle } = useOdcSapVolver()
+
+/** Volver en fila de botones de la vista (PedidoHeaderActions / listado Cargar plantilla); en el resto de MBA3, arriba del contenido. */
+const showOdcSapVolverInMainChrome = computed(() => {
+  if (!odcSapVolverTarget.value) return false
+  const n = route.name
+  if (n === 'mba3-consultas-pedido-detalle') return false
+  if (n === 'mba3-consultas-cargar-plantilla-detalle') return false
+  if (n === 'mba3-consultas-cargar-plantilla') return false
+  if (n === 'mba3-consultas-pedidos-listado') return false
+  if (n === 'mba3-consultas-redistribucion') return false
+  if (n === 'mba3-consultas-pedido-redistribucion') return false
+  if (n === 'mba3-consultas-revisar-redistribucion') return false
+  if (n === 'mba3-consultas-proceso') return false
+  return true
+})
+
 const isSidebarOpen = ref(false)
 
 /** Expansión al pasar el ratón (solo escritorio, breakpoint `md`) */

@@ -123,34 +123,50 @@
       class="space-y-6"
       :class="{ 'pointer-events-none opacity-75': redistribucion.confirmandoRedistribucion.value || enviandoOdcSap }"
     >
-      <!-- Header -->
+      <!-- Header (misma estructura que listados MBA3: fila título + fila de acciones) -->
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6">
-        <div class="flex items-center justify-between">
-          <div>
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-              {{ soloLectura ? 'Ver distribución de Productos - EL RAYO' : 'Redistribución de Productos - MABEL TRADING' }}
-            </h1>
-            <p v-if="pedido" class="text-sm text-gray-600 dark:text-gray-400 mt-1 flex items-center gap-2">
-              Pedido: <span class="font-medium text-gray-900 dark:text-white">{{ pedido.cabecera.numero_pedido }}</span>
-              <button
-                type="button"
-                @click="copyToClipboard(pedido.cabecera.numero_pedido ?? '')"
-                class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                :title="copyFeedback ? 'Copiado' : 'Copiar número de pedido'"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        <div class="space-y-4">
+          <div class="flex items-center justify-between flex-wrap gap-4">
+            <div>
+              <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+                {{ soloLectura ? 'Ver distribución de Productos - EL RAYO' : 'Redistribución de Productos - MABEL TRADING' }}
+              </h1>
+              <p v-if="pedido" class="text-sm text-gray-600 dark:text-gray-400 mt-1 flex items-center gap-2 flex-wrap">
+                Pedido: <span class="font-medium text-gray-900 dark:text-white">{{ pedido.cabecera.numero_pedido }}</span>
+                <button
+                  type="button"
+                  @click="copyToClipboard(pedido.cabecera.numero_pedido ?? '')"
+                  class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                  :title="copyFeedback ? 'Copiado' : 'Copiar número de pedido'"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                </button>
+              </p>
+            </div>
+            <div v-if="!soloLectura" class="relative shrink-0">
+              <input
+                v-model="pedidoIdInput"
+                @keyup.enter="goToPedido"
+                type="text"
+                placeholder="Buscar por N° de pedido"
+                class="w-64 pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-purple-500 focus:border-purple-500"
+              />
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg class="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
-              </button>
-            </p>
+              </div>
+            </div>
           </div>
-          <div class="flex items-center gap-3">
+          <div class="flex w-full flex-wrap items-center justify-end gap-3">
             <button
               v-if="soloLectura && pedido && tieneDistribucionConfirmada"
               type="button"
               @click="handleDescargarDistribucionExcel"
               :disabled="descargandoRedistribucion"
-              class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-green-600 dark:bg-green-500 rounded-lg shadow-sm hover:bg-green-700 dark:hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              class="shrink-0 inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-green-600 dark:bg-green-500 rounded-lg shadow-sm hover:bg-green-700 dark:hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               title="Descargar distribución por tiendas en formato Excel"
             >
               <svg v-if="!descargandoRedistribucion" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -167,7 +183,7 @@
               type="button"
               @click="handleCancelar"
               :disabled="cancelando || (pedido != null && pedido.puede_cancelar_pedido === false)"
-              class="px-4 py-2 border border-red-300 dark:border-red-600 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              class="shrink-0 px-4 py-2 border border-red-300 dark:border-red-600 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               <svg v-if="!cancelando" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -178,20 +194,12 @@
               </svg>
               {{ cancelando ? 'Cancelando...' : 'Cancelar Pedido' }}
             </button>
-            <div v-if="!soloLectura" class="relative">
-              <input
-                v-model="pedidoIdInput"
-                @keyup.enter="goToPedido"
-                type="text"
-                placeholder="Buscar por N° de pedido"
-                class="w-64 pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-purple-500 focus:border-purple-500"
-              />
-              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg class="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-            </div>
+            <OdcSapVolverButton
+              v-if="odcSapVolverTarget"
+              :to="odcSapVolverTarget"
+              :title="odcSapVolverTitle"
+              class="shrink-0"
+            />
           </div>
         </div>
       </div>
@@ -282,10 +290,13 @@ import { useRedistribucion } from '../composables/useRedistribucion'
 import { useProcesoStore } from '../stores/procesoStore'
 import PedidoCabecera from '../components/PedidoCabecera.vue'
 import RedistribucionTiendas from '../components/RedistribucionTiendas.vue'
+import OdcSapVolverButton from '../components/OdcSapVolverButton.vue'
+import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
 
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
+const { target: odcSapVolverTarget, title: odcSapVolverTitle } = useOdcSapVolver()
 const procesoStore = useProcesoStore()
 
 const pedido = ref<PedidoCompleto | null>(null)

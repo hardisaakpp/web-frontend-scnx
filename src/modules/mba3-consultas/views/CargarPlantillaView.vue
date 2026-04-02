@@ -281,18 +281,24 @@
         @descargar-plano-mba="handleDescargarPlanoMba"
         @crear-pedido="handleCrearPedido"
         @finalizar-pedido="handleFinalizarPedido"
-      />
+      >
+        <template v-if="pedido && !loading" #toolbar-extra>
+          <button
+            type="button"
+            @click="handleDescartar"
+            :disabled="descartando || !(pedido?.puede_descartar ?? false)"
+            class="shrink-0 px-4 py-2 border border-red-300 dark:border-red-600 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {{ descartando ? 'Descartando...' : 'Descartar' }}
+          </button>
+        </template>
+      </PedidoHeaderActions>
 
-      <!-- Enviar / Descartar / Finalizado (solo cuando hay pedido cargado) -->
-      <div v-if="pedido && !loading" class="flex items-center justify-end gap-3">
-        <button
-          type="button"
-          @click="handleDescartar"
-          :disabled="descartando || !(pedido?.puede_descartar ?? false)"
-          class="px-4 py-2 border border-red-300 dark:border-red-600 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {{ descartando ? 'Descartando...' : 'Descartar' }}
-        </button>
+      <!-- Enviar / Finalizado (solo cuando hay pedido cargado; Descartar va en la fila de PedidoHeaderActions) -->
+      <div
+        v-if="pedido && !loading && (esPedidoBorrador || showBotonFinalizado)"
+        class="flex items-center justify-end gap-3"
+      >
         <button
           v-if="esPedidoBorrador"
           type="button"

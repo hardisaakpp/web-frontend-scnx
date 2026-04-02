@@ -1,25 +1,27 @@
 <template>
   <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
     <div class="space-y-6">
-      <!-- Header -->
-      <div class="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <div class="flex items-center gap-3">
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-              Revisar Redistribución
-            </h1>
-            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300">
-              EL RAYO
-            </span>
+      <!-- Header: fila título + fila de acciones (mismo patrón que pedidos / redistribución listado) -->
+      <div class="space-y-4">
+        <div class="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <div class="flex items-center gap-3">
+              <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+                Revisar Redistribución
+              </h1>
+              <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300">
+                EL RAYO
+              </span>
+            </div>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              Selecciona un pedido para ver la distribución por tienda (solo lectura)
+            </p>
           </div>
-          <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Selecciona un pedido para ver la distribución por tienda (solo lectura)
-          </p>
         </div>
-        <div class="flex items-center gap-3">
+        <div class="flex w-full flex-wrap items-center justify-end gap-3">
           <button
             @click="cargarPedidos"
-            class="px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+            class="shrink-0 px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
             :disabled="loading"
           >
             <svg v-if="!loading" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -31,6 +33,12 @@
             </svg>
             {{ loading ? 'Cargando...' : 'Actualizar' }}
           </button>
+          <OdcSapVolverButton
+            v-if="odcSapVolverTarget"
+            :to="odcSapVolverTarget"
+            :title="odcSapVolverTitle"
+            class="shrink-0"
+          />
         </div>
       </div>
 
@@ -346,8 +354,11 @@ import type {
   PedidoCompleto,
 } from '../types'
 import { formatDate, formatDateTime } from '../utils/formatters'
+import OdcSapVolverButton from '../components/OdcSapVolverButton.vue'
+import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
 
 const router = useRouter()
+const { target: odcSapVolverTarget, title: odcSapVolverTitle } = useOdcSapVolver()
 const toast = useToast()
 
 const pedidos = ref<PedidoResumido[]>([])
