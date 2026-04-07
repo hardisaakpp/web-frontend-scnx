@@ -42,6 +42,13 @@ export default defineConfig(({ mode }) => {
           secure: false,
           rewrite: (path) => path
         },
+        // Gestión de usuarios (store_employees.php) por proxy local.
+        '/employees-api': {
+          target: env.VITE_STORE_EMPLOYEES_PROXY_TARGET || 'http://localhost:8080',
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/employees-api/, '/api')
+        },
         // Stream SSE de notificaciones → mba3-consultas
         '/notificaciones': {
           target: env.VITE_MBA3_PROXY_TARGET || 'http://localhost:8000',
