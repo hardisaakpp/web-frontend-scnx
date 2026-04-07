@@ -30,10 +30,10 @@ export default defineConfig(({ mode }) => {
         },
         // /Auth/me → mba3-consultas (capabilities). Debe ir antes que /api.
         '/api/Auth/me': {
-          target: env.VITE_MBA3_PROXY_TARGET || 'http://localhost:8000',
+          target: env.VITE_AUTH_ME_PROXY_TARGET || env.VITE_CORE_PROXY_TARGET || 'http://localhost:8080',
           changeOrigin: true,
           secure: false,
-          rewrite: (path) => path
+          rewrite: (path) => path.replace(/^\/api/, '')
         },
         // Preferencias de usuario (persistencia UI) → mba3-consultas
         '/api/users/preferences': {
