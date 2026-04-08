@@ -12,8 +12,9 @@ export interface StoreEmployee {
   estado: number
   /** 0 = No, 1 = Sí (columna BIT en SQL Server). */
   encargado: number
-  fecha_actual?: string
-  usuario_actual?: string
+  fecha_ingreso?: string
+  fecha_ultima_actualizacion?: string
+  usuario_ultima_actualizacion?: string
 }
 
 export interface StoreEmployeesFilters {
@@ -78,31 +79,48 @@ export async function listStoreEmployees(filters: StoreEmployeesFilters): Promis
 
   const { data } = await axios.get(endpoint, { params })
   const raw = toItems(data)
-  const items = raw.map((row) => ({
-    ...row,
-    encargado: normalizeEncargado((row as Record<string, unknown>).encargado),
-    estado: Number((row as Record<string, unknown>).estado ?? 0)
-  })) as StoreEmployee[]
+  const items = raw.map((row) => {
+    const r = row as unknown as Record<string, unknown>
+    return {
+      ...row,
+      encargado: normalizeEncargado(r.encargado),
+      estado: Number(r.estado ?? 0),
+      fecha_ingreso: (r.fecha_ingreso ?? r.fecha_actual) as string | undefined,
+      fecha_ultima_actualizacion: (r.fecha_ultima_actualizacion ?? r.fecha_actual) as
+        | string
+        | undefined,
+      usuario_ultima_actualizacion: (r.usuario_ultima_actualizacion ?? r.usuario_actual) as
+        | string
+        | undefined
+    } as StoreEmployee
+  })
   const total = toTotal(data, items.length)
   return { items, total }
 }
 
+type StoreEmployeeServerDates = 'id' | 'fecha_ingreso' | 'fecha_ultima_actualizacion'
+
 export async function createStoreEmployee(
-  payload: Omit<StoreEmployee, 'id' | 'fecha_actual'>
+  payload: Omit<StoreEmployee, StoreEmployeeServerDates>
 ): Promise<void> {
   await axios.post(endpoint, payload, {
-    headers: { 'Content-Type': 'application/json', 'X-User': payload.usuario_actual || '' }
+    headers: { 'Content-Type': 'application/json', 'X-User': payload.usuario_ultima_actualizacion || '' }
   })
 }
 
 export async function updateStoreEmployee(
   id: number,
-  payload: Partial<Omit<StoreEmployee, 'id' | 'fecha_actual'>>
+  payload: Partial<Omit<StoreEmployee, StoreEmployeeServerDates>>
 ): Promise<void> {
   await axios.patch(
     endpoint,
     { id, ...payload },
-    { headers: { 'Content-Type': 'application/json', 'X-User': payload.usuario_actual || '' } }
+    {
+      headers: {
+        'Content-Type': 'application/json',
+        'X-User': payload.usuario_ultima_actualizacion || ''
+      }
+    }
   )
 }
 

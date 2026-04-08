@@ -227,6 +227,9 @@
               <th class="py-2 pr-3">Correo</th>
               <th class="py-2 pr-3">Encargado</th>
               <th class="py-2 pr-3">Estado</th>
+              <th class="py-2 pr-3 whitespace-nowrap">Fecha ingreso</th>
+              <th class="py-2 pr-3 whitespace-nowrap">Última actualización</th>
+              <th class="py-2 pr-3">Usuario últ. act.</th>
             </tr>
           </thead>
           <tbody>
@@ -331,9 +334,18 @@
                   {{ employee.estado === 1 ? 'Activo' : 'Inactivo' }}
                 </button>
               </td>
+              <td class="py-2 pr-3 text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                {{ formatAuditDate(employee.fecha_ingreso) }}
+              </td>
+              <td class="py-2 pr-3 text-gray-600 dark:text-gray-400 whitespace-nowrap">
+                {{ formatAuditDate(employee.fecha_ultima_actualizacion) }}
+              </td>
+              <td class="py-2 pr-3 text-gray-600 dark:text-gray-400">
+                {{ employee.usuario_ultima_actualizacion?.trim() || '—' }}
+              </td>
             </tr>
             <tr v-if="!employees.length">
-              <td colspan="7" class="py-4 text-center text-gray-500 dark:text-gray-300">
+              <td colspan="10" class="py-4 text-center text-gray-500 dark:text-gray-300">
                 No hay empleados para mostrar.
               </td>
             </tr>
@@ -473,6 +485,14 @@ function tiendaLabel(cod: string): string {
   return found ? `${found.label} (${c})` : c
 }
 
+function formatAuditDate(value: string | undefined): string {
+  const s = (value || '').trim()
+  if (!s) return '—'
+  const d = new Date(s)
+  if (Number.isNaN(d.getTime())) return s
+  return d.toLocaleString('es-EC', { dateStyle: 'short', timeStyle: 'short' })
+}
+
 function resetForm() {
   isNewEmployeeCollapsed.value = false
   form.id = null
@@ -608,7 +628,7 @@ async function saveInlineEdit(employee: StoreEmployee) {
   try {
     const payload = {
       [field]: value,
-      usuario_actual: currentUser.value
+      usuario_ultima_actualizacion: currentUser.value
     } as Record<string, string>
     await updateStoreEmployee(employee.id, payload)
     ;(employee as unknown as Record<string, unknown>)[field] = value
@@ -708,7 +728,7 @@ async function saveEmployee() {
       codigo_tienda: form.codigo_tienda,
       estado: form.estado,
       encargado: form.estado === 0 ? 0 : form.encargado,
-      usuario_actual: currentUser.value
+      usuario_ultima_actualizacion: currentUser.value
     }
 
     if (form.id) {
@@ -752,7 +772,7 @@ async function toggleEmployeeEncargado(employee: StoreEmployee) {
     const nextEncargado = employee.encargado === 1 ? 0 : 1
     await updateStoreEmployee(employee.id, {
       encargado: nextEncargado,
-      usuario_actual: currentUser.value
+      usuario_ultima_actualizacion: currentUser.value
     })
     employee.encargado = nextEncargado
   } catch (error: unknown) {
@@ -774,7 +794,7 @@ async function toggleEmployeeEstado(employee: StoreEmployee) {
     await updateStoreEmployee(employee.id, {
       estado: nextEstado,
       encargado: nextEncargado,
-      usuario_actual: currentUser.value
+      usuario_ultima_actualizacion: currentUser.value
     })
     employee.estado = nextEstado
     employee.encargado = nextEncargado
