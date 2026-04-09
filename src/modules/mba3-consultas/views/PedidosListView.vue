@@ -588,7 +588,9 @@ function getEstadoLabel(estado: string): string {
     'CANCELADO POR EL RAYO': 'Cancelado por El Rayo',
     'CANCELADO_POR_EL_RAYO': 'Cancelado por El Rayo',
     'CONFIRMADO POR EL RAYO': 'Confirmado por El Rayo',
-    'CONFIRMADO_POR_EL_RAYO': 'Confirmado por El Rayo'
+    'CONFIRMADO_POR_EL_RAYO': 'Confirmado por El Rayo',
+    'ERROR ENVIO SAP REINTENTO': 'Error envío SAP (reintentar)',
+    'ERROR_ENVIO_SAP_REINTENTO': 'Error envío SAP (reintentar)'
   }
   return labels[estado] || estado
 }
@@ -627,7 +629,9 @@ function getEstadoBadgeClass(estado: string): string {
     'CANCELADO POR EL RAYO': `bg-rose-100 text-rose-800 ${darkClasses} dark:bg-rose-900/50 dark:text-rose-200`,
     'CANCELADO_POR_EL_RAYO': `bg-rose-100 text-rose-800 ${darkClasses} dark:bg-rose-900/50 dark:text-rose-200`,
     'CONFIRMADO POR EL RAYO': `bg-pink-100 text-pink-800 ${darkClasses} dark:bg-pink-900/50 dark:text-pink-200`,
-    'CONFIRMADO_POR_EL_RAYO': `bg-pink-100 text-pink-800 ${darkClasses} dark:bg-pink-900/50 dark:text-pink-200`
+    'CONFIRMADO_POR_EL_RAYO': `bg-pink-100 text-pink-800 ${darkClasses} dark:bg-pink-900/50 dark:text-pink-200`,
+    'ERROR ENVIO SAP REINTENTO': `bg-amber-100 text-amber-900 ${darkClasses} dark:bg-amber-900/40 dark:text-amber-100`,
+    'ERROR_ENVIO_SAP_REINTENTO': `bg-amber-100 text-amber-900 ${darkClasses} dark:bg-amber-900/40 dark:text-amber-100`
   }
 
   return `${baseClasses} ${classes[estado] || `bg-gray-100 text-gray-800 ${darkClasses} dark:bg-gray-700 dark:text-gray-200`}`

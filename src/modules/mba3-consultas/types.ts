@@ -905,7 +905,7 @@ export interface PedidoCabecera {
   modificado_fecha?: string | null
   modificado_por?: string | null
   estado?: string  // Estado del pedido: "PENDIENTE_CONFIRMACION_PROVEEDOR", "RESPUESTA_PROVEEDOR_CARGADA", "CONFIRMADO_PROVEEDOR", "CONFIRMADO REDISTRIBUCION", "PEDIDO_CONFIRMADO", "PROCESADO_SAP", "CONFIRMADO_ENVIADO", "DESPACHAR Y FACTURAR"
-  estado_id?: number  // ID del estado en BD (ej. 12 = CONFIRMADO_ENVIADO, 17 = DESPACHAR Y FACTURAR)
+  estado_id?: number  // ID del estado en BD (ej. 12 = CONFIRMADO_ENVIADO, 17 = DESPACHAR Y FACTURAR, 21 = ERROR ENVIO SAP REINTENTO)
   // ⭐ Campos de SAP (disponibles cuando estado_id = 12 CONFIRMADO_ENVIADO)
   numero_oc_sap?: string | null  // Número de OC en SAP (DocNum)
   doc_entry?: number | null      // DocEntry de SAP para trazabilidad
@@ -955,6 +955,11 @@ export interface PedidoCompleto {
   puede_confirmar_redistribucion?: boolean
   /** true si se puede finalizar el pedido (solo cuando estado_id === 17 = DESPACHAR Y FACTURAR). Backend: GET /api/pedidos/{id} y GET /api/plantillas/{numero_pedido} */
   puede_finalizar?: boolean
+  /**
+   * true si el usuario puede reintentar el proceso completo (envío ODC a SAP), p. ej. estado 21 o 10 con ODC reintentable.
+   * Backend: enrich tras GET plantillas/pedido y respuestas que devuelven pedido completo.
+   */
+  puede_reintentar_envio_odc_sap?: boolean
 }
 
 // ========== Respuesta del Proveedor (Fase 3) ==========

@@ -425,7 +425,7 @@
           :confirmando-redistribucion="redistribucion.confirmandoRedistribucion"
           :confirmar-deshabilitado-por-estado="confirmarRedistribucionDeshabilitadoPorEstado"
           :columnas-modificadas="columnasModificadas as unknown as Ref<Set<string>>"
-          :show-enviar-odc-sap="true"
+          :show-enviar-odc-sap="showEnviarOdcSapButton"
           :enviando-odc-sap="enviandoOdcSap"
           @toggle-expandir-producto="toggleExpandirProducto"
           @actualizar-cantidad-tienda="actualizarCantidadTienda"
@@ -943,6 +943,13 @@ const puedeFinalizarPedido = computed(() => pedido.value?.puede_finalizar === tr
 
 // ⭐ Botón "Enviar ODC a SAP" (proceso completo: redistribución + ODC + SAP)
 const enviandoOdcSap = ref(false)
+/** Primer envío en estado 4 o reintento cuando el backend marca puede_reintentar_envio_odc_sap */
+const showEnviarOdcSapButton = computed(() => {
+  const p = pedido.value
+  if (!p?.cabecera) return false
+  if (p.puede_reintentar_envio_odc_sap === true) return true
+  return p.cabecera.estado_id === 4
+})
 /** Banner + CTA cuando proceso-completo-sap devuelve retry_recommended (fallo transitorio). */
 const mostrarBannerReintentoConexionSap = ref(false)
 

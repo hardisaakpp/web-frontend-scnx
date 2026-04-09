@@ -460,11 +460,11 @@ const guardarBorradorDeshabilitadoPorEstado = computed(() => {
   return estadoId !== 4
 })
 
-// ⭐ Mostrar botón "Enviar ODC a SAP" solo cuando estado es CONFIRMADO POR EL RAYO (estado_id = 4)
-// Este botón ejecuta el proceso completo: Redistribución + Generar ODC + Enviar a SAP
+// ⭐ "Enviar ODC a SAP": primer envío en estado 4, o reintento cuando el backend indica puede_reintentar_envio_odc_sap (p. ej. 10, 21)
 const showEnviarOdcSap = computed(() => {
-  const estadoId = pedido.value?.cabecera?.estado_id
-  return estadoId === 4 // CONFIRMADO POR EL RAYO
+  const p = pedido.value
+  if (p?.puede_reintentar_envio_odc_sap === true) return true
+  return p?.cabecera?.estado_id === 4
 })
 
 // Funciones de redistribución
@@ -540,7 +540,7 @@ function getSolicitudesTransferencia(response: ProcesoCompletoSAPResponse): Soli
 }
 
 /** Aplica el resultado del proceso SAP (compartido entre flujo async y fallback sync). */
-function applySAPResponse(response: ProcesoCompletoSAPResponse) {
+async function applySAPResponse(response: ProcesoCompletoSAPResponse) {
   const innerStatus = (response as any).status === 'success' || (response as any).status === 'partial' || (response as any).status === 'error'
     ? (response as any).status
     : (response.envio_sap?.doc_num != null ? 'success' : response.error ? 'partial' : 'error')
@@ -548,11 +548,15 @@ function applySAPResponse(response: ProcesoCompletoSAPResponse) {
   const solicitudesTransferencia = getSolicitudesTransferencia(response)
 
   if (innerStatus === 'success') {
-    // Backend actualiza a "Confirmado y enviado" (estado_id 12) cuando PASO 3 termina bien; reflejar en UI.
-    const cabecera = pedido.value?.cabecera
-    if (cabecera) {
-      cabecera.estado_id = 12
-      cabecera.estado = 'CONFIRMADO_ENVIADO'
+    try {
+      await loadPedido()
+    } catch (e) {
+      console.warn('[applySAPResponse] loadPedido tras éxito SAP:', e)
+      const cabecera = pedido.value?.cabecera
+      if (cabecera) {
+        cabecera.estado_id = 12
+        cabecera.estado = 'CONFIRMADO_ENVIADO'
+      }
     }
     procesoStore.setSAPResultadoPendiente({
       detalle: response.envio_sap ? {
@@ -575,6 +579,15 @@ function applySAPResponse(response: ProcesoCompletoSAPResponse) {
     })
     router.push({ name: 'mba3-consultas-proceso' })
   } else if (innerStatus === 'partial') {
+    try {
+      await loadPedido()
+    } catch (e) {
+      console.warn('[applySAPResponse] loadPedido tras partial SAP:', e)
+      if (response.redistribucion && pedido.value?.cabecera) {
+        pedido.value.cabecera.estado_id = 10
+        pedido.value.cabecera.estado = 'CONFIRMADO REDISTRIBUCION'
+      }
+    }
     const errorMsg = response.error ?? 'Error desconocido'
     const retryFlag = response.envio_sap?.retry_recommended ?? null
     procesoStore.setSAPResultadoPendiente({
@@ -607,10 +620,6 @@ function applySAPResponse(response: ProcesoCompletoSAPResponse) {
       numeroPedido: numeroPedido.value,
       ajustesDetalle: buildAjustesDetalleParaProcesoCompletoSAP()
     })
-    if (response.redistribucion && pedido.value?.cabecera) {
-      pedido.value.cabecera.estado_id = 10
-      pedido.value.cabecera.estado = 'CONFIRMADO REDISTRIBUCION'
-    }
     router.push({ name: 'mba3-consultas-proceso' })
   } else {
     toast.error('Error en proceso SAP', response.message || 'Ocurrió un error inesperado')
@@ -622,7 +631,9 @@ function applySAPResponse(response: ProcesoCompletoSAPResponse) {
  * Intenta async (Celery); si backend responde 503 (Redis/Celery no disponible), fallback a sync.
  */
 async function handleEnviarOdcSap() {
-  if (!puedeConfirmarRedistribucion.value) {
+  const permiteSinValidarGrid =
+    pedido.value?.puede_reintentar_envio_odc_sap === true
+  if (!puedeConfirmarRedistribucion.value && !permiteSinValidarGrid) {
     toast.warning('Validación requerida', 'Debe completar la redistribución correctamente antes de enviar a SAP')
     return
   }
@@ -678,7 +689,7 @@ async function handleEnviarOdcSap() {
     })
     completeSapProgress()
     await new Promise(r => setTimeout(r, 400))
-    applySAPResponse(response)
+    await applySAPResponse(response)
   } catch (e: any) {
     console.error('Error al iniciar proceso completo SAP:', e)
     const message = e?.response?.data?.message || e?.message || 'No se pudo iniciar el proceso'

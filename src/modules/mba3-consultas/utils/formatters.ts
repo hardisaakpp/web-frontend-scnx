@@ -176,7 +176,9 @@ export function formatEstadoPedido(estado: string | undefined): string {
     'CANCELADO POR EL RAYO': 'Cancelado por El Rayo',
     'CANCELADO_POR_EL_RAYO': 'Cancelado por El Rayo',
     'CONFIRMADO POR EL RAYO': 'Confirmado por El Rayo',
-    'CONFIRMADO_POR_EL_RAYO': 'Confirmado por El Rayo'
+    'CONFIRMADO_POR_EL_RAYO': 'Confirmado por El Rayo',
+    'ERROR ENVIO SAP REINTENTO': 'Error envío SAP (reintentar)',
+    'ERROR_ENVIO_SAP_REINTENTO': 'Error envío SAP (reintentar)'
   }
   return estados[estado] || estado
 }

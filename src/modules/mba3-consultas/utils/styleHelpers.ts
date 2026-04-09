@@ -50,7 +50,9 @@ export function getEstadoPedidoBadgeClass(estado: string | undefined): string {
     'CANCELADO POR EL RAYO': `bg-rose-100 text-rose-800 ${badgeDark} dark:bg-rose-900/50 dark:text-rose-200`,
     'CANCELADO_POR_EL_RAYO': `bg-rose-100 text-rose-800 ${badgeDark} dark:bg-rose-900/50 dark:text-rose-200`,
     'CONFIRMADO POR EL RAYO': `bg-pink-100 text-pink-800 ${badgeDark} dark:bg-pink-900/50 dark:text-pink-200`,
-    'CONFIRMADO_POR_EL_RAYO': `bg-pink-100 text-pink-800 ${badgeDark} dark:bg-pink-900/50 dark:text-pink-200`
+    'CONFIRMADO_POR_EL_RAYO': `bg-pink-100 text-pink-800 ${badgeDark} dark:bg-pink-900/50 dark:text-pink-200`,
+    'ERROR ENVIO SAP REINTENTO': `bg-amber-100 text-amber-900 ${badgeDark} dark:bg-amber-900/40 dark:text-amber-100`,
+    'ERROR_ENVIO_SAP_REINTENTO': `bg-amber-100 text-amber-900 ${badgeDark} dark:bg-amber-900/40 dark:text-amber-100`
   }
   return classes[estado] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
 }
