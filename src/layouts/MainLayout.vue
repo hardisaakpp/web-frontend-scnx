@@ -127,7 +127,7 @@
 
         <!-- Gestión ODC SAP: visible con odc.view (canViewOdcSap), odcsap.view (canManageOrder/canViewOrderList) o mabel.view (canViewMabel) -->
         <router-link
-          v-if="authStore.canViewOdcSap || authStore.canManageOrder || authStore.canViewOrderList || authStore.canViewMabel"
+          v-if="canAccessGestionOdcSap"
           to="/mba3-consultas"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
@@ -469,6 +469,34 @@ const hasModuleAccess = (moduleName: string): boolean => {
     return normalizedPermission.startsWith(`${normalizedModule}.`)
   })
 }
+
+/**
+ * Fallback para no ocultar el módulo si /Auth/me falla temporalmente:
+ * prioriza capabilities y, si no están disponibles, usa permisos legacy.
+ */
+const canAccessGestionOdcSap = computed(() => {
+  if (
+    authStore.canViewOdcSap ||
+    authStore.canManageOrder ||
+    authStore.canViewOrderList ||
+    authStore.canViewMabel
+  ) {
+    return true
+  }
+
+  const permissions = authStore.userPermissions || []
+  return permissions.some((permission: string) => {
+    const normalized = permission.toLowerCase()
+    return (
+      normalized === 'odc.view' ||
+      normalized === 'odcsap.view' ||
+      normalized === 'mabel.view' ||
+      normalized.startsWith('odc.') ||
+      normalized.startsWith('odcsap.') ||
+      normalized.startsWith('mabel.')
+    )
+  })
+})
 
 onMounted(async () => {
   if (authStore.token && !authStore.capabilities) {
