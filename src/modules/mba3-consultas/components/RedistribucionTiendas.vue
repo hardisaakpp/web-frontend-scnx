@@ -63,10 +63,10 @@
       </div>
     </div>
 
-    <!-- Barra de indicadores (sticky: hijo directo del contenedor principal para que permanezca visible al hacer scroll) -->
+    <!-- Barra de indicadores (solo la cuadrícula de totales es sticky) -->
     <div
       v-if="pedidoValue?.respuesta_proveedor"
-      class="sticky top-16 z-20 bg-white dark:bg-gray-800 px-6 py-3 border-b border-gray-200 dark:border-gray-700 shadow-sm space-y-3"
+      class="sticky top-16 z-20 bg-white dark:bg-gray-800 px-6 py-3 border-b border-gray-200 dark:border-gray-700 shadow-sm"
     >
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
       <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2.5 border border-blue-200 dark:border-blue-800">
@@ -124,26 +124,30 @@
         </p>
       </div>
       </div>
-      <!-- Control de decimales (solo en vista Matriz) -->
-      <div v-if="modoVista === 'excel'" class="flex items-center gap-2 pt-1 border-t border-gray-200 dark:border-gray-700">
-        <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Decimales:</span>
-        <div class="inline-flex rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 p-0.5">
-          <button
-            v-for="d in [0, 1]"
-            :key="d"
-            type="button"
-            @click="decimalPlaces = d"
-            :class="[
-              'px-2.5 py-1 text-xs font-medium rounded-md transition-colors',
-              decimalPlaces === d
-                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-            ]"
-            :title="d === 0 ? 'Solo enteros' : `${d} decimal(es)`"
-          >
-            {{ d }}
-          </button>
-        </div>
+    </div>
+
+    <!-- Control de decimales (vista Matriz): fuera del sticky para que haga scroll con el contenido) -->
+    <div
+      v-if="pedidoValue?.respuesta_proveedor && modoVista === 'excel'"
+      class="flex items-center gap-2 pt-2 pb-2 px-6 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+    >
+      <span class="text-xs font-medium text-gray-500 dark:text-gray-400">Decimales:</span>
+      <div class="inline-flex rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 p-0.5">
+        <button
+          v-for="d in [0, 1]"
+          :key="d"
+          type="button"
+          @click="decimalPlaces = d"
+          :class="[
+            'px-2.5 py-1 text-xs font-medium rounded-md transition-colors',
+            decimalPlaces === d
+              ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+          ]"
+          :title="d === 0 ? 'Solo enteros' : `${d} decimal(es)`"
+        >
+          {{ d }}
+        </button>
       </div>
     </div>
 
@@ -224,13 +228,14 @@
         
         <!-- Vista Compacta (tabla original) -->
         <table v-else class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-          <thead class="bg-gray-50 dark:bg-gray-900">
+          <!-- Misma “barra” que totales: px-6 py-3, borde inferior, fondo gris (sin sticky vertical forzado) -->
+          <thead class="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
             <tr>
               <th
                 v-for="column in orderedVisibleColumns"
                 :key="column.key"
                 :class="[
-                  'px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider',
+                  'px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider',
                   column.key === 'expand' ? 'w-8 text-left' :
                   column.key === 'codigo' ? 'text-left' :
                   column.key === 'producto' ? 'text-left' :
@@ -268,7 +273,7 @@
                   v-for="column in orderedVisibleColumns"
                   :key="column.key"
                   :class="[
-                    'px-4 py-4',
+                    'px-6 py-4',
                     column.key === 'expand' ? 'whitespace-nowrap' :
                     column.key === 'codigo' ? 'whitespace-nowrap' :
                     column.key === 'producto' ? '' :
