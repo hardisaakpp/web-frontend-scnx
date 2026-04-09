@@ -113,25 +113,13 @@
           <div class="text-sm text-gray-700 dark:text-gray-300">
             Página {{ page }} de {{ totalPages }} ({{ total }} pedidos)
           </div>
-          <div class="flex items-center gap-2">
-            <button
-              @click="page = Math.max(1, page - 1); cargarPedidos()"
-              :disabled="page <= 1"
-              class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium text-gray-700 dark:text-gray-300"
-            >
-              Anterior
-            </button>
-            <span class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">
-              Página {{ page }} de {{ totalPages }}
-            </span>
-            <button
-              @click="page = Math.min(totalPages, page + 1); cargarPedidos()"
-              :disabled="page >= totalPages"
-              class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium text-gray-700 dark:text-gray-300"
-            >
-              Siguiente
-            </button>
-          </div>
+          <QuickTablePagination
+            :model-value="page"
+            :total-pages="totalPages"
+            :disabled="loading"
+            aria-label="Paginación de pedidos confirmados"
+            @update:model-value="setProcesamientoSapPage"
+          />
         </div>
       </div>
     </div>
@@ -143,6 +131,7 @@ import { ref, computed } from '@vue/reactivity'
 import { onMounted } from '@vue/runtime-core'
 import { useRouter } from 'vue-router'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
+import QuickTablePagination from '../components/QuickTablePagination.vue'
 import type { PedidoCompleto } from '../types'
 import { formatDate } from '../utils/formatters'
 
@@ -177,6 +166,11 @@ function irAProcesamientoSAP(pedido: PedidoCompleto) {
     name: 'mba3-consultas-pedido-procesamiento-sap',
     params: { id: encodeURIComponent(numero) }
   })
+}
+
+function setProcesamientoSapPage(p: number) {
+  page.value = p
+  cargarPedidos()
 }
 
 async function cargarPedidos() {

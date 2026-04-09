@@ -267,25 +267,12 @@
                 Mostrando página {{ currentPageOC }} de {{ totalPagesOC }}
                 ({{ filteredOCCount > 0 ? filteredOCCount : ordenesCompraStore.total }} órdenes{{ filteredOCCount > 0 && filteredOCCount !== ordenesCompraStore.total ? ' filtradas' : '' }})
               </div>
-              <div class="flex items-center gap-2">
-                <button
-                  @click="prevPageOC"
-                  :disabled="currentPageOC === 1 || ordenesCompraStore.loading || (procesoStore.loading && procesoStore.currentStep === 'migrar')"
-                  class="px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 text-sm font-medium shadow-sm"
-                >
-                  Anterior
-                </button>
-                <span class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600">
-                  Página {{ currentPageOC }} de {{ totalPagesOC }}
-                </span>
-                <button
-                  @click="nextPageOC"
-                  :disabled="currentPageOC === totalPagesOC || ordenesCompraStore.loading || (procesoStore.loading && procesoStore.currentStep === 'migrar')"
-                  class="px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 text-sm font-medium shadow-sm"
-                >
-                  Siguiente
-                </button>
-              </div>
+              <QuickTablePagination
+                v-model="currentPageOC"
+                :total-pages="totalPagesOC"
+                :disabled="ordenesCompraStore.loading || (procesoStore.loading && procesoStore.currentStep === 'migrar')"
+                aria-label="Paginación de órdenes de compra"
+              />
             </div>
             </div>
           </div>
@@ -317,7 +304,10 @@
       :detalle="integracionSAPDetalle"
       :solicitudes-transferencia="integracionSAPSolicitudes"
       :estado-general="integracionSAPEstado"
+      :show-retry-sap-cta="showIntegracionSAPRetryCta"
+      :retry-loading="sapRetryLoading"
       @close="showIntegracionSAPModal = false"
+      @retry-sap="handleRetryProcesoCompletoSAP"
     />
   </div>
 </template>
@@ -336,8 +326,10 @@ import OrdenCompraTable from '../components/OrdenCompraTable.vue'
 import SkeletonTable from '../components/SkeletonTable.vue'
 import IntegracionSAPModal from '../components/IntegracionSAPModal.vue'
 import OdcSapVolverButton from '../components/OdcSapVolverButton.vue'
-import type { IntegracionSAPDetalle, SolicitudesTransferencia } from '../types'
+import type { AjusteDetalle, IntegracionSAPDetalle, ProcesoCompletoSAPResponse, SolicitudesTransferencia } from '../types'
 import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
+import QuickTablePagination from '../components/QuickTablePagination.vue'
+import { ejecutarProcesoCompletoSap } from '../composables/ejecutarProcesoCompletoSap'
 
 const procesoStore = useProcesoStore()
 const ordenesCompraStore = useOrdenesCompraStore()
@@ -350,6 +342,88 @@ const showIntegracionSAPModal = ref(false)
 const integracionSAPDetalle = ref<IntegracionSAPDetalle | null>(null)
 const integracionSAPSolicitudes = ref<SolicitudesTransferencia | null>(null)
 const integracionSAPEstado = ref<'success' | 'partial' | 'error'>('success')
+
+/** Payload para re-ejecutar POST proceso-completo-sap tras fallo transitorio (retry_recommended). */
+const sapRetryContext = ref<{ numeroPedido: string; ajustesDetalle: AjusteDetalle[] } | null>(null)
+const sapRetryLoading = ref(false)
+
+const showIntegracionSAPRetryCta = computed(() => {
+  if (!sapRetryContext.value) return false
+  const d = integracionSAPDetalle.value
+  return !!(d && d.retry_recommended === true && !d.success)
+})
+
+function aplicarRespuestaProcesoCompletoSAPAlModal(response: ProcesoCompletoSAPResponse) {
+  const envio = response.envio_sap
+  const errorMsg = response.error ?? response.message ?? null
+  const solicitudes =
+    response.solicitudes_transferencia ?? envio?.solicitudes_transferencia ?? null
+
+  if (envio) {
+    integracionSAPDetalle.value = {
+      oc_id: envio.oc_id ?? '',
+      success: !!envio.doc_num,
+      doc_num: envio.doc_num ?? null,
+      doc_entry: envio.doc_entry ?? null,
+      numero_oc_sap: (envio as { numero_oc_sap?: string | null }).numero_oc_sap ?? null,
+      message: envio.message ?? response.message ?? null,
+      error: envio.error ?? errorMsg,
+      error_message: envio.error ?? errorMsg,
+      error_code: (envio as { error_code?: string | null }).error_code ?? null,
+      error_source: (envio as { error_source?: string | null }).error_source ?? null,
+      solicitudes_transferencia: envio.solicitudes_transferencia ?? null,
+      sap_response: null,
+      sap_error_details: null,
+      retry_recommended: envio.retry_recommended ?? null,
+      proveedor: integracionSAPDetalle.value?.proveedor
+    }
+  }
+
+  integracionSAPSolicitudes.value = solicitudes
+
+  const innerStatus =
+    response.status === 'success' || response.status === 'partial' || response.status === 'error'
+      ? response.status
+      : envio?.doc_num != null
+        ? 'success'
+        : response.error
+          ? 'partial'
+          : 'error'
+
+  if (innerStatus === 'success') {
+    integracionSAPEstado.value =
+      solicitudes && solicitudes.transferencias_errores > 0 ? 'partial' : 'success'
+  } else if (innerStatus === 'partial') {
+    integracionSAPEstado.value = 'partial'
+  } else {
+    integracionSAPEstado.value = 'error'
+  }
+}
+
+async function handleRetryProcesoCompletoSAP() {
+  const ctx = sapRetryContext.value
+  if (!ctx || sapRetryLoading.value) return
+  sapRetryLoading.value = true
+  try {
+    const response = await ejecutarProcesoCompletoSap(ctx.numeroPedido, ctx.ajustesDetalle, {
+      onFallbackSync: () => {
+        toast.info('Proceso en segundo plano no disponible', 'Se ejecutará en modo síncrono.')
+      }
+    })
+    aplicarRespuestaProcesoCompletoSAPAlModal(response)
+    if (response.envio_sap?.doc_num != null) {
+      sapRetryContext.value = null
+      toast.success('Envío a SAP', response.message || 'Proceso completado correctamente.')
+    } else if (response.envio_sap?.retry_recommended !== true) {
+      sapRetryContext.value = null
+    }
+  } catch (e: any) {
+    const msg = e?.response?.data?.message ?? e?.response?.data?.detail ?? e?.message ?? 'No se pudo reintentar'
+    toast.error('Error al reintentar envío a SAP', typeof msg === 'string' ? msg : String(msg))
+  } finally {
+    sapRetryLoading.value = false
+  }
+}
 
 // Estados para despachos
 const hayDespachos = ref(false)
@@ -755,19 +829,6 @@ function handleFilteredOCCountChanged(count: number) {
   const totalPages = Math.ceil(count / pageSizeOC.value)
   if (currentPageOC.value > totalPages && totalPages > 0) {
     currentPageOC.value = 1
-  }
-}
-
-// Funciones de paginación para ODC
-function prevPageOC() {
-  if (currentPageOC.value > 1) {
-    currentPageOC.value--
-  }
-}
-
-function nextPageOC() {
-  if (currentPageOC.value < totalPagesOC.value) {
-    currentPageOC.value++
   }
 }
 
@@ -1816,11 +1877,17 @@ onMounted(async () => {
     integracionSAPDetalle.value = resultado.detalle
     integracionSAPSolicitudes.value = resultado.solicitudesTransferencia
     integracionSAPEstado.value = resultado.estadoGeneral
-    
+    if (resultado.ajustesDetalle?.length) {
+      sapRetryContext.value = {
+        numeroPedido: resultado.numeroPedido,
+        ajustesDetalle: resultado.ajustesDetalle
+      }
+    }
+
     // Mostrar modal después de un pequeño delay
     await new Promise(resolve => setTimeout(resolve, 300))
     showIntegracionSAPModal.value = true
-    
+
     // Limpiar el resultado pendiente
     procesoStore.clearSAPResultadoPendiente()
   }

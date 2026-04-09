@@ -973,6 +973,7 @@ export const pedidosService = {
    * POST /api/pedidos/{numero_pedido}/proceso-completo-sap-async
    * - 202: proceso encolado, usar process_id para polling (GET proceso-sap/resultado/{process_id}).
    * - 200: resultado ya completo (fallback sync o force_sync); body tiene fallback, process_id: null, async: false.
+   *   (Algunos despliegues no usan 503 para “Celery no disponible”: devuelven 200 con cuerpo sync; el cliente lo trata como respuesta inmediata.)
    * Timeout 2 min para cubrir el caso en que el backend ejecuta en sync (~40s).
    */
   async procesoCompletoSAPAsync(

@@ -386,6 +386,35 @@
           @update-estado="handleUpdateEstado"
         />
 
+        <!-- Fallo transitorio SAP (retry_recommended): mismo flujo que "Enviar ODC a SAP" -->
+        <div
+          v-if="mostrarBannerReintentoConexionSap"
+          class="mb-4 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/25 px-4 py-3 text-sm text-amber-900 dark:text-amber-100 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+          role="status"
+        >
+          <p class="flex-1">
+            Fallo temporal de conexión con SAP. Puede volver a intentar el envío.
+          </p>
+          <button
+            type="button"
+            :disabled="enviandoOdcSap"
+            class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium whitespace-nowrap shrink-0"
+            @click="handleEnviarOdcSap"
+          >
+            <svg
+              v-if="enviandoOdcSap"
+              class="animate-spin h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+            {{ enviandoOdcSap ? 'Reintentando…' : 'Reintentar envío a SAP' }}
+          </button>
+        </div>
+
         <!-- ⭐ FASE 4: Ajuste y Redistribución a Tiendas -->
         <RedistribucionTiendas
           :pedido="pedido"
@@ -649,6 +678,7 @@ import { useFileUpload, RESALTADO_CODIGOS_STORAGE_PREFIX } from '../composables/
 import { useColumnManagement } from '../composables/useColumnManagement'
 import { usePedidoDetalle } from '../composables/usePedidoDetalle'
 import { useRedistribucion } from '../composables/useRedistribucion'
+import { ejecutarProcesoCompletoSap } from '../composables/ejecutarProcesoCompletoSap'
 // Componentes
 import PedidoHeaderActions from '../components/PedidoHeaderActions.vue'
 import PedidoCabecera from '../components/PedidoCabecera.vue'
@@ -913,6 +943,8 @@ const puedeFinalizarPedido = computed(() => pedido.value?.puede_finalizar === tr
 
 // ⭐ Botón "Enviar ODC a SAP" (proceso completo: redistribución + ODC + SAP)
 const enviandoOdcSap = ref(false)
+/** Banner + CTA cuando proceso-completo-sap devuelve retry_recommended (fallo transitorio). */
+const mostrarBannerReintentoConexionSap = ref(false)
 
 // ⭐ NUEVO: Variables de progreso para envío ODC a SAP
 const sapProgress = ref(0)
@@ -921,8 +953,6 @@ const sapMessage = ref('')
 
 // Intervalo para simulación de progreso
 let sapProgressInterval: ReturnType<typeof setInterval> | null = null
-// Intervalo de polling para proceso async SAP
-let sapPollingInterval: ReturnType<typeof setInterval> | null = null
 
 // Modal de éxito SAP y PDF
 const showSAPSuccessModal = ref(false)
@@ -938,10 +968,6 @@ function resetSapProgress() {
   if (sapProgressInterval) {
     clearInterval(sapProgressInterval)
     sapProgressInterval = null
-  }
-  if (sapPollingInterval) {
-    clearInterval(sapPollingInterval)
-    sapPollingInterval = null
   }
 }
 
@@ -1661,6 +1687,7 @@ async function applySAPResponseCargarPlantilla(response: import('@/modules/mba3-
     : (response.envio_sap?.doc_num != null ? 'success' : response.error ? 'partial' : 'error')
 
   if (innerStatus === 'success') {
+    mostrarBannerReintentoConexionSap.value = false
     const docNum = response.envio_sap?.doc_num
     sapSuccessMessage.value = docNum
       ? `ODC enviada exitosamente a SAP. Num ODC: ${docNum}`
@@ -1675,6 +1702,9 @@ async function applySAPResponseCargarPlantilla(response: import('@/modules/mba3-
     }
     await loadPedido()
   } else if (innerStatus === 'partial') {
+    const env = response.envio_sap
+    mostrarBannerReintentoConexionSap.value =
+      env?.retry_recommended === true && env?.doc_num == null
     toast.warning(
       `Error en paso: ${response.paso_fallido ?? 'desconocido'}`,
       response.error || response.message || 'El proceso no se completó totalmente'
@@ -1683,6 +1713,7 @@ async function applySAPResponseCargarPlantilla(response: import('@/modules/mba3-
     if (response.odc_generada) toast.info('ODC generada', `ID: ${response.odc_generada.oc_id}`)
     await loadPedido()
   } else {
+    mostrarBannerReintentoConexionSap.value = false
     toast.error('Error', response.message || 'No se pudo completar el proceso')
   }
 }
@@ -1698,6 +1729,8 @@ async function handleEnviarOdcSap() {
   }
 
   if (enviandoOdcSap.value) return
+
+  mostrarBannerReintentoConexionSap.value = false
 
   const ajustesDetalle = redistribucion.productosRedistribucion.value.map(producto => ({
     codigo_producto: producto.codigo_producto,
@@ -1720,110 +1753,26 @@ async function handleEnviarOdcSap() {
   toast.info('Procesando...', 'Proceso SAP en segundo plano. No cierre la ventana.')
 
   try {
-    try {
-      const accepted = await mba3ConsultasService.procesoCompletoSAPAsync(numeroPedido.value, ajustesDetalle)
-
-      // Respuesta 200 con resultado completo (fallback sync o force_sync): no hacer polling
-      const isSyncResult = (accepted as any).fallback === 'sync' || (accepted as any).async === false || (accepted as any).process_id == null
-      if (isSyncResult) {
-        completeSapProgress()
-        await new Promise(r => setTimeout(r, 400))
-        await applySAPResponseCargarPlantilla(accepted as unknown as import('@/modules/mba3-consultas/types').ProcesoCompletoSAPResponse)
-        enviandoOdcSap.value = false
-        setTimeout(resetSapProgress, 500)
-        return
-      }
-
-      if (accepted.status !== 'accepted' || !accepted.process_id) {
-        toast.error('Error', 'No se pudo iniciar el proceso. Respuesta inesperada.')
-        return
-      }
-
-      const processId = accepted.process_id
-
-      const poll = async () => {
-        try {
-        const result = await mba3ConsultasService.getProcesoSAPResultado(processId)
-        const data = result as Record<string, unknown>
-
-        // Solo considerar terminado cuando el backend envía el resultado final (status terminal).
-        // No cerrar solo por progress 100 o process_status 'completed' (pueden llegar antes del resultado real).
-        const done =
-          data.status === 'success' ||
-          data.status === 'partial' ||
-          data.status === 'completed'
-
-        if (result.status === 'error') {
-            if (sapPollingInterval) {
-              clearInterval(sapPollingInterval)
-              sapPollingInterval = null
-            }
-            enviandoOdcSap.value = false
-            resetSapProgress()
-            const msg = result.message || 'Error en el proceso'
-            const detalle = result.error_detalle || result.paso_fallido ? ` (${result.paso_fallido ?? ''} ${result.error_detalle ?? ''})`.trim() : ''
-            toast.error('Error al enviar a SAP', msg + detalle)
-            return
-          }
-
-          if (done) {
-            if (sapPollingInterval) {
-              clearInterval(sapPollingInterval)
-              sapPollingInterval = null
-            }
-            completeSapProgress()
-            await new Promise(r => setTimeout(r, 400))
-            await applySAPResponseCargarPlantilla(result as import('@/modules/mba3-consultas/types').ProcesoCompletoSAPResponse)
-            enviandoOdcSap.value = false
-            setTimeout(resetSapProgress, 500)
-            return
-          }
-
-          if (data.message) sapMessage.value = String(data.message)
-          if (typeof data.progress === 'number') sapProgress.value = data.progress
-        } catch (pollErr: any) {
-          if (sapPollingInterval) {
-            clearInterval(sapPollingInterval)
-            sapPollingInterval = null
-          }
-          enviandoOdcSap.value = false
-          resetSapProgress()
-          toast.error('Error', pollErr?.response?.data?.message || pollErr?.message || 'Error al consultar el resultado')
-        }
-      }
-
-      await poll()
-      sapPollingInterval = setInterval(poll, 2000)
-    } catch (asyncErr: any) {
-      const errorCode = asyncErr?.response?.data?.error ?? asyncErr?.response?.data?.detail?.error
-      const is503Unavailable = asyncErr?.response?.status === 503 &&
-        (errorCode === 'storage_required' || errorCode === 'celery_unavailable')
-      if (is503Unavailable) {
+    const response = await ejecutarProcesoCompletoSap(numeroPedido.value, ajustesDetalle, {
+      onFallbackSync: () => {
         if (import.meta.env.DEV) console.warn('[handleEnviarOdcSap] Async no disponible (503), usando proceso SAP síncrono')
         toast.info('Proceso en segundo plano no disponible', 'Se ejecutará en modo síncrono. No cierre la ventana.')
         sapMessage.value = 'Ejecutando proceso en modo síncrono...'
-        const response = await mba3ConsultasService.procesoCompletoSAP(numeroPedido.value, ajustesDetalle)
-        completeSapProgress()
-        await new Promise(r => setTimeout(r, 400))
-        await applySAPResponseCargarPlantilla(response)
-        enviandoOdcSap.value = false
-        setTimeout(resetSapProgress, 500)
-        return
+      },
+      onPollingUpdate: ({ message, progress }) => {
+        if (message) sapMessage.value = message
+        if (typeof progress === 'number') sapProgress.value = progress
       }
-      throw asyncErr
-    }
+    })
+    completeSapProgress()
+    await new Promise(r => setTimeout(r, 400))
+    await applySAPResponseCargarPlantilla(response)
   } catch (e: any) {
     console.error('Error al iniciar proceso completo SAP:', e)
-    if (sapPollingInterval) {
-      clearInterval(sapPollingInterval)
-      sapPollingInterval = null
-    }
     toast.error('Error al enviar a SAP', e?.response?.data?.message || e?.message || 'No se pudo iniciar el proceso')
   } finally {
-    if (!sapPollingInterval) {
-      enviandoOdcSap.value = false
-      setTimeout(resetSapProgress, 500)
-    }
+    enviandoOdcSap.value = false
+    setTimeout(resetSapProgress, 500)
   }
 }
 
@@ -1947,10 +1896,6 @@ onUnmounted(() => {
   if (sapProgressInterval) {
     clearInterval(sapProgressInterval)
     sapProgressInterval = null
-  }
-  if (sapPollingInterval) {
-    clearInterval(sapPollingInterval)
-    sapPollingInterval = null
   }
 })
 

@@ -55,25 +55,13 @@
           Mostrando página {{ currentPage }} de {{ totalPages }}
           ({{ filteredRemisionesCount > 0 ? filteredRemisionesCount : totalRemisiones }} remisiones{{ filteredRemisionesCount > 0 && filteredRemisionesCount !== totalRemisiones ? ' filtradas' : '' }})
         </div>
-        <div class="flex items-center gap-2">
-          <button
-            @click="prevPage"
-            :disabled="currentPage === 1 || loading"
-            class="px-4 py-2 border border-white/30 dark:border-gray-700 bg-white/60 dark:bg-gray-800 backdrop-blur-sm rounded-xl hover:bg-white/80 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 text-sm font-medium shadow-md hover:shadow-lg"
-          >
-            Anterior
-          </button>
-          <span class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-white/40 dark:bg-gray-800 backdrop-blur-sm rounded-xl border border-white/20 dark:border-gray-700">
-            Página {{ currentPage }} de {{ totalPages }}
-          </span>
-          <button
-            @click="nextPage"
-            :disabled="currentPage === totalPages || loading"
-            class="px-4 py-2 border border-white/30 dark:border-gray-700 bg-white/60 dark:bg-gray-800 backdrop-blur-sm rounded-xl hover:bg-white/80 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 text-sm font-medium shadow-md hover:shadow-lg"
-          >
-            Siguiente
-          </button>
-        </div>
+        <QuickTablePagination
+          :model-value="currentPage"
+          :total-pages="totalPages"
+          :disabled="loading"
+          aria-label="Paginación de remisiones"
+          @update:model-value="setRemisionesPage"
+        />
       </div>
     </div>
   </div>
@@ -86,6 +74,7 @@ import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import RemisionesTable from '../components/RemisionesTable.vue'
 import SkeletonTable from '../components/SkeletonTable.vue'
+import QuickTablePagination from '../components/QuickTablePagination.vue'
 import type { Remision } from '../types'
 
 const toast = useToast()
@@ -129,19 +118,9 @@ function handleFilteredCountChanged(count: number) {
   }
 }
 
-// Funciones de paginación
-function prevPage() {
-  if (currentPage.value > 1) {
-    currentPage.value--
-    cargarRemisiones()
-  }
-}
-
-function nextPage() {
-  if (currentPage.value < totalPages.value) {
-    currentPage.value++
-    cargarRemisiones()
-  }
+function setRemisionesPage(page: number) {
+  currentPage.value = page
+  cargarRemisiones()
 }
 
 // Función para cargar remisiones

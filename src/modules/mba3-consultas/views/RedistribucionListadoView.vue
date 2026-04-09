@@ -384,22 +384,12 @@
               <div class="text-sm text-gray-700 dark:text-gray-300">
                 Mostrando {{ metadata.offset + 1 }} - {{ Math.min(metadata.offset + metadata.limit, metadata.total) }} de {{ metadata.total }} resultados
               </div>
-              <div class="flex items-center gap-2">
-                <button
-                  @click="cambiarPagina(metadata.offset - metadata.limit)"
-                  :disabled="metadata.offset === 0"
-                  class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300 text-sm font-medium"
-                >
-                  Anterior
-                </button>
-                <button
-                  @click="cambiarPagina(metadata.offset + metadata.limit)"
-                  :disabled="!metadata.has_more"
-                  class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300 text-sm font-medium"
-                >
-                  Siguiente
-                </button>
-              </div>
+              <QuickTablePagination
+                v-model="redistribucionListCurrentPage"
+                :total-pages="redistribucionListTotalPages"
+                :disabled="loading"
+                aria-label="Paginación de pedidos en redistribución"
+              />
             </div>
           </div>
         </div>
@@ -417,6 +407,7 @@ import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import type { PedidosListadoResponse, PedidoResumido, PedidosListadoFiltros, PedidosListadoMetadata, EstadoPedidoOption } from '../types'
 import { formatDate, formatDateTime } from '../utils/formatters'
 import OdcSapVolverButton from '../components/OdcSapVolverButton.vue'
+import QuickTablePagination from '../components/QuickTablePagination.vue'
 import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
 
 const router = useRouter()
@@ -433,6 +424,23 @@ const metadata = ref<PedidosListadoMetadata>({
   limit: PAGE_SIZE,
   offset: 0,
   has_more: false
+})
+
+const redistribucionListTotalPages = computed(() =>
+  metadata.value.total > 0 ? Math.max(1, Math.ceil(metadata.value.total / metadata.value.limit)) : 1
+)
+
+const redistribucionListCurrentPage = computed({
+  get() {
+    if (metadata.value.limit <= 0) return 1
+    return Math.floor(metadata.value.offset / metadata.value.limit) + 1
+  },
+  set(p: number) {
+    const limit = metadata.value.limit
+    const max = redistribucionListTotalPages.value
+    const n = Math.min(max, Math.max(1, Math.round(p)))
+    cambiarPagina((n - 1) * limit)
+  }
 })
 
 const filtrosColapsados = ref(true)

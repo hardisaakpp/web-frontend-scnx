@@ -184,6 +184,8 @@ export interface IntegracionSAPDetalle {
   error_message: string | null     // Alias de error (para compatibilidad)
   error_code: string | null         // ⭐ NUEVO - Código numérico de SAP
   error_source: string | null       // ⭐ NUEVO - "SAP" | "BACKEND" | "SAP_CONNECTION"
+  /** True si el fallo fue probablemente transitorio (conexión/SL); el usuario puede reintentar envío. */
+  retry_recommended?: boolean | null
   solicitudes_transferencia?: SolicitudesTransferencia | null  // ⭐ NUEVO - Solicitudes de Transferencia creadas automáticamente
   sap_response?: Record<string, any> | null  // Respuesta completa de SAP
   sap_error_details?: Record<string, any> | null  // Detalles completos del error
@@ -1120,6 +1122,8 @@ export interface ProcesoCompletoSAPDetalleODC {
   error: string | null
   message?: string | null
   solicitudes_transferencia?: SolicitudesTransferencia | null
+  /** True si el fallo fue probablemente transitorio (conexión/SL); el cliente puede ofrecer reintento manual. */
+  retry_recommended?: boolean | null
 }
 
 /**

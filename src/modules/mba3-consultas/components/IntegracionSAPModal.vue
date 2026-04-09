@@ -172,14 +172,43 @@
                 </div>
               </div>
 
-              <!-- Footer con botón de cerrar -->
-              <div class="mt-6 flex justify-end">
-                <button
-                  @click="handleClose"
-                  class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors text-sm font-medium"
+              <!-- Footer: reintento SAP (fallo transitorio) + cerrar -->
+              <div class="mt-6 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                <div
+                  v-if="props.showRetrySapCta"
+                  class="flex flex-col gap-2 text-sm max-w-xl"
                 >
-                  Cerrar
-                </button>
+                  <p class="text-amber-800 dark:text-amber-200">
+                    Fallo temporal de conexión con SAP. Puede volver a intentar el envío.
+                  </p>
+                  <button
+                    type="button"
+                    :disabled="props.retryLoading"
+                    @click="emit('retry-sap')"
+                    class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm font-medium w-fit"
+                  >
+                    <svg
+                      v-if="props.retryLoading"
+                      class="animate-spin h-4 w-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    {{ props.retryLoading ? 'Reintentando…' : 'Reintentar envío a SAP' }}
+                  </button>
+                </div>
+                <div class="flex justify-end sm:ml-auto">
+                  <button
+                    type="button"
+                    @click="handleClose"
+                    class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors text-sm font-medium"
+                  >
+                    Cerrar
+                  </button>
+                </div>
               </div>
             </DialogPanel>
           </TransitionChild>
@@ -194,15 +223,25 @@ import { computed } from '@vue/reactivity'
 import { Dialog, DialogPanel, DialogTitle, TransitionRoot, TransitionChild } from '@headlessui/vue'
 import type { IntegracionSAPDetalle, SolicitudesTransferencia } from '../types'
 
-const props = defineProps<{
-  isOpen: boolean
-  detalle: IntegracionSAPDetalle | null
-  solicitudesTransferencia: SolicitudesTransferencia | null
-  estadoGeneral?: 'success' | 'partial' | 'error'
-}>()
+const props = withDefaults(
+  defineProps<{
+    isOpen: boolean
+    detalle: IntegracionSAPDetalle | null
+    solicitudesTransferencia: SolicitudesTransferencia | null
+    estadoGeneral?: 'success' | 'partial' | 'error'
+    /** Mostrar CTA de reintento manual cuando el backend indica fallo transitorio (retry_recommended). */
+    showRetrySapCta?: boolean
+    retryLoading?: boolean
+  }>(),
+  {
+    showRetrySapCta: false,
+    retryLoading: false
+  }
+)
 
 const emit = defineEmits<{
   close: []
+  'retry-sap': []
 }>()
 
 // Determinar título del modal según el estado
