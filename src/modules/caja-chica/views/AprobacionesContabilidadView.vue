@@ -590,7 +590,10 @@ async function fetchLocalUserName(id?: string) {
     console.log('[SupervisorName] endpoint:', url);
     const resp = await api.get(`/Admin/user-local-name/${id}`);
     console.log('[SupervisorName] resultado endpoint:', resp.data);
-    localUserNames.value[id] = resp.data.fullName || id;
+    const payload = resp.data as { fullName?: unknown } | null | undefined
+    localUserNames.value[id] = typeof payload?.fullName === 'string' && payload.fullName.trim()
+      ? payload.fullName
+      : id
   } catch (err) {
     console.error('[SupervisorName] error endpoint:', err);
     const fallback = usuariosById.value[id]?.label || '-';

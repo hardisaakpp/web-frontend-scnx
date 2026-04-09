@@ -320,71 +320,25 @@
       </div>
 
       <!-- Paginación -->
-      <div v-if="store.totalPages > 1" class="bg-gray-50 dark:bg-gray-700 px-4 py-3 flex items-center justify-between border-t border-gray-200 dark:border-gray-600 transition-colors duration-300">
-        <div class="flex-1 flex justify-between sm:hidden">
-          <button
-            @click="cambiarPagina(store.currentPage - 1)"
-            :disabled="store.currentPage === 1"
-            class="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-          >
-            Anterior
-          </button>
-          <button
-            @click="cambiarPagina(store.currentPage + 1)"
-            :disabled="store.currentPage >= store.totalPages"
-            class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-          >
-            Siguiente
-          </button>
-        </div>
-        <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-          <div>
-            <p class="text-sm text-gray-700 dark:text-gray-300">
-              Mostrando
-              <span class="font-medium">{{ (store.currentPage - 1) * store.pageSize + 1 }}</span>
-              a
-              <span class="font-medium">{{ Math.min(store.currentPage * store.pageSize, store.total) }}</span>
-              de
-              <span class="font-medium">{{ store.total }}</span>
-              resultados
-            </p>
-          </div>
-          <div>
-            <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-              <button
-                @click="cambiarPagina(store.currentPage - 1)"
-                :disabled="store.currentPage === 1"
-                class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-              >
-                <span class="sr-only">Anterior</span>
-                <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
-                </svg>
-              </button>
-              <span
-                v-for="page in visiblePages"
-                :key="page"
-                @click="cambiarPagina(page)"
-                class="relative inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium cursor-pointer transition-colors duration-200"
-                :class="page === store.currentPage
-                  ? 'z-10 bg-violet-50 dark:bg-violet-900/30 border-violet-500 dark:border-violet-500 text-violet-600 dark:text-violet-400'
-                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
-              >
-                {{ page }}
-              </span>
-              <button
-                @click="cambiarPagina(store.currentPage + 1)"
-                :disabled="store.currentPage >= store.totalPages"
-                class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
-              >
-                <span class="sr-only">Siguiente</span>
-                <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-                </svg>
-              </button>
-            </nav>
-          </div>
-        </div>
+      <div
+        v-if="store.totalPages > 1"
+        class="bg-gray-50 dark:bg-gray-700 px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-gray-200 dark:border-gray-600 transition-colors duration-300"
+      >
+        <p class="text-sm text-gray-700 dark:text-gray-300">
+          Mostrando
+          <span class="font-medium">{{ (store.currentPage - 1) * store.pageSize + 1 }}</span>
+          a
+          <span class="font-medium">{{ Math.min(store.currentPage * store.pageSize, store.total) }}</span>
+          de
+          <span class="font-medium">{{ store.total }}</span>
+          resultados
+        </p>
+        <QuickTablePagination
+          :model-value="store.currentPage"
+          :total-pages="store.totalPages"
+          aria-label="Paginación de homologaciones"
+          @update:model-value="cambiarPagina"
+        />
       </div>
     </div>
 
@@ -413,6 +367,7 @@ import { useHomologacionesStore } from '../stores/homologacionesStore'
 import { useToast } from '@/composables/useToast'
 import HomologacionModal from '../components/HomologacionModal.vue'
 import BuscarSkuModal from '../components/BuscarSkuModal.vue'
+import QuickTablePagination from '../components/QuickTablePagination.vue'
 import type { SkuHomologacion, SkuHomologacionUpdateRequest } from '../types'
 
 const route = useRoute()
@@ -447,42 +402,6 @@ const paginatedHomologaciones = computed(() => {
   
   // Si el checkbox está marcado, mostrar todos
   return store.homologaciones
-})
-
-const visiblePages = computed(() => {
-  const pages: number[] = []
-  const total = store.totalPages
-  const current = store.currentPage
-  
-  if (total <= 7) {
-    for (let i = 1; i <= total; i++) {
-      pages.push(i)
-    }
-  } else {
-    if (current <= 3) {
-      for (let i = 1; i <= 5; i++) {
-        pages.push(i)
-      }
-      pages.push(-1) // Separador
-      pages.push(total)
-    } else if (current >= total - 2) {
-      pages.push(1)
-      pages.push(-1) // Separador
-      for (let i = total - 4; i <= total; i++) {
-        pages.push(i)
-      }
-    } else {
-      pages.push(1)
-      pages.push(-1) // Separador
-      for (let i = current - 1; i <= current + 1; i++) {
-        pages.push(i)
-      }
-      pages.push(-1) // Separador
-      pages.push(total)
-    }
-  }
-  
-  return pages.filter(p => p !== -1)
 })
 
 // Métodos

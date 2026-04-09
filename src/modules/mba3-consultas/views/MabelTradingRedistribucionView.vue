@@ -123,56 +123,50 @@
       class="space-y-6"
       :class="{ 'pointer-events-none opacity-75': redistribucion.confirmandoRedistribucion.value || enviandoOdcSap }"
     >
-      <!-- Header -->
+      <!-- Header (misma estructura que listados MBA3: fila título + fila de acciones) -->
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6">
-        <div class="flex items-center justify-between">
-          <div>
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-              {{ soloLectura ? 'Ver distribución de Productos - EL RAYO' : 'Redistribución de Productos - MABEL TRADING' }}
-            </h1>
-            <p v-if="pedido" class="text-sm text-gray-600 dark:text-gray-400 mt-1 flex items-center gap-2">
-              Pedido: <span class="font-medium text-gray-900 dark:text-white">{{ pedido.cabecera.numero_pedido }}</span>
-              <button
-                type="button"
-                @click="copyToClipboard(pedido.cabecera.numero_pedido ?? '')"
-                class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                :title="copyFeedback ? 'Copiado' : 'Copiar número de pedido'"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        <div class="space-y-4">
+          <div class="flex items-center justify-between flex-wrap gap-4">
+            <div>
+              <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+                {{ soloLectura ? 'Ver distribución de Productos - EL RAYO' : 'Redistribución de Productos - MABEL TRADING' }}
+              </h1>
+              <p v-if="pedido" class="text-sm text-gray-600 dark:text-gray-400 mt-1 flex items-center gap-2 flex-wrap">
+                Pedido: <span class="font-medium text-gray-900 dark:text-white">{{ pedido.cabecera.numero_pedido }}</span>
+                <button
+                  type="button"
+                  @click="copyToClipboard(pedido.cabecera.numero_pedido ?? '')"
+                  class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                  :title="copyFeedback ? 'Copiado' : 'Copiar número de pedido'"
+                >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                </button>
+              </p>
+            </div>
+            <div v-if="!soloLectura" class="relative shrink-0">
+              <input
+                v-model="pedidoIdInput"
+                @keyup.enter="goToPedido"
+                type="text"
+                placeholder="Buscar por N° de pedido"
+                class="w-64 pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-purple-500 focus:border-purple-500"
+              />
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg class="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
-              </button>
-            </p>
+              </div>
+            </div>
           </div>
-          <div class="flex items-center gap-3">
-            <button
-              v-if="!soloLectura"
-              type="button"
-              @click="router.push('/mba3-consultas/redistribucion')"
-              class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 hover:border-gray-400 dark:hover:border-gray-500 transition-colors"
-            >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              Volver
-            </button>
-            <button
-              v-if="soloLectura"
-              type="button"
-              @click="router.push('/mba3-consultas/revisar-redistribucion')"
-              class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 hover:border-gray-400 dark:hover:border-gray-500 transition-colors"
-            >
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              Volver
-            </button>
+          <div class="flex w-full flex-wrap items-center justify-end gap-3">
             <button
               v-if="soloLectura && pedido && tieneDistribucionConfirmada"
               type="button"
               @click="handleDescargarDistribucionExcel"
               :disabled="descargandoRedistribucion"
-              class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-green-600 dark:bg-green-500 rounded-lg shadow-sm hover:bg-green-700 dark:hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              class="shrink-0 inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-green-600 dark:bg-green-500 rounded-lg shadow-sm hover:bg-green-700 dark:hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               title="Descargar distribución por tiendas en formato Excel"
             >
               <svg v-if="!descargandoRedistribucion" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -189,7 +183,7 @@
               type="button"
               @click="handleCancelar"
               :disabled="cancelando || (pedido != null && pedido.puede_cancelar_pedido === false)"
-              class="px-4 py-2 border border-red-300 dark:border-red-600 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              class="shrink-0 px-4 py-2 border border-red-300 dark:border-red-600 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               <svg v-if="!cancelando" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -200,20 +194,12 @@
               </svg>
               {{ cancelando ? 'Cancelando...' : 'Cancelar Pedido' }}
             </button>
-            <div v-if="!soloLectura" class="relative">
-              <input
-                v-model="pedidoIdInput"
-                @keyup.enter="goToPedido"
-                type="text"
-                placeholder="Buscar por N° de pedido"
-                class="w-64 pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-purple-500 focus:border-purple-500"
-              />
-              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg class="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-            </div>
+            <OdcSapVolverButton
+              v-if="odcSapVolverTarget"
+              :to="odcSapVolverTarget"
+              :title="odcSapVolverTitle"
+              class="shrink-0"
+            />
           </div>
         </div>
       </div>
@@ -297,17 +283,21 @@ import { onMounted, onUnmounted, nextTick } from '@vue/runtime-core'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService, extractErrorMessage } from '../services/mba3ConsultasApi'
-import type { PedidoCompleto, IntegracionSAPDetalle, ProcesoCompletoSAPResponse } from '../types'
+import type { AjusteDetalle, PedidoCompleto, IntegracionSAPDetalle, ProcesoCompletoSAPResponse, SolicitudesTransferencia } from '../types'
 import type { ProductoRedistribucion, DistribucionTiendaEditada } from '../utils/redistribucionHelpers'
 import { usePedidoDetalle } from '../composables/usePedidoDetalle'
 import { useRedistribucion } from '../composables/useRedistribucion'
 import { useProcesoStore } from '../stores/procesoStore'
 import PedidoCabecera from '../components/PedidoCabecera.vue'
 import RedistribucionTiendas from '../components/RedistribucionTiendas.vue'
+import OdcSapVolverButton from '../components/OdcSapVolverButton.vue'
+import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
+import { ejecutarProcesoCompletoSap } from '../composables/ejecutarProcesoCompletoSap'
 
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
+const { target: odcSapVolverTarget, title: odcSapVolverTitle } = useOdcSapVolver()
 const procesoStore = useProcesoStore()
 
 const pedido = ref<PedidoCompleto | null>(null)
@@ -322,8 +312,6 @@ const sapMessage = ref('')
 
 // Intervalo para simulación de progreso
 let sapProgressInterval: ReturnType<typeof setInterval> | null = null
-// Intervalo de polling para proceso async SAP
-let sapPollingInterval: ReturnType<typeof setInterval> | null = null
 
 function resetSapProgress() {
   sapProgress.value = 0
@@ -332,10 +320,6 @@ function resetSapProgress() {
   if (sapProgressInterval) {
     clearInterval(sapProgressInterval)
     sapProgressInterval = null
-  }
-  if (sapPollingInterval) {
-    clearInterval(sapPollingInterval)
-    sapPollingInterval = null
   }
 }
 
@@ -476,11 +460,11 @@ const guardarBorradorDeshabilitadoPorEstado = computed(() => {
   return estadoId !== 4
 })
 
-// ⭐ Mostrar botón "Enviar ODC a SAP" solo cuando estado es CONFIRMADO POR EL RAYO (estado_id = 4)
-// Este botón ejecuta el proceso completo: Redistribución + Generar ODC + Enviar a SAP
+// ⭐ "Enviar ODC a SAP": primer envío en estado 4, o reintento cuando el backend indica puede_reintentar_envio_odc_sap (p. ej. 10, 21)
 const showEnviarOdcSap = computed(() => {
-  const estadoId = pedido.value?.cabecera?.estado_id
-  return estadoId === 4 // CONFIRMADO POR EL RAYO
+  const p = pedido.value
+  if (p?.puede_reintentar_envio_odc_sap === true) return true
+  return p?.cabecera?.estado_id === 4
 })
 
 // Funciones de redistribución
@@ -516,18 +500,63 @@ async function confirmarRedistribucion() {
   await redistribucion.confirmarRedistribucion(puedeConfirmarRedistribucion)
 }
 
+/** Mismo payload que `handleEnviarOdcSap` envía a proceso-completo-sap (para reintento desde Proceso completo). */
+function buildAjustesDetalleParaProcesoCompletoSAP(): AjusteDetalle[] {
+  return redistribucion.productosRedistribucion.value.map(producto => ({
+    codigo_producto: producto.codigo_producto,
+    descripcion: producto.descripcion,
+    cantidad_solicitada: producto.cantidad_solicitada,
+    cantidad_confirmada: producto.cantidad_confirmada,
+    cantidad_ajustada: producto.cantidad_distribuida,
+    distribucion_tiendas: producto.distribucion_tiendas.map(t => ({
+      tienda_codigo: t.tienda_codigo,
+      tienda_nombre: t.tienda_nombre,
+      cantidad: t.cantidad_asignada
+    })),
+    costo_original: producto.costo_unitario,
+    costo_ajustado: producto.costo_unitario,
+    cambio_precio: false
+  }))
+}
+
+/** Construye solicitudesTransferencia desde envio_sap, raíz o envio_sap.resultado (formato alternativo). */
+function getSolicitudesTransferencia(response: ProcesoCompletoSAPResponse): SolicitudesTransferencia | null {
+  const fromEnvio = response.envio_sap?.solicitudes_transferencia
+  if (fromEnvio) return fromEnvio
+  const fromRoot = response.solicitudes_transferencia
+  if (fromRoot) return fromRoot
+  const resultado = (response.envio_sap as any)?.resultado
+  if (resultado && Array.isArray(resultado.resultados) && resultado.resultados.length > 0) {
+    return {
+      success: resultado.success === true,
+      pedido_id: (response as any).pedido_id ?? '',
+      total_tiendas: resultado.total_tiendas ?? resultado.resultados.length,
+      transferencias_creadas: resultado.transferencias_creadas ?? resultado.resultados.filter((r: any) => r.success).length,
+      transferencias_errores: resultado.transferencias_errores ?? 0,
+      resultados: resultado.resultados
+    }
+  }
+  return null
+}
+
 /** Aplica el resultado del proceso SAP (compartido entre flujo async y fallback sync). */
-function applySAPResponse(response: ProcesoCompletoSAPResponse) {
+async function applySAPResponse(response: ProcesoCompletoSAPResponse) {
   const innerStatus = (response as any).status === 'success' || (response as any).status === 'partial' || (response as any).status === 'error'
     ? (response as any).status
     : (response.envio_sap?.doc_num != null ? 'success' : response.error ? 'partial' : 'error')
 
+  const solicitudesTransferencia = getSolicitudesTransferencia(response)
+
   if (innerStatus === 'success') {
-    // Backend actualiza a "Confirmado y enviado" (estado_id 12) cuando PASO 3 termina bien; reflejar en UI.
-    const cabecera = pedido.value?.cabecera
-    if (cabecera) {
-      cabecera.estado_id = 12
-      cabecera.estado = 'CONFIRMADO_ENVIADO'
+    try {
+      await loadPedido()
+    } catch (e) {
+      console.warn('[applySAPResponse] loadPedido tras éxito SAP:', e)
+      const cabecera = pedido.value?.cabecera
+      if (cabecera) {
+        cabecera.estado_id = 12
+        cabecera.estado = 'CONFIRMADO_ENVIADO'
+      }
     }
     procesoStore.setSAPResultadoPendiente({
       detalle: response.envio_sap ? {
@@ -535,30 +564,45 @@ function applySAPResponse(response: ProcesoCompletoSAPResponse) {
         oc_id: response.envio_sap.oc_id ?? '',
         doc_num: response.envio_sap.doc_num,
         doc_entry: response.envio_sap.doc_entry,
+        numero_oc_sap: (response.envio_sap as any).numero_oc_sap ?? null,
         message: response.message,
         error: null,
         error_message: null,
         error_code: null,
-        error_source: null
+        error_source: null,
+        retry_recommended: response.envio_sap.retry_recommended ?? null
       } as IntegracionSAPDetalle : null,
-      solicitudesTransferencia: response.envio_sap?.solicitudes_transferencia || null,
+      solicitudesTransferencia: solicitudesTransferencia || null,
       estadoGeneral: 'success',
-      numeroPedido: numeroPedido.value
+      numeroPedido: numeroPedido.value,
+      ajustesDetalle: buildAjustesDetalleParaProcesoCompletoSAP()
     })
     router.push({ name: 'mba3-consultas-proceso' })
   } else if (innerStatus === 'partial') {
+    try {
+      await loadPedido()
+    } catch (e) {
+      console.warn('[applySAPResponse] loadPedido tras partial SAP:', e)
+      if (response.redistribucion && pedido.value?.cabecera) {
+        pedido.value.cabecera.estado_id = 10
+        pedido.value.cabecera.estado = 'CONFIRMADO REDISTRIBUCION'
+      }
+    }
     const errorMsg = response.error ?? 'Error desconocido'
+    const retryFlag = response.envio_sap?.retry_recommended ?? null
     procesoStore.setSAPResultadoPendiente({
       detalle: response.envio_sap ? {
         success: !!response.envio_sap.doc_num,
         oc_id: response.envio_sap.oc_id ?? '',
         doc_num: response.envio_sap.doc_num,
         doc_entry: response.envio_sap.doc_entry,
+        numero_oc_sap: (response.envio_sap as any).numero_oc_sap ?? null,
         message: null,
         error: errorMsg,
         error_message: errorMsg,
         error_code: null,
-        error_source: null
+        error_source: null,
+        retry_recommended: retryFlag
       } as IntegracionSAPDetalle : {
         success: false,
         oc_id: '',
@@ -568,16 +612,14 @@ function applySAPResponse(response: ProcesoCompletoSAPResponse) {
         error: errorMsg,
         error_message: errorMsg,
         error_code: null,
-        error_source: null
+        error_source: null,
+        retry_recommended: retryFlag
       } as IntegracionSAPDetalle,
-      solicitudesTransferencia: response.envio_sap?.solicitudes_transferencia || null,
+      solicitudesTransferencia: solicitudesTransferencia || null,
       estadoGeneral: 'partial',
-      numeroPedido: numeroPedido.value
+      numeroPedido: numeroPedido.value,
+      ajustesDetalle: buildAjustesDetalleParaProcesoCompletoSAP()
     })
-    if (response.redistribucion && pedido.value?.cabecera) {
-      pedido.value.cabecera.estado_id = 10
-      pedido.value.cabecera.estado = 'CONFIRMADO REDISTRIBUCION'
-    }
     router.push({ name: 'mba3-consultas-proceso' })
   } else {
     toast.error('Error en proceso SAP', response.message || 'Ocurrió un error inesperado')
@@ -589,7 +631,9 @@ function applySAPResponse(response: ProcesoCompletoSAPResponse) {
  * Intenta async (Celery); si backend responde 503 (Redis/Celery no disponible), fallback a sync.
  */
 async function handleEnviarOdcSap() {
-  if (!puedeConfirmarRedistribucion.value) {
+  const permiteSinValidarGrid =
+    pedido.value?.puede_reintentar_envio_odc_sap === true
+  if (!puedeConfirmarRedistribucion.value && !permiteSinValidarGrid) {
     toast.warning('Validación requerida', 'Debe completar la redistribución correctamente antes de enviar a SAP')
     return
   }
@@ -632,114 +676,29 @@ async function handleEnviarOdcSap() {
   }))
 
   try {
-    try {
-      const accepted = await mba3ConsultasService.procesoCompletoSAPAsync(numeroPedido.value, ajustes_detalle)
-
-      // Respuesta 200 con resultado completo (fallback sync o force_sync): no hacer polling
-      const isSyncResult = (accepted as any).fallback === 'sync' || (accepted as any).async === false || (accepted as any).process_id == null
-      if (isSyncResult) {
-        completeSapProgress()
-        await new Promise(r => setTimeout(r, 400))
-        applySAPResponse(accepted as unknown as ProcesoCompletoSAPResponse)
-        enviandoOdcSap.value = false
-        setTimeout(resetSapProgress, 500)
-        return
-      }
-
-      if (accepted.status !== 'accepted' || !accepted.process_id) {
-        toast.error('Error', 'No se pudo iniciar el proceso. Respuesta inesperada.')
-        return
-      }
-
-      const processId = accepted.process_id
-
-      const poll = async () => {
-        try {
-          const result = await mba3ConsultasService.getProcesoSAPResultado(processId)
-          const data = result as Record<string, unknown>
-
-          // Solo considerar terminado cuando el backend envía el resultado final (status terminal).
-          // No cerrar solo por progress 100 o process_status 'completed' (pueden llegar antes del resultado real).
-          const done =
-            data.status === 'success' ||
-            data.status === 'partial' ||
-            data.status === 'completed'
-
-          if (result.status === 'error') {
-            if (sapPollingInterval) {
-              clearInterval(sapPollingInterval)
-              sapPollingInterval = null
-            }
-            enviandoOdcSap.value = false
-            resetSapProgress()
-            const msg = result.message || 'Error en el proceso'
-            const detalle = result.error_detalle || result.paso_fallido ? ` (${result.paso_fallido ?? ''} ${result.error_detalle ?? ''})`.trim() : ''
-            toast.error('Error al enviar a SAP', msg + detalle)
-            return
-          }
-
-          if (done) {
-            if (sapPollingInterval) {
-              clearInterval(sapPollingInterval)
-              sapPollingInterval = null
-            }
-            completeSapProgress()
-            await new Promise(r => setTimeout(r, 400))
-            applySAPResponse(result as ProcesoCompletoSAPResponse)
-            enviandoOdcSap.value = false
-            setTimeout(resetSapProgress, 500)
-            return
-          }
-
-          if (data.message) sapMessage.value = String(data.message)
-          if (typeof data.progress === 'number') sapProgress.value = data.progress
-        } catch (pollErr: any) {
-          if (sapPollingInterval) {
-            clearInterval(sapPollingInterval)
-            sapPollingInterval = null
-          }
-          enviandoOdcSap.value = false
-          resetSapProgress()
-          const message = pollErr?.response?.data?.message || pollErr?.message || 'Error al consultar el resultado'
-          toast.error('Error', message)
-        }
-      }
-
-      await poll()
-      sapPollingInterval = setInterval(poll, 2000)
-    } catch (asyncErr: any) {
-      const errorCode = asyncErr?.response?.data?.error ?? asyncErr?.response?.data?.detail?.error
-      const is503Unavailable = asyncErr?.response?.status === 503 &&
-        (errorCode === 'storage_required' || errorCode === 'celery_unavailable')
-      if (is503Unavailable) {
+    const response = await ejecutarProcesoCompletoSap(numeroPedido.value, ajustes_detalle, {
+      onFallbackSync: () => {
         if (import.meta.env.DEV) console.warn('[handleEnviarOdcSap] Async no disponible (503), usando proceso SAP síncrono')
         toast.info('Proceso en segundo plano no disponible', 'Se ejecutará en modo síncrono. No cierre la ventana.')
         sapMessage.value = 'Ejecutando proceso en modo síncrono...'
-        const response = await mba3ConsultasService.procesoCompletoSAP(numeroPedido.value, ajustes_detalle)
-        completeSapProgress()
-        await new Promise(r => setTimeout(r, 400))
-        applySAPResponse(response)
-        enviandoOdcSap.value = false
-        setTimeout(resetSapProgress, 500)
-        return
+      },
+      onPollingUpdate: ({ message, progress }) => {
+        if (message) sapMessage.value = message
+        if (typeof progress === 'number') sapProgress.value = progress
       }
-      throw asyncErr
-    }
+    })
+    completeSapProgress()
+    await new Promise(r => setTimeout(r, 400))
+    await applySAPResponse(response)
   } catch (e: any) {
     console.error('Error al iniciar proceso completo SAP:', e)
-    if (sapPollingInterval) {
-      clearInterval(sapPollingInterval)
-      sapPollingInterval = null
-    }
     const message = e?.response?.data?.message || e?.message || 'No se pudo iniciar el proceso'
     toast.error('Error al enviar a SAP', message || 'No se pudo completar el proceso')
   } finally {
-    if (!sapPollingInterval) {
-      enviandoOdcSap.value = false
-      setTimeout(() => {
-        resetSapProgress()
-      }, 500)
-    }
+    enviandoOdcSap.value = false
+    setTimeout(() => {
+      resetSapProgress()
+    }, 500)
   }
 }
 
@@ -966,10 +925,6 @@ onUnmounted(() => {
   if (sapProgressInterval) {
     clearInterval(sapProgressInterval)
     sapProgressInterval = null
-  }
-  if (sapPollingInterval) {
-    clearInterval(sapPollingInterval)
-    sapPollingInterval = null
   }
 })
 </script>

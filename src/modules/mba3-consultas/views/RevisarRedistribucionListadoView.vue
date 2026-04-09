@@ -1,35 +1,45 @@
 <template>
   <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
     <div class="space-y-6">
-      <!-- Header -->
-      <div class="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <div class="flex items-center gap-3">
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-              Revisar Redistribución
-            </h1>
-            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300">
-              EL RAYO
-            </span>
+      <!-- Header: fila título + fila de acciones (mismo patrón que pedidos / redistribución listado) -->
+      <div class="space-y-4">
+        <div class="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <div class="flex items-center gap-3">
+              <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+                Revisar Redistribución
+              </h1>
+              <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300">
+                EL RAYO
+              </span>
+            </div>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              Selecciona un pedido para ver la distribución por tienda (solo lectura)
+            </p>
           </div>
-          <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Selecciona un pedido para ver la distribución por tienda (solo lectura)
-          </p>
         </div>
-        <button
-          @click="cargarPedidos"
-          class="px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
-          :disabled="loading"
-        >
-          <svg v-if="!loading" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          <svg v-else class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          {{ loading ? 'Cargando...' : 'Actualizar' }}
-        </button>
+        <div class="flex w-full flex-wrap items-center justify-end gap-3">
+          <button
+            @click="cargarPedidos"
+            class="shrink-0 px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+            :disabled="loading"
+          >
+            <svg v-if="!loading" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <svg v-else class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            {{ loading ? 'Cargando...' : 'Actualizar' }}
+          </button>
+          <OdcSapVolverButton
+            v-if="odcSapVolverTarget"
+            :to="odcSapVolverTarget"
+            :title="odcSapVolverTitle"
+            class="shrink-0"
+          />
+        </div>
       </div>
 
       <!-- Filtros -->
@@ -53,13 +63,11 @@
         <div v-show="!filtrosColapsados" class="p-6">
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Estado</label>
-              <!-- Estado fijo: solo pedidos CONFIRMADO_ENVIADO para esta interfaz de solo lectura -->
-              <div class="w-full px-3 py-2 border border-emerald-300 dark:border-emerald-600 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-sm flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span class="font-medium">Confirmado y Enviado</span>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Estados incluidos</label>
+              <!-- Estados incluidos: flujo de redistribución en adelante (usa flag solo_redistribucion en backend) -->
+              <div class="w-full px-3 py-2 border border-emerald-300 dark:border-emerald-600 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-xs leading-snug">
+                Esta vista muestra pedidos del flujo de redistribución en adelante
+                (incluye Confirmado, Confirmado y Enviado, Despachar y Facturar, Finalizado, etc., excluye borradores y cancelados).
               </div>
             </div>
             <div>
@@ -308,22 +316,12 @@
               <div class="text-sm text-gray-700 dark:text-gray-300">
                 Mostrando {{ metadata.offset + 1 }} - {{ Math.min(metadata.offset + metadata.limit, metadata.total) }} de {{ metadata.total }} resultados
               </div>
-              <div class="flex items-center gap-2">
-                <button
-                  @click="cambiarPagina(metadata.offset - metadata.limit)"
-                  :disabled="metadata.offset === 0"
-                  class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300 text-sm font-medium"
-                >
-                  Anterior
-                </button>
-                <button
-                  @click="cambiarPagina(metadata.offset + metadata.limit)"
-                  :disabled="!metadata.has_more"
-                  class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300 text-sm font-medium"
-                >
-                  Siguiente
-                </button>
-              </div>
+              <QuickTablePagination
+                v-model="redistListCurrentPage"
+                :total-pages="redistListTotalPages"
+                :disabled="loading"
+                aria-label="Paginación de pedidos en revisión"
+              />
             </div>
           </div>
         </div>
@@ -339,10 +337,19 @@ import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { lastNotification } from '@/composables/useNotificaciones'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
-import type { PedidosListadoResponse, PedidoResumido, PedidosListadoFiltros, PedidosListadoMetadata } from '../types'
+import type {
+  PedidoResumido,
+  PedidosListadoFiltros,
+  PedidosListadoMetadata,
+  PedidoCompleto,
+} from '../types'
 import { formatDate, formatDateTime } from '../utils/formatters'
+import OdcSapVolverButton from '../components/OdcSapVolverButton.vue'
+import QuickTablePagination from '../components/QuickTablePagination.vue'
+import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
 
 const router = useRouter()
+const { target: odcSapVolverTarget, title: odcSapVolverTitle } = useOdcSapVolver()
 const toast = useToast()
 
 const pedidos = ref<PedidoResumido[]>([])
@@ -354,6 +361,23 @@ const metadata = ref<PedidosListadoMetadata>({
   limit: PAGE_SIZE,
   offset: 0,
   has_more: false
+})
+
+const redistListTotalPages = computed(() =>
+  metadata.value.total > 0 ? Math.max(1, Math.ceil(metadata.value.total / metadata.value.limit)) : 1
+)
+
+const redistListCurrentPage = computed({
+  get() {
+    if (metadata.value.limit <= 0) return 1
+    return Math.floor(metadata.value.offset / metadata.value.limit) + 1
+  },
+  set(p: number) {
+    const limit = metadata.value.limit
+    const max = redistListTotalPages.value
+    const n = Math.min(max, Math.max(1, Math.round(p)))
+    cambiarPagina((n - 1) * limit)
+  }
 })
 
 const filtrosColapsados = ref(true)
@@ -371,6 +395,7 @@ const filtros = ref<PedidosListadoFiltros>({
   proveedor_nombre: '',
   numero_pedido: '',
   creado_por: '',
+  solo_redistribucion: true,
   limit: PAGE_SIZE,
   offset: 0
 })
@@ -506,16 +531,56 @@ async function cargarPedidos() {
   loading.value = true
   error.value = null
   try {
-    // Solo mostrar pedidos con estado CONFIRMADO_ENVIADO (estado_id=12)
-    // según las indicaciones del backend para esta interfaz de solo lectura
-    const response: PedidosListadoResponse = await mba3ConsultasService.getPedidosListado({
-      ...filtros.value,
-      estado: 'CONFIRMADO_ENVIADO',
-      limit: metadata.value.limit,
-      offset: metadata.value.offset
+    // Usar listado de pedidos confirmados (>= 10 y no cancelados) del backend
+    const page = Math.floor(metadata.value.offset / metadata.value.limit) + 1
+    const response = await mba3ConsultasService.getPedidosConfirmados({
+      page,
+      pageSize: metadata.value.limit,
     })
-    pedidos.value = response.data
-    metadata.value = response.metadata
+
+    // Mapear PedidoCompleto → PedidoResumido para reutilizar la tabla actual
+    pedidos.value = (response.data || []).map((p: PedidoCompleto): PedidoResumido => {
+      const c = p.cabecera
+      const root: any = p as any
+
+      // Algunos campos (como modificado_fecha / modificado_por) no vienen en este endpoint.
+      // Usar creado_en / creado_por como fallback razonable.
+      const modificadoFecha =
+        root.modificado_fecha ?? c.modificado_fecha ?? c.creado_en ?? null
+      const modificadoPor =
+        root.modificado_por ?? c.modificado_por ?? c.creado_por ?? null
+
+      // Backend expone comprador como comprador_nombre y también como comprador (alias).
+      const compradorNombre =
+        c.comprador_nombre ?? (c as any).comprador ?? root.comprador_nombre ?? root.comprador ?? null
+
+      return {
+        pedido_id: c.pedido_id,
+        numero_pedido: c.numero_pedido ?? '',
+        fecha_pedido: c.fecha_pedido,
+        fecha_entrega: c.fecha_entrega,
+        forma_pago: c.forma_pago,
+        mensaje: c.mensaje,
+        proveedor_nombre: c.proveedor_nombre,
+        comprador_nombre: compradorNombre,
+        comprador_codigo: c.comprador_codigo,
+        origen_traslado: c.origen_traslado,
+        serie: c.serie,
+        archivo_nombre: c.archivo_nombre,
+        creado_por: c.creado_por,
+        estado: c.estado ?? root.estado ?? '',
+        creado_en: c.creado_en ?? '',
+        modificado_fecha: modificadoFecha,
+        modificado_por: modificadoPor,
+      }
+    })
+
+    metadata.value = {
+      total: response.total || pedidos.value.length,
+      limit: response.pageSize || metadata.value.limit,
+      offset: ((response.page || 1) - 1) * (response.pageSize || metadata.value.limit),
+      has_more: (response.page || 1) < (response.totalPages || 1),
+    }
   } catch (e: any) {
     console.error('Error al cargar pedidos:', e)
     error.value = e.message || 'No se pudieron cargar los pedidos'
@@ -539,6 +604,7 @@ function limpiarFiltros() {
     proveedor_nombre: '',
     numero_pedido: '',
     creado_por: '',
+    solo_redistribucion: true,
     limit: PAGE_SIZE,
     offset: 0
   }

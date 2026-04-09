@@ -507,7 +507,11 @@ const searchAndImportUser = async () => {
     const response = await api.post('/Admin/search-and-import-user', {
       searchTerm: searchUserTerm.value.trim()
     })
-    searchUserSuccess.value = response.data.message
+    const payload = response.data as { message?: unknown } | null | undefined
+    searchUserSuccess.value =
+      typeof payload?.message === 'string' && payload.message.trim()
+        ? payload.message
+        : 'Usuario importado correctamente.'
     searchUserTerm.value = ''
     await loadUsers()
   } catch (err: unknown) {

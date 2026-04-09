@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from '@vue/reactivity'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
-import type { IntegracionSAPDetalle, SolicitudesTransferencia } from '../types'
+import type { AjusteDetalle, IntegracionSAPDetalle, SolicitudesTransferencia } from '../types'
 
 // Estado del proceso de generación de ODC
 type ODCProcessState = 
@@ -17,6 +17,8 @@ interface SAPResultadoPendiente {
   solicitudesTransferencia: SolicitudesTransferencia | null
   estadoGeneral: 'success' | 'partial' | 'error'
   numeroPedido: string
+  /** Último body de ajustes usado en proceso-completo-sap; permite reintentar el mismo POST desde Proceso completo. */
+  ajustesDetalle?: AjusteDetalle[]
 }
 
 export const useProcesoStore = defineStore('mba3Proceso', () => {

@@ -7,6 +7,7 @@ import mba3ConsultasRoutes from '@/modules/mba3-consultas/router'
 import cajaChicaRoutes from '@/modules/caja-chica/router'
 import usuariosRoutes from '@/modules/usuarios/router'
 import articuloMaestroRoutes from '@/modules/articulo-maestro/router'
+import gestionUsuariosRoutes from '@/modules/gestion-usuarios/router'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -100,6 +101,8 @@ const router = createRouter({
         ...usuariosRoutes,
         // Articulo Maestro
         ...articuloMaestroRoutes,
+        // Gestion Usuarios
+        ...gestionUsuariosRoutes,
         {
           path: '/unauthorized',
           name: 'Unauthorized',

@@ -1,32 +1,34 @@
 <template>
   <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
     <div class="space-y-6">
-      <!-- Header -->
-      <div class="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <div class="flex items-center gap-3">
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-              Redistribución
-            </h1>
-            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300">
-              MABEL TRADING
-            </span>
-          </div>
-          <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Selecciona un pedido para distribuir cantidades por tienda
-          </p>
-          <div v-if="contadorPedidosPendientes > 0" class="mt-2">
-            <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800">
-              <svg class="w-4 h-4 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              <span class="text-sm font-semibold text-orange-800 dark:text-orange-200">
-                {{ contadorPedidosPendientes }} pedido{{ contadorPedidosPendientes !== 1 ? 's' : '' }} requieren acción
+      <!-- Header: fila título + fila de acciones (mismo orden que otros listados MBA3) -->
+      <div class="space-y-4">
+        <div class="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <div class="flex items-center gap-3">
+              <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
+                Redistribución
+              </h1>
+              <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300">
+                MABEL TRADING
               </span>
+            </div>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              Selecciona un pedido para distribuir cantidades por tienda
+            </p>
+            <div v-if="contadorPedidosPendientes > 0" class="mt-2">
+              <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800">
+                <svg class="w-4 h-4 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span class="text-sm font-semibold text-orange-800 dark:text-orange-200">
+                  {{ contadorPedidosPendientes }} pedido{{ contadorPedidosPendientes !== 1 ? 's' : '' }} requieren acción
+                </span>
+              </div>
             </div>
           </div>
         </div>
-        <div class="flex items-center gap-3">
+        <div class="flex w-full flex-wrap items-center justify-end gap-3">
           <label class="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
@@ -50,6 +52,12 @@
             </svg>
             {{ loading ? 'Cargando...' : 'Actualizar' }}
           </button>
+          <OdcSapVolverButton
+            v-if="odcSapVolverTarget"
+            :to="odcSapVolverTarget"
+            :title="odcSapVolverTitle"
+            class="shrink-0"
+          />
         </div>
       </div>
 
@@ -376,22 +384,12 @@
               <div class="text-sm text-gray-700 dark:text-gray-300">
                 Mostrando {{ metadata.offset + 1 }} - {{ Math.min(metadata.offset + metadata.limit, metadata.total) }} de {{ metadata.total }} resultados
               </div>
-              <div class="flex items-center gap-2">
-                <button
-                  @click="cambiarPagina(metadata.offset - metadata.limit)"
-                  :disabled="metadata.offset === 0"
-                  class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300 text-sm font-medium"
-                >
-                  Anterior
-                </button>
-                <button
-                  @click="cambiarPagina(metadata.offset + metadata.limit)"
-                  :disabled="!metadata.has_more"
-                  class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-gray-700 dark:text-gray-300 text-sm font-medium"
-                >
-                  Siguiente
-                </button>
-              </div>
+              <QuickTablePagination
+                v-model="redistribucionListCurrentPage"
+                :total-pages="redistribucionListTotalPages"
+                :disabled="loading"
+                aria-label="Paginación de pedidos en redistribución"
+              />
             </div>
           </div>
         </div>
@@ -408,9 +406,13 @@ import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import type { PedidosListadoResponse, PedidoResumido, PedidosListadoFiltros, PedidosListadoMetadata, EstadoPedidoOption } from '../types'
 import { formatDate, formatDateTime } from '../utils/formatters'
+import OdcSapVolverButton from '../components/OdcSapVolverButton.vue'
+import QuickTablePagination from '../components/QuickTablePagination.vue'
+import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
 
 const router = useRouter()
 const toast = useToast()
+const { target: odcSapVolverTarget, title: odcSapVolverTitle } = useOdcSapVolver()
 
 const pedidos = ref<PedidoResumido[]>([])
 const loading = ref(false)
@@ -422,6 +424,23 @@ const metadata = ref<PedidosListadoMetadata>({
   limit: PAGE_SIZE,
   offset: 0,
   has_more: false
+})
+
+const redistribucionListTotalPages = computed(() =>
+  metadata.value.total > 0 ? Math.max(1, Math.ceil(metadata.value.total / metadata.value.limit)) : 1
+)
+
+const redistribucionListCurrentPage = computed({
+  get() {
+    if (metadata.value.limit <= 0) return 1
+    return Math.floor(metadata.value.offset / metadata.value.limit) + 1
+  },
+  set(p: number) {
+    const limit = metadata.value.limit
+    const max = redistribucionListTotalPages.value
+    const n = Math.min(max, Math.max(1, Math.round(p)))
+    cambiarPagina((n - 1) * limit)
+  }
 })
 
 const filtrosColapsados = ref(true)

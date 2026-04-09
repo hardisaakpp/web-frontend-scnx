@@ -83,7 +83,7 @@
               Detalles
             </th>
             <th
-              v-for="columnKey in orderedVisibleColumns"
+              v-for="columnKey in effectiveVisibleColumns"
               :key="columnKey"
               :draggable="true"
               @dragstart="handleDragStart($event, columnKey)"
@@ -93,6 +93,7 @@
               @dragend="handleDragEnd"
               :class="[
                 'px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-grab transition-colors duration-300',
+                columnKey === 'numero_oc_sap' ? 'min-w-[10rem] w-40' : '',
                 isColumnSortable(columnKey) ? 'hover:bg-gray-100 dark:hover:bg-gray-600' : 'hover:bg-gray-50 dark:hover:bg-gray-700',
                 draggedColumn === columnKey ? 'opacity-50 cursor-grabbing' : '',
                 dragOverColumn === columnKey && draggedColumn !== columnKey ? 'bg-emerald-100 dark:bg-emerald-900/30 border-l-4 border-emerald-500 dark:border-emerald-400' : ''
@@ -143,7 +144,7 @@
                 </svg>
               </button>
             </td>
-            <template v-for="columnKey in orderedVisibleColumns" :key="columnKey">
+            <template v-for="columnKey in effectiveVisibleColumns" :key="columnKey">
               <!-- ODC ID -->
               <td v-if="columnKey === 'oc_id'" class="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-900 dark:text-gray-100 transition-colors duration-300">
                 <span class="font-semibold">{{ oc.oc_id.substring(0, 8) }}...</span>
@@ -243,9 +244,16 @@
                 </div>
               </td>
               <!-- Número ODC SAP -->
-              <td v-else-if="columnKey === 'numero_oc_sap'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 transition-colors duration-300">
+              <td v-else-if="columnKey === 'numero_oc_sap'" class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 transition-colors duration-300 min-w-[10rem] w-40">
                 <div v-if="oc.numero_oc_sap" class="flex items-center gap-2">
-                  <span class="font-mono">{{ oc.numero_oc_sap }}</span>
+                  <button
+                    type="button"
+                    class="font-mono text-blue-700 dark:text-blue-300 underline underline-offset-2 decoration-dotted hover:text-blue-900 dark:hover:text-blue-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-sm"
+                    @click.stop="emit('ver-detalle-sap', oc)"
+                    title="Ver detalle de integración SAP"
+                  >
+                    {{ oc.numero_oc_sap }}
+                  </button>
                   <span v-if="oc.doc_entry" class="text-xs text-gray-500 dark:text-gray-400 transition-colors duration-300">(Entry: {{ oc.doc_entry }})</span>
                 </div>
                 <span v-else class="text-gray-400 dark:text-gray-500 italic transition-colors duration-300">-</span>
@@ -381,6 +389,7 @@ const emit = defineEmits<{
   integrarMultiples: [referenciasDespacho: string[]]
   eliminar: [ocIds: string[]]
   'filtered-count-changed': [count: number]
+  'ver-detalle-sap': [oc: OrdenCompra]
 }>()
 
 const toast = useToast()
@@ -484,6 +493,13 @@ watch(visibleColumns, () => {
     columnOrder.value = [...currentOrder, ...missingInOrder]
   }
 }, { deep: true })
+
+// Solo mostrar columnas que siguen definidas en availableColumns (evita encabezados huérfanos si se eliminó una columna)
+const availableColumnKeys = computed(() => availableColumns.map(col => col.key))
+const effectiveVisibleColumns = computed(() => {
+  const list = orderedVisibleColumns.value ?? []
+  return list.filter((key: string) => availableColumnKeys.value.includes(key))
+})
 
 // Computed para contar columnas visibles
 const visibleColumnsCount = computed(() => visibleColumns.value.length)
@@ -803,7 +819,7 @@ async function handleIntegrar(referenciaDespacho: string, ocId: string) {
   if (oc && oc.doc_entry !== null && oc.doc_entry !== undefined) {
     toast.warning(
       'OC ya enviada', 
-      `Esta OC ya fue enviada a SAP (DocEntry: ${oc.doc_entry}${oc.numero_oc_sap ? `, DocNum: ${oc.numero_oc_sap}` : ''}). No se puede reenviar.`
+      `Esta OC ya fue enviada a SAP (DocEntry: ${oc.doc_entry}${oc.numero_oc_sap ? `, Num ODC: ${oc.numero_oc_sap}` : ''}). No se puede reenviar.`
     )
     return
   }

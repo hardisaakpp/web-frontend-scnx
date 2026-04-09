@@ -132,7 +132,8 @@ export interface OrdenCompra {
   fecha_generacion: string
   estado: 'PENDIENTE' | 'ENVIADA' | 'ERROR'
   numero_oc_sap: string | null
-  doc_entry: number | null    // ⭐ NUEVO - DocEntry de SAP (importante para trazabilidad)
+  doc_entry: number | null    // ⭐ DocEntry de SAP (importante para trazabilidad)
+  doc_num?: number | null     // ⭐ DocNum de SAP (número de documento en SAP)
   referencia_despacho: string
   created_at: string
   fecha_procesado?: string | null
@@ -175,13 +176,16 @@ export interface IntegracionSAPDetalle {
   oc_id: string
   proveedor?: string
   success: boolean
-  doc_entry: number | null        // ⭐ NUEVO - DocEntry de SAP
-  doc_num: number | null
+  doc_entry: number | null        // DocEntry de SAP
+  doc_num: number | null          // DocNum de SAP (número de documento en SAP)
+  numero_oc_sap?: string | null   // Num ODC (desde orden_compra_cabecera.numero_oc_sap)
   message?: string | null          // Mensaje de éxito
   error: string | null             // Mensaje de error (puede contener múltiples errores separados por ';')
   error_message: string | null     // Alias de error (para compatibilidad)
   error_code: string | null         // ⭐ NUEVO - Código numérico de SAP
   error_source: string | null       // ⭐ NUEVO - "SAP" | "BACKEND" | "SAP_CONNECTION"
+  /** True si el fallo fue probablemente transitorio (conexión/SL); el usuario puede reintentar envío. */
+  retry_recommended?: boolean | null
   solicitudes_transferencia?: SolicitudesTransferencia | null  // ⭐ NUEVO - Solicitudes de Transferencia creadas automáticamente
   sap_response?: Record<string, any> | null  // Respuesta completa de SAP
   sap_error_details?: Record<string, any> | null  // Detalles completos del error
@@ -898,8 +902,10 @@ export interface PedidoCabecera {
   archivo_nombre: string
   creado_por: string | null
   creado_en: string | null
+  modificado_fecha?: string | null
+  modificado_por?: string | null
   estado?: string  // Estado del pedido: "PENDIENTE_CONFIRMACION_PROVEEDOR", "RESPUESTA_PROVEEDOR_CARGADA", "CONFIRMADO_PROVEEDOR", "CONFIRMADO REDISTRIBUCION", "PEDIDO_CONFIRMADO", "PROCESADO_SAP", "CONFIRMADO_ENVIADO", "DESPACHAR Y FACTURAR"
-  estado_id?: number  // ID del estado en BD (ej. 12 = CONFIRMADO_ENVIADO, 17 = DESPACHAR Y FACTURAR)
+  estado_id?: number  // ID del estado en BD (ej. 12 = CONFIRMADO_ENVIADO, 17 = DESPACHAR Y FACTURAR, 21 = ERROR ENVIO SAP REINTENTO)
   // ⭐ Campos de SAP (disponibles cuando estado_id = 12 CONFIRMADO_ENVIADO)
   numero_oc_sap?: string | null  // Número de OC en SAP (DocNum)
   doc_entry?: number | null      // DocEntry de SAP para trazabilidad
@@ -949,6 +955,11 @@ export interface PedidoCompleto {
   puede_confirmar_redistribucion?: boolean
   /** true si se puede finalizar el pedido (solo cuando estado_id === 17 = DESPACHAR Y FACTURAR). Backend: GET /api/pedidos/{id} y GET /api/plantillas/{numero_pedido} */
   puede_finalizar?: boolean
+  /**
+   * true si el usuario puede reintentar el proceso completo (envío ODC a SAP), p. ej. estado 21 o 10 con ODC reintentable.
+   * Backend: enrich tras GET plantillas/pedido y respuestas que devuelven pedido completo.
+   */
+  puede_reintentar_envio_odc_sap?: boolean
 }
 
 // ========== Respuesta del Proveedor (Fase 3) ==========
@@ -1112,9 +1123,21 @@ export interface ProcesoCompletoSAPDetalleODC {
   success: boolean
   doc_num: number | null
   doc_entry: number | null
+  numero_oc_sap?: string | null  // Num ODC (orden_compra_cabecera.numero_oc_sap)
   error: string | null
   message?: string | null
   solicitudes_transferencia?: SolicitudesTransferencia | null
+  /** True si el fallo fue probablemente transitorio (conexión/SL); el cliente puede ofrecer reintento manual. */
+  retry_recommended?: boolean | null
+}
+
+/**
+ * Respuesta del endpoint GET /ordenes-compra/{oc_id}/integracion-sap
+ * Usado para rellenar el modal de integración SAP al hacer clic en "Num ODC" (cuando no hay datos en memoria).
+ */
+export interface IntegracionSAPPorOCResponse {
+  envio_sap: ProcesoCompletoSAPDetalleODC
+  solicitudes_transferencia?: SolicitudesTransferencia
 }
 
 /**
@@ -1138,6 +1161,8 @@ export interface ProcesoCompletoSAPResponse {
   }
   /** Resultado del envío a SAP (Paso 3) */
   envio_sap?: ProcesoCompletoSAPDetalleODC
+  /** Solicitudes de Transferencia (ITR) creadas; puede venir en raíz o en envio_sap */
+  solicitudes_transferencia?: SolicitudesTransferencia
   /** Resumen de cantidades */
   resumen?: ResumenConfirmacion
   /** Si hubo error parcial, indica en qué paso falló */
@@ -1248,6 +1273,17 @@ export interface ObtenerModificacionesColumnasResponse {
 // ========== Procesamiento SAP (Post-Confirmación) ==========
 
 /**
+ * Conversión por tienda/bodega dentro de un producto del procesamiento SAP
+ */
+export interface ConversionPorTiendaItem {
+  tienda_codigo: string
+  tienda_nombre: string
+  es_bodega: boolean
+  cantidad_asignada: number
+  cantidad_sap: number
+}
+
+/**
  * Item individual de producto procesado con SAP
  */
 export interface ProductoSAPProcesamientoItem {
@@ -1277,6 +1313,8 @@ export interface ProductoSAPProcesamientoItem {
   tiene_error: boolean
   error_mensaje: string | null
   fecha_procesamiento: string
+  /** Distribución por tienda/bodega con cantidades asignadas y convertidas a SAP */
+  distribucion_conversion?: ConversionPorTiendaItem[] | null
 }
 
 /**
@@ -1320,6 +1358,12 @@ export interface SolicitudTransferenciaResultado {
   error: string | null
 }
 
+/** Una entrada por ITR para la tabla del modal (DocNum + código tienda) */
+export interface ItrPorTienda {
+  doc_num: number
+  tienda_codigo: string
+}
+
 /**
  * Información de Solicitudes de Transferencia creadas automáticamente
  */
@@ -1330,6 +1374,8 @@ export interface SolicitudesTransferencia {
   transferencias_creadas: number
   transferencias_errores: number
   resultados: SolicitudTransferenciaResultado[]
+  /** Lista para el modal: una entrada por ITR con DocNum y tienda (rellenado por backend) */
+  itrs_por_tienda?: ItrPorTienda[]
 }
 
 // ========== Listado de Pedidos con Filtros (HU-02, HU-07) ==========

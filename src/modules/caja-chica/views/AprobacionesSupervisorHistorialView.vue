@@ -1002,7 +1002,7 @@ const loadHistorial = async () => {
 
     detallesByIdDetalle.value = Object.fromEntries(detalleMap)
 
-    historial.value = aprobaciones.map((aprobacion: AprobacionItem) => {
+    historial.value = aprobaciones.map((aprobacion: AprobacionItem): HistorialItem => {
       const detalle = detalleMap.get(aprobacion.idDetalle)
       return {
         idAprobacion: aprobacion.idAprobacion,
@@ -1016,7 +1016,7 @@ const loadHistorial = async () => {
         observacion: aprobacion.observacion,
         fechaAprobacion: aprobacion.fechaAprobacion || ''
       }
-    }).sort((a, b) => {
+    }).sort((a: HistorialItem, b: HistorialItem) => {
       const dateA = new Date(a.fechaAprobacion).getTime()
       const dateB = new Date(b.fechaAprobacion).getTime()
       return dateB - dateA

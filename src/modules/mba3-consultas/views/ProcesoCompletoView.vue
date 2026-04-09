@@ -81,147 +81,7 @@
         'pointer-events-none opacity-75': procesoStore.isBlocking || (procesoStore.loading && (procesoStore.currentStep === 'migrar' || procesoStore.currentStep === 'integrar-sap' || procesoStore.currentStep === 'procesar-oc'))
       }"
     >
-      <!-- Sistema de Pestañas -->
-      <FolderTabs
-        :tabs="tabs"
-        :default-tab="activeTab"
-        @tab-changed="handleTabChange"
-        :disabled="procesoStore.loading && (procesoStore.currentStep === 'migrar' || procesoStore.currentStep === 'integrar-sap' || procesoStore.currentStep === 'procesar-oc')"
-      >
-      <!-- ⭐ NUEVA: Pestaña Pedidos Confirmados -->
-      <template #tab-pedidos-confirmados>
-        <div class="space-y-6">
-          <!-- Header -->
-          <div class="flex items-center justify-between flex-wrap gap-4 p-6 rounded-xl border border-gray-200 dark:border-gray-700 transition-colors duration-300 shadow-md bg-blue-50 dark:bg-blue-900/20">
-            <div>
-              <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-1">Pedidos Confirmados</h3>
-              <p class="text-sm text-gray-600 dark:text-gray-400">
-                Pedidos con redistribución confirmada listos para generar ODC
-              </p>
-            </div>
-            <button
-              @click="cargarPedidosConfirmados"
-              :disabled="loadingPedidosConfirmados"
-              class="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              <svg v-if="!loadingPedidosConfirmados" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              <svg v-else class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              {{ loadingPedidosConfirmados ? 'Cargando...' : 'Actualizar' }}
-            </button>
-          </div>
-
-          <!-- Tabla de Pedidos Confirmados -->
-          <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6">
-            <div class="flex items-center justify-between mb-4">
-              <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Pedidos Listos para ODC</h2>
-              <p class="text-sm text-gray-500 dark:text-gray-400">
-                {{ pedidosConfirmadosCount }} pedido(s) confirmado(s)
-              </p>
-            </div>
-
-            <SkeletonTable v-if="loadingPedidosConfirmados && pedidosConfirmados.length === 0" />
-
-            <!-- Tabla de pedidos -->
-            <div v-else-if="pedidosConfirmados.length > 0" class="overflow-x-auto">
-              <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead class="bg-gray-50 dark:bg-gray-900">
-                  <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Número Pedido
-                    </th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Proveedor
-                    </th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Fecha Pedido
-                    </th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Estado
-                    </th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Acciones
-                    </th>
-                  </tr>
-                </thead>
-                <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  <tr v-for="pedido in pedidosConfirmados" :key="pedido.cabecera.pedido_id">
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
-                      {{ pedido.cabecera.numero_pedido }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {{ pedido.cabecera.proveedor_nombre }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {{ pedido.cabecera.fecha_pedido ? new Date(pedido.cabecera.fecha_pedido).toLocaleDateString('es-ES') : '-' }}
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                      <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                        {{ pedido.cabecera.estado || 'CONFIRMADO' }}
-                      </span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm">
-                      <button
-                        @click="handleGenerarODCDesdePedido(pedido.cabecera.numero_pedido || '')"
-                        :disabled="generandoODC || !pedido.cabecera.numero_pedido"
-                        class="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                      >
-                        <svg v-if="!generandoODC" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        <svg v-else class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        {{ generandoODC ? 'Generando...' : 'Generar ODC' }}
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <div v-else class="text-center py-12">
-              <p class="text-gray-500 dark:text-gray-400">No hay pedidos confirmados disponibles</p>
-            </div>
-
-            <!-- Paginación -->
-            <div v-if="Math.ceil(pedidosConfirmadosCount / pageSizePedidos) > 1 && !loadingPedidosConfirmados" class="mt-4 flex items-center justify-between">
-              <div class="text-sm text-gray-700 dark:text-gray-300">
-                Mostrando página {{ currentPagePedidos }} de {{ Math.ceil(pedidosConfirmadosCount / pageSizePedidos) }}
-                ({{ filteredPedidosCount > 0 ? filteredPedidosCount : pedidosConfirmadosCount }} pedidos)
-              </div>
-              <div class="flex items-center gap-2">
-                <button
-                  @click="currentPagePedidos--"
-                  :disabled="currentPagePedidos === 1 || loadingPedidosConfirmados"
-                  class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Anterior
-                </button>
-                <span class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">
-                  Página {{ currentPagePedidos }} de {{ Math.ceil(pedidosConfirmadosCount / pageSizePedidos) }}
-                </span>
-                <button
-                  @click="currentPagePedidos++"
-                  :disabled="currentPagePedidos >= Math.ceil(pedidosConfirmadosCount / pageSizePedidos) || loadingPedidosConfirmados"
-                  class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Siguiente
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </template>
-
-      <!-- Pestaña 2: Procesar ODC -->
-      <template #tab-procesar-oc>
-        <div class="space-y-6">
+      <div class="space-y-6">
           <!-- Botón de acción y estado -->
           <div class="flex items-center justify-between flex-wrap gap-4 p-6 rounded-xl border border-white/30 dark:border-gray-600/30 backdrop-blur-xl transition-all duration-300 relative overflow-hidden shadow-2xl"
             :class="getProcesoCardClass('procesar-oc')">
@@ -258,6 +118,12 @@
                 <p class="text-sm text-gray-600 dark:text-gray-300 transition-colors duration-300">{{ getStepDescription('procesar-oc') }}</p>
               </div>
             </div>
+            <OdcSapVolverButton
+              v-if="odcSapVolverTarget"
+              :to="odcSapVolverTarget"
+              :title="odcSapVolverTitle"
+              class="relative z-10 shrink-0"
+            />
           </div>
 
           <!-- Barra de progreso para Procesar ODC / Integrar SAP -->
@@ -363,22 +229,35 @@
           </div>
 
           <!-- Tabla de Órdenes de Compra (Todas) -->
-          <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-xl shadow-2xl p-6 border border-white/30 dark:border-gray-600/30 relative overflow-hidden transition-colors duration-300">
+          <div class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-xl shadow-2xl border border-white/30 dark:border-gray-600/30 relative overflow-hidden transition-colors duration-300">
             <div class="absolute inset-0 bg-gradient-to-br from-white/20 dark:from-gray-700/20 via-transparent to-transparent pointer-events-none"></div>
 
+            <!-- Buscador de pedidos/ODC -->
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 transition-colors duration-300">
+              <input
+                id="search-procesar-oc"
+                v-model.trim="searchProcesarOC"
+                type="search"
+                placeholder="Buscar por número de pedido, ODC SAP, estado..."
+                class="block w-full pl-10 pr-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:focus:ring-blue-400 dark:focus:border-blue-400 transition-colors"
+              />
+            </div>
+
+            <div class="p-6">
             <SkeletonTable v-if="ordenesCompraStore.loading && ordenesCompraStore.ordenesCompra.length === 0" />
 
             <OrdenCompraTable 
               v-else
-              :ordenes-compra="ordenesCompraStore.ordenesCompra"
+              :ordenes-compra="filteredOrdenesCompraProceso"
               :loading="ordenesCompraStore.loading"
-              :total-ordenes="ordenesCompraStore.total"
+              :total-ordenes="searchProcesarOC ? filteredOrdenesCompraProceso.length : ordenesCompraStore.total"
               :allow-delete="false"
               :current-page="currentPageOC"
               :page-size="pageSizeOC"
               @integrar="handleIntegrarOC"
               @integrar-multiples="handleIntegrarOCMultiples"
               @filtered-count-changed="handleFilteredOCCountChanged"
+              @ver-detalle-sap="handleVerDetalleSAP"
               ref="ordenCompraTableRef"
             />
 
@@ -388,31 +267,16 @@
                 Mostrando página {{ currentPageOC }} de {{ totalPagesOC }}
                 ({{ filteredOCCount > 0 ? filteredOCCount : ordenesCompraStore.total }} órdenes{{ filteredOCCount > 0 && filteredOCCount !== ordenesCompraStore.total ? ' filtradas' : '' }})
               </div>
-              <div class="flex items-center gap-2">
-                <button
-                  @click="prevPageOC"
-                  :disabled="currentPageOC === 1 || ordenesCompraStore.loading || (procesoStore.loading && procesoStore.currentStep === 'migrar')"
-                  class="px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 text-sm font-medium shadow-sm"
-                >
-                  Anterior
-                </button>
-                <span class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg border border-gray-300 dark:border-gray-600">
-                  Página {{ currentPageOC }} de {{ totalPagesOC }}
-                </span>
-                <button
-                  @click="nextPageOC"
-                  :disabled="currentPageOC === totalPagesOC || ordenesCompraStore.loading || (procesoStore.loading && procesoStore.currentStep === 'migrar')"
-                  class="px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 text-sm font-medium shadow-sm"
-                >
-                  Siguiente
-                </button>
-              </div>
+              <QuickTablePagination
+                v-model="currentPageOC"
+                :total-pages="totalPagesOC"
+                :disabled="ordenesCompraStore.loading || (procesoStore.loading && procesoStore.currentStep === 'migrar')"
+                aria-label="Paginación de órdenes de compra"
+              />
+            </div>
             </div>
           </div>
-        </div>
-      </template>
-
-      </FolderTabs>
+      </div>
 
       <!-- Mensajes de error globales -->
       <div v-if="procesoStore.error" 
@@ -440,7 +304,10 @@
       :detalle="integracionSAPDetalle"
       :solicitudes-transferencia="integracionSAPSolicitudes"
       :estado-general="integracionSAPEstado"
+      :show-retry-sap-cta="showIntegracionSAPRetryCta"
+      :retry-loading="sapRetryLoading"
       @close="showIntegracionSAPModal = false"
+      @retry-sap="handleRetryProcesoCompletoSAP"
     />
   </div>
 </template>
@@ -457,31 +324,106 @@ import type { Despacho, OrdenCompra, PedidoCompleto } from '../types'
 import DespachosTable from '../components/DespachosTable.vue'
 import OrdenCompraTable from '../components/OrdenCompraTable.vue'
 import SkeletonTable from '../components/SkeletonTable.vue'
-import FolderTabs from '../components/FolderTabs.vue'
 import IntegracionSAPModal from '../components/IntegracionSAPModal.vue'
-import type { Tab } from '../types'
-import type { IntegracionSAPDetalle, SolicitudesTransferencia } from '../types'
+import OdcSapVolverButton from '../components/OdcSapVolverButton.vue'
+import type { AjusteDetalle, IntegracionSAPDetalle, ProcesoCompletoSAPResponse, SolicitudesTransferencia } from '../types'
+import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
+import QuickTablePagination from '../components/QuickTablePagination.vue'
+import { ejecutarProcesoCompletoSap } from '../composables/ejecutarProcesoCompletoSap'
 
 const procesoStore = useProcesoStore()
 const ordenesCompraStore = useOrdenesCompraStore()
 const toast = useToast()
 const route = useRoute()
-
-// Estado de pestañas - restaurar desde localStorage o usar 'procesar-oc' por defecto
-const STORAGE_KEY = 'mba3-proceso-active-tab'
-const savedTab = localStorage.getItem(STORAGE_KEY)
-const validTabs = ['pedidos-confirmados', 'procesar-oc']
-const activeTab = ref<string>(
-  savedTab && validTabs.includes(savedTab) 
-    ? savedTab 
-    : 'procesar-oc'
-)
+const { target: odcSapVolverTarget, title: odcSapVolverTitle } = useOdcSapVolver()
 
 // Estados para modal de integración SAP
 const showIntegracionSAPModal = ref(false)
 const integracionSAPDetalle = ref<IntegracionSAPDetalle | null>(null)
 const integracionSAPSolicitudes = ref<SolicitudesTransferencia | null>(null)
 const integracionSAPEstado = ref<'success' | 'partial' | 'error'>('success')
+
+/** Payload para re-ejecutar POST proceso-completo-sap tras fallo transitorio (retry_recommended). */
+const sapRetryContext = ref<{ numeroPedido: string; ajustesDetalle: AjusteDetalle[] } | null>(null)
+const sapRetryLoading = ref(false)
+
+const showIntegracionSAPRetryCta = computed(() => {
+  if (!sapRetryContext.value) return false
+  const d = integracionSAPDetalle.value
+  return !!(d && d.retry_recommended === true && !d.success)
+})
+
+function aplicarRespuestaProcesoCompletoSAPAlModal(response: ProcesoCompletoSAPResponse) {
+  const envio = response.envio_sap
+  const errorMsg = response.error ?? response.message ?? null
+  const solicitudes =
+    response.solicitudes_transferencia ?? envio?.solicitudes_transferencia ?? null
+
+  if (envio) {
+    integracionSAPDetalle.value = {
+      oc_id: envio.oc_id ?? '',
+      success: !!envio.doc_num,
+      doc_num: envio.doc_num ?? null,
+      doc_entry: envio.doc_entry ?? null,
+      numero_oc_sap: (envio as { numero_oc_sap?: string | null }).numero_oc_sap ?? null,
+      message: envio.message ?? response.message ?? null,
+      error: envio.error ?? errorMsg,
+      error_message: envio.error ?? errorMsg,
+      error_code: (envio as { error_code?: string | null }).error_code ?? null,
+      error_source: (envio as { error_source?: string | null }).error_source ?? null,
+      solicitudes_transferencia: envio.solicitudes_transferencia ?? null,
+      sap_response: null,
+      sap_error_details: null,
+      retry_recommended: envio.retry_recommended ?? null,
+      proveedor: integracionSAPDetalle.value?.proveedor
+    }
+  }
+
+  integracionSAPSolicitudes.value = solicitudes
+
+  const innerStatus =
+    response.status === 'success' || response.status === 'partial' || response.status === 'error'
+      ? response.status
+      : envio?.doc_num != null
+        ? 'success'
+        : response.error
+          ? 'partial'
+          : 'error'
+
+  if (innerStatus === 'success') {
+    integracionSAPEstado.value =
+      solicitudes && solicitudes.transferencias_errores > 0 ? 'partial' : 'success'
+  } else if (innerStatus === 'partial') {
+    integracionSAPEstado.value = 'partial'
+  } else {
+    integracionSAPEstado.value = 'error'
+  }
+}
+
+async function handleRetryProcesoCompletoSAP() {
+  const ctx = sapRetryContext.value
+  if (!ctx || sapRetryLoading.value) return
+  sapRetryLoading.value = true
+  try {
+    const response = await ejecutarProcesoCompletoSap(ctx.numeroPedido, ctx.ajustesDetalle, {
+      onFallbackSync: () => {
+        toast.info('Proceso en segundo plano no disponible', 'Se ejecutará en modo síncrono.')
+      }
+    })
+    aplicarRespuestaProcesoCompletoSAPAlModal(response)
+    if (response.envio_sap?.doc_num != null) {
+      sapRetryContext.value = null
+      toast.success('Envío a SAP', response.message || 'Proceso completado correctamente.')
+    } else if (response.envio_sap?.retry_recommended !== true) {
+      sapRetryContext.value = null
+    }
+  } catch (e: any) {
+    const msg = e?.response?.data?.message ?? e?.response?.data?.detail ?? e?.message ?? 'No se pudo reintentar'
+    toast.error('Error al reintentar envío a SAP', typeof msg === 'string' ? msg : String(msg))
+  } finally {
+    sapRetryLoading.value = false
+  }
+}
 
 // Estados para despachos
 const hayDespachos = ref(false)
@@ -506,6 +448,7 @@ const timeAgoDisplay = ref<string>('')
 const currentPageOC = ref(1)
 const pageSizeOC = ref(10)
 const filteredOCCount = ref(0)
+const searchProcesarOC = ref('')
 
 // ⭐ NUEVO: Estados para pedidos confirmados
 const pedidosConfirmados = ref<PedidoCompleto[]>([])
@@ -514,6 +457,7 @@ const loadingPedidosConfirmados = ref(false)
 const currentPagePedidos = ref(1)
 const pageSizePedidos = ref(10)
 const filteredPedidosCount = ref(0)
+const searchPedidosConfirmados = ref('')
 
 // Estado para eliminación
 const eliminando = ref(false)
@@ -560,33 +504,30 @@ function isConsultaMBA3Error(error: string | null): boolean {
          error.toLowerCase().includes('ejecutar consulta en mba3')
 }
 
-// Definir las pestañas con colores temáticos
-const tabs = computed<Tab[]>(() => {
-  // Calcular el número real de despachos
-  // Prioridad: usar el largo del array si hay despachos cargados (más confiable)
-  // Si no hay despachos cargados, usar despachosCount del backend
-  const totalDespachos = despachos.value.length > 0 
-    ? despachos.value.length 
-    : (despachosCount.value > 0 ? despachosCount.value : 0)
-  
-  // Calcular el total de órdenes de compra en la pestaña Procesar ODC
-  // Usar el total del store (que contiene todas las órdenes: PENDIENTE, ENVIADA, ERROR)
-  // Si no hay total, usar la longitud del array, sino la suma de todas las estadísticas
-  const totalOrdenesProcesarOC = ordenesCompraStore.total > 0
-    ? ordenesCompraStore.total
-    : (ordenesCompraStore.ordenesCompra.length > 0
-      ? ordenesCompraStore.ordenesCompra.length
-      : (ordenesCompraStore.pendientes + ordenesCompraStore.enviadas + ordenesCompraStore.errores))
-  
-  const tabsArray: Tab[] = []
-  tabsArray.push({
-    id: 'procesar-oc',
-    label: 'Procesar ODC',
-    badge: totalOrdenesProcesarOC > 0 ? totalOrdenesProcesarOC : undefined,
-    color: 'emerald'
+// Computed: pedidos confirmados filtrados por búsqueda (número, proveedor, estado)
+const filteredPedidosConfirmados = computed(() => {
+  const term = searchPedidosConfirmados.value.toLowerCase()
+  if (!term) return pedidosConfirmados.value
+  return pedidosConfirmados.value.filter((p) => {
+    const cab = p.cabecera
+    const numero = (cab?.numero_pedido ?? '').toString().toLowerCase()
+    const proveedor = (cab?.proveedor_nombre ?? '').toLowerCase()
+    const estado = (cab?.estado ?? '').toLowerCase()
+    return numero.includes(term) || proveedor.includes(term) || estado.includes(term)
   })
-  
-  return tabsArray
+})
+
+// Computed: órdenes de compra filtradas por búsqueda en pestaña Procesar ODC
+const filteredOrdenesCompraProceso = computed(() => {
+  const term = searchProcesarOC.value.toLowerCase().trim()
+  if (!term) return ordenesCompraStore.ordenesCompra
+  return ordenesCompraStore.ordenesCompra.filter((oc: OrdenCompra) => {
+    const ref = (oc.referencia_despacho ?? '').toLowerCase()
+    const numSap = (oc.numero_oc_sap ?? '').toString().toLowerCase()
+    const estado = (oc.estado ?? '').toLowerCase()
+    const docEntry = (oc.doc_entry ?? '').toString().toLowerCase()
+    return ref.includes(term) || numSap.includes(term) || estado.includes(term) || docEntry.includes(term)
+  })
 })
 
 // Computed para verificar si hay órdenes de compra disponibles
@@ -602,23 +543,6 @@ const ordenesCompraParaDespachos = computed(() => {
     referencia_despacho: oc.referencia_despacho || undefined
   }))
 })
-
-// Función para cambiar de pestaña
-async function handleTabChange(tabId: string) {
-  activeTab.value = tabId
-  // Guardar la pestaña activa en localStorage para persistir al refrescar
-  localStorage.setItem(STORAGE_KEY, tabId)
-  
-  // Cargar datos cuando se cambia de pestaña
-  if (tabId === 'pedidos-confirmados') {
-    // ⭐ NUEVO: Cargar pedidos confirmados
-    await cargarPedidosConfirmados()
-  } else if (tabId === 'procesar-oc') {
-    // Cargar estadísticas primero para que el botón se habilite correctamente
-    await ordenesCompraStore.fetchEstadisticas()
-    await cargarOrdenesCompraPendientes()
-  }
-}
 
 // Función para verificar despachos disponibles
 async function verificarDespachos() {
@@ -703,17 +627,9 @@ async function cargarDespachos() {
 
 // ========== FUNCIONES DE POLLING AUTOMÁTICO ==========
 
-// Función para auto-refrescar despachos
+// Función para auto-refrescar despachos (sin pestaña migrar; no ejecuta)
 async function autoRefreshDespachos() {
-  // Solo refrescar si estamos en la pestaña de despachos y no está cargando
-  if (activeTab.value === 'migrar' && !loadingDespachos.value) {
-    if (import.meta.env.DEV) console.log('🔄 Auto-refresh: Actualizando despachos...')
-    await cargarDespachos()
-    nextRefreshTime.value = new Date(Date.now() + POLLING_INTERVAL)
-    
-    // Mostrar notificación sutil (opcional - comentar si no se desea)
-    // toast.info('Datos actualizados', 'La tabla de despachos se ha actualizado automáticamente', 2000)
-  }
+  // Pestaña migrar/despachos retirada
 }
 
 // Iniciar polling
@@ -913,19 +829,6 @@ function handleFilteredOCCountChanged(count: number) {
   const totalPages = Math.ceil(count / pageSizeOC.value)
   if (currentPageOC.value > totalPages && totalPages > 0) {
     currentPageOC.value = 1
-  }
-}
-
-// Funciones de paginación para ODC
-function prevPageOC() {
-  if (currentPageOC.value > 1) {
-    currentPageOC.value--
-  }
-}
-
-function nextPageOC() {
-  if (currentPageOC.value < totalPagesOC.value) {
-    currentPageOC.value++
   }
 }
 
@@ -1205,10 +1108,8 @@ async function handleGenerarODCDesdePedido(numeroPedido: string) {
     const ocStatus = response?.metadata?.oc_status
     if (ocStatus?.status === 'completed') {
       toast.success('ODC generada', 'La orden de compra se ha generado exitosamente')
-      // Recargar pedidos y cambiar a pestaña de ODC
-      await cargarPedidosConfirmados()
-      activeTab.value = 'procesar-oc'
-      await handleTabChange('procesar-oc')
+      await ordenesCompraStore.fetchEstadisticas()
+      await cargarOrdenesCompraPendientes()
     } else if (ocStatus?.status === 'processing') {
       toast.info('ODC en proceso', 'La orden de compra se está generando. Revisa el estado en "Procesar ODC"')
       await cargarPedidosConfirmados()
@@ -1255,8 +1156,8 @@ async function handleGenerarODCIndividual(despachoId: string) {
     
     // Cambiar de pestaña solo si el proceso fue exitoso y completo
     if (result.shouldChangeTab) {
-      activeTab.value = 'procesar-oc'
-      await handleTabChange('procesar-oc')
+      await ordenesCompraStore.fetchEstadisticas()
+      await cargarOrdenesCompraPendientes()
     }
     
     // Limpiar estado del botón individual
@@ -1316,8 +1217,8 @@ async function handleGenerarODCMultiples(despachoIds: string[]) {
     
     // Cambiar de pestaña solo si el proceso fue exitoso y completo
     if (result.shouldChangeTab) {
-      activeTab.value = 'procesar-oc'
-      await handleTabChange('procesar-oc')
+      await ordenesCompraStore.fetchEstadisticas()
+      await cargarOrdenesCompraPendientes()
     }
     
     // Limpiar estado de envío múltiple
@@ -1345,6 +1246,80 @@ async function handleGenerarODCMultiples(despachoIds: string[]) {
     generandoODC.value = false
     progresoGenerarODC.value = 0
   }
+}
+
+async function handleVerDetalleSAP(oc: OrdenCompra) {
+  if (!oc) return
+
+  // 1) Si ya tenemos en memoria el detalle para ESTA OC, reutilizarlo tal cual
+  if (integracionSAPDetalle.value && integracionSAPDetalle.value.oc_id === oc.oc_id) {
+    integracionSAPEstado.value = integracionSAPDetalle.value.success ? 'success' : 'error'
+    showIntegracionSAPModal.value = true
+    return
+  }
+
+  // 2) No hay detalle en memoria (o es de otra OC): pedirlo al backend
+  try {
+    const response = await mba3ConsultasService.getIntegracionSAP(oc.oc_id)
+    const envio = response.envio_sap
+    if (!envio) {
+      throw new Error('Respuesta sin envio_sap')
+    }
+
+    const detalle: IntegracionSAPDetalle = {
+      oc_id: envio.oc_id,
+      proveedor: (envio as { proveedor?: string }).proveedor ?? oc.proveedor ?? undefined,
+      success: envio.success,
+      doc_entry: envio.doc_entry ?? null,
+      doc_num: envio.doc_num ?? null,
+      numero_oc_sap: envio.numero_oc_sap ?? null,
+      message: envio.message ?? oc.respuesta_sap ?? 'Enviada exitosamente',
+      error: envio.error ?? null,
+      error_message: envio.error ?? null,
+      error_code: null,
+      error_source: null,
+      solicitudes_transferencia: null,
+      sap_response: null,
+      sap_error_details: null,
+    }
+
+    integracionSAPDetalle.value = detalle
+    integracionSAPSolicitudes.value =
+      response.solicitudes_transferencia ?? envio.solicitudes_transferencia ?? null
+    integracionSAPEstado.value = envio.success ? 'success' : 'error'
+    showIntegracionSAPModal.value = true
+    return
+  } catch (err: any) {
+    if (err?.response?.status === 404) {
+      if (import.meta.env.DEV) console.debug('[handleVerDetalleSAP] No hay integración SAP para esta OC (404), mostrando detalle mínimo')
+    } else {
+      console.warn('[handleVerDetalleSAP] Error al obtener integración SAP:', err)
+      toast.warning('No se pudo cargar el detalle de integración', err?.response?.data?.detail ?? err?.message ?? 'Error desconocido')
+    }
+  }
+
+  // 3) Fallback: detalle mínimo solo con datos de la OC (sin ITR)
+  const detalle: IntegracionSAPDetalle = {
+    oc_id: oc.oc_id,
+    proveedor: oc.proveedor ?? undefined,
+    success: true,
+    doc_entry: oc.doc_entry ?? null,
+    doc_num: oc.doc_num ?? null,
+    numero_oc_sap: oc.numero_oc_sap ?? null,
+    message: oc.respuesta_sap || 'Enviada exitosamente',
+    error: null,
+    error_message: null,
+    error_code: null,
+    error_source: null,
+    solicitudes_transferencia: null,
+    sap_response: null,
+    sap_error_details: null,
+  }
+
+  integracionSAPDetalle.value = detalle
+  integracionSAPSolicitudes.value = null
+  integracionSAPEstado.value = 'success'
+  showIntegracionSAPModal.value = true
 }
 
 // Funciones de integración individuales
@@ -1378,8 +1353,35 @@ async function handleIntegrarOC(referenciaDespacho: string, almacenDestinoParam?
     
     // ✅ ACTUALIZAR ESTADO LOCAL INMEDIATAMENTE basándose en la respuesta
     const metadata = response?.metadata || {}
-    const detalles = metadata.detalles || []
-    
+    let detalles = metadata.detalles || []
+    // Normalizar formato alternativo del backend: { resultado, oc_id, oc_doc_num } → detalle + solicitudes
+    if (detalles.length === 0 && response?.resultado && typeof response.resultado === 'object' && response.oc_id) {
+      const res = response.resultado as { success?: boolean; resultados?: Array<{ doc_entry?: number; doc_num?: number }> }
+      const firstResult = res.resultados?.[0]
+      const resp = response as any
+      const envioSap = resp.envio_sap ?? resp
+      detalles = [{
+        oc_id: response.oc_id as string,
+        success: res.success === true,
+        doc_entry: firstResult?.doc_entry ?? envioSap.doc_entry ?? null,
+        doc_num: firstResult?.doc_num ?? envioSap.doc_num ?? resp.oc_doc_num ?? null,
+        numero_oc_sap: envioSap.numero_oc_sap ?? resp.numero_oc_sap ?? null,
+        message: 'Enviada exitosamente',
+        error: null,
+        error_message: null,
+        error_code: null,
+        error_source: null,
+        solicitudes_transferencia: {
+          success: res.success === true,
+          pedido_id: (response as any).pedido_id ?? '',
+          total_tiendas: (res as any).total_tiendas ?? (res.resultados?.length ?? 0),
+          transferencias_creadas: (res as any).transferencias_creadas ?? 0,
+          transferencias_errores: (res as any).transferencias_errores ?? 0,
+          resultados: (res as any).resultados ?? []
+        }
+      }]
+    }
+
     if (detalles.length > 0) {
       const detalle = detalles[0]
       const success = detalle.success === true
@@ -1395,14 +1397,16 @@ async function handleIntegrarOC(referenciaDespacho: string, almacenDestinoParam?
         
         if (success) {
           ordenActualizada.estado = 'ENVIADA'
-          ordenActualizada.numero_oc_sap = detalle.doc_num?.toString() || null
-          ordenActualizada.doc_entry = detalle.doc_entry || null  // ⭐ Actualizar doc_entry
+          ordenActualizada.numero_oc_sap = detalle.numero_oc_sap ?? detalle.doc_num?.toString() ?? null
+          ordenActualizada.doc_entry = detalle.doc_entry || null
+          ordenActualizada.doc_num = detalle.doc_num ?? null
           ordenActualizada.fecha_procesado = new Date().toISOString()
           ordenActualizada.respuesta_sap = detalle.message || 'Enviada exitosamente'
           
-          const docInfo = detalle.doc_entry 
-            ? `DocEntry: ${detalle.doc_entry}${detalle.doc_num ? `, DocNum: ${detalle.doc_num}` : ''}`
-            : (detalle.doc_num ? `DocNum: ${detalle.doc_num}` : 'N/A')
+          const numOdc = detalle.numero_oc_sap ?? (detalle.doc_num != null ? String(detalle.doc_num) : null)
+          const docInfo = detalle.doc_entry
+            ? `DocEntry: ${detalle.doc_entry}${numOdc != null ? `, Num ODC: ${numOdc}` : ''}`
+            : (numOdc != null ? `Num ODC: ${numOdc}` : 'N/A')
           toast.success('Orden enviada', docInfo)
         } else {
           ordenActualizada.estado = 'ERROR'
@@ -1642,8 +1646,9 @@ async function handleIntegrarOCMultiples(referencias: string[]) {
             
             if (success) {
               ordenActualizada.estado = 'ENVIADA'
-              ordenActualizada.numero_oc_sap = detalle.doc_num?.toString() || null
-              ordenActualizada.doc_entry = detalle.doc_entry || null  // ⭐ Actualizar doc_entry
+              ordenActualizada.numero_oc_sap = detalle.numero_oc_sap ?? detalle.doc_num?.toString() ?? null
+              ordenActualizada.doc_entry = detalle.doc_entry || null
+              ordenActualizada.doc_num = detalle.doc_num ?? null
               ordenActualizada.fecha_procesado = new Date().toISOString()
               ordenActualizada.respuesta_sap = detalle.message || 'Enviada exitosamente'
               successCount++
@@ -1862,22 +1867,8 @@ async function handleEliminarOC(ocIds: string[]) {
 
 // Cargar estadísticas al montar el componente
 onMounted(async () => {
-  // Cargar estadísticas siempre
   await ordenesCompraStore.fetchEstadisticas()
-  
-  // Cargar datos según la pestaña activa guardada
-  if (activeTab.value === 'procesar-oc') {
-    // Si la pestaña activa es "Procesar ODC", cargar órdenes de compra
-    await cargarOrdenesCompraPendientes()
-  } else if (activeTab.value === 'pedidos-confirmados') {
-    // ⭐ NUEVO: Cargar pedidos confirmados
-    await cargarPedidosConfirmados()
-  } else {
-    // Por defecto, cargar pedidos confirmados
-    await cargarPedidosConfirmados()
-  }
-  
-  // Asegurar que el componente FolderTabs tenga el valor correcto
+  await cargarOrdenesCompraPendientes()
   await nextTick()
   
   // ⭐ NUEVO: Verificar si hay resultados pendientes de envío SAP para mostrar modal
@@ -1886,35 +1877,31 @@ onMounted(async () => {
     integracionSAPDetalle.value = resultado.detalle
     integracionSAPSolicitudes.value = resultado.solicitudesTransferencia
     integracionSAPEstado.value = resultado.estadoGeneral
-    
+    if (resultado.ajustesDetalle?.length) {
+      sapRetryContext.value = {
+        numeroPedido: resultado.numeroPedido,
+        ajustesDetalle: resultado.ajustesDetalle
+      }
+    }
+
     // Mostrar modal después de un pequeño delay
     await new Promise(resolve => setTimeout(resolve, 300))
     showIntegracionSAPModal.value = true
-    
+
     // Limpiar el resultado pendiente
     procesoStore.clearSAPResultadoPendiente()
   }
 })
 
-// Watch para query params de navegación desde OrdenCompraTable
+// Watch para query params de navegación (ej. desde OrdenCompraTable)
 watch(() => route.query, async (newQuery) => {
-  if (newQuery.tab && newQuery.tab !== activeTab.value) {
-    // Cambiar a la pestaña especificada
-    activeTab.value = newQuery.tab as string
-    localStorage.setItem(STORAGE_KEY, activeTab.value)
-    
-    if (newQuery.tab === 'procesar-oc' && newQuery.orden_id) {
-      // Cargar órdenes de compra si no están cargadas
-      if (ordenesCompraStore.ordenesCompra.length === 0) {
-        await cargarOrdenesCompraPendientes()
-      }
-      
-      // Aplicar búsqueda automáticamente
-      initialSearchDespacho.value = newQuery.despacho_id as string
-      
-      await nextTick()
-    }
+  if (newQuery.orden_id && ordenesCompraStore.ordenesCompra.length === 0) {
+    await cargarOrdenesCompraPendientes()
   }
+  if (newQuery.despacho_id) {
+    initialSearchDespacho.value = newQuery.despacho_id as string
+  }
+  await nextTick()
 }, { immediate: true })
 
 function getStepStatus(step: string): 'pending' | 'active' | 'completed' | 'error' | 'retry' {

@@ -6,22 +6,51 @@ Esta guía describe los pasos necesarios para desplegar SCNexus Frontend a produ
 
 ### ✅ Variables de Entorno
 
-**IMPORTANTE:** Antes del despliegue, actualizar todas las URLs en `.env.production` con las URLs reales de producción:
+**IMPORTANTE:** Antes del despliegue, actualizar todas las URLs en `.env.production` con las URLs reales de producción.
+
+#### Despliegue típico: build en tu PC y copiar `dist/` al servidor
+
+Si generas el build en tu máquina y solo subes `dist/` a algo como `/storage/scnexus/dist/`, el navegador ejecuta **ese** JavaScript. Cualquier `VITE_*` con `http://` o IP privada (p. ej. `http://192.168.x.x:8080/api`) queda **fija en el bundle**: el cliente intentará llamar a esa URL directamente, no pasa por tu Apache/Nginx en HTTPS, y aparece **Mixed Content** (página HTTPS que pide HTTP).
+
+**Solución:** con reverse proxy en el servidor (Apache/Nginx) que enruta `/api/...` al Core y a MBA3, usa **rutas relativas** en `.env.production`, por ejemplo:
+
+- `VITE_API_URL=/api`
+- `VITE_CORE_API_URL=/api`
+- `VITE_MBA3_API_URL=/api`
+- `VITE_MBA3_API_BASE_URL=/api/mba3`
+
+Así el login va a `https://tu-dominio/api/Auth/login` y el proxy del servidor habla con los backends internos.
+
+**IMPORTANTE:** Antes del despliegue, revisar también módulos que tengan su propia base (p. ej. Caja Chica con `VITE_CAJA_CHICA_API_URL`): deben ser relativas al mismo dominio HTTPS o debes exponer un `location` dedicado en nginx y apuntar la variable a esa ruta.
+
+Ejemplo de configuración antigua (incorrecta para HTTPS + proxy):
 
 ```env
-# API Backend Core (Apps pruebas)
-VITE_API_URL=https://api.produccion.com/api
+VITE_CORE_API_URL=http://192.168.2.12:8080/api
+```
 
-# API Backend MBA3 Consultas
-VITE_MBA3_API_BASE_URL=https://mba3-api.produccion.com
+---
 
-# API Backend Conciliación Tesorería
-VITE_CONCILIACION_API_BASE_URL=https://conciliacion-api.produccion.com
+Plantilla recomendada (mismo dominio HTTPS + reverse proxy, como `scnexus.*` → `/api/*`):
 
-# API Backend Preferencias de Usuario
-VITE_PREFERENCES_API_URL=https://mba3-api.produccion.com
+```env
+VITE_API_URL=/api
+VITE_CORE_API_URL=/api
+VITE_MBA3_API_URL=/api
+VITE_MBA3_API_BASE_URL=/api/mba3
+VITE_CONCILIACION_API_BASE_URL=/api/conciliacion
+VITE_PREFERENCES_API_URL=/api/mba3
+VITE_CAJA_CHICA_API_URL=/api
+VITE_APP_NAME=SCNexus
+```
 
-# Nombre de la aplicación
+Si las APIs viven en **otros hosts** públicos, usa URLs absolutas **https://** (no IPs privadas ni `http://` en producción):
+
+```env
+VITE_API_URL=https://api.ejemplo.com/api
+VITE_MBA3_API_BASE_URL=https://mba3-api.ejemplo.com
+VITE_CONCILIACION_API_BASE_URL=https://conciliacion-api.ejemplo.com
+VITE_PREFERENCES_API_URL=https://mba3-api.ejemplo.com
 VITE_APP_NAME=SCNexus
 ```
 

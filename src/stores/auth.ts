@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import api from '../plugins/axios'
+import api, { mba3Api } from '../plugins/axios'
 import { jwtDecode } from 'jwt-decode'
 
 /** Timeout ID para redirigir al login cuando caduca el token. Se limpia en logout. */
@@ -294,8 +294,9 @@ export const useAuthStore = defineStore('auth', {
         localStorage.setItem('token', token)
         localStorage.setItem('user', JSON.stringify(user))
 
-        // Configure axios
+        // Configurar token en ambas instancias (Core y MBA3)
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+        mba3Api.defaults.headers.common['Authorization'] = `Bearer ${token}`
 
         scheduleRedirectOnTokenExpiry(token, this)
         await this.fetchMe()
@@ -315,7 +316,7 @@ export const useAuthStore = defineStore('auth', {
     async fetchMe(): Promise<void> {
       if (!this.token) return
       try {
-        const { data } = await api.get<MeResponse>('/Auth/me')
+        const { data } = await mba3Api.get<MeResponse>('/Auth/me')
         if (data?.user) {
           this.userData = data.user
           localStorage.setItem('user', JSON.stringify(data.user))

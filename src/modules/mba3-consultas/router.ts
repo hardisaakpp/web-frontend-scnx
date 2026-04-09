@@ -193,6 +193,17 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/mba3-consultas/procesamiento-sap',
+    name: 'mba3-consultas-procesamiento-sap-listado',
+    component: () => import('./views/ProcesamientoSAPListadoView.vue'),
+    meta: { 
+      requiresAuth: true,
+      title: 'Procesamiento SAP - MABEL TRADING',
+      icon: 'CogIcon',
+      permissions: ['mabel.view']
+    }
+  },
+  {
     path: '/mba3-consultas/pedidos/:id/procesamiento-sap',
     name: 'mba3-consultas-pedido-procesamiento-sap',
     component: () => import('./views/ProcesamientoSAPView.vue'),

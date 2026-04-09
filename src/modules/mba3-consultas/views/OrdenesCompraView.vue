@@ -103,25 +103,12 @@
               ({{ todosLosLogs.length }} total)
             </span>
           </div>
-          <div class="flex items-center gap-2">
-            <button
-              @click="prevPage"
-              :disabled="currentPageLocal === 1 || loadingTodas"
-              class="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium text-gray-900 dark:text-gray-200 bg-white dark:bg-gray-800"
-            >
-              Anterior
-            </button>
-            <span class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              Página {{ currentPageLocal }} de {{ totalPagesLocal }}
-            </span>
-            <button
-              @click="nextPage"
-              :disabled="currentPageLocal === totalPagesLocal || loadingTodas"
-              class="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium text-gray-900 dark:text-gray-200 bg-white dark:bg-gray-800"
-            >
-              Siguiente
-            </button>
-          </div>
+          <QuickTablePagination
+            v-model="currentPageLocal"
+            :total-pages="totalPagesLocal"
+            :disabled="loadingTodas"
+            aria-label="Paginación del historial de órdenes"
+          />
         </div>
       </div>
     </div>
@@ -138,6 +125,7 @@ import { useExport } from '../composables/useExport'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import HistorialOrdenesTable from '../components/HistorialOrdenesTable.vue'
 import SkeletonTable from '../components/SkeletonTable.vue'
+import QuickTablePagination from '../components/QuickTablePagination.vue'
 import type { OrdenCompraLog } from '../types'
 
 const ordenesCompraStore = useOrdenesCompraStore()
@@ -291,18 +279,6 @@ async function refreshOrdenes() {
     toast.success('Lista actualizada', 'Los logs se han actualizado correctamente')
   } catch (error: any) {
     toast.error('Error al actualizar', error.message || 'No se pudo actualizar la lista')
-  }
-}
-
-function prevPage() {
-  if (currentPageLocal.value > 1) {
-    currentPageLocal.value--
-  }
-}
-
-function nextPage() {
-  if (currentPageLocal.value < totalPagesLocal.value) {
-    currentPageLocal.value++
   }
 }
 

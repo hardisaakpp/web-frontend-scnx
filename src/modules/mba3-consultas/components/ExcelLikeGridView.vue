@@ -1,7 +1,7 @@
 <template>
   <div class="excel-grid-container bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-    <!-- Header con selector de columnas -->
-    <div class="flex items-center justify-between mb-4 px-4 pt-4">
+    <!-- Header con selector de columnas (px-6 alineado con la barra de totales del padre) -->
+    <div class="flex items-center justify-between mb-0 px-6 pt-4 pb-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
       <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300">Vista Excel - Redistribución</h3>
       <div class="relative">
         <button
@@ -58,40 +58,39 @@
       </div>
     </div>
     
-    <!-- Contenedor con scroll horizontal -->
+    <!-- Scroll horizontal; thead con misma lógica visual que la barra de totales (px-6 py-3, borde, fondo gris) -->
     <div class="overflow-x-auto">
       <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-        <!-- Header -->
-        <thead class="bg-gray-50 dark:bg-gray-900">
+        <thead class="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
           <tr>
             <!-- Columnas fijas -->
             <th
               v-if="isColumnVisible('numero')"
-              class="sticky left-0 z-10 bg-gray-50 dark:bg-gray-900 px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 w-12 min-w-[48px] shadow-[4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[4px_0_6px_-2px_rgba(0,0,0,0.2)]"
+              class="sticky left-0 z-10 bg-gray-50 dark:bg-gray-900 px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 w-12 min-w-[48px] shadow-[4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[4px_0_6px_-2px_rgba(0,0,0,0.2)]"
             >
               #
             </th>
             <th
               v-if="isColumnVisible('codigo')"
-              class="sticky left-[48px] z-10 bg-gray-50 dark:bg-gray-900 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 min-w-[120px] shadow-[4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[4px_0_6px_-2px_rgba(0,0,0,0.2)]"
+              class="sticky left-[48px] z-10 bg-gray-50 dark:bg-gray-900 px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 min-w-[120px] shadow-[4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[4px_0_6px_-2px_rgba(0,0,0,0.2)]"
             >
               Código
             </th>
             <th
               v-if="isColumnVisible('producto')"
-              class="bg-gray-50 dark:bg-gray-900 px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 min-w-[200px]"
+              class="bg-gray-50 dark:bg-gray-900 px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 min-w-[200px]"
             >
               Producto
             </th>
             <th
               v-if="isColumnVisible('total_confirmado')"
-              class="bg-gray-50 dark:bg-gray-900 px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 min-w-[120px]"
+              class="bg-gray-50 dark:bg-gray-900 px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 min-w-[120px]"
             >
               Total Confirmado
             </th>
             <th
               v-if="isColumnVisible('costo_unitario')"
-              class="bg-gray-50 dark:bg-gray-900 px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 min-w-[120px]"
+              class="bg-gray-50 dark:bg-gray-900 px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 min-w-[120px]"
             >
               Precio
             </th>
@@ -101,7 +100,7 @@
             <th
               v-for="tienda in tiendasUnicas"
               :key="tienda.codigo"
-              class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[120px] bg-gray-50 dark:bg-gray-900"
+              class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[120px] bg-gray-50 dark:bg-gray-900"
               :title="`${tienda.codigo} - ${tienda.nombre}`"
             >
               <div class="flex flex-col items-end gap-0.5">
@@ -122,13 +121,13 @@
             <!-- Columnas calculadas -->
             <th
               v-if="isColumnVisible('total_distribuido')"
-              class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-100 dark:bg-gray-800 min-w-[120px] border-l-2 border-gray-300 dark:border-gray-600"
+              class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-100 dark:bg-gray-800 min-w-[120px] border-l-2 border-gray-300 dark:border-gray-600"
             >
               Total Distribuido
             </th>
             <th
               v-if="isColumnVisible('diferencia')"
-              class="sticky right-0 z-[5] px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-100 dark:bg-gray-800 min-w-[120px] border-l border-gray-200 dark:border-gray-700 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.08)] dark:shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.25)]"
+              class="sticky right-0 z-[5] px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-100 dark:bg-gray-800 min-w-[120px] border-l border-gray-200 dark:border-gray-700 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.08)] dark:shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.25)]"
             >
               Diferencia
             </th>
@@ -146,13 +145,13 @@
             <!-- Columnas fijas - fondo neutro sin colores de estado -->
             <td
               v-if="isColumnVisible('numero')"
-              class="sticky left-0 z-[5] px-4 py-3 text-sm font-medium text-gray-500 dark:text-gray-400 text-center whitespace-nowrap border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+              class="sticky left-0 z-[5] px-6 py-3 text-sm font-medium text-gray-500 dark:text-gray-400 text-center whitespace-nowrap border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
             >
               {{ Number(index) + 1 }}
             </td>
             <td
               v-if="isColumnVisible('codigo')"
-              class="sticky z-[5] px-4 py-3 text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+              class="sticky z-[5] px-6 py-3 text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
               :class="getStickyLeftClass('codigo')"
             >
               {{ producto.codigo_producto }}
@@ -160,7 +159,7 @@
             <td
               v-if="isColumnVisible('producto')"
               :class="[
-                'sticky z-[5] px-4 py-3 text-sm text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800',
+                'sticky z-[5] px-6 py-3 text-sm text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800',
                 getStickyLeftClass('producto')
               ]"
             >
@@ -172,7 +171,7 @@
             <td
               v-if="isColumnVisible('total_confirmado')"
               :class="[
-                'sticky z-[5] px-4 py-3 text-sm font-semibold text-right whitespace-nowrap border-r border-gray-200 dark:border-gray-700',
+                'sticky z-[5] px-6 py-3 text-sm font-semibold text-right whitespace-nowrap border-r border-gray-200 dark:border-gray-700',
                 getStickyLeftClass('total_confirmado'),
                 tieneTotalConfirmadoModificado(producto) 
                   ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-200 border-l-2 border-amber-500 dark:border-amber-400' 
@@ -185,7 +184,7 @@
             <td
               v-if="isColumnVisible('costo_unitario')"
               :class="[
-                'sticky z-[5] px-4 py-3 text-sm font-medium text-right whitespace-nowrap border-r border-gray-200 dark:border-gray-700',
+                'sticky z-[5] px-6 py-3 text-sm font-medium text-right whitespace-nowrap border-r border-gray-200 dark:border-gray-700',
                 getStickyLeftClass('costo_unitario'),
                 tienePrecioModificado(producto) 
                   ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-200 border-l-2 border-amber-500 dark:border-amber-400' 
@@ -225,13 +224,13 @@
             <!-- Columnas calculadas -->
             <td
               v-if="isColumnVisible('total_distribuido')"
-              class="px-4 py-3 text-sm font-semibold text-purple-600 dark:text-purple-400 text-right whitespace-nowrap bg-gray-50 dark:bg-gray-900/50 border-l-2 border-gray-300 dark:border-gray-600"
+              class="px-6 py-3 text-sm font-semibold text-purple-600 dark:text-purple-400 text-right whitespace-nowrap bg-gray-50 dark:bg-gray-900/50 border-l-2 border-gray-300 dark:border-gray-600"
             >
               {{ formatNumberWithDecimals(producto.cantidad_distribuida, decimalPlaces) }}
             </td>
             <td
               v-if="isColumnVisible('diferencia')"
-              class="sticky right-0 z-[5] px-4 py-3 text-sm font-semibold text-right whitespace-nowrap min-w-[120px] bg-gray-50 dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.2)]"
+              class="sticky right-0 z-[5] px-6 py-3 text-sm font-semibold text-right whitespace-nowrap min-w-[120px] bg-gray-50 dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.2)]"
               :class="getDiferenciaClass(producto.diferencia)"
             >
               {{ producto.diferencia > 0 ? '+' : '' }}{{ formatNumberWithDecimals(producto.diferencia, decimalPlaces) }}
@@ -244,13 +243,13 @@
           <tr>
             <td
               v-if="isColumnVisible('numero')"
-              class="sticky left-0 z-[5] bg-gray-100 dark:bg-gray-900 px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700 text-center"
+              class="sticky left-0 z-[5] bg-gray-100 dark:bg-gray-900 px-6 py-3 text-sm font-semibold text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700 text-center"
             >
               -
             </td>
             <td
               v-if="isColumnVisible('codigo')"
-              class="sticky z-[5] bg-gray-100 dark:bg-gray-900 px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700"
+              class="sticky z-[5] bg-gray-100 dark:bg-gray-900 px-6 py-3 text-sm font-semibold text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700"
               :class="getStickyLeftClass('codigo')"
             >
               TOTALES
@@ -258,14 +257,14 @@
             <td
               v-if="isColumnVisible('producto')"
               :class="[
-                'sticky z-[5] bg-gray-100 dark:bg-gray-900 px-4 py-3 border-r border-gray-200 dark:border-gray-700',
+                'sticky z-[5] bg-gray-100 dark:bg-gray-900 px-6 py-3 border-r border-gray-200 dark:border-gray-700',
                 getStickyLeftClass('producto')
               ]"
             ></td>
             <td
               v-if="isColumnVisible('total_confirmado')"
               :class="[
-                'sticky z-[5] bg-gray-100 dark:bg-gray-900 px-4 py-3 text-sm font-bold text-blue-600 dark:text-blue-400 text-right border-r border-gray-200 dark:border-gray-700',
+                'sticky z-[5] bg-gray-100 dark:bg-gray-900 px-6 py-3 text-sm font-bold text-blue-600 dark:text-blue-400 text-right border-r border-gray-200 dark:border-gray-700',
                 getStickyLeftClass('total_confirmado')
               ]"
             >
@@ -274,7 +273,7 @@
             <td
               v-if="isColumnVisible('costo_unitario')"
               :class="[
-                'sticky z-[5] bg-gray-100 dark:bg-gray-900 px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white text-right border-r border-gray-200 dark:border-gray-700',
+                'sticky z-[5] bg-gray-100 dark:bg-gray-900 px-6 py-3 text-sm font-semibold text-gray-900 dark:text-white text-right border-r border-gray-200 dark:border-gray-700',
                 getStickyLeftClass('costo_unitario')
               ]"
             >
@@ -283,19 +282,19 @@
             <td
               v-for="tienda in tiendasUnicas"
               :key="`total-${tienda.codigo}`"
-              class="px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white text-right"
+              class="px-6 py-3 text-sm font-semibold text-gray-900 dark:text-white text-right"
             >
               {{ formatNumberWithDecimals(getTotalTienda(tienda.codigo), decimalPlaces) }}
             </td>
             <td
               v-if="isColumnVisible('total_distribuido')"
-              class="px-4 py-3 text-sm font-bold text-purple-600 dark:text-purple-400 text-right border-l-2 border-gray-300 dark:border-gray-600"
+              class="px-6 py-3 text-sm font-bold text-purple-600 dark:text-purple-400 text-right border-l-2 border-gray-300 dark:border-gray-600"
             >
               {{ formatNumberWithDecimals(totalesDistribuido, decimalPlaces) }}
             </td>
             <td
               v-if="isColumnVisible('diferencia')"
-              class="sticky right-0 z-[5] px-4 py-3 text-sm font-bold text-right min-w-[120px] bg-gray-100 dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.08)] dark:shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.25)]"
+              class="sticky right-0 z-[5] px-6 py-3 text-sm font-bold text-right min-w-[120px] bg-gray-100 dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.08)] dark:shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.25)]"
               :class="getDiferenciaClass(totalesDiferencia)"
             >
               {{ totalesDiferencia > 0 ? '+' : '' }}{{ formatNumberWithDecimals(totalesDiferencia, decimalPlaces) }}

@@ -1,12 +1,11 @@
 <template>
-  <div class="flex items-center justify-between flex-wrap gap-4">
-    <div>
-      <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
-        {{ tituloInterfaz }}
-      </h1>
-    </div>
-    <div class="flex items-center gap-3">
-      <slot name="leading" />
+  <div class="space-y-4">
+    <div class="flex items-center justify-between flex-wrap gap-4">
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
+          {{ tituloInterfaz }}
+        </h1>
+      </div>
       <!-- Búsqueda directa de pedidos -->
       <div class="relative">
         <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -48,6 +47,8 @@
           <p class="text-xs text-gray-600 dark:text-gray-400">Ejemplo válido: <span class="font-mono text-purple-600 dark:text-purple-400">P-12.48 - 12 - 2025</span></p>
         </div>
       </div>
+    </div>
+    <div class="flex w-full flex-wrap items-center justify-end gap-3">
       <button
         v-if="showCrearPedido"
         @click="$emit('crear-pedido')"
@@ -189,12 +190,23 @@
           Seleccione una fecha de entrega para confirmar
         </p>
       </div>
+      <slot name="toolbar-extra" />
+      <OdcSapVolverButton
+        v-if="odcSapVolverTarget"
+        :to="odcSapVolverTarget"
+        :title="odcSapVolverTitle"
+        class="shrink-0"
+      />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, type Ref } from '@vue/reactivity'
+import OdcSapVolverButton from './OdcSapVolverButton.vue'
+import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
+
+const { target: odcSapVolverTarget, title: odcSapVolverTitle } = useOdcSapVolver()
 
 const props = defineProps<{
   tituloInterfaz: string

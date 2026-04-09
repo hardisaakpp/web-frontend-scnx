@@ -183,16 +183,51 @@
     </div>
   </Teleport>
 
-  <!-- Modal de éxito SAP con botón Descargar PDF -->
+  <!-- Modal de éxito SAP con botón Descargar PDF y tabla de Solicitudes de Transferencia -->
   <Teleport to="body">
     <div
       v-if="showSAPSuccessModal"
-      class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center"
+      class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
       @click.self="showSAPSuccessModal = false"
     >
-      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 max-w-md mx-4 border border-gray-200 dark:border-gray-600">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 max-w-2xl w-full mx-auto border border-gray-200 dark:border-gray-600 max-h-[90vh] overflow-y-auto">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Proceso completado</h3>
         <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">{{ sapSuccessMessage || 'ODC enviada correctamente a SAP.' }}</p>
+
+        <!-- Tabla Solicitudes de Transferencia (ITR): DocNum, Tienda, Nombre -->
+        <div
+          v-if="sapSuccessSolicitudesTransferencia?.resultados?.length"
+          class="mb-4 rounded-lg border border-gray-200 dark:border-gray-600 overflow-hidden"
+        >
+          <div class="px-3 py-2 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-600">
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Solicitudes de Transferencia ({{ sapSuccessSolicitudesTransferencia.transferencias_creadas }} de {{ sapSuccessSolicitudesTransferencia.total_tiendas }})
+            </span>
+          </div>
+          <div class="overflow-x-auto max-h-48 overflow-y-auto">
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+              <thead class="bg-gray-50 dark:bg-gray-900/50 sticky top-0">
+                <tr>
+                  <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">DocNum (ITR)</th>
+                  <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tienda</th>
+                  <th scope="col" class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Nombre</th>
+                </tr>
+              </thead>
+              <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                <tr
+                  v-for="r in sapSuccessSolicitudesTransferencia.resultados"
+                  :key="r.tienda_codigo"
+                  class="hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                >
+                  <td class="px-3 py-2 whitespace-nowrap text-gray-900 dark:text-white font-medium">{{ r.doc_num ?? '—' }}</td>
+                  <td class="px-3 py-2 whitespace-nowrap text-gray-700 dark:text-gray-300">{{ r.tienda_codigo }}</td>
+                  <td class="px-3 py-2 text-gray-700 dark:text-gray-300">{{ r.tienda_nombre ?? '—' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         <div class="flex flex-col gap-2">
           <button
             v-if="sapSuccessOcId"
@@ -206,7 +241,7 @@
           <button
             type="button"
             class="w-full px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
-            @click="showSAPSuccessModal = false"
+            @click="closeSAPSuccessModal"
           >
             Cerrar
           </button>
@@ -247,41 +282,33 @@
         @crear-pedido="handleCrearPedido"
         @finalizar-pedido="handleFinalizarPedido"
       >
-        <template #leading>
+        <template v-if="pedido && !loading" #toolbar-extra>
           <button
             type="button"
-            @click="router.push('/mba3-consultas/cargar-plantilla')"
-            class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg shadow-sm hover:bg-gray-50 dark:hover:bg-gray-600 hover:border-gray-400 dark:hover:border-gray-500 transition-colors"
+            @click="handleDescartar"
+            :disabled="descartando || !(pedido?.puede_descartar ?? false)"
+            class="shrink-0 px-4 py-2 border border-red-300 dark:border-red-600 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            Volver
+            {{ descartando ? 'Descartando...' : 'Descartar' }}
+          </button>
+          <button
+            v-if="esPedidoBorrador"
+            type="button"
+            @click="handleEnviar"
+            :disabled="enviando"
+            class="shrink-0 px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {{ enviando ? 'Enviando...' : 'Enviar' }}
           </button>
         </template>
       </PedidoHeaderActions>
 
-      <!-- Enviar / Descartar / Finalizado (solo cuando hay pedido cargado) -->
-      <div v-if="pedido && !loading" class="flex items-center justify-end gap-3">
+      <!-- Finalizado (Enviar y Descartar van en la fila de PedidoHeaderActions) -->
+      <div
+        v-if="pedido && !loading && showBotonFinalizado"
+        class="flex items-center justify-end gap-3"
+      >
         <button
-          type="button"
-          @click="handleDescartar"
-          :disabled="descartando || !(pedido?.puede_descartar ?? false)"
-          class="px-4 py-2 border border-red-300 dark:border-red-600 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {{ descartando ? 'Descartando...' : 'Descartar' }}
-        </button>
-        <button
-          v-if="esPedidoBorrador"
-          type="button"
-          @click="handleEnviar"
-          :disabled="enviando"
-          class="px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {{ enviando ? 'Enviando...' : 'Enviar' }}
-        </button>
-        <button
-          v-if="showBotonFinalizado"
           type="button"
           @click="handleFinalizado"
           :disabled="finalizando"
@@ -359,6 +386,35 @@
           @update-estado="handleUpdateEstado"
         />
 
+        <!-- Fallo transitorio SAP (retry_recommended): mismo flujo que "Enviar ODC a SAP" -->
+        <div
+          v-if="mostrarBannerReintentoConexionSap"
+          class="mb-4 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/25 px-4 py-3 text-sm text-amber-900 dark:text-amber-100 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+          role="status"
+        >
+          <p class="flex-1">
+            Fallo temporal de conexión con SAP. Puede volver a intentar el envío.
+          </p>
+          <button
+            type="button"
+            :disabled="enviandoOdcSap"
+            class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium whitespace-nowrap shrink-0"
+            @click="handleEnviarOdcSap"
+          >
+            <svg
+              v-if="enviandoOdcSap"
+              class="animate-spin h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+            {{ enviandoOdcSap ? 'Reintentando…' : 'Reintentar envío a SAP' }}
+          </button>
+        </div>
+
         <!-- ⭐ FASE 4: Ajuste y Redistribución a Tiendas -->
         <RedistribucionTiendas
           :pedido="pedido"
@@ -369,7 +425,7 @@
           :confirmando-redistribucion="redistribucion.confirmandoRedistribucion"
           :confirmar-deshabilitado-por-estado="confirmarRedistribucionDeshabilitadoPorEstado"
           :columnas-modificadas="columnasModificadas as unknown as Ref<Set<string>>"
-          :show-enviar-odc-sap="true"
+          :show-enviar-odc-sap="showEnviarOdcSapButton"
           :enviando-odc-sap="enviandoOdcSap"
           @toggle-expandir-producto="toggleExpandirProducto"
           @actualizar-cantidad-tienda="actualizarCantidadTienda"
@@ -622,6 +678,7 @@ import { useFileUpload, RESALTADO_CODIGOS_STORAGE_PREFIX } from '../composables/
 import { useColumnManagement } from '../composables/useColumnManagement'
 import { usePedidoDetalle } from '../composables/usePedidoDetalle'
 import { useRedistribucion } from '../composables/useRedistribucion'
+import { ejecutarProcesoCompletoSap } from '../composables/ejecutarProcesoCompletoSap'
 // Componentes
 import PedidoHeaderActions from '../components/PedidoHeaderActions.vue'
 import PedidoCabecera from '../components/PedidoCabecera.vue'
@@ -886,6 +943,15 @@ const puedeFinalizarPedido = computed(() => pedido.value?.puede_finalizar === tr
 
 // ⭐ Botón "Enviar ODC a SAP" (proceso completo: redistribución + ODC + SAP)
 const enviandoOdcSap = ref(false)
+/** Primer envío en estado 4 o reintento cuando el backend marca puede_reintentar_envio_odc_sap */
+const showEnviarOdcSapButton = computed(() => {
+  const p = pedido.value
+  if (!p?.cabecera) return false
+  if (p.puede_reintentar_envio_odc_sap === true) return true
+  return p.cabecera.estado_id === 4
+})
+/** Banner + CTA cuando proceso-completo-sap devuelve retry_recommended (fallo transitorio). */
+const mostrarBannerReintentoConexionSap = ref(false)
 
 // ⭐ NUEVO: Variables de progreso para envío ODC a SAP
 const sapProgress = ref(0)
@@ -894,13 +960,12 @@ const sapMessage = ref('')
 
 // Intervalo para simulación de progreso
 let sapProgressInterval: ReturnType<typeof setInterval> | null = null
-// Intervalo de polling para proceso async SAP
-let sapPollingInterval: ReturnType<typeof setInterval> | null = null
 
 // Modal de éxito SAP y PDF
 const showSAPSuccessModal = ref(false)
 const sapSuccessOcId = ref<string | null>(null)
 const sapSuccessMessage = ref('')
+const sapSuccessSolicitudesTransferencia = ref<import('@/modules/mba3-consultas/types').SolicitudesTransferencia | null>(null)
 const descargandoSAPPDF = ref(false)
 
 function resetSapProgress() {
@@ -910,10 +975,6 @@ function resetSapProgress() {
   if (sapProgressInterval) {
     clearInterval(sapProgressInterval)
     sapProgressInterval = null
-  }
-  if (sapPollingInterval) {
-    clearInterval(sapPollingInterval)
-    sapPollingInterval = null
   }
 }
 
@@ -969,12 +1030,17 @@ async function handleDescargarSAPPDF() {
     link.click()
     URL.revokeObjectURL(url)
     toast.success('Descarga completada', 'El PDF se ha descargado correctamente')
-    showSAPSuccessModal.value = false
+    closeSAPSuccessModal()
   } catch (e: any) {
     toast.error('Error al descargar', e?.message || 'No se pudo descargar el PDF')
   } finally {
     descargandoSAPPDF.value = false
   }
+}
+
+function closeSAPSuccessModal() {
+  showSAPSuccessModal.value = false
+  sapSuccessSolicitudesTransferencia.value = null
 }
 
 async function handleFinalizarPedido() {
@@ -1628,18 +1694,24 @@ async function applySAPResponseCargarPlantilla(response: import('@/modules/mba3-
     : (response.envio_sap?.doc_num != null ? 'success' : response.error ? 'partial' : 'error')
 
   if (innerStatus === 'success') {
+    mostrarBannerReintentoConexionSap.value = false
     const docNum = response.envio_sap?.doc_num
     sapSuccessMessage.value = docNum
-      ? `ODC enviada exitosamente a SAP. DocNum: ${docNum}`
+      ? `ODC enviada exitosamente a SAP. Num ODC: ${docNum}`
       : (response.message || 'ODC procesada correctamente en SAP')
     sapSuccessOcId.value = response.envio_sap?.oc_id ?? null
+    sapSuccessSolicitudesTransferencia.value =
+      response.solicitudes_transferencia ?? response.envio_sap?.solicitudes_transferencia ?? null
     showSAPSuccessModal.value = true
-    if (response.envio_sap?.solicitudes_transferencia?.transferencias_creadas) {
-      const st = response.envio_sap.solicitudes_transferencia
+    if (sapSuccessSolicitudesTransferencia.value?.transferencias_creadas) {
+      const st = sapSuccessSolicitudesTransferencia.value
       toast.success('Solicitudes de Transferencia', `Se crearon ${st.transferencias_creadas} de ${st.total_tiendas} solicitudes`)
     }
     await loadPedido()
   } else if (innerStatus === 'partial') {
+    const env = response.envio_sap
+    mostrarBannerReintentoConexionSap.value =
+      env?.retry_recommended === true && env?.doc_num == null
     toast.warning(
       `Error en paso: ${response.paso_fallido ?? 'desconocido'}`,
       response.error || response.message || 'El proceso no se completó totalmente'
@@ -1648,6 +1720,7 @@ async function applySAPResponseCargarPlantilla(response: import('@/modules/mba3-
     if (response.odc_generada) toast.info('ODC generada', `ID: ${response.odc_generada.oc_id}`)
     await loadPedido()
   } else {
+    mostrarBannerReintentoConexionSap.value = false
     toast.error('Error', response.message || 'No se pudo completar el proceso')
   }
 }
@@ -1663,6 +1736,8 @@ async function handleEnviarOdcSap() {
   }
 
   if (enviandoOdcSap.value) return
+
+  mostrarBannerReintentoConexionSap.value = false
 
   const ajustesDetalle = redistribucion.productosRedistribucion.value.map(producto => ({
     codigo_producto: producto.codigo_producto,
@@ -1685,110 +1760,26 @@ async function handleEnviarOdcSap() {
   toast.info('Procesando...', 'Proceso SAP en segundo plano. No cierre la ventana.')
 
   try {
-    try {
-      const accepted = await mba3ConsultasService.procesoCompletoSAPAsync(numeroPedido.value, ajustesDetalle)
-
-      // Respuesta 200 con resultado completo (fallback sync o force_sync): no hacer polling
-      const isSyncResult = (accepted as any).fallback === 'sync' || (accepted as any).async === false || (accepted as any).process_id == null
-      if (isSyncResult) {
-        completeSapProgress()
-        await new Promise(r => setTimeout(r, 400))
-        await applySAPResponseCargarPlantilla(accepted as unknown as import('@/modules/mba3-consultas/types').ProcesoCompletoSAPResponse)
-        enviandoOdcSap.value = false
-        setTimeout(resetSapProgress, 500)
-        return
-      }
-
-      if (accepted.status !== 'accepted' || !accepted.process_id) {
-        toast.error('Error', 'No se pudo iniciar el proceso. Respuesta inesperada.')
-        return
-      }
-
-      const processId = accepted.process_id
-
-      const poll = async () => {
-        try {
-        const result = await mba3ConsultasService.getProcesoSAPResultado(processId)
-        const data = result as Record<string, unknown>
-
-        // Solo considerar terminado cuando el backend envía el resultado final (status terminal).
-        // No cerrar solo por progress 100 o process_status 'completed' (pueden llegar antes del resultado real).
-        const done =
-          data.status === 'success' ||
-          data.status === 'partial' ||
-          data.status === 'completed'
-
-        if (result.status === 'error') {
-            if (sapPollingInterval) {
-              clearInterval(sapPollingInterval)
-              sapPollingInterval = null
-            }
-            enviandoOdcSap.value = false
-            resetSapProgress()
-            const msg = result.message || 'Error en el proceso'
-            const detalle = result.error_detalle || result.paso_fallido ? ` (${result.paso_fallido ?? ''} ${result.error_detalle ?? ''})`.trim() : ''
-            toast.error('Error al enviar a SAP', msg + detalle)
-            return
-          }
-
-          if (done) {
-            if (sapPollingInterval) {
-              clearInterval(sapPollingInterval)
-              sapPollingInterval = null
-            }
-            completeSapProgress()
-            await new Promise(r => setTimeout(r, 400))
-            await applySAPResponseCargarPlantilla(result as import('@/modules/mba3-consultas/types').ProcesoCompletoSAPResponse)
-            enviandoOdcSap.value = false
-            setTimeout(resetSapProgress, 500)
-            return
-          }
-
-          if (data.message) sapMessage.value = String(data.message)
-          if (typeof data.progress === 'number') sapProgress.value = data.progress
-        } catch (pollErr: any) {
-          if (sapPollingInterval) {
-            clearInterval(sapPollingInterval)
-            sapPollingInterval = null
-          }
-          enviandoOdcSap.value = false
-          resetSapProgress()
-          toast.error('Error', pollErr?.response?.data?.message || pollErr?.message || 'Error al consultar el resultado')
-        }
-      }
-
-      await poll()
-      sapPollingInterval = setInterval(poll, 2000)
-    } catch (asyncErr: any) {
-      const errorCode = asyncErr?.response?.data?.error ?? asyncErr?.response?.data?.detail?.error
-      const is503Unavailable = asyncErr?.response?.status === 503 &&
-        (errorCode === 'storage_required' || errorCode === 'celery_unavailable')
-      if (is503Unavailable) {
+    const response = await ejecutarProcesoCompletoSap(numeroPedido.value, ajustesDetalle, {
+      onFallbackSync: () => {
         if (import.meta.env.DEV) console.warn('[handleEnviarOdcSap] Async no disponible (503), usando proceso SAP síncrono')
         toast.info('Proceso en segundo plano no disponible', 'Se ejecutará en modo síncrono. No cierre la ventana.')
         sapMessage.value = 'Ejecutando proceso en modo síncrono...'
-        const response = await mba3ConsultasService.procesoCompletoSAP(numeroPedido.value, ajustesDetalle)
-        completeSapProgress()
-        await new Promise(r => setTimeout(r, 400))
-        await applySAPResponseCargarPlantilla(response)
-        enviandoOdcSap.value = false
-        setTimeout(resetSapProgress, 500)
-        return
+      },
+      onPollingUpdate: ({ message, progress }) => {
+        if (message) sapMessage.value = message
+        if (typeof progress === 'number') sapProgress.value = progress
       }
-      throw asyncErr
-    }
+    })
+    completeSapProgress()
+    await new Promise(r => setTimeout(r, 400))
+    await applySAPResponseCargarPlantilla(response)
   } catch (e: any) {
     console.error('Error al iniciar proceso completo SAP:', e)
-    if (sapPollingInterval) {
-      clearInterval(sapPollingInterval)
-      sapPollingInterval = null
-    }
     toast.error('Error al enviar a SAP', e?.response?.data?.message || e?.message || 'No se pudo iniciar el proceso')
   } finally {
-    if (!sapPollingInterval) {
-      enviandoOdcSap.value = false
-      setTimeout(resetSapProgress, 500)
-    }
+    enviandoOdcSap.value = false
+    setTimeout(resetSapProgress, 500)
   }
 }
 
@@ -1912,10 +1903,6 @@ onUnmounted(() => {
   if (sapProgressInterval) {
     clearInterval(sapProgressInterval)
     sapProgressInterval = null
-  }
-  if (sapPollingInterval) {
-    clearInterval(sapPollingInterval)
-    sapPollingInterval = null
   }
 })
 

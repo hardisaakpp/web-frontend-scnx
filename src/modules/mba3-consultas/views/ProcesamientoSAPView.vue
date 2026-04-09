@@ -39,24 +39,6 @@
             Información procesada después de confirmar la redistribución
           </p>
         </div>
-        <div class="flex items-center gap-3">
-          <!-- Botón Generar ODC -->
-          <button
-            v-if="canGenerarOC"
-            @click="handleGenerarOC"
-            :disabled="loading || generandoOC"
-            class="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
-          >
-            <svg v-if="!generandoOC" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <svg v-else class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            {{ generandoOC ? 'Generando...' : 'Generar ODC' }}
-          </button>
-        </div>
       </div>
 
       <!-- Loading state -->
@@ -182,88 +164,131 @@
                 </tr>
               </thead>
               <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                <tr
-                  v-for="(producto, index) in productosFiltrados"
-                  :key="producto.pedido_detalle_id"
-                  :class="[
-                    'hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors',
-                    producto.tiene_error ? 'bg-red-50 dark:bg-red-900/20' : ''
-                  ]"
-                >
-                  <td
-                    v-for="column in orderedVisibleColumns"
-                    :key="column.key"
+                <template v-for="(producto, index) in productosFiltrados" :key="producto.pedido_detalle_id">
+                  <tr
                     :class="[
-                      'px-4 py-4 text-sm',
-                      column.align === 'right' ? 'text-right whitespace-nowrap' : column.align === 'center' ? 'text-center' : '',
-                      column.key === 'numero' ? 'text-gray-900 dark:text-white' :
-                      column.key === 'codigo' ? 'font-medium text-gray-900 dark:text-white' :
-                      column.key === 'producto' ? 'text-gray-700 dark:text-gray-300' :
-                      'text-gray-900 dark:text-white'
+                      'hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors',
+                      producto.tiene_error ? 'bg-red-50 dark:bg-red-900/20' : ''
                     ]"
                   >
-                    <!-- Columna Número -->
-                    <template v-if="column.key === 'numero'">
-                      {{ Number(index) + 1 }}
-                    </template>
-                    
-                    <!-- Columna Código -->
-                    <template v-else-if="column.key === 'codigo'">
-                      {{ producto.codigo_interno || 'N/A' }}
-                    </template>
-                    
-                    <!-- Columna Producto -->
-                    <template v-else-if="column.key === 'producto'">
-                      {{ producto.descripcion_producto || producto.descripcion_sap || producto.descripcion_original || 'N/A' }}
-                    </template>
-                    
-                    <!-- Columna Cantidad Original -->
-                    <template v-else-if="column.key === 'cantidad_original'">
-                      {{ formatNumber(producto.cantidad_original) }}
-                    </template>
-                    
-                    <!-- Columna Precio Unitario Original -->
-                    <template v-else-if="column.key === 'precio_unitario_original'">
-                      {{ producto.precio_unitario_original != null ? formatCurrencyWithDecimals(producto.precio_unitario_original, 4) : 'N/A' }}
-                    </template>
-                    
-                    <!-- Columna Subtotal Pedido -->
-                    <template v-else-if="column.key === 'subtotal_pedido'">
-                      {{ (producto.total_linea_original ?? producto.subtotal_original) != null ? formatCurrencyWithDecimals(producto.total_linea_original ?? producto.subtotal_original ?? 0, 4) : 'N/A' }}
-                    </template>
-                    
-                    <!-- Columna Unidad/Pack: mostrar solo si hay valor, y evitar duplicados si son iguales -->
-                    <template v-else-if="column.key === 'unidad'">
-                      <div v-if="producto.unidad_original || producto.unidad_sap" class="flex flex-col items-center gap-1">
-                        <!-- Si son iguales o solo hay uno, mostrar solo el valor SAP (o el original si no hay SAP) -->
-                        <template v-if="producto.unidad_original === producto.unidad_sap || !producto.unidad_original || !producto.unidad_sap">
-                          <span class="text-xs font-medium">{{ producto.unidad_sap || producto.unidad_original || '' }}</span>
-                        </template>
-                        <!-- Si son diferentes, mostrar ambos con flecha -->
-                        <template v-else>
-                          <span class="text-xs text-gray-500 dark:text-gray-400">{{ producto.unidad_original }}</span>
-                          <span class="text-xs">→</span>
-                          <span class="text-xs font-medium">{{ producto.unidad_sap }}</span>
-                        </template>
+                    <td
+                      v-for="column in orderedVisibleColumns"
+                      :key="column.key"
+                      :class="[
+                        'px-4 py-4 text-sm',
+                        column.align === 'right' ? 'text-right whitespace-nowrap' : column.align === 'center' ? 'text-center' : '',
+                        column.key === 'numero' ? 'text-gray-900 dark:text-white' :
+                        column.key === 'codigo' ? 'font-medium text-gray-900 dark:text-white' :
+                        column.key === 'producto' ? 'text-gray-700 dark:text-gray-300' :
+                        'text-gray-900 dark:text-white'
+                      ]"
+                    >
+                      <!-- Columna Número -->
+                      <template v-if="column.key === 'numero'">
+                        {{ Number(index) + 1 }}
+                      </template>
+                      
+                      <!-- Columna Código -->
+                      <template v-else-if="column.key === 'codigo'">
+                        {{ producto.codigo_interno || 'N/A' }}
+                      </template>
+                      
+                      <!-- Columna Producto -->
+                      <template v-else-if="column.key === 'producto'">
+                        {{ producto.descripcion_producto || producto.descripcion_sap || producto.descripcion_original || 'N/A' }}
+                      </template>
+                      
+                      <!-- Columna Cantidad Original -->
+                      <template v-else-if="column.key === 'cantidad_original'">
+                        {{ formatNumber(producto.cantidad_original) }}
+                      </template>
+                      
+                      <!-- Columna Precio Unitario Original -->
+                      <template v-else-if="column.key === 'precio_unitario_original'">
+                        {{ producto.precio_unitario_original != null ? formatCurrencyWithDecimals(producto.precio_unitario_original, 4) : 'N/A' }}
+                      </template>
+                      
+                      <!-- Columna Subtotal Pedido -->
+                      <template v-else-if="column.key === 'subtotal_pedido'">
+                        {{ (producto.total_linea_original ?? producto.subtotal_original) != null ? formatCurrencyWithDecimals(producto.total_linea_original ?? producto.subtotal_original ?? 0, 4) : 'N/A' }}
+                      </template>
+                      
+                      <!-- Columna Unidad/Pack: mostrar solo si hay valor, y evitar duplicados si son iguales -->
+                      <template v-else-if="column.key === 'unidad'">
+                        <div v-if="producto.unidad_original || producto.unidad_sap" class="flex flex-col items-center gap-1">
+                          <!-- Si son iguales o solo hay uno, mostrar solo el valor SAP (o el original si no hay SAP) -->
+                          <template v-if="producto.unidad_original === producto.unidad_sap || !producto.unidad_original || !producto.unidad_sap">
+                            <span class="text-xs font-medium">{{ producto.unidad_sap || producto.unidad_original || '' }}</span>
+                          </template>
+                          <!-- Si son diferentes, mostrar ambos con flecha -->
+                          <template v-else>
+                            <span class="text-xs text-gray-500 dark:text-gray-400">{{ producto.unidad_original }}</span>
+                            <span class="text-xs">→</span>
+                            <span class="text-xs font-medium">{{ producto.unidad_sap }}</span>
+                          </template>
+                        </div>
+                      </template>
+                      
+                      <!-- Columna Cantidad Pack SAP -->
+                      <template v-else-if="column.key === 'cantidad_pack_sap'">
+                        {{ (producto.cantidad_sap ?? producto.cantidad_pack_sap) !== null ? formatNumber(producto.cantidad_sap ?? producto.cantidad_pack_sap ?? 0) : 'N/A' }}
+                      </template>
+                      
+                      <!-- Columna Precio Unitario SAP -->
+                      <template v-else-if="column.key === 'precio_unitario_sap'">
+                        {{ producto.precio_unitario_sap != null ? formatCurrencyWithDecimals(producto.precio_unitario_sap, 4) : 'N/A' }}
+                      </template>
+                      
+                      <!-- Columna Subtotal SAP -->
+                      <template v-else-if="column.key === 'subtotal_sap'">
+                        {{ (producto.total_linea_sap ?? producto.subtotal_sap) != null ? formatCurrencyWithDecimals(producto.total_linea_sap ?? producto.subtotal_sap ?? 0, 4) : 'N/A' }}
+                      </template>
+                    </td>
+                  </tr>
+                  <!-- Fila de conversión por tienda/bodega (si existe distribucion_conversion) -->
+                  <tr
+                    v-if="producto.distribucion_conversion?.length"
+                    class="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700"
+                  >
+                    <td :colspan="orderedVisibleColumns.length" class="px-4 py-3 align-top">
+                      <div class="pl-6 text-sm">
+                        <div class="font-medium text-gray-700 dark:text-gray-300 mb-2">Conversión por tienda/bodega</div>
+                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-600 rounded-lg overflow-hidden">
+                          <thead class="bg-gray-100 dark:bg-gray-800">
+                            <tr>
+                              <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Tienda/Bodega</th>
+                              <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Cant. asignada</th>
+                              <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Cant. SAP</th>
+                            </tr>
+                          </thead>
+                          <tbody class="bg-white dark:bg-gray-800/50">
+                            <tr
+                              v-for="conv in producto.distribucion_conversion"
+                              :key="conv.tienda_codigo"
+                              :class="[
+                                'border-t border-gray-200 dark:border-gray-600',
+                                conv.es_bodega ? 'bg-indigo-50/50 dark:bg-indigo-900/20' : ''
+                              ]"
+                            >
+                              <td class="px-3 py-2 text-gray-700 dark:text-gray-300">
+                                <span class="font-medium">{{ conv.tienda_codigo }}</span>
+                                <span v-if="conv.tienda_nombre" class="text-gray-500 dark:text-gray-400 ml-1">— {{ conv.tienda_nombre }}</span>
+                                <span
+                                  v-if="conv.es_bodega"
+                                  class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-200"
+                                >
+                                  Bodega
+                                </span>
+                              </td>
+                              <td class="px-3 py-2 text-right text-gray-900 dark:text-white">{{ formatNumber(conv.cantidad_asignada) }}</td>
+                              <td class="px-3 py-2 text-right text-gray-900 dark:text-white font-medium">{{ formatNumber(conv.cantidad_sap) }}</td>
+                            </tr>
+                          </tbody>
+                        </table>
                       </div>
-                    </template>
-                    
-                    <!-- Columna Cantidad Pack SAP -->
-                    <template v-else-if="column.key === 'cantidad_pack_sap'">
-                      {{ (producto.cantidad_sap ?? producto.cantidad_pack_sap) !== null ? formatNumber(producto.cantidad_sap ?? producto.cantidad_pack_sap ?? 0) : 'N/A' }}
-                    </template>
-                    
-                    <!-- Columna Precio Unitario SAP -->
-                    <template v-else-if="column.key === 'precio_unitario_sap'">
-                      {{ producto.precio_unitario_sap != null ? formatCurrencyWithDecimals(producto.precio_unitario_sap, 4) : 'N/A' }}
-                    </template>
-                    
-                    <!-- Columna Subtotal SAP -->
-                    <template v-else-if="column.key === 'subtotal_sap'">
-                      {{ (producto.total_linea_sap ?? producto.subtotal_sap) != null ? formatCurrencyWithDecimals(producto.total_linea_sap ?? producto.subtotal_sap ?? 0, 4) : 'N/A' }}
-                    </template>
-                  </td>
-                </tr>
+                    </td>
+                  </tr>
+                </template>
               </tbody>
               
               <!-- Fila de totales -->

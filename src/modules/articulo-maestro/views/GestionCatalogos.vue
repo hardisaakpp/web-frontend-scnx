@@ -470,7 +470,10 @@ async function selectCatalogoGeneral(cat: CatalogoItem) {
 
 function openModalGeneral(item?: CatalogoItem) {
     if (item) {
-        generalForm.value = { ...item }
+        generalForm.value = {
+            ...item,
+            activo: item.activo ?? true
+        }
     } else {
         generalForm.value = { codigo: '', nombre: '', activo: true }
     }

@@ -71,14 +71,20 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                       <span class="font-medium text-gray-900 dark:text-white">
-                        OC #{{ detalle.doc_num }} enviada exitosamente
+                        OC enviada exitosamente
                       </span>
                     </div>
-                    <div v-if="detalle.doc_entry" class="text-xs text-gray-600 dark:text-gray-400 ml-7">
+                    <div v-if="detalle.doc_entry != null" class="text-xs text-gray-600 dark:text-gray-400 ml-7">
                       DocEntry: {{ detalle.doc_entry }}
                     </div>
-                    <div v-if="detalle.message" class="text-xs text-gray-600 dark:text-gray-400 ml-7">
-                      {{ detalle.message }}
+                    <div class="text-xs text-gray-600 dark:text-gray-400 ml-7">
+                      Num ODC: {{ detalle.numero_oc_sap ?? '—' }}
+                    </div>
+                    <div v-if="detalle.doc_num != null && !solicitudesTransferencia" class="text-xs text-gray-600 dark:text-gray-400 ml-7">
+                      DocNum: {{ detalle.doc_num }}
+                    </div>
+                    <div v-if="mensajeExito" class="text-xs text-gray-600 dark:text-gray-400 ml-7">
+                      {{ mensajeExito }}
                     </div>
                   </div>
                   
@@ -103,8 +109,8 @@
                   </div>
                 </div>
 
-                <!-- Sección 2: Solicitudes de Transferencia (ITR) - oculta momentáneamente (quitar v-if para mostrar) -->
-                <div v-if="false" class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                <!-- Sección 2: Solicitudes de Transferencia (ITR) - doc_num, tienda_codigo, tienda_nombre -->
+                <div v-if="solicitudesTransferencia" class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
                   <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
                     <svg class="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
@@ -112,25 +118,19 @@
                     Solicitudes de Transferencia (ITR)
                   </h3>
 
-                  <!-- Sin datos de solicitudes -->
-                  <div v-if="!solicitudesTransferencia" class="p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 text-sm text-gray-500 dark:text-gray-400">
-                    No hay información de Solicitudes de Transferencia para este resultado.
-                  </div>
-
-                  <template v-else>
                   <!-- Resumen -->
                   <div class="mb-4 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
                     <div class="flex items-center gap-2 text-sm">
-                      <span v-if="solicitudesTransferencia?.transferencias_errores === 0" class="text-green-600 dark:text-green-400 font-medium">
-                        ✅ {{ solicitudesTransferencia?.transferencias_creadas }} de {{ solicitudesTransferencia?.total_tiendas }} creadas exitosamente
-                      </span>
-                      <span v-else class="text-yellow-600 dark:text-yellow-400 font-medium">
-                        ⚠️ {{ solicitudesTransferencia?.transferencias_creadas }} exitosas, {{ solicitudesTransferencia?.transferencias_errores }} con errores
+                      <span
+                        :class="solicitudesTransferencia?.transferencias_errores === 0 ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'"
+                        class="font-medium"
+                      >
+                        {{ resumenSolicitudesTexto }}
                       </span>
                     </div>
                   </div>
 
-                  <!-- Caso especial: Sin Solicitudes de Transferencia -->
+                  <!-- Caso: Sin Solicitudes de Transferencia -->
                   <div v-if="(solicitudesTransferencia?.total_tiendas === 0) && (solicitudesTransferencia?.transferencias_creadas === 0)" class="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800">
                     <div class="flex items-start gap-2 text-sm text-blue-800 dark:text-blue-200">
                       <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -142,73 +142,73 @@
                     </div>
                   </div>
 
-                  <!-- Lista de Tiendas -->
-                  <div v-else-if="solicitudesTransferencia?.resultados?.length" class="space-y-2 max-h-96 overflow-y-auto">
-                    <div
-                      v-for="(resultado, index) in (solicitudesTransferencia?.resultados ?? [])"
-                      :key="`${resultado.tienda_id}-${index}`"
-                      class="p-3 rounded-lg border"
-                      :class="resultado.success 
-                        ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800' 
-                        : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'"
-                    >
-                      <div class="flex items-start gap-2">
-                        <svg 
-                          v-if="resultado.success"
-                          class="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" 
-                          fill="none" 
-                          stroke="currentColor" 
-                          viewBox="0 0 24 24"
-                        >
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <svg 
-                          v-else
-                          class="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" 
-                          fill="none" 
-                          stroke="currentColor" 
-                          viewBox="0 0 24 24"
-                        >
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <div class="flex-1 min-w-0">
-                          <div class="flex items-center gap-2 flex-wrap">
-                            <span class="font-medium text-gray-900 dark:text-white">
-                              {{ resultado.tienda_codigo }}
-                            </span>
-                            <span v-if="resultado.tienda_nombre" class="text-sm text-gray-600 dark:text-gray-400">
-                              - {{ resultado.tienda_nombre }}
-                            </span>
-                          </div>
-                          
-                          <div v-if="resultado.success" class="mt-1 space-y-1">
-                            <div class="text-sm text-gray-700 dark:text-gray-300">
-                              ITR #{{ resultado.doc_num }}
-                            </div>
-                            <div v-if="resultado.doc_entry" class="text-xs text-gray-600 dark:text-gray-400">
-                              DocEntry: {{ resultado.doc_entry }}
-                            </div>
-                          </div>
-                          
-                          <div v-else-if="resultado.error" class="mt-1 text-sm text-red-800 dark:text-red-300">
-                            {{ resultado.error }}
-                          </div>
-                        </div>
-                      </div>
+                  <!-- Tabla: solo tienda_codigo y doc_num; se muestra cuando hay más de 1 ITR -->
+                  <div v-else-if="filasItr.length > 1" class="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <div class="overflow-x-auto max-h-64 overflow-y-auto">
+                      <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
+                        <thead class="bg-gray-100 dark:bg-gray-800/80 sticky top-0">
+                          <tr>
+                            <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">DocNum</th>
+                            <th scope="col" class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tienda</th>
+                          </tr>
+                        </thead>
+                        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                          <tr
+                            v-for="(fila, index) in filasItr"
+                            :key="`itr-${fila.tienda_codigo}-${fila.doc_num}-${index}`"
+                            class="hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                          >
+                            <td class="px-4 py-2 whitespace-nowrap font-medium text-gray-900 dark:text-white">
+                              {{ fila.doc_num }}
+                            </td>
+                            <td class="px-4 py-2 whitespace-nowrap text-gray-700 dark:text-gray-300">
+                              {{ fila.tienda_codigo }}
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
                     </div>
                   </div>
-                  </template>
                 </div>
               </div>
 
-              <!-- Footer con botón de cerrar -->
-              <div class="mt-6 flex justify-end">
-                <button
-                  @click="handleClose"
-                  class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors text-sm font-medium"
+              <!-- Footer: reintento SAP (fallo transitorio) + cerrar -->
+              <div class="mt-6 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                <div
+                  v-if="props.showRetrySapCta"
+                  class="flex flex-col gap-2 text-sm max-w-xl"
                 >
-                  Cerrar
-                </button>
+                  <p class="text-amber-800 dark:text-amber-200">
+                    Fallo temporal de conexión con SAP. Puede volver a intentar el envío.
+                  </p>
+                  <button
+                    type="button"
+                    :disabled="props.retryLoading"
+                    @click="emit('retry-sap')"
+                    class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm font-medium w-fit"
+                  >
+                    <svg
+                      v-if="props.retryLoading"
+                      class="animate-spin h-4 w-4"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    {{ props.retryLoading ? 'Reintentando…' : 'Reintentar envío a SAP' }}
+                  </button>
+                </div>
+                <div class="flex justify-end sm:ml-auto">
+                  <button
+                    type="button"
+                    @click="handleClose"
+                    class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors text-sm font-medium"
+                  >
+                    Cerrar
+                  </button>
+                </div>
               </div>
             </DialogPanel>
           </TransitionChild>
@@ -223,15 +223,25 @@ import { computed } from '@vue/reactivity'
 import { Dialog, DialogPanel, DialogTitle, TransitionRoot, TransitionChild } from '@headlessui/vue'
 import type { IntegracionSAPDetalle, SolicitudesTransferencia } from '../types'
 
-const props = defineProps<{
-  isOpen: boolean
-  detalle: IntegracionSAPDetalle | null
-  solicitudesTransferencia: SolicitudesTransferencia | null
-  estadoGeneral?: 'success' | 'partial' | 'error'
-}>()
+const props = withDefaults(
+  defineProps<{
+    isOpen: boolean
+    detalle: IntegracionSAPDetalle | null
+    solicitudesTransferencia: SolicitudesTransferencia | null
+    estadoGeneral?: 'success' | 'partial' | 'error'
+    /** Mostrar CTA de reintento manual cuando el backend indica fallo transitorio (retry_recommended). */
+    showRetrySapCta?: boolean
+    retryLoading?: boolean
+  }>(),
+  {
+    showRetrySapCta: false,
+    retryLoading: false
+  }
+)
 
 const emit = defineEmits<{
   close: []
+  'retry-sap': []
 }>()
 
 // Determinar título del modal según el estado
@@ -243,6 +253,45 @@ const tituloModal = computed(() => {
   } else {
     return '❌ Error en Integración con SAP'
   }
+})
+
+// Mensaje de éxito: "con DocNum" solo cuando hay exactamente 1 solicitud de transferencia (ITR)
+const mensajeExito = computed(() => {
+  const d = props.detalle
+  if (!d?.success) return null
+  const filasCount = filasItr.value.length
+  if (d.doc_num != null && filasCount === 1) {
+    return `Proceso completado exitosamente. ODC enviada a SAP con DocNum: ${d.doc_num}`
+  }
+  if (filasCount !== 1) return 'Proceso completado exitosamente.'
+  return d.message ?? null
+})
+
+const resumenSolicitudesTexto = computed(() => {
+  const st = props.solicitudesTransferencia
+  if (!st) return ''
+
+  if (st.transferencias_errores === 0) {
+    return `✅ ${st.transferencias_creadas} de ${st.total_tiendas} creadas exitosamente`
+  }
+
+  if (import.meta.env.PROD) {
+    return `✅ ${st.transferencias_creadas} de ${st.total_tiendas} creadas`
+  }
+
+  return `⚠️ ${st.transferencias_creadas} exitosas, ${st.transferencias_errores} con errores`
+})
+
+// Filas para la tabla ITR: preferir itrs_por_tienda del backend; si no, derivar de resultados
+const filasItr = computed(() => {
+  const st = props.solicitudesTransferencia
+  if (!st) return []
+  const itrs = st.itrs_por_tienda
+  if (itrs?.length) return itrs
+  const res = st.resultados ?? []
+  return res
+    .filter((r: { doc_num?: number | null }) => r.doc_num != null)
+    .map((r: { doc_num: number | null; tienda_codigo: string }) => ({ doc_num: r.doc_num!, tienda_codigo: r.tienda_codigo }))
 })
 
 function handleClose() {
