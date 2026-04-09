@@ -33,6 +33,16 @@ interface ApiListResult {
   total: number
 }
 
+interface MetaListResponse<T> {
+  ok?: boolean
+  data?: T[]
+  meta?: Record<string, unknown>
+}
+
+interface HealthResponse {
+  ok?: boolean
+}
+
 const endpoint =
   import.meta.env.VITE_STORE_EMPLOYEES_API_URL ||
   '/employees-api/store_employees.php'
@@ -137,7 +147,7 @@ export async function inactivateStoreEmployee(id: number, user: string): Promise
  */
 export async function fetchStoreEmployeeCargos(): Promise<StoreEmployeeCargo[]> {
   try {
-    const { data } = await axios.get(endpoint, { params: { meta: 'cargos' } })
+    const { data } = await axios.get<MetaListResponse<unknown>>(endpoint, { params: { meta: 'cargos' } })
     if (data?.ok === true && Array.isArray(data?.data)) {
       const raw = data.data.filter((x: unknown) => typeof x === 'string') as string[]
       const valid = raw.filter((x) =>
@@ -164,7 +174,7 @@ export interface AlmacenOption {
  * Usa meta.value_field / meta.label_field si vienen en la respuesta.
  */
 export async function fetchStoreAlmacenes(): Promise<AlmacenOption[]> {
-  const { data } = await axios.get(endpoint, { params: { meta: 'almacenes' } })
+  const { data } = await axios.get<MetaListResponse<Record<string, unknown>>>(endpoint, { params: { meta: 'almacenes' } })
   if (data?.ok !== true || !Array.isArray(data?.data)) {
     return []
   }
@@ -190,11 +200,11 @@ export async function fetchStoreAlmacenes(): Promise<AlmacenOption[]> {
  */
 export async function checkStoreEmployeesHealth(): Promise<boolean> {
   try {
-    const { data } = await axios.get(endpoint, {
+    const { data } = await axios.get<HealthResponse>(endpoint, {
       params: { health: '1' },
       timeout: 10_000
     })
-    if (data && typeof data === 'object' && data.ok === false) {
+    if (data?.ok === false) {
       return false
     }
     return true
