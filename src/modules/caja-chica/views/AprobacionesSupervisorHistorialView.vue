@@ -238,7 +238,7 @@
               #{{ selectedItem?.idAprobacion || '-' }}
             </h3>
             <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Liquidación#{{ selectedItem?.idLiquidacion || '-' }} · Detalle #{{ selectedItem?.idDetalle || '-' }}
+              Liquidación#{{ selectedItem?.idLiquidacion || '-' }}
             </div>
           </div>
           <button
@@ -598,7 +598,6 @@ const showAdjuntoFull = ref(false)
 const zoomLevel = ref(1)
 
 const availableColumns: ColumnConfig[] = [
-  { key: 'detalle', label: 'Detalle', fixed: false },
   { key: 'gasto', label: 'Gasto', fixed: false },
   { key: 'fechaConsumo', label: 'Fecha consumo', fixed: false },
   { key: 'ruc', label: 'RUC', fixed: false },
@@ -618,7 +617,7 @@ const availableColumns: ColumnConfig[] = [
   { key: 'acciones', label: 'Acciones', fixed: true }
 ]
 
-const defaultVisibleColumns = ['detalle', 'gasto', 'total', 'montoAprobado', 'estado', 'fechaAprobacion', 'acciones']
+const defaultVisibleColumns = ['gasto', 'total', 'montoAprobado', 'estado', 'fechaAprobacion', 'acciones']
 const defaultColumnOrder = availableColumns.map(col => col.key)
 
 const {
@@ -1158,7 +1157,6 @@ const downloadLiquidacionPdf = (idLiquidacion: number) => {
     const adjCount = adjuntosByDetalle.value[idDetalle] ?? 0
     const iva = d ? (d.total - d.subtotalConIva - d.subtotalSinIva) : 0
     detallesRows += `<tr>
-      <td>${esc(idDetalle)}</td>
       <td>${esc(d?.nombreGasto ?? '-')}</td>
       <td>${esc(d?.concepto ?? '-')}</td>
       <td>${esc(d?.nombreProveedor ?? '-')}</td>
@@ -1177,9 +1175,9 @@ const downloadLiquidacionPdf = (idLiquidacion: number) => {
     <div class="section">
       <div class="section-head green"><span>Detalle de gastos</span><span class="stats-row"><span>Ítems: <strong>${detalleIds.length}</strong></span><span>Total: <strong>$${fmtAmt(totalSolicitado)}</strong></span></span></div>
       <table><thead><tr>
-        <th>#Det.</th><th>Gasto</th><th>Concepto</th><th>Proveedor</th><th>RUC</th><th>Comprobante</th><th>Tipo doc.</th><th>F. Consumo</th>
+        <th>Gasto</th><th>Concepto</th><th>Proveedor</th><th>RUC</th><th>Comprobante</th><th>Tipo doc.</th><th>F. Consumo</th>
         <th>Base 15%</th><th>Base 0%</th><th>IVA</th><th>Total</th><th>Adj.</th>
-      </tr></thead><tbody>${detallesRows || '<tr><td colspan="13" class="no-data">Sin detalles cargados.</td></tr>'}</tbody></table>
+      </tr></thead><tbody>${detallesRows || '<tr><td colspan="12" class="no-data">Sin detalles cargados.</td></tr>'}</tbody></table>
       <div class="footer-totals">
         <div class="total-item"><div class="total-label">Total solicitado</div><div class="total-value">$${fmtAmt(totalSolicitado)}</div></div>
       </div>
@@ -1191,7 +1189,6 @@ const downloadLiquidacionPdf = (idLiquidacion: number) => {
     const estadoClass = h.estado === 'RECHAZADO' ? 'rechazado' : 'aprobado'
     aprobRows += `<tr>
       <td>${esc(h.idAprobacion)}</td>
-      <td>${esc(h.idDetalle)}</td>
       <td>${esc(h.nombreGasto)}</td>
       <td>${esc(h.concepto)}</td>
       <td class="amount">${fmtAmt(h.total)}</td>
@@ -1205,9 +1202,9 @@ const downloadLiquidacionPdf = (idLiquidacion: number) => {
     <div class="section">
       <div class="section-head"><span>Aprobaciones / Rechazos supervisor</span><span class="stats-row"><span>Aprobados: <strong>${aprobCount}</strong></span><span>Rechazados: <strong>${rechazCount}</strong></span><span>Total aprobado: <strong>$${fmtAmt(totalAprobado)}</strong></span></span></div>
       <table><thead><tr>
-        <th>Aprob.</th><th>#Det.</th><th>Gasto</th><th>Concepto</th>
+        <th>Aprob.</th><th>Gasto</th><th>Concepto</th>
         <th>Total</th><th>Monto aprobado</th><th>Estado</th><th>Comentario</th><th>Fecha y hora</th>
-      </tr></thead><tbody>${aprobRows || '<tr><td colspan="9" class="no-data">Sin aprobaciones.</td></tr>'}</tbody></table>
+      </tr></thead><tbody>${aprobRows || '<tr><td colspan="8" class="no-data">Sin aprobaciones.</td></tr>'}</tbody></table>
       <div class="footer-totals">
         <div class="total-item"><div class="total-label">Total solicitado</div><div class="total-value">$${fmtAmt(totalSolicitado)}</div></div>
         <div class="total-item"><div class="total-label">Total aprobado supervisor</div><div class="total-value primary">$${fmtAmt(totalAprobado)}</div></div>
@@ -1292,7 +1289,6 @@ const downloadPdf = () => {
       const d = detallesByIdDetalle.value[item.idDetalle]
       const estadoClass = item.estado === 'RECHAZADO' ? 'rechazado' : 'aprobado'
       return `<tr>
-        <td>${esc(item.idDetalle)}</td>
         <td>${esc(item.nombreGasto)}</td>
         <td>${esc(d?.concepto ?? item.concepto ?? '-')}</td>
         <td>${esc(d?.nombreProveedor ?? '-')}</td>
@@ -1331,7 +1327,7 @@ const downloadPdf = () => {
         </div>
         <div class="section-title">Ítems aprobados / rechazados</div>
         <table><thead><tr>
-          <th>#Det.</th><th>Gasto</th><th>Concepto</th><th>Proveedor</th><th>RUC</th><th>Comprobante</th><th>F. Consumo</th>
+          <th>Gasto</th><th>Concepto</th><th>Proveedor</th><th>RUC</th><th>Comprobante</th><th>F. Consumo</th>
           <th>Base 15%</th><th>Base 0%</th><th>IVA</th><th>Total</th><th>Monto aprobado</th><th>Estado</th><th>Comentario</th><th>Fecha aprobación</th>
         </tr></thead><tbody>${filas}</tbody></table>
         <div class="footer-bar">

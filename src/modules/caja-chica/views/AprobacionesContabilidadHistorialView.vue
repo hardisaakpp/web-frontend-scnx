@@ -132,7 +132,6 @@
               <table class="min-w-full text-sm">
                 <thead>
                   <tr class="text-left text-xs uppercase text-gray-500 dark:text-gray-400">
-                    <th class="py-2 pr-3 pl-4">Detalle</th>
                     <th class="py-2 pr-3">Gasto</th>
                     <th class="py-2 pr-3">Concepto</th>
                     <th class="py-2 pr-3">Total</th>
@@ -145,8 +144,7 @@
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                   <tr v-for="item in group.items" :key="item.idAprobacion">
-                    <td class="py-2 pr-3 pl-4 text-gray-700 dark:text-gray-200">{{ item.idDetalle }}</td>
-                    <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.nombreGasto }}</td>
+                    <td class="py-2 pr-3 pl-4 text-gray-700 dark:text-gray-200">{{ item.nombreGasto }}</td>
                     <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.concepto }}</td>
                     <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ formatAmount(item.total) }}</td>
                     <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">
@@ -189,7 +187,7 @@
               #{{ selectedItem?.idAprobacion || '-' }}
             </h3>
             <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Liquidacion #{{ selectedItem?.idLiquidacion || '-' }} · Detalle #{{ selectedItem?.idDetalle || '-' }}
+              Liquidacion #{{ selectedItem?.idLiquidacion || '-' }}
             </div>
           </div>
           <button
@@ -372,6 +370,8 @@ interface LiquidacionDetalleItem {
   idGasto: string
   nombreGasto: string
   concepto: string
+  ruc: string
+  nombreProveedor: string
   total: number
   subtotalConIva: number
   subtotalSinIva: number
@@ -392,12 +392,15 @@ interface HistorialItem {
   idAprobacion: number
   idDetalle: number
   idLiquidacion: number
+  idUsuario: string
+  usuarioNombre: string
   nombreGasto: string
   concepto: string
   total: number
   estado: string
   montoAprobado: number
   observacion: string
+  tipoBase: string
   fechaAprobacion: string
   codAlmacen: string
   nombreCustodio: string
@@ -479,6 +482,7 @@ const detallesByLiquidacion = ref<Record<number, LiquidacionDetalleItem[]>>({})
 const integraciones = ref<Record<number, IntegracionEstadoItem>>({})
 const integrationLoading = ref<Record<number, boolean>>({})
 const integrationMessages = ref<Record<number, { tipo: 'ok' | 'error'; texto: string }>>({})
+const aprobadorNombreById = ref<Record<string, string>>({})
 const adjuntosByDetalle = ref<Record<number, number>>({})
 const adjuntosListByDetalle = ref<Record<number, AdjuntoItem[]>>({})
 const loadingAdjuntosMap = ref<Record<number, boolean>>({})
@@ -557,6 +561,14 @@ const getCurrentUserId = (): string => {
 
 const normalizeString = (value: any) => String(value ?? '').trim()
 
+const getAprobadorNombre = (item: HistorialItem) => {
+  const nombreDirecto = normalizeString(item.usuarioNombre)
+  if (nombreDirecto) return nombreDirecto
+  const idUsuario = normalizeString(item.idUsuario)
+  if (!idUsuario) return '-'
+  return normalizeString(aprobadorNombreById.value[idUsuario]) || idUsuario
+}
+
 const normalizeLiquidacion = (item: any): LiquidacionItem => ({
   idLiquidacion: Number(item.idLiquidacion ?? item.IdLiquidacion ?? 0),
   codAlmacen: normalizeString(item.codAlmacen ?? item.CodAlmacen ?? ''),
@@ -572,6 +584,8 @@ const normalizeDetalle = (item: any): LiquidacionDetalleItem => ({
   idGasto: normalizeString(item.idGasto ?? item.IdGasto ?? ''),
   nombreGasto: normalizeString(item.nombreGasto ?? item.NombreGasto ?? ''),
   concepto: normalizeString(item.concepto ?? item.Concepto ?? ''),
+  ruc: normalizeString(item.ruc ?? item.Ruc ?? ''),
+  nombreProveedor: normalizeString(item.nombreProveedor ?? item.NombreProveedor ?? ''),
   total: Number(item.total ?? item.Total ?? 0),
   subtotalConIva: Number(item.subtotal_Con_Iva ?? item.Subtotal_Con_Iva ?? item.subtotalConIva ?? 0),
   subtotalSinIva: Number(item.subtotal_Sin_Iva ?? item.Subtotal_Sin_Iva ?? item.subtotalSinIva ?? 0)
@@ -774,17 +788,22 @@ const fetchMarcaContab = async (codAlmacen: string): Promise<string> => {
   }
 }
 
-const getTaxCode = (detalle: LiquidacionDetalleItem) => (detalle.subtotalConIva > 0 ? 'IVA_15' : 'IVA_0')
+const getTaxCode = (detalle: LiquidacionDetalleItem, tipoBase?: string) => {
+  if (tipoBase === 'BASE_15') return 'IVA_15'
+  if (tipoBase === 'BASE_0') return 'IVA_0'
+  return detalle.subtotalConIva > 0 ? 'IVA_15' : 'IVA_0'
+}
 
-const getUCodSt = (detalles: LiquidacionDetalleItem[]) => {
-  return detalles.some(detalle => detalle.subtotalConIva > 0) ? '01' : '02'
+const getUCodSt = (detalles: LiquidacionDetalleItem[], tipoBaseByDetalle: Record<number, string> = {}) => {
+  return detalles.some(d => getTaxCode(d, tipoBaseByDetalle[d.idDetalle]) === 'IVA_15') ? '01' : '02'
 }
 
 const buildDocumentLines = (
   detalles: LiquidacionDetalleItem[],
   codAlmacen: string,
   marcaContab: string,
-  montoAprobadoByDetalle: Record<number, number>
+  montoAprobadoByDetalle: Record<number, number>,
+  tipoBaseByDetalle: Record<number, string> = {}
 ) => {
   const grouped = new Map<string, {
     accountCode: string
@@ -805,14 +824,14 @@ const buildDocumentLines = (
     if (current) {
       current.quantity += 1
       current.unitPrice += montoAprobado
-      current.hasIva = current.hasIva || detalle.subtotalConIva > 0
+      current.hasIva = current.hasIva || getTaxCode(detalle, tipoBaseByDetalle[detalle.idDetalle]) === 'IVA_15'
     } else {
       grouped.set(accountCode, {
         accountCode,
         itemDescription: detalle.nombreGasto || detalle.concepto || '',
         quantity: 1,
         unitPrice: montoAprobado,
-        hasIva: detalle.subtotalConIva > 0
+        hasIva: getTaxCode(detalle, tipoBaseByDetalle[detalle.idDetalle]) === 'IVA_15'
       })
     }
   }
@@ -857,13 +876,20 @@ const integrarLiquidacion = async (idLiquidacion: number) => {
         return acc
       }, {})
 
+    const tipoBaseByDetalle = historial.value
+      .filter(item => item.idLiquidacion === idLiquidacion)
+      .reduce<Record<number, string>>((acc, item) => {
+        acc[item.idDetalle] = item.tipoBase || ''
+        return acc
+      }, {})
+
     const docDate = buildDocDate()
     const codAlmacen = normalizeString(liquidacion.codAlmacen)
     const [cardCodeCustodio, marcaContab] = await Promise.all([
       resolveCardCodeByCedula(liquidacion.cedulaCustodio),
       fetchMarcaContab(codAlmacen)
     ])
-    const documentLines = buildDocumentLines(detalles, codAlmacen, marcaContab, aprobacionesByDetalle)
+    const documentLines = buildDocumentLines(detalles, codAlmacen, marcaContab, aprobacionesByDetalle, tipoBaseByDetalle)
     if (!documentLines.length) {
       error.value = 'No hay valores aprobados por contabilidad para integrar.'
       return
@@ -878,7 +904,7 @@ const integrarLiquidacion = async (idLiquidacion: number) => {
       DocType: 'dDocument_Service',
       DocCurrency: 'USD',
       JournalMemo: `REPOSICION CAJA CHICA LLP PORTAL ${codAlmacen}`.trim(),
-      U_COD_ST: getUCodSt(detalles),
+      U_COD_ST: getUCodSt(detalles, tipoBaseByDetalle),
       U_tipo_comprob: '03',
       U_ORIGEN: 'C',
       U_SER_EST: '001',
@@ -964,6 +990,7 @@ const liquidacionesMap = ref<Record<number, LiquidacionItem>>({})
 const loadHistorial = async () => {
   loading.value = true
   error.value = ''
+  integrationMessages.value = {}
   try {
     const userId = getCurrentUserId()
     if (!userId) {
@@ -1048,17 +1075,56 @@ const loadHistorial = async () => {
       idAprobacion: Number(item.idAprobacion ?? item.IdAprobacion ?? 0),
       idDetalle: Number(item.idDetalle ?? item.IdDetalle ?? 0),
       idLiquidacion: Number(item.idLiquidacion ?? item.IdLiquidacion ?? 0),
+      idUsuario: normalizeString(item.idUsuario ?? item.IdUsuario ?? ''),
+      usuarioNombre: normalizeString(
+        item.usuarioNombre
+        ?? item.UsuarioNombre
+        ?? item.nombreUsuario
+        ?? item.NombreUsuario
+        ?? item.aprobadoPor
+        ?? item.AprobadoPor
+        ?? ''
+      ),
       nombreGasto: normalizeString(item.nombreGasto ?? item.NombreGasto ?? '-'),
       concepto: normalizeString(item.concepto ?? item.Concepto ?? '-'),
       total: Number(item.total ?? item.Total ?? 0),
       estado: normalizeString(item.estado ?? item.Estado ?? ''),
       montoAprobado: Number(item.montoAprobado ?? item.MontoAprobado ?? 0),
       observacion: normalizeString(item.observacion ?? item.Observacion ?? ''),
+      tipoBase: normalizeString(item.tipoBase ?? item.TipoBase ?? ''),
       fechaAprobacion: String(item.fechaAprobacion ?? item.FechaAprobacion ?? ''),
       codAlmacen: normalizeString(item.codAlmacen ?? item.CodAlmacen ?? '-'),
       nombreCustodio: normalizeString(item.nombreCustodio ?? item.NombreCustodio ?? '-'),
       fechaCreacion: String(item.fechaCreacion ?? item.FechaCreacion ?? '')
     }))
+
+    const initialMap = historial.value.reduce<Record<string, string>>((acc, item) => {
+      const id = normalizeString(item.idUsuario)
+      const nombre = normalizeString(item.usuarioNombre)
+      if (id && nombre) acc[id] = nombre
+      return acc
+    }, {})
+
+    const missingIds = Array.from(new Set(historial.value
+      .map(item => normalizeString(item.idUsuario))
+      .filter(id => id && !initialMap[id])))
+
+    if (missingIds.length) {
+      const token = localStorage.getItem('token')
+      await Promise.all(missingIds.map(async idUsuario => {
+        try {
+          const response = await axios.get(`/api/Admin/user-local-name/${encodeURIComponent(idUsuario)}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined
+          })
+          const resolved = normalizeString(response.data?.fullName ?? response.data?.name ?? response.data)
+          if (resolved) initialMap[idUsuario] = resolved
+        } catch {
+          // Si no se puede resolver, se mantiene fallback a idUsuario.
+        }
+      }))
+    }
+
+    aprobadorNombreById.value = initialMap
 
     openGroups.value = historial.value.reduce<Record<number, boolean>>((acc, item) => {
       if (item.idLiquidacion && acc[item.idLiquidacion] === undefined) {
@@ -1252,10 +1318,11 @@ const downloadLiquidacionPdf = (idLiquidacion: number) => {
     const iva = d.total - d.subtotalConIva - d.subtotalSinIva
     const adjCount = adjuntosByDetalle.value[d.idDetalle] ?? 0
     detallesRows += `<tr>
-      <td>${esc(d.idDetalle)}</td>
       <td>${esc(d.idGasto || '-')}</td>
       <td>${esc(d.nombreGasto)}</td>
       <td>${esc(d.concepto)}</td>
+      <td>${esc(d.nombreProveedor || '-')}</td>
+      <td>${esc(d.ruc || '-')}</td>
       <td class="amount">${fmtAmt(d.subtotalConIva)}</td>
       <td class="amount">${fmtAmt(d.subtotalSinIva)}</td>
       <td class="amount">${fmtAmt(iva < 0 ? 0 : iva)}</td>
@@ -1267,9 +1334,9 @@ const downloadLiquidacionPdf = (idLiquidacion: number) => {
     <div class="section">
       <div class="section-head green"><span>Detalle de gastos</span><span class="stats-row"><span>Items: <strong>${detalles.length}</strong></span><span>Total: <strong>$${fmtAmt(totalSolicitado)}</strong></span></span></div>
       <table><thead><tr>
-        <th>#Det.</th><th>Cód. Gasto</th><th>Gasto</th><th>Concepto</th>
+        <th>Cód. Gasto</th><th>Gasto</th><th>Concepto</th><th>Proveedor</th><th>RUC</th>
         <th>Base 15%</th><th>Base 0%</th><th>IVA</th><th>Total</th><th>Adj.</th>
-      </tr></thead><tbody>${detallesRows || '<tr><td colspan="9" style="color:#9ca3af;font-style:italic;padding:10px">Sin detalles.</td></tr>'}</tbody></table>
+      </tr></thead><tbody>${detallesRows || '<tr><td colspan="10" style="color:#9ca3af;font-style:italic;padding:10px">Sin detalles.</td></tr>'}</tbody></table>
       <div class="footer-totals">
         <div class="total-item"><div class="total-label">Total solicitado</div><div class="total-value">$${fmtAmt(totalSolicitado)}</div></div>
       </div>
@@ -1281,7 +1348,7 @@ const downloadLiquidacionPdf = (idLiquidacion: number) => {
     const estadoClass = h.estado.toUpperCase() === 'RECHAZADO' ? 'rechazado' : 'aprobado'
     aprobRows += `<tr>
       <td>${esc(h.idAprobacion)}</td>
-      <td>${esc(h.idDetalle)}</td>
+      <td>${esc(getAprobadorNombre(h))}</td>
       <td>${esc(h.nombreGasto)}</td>
       <td>${esc(h.concepto)}</td>
       <td class="amount">${fmtAmt(h.total)}</td>
@@ -1295,7 +1362,7 @@ const downloadLiquidacionPdf = (idLiquidacion: number) => {
     <div class="section">
       <div class="section-head"><span>Aprobaciones / Rechazos contabilidad</span><span class="stats-row"><span>Aprobados: <strong>${aprobCount}</strong></span><span>Rechazados: <strong>${rechazCount}</strong></span><span>Total aprobado: <strong>$${fmtAmt(totalAprobado)}</strong></span></span></div>
       <table><thead><tr>
-        <th>Aprob.</th><th>#Det.</th><th>Gasto</th><th>Concepto</th>
+        <th>Aprob.</th><th>Aprobado por</th><th>Gasto</th><th>Concepto</th>
         <th>Total</th><th>Monto aprobado</th><th>Estado</th><th>Comentario</th><th>Fecha</th>
       </tr></thead><tbody>${aprobRows || '<tr><td colspan="9" style="color:#9ca3af;font-style:italic;padding:10px">Sin aprobaciones.</td></tr>'}</tbody></table>
       <div class="footer-totals">

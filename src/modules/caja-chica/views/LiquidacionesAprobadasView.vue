@@ -119,19 +119,18 @@
               <table v-else class="min-w-full text-sm">
                 <thead>
                   <tr class="text-left text-xs uppercase text-gray-500 dark:text-gray-400">
-                    <th class="py-2 pr-3 pl-4">Detalle</th>
                     <th class="py-2 pr-3">Gasto</th>
                     <th class="py-2 pr-3">Concepto</th>
                     <th class="py-2 pr-3">Total</th>
                     <th class="py-2 pr-3">Monto contabilidad</th>
                     <th class="py-2 pr-3">Obs. contabilidad</th>
+                    <th class="py-2 pr-3">Aprobado por</th>
                     <th class="py-2 pr-3">Fecha aprobación</th>
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                   <tr v-for="detalle in detallesByLiquidacion[item.idLiquidacion]" :key="detalle.idDetalle">
-                    <td class="py-2 pr-3 pl-4 text-gray-700 dark:text-gray-200">{{ detalle.idDetalle }}</td>
-                    <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ detalle.nombreGasto }}</td>
+                    <td class="py-2 pr-3 pl-4 text-gray-700 dark:text-gray-200">{{ detalle.nombreGasto }}</td>
                     <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ detalle.concepto }}</td>
                     <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ formatAmount(detalle.total) }}</td>
                     <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">
@@ -139,6 +138,9 @@
                     </td>
                     <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">
                       {{ getDetalleContabilidadObs(detalle.idDetalle) || '-' }}
+                    </td>
+                    <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">
+                      {{ getDetalleContabilidadAprobador(detalle.idDetalle) }}
                     </td>
                     <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">
                       {{ getContabilidadFecha(detalle.idDetalle) }}
@@ -176,6 +178,11 @@ interface LiquidacionDetalleItem {
   idLiquidacion: number
   nombreGasto: string
   concepto: string
+  ruc: string
+  nombreProveedor: string
+  subtotalConIva: number
+  subtotalSinIva: number
+  iva: number
   total: number
 }
 
@@ -186,6 +193,8 @@ interface AprobacionItem {
   montoAprobado: number
   observacion: string
   fechaAprobacion?: string
+  idUsuario?: string
+  usuarioNombre?: string
 }
 
 const loading = ref(false)
@@ -201,6 +210,7 @@ const detallesByLiquidacion = ref<Record<number, LiquidacionDetalleItem[]>>({})
 const detalleLoading = ref<Record<number, boolean>>({})
 const detalleError = ref<Record<number, string>>({})
 const contabilidadByDetalle = ref<Record<number, AprobacionItem>>({})
+const aprobadorNombreById = ref<Record<string, string>>({})
 
 const volver = () => {
   router.back()
@@ -249,6 +259,11 @@ const normalizeDetalle = (item: any): LiquidacionDetalleItem => ({
   idLiquidacion: Number(item.idLiquidacion ?? item.IdLiquidacion ?? 0),
   nombreGasto: normalizeString(item.nombreGasto ?? item.NombreGasto ?? ''),
   concepto: normalizeString(item.concepto ?? item.Concepto ?? ''),
+  ruc: normalizeString(item.ruc ?? item.Ruc ?? ''),
+  nombreProveedor: normalizeString(item.nombreProveedor ?? item.NombreProveedor ?? ''),
+  subtotalConIva: Number(item.subtotal_Con_Iva ?? item.Subtotal_Con_Iva ?? item.subtotalConIva ?? 0),
+  subtotalSinIva: Number(item.subtotal_Sin_Iva ?? item.Subtotal_Sin_Iva ?? item.subtotalSinIva ?? 0),
+  iva: Number(item.iva ?? item.Iva ?? 0),
   total: Number(item.total ?? item.Total ?? 0)
 })
 
@@ -258,7 +273,17 @@ const normalizeAprobacion = (item: any): AprobacionItem => ({
   estado: normalizeString(item.estado ?? item.Estado ?? ''),
   montoAprobado: Number(item.montoAprobado ?? item.MontoAprobado ?? 0),
   observacion: normalizeString(item.observacion ?? item.Observacion ?? ''),
-  fechaAprobacion: item.fechaAprobacion ?? item.FechaAprobacion
+  fechaAprobacion: item.fechaAprobacion ?? item.FechaAprobacion,
+  idUsuario: normalizeString(item.idUsuario ?? item.IdUsuario ?? item.usuarioAprobador ?? item.UsuarioAprobador ?? ''),
+  usuarioNombre: normalizeString(
+    item.usuarioNombre ??
+    item.UsuarioNombre ??
+    item.nombreUsuario ??
+    item.NombreUsuario ??
+    item.nombreAprobador ??
+    item.NombreAprobador ??
+    ''
+  )
 })
 
 const filteredAprobadas = computed(() => {
@@ -314,6 +339,16 @@ const loadAprobacionesContabilidad = async () => {
   const aprobaciones = items.map(normalizeAprobacion)
     .filter((item: AprobacionItem) => item.nivelAprobacion === 2 && item.estado.toUpperCase() === 'APROBADO')
 
+  const namesMap = { ...aprobadorNombreById.value }
+  aprobaciones.forEach((item: AprobacionItem) => {
+    const id = normalizeString(item.idUsuario)
+    const nombre = normalizeString(item.usuarioNombre)
+    if (id && nombre) {
+      namesMap[id] = nombre
+    }
+  })
+  aprobadorNombreById.value = namesMap
+
   const map: Record<number, AprobacionItem> = {}
   aprobaciones.forEach((item: AprobacionItem) => {
     const current = map[item.idDetalle]
@@ -328,6 +363,43 @@ const loadAprobacionesContabilidad = async () => {
     }
   })
   contabilidadByDetalle.value = map
+
+  const idsPendientes: string[] = Array.from(
+    new Set(
+      aprobaciones
+        .map((item: AprobacionItem) => normalizeString(item.idUsuario))
+        .filter((id: string): id is string => !!id && !aprobadorNombreById.value[id])
+    )
+  )
+
+  if (idsPendientes.length > 0) {
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token')
+    const resolved: Array<{ id: string; nombre: string }> = await Promise.all(
+      idsPendientes.map(async (id) => {
+        try {
+          const resp = await axios.get(`/api/Admin/user-local-name/${encodeURIComponent(id)}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined
+          })
+          const nombre = normalizeString(
+            resp?.data?.fullName ??
+            resp?.data?.nombreCompleto ??
+            resp?.data?.name ??
+            resp?.data?.nombre ??
+            ''
+          )
+          return { id, nombre: nombre || id }
+        } catch {
+          return { id, nombre: id }
+        }
+      })
+    )
+
+    const nextMap = { ...aprobadorNombreById.value }
+    resolved.forEach(({ id, nombre }) => {
+      nextMap[id] = nombre
+    })
+    aprobadorNombreById.value = nextMap
+  }
 }
 
 const getDetalleContabilidadMonto = (idDetalle: number, fallback: number) => {
@@ -339,6 +411,14 @@ const getDetalleContabilidadMonto = (idDetalle: number, fallback: number) => {
 const getDetalleContabilidadObs = (idDetalle: number) => {
   const decision = contabilidadByDetalle.value[idDetalle]
   return decision?.observacion || ''
+}
+
+const getDetalleContabilidadAprobador = (idDetalle: number) => {
+  const decision = contabilidadByDetalle.value[idDetalle]
+  if (!decision) return '-'
+  if (decision.usuarioNombre) return decision.usuarioNombre
+  if (decision.idUsuario) return aprobadorNombreById.value[decision.idUsuario] || decision.idUsuario
+  return '-'
 }
 
 const getInitialTotal = (idLiquidacion: number) => {
@@ -447,20 +527,25 @@ const downloadLiquidacionPdf = async (idLiquidacion: number) => {
     const filas = detalles.map(d => {
       const monto = getDetalleContabilidadMonto(d.idDetalle, d.total)
       const obs = getDetalleContabilidadObs(d.idDetalle)
+      const aprobadoPor = getDetalleContabilidadAprobador(d.idDetalle)
       const fechaAprob = getContabilidadFecha(d.idDetalle)
+      const iva = d.iva > 0 ? d.iva : Math.max(0, d.total - d.subtotalConIva - d.subtotalSinIva)
       return `<tr>
-        <td>${esc(d.idDetalle)}</td>
         <td>${esc(d.nombreGasto)}</td>
         <td>${esc(d.concepto)}</td>
+        <td>${esc(d.nombreProveedor || '-')}</td>
+        <td>${esc(d.ruc || '-')}</td>
+        <td class="amount">${fmtAmt(iva)}</td>
         <td class="amount">${fmtAmt(d.total)}</td>
         <td class="amount highlight">${fmtAmt(monto)}</td>
         <td>${esc(obs || '-')}</td>
+        <td>${esc(aprobadoPor)}</td>
         <td>${esc(fechaAprob)}</td>
       </tr>`
     }).join('')
     detallesHtml = `
       <div class="section-title">Detalle de gastos</div>
-      <table><thead><tr><th>#</th><th>Gasto</th><th>Concepto</th><th>Total inicial</th><th>Monto contabilidad</th><th>Obs. contabilidad</th><th>Fecha aprobación</th></tr></thead><tbody>${filas}</tbody></table>
+      <table><thead><tr><th>Gasto</th><th>Concepto</th><th>Proveedor</th><th>RUC</th><th>IVA</th><th>Total inicial</th><th>Monto contabilidad</th><th>Obs. contabilidad</th><th>Aprobado por</th><th>Fecha aprobación</th></tr></thead><tbody>${filas}</tbody></table>
       <div class="footer-bar">
         <span>Total inicial&nbsp;<strong>$${fmtAmt(initialTotal)}</strong></span>
         <span>Total contabilidad&nbsp;<strong>$${fmtAmt(contabilidadTotal)}</strong></span>
@@ -554,20 +639,25 @@ const downloadPdf = async () => {
       const filas = detalles.map(d => {
         const monto = getDetalleContabilidadMonto(d.idDetalle, d.total)
         const obs = getDetalleContabilidadObs(d.idDetalle)
+        const aprobadoPor = getDetalleContabilidadAprobador(d.idDetalle)
         const fechaAprob = getContabilidadFecha(d.idDetalle)
+        const iva = d.iva > 0 ? d.iva : Math.max(0, d.total - d.subtotalConIva - d.subtotalSinIva)
         return `<tr>
-          <td>${esc(d.idDetalle)}</td>
           <td>${esc(d.nombreGasto)}</td>
           <td>${esc(d.concepto)}</td>
+          <td>${esc(d.nombreProveedor || '-')}</td>
+          <td>${esc(d.ruc || '-')}</td>
+          <td class="amount">${fmtAmt(iva)}</td>
           <td class="amount">${fmtAmt(d.total)}</td>
           <td class="amount highlight">${fmtAmt(monto)}</td>
           <td>${esc(obs || '-')}</td>
+          <td>${esc(aprobadoPor)}</td>
           <td>${esc(fechaAprob)}</td>
         </tr>`
       }).join('')
       detallesHtml = `
         <div class="section-title">Detalle de gastos</div>
-        <table><thead><tr><th>#</th><th>Gasto</th><th>Concepto</th><th>Total inicial</th><th>Monto contabilidad</th><th>Obs. contabilidad</th><th>Fecha aprobación</th></tr></thead><tbody>${filas}</tbody></table>
+        <table><thead><tr><th>Gasto</th><th>Concepto</th><th>Proveedor</th><th>RUC</th><th>IVA</th><th>Total inicial</th><th>Monto contabilidad</th><th>Obs. contabilidad</th><th>Aprobado por</th><th>Fecha aprobación</th></tr></thead><tbody>${filas}</tbody></table>
         <div class="footer-bar">
           <span>Total inicial&nbsp;<strong>$${fmtAmt(initialTotal)}</strong></span>
           <span>Total contabilidad&nbsp;<strong>$${fmtAmt(contabilidadTotal)}</strong></span>

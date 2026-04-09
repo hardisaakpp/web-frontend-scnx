@@ -181,7 +181,7 @@
               #{{ selectedItem?.idAprobacion || '-' }}
             </h3>
             <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Liquidación #{{ selectedItem?.idLiquidacion || '-' }} · Detalle #{{ selectedItem?.idDetalle || '-' }} · Nivel {{ selectedItem?.nivelAprobacion ?? '-' }}
+              Liquidación #{{ selectedItem?.idLiquidacion || '-' }} · Nivel {{ selectedItem?.nivelAprobacion ?? '-' }}
             </div>
           </div>
           <button
@@ -533,7 +533,6 @@ const adjuntosByDetalle = ref<Record<number, number>>({})
 
 const availableColumns: ColumnConfig[] = [
   { key: 'id', label: 'Id', fixed: false },
-  { key: 'detalle', label: 'Detalle', fixed: false },
   { key: 'gasto', label: 'Gasto', fixed: false },
   { key: 'fechaConsumo', label: 'Fecha consumo', fixed: false },
   { key: 'ruc', label: 'RUC', fixed: false },

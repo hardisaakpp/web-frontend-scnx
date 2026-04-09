@@ -105,7 +105,9 @@
                 >
                   Ver liquidación
                 </router-link>
-                <div class="text-xs text-gray-500 dark:text-gray-400">Total: {{ formatAmount(group.totalMonto) }}</div>
+                <div class="text-xs text-gray-500 dark:text-gray-400">
+                  Antes integrar: {{ formatAmount(group.totalMonto) }} · Después integrar: {{ formatAmount(group.totalMontoFinal) }}
+                </div>
                 <button
                   type="button"
                   class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600/50 px-2 py-1 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
@@ -199,7 +201,7 @@
               #{{ selectedItem?.idAprobacion || '-' }}
             </h3>
             <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              Liquidación #{{ selectedItem?.idLiquidacion || '-' }} · Detalle #{{ selectedItem?.idDetalle || '-' }} · Nivel {{ selectedItem?.nivelAprobacion ?? '-' }}
+              Liquidación #{{ selectedItem?.idLiquidacion || '-' }} · Nivel {{ selectedItem?.nivelAprobacion ?? '-' }}
             </div>
           </div>
           <button
@@ -256,7 +258,7 @@
                 <dd class="text-sm text-gray-900 dark:text-white">{{ selectedDetalle ? formatAmount(selectedDetalle.iva) : '-' }}</dd>
               </div>
               <div>
-                <dt class="text-xs text-gray-500 dark:text-gray-400">Total</dt>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Antes de integrar (total solicitado)</dt>
                 <dd class="text-sm font-medium text-gray-900 dark:text-white">{{ selectedItem ? formatAmount(selectedItem.total) : '-' }}</dd>
               </div>
               <div>
@@ -362,7 +364,7 @@
             <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-3">Aprobación contabilidad</div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Monto final</label>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Después de integrar (monto final)</label>
                 <input
                   v-if="selectedItem"
                   v-model="decisions[selectedItem.idAprobacion].montoAprobado"
@@ -372,9 +374,60 @@
                 />
               </div>
               <div>
-                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Nivel</label>
-                <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white">
-                  {{ selectedItem?.nivelAprobacion ?? '-' }}
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Antes de integrar (monto solicitado)</label>
+                <div
+                  v-if="selectedItem"
+                  class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                >
+                  {{ formatAmount(selectedItem.total) }}
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Tipo de base</label>
+                <div
+                  v-if="selectedItem"
+                  class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                >
+                  {{ getAutoTipoBaseLabel(selectedItem) }}
+                </div>
+                <p v-if="selectedItem" class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                  Regla automática: si se aprueba menos, descuenta primero de base 0%; si no alcanza, descuenta de base 15%.
+                </p>
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Base 0% antes de integrar</label>
+                <div
+                  v-if="selectedItem"
+                  class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                >
+                  {{ formatAmount(getOriginalBaseSplit(selectedItem).montoBase0) }}
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Base 15% antes de integrar</label>
+                <div
+                  v-if="selectedItem"
+                  class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                >
+                  {{ formatAmount(getOriginalBaseSplit(selectedItem).montoBase15) }}
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Base 0% después de integrar</label>
+                <div
+                  v-if="selectedItem"
+                  class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                >
+                  {{ formatAmount(getApprovedBaseSplit(selectedItem).montoBase0) }}
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 dark:text-gray-400 mb-1">Base 15% después de integrar</label>
+                <div
+                  v-if="selectedItem"
+                  class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                >
+                  {{ formatAmount(getApprovedBaseSplit(selectedItem).montoBase15) }}
                 </div>
               </div>
               <div class="sm:col-span-2">
@@ -549,7 +602,6 @@ async function fetchLocalUserName(id?: string) {
 
 const availableColumns: ColumnConfig[] = [
   { key: 'id', label: 'Id', fixed: false },
-  { key: 'detalle', label: 'Detalle', fixed: false },
   { key: 'gasto', label: 'Gasto', fixed: false },
   { key: 'fechaConsumo', label: 'Fecha consumo', fixed: false },
   { key: 'ruc', label: 'RUC', fixed: false },
@@ -560,12 +612,12 @@ const availableColumns: ColumnConfig[] = [
   { key: 'subtotalConIva', label: 'Subtotal Base 15%', fixed: false },
   { key: 'subtotalSinIva', label: 'Subtotal Base 0%', fixed: false },
   { key: 'iva', label: 'IVA', fixed: false },
-  { key: 'total', label: 'Total', fixed: false },
+  { key: 'total', label: 'Antes integrar', fixed: false },
   { key: 'usuario', label: 'Supervisor', fixed: false },
   { key: 'montoSupervisor', label: 'Monto supervisor', fixed: false },
   { key: 'obsSupervisor', label: 'Obs. supervisor', fixed: false },
   { key: 'novedad', label: 'Novedad', fixed: false },
-  { key: 'montoFinal', label: 'Monto final', fixed: true },
+  { key: 'montoFinal', label: 'Después integrar', fixed: true },
   { key: 'nivel', label: 'Nivel', fixed: true },
   { key: 'comentario', label: 'Comentario', fixed: true },
   { key: 'acciones', label: 'Acciones', fixed: true }
@@ -763,11 +815,13 @@ const groupedPendientes = computed(() => {
   })
   return Array.from(groups.entries()).map(([idLiquidacion, items]) => {
     const totalMonto = items.reduce((acc, item) => acc + item.total, 0)
+    const totalMontoFinal = items.reduce((acc, item) => acc + getApprovedMonto(item), 0)
     const base = items[0]
     return {
       idLiquidacion,
       items,
       totalMonto,
+      totalMontoFinal,
       totalItems: items.length,
       codAlmacen: base?.codAlmacen || '',
       nombreCustodio: base?.nombreCustodio || '',
@@ -937,6 +991,51 @@ function ensureDecision(item: AprobacionItem) {
       observacion: ''
     }
   }
+}
+
+function getDetalleByItem(item: AprobacionItem): DetalleItem | undefined {
+  return detallesByLiquidacion.value[item.idLiquidacion]?.find(d => d.idDetalle === item.idDetalle)
+}
+
+function getApprovedMonto(item: AprobacionItem): number {
+  const total = Math.max(0, Number(item.total ?? 0))
+  const rawDecision = Number(decisions.value[item.idAprobacion]?.montoAprobado ?? total)
+  if (Number.isNaN(rawDecision)) return total
+  return Math.min(total, Math.max(0, rawDecision))
+}
+
+function getOriginalBaseSplit(item: AprobacionItem): { montoBase0: number; montoBase15: number } {
+  const detalle = getDetalleByItem(item)
+  const montoBase0 = Math.max(0, Number(detalle?.subtotalSinIva ?? 0))
+  const montoBase15 = Math.max(0, Number(detalle?.subtotalConIva ?? 0))
+  return { montoBase0, montoBase15 }
+}
+
+function getApprovedBaseSplit(item: AprobacionItem): { montoBase0: number; montoBase15: number; tipoBase: 'BASE_0' | 'BASE_15' } {
+  const detalle = getDetalleByItem(item)
+  const base0Original = Math.max(0, Number(detalle?.subtotalSinIva ?? 0))
+  const base15Original = Math.max(0, Number(detalle?.subtotalConIva ?? 0))
+  const total = Math.max(0, Number(item.total ?? 0))
+  const montoAprobado = getApprovedMonto(item)
+
+  const diferencia = Math.max(0, total - montoAprobado)
+  const reduccionBase0 = Math.min(diferencia, base0Original)
+  const reduccionRestante = Math.max(0, diferencia - reduccionBase0)
+  const reduccionBase15 = Math.min(reduccionRestante, base15Original)
+
+  const montoBase0 = Math.max(0, base0Original - reduccionBase0)
+  const montoBase15 = Math.max(0, base15Original - reduccionBase15)
+  const tipoBase: 'BASE_0' | 'BASE_15' = reduccionRestante > 0 || base0Original <= 0 ? 'BASE_15' : 'BASE_0'
+
+  return { montoBase0, montoBase15, tipoBase }
+}
+
+function getAutoTipoBase(item: AprobacionItem): 'BASE_0' | 'BASE_15' {
+  return getApprovedBaseSplit(item).tipoBase
+}
+
+function getAutoTipoBaseLabel(item: AprobacionItem): string {
+  return getAutoTipoBase(item) === 'BASE_0' ? 'Base 0% (automático)' : 'Base 15% (automático)'
 }
 
 async function loadAdjuntosForDetalle(idDetalle: number) {
@@ -1167,9 +1266,13 @@ const approve = async (item: AprobacionItem) => {
   actionLoadingId.value = item.idAprobacion
   try {
     const decision = decisions.value[item.idAprobacion]
-    const monto = Number(decision?.montoAprobado ?? item.total)
+    const montoAprobado = getApprovedMonto(item)
+    const split = getApprovedBaseSplit(item)
     await cajaChicaApi.post(`/Aprobaciones/${item.idAprobacion}/aprobar`, {
-      MontoAprobado: Number.isNaN(monto) ? item.total : monto,
+      MontoAprobado: montoAprobado,
+      TipoBase: split.tipoBase,
+      MontoBase0: split.montoBase0,
+      MontoBase15: split.montoBase15,
       Observacion: decision?.observacion || ''
     })
     actionSuccess.value = 'Aprobacion registrada.'
@@ -1189,9 +1292,13 @@ const reject = async (item: AprobacionItem) => {
   actionLoadingId.value = item.idAprobacion
   try {
     const decision = decisions.value[item.idAprobacion]
-    const monto = Number(decision?.montoAprobado ?? 0)
+    const montoAprobado = getApprovedMonto(item)
+    const split = getApprovedBaseSplit(item)
     await cajaChicaApi.post(`/Aprobaciones/${item.idAprobacion}/rechazar`, {
-      MontoAprobado: Number.isNaN(monto) ? 0 : monto,
+      MontoAprobado: montoAprobado,
+      TipoBase: split.tipoBase,
+      MontoBase0: split.montoBase0,
+      MontoBase15: split.montoBase15,
       Observacion: decision?.observacion || ''
     })
     actionSuccess.value = 'Aprobacion rechazada.'
@@ -1270,7 +1377,6 @@ const downloadPdf = () => {
         : '-'
       return `<tr>
         <td>${esc(item.idAprobacion)}</td>
-        <td>${esc(item.idDetalle)}</td>
         <td>${esc(item.nombreGasto)}</td>
         <td>${esc(d?.concepto ?? item.concepto ?? '-')}</td>
         <td>${esc(d?.nombreProveedor ?? '-')}</td>
@@ -1310,7 +1416,7 @@ const downloadPdf = () => {
         </div>
         <div class="section-title">Ítems pendientes de aprobación</div>
         <table><thead><tr>
-          <th>Aprobación</th><th>#Det.</th><th>Gasto</th><th>Concepto</th><th>Proveedor</th><th>RUC</th><th>Comprobante</th><th>F. Consumo</th>
+          <th>Aprobación</th><th>Gasto</th><th>Concepto</th><th>Proveedor</th><th>RUC</th><th>Comprobante</th><th>F. Consumo</th>
           <th>Base 15%</th><th>Base 0%</th><th>IVA</th><th>Total</th><th>Monto final</th><th>Novedad</th><th>Nivel</th><th>Supervisores</th>
         </tr></thead><tbody>${filas}</tbody></table>
         <div class="footer-bar">

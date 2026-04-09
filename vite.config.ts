@@ -60,6 +60,13 @@ export default defineConfig({
         secure: false,
         rewrite: (path) => path.replace(/^\/caja-chica-api/, '/api')
       },
+      // PYG API -> backend local :5171 (evita CORS durante desarrollo)
+      '/pyg-api': {
+        target: 'http://localhost:5171',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/pyg-api/, '/api')
+      },
       // Integracion SAP Slayer -> http://localhost:5110/api (evita CORS en navegador)
       '/slayer-api': {
         target: 'http://localhost:5110',
@@ -98,4 +105,3 @@ export default defineConfig({
       chunkSizeWarningLimit: 500 // Reducido de 1000 para detectar problemas de bundle size más temprano
     }
   })
-})
