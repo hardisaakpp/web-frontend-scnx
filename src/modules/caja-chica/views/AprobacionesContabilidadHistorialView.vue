@@ -548,16 +548,21 @@ cajaChicaApi.interceptors.request.use(config => {
   return config
 })
 
-const getCurrentUserId = (): string => {
+const getCurrentUser = (): { id: string; name: string } => {
   try {
     const userStr = localStorage.getItem('user')
-    if (!userStr) return ''
-    const user = JSON.parse(userStr) as { id?: string }
-    return user.id || ''
+    if (!userStr) return { id: '', name: '' }
+    const user = JSON.parse(userStr) as { id?: string; fullName?: string; name?: string; userName?: string; email?: string }
+    return {
+      id: user.id || '',
+      name: normalizeString(user.fullName ?? user.name ?? user.userName ?? user.email ?? '')
+    }
   } catch {
-    return ''
+    return { id: '', name: '' }
   }
 }
+
+const getCurrentUserId = (): string => getCurrentUser().id
 
 const normalizeString = (value: any) => String(value ?? '').trim()
 
@@ -565,8 +570,17 @@ const getAprobadorNombre = (item: HistorialItem) => {
   const nombreDirecto = normalizeString(item.usuarioNombre)
   if (nombreDirecto) return nombreDirecto
   const idUsuario = normalizeString(item.idUsuario)
-  if (!idUsuario) return '-'
-  return normalizeString(aprobadorNombreById.value[idUsuario]) || idUsuario
+  if (!idUsuario) {
+    // Todos los registros del historial-contabilidad pertenecen al usuario logueado;
+    // usar el nombre del localStorage como fallback.
+    return getCurrentUser().name || '-'
+  }
+  const resolved = normalizeString(aprobadorNombreById.value[idUsuario])
+  if (resolved) return resolved
+  // Si idUsuario coincide con el usuario actual, usar su nombre del localStorage
+  const current = getCurrentUser()
+  if (current.id && current.id === idUsuario && current.name) return current.name
+  return idUsuario
 }
 
 const normalizeLiquidacion = (item: any): LiquidacionItem => ({
