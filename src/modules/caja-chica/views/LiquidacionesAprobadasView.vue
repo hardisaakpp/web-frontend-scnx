@@ -380,12 +380,19 @@ const loadAprobacionesContabilidad = async () => {
           const resp = await axios.get(`/api/Admin/user-local-name/${encodeURIComponent(id)}`, {
             headers: token ? { Authorization: `Bearer ${token}` } : undefined
           })
+          const payload = resp.data as
+            | string
+            | { fullName?: string; nombreCompleto?: string; name?: string; nombre?: string }
+            | null
+            | undefined
           const nombre = normalizeString(
-            resp?.data?.fullName ??
-            resp?.data?.nombreCompleto ??
-            resp?.data?.name ??
-            resp?.data?.nombre ??
-            ''
+            typeof payload === 'string'
+              ? payload
+              : payload?.fullName ??
+                  payload?.nombreCompleto ??
+                  payload?.name ??
+                  payload?.nombre ??
+                  ''
           )
           return { id, nombre: nombre || id }
         } catch {

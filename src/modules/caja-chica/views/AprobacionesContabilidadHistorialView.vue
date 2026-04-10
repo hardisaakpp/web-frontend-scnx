@@ -1130,7 +1130,14 @@ const loadHistorial = async () => {
           const response = await axios.get(`/api/Admin/user-local-name/${encodeURIComponent(idUsuario)}`, {
             headers: token ? { Authorization: `Bearer ${token}` } : undefined
           })
-          const resolved = normalizeString(response.data?.fullName ?? response.data?.name ?? response.data)
+          const payload = response.data as
+            | string
+            | { fullName?: string; name?: string }
+            | null
+            | undefined
+          const resolved = normalizeString(
+            typeof payload === 'string' ? payload : payload?.fullName ?? payload?.name ?? payload
+          )
           if (resolved) initialMap[idUsuario] = resolved
         } catch {
           // Si no se puede resolver, se mantiene fallback a idUsuario.
