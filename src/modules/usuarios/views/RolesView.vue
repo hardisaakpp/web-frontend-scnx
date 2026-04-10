@@ -2,54 +2,70 @@
   <div class="space-y-6">
     <div class="flex items-center justify-between">
       <div>
-        <h1 class="text-3xl font-bold text-gray-900">Gestión de Roles</h1>
-        <p class="mt-1 text-sm text-gray-500">Define roles y asigna permisos</p>
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Gestión de Roles</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Define roles y asigna permisos</p>
       </div>
       <button 
         @click="openCreateModal"
-        class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+        class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-lg transition-colors shadow-lg hover:shadow-xl"
       >
         + Nuevo Rol
       </button>
     </div>
 
-    <div class="bg-white rounded-lg shadow p-6">
-      <div class="text-sm font-semibold text-gray-900 mb-2">Consultar permisos por rol</div>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 transition-colors duration-300">
+      <div class="text-sm font-semibold text-gray-900 dark:text-white mb-2">Consultar permisos por rol</div>
       <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
-        <select
-          v-model="roleQuery"
-          class="w-full sm:flex-1 rounded border border-gray-200 px-3 py-2 text-sm text-gray-900"
-        >
-          <option value="" disabled>Selecciona un rol</option>
-          <option v-for="rol in rolesStore.rolesOrdenados" :key="rol.id" :value="rol.name">
-            {{ rol.name }}
-          </option>
-        </select>
+        <div class="flex w-full min-w-0 sm:flex-1 items-center gap-2">
+          <select
+            v-model="roleQuery"
+            :disabled="cargandoListaRoles"
+            :aria-busy="cargandoListaRoles"
+            :aria-label="cargandoListaRoles ? 'Cargando lista de roles' : 'Seleccionar rol para consultar permisos'"
+            class="min-w-0 flex-1 rounded border border-gray-200 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:cursor-wait disabled:opacity-80"
+          >
+            <option value="" disabled>{{ cargandoListaRoles ? 'Cargando roles…' : 'Selecciona un rol' }}</option>
+            <option v-for="rol in rolesStore.rolesOrdenados" :key="rol.id" :value="rol.name">
+              {{ rol.name }}
+            </option>
+          </select>
+          <span
+            v-if="cargandoListaRoles"
+            class="inline-flex shrink-0 items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400"
+            title="Cargando roles"
+          >
+            <svg class="h-4 w-4 animate-spin text-indigo-600 dark:text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+            <span class="hidden sm:inline">Cargando…</span>
+          </span>
+        </div>
         <button
           type="button"
-          class="rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700 disabled:opacity-50"
+          class="rounded bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 disabled:opacity-50 transition-colors"
           :disabled="roleQueryLoading || !roleQuery"
           @click="fetchRolePermissions"
         >
           Buscar
         </button>
       </div>
-      <div v-if="roleQueryError" class="mt-2 text-sm text-red-600">{{ roleQueryError }}</div>
-      <div v-else-if="roleQueryLoading" class="mt-2 text-sm text-gray-500">Cargando permisos...</div>
+      <div v-if="roleQueryError" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ roleQueryError }}</div>
+      <div v-else-if="roleQueryLoading" class="mt-2 text-sm text-gray-500 dark:text-gray-400">Cargando permisos...</div>
       <div v-else-if="roleQuerySearched" class="mt-3 space-y-3">
         <!-- Permisos actuales -->
         <div v-if="roleQueryPermissions.length > 0">
-          <div class="text-xs font-medium text-gray-600 mb-2">Permisos asignados:</div>
+          <div class="text-xs font-medium text-gray-600 dark:text-gray-300 mb-2">Permisos asignados:</div>
           <div class="flex flex-wrap gap-2">
             <span
               v-for="permiso in roleQueryPermissions"
               :key="permiso.id"
-              class="inline-flex items-center gap-2 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm"
+              class="inline-flex items-center gap-2 px-3 py-1 bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300 rounded-full text-sm"
             >
               {{ permiso.key }}
               <button 
                 @click="() => handleRemoverPermisoConsulta(permiso.id)" 
-                class="hover:text-red-600"
+                class="hover:text-red-600 dark:hover:text-red-400"
                 :disabled="roleQueryLoading"
               >
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -59,15 +75,15 @@
             </span>
           </div>
         </div>
-        <div v-else class="text-sm text-gray-500">Sin permisos asignados.</div>
+        <div v-else class="text-sm text-gray-500 dark:text-gray-400">Sin permisos asignados.</div>
         
         <!-- Asignar nuevo permiso -->
-        <div class="border-t pt-3">
-          <div class="text-xs font-medium text-gray-600 mb-2">Asignar nuevo permiso:</div>
+        <div class="border-t border-gray-200 dark:border-gray-700 pt-3">
+          <div class="text-xs font-medium text-gray-600 dark:text-gray-300 mb-2">Asignar nuevo permiso:</div>
           <div class="flex gap-2">
             <select
               v-model="selectedPermissionToAssign"
-              class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm"
+              class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             >
               <option value="">Seleccionar permiso para asignar...</option>
               <option v-for="permiso in permisosDisponiblesParaRol" :key="permiso.id" :value="permiso.id">
@@ -77,7 +93,7 @@
             <button
               @click="handleAsignarPermisoConsulta"
               :disabled="!selectedPermissionToAssign || roleQueryLoading"
-              class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 text-sm"
+              class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-lg disabled:opacity-50 text-sm transition-colors"
             >
               Asignar
             </button>
@@ -90,31 +106,31 @@
     <!-- Modal para crear/editar rol -->
     <TransitionRoot :show="showRolModal" as="template">
       <Dialog as="div" class="relative z-50" @close="closeRolModal">
-        <div class="fixed inset-0 bg-black bg-opacity-30" />
+        <div class="fixed inset-0 bg-black bg-opacity-30 dark:bg-black/60" />
         <div class="fixed inset-0 overflow-y-auto">
           <div class="flex min-h-full items-center justify-center p-4">
-            <DialogPanel class="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 shadow-xl">
-              <DialogTitle class="text-lg font-medium text-gray-900 mb-4">
+            <DialogPanel class="w-full max-w-md transform overflow-hidden rounded-2xl bg-white dark:bg-gray-800 p-6 shadow-xl border border-transparent dark:border-gray-700 transition-colors">
+              <DialogTitle class="text-lg font-medium text-gray-900 dark:text-white mb-4">
                 {{ selectedRol ? 'Editar Rol' : 'Crear Rol' }}
               </DialogTitle>
 
               <form @submit.prevent="handleRolSubmit" class="space-y-4">
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Nombre del Rol</label>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre del Rol</label>
                   <input
                     v-model="rolForm.name"
                     type="text"
                     required
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400"
                   />
                 </div>
 
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-1">Descripción</label>
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Descripción</label>
                   <textarea
                     v-model="rolForm.description"
                     rows="3"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400"
                   ></textarea>
                 </div>
 
@@ -122,14 +138,14 @@
                   <button
                     type="button"
                     @click="closeRolModal"
-                    class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                    class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
                     :disabled="rolesStore.loading"
-                    class="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                    class="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-lg disabled:opacity-50 transition-colors"
                   >
                     {{ rolesStore.loading ? 'Guardando...' : selectedRol ? 'Actualizar' : 'Crear' }}
                   </button>
@@ -179,6 +195,11 @@ const selectedPermissionToAssign = ref<number | ''>('')
 
 const permisosDisponiblesParaRol = computed(() => 
   permisosStore.permisos.filter(p => !roleQueryPermissions.value.some(rp => rp.id === p.id))
+)
+
+/** Solo la carga inicial de la lista (evita parpadear durante otras acciones del store que también usan `loading`). */
+const cargandoListaRoles = computed(
+  () => rolesStore.loading && rolesStore.roles.length === 0
 )
 
 onMounted(async () => {
