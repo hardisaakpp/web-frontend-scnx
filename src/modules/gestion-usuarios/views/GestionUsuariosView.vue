@@ -543,6 +543,19 @@ function goToPage(page: number) {
   fetchEmployees()
 }
 
+/** Aplica el registro devuelto por el API (auditoría y demás campos) a la fila del listado. */
+function mergeEmployeeFromServer(target: StoreEmployee, server: StoreEmployee) {
+  Object.assign(target, server)
+}
+
+/** Reemplaza la fila en `employees` por id con los datos del servidor. */
+function upsertEmployeeInList(server: StoreEmployee) {
+  const i = employees.value.findIndex((e) => e.id === server.id)
+  if (i !== -1) {
+    employees.value[i] = { ...employees.value[i], ...server }
+  }
+}
+
 function parseApiError(error: unknown, fallback: string): string {
   const err = error as { response?: { data?: Record<string, unknown> } }
   const d = err?.response?.data
@@ -630,8 +643,12 @@ async function saveInlineEdit(employee: StoreEmployee) {
       [field]: value,
       usuario_ultima_actualizacion: currentUser.value
     } as Record<string, string>
-    await updateStoreEmployee(employee.id, payload)
-    ;(employee as unknown as Record<string, unknown>)[field] = value
+    const updated = await updateStoreEmployee(employee.id, payload)
+    if (updated) {
+      mergeEmployeeFromServer(employee, updated)
+    } else {
+      ;(employee as unknown as Record<string, unknown>)[field] = value
+    }
     cancelInlineEdit()
   } catch (error: unknown) {
     errorMessage.value = parseApiError(error, 'No se pudo guardar la edición inline.')
@@ -732,13 +749,18 @@ async function saveEmployee() {
     }
 
     if (form.id) {
-      await updateStoreEmployee(form.id, payload)
+      const updated = await updateStoreEmployee(form.id, payload)
+      resetForm()
+      if (updated) {
+        upsertEmployeeInList(updated)
+      } else {
+        await fetchEmployees()
+      }
     } else {
       await createStoreEmployee(payload)
+      resetForm()
+      await fetchEmployees()
     }
-
-    resetForm()
-    await fetchEmployees()
   } catch (error: unknown) {
     errorMessage.value = parseApiError(error, 'No se pudo guardar el empleado.')
   } finally {
@@ -770,11 +792,15 @@ async function toggleEmployeeEncargado(employee: StoreEmployee) {
   errorMessage.value = ''
   try {
     const nextEncargado = employee.encargado === 1 ? 0 : 1
-    await updateStoreEmployee(employee.id, {
+    const updated = await updateStoreEmployee(employee.id, {
       encargado: nextEncargado,
       usuario_ultima_actualizacion: currentUser.value
     })
-    employee.encargado = nextEncargado
+    if (updated) {
+      mergeEmployeeFromServer(employee, updated)
+    } else {
+      employee.encargado = nextEncargado
+    }
   } catch (error: unknown) {
     errorMessage.value = parseApiError(error, 'No se pudo actualizar el estado de encargado.')
   } finally {
@@ -791,13 +817,17 @@ async function toggleEmployeeEstado(employee: StoreEmployee) {
     const nextEstado = employee.estado === 1 ? 0 : 1
     // Regla de negocio: si pasa a inactivo, encargado debe quedar en 0.
     const nextEncargado = nextEstado === 0 ? 0 : employee.encargado
-    await updateStoreEmployee(employee.id, {
+    const updated = await updateStoreEmployee(employee.id, {
       estado: nextEstado,
       encargado: nextEncargado,
       usuario_ultima_actualizacion: currentUser.value
     })
-    employee.estado = nextEstado
-    employee.encargado = nextEncargado
+    if (updated) {
+      mergeEmployeeFromServer(employee, updated)
+    } else {
+      employee.estado = nextEstado
+      employee.encargado = nextEncargado
+    }
   } catch (error: unknown) {
     errorMessage.value = parseApiError(error, 'No se pudo actualizar el estado del empleado.')
   } finally {

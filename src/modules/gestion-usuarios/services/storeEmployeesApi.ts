@@ -75,6 +75,43 @@ function toTotal(payload: any, fallbackCount: number): number {
   return fallbackCount
 }
 
+/** Normaliza una fila devuelta por el API (lista, GET uno o mutación PATCH/POST). */
+export function mapStoreEmployeeRow(row: unknown): StoreEmployee {
+  const r = row as unknown as Record<string, unknown>
+  return {
+    ...(row as object),
+    encargado: normalizeEncargado(r.encargado),
+    estado: Number(r.estado ?? 0),
+    fecha_ingreso: (r.fecha_ingreso ?? r.fecha_actual) as string | undefined,
+    fecha_ultima_actualizacion: (r.fecha_ultima_actualizacion ?? r.fecha_actual) as
+      | string
+      | undefined,
+    usuario_ultima_actualizacion: (r.usuario_ultima_actualizacion ?? r.usuario_actual) as
+      | string
+      | undefined
+  } as StoreEmployee
+}
+
+/**
+ * Extrae el empleado actualizado del cuerpo JSON (p. ej. `{ ok, data }` tras PATCH).
+ * Devuelve null si no se reconoce la forma (el caller puede hacer refetch).
+ */
+export function parseStoreEmployeeMutationResponse(data: unknown): StoreEmployee | null {
+  if (data == null || typeof data !== 'object') return null
+  let candidate: unknown = data
+  const root = data as Record<string, unknown>
+  if ('payload' in root && root.payload != null && typeof root.payload === 'object') {
+    candidate = root.payload
+  }
+  const pl = candidate as Record<string, unknown>
+  if ('data' in pl && pl.data != null && typeof pl.data === 'object') {
+    candidate = pl.data
+  }
+  const row = candidate as Record<string, unknown>
+  if (row.id == null) return null
+  return mapStoreEmployeeRow(candidate)
+}
+
 export async function listStoreEmployees(filters: StoreEmployeesFilters): Promise<ApiListResult> {
   const params: Record<string, string | number> = {
     page: filters.page,
@@ -89,21 +126,7 @@ export async function listStoreEmployees(filters: StoreEmployeesFilters): Promis
 
   const { data } = await axios.get(endpoint, { params })
   const raw = toItems(data)
-  const items = raw.map((row) => {
-    const r = row as unknown as Record<string, unknown>
-    return {
-      ...row,
-      encargado: normalizeEncargado(r.encargado),
-      estado: Number(r.estado ?? 0),
-      fecha_ingreso: (r.fecha_ingreso ?? r.fecha_actual) as string | undefined,
-      fecha_ultima_actualizacion: (r.fecha_ultima_actualizacion ?? r.fecha_actual) as
-        | string
-        | undefined,
-      usuario_ultima_actualizacion: (r.usuario_ultima_actualizacion ?? r.usuario_actual) as
-        | string
-        | undefined
-    } as StoreEmployee
-  })
+  const items = raw.map((row) => mapStoreEmployeeRow(row))
   const total = toTotal(data, items.length)
   return { items, total }
 }
@@ -121,8 +144,8 @@ export async function createStoreEmployee(
 export async function updateStoreEmployee(
   id: number,
   payload: Partial<Omit<StoreEmployee, StoreEmployeeServerDates>>
-): Promise<void> {
-  await axios.patch(
+): Promise<StoreEmployee | null> {
+  const { data } = await axios.patch(
     endpoint,
     { id, ...payload },
     {
@@ -132,6 +155,7 @@ export async function updateStoreEmployee(
       }
     }
   )
+  return parseStoreEmployeeMutationResponse(data)
 }
 
 export async function inactivateStoreEmployee(id: number, user: string): Promise<void> {

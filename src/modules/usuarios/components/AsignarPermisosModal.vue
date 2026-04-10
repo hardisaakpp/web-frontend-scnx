@@ -43,28 +43,45 @@
                     <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Filtrar por módulo</label>
                     <select
                       v-model="selectedModule"
-                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                      :disabled="cargandoListaPermisos"
+                      class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:cursor-wait disabled:opacity-80"
                     >
-                      <option value="">Todos los módulos</option>
+                      <option value="">{{ cargandoListaPermisos ? 'Cargando…' : 'Todos los módulos' }}</option>
                       <option v-for="modulo in modulos" :key="modulo" :value="modulo">
                         {{ modulo }}
                       </option>
                     </select>
                   </div>
                   <div class="flex gap-2">
-                    <select
-                      v-model="selectedPermission"
-                      class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    >
-                      <option value="">Seleccionar permiso...</option>
-                      <option v-for="permiso in permisosDisponiblesFiltrados" :key="permiso.id" :value="permiso.id">
-                        [{{ permiso.module }}] {{ permiso.key }} - {{ permiso.description }}
-                      </option>
-                    </select>
+                    <div class="flex min-w-0 flex-1 items-center gap-2">
+                      <select
+                        v-model="selectedPermission"
+                        :disabled="cargandoListaPermisos || loading"
+                        :aria-busy="cargandoListaPermisos"
+                        :aria-label="cargandoListaPermisos ? 'Cargando catálogo de permisos' : 'Seleccionar permiso a asignar'"
+                        class="min-w-0 flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:cursor-wait disabled:opacity-80"
+                      >
+                        <option value="">{{ cargandoListaPermisos ? 'Cargando permisos…' : 'Seleccionar permiso...' }}</option>
+                        <option v-for="permiso in permisosDisponiblesFiltrados" :key="permiso.id" :value="permiso.id">
+                          [{{ permiso.module }}] {{ permiso.key }} - {{ permiso.description }}
+                        </option>
+                      </select>
+                      <span
+                        v-if="cargandoListaPermisos"
+                        class="inline-flex shrink-0 items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400"
+                        title="Cargando permisos"
+                      >
+                        <svg class="h-4 w-4 animate-spin text-indigo-600 dark:text-indigo-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        <span class="hidden sm:inline">Cargando…</span>
+                      </span>
+                    </div>
                     <button
                       @click="handleAsignar"
-                      :disabled="!selectedPermission || loading"
-                      class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-lg disabled:opacity-50 transition-colors"
+                      :disabled="!selectedPermission || loading || cargandoListaPermisos"
+                      class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-lg disabled:opacity-50 transition-colors shrink-0"
                     >
                       Asignar
                     </button>
@@ -91,7 +108,15 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Dialog, DialogPanel, DialogTitle, TransitionRoot } from '@headlessui/vue'
+import { usePermisosStore } from '../stores/permisosStore'
 import type { Rol, Permiso } from '../types'
+
+const permisosStore = usePermisosStore()
+
+/** Catálogo global de permisos aún vacío mientras corre la carga inicial (misma idea que el select de roles). */
+const cargandoListaPermisos = computed(
+  () => permisosStore.loading && permisosStore.permisos.length === 0
+)
 
 interface Props {
   isOpen: boolean

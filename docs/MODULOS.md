@@ -347,6 +347,10 @@ Si solo se registra la ruta en `index.ts` pero el proyecto usa `index.js`, Vue R
 - Si hay dudas, registrar en ambos archivos (`index.js` e `index.ts`)
 - Después de agregar rutas, verificar en la consola del navegador que aparezcan en el log de debug (si está habilitado)
 
+## Sincronización de la UI tras guardar (mutaciones API)
+
+Estándar del proyecto: al implementar **PATCH/PUT/POST** que modifiquen entidades mostradas en tablas o formularios, fusiona en el estado local el **cuerpo de respuesta** con el registro actualizado (auditoría, campos calculados) en lugar de asumir solo valores en el cliente. Detalle, contrato con backend y referencia en código: **[MUTACIONES_API_SINCRONIZACION_UI.md](MUTACIONES_API_SINCRONIZACION_UI.md)**.
+
 ## 📞 Soporte
 
 Si tienes dudas sobre la estructura, consulta con el equipo líder o revisa los módulos existentes.

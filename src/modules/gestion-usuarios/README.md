@@ -123,6 +123,7 @@ El acceso se encuentra en la sección **Módulos** del sidebar con:
 
 ## Consideraciones de Desarrollo
 
+- Tras **PATCH/PUT**, el servicio fusiona el registro devuelto por el API en la fila (columnas de auditoría **última actualización** / **usuario**). Patrón global del monorepo: [docs/MUTACIONES_API_SINCRONIZACION_UI.md](../../../docs/MUTACIONES_API_SINCRONIZACION_UI.md).
 - Mantener este módulo desacoplado de `usuarios`, `roles` y `permisos` mientras se define el alcance funcional.
 - Si se agregan nuevas pantallas, registrarlas en `router.ts` y documentarlas en este archivo.
 - Seguir la convención de permisos `modulo.accion` (ejemplo: `gestionusuarios.create`).

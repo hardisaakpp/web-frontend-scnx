@@ -10,6 +10,7 @@
 4. [Sistema de Permisos](#sistema-de-permisos)
 5. [Desarrollo de Nuevos Módulos Backend](#desarrollo-de-nuevos-módulos-backend)
 6. [Desarrollo de Nuevos Módulos Frontend](#desarrollo-de-nuevos-módulos-frontend)
+   - Convención: [sincronizar UI tras mutaciones API](MUTACIONES_API_SINCRONIZACION_UI.md) (auditoría y estado local sin refetch obligatorio)
 7. [Integración Completa](#integración-completa)
 8. [Troubleshooting](#troubleshooting)
 
@@ -691,6 +692,15 @@ src/modules/mi-modulo/
 └── stores/
     └── miModuloStore.ts        # Estado global del módulo
 ```
+
+### Convención: respuesta de mutaciones y estado local
+
+Tras un **PATCH/PUT/POST** exitoso, el backend debe devolver el registro actualizado (p. ej. campos de auditoría como última modificación y usuario). En el frontend, **fusiona esa respuesta en el estado** (fila de tabla, store o formulario) en lugar de depender solo de un segundo GET.
+
+- **Guía del proyecto:** [MUTACIONES_API_SINCRONIZACION_UI.md](MUTACIONES_API_SINCRONIZACION_UI.md)
+- **Referencia implementada:** módulo `gestion-usuarios` (`storeEmployeesApi.ts`, `GestionUsuariosView.vue`).
+
+Extender el mismo patrón al resto de módulos es recomendable cuando se toquen flujos de guardado; no es obligatorio hacerlo de golpe en todo el código.
 
 ### Paso 1: Crear Estructura del Módulo
 

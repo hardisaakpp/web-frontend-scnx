@@ -75,6 +75,7 @@ Sistema completo de gestión de acceso (RBAC).
 
 ### Guías de Desarrollo
 - **[Guía de Desarrollo de Módulos](docs/MODULOS.md)** 🚀 - Cómo crear nuevos módulos paso a paso
+- **[Sincronización UI tras mutaciones API](docs/MUTACIONES_API_SINCRONIZACION_UI.md)** - Estándar: aplicar la respuesta del servidor al estado local (p. ej. auditoría)
 - **[Guía de Modo Oscuro](docs/DARK_MODE_GUIDE.md)** 🌙 - Implementar dark mode en componentes
 - **[Índice de Documentación](docs/README.md)** - Documentación técnica completa
 

@@ -25,15 +25,21 @@
    - Endpoint y persistencia de la confirmación
    - Cuándo deshabilitar el botón
 
+4. **[Sincronización UI tras mutaciones API](MUTACIONES_API_SINCRONIZACION_UI.md)** ⭐
+   - Estándar del proyecto: fusionar la respuesta PATCH/PUT/POST en el estado local
+   - Auditoría (última modificación, usuario) sin refetch obligatorio
+   - Patrones en servicio y vista; referencia en `gestion-usuarios`
+   - Alcance incremental en el resto de módulos
+
 ### ⚙️ Optimizaciones y Mejoras
 
-4. **[Optimización de Actualización de Estados ODC](optimizacion-estados-odc.md)** 
+5. **[Optimización de Actualización de Estados ODC](optimizacion-estados-odc.md)** 
    - Sistema de retry inteligente
    - Optimización de carga paralela
    - Reducción de delays artificiales
    - Métricas de mejora
 
-5. **[Polling Automático de Despachos](polling-automatico-despachos.md)**
+6. **[Polling Automático de Despachos](polling-automatico-despachos.md)**
    - Sistema de actualización automática
    - Indicadores visuales en tiempo real
    - Sincronización con proceso backend
@@ -41,19 +47,19 @@
 
 ### 🔧 Refactorizaciones
 
-6. **[Refactorización Pedido Detalle](REFACTORIZACION_PEDIDO_DETALLE.md)**
+7. **[Refactorización Pedido Detalle](REFACTORIZACION_PEDIDO_DETALLE.md)**
    - Mejoras en la vista de detalle de pedidos
    - Optimización de componentes
    - Separación de responsabilidades
 
 ### 📊 Análisis y Cambios Backend
 
-7. **[Análisis HU-02 Frontend](ANALISIS_HU-02_FRONTEND.md)**
+8. **[Análisis HU-02 Frontend](ANALISIS_HU-02_FRONTEND.md)**
    - Análisis de historia de usuario 02
    - Cambios requeridos en frontend
    - Impacto en componentes
 
-8. **[Cambios Backend - Procesado SAP](cambios-backend-procesado-sap.md)**
+9. **[Cambios Backend - Procesado SAP](cambios-backend-procesado-sap.md)**
    - Integración con nuevo endpoint de SAP
    - Adaptación de componentes frontend
    - Manejo de respuestas SAP
@@ -66,7 +72,9 @@ docs/
 │
 ├── 🚀 GUÍAS DE DESARROLLO
 │   ├── MODULOS.md ⭐
-│   └── DARK_MODE_GUIDE.md 🌙
+│   ├── DARK_MODE_GUIDE.md 🌙
+│   ├── FRONTEND.md
+│   └── MUTACIONES_API_SINCRONIZACION_UI.md ⭐
 │
 ├── ⚙️ OPTIMIZACIONES
 │   ├── optimizacion-estados-odc.md
@@ -89,8 +97,9 @@ docs/
 
 ### 🎨 Agregar Funcionalidad
 1. [MODULOS.md](MODULOS.md) - Estructura y convenciones
-2. Revisar módulos existentes como referencia
-3. [DARK_MODE_GUIDE.md](DARK_MODE_GUIDE.md) - Soporte dark mode
+2. [MUTACIONES_API_SINCRONIZACION_UI.md](MUTACIONES_API_SINCRONIZACION_UI.md) - Guardar y refrescar filas desde la respuesta API
+3. Revisar módulos existentes como referencia
+4. [DARK_MODE_GUIDE.md](DARK_MODE_GUIDE.md) - Soporte dark mode
 
 ### 🔧 Optimización y Mejoras
 1. [optimizacion-estados-odc.md](optimizacion-estados-odc.md) - Patrones de optimización
@@ -120,6 +129,7 @@ docs/
 
 ### Por Tema
 - **Desarrollo de módulos**: MODULOS.md
+- **Mutaciones API y estado local**: MUTACIONES_API_SINCRONIZACION_UI.md
 - **UI y diseño**: DARK_MODE_GUIDE.md
 - **Performance**: optimizacion-*.md
 - **Tiempo real**: polling-*.md
@@ -128,6 +138,7 @@ docs/
 ### Por Módulo
 - **MBA3 Consultas**: Todos los archivos de optimización y polling
 - **Usuarios**: Ver [src/modules/usuarios/README.md](../src/modules/usuarios/README.md)
+- **Gestión empleados / tienda (referencia mutaciones)**: `src/modules/gestion-usuarios/`
 - **Contabilidad**: Ver [src/modules/contabilidad/README.md](../src/modules/contabilidad/README.md)
 
 ## 💡 Mejores Prácticas
@@ -155,5 +166,5 @@ Para dudas o sugerencias sobre la documentación:
 
 ---
 
-**Última actualización:** Enero 2026  
+**Última actualización:** Abril 2026  
 **Mantenido por:** Equipo de Desarrollo SCNexus
