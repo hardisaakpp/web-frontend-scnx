@@ -7,23 +7,25 @@
       class="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"
     ></div>
 
-    <!-- Sidebar -->
+    <!-- Sidebar: escritorio = franja estrecha y se expande al pasar el ratón; móvil = panel ancho al abrir -->
     <aside
+      @mouseenter="onSidebarMouseEnter"
+      @mouseleave="onSidebarMouseLeave"
       :class="[
         'fixed top-0 left-0 h-full flex flex-col bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-white transition-all duration-300 z-30 shadow-2xl',
-        isSidebarCollapsed ? 'w-20' : 'w-72',
+        effectiveSidebarCollapsed ? 'w-20' : 'w-72',
         isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
       ]"
     >
       <!-- Header del Sidebar -->
       <div class="flex-shrink-0 flex items-center justify-between p-5 border-b border-slate-700/50 bg-gradient-to-r from-blue-600/10 to-sky-500/10 backdrop-blur-sm">
         <div class="flex items-center gap-3">
-          <img 
-            src="/favicon.png" 
-            alt="Logo de la empresa" 
+          <img
+            src="/favicon.png"
+            alt="Logo de la empresa"
             class="w-10 h-10 object-contain"
           />
-          <div v-show="!isSidebarCollapsed" class="transition-opacity duration-300">
+          <div v-show="!effectiveSidebarCollapsed" class="transition-opacity duration-300">
             <h2 class="text-xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
               SCNexus
             </h2>
@@ -32,20 +34,10 @@
         </div>
       </div>
 
-      <!-- Toggle Button (Solo desktop) -->
-      <button
-        @click="isSidebarCollapsed = !isSidebarCollapsed"
-        class="hidden md:flex absolute -right-4 top-24 bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-700 hover:to-sky-600 border-2 border-slate-800 rounded-full p-2 shadow-lg hover:shadow-xl transition-all duration-300 z-40 hover:scale-110"
-        title="Contraer/Expandir"
-      >
-        <ChevronLeftIcon v-if="!isSidebarCollapsed" class="h-4 w-4 text-white" />
-        <ChevronRightIcon v-else class="h-4 w-4 text-white" />
-      </button>
-
       <!-- Navigation -->
       <nav class="flex-1 min-h-0 overflow-y-auto p-4 pb-4 space-y-1 custom-scrollbar">
         <!-- Sección Principal -->
-        <div v-show="!isSidebarCollapsed" class="px-3 py-2 mb-2">
+        <div v-show="!effectiveSidebarCollapsed" class="px-3 py-2 mb-2">
           <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Principal</p>
         </div>
 
@@ -57,11 +49,11 @@
             'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path === '/dashboard',
             'text-slate-300 hover:bg-slate-800/50 hover:text-white': $route.path !== '/dashboard'
           }"
-          :title="isSidebarCollapsed ? 'Dashboard' : ''"
+          :title="effectiveSidebarCollapsed ? 'Dashboard' : ''"
         >
           <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
           <HomeIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path === '/dashboard' }" />
-          <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Dashboard</span>
+          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Dashboard</span>
         </router-link>
 
         <!-- Admin Panel -->
@@ -73,11 +65,11 @@
             'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path === '/admin',
             'text-slate-300 hover:bg-slate-800/50 hover:text-white': $route.path !== '/admin'
           }"
-          :title="isSidebarCollapsed ? 'Panel de Admin' : ''"
+          :title="effectiveSidebarCollapsed ? 'Panel de Admin' : ''"
         >
           <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
           <UserGroupIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path === '/admin' }" />
-          <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Panel de Admin</span>
+          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Panel de Admin</span>
         </router-link>
 
         <!-- User Panel -->
@@ -89,15 +81,15 @@
             'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path === '/user',
             'text-slate-300 hover:bg-slate-800/50 hover:text-white': $route.path !== '/user'
           }"
-          :title="isSidebarCollapsed ? 'Panel de Usuario' : ''"
+          :title="effectiveSidebarCollapsed ? 'Panel de Usuario' : ''"
         >
           <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
           <UserIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path === '/user' }" />
-          <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Panel de Usuario</span>
+          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Panel de Usuario</span>
         </router-link>
 
         <!-- Separador Módulos -->
-        <div v-show="!isSidebarCollapsed" class="px-3 py-2 my-3">
+        <div v-show="!effectiveSidebarCollapsed" class="px-3 py-2 my-3">
           <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Módulos</p>
         </div>
 
@@ -110,11 +102,11 @@
             'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/50': $route.path.startsWith('/caja-chica'),
             'text-slate-300 hover:bg-slate-800/50 hover:text-white': !$route.path.startsWith('/caja-chica')
           }"
-          :title="isSidebarCollapsed ? 'Caja Chica' : ''"
+          :title="effectiveSidebarCollapsed ? 'Caja Chica' : ''"
         >
           <div class="absolute inset-0 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
           <DocumentCheckIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/caja-chica') }" />
-          <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Caja Chica</span>
+          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Caja Chica</span>
         </router-link>
 
         <!-- Conciliación -->
@@ -126,27 +118,27 @@
             'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path === '/conciliacion',
             'text-slate-300 hover:bg-slate-800/50 hover:text-white': $route.path !== '/conciliacion'
           }"
-          :title="isSidebarCollapsed ? 'Conciliación' : ''"
+          :title="effectiveSidebarCollapsed ? 'Conciliación' : ''"
         >
           <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
           <ClipboardDocumentCheckIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path === '/conciliacion' }" />
-          <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Conciliación</span>
+          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Conciliación</span>
         </router-link>
 
-        <!-- Gestión ODC SAP: visible con odc.view (canViewOdcSap), odcsap.view (canManageOrder/canViewOrderList) o mabel.view (canViewMabel) -->
+        <!-- Gestión ODC SAP -->
         <router-link
-          v-if="authStore.canViewOdcSap || authStore.canManageOrder || authStore.canViewOrderList || authStore.canViewMabel"
+          v-if="canAccessGestionOdcSap"
           to="/mba3-consultas"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
             'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/mba3-consultas'),
             'text-slate-300 hover:bg-slate-800/50 hover:text-white': !$route.path.startsWith('/mba3-consultas')
           }"
-          :title="isSidebarCollapsed ? 'Gestión ODC SAP' : ''"
+          :title="effectiveSidebarCollapsed ? 'Gestión ODC SAP' : ''"
         >
           <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
           <ArrowsRightLeftIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/mba3-consultas') }" />
-          <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Gestión ODC SAP</span>
+          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Gestión ODC SAP</span>
         </router-link>
 
         <!-- Artículo Maestro -->
@@ -158,14 +150,30 @@
             'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/articulo-maestro'),
             'text-slate-300 hover:bg-slate-800/50 hover:text-white': !$route.path.startsWith('/articulo-maestro')
           }"
-          :title="isSidebarCollapsed ? 'Artículo Maestro' : ''"
+          :title="effectiveSidebarCollapsed ? 'Artículo Maestro' : ''"
         >
           <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
           <CubeIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/articulo-maestro') }" />
-          <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Artículo Maestro</span>
+          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Artículo Maestro</span>
         </router-link>
 
-        <!-- PYG -->
+        <!-- Personal de Tiendas -->
+        <router-link
+          v-if="hasModuleAccess('gestionusuarios')"
+          to="/gestion-usuarios"
+          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
+          :class="{
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/gestion-usuarios'),
+            'text-slate-300 hover:bg-slate-800/50 hover:text-white': !$route.path.startsWith('/gestion-usuarios')
+          }"
+          :title="effectiveSidebarCollapsed ? 'Personal de Tiendas' : ''"
+        >
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <IdentificationIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/gestion-usuarios') }" />
+          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Personal de Tiendas</span>
+        </router-link>
+
+        <!-- PYG (main) -->
         <router-link
           v-if="hasModuleAccess('pyg')"
           to="/pyg"
@@ -174,16 +182,15 @@
             'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/pyg'),
             'text-slate-300 hover:bg-slate-800/50 hover:text-white': !$route.path.startsWith('/pyg')
           }"
-          :title="isSidebarCollapsed ? 'Importador PYG' : ''"
+          :title="effectiveSidebarCollapsed ? 'Importador PYG' : ''"
         >
           <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
           <DocumentArrowUpIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/pyg') }" />
-          <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Importador PYG</span>
+          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Importador PYG</span>
         </router-link>
 
-
         <!-- Separador Administración -->
-        <div v-if="hasModuleAccess('usuarios') || hasModuleAccess('roles') || hasModuleAccess('permisos') || authStore.isAdmin" v-show="!isSidebarCollapsed" class="px-3 py-2 my-3">
+        <div v-if="hasModuleAccess('usuarios') || hasModuleAccess('roles') || hasModuleAccess('permisos') || authStore.isAdmin" v-show="!effectiveSidebarCollapsed" class="px-3 py-2 my-3">
           <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Administración</p>
         </div>
 
@@ -196,11 +203,11 @@
             'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/50': $route.path.startsWith('/users'),
             'text-slate-300 hover:bg-slate-800/50 hover:text-white': !$route.path.startsWith('/users')
           }"
-          :title="isSidebarCollapsed ? 'Usuarios' : ''"
+          :title="effectiveSidebarCollapsed ? 'Usuarios' : ''"
         >
           <div class="absolute inset-0 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
           <UsersIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/users') }" />
-          <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Usuarios</span>
+          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Usuarios</span>
         </router-link>
 
         <!-- Roles (Solo Admin) -->
@@ -212,11 +219,11 @@
             'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path === '/roles',
             'text-slate-300 hover:bg-slate-800/50 hover:text-white': $route.path !== '/roles'
           }"
-          :title="isSidebarCollapsed ? 'Roles' : ''"
+          :title="effectiveSidebarCollapsed ? 'Roles' : ''"
         >
           <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
           <ShieldCheckIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path === '/roles' }" />
-          <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Roles</span>
+          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Roles</span>
         </router-link>
 
         <!-- Permisos (Solo Admin) -->
@@ -228,17 +235,17 @@
             'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path === '/permisos',
             'text-slate-300 hover:bg-slate-800/50 hover:text-white': $route.path !== '/permisos'
           }"
-          :title="isSidebarCollapsed ? 'Permisos' : ''"
+          :title="effectiveSidebarCollapsed ? 'Permisos' : ''"
         >
           <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
           <LockClosedIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path === '/permisos' }" />
-          <span v-show="!isSidebarCollapsed" class="relative z-10 font-medium">Permisos</span>
+          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Permisos</span>
         </router-link>
       </nav>
 
       <!-- Footer del Sidebar -->
       <div class="flex-shrink-0 p-4 border-t border-slate-700/50 bg-slate-900/50 backdrop-blur-sm">
-        <div v-show="!isSidebarCollapsed" class="mb-3 px-2">
+        <div v-show="!effectiveSidebarCollapsed" class="mb-3 px-2">
           <div class="flex items-center gap-3 p-2 rounded-lg bg-slate-800/50">
             <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-sky-500 flex items-center justify-center text-xs font-bold">
               {{ authStore.userName?.charAt(0).toUpperCase() || 'U' }}
@@ -252,35 +259,39 @@
         <button
           @click="logout"
           class="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-[1.02]"
-          :title="isSidebarCollapsed ? 'Cerrar Sesión' : ''"
+          :title="effectiveSidebarCollapsed ? 'Cerrar Sesión' : ''"
         >
           <ArrowRightOnRectangleIcon class="h-5 w-5 flex-shrink-0" />
-          <span v-show="!isSidebarCollapsed">Cerrar Sesión</span>
+          <span v-show="!effectiveSidebarCollapsed">Cerrar Sesión</span>
         </button>
       </div>
     </aside>
 
     <!-- Main Content -->
-    <div 
+    <div
       :class="[
         'transition-all duration-300',
-        isSidebarCollapsed ? 'md:ml-20' : 'md:ml-72'
+        effectiveSidebarCollapsed ? 'md:ml-20' : 'md:ml-72'
       ]"
     >
       <!-- Mobile Header -->
       <header class="bg-white dark:bg-gray-800 shadow md:hidden sticky top-0 z-30 transition-colors duration-300">
-        <div class="px-4 py-3 flex items-center justify-between">
-          <button
-            @click="isSidebarOpen = !isSidebarOpen"
-            class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            aria-label="Toggle menu"
-          >
-            <Bars3Icon class="h-6 w-6 text-gray-800 dark:text-gray-200" />
-          </button>
-          <h1 class="text-xl font-semibold text-gray-800 dark:text-white">SCNexus</h1>
+        <div class="px-4 py-3 flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2 flex-shrink-0">
+            <button
+              @click="isSidebarOpen = !isSidebarOpen"
+              class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              aria-label="Toggle menu"
+            >
+              <Bars3Icon class="h-6 w-6 text-gray-800 dark:text-gray-200" />
+            </button>
+          </div>
+          <h1 class="text-xl font-semibold text-gray-800 dark:text-white truncate min-w-0 text-center flex-1">
+            SCNexus
+          </h1>
           <button
             @click="themeStore.toggleTheme()"
-            class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            class="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors flex-shrink-0"
             :title="themeStore.isDark ? 'Modo Claro' : 'Modo Oscuro'"
           >
             <SunIcon v-if="themeStore.isDark" class="h-5 w-5 text-yellow-400" />
@@ -291,11 +302,13 @@
 
       <!-- Desktop Header -->
       <header class="hidden md:block bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-30 transition-colors duration-300">
-        <div class="px-6 py-4 flex items-center justify-between">
-          <h1 class="text-2xl font-semibold text-gray-800 dark:text-white">
-            {{ pageTitle }}
-          </h1>
-          <div class="flex items-center gap-4">
+        <div class="px-6 py-4 flex items-center justify-between gap-4">
+          <div class="flex items-center gap-3 min-w-0 flex-1">
+            <h1 class="text-2xl font-semibold text-gray-800 dark:text-white truncate">
+              {{ pageTitle }}
+            </h1>
+          </div>
+          <div class="flex items-center gap-4 flex-shrink-0">
             <button
               @click="themeStore.toggleTheme()"
               class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 group"
@@ -311,10 +324,19 @@
 
       <!-- Page Content -->
       <main class="p-4 md:p-6 lg:p-8 min-h-[calc(100vh-4rem)]">
+        <div
+          v-if="showOdcSapVolverInMainChrome && odcSapVolverTarget"
+          class="flex justify-end mb-4 -mt-1"
+        >
+          <OdcSapVolverButton
+            :to="odcSapVolverTarget"
+            :title="odcSapVolverTitle"
+          />
+        </div>
         <router-view></router-view>
       </main>
     </div>
-    
+
     <!-- Toast Notifications -->
     <ToastContainer />
   </div>
@@ -322,9 +344,9 @@
 
 <script setup lang="ts">
 // @ts-ignore
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { 
+import {
   Bars3Icon,
   HomeIcon,
   UserGroupIcon,
@@ -334,109 +356,76 @@ import {
   DocumentCheckIcon,
   ClipboardDocumentCheckIcon,
   ArrowRightOnRectangleIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
   ShieldCheckIcon,
   LockClosedIcon,
   SunIcon,
   MoonIcon,
   CubeIcon,
-  DocumentArrowUpIcon
+  DocumentArrowUpIcon,
+  IdentificationIcon
 } from '@heroicons/vue/24/outline'
 import { useAuthStore } from '../stores/auth'
 import { useThemeStore } from '../stores/theme'
 import ToastContainer from '../components/ToastContainer.vue'
-import { userPreferencesService } from '@/services/userPreferencesService'
 import { useNotificaciones } from '@/composables/useNotificaciones'
+import { useOdcSapVolver } from '@/composables/useOdcSapVolver'
+import OdcSapVolverButton from '@/modules/mba3-consultas/components/OdcSapVolverButton.vue'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const themeStore = useThemeStore()
 const { connect: connectNotificaciones, disconnect: disconnectNotificaciones } = useNotificaciones()
+const { target: odcSapVolverTarget, title: odcSapVolverTitle } = useOdcSapVolver()
+
+/** Volver en fila de botones de la vista (PedidoHeaderActions / listado Cargar plantilla); en el resto de MBA3, arriba del contenido. */
+const showOdcSapVolverInMainChrome = computed(() => {
+  if (!odcSapVolverTarget.value) return false
+  const n = route.name
+  if (n === 'mba3-consultas-pedido-detalle') return false
+  if (n === 'mba3-consultas-cargar-plantilla-detalle') return false
+  if (n === 'mba3-consultas-cargar-plantilla') return false
+  if (n === 'mba3-consultas-pedidos-listado') return false
+  if (n === 'mba3-consultas-redistribucion') return false
+  if (n === 'mba3-consultas-pedido-redistribucion') return false
+  if (n === 'mba3-consultas-revisar-redistribucion') return false
+  if (n === 'mba3-consultas-proceso') return false
+  return true
+})
+
 const isSidebarOpen = ref(false)
-const isSidebarCollapsed = ref(false)
 
-// Clave para localStorage del sidebar
-const SIDEBAR_STORAGE_KEY = 'sidebar-collapsed'
+/** Expansión al pasar el ratón (solo escritorio, breakpoint `md`) */
+const isSidebarHoverExpanded = ref(false)
 
-// Función para cargar el estado del sidebar desde localStorage
-function loadSidebarState() {
-  try {
-    const saved = localStorage.getItem(SIDEBAR_STORAGE_KEY)
-    if (saved !== null) {
-      isSidebarCollapsed.value = JSON.parse(saved)
-    }
-  } catch (error) {
-    console.error('Error cargando estado del sidebar:', error)
+const SIDEBAR_MD_MIN_PX = 768
+
+const isDesktopSidebarViewport = ref(false)
+
+function updateSidebarViewport() {
+  if (typeof window === 'undefined') return
+  isDesktopSidebarViewport.value = window.innerWidth >= SIDEBAR_MD_MIN_PX
+}
+
+if (typeof window !== 'undefined') {
+  updateSidebarViewport()
+}
+
+function onSidebarMouseEnter() {
+  if (isDesktopSidebarViewport.value) {
+    isSidebarHoverExpanded.value = true
   }
 }
 
-// Función para guardar el estado del sidebar en localStorage
-function saveSidebarToLocalStorage() {
-  try {
-    localStorage.setItem(SIDEBAR_STORAGE_KEY, JSON.stringify(isSidebarCollapsed.value))
-  } catch (error) {
-    console.error('Error guardando estado del sidebar:', error)
-  }
+function onSidebarMouseLeave() {
+  isSidebarHoverExpanded.value = false
 }
 
-// Función para sincronizar el estado del sidebar con el servidor
-async function syncSidebarToServer() {
-  if (!authStore.isAuthenticated) {
-    return
-  }
-
-  try {
-    await userPreferencesService.saveSidebarPreferences({
-      collapsed: isSidebarCollapsed.value
-    })
-  } catch (error) {
-    console.warn('Error sincronizando estado del sidebar al servidor:', error)
-    // No lanzar error, el estado ya está guardado en localStorage
-  }
-}
-
-// Función para cargar el estado del sidebar desde el servidor
-async function loadSidebarFromServer() {
-  if (!authStore.isAuthenticated) {
-    return false
-  }
-
-  try {
-    const serverPrefs = await userPreferencesService.getSidebarPreferences()
-    if (serverPrefs) {
-      isSidebarCollapsed.value = serverPrefs.collapsed
-      // Guardar también en localStorage como backup
-      saveSidebarToLocalStorage()
-      return true
-    }
-  } catch (error) {
-    console.warn('No se pudieron cargar preferencias del sidebar del servidor:', error)
-  }
-
-  return false
-}
-
-// Función para cargar preferencias: primero del servidor, luego localStorage
-async function loadSidebarPreferences() {
-  // Intentar cargar del servidor primero
-  const serverLoaded = await loadSidebarFromServer()
-  
-  // Si no se cargaron del servidor, usar localStorage
-  if (!serverLoaded) {
-    loadSidebarState()
-  }
-}
-
-// Función para guardar preferencias: primero localStorage (inmediato), luego servidor (background)
-async function saveSidebarPreferences() {
-  // Guardar inmediatamente en localStorage
-  saveSidebarToLocalStorage()
-
-  // Sincronizar con servidor en background (no bloquea)
-  syncSidebarToServer()
-}
+/** Escritorio: franja estrecha salvo hover. Móvil: ancho completo cuando el panel está abierto */
+const effectiveSidebarCollapsed = computed(() => {
+  if (!isDesktopSidebarViewport.value) return false
+  return !isSidebarHoverExpanded.value
+})
 
 const pageTitle = computed(() => {
   const titles: Record<string, string> = {
@@ -445,6 +434,7 @@ const pageTitle = computed(() => {
     '/user': 'Panel de Usuario',
     '/conciliacion': 'Conciliación',
     '/mba3-consultas': 'Gestión ODC SAP',
+    '/gestion-usuarios': 'Personal de Tiendas',
     '/pyg': 'Importador PYG',
     '/mba3-consultas/ordenes-compra': 'Órdenes de Compra',
     '/mba3-consultas/proceso': 'Enviar ODC a SAP',
@@ -460,68 +450,86 @@ const logout = () => {
   router.push('/login')
 }
 
-// Función helper para verificar si el usuario tiene algún permiso de un módulo
 const hasModuleAccess = (moduleName: string): boolean => {
-  // Admin tiene acceso a todo
   if (authStore.userRoles?.includes('Admin')) {
     return true
   }
-  
-  // Verificar si tiene algún permiso del módulo (modulo.*) - case insensitive
+
   const permissions = authStore.userPermissions || []
+  if (moduleName === 'gestionusuarios') {
+    return permissions.some(
+      (permission: string) => permission.startsWith('gestionusuarios.') || permission === 'staff.view'
+    )
+  }
   const normalizedModule = moduleName.toLowerCase()
-  
+
   return permissions.some((permission: string) => {
     const normalizedPermission = permission.toLowerCase()
-    // Buscar tanto "usuarios." como "users."
     if (moduleName.toLowerCase() === 'usuarios') {
       return normalizedPermission.startsWith('usuarios.') || normalizedPermission.startsWith('users.')
     }
-    // Buscar tanto "roles." como "roles."
     if (moduleName.toLowerCase() === 'roles') {
       return normalizedPermission.startsWith('roles.')
     }
-    // Buscar tanto "permisos." como "permissions."
     if (moduleName.toLowerCase() === 'permisos') {
       return normalizedPermission.startsWith('permisos.') || normalizedPermission.startsWith('permissions.')
     }
-    // Para otros módulos
     return normalizedPermission.startsWith(`${normalizedModule}.`)
   })
 }
 
-// Cargar preferencias del sidebar al montar y asegurar capabilities (p. ej. tras recarga)
+/**
+ * Fallback si /Auth/me falla temporalmente: capabilities primero, luego permisos legacy.
+ */
+const canAccessGestionOdcSap = computed(() => {
+  if (
+    authStore.canViewOdcSap ||
+    authStore.canManageOrder ||
+    authStore.canViewOrderList ||
+    authStore.canViewMabel
+  ) {
+    return true
+  }
+
+  const permissions = authStore.userPermissions || []
+  return permissions.some((permission: string) => {
+    const normalized = permission.toLowerCase()
+    return (
+      normalized === 'odc.view' ||
+      normalized === 'odcsap.view' ||
+      normalized === 'mabel.view' ||
+      normalized.startsWith('odc.') ||
+      normalized.startsWith('odcsap.') ||
+      normalized.startsWith('mabel.')
+    )
+  })
+})
+
 onMounted(async () => {
   if (authStore.token && !authStore.capabilities) {
     await authStore.fetchMe()
   }
-  loadSidebarPreferences()
-  
-  // 📢 Conectar al sistema de notificaciones en tiempo real (SSE)
+  updateSidebarViewport()
+  if (typeof window !== 'undefined') {
+    window.addEventListener('resize', updateSidebarViewport)
+  }
+
   if (authStore.isAuthenticated) {
     connectNotificaciones()
   }
 })
 
-// Observar cambios de autenticación para conectar/desconectar notificaciones
+onUnmounted(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('resize', updateSidebarViewport)
+  }
+})
+
 watch(() => authStore.isAuthenticated, (isAuth: boolean) => {
   if (isAuth) {
     connectNotificaciones()
   } else {
     disconnectNotificaciones()
-  }
-})
-
-// Guardar preferencias cuando cambia el estado del sidebar
-watch(isSidebarCollapsed, () => {
-  saveSidebarPreferences()
-})
-
-// Sincronizar cuando el usuario se autentica
-watch(() => authStore.isAuthenticated, (isAuthenticated: boolean) => {
-  if (isAuthenticated) {
-    // Cargar preferencias del servidor cuando el usuario se autentica
-    loadSidebarPreferences()
   }
 })
 </script>

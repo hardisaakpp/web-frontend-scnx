@@ -14,6 +14,7 @@ import usuariosRoutes from '../modules/usuarios/router'
 import mba3ConsultasRoutes from '../modules/mba3-consultas/router'
 import cajaChicaRoutes from '../modules/caja-chica/router'
 import articuloMaestroRoutes from '../modules/articulo-maestro/router'
+import gestionUsuariosRoutes from '../modules/gestion-usuarios/router'
 import pygRoutes from '../modules/pyg/router'
 
 console.log('🔍 DEBUG usuariosRoutes:', usuariosRoutes)
@@ -65,6 +66,7 @@ const router = createRouter({
         ...mba3ConsultasRoutes,
         ...cajaChicaRoutes,
         ...articuloMaestroRoutes,
+        ...gestionUsuariosRoutes,
         ...pygRoutes,
         {
           path: 'forbidden',

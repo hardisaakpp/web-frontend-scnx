@@ -89,12 +89,12 @@ export default defineConfig(({ mode }) => {
           secure: false,
           rewrite: (path) => path
         },
-        // Gestión usuarios: PHP bajo el mismo host que Caja Chica en dev
+        // Gestión usuarios (store_employees.php): mismo host que Caja Chica; reescribe a /api/... en el target
         '/employees-api': {
           target: employeesProxyTarget,
           changeOrigin: true,
           secure: false,
-          rewrite: (path) => path
+          rewrite: (path) => path.replace(/^\/employees-api/, '/api')
         }
       }
     },
