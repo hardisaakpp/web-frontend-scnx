@@ -1,0 +1,150 @@
+server {
+    listen 3001;
+    server_name scnexus.mabelgroup.com.ec;
+
+    root /storage/scnexus/dist;
+    index index.html;
+
+    # =========================
+    # AUTH/me -> mba3-consultas (capabilities)
+    # =========================
+    location = /api/Auth/me {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Authorization $http_authorization;
+    }
+
+    location = /api/auth/me {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Authorization $http_authorization;
+    }
+
+    # =========================
+    # AUTH -> CORE
+    # =========================
+    location /api/Auth/ {
+        proxy_pass http://192.168.2.12:8080;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # =========================
+    # SSE stream (must be before /api/mba3/)
+    # =========================
+    location = /api/mba3/notificaciones/stream {
+        rewrite ^/api/mba3(.*)$ $1 break;
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Authorization $http_authorization;
+
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 86400s;
+        proxy_set_header Connection '';
+        chunked_transfer_encoding off;
+    }
+
+    # =========================
+    # MBA3 Consultas API (/api/mba3/* -> backend without prefix)
+    # =========================
+    location /api/mba3/ {
+        rewrite ^/api/mba3(.*)$ $1 break;
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        client_max_body_size 50M;
+
+        proxy_connect_timeout 120s;
+        proxy_send_timeout 120s;
+        proxy_read_timeout 120s;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Authorization $http_authorization;
+    }
+
+    # =========================
+    # Caja Chica API (/caja-chica-api/* -> backend /api/*)
+    # =========================
+    location /caja-chica-api/ {
+        rewrite ^/caja-chica-api(.*)$ /api$1 break;
+        proxy_pass http://192.168.2.153:8080;
+        proxy_http_version 1.1;
+        client_max_body_size 50M;
+
+        proxy_connect_timeout 120s;
+        proxy_send_timeout 120s;
+        proxy_read_timeout 120s;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Authorization $http_authorization;
+    }
+
+    # =========================
+    # CORE - rest of /api
+    # =========================
+    location /api/ {
+        proxy_pass http://192.168.2.12:8080;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Authorization $http_authorization;
+    }
+
+    # =========================
+    # STORE EMPLOYEES (PHP)
+    # =========================
+    location ^~ /employees-api/ {
+        alias /opt/klienteV1/cws/api/;
+        index store_employees.php;
+
+        location ~ \.php$ {
+            include snippets/fastcgi-php.conf;
+            fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+            fastcgi_param SCRIPT_FILENAME $request_filename;
+        }
+    }
+
+    # =========================
+    # SPA
+    # =========================
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+}

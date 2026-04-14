@@ -31,7 +31,7 @@ VITE_CORE_API_URL=http://192.168.2.12:8080/api
 
 ---
 
-Plantilla recomendada (mismo dominio HTTPS + reverse proxy, como `scnexus.*` → `/api/*`):
+Plantilla recomendada (mismo dominio HTTPS + reverse proxy, como `scnexus.*`):
 
 ```env
 VITE_API_URL=/api
@@ -40,9 +40,11 @@ VITE_MBA3_API_URL=/api
 VITE_MBA3_API_BASE_URL=/api/mba3
 VITE_CONCILIACION_API_BASE_URL=/api/conciliacion
 VITE_PREFERENCES_API_URL=/api/mba3
-VITE_CAJA_CHICA_API_URL=/api
+VITE_CAJA_CHICA_API_URL=/caja-chica-api
 VITE_APP_NAME=SCNexus
 ```
+
+Para referencia de Nginx del proyecto (incluye routing de Caja Chica), ver `deploy/nginx/scnexus.conf.example`.
 
 Si las APIs viven en **otros hosts** públicos, usa URLs absolutas **https://** (no IPs privadas ni `http://` en producción):
 
