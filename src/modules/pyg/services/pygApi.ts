@@ -1,5 +1,10 @@
 import axios from 'axios'
 
+/**
+ * En dev, por defecto `/pyg-api` pasa por el proxy de Vite (ver `vite.config.ts`).
+ * Si defines `VITE_PYG_API_URL` apuntando al host Docker, incluye el prefijo de la API, p. ej.
+ * `http://localhost:5171/api` (no solo `http://localhost:5171`, porque las rutas son `/uploads`, etc.).
+ */
 const pygApi = axios.create({
   baseURL: import.meta.env.VITE_PYG_API_URL || '/pyg-api',
   headers: {

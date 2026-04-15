@@ -10,6 +10,13 @@ export default defineConfig(({ mode }) => {
   const authMeProxyTarget = env.VITE_AUTH_ME_PROXY_TARGET || mba3ProxyTarget
   const cajaChicaProxyTarget = env.VITE_CAJA_CHICA_PROXY_TARGET || 'http://localhost:8080'
   const employeesProxyTarget = env.VITE_STORE_EMPLOYEES_PROXY_TARGET || cajaChicaProxyTarget
+  /** PYG API (Docker típico: host 5171 → contenedor 8080). Solo afecta al dev server de Vite. */
+  const pygProxyTarget = env.VITE_PYG_PROXY_TARGET || 'http://localhost:5171'
+  /**
+   * Prefijo en el backend tras quitar `/pyg-api`. Por defecto `/api` → `/pyg-api/uploads` → `/api/uploads`.
+   * Si el servicio expone rutas en raíz, define `VITE_PYG_PROXY_PREFIX=` vacío en `.env.development`.
+   */
+  const pygProxyPrefix = 'VITE_PYG_PROXY_PREFIX' in env ? env.VITE_PYG_PROXY_PREFIX : '/api'
 
   return {
     plugins: [vue()],
@@ -68,12 +75,12 @@ export default defineConfig(({ mode }) => {
           secure: false,
           rewrite: (path) => path.replace(/^\/caja-chica-api/, '/api')
         },
-        // PYG API -> backend local :5171 (evita CORS durante desarrollo)
+        // PYG → VITE_PYG_PROXY_TARGET (evita CORS en dev). Ver `.env.development.example`.
         '/pyg-api': {
-          target: 'http://localhost:5171',
+          target: pygProxyTarget,
           changeOrigin: true,
           secure: false,
-          rewrite: (path) => path.replace(/^\/pyg-api/, '/api')
+          rewrite: (path) => path.replace(/^\/pyg-api/, pygProxyPrefix || '')
         },
         // Integracion SAP Slayer -> http://localhost:5110/api (evita CORS en navegador)
         '/slayer-api': {

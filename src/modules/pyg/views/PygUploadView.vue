@@ -17,19 +17,23 @@
       <h2 class="mb-3 text-lg font-medium text-gray-900 dark:text-white">Subir Excel</h2>
       <div class="flex flex-col gap-3 md:flex-row md:items-center">
         <input
+          ref="fileInputRef"
           type="file"
           accept=".xlsx"
           @change="onFileChange"
-          class="block w-full rounded-md border border-gray-300 bg-white text-sm text-gray-900 file:mr-4 file:rounded file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-medium hover:file:bg-slate-200 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+          class="hidden"
         />
         <button
           class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
-          :disabled="!selectedFile || loadingUpload"
-          @click="handleUpload"
+          :disabled="loadingUpload"
+          @click="openFilePicker"
         >
-          {{ loadingUpload ? 'Procesando...' : 'Subir archivo' }}
+          {{ loadingUpload ? 'Procesando...' : 'Seleccionar y subir Excel' }}
         </button>
       </div>
+      <p v-if="selectedFile" class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+        Archivo seleccionado: {{ selectedFile.name }}
+      </p>
       <p v-if="uploadMessage" class="mt-3 text-sm" :class="uploadOk ? 'text-green-600' : 'text-red-600'">{{ uploadMessage }}</p>
     </div>
 
@@ -132,7 +136,7 @@
                 <td class="px-2 py-2">
                   <div class="flex gap-1">
                     <template v-if="matrizEditId === row.id">
-                      <button class="rounded border border-green-300 px-2 py-1 text-xs text-green-700 hover:bg-green-50" :disabled="savingMatriz" @click="saveMatrizEdit(row.id)">Guardar</button>
+                      <button class="rounded border border-green-300 px-2 py-1 text-xs text-green-700 hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-60" :disabled="savingMatriz" @click="saveMatrizEdit(row.id)">Guardar</button>
                       <button class="rounded border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50" @click="cancelMatrizEdit">Cancelar</button>
                     </template>
                     <button v-else class="rounded border border-blue-300 px-2 py-1 text-xs text-blue-700 hover:bg-blue-50" @click="startMatrizEdit(row)">Editar</button>
@@ -203,7 +207,7 @@
                 <td class="px-2 py-2">
                   <div class="flex gap-1">
                     <template v-if="bodegaEditId === row.id">
-                      <button class="rounded border border-green-300 px-2 py-1 text-xs text-green-700 hover:bg-green-50" :disabled="savingBodega" @click="saveBodegaEdit(row.id)">Guardar</button>
+                      <button class="rounded border border-green-300 px-2 py-1 text-xs text-green-700 hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-60" :disabled="savingBodega" @click="saveBodegaEdit(row.id)">Guardar</button>
                       <button class="rounded border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50" @click="cancelBodegaEdit">Cancelar</button>
                     </template>
                     <button v-else class="rounded border border-blue-300 px-2 py-1 text-xs text-blue-700 hover:bg-blue-50" @click="startBodegaEdit(row)">Editar</button>
@@ -240,6 +244,7 @@ import {
 } from '../services/pygApi'
 
 const selectedFile = ref<File | null>(null)
+const fileInputRef = ref<HTMLInputElement | null>(null)
 const loadingUpload = ref(false)
 const uploadMessage = ref('')
 const uploadOk = ref(false)
@@ -292,17 +297,41 @@ function toOptionalNumber(value: string): number | undefined {
 }
 
 function getApiErrorMessage(error: unknown, fallback: string): string {
-  const data = (error as { response?: { data?: unknown } })?.response?.data
+  const response = (error as { response?: { data?: unknown; status?: number } })?.response
+  const data = response?.data
+  const status = response?.status
+
   if (typeof data === 'string' && data.trim()) return data
-  if (data && typeof data === 'object' && 'message' in data && typeof (data as { message?: unknown }).message === 'string') {
-    return (data as { message: string }).message
+  if (data && typeof data === 'object') {
+    const o = data as Record<string, unknown>
+    if (typeof o.message === 'string' && o.message.trim()) return o.message
+    if (typeof o.detail === 'string' && o.detail.trim()) return o.detail
+    if (typeof o.title === 'string' && o.title.trim()) return o.title
   }
+
+  if (status === 403) {
+    return (
+      'El API PYG respondió 403 (prohibido): el microservicio no autoriza esta petición con tu token. ' +
+      'Revisa políticas y permisos en el backend Docker, que el JWT sea el que PYG valida (mismo issuer/firma), ' +
+      'y en desarrollo que no estés entrando al módulo sin permisos (VITE_ALLOW_UNAUTHENTICATED=false alinea router y API).'
+    )
+  }
+
   return fallback
 }
 
 function onFileChange(event: Event) {
   const target = event.target as HTMLInputElement
   selectedFile.value = target.files?.[0] ?? null
+  if (!selectedFile.value) return
+  void handleUpload()
+}
+
+function openFilePicker() {
+  if (loadingUpload.value) return
+  if (!fileInputRef.value) return
+  fileInputRef.value.value = ''
+  fileInputRef.value.click()
 }
 
 function saveBlob(blob: Blob, fileName: string) {
@@ -340,7 +369,16 @@ async function handleUpload() {
 }
 
 async function loadUploads() {
-  uploads.value = await getUploads()
+  queryMessage.value = ''
+  try {
+    uploads.value = await getUploads()
+  } catch (error: unknown) {
+    uploads.value = []
+    queryMessage.value = getApiErrorMessage(
+      error,
+      'No se pudo cargar el historial de cargas PYG. Revisa proxy (VITE_PYG_PROXY_TARGET), permisos del contenedor y logs del backend.'
+    )
+  }
 }
 
 async function handleDownloadErrors(batchId: number) {

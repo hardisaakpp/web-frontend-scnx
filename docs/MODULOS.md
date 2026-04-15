@@ -320,32 +320,23 @@ El módulo de Conciliación fue creado como duplicado del módulo Reportes sigui
 - En la consola del navegador aparece el warning: `[Vue Router warn]: No match found for location with path "/ruta-del-modulo"`
 
 **Causa:**
-El proyecto tiene dos archivos de router:
-- `src/router/index.js` - Archivo activo que se está usando
-- `src/router/index.ts` - Archivo TypeScript (posible migración futura)
-
-Si solo se registra la ruta en `index.ts` pero el proyecto usa `index.js`, Vue Router no encontrará la ruta.
+Hay archivos duplicados con el mismo nombre base pero distinta extensión (por ejemplo `index.js`/`index.ts` o `auth.js`/`auth.ts`).  
+En Vite, una importación sin extensión (ej. `import router from './router'`) puede resolver primero al `.js`, dejando fuera cambios que sí existen en el `.ts`.
 
 **Solución:**
-1. Verificar qué archivo de router se está usando (revisar `src/main.ts` o `src/main.js`)
-2. Registrar la ruta en el archivo correcto:
-   ```javascript
-   // En src/router/index.js (o index.ts según corresponda)
-   import conciliacionRoutes from '../modules/conciliacion/router'
-   
-   // En el array de children del MainLayout
-   children: [
-     // ... otras rutas
-     ...conciliacionRoutes,
-   ]
+1. En el entrypoint (`src/main.ts`), importar explícitamente el archivo correcto:
+   ```typescript
+   import router from './router/index.ts'
    ```
-3. Si hay dos archivos de router, registrar en ambos para evitar problemas futuros
-4. Reiniciar el servidor de desarrollo para asegurar que los cambios se carguen
+2. Mantener un único archivo “fuente de verdad” para el router principal (`src/router/index.ts`).
+3. Si necesitas compatibilidad temporal para stores con consumo desde JS, usar `*.js` solo como re-export explícito hacia `*.ts` (como `src/stores/auth.js`).
+4. Reiniciar el servidor de desarrollo después de corregir imports/resolución.
 
 **Prevención:**
-- Siempre verificar en qué archivo de router se están registrando las otras rutas del proyecto
-- Si hay dudas, registrar en ambos archivos (`index.js` e `index.ts`)
-- Después de agregar rutas, verificar en la consola del navegador que aparezcan en el log de debug (si está habilitado)
+- Evitar imports ambiguos sin extensión cuando existan archivos homónimos `.js` y `.ts`.
+- Definir explícitamente la ruta del módulo crítico en `main.ts` y en entradas similares.
+- No duplicar lógica entre `*.js` y `*.ts`; si un `*.js` existe por compatibilidad, que solo re-exporte.
+- Después de agregar rutas nuevas, validar navegación directa en navegador (`/ruta`) además del menú.
 
 ## Sincronización de la UI tras guardar (mutaciones API)
 

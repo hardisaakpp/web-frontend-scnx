@@ -461,6 +461,9 @@ const hasModuleAccess = (moduleName: string): boolean => {
       (permission: string) => permission.startsWith('gestionusuarios.') || permission === 'staff.view'
     )
   }
+  if (moduleName === 'pyg') {
+    return permissions.some((permission: string) => permission.toLowerCase() === 'pyg.edit')
+  }
   const normalizedModule = moduleName.toLowerCase()
 
   return permissions.some((permission: string) => {
