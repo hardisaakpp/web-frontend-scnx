@@ -68,6 +68,7 @@ export default defineConfig(({ mode }) => {
           secure: false,
           rewrite: (path) => path
         },
+<<<<<<< HEAD
         // Caja Chica API via mismo host del frontend (evita localhost del navegador cliente remoto)
         '/caja-chica-api': {
           target: cajaChicaProxyTarget,
@@ -90,6 +91,7 @@ export default defineConfig(({ mode }) => {
           rewrite: (path) => path.replace(/^\/slayer-api/, '/api')
         },
         // Archivos estáticos de Caja Chica (ej: /uploads/...)
+        // Archivos estáticos de Caja Chica (ej: /uploads/...)
         '/uploads': {
           target: cajaChicaProxyTarget,
           changeOrigin: true,
@@ -102,6 +104,13 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path.replace(/^\/employees-api/, '/api')
+        },
+        // Conciliación CORS bypass Proxy
+        '/conciliacion-api': {
+          target: 'http://127.0.0.1:8005',
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/conciliacion-api/, '')
         }
       }
     },

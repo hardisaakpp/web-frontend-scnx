@@ -2,8 +2,8 @@ import { createRouter, createWebHistory } from 'vue-router'
 import authService from '@/services/authService'
 import MainLayout from '@/layouts/MainLayout.vue'
 
-// Import module routes
 import mba3ConsultasRoutes from '@/modules/mba3-consultas/router'
+import conciliacionRoutes from '@/modules/conciliacion/router'
 import cajaChicaRoutes from '@/modules/caja-chica/router'
 import usuariosRoutes from '@/modules/usuarios/router'
 import articuloMaestroRoutes from '@/modules/articulo-maestro/router'
@@ -84,15 +84,8 @@ const router = createRouter({
             permissions: ['reportes.view']
           }
         },
-        {
-          path: '/conciliacion',
-          name: 'Conciliacion',
-          component: () => import('@/modules/conciliacion/views/ConciliacionView.vue'),
-          meta: {
-            requiresAuth: true,
-            permissions: ['conciliacion.view']
-          }
-        },
+        // Conciliacion module spread
+        ...conciliacionRoutes,
         // MBA3 Consultas routes
         ...mba3ConsultasRoutes,
         // Caja Chica
