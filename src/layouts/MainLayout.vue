@@ -272,8 +272,8 @@
         :title="sidebarModeLabel"
         aria-label="Cambiar modo del sidebar"
       >
-        <PinOff v-if="sidebarMode === 'auto'" class="h-4 w-4 opacity-80" />
-        <Pin v-else class="h-4 w-4 text-sky-300" />
+        <PinOff v-if="sidebarMode === 'auto'" class="h-4 w-4 opacity-80 pin-icon pin-icon--auto" />
+        <Pin v-else class="h-4 w-4 text-sky-300 pin-icon pin-icon--fixed" />
       </button>
     </aside>
 
@@ -603,5 +603,35 @@ watch(() => authStore.isAuthenticated, (isAuth: boolean) => {
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.3);
+}
+
+.pin-icon {
+  transform-origin: top center;
+}
+
+.pin-icon--auto {
+  animation: pin-wiggle 1.8s ease-in-out infinite;
+}
+
+.pin-icon--fixed {
+  animation: pin-breathe 2.4s ease-in-out infinite;
+}
+
+@keyframes pin-wiggle {
+  0%, 100% {
+    transform: rotate(-10deg) translateY(0);
+  }
+  50% {
+    transform: rotate(10deg) translateY(-1px);
+  }
+}
+
+@keyframes pin-breathe {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
 }
 </style>
