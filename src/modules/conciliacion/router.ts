@@ -64,11 +64,12 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/conciliacion/partidas-abiertas',
-    name: 'conciliacion-partidas-abiertas',
+    name: 'conciliacion-partidas',
     component: () => import('./views/PartidasAbiertasView.vue'),
     meta: {
       requiresAuth: true,
-      title: 'Partidas Abiertas',
+      title: 'Movimientos Pendientes',
+      breadcrumb: 'Pendientes',
       permissions: ['conciliacion.view'],
     },
   },
