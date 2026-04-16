@@ -72,6 +72,16 @@ const routes: RouteRecordRaw[] = [
       permissions: ['conciliacion.view'],
     },
   },
+  {
+    path: '/conciliacion/sap-incompletos',
+    name: 'conciliacion-sap-incompletos',
+    component: () => import('./views/SAPIncompletosView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'SAP Incompletos',
+      permissions: ['conciliacion.view'],
+    },
+  },
 ]
 
 export default routes

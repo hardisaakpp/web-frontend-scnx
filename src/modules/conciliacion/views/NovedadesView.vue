@@ -18,7 +18,7 @@
           <div>
             <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Banco</label>
             <select v-model="filtros.id_banco" class="px-3 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500">
-              <option :value="undefined">Todos</option>
+              <option :value="undefined" disabled>Seleccione un banco</option>
               <option v-for="b in store.bancos" :key="b.id_banco" :value="b.id_banco">{{ b.nombre_banco }}</option>
             </select>
           </div>
@@ -124,7 +124,10 @@
                   class="h-3.5 w-3.5 rounded border-gray-300 dark:border-gray-600 text-purple-600 focus:ring-purple-500"
                 />
                 <span class="text-xs text-gray-500 dark:text-gray-400 w-20">{{ mov.fecha }}</span>
-                <span class="text-xs text-gray-700 dark:text-gray-300 flex-1 truncate font-mono" :title="mov.referencia">{{ mov.referencia }}</span>
+                <span class="text-xs text-gray-700 dark:text-gray-300 flex-1 truncate font-mono" :title="mov.referencia">
+                  {{ mov.referencia }}
+                  <span v-if="mov.codigo_unico" class="text-[9px] text-blue-400 dark:text-blue-500 ml-1">({{ mov.codigo_unico }})</span>
+                </span>
                 <span class="text-xs font-semibold text-gray-900 dark:text-white w-24 text-right">${{ mov.monto.toLocaleString('en-US', { minimumFractionDigits: 2 }) }}</span>
               </div>
             </div>
@@ -155,7 +158,10 @@
                   class="h-3.5 w-3.5 rounded border-gray-300 dark:border-gray-600 text-purple-600 focus:ring-purple-500"
                 />
                 <span class="text-xs text-gray-500 dark:text-gray-400 w-20">{{ mov.fecha }}</span>
-                <span class="text-xs text-gray-700 dark:text-gray-300 flex-1 truncate font-mono" :title="mov.referencia">{{ mov.referencia }}</span>
+                <span class="text-xs text-gray-700 dark:text-gray-300 flex-1 truncate font-mono" :title="mov.referencia">
+                  {{ mov.referencia }}
+                  <span v-if="mov.codigo_unico" class="text-[9px] text-blue-400 dark:text-blue-500 ml-1">({{ mov.codigo_unico }})</span>
+                </span>
                 <span class="text-xs font-semibold text-gray-900 dark:text-white w-24 text-right">${{ mov.monto.toLocaleString('en-US', { minimumFractionDigits: 2 }) }}</span>
               </div>
             </div>
@@ -200,17 +206,27 @@ const selectedBanca = ref<number[]>([])
 const conciliandoManual = ref(false)
 
 const selectedBancoName = computed(() => {
-  if (!filtros.id_banco) return 'Todos los bancos'
+  if (!filtros.id_banco) return 'Seleccione un banco'
   const b = store.bancos.find(b => b.id_banco === filtros.id_banco)
-  return b ? b.nombre_banco : 'Banco seleccionado'
+  return b ? b.nombre_banco : 'Banco'
 })
 
 onMounted(async () => {
   if (!store.hasBancos) await store.fetchBancos()
-  await buscar()
+  
+  // No buscar automáticamente si el id_banco es obligatorio
+  // Pero si hay bancos, podríamos pre-seleccionar el primero
+  if (store.bancos.length > 0 && !filtros.id_banco) {
+    filtros.id_banco = store.bancos[0].id_banco
+    await buscar()
+  }
 })
 
 async function buscar() {
+  if (!filtros.id_banco) {
+    toast.error('Banco requerido', 'Por favor seleccione un banco para ver las novedades')
+    return
+  }
   selectedSap.value = []
   selectedBanca.value = []
   try {

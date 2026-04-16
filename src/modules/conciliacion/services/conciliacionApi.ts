@@ -19,6 +19,7 @@ import type {
   ReportePartidasAbiertas,
   PartidasAbiertasParams,
   DashboardParams,
+  SAPIncompleto,
 } from '../types'
 
 // ── Instancia Axios ─────────────────────────────────────────
@@ -192,6 +193,13 @@ export const conciliacionService = {
   async getPartidasAbiertas(params?: PartidasAbiertasParams): Promise<ReportePartidasAbiertas> {
     return unwrap(
       await api.get<AppResponse<ReportePartidasAbiertas>>('/api/v1/reportes/partidas-abiertas', { params }),
+    )
+  },
+
+  /** Obtener datos incompletos de SAP */
+  async getSAPIncompletos(): Promise<SAPIncompleto[]> {
+    return unwrap(
+      await api.get<AppResponse<SAPIncompleto[]>>('/api/v1/reportes/sap-incompletos'),
     )
   },
 }

@@ -24,7 +24,7 @@
               v-model.number="diasAtras"
               type="number"
               min="1"
-              max="90"
+              max="40"
               class="w-24 px-3 py-2.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center"
               :disabled="syncing"
             />
@@ -60,18 +60,22 @@
           </svg>
           <div class="flex-1">
             <p class="font-medium text-emerald-800 dark:text-emerald-200">{{ store.lastSyncResult.mensaje }}</p>
-            <div class="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <div class="bg-white dark:bg-gray-800 rounded-lg p-3 text-center">
-                <p class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{{ store.lastSyncResult.registros_insertados }}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Nuevos</p>
+            <div class="mt-3 grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div class="bg-white dark:bg-gray-800 rounded-lg p-3 text-center border border-emerald-100 dark:border-emerald-900/50">
+                <p class="text-xl font-bold text-emerald-600 dark:text-emerald-400">{{ store.lastSyncResult.registros_insertados }}</p>
+                <p class="text-[10px] uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400 mt-1">Nuevos</p>
               </div>
-              <div class="bg-white dark:bg-gray-800 rounded-lg p-3 text-center">
-                <p class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ store.lastSyncResult.registros_actualizados }}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Actualizados</p>
+              <div class="bg-white dark:bg-gray-800 rounded-lg p-3 text-center border border-blue-100 dark:border-blue-900/50">
+                <p class="text-xl font-bold text-blue-600 dark:text-blue-400">{{ store.lastSyncResult.registros_actualizados }}</p>
+                <p class="text-[10px] uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400 mt-1">Actualizados</p>
               </div>
-              <div class="bg-white dark:bg-gray-800 rounded-lg p-3 text-center sm:col-span-1 col-span-2">
-                <p class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ store.lastSyncResult.fecha_inicio_filtro }}</p>
-                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Desde fecha</p>
+              <div class="bg-white dark:bg-gray-800 rounded-lg p-3 text-center border border-amber-100 dark:border-amber-900/50">
+                <p class="text-xl font-bold text-amber-600 dark:text-amber-400">{{ store.lastSyncResult.registros_incompletos || 0 }}</p>
+                <p class="text-[10px] uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400 mt-1">Incompletos</p>
+              </div>
+              <div class="bg-white dark:bg-gray-800 rounded-lg p-3 text-center border border-gray-100 dark:border-gray-900/50">
+                <p class="text-sm font-bold text-gray-700 dark:text-gray-300">{{ store.lastSyncResult.fecha_inicio_filtro }}</p>
+                <p class="text-[10px] uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400 mt-1">Desde</p>
               </div>
             </div>
           </div>
@@ -110,6 +114,10 @@ const fechaDesde = computed(() => {
 })
 
 async function handleSync() {
+  if (diasAtras.value > 40) {
+    toast.error('Límite excedido', 'El período máximo de sincronización es de 40 días para evitar saturación.')
+    return
+  }
   syncing.value = true
   store.lastSyncResult = null
   try {

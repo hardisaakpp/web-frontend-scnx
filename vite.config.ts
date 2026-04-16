@@ -68,7 +68,7 @@ export default defineConfig(({ mode }) => {
           secure: false,
           rewrite: (path) => path
         },
-<<<<<<< HEAD
+
         // Caja Chica API via mismo host del frontend (evita localhost del navegador cliente remoto)
         '/caja-chica-api': {
           target: cajaChicaProxyTarget,

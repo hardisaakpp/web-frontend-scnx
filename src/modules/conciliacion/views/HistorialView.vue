@@ -66,10 +66,13 @@
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100 dark:divide-gray-700/50">
-              <tr v-for="proceso in store.historial" :key="proceso.id" class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
-                <td class="px-4 py-3 text-gray-900 dark:text-gray-200 text-xs">
-                  <div>{{ proceso.fecha_proceso }}</div>
+              <tr v-for="proceso in store.historial" :key="proceso.id || (proceso as any).id_proceso" class="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                <td class="px-4 py-3 text-gray-900 dark:text-gray-200 text-xs text-center">
+                  <div class="font-medium">#{{ proceso.id || (proceso as any).id_proceso }}</div>
                   <div class="text-[10px] text-gray-400">{{ formatDate(proceso.created_at) }}</div>
+                </td>
+                <td class="px-4 py-3 text-gray-900 dark:text-gray-200 text-xs">
+                  <div>{{ proceso.fecha_proceso || (proceso as any).fecha }}</div>
                 </td>
                 <td class="px-4 py-3 min-w-[150px]">
                   <div class="text-xs font-medium text-gray-900 dark:text-white">{{ proceso.banco }}</div>
@@ -92,9 +95,9 @@
                 <td class="px-4 py-3">
                   <div class="flex items-center justify-center gap-1">
                     <button
-                      @click="verDetalle(proceso.id)"
-                      class="p-1.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 rounded transition-colors"
-                      title="Ver detalle"
+                      @click="verDetalle(proceso.id || (proceso as any).id_proceso)"
+                      class="p-1.5 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+                      title="Ver detalles"
                     >
                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -134,8 +137,8 @@
           <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
             <div>
               <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Detalle del Proceso</h3>
-              <p v-if="store.detalleProceso" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                {{ store.detalleProceso.estado }} · {{ store.detalleProceso.fecha_proceso }} · {{ store.detalleProceso.banco }}
+              <p v-if="store.detalleProceso" class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 uppercase tracking-wider font-medium">
+                {{ store.detalleProceso.estado }} · Lote: {{ store.detalleProceso.id_lote }} · {{ store.detalleProceso.banco }}
               </p>
             </div>
             <button @click="showDetalle = false" class="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg transition-colors">
@@ -151,67 +154,89 @@
               <div class="animate-spin rounded-full h-6 w-6 border-2 border-blue-600 border-t-transparent"></div>
             </div>
 
-            <div v-else-if="store.detalleProceso" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <!-- SAP -->
-              <div>
-                <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                  <span class="w-2 h-2 rounded-full bg-blue-500"></span>
-                  Movimientos SAP ({{ store.detalleProceso.movimientos_sap.length }})
-                </h4>
-                <div class="space-y-1">
-                  <div
-                    v-for="mov in store.detalleProceso.movimientos_sap"
-                    :key="mov.id"
-                    class="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-700/50 rounded text-xs"
-                  >
-                    <div class="flex items-center gap-2 min-w-0">
-                      <span class="text-gray-400 dark:text-gray-500">{{ mov.fecha }}</span>
-                      <span class="text-gray-700 dark:text-gray-300 truncate font-mono">{{ mov.referencia }}</span>
-                    </div>
-                    <span class="font-medium text-gray-900 dark:text-white ml-2">${{ mov.monto.toLocaleString('en-US', { minimumFractionDigits: 2 }) }}</span>
+            <!-- Grid de Grupos -->
+            <div v-if="store.detalleProceso" class="space-y-6">
+              <div v-for="grupo in store.detalleProceso.grupos" :key="grupo.id_grupo" class="bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
+                <!-- Header del Grupo -->
+                <div class="px-4 py-2 bg-white dark:bg-gray-700/50 border-b border-gray-100 dark:border-gray-600 flex items-center justify-between">
+                  <div class="flex items-center gap-3">
+                    <span :class="[
+                      'px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider',
+                      grupo.tipo === 'AUTOMATICA' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'
+                    ]">
+                      {{ grupo.tipo }}
+                    </span>
+                    <span class="text-xs font-mono text-gray-500">ID: {{ grupo.id_grupo }}</span>
                   </div>
-                  <div v-if="store.detalleProceso.movimientos_sap.length === 0" class="text-xs text-gray-400 italic py-2">No hay movimientos SAP</div>
+                  <div class="text-xs font-bold text-gray-900 dark:text-white">
+                    Total: ${{ formatMonto(grupo.monto_total) }}
+                  </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-200 dark:divide-gray-700 p-4 gap-4">
+                  <!-- SAP -->
+                  <div class="space-y-3">
+                    <h5 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                       <span class="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                       SAP
+                    </h5>
+                    <div class="space-y-2">
+                      <div v-for="m in grupo.sap" :key="m.id" class="flex flex-col p-2 bg-white dark:bg-gray-800 rounded border border-gray-100 dark:border-gray-700">
+                        <div class="flex items-center justify-between gap-2">
+                          <span class="text-xs font-mono text-gray-700 dark:text-gray-300 truncate" :title="m.referencia">{{ m.referencia }}</span>
+                          <span class="text-xs font-bold text-gray-900 dark:text-white">${{ formatMonto(m.monto) }}</span>
+                        </div>
+                        <span v-if="m.fecha" class="text-[9px] text-gray-400 mt-1">{{ m.fecha }}</span>
+                      </div>
+                      <div v-if="!grupo.sap.length" class="text-xs text-gray-400 italic py-1 text-center">Sin registros SAP</div>
+                    </div>
+                  </div>
+
+                  <!-- Banca -->
+                  <div class="space-y-3">
+                    <h5 class="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                       <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                       BANCO
+                    </h5>
+                    <div class="space-y-2">
+                      <div v-for="m in grupo.banca" :key="m.id" class="flex flex-col p-2 bg-white dark:bg-gray-800 rounded border border-gray-100 dark:border-gray-700">
+                        <div class="flex items-center justify-between gap-2">
+                          <span class="text-xs font-mono text-gray-700 dark:text-gray-300 truncate" :title="m.referencia">{{ m.referencia }}</span>
+                          <span class="text-xs font-bold text-gray-900 dark:text-white">${{ formatMonto(m.monto) }}</span>
+                        </div>
+                        <span v-if="m.fecha" class="text-[9px] text-gray-400 mt-1">{{ m.fecha }}</span>
+                      </div>
+                      <div v-if="!grupo.banca.length" class="text-xs text-gray-400 italic py-1 text-center">Sin registros bancarios</div>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Comentario -->
+                <div v-if="grupo.comentario" class="px-4 py-2 bg-amber-50/50 dark:bg-amber-900/10 border-t border-gray-100 dark:border-gray-700">
+                   <p class="text-[10px] text-amber-700 dark:text-amber-400 italic">"{{ grupo.comentario }}"</p>
                 </div>
               </div>
 
-              <!-- Banca -->
-              <div>
-                <h4 class="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-                  <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
-                  Movimientos Banco ({{ store.detalleProceso.movimientos_banca.length }})
-                </h4>
-                <div class="space-y-1">
-                  <div
-                    v-for="mov in store.detalleProceso.movimientos_banca"
-                    :key="mov.id"
-                    class="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-700/50 rounded text-xs"
-                  >
-                    <div class="flex items-center gap-2 min-w-0">
-                      <span class="text-gray-400 dark:text-gray-500">{{ mov.fecha }}</span>
-                      <span class="text-gray-700 dark:text-gray-300 truncate font-mono">{{ mov.referencia }}</span>
+              <!-- Totales Globales -->
+              <div class="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+                <div class="bg-gray-900 dark:bg-black rounded-xl p-5 shadow-inner">
+                  <div class="grid grid-cols-2 md:grid-cols-3 gap-6">
+                    <div>
+                      <p class="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Total SAP</p>
+                      <p class="text-xl font-bold text-white">${{ formatMonto(store.detalleProceso.total_sap) }}</p>
                     </div>
-                    <span class="font-medium text-gray-900 dark:text-white ml-2">${{ mov.monto.toLocaleString('en-US', { minimumFractionDigits: 2 }) }}</span>
+                    <div>
+                      <p class="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Total Banco</p>
+                      <p class="text-xl font-bold text-white">${{ formatMonto(store.detalleProceso.total_banco) }}</p>
+                    </div>
+                    <div class="col-span-2 md:col-span-1 border-t md:border-t-0 md:border-l border-gray-800 pt-4 md:pt-0 md:pl-6">
+                      <p class="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Diferencia</p>
+                      <p class="text-2xl font-black" :class="(store.detalleProceso.total_sap - store.detalleProceso.total_banco) !== 0 ? 'text-amber-500' : 'text-emerald-400'">
+                        ${{ formatMonto(store.detalleProceso.total_sap - store.detalleProceso.total_banco) }}
+                      </p>
+                    </div>
                   </div>
-                  <div v-if="store.detalleProceso.movimientos_banca.length === 0" class="text-xs text-gray-400 italic py-2">No hay movimientos del banco</div>
                 </div>
-              </div>
-            </div>
-
-            <!-- Totales -->
-            <div v-if="store.detalleProceso" class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
-              <div class="flex items-center justify-between text-xs">
-                <span class="text-gray-500 dark:text-gray-400">Total SAP</span>
-                <span class="font-semibold text-gray-900 dark:text-white">${{ formatMonto(store.detalleProceso.total_sap) }}</span>
-              </div>
-              <div class="flex items-center justify-between text-xs">
-                <span class="text-gray-500 dark:text-gray-400">Total Banco</span>
-                <span class="font-semibold text-gray-900 dark:text-white">${{ formatMonto(store.detalleProceso.total_banco) }}</span>
-              </div>
-              <div class="flex items-center justify-between">
-                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Diferencia</span>
-                <span class="text-lg font-bold" :class="store.detalleProceso.diferencia !== 0 ? 'text-amber-600' : 'text-emerald-600'">
-                  ${{ formatMonto(store.detalleProceso.diferencia) }}
-                </span>
               </div>
             </div>
           </div>
@@ -338,7 +363,8 @@ function formatDate(dateStr: string): string {
   }
 }
 
-function formatMonto(monto: number): string {
+function formatMonto(monto: number | undefined | null): string {
+  if (monto === undefined || monto === null) return '0.00'
   return monto.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 </script>

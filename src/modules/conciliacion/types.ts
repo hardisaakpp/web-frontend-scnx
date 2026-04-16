@@ -67,6 +67,7 @@ export interface SAPSyncResponse {
   mensaje: string
   registros_insertados: number
   registros_actualizados: number
+  registros_incompletos?: number
   fecha_inicio_filtro: string  // date
   fecha_baja: string           // datetime
 }
@@ -100,6 +101,7 @@ export interface MovimientoSimple {
   id: string
   fecha: string  // date
   referencia: string
+  codigo_unico?: string  // Nuevo campo del backend
   monto: number
   tipo: string
 }
@@ -138,9 +140,22 @@ export interface ProcesoConciliacion {
   created_at: string
 }
 
-export interface DetalleProcesoResponse extends ProcesoConciliacion {
-  movimientos_sap: MovimientoSimple[]
-  movimientos_banca: MovimientoSimple[]
+export interface DetalleProcesoResponse {
+  id_lote: string
+  banco: string
+  estado: string
+  total_sap: number
+  total_banco: number
+  grupos: GrupoConciliado[]
+}
+
+export interface GrupoConciliado {
+  id_grupo: string
+  tipo: string
+  monto_total: number
+  comentario: string | null
+  sap: MovimientoSimple[]
+  banca: MovimientoSimple[]
 }
 
 export interface HistorialParams {
@@ -148,18 +163,6 @@ export interface HistorialParams {
   fecha_desde?: string | null
   fecha_hasta?: string | null
   estado?: string | null
-}
-
-export interface DetalleProcesoResponse {
-  id_proceso: string
-  tipo: string
-  estado: string
-  fecha: string
-  movimientos_sap: MovimientoSimple[]
-  movimientos_banca: MovimientoSimple[]
-  monto_total: number
-  usuario?: string
-  comentario?: string
 }
 
 // ── Reportes — Partidas Abiertas ────────────────────────────
@@ -184,6 +187,23 @@ export interface ReportePartidasAbiertas {
 export interface PartidasAbiertasParams {
   fecha_corte?: string
   id_banco?: number | null
+}
+
+// ── Reportes — SAP Incompletos ──────────────────────────────
+export interface SAPIncompleto {
+  id: number
+  fecha: string
+  banco: string
+  cuenta: string
+  trans_id: number
+  line_id: number
+  origen: string
+  numero_origen: string
+  monto: number
+  referencia1: string
+  observaciones: string
+  info_detallada: string
+  codigo_unico: string
 }
 
 // ── Validación (FastAPI) ────────────────────────────────────

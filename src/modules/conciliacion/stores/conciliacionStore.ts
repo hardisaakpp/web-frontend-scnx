@@ -19,6 +19,7 @@ import type {
   ReportePartidasAbiertas,
   PartidasAbiertasParams,
   DashboardParams,
+  SAPIncompleto,
 } from '../types'
 
 export const useConciliacionStore = defineStore('conciliacion', () => {
@@ -30,6 +31,7 @@ export const useConciliacionStore = defineStore('conciliacion', () => {
   const historial = ref<ProcesoConciliacion[]>([])
   const detalleProceso = ref<DetalleProcesoResponse | null>(null)
   const partidasAbiertas = ref<ReportePartidasAbiertas | null>(null)
+  const sapIncompletos = ref<SAPIncompleto[]>([])
 
   // Resultado de última operación (import, sync, conciliación)
   const lastImportResult = ref<AppResponse<ImportResult> | null>(null)
@@ -158,6 +160,13 @@ export const useConciliacionStore = defineStore('conciliacion', () => {
     })
   }
 
+  async function fetchSAPIncompletos() {
+    return withLoading(async () => {
+      sapIncompletos.value = await conciliacionService.getSAPIncompletos()
+      return sapIncompletos.value
+    })
+  }
+
   return {
     // State
     dashboard,
@@ -190,5 +199,7 @@ export const useConciliacionStore = defineStore('conciliacion', () => {
     fetchDetalleProceso,
     revertirConciliacion,
     fetchPartidasAbiertas,
+    sapIncompletos,
+    fetchSAPIncompletos,
   }
 })
