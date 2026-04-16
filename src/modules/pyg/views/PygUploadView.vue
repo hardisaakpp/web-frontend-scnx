@@ -38,11 +38,8 @@
     </div>
 
     <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
-      <div class="mb-3 flex items-center justify-between">
+      <div class="mb-3">
         <h2 class="text-lg font-medium text-gray-900 dark:text-white">Historial de cargas</h2>
-        <button class="rounded-md border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800" @click="loadUploads">
-          Refrescar
-        </button>
       </div>
       <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-700">
@@ -50,31 +47,25 @@
             <tr class="text-left text-gray-600 dark:text-gray-300">
               <th class="px-3 py-2">Archivo</th>
               <th class="px-3 py-2">Periodo</th>
-              <th class="px-3 py-2">Usuario</th>
               <th class="px-3 py-2">Estado</th>
               <th class="px-3 py-2">Filas</th>
-              <th class="px-3 py-2">Acciones</th>
+              <th class="px-3 py-2 whitespace-nowrap">Fecha ingreso</th>
+              <th class="px-3 py-2 whitespace-nowrap">Última actualización</th>
+              <th class="px-3 py-2">Usuario últ. act.</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
             <tr v-for="item in uploads" :key="item.id" class="text-gray-800 dark:text-gray-200">
               <td class="px-3 py-2">{{ item.fileName }}</td>
               <td class="px-3 py-2">{{ item.year }}-{{ String(item.month).padStart(2, '0') }}</td>
-              <td class="px-3 py-2">{{ item.uploadedBy }}</td>
               <td class="px-3 py-2">{{ item.status }}</td>
               <td class="px-3 py-2">{{ item.validRows }}/{{ item.totalRows }}</td>
-              <td class="px-3 py-2">
-                <button
-                  class="rounded-md border border-red-300 px-2 py-1 text-xs text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
-                  :disabled="item.errorRows === 0"
-                  @click="handleDownloadErrors(item.id)"
-                >
-                  Log errores
-                </button>
-              </td>
+              <td class="px-3 py-2 text-gray-600 dark:text-gray-400 whitespace-nowrap">{{ formatAuditDate(item.uploadedAt) }}</td>
+              <td class="px-3 py-2 text-gray-600 dark:text-gray-400 whitespace-nowrap">—</td>
+              <td class="px-3 py-2 text-gray-600 dark:text-gray-400">{{ item.uploadedBy?.trim() || '—' }}</td>
             </tr>
             <tr v-if="uploads.length === 0">
-              <td colspan="6" class="px-3 py-3 text-center text-gray-500">Sin cargas registradas.</td>
+              <td colspan="7" class="px-3 py-3 text-center text-gray-500">Sin cargas registradas.</td>
             </tr>
           </tbody>
         </table>
@@ -87,7 +78,10 @@
 
     <div class="grid gap-4 lg:grid-cols-2">
       <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
-        <h2 class="mb-3 text-lg font-medium text-gray-900 dark:text-white">Consulta y edición % Matriz</h2>
+        <div class="mb-3 space-y-1">
+          <h2 class="text-lg font-medium text-gray-900 dark:text-white">Consulta y edición % Matriz</h2>
+          <p class="text-xs text-gray-500 dark:text-gray-400">Doble clic en periodo, empresa, marca o % para editar. Enter guardar · Esc cancelar.</p>
+        </div>
         <div class="mb-3 grid gap-2 md:grid-cols-2">
           <input v-model="matrizFilters.year" type="number" min="2000" class="rounded-md border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-800" placeholder="Año" />
           <input v-model="matrizFilters.month" type="number" min="1" max="12" class="rounded-md border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-800" placeholder="Mes" />
@@ -105,46 +99,101 @@
                 <th class="px-2 py-2">Empresa</th>
                 <th class="px-2 py-2">Marca</th>
                 <th class="px-2 py-2">% Matriz</th>
-                <th class="px-2 py-2">Acciones</th>
+                <th class="px-2 py-2 whitespace-nowrap">Fecha ingreso</th>
+                <th class="px-2 py-2 whitespace-nowrap">Última actualización</th>
+                <th class="px-2 py-2">Usuario últ. act.</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
               <tr v-for="row in matrizRows" :key="row.id" class="text-gray-800 dark:text-gray-200">
-                <td class="px-2 py-2">
+                <td
+                  class="px-2 py-2"
+                  :class="matrizEditId !== row.id ? 'cursor-pointer' : ''"
+                  title="Doble clic para editar"
+                  @dblclick="onMatrizDataDblClick(row)"
+                >
                   <template v-if="matrizEditId === row.id">
                     <div class="flex gap-1">
-                      <input v-model.number="matrizDraft.year" type="number" min="2000" class="w-20 rounded border border-gray-300 px-1 py-1 dark:border-gray-700 dark:bg-gray-800" />
-                      <input v-model.number="matrizDraft.month" type="number" min="1" max="12" class="w-14 rounded border border-gray-300 px-1 py-1 dark:border-gray-700 dark:bg-gray-800" />
+                      <input
+                        v-model.number="matrizDraft.year"
+                        type="number"
+                        min="2000"
+                        class="w-20 rounded border border-gray-300 px-1 py-1 dark:border-gray-700 dark:bg-gray-800"
+                        @keydown.enter.prevent="saveMatrizEdit(row.id)"
+                        @keydown.esc.prevent="cancelMatrizEdit"
+                      />
+                      <input
+                        v-model.number="matrizDraft.month"
+                        type="number"
+                        min="1"
+                        max="12"
+                        class="w-14 rounded border border-gray-300 px-1 py-1 dark:border-gray-700 dark:bg-gray-800"
+                        @keydown.enter.prevent="saveMatrizEdit(row.id)"
+                        @keydown.esc.prevent="cancelMatrizEdit"
+                      />
                     </div>
                   </template>
                   <template v-else>
                     {{ row.year }}/{{ row.month }}
                   </template>
                 </td>
-                <td class="px-2 py-2">
-                  <input v-if="matrizEditId === row.id" v-model.trim="matrizDraft.empresa" type="text" class="w-full rounded border border-gray-300 px-1 py-1 dark:border-gray-700 dark:bg-gray-800" />
+                <td
+                  class="px-2 py-2"
+                  :class="matrizEditId !== row.id ? 'cursor-pointer' : ''"
+                  title="Doble clic para editar"
+                  @dblclick="onMatrizDataDblClick(row)"
+                >
+                  <input
+                    v-if="matrizEditId === row.id"
+                    v-model.trim="matrizDraft.empresa"
+                    type="text"
+                    class="w-full rounded border border-gray-300 px-1 py-1 dark:border-gray-700 dark:bg-gray-800"
+                    @keydown.enter.prevent="saveMatrizEdit(row.id)"
+                    @keydown.esc.prevent="cancelMatrizEdit"
+                  />
                   <span v-else>{{ row.empresa }}</span>
                 </td>
-                <td class="px-2 py-2">
-                  <input v-if="matrizEditId === row.id" v-model.trim="matrizDraft.marca" type="text" class="w-full rounded border border-gray-300 px-1 py-1 dark:border-gray-700 dark:bg-gray-800" />
+                <td
+                  class="px-2 py-2"
+                  :class="matrizEditId !== row.id ? 'cursor-pointer' : ''"
+                  title="Doble clic para editar"
+                  @dblclick="onMatrizDataDblClick(row)"
+                >
+                  <input
+                    v-if="matrizEditId === row.id"
+                    v-model.trim="matrizDraft.marca"
+                    type="text"
+                    class="w-full rounded border border-gray-300 px-1 py-1 dark:border-gray-700 dark:bg-gray-800"
+                    @keydown.enter.prevent="saveMatrizEdit(row.id)"
+                    @keydown.esc.prevent="cancelMatrizEdit"
+                  />
                   <span v-else>{{ row.marca }}</span>
                 </td>
-                <td class="px-2 py-2">
-                  <input v-if="matrizEditId === row.id" v-model.number="matrizDraft.percentMatriz" type="number" min="0" max="1" step="0.0001" class="w-24 rounded border border-gray-300 px-1 py-1 dark:border-gray-700 dark:bg-gray-800" />
+                <td
+                  class="px-2 py-2"
+                  :class="matrizEditId !== row.id ? 'cursor-pointer' : ''"
+                  title="Doble clic para editar"
+                  @dblclick="onMatrizDataDblClick(row)"
+                >
+                  <input
+                    v-if="matrizEditId === row.id"
+                    v-model.number="matrizDraft.percentMatriz"
+                    type="number"
+                    min="0"
+                    max="1"
+                    step="0.0001"
+                    class="w-24 rounded border border-gray-300 px-1 py-1 dark:border-gray-700 dark:bg-gray-800"
+                    @keydown.enter.prevent="saveMatrizEdit(row.id)"
+                    @keydown.esc.prevent="cancelMatrizEdit"
+                  />
                   <span v-else>{{ row.percentMatriz }}</span>
                 </td>
-                <td class="px-2 py-2">
-                  <div class="flex gap-1">
-                    <template v-if="matrizEditId === row.id">
-                      <button class="rounded border border-green-300 px-2 py-1 text-xs text-green-700 hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-60" :disabled="savingMatriz" @click="saveMatrizEdit(row.id)">Guardar</button>
-                      <button class="rounded border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50" @click="cancelMatrizEdit">Cancelar</button>
-                    </template>
-                    <button v-else class="rounded border border-blue-300 px-2 py-1 text-xs text-blue-700 hover:bg-blue-50" @click="startMatrizEdit(row)">Editar</button>
-                  </div>
-                </td>
+                <td class="px-2 py-2 text-gray-600 dark:text-gray-400 whitespace-nowrap">{{ formatAuditDate(row.createdAt) }}</td>
+                <td class="px-2 py-2 text-gray-600 dark:text-gray-400 whitespace-nowrap">{{ formatAuditDate(row.updatedAt) }}</td>
+                <td class="px-2 py-2 text-gray-600 dark:text-gray-400">{{ row.lastUpdatedBy?.trim() || '—' }}</td>
               </tr>
               <tr v-if="matrizRows.length === 0">
-                <td colspan="5" class="px-2 py-3 text-center text-gray-500">Sin datos.</td>
+                <td colspan="7" class="px-2 py-3 text-center text-gray-500">Sin datos.</td>
               </tr>
             </tbody>
           </table>
@@ -152,7 +201,10 @@
       </div>
 
       <div class="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
-        <h2 class="mb-3 text-lg font-medium text-gray-900 dark:text-white">Consulta y edición % Bodega</h2>
+        <div class="mb-3 space-y-1">
+          <h2 class="text-lg font-medium text-gray-900 dark:text-white">Consulta y edición % Bodega</h2>
+          <p class="text-xs text-gray-500 dark:text-gray-400">Doble clic en periodo, empresa/marca, bodega o % para editar. Enter guardar · Esc cancelar.</p>
+        </div>
         <div class="mb-3 grid gap-2 md:grid-cols-2">
           <input v-model="bodegaFilters.year" type="number" min="2000" class="rounded-md border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-800" placeholder="Año" />
           <input v-model="bodegaFilters.month" type="number" min="1" max="12" class="rounded-md border border-gray-300 px-2 py-1.5 text-sm dark:border-gray-700 dark:bg-gray-800" placeholder="Mes" />
@@ -171,51 +223,111 @@
                 <th class="px-2 py-2">Empresa / Marca</th>
                 <th class="px-2 py-2">Bodega</th>
                 <th class="px-2 py-2">% General</th>
-                <th class="px-2 py-2">Acciones</th>
+                <th class="px-2 py-2 whitespace-nowrap">Fecha ingreso</th>
+                <th class="px-2 py-2 whitespace-nowrap">Última actualización</th>
+                <th class="px-2 py-2">Usuario últ. act.</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
               <tr v-for="row in bodegaRows" :key="row.id" class="text-gray-800 dark:text-gray-200">
-                <td class="px-2 py-2">
+                <td
+                  class="px-2 py-2"
+                  :class="bodegaEditId !== row.id ? 'cursor-pointer' : ''"
+                  title="Doble clic para editar"
+                  @dblclick="onBodegaDataDblClick(row)"
+                >
                   <template v-if="bodegaEditId === row.id">
                     <div class="flex gap-1">
-                      <input v-model.number="bodegaDraft.year" type="number" min="2000" class="w-20 rounded border border-gray-300 px-1 py-1 dark:border-gray-700 dark:bg-gray-800" />
-                      <input v-model.number="bodegaDraft.month" type="number" min="1" max="12" class="w-14 rounded border border-gray-300 px-1 py-1 dark:border-gray-700 dark:bg-gray-800" />
+                      <input
+                        v-model.number="bodegaDraft.year"
+                        type="number"
+                        min="2000"
+                        class="w-20 rounded border border-gray-300 px-1 py-1 dark:border-gray-700 dark:bg-gray-800"
+                        @keydown.enter.prevent="saveBodegaEdit(row.id)"
+                        @keydown.esc.prevent="cancelBodegaEdit"
+                      />
+                      <input
+                        v-model.number="bodegaDraft.month"
+                        type="number"
+                        min="1"
+                        max="12"
+                        class="w-14 rounded border border-gray-300 px-1 py-1 dark:border-gray-700 dark:bg-gray-800"
+                        @keydown.enter.prevent="saveBodegaEdit(row.id)"
+                        @keydown.esc.prevent="cancelBodegaEdit"
+                      />
                     </div>
                   </template>
                   <template v-else>
                     {{ row.year }}/{{ row.month }}
                   </template>
                 </td>
-                <td class="px-2 py-2">
+                <td
+                  class="px-2 py-2"
+                  :class="bodegaEditId !== row.id ? 'cursor-pointer' : ''"
+                  title="Doble clic para editar"
+                  @dblclick="onBodegaDataDblClick(row)"
+                >
                   <template v-if="bodegaEditId === row.id">
-                    <input v-model.trim="bodegaDraft.empresa" type="text" class="mb-1 w-full rounded border border-gray-300 px-1 py-1 dark:border-gray-700 dark:bg-gray-800" />
-                    <input v-model.trim="bodegaDraft.marca" type="text" class="w-full rounded border border-gray-300 px-1 py-1 dark:border-gray-700 dark:bg-gray-800" />
+                    <input
+                      v-model.trim="bodegaDraft.empresa"
+                      type="text"
+                      class="mb-1 w-full rounded border border-gray-300 px-1 py-1 dark:border-gray-700 dark:bg-gray-800"
+                      @keydown.enter.prevent="saveBodegaEdit(row.id)"
+                      @keydown.esc.prevent="cancelBodegaEdit"
+                    />
+                    <input
+                      v-model.trim="bodegaDraft.marca"
+                      type="text"
+                      class="w-full rounded border border-gray-300 px-1 py-1 dark:border-gray-700 dark:bg-gray-800"
+                      @keydown.enter.prevent="saveBodegaEdit(row.id)"
+                      @keydown.esc.prevent="cancelBodegaEdit"
+                    />
                   </template>
                   <template v-else>
                     {{ row.empresa }} / {{ row.marca }}
                   </template>
                 </td>
-                <td class="px-2 py-2">
-                  <input v-if="bodegaEditId === row.id" v-model.trim="bodegaDraft.codigoBodega" type="text" class="w-full rounded border border-gray-300 px-1 py-1 dark:border-gray-700 dark:bg-gray-800" />
+                <td
+                  class="px-2 py-2"
+                  :class="bodegaEditId !== row.id ? 'cursor-pointer' : ''"
+                  title="Doble clic para editar"
+                  @dblclick="onBodegaDataDblClick(row)"
+                >
+                  <input
+                    v-if="bodegaEditId === row.id"
+                    v-model.trim="bodegaDraft.codigoBodega"
+                    type="text"
+                    class="w-full rounded border border-gray-300 px-1 py-1 dark:border-gray-700 dark:bg-gray-800"
+                    @keydown.enter.prevent="saveBodegaEdit(row.id)"
+                    @keydown.esc.prevent="cancelBodegaEdit"
+                  />
                   <span v-else>{{ row.codigoBodega }}</span>
                 </td>
-                <td class="px-2 py-2">
-                  <input v-if="bodegaEditId === row.id" v-model.number="bodegaDraft.percentGeneral" type="number" min="0" max="1" step="0.0001" class="w-24 rounded border border-gray-300 px-1 py-1 dark:border-gray-700 dark:bg-gray-800" />
+                <td
+                  class="px-2 py-2"
+                  :class="bodegaEditId !== row.id ? 'cursor-pointer' : ''"
+                  title="Doble clic para editar"
+                  @dblclick="onBodegaDataDblClick(row)"
+                >
+                  <input
+                    v-if="bodegaEditId === row.id"
+                    v-model.number="bodegaDraft.percentGeneral"
+                    type="number"
+                    min="0"
+                    max="1"
+                    step="0.0001"
+                    class="w-24 rounded border border-gray-300 px-1 py-1 dark:border-gray-700 dark:bg-gray-800"
+                    @keydown.enter.prevent="saveBodegaEdit(row.id)"
+                    @keydown.esc.prevent="cancelBodegaEdit"
+                  />
                   <span v-else>{{ row.percentGeneral }}</span>
                 </td>
-                <td class="px-2 py-2">
-                  <div class="flex gap-1">
-                    <template v-if="bodegaEditId === row.id">
-                      <button class="rounded border border-green-300 px-2 py-1 text-xs text-green-700 hover:bg-green-50 disabled:cursor-not-allowed disabled:opacity-60" :disabled="savingBodega" @click="saveBodegaEdit(row.id)">Guardar</button>
-                      <button class="rounded border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50" @click="cancelBodegaEdit">Cancelar</button>
-                    </template>
-                    <button v-else class="rounded border border-blue-300 px-2 py-1 text-xs text-blue-700 hover:bg-blue-50" @click="startBodegaEdit(row)">Editar</button>
-                  </div>
-                </td>
+                <td class="px-2 py-2 text-gray-600 dark:text-gray-400 whitespace-nowrap">{{ formatAuditDate(row.createdAt) }}</td>
+                <td class="px-2 py-2 text-gray-600 dark:text-gray-400 whitespace-nowrap">{{ formatAuditDate(row.updatedAt) }}</td>
+                <td class="px-2 py-2 text-gray-600 dark:text-gray-400">{{ row.lastUpdatedBy?.trim() || '—' }}</td>
               </tr>
               <tr v-if="bodegaRows.length === 0">
-                <td colspan="5" class="px-2 py-3 text-center text-gray-500">Sin datos.</td>
+                <td colspan="7" class="px-2 py-3 text-center text-gray-500">Sin datos.</td>
               </tr>
             </tbody>
           </table>
@@ -226,9 +338,9 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { lastNotification } from '@/composables/useNotificaciones'
 import {
-  downloadErrors,
   downloadTemplate,
   getBodega,
   getMatriz,
@@ -250,9 +362,12 @@ const uploadMessage = ref('')
 const uploadOk = ref(false)
 
 const uploads = ref<UploadBatchSummary[]>([])
+const loadingUploads = ref(false)
 const matrizRows = ref<MatrizRow[]>([])
 const bodegaRows = ref<BodegaRow[]>([])
 const queryMessage = ref('')
+const UPLOADS_AUTO_REFRESH_MS = 10000
+let uploadsAutoRefreshTimer: ReturnType<typeof setInterval> | null = null
 
 const matrizFilters = ref({
   year: '',
@@ -294,6 +409,15 @@ function toOptionalNumber(value: string): number | undefined {
   if (!value.trim()) return undefined
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : undefined
+}
+
+/** Misma convención que otros módulos (p. ej. gestión de usuarios). */
+function formatAuditDate(value: string | undefined): string {
+  const s = (value || '').trim()
+  if (!s) return '—'
+  const d = new Date(s)
+  if (Number.isNaN(d.getTime())) return s
+  return d.toLocaleString('es-EC', { dateStyle: 'short', timeStyle: 'short' })
 }
 
 function getApiErrorMessage(error: unknown, fallback: string): string {
@@ -369,6 +493,8 @@ async function handleUpload() {
 }
 
 async function loadUploads() {
+  if (loadingUploads.value) return
+  loadingUploads.value = true
   queryMessage.value = ''
   try {
     uploads.value = await getUploads()
@@ -378,12 +504,9 @@ async function loadUploads() {
       error,
       'No se pudo cargar el historial de cargas PYG. Revisa proxy (VITE_PYG_PROXY_TARGET), permisos del contenedor y logs del backend.'
     )
+  } finally {
+    loadingUploads.value = false
   }
-}
-
-async function handleDownloadErrors(batchId: number) {
-  const blob = await downloadErrors(batchId)
-  saveBlob(blob, `errores_carga_${batchId}.txt`)
 }
 
 async function loadMatriz() {
@@ -417,6 +540,12 @@ async function loadBodega() {
   }
 }
 
+function onMatrizDataDblClick(row: MatrizRow) {
+  if (savingMatriz.value) return
+  if (matrizEditId.value === row.id) return
+  startMatrizEdit(row)
+}
+
 function startMatrizEdit(row: MatrizRow) {
   matrizEditId.value = row.id
   matrizDraft.value = {
@@ -444,6 +573,12 @@ async function saveMatrizEdit(id: number) {
   } finally {
     savingMatriz.value = false
   }
+}
+
+function onBodegaDataDblClick(row: BodegaRow) {
+  if (savingBodega.value) return
+  if (bodegaEditId.value === row.id) return
+  startBodegaEdit(row)
 }
 
 function startBodegaEdit(row: BodegaRow) {
@@ -478,5 +613,20 @@ async function saveBodegaEdit(id: number) {
 
 onMounted(async () => {
   await loadUploads()
+  uploadsAutoRefreshTimer = setInterval(() => {
+    void loadUploads()
+  }, UPLOADS_AUTO_REFRESH_MS)
+})
+
+watch(lastNotification, (notification) => {
+  if (!notification) return
+  if (notification.target_permission !== 'pyg.edit') return
+  void loadUploads()
+})
+
+onBeforeUnmount(() => {
+  if (!uploadsAutoRefreshTimer) return
+  clearInterval(uploadsAutoRefreshTimer)
+  uploadsAutoRefreshTimer = null
 })
 </script>

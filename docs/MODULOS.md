@@ -342,6 +342,37 @@ En Vite, una importación sin extensión (ej. `import router from './router'`) p
 
 Estándar del proyecto: al implementar **PATCH/PUT/POST** que modifiquen entidades mostradas en tablas o formularios, fusiona en el estado local el **cuerpo de respuesta** con el registro actualizado (auditoría, campos calculados) en lugar de asumir solo valores en el cliente. Detalle, contrato con backend y referencia en código: **[MUTACIONES_API_SINCRONIZACION_UI.md](MUTACIONES_API_SINCRONIZACION_UI.md)**.
 
+## Actualizacion automatica de listas e historiales (estandar)
+
+Para vistas con tablas de seguimiento (historiales, colas, listados operativos), el estandar del proyecto es **no depender de un boton manual "Refrescar"**.
+
+### Regla base
+
+1. **Sincronizacion automatica inmediata** tras acciones locales exitosas (ej. crear/subir/editar).
+2. **Sincronizacion por eventos en tiempo real** cuando exista SSE (`useNotificaciones` + `lastNotification`).
+3. **Polling de respaldo** para cubrir eventos externos que no lleguen por SSE.
+4. **Sin peticiones solapadas** (usar bandera `loading` para evitar concurrencia).
+
+### Implementacion recomendada
+
+- Hacer carga inicial en `onMounted`.
+- Encadenar `await loadList()` despues de la accion local exitosa (`POST/PUT/PATCH`).
+- Escuchar `lastNotification` y recargar cuando el evento aplique al modulo/permiso.
+- Configurar `setInterval` de respaldo (10-30s segun criticidad) y limpiar en `onBeforeUnmount`.
+- Reemplazar el boton `Refrescar` por un indicador pasivo de estado (ej. "Actualizacion automatica activa").
+
+### Checklist para nuevos modulos
+
+- [ ] La vista funciona sin boton `Refrescar`.
+- [ ] La lista se actualiza sola despues de mutaciones locales.
+- [ ] Existe listener de SSE para recarga dirigida por permiso/evento.
+- [ ] Existe polling de respaldo con cleanup al desmontar.
+- [ ] Hay guardas para evitar llamadas duplicadas mientras carga.
+
+### Referencia actual en el proyecto
+
+- `src/modules/pyg/views/PygUploadView.vue`: historial de cargas con actualizacion automatica (accion local + SSE + polling) y sin boton `Refrescar`.
+
 ## 📞 Soporte
 
 Si tienes dudas sobre la estructura, consulta con el equipo líder o revisa los módulos existentes.

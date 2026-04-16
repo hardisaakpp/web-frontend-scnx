@@ -265,6 +265,16 @@
           <span v-show="!effectiveSidebarCollapsed">Cerrar Sesión</span>
         </button>
       </div>
+      <button
+        v-if="isDesktopSidebarViewport"
+        @click="cycleSidebarMode"
+        class="hidden md:flex absolute top-1/2 -right-3 -translate-y-1/2 h-10 w-7 items-center justify-center rounded-r-lg border border-slate-600/80 bg-slate-800 text-slate-200 shadow-lg hover:bg-slate-700 hover:text-white transition-colors"
+        :title="sidebarModeLabel"
+        aria-label="Cambiar modo del sidebar"
+      >
+        <PinOff v-if="sidebarMode === 'auto'" class="h-4 w-4 opacity-80" />
+        <Pin v-else class="h-4 w-4 text-sky-300" />
+      </button>
     </aside>
 
     <!-- Main Content -->
@@ -364,6 +374,7 @@ import {
   DocumentArrowUpIcon,
   IdentificationIcon
 } from '@heroicons/vue/24/outline'
+import { Pin, PinOff } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth'
 import { useThemeStore } from '../stores/theme'
 import ToastContainer from '../components/ToastContainer.vue'
@@ -397,6 +408,9 @@ const isSidebarOpen = ref(false)
 
 /** Expansión al pasar el ratón (solo escritorio, breakpoint `md`) */
 const isSidebarHoverExpanded = ref(false)
+type SidebarMode = 'auto' | 'expanded' | 'compact'
+const SIDEBAR_MODE_STORAGE_KEY = 'scnexus.sidebar.mode'
+const sidebarMode = ref<SidebarMode>('auto')
 
 const SIDEBAR_MD_MIN_PX = 768
 
@@ -412,20 +426,48 @@ if (typeof window !== 'undefined') {
 }
 
 function onSidebarMouseEnter() {
-  if (isDesktopSidebarViewport.value) {
+  if (isDesktopSidebarViewport.value && sidebarMode.value === 'auto') {
     isSidebarHoverExpanded.value = true
   }
 }
 
 function onSidebarMouseLeave() {
+  if (sidebarMode.value !== 'auto') return
   isSidebarHoverExpanded.value = false
 }
 
 /** Escritorio: franja estrecha salvo hover. Móvil: ancho completo cuando el panel está abierto */
 const effectiveSidebarCollapsed = computed(() => {
   if (!isDesktopSidebarViewport.value) return false
+  if (sidebarMode.value === 'expanded') return false
+  if (sidebarMode.value === 'compact') return true
   return !isSidebarHoverExpanded.value
 })
+
+const sidebarModeLabel = computed(() => {
+  if (sidebarMode.value === 'auto') return 'Modo sidebar: Automático'
+  if (sidebarMode.value === 'expanded') return 'Modo sidebar: Fijo abierto'
+  return 'Modo sidebar: Fijo compacto'
+})
+
+function persistSidebarMode() {
+  if (typeof window === 'undefined') return
+  window.localStorage.setItem(SIDEBAR_MODE_STORAGE_KEY, sidebarMode.value)
+}
+
+function cycleSidebarMode() {
+  if (sidebarMode.value === 'auto') {
+    sidebarMode.value = 'expanded'
+    isSidebarHoverExpanded.value = true
+  } else if (sidebarMode.value === 'expanded') {
+    sidebarMode.value = 'compact'
+    isSidebarHoverExpanded.value = false
+  } else {
+    sidebarMode.value = 'auto'
+    isSidebarHoverExpanded.value = false
+  }
+  persistSidebarMode()
+}
 
 const pageTitle = computed(() => {
   const titles: Record<string, string> = {
@@ -511,6 +553,12 @@ const canAccessGestionOdcSap = computed(() => {
 onMounted(async () => {
   if (authStore.token && !authStore.capabilities) {
     await authStore.fetchMe()
+  }
+  if (typeof window !== 'undefined') {
+    const savedSidebarMode = window.localStorage.getItem(SIDEBAR_MODE_STORAGE_KEY)
+    if (savedSidebarMode === 'auto' || savedSidebarMode === 'expanded' || savedSidebarMode === 'compact') {
+      sidebarMode.value = savedSidebarMode
+    }
   }
   updateSidebarViewport()
   if (typeof window !== 'undefined') {
