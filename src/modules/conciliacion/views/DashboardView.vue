@@ -251,6 +251,24 @@
             </div>
           </div>
         </router-link>
+
+        <!-- Reporte Maestro -->
+        <router-link
+          to="/conciliacion/reporte-maestro"
+          class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:border-indigo-300 dark:hover:border-indigo-600 hover:shadow-md transition-all text-left block group"
+        >
+          <div class="flex items-start gap-3">
+            <div class="w-10 h-10 rounded-lg bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+              <svg class="w-5 h-5 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-gray-900 dark:text-white text-sm">Reporte Maestro</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Reporte unificado completo con descarga a Excel</div>
+            </div>
+          </div>
+        </router-link>
       </div>
     </div>
   </div>

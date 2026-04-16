@@ -189,6 +189,28 @@ export interface PartidasAbiertasParams {
   id_banco?: number | null
 }
 
+export interface MovimientoReporte {
+  banco: string
+  fecha: string
+  referencia: string | null
+  referencia2: string | null
+  descripcion: string | null
+  valor: number
+  codigo_unico: string | null
+  estado: string
+  origen: string
+  observacion: string | null
+}
+
+export interface ReporteMaestroParams {
+  fecha_desde?: string | null
+  fecha_hasta?: string | null
+  id_banco?: number | null
+  estado?: string | null
+  referencia?: string | null
+  valor?: number | null
+}
+
 // ── Reportes — SAP Incompletos ──────────────────────────────
 export interface SAPIncompleto {
   id: number

@@ -83,6 +83,16 @@ const routes: RouteRecordRaw[] = [
       permissions: ['conciliacion.view'],
     },
   },
+  {
+    path: '/conciliacion/reporte-maestro',
+    name: 'conciliacion-reporte-maestro',
+    component: () => import('./views/ReporteMaestroView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Reporte Maestro',
+      permissions: ['conciliacion.view'],
+    },
+  },
 ]
 
 export default routes

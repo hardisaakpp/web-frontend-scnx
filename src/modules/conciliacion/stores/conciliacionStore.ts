@@ -20,6 +20,8 @@ import type {
   PartidasAbiertasParams,
   DashboardParams,
   SAPIncompleto,
+  MovimientoReporte,
+  ReporteMaestroParams,
 } from '../types'
 
 export const useConciliacionStore = defineStore('conciliacion', () => {
@@ -32,6 +34,7 @@ export const useConciliacionStore = defineStore('conciliacion', () => {
   const detalleProceso = ref<DetalleProcesoResponse | null>(null)
   const partidasAbiertas = ref<ReportePartidasAbiertas | null>(null)
   const sapIncompletos = ref<SAPIncompleto[]>([])
+  const reporteMaestroList = ref<MovimientoReporte[]>([])
 
   // Resultado de última operación (import, sync, conciliación)
   const lastImportResult = ref<AppResponse<ImportResult> | null>(null)
@@ -167,6 +170,19 @@ export const useConciliacionStore = defineStore('conciliacion', () => {
     })
   }
 
+  async function fetchReporteMaestro(params?: ReporteMaestroParams) {
+    return withLoading(async () => {
+      reporteMaestroList.value = await conciliacionService.getReporteMaestro(params)
+      return reporteMaestroList.value
+    })
+  }
+
+  async function descargarMaestroExcel(params?: ReporteMaestroParams) {
+    return withLoading(async () => {
+      return await conciliacionService.descargarReporteMaestroExcel(params)
+    })
+  }
+
   return {
     // State
     dashboard,
@@ -201,5 +217,8 @@ export const useConciliacionStore = defineStore('conciliacion', () => {
     fetchPartidasAbiertas,
     sapIncompletos,
     fetchSAPIncompletos,
+    reporteMaestroList,
+    fetchReporteMaestro,
+    descargarMaestroExcel,
   }
 })

@@ -20,6 +20,8 @@ import type {
   PartidasAbiertasParams,
   DashboardParams,
   SAPIncompleto,
+  MovimientoReporte,
+  ReporteMaestroParams,
 } from '../types'
 
 // ── Instancia Axios ─────────────────────────────────────────
@@ -201,5 +203,21 @@ export const conciliacionService = {
     return unwrap(
       await api.get<AppResponse<SAPIncompleto[]>>('/api/v1/reportes/sap-incompletos'),
     )
+  },
+
+  /** Obtener reporte maestro unificado */
+  async getReporteMaestro(params?: ReporteMaestroParams): Promise<MovimientoReporte[]> {
+    return unwrap(
+      await api.get<AppResponse<MovimientoReporte[]>>('/api/v1/reportes/reporte-maestro', { params }),
+    )
+  },
+
+  /** Descargar reporte maestro en Excel */
+  async descargarReporteMaestroExcel(params?: ReporteMaestroParams): Promise<Blob> {
+    const response = await api.get<Blob>('/api/v1/reportes/reporte-maestro/excel', {
+      params,
+      responseType: 'blob', // Importante para manejar archivos
+    })
+    return response.data
   },
 }
