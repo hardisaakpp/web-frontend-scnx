@@ -13,7 +13,7 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
             
-            <!-- Gestion de articulos -->
+            <!-- Gestión de artículos -->
             <router-link
                 to="/articulo-maestro/lista"
                 class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left block"
@@ -25,7 +25,7 @@
                         </svg>
                     </div>
                     <div class="flex-1 min-w-0">
-                        <div class="font-medium text-gray-900 dark:text-white text-sm">Gestion de articulos</div>
+                        <div class="font-medium text-gray-900 dark:text-white text-sm">Gestión de artículos</div>
                         <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Visualizar y administrar artículos</div>
                     </div>
                 </div>
@@ -43,7 +43,7 @@
                         </svg>
                     </div>
                     <div class="flex-1 min-w-0">
-                        <div class="font-medium text-gray-900 dark:text-white text-sm">Migracion a SAP</div>
+                        <div class="font-medium text-gray-900 dark:text-white text-sm">Migración a SAP</div>
                         <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Sincronización de artículos locales a SAP</div>
                     </div>
                 </div>
