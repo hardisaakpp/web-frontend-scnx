@@ -12,6 +12,8 @@ export default defineConfig(({ mode }) => {
   const employeesProxyTarget = env.VITE_STORE_EMPLOYEES_PROXY_TARGET || cajaChicaProxyTarget
   /** PYG API (Docker típico: host 5171 → contenedor 8080). Solo afecta al dev server de Vite. */
   const pygProxyTarget = env.VITE_PYG_PROXY_TARGET || 'http://localhost:5171'
+  const maestroProxyTarget = env.VITE_MAESTRO_API_TARGET || 'http://localhost:8001'
+  const conciliacionProxyTarget = env.VITE_CONCILIACION_PROXY_TARGET || 'http://127.0.0.1:8005'
   /**
    * Prefijo en el backend tras quitar `/pyg-api`. Por defecto `/api` → `/pyg-api/uploads` → `/api/uploads`.
    * Si el servicio expone rutas en raíz, define `VITE_PYG_PROXY_PREFIX=` vacío en `.env.development`.
@@ -107,10 +109,17 @@ export default defineConfig(({ mode }) => {
         },
         // Conciliación CORS bypass Proxy
         '/conciliacion-api': {
-          target: 'http://127.0.0.1:8005',
+          target: conciliacionProxyTarget,
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path.replace(/^\/conciliacion-api/, '')
+        },
+        // Maestro de Artículos API
+        '/maestro-api': {
+          target: maestroProxyTarget,
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/maestro-api/, '')
         }
       }
     },
