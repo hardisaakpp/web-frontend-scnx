@@ -55,6 +55,12 @@ export interface MatrizRow {
   empresa: string
   marca: string
   percentMatriz: number
+  /** Auditoría (API camelCase); presentación UI: Fecha ingreso */
+  createdAt?: string
+  /** Presentación UI: Última actualización */
+  updatedAt?: string
+  /** Presentación UI: Usuario últ. act. */
+  lastUpdatedBy?: string
 }
 
 export interface BodegaRow {
@@ -65,6 +71,9 @@ export interface BodegaRow {
   marca: string
   codigoBodega: string
   percentGeneral: number
+  createdAt?: string
+  updatedAt?: string
+  lastUpdatedBy?: string
 }
 
 export interface MatrizUpdatePayload {
