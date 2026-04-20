@@ -39,9 +39,68 @@ export interface SSENotification {
   }
 }
 
+function toSSENotification(payload: unknown): SSENotification | null {
+  if (!payload || typeof payload !== 'object') return null
+  const raw = payload as Record<string, unknown>
+
+  if (
+    typeof raw.type !== 'string' ||
+    typeof raw.title !== 'string' ||
+    typeof raw.message !== 'string' ||
+    typeof raw.target_permission !== 'string'
+  ) {
+    return null
+  }
+
+  const metadata =
+    raw.metadata && typeof raw.metadata === 'object'
+      ? (raw.metadata as Record<string, unknown>)
+      : {}
+
+  return {
+    id: typeof raw.id === 'string' ? raw.id : '',
+    type: raw.type as SSENotification['type'],
+    title: raw.title,
+    message: raw.message,
+    target_permission: raw.target_permission,
+    timestamp: typeof raw.timestamp === 'number' ? raw.timestamp : Date.now(),
+    metadata
+  }
+}
+
+function extractNotificationFromSSEData(data: Record<string, unknown>): SSENotification | null {
+  // Formato directo (top-level)
+  const direct = toSSENotification(data)
+  if (direct) return direct
+
+  // Formato { notification: {...} }
+  const nestedNotification = toSSENotification(data.notification)
+  if (nestedNotification) return nestedNotification
+
+  // Formato { data: {...} } o { data: { notification: {...} } }
+  if (data.data && typeof data.data === 'object') {
+    const innerData = data.data as Record<string, unknown>
+    const dataAsNotification = toSSENotification(innerData)
+    if (dataAsNotification) return dataAsNotification
+
+    const innerNestedNotification = toSSENotification(innerData.notification)
+    if (innerNestedNotification) return innerNestedNotification
+  }
+
+  return null
+}
+
 /** URL base de la API MBA3 */
 const API_BASE_URL = import.meta.env.VITE_MBA3_API_BASE_URL || 'http://localhost:8000'
 const SSE_ENABLED = String(import.meta.env.VITE_ENABLE_NOTIFICACIONES_SSE ?? 'false').toLowerCase() === 'true'
+
+function getSSEStreamCandidates(baseUrl: string): string[] {
+  const normalizedBase = baseUrl.replace(/\/+$/, '')
+  return [
+    `${normalizedBase}/notificaciones/stream`,
+    `${normalizedBase}/api/notificaciones/stream`
+  ]
+}
 
 /**
  * Ref global (a nivel de módulo) con la última notificación recibida.
@@ -106,16 +165,37 @@ export function useNotificaciones() {
     try {
       abortController = new AbortController()
 
-      const response = await fetch(`${API_BASE_URL}/notificaciones/stream`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'text/event-stream',
-        },
-        signal: abortController.signal,
-      })
+      let response: Response | null = null
+      let lastError: Error | null = null
+      const streamCandidates = getSSEStreamCandidates(API_BASE_URL)
 
-      if (!response.ok) {
-        throw new Error(`SSE connection failed: ${response.status} ${response.statusText}`)
+      for (const streamUrl of streamCandidates) {
+        try {
+          const candidateResponse = await fetch(streamUrl, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'text/event-stream',
+            },
+            signal: abortController.signal,
+          })
+
+          if (candidateResponse.ok) {
+            response = candidateResponse
+            if (import.meta.env.DEV) {
+              console.log('📢 [Notificaciones] Conectando SSE con URL:', streamUrl)
+            }
+            break
+          }
+
+          lastError = new Error(`SSE connection failed: ${candidateResponse.status} ${candidateResponse.statusText}`)
+        } catch (candidateError: unknown) {
+          const err = candidateError as Error
+          lastError = err
+        }
+      }
+
+      if (!response) {
+        throw lastError || new Error('SSE connection failed for all configured paths')
       }
 
       if (!response.body) {
@@ -211,7 +291,16 @@ export function useNotificaciones() {
         break
 
       case 'notification':
-        handleNotification(data as unknown as SSENotification)
+        {
+          const normalizedNotification = extractNotificationFromSSEData(data)
+          if (!normalizedNotification) {
+            if (import.meta.env.DEV) {
+              console.warn('📢 [Notificaciones] No se pudo normalizar payload de notificación SSE:', data)
+            }
+            break
+          }
+          handleNotification(normalizedNotification)
+        }
         break
 
       case 'heartbeat':

@@ -372,6 +372,7 @@ export const useAuthStore = defineStore('auth', {
 
       // Remove axios header
       delete api.defaults.headers.common['Authorization']
+      delete mba3Api.defaults.headers.common['Authorization']
     },
 
     hasPermission(permission: string): boolean {

@@ -220,6 +220,7 @@
         <table class="min-w-full text-sm">
           <thead>
             <tr class="text-left border-b dark:border-gray-700">
+              <th class="py-2 pr-3 w-12 text-right tabular-nums text-gray-500 dark:text-gray-400 font-medium">N°</th>
               <th class="py-2 pr-3">Cédula</th>
               <th class="py-2 pr-3">Nombre</th>
               <th class="py-2 pr-3">Tienda</th>
@@ -234,10 +235,13 @@
           </thead>
           <tbody>
             <tr
-              v-for="employee in employees"
+              v-for="(employee, index) in employees"
               :key="employee.id"
               class="border-b dark:border-gray-800 hover:bg-slate-50 dark:hover:bg-slate-900/30"
             >
+              <td class="py-2 pr-3 text-right tabular-nums text-gray-500 dark:text-gray-400 select-none">
+                {{ (filters.page - 1) * filters.page_size + index + 1 }}
+              </td>
               <td class="py-2 pr-3 cursor-pointer" title="Doble clic para editar" @dblclick="startInlineEdit(employee, 'cedula_identidad')">
                 <input
                   v-if="isInlineEditing(employee, 'cedula_identidad')"
@@ -345,7 +349,7 @@
               </td>
             </tr>
             <tr v-if="!employees.length">
-              <td colspan="10" class="py-4 text-center text-gray-500 dark:text-gray-300">
+              <td colspan="11" class="py-4 text-center text-gray-500 dark:text-gray-300">
                 No hay empleados para mostrar.
               </td>
             </tr>

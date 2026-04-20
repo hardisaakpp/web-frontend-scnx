@@ -45,6 +45,7 @@
         <table class="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-700">
           <thead>
             <tr class="text-left text-gray-600 dark:text-gray-300">
+              <th class="w-10 px-2 py-2 text-right tabular-nums">#</th>
               <th class="px-3 py-2">Archivo</th>
               <th class="px-3 py-2">Periodo</th>
               <th class="px-3 py-2">Estado</th>
@@ -55,20 +56,38 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
-            <tr v-for="item in uploads" :key="item.id" class="text-gray-800 dark:text-gray-200">
+            <tr v-for="(item, index) in paginatedUploads" :key="item.id" class="text-gray-800 dark:text-gray-200">
+              <td class="px-2 py-2 text-right tabular-nums text-gray-500 dark:text-gray-400">{{ uploadsHistoryOffset + index + 1 }}</td>
               <td class="px-3 py-2">{{ item.fileName }}</td>
               <td class="px-3 py-2">{{ item.year }}-{{ String(item.month).padStart(2, '0') }}</td>
-              <td class="px-3 py-2">{{ item.status }}</td>
+              <td class="px-3 py-2" :class="uploadStatusClass(item.status)">{{ item.status }}</td>
               <td class="px-3 py-2">{{ item.validRows }}/{{ item.totalRows }}</td>
               <td class="px-3 py-2 text-gray-600 dark:text-gray-400 whitespace-nowrap">{{ formatAuditDate(item.uploadedAt) }}</td>
               <td class="px-3 py-2 text-gray-600 dark:text-gray-400 whitespace-nowrap">—</td>
               <td class="px-3 py-2 text-gray-600 dark:text-gray-400">{{ item.uploadedBy?.trim() || '—' }}</td>
             </tr>
-            <tr v-if="uploads.length === 0">
-              <td colspan="7" class="px-3 py-3 text-center text-gray-500">Sin cargas registradas.</td>
+            <tr v-if="uploads.length === 0 && !loadingUploads">
+              <td colspan="8" class="px-3 py-3 text-center text-gray-500">Sin cargas registradas.</td>
+            </tr>
+            <tr v-if="loadingUploads && uploads.length === 0">
+              <td colspan="8" class="px-3 py-3 text-center text-gray-500">Cargando historial…</td>
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <div v-if="uploads.length > 0 && !loadingUploads" class="mt-4 border-t border-gray-200 pt-4 dark:border-gray-700">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div class="text-sm text-gray-700 dark:text-gray-300">
+            Mostrando {{ uploadsHistoryOffset + 1 }} - {{ uploadsHistoryRangeEnd }} de {{ uploads.length }} resultados
+          </div>
+          <QuickTablePagination
+            v-model="uploadsHistoryCurrentPage"
+            :total-pages="uploadsHistoryTotalPages"
+            :disabled="loadingUploads"
+            aria-label="Paginación del historial de cargas PYG"
+          />
+        </div>
       </div>
     </div>
 
@@ -338,8 +357,9 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { lastNotification } from '@/composables/useNotificaciones'
+import QuickTablePagination from '@/modules/mba3-consultas/components/QuickTablePagination.vue'
 import {
   downloadTemplate,
   getBodega,
@@ -363,11 +383,49 @@ const uploadOk = ref(false)
 
 const uploads = ref<UploadBatchSummary[]>([])
 const loadingUploads = ref(false)
+
+/** Misma lógica que Cargar plantilla (MBA3): 10 filas por página. */
+const UPLOADS_PAGE_SIZE = 10
+const uploadsHistoryPage = ref(1)
+
+const uploadsHistoryTotalPages = computed(() => {
+  const total = uploads.value.length
+  return total > 0 ? Math.max(1, Math.ceil(total / UPLOADS_PAGE_SIZE)) : 1
+})
+
+const uploadsHistoryOffset = computed(() => (uploadsHistoryPage.value - 1) * UPLOADS_PAGE_SIZE)
+
+const paginatedUploads = computed(() => {
+  const start = uploadsHistoryOffset.value
+  return uploads.value.slice(start, start + UPLOADS_PAGE_SIZE)
+})
+
+const uploadsHistoryRangeEnd = computed(() =>
+  uploads.value.length === 0 ? 0 : Math.min(uploadsHistoryOffset.value + UPLOADS_PAGE_SIZE, uploads.value.length)
+)
+
+const uploadsHistoryCurrentPage = computed({
+  get() {
+    return uploadsHistoryPage.value
+  },
+  set(p: number) {
+    const max = uploadsHistoryTotalPages.value
+    uploadsHistoryPage.value = Math.min(max, Math.max(1, Math.round(p)))
+  }
+})
+
+watch(uploadsHistoryTotalPages, (max) => {
+  if (uploadsHistoryPage.value > max) uploadsHistoryPage.value = max
+})
 const matrizRows = ref<MatrizRow[]>([])
 const bodegaRows = ref<BodegaRow[]>([])
 const queryMessage = ref('')
-const UPLOADS_AUTO_REFRESH_MS = 10000
-let uploadsAutoRefreshTimer: ReturnType<typeof setInterval> | null = null
+const UPLOADS_REFRESH_FAST_MS = 5000
+const UPLOADS_REFRESH_SLOW_MS = 60000
+const UPLOADS_REFRESH_HIDDEN_MS = 120000
+const ACTIVE_UPLOAD_STATUS_KEYWORDS = ['processing', 'proces', 'pend', 'queue', 'en cola', 'running']
+let uploadsAutoRefreshTimer: ReturnType<typeof setTimeout> | null = null
+const isPygViewMounted = ref(false)
 
 const matrizFilters = ref({
   year: '',
@@ -409,6 +467,13 @@ function toOptionalNumber(value: string): number | undefined {
   if (!value.trim()) return undefined
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : undefined
+}
+
+function uploadStatusClass(status: string | undefined): string {
+  const s = String(status || '').toUpperCase()
+  if (s === 'PROCESSED') return 'font-medium text-green-600 dark:text-green-400'
+  if (s === 'REJECTED') return 'font-medium text-red-600 dark:text-red-400'
+  return ''
 }
 
 /** Misma convención que otros módulos (p. ej. gestión de usuarios). */
@@ -484,12 +549,42 @@ async function handleUpload() {
     uploadOk.value = result.success
     uploadMessage.value = result.message || 'Carga procesada.'
     await loadUploads()
+    scheduleUploadsAutoRefresh(true)
   } catch (error: unknown) {
     uploadOk.value = false
     uploadMessage.value = getApiErrorMessage(error, 'Error al subir archivo.')
   } finally {
     loadingUpload.value = false
   }
+}
+
+function clearUploadsAutoRefreshTimer() {
+  if (!uploadsAutoRefreshTimer) return
+  clearTimeout(uploadsAutoRefreshTimer)
+  uploadsAutoRefreshTimer = null
+}
+
+function hasActiveUploadProcessing(rows: UploadBatchSummary[]): boolean {
+  return rows.some((row) => {
+    const status = String(row.status || '').toLowerCase()
+    return ACTIVE_UPLOAD_STATUS_KEYWORDS.some((keyword) => status.includes(keyword))
+  })
+}
+
+function scheduleUploadsAutoRefresh(forceFast = false) {
+  clearUploadsAutoRefreshTimer()
+  if (!isPygViewMounted.value) return
+
+  const hasActiveProcessing = hasActiveUploadProcessing(uploads.value)
+  let waitMs = hasActiveProcessing || forceFast ? UPLOADS_REFRESH_FAST_MS : UPLOADS_REFRESH_SLOW_MS
+  if (typeof document !== 'undefined' && document.hidden) {
+    waitMs = UPLOADS_REFRESH_HIDDEN_MS
+  }
+
+  uploadsAutoRefreshTimer = setTimeout(() => {
+    uploadsAutoRefreshTimer = null
+    void loadUploads()
+  }, waitMs)
 }
 
 async function loadUploads() {
@@ -506,6 +601,7 @@ async function loadUploads() {
     )
   } finally {
     loadingUploads.value = false
+    scheduleUploadsAutoRefresh()
   }
 }
 
@@ -612,21 +708,19 @@ async function saveBodegaEdit(id: number) {
 }
 
 onMounted(async () => {
+  isPygViewMounted.value = true
   await loadUploads()
-  uploadsAutoRefreshTimer = setInterval(() => {
-    void loadUploads()
-  }, UPLOADS_AUTO_REFRESH_MS)
 })
 
 watch(lastNotification, (notification) => {
   if (!notification) return
   if (notification.target_permission !== 'pyg.edit') return
+  if (notification.metadata?.accion !== 'pyg_upload_completed') return
   void loadUploads()
 })
 
 onBeforeUnmount(() => {
-  if (!uploadsAutoRefreshTimer) return
-  clearInterval(uploadsAutoRefreshTimer)
-  uploadsAutoRefreshTimer = null
+  isPygViewMounted.value = false
+  clearUploadsAutoRefreshTimer()
 })
 </script>

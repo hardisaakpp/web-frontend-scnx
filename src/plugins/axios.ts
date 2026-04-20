@@ -10,6 +10,15 @@ const baseConfig = {
   withCredentials: true
 }
 
+const LOGIN_REDIRECT_URL =
+  (import.meta.env.VITE_LOGIN_REDIRECT_URL as string) ||
+  `${typeof window !== 'undefined' ? window.location.origin : ''}/login`
+
+function isAuthLoginRequest(error: any): boolean {
+  const url = String(error?.config?.url || '').toLowerCase()
+  return url.includes('/auth/login')
+}
+
 /** Core API: login, Auth y resto de endpoints del Core. */
 const coreApi = axios.create({
   ...baseConfig,
@@ -35,7 +44,17 @@ function addAuthInterceptor(instance: AxiosInstanceType): void {
   )
   instance.interceptors.response.use(
     (response: any) => response,
-    (error: any) => Promise.reject(error)
+    (error: any) => {
+      const status = error?.response?.status
+      if (status === 401 && !isAuthLoginRequest(error)) {
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+          window.location.href = LOGIN_REDIRECT_URL
+        }
+      }
+      return Promise.reject(error)
+    }
   )
 }
 
