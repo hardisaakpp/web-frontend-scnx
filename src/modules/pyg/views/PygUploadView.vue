@@ -70,6 +70,116 @@
       <p v-if="uploadMessage" class="text-sm" :class="uploadOk ? 'text-green-600' : 'text-red-600'">{{ uploadMessage }}</p>
     </div>
 
+    <div v-if="selectedBatchDetail" class="rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-sm p-4 space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="min-w-0">
+          <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
+            Detalle lote #{{ selectedBatchDetail.id }} · {{ selectedBatchDetail.fileName }}
+          </h2>
+          <p class="text-xs text-gray-500 dark:text-gray-400">
+            Periodo {{ selectedBatchDetail.year }}-{{ String(selectedBatchDetail.month).padStart(2, '0') }}
+          </p>
+        </div>
+        <button
+          type="button"
+          class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700/50 px-3 py-1.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+          @click="clearInlineDetail"
+        >
+          Ocultar detalle
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div class="space-y-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3">
+          <div class="text-xs font-semibold text-gray-700 dark:text-gray-200">MATRIZ</div>
+          <div class="overflow-x-auto">
+            <table class="min-w-full text-xs">
+              <thead class="bg-gray-50 dark:bg-gray-700/50">
+                <tr class="text-left font-medium uppercase tracking-wider text-gray-600 dark:text-gray-300 text-[10px]">
+                  <th class="px-2 py-2">Periodo</th>
+                  <th class="px-2 py-2">Empresa</th>
+                  <th class="px-2 py-2">Marca</th>
+                  <th class="px-2 py-2">% Matriz</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200 dark:divide-gray-600">
+                <tr v-for="row in selectedRowsBySheet.matriz.items" :key="`m-${row.id}`" class="hover:bg-gray-50/50 dark:hover:bg-gray-700/30">
+                  <td class="px-2 py-1.5">{{ row.year && row.month ? `${row.year}-${String(row.month).padStart(2, '0')}` : '—' }}</td>
+                  <td class="px-2 py-1.5">{{ resolveRowEmpresa(row) }}</td>
+                  <td class="px-2 py-1.5">{{ row.marca || '—' }}</td>
+                  <td class="px-2 py-1.5">{{ row.percentMatriz ?? '—' }}</td>
+                </tr>
+                <tr v-if="selectedRowsBySheet.matriz.total > 0" class="bg-gray-100/70 font-semibold dark:bg-gray-700/40">
+                  <td class="px-2 py-1.5 text-right" colspan="3">Total</td>
+                  <td class="px-2 py-1.5">{{ sheetTotal('matriz', 'matriz') }}</td>
+                </tr>
+                <tr v-if="!loadingRows && selectedRowsBySheet.matriz.items.length === 0">
+                  <td colspan="4" class="px-2 py-3 text-center text-gray-500">Sin filas MATRIZ para este lote.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div v-if="selectedRowsBySheet.matriz.total > 0" class="flex flex-wrap items-center justify-between gap-3">
+            <div class="text-xs text-gray-600 dark:text-gray-300">
+              Mostrando {{ selectedRowsRangeStart('matriz') }} - {{ selectedRowsRangeEnd('matriz') }} de {{ selectedRowsBySheet.matriz.total }} filas
+            </div>
+            <QuickTablePagination
+              v-model="selectedRowsCurrentPageMatriz"
+              :total-pages="selectedRowsTotalPages('matriz')"
+              :disabled="loadingRows"
+              aria-label="Paginación filas MATRIZ"
+            />
+          </div>
+        </div>
+
+        <div class="space-y-2 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-3">
+          <div class="text-xs font-semibold text-gray-700 dark:text-gray-200">TIENDAS</div>
+          <div class="overflow-x-auto">
+            <table class="min-w-full text-xs">
+              <thead class="bg-gray-50 dark:bg-gray-700/50">
+                <tr class="text-left font-medium uppercase tracking-wider text-gray-600 dark:text-gray-300 text-[10px]">
+                  <th class="px-2 py-2">Periodo</th>
+                  <th class="px-2 py-2">Empresa</th>
+                  <th class="px-2 py-2">Marca</th>
+                  <th class="px-2 py-2">Bodega</th>
+                  <th class="px-2 py-2">% General</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-200 dark:divide-gray-600">
+                <tr v-for="row in selectedRowsBySheet.tiendas.items" :key="`t-${row.id}`" class="hover:bg-gray-50/50 dark:hover:bg-gray-700/30">
+                  <td class="px-2 py-1.5">{{ row.year && row.month ? `${row.year}-${String(row.month).padStart(2, '0')}` : '—' }}</td>
+                  <td class="px-2 py-1.5">{{ resolveRowEmpresa(row) }}</td>
+                  <td class="px-2 py-1.5">{{ row.marca || '—' }}</td>
+                  <td class="px-2 py-1.5">{{ row.codigoBodega || '—' }}</td>
+                  <td class="px-2 py-1.5">{{ row.percentGeneral ?? '—' }}</td>
+                </tr>
+                <tr v-if="selectedRowsBySheet.tiendas.total > 0" class="bg-gray-100/70 font-semibold dark:bg-gray-700/40">
+                  <td class="px-2 py-1.5 text-right" colspan="4">Total</td>
+                  <td class="px-2 py-1.5">{{ sheetTotal('tiendas', 'tiendas') }}</td>
+                </tr>
+                <tr v-if="!loadingRows && selectedRowsBySheet.tiendas.items.length === 0">
+                  <td colspan="5" class="px-2 py-3 text-center text-gray-500">Sin filas TIENDAS para este lote.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div v-if="selectedRowsBySheet.tiendas.total > 0" class="flex flex-wrap items-center justify-between gap-3">
+            <div class="text-xs text-gray-600 dark:text-gray-300">
+              Mostrando {{ selectedRowsRangeStart('tiendas') }} - {{ selectedRowsRangeEnd('tiendas') }} de {{ selectedRowsBySheet.tiendas.total }} filas
+            </div>
+            <QuickTablePagination
+              v-model="selectedRowsCurrentPageTiendas"
+              :total-pages="selectedRowsTotalPages('tiendas')"
+              :disabled="loadingRows"
+              aria-label="Paginación filas TIENDAS"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div v-if="loadingRows" class="text-xs text-gray-500">Cargando filas…</div>
+    </div>
+
     <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm">
       <button
         type="button"
@@ -130,7 +240,7 @@
                   <button
                     type="button"
                     class="rounded border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800"
-                    :disabled="loadingDetail && selectedBatchId === item.id"
+                    :disabled="loadingRows && selectedBatchId === item.id"
                     @click="openBatchDetail(item.id)"
                   >
                     {{ selectedBatchId === item.id ? 'Detalle abierto' : 'Ver detalle' }}
@@ -168,143 +278,6 @@
     </p>
   </section>
 
-  <Teleport to="body">
-    <div v-if="showDetailPanel" class="fixed inset-0 z-[100]">
-      <div class="absolute inset-0 bg-black/40" @click="closeBatchDetail"></div>
-      <aside class="absolute right-0 top-0 h-full w-full sm:w-[620px] bg-white dark:bg-gray-800 shadow-2xl flex flex-col">
-        <div class="flex items-start justify-between gap-3 p-4 border-b border-gray-200 dark:border-gray-700">
-          <div class="min-w-0">
-            <div class="text-xs text-gray-500 dark:text-gray-400">Detalle de carga PYG</div>
-            <h3 class="text-lg font-semibold text-gray-900 dark:text-white truncate">Lote #{{ selectedBatchId }}</h3>
-            <div v-if="selectedBatchDetail" class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              {{ selectedBatchDetail.fileName }} · {{ selectedBatchDetail.year }}-{{ String(selectedBatchDetail.month).padStart(2, '0') }}
-            </div>
-          </div>
-          <button
-            type="button"
-            class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700/50 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-            @click="closeBatchDetail"
-          >
-            Cerrar
-          </button>
-        </div>
-
-        <div class="p-4 overflow-y-auto space-y-4">
-          <p v-if="loadingDetail" class="text-sm text-gray-500">Cargando detalle…</p>
-
-          <template v-else-if="selectedBatchDetail">
-            <div class="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
-              <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-3">Archivos</div>
-              <div class="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  class="rounded-lg border border-sky-500 px-3 py-1.5 text-xs font-medium text-sky-700 hover:bg-sky-50 disabled:opacity-50 dark:border-sky-400 dark:text-sky-300 dark:hover:bg-sky-900/30 transition-colors"
-                  :disabled="!selectedBatchDetail.originalFileAvailable || downloadingOriginal"
-                  @click="handleDownloadOriginal(selectedBatchDetail)"
-                >
-                  {{ downloadingOriginal ? 'Descargando…' : 'Descargar Excel original' }}
-                </button>
-              </div>
-            </div>
-
-            <div class="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 space-y-4">
-              <div class="flex flex-wrap items-center justify-between gap-2">
-                <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Filas procesadas por hoja</div>
-              </div>
-
-              <div class="space-y-2">
-                <div class="text-xs font-semibold text-gray-700 dark:text-gray-200">MATRIZ</div>
-                <div class="overflow-x-auto">
-                  <table class="min-w-full text-xs">
-                    <thead class="bg-gray-50 dark:bg-gray-700/50">
-                      <tr class="text-left font-medium uppercase tracking-wider text-gray-600 dark:text-gray-300 text-[10px]">
-                        <th class="px-2 py-2">Periodo</th>
-                        <th class="px-2 py-2">Empresa</th>
-                        <th class="px-2 py-2">Marca</th>
-                        <th class="px-2 py-2">% Matriz</th>
-                      </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-200 dark:divide-gray-600">
-                      <tr v-for="row in selectedRowsBySheet.matriz.items" :key="`m-${row.id}`" class="hover:bg-gray-50/50 dark:hover:bg-gray-700/30">
-                        <td class="px-2 py-1.5">{{ row.year && row.month ? `${row.year}-${String(row.month).padStart(2, '0')}` : '—' }}</td>
-                        <td class="px-2 py-1.5">{{ resolveRowEmpresa(row) }}</td>
-                        <td class="px-2 py-1.5">{{ row.marca || '—' }}</td>
-                        <td class="px-2 py-1.5">{{ row.percentMatriz ?? '—' }}</td>
-                      </tr>
-                      <tr v-if="selectedRowsBySheet.matriz.total > 0" class="bg-gray-100/70 font-semibold dark:bg-gray-700/40">
-                        <td class="px-2 py-1.5 text-right" colspan="3">Total</td>
-                        <td class="px-2 py-1.5">{{ sheetTotal('matriz', 'matriz') }}</td>
-                      </tr>
-                      <tr v-if="!loadingRows && selectedRowsBySheet.matriz.items.length === 0">
-                        <td colspan="4" class="px-2 py-3 text-center text-gray-500">Sin filas MATRIZ para este lote/filtro.</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                <div v-if="selectedRowsBySheet.matriz.total > 0" class="flex flex-wrap items-center justify-between gap-3">
-                  <div class="text-xs text-gray-600 dark:text-gray-300">
-                    Mostrando {{ selectedRowsRangeStart('matriz') }} - {{ selectedRowsRangeEnd('matriz') }} de {{ selectedRowsBySheet.matriz.total }} filas
-                  </div>
-                  <QuickTablePagination
-                    v-model="selectedRowsCurrentPageMatriz"
-                    :total-pages="selectedRowsTotalPages('matriz')"
-                    :disabled="loadingRows"
-                    aria-label="Paginación filas MATRIZ"
-                  />
-                </div>
-              </div>
-
-              <div class="space-y-2 border-t border-gray-200 pt-3 dark:border-gray-700">
-                <div class="text-xs font-semibold text-gray-700 dark:text-gray-200">TIENDAS</div>
-                <div class="overflow-x-auto">
-                  <table class="min-w-full text-xs">
-                    <thead class="bg-gray-50 dark:bg-gray-700/50">
-                      <tr class="text-left font-medium uppercase tracking-wider text-gray-600 dark:text-gray-300 text-[10px]">
-                        <th class="px-2 py-2">Periodo</th>
-                        <th class="px-2 py-2">Empresa</th>
-                        <th class="px-2 py-2">Marca</th>
-                        <th class="px-2 py-2">Bodega</th>
-                        <th class="px-2 py-2">% General</th>
-                      </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-200 dark:divide-gray-600">
-                      <tr v-for="row in selectedRowsBySheet.tiendas.items" :key="`t-${row.id}`" class="hover:bg-gray-50/50 dark:hover:bg-gray-700/30">
-                        <td class="px-2 py-1.5">{{ row.year && row.month ? `${row.year}-${String(row.month).padStart(2, '0')}` : '—' }}</td>
-                        <td class="px-2 py-1.5">{{ resolveRowEmpresa(row) }}</td>
-                        <td class="px-2 py-1.5">{{ row.marca || '—' }}</td>
-                        <td class="px-2 py-1.5">{{ row.codigoBodega || '—' }}</td>
-                        <td class="px-2 py-1.5">{{ row.percentGeneral ?? '—' }}</td>
-                      </tr>
-                      <tr v-if="selectedRowsBySheet.tiendas.total > 0" class="bg-gray-100/70 font-semibold dark:bg-gray-700/40">
-                        <td class="px-2 py-1.5 text-right" colspan="4">Total</td>
-                        <td class="px-2 py-1.5">{{ sheetTotal('tiendas', 'tiendas') }}</td>
-                      </tr>
-                      <tr v-if="!loadingRows && selectedRowsBySheet.tiendas.items.length === 0">
-                        <td colspan="5" class="px-2 py-3 text-center text-gray-500">Sin filas TIENDAS para este lote/filtro.</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-                <div v-if="selectedRowsBySheet.tiendas.total > 0" class="flex flex-wrap items-center justify-between gap-3">
-                  <div class="text-xs text-gray-600 dark:text-gray-300">
-                    Mostrando {{ selectedRowsRangeStart('tiendas') }} - {{ selectedRowsRangeEnd('tiendas') }} de {{ selectedRowsBySheet.tiendas.total }} filas
-                  </div>
-                  <QuickTablePagination
-                    v-model="selectedRowsCurrentPageTiendas"
-                    :total-pages="selectedRowsTotalPages('tiendas')"
-                    :disabled="loadingRows"
-                    aria-label="Paginación filas TIENDAS"
-                  />
-                </div>
-              </div>
-
-              <div v-if="loadingRows" class="text-xs text-gray-500">Cargando filas…</div>
-            </div>
-          </template>
-        </div>
-      </aside>
-    </div>
-  </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -313,7 +286,6 @@ import { lastNotification } from '@/composables/useNotificaciones'
 import QuickTablePagination from '@/modules/mba3-consultas/components/QuickTablePagination.vue'
 import { TableCellsIcon } from '@heroicons/vue/24/outline'
 import {
-  downloadErrors,
   downloadOriginalFile,
   downloadTemplate,
   getUploadRows,
@@ -335,12 +307,9 @@ const uploadOk = ref(false)
 
 const uploads = ref<UploadBatchSummary[]>([])
 const loadingUploads = ref(false)
-const loadingDetail = ref(false)
 const loadingRows = ref(false)
 const downloadingOriginal = ref(false)
-const downloadingErrors = ref(false)
 const selectedBatchId = ref<number | null>(null)
-const showDetailPanel = ref(false)
 const selectedBatchDetail = ref<UploadBatchDetailDto | null>(null)
 const EMPTY_UPLOAD_ROWS_PAGE: UploadRowHistoryPageDto = { batchId: 0, total: 0, page: 1, pageSize: 50, items: [] }
 type UploadSheetKey = 'matriz' | 'tiendas'
@@ -589,20 +558,6 @@ async function handleDownloadOriginal(detail: UploadBatchDetailDto) {
   }
 }
 
-async function handleDownloadErrors(detail: UploadBatchDetailDto) {
-  if (!detail.errorLogAvailable) return
-  try {
-    downloadingErrors.value = true
-    const blob = await downloadErrors(detail.id)
-    const safeBaseName = resolveServerFileName(`upload-${detail.id}`, detail).replace(/\.xlsx$/i, '')
-    saveBlob(blob, `${safeBaseName}-errores.txt`)
-  } catch (error: unknown) {
-    queryMessage.value = getApiErrorMessage(error, 'No se pudo descargar el log de errores.')
-  } finally {
-    downloadingErrors.value = false
-  }
-}
-
 async function handleUpload() {
   if (!selectedFile.value) return
 
@@ -698,8 +653,6 @@ async function reloadSheetRows(resetPage = false) {
 
 async function openBatchDetail(batchId: number) {
   selectedBatchId.value = batchId
-  showDetailPanel.value = true
-  loadingDetail.value = true
   queryMessage.value = ''
   try {
     const fallbackDetail = buildDetailFallbackFromSummary(batchId)
@@ -713,13 +666,10 @@ async function openBatchDetail(batchId: number) {
   } catch (error: unknown) {
     selectedBatchDetail.value = null
     queryMessage.value = getApiErrorMessage(error, 'No se pudo cargar el detalle de la carga.')
-  } finally {
-    loadingDetail.value = false
   }
 }
 
-function closeBatchDetail() {
-  showDetailPanel.value = false
+function clearInlineDetail() {
   selectedBatchId.value = null
   selectedBatchDetail.value = null
   selectedRowsBySheet.value = {
@@ -727,21 +677,6 @@ function closeBatchDetail() {
     tiendas: { ...EMPTY_UPLOAD_ROWS_PAGE }
   }
 }
-
-function onDetailKeydown(e: KeyboardEvent) {
-  if (e.key === 'Escape') closeBatchDetail()
-}
-
-watch(showDetailPanel, (open) => {
-  if (typeof document === 'undefined') return
-  if (open) {
-    document.addEventListener('keydown', onDetailKeydown)
-    document.body.classList.add('overflow-hidden')
-  } else {
-    document.removeEventListener('keydown', onDetailKeydown)
-    document.body.classList.remove('overflow-hidden')
-  }
-})
 
 watch(
   () => selectedRowsBySheet.value.matriz.page,
@@ -774,9 +709,5 @@ watch(lastNotification, (notification) => {
 onBeforeUnmount(() => {
   isPygViewMounted.value = false
   clearUploadsAutoRefreshTimer()
-  if (typeof document !== 'undefined') {
-    document.removeEventListener('keydown', onDetailKeydown)
-    document.body.classList.remove('overflow-hidden')
-  }
 })
 </script>
