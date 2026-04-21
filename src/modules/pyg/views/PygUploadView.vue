@@ -443,6 +443,7 @@ const adPasswordError = ref('')
 
 const uploads = ref<UploadBatchSummary[]>([])
 const loadingUploads = ref(false)
+const pendingRefreshAfterLoad = ref(false)
 const loadingRows = ref(false)
 const downloadingOriginal = ref(false)
 const selectedBatchId = ref<number | null>(null)
@@ -903,7 +904,21 @@ async function loadUploads() {
     notifier.error({ title: 'Error al cargar historial', message: queryMessage.value })
   } finally {
     loadingUploads.value = false
+    // Si llegó un evento SSE mientras el historial estaba cargando, ejecutar
+    // inmediatamente el mismo refresco manual al terminar esta carga.
+    if (pendingRefreshAfterLoad.value) {
+      pendingRefreshAfterLoad.value = false
+      void loadUploads()
+    }
   }
+}
+
+function triggerHistoryRefresh() {
+  if (loadingUploads.value) {
+    pendingRefreshAfterLoad.value = true
+    return
+  }
+  void loadUploads()
 }
 
 function applyUploadsDateFilter() {
@@ -1002,13 +1017,12 @@ onMounted(async () => {
 
 watch(lastNotification, (notification) => {
   if (!notification) return
-  if (notification.target_permission !== 'pyg.edit') return
   if (notification.metadata?.accion !== 'pyg_upload_completed') return
   notifier.info({
     title: notification.title || 'Carga PYG finalizada',
     message: notification.message || 'Se actualizó el historial de cargas.'
   })
-  void loadUploads()
+  triggerHistoryRefresh()
 })
 
 onBeforeUnmount(() => {

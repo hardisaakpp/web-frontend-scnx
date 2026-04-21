@@ -31,15 +31,21 @@
    - Patrones en servicio y vista; referencia en `gestion-usuarios`
    - Alcance incremental en el resto de módulos
 
+5. **[Funcionalidades Estandarizadas (Escalables)](FUNCIONALIDADES_ESTANDARIZADAS.md)** ⭐
+   - Toast estandarizado reusable por módulo
+   - SSE y reacción por `metadata.accion`
+   - Sincronización frontend-backend reutilizable
+   - Checklist de implementación transversal
+
 ### ⚙️ Optimizaciones y Mejoras
 
-5. **[Optimización de Actualización de Estados ODC](optimizacion-estados-odc.md)** 
+6. **[Optimización de Actualización de Estados ODC](optimizacion-estados-odc.md)** 
    - Sistema de retry inteligente
    - Optimización de carga paralela
    - Reducción de delays artificiales
    - Métricas de mejora
 
-6. **[Polling Automático de Despachos](polling-automatico-despachos.md)**
+7. **[Polling Automático de Despachos](polling-automatico-despachos.md)**
    - Sistema de actualización automática
    - Indicadores visuales en tiempo real
    - Sincronización con proceso backend
@@ -47,19 +53,19 @@
 
 ### 🔧 Refactorizaciones
 
-7. **[Refactorización Pedido Detalle](REFACTORIZACION_PEDIDO_DETALLE.md)**
+8. **[Refactorización Pedido Detalle](REFACTORIZACION_PEDIDO_DETALLE.md)**
    - Mejoras en la vista de detalle de pedidos
    - Optimización de componentes
    - Separación de responsabilidades
 
 ### 📊 Análisis y Cambios Backend
 
-8. **[Análisis HU-02 Frontend](ANALISIS_HU-02_FRONTEND.md)**
+9. **[Análisis HU-02 Frontend](ANALISIS_HU-02_FRONTEND.md)**
    - Análisis de historia de usuario 02
    - Cambios requeridos en frontend
    - Impacto en componentes
 
-9. **[Cambios Backend - Procesado SAP](cambios-backend-procesado-sap.md)**
+10. **[Cambios Backend - Procesado SAP](cambios-backend-procesado-sap.md)**
    - Integración con nuevo endpoint de SAP
    - Adaptación de componentes frontend
    - Manejo de respuestas SAP
@@ -74,7 +80,8 @@ docs/
 │   ├── MODULOS.md ⭐
 │   ├── DARK_MODE_GUIDE.md 🌙
 │   ├── FRONTEND.md
-│   └── MUTACIONES_API_SINCRONIZACION_UI.md ⭐
+│   ├── MUTACIONES_API_SINCRONIZACION_UI.md ⭐
+│   └── FUNCIONALIDADES_ESTANDARIZADAS.md ⭐
 │
 ├── ⚙️ OPTIMIZACIONES
 │   ├── optimizacion-estados-odc.md
@@ -98,8 +105,9 @@ docs/
 ### 🎨 Agregar Funcionalidad
 1. [MODULOS.md](MODULOS.md) - Estructura y convenciones
 2. [MUTACIONES_API_SINCRONIZACION_UI.md](MUTACIONES_API_SINCRONIZACION_UI.md) - Guardar y refrescar filas desde la respuesta API
-3. Revisar módulos existentes como referencia
-4. [DARK_MODE_GUIDE.md](DARK_MODE_GUIDE.md) - Soporte dark mode
+3. [FUNCIONALIDADES_ESTANDARIZADAS.md](FUNCIONALIDADES_ESTANDARIZADAS.md) - Patrones transversales reutilizables
+4. Revisar módulos existentes como referencia
+5. [DARK_MODE_GUIDE.md](DARK_MODE_GUIDE.md) - Soporte dark mode
 
 ### 🔧 Optimización y Mejoras
 1. [optimizacion-estados-odc.md](optimizacion-estados-odc.md) - Patrones de optimización
@@ -130,6 +138,7 @@ docs/
 ### Por Tema
 - **Desarrollo de módulos**: MODULOS.md
 - **Mutaciones API y estado local**: MUTACIONES_API_SINCRONIZACION_UI.md
+- **Patrones estandarizados reutilizables**: FUNCIONALIDADES_ESTANDARIZADAS.md
 - **UI y diseño**: DARK_MODE_GUIDE.md
 - **Performance**: optimizacion-*.md
 - **Tiempo real**: polling-*.md
