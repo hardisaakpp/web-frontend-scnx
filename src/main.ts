@@ -20,6 +20,15 @@ app.use(router)
 // Restaurar sesión desde token y programar redirección al login cuando caduque
 const authStore = useAuthStore()
 authStore.initializeAuth()
+
+// Refuerza control de sesión al volver de inactividad/reposo.
+if (typeof window !== 'undefined') {
+  const revalidateSession = () => authStore.initializeAuth()
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) revalidateSession()
+  })
+  window.addEventListener('focus', revalidateSession)
+}
 app.directive('permission', permissionDirective)
 
 app.mount('#app')

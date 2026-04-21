@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { attachUnauthorizedRedirect } from '@/services/sessionGuard'
 
 /**
  * En dev, por defecto `/pyg-api` pasa por el proxy de Vite (ver `vite.config.ts`).
@@ -23,6 +24,8 @@ pygApi.interceptors.request.use(
   (error) => Promise.reject(error)
 )
 
+attachUnauthorizedRedirect(pygApi)
+
 export interface UploadBatchSummary {
   id: number
   fileName: string
@@ -34,6 +37,47 @@ export interface UploadBatchSummary {
   totalRows: number
   validRows: number
   errorRows: number
+}
+
+export interface UploadBatchDetailDto extends UploadBatchSummary {
+  errorLogAvailable: boolean
+  originalFileAvailable: boolean
+}
+
+export interface UploadRowHistoryItemDto {
+  id: number
+  uploadBatchId: number
+  sheetName?: string
+  rowNumber?: number
+  year?: number
+  month?: number
+  empresa?: string
+  codigoEmpresa?: string
+  nombreEmpresa?: string
+  marca?: string
+  codigoBodega?: string
+  percentMatriz?: number
+  percentGeneral?: number
+  isValid?: boolean
+  errorMessage?: string
+  createdAt?: string
+}
+
+export interface UploadRowHistoryPageDto {
+  batchId: number
+  total: number
+  page: number
+  pageSize: number
+  totalPercentMatriz?: number
+  totalPercentGeneral?: number
+  items: UploadRowHistoryItemDto[]
+}
+
+export interface UploadRowsQueryParams {
+  page?: number
+  pageSize?: number
+  sheetName?: string
+  isValid?: boolean
 }
 
 export interface UploadResult {
@@ -105,8 +149,31 @@ export async function getUploads(): Promise<UploadBatchSummary[]> {
   return data
 }
 
+export async function getUploadDetail(id: number): Promise<UploadBatchDetailDto> {
+  const { data } = await pygApi.get<UploadBatchDetailDto>(`/uploads/${id}`)
+  return data
+}
+
+export async function getUploadRows(id: number, params: UploadRowsQueryParams): Promise<UploadRowHistoryPageDto> {
+  try {
+    const { data } = await pygApi.get<UploadRowHistoryPageDto>(`/uploads/${id}/rows`, { params })
+    return data
+  } catch (error: unknown) {
+    const status = (error as { response?: { status?: number } })?.response?.status
+    if (status !== 404) throw error
+    // Compat path when Vite proxy forwards /pyg-api/* without /api prefix.
+    const { data } = await pygApi.get<UploadRowHistoryPageDto>(`/api/uploads/${id}/rows`, { params })
+    return data
+  }
+}
+
 export async function downloadTemplate(): Promise<Blob> {
   const { data } = await pygApi.get('/uploads/template', { responseType: 'blob' })
+  return data as Blob
+}
+
+export async function downloadOriginalFile(batchId: number): Promise<Blob> {
+  const { data } = await pygApi.get(`/uploads/${batchId}/file`, { responseType: 'blob' })
   return data as Blob
 }
 

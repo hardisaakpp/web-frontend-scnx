@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { attachUnauthorizedRedirect } from '@/services/sessionGuard'
 
 type AxiosInstanceType = ReturnType<typeof axios.create>
 
@@ -8,15 +9,6 @@ const baseConfig = {
     'Accept': 'application/json',
   },
   withCredentials: true
-}
-
-const LOGIN_REDIRECT_URL =
-  (import.meta.env.VITE_LOGIN_REDIRECT_URL as string) ||
-  `${typeof window !== 'undefined' ? window.location.origin : ''}/login`
-
-function isAuthLoginRequest(error: any): boolean {
-  const url = String(error?.config?.url || '').toLowerCase()
-  return url.includes('/auth/login')
 }
 
 /** Core API: login, Auth y resto de endpoints del Core. */
@@ -42,20 +34,7 @@ function addAuthInterceptor(instance: AxiosInstanceType): void {
     },
     (error: any) => Promise.reject(error)
   )
-  instance.interceptors.response.use(
-    (response: any) => response,
-    (error: any) => {
-      const status = error?.response?.status
-      if (status === 401 && !isAuthLoginRequest(error)) {
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
-        if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-          window.location.href = LOGIN_REDIRECT_URL
-        }
-      }
-      return Promise.reject(error)
-    }
-  )
+  attachUnauthorizedRedirect(instance, { ignoreUrlIncludes: ['/auth/login'] })
 }
 
 addAuthInterceptor(coreApi)

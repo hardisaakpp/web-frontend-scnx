@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { attachUnauthorizedRedirect } from '@/services/sessionGuard'
 import type { Articulo, ArticuloFilters } from '../types'
 
 // Instancia separada para el API del Maestro (puerto 8001 vía proxy)
@@ -110,6 +111,8 @@ apiMaestro.interceptors.response.use((response) => {
     }
     return response
 })
+
+attachUnauthorizedRedirect(apiMaestro)
 
 
 export const articuloService = {

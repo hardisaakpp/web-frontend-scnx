@@ -1,5 +1,5 @@
 import axios from 'axios'
-import router from '@/router'
+import { attachUnauthorizedRedirect } from '@/services/sessionGuard'
 import type { Conciliacion, ConciliacionCreateData, ModuleInfo, PermisosResponse, HealthResponse, BackendErrorResponse } from '../types'
 
 // URL base del backend de Conciliación Tesorería
@@ -39,14 +39,6 @@ conciliacionApi.interceptors.response.use(
     if (error.response) {
       const { status, data } = error.response
       
-      // 401: Token expirado o inválido
-      if (status === 401) {
-        console.warn('⚠️ [Conciliación API] Token inválido o expirado')
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
-        router.push({ name: 'login' })
-      }
-      
       // 403: Sin permisos
       if (status === 403) {
         console.warn('⚠️ [Conciliación API] Sin permisos para esta acción')
@@ -68,6 +60,8 @@ conciliacionApi.interceptors.response.use(
     return Promise.reject(error)
   }
 )
+
+attachUnauthorizedRedirect(conciliacionApi)
 
 export const conciliacionService = {
   // Endpoints públicos (sin autenticación)

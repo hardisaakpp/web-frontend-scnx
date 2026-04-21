@@ -1,5 +1,5 @@
 import axios from 'axios'
-import router from '@/router'
+import { attachUnauthorizedRedirect } from '@/services/sessionGuard'
 
 export interface TablePreferences {
   visibleColumns: string[]
@@ -61,17 +61,9 @@ preferencesApi.interceptors.request.use(
 // Interceptor para manejar errores y autenticación
 preferencesApi.interceptors.response.use(
   response => response,
-  error => {
-    // Manejar errores 401 (token inválido o expirado)
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-      router.push('/login')
-    }
-    
-    return Promise.reject(error)
-  }
+  error => Promise.reject(error)
 )
+attachUnauthorizedRedirect(preferencesApi)
 
 /**
  * Servicio para gestionar preferencias de usuario desde el backend

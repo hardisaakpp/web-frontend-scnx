@@ -1,5 +1,5 @@
 import axios from 'axios'
-import router from '@/router'
+import { attachUnauthorizedRedirect } from '@/services/sessionGuard'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
@@ -21,16 +21,6 @@ api.interceptors.request.use(
 )
 
 // Interceptor para manejar errores de autenticación
-api.interceptors.response.use(
-  response => response,
-  error => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-      router.push('/login')
-    }
-    return Promise.reject(error)
-  }
-)
+attachUnauthorizedRedirect(api)
 
 export default api

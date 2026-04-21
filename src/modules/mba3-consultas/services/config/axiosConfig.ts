@@ -1,5 +1,5 @@
 import axios from 'axios'
-import router from '@/router'
+import { attachUnauthorizedRedirect } from '@/services/sessionGuard'
 
 const API_BASE_URL = import.meta.env.VITE_MBA3_API_BASE_URL || 'http://localhost:8000'
 
@@ -60,13 +60,6 @@ mba3Api.interceptors.response.use(
     return response
   },
   (error) => {
-    // Manejar errores 401 (token inválido o expirado)
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-      router.push('/login')
-    }
-
     // Endpoints que pueden retornar 404 como respuesta válida (no son errores críticos)
     const url = error.config?.url || ''
     const isExpected404 = error.response?.status === 404 && (
@@ -100,5 +93,7 @@ mba3Api.interceptors.response.use(
     return Promise.reject(error)
   }
 )
+
+attachUnauthorizedRedirect(mba3Api)
 
 export { API_BASE_URL }
