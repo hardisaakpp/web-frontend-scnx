@@ -98,6 +98,12 @@
       >
         Carga bloqueada: el periodo actual no es valido mientras el bloqueo de periodo este activado.
       </p>
+      <p
+        v-if="skipWritePeriodValidation && periodValidationUntilLabel"
+        class="text-xs text-sky-700 dark:text-sky-300"
+      >
+        Bloqueo de periodo desactivado temporalmente hasta: {{ periodValidationUntilLabel }}.
+      </p>
       <p v-if="uploadMessage" class="text-sm" :class="uploadOk ? 'text-green-600' : 'text-red-600'">{{ uploadMessage }}</p>
     </div>
 
@@ -389,6 +395,7 @@
         </div>
       </div>
     </div>
+
   </section>
 
 </template>
@@ -396,6 +403,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { lastNotification } from '@/composables/useNotificaciones'
+import { useModuleNotifications } from '@/composables/useModuleNotifications'
 import { useAuthStore } from '@/stores/auth'
 import QuickTablePagination from '@/modules/mba3-consultas/components/QuickTablePagination.vue'
 import { TableCellsIcon } from '@heroicons/vue/24/outline'
@@ -414,16 +422,18 @@ import {
 } from '../services/pygApi'
 
 const authStore = useAuthStore()
+const notifier = useModuleNotifications('PYG')
 const canManagePeriodLock = computed(() => authStore.hasPermission('pyg.edit'))
 
 const selectedFile = ref<File | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
-const historyExpanded = ref(false)
+const historyExpanded = ref(true)
 const loadingUpload = ref(false)
 const uploadDragActive = ref(false)
 const uploadMessage = ref('')
 const uploadOk = ref(false)
 const skipWritePeriodValidation = ref(false)
+const skipWritePeriodValidationUntilUtc = ref<string | null>(null)
 const loadingPeriodValidationSetting = ref(false)
 const periodValidationAvailable = ref(true)
 const isWithinValidPeriod = ref(false)
@@ -475,6 +485,14 @@ const canUploadExcel = computed(() => {
   if (loadingPeriodValidationSetting.value) return false
   if (!periodValidationAvailable.value) return false
   return skipWritePeriodValidation.value || isWithinValidPeriod.value
+})
+
+const periodValidationUntilLabel = computed(() => {
+  const raw = skipWritePeriodValidationUntilUtc.value?.trim()
+  if (!raw) return ''
+  const d = new Date(raw)
+  if (Number.isNaN(d.getTime())) return raw
+  return d.toLocaleString('es-EC', { dateStyle: 'short', timeStyle: 'short' })
 })
 
 function selectedRowsTotalPages(key: UploadSheetKey): number {
@@ -583,6 +601,15 @@ function getApiErrorMessage(error: unknown, fallback: string): string {
     if (typeof o.message === 'string' && o.message.trim()) return o.message
     if (typeof o.detail === 'string' && o.detail.trim()) return o.detail
     if (typeof o.title === 'string' && o.title.trim()) return o.title
+    const errors = o.errors
+    if (errors && typeof errors === 'object') {
+      for (const value of Object.values(errors as Record<string, unknown>)) {
+        if (Array.isArray(value) && value.length > 0) {
+          const first = value[0]
+          if (typeof first === 'string' && first.trim()) return first
+        }
+      }
+    }
   }
 
   if (status === 403) {
@@ -630,6 +657,7 @@ function onFileChange(event: Event) {
   if (!canUploadExcel.value) {
     uploadOk.value = false
     uploadMessage.value = 'Carga bloqueada: periodo no valido con bloqueo de periodo activado.'
+    notifier.warning({ title: 'Carga bloqueada', message: uploadMessage.value })
     return
   }
   void handleUpload()
@@ -665,6 +693,7 @@ function onUploadDrop(event: DragEvent) {
   if (!nameOk && !typeOk) {
     uploadOk.value = false
     uploadMessage.value = 'Solo se admiten archivos Excel (.xlsx).'
+    notifier.warning({ title: 'Archivo inválido', message: uploadMessage.value })
     return
   }
   selectedFile.value = file
@@ -688,8 +717,15 @@ function resolveServerFileName(fallback: string, detail?: UploadBatchDetailDto |
 }
 
 async function handleDownloadTemplate() {
-  const blob = await downloadTemplate()
-  saveBlob(blob, 'Plantilla porcentajes.xlsx')
+  try {
+    const blob = await downloadTemplate()
+    saveBlob(blob, 'Plantilla porcentajes.xlsx')
+    notifier.success({ title: 'Plantilla descargada', message: 'La plantilla de porcentajes se descargó correctamente.' })
+  } catch (error: unknown) {
+    const message = getApiErrorMessage(error, 'No se pudo descargar la plantilla.')
+    queryMessage.value = message
+    notifier.error({ title: 'Error al descargar plantilla', message })
+  }
 }
 
 async function loadPeriodValidationSetting() {
@@ -697,6 +733,7 @@ async function loadPeriodValidationSetting() {
     const data = await getPeriodValidationSettings()
     periodValidationAvailable.value = true
     skipWritePeriodValidation.value = Boolean(data.skipWritePeriodValidation)
+    skipWritePeriodValidationUntilUtc.value = data.skipWritePeriodValidationUntilUtc ?? null
     const payload = data as unknown as Record<string, unknown>
     const maybeIsWithinValidPeriod =
       payload.isWithinValidPeriod ??
@@ -709,9 +746,11 @@ async function loadPeriodValidationSetting() {
     if (status === 404) {
       periodValidationAvailable.value = false
       isWithinValidPeriod.value = false
+      skipWritePeriodValidationUntilUtc.value = null
       return
     }
     queryMessage.value = getApiErrorMessage(error, 'No se pudo consultar la configuración de bloqueo por periodo.')
+    notifier.error({ title: 'Error de configuración', message: queryMessage.value })
   }
 }
 
@@ -726,13 +765,14 @@ async function togglePeriodValidation() {
   await updatePeriodLock(false)
 }
 
-async function updatePeriodLock(nextSkipWritePeriodValidation: boolean, adPassword?: string) {
+async function updatePeriodLock(nextSkipWritePeriodValidation: boolean, adPassword?: string): Promise<boolean> {
   loadingPeriodValidationSetting.value = true
   queryMessage.value = ''
   try {
     const data = await updatePeriodValidationSettings(nextSkipWritePeriodValidation, adPassword)
     periodValidationAvailable.value = true
     skipWritePeriodValidation.value = Boolean(data.skipWritePeriodValidation)
+    skipWritePeriodValidationUntilUtc.value = data.skipWritePeriodValidationUntilUtc ?? null
     const payload = data as unknown as Record<string, unknown>
     const maybeIsWithinValidPeriod =
       payload.isWithinValidPeriod ??
@@ -740,18 +780,23 @@ async function updatePeriodLock(nextSkipWritePeriodValidation: boolean, adPasswo
       payload.isValidPeriod ??
       payload.periodValid
     isWithinValidPeriod.value = typeof maybeIsWithinValidPeriod === 'boolean' ? maybeIsWithinValidPeriod : false
+    return true
   } catch (error: unknown) {
     const status = (error as { response?: { status?: number } })?.response?.status
     if (status === 404) {
       periodValidationAvailable.value = false
       isWithinValidPeriod.value = false
-      return
+      skipWritePeriodValidationUntilUtc.value = null
+      return false
     }
-    if (status === 401 && nextSkipWritePeriodValidation) {
-      adPasswordError.value = 'Contrasena AD invalida. Verifica e intenta nuevamente.'
-      return
+    if ((status === 400 || status === 401) && nextSkipWritePeriodValidation) {
+      adPasswordError.value = getApiErrorMessage(error, 'Contrasena AD invalida. Verifica e intenta nuevamente.')
+      notifier.error({ title: 'Credenciales AD inválidas', message: adPasswordError.value })
+      return false
     }
     queryMessage.value = getApiErrorMessage(error, 'No se pudo actualizar la configuración de bloqueo por periodo.')
+    notifier.error({ title: 'Error al actualizar bloqueo', message: queryMessage.value })
+    return false
   } finally {
     loadingPeriodValidationSetting.value = false
   }
@@ -764,16 +809,17 @@ function cancelDisablePeriodLock() {
 }
 
 async function confirmDisablePeriodLock() {
-  const pass = adPasswordInput.value.trim()
-  if (!pass) {
+  const pass = adPasswordInput.value
+  if (!pass || pass.trim().length === 0) {
     adPasswordError.value = 'La contrasena AD es obligatoria para desactivar el bloqueo.'
     return
   }
   adPasswordError.value = ''
-  await updatePeriodLock(true, pass)
-  if (!adPasswordError.value) {
+  const ok = await updatePeriodLock(true, pass)
+  if (ok) {
     showAdPasswordModal.value = false
     adPasswordInput.value = ''
+    adPasswordError.value = ''
   }
 }
 
@@ -783,8 +829,10 @@ async function handleDownloadOriginal(detail: UploadBatchDetailDto) {
     downloadingOriginal.value = true
     const blob = await downloadOriginalFile(detail.id)
     saveBlob(blob, resolveServerFileName(`upload-${detail.id}.xlsx`, detail))
+    notifier.success({ title: 'Descarga completada', message: 'El archivo original se descargó correctamente.' })
   } catch (error: unknown) {
     queryMessage.value = getApiErrorMessage(error, 'No se pudo descargar el archivo original.')
+    notifier.error({ title: 'Error al descargar archivo', message: queryMessage.value })
   } finally {
     downloadingOriginal.value = false
   }
@@ -795,6 +843,7 @@ async function handleUpload() {
   if (!canUploadExcel.value) {
     uploadOk.value = false
     uploadMessage.value = 'Carga bloqueada: periodo no valido con bloqueo de periodo activado.'
+    notifier.warning({ title: 'Carga bloqueada', message: uploadMessage.value })
     return
   }
 
@@ -804,6 +853,11 @@ async function handleUpload() {
     const result = await uploadExcel(selectedFile.value)
     uploadOk.value = result.success
     uploadMessage.value = result.message || 'Carga procesada.'
+    if (result.success) {
+      notifier.success({ title: 'Carga completada', message: uploadMessage.value })
+    } else {
+      notifier.warning({ title: 'Carga rechazada', message: uploadMessage.value })
+    }
     await loadUploads()
     // UX parity with mba3-consultas/cargar-plantilla:
     // if upload is valid/successful, show the imported sheet data immediately.
@@ -813,6 +867,7 @@ async function handleUpload() {
   } catch (error: unknown) {
     uploadOk.value = false
     uploadMessage.value = getApiErrorMessage(error, 'Error al subir archivo.')
+    notifier.error({ title: 'Error al subir archivo', message: uploadMessage.value })
   } finally {
     loadingUpload.value = false
   }
@@ -833,6 +888,7 @@ async function loadUploads() {
   if (dateFilter === null) {
     loadingUploads.value = false
     queryMessage.value = 'Rango de fechas inválido: "Desde" no puede ser mayor a "Hasta".'
+    notifier.warning({ title: 'Rango de fechas inválido', message: queryMessage.value })
     return
   }
   try {
@@ -844,6 +900,7 @@ async function loadUploads() {
       error,
       'No se pudo cargar el historial de cargas PYG. Revisa proxy (VITE_PYG_PROXY_TARGET), permisos del contenedor y logs del backend.'
     )
+    notifier.error({ title: 'Error al cargar historial', message: queryMessage.value })
   } finally {
     loadingUploads.value = false
   }
@@ -882,6 +939,7 @@ async function reloadSheetRows(resetPage = false) {
     await Promise.all([loadSheetRows('matriz', resetPage), loadSheetRows('tiendas', resetPage)])
   } catch (error: unknown) {
     queryMessage.value = getApiErrorMessage(error, 'No se pudo cargar el historial de filas del lote.')
+    notifier.error({ title: 'Error al cargar filas', message: queryMessage.value })
   } finally {
     loadingRows.value = false
   }
@@ -903,6 +961,7 @@ async function openBatchDetail(batchId: number) {
   } catch (error: unknown) {
     selectedBatchDetail.value = null
     queryMessage.value = getApiErrorMessage(error, 'No se pudo cargar el detalle de la carga.')
+    notifier.error({ title: 'Error al cargar detalle', message: queryMessage.value })
   }
 }
 
@@ -945,6 +1004,10 @@ watch(lastNotification, (notification) => {
   if (!notification) return
   if (notification.target_permission !== 'pyg.edit') return
   if (notification.metadata?.accion !== 'pyg_upload_completed') return
+  notifier.info({
+    title: notification.title || 'Carga PYG finalizada',
+    message: notification.message || 'Se actualizó el historial de cargas.'
+  })
   void loadUploads()
 })
 

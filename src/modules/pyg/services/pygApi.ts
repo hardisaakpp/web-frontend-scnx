@@ -99,6 +99,7 @@ export interface UploadsQueryParams {
 
 export interface PeriodValidationSettingsDto {
   skipWritePeriodValidation: boolean
+  skipWritePeriodValidationUntilUtc?: string | null
   adPassword?: string
 }
 
