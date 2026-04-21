@@ -12,6 +12,8 @@ export default defineConfig(({ mode }) => {
   const employeesProxyTarget = env.VITE_STORE_EMPLOYEES_PROXY_TARGET || cajaChicaProxyTarget
   /** PYG API (Docker típico: host 5171 → contenedor 8080). Solo afecta al dev server de Vite. */
   const pygProxyTarget = env.VITE_PYG_PROXY_TARGET || 'http://localhost:5171'
+  const maestroProxyTarget = env.VITE_MAESTRO_API_TARGET || 'http://localhost:8001'
+  const conciliacionProxyTarget = env.VITE_CONCILIACION_PROXY_TARGET || 'http://127.0.0.1:8005'
   /**
    * Prefijo en el backend tras quitar `/pyg-api`. Por defecto `/api` → `/pyg-api/uploads` → `/api/uploads`.
    * Si el servicio expone rutas en raíz, define `VITE_PYG_PROXY_PREFIX=` vacío en `.env.development`.
@@ -68,6 +70,7 @@ export default defineConfig(({ mode }) => {
           secure: false,
           rewrite: (path) => path
         },
+
         // Caja Chica API via mismo host del frontend (evita localhost del navegador cliente remoto)
         '/caja-chica-api': {
           target: cajaChicaProxyTarget,
@@ -90,6 +93,7 @@ export default defineConfig(({ mode }) => {
           rewrite: (path) => path.replace(/^\/slayer-api/, '/api')
         },
         // Archivos estáticos de Caja Chica (ej: /uploads/...)
+        // Archivos estáticos de Caja Chica (ej: /uploads/...)
         '/uploads': {
           target: cajaChicaProxyTarget,
           changeOrigin: true,
@@ -102,6 +106,20 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path.replace(/^\/employees-api/, '/api')
+        },
+        // Conciliación CORS bypass Proxy
+        '/conciliacion-api': {
+          target: conciliacionProxyTarget,
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/conciliacion-api/, '')
+        },
+        // Maestro de Artículos API
+        '/maestro-api': {
+          target: maestroProxyTarget,
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/maestro-api/, '')
         }
       }
     },

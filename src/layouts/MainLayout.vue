@@ -118,13 +118,13 @@
           to="/conciliacion"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
-            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path === '/conciliacion',
-            'text-slate-300 hover:bg-slate-800/50 hover:text-white': $route.path !== '/conciliacion'
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/conciliacion'),
+            'text-slate-300 hover:bg-slate-800/50 hover:text-white': !$route.path.startsWith('/conciliacion')
           }"
           :title="effectiveSidebarCollapsed ? 'Conciliación' : ''"
         >
           <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-          <ClipboardDocumentCheckIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path === '/conciliacion' }" />
+          <ClipboardDocumentCheckIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/conciliacion') }" />
           <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Conciliación</span>
         </router-link>
 
@@ -506,7 +506,13 @@ const pageTitle = computed(() => {
     '/dashboard': 'Dashboard',
     '/admin': 'Panel de Administración',
     '/user': 'Panel de Usuario',
-    '/conciliacion': 'Conciliación',
+    '/conciliacion': 'Conciliación Bancaria',
+    '/conciliacion/importar': 'Importar Movimientos',
+    '/conciliacion/sincronizar-sap': 'Sincronizar SAP',
+    '/conciliacion/conciliar': 'Conciliación Automática',
+    '/conciliacion/novedades': 'Novedades',
+    '/conciliacion/historial': 'Historial',
+    '/conciliacion/partidas-abiertas': 'Partidas Abiertas',
     '/mba3-consultas': 'Gestión ODC SAP',
     '/gestion-usuarios': 'Personal de Tiendas',
     '/pyg': 'Importador PYG',

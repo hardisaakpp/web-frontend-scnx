@@ -1,200 +1,224 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { Conciliacion, ConciliacionCreateData, ConciliacionState, ModuleInfo, PermisosResponse, HealthResponse } from '../types'
 import { conciliacionService } from '../services/conciliacionApi'
+import type {
+  DashboardMetricas,
+  Banco,
+  CargaArchivo,
+  ImportResult,
+  AppResponse,
+  SAPSyncResponse,
+  ConciliacionRequest,
+  ConciliacionResponse,
+  ConciliacionManualRequest,
+  NovedadesResponse,
+  NovedadesParams,
+  HistorialParams,
+  ProcesoConciliacion,
+  DetalleProcesoResponse,
+  ReportePartidasAbiertas,
+  PartidasAbiertasParams,
+  DashboardParams,
+  SAPIncompleto,
+  MovimientoReporte,
+  ReporteMaestroParams,
+} from '../types'
 
 export const useConciliacionStore = defineStore('conciliacion', () => {
-  // State
-  const conciliaciones = ref<Conciliacion[]>([])
+  // ── State ─────────────────────────────────────────────────
+  const dashboard = ref<DashboardMetricas | null>(null)
+  const bancos = ref<Banco[]>([])
+  const cargas = ref<CargaArchivo[]>([])
+  const novedades = ref<NovedadesResponse | null>(null)
+  const historial = ref<ProcesoConciliacion[]>([])
+  const detalleProceso = ref<DetalleProcesoResponse | null>(null)
+  const partidasAbiertas = ref<ReportePartidasAbiertas | null>(null)
+  const sapIncompletos = ref<SAPIncompleto[]>([])
+  const reporteMaestroList = ref<MovimientoReporte[]>([])
+
+  // Resultado de última operación (import, sync, conciliación)
+  const lastImportResult = ref<AppResponse<ImportResult> | null>(null)
+  const lastSyncResult = ref<SAPSyncResponse | null>(null)
+  const lastConciliacionResult = ref<ConciliacionResponse | null>(null)
+
   const loading = ref(false)
   const error = ref<string | null>(null)
-  const moduleInfo = ref<ModuleInfo | null>(null)
-  const permisos = ref<string[]>([])
-  const isAdmin = ref(false)
 
-  // Getters
-  const conciliacionesBancarias = computed(() => 
-    conciliaciones.value.filter(c => c.tipo === 'bancaria')
-  )
+  // ── Getters ───────────────────────────────────────────────
+  const hasDashboard = computed(() => dashboard.value !== null)
+  const hasBancos = computed(() => bancos.value.length > 0)
+  const hasNovedades = computed(() => (novedades.value?.total_casos ?? 0) > 0)
 
-  const conciliacionesContables = computed(() => 
-    conciliaciones.value.filter(c => c.tipo === 'contable')
-  )
-
-  const hasData = computed(() => conciliaciones.value.length > 0)
-
-  // Actions
-  async function fetchConciliaciones() {
-    loading.value = true
-    error.value = null
-    try {
-      conciliaciones.value = await conciliacionService.getConciliaciones()
-    } catch (e: any) {
-      error.value = e.message || 'Error al cargar conciliaciones'
-      console.error('Error fetching conciliaciones:', e)
-    } finally {
-      loading.value = false
-    }
-  }
-
-  async function fetchConciliacion(id: string) {
-    loading.value = true
-    error.value = null
-    try {
-      const conciliacion = await conciliacionService.getConciliacion(id)
-      const index = conciliaciones.value.findIndex(c => c.id === id)
-      if (index !== -1) {
-        conciliaciones.value[index] = conciliacion
-      } else {
-        conciliaciones.value.push(conciliacion)
-      }
-      return conciliacion
-    } catch (e: any) {
-      error.value = e.message || 'Error al cargar conciliación'
-      console.error('Error fetching conciliacion:', e)
-      throw e
-    } finally {
-      loading.value = false
-    }
-  }
-
-  async function createConciliacion(data: ConciliacionCreateData) {
-    loading.value = true
-    error.value = null
-    try {
-      const newConciliacion = await conciliacionService.createConciliacion(data)
-      conciliaciones.value.unshift(newConciliacion)
-      return newConciliacion
-    } catch (e: any) {
-      error.value = e.message || 'Error al crear conciliación'
-      console.error('Error creating conciliacion:', e)
-      throw e
-    } finally {
-      loading.value = false
-    }
-  }
-
-  async function updateConciliacion(id: string, data: Partial<Conciliacion>) {
-    loading.value = true
-    error.value = null
-    try {
-      const updated = await conciliacionService.updateConciliacion(id, data)
-      const index = conciliaciones.value.findIndex(c => c.id === id)
-      if (index !== -1) {
-        conciliaciones.value[index] = updated
-      }
-      return updated
-    } catch (e: any) {
-      error.value = e.message || 'Error al actualizar conciliación'
-      console.error('Error updating conciliacion:', e)
-      throw e
-    } finally {
-      loading.value = false
-    }
-  }
-
-  async function deleteConciliacion(id: string) {
-    loading.value = true
-    error.value = null
-    try {
-      await conciliacionService.deleteConciliacion(id)
-      conciliaciones.value = conciliaciones.value.filter(c => c.id !== id)
-    } catch (e: any) {
-      error.value = e.message || 'Error al eliminar conciliación'
-      console.error('Error deleting conciliacion:', e)
-      throw e
-    } finally {
-      loading.value = false
-    }
-  }
-
-
-  // Información del módulo y permisos
-  async function fetchModuleInfo() {
-    try {
-      moduleInfo.value = await conciliacionService.getInfo()
-    } catch (e: any) {
-      console.error('Error fetching module info:', e)
-    }
-  }
-
-  async function fetchPermisos() {
-    try {
-      const response = await conciliacionService.getPermisos()
-      permisos.value = response.permisos || []
-      isAdmin.value = response.is_admin || false
-    } catch (e: any) {
-      console.error('Error fetching permisos:', e)
-      permisos.value = []
-      isAdmin.value = false
-    }
-  }
-
-  async function checkHealth(): Promise<HealthResponse> {
-    try {
-      return await conciliacionService.getHealth()
-    } catch (e: any) {
-      console.error('Error checking health:', e)
-      throw e
-    }
-  }
-
-  // Upload de documentos
-  async function uploadDocumento(file: File) {
-    loading.value = true
-    error.value = null
-    try {
-      const result = await conciliacionService.uploadDocumento(file)
-      return result
-    } catch (e: any) {
-      error.value = e.message || 'Error al subir documento'
-      console.error('Error uploading documento:', e)
-      throw e
-    } finally {
-      loading.value = false
-    }
-  }
-
-  // Verificar permisos
-  function hasPermission(permission: string): boolean {
-    if (isAdmin.value) return true
-    return permisos.value.includes(permission)
-  }
-
-  function hasAnyPermission(permissions: string[]): boolean {
-    if (isAdmin.value) return true
-    return permissions.some(p => permisos.value.includes(p))
-  }
-
+  // ── Helpers ───────────────────────────────────────────────
   function clearError() {
     error.value = null
   }
 
+  async function withLoading<T>(fn: () => Promise<T>): Promise<T> {
+    loading.value = true
+    error.value = null
+    try {
+      return await fn()
+    } catch (e: any) {
+      error.value = e.response?.data?.message || e.message || 'Error inesperado'
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // ── Actions: Dashboard ────────────────────────────────────
+  async function fetchDashboard(params?: DashboardParams) {
+    return withLoading(async () => {
+      dashboard.value = await conciliacionService.getDashboard(params)
+      return dashboard.value
+    })
+  }
+
+  // ── Actions: Catálogo ─────────────────────────────────────
+  async function fetchBancos() {
+    return withLoading(async () => {
+      bancos.value = await conciliacionService.getBancos()
+      return bancos.value
+    })
+  }
+
+  // ── Actions: Banca (Import) ───────────────────────────────
+  async function importExcel(file: File, banco: string, usuario?: string) {
+    return withLoading(async () => {
+      const result = await conciliacionService.importExcel(file, banco, usuario)
+      lastImportResult.value = result
+      return result
+    })
+  }
+
+  async function fetchCargas() {
+    return withLoading(async () => {
+      cargas.value = await conciliacionService.getCargas()
+      return cargas.value
+    })
+  }
+
+  // ── Actions: SAP ──────────────────────────────────────────
+  async function syncSAP(diasAtras?: number) {
+    return withLoading(async () => {
+      const result = await conciliacionService.syncSAP(
+        diasAtras ? { dias_atras: diasAtras } : undefined,
+      )
+      lastSyncResult.value = result
+      return result
+    })
+  }
+
+  // ── Actions: Conciliación ─────────────────────────────────
+  async function conciliarAutomatica(request: ConciliacionRequest) {
+    return withLoading(async () => {
+      const result = await conciliacionService.conciliarAutomatica(request)
+      lastConciliacionResult.value = result
+      return result
+    })
+  }
+
+  async function fetchNovedades(params?: NovedadesParams) {
+    return withLoading(async () => {
+      novedades.value = await conciliacionService.getNovedades(params)
+      return novedades.value
+    })
+  }
+
+  async function conciliarManual(request: ConciliacionManualRequest) {
+    return withLoading(async () => {
+      return await conciliacionService.conciliarManual(request)
+    })
+  }
+
+  async function fetchHistorial(params?: HistorialParams) {
+    return withLoading(async () => {
+      historial.value = await conciliacionService.getHistorial(params)
+      return historial.value
+    })
+  }
+
+  async function fetchDetalleProceso(idProceso: string) {
+    return withLoading(async () => {
+      detalleProceso.value = await conciliacionService.getDetalleProceso(idProceso)
+      return detalleProceso.value
+    })
+  }
+
+  async function revertirConciliacion(idProceso: string) {
+    return withLoading(async () => {
+      const result = await conciliacionService.revertirConciliacion(idProceso)
+      // Refrescar historial después de revertir
+      await fetchHistorial()
+      return result
+    })
+  }
+
+  // ── Actions: Reportes ─────────────────────────────────────
+  async function fetchPartidasAbiertas(params?: PartidasAbiertasParams) {
+    return withLoading(async () => {
+      partidasAbiertas.value = await conciliacionService.getPartidasAbiertas(params)
+      return partidasAbiertas.value
+    })
+  }
+
+  async function fetchSAPIncompletos() {
+    return withLoading(async () => {
+      sapIncompletos.value = await conciliacionService.getSAPIncompletos()
+      return sapIncompletos.value
+    })
+  }
+
+  async function fetchReporteMaestro(params?: ReporteMaestroParams) {
+    return withLoading(async () => {
+      reporteMaestroList.value = await conciliacionService.getReporteMaestro(params)
+      return reporteMaestroList.value
+    })
+  }
+
+  async function descargarMaestroExcel(params?: ReporteMaestroParams) {
+    return withLoading(async () => {
+      return await conciliacionService.descargarReporteMaestroExcel(params)
+    })
+  }
+
   return {
     // State
-    conciliaciones,
+    dashboard,
+    bancos,
+    cargas,
+    novedades,
+    historial,
+    detalleProceso,
+    partidasAbiertas,
+    lastImportResult,
+    lastSyncResult,
+    lastConciliacionResult,
     loading,
     error,
-    moduleInfo,
-    permisos,
-    isAdmin,
     // Getters
-    conciliacionesBancarias,
-    conciliacionesContables,
-    hasData,
+    hasDashboard,
+    hasBancos,
+    hasNovedades,
     // Actions
-    fetchConciliaciones,
-    fetchConciliacion,
-    createConciliacion,
-    updateConciliacion,
-    deleteConciliacion,
-    uploadDocumento,
-    fetchModuleInfo,
-    fetchPermisos,
-    checkHealth,
-    hasPermission,
-    hasAnyPermission,
-    clearError
+    clearError,
+    fetchDashboard,
+    fetchBancos,
+    importExcel,
+    fetchCargas,
+    syncSAP,
+    conciliarAutomatica,
+    fetchNovedades,
+    conciliarManual,
+    fetchHistorial,
+    fetchDetalleProceso,
+    revertirConciliacion,
+    fetchPartidasAbiertas,
+    sapIncompletos,
+    fetchSAPIncompletos,
+    reporteMaestroList,
+    fetchReporteMaestro,
+    descargarMaestroExcel,
   }
 })
-
