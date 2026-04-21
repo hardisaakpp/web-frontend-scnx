@@ -70,75 +70,95 @@
       <p v-if="uploadMessage" class="text-sm" :class="uploadOk ? 'text-green-600' : 'text-red-600'">{{ uploadMessage }}</p>
     </div>
 
-    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm p-6">
-      <div class="mb-4 flex items-center justify-between">
+    <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm">
+      <button
+        type="button"
+        class="w-full flex items-center justify-between p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors rounded-t-xl"
+        :aria-expanded="historyExpanded"
+        @click="historyExpanded = !historyExpanded"
+      >
         <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Historial de cargas</h2>
-        <button
-          type="button"
-          class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700/50 text-gray-700 dark:text-gray-200 text-sm px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-          :disabled="loadingUploads"
-          @click="loadUploads"
+        <svg
+          class="w-5 h-5 text-gray-500 dark:text-gray-400 transition-transform duration-200"
+          :class="{ 'rotate-180': historyExpanded }"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
         >
-          Refrescar
-        </button>
-      </div>
-      <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-700">
-          <thead>
-            <tr class="text-left text-gray-600 dark:text-gray-300">
-              <th class="w-10 px-2 py-2 text-right tabular-nums">#</th>
-              <th class="px-3 py-2">Archivo</th>
-              <th class="px-3 py-2">Periodo</th>
-              <th class="px-3 py-2">Estado</th>
-              <th class="px-3 py-2">Filas</th>
-              <th class="px-3 py-2 whitespace-nowrap">Fecha ingreso</th>
-              <th class="px-3 py-2 whitespace-nowrap">Última actualización</th>
-              <th class="px-3 py-2">Usuario últ. act.</th>
-              <th class="px-3 py-2">Acciones</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
-            <tr v-for="(item, index) in paginatedUploads" :key="item.id" class="text-gray-800 dark:text-gray-200">
-              <td class="px-2 py-2 text-right tabular-nums text-gray-500 dark:text-gray-400">{{ uploadsHistoryOffset + index + 1 }}</td>
-              <td class="px-3 py-2">{{ item.fileName }}</td>
-              <td class="px-3 py-2">{{ item.year }}-{{ String(item.month).padStart(2, '0') }}</td>
-              <td class="px-3 py-2" :class="uploadStatusClass(item.status)">{{ item.status }}</td>
-              <td class="px-3 py-2">{{ item.validRows }}/{{ item.totalRows }}</td>
-              <td class="px-3 py-2 text-gray-600 dark:text-gray-400 whitespace-nowrap">{{ formatAuditDate(item.uploadedAt) }}</td>
-              <td class="px-3 py-2 text-gray-600 dark:text-gray-400 whitespace-nowrap">—</td>
-              <td class="px-3 py-2 text-gray-600 dark:text-gray-400">{{ item.uploadedBy?.trim() || '—' }}</td>
-              <td class="px-3 py-2">
-                <button
-                  type="button"
-                  class="rounded border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800"
-                  :disabled="loadingDetail && selectedBatchId === item.id"
-                  @click="openBatchDetail(item.id)"
-                >
-                  {{ selectedBatchId === item.id ? 'Detalle abierto' : 'Ver detalle' }}
-                </button>
-              </td>
-            </tr>
-            <tr v-if="uploads.length === 0 && !loadingUploads">
-              <td colspan="9" class="px-3 py-3 text-center text-gray-500">Sin cargas registradas.</td>
-            </tr>
-            <tr v-if="loadingUploads && uploads.length === 0">
-              <td colspan="9" class="px-3 py-3 text-center text-gray-500">Cargando historial…</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
 
-      <div v-if="uploads.length > 0 && !loadingUploads" class="mt-4 border-t border-gray-200 pt-4 dark:border-gray-700">
-        <div class="flex flex-wrap items-center justify-between gap-4">
-          <div class="text-sm text-gray-700 dark:text-gray-300">
-            Mostrando {{ uploadsHistoryOffset + 1 }} - {{ uploadsHistoryRangeEnd }} de {{ uploads.length }} resultados
-          </div>
-          <QuickTablePagination
-            v-model="uploadsHistoryCurrentPage"
-            :total-pages="uploadsHistoryTotalPages"
+      <div v-show="historyExpanded" class="px-6 pb-6 border-t border-gray-200 dark:border-gray-700">
+        <div class="mb-4 mt-4 flex items-center justify-end">
+          <button
+            type="button"
+            class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700/50 text-gray-700 dark:text-gray-200 text-sm px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             :disabled="loadingUploads"
-            aria-label="Paginación del historial de cargas PYG"
-          />
+            @click="loadUploads"
+          >
+            Refrescar
+          </button>
+        </div>
+        
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200 text-sm dark:divide-gray-700">
+            <thead>
+              <tr class="text-left text-gray-600 dark:text-gray-300">
+                <th class="w-10 px-2 py-2 text-right tabular-nums">#</th>
+                <th class="px-3 py-2">Archivo</th>
+                <th class="px-3 py-2">Periodo</th>
+                <th class="px-3 py-2">Estado</th>
+                <th class="px-3 py-2">Filas</th>
+                <th class="px-3 py-2 whitespace-nowrap">Fecha ingreso</th>
+                <th class="px-3 py-2 whitespace-nowrap">Última actualización</th>
+                <th class="px-3 py-2">Usuario últ. act.</th>
+                <th class="px-3 py-2">Acciones</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+              <tr v-for="(item, index) in paginatedUploads" :key="item.id" class="text-gray-800 dark:text-gray-200">
+                <td class="px-2 py-2 text-right tabular-nums text-gray-500 dark:text-gray-400">{{ uploadsHistoryOffset + index + 1 }}</td>
+                <td class="px-3 py-2">{{ item.fileName }}</td>
+                <td class="px-3 py-2">{{ item.year }}-{{ String(item.month).padStart(2, '0') }}</td>
+                <td class="px-3 py-2" :class="uploadStatusClass(item.status)">{{ item.status }}</td>
+                <td class="px-3 py-2">{{ item.validRows }}/{{ item.totalRows }}</td>
+                <td class="px-3 py-2 text-gray-600 dark:text-gray-400 whitespace-nowrap">{{ formatAuditDate(item.uploadedAt) }}</td>
+                <td class="px-3 py-2 text-gray-600 dark:text-gray-400 whitespace-nowrap">—</td>
+                <td class="px-3 py-2 text-gray-600 dark:text-gray-400">{{ item.uploadedBy?.trim() || '—' }}</td>
+                <td class="px-3 py-2">
+                  <button
+                    type="button"
+                    class="rounded border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50 dark:border-gray-600 dark:hover:bg-gray-800"
+                    :disabled="loadingDetail && selectedBatchId === item.id"
+                    @click="openBatchDetail(item.id)"
+                  >
+                    {{ selectedBatchId === item.id ? 'Detalle abierto' : 'Ver detalle' }}
+                  </button>
+                </td>
+              </tr>
+              <tr v-if="uploads.length === 0 && !loadingUploads">
+                <td colspan="9" class="px-3 py-3 text-center text-gray-500">Sin cargas registradas.</td>
+              </tr>
+              <tr v-if="loadingUploads && uploads.length === 0">
+                <td colspan="9" class="px-3 py-3 text-center text-gray-500">Cargando historial…</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div v-if="uploads.length > 0 && !loadingUploads" class="mt-4 border-t border-gray-200 pt-4 dark:border-gray-700">
+          <div class="flex flex-wrap items-center justify-between gap-4">
+            <div class="text-sm text-gray-700 dark:text-gray-300">
+              Mostrando {{ uploadsHistoryOffset + 1 }} - {{ uploadsHistoryRangeEnd }} de {{ uploads.length }} resultados
+            </div>
+            <QuickTablePagination
+              v-model="uploadsHistoryCurrentPage"
+              :total-pages="uploadsHistoryTotalPages"
+              :disabled="loadingUploads"
+              aria-label="Paginación del historial de cargas PYG"
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -307,6 +327,7 @@ import {
 
 const selectedFile = ref<File | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
+const historyExpanded = ref(false)
 const loadingUpload = ref(false)
 const uploadDragActive = ref(false)
 const uploadMessage = ref('')
