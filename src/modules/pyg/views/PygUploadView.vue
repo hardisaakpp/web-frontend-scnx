@@ -5,13 +5,37 @@
         <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Importador PYG</h1>
         <p class="text-sm text-gray-600 dark:text-gray-300">Carga plantilla y revisa el historial de importación.</p>
       </div>
-      <button
-        type="button"
-        class="shrink-0 rounded-md border border-sky-600 bg-sky-50 px-4 py-2 text-sm font-medium text-sky-800 shadow-sm hover:bg-sky-100 dark:border-sky-500 dark:bg-sky-950/40 dark:text-sky-100 dark:hover:bg-sky-900/60"
-        @click="handleDownloadTemplate"
-      >
-        Descargar plantilla
-      </button>
+      <div class="flex flex-wrap items-center gap-2">
+        <button
+          v-if="canManagePeriodLock"
+          type="button"
+          class="shrink-0 rounded-md border px-4 py-2 text-sm font-medium shadow-sm transition-colors"
+          :class="
+            skipWritePeriodValidation
+              ? 'border-amber-600 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-500 dark:bg-amber-950/40 dark:text-amber-100 dark:hover:bg-amber-900/60'
+              : 'border-emerald-600 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:border-emerald-500 dark:bg-emerald-950/40 dark:text-emerald-100 dark:hover:bg-emerald-900/60'
+          "
+          :disabled="loadingPeriodValidationSetting || !periodValidationAvailable"
+          @click="togglePeriodValidation"
+        >
+          {{
+            loadingPeriodValidationSetting
+              ? 'Actualizando...'
+              : !periodValidationAvailable
+                ? 'Bloqueo de periodo: No disponible'
+                : skipWritePeriodValidation
+                ? 'Bloqueo de periodo: Desactivado'
+                : 'Bloqueo de periodo: Activado'
+          }}
+        </button>
+        <button
+          type="button"
+          class="shrink-0 rounded-md border border-sky-600 bg-sky-50 px-4 py-2 text-sm font-medium text-sky-800 shadow-sm hover:bg-sky-100 dark:border-sky-500 dark:bg-sky-950/40 dark:text-sky-100 dark:hover:bg-sky-900/60"
+          @click="handleDownloadTemplate"
+        >
+          Descargar plantilla
+        </button>
+      </div>
     </header>
 
     <div class="space-y-3">
@@ -20,18 +44,19 @@
         type="file"
         accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         class="sr-only"
-        :disabled="loadingUpload"
+        :disabled="loadingUpload || !canUploadExcel"
         @change="onFileChange"
       />
       <div
         class="rounded-lg border-2 border-dashed border-emerald-200/90 bg-gradient-to-b from-emerald-50/90 to-white p-8 text-center transition-colors hover:border-emerald-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 dark:border-emerald-800 dark:from-emerald-950/50 dark:to-gray-900/50 dark:hover:border-emerald-600"
         :class="[
           uploadDragActive ? 'border-emerald-500 bg-emerald-50 shadow-inner dark:border-emerald-400 dark:bg-emerald-950/70' : '',
-          loadingUpload ? 'cursor-wait opacity-70' : 'cursor-pointer'
+          loadingUpload ? 'cursor-wait opacity-70' : canUploadExcel ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'
         ]"
         role="button"
         :tabindex="loadingUpload ? -1 : 0"
         :aria-busy="loadingUpload"
+        :aria-disabled="!canUploadExcel"
         aria-label="Subir archivo Excel: arrastra un .xlsx o haz clic para elegir"
         @click="openFilePicker"
         @keydown.enter.prevent="openFilePicker"
@@ -67,6 +92,12 @@
       <p v-if="selectedFile" class="text-xs text-gray-500 dark:text-gray-400">
         Archivo seleccionado: {{ selectedFile.name }}
       </p>
+      <p
+        v-if="!canUploadExcel && !loadingPeriodValidationSetting && periodValidationAvailable"
+        class="text-xs text-amber-700 dark:text-amber-300"
+      >
+        Carga bloqueada: el periodo actual no es valido mientras el bloqueo de periodo este activado.
+      </p>
       <p v-if="uploadMessage" class="text-sm" :class="uploadOk ? 'text-green-600' : 'text-red-600'">{{ uploadMessage }}</p>
     </div>
 
@@ -90,7 +121,43 @@
       </button>
 
       <div v-show="historyExpanded" class="px-6 pb-6 border-t border-gray-200 dark:border-gray-700">
-        <div class="mb-4 mt-4 flex items-center justify-end">
+        <div class="mb-4 mt-4 flex flex-wrap items-end justify-between gap-3">
+          <div class="flex flex-wrap items-end gap-3">
+            <label class="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-300">
+              Desde
+              <input
+                v-model="uploadsDateFilter.from"
+                type="date"
+                class="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-700 dark:border-gray-600 dark:bg-gray-700/50 dark:text-gray-100"
+                :disabled="loadingUploads"
+              />
+            </label>
+            <label class="flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-300">
+              Hasta
+              <input
+                v-model="uploadsDateFilter.to"
+                type="date"
+                class="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-700 dark:border-gray-600 dark:bg-gray-700/50 dark:text-gray-100"
+                :disabled="loadingUploads"
+              />
+            </label>
+            <button
+              type="button"
+              class="rounded-lg border border-emerald-600 bg-emerald-50 px-3 py-1.5 text-sm text-emerald-800 hover:bg-emerald-100 disabled:opacity-60 dark:border-emerald-500 dark:bg-emerald-950/40 dark:text-emerald-100"
+              :disabled="loadingUploads"
+              @click="applyUploadsDateFilter"
+            >
+              Aplicar
+            </button>
+            <button
+              type="button"
+              class="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-60 dark:border-gray-600 dark:bg-gray-700/50 dark:text-gray-200 dark:hover:bg-gray-700"
+              :disabled="loadingUploads || (!uploadsDateFilter.from && !uploadsDateFilter.to)"
+              @click="clearUploadsDateFilter"
+            >
+              Limpiar
+            </button>
+          </div>
           <button
             type="button"
             class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700/50 text-gray-700 dark:text-gray-200 text-sm px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
@@ -276,6 +343,52 @@
     <p v-if="queryMessage" class="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
       {{ queryMessage }}
     </p>
+
+    <div
+      v-if="showAdPasswordModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="ad-password-title"
+    >
+      <div class="w-full max-w-md rounded-xl border border-gray-200 bg-white p-4 shadow-xl dark:border-gray-700 dark:bg-gray-800">
+        <h3 id="ad-password-title" class="text-sm font-semibold text-gray-900 dark:text-white">
+          Confirmar desactivacion de bloqueo
+        </h3>
+        <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">
+          Para desactivar el bloqueo de periodo, ingresa tu contrasena de Active Directory.
+        </p>
+        <label class="mt-3 flex flex-col gap-1 text-xs text-gray-600 dark:text-gray-300">
+          Contrasena AD
+          <input
+            v-model="adPasswordInput"
+            type="password"
+            class="rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-700 dark:border-gray-600 dark:bg-gray-700/50 dark:text-gray-100"
+            :disabled="loadingPeriodValidationSetting"
+            @keydown.enter.prevent="confirmDisablePeriodLock"
+          />
+        </label>
+        <p v-if="adPasswordError" class="mt-2 text-xs text-red-600 dark:text-red-400">{{ adPasswordError }}</p>
+        <div class="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            class="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-700"
+            :disabled="loadingPeriodValidationSetting"
+            @click="cancelDisablePeriodLock"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            class="rounded-md border border-emerald-600 bg-emerald-50 px-3 py-1.5 text-sm text-emerald-800 hover:bg-emerald-100 disabled:opacity-60 dark:border-emerald-500 dark:bg-emerald-950/40 dark:text-emerald-100"
+            :disabled="loadingPeriodValidationSetting"
+            @click="confirmDisablePeriodLock"
+          >
+            Confirmar
+          </button>
+        </div>
+      </div>
+    </div>
   </section>
 
 </template>
@@ -283,19 +396,25 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { lastNotification } from '@/composables/useNotificaciones'
+import { useAuthStore } from '@/stores/auth'
 import QuickTablePagination from '@/modules/mba3-consultas/components/QuickTablePagination.vue'
 import { TableCellsIcon } from '@heroicons/vue/24/outline'
 import {
   downloadOriginalFile,
   downloadTemplate,
+  getPeriodValidationSettings,
   getUploadRows,
   getUploads,
+  updatePeriodValidationSettings,
   uploadExcel,
   type UploadBatchDetailDto,
   type UploadBatchSummary,
   type UploadRowHistoryItemDto,
   type UploadRowHistoryPageDto
 } from '../services/pygApi'
+
+const authStore = useAuthStore()
+const canManagePeriodLock = computed(() => authStore.hasPermission('pyg.edit'))
 
 const selectedFile = ref<File | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
@@ -304,6 +423,13 @@ const loadingUpload = ref(false)
 const uploadDragActive = ref(false)
 const uploadMessage = ref('')
 const uploadOk = ref(false)
+const skipWritePeriodValidation = ref(false)
+const loadingPeriodValidationSetting = ref(false)
+const periodValidationAvailable = ref(true)
+const isWithinValidPeriod = ref(false)
+const showAdPasswordModal = ref(false)
+const adPasswordInput = ref('')
+const adPasswordError = ref('')
 
 const uploads = ref<UploadBatchSummary[]>([])
 const loadingUploads = ref(false)
@@ -322,6 +448,7 @@ const selectedRowsBySheet = ref<{ matriz: UploadRowHistoryPageDto; tiendas: Uplo
   tiendas: { ...EMPTY_UPLOAD_ROWS_PAGE }
 })
 const rowsFilters = ref<{ isValid: '' | 'true' | 'false' }>({ isValid: '' })
+const uploadsDateFilter = ref<{ from: string; to: string }>({ from: '', to: '' })
 
 /** Misma lógica que Cargar plantilla (MBA3): 10 filas por página. */
 const UPLOADS_PAGE_SIZE = 10
@@ -343,11 +470,30 @@ const uploadsHistoryRangeEnd = computed(() =>
   uploads.value.length === 0 ? 0 : Math.min(uploadsHistoryOffset.value + UPLOADS_PAGE_SIZE, uploads.value.length)
 )
 
+const canUploadExcel = computed(() => {
+  if (!canManagePeriodLock.value) return true
+  if (loadingPeriodValidationSetting.value) return false
+  if (!periodValidationAvailable.value) return false
+  return skipWritePeriodValidation.value || isWithinValidPeriod.value
+})
+
 function selectedRowsTotalPages(key: UploadSheetKey): number {
   const rows = selectedRowsBySheet.value[key]
   const total = rows.total
   const size = rows.pageSize || 1
   return total > 0 ? Math.max(1, Math.ceil(total / size)) : 1
+}
+
+function normalizeUploadsDateFilter():
+  | { from?: string; to?: string }
+  | null {
+  const from = uploadsDateFilter.value.from?.trim() || ''
+  const to = uploadsDateFilter.value.to?.trim() || ''
+  if (from && to && from > to) return null
+  return {
+    from: from || undefined,
+    to: to || undefined
+  }
 }
 
 function selectedRowsRangeStart(key: UploadSheetKey): number {
@@ -396,11 +542,7 @@ watch(uploadsHistoryTotalPages, (max) => {
   if (uploadsHistoryPage.value > max) uploadsHistoryPage.value = max
 })
 const queryMessage = ref('')
-const UPLOADS_REFRESH_FAST_MS = 5000
-const UPLOADS_REFRESH_SLOW_MS = 60000
-const UPLOADS_REFRESH_HIDDEN_MS = 120000
 const ACTIVE_UPLOAD_STATUS_KEYWORDS = ['processing', 'proces', 'pend', 'queue', 'en cola', 'running']
-let uploadsAutoRefreshTimer: ReturnType<typeof setTimeout> | null = null
 const isPygViewMounted = ref(false)
 
 function uploadStatusClass(status: string | undefined): string {
@@ -485,11 +627,16 @@ function onFileChange(event: Event) {
   const target = event.target as HTMLInputElement
   selectedFile.value = target.files?.[0] ?? null
   if (!selectedFile.value) return
+  if (!canUploadExcel.value) {
+    uploadOk.value = false
+    uploadMessage.value = 'Carga bloqueada: periodo no valido con bloqueo de periodo activado.'
+    return
+  }
   void handleUpload()
 }
 
 function openFilePicker() {
-  if (loadingUpload.value) return
+  if (loadingUpload.value || !canUploadExcel.value) return
   if (!fileInputRef.value) return
   fileInputRef.value.value = ''
   fileInputRef.value.click()
@@ -497,7 +644,7 @@ function openFilePicker() {
 
 function onUploadDragOver(event: DragEvent) {
   event.preventDefault()
-  if (loadingUpload.value) return
+  if (loadingUpload.value || !canUploadExcel.value) return
   uploadDragActive.value = true
 }
 
@@ -508,7 +655,7 @@ function onUploadDragLeave() {
 function onUploadDrop(event: DragEvent) {
   event.preventDefault()
   uploadDragActive.value = false
-  if (loadingUpload.value) return
+  if (loadingUpload.value || !canUploadExcel.value) return
   const file = event.dataTransfer?.files?.[0]
   if (!file) return
   const nameOk = file.name.toLowerCase().endsWith('.xlsx')
@@ -545,6 +692,91 @@ async function handleDownloadTemplate() {
   saveBlob(blob, 'Plantilla porcentajes.xlsx')
 }
 
+async function loadPeriodValidationSetting() {
+  try {
+    const data = await getPeriodValidationSettings()
+    periodValidationAvailable.value = true
+    skipWritePeriodValidation.value = Boolean(data.skipWritePeriodValidation)
+    const payload = data as unknown as Record<string, unknown>
+    const maybeIsWithinValidPeriod =
+      payload.isWithinValidPeriod ??
+      payload.withinValidPeriod ??
+      payload.isValidPeriod ??
+      payload.periodValid
+    isWithinValidPeriod.value = typeof maybeIsWithinValidPeriod === 'boolean' ? maybeIsWithinValidPeriod : false
+  } catch (error: unknown) {
+    const status = (error as { response?: { status?: number } })?.response?.status
+    if (status === 404) {
+      periodValidationAvailable.value = false
+      isWithinValidPeriod.value = false
+      return
+    }
+    queryMessage.value = getApiErrorMessage(error, 'No se pudo consultar la configuración de bloqueo por periodo.')
+  }
+}
+
+async function togglePeriodValidation() {
+  if (!periodValidationAvailable.value) return
+  if (!skipWritePeriodValidation.value) {
+    showAdPasswordModal.value = true
+    adPasswordInput.value = ''
+    adPasswordError.value = ''
+    return
+  }
+  await updatePeriodLock(false)
+}
+
+async function updatePeriodLock(nextSkipWritePeriodValidation: boolean, adPassword?: string) {
+  loadingPeriodValidationSetting.value = true
+  queryMessage.value = ''
+  try {
+    const data = await updatePeriodValidationSettings(nextSkipWritePeriodValidation, adPassword)
+    periodValidationAvailable.value = true
+    skipWritePeriodValidation.value = Boolean(data.skipWritePeriodValidation)
+    const payload = data as unknown as Record<string, unknown>
+    const maybeIsWithinValidPeriod =
+      payload.isWithinValidPeriod ??
+      payload.withinValidPeriod ??
+      payload.isValidPeriod ??
+      payload.periodValid
+    isWithinValidPeriod.value = typeof maybeIsWithinValidPeriod === 'boolean' ? maybeIsWithinValidPeriod : false
+  } catch (error: unknown) {
+    const status = (error as { response?: { status?: number } })?.response?.status
+    if (status === 404) {
+      periodValidationAvailable.value = false
+      isWithinValidPeriod.value = false
+      return
+    }
+    if (status === 401 && nextSkipWritePeriodValidation) {
+      adPasswordError.value = 'Contrasena AD invalida. Verifica e intenta nuevamente.'
+      return
+    }
+    queryMessage.value = getApiErrorMessage(error, 'No se pudo actualizar la configuración de bloqueo por periodo.')
+  } finally {
+    loadingPeriodValidationSetting.value = false
+  }
+}
+
+function cancelDisablePeriodLock() {
+  showAdPasswordModal.value = false
+  adPasswordInput.value = ''
+  adPasswordError.value = ''
+}
+
+async function confirmDisablePeriodLock() {
+  const pass = adPasswordInput.value.trim()
+  if (!pass) {
+    adPasswordError.value = 'La contrasena AD es obligatoria para desactivar el bloqueo.'
+    return
+  }
+  adPasswordError.value = ''
+  await updatePeriodLock(true, pass)
+  if (!adPasswordError.value) {
+    showAdPasswordModal.value = false
+    adPasswordInput.value = ''
+  }
+}
+
 async function handleDownloadOriginal(detail: UploadBatchDetailDto) {
   if (!detail.originalFileAvailable) return
   try {
@@ -560,6 +792,11 @@ async function handleDownloadOriginal(detail: UploadBatchDetailDto) {
 
 async function handleUpload() {
   if (!selectedFile.value) return
+  if (!canUploadExcel.value) {
+    uploadOk.value = false
+    uploadMessage.value = 'Carga bloqueada: periodo no valido con bloqueo de periodo activado.'
+    return
+  }
 
   loadingUpload.value = true
   uploadMessage.value = ''
@@ -568,19 +805,17 @@ async function handleUpload() {
     uploadOk.value = result.success
     uploadMessage.value = result.message || 'Carga procesada.'
     await loadUploads()
-    scheduleUploadsAutoRefresh(true)
+    // UX parity with mba3-consultas/cargar-plantilla:
+    // if upload is valid/successful, show the imported sheet data immediately.
+    if (result.success && result.batchId) {
+      await openBatchDetail(result.batchId)
+    }
   } catch (error: unknown) {
     uploadOk.value = false
     uploadMessage.value = getApiErrorMessage(error, 'Error al subir archivo.')
   } finally {
     loadingUpload.value = false
   }
-}
-
-function clearUploadsAutoRefreshTimer() {
-  if (!uploadsAutoRefreshTimer) return
-  clearTimeout(uploadsAutoRefreshTimer)
-  uploadsAutoRefreshTimer = null
 }
 
 function hasActiveUploadProcessing(rows: UploadBatchSummary[]): boolean {
@@ -590,28 +825,19 @@ function hasActiveUploadProcessing(rows: UploadBatchSummary[]): boolean {
   })
 }
 
-function scheduleUploadsAutoRefresh(forceFast = false) {
-  clearUploadsAutoRefreshTimer()
-  if (!isPygViewMounted.value) return
-
-  const hasActiveProcessing = hasActiveUploadProcessing(uploads.value)
-  let waitMs = hasActiveProcessing || forceFast ? UPLOADS_REFRESH_FAST_MS : UPLOADS_REFRESH_SLOW_MS
-  if (typeof document !== 'undefined' && document.hidden) {
-    waitMs = UPLOADS_REFRESH_HIDDEN_MS
-  }
-
-  uploadsAutoRefreshTimer = setTimeout(() => {
-    uploadsAutoRefreshTimer = null
-    void loadUploads()
-  }, waitMs)
-}
-
 async function loadUploads() {
   if (loadingUploads.value) return
   loadingUploads.value = true
   queryMessage.value = ''
+  const dateFilter = normalizeUploadsDateFilter()
+  if (dateFilter === null) {
+    loadingUploads.value = false
+    queryMessage.value = 'Rango de fechas inválido: "Desde" no puede ser mayor a "Hasta".'
+    return
+  }
   try {
-    uploads.value = await getUploads()
+    uploads.value = await getUploads(dateFilter)
+    uploadsHistoryPage.value = 1
   } catch (error: unknown) {
     uploads.value = []
     queryMessage.value = getApiErrorMessage(
@@ -620,8 +846,18 @@ async function loadUploads() {
     )
   } finally {
     loadingUploads.value = false
-    scheduleUploadsAutoRefresh()
   }
+}
+
+function applyUploadsDateFilter() {
+  uploadsHistoryPage.value = 1
+  void loadUploads()
+}
+
+function clearUploadsDateFilter() {
+  uploadsDateFilter.value = { from: '', to: '' }
+  uploadsHistoryPage.value = 1
+  void loadUploads()
 }
 
 async function loadSheetRows(sheet: UploadSheetKey, resetPage = false) {
@@ -653,6 +889,7 @@ async function reloadSheetRows(resetPage = false) {
 
 async function openBatchDetail(batchId: number) {
   selectedBatchId.value = batchId
+  historyExpanded.value = false
   queryMessage.value = ''
   try {
     const fallbackDetail = buildDetailFallbackFromSummary(batchId)
@@ -670,6 +907,7 @@ async function openBatchDetail(batchId: number) {
 }
 
 function clearInlineDetail() {
+  historyExpanded.value = true
   selectedBatchId.value = null
   selectedBatchDetail.value = null
   selectedRowsBySheet.value = {
@@ -696,6 +934,10 @@ watch(
 
 onMounted(async () => {
   isPygViewMounted.value = true
+  if (canManagePeriodLock.value) {
+    await Promise.all([loadUploads(), loadPeriodValidationSetting()])
+    return
+  }
   await loadUploads()
 })
 
@@ -708,6 +950,5 @@ watch(lastNotification, (notification) => {
 
 onBeforeUnmount(() => {
   isPygViewMounted.value = false
-  clearUploadsAutoRefreshTimer()
 })
 </script>

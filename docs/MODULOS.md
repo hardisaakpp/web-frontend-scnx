@@ -373,6 +373,20 @@ Para vistas con tablas de seguimiento (historiales, colas, listados operativos),
 
 - `src/modules/pyg/views/PygUploadView.vue`: historial de cargas con actualizacion automatica (accion local + SSE + polling) y sin boton `Refrescar`.
 
+## Regla funcional PYG (bloqueo de periodo)
+
+Para `src/modules/pyg/views/PygUploadView.vue`, mantener estas reglas de negocio:
+
+1. **Visibilidad por permiso**: el boton `Bloqueo de periodo: Activado/Desactivado` se muestra solo si el usuario tiene `pyg.edit`.
+2. **Habilitacion de carga Excel**:
+   - Si bloqueo de periodo esta **desactivado**, se permite subir.
+   - Si bloqueo de periodo esta **activado**, solo se permite subir cuando el periodo este dentro del rango valido.
+3. **Sin permiso `pyg.edit`**:
+   - No se muestra el boton de bloqueo.
+   - No se consulta la configuracion de bloqueo en `onMounted`.
+   - La carga Excel permanece habilitada por defecto (no bloquear por una configuracion que el usuario no puede gestionar).
+4. **UX cuando se bloquea la carga**: mostrar mensaje explicito de ayuda al usuario indicando que la carga esta bloqueada por periodo.
+
 ## 📞 Soporte
 
 Si tienes dudas sobre la estructura, consulta con el equipo líder o revisa los módulos existentes.

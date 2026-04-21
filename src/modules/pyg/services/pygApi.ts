@@ -92,6 +92,22 @@ export interface UploadResult {
   errors: string[]
 }
 
+export interface UploadsQueryParams {
+  from?: string
+  to?: string
+}
+
+export interface PeriodValidationSettingsDto {
+  skipWritePeriodValidation: boolean
+  adPassword?: string
+}
+
+function resolvePeriodValidationPath(): string {
+  const raw = String(import.meta.env.VITE_PYG_PERIOD_VALIDATION_PATH || '/settings/period-validation').trim()
+  if (!raw) return '/settings/period-validation'
+  return raw.startsWith('/') ? raw : `/${raw}`
+}
+
 export interface MatrizRow {
   id: number
   year: number
@@ -144,8 +160,8 @@ export async function uploadExcel(file: File): Promise<UploadResult> {
   return data
 }
 
-export async function getUploads(): Promise<UploadBatchSummary[]> {
-  const { data } = await pygApi.get<UploadBatchSummary[]>('/uploads')
+export async function getUploads(params?: UploadsQueryParams): Promise<UploadBatchSummary[]> {
+  const { data } = await pygApi.get<UploadBatchSummary[]>('/uploads', { params })
   return data
 }
 
@@ -184,6 +200,21 @@ export async function downloadErrors(batchId: number): Promise<Blob> {
 
 export async function getMatriz(filters: { year?: number; month?: number; empresa?: string; marca?: string }): Promise<MatrizRow[]> {
   const { data } = await pygApi.get<MatrizRow[]>('/percentages/matriz', { params: filters })
+  return data
+}
+
+export async function getPeriodValidationSettings(): Promise<PeriodValidationSettingsDto> {
+  const { data } = await pygApi.get<PeriodValidationSettingsDto>(resolvePeriodValidationPath())
+  return data
+}
+
+export async function updatePeriodValidationSettings(
+  skipWritePeriodValidation: boolean,
+  adPassword?: string
+): Promise<PeriodValidationSettingsDto> {
+  const payload: PeriodValidationSettingsDto = { skipWritePeriodValidation }
+  if (typeof adPassword === 'string' && adPassword.trim()) payload.adPassword = adPassword
+  const { data } = await pygApi.put<PeriodValidationSettingsDto>(resolvePeriodValidationPath(), payload)
   return data
 }
 
