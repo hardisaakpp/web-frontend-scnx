@@ -26,6 +26,15 @@ pygApi.interceptors.request.use(
 
 attachUnauthorizedRedirect(pygApi)
 
+function shouldUseCompatApiFallback(): boolean {
+  const baseUrl = String(import.meta.env.VITE_PYG_API_URL || '/pyg-api').trim()
+  const proxyPrefix =
+    'VITE_PYG_PROXY_PREFIX' in import.meta.env ? String(import.meta.env.VITE_PYG_PROXY_PREFIX ?? '').trim() : '/api'
+  // If dev proxy rewrites /pyg-api -> /api (default), /uploads already reaches /api/uploads.
+  // Compat fallback /api/uploads is only needed when proxy prefix is explicitly empty.
+  return baseUrl === '/pyg-api' && proxyPrefix === ''
+}
+
 export interface UploadBatchSummary {
   id: number
   fileName: string
@@ -177,7 +186,7 @@ export async function getUploadRows(id: number, params: UploadRowsQueryParams): 
     return data
   } catch (error: unknown) {
     const status = (error as { response?: { status?: number } })?.response?.status
-    if (status !== 404) throw error
+    if (status !== 404 || !shouldUseCompatApiFallback()) throw error
     // Compat path when Vite proxy forwards /pyg-api/* without /api prefix.
     const { data } = await pygApi.get<UploadRowHistoryPageDto>(`/api/uploads/${id}/rows`, { params })
     return data
@@ -195,8 +204,16 @@ export async function downloadOriginalFile(batchId: number): Promise<Blob> {
 }
 
 export async function downloadErrors(batchId: number): Promise<Blob> {
-  const { data } = await pygApi.get(`/uploads/${batchId}/errors`, { responseType: 'blob' })
-  return data as Blob
+  try {
+    const { data } = await pygApi.get(`/uploads/${batchId}/errors`, { responseType: 'blob' })
+    return data as Blob
+  } catch (error: unknown) {
+    const status = (error as { response?: { status?: number } })?.response?.status
+    if (status !== 404 || !shouldUseCompatApiFallback()) throw error
+    // Compat path when Vite proxy forwards /pyg-api/* without /api prefix.
+    const { data } = await pygApi.get(`/api/uploads/${batchId}/errors`, { responseType: 'blob' })
+    return data as Blob
+  }
 }
 
 export async function getMatriz(filters: { year?: number; month?: number; empresa?: string; marca?: string }): Promise<MatrizRow[]> {

@@ -1,6 +1,63 @@
-# 🚀 Guía de Despliegue a Producción
+# 🚀 Guía de Despliegue
 
-Esta guía describe los pasos necesarios para desplegar SCNexus Frontend a producción.
+Esta guía cubre el despliegue de SCNexus Frontend al **servidor de pruebas (DESA)** y a **producción**.
+
+| Entorno | Sección |
+|--------|---------|
+| Pruebas (DESA) | [Servidor de pruebas (DESA)](#servidor-de-pruebas-desa) |
+| Producción | [Checklist y despliegue a producción](#despliegue-produccion) |
+
+---
+
+## Servidor de pruebas (DESA)
+
+Despliegue asistido por script en el servidor de desarrollo/pruebas. El front se actualiza desde la rama **`develop`** del repositorio `scnexus-front`.
+
+### Acceso
+
+- **Host SSH:** `desa-mabuiosapp` (nombre interno; usar el mismo host que el equipo usa para SSH).
+- **Usuario de despliegue:** `admindesa`.
+
+### Scripts disponibles
+
+En el home del usuario de despliegue existe el directorio `deploys/` con, entre otros:
+
+| Script | Uso |
+|--------|-----|
+| `nexus_frontend.sh` | Actualiza y levanta **este** frontend (SCNexus) |
+| `articulo_maestro.sh` | Otro proyecto (artículo maestro) |
+| `conciliacion.sh` | Otro proyecto (conciliación) |
+
+Ruta típica en el servidor: `/home/admindesa/deploys/`.
+
+### Desplegar el frontend de pruebas
+
+Con sesión SSH como `admindesa`:
+
+```bash
+cd ~
+sh deploys/nexus_frontend.sh
+```
+
+El script, en orden habitual:
+
+1. Entra al directorio del proyecto clonado del frontend.
+2. Muestra la rama actual (debe ser **`develop`**).
+3. Detiene procesos anteriores del front.
+4. Actualiza el repositorio (`git pull` / fast-forward desde `origin/develop`).
+5. Instala dependencias (`npm`, según lo definido en el script).
+6. Levanta la aplicación en **segundo plano**.
+
+**Logs:** `/home/admindesa/deploys/dev.log` (revisar ahí errores de build, puerto o runtime).
+
+### Notas
+
+- Variables `VITE_*` y `.env` del entorno de prueba viven en el servidor; no suelen estar en el repo. Para revisar nombres y patrones de URLs, usar [PRODUCTION_ENV_CHECKLIST.md](PRODUCTION_ENV_CHECKLIST.md) como referencia.
+- Si el script muestra avisos de `npm audit`, coordinar con el equipo antes de ejecutar `npm audit fix` en el servidor compartido.
+
+---
+
+<a id="despliegue-produccion"></a>
 
 ## 📋 Checklist Pre-Despliegue
 
@@ -251,5 +308,5 @@ Para actualizar la aplicación en producción (con Nginx en servidor):
 
 ---
 
-**Última actualización:** Febrero 2026  
-**Versión:** 2.0.0
+**Última actualización:** Abril 2026  
+**Versión:** 2.1.0

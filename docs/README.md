@@ -4,6 +4,10 @@
 
 ## 📚 Índice
 
+### 🖥️ Despliegue
+
+- **[Guía de despliegue](DEPLOYMENT.md)** — Servidor de pruebas (DESA), script `nexus_frontend.sh`, producción (Nginx/build)
+
 ### 🚀 Guías de Desarrollo
 
 1. **[Guía de Desarrollo de Módulos](MODULOS.md)** ⭐
@@ -76,6 +80,9 @@
 docs/
 ├── README.md (este archivo - índice)
 │
+├── 🖥️ DESPLIEGUE
+│   └── DEPLOYMENT.md (pruebas DESA + producción)
+│
 ├── 🚀 GUÍAS DE DESARROLLO
 │   ├── MODULOS.md ⭐
 │   ├── DARK_MODE_GUIDE.md 🌙
@@ -136,6 +143,7 @@ docs/
 ## 🔍 Búsqueda Rápida
 
 ### Por Tema
+- **Despliegue (pruebas y producción)**: [DEPLOYMENT.md](DEPLOYMENT.md)
 - **Desarrollo de módulos**: MODULOS.md
 - **Mutaciones API y estado local**: MUTACIONES_API_SINCRONIZACION_UI.md
 - **Patrones estandarizados reutilizables**: FUNCIONALIDADES_ESTANDARIZADAS.md

@@ -105,6 +105,12 @@
         Bloqueo de periodo desactivado temporalmente hasta: {{ periodValidationUntilLabel }}.
       </p>
       <p v-if="uploadMessage" class="text-sm" :class="uploadOk ? 'text-green-600' : 'text-red-600'">{{ uploadMessage }}</p>
+      <div v-if="latestUploadErrors.length > 0" class="rounded-md border border-red-200 bg-red-50 px-3 py-2 dark:border-red-900/60 dark:bg-red-950/30">
+        <p class="text-xs font-semibold text-red-800 dark:text-red-200">Detalle de errores detectados</p>
+        <ul class="mt-2 list-disc space-y-1 pl-5 text-xs text-red-700 dark:text-red-300">
+          <li v-for="(error, index) in latestUploadErrors" :key="`${index}-${error}`">{{ error }}</li>
+        </ul>
+      </div>
     </div>
 
     <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 shadow-sm">
@@ -245,14 +251,37 @@
           <p class="text-xs text-gray-500 dark:text-gray-400">
             Periodo {{ selectedBatchDetail.year }}-{{ String(selectedBatchDetail.month).padStart(2, '0') }}
           </p>
+          <p class="text-xs" :class="uploadStatusClass(selectedBatchDetail.status)">
+            Estado: {{ selectedBatchDetail.status }} · Errores: {{ selectedBatchDetail.errorRows }}
+          </p>
         </div>
-        <button
-          type="button"
-          class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700/50 px-3 py-1.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-          @click="clearInlineDetail"
-        >
-          Ocultar detalle
-        </button>
+        <div class="flex flex-wrap items-center gap-2">
+          <button
+            v-if="selectedBatchDetail.originalFileAvailable"
+            type="button"
+            class="rounded-lg border border-sky-300 dark:border-sky-700 bg-white dark:bg-gray-700/50 px-3 py-1.5 text-xs text-sky-700 dark:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-900/20 transition-colors disabled:opacity-60"
+            :disabled="downloadingOriginal"
+            @click="handleDownloadOriginal(selectedBatchDetail)"
+          >
+            {{ downloadingOriginal ? 'Descargando...' : 'Descargar original' }}
+          </button>
+          <button
+            v-if="selectedBatchDetail.errorLogAvailable"
+            type="button"
+            class="rounded-lg border border-red-300 dark:border-red-700 bg-white dark:bg-gray-700/50 px-3 py-1.5 text-xs text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-60"
+            :disabled="downloadingErrorLog"
+            @click="handleDownloadErrorLog(selectedBatchDetail)"
+          >
+            {{ downloadingErrorLog ? 'Descargando...' : 'Descargar log errores' }}
+          </button>
+          <button
+            type="button"
+            class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700/50 px-3 py-1.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            @click="clearInlineDetail"
+          >
+            Ocultar detalle
+          </button>
+        </div>
       </div>
 
       <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -262,25 +291,35 @@
             <table class="min-w-full text-xs">
               <thead class="bg-gray-50 dark:bg-gray-700/50">
                 <tr class="text-left font-medium uppercase tracking-wider text-gray-600 dark:text-gray-300 text-[10px]">
+                  <th v-if="selectedBatchDetail?.status?.toUpperCase() === 'REJECTED'" class="px-2 py-2">Hoja/Fila</th>
                   <th class="px-2 py-2">Periodo</th>
                   <th class="px-2 py-2">Empresa</th>
                   <th class="px-2 py-2">Marca</th>
                   <th class="px-2 py-2">% Matriz</th>
+                  <th v-if="selectedBatchDetail?.status?.toUpperCase() === 'REJECTED'" class="px-2 py-2">Error</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-200 dark:divide-gray-600">
                 <tr v-for="row in selectedRowsBySheet.matriz.items" :key="`m-${row.id}`" class="hover:bg-gray-50/50 dark:hover:bg-gray-700/30">
+                  <td v-if="selectedBatchDetail?.status?.toUpperCase() === 'REJECTED'" class="px-2 py-1.5">{{ row.sheetName || 'Matriz' }} #{{ row.rowNumber ?? '—' }}</td>
                   <td class="px-2 py-1.5">{{ row.year && row.month ? `${row.year}-${String(row.month).padStart(2, '0')}` : '—' }}</td>
                   <td class="px-2 py-1.5">{{ resolveRowEmpresa(row) }}</td>
                   <td class="px-2 py-1.5">{{ row.marca || '—' }}</td>
                   <td class="px-2 py-1.5">{{ row.percentMatriz ?? '—' }}</td>
+                  <td
+                    v-if="selectedBatchDetail?.status?.toUpperCase() === 'REJECTED'"
+                    class="px-2 py-1.5"
+                    :class="row.errorMessage ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'"
+                  >
+                    {{ row.errorMessage || '—' }}
+                  </td>
                 </tr>
                 <tr v-if="selectedRowsBySheet.matriz.total > 0" class="bg-gray-100/70 font-semibold dark:bg-gray-700/40">
-                  <td class="px-2 py-1.5 text-right" colspan="3">Total</td>
+                  <td class="px-2 py-1.5 text-right" :colspan="selectedBatchDetail?.status?.toUpperCase() === 'REJECTED' ? 5 : 3">Total</td>
                   <td class="px-2 py-1.5">{{ sheetTotal('matriz', 'matriz') }}</td>
                 </tr>
                 <tr v-if="!loadingRows && selectedRowsBySheet.matriz.items.length === 0">
-                  <td colspan="4" class="px-2 py-3 text-center text-gray-500">Sin filas MATRIZ para este lote.</td>
+                  <td :colspan="selectedBatchDetail?.status?.toUpperCase() === 'REJECTED' ? 7 : 4" class="px-2 py-3 text-center text-gray-500">Sin filas MATRIZ para este lote.</td>
                 </tr>
               </tbody>
             </table>
@@ -304,27 +343,37 @@
             <table class="min-w-full text-xs">
               <thead class="bg-gray-50 dark:bg-gray-700/50">
                 <tr class="text-left font-medium uppercase tracking-wider text-gray-600 dark:text-gray-300 text-[10px]">
+                  <th v-if="selectedBatchDetail?.status?.toUpperCase() === 'REJECTED'" class="px-2 py-2">Hoja/Fila</th>
                   <th class="px-2 py-2">Periodo</th>
                   <th class="px-2 py-2">Empresa</th>
                   <th class="px-2 py-2">Marca</th>
                   <th class="px-2 py-2">Bodega</th>
                   <th class="px-2 py-2">% General</th>
+                  <th v-if="selectedBatchDetail?.status?.toUpperCase() === 'REJECTED'" class="px-2 py-2">Error</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-200 dark:divide-gray-600">
                 <tr v-for="row in selectedRowsBySheet.tiendas.items" :key="`t-${row.id}`" class="hover:bg-gray-50/50 dark:hover:bg-gray-700/30">
+                  <td v-if="selectedBatchDetail?.status?.toUpperCase() === 'REJECTED'" class="px-2 py-1.5">{{ row.sheetName || 'Tiendas' }} #{{ row.rowNumber ?? '—' }}</td>
                   <td class="px-2 py-1.5">{{ row.year && row.month ? `${row.year}-${String(row.month).padStart(2, '0')}` : '—' }}</td>
                   <td class="px-2 py-1.5">{{ resolveRowEmpresa(row) }}</td>
                   <td class="px-2 py-1.5">{{ row.marca || '—' }}</td>
                   <td class="px-2 py-1.5">{{ row.codigoBodega || '—' }}</td>
                   <td class="px-2 py-1.5">{{ row.percentGeneral ?? '—' }}</td>
+                  <td
+                    v-if="selectedBatchDetail?.status?.toUpperCase() === 'REJECTED'"
+                    class="px-2 py-1.5"
+                    :class="row.errorMessage ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-gray-400'"
+                  >
+                    {{ row.errorMessage || '—' }}
+                  </td>
                 </tr>
                 <tr v-if="selectedRowsBySheet.tiendas.total > 0" class="bg-gray-100/70 font-semibold dark:bg-gray-700/40">
-                  <td class="px-2 py-1.5 text-right" colspan="4">Total</td>
+                  <td class="px-2 py-1.5 text-right" :colspan="selectedBatchDetail?.status?.toUpperCase() === 'REJECTED' ? 6 : 4">Total</td>
                   <td class="px-2 py-1.5">{{ sheetTotal('tiendas', 'tiendas') }}</td>
                 </tr>
                 <tr v-if="!loadingRows && selectedRowsBySheet.tiendas.items.length === 0">
-                  <td colspan="5" class="px-2 py-3 text-center text-gray-500">Sin filas TIENDAS para este lote.</td>
+                  <td :colspan="selectedBatchDetail?.status?.toUpperCase() === 'REJECTED' ? 8 : 5" class="px-2 py-3 text-center text-gray-500">Sin filas TIENDAS para este lote.</td>
                 </tr>
               </tbody>
             </table>
@@ -408,8 +457,10 @@ import { useAuthStore } from '@/stores/auth'
 import QuickTablePagination from '@/modules/mba3-consultas/components/QuickTablePagination.vue'
 import { TableCellsIcon } from '@heroicons/vue/24/outline'
 import {
+  downloadErrors,
   downloadOriginalFile,
   downloadTemplate,
+  getUploadDetail,
   getPeriodValidationSettings,
   getUploadRows,
   getUploads,
@@ -446,8 +497,10 @@ const loadingUploads = ref(false)
 const pendingRefreshAfterLoad = ref(false)
 const loadingRows = ref(false)
 const downloadingOriginal = ref(false)
+const downloadingErrorLog = ref(false)
 const selectedBatchId = ref<number | null>(null)
 const selectedBatchDetail = ref<UploadBatchDetailDto | null>(null)
+const latestUploadErrors = ref<string[]>([])
 const EMPTY_UPLOAD_ROWS_PAGE: UploadRowHistoryPageDto = { batchId: 0, total: 0, page: 1, pageSize: 50, items: [] }
 type UploadSheetKey = 'matriz' | 'tiendas'
 const SHEET_NAME_BY_KEY: Record<UploadSheetKey, string> = {
@@ -624,14 +677,28 @@ function getApiErrorMessage(error: unknown, fallback: string): string {
   return fallback
 }
 
+function normalizeErrorList(errors: unknown): string[] {
+  if (!Array.isArray(errors)) return []
+  return errors
+    .map((item) => (typeof item === 'string' ? item.trim() : ''))
+    .filter((item) => item.length > 0)
+}
+
+function extractUploadErrors(error: unknown): string[] {
+  const data = (error as { response?: { data?: unknown } })?.response?.data
+  if (!data || typeof data !== 'object') return []
+  const payload = data as Record<string, unknown>
+  return normalizeErrorList(payload.errors)
+}
+
 function buildDetailFallbackFromSummary(batchId: number): UploadBatchDetailDto | null {
   const summary = uploads.value.find((item) => item.id === batchId)
   if (!summary) return null
   return {
     ...summary,
     // Some backends do not expose /uploads/:id detail and only return list + rows.
-    // Allow downloads to attempt and let endpoint-level errors be handled gracefully.
-    originalFileAvailable: true,
+    // Use conservative defaults to avoid showing download actions that can 404.
+    originalFileAvailable: false,
     errorLogAvailable: summary.errorRows > 0
   }
 }
@@ -839,6 +906,21 @@ async function handleDownloadOriginal(detail: UploadBatchDetailDto) {
   }
 }
 
+async function handleDownloadErrorLog(detail: UploadBatchDetailDto) {
+  if (!detail.errorLogAvailable) return
+  try {
+    downloadingErrorLog.value = true
+    const blob = await downloadErrors(detail.id)
+    saveBlob(blob, `upload-${detail.id}-errores.log`)
+    notifier.success({ title: 'Log descargado', message: 'El log de errores se descargó correctamente.' })
+  } catch (error: unknown) {
+    queryMessage.value = getApiErrorMessage(error, 'No se pudo descargar el log de errores.')
+    notifier.error({ title: 'Error al descargar log', message: queryMessage.value })
+  } finally {
+    downloadingErrorLog.value = false
+  }
+}
+
 async function handleUpload() {
   if (!selectedFile.value) return
   if (!canUploadExcel.value) {
@@ -850,23 +932,25 @@ async function handleUpload() {
 
   loadingUpload.value = true
   uploadMessage.value = ''
+  latestUploadErrors.value = []
   try {
     const result = await uploadExcel(selectedFile.value)
     uploadOk.value = result.success
     uploadMessage.value = result.message || 'Carga procesada.'
+    latestUploadErrors.value = normalizeErrorList(result.errors)
     if (result.success) {
       notifier.success({ title: 'Carga completada', message: uploadMessage.value })
     } else {
       notifier.warning({ title: 'Carga rechazada', message: uploadMessage.value })
     }
     await loadUploads()
-    // UX parity with mba3-consultas/cargar-plantilla:
-    // if upload is valid/successful, show the imported sheet data immediately.
-    if (result.success && result.batchId) {
+    // Abrir detalle para poder ver filas cargadas o filas invalidas del lote.
+    if (result.batchId) {
       await openBatchDetail(result.batchId)
     }
   } catch (error: unknown) {
     uploadOk.value = false
+    latestUploadErrors.value = extractUploadErrors(error)
     uploadMessage.value = getApiErrorMessage(error, 'Error al subir archivo.')
     notifier.error({ title: 'Error al subir archivo', message: uploadMessage.value })
   } finally {
@@ -967,11 +1051,16 @@ async function openBatchDetail(batchId: number) {
   try {
     const fallbackDetail = buildDetailFallbackFromSummary(batchId)
     if (!fallbackDetail) throw new Error('No existe el lote seleccionado en el historial.')
-    selectedBatchDetail.value = fallbackDetail
+    try {
+      selectedBatchDetail.value = await getUploadDetail(batchId)
+    } catch {
+      selectedBatchDetail.value = fallbackDetail
+    }
     selectedRowsBySheet.value = {
       matriz: { ...EMPTY_UPLOAD_ROWS_PAGE, batchId },
       tiendas: { ...EMPTY_UPLOAD_ROWS_PAGE, batchId }
     }
+    rowsFilters.value.isValid = selectedBatchDetail.value.status?.toUpperCase() === 'REJECTED' ? 'false' : ''
     await reloadSheetRows(true)
   } catch (error: unknown) {
     selectedBatchDetail.value = null
@@ -988,6 +1077,7 @@ function clearInlineDetail() {
     matriz: { ...EMPTY_UPLOAD_ROWS_PAGE },
     tiendas: { ...EMPTY_UPLOAD_ROWS_PAGE }
   }
+  rowsFilters.value.isValid = ''
 }
 
 watch(
