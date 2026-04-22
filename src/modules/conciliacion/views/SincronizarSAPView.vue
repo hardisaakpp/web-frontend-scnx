@@ -14,24 +14,33 @@
 
       <!-- Card principal -->
       <div class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
-        <!-- Configuración -->
+        <!-- Configuración: Rango de Fechas -->
         <div class="mb-6">
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Período de sincronización
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+            Rango de fechas para sincronización
           </label>
-          <div class="flex items-center gap-3">
-            <input
-              v-model.number="diasAtras"
-              type="number"
-              min="1"
-              max="40"
-              class="w-24 px-3 py-2.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center"
-              :disabled="syncing"
-            />
-            <span class="text-sm text-gray-600 dark:text-gray-400">días atrás desde hoy</span>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-gray-500 mb-1 ml-1">Desde</label>
+              <input
+                v-model="fechaDesde"
+                type="date"
+                class="w-full px-3 py-2.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                :disabled="syncing"
+              />
+            </div>
+            <div>
+              <label class="block text-[10px] uppercase tracking-wider font-bold text-gray-400 dark:text-gray-500 mb-1 ml-1">Hasta</label>
+              <input
+                v-model="fechaHasta"
+                type="date"
+                class="w-full px-3 py-2.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                :disabled="syncing"
+              />
+            </div>
           </div>
-          <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">
-            Se sincronizarán movimientos desde {{ fechaDesde }} hasta hoy
+          <p class="text-xs text-gray-400 dark:text-gray-500 mt-3">
+            Se recomienda sincronizar rangos cortos (menores a 30 días) para un mejor rendimiento.
           </p>
         </div>
 
@@ -74,8 +83,11 @@
                 <p class="text-[10px] uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400 mt-1">Incompletos</p>
               </div>
               <div class="bg-white dark:bg-gray-800 rounded-lg p-3 text-center border border-gray-100 dark:border-gray-900/50">
-                <p class="text-sm font-bold text-gray-700 dark:text-gray-300">{{ store.lastSyncResult.fecha_inicio_filtro }}</p>
-                <p class="text-[10px] uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400 mt-1">Desde</p>
+                <p class="text-[11px] font-bold text-gray-700 dark:text-gray-300 leading-tight">
+                  {{ store.lastSyncResult.fecha_inicio_filtro }}<br/>
+                  <span class="text-[10px] text-gray-400 font-normal">al {{ store.lastSyncResult.fecha_fin_filtro || '-' }}</span>
+                </p>
+                <p class="text-[10px] uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400 mt-1">Período</p>
               </div>
             </div>
           </div>
@@ -97,31 +109,42 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useConciliacionStore } from '../stores/conciliacionStore'
 import { useToast } from '@/composables/useToast'
 
 const store = useConciliacionStore()
 const toast = useToast()
 
-const diasAtras = ref(14)
+const fechaDesde = ref('')
+const fechaHasta = ref('')
 const syncing = ref(false)
 
-const fechaDesde = computed(() => {
-  const d = new Date()
-  d.setDate(d.getDate() - diasAtras.value)
-  return d.toLocaleDateString('es-EC', { day: '2-digit', month: 'short', year: 'numeric' })
+onMounted(() => {
+  // Inicializar con los últimos 14 días
+  const today = new Date()
+  const fourteenDaysAgo = new Date()
+  fourteenDaysAgo.setDate(today.getDate() - 14)
+
+  fechaHasta.value = today.toISOString().split('T')[0]
+  fechaDesde.value = fourteenDaysAgo.toISOString().split('T')[0]
 })
 
 async function handleSync() {
-  if (diasAtras.value > 40) {
-    toast.error('Límite excedido', 'El período máximo de sincronización es de 40 días para evitar saturación.')
+  if (!fechaDesde.value || !fechaHasta.value) {
+    toast.error('Campos requeridos', 'Debe seleccionar ambas fechas.')
     return
   }
+
+  if (new Date(fechaDesde.value) > new Date(fechaHasta.value)) {
+    toast.error('Rango inválido', 'La fecha inicial no puede ser mayor a la final.')
+    return
+  }
+
   syncing.value = true
   store.lastSyncResult = null
   try {
-    await store.syncSAP(diasAtras.value)
+    await store.syncSAP(fechaDesde.value, fechaHasta.value)
     toast.success('Sincronización completa', store.lastSyncResult?.mensaje || 'SAP sincronizado')
   } catch (e: any) {
     toast.error('Error de sincronización', e.message || 'No se pudo conectar con SAP')

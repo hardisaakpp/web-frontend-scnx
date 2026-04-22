@@ -60,8 +60,10 @@ export interface ImportResult {
 
 // ── SAP — Sincronización ────────────────────────────────────
 export interface SAPSyncRequest {
-  dias_atras?: number  // default 14
+  fecha_desde: string // date YYYY-MM-DD
+  fecha_hasta: string // date YYYY-MM-DD
 }
+
 
 export interface SAPSyncResponse {
   mensaje: string
@@ -69,6 +71,7 @@ export interface SAPSyncResponse {
   registros_actualizados: number
   registros_incompletos?: number
   fecha_inicio_filtro: string  // date
+  fecha_fin_filtro: string     // date
   fecha_baja: string           // datetime
 }
 

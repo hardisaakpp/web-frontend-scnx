@@ -184,9 +184,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useConciliacionStore } from '../stores/conciliacionStore'
+import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 
 const store = useConciliacionStore()
+const authStore = useAuthStore()
 const toast = useToast()
 
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -246,7 +248,7 @@ async function handleUpload() {
   uploading.value = true
   uploadError.value = ''
   try {
-    await store.importExcel(selectedFile.value, selectedBanco.value)
+    await store.importExcel(selectedFile.value, selectedBanco.value, authStore.userName)
     uploadDone.value = true
     toast.success('Importación exitosa', 'Los movimientos han sido procesados')
     // Refrescar historial

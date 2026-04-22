@@ -100,11 +100,12 @@ export const useConciliacionStore = defineStore('conciliacion', () => {
   }
 
   // ── Actions: SAP ──────────────────────────────────────────
-  async function syncSAP(diasAtras?: number) {
+  async function syncSAP(fechaDesde: string, fechaHasta: string) {
     return withLoading(async () => {
-      const result = await conciliacionService.syncSAP(
-        diasAtras ? { dias_atras: diasAtras } : undefined,
-      )
+      const result = await conciliacionService.syncSAP({
+        fecha_desde: fechaDesde,
+        fecha_hasta: fechaHasta,
+      })
       lastSyncResult.value = result
       return result
     })
