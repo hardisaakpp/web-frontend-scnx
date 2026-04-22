@@ -1,5 +1,3 @@
-import type { AxiosInstance } from 'axios'
-
 export const LOGIN_REDIRECT_URL =
   (import.meta.env.VITE_LOGIN_REDIRECT_URL as string) ||
   `${typeof window !== 'undefined' ? window.location.origin : ''}/login`
@@ -22,12 +20,12 @@ export function redirectToLogin(): void {
 }
 
 export function attachUnauthorizedRedirect(
-  instance: AxiosInstance,
+  instance: any,
   options?: { ignoreUrlIncludes?: string[] }
 ): void {
   instance.interceptors.response.use(
-    (response) => response,
-    (error) => {
+    (response: any) => response,
+    (error: any) => {
       const status = error?.response?.status
       const requestUrl = String(error?.config?.url || '').toLowerCase()
       const ignore = options?.ignoreUrlIncludes?.some((part) => requestUrl.includes(part.toLowerCase())) || false

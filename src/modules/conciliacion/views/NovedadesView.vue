@@ -179,8 +179,8 @@ const filtros = reactive({
   fecha_hasta: '',
 })
 
-const selectedItems = reactive({ sap: [] as number[], banca: [] as number[] })
-const bolsa = ref<{ids_sap: number[], ids_banca: number[], total: number, status: string, caseType: string}[]>([])
+const selectedItems = reactive({ sap: [] as string[], banca: [] as string[] })
+const bolsa = ref<{ids_sap: string[], ids_banca: string[], total: number, status: string, caseType: string}[]>([])
 const procesando = ref(false)
 
 onMounted(async () => {
@@ -204,13 +204,13 @@ async function buscar() {
   try { await store.fetchNovedades(filtros) } catch {}
 }
 
-const toggleItemSelection = (side: 'sap' | 'banca', id: number) => {
+const toggleItemSelection = (side: 'sap' | 'banca', id: string) => {
   const arr = selectedItems[side]; const idx = arr.indexOf(id)
   if (idx > -1) arr.splice(idx, 1)
   else arr.push(id)
 }
 
-const isItemSelected = (side: 'sap' | 'banca', id: number) => selectedItems[side].includes(id)
+const isItemSelected = (side: 'sap' | 'banca', id: string) => selectedItems[side].includes(id)
 
 const hasSelectionInCase = (idx: number) => {
   const nov = store.novedades!.novedades[idx]

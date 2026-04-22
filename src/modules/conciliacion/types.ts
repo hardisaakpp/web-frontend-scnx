@@ -93,8 +93,8 @@ export interface ConciliacionResponse {
 
 // ── Conciliación — Manual ───────────────────────────────────
 export interface ConciliacionManualRequest {
-  ids_sap: number[]
-  ids_banca: number[]
+  ids_sap: string[]
+  ids_banca: string[]
   comentario?: string | null
   usuario?: string | null  // default "SYSTEM"
 }

@@ -176,8 +176,8 @@ const filtros = reactive({
   id_banco: undefined as number | undefined,
 })
 
-const selected = reactive({ sap: [] as number[], banca: [] as number[] })
-const bolsa = ref<{ids_sap: number[], ids_banca: number[], total: number, status: string}[]>([])
+const selected = reactive({ sap: [] as string[], banca: [] as string[] })
+const bolsa = ref<{ids_sap: string[], ids_banca: string[], total: number, status: string}[]>([])
 const procesando = ref(false)
 
 const sortSap = reactive({ key: 'fecha', dir: 'desc' })
@@ -214,13 +214,13 @@ const sortItems = (items: any[], config: { key: string, dir: string }) => {
 const sortedSap = computed(() => sortItems(store.partidasAbiertas?.pendientes_sap || [], sortSap))
 const sortedBanca = computed(() => sortItems(store.partidasAbiertas?.pendientes_banca || [], sortBanca))
 
-const toggleSelection = (side: 'sap' | 'banca', id: number) => {
+const toggleSelection = (side: 'sap' | 'banca', id: string) => {
   const arr = selected[side]; const idx = arr.indexOf(id)
   if (idx > -1) arr.splice(idx, 1)
   else arr.push(id)
 }
 
-const isSelected = (side: 'sap' | 'banca', id: number) => selected[side].includes(id)
+const isSelected = (side: 'sap' | 'banca', id: string) => selected[side].includes(id)
 const canPrepare = computed(() => selected.sap.length > 0 || selected.banca.length > 0)
 
 function prepararGrupo() {

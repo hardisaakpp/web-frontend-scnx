@@ -142,10 +142,9 @@ async function handleSync() {
   }
 
   syncing.value = true
-  store.lastSyncResult = null
   try {
-    await store.syncSAP(fechaDesde.value, fechaHasta.value)
-    toast.success('Sincronización completa', store.lastSyncResult?.mensaje || 'SAP sincronizado')
+    const result = await store.syncSAP(fechaDesde.value, fechaHasta.value)
+    toast.success('Sincronización completa', result?.mensaje || 'SAP sincronizado')
   } catch (e: any) {
     toast.error('Error de sincronización', e.message || 'No se pudo conectar con SAP')
   } finally {
