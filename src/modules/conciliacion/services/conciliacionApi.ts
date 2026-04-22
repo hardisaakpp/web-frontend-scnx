@@ -133,8 +133,8 @@ export const conciliacionService = {
   // ── SAP ───────────────────────────────────────────────────
 
   /** Sincronizar movimientos desde SAP HANA */
-  async syncSAP(request?: SAPSyncRequest): Promise<SAPSyncResponse> {
-    const response = await api.post<SAPSyncResponse>('/api/v1/sap/sync', request || { dias_atras: 14 })
+  async syncSAP(request: SAPSyncRequest): Promise<SAPSyncResponse> {
+    const response = await api.post<SAPSyncResponse>('/api/v1/sap/sync', request)
     return response.data
   },
 
