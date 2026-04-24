@@ -31,7 +31,7 @@
             </div>
 
             <!-- Form -->
-            <form v-else @submit.prevent="handleSubmit" class="space-y-5">
+            <form v-else @submit.prevent="handleSubmit" novalidate class="space-y-5">
 
                 <!-- Tabs -->
                 <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
@@ -43,13 +43,18 @@
                             type="button"
                             @click="activeTab = tab.id"
                             :class="[
-                                'flex-shrink-0 px-5 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap',
+                                'flex-shrink-0 px-5 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap relative',
                                 activeTab === tab.id
                                     ? 'border-blue-600 text-blue-600 dark:text-blue-400 dark:border-blue-400'
-                                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:border-gray-300'
+                                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:border-gray-300',
+                                tabsWithErrors.has(tab.id) && showValidationErrors ? 'text-red-500' : ''
                             ]"
                         >
                             {{ tab.label }}
+                            <span v-if="tabsWithErrors.has(tab.id) && showValidationErrors" class="absolute top-2 right-2 flex h-2 w-2">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                            </span>
                         </button>
                     </div>
 
@@ -489,6 +494,36 @@
             </form>
         </div>
     </div>
+
+    <!-- Validation Modal -->
+    <Teleport to="body">
+        <div v-if="showValidationModal" class="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div class="absolute inset-0 bg-black/50" @click="showValidationModal = false"></div>
+            <div class="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-w-md p-6">
+                <div class="flex items-center gap-3 text-red-600 dark:text-red-400 mb-4">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                    <h3 class="text-lg font-bold">Campos Requeridos</h3>
+                </div>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                    Por favor completa los siguientes campos obligatorios antes de continuar:
+                </p>
+                <ul class="space-y-2 mb-6">
+                    <li v-for="err in validationErrorsList" :key="err" class="text-sm text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                        {{ err }}
+                    </li>
+                </ul>
+                <button 
+                    @click="showValidationModal = false"
+                    class="w-full py-2 bg-gray-900 dark:bg-gray-700 text-white rounded-lg font-medium hover:bg-gray-800 dark:hover:bg-gray-600 transition-colors"
+                >
+                    Entendido
+                </button>
+            </div>
+        </div>
+    </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -511,6 +546,39 @@ const tabs = [
     { id: 'sap',     label: 'Config. SAP / Impuestos' },
 ]
 const activeTab = ref('general')
+
+// ─── Validación y Errores ────────────────────────────────────────────────────
+const showValidationErrors = ref(false)
+const showValidationModal = ref(false)
+
+const tabsWithErrors = computed(() => {
+    const errorTabs = new Set<string>()
+    if (!isEdit.value && !form.value.itemCode) errorTabs.add('general')
+    if (!form.value.itemName) errorTabs.add('general')
+    if (!form.value.uIxxMarca) errorTabs.add('cat')
+    if (!form.value.itemType) errorTabs.add('sap')
+    if (form.value.itemsGroupCode === null || form.value.itemsGroupCode === undefined) errorTabs.add('sap')
+    return errorTabs
+})
+
+const validationErrorsList = computed(() => {
+    const errors: string[] = []
+    if (!isEdit.value && !form.value.itemCode) errors.push('Código Interno (Tab General)')
+    if (!form.value.itemName) errors.push('Descripción Factura (Tab General)')
+    if (!form.value.uIxxMarca) errors.push('Negocio (Tab Categorización)')
+    if (!form.value.itemType) errors.push('Tipo de Artículo (Tab Config. SAP)')
+    if (form.value.itemsGroupCode === null || form.value.itemsGroupCode === undefined) errors.push('Grupo de Artículos (Tab Config. SAP)')
+    return errors
+})
+
+function getFirstErrorTab() {
+    if (!isEdit.value && !form.value.itemCode) return 'general'
+    if (!form.value.itemName) return 'general'
+    if (!form.value.uIxxMarca) return 'cat'
+    if (!form.value.itemType) return 'sap'
+    if (form.value.itemsGroupCode === null || form.value.itemsGroupCode === undefined) return 'sap'
+    return null
+}
 
 // ─── Catálogos dinámicos ──────────────────────────────────────────────────────
 const selectedLineaAtributo = ref('')
@@ -774,6 +842,20 @@ onMounted(async () => {
 
 // Guardar formulario
 async function handleSubmit() {
+    const firstErrorTab = getFirstErrorTab()
+    if (firstErrorTab) {
+        showValidationErrors.value = true
+        activeTab.value = firstErrorTab
+        showValidationModal.value = true
+        
+        // Intentar hacer focus al primer campo inválido después de cambiar de pestaña
+        setTimeout(() => {
+            const firstInvalid = document.querySelector('input:invalid, select:invalid, .form-field.required input') as HTMLElement
+            if (firstInvalid) firstInvalid.focus()
+        }, 100)
+        return
+    }
+
     submitting.value = true
     submitError.value = ''
 
