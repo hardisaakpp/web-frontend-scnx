@@ -34,9 +34,9 @@
             <form v-else @submit.prevent="handleSubmit" novalidate class="space-y-5">
 
                 <!-- Tabs -->
-                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+                <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
                     <!-- Tab Navigation -->
-                    <div class="flex overflow-x-auto border-b border-gray-200 dark:border-gray-700">
+                    <div class="flex overflow-x-auto border-b border-gray-200 dark:border-gray-700 rounded-t-xl">
                         <button
                             v-for="tab in tabs"
                             :key="tab.id"
