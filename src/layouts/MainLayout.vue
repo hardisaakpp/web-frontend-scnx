@@ -10,7 +10,7 @@
     <!-- Sidebar: escritorio = franja estrecha y se expande al pasar el ratón; móvil = panel ancho al abrir -->
     <aside
       :class="[
-        'fixed top-0 left-0 h-full flex flex-col bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-white transition-all duration-300 z-30 shadow-2xl',
+        'fixed top-0 left-0 h-full flex flex-col bg-gradient-to-b from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 text-slate-800 dark:text-white transition-all duration-300 z-30 shadow-2xl border-r border-slate-200 dark:border-slate-700/40',
         effectiveSidebarCollapsed ? 'w-20' : 'w-72',
         isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
       ]"
@@ -21,7 +21,7 @@
         @mouseleave="onSidebarMouseLeave"
       >
         <!-- Header del Sidebar -->
-        <div class="flex-shrink-0 flex items-center justify-between p-5 border-b border-slate-700/50 bg-gradient-to-r from-blue-600/10 to-sky-500/10 backdrop-blur-sm">
+        <div class="flex-shrink-0 flex items-center justify-between p-5 border-b border-slate-200 dark:border-slate-700/50 bg-gradient-to-r from-blue-500/10 to-sky-400/10 dark:from-blue-600/10 dark:to-sky-500/10 backdrop-blur-sm">
           <div class="flex items-center gap-3">
             <img
               src="/favicon.png"
@@ -29,10 +29,10 @@
               class="w-10 h-10 object-contain"
             />
             <div v-show="!effectiveSidebarCollapsed" class="transition-opacity duration-300">
-              <h2 class="text-xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
+              <h2 class="text-xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">
                 SCNexus
               </h2>
-              <p class="text-xs text-slate-400">Sistema Integrado</p>
+              <p class="text-xs text-slate-500 dark:text-slate-400">Sistema Integrado</p>
             </div>
           </div>
         </div>
@@ -41,7 +41,7 @@
         <nav class="flex-1 min-h-0 overflow-y-auto p-4 pb-4 space-y-1 custom-scrollbar">
         <!-- Sección Principal -->
         <div v-show="!effectiveSidebarCollapsed" class="px-3 py-2 mb-2">
-          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Principal</p>
+          <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Principal</p>
         </div>
 
         <!-- Dashboard -->
@@ -50,7 +50,7 @@
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
             'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path === '/dashboard',
-            'text-slate-300 hover:bg-slate-800/50 hover:text-white': $route.path !== '/dashboard'
+            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': $route.path !== '/dashboard'
           }"
           :title="effectiveSidebarCollapsed ? 'Dashboard' : ''"
         >
@@ -66,7 +66,7 @@
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
             'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path === '/admin',
-            'text-slate-300 hover:bg-slate-800/50 hover:text-white': $route.path !== '/admin'
+            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': $route.path !== '/admin'
           }"
           :title="effectiveSidebarCollapsed ? 'Panel de Admin' : ''"
         >
@@ -82,7 +82,7 @@
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
             'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path === '/user',
-            'text-slate-300 hover:bg-slate-800/50 hover:text-white': $route.path !== '/user'
+            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': $route.path !== '/user'
           }"
           :title="effectiveSidebarCollapsed ? 'Panel de Usuario' : ''"
         >
@@ -93,7 +93,7 @@
 
         <!-- Separador Módulos -->
         <div v-show="!effectiveSidebarCollapsed" class="px-3 py-2 my-3">
-          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Módulos</p>
+          <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Módulos</p>
         </div>
 
         <!-- Caja Chica -->
@@ -103,7 +103,7 @@
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
             'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/50': $route.path.startsWith('/caja-chica'),
-            'text-slate-300 hover:bg-slate-800/50 hover:text-white': !$route.path.startsWith('/caja-chica')
+            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/caja-chica')
           }"
           :title="effectiveSidebarCollapsed ? 'Caja Chica' : ''"
         >
@@ -119,7 +119,7 @@
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
             'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/conciliacion'),
-            'text-slate-300 hover:bg-slate-800/50 hover:text-white': !$route.path.startsWith('/conciliacion')
+            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/conciliacion')
           }"
           :title="effectiveSidebarCollapsed ? 'Conciliación' : ''"
         >
@@ -135,7 +135,7 @@
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
             'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/mba3-consultas'),
-            'text-slate-300 hover:bg-slate-800/50 hover:text-white': !$route.path.startsWith('/mba3-consultas')
+            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/mba3-consultas')
           }"
           :title="effectiveSidebarCollapsed ? 'Gestión ODC SAP' : ''"
         >
@@ -151,7 +151,7 @@
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
             'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/articulo-maestro'),
-            'text-slate-300 hover:bg-slate-800/50 hover:text-white': !$route.path.startsWith('/articulo-maestro')
+            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/articulo-maestro')
           }"
           :title="effectiveSidebarCollapsed ? 'Artículo Maestro' : ''"
         >
@@ -167,7 +167,7 @@
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
             'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/gestion-usuarios'),
-            'text-slate-300 hover:bg-slate-800/50 hover:text-white': !$route.path.startsWith('/gestion-usuarios')
+            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/gestion-usuarios')
           }"
           :title="effectiveSidebarCollapsed ? 'Personal de Tiendas' : ''"
         >
@@ -183,7 +183,7 @@
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
             'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/pyg'),
-            'text-slate-300 hover:bg-slate-800/50 hover:text-white': !$route.path.startsWith('/pyg')
+            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/pyg')
           }"
           :title="effectiveSidebarCollapsed ? 'Importador PYG' : ''"
         >
@@ -194,7 +194,7 @@
 
         <!-- Separador Administración -->
         <div v-if="hasModuleAccess('usuarios') || hasModuleAccess('roles') || hasModuleAccess('permisos') || authStore.isAdmin" v-show="!effectiveSidebarCollapsed" class="px-3 py-2 my-3">
-          <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Administración</p>
+          <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Administración</p>
         </div>
 
         <!-- Usuarios -->
@@ -204,7 +204,7 @@
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
             'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/50': $route.path.startsWith('/users'),
-            'text-slate-300 hover:bg-slate-800/50 hover:text-white': !$route.path.startsWith('/users')
+            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/users')
           }"
           :title="effectiveSidebarCollapsed ? 'Usuarios' : ''"
         >
@@ -220,7 +220,7 @@
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
             'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path === '/roles',
-            'text-slate-300 hover:bg-slate-800/50 hover:text-white': $route.path !== '/roles'
+            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': $route.path !== '/roles'
           }"
           :title="effectiveSidebarCollapsed ? 'Roles' : ''"
         >
@@ -236,7 +236,7 @@
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
             'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path === '/permisos',
-            'text-slate-300 hover:bg-slate-800/50 hover:text-white': $route.path !== '/permisos'
+            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': $route.path !== '/permisos'
           }"
           :title="effectiveSidebarCollapsed ? 'Permisos' : ''"
         >
@@ -247,15 +247,15 @@
         </nav>
 
         <!-- Footer del Sidebar -->
-        <div class="flex-shrink-0 p-4 border-t border-slate-700/50 bg-slate-900/50 backdrop-blur-sm">
+        <div class="flex-shrink-0 p-4 border-t border-slate-200 dark:border-slate-700/50 bg-white/70 dark:bg-slate-900/50 backdrop-blur-sm">
           <div v-show="!effectiveSidebarCollapsed" class="mb-3 px-2">
-            <div class="flex items-center gap-3 p-2 rounded-lg bg-slate-800/50">
+            <div class="flex items-center gap-3 p-2 rounded-lg bg-slate-100/90 dark:bg-slate-800/50">
               <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-sky-500 flex items-center justify-center text-xs font-bold">
                 {{ authStore.userName?.charAt(0).toUpperCase() || 'U' }}
               </div>
               <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium text-white truncate">{{ authStore.userName }}</p>
-                <p class="text-xs text-slate-400 truncate">{{ authStore.fullName || 'Usuario' }}</p>
+                <p class="text-sm font-medium text-slate-800 dark:text-white truncate">{{ authStore.userName }}</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400 truncate">{{ authStore.fullName || 'Usuario' }}</p>
               </div>
             </div>
           </div>
@@ -274,7 +274,7 @@
         @click="toggleSidebarPin"
         @mouseenter="onPinHandleMouseEnter"
         @mouseleave="onPinHandleMouseLeave"
-        class="hidden md:flex absolute top-1/2 -right-3 -translate-y-1/2 h-10 w-7 items-center justify-center rounded-r-lg border border-slate-600/80 bg-slate-800 text-slate-200 shadow-lg hover:bg-slate-700 hover:text-white transition-colors z-40"
+        class="hidden md:flex absolute top-1/2 -right-3 -translate-y-1/2 h-10 w-7 items-center justify-center rounded-r-lg border border-slate-300 dark:border-slate-600/80 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-200 shadow-lg hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white transition-colors z-40"
         :title="sidebarModeLabel"
         aria-label="Cambiar modo del sidebar"
       >

@@ -116,7 +116,7 @@
                 <td class="px-4 py-3 whitespace-nowrap">
                   <div class="inline-flex items-center gap-2">
                     <span class="text-sm font-medium text-gray-900 dark:text-white">
-                      {{ archivo.numero_pedido }}
+                      {{ displayNumeroPedido(archivo.numero_pedido) }}
                     </span>
                     <button
                       type="button"
@@ -136,18 +136,18 @@
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                     <span class="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[200px]" :title="archivo.nombre_original">
-                      {{ archivo.nombre_original }}
+                      {{ displayNombreArchivo(archivo.nombre_original) }}
                     </span>
                   </div>
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                  {{ formatFileSize(archivo.tamanio_bytes) }}
+                  {{ formatFileSize(resolveFileSizeBytes(archivo)) }}
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                   {{ formatDate(archivo.fecha_subida) }}
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                  {{ archivo.descargas_count }}
+                  {{ formatDownloads(archivo.descargas_count) }}
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap text-right">
                   <div class="flex items-center justify-end gap-2">
@@ -335,9 +335,9 @@ async function descargarArchivo(archivo: ArchivoOriginalItem) {
     window.URL.revokeObjectURL(url)
     
     toast.success('Descarga exitosa', `Archivo ${archivo.nombre_original} descargado`)
-    
-    // Actualizar contador de descargas
-    archivo.descargas_count++
+
+    // Refrescar desde backend para mostrar descargas_count persistido (fuente de verdad).
+    await cargarArchivos()
   } catch (err: any) {
     console.error('Error al descargar archivo:', err)
     toast.error('Error', err.message || 'No se pudo descargar el archivo')
@@ -391,16 +391,39 @@ async function copyToClipboard(text: string) {
 
 // Helpers
 function formatFileSize(bytes: number): string {
-  if (bytes === 0) return '0 B'
+  const safeBytes = Number(bytes)
+  if (!Number.isFinite(safeBytes) || safeBytes < 0) return '—'
+  if (safeBytes === 0) return '0 B'
   const k = 1024
   const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+  const i = Math.min(Math.floor(Math.log(safeBytes) / Math.log(k)), sizes.length - 1)
+  return parseFloat((safeBytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+}
+
+function resolveFileSizeBytes(archivo: ArchivoOriginalItem): number {
+  const raw = (
+    (archivo as unknown as Record<string, unknown>).tamanio_bytes ??
+    (archivo as unknown as Record<string, unknown>).tamaño_bytes ??
+    (archivo as unknown as Record<string, unknown>).tamanioBytes ??
+    (archivo as unknown as Record<string, unknown>).size_bytes ??
+    (archivo as unknown as Record<string, unknown>).sizeBytes ??
+    (archivo as unknown as Record<string, unknown>).size ??
+    null
+  ) as unknown
+
+  if (typeof raw === 'number') return raw
+  if (typeof raw === 'string') {
+    const cleaned = raw.trim().replace(/,/g, '.')
+    const asNumber = Number(cleaned)
+    if (Number.isFinite(asNumber)) return asNumber
+  }
+  return NaN
 }
 
 function formatDate(dateStr: string): string {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
+  if (Number.isNaN(date.getTime())) return '-'
   return date.toLocaleDateString('es-ES', {
     day: '2-digit',
     month: '2-digit',
@@ -408,5 +431,20 @@ function formatDate(dateStr: string): string {
     hour: '2-digit',
     minute: '2-digit'
   })
+}
+
+function formatDownloads(value: unknown): string {
+  const n = Number(value)
+  return Number.isFinite(n) && n >= 0 ? String(Math.trunc(n)) : '0'
+}
+
+function displayNumeroPedido(value: unknown): string {
+  const text = String(value ?? '').trim()
+  return text || '—'
+}
+
+function displayNombreArchivo(value: unknown): string {
+  const text = String(value ?? '').trim()
+  return text || 'Archivo sin nombre'
 }
 </script>
