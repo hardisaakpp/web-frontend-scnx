@@ -11,8 +11,17 @@
           :required="required"
           autocomplete="off"
         />
-        <div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-          <ChevronUpDownIcon class="h-5 w-5 text-gray-400" aria-hidden="true" />
+        <div class="absolute inset-y-0 right-0 flex items-center pr-2">
+          <button
+            v-if="modelValue && !disabled"
+            type="button"
+            @click.stop="clearSelection"
+            class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+            title="Limpiar selección"
+          >
+            <XMarkIcon class="h-4 w-4" aria-hidden="true" />
+          </button>
+          <ChevronUpDownIcon class="h-5 w-5 text-gray-400 pointer-events-none" aria-hidden="true" />
         </div>
       </ComboboxButton>
       
@@ -69,7 +78,7 @@ import {
   ComboboxOption,
   TransitionRoot,
 } from '@headlessui/vue'
-import { CheckIcon, ChevronUpDownIcon } from '@heroicons/vue/20/solid'
+import { CheckIcon, ChevronUpDownIcon, XMarkIcon } from '@heroicons/vue/20/solid'
 
 interface Option {
   codigo?: string | number
@@ -129,5 +138,11 @@ const filteredOptions = computed(() =>
           .includes(query.value.toLowerCase().replace(/\s+/g, ''))
       )
 )
+
+function clearSelection() {
+  emit('update:modelValue', '')
+  emit('change', null)
+  query.value = ''
+}
 </script>
 

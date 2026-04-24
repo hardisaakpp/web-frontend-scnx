@@ -257,14 +257,15 @@
                             <div v-if="!selectedFile" class="space-y-2">
                                 <svg class="mx-auto h-10 w-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
                                 <p class="text-sm text-gray-600 dark:text-gray-400">Arrastra tu archivo aquí o <button type="button" @click="fileInputRef?.click()" class="text-blue-600 dark:text-blue-400 font-medium hover:underline">selecciona uno</button></p>
-                                <p class="text-xs text-gray-400">.xlsx únicamente</p>
+                                <p class="text-xs text-gray-400">.xlsx o .xls</p>
                             </div>
                             <div v-else class="flex items-center justify-center gap-3">
                                 <svg class="h-6 w-6 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                 <span class="text-sm text-gray-900 dark:text-white font-medium">{{ selectedFile.name }}</span>
-                                <button type="button" @click="selectedFile = null" class="text-xs text-red-500 hover:underline">Quitar</button>
+                                <button type="button" @click="resetCarga" class="text-xs text-red-500 hover:underline">Quitar</button>
                             </div>
                         </div>
+                        <p class="text-[10px] text-gray-400 mt-1 italic">* Soporta formatos .xlsx y .xls</p>
                     </div>
 
                     <!-- Resultados -->
@@ -353,6 +354,13 @@
 
                 <!-- Footer -->
                 <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+                    <button
+                        v-if="cargaResults || cargaError"
+                        @click="resetCarga"
+                        class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors mr-auto"
+                    >
+                        Cargar otro archivo
+                    </button>
                     <button
                         @click="closeCargaModal"
                         class="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
@@ -625,13 +633,20 @@ const cargaError = ref('')
 
 function closeCargaModal() {
     showCargaModal.value = false
-    selectedFile.value = null
-    cargaError.value = ''
+    resetCarga()
     // Solo recargar la tabla si la carga fue exitosa (sin errores)
     if (cargaResults.value && cargaResults.value.error_count === 0) {
         store.fetchArticulos()
     }
+}
+
+function resetCarga() {
+    selectedFile.value = null
     cargaResults.value = null
+    cargaError.value = ''
+    if (fileInputRef.value) {
+        fileInputRef.value.value = ''
+    }
 }
 
 function onFileSelect(event: Event) {
@@ -648,7 +663,7 @@ function onDrop(event: DragEvent) {
         if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
             selectedFile.value = file
         } else {
-            cargaError.value = 'Solo se permiten archivos .xlsx'
+            cargaError.value = 'Solo se permiten archivos .xlsx o .xls'
         }
     }
 }
