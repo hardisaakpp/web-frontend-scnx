@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
   const coreProxyTarget = env.VITE_CORE_PROXY_TARGET || 'http://localhost:5053'
   const mba3ProxyTarget = env.VITE_MBA3_PROXY_TARGET || 'http://localhost:8000'
   const authMeProxyTarget = env.VITE_AUTH_ME_PROXY_TARGET || mba3ProxyTarget
-  const cajaChicaProxyTarget = env.VITE_CAJA_CHICA_PROXY_TARGET || 'http://192.168.2.211:8092'
+  const cajaChicaProxyTarget = env.VITE_CAJA_CHICA_PROXY_TARGET || 'http://192.168.2.153:8092'
   const employeesProxyTarget = env.VITE_STORE_EMPLOYEES_PROXY_TARGET || cajaChicaProxyTarget
   /** PYG API (Docker típico: host 5171 → contenedor 8080). Solo afecta al dev server de Vite. */
   const pygProxyTarget = env.VITE_PYG_PROXY_TARGET || 'http://localhost:5171'
