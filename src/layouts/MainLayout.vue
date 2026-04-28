@@ -160,6 +160,22 @@
           <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Artículo Maestro</span>
         </router-link>
 
+        <!-- Articulo Scaner -->
+        <router-link
+          v-if="hasModuleAccess('articuloscaner')"
+          to="/articulo-scaner"
+          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
+          :class="{
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/articulo-scaner'),
+            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/articulo-scaner')
+          }"
+          :title="effectiveSidebarCollapsed ? 'Articulo Scaner' : ''"
+        >
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <QrCodeIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/articulo-scaner') }" />
+          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Articulo Scaner</span>
+        </router-link>
+
         <!-- Personal de Tiendas -->
         <router-link
           v-if="hasModuleAccess('gestionusuarios')"
@@ -378,6 +394,7 @@ import {
   MoonIcon,
   CubeIcon,
   DocumentArrowUpIcon,
+  QrCodeIcon,
   IdentificationIcon
 } from '@heroicons/vue/24/outline'
 import { Pin, PinOff } from 'lucide-vue-next'
@@ -516,6 +533,7 @@ const pageTitle = computed(() => {
     '/mba3-consultas': 'Gestión ODC SAP',
     '/gestion-usuarios': 'Personal de Tiendas',
     '/pyg': 'Importador PYG',
+    '/articulo-scaner': 'Articulo Scaner',
     '/mba3-consultas/ordenes-compra': 'Órdenes de Compra',
     '/mba3-consultas/proceso': 'Enviar ODC a SAP',
     '/usuarios': 'Gestión de Usuarios',

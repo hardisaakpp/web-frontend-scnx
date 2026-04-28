@@ -1,0 +1,122 @@
+import { defineStore } from 'pinia'
+import { computed, ref } from 'vue'
+import { articuloScanService } from '../services/articuloScanApi'
+import { mapScanApiError } from '../utils/apiErrorMapper'
+import type { ArticleDetailDto, ScanStatus, UiError, WarehouseDto } from '../types'
+
+export const useArticuloScanStore = defineStore('articuloScan', () => {
+  const warehouses = ref<WarehouseDto[]>([])
+  const selectedWarehouse = ref<string | null>(null)
+  const scanCode = ref('')
+  const article = ref<ArticleDetailDto | null>(null)
+  const loading = ref(false)
+  const status = ref<ScanStatus>('idle')
+  const error = ref<UiError | null>(null)
+  /** Último X-Correlation-Id de una respuesta exitosa (útil para soporte / debug). */
+  const lastCorrelationId = ref<string | null>(null)
+  const lastScans = ref<Array<{ code: string; at: string; source: 'manual' | 'scanner' }>>([])
+
+  const canResolve = computed(() => !!selectedWarehouse.value && scanCode.value.trim().length > 0 && !loading.value)
+
+  async function loadWarehouses() {
+    status.value = 'loading-warehouses'
+    error.value = null
+    lastCorrelationId.value = null
+    try {
+      warehouses.value = await articuloScanService.getWarehouses()
+      if (!selectedWarehouse.value && warehouses.value.length > 0) {
+        selectedWarehouse.value = warehouses.value[0].code
+      }
+      status.value = 'ready'
+    } catch (err) {
+      error.value = mapScanApiError(err)
+      status.value = 'error'
+    }
+  }
+
+  function setWarehouse(code: string | null) {
+    selectedWarehouse.value = code
+  }
+
+  function setScanCode(code: string) {
+    scanCode.value = code.trim()
+  }
+
+  function clearResult() {
+    article.value = null
+    lastCorrelationId.value = null
+    if (status.value !== 'loading-warehouses') {
+      status.value = 'ready'
+    }
+  }
+
+  function resetError() {
+    error.value = null
+    if (status.value === 'error') {
+      status.value = 'ready'
+    }
+  }
+
+  async function resolveScan(source: 'manual' | 'scanner') {
+    if (!selectedWarehouse.value || !scanCode.value.trim()) return
+
+    loading.value = true
+    error.value = null
+    lastCorrelationId.value = null
+    status.value = 'scanning'
+    article.value = null
+
+    try {
+      const { article: result, correlationId } = await articuloScanService.resolveScan({
+        warehouseCode: selectedWarehouse.value,
+        code: scanCode.value.trim(),
+        source
+      })
+
+      if (correlationId) {
+        lastCorrelationId.value = correlationId
+      }
+
+      article.value = result
+      if (result) {
+        status.value = 'detected'
+      } else {
+        status.value = 'not-found'
+      }
+      lastScans.value.unshift({
+        code: scanCode.value.trim(),
+        at: new Date().toISOString(),
+        source
+      })
+      lastScans.value = lastScans.value.slice(0, 10)
+    } catch (err) {
+      const uiError = mapScanApiError(err)
+      error.value = uiError
+      const nf =
+        uiError.code === 'NOT_FOUND' ||
+        (err as { response?: { status?: number } }).response?.status === 404
+      status.value = nf ? 'not-found' : 'error'
+    } finally {
+      loading.value = false
+    }
+  }
+
+  return {
+    warehouses,
+    selectedWarehouse,
+    scanCode,
+    article,
+    loading,
+    status,
+    error,
+    lastCorrelationId,
+    lastScans,
+    canResolve,
+    loadWarehouses,
+    setWarehouse,
+    setScanCode,
+    clearResult,
+    resetError,
+    resolveScan
+  }
+})

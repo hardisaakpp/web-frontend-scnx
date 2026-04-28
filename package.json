@@ -19,6 +19,7 @@
   "dependencies": {
     "@headlessui/vue": "^1.7.23",
     "@heroicons/vue": "^2.2.0",
+    "@zxing/browser": "^0.2.0",
     "axios": "^1.13.2",
     "jwt-decode": "^4.0.0",
     "lucide-vue-next": "^1.0.0",

@@ -16,6 +16,7 @@ import cajaChicaRoutes from '../modules/caja-chica/router'
 import articuloMaestroRoutes from '../modules/articulo-maestro/router'
 import gestionUsuariosRoutes from '../modules/gestion-usuarios/router'
 import pygRoutes from '../modules/pyg/router'
+import articuloScanerRoutes from '../modules/articulo-scaner/router'
 
 console.log('🔍 DEBUG usuariosRoutes:', usuariosRoutes)
 console.log('🔍 DEBUG cajaChicaRoutes:', cajaChicaRoutes)
@@ -68,6 +69,7 @@ const router = createRouter({
         ...articuloMaestroRoutes,
         ...gestionUsuariosRoutes,
         ...pygRoutes,
+        ...articuloScanerRoutes,
         {
           path: 'forbidden',
           name: 'forbidden',

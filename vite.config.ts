@@ -8,12 +8,13 @@ export default defineConfig(({ mode }) => {
   const coreProxyTarget = env.VITE_CORE_PROXY_TARGET || 'http://localhost:5053'
   const mba3ProxyTarget = env.VITE_MBA3_PROXY_TARGET || 'http://localhost:8000'
   const authMeProxyTarget = env.VITE_AUTH_ME_PROXY_TARGET || mba3ProxyTarget
-  const cajaChicaProxyTarget = env.VITE_CAJA_CHICA_PROXY_TARGET || 'http://localhost:8080'
+  const cajaChicaProxyTarget = env.VITE_CAJA_CHICA_PROXY_TARGET || 'http://192.168.2.153:8080'
   const employeesProxyTarget = env.VITE_STORE_EMPLOYEES_PROXY_TARGET || cajaChicaProxyTarget
   /** PYG API (Docker típico: host 5171 → contenedor 8080). Solo afecta al dev server de Vite. */
   const pygProxyTarget = env.VITE_PYG_PROXY_TARGET || 'http://localhost:5171'
   const maestroProxyTarget = env.VITE_MAESTRO_API_TARGET || 'http://localhost:8001'
   const conciliacionProxyTarget = env.VITE_CONCILIACION_PROXY_TARGET || 'http://127.0.0.1:8005'
+  const articuloScanProxyTarget = env.VITE_ARTICULO_SCAN_PROXY_TARGET || 'http://localhost:8080'
   /**
    * Prefijo en el backend tras quitar `/pyg-api`. Por defecto `/api` → `/pyg-api/uploads` → `/api/uploads`.
    * Si el servicio expone rutas en raíz, define `VITE_PYG_PROXY_PREFIX=` vacío en `.env.development`.
@@ -120,6 +121,13 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path.replace(/^\/maestro-api/, '')
+        },
+        // Articulo Scanner (.NET backend local)
+        '/scan-api': {
+          target: articuloScanProxyTarget,
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/scan-api/, '')
         }
       }
     },
