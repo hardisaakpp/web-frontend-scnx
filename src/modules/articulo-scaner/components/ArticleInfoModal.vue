@@ -19,7 +19,6 @@
             </span>
             <div>
               <h3 id="article-info-title" class="text-lg font-semibold">Informacion del Articulo</h3>
-              <p class="text-xs text-violet-100/90">Consulta rapida operativa</p>
             </div>
           </div>
           <button
@@ -71,10 +70,10 @@
               <article class="overflow-hidden rounded-xl border border-blue-200 dark:border-blue-900/50">
                 <header class="bg-blue-600 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white">Detalle producto</header>
                 <dl class="space-y-2 bg-white p-4 text-sm dark:bg-slate-900/60">
-                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Referencia</dt><dd class="font-mono text-slate-900 dark:text-slate-100">{{ article.code || 'N/A' }}</dd></div>
-                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Descripcion</dt><dd class="text-right text-slate-900 dark:text-slate-100">{{ article.description || 'N/A' }}</dd></div>
-                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Codigo barras</dt><dd class="font-mono text-slate-900 dark:text-slate-100">{{ asText('CodeBars', article.barcode) }}</dd></div>
-                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Marca</dt><dd class="text-slate-900 dark:text-slate-100">{{ asText('marca', article.brand) }}</dd></div>
+                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Referencia</dt><dd class="font-mono text-slate-900 dark:text-slate-100">{{ referenceText }}</dd></div>
+                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Descripcion</dt><dd class="text-right text-slate-900 dark:text-slate-100">{{ descriptionText }}</dd></div>
+                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Codigo barras</dt><dd class="font-mono text-slate-900 dark:text-slate-100">{{ barcodeText }}</dd></div>
+                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Marca</dt><dd class="text-slate-900 dark:text-slate-100">{{ brandText }}</dd></div>
                   <div class="flex justify-between gap-4"><dt class="text-slate-500">Categoria</dt><dd class="text-slate-900 dark:text-slate-100">{{ asText('categoria', article.category) }}</dd></div>
                   <div class="flex justify-between gap-4"><dt class="text-slate-500">Jerarquia</dt><dd class="text-right text-slate-900 dark:text-slate-100">{{ hierarchy }}</dd></div>
                 </dl>
@@ -161,11 +160,23 @@ const warehouseLabel = computed(() => {
 })
 
 const hierarchy = computed(() => {
+  const modernHierarchy = raw('hierarchy')
+  if (Array.isArray(modernHierarchy)) {
+    const nodes = modernHierarchy
+      .map((value) => (typeof value === 'string' ? value.trim() : ''))
+      .filter(Boolean)
+    if (nodes.length > 0) return nodes.join(' > ')
+  }
   const nodes = [raw('arbol_nivel1'), raw('arbol_nivel2'), raw('arbol_nivel3')]
     .map((value) => (typeof value === 'string' ? value.trim() : ''))
     .filter(Boolean)
   return nodes.length > 0 ? nodes.join(' > ') : 'N/A'
 })
+
+const referenceText = computed(() => asTextFrom(['itemCode', 'ItemCode'], props.article?.code))
+const descriptionText = computed(() => asTextFrom(['itemName', 'ItemName'], props.article?.description))
+const barcodeText = computed(() => asTextFrom(['codeBars', 'CodeBars'], props.article?.barcode))
+const brandText = computed(() => asTextFrom(['brand', 'marca'], props.article?.brand))
 
 function raw(key: string, fallback?: unknown): unknown {
   const value = rawRecord.value[key]
@@ -176,6 +187,16 @@ function asText(key: string, fallback?: string | null): string {
   const value = raw(key, fallback)
   if (typeof value === 'string' && value.trim()) return value
   if (typeof value === 'number' && Number.isFinite(value)) return String(value)
+  return 'N/A'
+}
+
+function asTextFrom(keys: string[], fallback?: string | null): string {
+  for (const key of keys) {
+    const value = raw(key)
+    if (typeof value === 'string' && value.trim()) return value
+    if (typeof value === 'number' && Number.isFinite(value)) return String(value)
+  }
+  if (typeof fallback === 'string' && fallback.trim()) return fallback
   return 'N/A'
 }
 

@@ -1,39 +1,35 @@
 <template>
-  <div class="mx-auto max-w-6xl min-h-[calc(100vh-5rem)] space-y-6">
-    <div class="mt-6 grid gap-6 lg:grid-cols-12 lg:items-start">
-      <!-- Form column -->
-      <div class="space-y-6 lg:col-span-7">
-        <div
-          class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-lg shadow-slate-200/50 dark:border-slate-700/80 dark:bg-slate-800/80 dark:shadow-none sm:p-6"
-        >
-          <h2 class="mb-5 flex items-center gap-2 text-lg font-semibold text-slate-900 dark:text-white">
-            <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
-              <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-              </svg>
-            </span>
-            Consulta
-          </h2>
+  <div class="mx-auto min-h-[calc(100vh-5rem)] max-w-4xl space-y-6 px-3 py-6 sm:px-4">
+    <header class="rounded-2xl border border-slate-200 bg-white/95 px-5 py-5 shadow-sm dark:border-slate-700 dark:bg-slate-800/80">
+      <h1 class="flex items-center gap-3 text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
+        <span class="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+          </svg>
+        </span>
+        Informacion de Articulos
+      </h1>
+      <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">
+        Verificar productos en el sistema
+      </p>
+    </header>
 
-          <div class="space-y-6">
-            <WarehouseSelect
-              v-model="selectedWarehouseModel"
-              :warehouses="store.warehouses"
-              :disabled="store.loading"
-            />
+    <div class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-lg shadow-slate-200/50 dark:border-slate-700/80 dark:bg-slate-800/80 dark:shadow-none sm:p-6">
+      <div class="space-y-6">
+        <WarehouseSelect
+          v-model="selectedWarehouseModel"
+          :warehouses="store.warehouses"
+          :disabled="store.loading"
+        />
 
-            <ManualCodeInput
-              v-model="scanCodeModel"
-              :disabled="store.loading || !store.selectedWarehouse"
-              :scanner-disabled="!store.selectedWarehouse"
-              @submit="onSubmit"
-              @open-scanner="openScanner"
-            />
-          </div>
-
-        </div>
+        <ManualCodeInput
+          v-model="scanCodeModel"
+          :disabled="store.loading || !store.selectedWarehouse"
+          :scanner-disabled="!store.selectedWarehouse"
+          @submit="onSubmit"
+          @open-scanner="openScanner"
+        />
       </div>
-
     </div>
 
     <ScannerPanel
