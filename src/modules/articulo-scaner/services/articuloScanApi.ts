@@ -7,8 +7,20 @@ import type {
   WarehouseDto
 } from '../types'
 
-/** Base URL del microservicio de scan (proxy dev: `/scan-api`) o URL absoluta del backend. */
-const rawScanBaseUrl = import.meta.env.VITE_ARTICULO_SCAN_API_URL || '/scan-api'
+/**
+ * Base URL del microservicio de scan.
+ * - Desarrollo: usa proxy de Vite (`/scan-api`).
+ * - Test/producción sin variable: cae a `http://<host-frontend>:8080`.
+ */
+const runtimeDefaultScanBaseUrl = (() => {
+  if (import.meta.env.DEV) return '/scan-api'
+  if (typeof window !== 'undefined') {
+    return `http://${window.location.hostname}:8080`
+  }
+  return '/scan-api'
+})()
+
+const rawScanBaseUrl = import.meta.env.VITE_ARTICULO_SCAN_API_URL || runtimeDefaultScanBaseUrl
 const normalizedScanBaseUrl = rawScanBaseUrl.replace(/\/+$/, '')
 const scanApiPrefix = /\/api$/i.test(normalizedScanBaseUrl) ? '/v1' : '/api/v1'
 
