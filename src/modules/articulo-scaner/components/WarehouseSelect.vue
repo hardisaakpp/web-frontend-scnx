@@ -43,11 +43,11 @@ defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: string): void
+  (e: 'update:modelValue', value: string | null): void
 }>()
 
 function onChange(event: Event) {
   const target = event.target as HTMLSelectElement
-  emit('update:modelValue', target.value)
+  emit('update:modelValue', target.value || null)
 }
 </script>

@@ -7,7 +7,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import('./views/ArticuloScanerView.vue'),
     meta: {
       requiresAuth: true,
-      title: 'Articulo Scaner',
+      title: 'Validación de Artículos',
       icon: 'QrCodeIcon',
       permissions: ['articuloscaner.view']
     }

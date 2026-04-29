@@ -300,6 +300,41 @@ Para actualizar la aplicación en producción (con Nginx en servidor):
 - Verificar CORS en el backend
 - Verificar que el backend esté accesible desde el dominio de producción
 
+### Imagenes de Caja Chica en `/uploads` responden 404
+
+Si una URL como `https://scnexus.../uploads/archivo.jpeg` devuelve `404 Not Found (nginx)`, revisar prioridad de `location` en Nginx.
+
+Causa comun: el bloque regex de estaticos (`location ~* \.(js|css|png|jpg|jpeg|...)$`) puede capturar la peticion antes del proxy de `/uploads` y Nginx intenta buscar el archivo en `root` local.
+
+Solucion recomendada:
+
+- Definir `location ^~ /uploads/` (con `^~`, no solo `/uploads/`) para que gane prioridad sobre regex.
+- Apuntar `proxy_pass` al backend de Caja Chica donde realmente existe la carpeta/endpoint `/uploads`.
+- Mantener `location /caja-chica-api/` para llamadas API (`/api/*`) separado del bloque de archivos.
+
+Ejemplo:
+
+```nginx
+location /caja-chica-api/ {
+    rewrite ^/caja-chica-api(.*)$ /api$1 break;
+    proxy_pass http://192.168.2.211:8092;
+}
+
+location ^~ /uploads/ {
+    proxy_pass http://192.168.2.211:8092;
+}
+```
+
+Verificacion rapida en servidor:
+
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+curl -I https://scnexus.mabelgroup.com.ec/uploads/archivo.jpeg
+curl -I http://192.168.2.211:8092/uploads/archivo.jpeg
+```
+
+Si el segundo `curl` tambien responde 404, el archivo no existe en el backend o la ruta de uploads del servicio es distinta.
+
 ### Errores de autenticación
 
 - Verificar que el token se esté guardando correctamente en localStorage

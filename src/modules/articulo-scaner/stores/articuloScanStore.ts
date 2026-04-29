@@ -24,9 +24,6 @@ export const useArticuloScanStore = defineStore('articuloScan', () => {
     lastCorrelationId.value = null
     try {
       warehouses.value = await articuloScanService.getWarehouses()
-      if (!selectedWarehouse.value && warehouses.value.length > 0) {
-        selectedWarehouse.value = warehouses.value[0].code
-      }
       status.value = 'ready'
     } catch (err) {
       error.value = mapScanApiError(err)

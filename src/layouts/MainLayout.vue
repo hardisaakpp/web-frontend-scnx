@@ -160,7 +160,7 @@
           <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Artículo Maestro</span>
         </router-link>
 
-        <!-- Articulo Scaner -->
+        <!-- Validación de Artículos -->
         <router-link
           v-if="hasModuleAccess('articuloscaner')"
           to="/articulo-scaner"
@@ -169,11 +169,11 @@
             'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/articulo-scaner'),
             'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/articulo-scaner')
           }"
-          :title="effectiveSidebarCollapsed ? 'Articulo Scaner' : ''"
+          :title="effectiveSidebarCollapsed ? 'Validación de Artículos' : ''"
         >
           <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
           <QrCodeIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/articulo-scaner') }" />
-          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Articulo Scaner</span>
+          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Validación de Artículos</span>
         </router-link>
 
         <!-- Personal de Tiendas -->
@@ -533,7 +533,7 @@ const pageTitle = computed(() => {
     '/mba3-consultas': 'Gestión ODC SAP',
     '/gestion-usuarios': 'Personal de Tiendas',
     '/pyg': 'Importador PYG',
-    '/articulo-scaner': 'Articulo Scaner',
+    '/articulo-scaner': 'Validación de Artículos',
     '/mba3-consultas/ordenes-compra': 'Órdenes de Compra',
     '/mba3-consultas/proceso': 'Enviar ODC a SAP',
     '/usuarios': 'Gestión de Usuarios',

@@ -61,11 +61,6 @@
           </div>
 
           <div v-else-if="article" class="space-y-4">
-            <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-800/50">
-              <p class="text-xs uppercase tracking-wide text-slate-500 dark:text-slate-400">Codigo consultado</p>
-              <p class="mt-1 font-mono text-sm text-slate-900 dark:text-slate-100">{{ article.code }}</p>
-            </div>
-
             <div class="grid gap-4 md:grid-cols-2">
               <article class="overflow-hidden rounded-xl border border-blue-200 dark:border-blue-900/50">
                 <header class="bg-blue-600 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white">Detalle producto</header>
@@ -75,7 +70,6 @@
                   <div class="flex justify-between gap-4"><dt class="text-slate-500">Codigo barras</dt><dd class="font-mono text-slate-900 dark:text-slate-100">{{ barcodeText }}</dd></div>
                   <div class="flex justify-between gap-4"><dt class="text-slate-500">Marca</dt><dd class="text-slate-900 dark:text-slate-100">{{ brandText }}</dd></div>
                   <div class="flex justify-between gap-4"><dt class="text-slate-500">Categoria</dt><dd class="text-slate-900 dark:text-slate-100">{{ asText('categoria', article.category) }}</dd></div>
-                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Jerarquia</dt><dd class="text-right text-slate-900 dark:text-slate-100">{{ hierarchy }}</dd></div>
                 </dl>
               </article>
 
@@ -157,20 +151,6 @@ const warehouseLabel = computed(() => {
   if (!selectedCode) return 'N/A'
   const selected = props.warehouses.find((w) => w.code === selectedCode)
   return selected ? `${selected.code} - ${selected.name}` : selectedCode
-})
-
-const hierarchy = computed(() => {
-  const modernHierarchy = raw('hierarchy')
-  if (Array.isArray(modernHierarchy)) {
-    const nodes = modernHierarchy
-      .map((value) => (typeof value === 'string' ? value.trim() : ''))
-      .filter(Boolean)
-    if (nodes.length > 0) return nodes.join(' > ')
-  }
-  const nodes = [raw('arbol_nivel1'), raw('arbol_nivel2'), raw('arbol_nivel3')]
-    .map((value) => (typeof value === 'string' ? value.trim() : ''))
-    .filter(Boolean)
-  return nodes.length > 0 ? nodes.join(' > ') : 'N/A'
 })
 
 const referenceText = computed(() => asTextFrom(['itemCode', 'ItemCode'], props.article?.code))
