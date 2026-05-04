@@ -7,6 +7,7 @@
 1. [Introducción](#introducción)
 2. [Arquitectura del Sistema](#arquitectura-del-sistema)
 3. [Formato de Permisos](#formato-de-permisos)
+   - [Registro en SCNexus Core al agregar permisos](#registro-en-scnexus-core-al-agregar-permisos)
 4. [Cómo se Cargan los Permisos](#cómo-se-cargan-los-permisos)
 5. [Control de Acceso en el Menú](#control-de-acceso-en-el-menú)
 6. [Control de Acceso en Rutas](#control-de-acceso-en-rutas)
@@ -19,6 +20,29 @@
 ## 🎯 Introducción
 
 El sistema de permisos de SCNexus utiliza un modelo **granular** que permite controlar el acceso a nivel de módulo y acción. Los permisos se almacenan en el JWT y se validan tanto en el backend como en el frontend.
+
+### Regla global (fuente de verdad)
+
+**SCNexus Core es el catálogo autoritativo de permisos.** El frontend no registra permisos en base de datos ni los “crea” en runtime: solo compara strings contra lo que el usuario ya trae en el JWT (login / `Auth/me`).
+
+**Cada vez que agregues en código una clave nueva** (`meta.permissions`, `hasPermission`, `v-permission`, `permissions.ts` de un módulo, etc.), el cambio **no está completo** hasta que en Core exista esa misma clave, esté asignada a los roles adecuados y los usuarios vuelvan a autenticarse para renovar el token. Si omites Core, verás menús vacíos, `/forbidden` o controles que nunca se activan.
+
+La política operativa (checklist de PR, pasos y advertencias) está centralizada en esta guía, sección [Registro en SCNexus Core al agregar permisos](#registro-en-scnexus-core-al-agregar-permisos). Otras guías del repo enlazan aquí en lugar de duplicar el texto.
+
+<a id="configuracion-permisos-backend-frontend"></a>
+
+### Configuración en dos capas: backend y frontend
+
+Los permisos **no se configuran solo en el front ni solo en Core**: es el **mismo contrato** (misma cadena `modulo.accion`) aplicado en dos sitios.
+
+| Capa | Qué se configura | Responsabilidad |
+|------|------------------|-----------------|
+| **Backend (SCNexus Core y, si aplica, microservicios)** | Catálogo de permisos (`Permissions`), asignación a roles/usuarios, inclusión de la lista en el JWT al autenticarse; en APIs, **autorizar** acciones y, si hace falta, **no devolver** datos sensibles según permisos del token | Fuente de verdad y seguridad real |
+| **Frontend (este repositorio)** | `meta.permissions` en rutas, visibilidad en menú (`MainLayout`, etc.), `hasPermission` / `v-permission` / `v-if` en vistas | UX y navegación coherente con lo que el usuario puede hacer |
+
+Si falta la parte **backend**, el usuario no tendrá la clave en el token y el front bloqueará rutas o ocultará menús aunque el código ya mencione el permiso. Si falta la parte **frontend**, el usuario podría tener permiso en JWT pero ver entradas o botones incorrectos (o viceversa: UI abierta sin chequeo en API).
+
+Los pasos concretos de alta en Core están en [Registro en SCNexus Core al agregar permisos](#registro-en-scnexus-core-al-agregar-permisos) y, para llamadas HTTP de ejemplo, en [ARQUITECTURA_Y_NUEVOS_MODULOS.md — Crear permisos para un nuevo módulo](ARQUITECTURA_Y_NUEVOS_MODULOS.md#crear-permisos-para-un-nuevo-módulo).
 
 ### Principios Fundamentales
 
@@ -83,6 +107,27 @@ modulo.accion
 - **Módulo**: Siempre en singular y minúsculas
 - **Acción**: Verbos en inglés (view, create, edit, delete, approve, export)
 - **Separador**: Punto (`.`)
+
+### Registro en SCNexus Core al agregar permisos
+
+Esta sección es la **referencia única** del proyecto para “nuevo permiso en código → qué hacer en Core”. No hace falta repetir estos pasos en cada README de módulo: enlazar aquí.
+
+En el frontend **solo se usan strings** (`meta.permissions`, `hasPermission`, `v-permission`, etc.). Eso basta para **mostrar u ocultar** la UI cuando el usuario ya trae esos permisos en el JWT.
+
+Para que un usuario **realmente tenga** un permiso nuevo, el flujo correcto es:
+
+1. **Definir en el frontend** la clave exacta (mismo texto en router, componentes y, si aplica, archivo `permissions.ts` del módulo).
+2. **Registrar el mismo permiso en SCNexus Core** (catálogo de permisos / API `Permissions`), con la misma `key` que usa el front. Sin este paso, el permiso **no existirá** en roles ni en el token tras el login.
+3. **Asignar el permiso al rol** correspondiente en Core (o al usuario, según cómo gestionen ustedes).
+4. **Cerrar sesión y volver a iniciar sesión** (o renovar token) para que el JWT incluya la lista actualizada.
+
+**Checklist en PR (obligatorio en la práctica):** en la descripción del cambio, indicar explícitamente *“Permiso nuevo: `modulo.accion` — requiere alta en Core y asignación a roles”* (o listar varias claves). Así queda explícito que el merge del frontend **no sustituye** la configuración global en Core y se evita dejar la app inconsistente (menú o rutas que nadie puede satisfacer).
+
+**Dato sensible:** ocultar en la UI no sustituye autorización en backend. Si el API sigue devolviendo el dato, sigue siendo visible en herramientas de red; donde aplique, el Core o el microservicio debe filtrar según permisos.
+
+**Referencia operativa en Core:** [ARQUITECTURA_Y_NUEVOS_MODULOS.md](ARQUITECTURA_Y_NUEVOS_MODULOS.md#crear-permisos-para-un-nuevo-módulo) (sección *Crear Permisos para un Nuevo Módulo*, pasos de API `Permissions`).
+
+**Ejemplo reciente:** módulo Validación de Artículos — acceso con `articuloscaner.view` o `articuloscaner.hide-cost`; el campo *Costo* solo se muestra si el usuario tiene `articuloscaner.view` (o rol Admin). Ambas claves deben existir en Core para asignarlas a distintos roles.
 
 ---
 
@@ -541,8 +586,9 @@ console.log('Roles:', authStore.userRoles)
 const user = JSON.parse(localStorage.getItem('user'))
 console.log('User data:', user)
 
-// 3. Si está vacío, crear permisos en el Core:
-// Ver documento ARQUITECTURA_Y_NUEVOS_MODULOS.md sección "Sistema de Permisos"
+// 3. Si está vacío o falta un permiso nuevo: registrar en Core y re-login.
+// Ver: esta guía → "Registro en SCNexus Core al agregar permisos"
+// y ARQUITECTURA_Y_NUEVOS_MODULOS.md → "Crear Permisos para un Nuevo Módulo"
 ```
 
 ---
@@ -677,6 +723,6 @@ Para dudas sobre:
 
 ---
 
-**Última actualización**: Febrero 2026  
-**Versión**: 1.0  
+**Última actualización**: Mayo 2026  
+**Versión**: 1.2  
 **Autor**: Equipo SCNexus Development

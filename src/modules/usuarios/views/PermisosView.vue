@@ -78,6 +78,19 @@
       </div>
     </div>
 
+    <button
+      v-if="!showModal"
+      type="button"
+      class="fixed z-40 bottom-6 right-6 md:bottom-8 md:right-8 flex h-12 w-12 items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg ring-1 ring-black/5 transition hover:bg-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 dark:bg-indigo-500 dark:hover:bg-indigo-600 dark:ring-white/10 dark:focus-visible:ring-offset-gray-900"
+      aria-label="Ir al final de la página"
+      title="Ir al final"
+      @click="scrollToBottom"
+    >
+      <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+      </svg>
+    </button>
+
     <!-- Modal para crear/editar permiso -->
     <TransitionRoot :show="showModal" as="template">
       <Dialog as="div" class="relative z-50" @close="closeModal">
@@ -177,6 +190,15 @@ const nuevoModulo = ref('')
 onMounted(() => {
   store.fetchPermisos()
 })
+
+function scrollToBottom() {
+  const doc = document.documentElement
+  const height = Math.max(doc.scrollHeight, document.body.scrollHeight)
+  window.scrollTo({
+    top: height - window.innerHeight,
+    behavior: 'smooth'
+  })
+}
 
 const openCreateModal = () => {
   selectedPermiso.value = null

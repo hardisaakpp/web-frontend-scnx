@@ -262,6 +262,12 @@ const apiMiModulo = axios.create({
 
 ## 🔐 Permisos
 
+La política global del repositorio es: **toda clave nueva definida en el frontend debe existir en SCNexus Core** (misma string en el catálogo de permisos y asignada a roles) para que llegue en el JWT tras login. El frontend no “crea” permisos; solo los consume.
+
+Cada string que uses en `meta.permissions`, en el sidebar o en `hasPermission` / `v-permission` está sujeta a esa regla. Si solo cambias el frontend, la UI puede quedar bloqueada (`/forbidden`) o sin entrada en menú.
+
+**Documentación canónica (no duplicar procedimientos en READMEs de módulo):** [Configuración en dos capas: backend y frontend](SISTEMA_PERMISOS.md#configuracion-permisos-backend-frontend), [Regla global (fuente de verdad)](SISTEMA_PERMISOS.md#regla-global-fuente-de-verdad) y [Registro en SCNexus Core al agregar permisos](SISTEMA_PERMISOS.md#registro-en-scnexus-core-al-agregar-permisos).
+
 Agregar permisos en las rutas con meta:
 
 ```typescript

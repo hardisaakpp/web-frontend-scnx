@@ -185,6 +185,8 @@ Usuario "jperez"
 Admin → Tiene TODOS los permisos automáticamente
 ```
 
+Si el **frontend** introduce una clave nueva (`meta.permissions`, `hasPermission`, etc.), esa misma clave debe **darse de alta en Core** y asignarse a roles; de lo contrario no llegará en el JWT. La política global del repo (fuente de verdad, checklist de PR) está centralizada en [SISTEMA_PERMISOS.md — Regla global](SISTEMA_PERMISOS.md#regla-global-fuente-de-verdad) y en [Registro en SCNexus Core al agregar permisos](SISTEMA_PERMISOS.md#registro-en-scnexus-core-al-agregar-permisos). Los pasos operativos de API `Permissions` siguen en esta guía debajo.
+
 ### Crear Permisos para un Nuevo Módulo
 
 #### Paso 1: Login como Admin

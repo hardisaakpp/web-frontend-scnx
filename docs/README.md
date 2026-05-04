@@ -16,26 +16,33 @@
    - Tipos, servicios, stores y rutas
    - Ejemplos y mejores prácticas
    - Solución de problemas comunes
+   - Permisos nuevos en código: registrar la misma clave en Core — ver [SISTEMA_PERMISOS.md](SISTEMA_PERMISOS.md#registro-en-scnexus-core-al-agregar-permisos)
 
-2. **[Guía de Modo Oscuro](DARK_MODE_GUIDE.md)** 🌙
+2. **[Sistema de Permisos](SISTEMA_PERMISOS.md)** 🔐 — **documento canónico** para permisos
+   - JWT, rutas, menú y componentes
+   - **Backend + frontend:** misma clave en Core (catálogo, roles, JWT) y en el código del front; resumen en [Configuracion en dos capas](SISTEMA_PERMISOS.md#configuracion-permisos-backend-frontend)
+   - **Registro obligatorio en SCNexus Core** cada vez que aparezca una clave nueva en el frontend (misma string en catálogo y roles; re-login)
+   - Política global y checklist de PR: [Registro en SCNexus Core al agregar permisos](SISTEMA_PERMISOS.md#registro-en-scnexus-core-al-agregar-permisos)
+
+3. **[Guía de Modo Oscuro](DARK_MODE_GUIDE.md)** 🌙
    - Implementación de dark mode
    - Paleta de colores recomendada
    - Ejemplos de componentes
    - Uso del theme store
    - Mejores prácticas
 
-3. **[Convenciones y flujos frontend](FRONTEND.md)**
+4. **[Convenciones y flujos frontend](FRONTEND.md)**
    - Gestión del botón "Confirmar" en detalle del pedido (§2)
    - Endpoint y persistencia de la confirmación
    - Cuándo deshabilitar el botón
 
-4. **[Sincronización UI tras mutaciones API](MUTACIONES_API_SINCRONIZACION_UI.md)** ⭐
+5. **[Sincronización UI tras mutaciones API](MUTACIONES_API_SINCRONIZACION_UI.md)** ⭐
    - Estándar del proyecto: fusionar la respuesta PATCH/PUT/POST en el estado local
    - Auditoría (última modificación, usuario) sin refetch obligatorio
    - Patrones en servicio y vista; referencia en `gestion-usuarios`
    - Alcance incremental en el resto de módulos
 
-5. **[Funcionalidades Estandarizadas (Escalables)](FUNCIONALIDADES_ESTANDARIZADAS.md)** ⭐
+6. **[Funcionalidades Estandarizadas (Escalables)](FUNCIONALIDADES_ESTANDARIZADAS.md)** ⭐
    - Toast estandarizado reusable por módulo
    - SSE y reacción por `metadata.accion`
    - Sincronización frontend-backend reutilizable
@@ -43,13 +50,13 @@
 
 ### ⚙️ Optimizaciones y Mejoras
 
-6. **[Optimización de Actualización de Estados ODC](optimizacion-estados-odc.md)** 
+7. **[Optimización de Actualización de Estados ODC](optimizacion-estados-odc.md)** 
    - Sistema de retry inteligente
    - Optimización de carga paralela
    - Reducción de delays artificiales
    - Métricas de mejora
 
-7. **[Polling Automático de Despachos](polling-automatico-despachos.md)**
+8. **[Polling Automático de Despachos](polling-automatico-despachos.md)**
    - Sistema de actualización automática
    - Indicadores visuales en tiempo real
    - Sincronización con proceso backend
@@ -57,19 +64,19 @@
 
 ### 🔧 Refactorizaciones
 
-8. **[Refactorización Pedido Detalle](REFACTORIZACION_PEDIDO_DETALLE.md)**
+9. **[Refactorización Pedido Detalle](REFACTORIZACION_PEDIDO_DETALLE.md)**
    - Mejoras en la vista de detalle de pedidos
    - Optimización de componentes
    - Separación de responsabilidades
 
 ### 📊 Análisis y Cambios Backend
 
-9. **[Análisis HU-02 Frontend](ANALISIS_HU-02_FRONTEND.md)**
+10. **[Análisis HU-02 Frontend](ANALISIS_HU-02_FRONTEND.md)**
    - Análisis de historia de usuario 02
    - Cambios requeridos en frontend
    - Impacto en componentes
 
-10. **[Cambios Backend - Procesado SAP](cambios-backend-procesado-sap.md)**
+11. **[Cambios Backend - Procesado SAP](cambios-backend-procesado-sap.md)**
    - Integración con nuevo endpoint de SAP
    - Adaptación de componentes frontend
    - Manejo de respuestas SAP
@@ -85,6 +92,7 @@ docs/
 │
 ├── 🚀 GUÍAS DE DESARROLLO
 │   ├── MODULOS.md ⭐
+│   ├── SISTEMA_PERMISOS.md 🔐 (canónico: permisos + Core)
 │   ├── DARK_MODE_GUIDE.md 🌙
 │   ├── FRONTEND.md
 │   ├── MUTACIONES_API_SINCRONIZACION_UI.md ⭐
@@ -111,10 +119,11 @@ docs/
 
 ### 🎨 Agregar Funcionalidad
 1. [MODULOS.md](MODULOS.md) - Estructura y convenciones
-2. [MUTACIONES_API_SINCRONIZACION_UI.md](MUTACIONES_API_SINCRONIZACION_UI.md) - Guardar y refrescar filas desde la respuesta API
-3. [FUNCIONALIDADES_ESTANDARIZADAS.md](FUNCIONALIDADES_ESTANDARIZADAS.md) - Patrones transversales reutilizables
-4. Revisar módulos existentes como referencia
-5. [DARK_MODE_GUIDE.md](DARK_MODE_GUIDE.md) - Soporte dark mode
+2. [SISTEMA_PERMISOS.md](SISTEMA_PERMISOS.md#registro-en-scnexus-core-al-agregar-permisos) - Si introduces permisos nuevos, registrar en Core (misma clave) y documentar en el PR
+3. [MUTACIONES_API_SINCRONIZACION_UI.md](MUTACIONES_API_SINCRONIZACION_UI.md) - Guardar y refrescar filas desde la respuesta API
+4. [FUNCIONALIDADES_ESTANDARIZADAS.md](FUNCIONALIDADES_ESTANDARIZADAS.md) - Patrones transversales reutilizables
+5. Revisar módulos existentes como referencia
+6. [DARK_MODE_GUIDE.md](DARK_MODE_GUIDE.md) - Soporte dark mode
 
 ### 🔧 Optimización y Mejoras
 1. [optimizacion-estados-odc.md](optimizacion-estados-odc.md) - Patrones de optimización
@@ -143,6 +152,8 @@ docs/
 ## 🔍 Búsqueda Rápida
 
 ### Por Tema
+- **Permisos: backend + frontend (dos capas)**: [SISTEMA_PERMISOS.md](SISTEMA_PERMISOS.md#configuracion-permisos-backend-frontend)
+- **Permisos nuevos (código frontend + alta en Core)**: [SISTEMA_PERMISOS.md — Registro en Core](SISTEMA_PERMISOS.md#registro-en-scnexus-core-al-agregar-permisos)
 - **Despliegue (pruebas y producción)**: [DEPLOYMENT.md](DEPLOYMENT.md)
 - **Desarrollo de módulos**: MODULOS.md
 - **Mutaciones API y estado local**: MUTACIONES_API_SINCRONIZACION_UI.md
@@ -183,5 +194,5 @@ Para dudas o sugerencias sobre la documentación:
 
 ---
 
-**Última actualización:** Abril 2026  
+**Última actualización:** Mayo 2026  
 **Mantenido por:** Equipo de Desarrollo SCNexus

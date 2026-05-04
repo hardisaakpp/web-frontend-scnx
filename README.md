@@ -75,6 +75,7 @@ Sistema completo de gestión de acceso (RBAC).
 
 ### Guías de Desarrollo
 - **[Guía de Desarrollo de Módulos](docs/MODULOS.md)** 🚀 - Cómo crear nuevos módulos paso a paso
+- **[Sistema de Permisos](docs/SISTEMA_PERMISOS.md)** 🔐 — **documento canónico**: rutas, menú, JWT. **Backend (Core) y frontend** comparten la misma clave; [configuracion en dos capas](docs/SISTEMA_PERMISOS.md#configuracion-permisos-backend-frontend). **Cada permiso nuevo en código** requiere alta en Core (catálogo + roles) y re-login; el front no registra permisos. [Regla global](docs/SISTEMA_PERMISOS.md#regla-global-fuente-de-verdad) y [pasos en Core](docs/SISTEMA_PERMISOS.md#registro-en-scnexus-core-al-agregar-permisos).
 - **[Sincronización UI tras mutaciones API](docs/MUTACIONES_API_SINCRONIZACION_UI.md)** - Estándar: aplicar la respuesta del servidor al estado local (p. ej. auditoría)
 - **[Guía de Modo Oscuro](docs/DARK_MODE_GUIDE.md)** 🌙 - Implementar dark mode en componentes
 - **[Índice de Documentación](docs/README.md)** - Documentación técnica completa
