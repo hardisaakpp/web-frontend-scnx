@@ -9,18 +9,12 @@ import type {
 
 /**
  * Base URL del microservicio de scan.
- * - Desarrollo: usa proxy de Vite (`/scan-api`).
- * - Test/producción sin variable: cae a `http://<host-frontend>:8080`.
+ * Por defecto `/scan-api` (mismo origen): en dev el proxy de Vite reenvía a `VITE_ARTICULO_SCAN_PROXY_TARGET`;
+ * en prod HTTPS, Nginx debe exponer `location /scan-api/` al backend (ver `deploy/nginx/scnexus.conf.example`).
+ * Nunca usar `http://<host>:8080` por defecto en el bundle: con página HTTPS el navegador bloquea Mixed Content.
+ * Para otro host explícito: `VITE_ARTICULO_SCAN_API_URL` (idealmente `https://...`).
  */
-const runtimeDefaultScanBaseUrl = (() => {
-  if (import.meta.env.DEV) return '/scan-api'
-  if (typeof window !== 'undefined') {
-    return `http://${window.location.hostname}:8080`
-  }
-  return '/scan-api'
-})()
-
-const rawScanBaseUrl = import.meta.env.VITE_ARTICULO_SCAN_API_URL || runtimeDefaultScanBaseUrl
+const rawScanBaseUrl = import.meta.env.VITE_ARTICULO_SCAN_API_URL || '/scan-api'
 const normalizedScanBaseUrl = rawScanBaseUrl.replace(/\/+$/, '')
 const scanApiPrefix = /\/api$/i.test(normalizedScanBaseUrl) ? '/v1' : '/api/v1'
 
