@@ -98,6 +98,7 @@ VITE_MBA3_API_BASE_URL=/api/mba3
 VITE_CONCILIACION_API_BASE_URL=/api/conciliacion
 VITE_PREFERENCES_API_URL=/api/mba3
 VITE_CAJA_CHICA_API_URL=/caja-chica-api
+VITE_ARTICULO_SCAN_API_URL=/scan-api
 VITE_APP_NAME=SCNexus
 ```
 
@@ -299,6 +300,45 @@ Para actualizar la aplicación en producción (con Nginx en servidor):
 - Verificar que las URLs en `.env.production` sean correctas
 - Verificar CORS en el backend
 - Verificar que el backend esté accesible desde el dominio de producción
+
+### Articulo Scanner (`/scan-api`) responde `text/html` en vez de JSON
+
+Si en Network la llamada a `https://tu-dominio/scan-api/api/v1/warehouses` muestra `200` pero `content-type: text/html`, Nginx esta devolviendo `index.html` (fallback SPA) en lugar del backend.
+
+Causa comun: falta bloque `location /scan-api/` o no esta antes de `location / { try_files ... /index.html; }`.
+
+Configuracion recomendada:
+
+```nginx
+location /scan-api/ {
+    rewrite ^/scan-api(.*)$ $1 break;
+    proxy_pass http://127.0.0.1:8080;
+    proxy_http_version 1.1;
+
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header Authorization $http_authorization;
+}
+```
+
+Ademas, en el build de frontend usar base relativa para este modulo:
+
+```env
+VITE_ARTICULO_SCAN_API_URL=/scan-api
+```
+
+Referencia en este repo: `deploy/nginx/scnexus.conf.example`.
+
+Verificacion rapida:
+
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+curl -i https://scnexus.mabelgroup.com.ec/scan-api/api/v1/warehouses
+```
+
+Resultado esperado: `content-type: application/json` y body con arreglo de almacenes.
 
 ### Imagenes de Caja Chica en `/uploads` responden 404
 

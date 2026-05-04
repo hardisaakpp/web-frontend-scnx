@@ -1,4 +1,5 @@
 import type { RouteRecordRaw } from 'vue-router'
+import { ARTICULO_SCANER_ACCESS_PERMISSIONS } from './permissions'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -9,7 +10,7 @@ const routes: RouteRecordRaw[] = [
       requiresAuth: true,
       title: 'Validación de Artículos',
       icon: 'QrCodeIcon',
-      permissions: ['articuloscaner.view']
+      permissions: [...ARTICULO_SCANER_ACCESS_PERMISSIONS]
     }
   }
 ]

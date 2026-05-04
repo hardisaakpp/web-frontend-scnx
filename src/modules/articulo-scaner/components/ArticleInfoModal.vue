@@ -97,7 +97,10 @@
               <article class="overflow-hidden rounded-xl border border-amber-200 dark:border-amber-900/50">
                 <header class="bg-amber-500 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white">Precios</header>
                 <dl class="space-y-2 bg-white p-4 text-sm dark:bg-slate-900/60">
-                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Costo</dt><dd class="text-slate-900 dark:text-slate-100">{{ formatMoney(raw('AvgPrice')) }}</dd></div>
+                  <div v-if="canViewCost" class="flex justify-between gap-4">
+                    <dt class="text-slate-500">Costo</dt>
+                    <dd class="text-slate-900 dark:text-slate-100">{{ formatMoney(raw('AvgPrice')) }}</dd>
+                  </div>
                   <div class="flex justify-between gap-4"><dt class="text-slate-500">Precio</dt><dd class="text-slate-900 dark:text-slate-100">{{ formatMoney(raw('Price', article.unitPrice), article.currency) }}</dd></div>
                 </dl>
               </article>
@@ -124,7 +127,9 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useAuthStore } from '@/stores/auth'
 import type { ArticleDetailDto, ScanStatus, WarehouseDto } from '../types'
+import { ARTICULO_SCANER_VIEW_COST_PERMISSION } from '../permissions'
 
 const props = defineProps<{
   visible: boolean
@@ -140,6 +145,13 @@ const props = defineProps<{
 defineEmits<{
   close: []
 }>()
+
+const authStore = useAuthStore()
+
+const canViewCost = computed(() => {
+  if (authStore.userRoles?.includes('Admin')) return true
+  return authStore.hasPermission(ARTICULO_SCANER_VIEW_COST_PERMISSION)
+})
 
 const rawRecord = computed<Record<string, unknown>>(() => {
   if (!props.article || typeof props.article !== 'object') return {}
