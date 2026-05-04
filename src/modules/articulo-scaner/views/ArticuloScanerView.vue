@@ -14,6 +14,22 @@
       </div>
     </header>
 
+    <div
+      v-if="store.error && store.status === 'error'"
+      class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100"
+      role="alert"
+    >
+      <p class="font-medium">No se pudieron cargar los almacenes</p>
+      <p class="mt-1 text-amber-800 dark:text-amber-200/90">{{ store.error.message }}</p>
+      <button
+        type="button"
+        class="mt-3 text-sm font-semibold text-amber-900 underline decoration-amber-700/60 hover:decoration-amber-900 dark:text-amber-100"
+        @click="store.loadWarehouses()"
+      >
+        Reintentar
+      </button>
+    </div>
+
     <div class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-lg shadow-slate-200/50 dark:border-slate-700/80 dark:bg-slate-800/80 dark:shadow-none sm:p-5">
       <div class="space-y-4">
         <WarehouseSelect

@@ -9,12 +9,13 @@ import type {
 
 /**
  * Base URL del microservicio de scan.
- * Por defecto `/scan-api` (mismo origen): en dev el proxy de Vite reenvía a `VITE_ARTICULO_SCAN_PROXY_TARGET`;
- * en prod HTTPS, Nginx debe exponer `location /scan-api/` al backend (ver `deploy/nginx/scnexus.conf.example`).
- * Nunca usar `http://<host>:8080` por defecto en el bundle: con página HTTPS el navegador bloquea Mixed Content.
- * Para otro host explícito: `VITE_ARTICULO_SCAN_API_URL` (idealmente `https://...`).
+ * - Sin `VITE_ARTICULO_SCAN_API_URL`: en **desarrollo** `/scan-api` (proxy Vite → `VITE_ARTICULO_SCAN_PROXY_TARGET`);
+ *   en **build** `/api` (mismo origen HTTPS que el Core: `GET /api/v1/warehouses` vía `location /api/` en Nginx).
+ * - Si el scan va por otro prefijo en prod: `VITE_ARTICULO_SCAN_API_URL` (p. ej. `https://…/scan-api` o origen relativo `/scan-api`).
+ * No usar `http://<host>:8080` por defecto: con HTTPS el navegador bloquea Mixed Content.
  */
-const rawScanBaseUrl = import.meta.env.VITE_ARTICULO_SCAN_API_URL || '/scan-api'
+const rawScanBaseUrl =
+  import.meta.env.VITE_ARTICULO_SCAN_API_URL || (import.meta.env.DEV ? '/scan-api' : '/api')
 const normalizedScanBaseUrl = rawScanBaseUrl.replace(/\/+$/, '')
 const scanApiPrefix = /\/api$/i.test(normalizedScanBaseUrl) ? '/v1' : '/api/v1'
 
@@ -54,6 +55,21 @@ type ResolveApiResponse = {
   article?: ArticleDetailDto | null
 }
 
+function scanConfigError(message: string): Error {
+  return new Error(`[articulo-scan] ${message}`)
+}
+
+function warehousesFromArrayPayload(payload: unknown[]): WarehouseDto[] {
+  if (payload.length === 0) return []
+  const first = payload[0]
+  if (first && typeof first === 'object' && 'code' in first && typeof (first as WarehouseDto).code === 'string') {
+    return payload as WarehouseDto[]
+  }
+  return payload
+    .map((item) => (typeof item === 'object' && item !== null ? normalizeWarehouse(item as Record<string, unknown>) : null))
+    .filter((w): w is WarehouseDto => w !== null)
+}
+
 function normalizeWarehouse(raw: Record<string, unknown>): WarehouseDto | null {
   const code =
     (typeof raw.code === 'string' && raw.code) ||
@@ -77,18 +93,32 @@ export const articuloScanService = {
     const response = await articuloScanApi.get<WarehousesApiResponse | WarehouseDto[] | Record<string, unknown>[]>(
       `${scanApiPrefix}/warehouses`
     )
-    const payload = response.data
-    if (Array.isArray(payload)) {
-      if (payload.length === 0) return []
-      const first = payload[0]
-      if (first && typeof first === 'object' && 'code' in first && typeof (first as WarehouseDto).code === 'string') {
-        return payload as WarehouseDto[]
-      }
-      return payload
-        .map((item) => (typeof item === 'object' && item !== null ? normalizeWarehouse(item as Record<string, unknown>) : null))
-        .filter((w): w is WarehouseDto => w !== null)
+    const headers = response.headers as Record<string, string | undefined>
+    const contentType = headers['content-type'] ?? headers['Content-Type'] ?? ''
+    if (typeof contentType === 'string' && contentType.includes('text/html')) {
+      throw scanConfigError(
+        'El servidor devolvió HTML en lugar de JSON. Revisa que Nginx enrute el API de scan (p. ej. /api o /scan-api) antes del fallback del SPA.'
+      )
     }
-    return payload.data ?? payload.warehouses ?? []
+
+    const payload: unknown = response.data
+    if (typeof payload === 'string') {
+      if (payload.trimStart().startsWith('<')) {
+        throw scanConfigError(
+          'La respuesta parece ser una página HTML. Revisa la URL base del scanner y el proxy inverso.'
+        )
+      }
+    }
+
+    if (Array.isArray(payload)) {
+      return warehousesFromArrayPayload(payload as unknown[])
+    }
+    if (payload && typeof payload === 'object') {
+      const body = payload as WarehousesApiResponse
+      if (Array.isArray(body.data)) return warehousesFromArrayPayload(body.data as unknown[])
+      if (Array.isArray(body.warehouses)) return warehousesFromArrayPayload(body.warehouses as unknown[])
+    }
+    throw scanConfigError('Formato de lista de almacenes no reconocido.')
   },
 
   /**

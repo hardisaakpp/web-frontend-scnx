@@ -44,6 +44,14 @@ export function correlationFromResponseHeaders(headers: unknown): string | undef
  * Mapea errores HTTP del servicio de scan al modelo UI (contrato v1).
  */
 export function mapScanApiError(error: unknown): UiError {
+  if (error instanceof Error && error.message.startsWith('[articulo-scan]')) {
+    return {
+      code: 'BAD_RESPONSE',
+      message: error.message.replace(/^\[articulo-scan\]\s*/, ''),
+      correlationId: undefined
+    }
+  }
+
   const err = error as AxiosLikeError
   const status = err.response?.status
   const data = err.response?.data as Record<string, unknown> | undefined
