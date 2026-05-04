@@ -8,14 +8,15 @@ import type {
 } from '../types'
 
 /**
- * Base URL del microservicio de scan.
- * - Sin `VITE_ARTICULO_SCAN_API_URL`: en **desarrollo** `/scan-api` (proxy Vite → `VITE_ARTICULO_SCAN_PROXY_TARGET`);
- *   en **build** `/api` (mismo origen HTTPS que el Core: `GET /api/v1/warehouses` vía `location /api/` en Nginx).
- * - Si el scan va por otro prefijo en prod: `VITE_ARTICULO_SCAN_API_URL` (p. ej. `https://…/scan-api` o origen relativo `/scan-api`).
- * No usar `http://<host>:8080` por defecto: con HTTPS el navegador bloquea Mixed Content.
+ * Base URL del microservicio de scan (rutas reales: `/api/v1/warehouses`, `/api/v1/scan/resolve`).
+ * - Sin `VITE_ARTICULO_SCAN_API_URL`: **`/scan-api`** en dev y prod (mismo origen → sin Mixed Content).
+ *   Nginx debe exponer `location /scan-api/` hacia el host del scanner (ver `deploy/nginx/scnexus.conf.example`):
+ *   p. ej. `/scan-api/api/v1/warehouses` → backend `GET /api/v1/warehouses`.
+ * - `location /api/` suele ser el **Core**; si el scanner no está detrás del mismo upstream, no uses `/api` como base.
+ * - Anular solo si tu despliegue publica el scanner en otra ruta: `VITE_ARTICULO_SCAN_API_URL` (p. ej. `/api` o URL absoluta `https://…`).
+ * Bearer: si hay token en `localStorage`/`sessionStorage`, se envía `Authorization` (alineado con JWT del Core cuando el backend exige `Authority`).
  */
-const rawScanBaseUrl =
-  import.meta.env.VITE_ARTICULO_SCAN_API_URL || (import.meta.env.DEV ? '/scan-api' : '/api')
+const rawScanBaseUrl = import.meta.env.VITE_ARTICULO_SCAN_API_URL || '/scan-api'
 const normalizedScanBaseUrl = rawScanBaseUrl.replace(/\/+$/, '')
 const scanApiPrefix = /\/api$/i.test(normalizedScanBaseUrl) ? '/v1' : '/api/v1'
 
