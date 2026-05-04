@@ -1,16 +1,8 @@
 <template>
-  <div class="space-y-6">
-    <div class="flex items-center justify-between">
-      <div>
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Gestión de Permisos</h1>
-        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Define permisos disponibles en el sistema</p>
-      </div>
-      <button 
-        @click="openCreateModal"
-        class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-lg transition-colors shadow-lg hover:shadow-xl"
-      >
-        + Nuevo Permiso
-      </button>
+  <div class="space-y-6 pb-32 md:pb-36">
+    <div class="pr-36 sm:pr-44 md:pr-0">
+      <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Gestión de Permisos</h1>
+      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Define permisos disponibles en el sistema</p>
     </div>
 
     <div v-if="store.loading" class="text-center py-12">
@@ -81,7 +73,16 @@
     <button
       v-if="!showModal"
       type="button"
-      class="fixed z-40 bottom-6 right-6 md:bottom-8 md:right-8 flex h-12 w-12 items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg ring-1 ring-black/5 transition hover:bg-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 dark:bg-indigo-500 dark:hover:bg-indigo-600 dark:ring-white/10 dark:focus-visible:ring-offset-gray-900"
+      class="fixed z-40 top-24 right-6 shrink-0 px-4 py-2.5 text-sm font-medium whitespace-nowrap rounded-lg bg-indigo-600 text-white shadow-lg ring-1 ring-black/5 transition hover:bg-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 md:top-28 md:right-8 dark:bg-indigo-500 dark:hover:bg-indigo-600 dark:ring-white/10 dark:focus-visible:ring-offset-gray-900"
+      @click="openCreateModal"
+    >
+      + Nuevo Permiso
+    </button>
+
+    <button
+      v-if="!showModal"
+      type="button"
+      class="fixed z-40 bottom-6 right-6 flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white shadow-lg ring-1 ring-black/5 transition hover:bg-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-offset-2 md:bottom-8 md:right-8 dark:bg-indigo-500 dark:hover:bg-indigo-600 dark:ring-white/10 dark:focus-visible:ring-offset-gray-900"
       aria-label="Ir al final de la página"
       title="Ir al final"
       @click="scrollToBottom"
