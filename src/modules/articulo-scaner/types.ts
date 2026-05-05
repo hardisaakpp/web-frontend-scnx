@@ -21,6 +21,11 @@ export interface ArticleDetailDto {
   lastSaleDate?: string | null
   unitPrice?: number | null
   currency?: string | null
+  pricing?: {
+    avgPrice?: number | null
+    price?: number | null
+    margin?: number | null
+  } | null
   /** Si el backend envía ventas / precios detallados (contrato extendido v1) */
   sales?: unknown
   prices?: unknown

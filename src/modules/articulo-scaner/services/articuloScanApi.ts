@@ -6,6 +6,7 @@ import type {
   ScanResolveRequest,
   WarehouseDto
 } from '../types'
+import { extractArticlePricing } from '../utils/pricing'
 
 /**
  * Base URL del microservicio de scan (rutas reales: `/api/v1/warehouses`, `/api/v1/scan/resolve`).
@@ -54,6 +55,14 @@ type ResolveApiResponse = {
     article?: ArticleDetailDto | null
   }
   article?: ArticleDetailDto | null
+}
+
+function mapResolvedArticle(article: ArticleDetailDto | null): ArticleDetailDto | null {
+  if (!article) return null
+  return {
+    ...article,
+    pricing: extractArticlePricing(article)
+  }
 }
 
 function scanConfigError(message: string): Error {
@@ -131,7 +140,7 @@ export const articuloScanService = {
       payload
     )
     const apiData = response.data
-    const article = apiData.data?.article ?? apiData.article ?? null
+    const article = mapResolvedArticle(apiData.data?.article ?? apiData.article ?? null)
     const correlationId = correlationFromResponseHeaders(response.headers)
     return { article, correlationId }
   }

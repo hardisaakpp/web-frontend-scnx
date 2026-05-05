@@ -97,11 +97,18 @@
               <article class="overflow-hidden rounded-xl border border-amber-200 dark:border-amber-900/50">
                 <header class="bg-amber-500 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white">Precios</header>
                 <dl class="space-y-2 bg-white p-4 text-sm dark:bg-slate-900/60">
-                  <div v-if="canViewCost" class="flex justify-between gap-4">
-                    <dt class="text-slate-500">Costo</dt>
-                    <dd class="text-slate-900 dark:text-slate-100">{{ formatMoney(raw('AvgPrice')) }}</dd>
+                  <div class="flex justify-between gap-4">
+                    <dt class="text-slate-500">Ultimo costo</dt>
+                    <dd class="text-slate-900 dark:text-slate-100">{{ formatCurrency(pricing.avgPrice, article.currency || 'CLP') }}</dd>
                   </div>
-                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Precio</dt><dd class="text-slate-900 dark:text-slate-100">{{ formatMoney(raw('Price', article.unitPrice), article.currency) }}</dd></div>
+                  <div class="flex justify-between gap-4">
+                    <dt class="text-slate-500">Precio de venta</dt>
+                    <dd class="text-slate-900 dark:text-slate-100">{{ formatCurrency(pricing.price, article.currency || 'CLP') }}</dd>
+                  </div>
+                  <div class="flex justify-between gap-4">
+                    <dt class="text-slate-500">Margen</dt>
+                    <dd class="text-slate-900 dark:text-slate-100">{{ formatPercent(pricing.margin) }}</dd>
+                  </div>
                 </dl>
               </article>
             </div>
@@ -127,9 +134,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useAuthStore } from '@/stores/auth'
 import type { ArticleDetailDto, ScanStatus, WarehouseDto } from '../types'
-import { ARTICULO_SCANER_VIEW_COST_PERMISSION } from '../permissions'
+import { extractArticlePricing, formatCurrency, formatPercent } from '../utils/pricing'
 
 const props = defineProps<{
   visible: boolean
@@ -145,13 +151,6 @@ const props = defineProps<{
 defineEmits<{
   close: []
 }>()
-
-const authStore = useAuthStore()
-
-const canViewCost = computed(() => {
-  if (authStore.userRoles?.includes('Admin')) return true
-  return authStore.hasPermission(ARTICULO_SCANER_VIEW_COST_PERMISSION)
-})
 
 const rawRecord = computed<Record<string, unknown>>(() => {
   if (!props.article || typeof props.article !== 'object') return {}
@@ -169,6 +168,7 @@ const referenceText = computed(() => asTextFrom(['itemCode', 'ItemCode'], props.
 const descriptionText = computed(() => asTextFrom(['itemName', 'ItemName'], props.article?.description))
 const barcodeText = computed(() => asTextFrom(['codeBars', 'CodeBars'], props.article?.barcode))
 const brandText = computed(() => asTextFrom(['brand', 'marca'], props.article?.brand))
+const pricing = computed(() => extractArticlePricing(props.article))
 
 function raw(key: string, fallback?: unknown): unknown {
   const value = rawRecord.value[key]
@@ -214,13 +214,4 @@ function formatDate(value: unknown): string {
   return new Intl.DateTimeFormat('es-CL').format(date)
 }
 
-function formatMoney(value: unknown, currency: string | null = 'CLP'): string {
-  const parsed = typeof value === 'number' ? value : Number(value)
-  if (!Number.isFinite(parsed)) return 'N/A'
-  return new Intl.NumberFormat('es-CL', {
-    style: 'currency',
-    currency: currency || 'CLP',
-    maximumFractionDigits: 2
-  }).format(parsed)
-}
 </script>

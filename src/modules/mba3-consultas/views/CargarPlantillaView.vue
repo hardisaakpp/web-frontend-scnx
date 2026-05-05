@@ -397,7 +397,7 @@
           </p>
           <button
             type="button"
-            :disabled="enviandoOdcSap"
+            :disabled="enviandoOdcSap || pedido?.puede_reintentar_envio_odc_sap !== true"
             class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium whitespace-nowrap shrink-0"
             @click="handleEnviarOdcSap"
           >
@@ -411,7 +411,11 @@
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
             </svg>
-            {{ enviandoOdcSap ? 'Reintentando…' : 'Reintentar envío a SAP' }}
+            {{
+              enviandoOdcSap
+                ? 'Reintentando…'
+                : (pedido?.puede_reintentar_envio_odc_sap === true ? 'Reintentar envío a SAP' : 'No aplica reintento')
+            }}
           </button>
         </div>
 
@@ -943,12 +947,9 @@ const puedeFinalizarPedido = computed(() => pedido.value?.puede_finalizar === tr
 
 // ⭐ Botón "Enviar ODC a SAP" (proceso completo: redistribución + ODC + SAP)
 const enviandoOdcSap = ref(false)
-/** Primer envío en estado 4 o reintento cuando el backend marca puede_reintentar_envio_odc_sap */
+/** La visibilidad depende de la vista; la habilitación del reintento depende del flag backend. */
 const showEnviarOdcSapButton = computed(() => {
-  const p = pedido.value
-  if (!p?.cabecera) return false
-  if (p.puede_reintentar_envio_odc_sap === true) return true
-  return p.cabecera.estado_id === 4
+  return true
 })
 /** Banner + CTA cuando proceso-completo-sap devuelve retry_recommended (fallo transitorio). */
 const mostrarBannerReintentoConexionSap = ref(false)
@@ -1710,8 +1711,6 @@ async function applySAPResponseCargarPlantilla(response: import('@/modules/mba3-
     await loadPedido()
   } else if (innerStatus === 'partial') {
     const env = response.envio_sap
-    mostrarBannerReintentoConexionSap.value =
-      env?.retry_recommended === true && env?.doc_num == null
     toast.warning(
       `Error en paso: ${response.paso_fallido ?? 'desconocido'}`,
       response.error || response.message || 'El proceso no se completó totalmente'
@@ -1719,9 +1718,20 @@ async function applySAPResponseCargarPlantilla(response: import('@/modules/mba3-
     if (response.redistribucion) toast.info('Redistribución confirmada', `Versión: ${response.redistribucion.version_confirmada}`)
     if (response.odc_generada) toast.info('ODC generada', `ID: ${response.odc_generada.oc_id}`)
     await loadPedido()
+
+    // Refresh antes de pintar el CTA/botón de reintento (flag backend como única fuente).
+    const puedeReintentar = pedido.value?.puede_reintentar_envio_odc_sap === true
+    mostrarBannerReintentoConexionSap.value =
+      env?.retry_recommended === true && env?.doc_num == null && puedeReintentar
   } else {
     mostrarBannerReintentoConexionSap.value = false
     toast.error('Error', response.message || 'No se pudo completar el proceso')
+    // Refresco adicional para que el flag backend (puede_reintentar_envio_odc_sap) quede sincronizado.
+    try {
+      await loadPedido()
+    } catch (e) {
+      console.warn('[applySAPResponseCargarPlantilla] loadPedido tras error SAP:', e)
+    }
   }
 }
 

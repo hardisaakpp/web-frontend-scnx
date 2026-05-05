@@ -460,12 +460,9 @@ const guardarBorradorDeshabilitadoPorEstado = computed(() => {
   return estadoId !== 4
 })
 
-// ⭐ "Enviar ODC a SAP": primer envío en estado 4, o reintento cuando el backend indica puede_reintentar_envio_odc_sap (p. ej. 10, 21)
-const showEnviarOdcSap = computed(() => {
-  const p = pedido.value
-  if (p?.puede_reintentar_envio_odc_sap === true) return true
-  return p?.cabecera?.estado_id === 4
-})
+// El botón/bandeja de reintento se habilita/deshabilita usando SOLO el flag backend.
+// La visibilidad depende de la vista (pedido/respuesta_proveedor); el "disabled" lo maneja el componente.
+const showEnviarOdcSap = computed(() => true)
 
 // Funciones de redistribución
 function toggleExpandirProducto(codigoProducto: string) {
@@ -623,6 +620,12 @@ async function applySAPResponse(response: ProcesoCompletoSAPResponse) {
     router.push({ name: 'mba3-consultas-proceso' })
   } else {
     toast.error('Error en proceso SAP', response.message || 'Ocurrió un error inesperado')
+    // Refresco adicional para sincronizar el flag backend.
+    try {
+      await loadPedido()
+    } catch (e) {
+      console.warn('[applySAPResponse] loadPedido tras error SAP:', e)
+    }
   }
 }
 
