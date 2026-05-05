@@ -462,7 +462,7 @@ const guardarBorradorDeshabilitadoPorEstado = computed(() => {
 
 // El botón/bandeja de reintento se habilita/deshabilita usando SOLO el flag backend.
 // La visibilidad depende de la vista (pedido/respuesta_proveedor); el "disabled" lo maneja el componente.
-const showEnviarOdcSap = computed(() => false)
+const showEnviarOdcSap = computed(() => true)
 
 // Funciones de redistribución
 function toggleExpandirProducto(codigoProducto: string) {
