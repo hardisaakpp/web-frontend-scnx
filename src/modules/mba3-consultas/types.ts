@@ -141,6 +141,9 @@ export interface OrdenCompra {
   error_source?: string | null
   error_code?: string | null
   error_message?: string | null
+  /** Flags de UI para columna ACCIONES (backend autoritativo). */
+  mostrar_reintentar?: boolean
+  mostrar_descargar_pdf?: boolean
   metadata?: {
     detalles?: IntegracionSAPDetalle[]  // Usar interfaz específica
     [key: string]: any

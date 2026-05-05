@@ -1475,6 +1475,8 @@ async function handleIntegrarOC(referenciaDespacho: string, almacenDestinoParam?
     }
     
     // ⭐ Mostrar modal con resultados de integración
+    const envioExitoso = detalles.length > 0 && detalles[0]?.success === true
+
     if (detalles.length > 0) {
       const detalle = detalles[0]
       integracionSAPDetalle.value = detalle
@@ -1508,10 +1510,14 @@ async function handleIntegrarOC(referenciaDespacho: string, almacenDestinoParam?
       await new Promise(resolve => setTimeout(resolve, 300))
       showIntegracionSAPModal.value = true
     }
-    
-    // ✅ NO REFRESCAR - Confiar en la respuesta del backend
-    // La respuesta del backend es autoritativa y ya actualizamos el estado local
-    // Refrescar ahora traería datos viejos del servidor que sobrescribirían nuestra actualización
+
+    // Refrescar tras envío/reintento exitoso para sincronizar flags de ACCIONES (reintentar/PDF).
+    if (envioExitoso) {
+      await Promise.all([
+        ordenesCompraStore.fetchEstadisticas(),
+        cargarOrdenesCompraPendientes(),
+      ])
+    }
     
     // IMPORTANTE: NO limpiar sendingOcId aquí
     // El watch en OrdenCompraTable detectará automáticamente cuando el estado cambie
@@ -1768,9 +1774,12 @@ async function handleIntegrarOCMultiples(referencias: string[]) {
       if (import.meta.env.DEV) console.log('📦 Pedidos cerrados después del envío:', Array.from(pedidosCerradosConsolidados))
     }
     
-    // ✅ NO REFRESCAR - Confiar en las respuestas del backend
-    // Las respuestas del backend son autoritativas y ya actualizamos los estados locales
-    // Refrescar ahora traería datos viejos del servidor que sobrescribirían nuestras actualizaciones
+    if (successCount > 0) {
+      await Promise.all([
+        ordenesCompraStore.fetchEstadisticas(),
+        cargarOrdenesCompraPendientes(),
+      ])
+    }
     
     // IMPORTANTE: NO limpiar sendingMultiple aquí
     // El watch en OrdenCompraTable detectará automáticamente cuando los estados cambien

@@ -276,6 +276,22 @@
             </template>
             <td v-if="!props.readOnly" class="px-6 py-4 whitespace-nowrap text-sm">
               <button
+                v-if="shouldShowRetryAction(oc)"
+                @click="handleIntegrar(oc.referencia_despacho, oc.oc_id)"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-900/30 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                :disabled="sendingOcId === oc.oc_id || props.loading"
+                title="Reintentar envío a SAP"
+              >
+                <svg v-if="sendingOcId === oc.oc_id" class="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                {{ sendingOcId === oc.oc_id ? 'Reintentando...' : 'Reintentar' }}
+              </button>
+              <button
+                v-else-if="shouldShowPdfAction(oc)"
                 @click="handleDescargarPDF(oc)"
                 class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/30 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 :disabled="downloadingPdfOcId === oc.oc_id"
@@ -517,6 +533,17 @@ function getColumnLabel(key: string): string {
 function isColumnSortable(key: string): boolean {
   // Columnas no ordenables
   return !['estado', 'numero_oc_sap', 'doc_entry', 'respuesta_sap', 'origen'].includes(key)
+}
+
+function shouldShowRetryAction(oc: OrdenCompra): boolean {
+  if (typeof oc.mostrar_reintentar === 'boolean') return oc.mostrar_reintentar
+  const estado = (oc.estado || '').toUpperCase()
+  return estado === 'PENDIENTE' || estado === 'ERROR'
+}
+
+function shouldShowPdfAction(oc: OrdenCompra): boolean {
+  if (typeof oc.mostrar_descargar_pdf === 'boolean') return oc.mostrar_descargar_pdf
+  return !shouldShowRetryAction(oc)
 }
 
 function selectAllColumns() {

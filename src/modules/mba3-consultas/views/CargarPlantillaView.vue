@@ -388,7 +388,7 @@
 
         <!-- Fallo transitorio SAP (retry_recommended): mismo flujo que "Enviar ODC a SAP" -->
         <div
-          v-if="mostrarBannerReintentoConexionSap"
+          v-if="habilitarReintentoEnProceso && mostrarBannerReintentoConexionSap"
           class="mb-4 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/25 px-4 py-3 text-sm text-amber-900 dark:text-amber-100 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
           role="status"
         >
@@ -948,11 +948,11 @@ const puedeFinalizarPedido = computed(() => pedido.value?.puede_finalizar === tr
 // ⭐ Botón "Enviar ODC a SAP" (proceso completo: redistribución + ODC + SAP)
 const enviandoOdcSap = ref(false)
 /** La visibilidad depende de la vista; la habilitación del reintento depende del flag backend. */
-const showEnviarOdcSapButton = computed(() => {
-  return true
-})
+const showEnviarOdcSapButton = computed(() => false)
 /** Banner + CTA cuando proceso-completo-sap devuelve retry_recommended (fallo transitorio). */
 const mostrarBannerReintentoConexionSap = ref(false)
+/** Reintento ODC/SAP se maneja exclusivamente en la vista de proceso. */
+const habilitarReintentoEnProceso = false
 
 // ⭐ NUEVO: Variables de progreso para envío ODC a SAP
 const sapProgress = ref(0)
