@@ -11,36 +11,35 @@
     <div class="space-y-3">
       <div class="relative">
         <div class="flex items-stretch overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-900/5 transition focus-within:border-emerald-400 focus-within:ring-2 focus-within:ring-emerald-500/25 dark:border-slate-600 dark:bg-slate-900 dark:ring-white/5">
-        <input
-          ref="inputRef"
-          :value="props.modelValue"
-          :disabled="props.disabled"
-          type="text"
-          maxlength="50"
-          placeholder="Escribe o escanea el código"
-          class="min-w-0 flex-1 border-0 bg-transparent px-4 py-3.5 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0 disabled:opacity-60 dark:text-white sm:text-sm"
-          @input="onInput"
-          @focus="onFocusInput"
-          @click="onFocusInput"
-          @blur="onBlurInput"
-          @keyup.enter="onSubmit"
-        />
-        <button
-          v-if="props.modelValue.trim()"
-          type="button"
-          title="Limpiar código"
-          :disabled="props.disabled"
-          class="shrink-0 px-2 text-slate-400 transition hover:text-slate-600 disabled:opacity-40 dark:text-slate-500 dark:hover:text-slate-300"
-          @click="clearInput"
-        >
-          <span
-            aria-hidden="true"
-            class="inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium leading-none hover:bg-slate-100 dark:hover:bg-slate-800"
+        <div class="relative min-w-0 flex-1">
+          <input
+            ref="inputRef"
+            :value="props.modelValue"
+            :disabled="props.disabled"
+            type="text"
+            maxlength="50"
+            placeholder="Escribe o escanea el código"
+            class="min-w-0 w-full border-0 bg-transparent py-3.5 pl-4 pr-10 text-base text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-0 disabled:opacity-60 dark:text-white sm:text-sm"
+            @input="onInput"
+            @focus="onFocusInput"
+            @click="onFocusInput"
+            @blur="onBlurInput"
+            @keyup.enter="onSubmit"
+          />
+          <button
+            v-if="props.modelValue"
+            type="button"
+            title="Limpiar búsqueda"
+            :disabled="props.disabled"
+            class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors disabled:opacity-40"
+            @click="clearInput"
           >
-            ×
-          </span>
-          <span class="sr-only">Limpiar código</span>
-        </button>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            <span class="sr-only">Limpiar código</span>
+          </button>
+        </div>
         <button
           type="button"
           title="Escanear con cámara"

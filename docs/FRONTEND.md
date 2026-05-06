@@ -382,3 +382,39 @@ También deshabilitar si `loading`, si no hay `pedido`, o si ya está en curso l
 - **Redistribución (comportamiento actual – “redirect al último”):** en `/mba3-consultas/redistribucion` (sin `numero_pedido`), llamar a `GET /api/pedidos/ultimo-redistribucion?solo_usuario=true` (vía `getUltimoPedidoRedistribucion(true)`). Si la respuesta trae `numero_pedido`, hacer `router.replace` a `/mba3-consultas/pedidos/` + `encodeURIComponent(numero_pedido)` + `/redistribucion`. Si es null o hay error, quedarse en la pantalla con el input de búsqueda y, si aplica, la lista de pedidos confirmados.
 - **Redistribución (alternativa – lista de confirmados):** llamar a `GET /api/pedidos/confirmados?page=1&page_size=20` (o 50), pintar la lista en `/redistribucion`, y al elegir un ítem (o al buscar por número) mostrar el detalle **en la misma página** (Opción A) o **navegando a** `/pedidos/{numero_pedido}/redistribucion` (Opción B). Ver 1.4.
 - **Confirmar:** en detalle de pedido, `POST /api/pedidos/{cabecera.pedido_id}/crear-respuesta-desde-pedido`, y deshabilitar el botón según `cabecera.estado` (y según `loading` / `confirmando`).
+
+---
+
+## 4. Uniformidad UI entre módulos (obligatorio)
+
+Para implementaciones nuevas o ajustes en módulos existentes, el frontend debe **priorizar reutilización** de componentes/patrones visuales ya presentes en el repositorio antes de crear variantes nuevas.
+
+### 4.1 Regla general
+
+- Si ya existe un elemento equivalente (input con clear, buscador con icono, tabla, modal, banner, botón de acción, etc.), **reutilizar el mismo componente o patrón de clases**.
+- Evitar “micro-variantes” por módulo cuando la funcionalidad es la misma.
+- Solo crear un estilo nuevo cuando exista una necesidad funcional real (no solo preferencia visual local).
+
+### 4.2 Checklist antes de implementar UI nueva
+
+1. Buscar en módulos existentes (`mba3-consultas`, `articulo-scaner`, `usuarios`, etc.) un componente o patrón equivalente.
+2. Si existe, copiar/reutilizar su estructura visual y comportamiento (focus, hover, dark mode, disabled, accesibilidad).
+3. Si no existe uno reusable, crear un componente base reutilizable y usarlo desde el nuevo módulo.
+4. Documentar en el PR qué componente/patrón se reutilizó.
+
+### 4.3 Ejemplo concreto (input con botón limpiar)
+
+Para inputs con limpieza rápida (`X`), usar el patrón ya implementado en `mba3-consultas` (botón dentro del input, sin separación visual dura del área de escritura), incluyendo:
+
+- Ícono de limpieza dentro del campo (`absolute` a la derecha).
+- Espaciado del input con `pr-10` para evitar superposición de texto.
+- Colores y estados de interacción consistentes (`text-gray-400` + `hover:text-gray-600` y variantes dark).
+- Comportamiento uniforme: mostrar `X` solo si hay contenido y limpiar con un clic.
+
+### 4.4 Criterio de aceptación
+
+Una implementación UI se considera completa cuando:
+
+- Mantiene consistencia visual/UX con patrones existentes del proyecto.
+- No introduce una variante innecesaria de estilos para el mismo tipo de control.
+- Respeta dark mode, estados disabled/error/focus y accesibilidad básica.
