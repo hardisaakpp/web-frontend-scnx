@@ -15,6 +15,8 @@ export const useArticuloScanStore = defineStore('articuloScan', () => {
   /** Último X-Correlation-Id de una respuesta exitosa (útil para soporte / debug). */
   const lastCorrelationId = ref<string | null>(null)
   const lastScans = ref<Array<{ code: string; at: string; source: 'manual' | 'scanner' }>>([])
+  /** Última vía usada al consultar (éxito o no); sirve para UX p. ej. reabrir cámara tras not-found. */
+  const lastResolveSource = ref<'manual' | 'scanner' | null>(null)
 
   const canResolve = computed(() => !!selectedWarehouse.value && scanCode.value.trim().length > 0 && !loading.value)
 
@@ -42,6 +44,7 @@ export const useArticuloScanStore = defineStore('articuloScan', () => {
   function clearResult() {
     article.value = null
     lastCorrelationId.value = null
+    lastResolveSource.value = null
     if (status.value !== 'loading-warehouses') {
       status.value = 'ready'
     }
@@ -57,6 +60,7 @@ export const useArticuloScanStore = defineStore('articuloScan', () => {
   async function resolveScan(source: 'manual' | 'scanner') {
     if (!selectedWarehouse.value || !scanCode.value.trim()) return
 
+    lastResolveSource.value = source
     loading.value = true
     error.value = null
     lastCorrelationId.value = null
@@ -122,6 +126,7 @@ export const useArticuloScanStore = defineStore('articuloScan', () => {
     error,
     lastCorrelationId,
     lastScans,
+    lastResolveSource,
     canResolve,
     loadWarehouses,
     setWarehouse,

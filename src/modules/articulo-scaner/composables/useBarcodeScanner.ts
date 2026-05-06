@@ -58,7 +58,6 @@ export function useBarcodeScanner(cooldownMs: number = 1500) {
     }
 
     stop()
-    error.value = null
     const deviceId = cameraId || selectedCameraId.value || undefined
 
     try {
@@ -89,9 +88,11 @@ export function useBarcodeScanner(cooldownMs: number = 1500) {
           return
         }
 
-        const errName = (err as { name?: string } | undefined)?.name
-        if (err && errName !== 'NotFoundException') {
-          error.value = 'No se pudo leer el codigo desde la camara.'
+        // ZXing invokes this constantly while scanning; besides NotFoundException ("no barcode in frame")
+        // other errors are often transient (blur, glare) and must not populate `error`, or the UI shows
+        // false "failure" messages while video is running normally.
+        if (err && import.meta.env.DEV) {
+          console.debug('[useBarcodeScanner] decode tick', err)
         }
       })
       permission.value = 'granted'
@@ -118,6 +119,7 @@ export function useBarcodeScanner(cooldownMs: number = 1500) {
     controls = null
     activeEngine.value = null
     isRunning.value = false
+    error.value = null
   }
 
   async function switchCamera(videoElement: HTMLVideoElement, onDetected: (code: string) => void, cameraId: string) {

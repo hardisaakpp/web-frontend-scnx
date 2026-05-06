@@ -1,15 +1,41 @@
 <template>
-  <div class="mx-auto max-w-4xl space-y-3 px-3 py-2 sm:px-4">
-    <header class="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-gradient-to-br from-white via-slate-50 to-emerald-50/40 px-5 py-6 shadow-md shadow-slate-200/60 ring-1 ring-white/60 dark:border-slate-700/80 dark:from-slate-800 dark:via-slate-800 dark:to-emerald-950/30 dark:shadow-none dark:ring-white/10">
-      <div class="flex items-center gap-4">
-        <span class="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
-          <svg class="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+  <div class="mx-auto max-w-4xl space-y-4 px-4 py-4 pb-24 sm:px-5 sm:py-6">
+    <header class="relative overflow-hidden rounded-2xl border border-slate-200/70 bg-white/90 px-5 py-6 shadow-sm shadow-slate-200/40 ring-1 ring-slate-900/[0.03] backdrop-blur-sm dark:border-slate-700/80 dark:bg-slate-900/80 dark:shadow-none dark:ring-white/[0.06] sm:px-6 sm:py-7">
+      <div class="pointer-events-none absolute left-0 top-0 h-[3px] w-full bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-500" aria-hidden="true" />
+      <div class="flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-6">
+        <span class="mx-auto flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border border-emerald-200/60 bg-emerald-50 text-emerald-700 shadow-sm shadow-emerald-900/5 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-400 sm:mx-0 sm:h-24 sm:w-24">
+          <!-- Ícono: marco / código de barras / línea de escaneo -->
+          <svg class="h-[2.875rem] w-[2.875rem] sm:h-14 sm:w-14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <!-- Esquinas visor -->
+            <path
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.85"
+              d="M9.75 4.75H5v4.75M14.25 4.75H19v4.75M14.25 19.25H19v-4.75M9.75 19.25H5v-4.75"
+            />
+            <!-- Barras (relleno más denso tipo código) -->
+            <g fill="currentColor" opacity="0.92">
+              <rect x="10.1" y="8.05" width="0.42" height="7.9" rx="0.06" />
+              <rect x="10.82" y="7.85" width="0.72" height="8.35" rx="0.06" />
+              <rect x="11.92" y="8.25" width="0.42" height="7.65" rx="0.06" />
+              <rect x="12.68" y="7.72" width="0.94" height="8.72" rx="0.06" />
+              <rect x="13.98" y="8.08" width="0.52" height="7.94" rx="0.06" />
+            </g>
+            <!-- Línea láser horizontal -->
+            <path
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-width="1.45"
+              d="M8.95 11.97h6.1"
+              opacity="0.98"
+            />
           </svg>
         </span>
-        <div>
-          <h1 class="text-2xl font-semibold tracking-tight text-slate-900 dark:text-white sm:text-[2rem]">Validación de Artículos</h1>
-          <p class="mt-1 text-sm text-slate-600 dark:text-slate-300 sm:text-base">Verifica productos escaneados en el sistema</p>
+        <div class="min-w-0 flex-1 text-center sm:text-left">
+          <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-700/90 dark:text-emerald-400/90">Punto de validación</p>
+          <h1 class="mt-1.5 text-2xl font-semibold tracking-tight text-slate-900 dark:text-white sm:text-[1.75rem]">Validación de artículos</h1>
+          <p class="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">Verificar productos en el sistema.</p>
         </div>
       </div>
     </header>
@@ -64,13 +90,15 @@
       :scan-code="store.scanCode"
       :selected-warehouse="store.selectedWarehouse"
       :warehouses="store.warehouses"
+      :last-resolve-source="store.lastResolveSource"
       @close="isArticleModalOpen = false"
+      @retry-search="onArticleRetrySearch"
     />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import WarehouseSelect from '../components/WarehouseSelect.vue'
 import ManualCodeInput from '../components/ManualCodeInput.vue'
 import ScannerPanel from '../components/ScannerPanel.vue'
@@ -117,6 +145,18 @@ function openScanner() {
     return
   }
   isScannerOpen.value = true
+}
+
+function onArticleRetrySearch() {
+  const fromScanner = store.lastResolveSource === 'scanner'
+  isArticleModalOpen.value = false
+  store.clearResult()
+  store.setScanCode('')
+  if (fromScanner && store.selectedWarehouse && !store.loading) {
+    void nextTick(() => {
+      isScannerOpen.value = true
+    })
+  }
 }
 
 onMounted(async () => {

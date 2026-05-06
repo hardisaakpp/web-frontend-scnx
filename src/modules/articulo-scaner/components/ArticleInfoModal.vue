@@ -7,126 +7,306 @@
       aria-modal="true"
       aria-labelledby="article-info-title"
     >
-      <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-[1px]" @click="$emit('close')" />
+      <div class="absolute inset-0 bg-slate-950/40 backdrop-blur-sm" @click="$emit('close')" />
 
-      <div class="relative z-[101] max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-900/10 dark:bg-slate-900 dark:ring-white/10">
-        <header class="flex items-center justify-between bg-gradient-to-r from-indigo-700 via-violet-700 to-blue-700 px-5 py-4 text-white">
-          <div class="flex items-center gap-3">
-            <span class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-white/15">
-              <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+      <div
+        class="relative z-[101] max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-[0_25px_50px_-12px_rgba(15,23,42,0.2),0_0_0_1px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.05] dark:bg-slate-900 dark:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.55)] dark:ring-white/[0.06]"
+      >
+        <header
+          class="flex items-center justify-between border-b border-indigo-200/60 bg-gradient-to-r from-indigo-50/95 via-white to-indigo-50/40 px-6 py-4 dark:border-indigo-900/45 dark:bg-gradient-to-r dark:from-indigo-950/70 dark:via-slate-900 dark:to-indigo-950/35"
+        >
+          <div class="flex min-w-0 items-center gap-3.5">
+            <span
+              class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-600/10 text-indigo-700 shadow-sm shadow-indigo-900/5 ring-1 ring-indigo-500/20 dark:bg-indigo-400/15 dark:text-indigo-200 dark:shadow-none dark:ring-indigo-400/30"
+            >
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
               </svg>
             </span>
-            <div>
-              <h3 id="article-info-title" class="text-lg font-semibold">Informacion del Articulo</h3>
+            <div class="min-w-0">
+              <h3 id="article-info-title" class="truncate text-[1.0625rem] font-semibold leading-snug tracking-tight text-indigo-950 dark:text-indigo-50">
+                Información del artículo
+              </h3>
+              <p class="mt-0.5 hidden text-[0.8125rem] leading-relaxed text-indigo-800/70 dark:text-indigo-300/85 sm:block">
+                Datos consultados para el código escaneado
+              </p>
             </div>
           </div>
-          <button
-            type="button"
-            class="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-white/10 transition hover:bg-white/20"
-            @click="$emit('close')"
-            aria-label="Cerrar modal"
-          >
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <div class="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              class="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-emerald-600/35 bg-emerald-500/[0.12] text-emerald-800 shadow-sm transition-colors hover:bg-emerald-500/25 hover:text-emerald-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-indigo-50 disabled:pointer-events-none disabled:opacity-40 dark:border-emerald-400/35 dark:bg-emerald-400/15 dark:text-emerald-200 dark:hover:bg-emerald-400/22 dark:hover:text-emerald-50 dark:focus-visible:ring-emerald-400/50 dark:focus-visible:ring-offset-slate-900 sm:h-10 sm:w-10"
+              :disabled="loading"
+              aria-label="Consultar otro código (lector o manual)"
+              title="Consultar otro código"
+              @click="$emit('retry-search')"
+            >
+              <!-- Mismo ícono que cabecera módulo escáner: visor + barras + línea -->
+              <svg class="h-[1.125rem] w-[1.125rem] sm:h-5 sm:w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="1.85"
+                  d="M9.75 4.75H5v4.75M14.25 4.75H19v4.75M14.25 19.25H19v-4.75M9.75 19.25H5v-4.75"
+                />
+                <g fill="currentColor" opacity="0.92">
+                  <rect x="10.1" y="8.05" width="0.42" height="7.9" rx="0.06" />
+                  <rect x="10.82" y="7.85" width="0.72" height="8.35" rx="0.06" />
+                  <rect x="11.92" y="8.25" width="0.42" height="7.65" rx="0.06" />
+                  <rect x="12.68" y="7.72" width="0.94" height="8.72" rx="0.06" />
+                  <rect x="13.98" y="8.08" width="0.52" height="7.94" rx="0.06" />
+                </g>
+                <path
+                  stroke="currentColor"
+                  stroke-linecap="round"
+                  stroke-width="1.45"
+                  d="M8.95 11.97h6.1"
+                  opacity="0.98"
+                />
+              </svg>
+            </button>
+            <button
+              type="button"
+              class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-indigo-700/70 transition-colors hover:bg-indigo-100/80 hover:text-indigo-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-indigo-50 dark:text-indigo-300/80 dark:hover:bg-indigo-950/60 dark:hover:text-indigo-100 dark:focus-visible:ring-indigo-400/45 dark:focus-visible:ring-offset-slate-900 sm:h-10 sm:w-10"
+              @click="$emit('close')"
+              aria-label="Cerrar modal"
+            >
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </header>
 
-        <section class="max-h-[68vh] overflow-y-auto p-5 sm:p-6">
+        <section
+          class="max-h-[68vh] overflow-y-auto bg-gradient-to-b from-slate-50/90 via-slate-50/60 to-slate-100/30 p-5 sm:p-6 dark:from-slate-950/50 dark:via-slate-950/30 dark:to-slate-900/20"
+        >
           <div
             v-if="loading"
-            class="flex min-h-[260px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50 text-center dark:border-slate-700 dark:bg-slate-800/40"
+            class="flex min-h-[260px] flex-col items-center justify-center rounded-2xl border border-slate-200/70 bg-white/90 px-8 text-center shadow-[0_1px_2px_rgba(15,23,42,0.04)] backdrop-blur-[1px] dark:border-slate-700/70 dark:bg-slate-900/60"
           >
-            <span class="h-11 w-11 animate-spin rounded-full border-4 border-slate-200 border-t-indigo-600 dark:border-slate-700 dark:border-t-indigo-400" />
-            <p class="mt-4 text-sm font-medium text-slate-700 dark:text-slate-200">Buscando informacion del articulo...</p>
+            <span
+              class="h-10 w-10 animate-spin rounded-full border-2 border-slate-200/90 border-t-indigo-600 dark:border-slate-600/80 dark:border-t-indigo-400"
+            />
+            <p class="mt-5 text-sm font-medium tracking-tight text-slate-700 dark:text-slate-200">Buscando información del artículo…</p>
+            <p class="mt-1.5 max-w-[240px] text-xs leading-relaxed text-slate-500 dark:text-slate-500">Esto puede tardar unos segundos</p>
           </div>
 
           <div
             v-else-if="status === 'not-found'"
-            class="rounded-xl border border-amber-300 bg-amber-50 px-4 py-4 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200"
+            class="flex gap-3 rounded-2xl border border-amber-200/70 bg-amber-50/80 px-4 py-4 shadow-[0_1px_2px_rgba(120,53,15,0.06)] dark:border-amber-900/45 dark:bg-amber-950/30"
           >
-            <p class="text-sm font-semibold">Articulo no encontrado</p>
-            <p class="mt-1 text-sm">
-              No se encontro el codigo <span class="font-mono">{{ scanCode || 'N/A' }}</span> en el almacen seleccionado.
-            </p>
+            <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-amber-100/90 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300" aria-hidden="true">
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </span>
+            <div class="min-w-0">
+              <p class="text-sm font-semibold text-amber-950 dark:text-amber-100">Artículo no encontrado</p>
+              <p class="mt-1 text-sm leading-relaxed text-amber-900/88 dark:text-amber-200/90">
+                No se encontró el código
+                <span class="mx-0.5 inline-block rounded-md bg-amber-100/90 px-1.5 py-0.5 font-mono text-[0.8125rem] text-amber-950 ring-1 ring-amber-200/60 dark:bg-amber-900/45 dark:text-amber-50 dark:ring-amber-800/50">{{ scanCode || 'N/A' }}</span>
+                en el almacén seleccionado.
+              </p>
+              <div class="mt-4">
+                <button
+                  type="button"
+                  class="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-amber-700/25 bg-amber-600/90 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-50 dark:border-amber-500/30 dark:bg-amber-600/85 dark:hover:bg-amber-500 dark:focus-visible:ring-amber-400/45 dark:focus-visible:ring-offset-slate-900 sm:w-auto"
+                  @click="$emit('retry-search')"
+                >
+                  <svg v-if="lastResolveSource === 'scanner'" class="h-4 w-4 opacity-95" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" aria-hidden="true">
+                    <path d="M4 8a2 2 0 0 1 2-2h2l1.2-2h5.6L16 6h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8Z" stroke-linecap="round" stroke-linejoin="round" />
+                    <circle cx="12" cy="13" r="3.2" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                  {{ retrySearchLabel }}
+                </button>
+              </div>
+            </div>
           </div>
 
           <div
             v-else-if="status === 'error'"
-            class="rounded-xl border border-red-300 bg-red-50 px-4 py-4 text-red-900 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200"
+            class="flex gap-3 rounded-2xl border border-red-200/70 bg-red-50/80 px-4 py-4 shadow-[0_1px_2px_rgba(127,29,29,0.06)] dark:border-red-900/45 dark:bg-red-950/30"
           >
-            <p class="text-sm font-semibold">Error al consultar</p>
-            <p class="mt-1 text-sm">{{ errorMessage || 'No fue posible obtener la informacion del articulo.' }}</p>
+            <span class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-red-100/90 text-red-700 dark:bg-red-900/50 dark:text-red-300" aria-hidden="true">
+              <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </span>
+            <div class="min-w-0">
+              <p class="text-sm font-semibold text-red-950 dark:text-red-100">Error al consultar</p>
+              <p class="mt-1 text-sm leading-relaxed text-red-900/88 dark:text-red-200/90">
+                {{ errorMessage || 'No fue posible obtener la información del artículo.' }}
+              </p>
+              <div class="mt-4">
+                <button
+                  type="button"
+                  class="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-red-800/20 bg-white/90 px-4 py-2.5 text-sm font-semibold text-red-950 shadow-sm transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-red-50 dark:border-red-400/25 dark:bg-red-950/40 dark:text-red-50 dark:hover:bg-red-950/55 dark:focus-visible:ring-red-400/45 dark:focus-visible:ring-offset-slate-900 sm:w-auto"
+                  @click="$emit('retry-search')"
+                >
+                  <svg v-if="lastResolveSource === 'scanner'" class="h-4 w-4 opacity-95" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" aria-hidden="true">
+                    <path d="M4 8a2 2 0 0 1 2-2h2l1.2-2h5.6L16 6h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8Z" stroke-linecap="round" stroke-linejoin="round" />
+                    <circle cx="12" cy="13" r="3.2" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                  {{ retrySearchLabel }}
+                </button>
+              </div>
+            </div>
           </div>
 
           <div v-else-if="article" class="space-y-4">
             <div class="grid gap-4 md:grid-cols-2">
-              <article class="overflow-hidden rounded-xl border border-blue-200 dark:border-blue-900/50">
-                <header class="bg-blue-600 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white">Detalle producto</header>
-                <dl class="space-y-2 bg-white p-4 text-sm dark:bg-slate-900/60">
-                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Referencia</dt><dd class="font-mono text-slate-900 dark:text-slate-100">{{ referenceText }}</dd></div>
-                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Descripcion</dt><dd class="text-right text-slate-900 dark:text-slate-100">{{ descriptionText }}</dd></div>
-                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Codigo barras</dt><dd class="font-mono text-slate-900 dark:text-slate-100">{{ barcodeText }}</dd></div>
-                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Marca</dt><dd class="text-slate-900 dark:text-slate-100">{{ brandText }}</dd></div>
-                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Categoria</dt><dd class="text-slate-900 dark:text-slate-100">{{ asText('categoria', article.category) }}</dd></div>
-                </dl>
-              </article>
-
-              <article class="overflow-hidden rounded-xl border border-emerald-200 dark:border-emerald-900/50">
-                <header class="bg-emerald-600 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white">Ventas</header>
-                <dl class="space-y-2 bg-white p-4 text-sm dark:bg-slate-900/60">
-                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Promedio 30 dias</dt><dd class="text-slate-900 dark:text-slate-100">{{ formatDailyUnits(article.sales?.avg30, raw('VentaPromedio')) }}</dd></div>
-                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Total 30 dias</dt><dd class="text-slate-900 dark:text-slate-100">{{ asUnits(article.sales?.total30, raw('CantidadTotalTreintaDias')) }}</dd></div>
-                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Total 90 dias</dt><dd class="text-slate-900 dark:text-slate-100">{{ asUnits(article.sales?.total90, raw('CantidadTotalNoventaDias')) }}</dd></div>
-                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Ultimo ingreso</dt><dd class="text-slate-900 dark:text-slate-100">{{ formatDate(article.sales?.lastIngressDate ?? raw('ultima_fecha_ingreso')) }}</dd></div>
-                </dl>
-              </article>
-
-              <article class="overflow-hidden rounded-xl border border-sky-200 dark:border-sky-900/50">
-                <header class="bg-sky-600 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white">Stock</header>
-                <dl class="space-y-2 bg-white p-4 text-sm dark:bg-slate-900/60">
-                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Stock tienda</dt><dd class="text-slate-900 dark:text-slate-100">{{ asUnits(article.stock?.store, raw('total_Tienda')) }}</dd></div>
-                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Stock bodega</dt><dd class="text-slate-900 dark:text-slate-100">{{ asUnits(article.stock?.warehouse, raw('total_Bodega')) }}</dd></div>
-                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Stock transito</dt><dd class="text-slate-900 dark:text-slate-100">{{ asUnits(article.stock?.transit, raw('total_Transitoria_Tienda')) }}</dd></div>
-                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Stock total general</dt><dd class="text-slate-900 dark:text-slate-100">{{ asStockTotalGeneral(article.stock?.totalGeneral, raw('totalGeneralStock')) }}</dd></div>
-                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Almacen</dt><dd class="text-right text-slate-900 dark:text-slate-100">{{ warehouseLabel }}</dd></div>
-                </dl>
-              </article>
-
-              <article class="overflow-hidden rounded-xl border border-amber-200 dark:border-amber-900/50">
-                <header class="bg-amber-500 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white">Precios</header>
-                <dl class="space-y-2 bg-white p-4 text-sm dark:bg-slate-900/60">
-                  <div class="flex justify-between gap-4">
-                    <dt class="text-slate-500">Ultimo costo</dt>
-                    <dd class="text-slate-900 dark:text-slate-100">{{ formatCurrency(pricing.avgPrice, article.currency || 'CLP', 'No autorizado') }}</dd>
+              <article
+                class="overflow-hidden rounded-2xl border border-indigo-200/75 bg-gradient-to-b from-indigo-50/55 via-white to-white shadow-[0_2px_10px_-3px_rgba(79,70,229,0.18)] ring-1 ring-indigo-500/[0.08] dark:border-indigo-500/35 dark:from-indigo-950/50 dark:via-slate-900/85 dark:to-slate-950/90 dark:shadow-[0_2px_12px_-4px_rgba(0,0,0,0.45)] dark:ring-indigo-400/15"
+              >
+                <header
+                  class="flex items-center gap-3 border-b border-indigo-200/55 bg-gradient-to-r from-indigo-100/50 to-indigo-50/30 px-4 py-3 dark:border-indigo-500/25 dark:from-indigo-950/80 dark:to-indigo-950/35"
+                >
+                  <span
+                    class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-indigo-600/10 text-indigo-600 ring-1 ring-indigo-500/20 dark:bg-indigo-400/15 dark:text-indigo-300 dark:ring-indigo-400/25"
+                    aria-hidden="true"
+                  >
+                    <span class="h-2 w-2 rounded-full bg-indigo-600 dark:bg-indigo-300" />
+                  </span>
+                  <h4 class="text-[11px] font-semibold uppercase tracking-[0.14em] text-indigo-900/85 dark:text-indigo-200/95">
+                    Detalle producto
+                  </h4>
+                </header>
+                <dl class="divide-y divide-indigo-100/80 text-sm dark:divide-indigo-900/40">
+                  <div class="flex items-baseline justify-between gap-4 px-4 py-2.5">
+                    <dt class="shrink-0 text-xs font-medium text-slate-500 dark:text-slate-400">Referencia</dt>
+                    <dd class="break-words text-right font-mono text-sm text-slate-900 tabular-nums dark:text-slate-100">{{ referenceText }}</dd>
                   </div>
-                  <div class="flex justify-between gap-4">
-                    <dt class="text-slate-500">Precio de venta</dt>
-                    <dd class="text-slate-900 dark:text-slate-100">{{ formatCurrency(pricing.price, article.currency || 'CLP', 'No autorizado') }}</dd>
+                  <div class="flex items-baseline justify-between gap-4 px-4 py-2.5">
+                    <dt class="shrink-0 text-xs font-medium text-slate-500 dark:text-slate-400">Descripción</dt>
+                    <dd class="max-w-[65%] break-words text-right text-sm leading-snug text-slate-800 dark:text-slate-100">{{ descriptionText }}</dd>
                   </div>
-                  <div class="flex justify-between gap-4">
-                    <dt class="text-slate-500">Margen</dt>
-                    <dd class="text-slate-900 dark:text-slate-100">{{ formatPercent(pricing.margin, 'No autorizado') }}</dd>
+                  <div class="flex items-baseline justify-between gap-4 px-4 py-2.5">
+                    <dt class="shrink-0 text-xs font-medium text-slate-500 dark:text-slate-400">Código barras</dt>
+                    <dd class="break-words text-right font-mono text-sm text-slate-900 tabular-nums dark:text-slate-100">{{ barcodeText }}</dd>
+                  </div>
+                  <div class="flex items-baseline justify-between gap-4 px-4 py-2.5">
+                    <dt class="shrink-0 text-xs font-medium text-slate-500 dark:text-slate-400">Marca</dt>
+                    <dd class="break-words text-right text-sm text-slate-800 dark:text-slate-100">{{ brandText }}</dd>
+                  </div>
+                  <div class="flex items-baseline justify-between gap-4 px-4 py-2.5">
+                    <dt class="shrink-0 text-xs font-medium text-slate-500 dark:text-slate-400">Categoría</dt>
+                    <dd class="break-words text-right text-sm text-slate-800 dark:text-slate-100">{{ asText('categoria', article.category) }}</dd>
+                  </div>
+                </dl>
+              </article>
+
+              <article
+                class="overflow-hidden rounded-2xl border border-emerald-200/75 bg-gradient-to-b from-emerald-50/50 via-white to-white shadow-[0_2px_10px_-3px_rgba(5,150,105,0.16)] ring-1 ring-emerald-500/[0.08] dark:border-emerald-500/35 dark:from-emerald-950/45 dark:via-slate-900/85 dark:to-slate-950/90 dark:shadow-[0_2px_12px_-4px_rgba(0,0,0,0.45)] dark:ring-emerald-400/12"
+              >
+                <header
+                  class="flex items-center gap-3 border-b border-emerald-200/55 bg-gradient-to-r from-emerald-100/45 to-emerald-50/25 px-4 py-3 dark:border-emerald-500/25 dark:from-emerald-950/75 dark:to-emerald-950/30"
+                >
+                  <span
+                    class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-emerald-600/10 text-emerald-600 ring-1 ring-emerald-500/20 dark:bg-emerald-400/15 dark:text-emerald-300 dark:ring-emerald-400/25"
+                    aria-hidden="true"
+                  >
+                    <span class="h-2 w-2 rounded-full bg-emerald-600 dark:bg-emerald-300" />
+                  </span>
+                  <h4 class="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-900/85 dark:text-emerald-200/95">
+                    Ventas
+                  </h4>
+                </header>
+                <dl class="divide-y divide-emerald-100/80 text-sm dark:divide-emerald-900/35">
+                  <div class="flex items-baseline justify-between gap-4 px-4 py-2.5">
+                    <dt class="shrink-0 text-xs font-medium text-slate-500 dark:text-slate-400">Promedio 30 días</dt>
+                    <dd class="break-words text-right text-sm text-slate-800 dark:text-slate-100">{{ formatDailyUnits(article.sales?.avg30, raw('VentaPromedio')) }}</dd>
+                  </div>
+                  <div class="flex items-baseline justify-between gap-4 px-4 py-2.5">
+                    <dt class="shrink-0 text-xs font-medium text-slate-500 dark:text-slate-400">Total 30 días</dt>
+                    <dd class="break-words text-right text-sm text-slate-800 dark:text-slate-100">{{ asUnits(article.sales?.total30, raw('CantidadTotalTreintaDias')) }}</dd>
+                  </div>
+                  <div class="flex items-baseline justify-between gap-4 px-4 py-2.5">
+                    <dt class="shrink-0 text-xs font-medium text-slate-500 dark:text-slate-400">Total 90 días</dt>
+                    <dd class="break-words text-right text-sm text-slate-800 dark:text-slate-100">{{ asUnits(article.sales?.total90, raw('CantidadTotalNoventaDias')) }}</dd>
+                  </div>
+                  <div class="flex items-baseline justify-between gap-4 px-4 py-2.5">
+                    <dt class="shrink-0 text-xs font-medium text-slate-500 dark:text-slate-400">Último ingreso</dt>
+                    <dd class="break-words text-right text-sm text-slate-800 dark:text-slate-100">{{ formatDate(article.sales?.lastIngressDate ?? raw('ultima_fecha_ingreso')) }}</dd>
+                  </div>
+                </dl>
+              </article>
+
+              <article
+                class="overflow-hidden rounded-2xl border border-sky-200/75 bg-gradient-to-b from-sky-50/50 via-white to-white shadow-[0_2px_10px_-3px_rgba(14,165,233,0.18)] ring-1 ring-sky-500/[0.09] dark:border-sky-500/35 dark:from-sky-950/45 dark:via-slate-900/85 dark:to-slate-950/90 dark:shadow-[0_2px_12px_-4px_rgba(0,0,0,0.45)] dark:ring-sky-400/12"
+              >
+                <header
+                  class="flex items-center gap-3 border-b border-sky-200/55 bg-gradient-to-r from-sky-100/45 to-sky-50/25 px-4 py-3 dark:border-sky-500/25 dark:from-sky-950/75 dark:to-sky-950/30"
+                >
+                  <span
+                    class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-sky-600/10 text-sky-600 ring-1 ring-sky-500/20 dark:bg-sky-400/15 dark:text-sky-300 dark:ring-sky-400/25"
+                    aria-hidden="true"
+                  >
+                    <span class="h-2 w-2 rounded-full bg-sky-600 dark:bg-sky-300" />
+                  </span>
+                  <h4 class="text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-900/85 dark:text-sky-200/95">
+                    Stock
+                  </h4>
+                </header>
+                <dl class="divide-y divide-sky-100/80 text-sm dark:divide-sky-900/35">
+                  <div class="flex items-baseline justify-between gap-4 px-4 py-2.5">
+                    <dt class="shrink-0 text-xs font-medium text-slate-500 dark:text-slate-400">Stock tienda</dt>
+                    <dd class="break-words text-right text-sm tabular-nums text-slate-800 dark:text-slate-100">{{ asUnits(article.stock?.store, raw('total_Tienda')) }}</dd>
+                  </div>
+                  <div class="flex items-baseline justify-between gap-4 px-4 py-2.5">
+                    <dt class="shrink-0 text-xs font-medium text-slate-500 dark:text-slate-400">Stock bodega</dt>
+                    <dd class="break-words text-right text-sm tabular-nums text-slate-800 dark:text-slate-100">{{ asUnits(article.stock?.warehouse, raw('total_Bodega')) }}</dd>
+                  </div>
+                  <div class="flex items-baseline justify-between gap-4 px-4 py-2.5">
+                    <dt class="shrink-0 text-xs font-medium text-slate-500 dark:text-slate-400">Stock tránsito</dt>
+                    <dd class="break-words text-right text-sm tabular-nums text-slate-800 dark:text-slate-100">{{ asUnits(article.stock?.transit, raw('total_Transitoria_Tienda')) }}</dd>
+                  </div>
+                  <div class="flex items-baseline justify-between gap-4 px-4 py-2.5">
+                    <dt class="shrink-0 text-xs font-medium text-slate-500 dark:text-slate-400">Stock total general</dt>
+                    <dd class="break-words text-right text-sm font-medium tabular-nums text-slate-900 dark:text-slate-50">{{ asStockTotalGeneral(article.stock?.totalGeneral, raw('totalGeneralStock')) }}</dd>
+                  </div>
+                  <div class="flex items-baseline justify-between gap-4 px-4 py-2.5">
+                    <dt class="shrink-0 text-xs font-medium text-slate-500 dark:text-slate-400">Almacén</dt>
+                    <dd class="max-w-[62%] break-words text-right text-sm leading-snug text-slate-800 dark:text-slate-100">{{ warehouseLabel }}</dd>
+                  </div>
+                </dl>
+              </article>
+
+              <article
+                class="overflow-hidden rounded-2xl border border-amber-200/75 bg-gradient-to-b from-amber-50/50 via-white to-white shadow-[0_2px_10px_-3px_rgba(217,119,6,0.18)] ring-1 ring-amber-500/[0.1] dark:border-amber-500/35 dark:from-amber-950/45 dark:via-slate-900/85 dark:to-slate-950/90 dark:shadow-[0_2px_12px_-4px_rgba(0,0,0,0.45)] dark:ring-amber-400/12"
+              >
+                <header
+                  class="flex items-center gap-3 border-b border-amber-200/55 bg-gradient-to-r from-amber-100/50 to-amber-50/30 px-4 py-3 dark:border-amber-500/25 dark:from-amber-950/80 dark:to-amber-950/35"
+                >
+                  <span
+                    class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 text-amber-700 ring-1 ring-amber-500/25 dark:bg-amber-400/12 dark:text-amber-300 dark:ring-amber-400/25"
+                    aria-hidden="true"
+                  >
+                    <span class="h-2 w-2 rounded-full bg-amber-600 dark:bg-amber-400" />
+                  </span>
+                  <h4 class="text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-950/80 dark:text-amber-200/95">
+                    Precios
+                  </h4>
+                </header>
+                <dl class="divide-y divide-amber-100/80 text-sm dark:divide-amber-900/35">
+                  <div class="flex items-baseline justify-between gap-4 px-4 py-2.5">
+                    <dt class="text-xs font-medium text-slate-500 dark:text-slate-400">Último costo</dt>
+                    <dd class="break-words text-right text-sm tabular-nums text-slate-800 dark:text-slate-100">{{ formatCurrency(pricing.avgPrice, article.currency || 'CLP', 'No autorizado') }}</dd>
+                  </div>
+                  <div class="flex items-baseline justify-between gap-4 px-4 py-2.5">
+                    <dt class="text-xs font-medium text-slate-500 dark:text-slate-400">Precio de venta</dt>
+                    <dd class="break-words text-right text-sm font-medium tabular-nums text-slate-900 dark:text-slate-50">{{ formatCurrency(pricing.price, article.currency || 'CLP', 'No autorizado') }}</dd>
+                  </div>
+                  <div class="flex items-baseline justify-between gap-4 px-4 py-2.5">
+                    <dt class="text-xs font-medium text-slate-500 dark:text-slate-400">Margen</dt>
+                    <dd class="break-words text-right text-sm tabular-nums text-slate-800 dark:text-slate-100">{{ formatPercent(pricing.margin, 'No autorizado') }}</dd>
                   </div>
                 </dl>
               </article>
             </div>
           </div>
         </section>
-
-        <footer class="flex justify-end border-t border-slate-200 bg-slate-50 px-5 py-3 dark:border-slate-700 dark:bg-slate-800/70">
-          <button
-            type="button"
-            class="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-            @click="$emit('close')"
-          >
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-            Cerrar
-          </button>
-        </footer>
       </div>
     </div>
   </Teleport>
@@ -146,11 +326,17 @@ const props = defineProps<{
   scanCode?: string | null
   selectedWarehouse?: string | null
   warehouses: WarehouseDto[]
+  lastResolveSource?: 'manual' | 'scanner' | null
 }>()
 
 defineEmits<{
   close: []
+  'retry-search': []
 }>()
+
+const retrySearchLabel = computed(() =>
+  props.lastResolveSource === 'scanner' ? 'Escanear otro código' : 'Intentar con otro código'
+)
 
 const rawRecord = computed<Record<string, unknown>>(() => {
   if (!props.article || typeof props.article !== 'object') return {}
