@@ -31,6 +31,7 @@ export interface ArticleDetailDto {
     store: number
     warehouse: number
     transit: number
+    totalGeneral?: number | null
   }
   pricing?: {
     avgPrice: number | null

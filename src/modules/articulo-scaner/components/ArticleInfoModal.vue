@@ -89,7 +89,7 @@
                   <div class="flex justify-between gap-4"><dt class="text-slate-500">Stock tienda</dt><dd class="text-slate-900 dark:text-slate-100">{{ asUnits(article.stock?.store, raw('total_Tienda')) }}</dd></div>
                   <div class="flex justify-between gap-4"><dt class="text-slate-500">Stock bodega</dt><dd class="text-slate-900 dark:text-slate-100">{{ asUnits(article.stock?.warehouse, raw('total_Bodega')) }}</dd></div>
                   <div class="flex justify-between gap-4"><dt class="text-slate-500">Stock transito</dt><dd class="text-slate-900 dark:text-slate-100">{{ asUnits(article.stock?.transit, raw('total_Transitoria_Tienda')) }}</dd></div>
-                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Stock total general</dt><dd class="text-slate-900 dark:text-slate-100">{{ asUnits(totalGeneralStock) }}</dd></div>
+                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Stock total general</dt><dd class="text-slate-900 dark:text-slate-100">{{ asStockTotalGeneral(article.stock?.totalGeneral, raw('totalGeneralStock')) }}</dd></div>
                   <div class="flex justify-between gap-4"><dt class="text-slate-500">Almacen</dt><dd class="text-right text-slate-900 dark:text-slate-100">{{ warehouseLabel }}</dd></div>
                 </dl>
               </article>
@@ -169,13 +169,6 @@ const descriptionText = computed(() => asTextFrom(['itemName', 'ItemName'], prop
 const barcodeText = computed(() => asTextFrom(['codeBars', 'CodeBars'], props.article?.codeBars ?? props.article?.barcode))
 const brandText = computed(() => asTextFrom(['brand', 'marca'], props.article?.brand))
 const pricing = computed(() => extractArticlePricing(props.article))
-const totalGeneralStock = computed(() => {
-  const store = asFiniteNumber(props.article?.stock?.store ?? raw('total_Tienda'))
-  const warehouse = asFiniteNumber(props.article?.stock?.warehouse ?? raw('total_Bodega'))
-  const transit = asFiniteNumber(props.article?.stock?.transit ?? raw('total_Transitoria_Tienda'))
-  if (store === null && warehouse === null && transit === null) return null
-  return (store ?? 0) + (warehouse ?? 0) + (transit ?? 0)
-})
 
 function raw(key: string, fallback?: unknown): unknown {
   const value = rawRecord.value[key]
@@ -217,13 +210,15 @@ function formatDailyUnits(value: unknown, fallback?: unknown): string {
   const resolved = value ?? fallback
   const parsed = typeof resolved === 'number' ? resolved : Number(resolved)
   if (!Number.isFinite(parsed)) return 'N/A'
-  const normalized = parsed.toFixed(2).replace(/\.?0+$/, '')
-  return `${normalized} u. por dia`
+  return `${parsed.toFixed(2)} u. por dia`
 }
 
-function asFiniteNumber(value: unknown): number | null {
-  const parsed = typeof value === 'number' ? value : Number(value)
-  return Number.isFinite(parsed) ? parsed : null
+function asStockTotalGeneral(value: unknown, fallback?: unknown): string {
+  const resolved = value ?? fallback
+  if (resolved == null) return '0 u.'
+  const parsed = typeof resolved === 'number' ? resolved : Number(resolved)
+  if (!Number.isFinite(parsed)) return '0 u.'
+  return `${Math.floor(parsed)} u.`
 }
 
 function formatDate(value: unknown): string {
