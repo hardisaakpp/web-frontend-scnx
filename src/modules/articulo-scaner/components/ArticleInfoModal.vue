@@ -16,12 +16,43 @@
           class="flex items-center justify-between border-b border-indigo-200/60 bg-gradient-to-r from-indigo-50/95 via-white to-indigo-50/40 px-6 py-4 dark:border-indigo-900/45 dark:bg-gradient-to-r dark:from-indigo-950/70 dark:via-slate-900 dark:to-indigo-950/35"
         >
           <div class="flex min-w-0 items-center gap-3.5">
-            <span
-              class="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-600/10 text-indigo-700 shadow-sm shadow-indigo-900/5 ring-1 ring-indigo-500/20 dark:bg-indigo-400/15 dark:text-indigo-200 dark:shadow-none dark:ring-indigo-400/30"
-            >
-              <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-              </svg>
+            <span class="inline-flex h-11 shrink-0 items-center">
+              <Transition name="header-code-morph">
+                <button
+                  v-if="!headerCodeEditing"
+                  key="header-code-trigger"
+                  type="button"
+                  class="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-2xl border-0 bg-indigo-600/10 text-indigo-700 shadow-sm shadow-indigo-900/5 ring-1 ring-indigo-500/20 transition-colors hover:bg-indigo-600/18 hover:ring-indigo-500/35 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-indigo-50 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40 dark:bg-indigo-400/15 dark:text-indigo-200 dark:shadow-none dark:ring-indigo-400/30 dark:hover:bg-indigo-400/22 dark:focus-visible:ring-indigo-400/50 dark:focus-visible:ring-offset-slate-900"
+                  :disabled="loading"
+                  aria-label="Escribir código manualmente"
+                  title="Escribir código"
+                  @click="startHeaderInlineEdit"
+                >
+                  <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24" aria-hidden="true">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                  </svg>
+                </button>
+                <input
+                  v-else
+                  key="header-code-field"
+                  ref="headerInlineInputRef"
+                  v-model="headerInlineCode"
+                  type="text"
+                  enterkeyhint="search"
+                  inputmode="text"
+                  autocomplete="off"
+                  autocorrect="off"
+                  spellcheck="false"
+                  maxlength="50"
+                  aria-label="Código a consultar"
+                  placeholder="Código"
+                  class="h-11 w-[10.25rem] max-w-[min(16rem,calc(100vw-10rem))] rounded-2xl border-0 bg-white py-2 pl-3 pr-2 font-mono text-sm text-indigo-950 shadow-sm ring-1 ring-indigo-500/30 transition-shadow placeholder:text-indigo-400/80 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:ring-offset-0 disabled:opacity-50 dark:bg-slate-900/90 dark:text-indigo-50 dark:ring-indigo-400/35 dark:placeholder:text-indigo-500 sm:w-44"
+                  :disabled="loading"
+                  @keydown="onHeaderInlineKeydown"
+                  @blur="scheduleHeaderInlineBlurCollapse"
+                  @focus="cancelHeaderInlineBlurCollapse"
+                />
+              </Transition>
             </span>
             <div class="min-w-0">
               <h3 id="article-info-title" class="truncate text-[1.0625rem] font-semibold leading-snug tracking-tight text-indigo-950 dark:text-indigo-50">
@@ -287,7 +318,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import type { ArticleDetailDto, ScanStatus, WarehouseDto } from '../types'
 import { extractArticlePricing, formatCurrency, formatPercent } from '../utils/pricing'
 
@@ -302,10 +333,81 @@ const props = defineProps<{
   warehouses: WarehouseDto[]
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   close: []
   'retry-search': []
+  'submit-inline-code': [code: string]
 }>()
+
+const headerCodeEditing = ref(false)
+const headerInlineCode = ref('')
+const headerInlineInputRef = ref<HTMLInputElement | null>(null)
+let headerBlurCollapseTimer: number | null = null
+
+watch(
+  () => props.visible,
+  (open) => {
+    if (!open) {
+      headerCodeEditing.value = false
+      headerInlineCode.value = ''
+      cancelHeaderInlineBlurCollapse()
+    }
+  }
+)
+
+function startHeaderInlineEdit() {
+  if (props.loading) return
+  headerInlineCode.value = (props.scanCode ?? '').trim()
+  headerCodeEditing.value = true
+  // Sin mode=out-in el input se monta de inmediato; el foco tras pintar evita retraso del cursor.
+  void nextTick(() => {
+    requestAnimationFrame(() => {
+      const el = headerInlineInputRef.value
+      if (!el) return
+      el.focus({ preventScroll: true })
+      if (el.value.length > 0) el.select()
+    })
+  })
+}
+
+function cancelHeaderInlineBlurCollapse() {
+  if (headerBlurCollapseTimer != null) {
+    clearTimeout(headerBlurCollapseTimer)
+    headerBlurCollapseTimer = null
+  }
+}
+
+function scheduleHeaderInlineBlurCollapse() {
+  cancelHeaderInlineBlurCollapse()
+  headerBlurCollapseTimer = window.setTimeout(() => {
+    headerBlurCollapseTimer = null
+    headerCodeEditing.value = false
+    headerInlineCode.value = ''
+  }, 150)
+}
+
+function onHeaderInlineKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape') {
+    e.preventDefault()
+    cancelHeaderInlineBlurCollapse()
+    headerCodeEditing.value = false
+    headerInlineCode.value = ''
+    return
+  }
+  if (e.key === 'Enter') {
+    e.preventDefault()
+    submitHeaderInline()
+  }
+}
+
+function submitHeaderInline() {
+  const code = headerInlineCode.value.trim()
+  if (!code) return
+  cancelHeaderInlineBlurCollapse()
+  headerCodeEditing.value = false
+  headerInlineCode.value = ''
+  emit('submit-inline-code', code)
+}
 
 const rawRecord = computed<Record<string, unknown>>(() => {
   if (!props.article || typeof props.article !== 'object') return {}
@@ -386,3 +488,32 @@ function formatDate(value: unknown): string {
 
 
 </script>
+
+<style scoped>
+/* Transición botón ícono ↔ campo código: salida corta para no competir con el foco del input */
+.header-code-morph-enter-active {
+  will-change: transform, opacity;
+  transition:
+    opacity 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.26s cubic-bezier(0.34, 1.12, 0.56, 1);
+}
+.header-code-morph-leave-active {
+  will-change: transform, opacity;
+  transition:
+    opacity 0.1s cubic-bezier(0.4, 0, 1, 1),
+    transform 0.11s cubic-bezier(0.4, 0, 1, 1);
+}
+.header-code-morph-enter-from {
+  opacity: 0;
+  transform: scale(0.9) translateY(4px);
+}
+.header-code-morph-leave-to {
+  opacity: 0;
+  transform: scale(0.94) translateY(-3px);
+}
+.header-code-morph-enter-to,
+.header-code-morph-leave-from {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+</style>

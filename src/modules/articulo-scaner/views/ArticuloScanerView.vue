@@ -92,6 +92,7 @@
       :warehouses="store.warehouses"
       @close="isArticleModalOpen = false"
       @retry-search="onArticleRetrySearch"
+      @submit-inline-code="onSubmitInlineCodeFromModal"
     />
   </div>
 </template>
@@ -156,6 +157,14 @@ function onArticleRetrySearch() {
       isScannerOpen.value = true
     })
   }
+}
+
+async function onSubmitInlineCodeFromModal(code: string) {
+  const trimmed = code.trim()
+  if (!trimmed || !store.selectedWarehouse || store.loading) return
+  store.setScanCode(trimmed)
+  isArticleModalOpen.value = true
+  await store.resolveScan('manual')
 }
 
 onMounted(async () => {
