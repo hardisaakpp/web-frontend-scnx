@@ -90,7 +90,6 @@
       :scan-code="store.scanCode"
       :selected-warehouse="store.selectedWarehouse"
       :warehouses="store.warehouses"
-      :last-resolve-source="store.lastResolveSource"
       @close="isArticleModalOpen = false"
       @retry-search="onArticleRetrySearch"
     />

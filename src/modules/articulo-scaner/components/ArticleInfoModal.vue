@@ -109,19 +109,6 @@
                 <span class="mx-0.5 inline-block rounded-md bg-amber-100/90 px-1.5 py-0.5 font-mono text-[0.8125rem] text-amber-950 ring-1 ring-amber-200/60 dark:bg-amber-900/45 dark:text-amber-50 dark:ring-amber-800/50">{{ scanCode || 'N/A' }}</span>
                 en el almacén seleccionado.
               </p>
-              <div class="mt-4">
-                <button
-                  type="button"
-                  class="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-amber-700/25 bg-amber-600/90 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-amber-50 dark:border-amber-500/30 dark:bg-amber-600/85 dark:hover:bg-amber-500 dark:focus-visible:ring-amber-400/45 dark:focus-visible:ring-offset-slate-900 sm:w-auto"
-                  @click="$emit('retry-search')"
-                >
-                  <svg v-if="lastResolveSource === 'scanner'" class="h-4 w-4 opacity-95" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" aria-hidden="true">
-                    <path d="M4 8a2 2 0 0 1 2-2h2l1.2-2h5.6L16 6h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8Z" stroke-linecap="round" stroke-linejoin="round" />
-                    <circle cx="12" cy="13" r="3.2" stroke-linecap="round" stroke-linejoin="round" />
-                  </svg>
-                  {{ retrySearchLabel }}
-                </button>
-              </div>
             </div>
           </div>
 
@@ -139,19 +126,6 @@
               <p class="mt-1 text-sm leading-relaxed text-red-900/88 dark:text-red-200/90">
                 {{ errorMessage || 'No fue posible obtener la información del artículo.' }}
               </p>
-              <div class="mt-4">
-                <button
-                  type="button"
-                  class="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-red-800/20 bg-white/90 px-4 py-2.5 text-sm font-semibold text-red-950 shadow-sm transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-red-50 dark:border-red-400/25 dark:bg-red-950/40 dark:text-red-50 dark:hover:bg-red-950/55 dark:focus-visible:ring-red-400/45 dark:focus-visible:ring-offset-slate-900 sm:w-auto"
-                  @click="$emit('retry-search')"
-                >
-                  <svg v-if="lastResolveSource === 'scanner'" class="h-4 w-4 opacity-95" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.85" aria-hidden="true">
-                    <path d="M4 8a2 2 0 0 1 2-2h2l1.2-2h5.6L16 6h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8Z" stroke-linecap="round" stroke-linejoin="round" />
-                    <circle cx="12" cy="13" r="3.2" stroke-linecap="round" stroke-linejoin="round" />
-                  </svg>
-                  {{ retrySearchLabel }}
-                </button>
-              </div>
             </div>
           </div>
 
@@ -326,17 +300,12 @@ const props = defineProps<{
   scanCode?: string | null
   selectedWarehouse?: string | null
   warehouses: WarehouseDto[]
-  lastResolveSource?: 'manual' | 'scanner' | null
 }>()
 
 defineEmits<{
   close: []
   'retry-search': []
 }>()
-
-const retrySearchLabel = computed(() =>
-  props.lastResolveSource === 'scanner' ? 'Escanear otro código' : 'Intentar con otro código'
-)
 
 const rawRecord = computed<Record<string, unknown>>(() => {
   if (!props.article || typeof props.article !== 'object') return {}
