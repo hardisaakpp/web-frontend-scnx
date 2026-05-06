@@ -778,6 +778,26 @@ export const mba3ConsultasService = {
   },
 
   /**
+   * Reintentar solo Solicitudes de Transferencia (ITR) fallidas para una OC ya enviada.
+   * Backend: POST /ordenes-compra/{oc_id}/reintentar-st (idempotente, no reenvía la ODC).
+   * Re-exporta el método del servicio de dominio para mantener compatibilidad.
+   */
+  async reintentarSolicitudesTransferencia(ocId: string) {
+    try {
+      const response = await mba3Api.post(
+        `/ordenes-compra/${ocId}/reintentar-st`,
+        {},
+        { timeout: 120000 }
+      )
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [reintentarSolicitudesTransferencia] Error al reintentar ST:', error)
+      const detail = error?.response?.data?.message || error?.response?.data?.detail || error.message
+      throw new Error(`No se pudo reintentar las Solicitudes de Transferencia. ${detail}`)
+    }
+  },
+
+  /**
    * Obtener detalle de integración SAP por oc_id (GET /ordenes-compra/{oc_id}/integracion-sap).
    * Usado para rellenar el modal al hacer clic en "Num ODC" cuando no hay datos en memoria.
    * 404 si no existe registro de envío para esa OC.

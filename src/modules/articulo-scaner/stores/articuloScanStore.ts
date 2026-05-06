@@ -64,16 +64,30 @@ export const useArticuloScanStore = defineStore('articuloScan', () => {
     article.value = null
 
     try {
-      const { article: result, correlationId } = await articuloScanService.resolveScan({
+      const response = await articuloScanService.resolveScan({
         warehouseCode: selectedWarehouse.value,
         code: scanCode.value.trim(),
         source
       })
 
-      if (correlationId) {
-        lastCorrelationId.value = correlationId
+      if (response.correlationId) {
+        lastCorrelationId.value = response.correlationId
       }
 
+      if (!response.success) {
+        const apiError = response.error
+        const contractError: UiError = {
+          code: apiError?.code || 'UNKNOWN',
+          message: apiError?.message || 'No se pudo completar la consulta de artículo.',
+          details: apiError?.details,
+          correlationId: response.correlationId || undefined
+        }
+        error.value = contractError
+        status.value = contractError.code === 'NOT_FOUND' ? 'not-found' : 'error'
+        return
+      }
+
+      const result = response.article
       article.value = result
       if (result) {
         status.value = 'detected'

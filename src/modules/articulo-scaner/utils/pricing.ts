@@ -28,11 +28,11 @@ function hasOwn(record: Record<string, unknown> | null, key: string): boolean {
 export function computeMarginFallback(
   price: number | null,
   avgPrice: number | null
-): number {
+): number | null {
   if (price != null && avgPrice != null && price > 0) {
     return ((price - avgPrice) / price) * 100
   }
-  return 0
+  return null
 }
 
 export function extractArticlePricing(article: ArticleDetailDto | null): ArticlePricing {
@@ -74,8 +74,8 @@ export function extractArticlePricing(article: ArticleDetailDto | null): Article
   }
 }
 
-export function formatCurrency(value: number | null, currency = 'CLP'): string {
-  if (value == null || !Number.isFinite(value)) return 'N/A'
+export function formatCurrency(value: number | null, currency = 'CLP', emptyText = 'No autorizado'): string {
+  if (value == null || !Number.isFinite(value)) return emptyText
   return new Intl.NumberFormat('es-CL', {
     style: 'currency',
     currency: currency || 'CLP',
@@ -83,8 +83,8 @@ export function formatCurrency(value: number | null, currency = 'CLP'): string {
   }).format(value)
 }
 
-export function formatPercent(value: number | null): string {
-  if (value == null || !Number.isFinite(value)) return 'N/A'
+export function formatPercent(value: number | null, emptyText = 'No autorizado'): string {
+  if (value == null || !Number.isFinite(value)) return emptyText
   return `${new Intl.NumberFormat('es-CL', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2

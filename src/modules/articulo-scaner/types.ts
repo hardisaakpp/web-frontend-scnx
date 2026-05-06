@@ -12,33 +12,55 @@ export interface ScanResolveRequest {
 }
 
 export interface ArticleDetailDto {
-  code: string
-  barcode?: string | null
-  description: string
+  itemCode: string
+  itemName: string
+  codeBars: string | null
+  warehouseCode: string
+  warehouseName: string | null
   brand?: string | null
   category?: string | null
-  stock?: number | null
+  hierarchy: string[]
+  sales: {
+    avg30: number
+    total30: number
+    total90: number
+    lastSaleDate: string | null
+    lastIngressDate: string | null
+  }
+  stock: {
+    store: number
+    warehouse: number
+    transit: number
+  }
+  pricing?: {
+    avgPrice: number | null
+    price: number | null
+    margin: number | null
+  } | null
+  /** Campos legacy tolerados para compatibilidad visual temporal */
+  code?: string
+  description?: string
+  barcode?: string | null
   lastSaleDate?: string | null
   unitPrice?: number | null
   currency?: string | null
-  pricing?: {
-    avgPrice?: number | null
-    price?: number | null
-    margin?: number | null
-  } | null
-  /** Si el backend envía ventas / precios detallados (contrato extendido v1) */
-  sales?: unknown
-  prices?: unknown
-  metadata?: Record<string, unknown>
 }
 
 export interface ScanResolveResponse {
+  success: boolean
   article: ArticleDetailDto | null
+  error: {
+    code: string
+    message: string
+    details: unknown
+  } | null
+  correlationId: string
 }
 
 export interface UiError {
   code: string
   message: string
+  details?: unknown
   /** Devuelto por el backend o cabecera X-Correlation-Id para soporte */
   correlationId?: string
 }

@@ -30,6 +30,41 @@ function parseBackendMessage(data: Record<string, unknown> | undefined): string 
   return null
 }
 
+function extractValidationMessage(details: unknown): string | null {
+  if (!details) return null
+  if (Array.isArray(details)) {
+    const fieldMessages = details
+      .map((item) => {
+        if (!item || typeof item !== 'object') return null
+        const record = item as Record<string, unknown>
+        const field =
+          (typeof record.field === 'string' && record.field) ||
+          (typeof record.path === 'string' && record.path) ||
+          (typeof record.param === 'string' && record.param) ||
+          ''
+        const msg =
+          (typeof record.message === 'string' && record.message) ||
+          (typeof record.msg === 'string' && record.msg) ||
+          ''
+        if (!msg) return null
+        return field ? `${field}: ${msg}` : msg
+      })
+      .filter((line): line is string => Boolean(line))
+    if (fieldMessages.length > 0) return fieldMessages.join(' | ')
+  }
+  if (typeof details === 'object') {
+    const pairs = Object.entries(details as Record<string, unknown>)
+      .map(([field, value]) => {
+        if (typeof value === 'string' && value.trim()) return `${field}: ${value}`
+        return null
+      })
+      .filter((line): line is string => Boolean(line))
+    if (pairs.length > 0) return pairs.join(' | ')
+  }
+  if (typeof details === 'string' && details.trim()) return details
+  return null
+}
+
 export function correlationFromResponseHeaders(headers: unknown): string | undefined {
   if (!headers || typeof headers !== 'object') return undefined
   const h = headers as { get?: (name: string) => string | undefined }
@@ -61,6 +96,7 @@ export function mapScanApiError(error: unknown): UiError {
 
   const backendCode = typeof data?.code === 'string' ? data.code : typeof data?.error === 'string' ? data.error : undefined
   const backendMsg = parseBackendMessage(data)
+  const details = data?.details
 
   if (status === 429) {
     return {
@@ -72,9 +108,11 @@ export function mapScanApiError(error: unknown): UiError {
 
   if (status === 400) {
     const isValidation = backendCode === 'VALIDATION_ERROR' || backendCode === 'VALIDATION'
+    const validationMessage = extractValidationMessage(details)
     return {
       code: isValidation ? 'VALIDATION_ERROR' : 'BAD_REQUEST',
-      message: backendMsg ?? 'Solicitud inválida. Verifica almacén y código.',
+      message: validationMessage ?? backendMsg ?? 'Solicitud inválida. Verifica almacén y código.',
+      details,
       correlationId
     }
   }
@@ -83,6 +121,7 @@ export function mapScanApiError(error: unknown): UiError {
     return {
       code: 'NOT_FOUND',
       message: backendMsg ?? 'Artículo no encontrado en el almacén seleccionado.',
+      details,
       correlationId
     }
   }
@@ -100,6 +139,7 @@ export function mapScanApiError(error: unknown): UiError {
     return {
       code: isInternal ? 'INTERNAL_ERROR' : 'SERVER_ERROR',
       message: backendMsg ?? 'Error interno del servidor. Intentá más tarde.',
+      details,
       correlationId
     }
   }
@@ -107,6 +147,7 @@ export function mapScanApiError(error: unknown): UiError {
   return {
     code: 'UNKNOWN',
     message: backendMsg ?? 'No se pudo completar la consulta de artículo.',
+    details,
     correlationId
   }
 }

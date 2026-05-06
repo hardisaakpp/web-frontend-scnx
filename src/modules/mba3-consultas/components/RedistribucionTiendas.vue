@@ -586,9 +586,9 @@
           >
             <button
               @click="$emit('enviar-odc-sap')"
-              :disabled="enviandoOdcSapValue || !puedeReintentarEnvioOdcSapValue"
+              :disabled="enviandoOdcSapValue || !puedeEnviarOdcSap"
               class="px-6 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium"
-              :title="!puedeReintentarEnvioOdcSapValue ? mensajeNoAplicaReintento : 'Enviar ODC a SAP'"
+              :title="tituloBotonEnviarOdcSap"
             >
               <svg v-if="!enviandoOdcSapValue" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -600,9 +600,9 @@
               {{
                 enviandoOdcSapValue
                   ? 'Enviando a SAP...'
-                  : puedeReintentarEnvioOdcSapValue
+                  : puedeEnviarOdcSap
                     ? 'Enviar ODC a SAP'
-                    : 'No aplica reintento'
+                    : 'Redistribución incompleta'
               }}
             </button>
             <Teleport to="body">
@@ -810,16 +810,12 @@ const guardandoRedistribucionValue = computed(() => props.guardandoRedistribucio
 const confirmandoRedistribucionValue = computed(() => props.confirmandoRedistribucion.value)
 const enviandoOdcSapValue = computed(() => props.enviandoOdcSap ?? false)
 
-// Fuente única de verdad para habilitar/deshabilitar el reintento.
+// Fuente única de verdad para habilitar el envío.
 // El backend entrega este flag en la raíz del JSON del pedido (puede_reintentar_envio_odc_sap).
+// En esta vista (redistribución) solo nos interesa "Enviar ODC a SAP"; el reintento vive en /proceso.
 const puedeReintentarEnvioOdcSapValue = computed(
   () => props.pedido?.puede_reintentar_envio_odc_sap === true
 )
-
-const mensajeNoAplicaReintento = computed(() => {
-  const m = props.pedido?.cabecera?.mensaje
-  return typeof m === 'string' && m.trim().length > 0 ? m : 'No aplica reintento'
-})
 
 // Computed para resumen de redistribución
 const resumenRedistribucion = computed(() => {
@@ -850,6 +846,21 @@ const puedeConfirmarRedistribucion = computed(() => {
   return cercaDeCero(resumenRedistribucion.value.diferencia_pendiente) &&
          productosArray.value.every((p: ProductoRedistribucion) => cercaDeCero(p.diferencia)) &&
          productosArray.value.every((p: ProductoRedistribucion) => !p.error)
+})
+
+/** Backend permite envío/reintento y la cuadrícula de redistribución está completa y válida. */
+const puedeEnviarOdcSap = computed(
+  () => puedeReintentarEnvioOdcSapValue.value && puedeConfirmarRedistribucion.value
+)
+
+const tituloBotonEnviarOdcSap = computed(() => {
+  if (!puedeConfirmarRedistribucion.value) {
+    return 'Complete la redistribución (debe quedar completa y válida) antes de enviar a SAP'
+  }
+  if (!puedeReintentarEnvioOdcSapValue.value) {
+    return 'Acción no disponible para el estado actual del pedido'
+  }
+  return 'Enviar ODC a SAP'
 })
 
 /**

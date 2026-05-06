@@ -3,6 +3,7 @@ import { attachUnauthorizedRedirect } from '@/services/sessionGuard'
 import { correlationFromResponseHeaders } from '../utils/apiErrorMapper'
 import type {
   ArticleDetailDto,
+  ScanResolveResponse,
   ScanResolveRequest,
   WarehouseDto
 } from '../types'
@@ -48,13 +49,6 @@ attachUnauthorizedRedirect(articuloScanApi)
 type WarehousesApiResponse = {
   data?: WarehouseDto[]
   warehouses?: WarehouseDto[]
-}
-
-type ResolveApiResponse = {
-  data?: {
-    article?: ArticleDetailDto | null
-  }
-  article?: ArticleDetailDto | null
 }
 
 function mapResolvedArticle(article: ArticleDetailDto | null): ArticleDetailDto | null {
@@ -134,14 +128,19 @@ export const articuloScanService = {
   /**
    * POST {prefix}/scan/resolve — equivalente al flujo “Mostrar” + consulta AJAX legacy.
    */
-  async resolveScan(payload: ScanResolveRequest): Promise<{ article: ArticleDetailDto | null; correlationId?: string }> {
-    const response = await articuloScanApi.post<ResolveApiResponse>(
+  async resolveScan(payload: ScanResolveRequest): Promise<ScanResolveResponse> {
+    const response = await articuloScanApi.post<ScanResolveResponse>(
       `${scanApiPrefix}/scan/resolve`,
       payload
     )
     const apiData = response.data
-    const article = mapResolvedArticle(apiData.data?.article ?? apiData.article ?? null)
-    const correlationId = correlationFromResponseHeaders(response.headers)
-    return { article, correlationId }
+    const correlationId = apiData?.correlationId || correlationFromResponseHeaders(response.headers) || crypto.randomUUID()
+    const article = mapResolvedArticle(apiData?.article ?? null)
+    return {
+      success: Boolean(apiData?.success),
+      article,
+      error: apiData?.error ?? null,
+      correlationId
+    }
   }
 }

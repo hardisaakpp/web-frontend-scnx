@@ -144,6 +144,16 @@ export interface OrdenCompra {
   /** Flags de UI para columna ACCIONES (backend autoritativo). */
   mostrar_reintentar?: boolean
   mostrar_descargar_pdf?: boolean
+  /** True si la OC está ENVIADA pero quedan tiendas con ITR/ST en error pendientes de reintento. */
+  mostrar_reintentar_st?: boolean
+  /** Cantidad de tiendas con ITR pendiente de reintento (último batch + sin ITR ya creado). */
+  st_pendientes_reintento?: number
+  /** Total de tiendas que debían tener ITR para esta OC. */
+  st_total_tiendas?: number
+  /** Tiendas con ITR creado correctamente en SAP (acumulado en batches). */
+  st_transferencias_creadas?: number
+  /** Tiendas que fallaron en el último batch ST. */
+  st_transferencias_errores?: number
   metadata?: {
     detalles?: IntegracionSAPDetalle[]  // Usar interfaz específica
     [key: string]: any

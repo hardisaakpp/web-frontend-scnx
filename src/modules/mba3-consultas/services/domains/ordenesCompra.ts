@@ -3,6 +3,27 @@ import { buildUrlWithParams } from '../utils/urlBuilder'
 import type { OrdenCompraResponse, OrdenCompraLogResponse } from '../../types'
 
 /**
+ * Respuesta de POST /ordenes-compra/{oc_id}/reintentar-st.
+ * El backend devuelve `status: success | partial | error` según éxito total/parcial.
+ */
+export interface ReintentarSTResponse {
+  status: 'success' | 'partial' | 'error'
+  message: string
+  oc_id: string
+  reintentadas?: number
+  origen_lista_tiendas?: 'detalle' | 'resultado_json' | 'ninguno'
+  tiendas_objetivo?: string[]
+  tiendas_count?: number
+  resultado_st?: {
+    success?: boolean
+    transferencias_creadas?: number
+    transferencias_errores?: number
+    total_tiendas?: number
+    [key: string]: any
+  }
+}
+
+/**
  * Servicios para gestión de órdenes de compra
  */
 export const ordenesCompraService = {
@@ -54,6 +75,24 @@ export const ordenesCompraService = {
       timeout: 60000, // 60s para generación de PDF
     })
     return response.data as Blob
+  },
+
+  /**
+   * Reintenta solo las Solicitudes de Transferencia (ITR) fallidas para una OC ya enviada.
+   * No reenvía la ODC. Idempotente: solo procesa tiendas pendientes que aún no tienen ITR creado.
+   *
+   * - 200 success: todas las tiendas pendientes resueltas (o no había pendientes).
+   * - 200 partial: algunas tiendas siguen en error.
+   * - 400: la ODC no está en estado ENVIADA o le falta pedido_id.
+   * - 409: ya hay otro reintento ST en curso para esta OC.
+   */
+  async reintentarSolicitudesTransferencia(ocId: string): Promise<ReintentarSTResponse> {
+    const response = await mba3Api.post<ReintentarSTResponse>(
+      `/ordenes-compra/${ocId}/reintentar-st`,
+      {},
+      { timeout: 120000 } // hasta 2 min: SAP puede demorar con varios ITR
+    )
+    return response.data
   },
 
   /**

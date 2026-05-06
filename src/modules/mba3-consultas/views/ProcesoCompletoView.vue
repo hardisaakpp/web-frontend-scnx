@@ -258,6 +258,7 @@
               @integrar-multiples="handleIntegrarOCMultiples"
               @filtered-count-changed="handleFilteredOCCountChanged"
               @ver-detalle-sap="handleVerDetalleSAP"
+              @st-reintentado="handleStReintentado"
               ref="ordenCompraTableRef"
             />
 
@@ -1320,6 +1321,22 @@ async function handleVerDetalleSAP(oc: OrdenCompra) {
   integracionSAPSolicitudes.value = null
   integracionSAPEstado.value = 'success'
   showIntegracionSAPModal.value = true
+}
+
+/**
+ * El usuario reintentó las ITR/ST de una OC ya enviada (no reenvía la ODC).
+ * El backend ya invalidó su caché; aquí refrescamos estadísticas y la lista de OCs
+ * para que los flags `st_pendientes_reintento` / `mostrar_reintentar_st` queden sincronizados.
+ */
+async function handleStReintentado(_payload: { oc: OrdenCompra; result: any }) {
+  try {
+    await Promise.all([
+      ordenesCompraStore.fetchEstadisticas(),
+      cargarOrdenesCompraPendientes(),
+    ])
+  } catch (err) {
+    console.warn('[handleStReintentado] Error al refrescar lista de OCs tras reintento ST:', err)
+  }
 }
 
 // Funciones de integración individuales

@@ -76,20 +76,20 @@
               <article class="overflow-hidden rounded-xl border border-emerald-200 dark:border-emerald-900/50">
                 <header class="bg-emerald-600 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white">Ventas</header>
                 <dl class="space-y-2 bg-white p-4 text-sm dark:bg-slate-900/60">
-                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Promedio 30 dias</dt><dd class="text-slate-900 dark:text-slate-100">{{ asNumberText('VentaPromedio') }}</dd></div>
-                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Total 30 dias</dt><dd class="text-slate-900 dark:text-slate-100">{{ asNumberText('CantidadTotalTreintaDias') }}</dd></div>
-                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Total 90 dias</dt><dd class="text-slate-900 dark:text-slate-100">{{ asNumberText('CantidadTotalNoventaDias') }}</dd></div>
-                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Ultimo ingreso</dt><dd class="text-slate-900 dark:text-slate-100">{{ formatDate(raw('ultima_fecha_ingreso')) }}</dd></div>
-                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Ultima venta</dt><dd class="text-slate-900 dark:text-slate-100">{{ formatDate(raw('FechaUltimaVenta', article.lastSaleDate)) }}</dd></div>
+                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Promedio 30 dias</dt><dd class="text-slate-900 dark:text-slate-100">{{ formatDailyUnits(article.sales?.avg30, raw('VentaPromedio')) }}</dd></div>
+                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Total 30 dias</dt><dd class="text-slate-900 dark:text-slate-100">{{ asUnits(article.sales?.total30, raw('CantidadTotalTreintaDias')) }}</dd></div>
+                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Total 90 dias</dt><dd class="text-slate-900 dark:text-slate-100">{{ asUnits(article.sales?.total90, raw('CantidadTotalNoventaDias')) }}</dd></div>
+                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Ultimo ingreso</dt><dd class="text-slate-900 dark:text-slate-100">{{ formatDate(article.sales?.lastIngressDate ?? raw('ultima_fecha_ingreso')) }}</dd></div>
                 </dl>
               </article>
 
               <article class="overflow-hidden rounded-xl border border-sky-200 dark:border-sky-900/50">
                 <header class="bg-sky-600 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white">Stock</header>
                 <dl class="space-y-2 bg-white p-4 text-sm dark:bg-slate-900/60">
-                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Stock tienda</dt><dd class="text-slate-900 dark:text-slate-100">{{ asUnits('total_Tienda', article.stock) }}</dd></div>
-                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Stock bodega</dt><dd class="text-slate-900 dark:text-slate-100">{{ asUnits('total_Bodega') }}</dd></div>
-                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Stock transito</dt><dd class="text-slate-900 dark:text-slate-100">{{ asUnits('total_Transitoria_Tienda') }}</dd></div>
+                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Stock tienda</dt><dd class="text-slate-900 dark:text-slate-100">{{ asUnits(article.stock?.store, raw('total_Tienda')) }}</dd></div>
+                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Stock bodega</dt><dd class="text-slate-900 dark:text-slate-100">{{ asUnits(article.stock?.warehouse, raw('total_Bodega')) }}</dd></div>
+                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Stock transito</dt><dd class="text-slate-900 dark:text-slate-100">{{ asUnits(article.stock?.transit, raw('total_Transitoria_Tienda')) }}</dd></div>
+                  <div class="flex justify-between gap-4"><dt class="text-slate-500">Stock total general</dt><dd class="text-slate-900 dark:text-slate-100">{{ asUnits(totalGeneralStock) }}</dd></div>
                   <div class="flex justify-between gap-4"><dt class="text-slate-500">Almacen</dt><dd class="text-right text-slate-900 dark:text-slate-100">{{ warehouseLabel }}</dd></div>
                 </dl>
               </article>
@@ -99,15 +99,15 @@
                 <dl class="space-y-2 bg-white p-4 text-sm dark:bg-slate-900/60">
                   <div class="flex justify-between gap-4">
                     <dt class="text-slate-500">Ultimo costo</dt>
-                    <dd class="text-slate-900 dark:text-slate-100">{{ formatCurrency(pricing.avgPrice, article.currency || 'CLP') }}</dd>
+                    <dd class="text-slate-900 dark:text-slate-100">{{ formatCurrency(pricing.avgPrice, article.currency || 'CLP', 'No autorizado') }}</dd>
                   </div>
                   <div class="flex justify-between gap-4">
                     <dt class="text-slate-500">Precio de venta</dt>
-                    <dd class="text-slate-900 dark:text-slate-100">{{ formatCurrency(pricing.price, article.currency || 'CLP') }}</dd>
+                    <dd class="text-slate-900 dark:text-slate-100">{{ formatCurrency(pricing.price, article.currency || 'CLP', 'No autorizado') }}</dd>
                   </div>
                   <div class="flex justify-between gap-4">
                     <dt class="text-slate-500">Margen</dt>
-                    <dd class="text-slate-900 dark:text-slate-100">{{ formatPercent(pricing.margin) }}</dd>
+                    <dd class="text-slate-900 dark:text-slate-100">{{ formatPercent(pricing.margin, 'No autorizado') }}</dd>
                   </div>
                 </dl>
               </article>
@@ -164,11 +164,18 @@ const warehouseLabel = computed(() => {
   return selected ? `${selected.code} - ${selected.name}` : selectedCode
 })
 
-const referenceText = computed(() => asTextFrom(['itemCode', 'ItemCode'], props.article?.code))
-const descriptionText = computed(() => asTextFrom(['itemName', 'ItemName'], props.article?.description))
-const barcodeText = computed(() => asTextFrom(['codeBars', 'CodeBars'], props.article?.barcode))
+const referenceText = computed(() => asTextFrom(['itemCode', 'ItemCode'], props.article?.itemCode ?? props.article?.code))
+const descriptionText = computed(() => asTextFrom(['itemName', 'ItemName'], props.article?.itemName ?? props.article?.description))
+const barcodeText = computed(() => asTextFrom(['codeBars', 'CodeBars'], props.article?.codeBars ?? props.article?.barcode))
 const brandText = computed(() => asTextFrom(['brand', 'marca'], props.article?.brand))
 const pricing = computed(() => extractArticlePricing(props.article))
+const totalGeneralStock = computed(() => {
+  const store = asFiniteNumber(props.article?.stock?.store ?? raw('total_Tienda'))
+  const warehouse = asFiniteNumber(props.article?.stock?.warehouse ?? raw('total_Bodega'))
+  const transit = asFiniteNumber(props.article?.stock?.transit ?? raw('total_Transitoria_Tienda'))
+  if (store === null && warehouse === null && transit === null) return null
+  return (store ?? 0) + (warehouse ?? 0) + (transit ?? 0)
+})
 
 function raw(key: string, fallback?: unknown): unknown {
   const value = rawRecord.value[key]
@@ -192,18 +199,31 @@ function asTextFrom(keys: string[], fallback?: string | null): string {
   return 'N/A'
 }
 
-function asNumberText(key: string, fallback?: number | null): string {
-  const value = raw(key, fallback)
-  if (typeof value === 'number' && Number.isFinite(value)) return value.toLocaleString('es-CL')
-  if (typeof value === 'string' && value.trim()) return value
+function asNumberText(value: unknown, fallback?: unknown): string {
+  const resolved = value ?? fallback
+  if (typeof resolved === 'number' && Number.isFinite(resolved)) return resolved.toLocaleString('es-CL')
+  if (typeof resolved === 'string' && resolved.trim()) return resolved
   return 'N/A'
 }
 
-function asUnits(key: string, fallback?: number | null): string {
-  const value = raw(key, fallback)
-  const parsed = typeof value === 'number' ? value : Number(value)
+function asUnits(value: unknown, fallback?: unknown): string {
+  const resolved = value ?? fallback
+  const parsed = typeof resolved === 'number' ? resolved : Number(resolved)
   if (Number.isFinite(parsed)) return `${Math.floor(parsed)} u.`
   return 'N/A'
+}
+
+function formatDailyUnits(value: unknown, fallback?: unknown): string {
+  const resolved = value ?? fallback
+  const parsed = typeof resolved === 'number' ? resolved : Number(resolved)
+  if (!Number.isFinite(parsed)) return 'N/A'
+  const normalized = parsed.toFixed(2).replace(/\.?0+$/, '')
+  return `${normalized} u. por dia`
+}
+
+function asFiniteNumber(value: unknown): number | null {
+  const parsed = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(parsed) ? parsed : null
 }
 
 function formatDate(value: unknown): string {
@@ -213,5 +233,6 @@ function formatDate(value: unknown): string {
   if (Number.isNaN(date.getTime())) return 'N/A'
   return new Intl.DateTimeFormat('es-CL').format(date)
 }
+
 
 </script>

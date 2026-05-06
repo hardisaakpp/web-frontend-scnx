@@ -397,7 +397,7 @@
           </p>
           <button
             type="button"
-            :disabled="enviandoOdcSap || pedido?.puede_reintentar_envio_odc_sap !== true"
+            :disabled="enviandoOdcSap || pedido?.puede_reintentar_envio_odc_sap !== true || !puedeConfirmarRedistribucion"
             class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium whitespace-nowrap shrink-0"
             @click="handleEnviarOdcSap"
           >
@@ -1744,6 +1744,11 @@ async function handleEnviarOdcSap() {
   }
 
   if (enviandoOdcSap.value) return
+
+  if (!puedeConfirmarRedistribucion.value) {
+    toast.warning('Validación requerida', 'Debe completar la redistribución correctamente antes de enviar a SAP')
+    return
+  }
 
   mostrarBannerReintentoConexionSap.value = false
 

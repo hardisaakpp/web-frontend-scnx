@@ -275,36 +275,59 @@
               </td>
             </template>
             <td v-if="!props.readOnly" class="px-6 py-4 whitespace-nowrap text-sm">
-              <button
-                v-if="shouldShowRetryAction(oc)"
-                @click="handleIntegrar(oc.referencia_despacho, oc.oc_id)"
-                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-900/30 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                :disabled="sendingOcId === oc.oc_id || props.loading"
-                title="Reintentar envío a SAP"
-              >
-                <svg v-if="sendingOcId === oc.oc_id" class="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                {{ sendingOcId === oc.oc_id ? 'Reintentando...' : 'Reintentar' }}
-              </button>
-              <button
-                v-else-if="shouldShowPdfAction(oc)"
-                @click="handleDescargarPDF(oc)"
-                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/30 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                :disabled="downloadingPdfOcId === oc.oc_id"
-                title="Descargar PDF de la ODC"
-              >
-                <svg v-if="downloadingPdfOcId === oc.oc_id" class="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                {{ downloadingPdfOcId === oc.oc_id ? 'Descargando...' : 'Descargar PDF' }}
-              </button>
+              <div class="flex items-center gap-2 flex-wrap">
+                <button
+                  v-if="shouldShowRetryAction(oc)"
+                  @click="handleIntegrar(oc.referencia_despacho, oc.oc_id)"
+                  class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-900/30 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  :disabled="sendingOcId === oc.oc_id || props.loading"
+                  title="Reintentar envío a SAP"
+                >
+                  <svg v-if="sendingOcId === oc.oc_id" class="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  {{ sendingOcId === oc.oc_id ? 'Reintentando...' : 'Reintentar' }}
+                </button>
+                <button
+                  v-else-if="shouldShowPdfAction(oc)"
+                  @click="handleDescargarPDF(oc)"
+                  class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/30 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  :disabled="downloadingPdfOcId === oc.oc_id"
+                  title="Descargar PDF de la ODC"
+                >
+                  <svg v-if="downloadingPdfOcId === oc.oc_id" class="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  {{ downloadingPdfOcId === oc.oc_id ? 'Descargando...' : 'Descargar PDF' }}
+                </button>
+                <button
+                  v-if="shouldShowRetryStAction(oc)"
+                  @click="handleReintentarST(oc)"
+                  class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-800 dark:text-blue-200 bg-blue-50 dark:bg-blue-900/30 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  :disabled="retryingStOcId === oc.oc_id || props.loading"
+                  :title="`Reintentar Solicitudes de Transferencia pendientes (${oc.st_pendientes_reintento ?? 0}${oc.st_total_tiendas ? ' de ' + oc.st_total_tiendas : ''})`"
+                >
+                  <svg v-if="retryingStOcId === oc.oc_id" class="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                  </svg>
+                  {{ retryingStOcId === oc.oc_id ? 'Reintentando ST...' : 'Reintentar ST' }}
+                  <span
+                    v-if="(oc.st_pendientes_reintento ?? 0) > 0"
+                    class="ml-1 px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-blue-200 dark:bg-blue-800/70 text-blue-900 dark:text-blue-100"
+                  >
+                    {{ oc.st_pendientes_reintento }}{{ oc.st_total_tiendas ? '/' + oc.st_total_tiendas : '' }}
+                  </span>
+                </button>
+              </div>
             </td>
           </tr>
           
@@ -406,6 +429,8 @@ const emit = defineEmits<{
   eliminar: [ocIds: string[]]
   'filtered-count-changed': [count: number]
   'ver-detalle-sap': [oc: OrdenCompra]
+  /** Reintento de ITR/ST exitoso o parcial: el padre debería refrescar la lista. */
+  'st-reintentado': [payload: { oc: OrdenCompra; result: any }]
 }>()
 
 const toast = useToast()
@@ -420,6 +445,9 @@ const sendingOcId = ref<string | null>(null)
 
 // Estado para rastrear qué ODC se está descargando como PDF
 const downloadingPdfOcId = ref<string | null>(null)
+
+// Estado para rastrear qué ODC está reintentando solo ITR/ST (no la ODC)
+const retryingStOcId = ref<string | null>(null)
 
 // Estado para rastrear cuando se están enviando múltiples ODC
 const sendingMultiple = ref(false)
@@ -544,6 +572,18 @@ function shouldShowRetryAction(oc: OrdenCompra): boolean {
 function shouldShowPdfAction(oc: OrdenCompra): boolean {
   if (typeof oc.mostrar_descargar_pdf === 'boolean') return oc.mostrar_descargar_pdf
   return !shouldShowRetryAction(oc)
+}
+
+/**
+ * Reintento de ITR/ST: backend marca `mostrar_reintentar_st` cuando la OC está ENVIADA
+ * y existen tiendas con ITR fallido (st_pendientes_reintento > 0).
+ *
+ * Fallback (por si el backend aún no enriquece): ENVIADA + st_pendientes_reintento > 0.
+ */
+function shouldShowRetryStAction(oc: OrdenCompra): boolean {
+  if (typeof oc.mostrar_reintentar_st === 'boolean') return oc.mostrar_reintentar_st
+  const estado = (oc.estado || '').toUpperCase()
+  return estado === 'ENVIADA' && (oc.st_pendientes_reintento ?? 0) > 0
 }
 
 function selectAllColumns() {
@@ -890,6 +930,53 @@ async function handleDescargarPDF(oc: OrdenCompra) {
     toast.error('Error al descargar PDF', error.message || 'No se pudo generar el PDF de la orden de compra')
   } finally {
     downloadingPdfOcId.value = null
+  }
+}
+
+async function handleReintentarST(oc: OrdenCompra) {
+  if (retryingStOcId.value === oc.oc_id) return
+
+  try {
+    retryingStOcId.value = oc.oc_id
+    const result: any = await mba3ConsultasService.reintentarSolicitudesTransferencia(oc.oc_id)
+
+    const status = (result?.status || '').toLowerCase()
+    const creadas = result?.resultado_st?.transferencias_creadas ?? 0
+    const errores = result?.resultado_st?.transferencias_errores ?? 0
+    const objetivo = result?.tiendas_count ?? 0
+
+    if (status === 'success' && objetivo === 0) {
+      toast.info('Sin pendientes', result?.message || 'No hay solicitudes de transferencia pendientes para reintentar.')
+    } else if (status === 'success') {
+      toast.success(
+        'Reintento ST exitoso',
+        `Se reintentaron ${objetivo} tienda(s). Creadas: ${creadas}.`
+      )
+    } else if (status === 'partial') {
+      toast.warning(
+        'Reintento ST parcial',
+        `Creadas: ${creadas} | Errores: ${errores} de ${objetivo} tienda(s).`
+      )
+    } else {
+      toast.error('Reintento ST falló', result?.message || 'No se pudo completar el reintento de ST.')
+    }
+
+    emit('st-reintentado', { oc, result })
+  } catch (error: any) {
+    console.error('Error al reintentar ST:', error)
+    const status = error?.response?.status
+    if (status === 409) {
+      toast.warning('Reintento en curso', 'Otro reintento de ST ya está en curso para esta OC. Intenta en unos segundos.')
+    } else if (status === 400) {
+      toast.warning(
+        'Estado no válido',
+        error?.response?.data?.message || 'Solo se puede reintentar ST cuando la ODC está ENVIADA.'
+      )
+    } else {
+      toast.error('Error al reintentar ST', error.message || 'No se pudo reintentar Solicitudes de Transferencia')
+    }
+  } finally {
+    retryingStOcId.value = null
   }
 }
 

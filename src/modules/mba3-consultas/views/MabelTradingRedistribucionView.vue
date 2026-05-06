@@ -634,9 +634,7 @@ async function applySAPResponse(response: ProcesoCompletoSAPResponse) {
  * Intenta async (Celery); si backend responde 503 (Redis/Celery no disponible), fallback a sync.
  */
 async function handleEnviarOdcSap() {
-  const permiteSinValidarGrid =
-    pedido.value?.puede_reintentar_envio_odc_sap === true
-  if (!puedeConfirmarRedistribucion.value && !permiteSinValidarGrid) {
+  if (!puedeConfirmarRedistribucion.value) {
     toast.warning('Validación requerida', 'Debe completar la redistribución correctamente antes de enviar a SAP')
     return
   }
