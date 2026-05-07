@@ -90,6 +90,7 @@
       :scan-code="store.scanCode"
       :selected-warehouse="store.selectedWarehouse"
       :warehouses="store.warehouses"
+      :can-view-cost="canViewCost"
       @close="isArticleModalOpen = false"
       @retry-search="onArticleRetrySearch"
       @submit-inline-code="onSubmitInlineCodeFromModal"
@@ -104,8 +105,11 @@ import ManualCodeInput from '../components/ManualCodeInput.vue'
 import ScannerPanel from '../components/ScannerPanel.vue'
 import ArticleInfoModal from '../components/ArticleInfoModal.vue'
 import { useArticuloScanStore } from '../stores/articuloScanStore'
+import { useAuthStore } from '../../../stores/auth'
+import { ARTICULO_SCANER_VIEW_COST_PERMISSION } from '../permissions'
 
 const store = useArticuloScanStore()
+const authStore = useAuthStore()
 const isScannerOpen = ref(false)
 const isArticleModalOpen = ref(false)
 
@@ -123,6 +127,13 @@ const scanCodeModel = computed({
     store.setScanCode(value)
     store.resetError()
   }
+})
+
+const canViewCost = computed(() => {
+  const permissions = authStore.userPermissions || []
+  if (permissions.includes('articuloscaner.hide-cost')) return false
+  if (authStore.isAdmin) return true
+  return permissions.includes(ARTICULO_SCANER_VIEW_COST_PERMISSION)
 })
 
 async function onSubmit() {

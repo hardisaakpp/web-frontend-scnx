@@ -10,7 +10,7 @@
     <!-- Sidebar: escritorio = franja estrecha y se expande al pasar el ratón; móvil = panel ancho al abrir -->
     <aside
       :class="[
-        'fixed top-0 left-0 h-full flex flex-col bg-gradient-to-b from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 text-slate-800 dark:text-white transition-all duration-300 z-30 shadow-2xl border-r border-slate-200 dark:border-slate-700/40',
+        'fixed top-0 left-0 h-full flex flex-col bg-gradient-to-b from-white via-slate-50 to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 text-slate-800 dark:text-white transition-transform duration-150 ease-out md:transition-all md:duration-300 z-30 shadow-2xl border-r border-slate-200 dark:border-slate-700/40',
         effectiveSidebarCollapsed ? 'w-20' : 'w-72',
         isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
       ]"
@@ -38,7 +38,7 @@
         </div>
 
         <!-- Navigation -->
-        <nav class="flex-1 min-h-0 overflow-y-auto p-4 pb-4 space-y-1 custom-scrollbar">
+        <nav class="flex-1 min-h-0 overflow-y-auto p-4 pb-4 space-y-1 custom-scrollbar" @click="onSidebarNavClick">
         <!-- Sección Principal -->
         <div v-show="!effectiveSidebarCollapsed" class="px-3 py-2 mb-2">
           <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Principal</p>
@@ -489,6 +489,15 @@ function onPinHandleMouseLeave() {
   }
 }
 
+function onSidebarNavClick(event: MouseEvent) {
+  if (isDesktopSidebarViewport.value || !isSidebarOpen.value) return
+  const target = event.target as HTMLElement | null
+  if (!target) return
+  const anchor = target.closest('a')
+  if (!anchor) return
+  isSidebarOpen.value = false
+}
+
 /** Escritorio: franja estrecha salvo hover. Móvil: ancho completo cuando el panel está abierto */
 const effectiveSidebarCollapsed = computed(() => {
   if (!isDesktopSidebarViewport.value) return false
@@ -641,6 +650,12 @@ watch(() => authStore.isAuthenticated, (isAuth: boolean) => {
     connectNotificaciones()
   } else {
     disconnectNotificaciones()
+  }
+})
+
+watch(() => route.fullPath, () => {
+  if (!isDesktopSidebarViewport.value) {
+    isSidebarOpen.value = false
   }
 })
 </script>

@@ -295,7 +295,7 @@
                   </h4>
                 </header>
                 <dl class="divide-y divide-amber-100/80 text-sm dark:divide-amber-900/35">
-                  <div class="flex items-baseline justify-between gap-4 px-4 py-2.5">
+                  <div v-if="canViewCost" class="flex items-baseline justify-between gap-4 px-4 py-2.5">
                     <dt class="text-xs font-medium text-slate-500 dark:text-slate-400">Último costo</dt>
                     <dd class="break-words text-right text-sm tabular-nums text-slate-800 dark:text-slate-100">{{ formatCurrency(pricing.avgPrice, article.currency || 'CLP', 'No autorizado') }}</dd>
                   </div>
@@ -303,7 +303,7 @@
                     <dt class="text-xs font-medium text-slate-500 dark:text-slate-400">Precio de venta</dt>
                     <dd class="break-words text-right text-sm font-medium tabular-nums text-slate-900 dark:text-slate-50">{{ formatCurrency(pricing.price, article.currency || 'CLP', 'No autorizado') }}</dd>
                   </div>
-                  <div class="flex items-baseline justify-between gap-4 px-4 py-2.5">
+                  <div v-if="canViewCost" class="flex items-baseline justify-between gap-4 px-4 py-2.5">
                     <dt class="text-xs font-medium text-slate-500 dark:text-slate-400">Margen</dt>
                     <dd class="break-words text-right text-sm tabular-nums text-slate-800 dark:text-slate-100">{{ formatPercent(pricing.margin, 'No autorizado') }}</dd>
                   </div>
@@ -318,11 +318,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch, withDefaults } from 'vue'
 import type { ArticleDetailDto, ScanStatus, WarehouseDto } from '../types'
 import { extractArticlePricing, formatCurrency, formatPercent } from '../utils/pricing'
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   visible: boolean
   loading: boolean
   status: ScanStatus
@@ -331,7 +331,10 @@ const props = defineProps<{
   scanCode?: string | null
   selectedWarehouse?: string | null
   warehouses: WarehouseDto[]
-}>()
+  canViewCost?: boolean
+}>(), {
+  canViewCost: true
+})
 
 const emit = defineEmits<{
   close: []
