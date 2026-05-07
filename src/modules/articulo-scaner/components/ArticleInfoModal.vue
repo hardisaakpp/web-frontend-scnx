@@ -318,7 +318,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch, withDefaults } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import type { ArticleDetailDto, ScanStatus, WarehouseDto } from '../types'
 import { extractArticlePricing, formatCurrency, formatPercent } from '../utils/pricing'
 
