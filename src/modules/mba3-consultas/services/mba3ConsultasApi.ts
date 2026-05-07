@@ -32,6 +32,7 @@ export * from './domains'
 // Importar configuración de axios y servicios refactorizados para uso interno
 import { mba3Api, API_BASE_URL } from './config/axiosConfig'
 import { pedidosService } from './domains/pedidos'
+import { MAX_EXCEL_UPLOAD_SIZE_BYTES, MAX_EXCEL_UPLOAD_SIZE_MB } from '@/config/uploadLimits'
 
 /**
  * ⭐ Objeto de servicio original mantenido para compatibilidad
@@ -970,10 +971,9 @@ export const mba3ConsultasService = {
         throw new Error(`Tipo de archivo no permitido. Solo se permiten: ${allowedExtensions.join(', ')}`)
       }
 
-      // Validar tamaño (10 MB máximo)
-      const maxSize = 10 * 1024 * 1024 // 10 MB en bytes
-      if (file.size > maxSize) {
-        throw new Error('El archivo excede el tamaño máximo de 10 MB')
+      // Validar tamaño máximo de archivo
+      if (file.size > MAX_EXCEL_UPLOAD_SIZE_BYTES) {
+        throw new Error(`El archivo excede el tamaño máximo de ${MAX_EXCEL_UPLOAD_SIZE_MB} MB`)
       }
 
       const formData = new FormData()

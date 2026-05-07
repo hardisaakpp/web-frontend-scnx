@@ -2,8 +2,9 @@
  * Utilidades para validación de archivos
  */
 
+import { MAX_EXCEL_UPLOAD_SIZE_BYTES, MAX_EXCEL_UPLOAD_SIZE_MB } from '@/config/uploadLimits'
+
 const ALLOWED_EXTENSIONS = ['.xlsx', '.xls']
-const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10 MB
 
 /**
  * Valida que un archivo cumpla con los requisitos de tipo y tamaño
@@ -15,7 +16,7 @@ export function validateFile(file: File): void {
     throw new Error(`Tipo de archivo no permitido. Solo se permiten: ${ALLOWED_EXTENSIONS.join(', ')}`)
   }
   
-  if (file.size > MAX_FILE_SIZE) {
-    throw new Error('El archivo excede el tamaño máximo de 10 MB')
+  if (file.size > MAX_EXCEL_UPLOAD_SIZE_BYTES) {
+    throw new Error(`El archivo excede el tamaño máximo de ${MAX_EXCEL_UPLOAD_SIZE_MB} MB`)
   }
 }

@@ -6,14 +6,13 @@ import { ref, Ref } from '@vue/reactivity'
 import { onUnmounted } from '@vue/runtime-core'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
+import { MAX_EXCEL_UPLOAD_SIZE_BYTES, MAX_EXCEL_UPLOAD_SIZE_MB } from '@/config/uploadLimits'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import { normalizeValidationResponse } from '../services/utils/errorHandler'
 import type { UploadPlantillaResponse, PedidoCompleto, PlantillaProcesoEstado } from '../types'
 
 // Constantes de configuración
 const ALLOWED_FILE_EXTENSIONS = ['.xlsx', '.xls'] as const
-const MAX_FILE_SIZE_MB = 10
-const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 // ⭐ Intervalo para simulación de progreso durante procesamiento del servidor
 const PROCESSING_PROGRESS_INTERVAL_MS = 500
 // Rutas explícitas tras subir plantilla / reintentar con correcciones (nunca usar caja-chica u otras rutas)
@@ -188,8 +187,8 @@ export function useFileUpload(options: {
       return { valid: false, error: `Solo se permiten archivos Excel (${ALLOWED_FILE_EXTENSIONS.join(', ')})` }
     }
     
-    if (file.size > MAX_FILE_SIZE_BYTES) {
-      return { valid: false, error: `El tamaño máximo es ${MAX_FILE_SIZE_MB} MB` }
+    if (file.size > MAX_EXCEL_UPLOAD_SIZE_BYTES) {
+      return { valid: false, error: `El tamaño máximo es ${MAX_EXCEL_UPLOAD_SIZE_MB} MB` }
     }
     
     return { valid: true }

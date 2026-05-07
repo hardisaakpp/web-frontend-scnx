@@ -66,7 +66,7 @@ VITE_CONCILIACION_API_BASE_URL=https://tesoreria-api.production.com:8002/concili
 ### Upload de Documentos
 - `POST /conciliacion-tesoreria/documentos/upload` - Subir documento (permiso: `conciliacion-tesoreria.crear`)
   - Tipos permitidos: `.xlsx`, `.xls`, `.csv`, `.pdf`
-  - Tamaño máximo: 10 MB
+  - Tamaño máximo: configurable con `VITE_MAX_EXCEL_UPLOAD_SIZE_MB` (default: 50 MB)
 
 ## Permisos Requeridos
 

@@ -64,7 +64,7 @@
               </svg>
               <p class="text-sm text-gray-600 dark:text-gray-400">Arrastra tu archivo Excel aquí</p>
               <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">o <span class="text-blue-600 dark:text-blue-400 font-medium">haz clic para seleccionar</span></p>
-              <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">XLSX, XLS (máx. 10 MB)</p>
+              <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">XLSX, XLS (máx. {{ MAX_EXCEL_UPLOAD_SIZE_MB }} MB)</p>
             </div>
 
             <!-- File selected -->
@@ -186,6 +186,7 @@ import { ref, onMounted } from 'vue'
 import { useConciliacionStore } from '../stores/conciliacionStore'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
+import { MAX_EXCEL_UPLOAD_SIZE_BYTES, MAX_EXCEL_UPLOAD_SIZE_MB } from '@/config/uploadLimits'
 
 const store = useConciliacionStore()
 const authStore = useAuthStore()
@@ -224,8 +225,8 @@ function validateAndSet(file: File) {
     uploadError.value = 'Solo se permiten archivos Excel (.xlsx, .xls)'
     return
   }
-  if (file.size > 10 * 1024 * 1024) {
-    uploadError.value = 'El tamaño máximo es 10 MB'
+  if (file.size > MAX_EXCEL_UPLOAD_SIZE_BYTES) {
+    uploadError.value = `El tamaño máximo es ${MAX_EXCEL_UPLOAD_SIZE_MB} MB`
     return
   }
   selectedFile.value = file
