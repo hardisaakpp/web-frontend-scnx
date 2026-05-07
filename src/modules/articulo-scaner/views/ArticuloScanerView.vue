@@ -148,15 +148,13 @@ function openScanner() {
 }
 
 function onArticleRetrySearch() {
-  const fromScanner = store.lastResolveSource === 'scanner'
   isArticleModalOpen.value = false
   store.clearResult()
   store.setScanCode('')
-  if (fromScanner && store.selectedWarehouse && !store.loading) {
-    void nextTick(() => {
-      isScannerOpen.value = true
-    })
-  }
+  if (!store.selectedWarehouse || store.loading) return
+  void nextTick(() => {
+    isScannerOpen.value = true
+  })
 }
 
 async function onSubmitInlineCodeFromModal(code: string) {

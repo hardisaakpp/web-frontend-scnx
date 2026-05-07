@@ -195,4 +195,14 @@ function saveRecentCode(code: string) {
     // noop: si storage falla, mantenemos cache en memoria
   }
 }
+
+function focusInput() {
+  if (props.disabled) return
+  inputRef.value?.focus({ preventScroll: true })
+  if (inputRef.value?.value) {
+    inputRef.value.select()
+  }
+}
+
+defineExpose({ focusInput })
 </script>
