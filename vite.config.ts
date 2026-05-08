@@ -88,7 +88,7 @@ export default defineConfig(({ mode }) => {
         },
         // Integracion SAP Slayer -> http://localhost:5110/api (evita CORS en navegador)
         '/slayer-api': {
-          target: 'http://localhost:5110',
+          target: 'http://http://172.30.159.208:5110/api',
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path.replace(/^\/slayer-api/, '/api')
