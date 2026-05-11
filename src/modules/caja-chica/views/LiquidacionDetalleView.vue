@@ -625,10 +625,12 @@ const loadDetalles = async () => {
   loadingDetalles.value = true
   detalleError.value = ''
   try {
-    const response = await cajaChicaApi.get(`/Liquidaciones/${liquidacionId.value}/detalle`)
+    const response = await cajaChicaApi.get('/LiquidacionesDetalle')
     const payload = response.data as any
     const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
-    detalles.value = items.map(normalizeDetalle)
+    detalles.value = items
+      .map(normalizeDetalle)
+      .filter((item: LiquidacionDetalleItem) => item.idLiquidacion === liquidacionId.value)
     await loadAdjuntosForDetalles()
   } catch {
     detalleError.value = 'No se pudieron cargar los detalles.'

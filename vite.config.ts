@@ -5,7 +5,7 @@ import { fileURLToPath, URL } from 'node:url'
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const coreProxyTarget = env.VITE_CORE_PROXY_TARGET || 'http://localhost:5053'
+  const coreProxyTarget = env.VITE_CORE_PROXY_TARGET || 'http://192.168.2.12:8080'
   const mba3ProxyTarget = env.VITE_MBA3_PROXY_TARGET || 'http://localhost:8000'
   const authMeProxyTarget = env.VITE_AUTH_ME_PROXY_TARGET || mba3ProxyTarget
   const cajaChicaProxyTarget = env.VITE_CAJA_CHICA_PROXY_TARGET || 'http://192.168.2.153:8092'
@@ -15,6 +15,7 @@ export default defineConfig(({ mode }) => {
   const maestroProxyTarget = env.VITE_MAESTRO_API_TARGET || 'http://localhost:8001'
   const conciliacionProxyTarget = env.VITE_CONCILIACION_PROXY_TARGET || 'http://127.0.0.1:8005'
   const articuloScanProxyTarget = env.VITE_ARTICULO_SCAN_PROXY_TARGET || 'http://localhost:8080'
+  const slayerProxyTarget = env.VITE_SLAYER_PROXY_TARGET || 'http://localhost:8093'
   /**
    * Prefijo en el backend tras quitar `/pyg-api`. Por defecto `/api` → `/pyg-api/uploads` → `/api/uploads`.
    * Si el servicio expone rutas en raíz, define `VITE_PYG_PROXY_PREFIX=` vacío en `.env.development`.
@@ -43,9 +44,9 @@ export default defineConfig(({ mode }) => {
           secure: false,
           rewrite: (path) => path.replace(/^\/mba3-api/, '')
         },
-        // /Auth/me → capabilities (microservicio MBA3). Debe ir antes que /api.
+        // /Auth/me → Core API (debe ir antes que /api)
         '/api/Auth/me': {
-          target: authMeProxyTarget,
+          target: coreProxyTarget,
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path
@@ -86,9 +87,9 @@ export default defineConfig(({ mode }) => {
           secure: false,
           rewrite: (path) => path.replace(/^\/pyg-api/, pygProxyPrefix || '')
         },
-        // Integracion SAP Slayer -> http://localhost:5110/api (evita CORS en navegador)
+        // Integracion SAP Slayer -> http://localhost:8093/api (evita CORS en navegador)
         '/slayer-api': {
-          target: 'http://http://172.30.159.208:5110/api',
+          target: slayerProxyTarget,
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path.replace(/^\/slayer-api/, '/api')
