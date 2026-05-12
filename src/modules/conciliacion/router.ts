@@ -19,7 +19,7 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresAuth: true,
       title: 'Importar Movimientos',
-      permissions: ['conciliacion.importacionBancos'],
+      permissions: ['conciliacion.importacion'],
     },
   },
   {
@@ -29,7 +29,7 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresAuth: true,
       title: 'Sincronizar SAP',
-      permissions: ['conciliacion.importacionSAP'],
+      permissions: ['conciliacion.importacion'],
     },
   },
   {

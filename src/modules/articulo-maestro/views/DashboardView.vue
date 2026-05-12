@@ -1,3 +1,8 @@
+<script setup lang="ts">
+import { useAuthStore } from '@/stores/auth'
+const authStore = useAuthStore()
+</script>
+
 <template>
     <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <!-- Header -->
@@ -15,6 +20,7 @@
             
             <!-- Gestión de artículos -->
             <router-link
+                v-if="authStore.isAdmin || authStore.hasPermission('articulomaestro.articulos')"
                 to="/articulo-maestro/lista"
                 class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left block"
             >
@@ -33,6 +39,7 @@
 
             <!-- Migracion a SAP -->
             <router-link
+                v-if="authStore.isAdmin || authStore.hasPermission('articulomaestro.migracion')"
                 to="/articulo-maestro/migracion"
                 class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left block"
             >
@@ -51,6 +58,7 @@
 
             <!-- Eliminacion en SAP -->
             <router-link
+                v-if="authStore.isAdmin || authStore.hasPermission('articulomaestro.eliminacionSAP')"
                 to="/articulo-maestro/eliminacion"
                 class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left block"
             >
@@ -69,6 +77,7 @@
 
             <!-- Gestion de Catálogos -->
             <router-link
+                v-if="authStore.isAdmin || authStore.hasPermission('articulomaestro.catalogos')"
                 to="/articulo-maestro/catalogos"
                 class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left block"
             >
@@ -87,6 +96,7 @@
 
             <!-- Historial articulos locales -->
             <router-link
+                v-if="authStore.isAdmin || authStore.hasPermission('articulomaestro.historialCRUD')"
                 to="/articulo-maestro/historial-locales"
                 class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left block"
             >
@@ -105,6 +115,7 @@
             
             <!-- Historial articulos SAP -->
             <router-link
+                v-if="authStore.isAdmin || authStore.hasPermission('articulomaestro.historialSAP')"
                 to="/articulo-maestro/historial-sap"
                 class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left block"
             >
