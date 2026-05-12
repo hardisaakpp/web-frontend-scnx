@@ -4,7 +4,7 @@ import type { Articulo, ArticuloFilters } from '../types'
 
 // Instancia separada para el API del Maestro (puerto 8001 vía proxy)
 const apiMaestro = axios.create({
-    baseURL: '/maestro-api',
+    baseURL: import.meta.env.VITE_MAESTRO_API_URL || '/maestro-api',
     headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',

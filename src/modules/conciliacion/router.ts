@@ -19,7 +19,7 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresAuth: true,
       title: 'Importar Movimientos',
-      permissions: ['conciliacion.import'],
+      permissions: ['conciliacion.importacionBancos'],
     },
   },
   {
@@ -29,7 +29,7 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresAuth: true,
       title: 'Sincronizar SAP',
-      permissions: ['conciliacion.sync'],
+      permissions: ['conciliacion.importacionSAP'],
     },
   },
   {
@@ -59,7 +59,7 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresAuth: true,
       title: 'Historial',
-      permissions: ['conciliacion.view'],
+      permissions: ['conciliacion.historial'],
     },
   },
   {
@@ -70,7 +70,7 @@ const routes: RouteRecordRaw[] = [
       requiresAuth: true,
       title: 'Movimientos Pendientes',
       breadcrumb: 'Pendientes',
-      permissions: ['conciliacion.view'],
+      permissions: ['conciliacion.conciliar'],
     },
   },
   {
@@ -80,7 +80,7 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresAuth: true,
       title: 'SAP Incompletos',
-      permissions: ['conciliacion.view'],
+      permissions: ['conciliacion.imcompletos'],
     },
   },
   {
@@ -90,7 +90,7 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresAuth: true,
       title: 'Reporte Maestro',
-      permissions: ['conciliacion.view'],
+      permissions: ['conciliacion.reporte'],
     },
   },
 ]
