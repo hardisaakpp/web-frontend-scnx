@@ -819,12 +819,14 @@ const buildDocumentLines = (
   montoAprobadoByDetalle: Record<number, number>,
   tipoBaseByDetalle: Record<number, string> = {}
 ) => {
+  const roundAmount = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100
+
   const grouped = new Map<string, {
     accountCode: string
     itemDescription: string
     quantity: number
     unitPrice: number
-    hasIva: boolean
+    taxCode: 'IVA_15' | 'IVA_0'
   }>()
 
   for (const detalle of detalles) {
@@ -834,18 +836,27 @@ const buildDocumentLines = (
     const accountCode = normalizeString(detalle.idGasto)
     if (!accountCode) continue
 
-    const current = grouped.get(accountCode)
+    const taxCode = getTaxCode(detalle, tipoBaseByDetalle[detalle.idDetalle])
+    // El valor aprobado en UI viene con IVA incluido para BASE_15; convertir aquí a neto SAP.
+    const netAmount = taxCode === 'IVA_15'
+      ? roundAmount(montoAprobado / 1.15)
+      : roundAmount(montoAprobado)
+
+    if (netAmount <= 0) continue
+    const groupKey = `${accountCode}::${taxCode}`
+
+    const current = grouped.get(groupKey)
     if (current) {
-      current.quantity += 1
-      current.unitPrice += montoAprobado
-      current.hasIva = current.hasIva || getTaxCode(detalle, tipoBaseByDetalle[detalle.idDetalle]) === 'IVA_15'
+      // Para evitar multiplicaciones no deseadas en SAP, agrupamos en una sola línea por cuenta/impuesto.
+      current.quantity = 1
+      current.unitPrice = roundAmount(current.unitPrice + netAmount)
     } else {
-      grouped.set(accountCode, {
+      grouped.set(groupKey, {
         accountCode,
         itemDescription: detalle.nombreGasto || detalle.concepto || '',
         quantity: 1,
-        unitPrice: montoAprobado,
-        hasIva: getTaxCode(detalle, tipoBaseByDetalle[detalle.idDetalle]) === 'IVA_15'
+        unitPrice: netAmount,
+        taxCode
       })
     }
   }
@@ -856,7 +867,7 @@ const buildDocumentLines = (
       ItemDescription: item.itemDescription,
       Quantity: item.quantity,
       UnitPrice: item.unitPrice,
-      TaxCode: item.hasIva ? 'IVA_15' : 'IVA_0',
+      TaxCode: item.taxCode,
       CostingCode: codAlmacen,
       CostingCode2: marcaContab,
       CostingCode3: 'COME'
@@ -864,12 +875,60 @@ const buildDocumentLines = (
   })
 }
 
+const calculatePayloadTotals = (documentLines: Array<{ UnitPrice?: number; Quantity?: number; TaxCode?: string }>) => {
+  const roundAmount = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100
+
+  const subtotal = roundAmount(documentLines.reduce((acc, line) => {
+    const quantity = Number(line.Quantity ?? 1)
+    const unitPrice = Number(line.UnitPrice ?? 0)
+    return acc + (quantity * unitPrice)
+  }, 0))
+
+  const iva = roundAmount(documentLines.reduce((acc, line) => {
+    if (line.TaxCode !== 'IVA_15') return acc
+    const quantity = Number(line.Quantity ?? 1)
+    const unitPrice = Number(line.UnitPrice ?? 0)
+    return acc + (quantity * unitPrice * 0.15)
+  }, 0))
+
+  const total = roundAmount(subtotal + iva)
+
+  return { subtotal, iva, total }
+}
+
+const calculateAprobacionTotal = (montoAprobadoByDetalle: Record<number, number>) => {
+  const roundAmount = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100
+  const total = Object.values(montoAprobadoByDetalle).reduce((acc, value) => acc + Number(value ?? 0), 0)
+  return roundAmount(total)
+}
+
+const downloadJsonPayload = (idLiquidacion: number, payload: unknown) => {
+  try {
+    const jsonText = JSON.stringify(payload, null, 2)
+    const blob = new Blob([jsonText], { type: 'application/json;charset=utf-8' })
+    const url = window.URL.createObjectURL(blob)
+    const now = new Date()
+    const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`
+    const fileName = `liquidacion-${idLiquidacion}-payload-${stamp}.json`
+
+    const link = document.createElement('a')
+    link.href = url
+    link.download = fileName
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  } catch {
+    // No bloquear la integración si falla la descarga del respaldo.
+  }
+}
+
 const integrarLiquidacion = async (idLiquidacion: number) => {
   if (integrationLoading.value[idLiquidacion]) return
 
-  const detalles = detallesByLiquidacion.value[idLiquidacion] || []
-  if (!detalles.length) {
-    error.value = 'No se encontraron detalles para integrar.'
+  const selectedGroup = groupedHistorial.value.find(group => group.idLiquidacion === idLiquidacion)
+  if (!selectedGroup) {
+    error.value = 'No se encontro la liquidacion seleccionada en la vista actual.'
     return
   }
 
@@ -882,20 +941,44 @@ const integrarLiquidacion = async (idLiquidacion: number) => {
   integrationLoading.value[idLiquidacion] = true
   error.value = ''
   try {
-    const aprobacionesByDetalle = historial.value
-      .filter(item => item.idLiquidacion === idLiquidacion)
+    const aprobacionesLiquidacion = selectedGroup.items
+
+    const aprobacionesByDetalle = aprobacionesLiquidacion
       .reduce<Record<number, number>>((acc, item) => {
         const estado = normalizeString(item.estado).toUpperCase()
-        acc[item.idDetalle] = estado === 'APROBADO' ? Number(item.montoAprobado || 0) : 0
+        const monto = Number(item.montoAprobado || 0)
+
+        if (estado === 'APROBADO') {
+          acc[item.idDetalle] = Math.max(Number(acc[item.idDetalle] ?? 0), monto)
+        } else if (acc[item.idDetalle] === undefined) {
+          acc[item.idDetalle] = 0
+        }
+
         return acc
       }, {})
 
-    const tipoBaseByDetalle = historial.value
-      .filter(item => item.idLiquidacion === idLiquidacion)
+    const tipoBaseByDetalle = aprobacionesLiquidacion
       .reduce<Record<number, string>>((acc, item) => {
-        acc[item.idDetalle] = item.tipoBase || ''
+        const estado = normalizeString(item.estado).toUpperCase()
+        const tipoBase = normalizeString(item.tipoBase).toUpperCase()
+        if (!tipoBase) return acc
+
+        const existing = normalizeString(acc[item.idDetalle]).toUpperCase()
+        // Priorizar tipo base de filas aprobadas y evitar que valores vacios lo pisen.
+        if (!existing || estado === 'APROBADO') {
+          acc[item.idDetalle] = tipoBase
+        }
         return acc
       }, {})
+
+    const detalleIdsAprobacion = new Set(aprobacionesLiquidacion.map(item => item.idDetalle))
+    const detalles = (detallesByLiquidacion.value[idLiquidacion] || [])
+      .filter(detalle => detalle.idLiquidacion === idLiquidacion && detalleIdsAprobacion.has(detalle.idDetalle))
+
+    if (!detalles.length) {
+      error.value = 'No se encontraron detalles para integrar.'
+      return
+    }
 
     const docDate = buildDocDate()
     const codAlmacen = normalizeString(liquidacion.codAlmacen)
@@ -908,6 +991,7 @@ const integrarLiquidacion = async (idLiquidacion: number) => {
       error.value = 'No hay valores aprobados por contabilidad para integrar.'
       return
     }
+
     const payload = {
       CardCode: cardCodeCustodio,
       Series: 217,
@@ -922,6 +1006,41 @@ const integrarLiquidacion = async (idLiquidacion: number) => {
       U_SER_EST: '001',
       U_SER_PE: '100',
       DocumentLines: documentLines
+    }
+
+    // Respaldo del JSON exacto antes de enviar a SAP.
+    downloadJsonPayload(idLiquidacion, payload)
+
+    const totals = calculatePayloadTotals(payload.DocumentLines)
+    const totalAprobadoPantalla = calculateAprobacionTotal(aprobacionesByDetalle)
+    const diferenciaTotal = Number((totals.total - totalAprobadoPantalla).toFixed(2))
+    const hayDiferencia = Math.abs(diferenciaTotal) >= 0.01
+    const payloadJson = JSON.stringify(payload, null, 2)
+
+    const warningLines = hayDiferencia
+      ? [
+          '',
+          `ADVERTENCIA: Total SAP difiere del total aprobado en ${formatAmount(diferenciaTotal)}.`
+        ]
+      : []
+
+    const confirmationMessage = [
+      'Resumen de montos:',
+      `Total aprobado (pantalla): ${formatAmount(totalAprobadoPantalla)}`,
+      `Subtotal base SAP (sin IVA): ${formatAmount(totals.subtotal)}`,
+      `IVA SAP: ${formatAmount(totals.iva)}`,
+      `Total SAP (subtotal + IVA): ${formatAmount(totals.total)}`,
+      `Lineas (JSON): ${payload.DocumentLines.length}`,
+      ...warningLines,
+      '',
+      'JSON a enviar a SAP:',
+      payloadJson,
+      '',
+      'Esta seguro de integrar y enviar?'
+    ].join('\n')
+
+    if (!window.confirm(confirmationMessage)) {
+      return
     }
 
     console.log('[Integracion][Payload Liquidaciones]', JSON.stringify(payload, null, 2))
