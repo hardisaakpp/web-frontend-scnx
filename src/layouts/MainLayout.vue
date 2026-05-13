@@ -569,7 +569,10 @@ const hasModuleAccess = (moduleName: string): boolean => {
     )
   }
   if (moduleName === 'pyg') {
-    return permissions.some((permission: string) => permission.toLowerCase() === 'pyg.edit')
+    return permissions.some((permission: string) => {
+      const normalizedPermission = permission.toLowerCase()
+      return normalizedPermission === 'pyg.view' || normalizedPermission === 'pyg.edit'
+    })
   }
   const normalizedModule = moduleName.toLowerCase()
 

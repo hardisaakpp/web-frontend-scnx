@@ -9,7 +9,7 @@ const routes: RouteRecordRaw[] = [
       requiresAuth: true,
       title: 'Importador PYG',
       icon: 'DocumentArrowUpIcon',
-      permissions: ['pyg.edit']
+      permissions: ['pyg.view', 'pyg.edit']
     }
   }
 ]

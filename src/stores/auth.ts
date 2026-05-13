@@ -110,6 +110,61 @@ interface MeResponse {
   capabilities?: AuthCapabilities
 }
 
+/** Claves de capabilities MBA3; aliases = nombres típicos en respuestas .NET (PascalCase). */
+const MBA3_CAPABILITY_DEFS: { snake: keyof AuthCapabilities; aliases: string[] }[] = [
+  { snake: 'can_view_odc_sap', aliases: ['CanViewOdcSap'] },
+  { snake: 'can_manage_order', aliases: ['CanManageOrder'] },
+  { snake: 'can_view_order_list', aliases: ['CanViewOrderList'] },
+  { snake: 'mabel_view', aliases: ['MabelView'] },
+  { snake: 'can_view_plantillas_originales', aliases: ['CanViewPlantillasOriginales'] },
+]
+
+function capabilitiesFromApiCapabilitiesObject(raw: unknown): Partial<AuthCapabilities> {
+  if (!raw || typeof raw !== 'object') return {}
+  const o = raw as Record<string, unknown>
+  const partial: Partial<AuthCapabilities> = {}
+  for (const { snake, aliases } of MBA3_CAPABILITY_DEFS) {
+    for (const key of [snake, ...aliases]) {
+      if (key in o && typeof o[key] === 'boolean') {
+        partial[snake] = o[key] as boolean
+        break
+      }
+    }
+  }
+  return partial
+}
+
+/** Fallback cuando el Core omite parte de `capabilities`: mismas reglas que docs/FRONTEND.md § 0.5.7. */
+function deriveCapabilitiesFromPermissions(permissions: string[], roles: string[]): AuthCapabilities {
+  const p = new Set((permissions || []).map((x) => String(x).toLowerCase()))
+  const isAdmin = (roles || []).some((r) => String(r) === 'Admin')
+  const odcsap = p.has('odcsap.view')
+  const mabel = p.has('mabel.view')
+  const odc = p.has('odc.view')
+  return {
+    can_view_odc_sap: odc,
+    can_manage_order: odcsap,
+    can_view_order_list: odcsap,
+    mabel_view: mabel,
+    can_view_plantillas_originales: mabel || isAdmin,
+  }
+}
+
+function mergeCapabilitiesWithDerived(
+  fromApi: Partial<AuthCapabilities>,
+  derived: AuthCapabilities
+): AuthCapabilities {
+  const out: AuthCapabilities = {}
+  for (const { snake } of MBA3_CAPABILITY_DEFS) {
+    if (fromApi[snake] !== undefined) {
+      out[snake] = fromApi[snake] === true
+    } else {
+      out[snake] = derived[snake] === true
+    }
+  }
+  return out
+}
+
 export const useAuthStore = defineStore('auth', {
   state: (): AuthState => ({
     token: localStorage.getItem('token'),
@@ -316,14 +371,19 @@ export const useAuthStore = defineStore('auth', {
     async fetchMe(): Promise<void> {
       if (!this.token) return
       try {
-        const { data } = await mba3Api.get<MeResponse>('/Auth/me')
+        const { data } = await mba3Api.get<MeResponse & { Capabilities?: unknown }>('/Auth/me')
         if (data?.user) {
           this.userData = data.user
           localStorage.setItem('user', JSON.stringify(data.user))
         }
-        if (data?.capabilities) {
-          this.capabilities = data.capabilities
-        }
+        const rawCaps =
+          (data as Record<string, unknown> | undefined)?.capabilities ??
+          (data as Record<string, unknown> | undefined)?.Capabilities
+        const fromApi = capabilitiesFromApiCapabilitiesObject(rawCaps)
+        const permissions = data?.user?.permissions ?? this.userData?.permissions ?? []
+        const roles = data?.user?.roles ?? this.userData?.roles ?? []
+        const derived = deriveCapabilitiesFromPermissions(permissions, roles)
+        this.capabilities = mergeCapabilitiesWithDerived(fromApi, derived)
       } catch (err: unknown) {
         if (import.meta.env.DEV) {
           console.error('fetchMe failed:', err)
