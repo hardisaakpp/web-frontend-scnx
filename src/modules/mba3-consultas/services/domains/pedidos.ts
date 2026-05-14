@@ -229,7 +229,7 @@ export const pedidosService = {
     if (opts?.confirmar_sincronizacion) params.set('confirmar_sincronizacion', 'true')
     const url = `/api/plantillas/upload-async${params.toString() ? `?${params.toString()}` : ''}`
     const config = {
-      timeout: 120000, // 2 min: backend puede ejecutar sync (fallback) y tardar ~1–2 min
+      timeout: 60000, // upload-async debe responder rápido con process_id; el procesamiento va por polling
       onUploadProgress: (progressEvent: UploadProgressEvent) => {
         if (onProgress && progressEvent.total) {
           const pct = Math.round((progressEvent.loaded / progressEvent.total) * 100)
@@ -237,8 +237,13 @@ export const pedidosService = {
         }
       }
     }
-    const response = await mba3Api.post<UploadPlantillaAsyncAcceptedResponse>(url, formData, config as Parameters<typeof mba3Api.post>[2])
-    return response.data
+    try {
+      const response = await mba3Api.post<UploadPlantillaAsyncAcceptedResponse>(url, formData, config as Parameters<typeof mba3Api.post>[2])
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [uploadPlantillaAsync] Error al iniciar procesamiento:', error)
+      throw createEnrichedError(error, 'No se pudo iniciar el procesamiento de plantilla en segundo plano')
+    }
   },
 
   /**

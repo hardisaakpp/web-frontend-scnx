@@ -23,9 +23,7 @@
             class="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center gap-2"
             :disabled="loading || sendingMultiple"
           >
-            <svg v-if="loading || sendingMultiple" class="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
+            <LoadingSpinner v-if="loading || sendingMultiple" layout="inline" size="sm" color="current" aria-label="Generando ODC" />
             <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
@@ -329,9 +327,7 @@
                   :disabled="sendingDespachoId === despacho.despacho_id || despacho.anulada || sendingMultiple || tieneODC(despacho) || hasRowIssues(despacho).hasWarnings || hasRowIssues(despacho).hasErrors"
                   :title="getButtonTooltip(despacho)"
                 >
-                  <svg v-if="sendingDespachoId === despacho.despacho_id" class="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
+                  <LoadingSpinner v-if="sendingDespachoId === despacho.despacho_id" layout="inline" size="sm" color="current" aria-label="Generando ODC" />
                   <svg v-else-if="tieneODC(despacho)" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                   </svg>
@@ -346,12 +342,13 @@
             <!-- Fila expandible con detalles (colores más claros) -->
             <tr v-if="detallesExpandidos.has(despacho.despacho_id)">
               <td :colspan="visibleColumnsCount + 4" class="px-6 py-4" :class="getDetallesContainerClass()">
-                <div v-if="loadingDetalles[despacho.despacho_id]" class="flex items-center justify-center py-4">
-                  <svg class="animate-spin h-5 w-5 text-violet-500 dark:text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  <span class="ml-2 text-sm text-violet-600 dark:text-violet-300">Cargando detalles...</span>
-                </div>
+                <LoadingSpinner
+                  v-if="loadingDetalles[despacho.despacho_id]"
+                  layout="center"
+                  size="md"
+                  color="violet"
+                  message="Cargando detalles..."
+                />
                 <div v-else-if="detallesPorDespacho[despacho.despacho_id]?.length > 0" class="py-2">
                   <h4 class="text-sm font-semibold mb-3" :class="getDetallesTitleClass()">
                     Comparación MBA3 vs SAP - Detalles del Despacho ({{ detallesPorDespacho[despacho.despacho_id]?.length }} {{ detallesPorDespacho[despacho.despacho_id]?.length === 1 ? 'ítem' : 'ítems' }})
@@ -524,6 +521,7 @@ import type { Despacho, DespachoDetalle } from '../types'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import { useToast } from '@/composables/useToast'
 import { useTablePreferences } from '@/composables/useTablePreferences'
+import LoadingSpinner from './LoadingSpinner.vue'
 
 const props = defineProps<{
   despachos: Despacho[]

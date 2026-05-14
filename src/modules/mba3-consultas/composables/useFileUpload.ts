@@ -15,6 +15,9 @@ import type { UploadPlantillaResponse, PedidoCompleto, PlantillaProcesoEstado } 
 const ALLOWED_FILE_EXTENSIONS = ['.xlsx', '.xls'] as const
 // ⭐ Intervalo para simulación de progreso durante procesamiento del servidor
 const PROCESSING_PROGRESS_INTERVAL_MS = 500
+const PLANTILLA_POLL_INTERVAL_MS = 2000
+const PLANTILLA_WORKER_PICKUP_TIMEOUT_MS = 60000
+const PLANTILLA_PROCESSING_TIMEOUT_MS = 11 * 60 * 1000
 // Rutas explícitas tras subir plantilla / reintentar con correcciones (nunca usar caja-chica u otras rutas)
 const RUTA_CARGAR_PLANTILLA_BASE = '/mba3-consultas/cargar-plantilla'
 const RUTA_PEDIDOS_BASE = '/mba3-consultas/pedidos'
@@ -120,6 +123,58 @@ export function useFileUpload(options: {
       } else {
         uploadMessage.value = 'Finalizando procesamiento...'
       }
+    }
+  }
+
+  async function waitForAsyncPlantillaResult(
+    processId: string,
+    initialMessage: string
+  ): Promise<UploadPlantillaResponse> {
+    uploadFase.value = 'processing'
+    uploadMessage.value = initialMessage
+    uploadProgress.value = Math.max(uploadProgress.value, 90)
+
+    const startedAt = Date.now()
+    let workerStarted = false
+
+    for (;;) {
+      await new Promise(resolve => setTimeout(resolve, PLANTILLA_POLL_INTERVAL_MS))
+
+      const elapsedMs = Date.now() - startedAt
+      if (elapsedMs > PLANTILLA_PROCESSING_TIMEOUT_MS) {
+        throw new Error('La plantilla sigue en procesamiento y excedió el tiempo máximo de espera. Verifica el worker de Celery e intenta consultar el pedido más tarde.')
+      }
+
+      const pollResult = await mba3ConsultasService.getResultadoPlantilla(processId)
+      if (pollResult.status === 'processing') {
+        const estado = pollResult as PlantillaProcesoEstado
+        const serverProgress = estado.progress ?? 0
+        const serverStep = estado.step ?? ''
+
+        if (serverProgress > 0 || (serverStep && serverStep !== 'iniciando')) {
+          workerStarted = true
+        }
+
+        if (!workerStarted && elapsedMs > PLANTILLA_WORKER_PICKUP_TIMEOUT_MS) {
+          throw new Error('El worker de Celery no tomó la plantilla en el tiempo esperado. El procesamiento en segundo plano parece estar detenido.')
+        }
+
+        uploadMessage.value = estado.message || uploadMessage.value
+        uploadProgress.value = Math.max(uploadProgress.value, serverProgress)
+        continue
+      }
+
+      if (pollResult.status === 'error' && 'error' in pollResult) {
+        const err: any = new Error((pollResult as PlantillaProcesoEstado).error || (pollResult as PlantillaProcesoEstado).message)
+        err.response = { data: pollResult }
+        throw err
+      }
+
+      uploadProgress.value = 100
+      uploadFase.value = 'complete'
+      uploadMessage.value = 'Procesamiento completado'
+      await new Promise(resolve => setTimeout(resolve, 400))
+      return pollResult as UploadPlantillaResponse
     }
   }
   
@@ -928,44 +983,19 @@ export function useFileUpload(options: {
             await new Promise(r => setTimeout(r, 400))
             response = normalizeValidationResponse(accepted as any) as UploadPlantillaResponse
           } else {
-            uploadFase.value = 'processing'
-            uploadMessage.value = accepted.message || 'Procesando plantilla en segundo plano...'
-            uploadProgress.value = 90
-            const pollIntervalMs = 2000
-            for (;;) {
-              await new Promise(r => setTimeout(r, pollIntervalMs))
-              const pollResult = await mba3ConsultasService.getResultadoPlantilla(accepted.process_id!)
-              if (pollResult.status === 'processing') {
-                const estado = pollResult as PlantillaProcesoEstado
-                uploadMessage.value = estado.message || uploadMessage.value
-                uploadProgress.value = estado.progress ?? uploadProgress.value
-                continue
-              }
-              if (pollResult.status === 'error' && 'error' in pollResult) {
-                // Preservar el cuerpo de la respuesta (validacion_sap, validacion) para la UI de corrección de códigos
-                const err: any = new Error((pollResult as PlantillaProcesoEstado).error || (pollResult as PlantillaProcesoEstado).message)
-                err.response = { data: pollResult }
-                throw err
-              }
-              uploadProgress.value = 100
-              uploadFase.value = 'complete'
-              uploadMessage.value = 'Procesamiento completado'
-              await new Promise(r => setTimeout(r, 400))
-              response = pollResult as UploadPlantillaResponse
-              break
-            }
+            response = await waitForAsyncPlantillaResult(
+              accepted.process_id!,
+              accepted.message || 'Procesando plantilla en segundo plano...'
+            )
           }
         } catch (asyncErr: any) {
           const errorCode = asyncErr.response?.data?.error ?? asyncErr.response?.data?.detail?.error
           const is503Unavailable = asyncErr.response?.status === 503 &&
             (errorCode === 'storage_required' || errorCode === 'celery_unavailable')
           if (is503Unavailable) {
-            if (import.meta.env.DEV) console.warn('[useFileUpload] Async no disponible (503), usando upload síncrono')
-            toast.info('Procesamiento en segundo plano no disponible', 'Se usará carga síncrona. Espere unos instantes.')
-            response = await mba3ConsultasService.uploadPlantilla(file, handleProgress)
-          } else {
-            throw asyncErr
+            if (import.meta.env.DEV) console.warn('[useFileUpload] Async no disponible (503); no se usará fallback síncrono')
           }
+          throw asyncErr
         }
       } else {
         response = await mba3ConsultasService.uploadPlantilla(file, handleProgress)
@@ -1138,7 +1168,7 @@ export function useFileUpload(options: {
   
   /**
    * ⭐ Reintenta la carga del archivo con correcciones de códigos aplicadas (en segundo plano, async).
-   * Usa upload-async + polling igual que la primera subida; si async no está disponible (503), hace fallback a sync.
+   * Usa upload-async + polling igual que la primera subida.
    */
   async function reintentarConCorrecciones(
     file: File,
@@ -1190,43 +1220,19 @@ export function useFileUpload(options: {
           await new Promise(r => setTimeout(r, 400))
           response = normalizeValidationResponse(accepted as any) as UploadPlantillaResponse
         } else {
-          uploadFase.value = 'processing'
-          uploadMessage.value = accepted.message || 'Aplicando correcciones en segundo plano...'
-          uploadProgress.value = 90
-          const pollIntervalMs = 2000
-          for (;;) {
-            await new Promise(r => setTimeout(r, pollIntervalMs))
-            const pollResult = await mba3ConsultasService.getResultadoPlantilla(accepted.process_id!)
-            if (pollResult.status === 'processing') {
-              const estado = pollResult as PlantillaProcesoEstado
-              uploadMessage.value = estado.message || uploadMessage.value
-              uploadProgress.value = estado.progress ?? uploadProgress.value
-              continue
-            }
-            if (pollResult.status === 'error' && 'error' in pollResult) {
-              const err: any = new Error((pollResult as PlantillaProcesoEstado).error || (pollResult as PlantillaProcesoEstado).message)
-              err.response = { data: pollResult }
-              throw err
-            }
-            uploadProgress.value = 100
-            uploadFase.value = 'complete'
-            uploadMessage.value = 'Procesamiento completado'
-            await new Promise(r => setTimeout(r, 400))
-            response = pollResult as UploadPlantillaResponse
-            break
-          }
+          response = await waitForAsyncPlantillaResult(
+            accepted.process_id!,
+            accepted.message || 'Aplicando correcciones en segundo plano...'
+          )
         }
       } catch (asyncErr: any) {
         const errorCode = asyncErr.response?.data?.error ?? asyncErr.response?.data?.detail?.error
         const is503Unavailable = asyncErr.response?.status === 503 &&
           (errorCode === 'storage_required' || errorCode === 'celery_unavailable')
         if (is503Unavailable) {
-          if (import.meta.env.DEV) console.warn('[useFileUpload] Async no disponible (503), usando upload con correcciones síncrono')
-          toast.info('Procesamiento en segundo plano no disponible', 'Se aplicarán las correcciones en modo síncrono. Espere unos instantes.')
-          response = await mba3ConsultasService.uploadPlantillaConCorrecciones(file, correcciones, handleProgress)
-        } else {
-          throw asyncErr
+          if (import.meta.env.DEV) console.warn('[useFileUpload] Async no disponible (503); no se usará fallback síncrono con correcciones')
         }
+        throw asyncErr
       }
       
       archivoOriginal.value = null

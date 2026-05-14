@@ -119,9 +119,7 @@
               <div class="font-medium text-gray-900 dark:text-white text-sm">ODC a SAP</div>
               <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Generar ODC y enviar a SAP</div>
               <div v-if="loadingDespachos" class="text-xs text-indigo-600 dark:text-indigo-400 mt-2 flex items-center gap-1">
-                <svg class="animate-spin w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
+                <LoadingSpinner layout="inline" size="xs" aria-label="Cargando despachos" />
                 Cargando...
               </div>
             </div>
@@ -390,6 +388,7 @@ import { useOrdenesCompraStore } from '../stores/ordenesCompraStore'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import { useToast } from '@/composables/useToast'
 import ListadoPedidosOriginalesModal from '../components/ListadoPedidosOriginalesModal.vue'
+import LoadingSpinner from '../components/LoadingSpinner.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
