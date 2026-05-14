@@ -244,7 +244,10 @@
             </div>
 
             <div class="p-6">
-            <SkeletonTable v-if="ordenesCompraStore.loading && ordenesCompraStore.ordenesCompra.length === 0" />
+            <div v-if="ordenesCompraStore.loading && ordenesCompraStore.ordenesCompra.length === 0" class="space-y-4">
+              <LoadingSpinner message="Cargando órdenes de compra..." />
+              <SkeletonTable />
+            </div>
 
             <OrdenCompraTable 
               v-else
@@ -325,6 +328,7 @@ import type { Despacho, OrdenCompra, PedidoCompleto } from '../types'
 import DespachosTable from '../components/DespachosTable.vue'
 import OrdenCompraTable from '../components/OrdenCompraTable.vue'
 import SkeletonTable from '../components/SkeletonTable.vue'
+import LoadingSpinner from '../components/LoadingSpinner.vue'
 import IntegracionSAPModal from '../components/IntegracionSAPModal.vue'
 import OdcSapVolverButton from '../components/OdcSapVolverButton.vue'
 import type { AjusteDetalle, IntegracionSAPDetalle, ProcesoCompletoSAPResponse, SolicitudesTransferencia } from '../types'
@@ -1893,8 +1897,13 @@ async function handleEliminarOC(ocIds: string[]) {
 
 // Cargar estadísticas al montar el componente
 onMounted(async () => {
-  await ordenesCompraStore.fetchEstadisticas()
-  await cargarOrdenesCompraPendientes()
+  ordenesCompraStore.loading = true
+  try {
+    await ordenesCompraStore.fetchEstadisticas()
+    await cargarOrdenesCompraPendientes()
+  } finally {
+    ordenesCompraStore.loading = false
+  }
   await nextTick()
   
   // ⭐ NUEVO: Verificar si hay resultados pendientes de envío SAP para mostrar modal
