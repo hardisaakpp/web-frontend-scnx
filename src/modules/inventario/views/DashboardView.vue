@@ -1,0 +1,71 @@
+<template>
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div class="mb-6">
+      <p class="text-sm font-medium text-blue-600 dark:text-blue-400">StoreControl</p>
+      <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Inventario</h1>
+      <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+        Flujo migrado de planificación, generación y revisión de inventarios.
+      </p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      <button
+        v-for="card in visibleCards"
+        :key="card.to"
+        type="button"
+        class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 text-left hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600 transition-all"
+        @click="router.push(card.to)"
+      >
+        <div class="flex items-start gap-3">
+          <div class="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 flex items-center justify-center font-semibold">
+            {{ card.badge }}
+          </div>
+          <div>
+            <h2 class="font-semibold text-gray-900 dark:text-white">{{ card.title }}</h2>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ card.description }}</p>
+          </div>
+        </div>
+      </button>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+
+const router = useRouter()
+const authStore = useAuthStore()
+
+const canEdit = computed(() =>
+  authStore.userRoles?.includes('Admin') ||
+  authStore.hasPermission('storecontrol.inventory.edit')
+)
+
+const cards = computed(() => [
+  {
+    title: 'Configuración de Usuario',
+    description: 'Editar parámetros operativos de inventario del usuario legacy.',
+    to: '/inventario/configuracion-usuario/330',
+    badge: 'U',
+    editOnly: true
+  },
+  {
+    title: 'Planificación',
+    description: 'Crear, revisar, activar y ejecutar planificaciones de inventario.',
+    to: '/inventario/planificaciones',
+    badge: 'P',
+    editOnly: false
+  },
+  {
+    title: 'Inventarios Generados',
+    description: 'Consultar los inventarios materializados desde las planificaciones.',
+    to: '/inventario/generados',
+    badge: 'I',
+    editOnly: false
+  }
+])
+
+const visibleCards = computed(() => cards.value.filter(card => !card.editOnly || canEdit.value))
+</script>

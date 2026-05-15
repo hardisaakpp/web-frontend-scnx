@@ -176,6 +176,22 @@
           <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Validación de Artículos</span>
         </router-link>
 
+        <!-- Inventario -->
+        <router-link
+          v-if="hasModuleAccess('inventario')"
+          to="/inventario"
+          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
+          :class="{
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/inventario'),
+            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/inventario')
+          }"
+          :title="effectiveSidebarCollapsed ? 'Inventario' : ''"
+        >
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <CubeIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/inventario') }" />
+          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Inventario</span>
+        </router-link>
+
         <!-- Personal de Tiendas -->
         <router-link
           v-if="hasModuleAccess('gestionusuarios')"
@@ -543,6 +559,10 @@ const pageTitle = computed(() => {
     '/gestion-usuarios': 'Personal de Tiendas',
     '/pyg': 'Importador PYG',
     '/articulo-scaner': 'Validación de Artículos',
+    '/inventario': 'Inventario',
+    '/inventario/configuracion-usuario': 'Configuración de Usuario',
+    '/inventario/planificaciones': 'Planificación de Inventario',
+    '/inventario/generados': 'Inventarios Generados',
     '/mba3-consultas/ordenes-compra': 'Órdenes de Compra',
     '/mba3-consultas/proceso': 'Enviar ODC a SAP',
     '/usuarios': 'Gestión de Usuarios',
@@ -572,6 +592,14 @@ const hasModuleAccess = (moduleName: string): boolean => {
     return permissions.some((permission: string) => {
       const normalizedPermission = permission.toLowerCase()
       return normalizedPermission === 'pyg.view' || normalizedPermission === 'pyg.edit'
+    })
+  }
+  if (moduleName === 'inventario') {
+    return permissions.some((permission: string) => {
+      const normalizedPermission = permission.toLowerCase()
+      return normalizedPermission === 'storecontrol.inventory.view' ||
+        normalizedPermission === 'storecontrol.inventory.edit' ||
+        normalizedPermission.startsWith('storecontrol.inventory.')
     })
   }
   const normalizedModule = moduleName.toLowerCase()
