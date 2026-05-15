@@ -16,6 +16,7 @@ export default defineConfig(({ mode }) => {
   const conciliacionProxyTarget = env.VITE_CONCILIACION_PROXY_TARGET || 'http://127.0.0.1:8005'
   const articuloScanProxyTarget = env.VITE_ARTICULO_SCAN_PROXY_TARGET || 'http://localhost:8080'
   const inventarioProxyTarget = env.VITE_INVENTARIO_PROXY_TARGET || 'http://localhost:8082'
+  const promocionSobresProxyTarget = env.VITE_PROMOCION_SOBRES_PROXY_TARGET || 'http://localhost:8083'
   const slayerProxyTarget = env.VITE_SLAYER_PROXY_TARGET || 'http://localhost:8093'
   /**
    * Prefijo en el backend tras quitar `/pyg-api`. Por defecto `/api` → `/pyg-api/uploads` → `/api/uploads`.
@@ -137,6 +138,12 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path.replace(/^\/inventario-api/, '')
+        },
+        '/promocion-sobres-api': {
+          target: promocionSobresProxyTarget,
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/promocion-sobres-api/, '')
         }
       }
     },
