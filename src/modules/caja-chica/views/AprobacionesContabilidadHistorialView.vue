@@ -912,7 +912,7 @@ const resolveCardCodeByCedula = async (cedula: string) => {
 const fetchMarcaContab = async (codAlmacen: string): Promise<string> => {
   try {
     const response = await cajaChicaApi.get<{ marcaContab: string }>(
-      `/Liquidaciones/almacen/${encodeURIComponent(codAlmacen)}`
+      `/Liquidaciones/get-almacen?codAlmacen=${encodeURIComponent(codAlmacen)}`
     )
     return response.data?.marcaContab || ''
   } catch {
