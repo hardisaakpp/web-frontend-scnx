@@ -1,5 +1,10 @@
 import { defineStore } from 'pinia'
-import { mapPromocionSobresApiError, promocionSobresService } from '../services/promocionSobresApi'
+import {
+  extractEntregaEstadoPatchFromAxiosError,
+  mapPromocionSobresApiError,
+  promocionSobresService,
+  resolveEntregaFlagsFromApi
+} from '../services/promocionSobresApi'
 import type { BeneficiarioDto, EntregaRegistradaDto, UiError } from '../types'
 
 /** Alineado con IdentificacionNormalizer del API (solo dígitos, 10–13). */
@@ -13,6 +18,10 @@ interface PromocionSobresState {
   codigoEscaneado: string
   beneficiario: BeneficiarioDto | null
   ultimaEntrega: EntregaRegistradaDto | null
+  /** `ApiResponse.message` del GET beneficiarios (éxito). */
+  mensajeConsultaExitosa: string | null
+  /** `ApiResponse.message` del POST entregas (éxito). */
+  mensajeEntregaExitosa: string | null
   loading: boolean
   error: UiError | null
   step: FlowStep
@@ -30,6 +39,8 @@ export const usePromocionSobresStore = defineStore('promocionSobres', {
     codigoEscaneado: '',
     beneficiario: null,
     ultimaEntrega: null,
+    mensajeConsultaExitosa: null,
+    mensajeEntregaExitosa: null,
     loading: false,
     error: null,
     step: 'idle'
@@ -42,7 +53,7 @@ export const usePromocionSobresStore = defineStore('promocionSobres', {
     },
 
     puedeRegistrarEntrega: (state) =>
-      Boolean(state.beneficiario?.puedeEscanear && !state.beneficiario?.entregado && state.codigoEscaneado.trim())
+      Boolean(state.beneficiario?.puedeEscanear && state.codigoEscaneado.trim())
   },
 
   actions: {
@@ -63,6 +74,8 @@ export const usePromocionSobresStore = defineStore('promocionSobres', {
       this.codigoEscaneado = ''
       this.beneficiario = null
       this.ultimaEntrega = null
+      this.mensajeConsultaExitosa = null
+      this.mensajeEntregaExitosa = null
       this.error = null
       this.step = 'idle'
     },
@@ -83,16 +96,20 @@ export const usePromocionSobresStore = defineStore('promocionSobres', {
       this.error = null
       this.beneficiario = null
       this.ultimaEntrega = null
+      this.mensajeConsultaExitosa = null
+      this.mensajeEntregaExitosa = null
       this.codigoEscaneado = ''
       this.step = 'idle'
 
       try {
-        const data = await promocionSobresService.consultarBeneficiario(id)
-        this.beneficiario = data
+        const { beneficiario, mensajeApi } = await promocionSobresService.consultarBeneficiario(id)
+        this.beneficiario = beneficiario
+        this.mensajeConsultaExitosa = mensajeApi
         this.step = 'beneficiario'
       } catch (error) {
         this.error = extractUiError(error)
         this.beneficiario = null
+        this.mensajeConsultaExitosa = null
       } finally {
         this.loading = false
       }
@@ -105,21 +122,31 @@ export const usePromocionSobresStore = defineStore('promocionSobres', {
       this.error = null
 
       try {
-        const entrega = await promocionSobresService.registrarEntrega({
+        const { entrega, mensajeApi } = await promocionSobresService.registrarEntrega({
           identificacion: this.beneficiario.identificacion,
           codigoEscaneado: this.codigoEscaneado
         })
         this.ultimaEntrega = entrega
+        this.mensajeEntregaExitosa = mensajeApi
+        const { entregado, puedeEscanear } = resolveEntregaFlagsFromApi(entrega)
         this.beneficiario = {
           ...this.beneficiario,
-          entregado: true,
-          puedeEscanear: false,
-          cupoDisponible: entrega.cupoDisponible ?? this.beneficiario.cupoDisponible
+          entregado,
+          puedeEscanear,
+          cupoDisponible: entrega.cupoDisponible ?? this.beneficiario.cupoDisponible,
+          codigoValidacion: entrega.codigoValidacion ?? this.beneficiario.codigoValidacion
         }
         this.codigoEscaneado = ''
         this.step = 'entrega_ok'
       } catch (error) {
         this.error = extractUiError(error)
+        const estadoPatch = extractEntregaEstadoPatchFromAxiosError(error)
+        if (estadoPatch && this.beneficiario) {
+          this.beneficiario = { ...this.beneficiario, ...estadoPatch }
+        }
+        if (estadoPatch?.entregado === true) {
+          this.codigoEscaneado = ''
+        }
       } finally {
         this.loading = false
       }

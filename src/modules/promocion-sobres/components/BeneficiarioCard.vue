@@ -17,20 +17,11 @@
       </span>
     </div>
 
-    <dl class="mt-4 grid grid-cols-2 gap-3 text-sm">
+    <dl class="mt-4 text-sm">
       <div>
         <dt class="text-slate-500 dark:text-slate-400">Cupo disponible</dt>
         <dd class="mt-0.5 font-semibold text-slate-900 dark:text-white">
           {{ formatCupo(beneficiario.cupoDisponible) }}
-        </dd>
-      </div>
-      <div>
-        <dt class="text-slate-500 dark:text-slate-400">Puede escanear</dt>
-        <dd
-          class="mt-0.5 font-semibold"
-          :class="beneficiario.puedeEscanear ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'"
-        >
-          {{ beneficiario.puedeEscanear ? 'Sí' : 'No' }}
         </dd>
       </div>
     </dl>
@@ -46,27 +37,33 @@ const props = defineProps<{
 }>()
 
 const statusLabel = computed(() => {
+  if (props.beneficiario.puedeEscanear) {
+    return props.beneficiario.entregado ? 'Validar código' : 'Listo para entregar'
+  }
   if (props.beneficiario.entregado) return 'Ya entregado'
-  if (props.beneficiario.puedeEscanear) return 'Listo para entregar'
   return 'No habilitado'
 })
 
 const statusBadgeClass = computed(() => {
+  if (props.beneficiario.puedeEscanear) {
+    return props.beneficiario.entregado
+      ? 'bg-violet-100 text-violet-900 dark:bg-violet-950/50 dark:text-violet-200'
+      : 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-200'
+  }
   if (props.beneficiario.entregado) {
     return 'bg-amber-100 text-amber-900 dark:bg-amber-950/50 dark:text-amber-200'
-  }
-  if (props.beneficiario.puedeEscanear) {
-    return 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-200'
   }
   return 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
 })
 
 const cardClass = computed(() => {
+  if (props.beneficiario.puedeEscanear) {
+    return props.beneficiario.entregado
+      ? 'border-violet-200 bg-violet-50/50 dark:border-violet-900/40 dark:bg-violet-950/20'
+      : 'border-emerald-200 bg-emerald-50/50 dark:border-emerald-900/40 dark:bg-emerald-950/20'
+  }
   if (props.beneficiario.entregado) {
     return 'border-amber-200 bg-amber-50/80 dark:border-amber-900/40 dark:bg-amber-950/20'
-  }
-  if (props.beneficiario.puedeEscanear) {
-    return 'border-emerald-200 bg-emerald-50/50 dark:border-emerald-900/40 dark:bg-emerald-950/20'
   }
   return 'border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-800/80'
 })

@@ -7,6 +7,7 @@ type AxiosLikeError = {
       success?: boolean
       message?: string | null
       error_code?: string | null
+      details?: unknown
       correlation_id?: string | null
     }
     headers?: Record<string, string>
@@ -18,7 +19,9 @@ type AxiosLikeError = {
 const ERROR_MESSAGES: Record<PromocionSobresErrorCode, string> = {
   NO_ENCONTRADO: 'La cédula no está registrada en esta promoción.',
   YA_ENTREGADO: 'Este beneficiario ya recibió el obsequio.',
-  CODIGO_INVALIDO: 'El código escaneado no es válido para esta promoción.',
+  ESCANEO_DUPLICADO: 'Este codigo ya fue validado. El flujo ha finalizado.',
+  CODIGO_INVALIDO:
+    'El codigo escaneado no coincide con el codigo de validacion registrado para este cliente.',
   IDENTIFICACION_INVALIDA: 'La cédula ingresada no es válida.',
   VALIDATION_ERROR: 'Los datos enviados no son válidos.',
   UNKNOWN: 'No se pudo completar la operación.'
