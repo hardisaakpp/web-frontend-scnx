@@ -11,7 +11,7 @@ import type { BeneficiarioDto, EntregaRegistradaDto, UiError } from '../types'
 const IDENT_MIN = 10
 const IDENT_MAX = 13
 
-type FlowStep = 'idle' | 'beneficiario' | 'entrega_ok'
+type FlowStep = 'idle' | 'beneficiario' | 'entrega_ok' | 'ya_entregado'
 
 interface PromocionSobresState {
   identificacion: string
@@ -53,7 +53,21 @@ export const usePromocionSobresStore = defineStore('promocionSobres', {
     },
 
     puedeRegistrarEntrega: (state) =>
-      Boolean(state.beneficiario?.puedeEscanear && state.codigoEscaneado.trim())
+      Boolean(
+        state.beneficiario?.puedeEscanear &&
+          state.codigoEscaneado.trim() &&
+          state.step !== 'ya_entregado'
+      ),
+
+    /** POST 409 ESCANEO_DUPLICADO: pantalla final (no usar entregado del GET). */
+    mostrarYaEntregado: (state) => state.step === 'ya_entregado' && Boolean(state.beneficiario),
+
+    /** Paso de escaneo según puedeEscanear del API; oculto en éxito o cierre por escaneo duplicado. */
+    mostrarEscaneo: (state) =>
+      Boolean(
+        state.beneficiario?.puedeEscanear &&
+          state.step === 'beneficiario'
+      )
   },
 
   actions: {
@@ -128,25 +142,31 @@ export const usePromocionSobresStore = defineStore('promocionSobres', {
         })
         this.ultimaEntrega = entrega
         this.mensajeEntregaExitosa = mensajeApi
-        const { entregado, puedeEscanear } = resolveEntregaFlagsFromApi(entrega)
+        const { entregado, puedeEscanear } = resolveEntregaFlagsFromApi(entrega, this.beneficiario)
         this.beneficiario = {
           ...this.beneficiario,
           entregado,
           puedeEscanear,
-          cupoDisponible: entrega.cupoDisponible ?? this.beneficiario.cupoDisponible,
-          codigoValidacion: entrega.codigoValidacion ?? this.beneficiario.codigoValidacion
+          cupoDisponible: entrega.cupoDisponible ?? this.beneficiario.cupoDisponible
         }
         this.codigoEscaneado = ''
         this.step = 'entrega_ok'
       } catch (error) {
-        this.error = extractUiError(error)
+        const uiError = extractUiError(error)
         const estadoPatch = extractEntregaEstadoPatchFromAxiosError(error)
         if (estadoPatch && this.beneficiario) {
           this.beneficiario = { ...this.beneficiario, ...estadoPatch }
         }
-        if (estadoPatch?.entregado === true) {
-          this.codigoEscaneado = ''
+        this.codigoEscaneado = ''
+
+        if (uiError.code === 'ESCANEO_DUPLICADO') {
+          this.step = 'ya_entregado'
+          this.error = null
+          this.mensajeEntregaExitosa = uiError.message
+          return
         }
+
+        this.error = uiError
       } finally {
         this.loading = false
       }

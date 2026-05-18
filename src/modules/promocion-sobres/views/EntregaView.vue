@@ -8,13 +8,13 @@
     </header>
 
     <div
-      v-if="store.error"
+      v-if="store.error && !esErrorCodigoErroneo"
       class="rounded-xl border px-4 py-3 text-sm"
       :class="errorPanelClass"
       role="alert"
     >
       <p class="font-medium">{{ errorTitle }}</p>
-      <p class="mt-1">{{ store.error.message }}</p>
+      <p v-if="mostrarDetalleError" class="mt-1">{{ store.error.message }}</p>
       <p v-if="store.error.correlationId" class="mt-2 font-mono text-xs opacity-80">ID: {{ store.error.correlationId }}</p>
     </div>
 
@@ -25,9 +25,6 @@
     >
       <p class="font-semibold">{{ textoEntregaExitosa }}</p>
       <p class="mt-1 text-sm">{{ store.ultimaEntrega.nombre }} — {{ store.ultimaEntrega.identificacion }}</p>
-      <p v-if="store.ultimaEntrega.codigoValidacion" class="mt-1 font-mono text-xs opacity-90">
-        Código validado: {{ store.ultimaEntrega.codigoValidacion }}
-      </p>
       <p v-if="store.ultimaEntrega.fechaEntrega" class="mt-1 text-xs opacity-90">
         {{ formatFechaEntrega(store.ultimaEntrega.fechaEntrega) }}
       </p>
@@ -36,7 +33,10 @@
       </p>
     </div>
 
-    <section class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-700/80 dark:bg-slate-800/80 sm:p-5">
+    <section
+      v-if="!store.mostrarYaEntregado"
+      class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-700/80 dark:bg-slate-800/80 sm:p-5"
+    >
       <label for="cedula-input" class="text-sm font-semibold text-slate-800 dark:text-slate-100">Cédula del beneficiario</label>
       <div class="mt-2 flex gap-2">
         <input
@@ -66,7 +66,24 @@
       </p>
     </section>
 
-    <BeneficiarioCard v-if="store.beneficiario" :beneficiario="store.beneficiario" />
+    <BeneficiarioCard
+      v-if="store.mostrarYaEntregado"
+      :beneficiario="store.beneficiario!"
+      variant="ya_entregado"
+    />
+    <p
+      v-if="store.mostrarYaEntregado && textoEscaneoDuplicado"
+      class="text-center text-sm text-amber-800 dark:text-amber-200"
+      role="status"
+    >
+      {{ textoEscaneoDuplicado }}
+    </p>
+
+    <BeneficiarioCard
+      v-else-if="store.beneficiario && store.step === 'beneficiario'"
+      :beneficiario="store.beneficiario"
+      variant="consulta"
+    />
 
     <section
       v-if="mostrarPasoEscaneo"
@@ -91,13 +108,23 @@
         </button>
       </div>
 
-      <details class="group mt-4 rounded-xl border border-slate-200/90 bg-white/80 px-4 py-3 dark:border-slate-600 dark:bg-slate-900/50">
+      <details
+        class="group mt-4 rounded-xl border border-slate-200/90 bg-white/80 px-4 py-3 dark:border-slate-600 dark:bg-slate-900/50"
+        :open="esErrorCodigoErroneo"
+      >
         <summary
           class="cursor-pointer select-none text-sm font-medium text-slate-700 underline decoration-slate-400/70 underline-offset-2 marker:text-violet-600 dark:text-slate-200"
         >
           Sin lector: ingresar código manualmente
         </summary>
         <div class="mt-3 space-y-3 border-t border-slate-100 pt-3 dark:border-slate-700">
+          <div
+            v-if="esErrorCodigoErroneo"
+            class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100"
+            role="alert"
+          >
+            Código erroneo
+          </div>
           <label for="codigo-input-promo" class="sr-only">Código promocional</label>
           <input
             id="codigo-input-promo"
@@ -149,8 +176,7 @@ import type { PromocionSobresErrorCode } from '../types'
 
 const store = usePromocionSobresStore()
 const isScannerOpen = ref(false)
-/** El GET puede devolver `entregado: true` con `puedeEscanear: true` (segunda validación). */
-const mostrarPasoEscaneo = computed(() => Boolean(store.beneficiario?.puedeEscanear))
+const mostrarPasoEscaneo = computed(() => store.mostrarEscaneo)
 
 const cedulaInputRef = ref<HTMLInputElement | null>(null)
 const codigoInputRef = ref<HTMLInputElement | null>(null)
@@ -188,9 +214,8 @@ const ERROR_TITLES: Partial<
   >
 > = {
   NO_ENCONTRADO: 'Beneficiario no encontrado',
-  YA_ENTREGADO: 'Obsequio ya entregado',
-  CODIGO_INVALIDO: 'Código incorrecto',
-  ESCANEO_DUPLICADO: 'Flujo finalizado',
+  YA_ENTREGADO: 'Código erroneo',
+  CODIGO_INVALIDO: 'Código erroneo',
   IDENTIFICACION_INVALIDA: 'Cédula inválida',
   VALIDATION_ERROR: 'Datos inválidos',
   BAD_REQUEST: 'Sesión o solicitud',
@@ -206,23 +231,34 @@ function formatFechaEntrega(iso: string): string {
   return date.toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' })
 }
 
+const CODIGO_ERRONEO_CODES: PromocionSobresErrorCode[] = ['CODIGO_INVALIDO', 'YA_ENTREGADO']
+
 const errorTitle = computed(() => {
   if (!store.error) return ''
   return ERROR_TITLES[store.error.code] ?? 'No se pudo completar la operación'
 })
 
-const errorPanelClass = computed(() => {
-  if (store.error?.code === 'ESCANEO_DUPLICADO') {
-    return 'border-slate-300 bg-slate-100 text-slate-900 dark:border-slate-600 dark:bg-slate-800/90 dark:text-slate-100'
-  }
-  return 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100'
-})
+const esErrorCodigoErroneo = computed(
+  () =>
+    store.error != null &&
+    CODIGO_ERRONEO_CODES.includes(store.error.code as PromocionSobresErrorCode)
+)
+
+const mostrarDetalleError = computed(() => store.error != null && !esErrorCodigoErroneo.value)
+
+const errorPanelClass =
+  'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100'
 
 const placeholderCodigoManual = 'Codigo impreso en el obsequio o tarjeta del cliente'
 
 const textoEntregaExitosa = computed(() => {
   const api = store.mensajeEntregaExitosa?.trim()
   return api || 'Obsequio entregado correctamente.'
+})
+
+const textoEscaneoDuplicado = computed(() => {
+  if (store.step !== 'ya_entregado') return ''
+  return store.mensajeEntregaExitosa?.trim() || 'Este codigo ya fue validado. El flujo ha finalizado.'
 })
 
 async function onConsultar() {
@@ -234,7 +270,8 @@ async function onConsultar() {
     return
   }
 
-  if (store.beneficiario?.puedeEscanear) {
+  // GET 200: abrir escáner aunque entregado sea true; la validación real es POST /entregas.
+  if (store.mostrarEscaneo) {
     await nextTick()
     isScannerOpen.value = true
   }
@@ -248,16 +285,7 @@ function nuevaConsulta() {
 
 async function onRegistrarEntrega() {
   await store.registrarEntrega()
-  if (!store.error && store.step === 'entrega_ok') {
-    isScannerOpen.value = false
-    return
-  }
-  if (store.error?.code === 'ESCANEO_DUPLICADO' || !store.beneficiario?.puedeEscanear) {
-    isScannerOpen.value = false
-    return
-  }
-  await nextTick()
-  isScannerOpen.value = true
+  isScannerOpen.value = false
 }
 
 async function onCameraDetected(code: string) {

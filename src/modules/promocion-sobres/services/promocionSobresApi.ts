@@ -27,17 +27,23 @@ function normalizeBeneficiarioDto(raw: BeneficiarioDto): BeneficiarioDto {
 }
 
 /**
- * Flags de entrega según respuesta POST: preferir campos explícitos del backend;
- * si falta `entregado`, usar solo `exitoso` (viene del API). Si falta `puedeEscanear`, asumir false.
+ * Flags según POST /entregas: priorizar campos explícitos del API.
+ * Si faltan, conservar el estado previo del GET (no inferir en cliente).
  */
-export function resolveEntregaFlagsFromApi(entrega: EntregaRegistradaDto): {
-  entregado: boolean
-  puedeEscanear: boolean
-} {
+export function resolveEntregaFlagsFromApi(
+  entrega: EntregaRegistradaDto,
+  fallback?: Partial<Pick<BeneficiarioDto, 'entregado' | 'puedeEscanear'>>
+): { entregado: boolean; puedeEscanear: boolean } {
   const entregado =
-    entrega.entregado != null ? normalizeApiBoolean(entrega.entregado) : normalizeApiBoolean(entrega.exitoso)
+    entrega.entregado != null
+      ? normalizeApiBoolean(entrega.entregado)
+      : entrega.exitoso != null
+        ? normalizeApiBoolean(entrega.exitoso)
+        : (fallback?.entregado ?? false)
   const puedeEscanear =
-    entrega.puedeEscanear != null ? normalizeApiBoolean(entrega.puedeEscanear) : false
+    entrega.puedeEscanear != null
+      ? normalizeApiBoolean(entrega.puedeEscanear)
+      : (fallback?.puedeEscanear ?? false)
   return { entregado, puedeEscanear }
 }
 
