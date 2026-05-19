@@ -20,6 +20,7 @@ dist-ssr
 .env.production
 # Plantilla sin secretos: sí se versiona como referencia (no usar tal cual en prod sin revisar).
 !.env.production.example
+!.env.docker.example
 
 # Editor directories and files
 .vscode/*

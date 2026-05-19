@@ -1,0 +1,17 @@
+# Red externa creada por mba3-consultas (`mba3-nexus_edge`, contenedor `mba3-api:8000`).
+# Uso:
+#   docker compose -f docker-compose.dev.yml -f docker-compose.mba3-network.attach.yml up -d
+#   VITE_MBA3_PROXY_TARGET=http://mba3-api:8000 en .env
+services:
+  scnexus-front-dev:
+    environment:
+      VITE_MBA3_PROXY_TARGET: ${VITE_MBA3_PROXY_TARGET:-http://mba3-api:8000}
+      VITE_AUTH_ME_PROXY_TARGET: ${VITE_AUTH_ME_PROXY_TARGET:-http://mba3-api:8000}
+    networks:
+      - default
+      - mba3-nexus_edge
+
+networks:
+  mba3-nexus_edge:
+    name: mba3-nexus_edge
+    external: true

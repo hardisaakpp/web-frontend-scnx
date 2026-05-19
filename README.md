@@ -195,6 +195,18 @@ npm run build
 # Los archivos compilados estarán en /dist
 ```
 
+### Docker (intranet)
+
+```bash
+cp .env.docker.example .env
+# Desarrollo (Vite :3000)
+docker compose -f docker-compose.dev.yml up -d
+# Producción (Nginx + SPA :8081)
+docker compose up -d --build
+```
+
+Guía completa: [docs/DOCKER.md](docs/DOCKER.md)
+
 ### Variables de Entorno
 
 Configurar en `.env.production`:
