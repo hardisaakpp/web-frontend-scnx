@@ -958,7 +958,7 @@ export const pedidosService = {
       const response = await mba3Api.post<ProcesoCompletoSAPResponse>(
         `/api/pedidos/${encodeURIComponent(numeroPedido)}/proceso-completo-sap`,
         { ajustes_detalle: ajustesDetalle },
-        { timeout: 180000 } // 3 minutos - proceso largo que incluye llamada a SAP
+        { timeout: 300000 } // 5 min - proceso largo (SAP + transferencias)
       )
       return response.data
     } catch (error: any) {
@@ -979,7 +979,7 @@ export const pedidosService = {
    * - 202: proceso encolado, usar process_id para polling (GET proceso-sap/resultado/{process_id}).
    * - 200: resultado ya completo (fallback sync o force_sync); body tiene fallback, process_id: null, async: false.
    *   (Algunos despliegues no usan 503 para “Celery no disponible”: devuelven 200 con cuerpo sync; el cliente lo trata como respuesta inmediata.)
-   * Timeout 2 min para cubrir el caso en que el backend ejecuta en sync (~40s).
+   * Timeout corto: debe devolver 202 + process_id; el trabajo largo va por polling.
    */
   async procesoCompletoSAPAsync(
     numeroPedido: string,
@@ -989,7 +989,7 @@ export const pedidosService = {
       const response = await mba3Api.post<ProcesoCompletoSAPAsyncResponse | ProcesoCompletoSAPResponse>(
         `/api/pedidos/${encodeURIComponent(numeroPedido)}/proceso-completo-sap-async`,
         { ajustes_detalle: ajustesDetalle },
-        { timeout: 120000 }
+        { timeout: 90000 }
       )
       return response.data
     } catch (error: any) {

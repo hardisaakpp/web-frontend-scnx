@@ -335,6 +335,7 @@ import type { AjusteDetalle, IntegracionSAPDetalle, ProcesoCompletoSAPResponse, 
 import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
 import QuickTablePagination from '../components/QuickTablePagination.vue'
 import { ejecutarProcesoCompletoSap } from '../composables/ejecutarProcesoCompletoSap'
+import { isTransientClientError, SAP_MAY_STILL_PROCESSING_MESSAGE } from '../utils/httpErrors'
 
 const procesoStore = useProcesoStore()
 const ordenesCompraStore = useOrdenesCompraStore()
@@ -423,6 +424,14 @@ async function handleRetryProcesoCompletoSAP() {
       sapRetryContext.value = null
     }
   } catch (e: any) {
+    if (isTransientClientError(e) || e?.isTransientClientError === true) {
+      toast.warning('Tiempo de espera agotado', SAP_MAY_STILL_PROCESSING_MESSAGE)
+      await Promise.all([
+        ordenesCompraStore.fetchEstadisticas(),
+        cargarOrdenesCompraPendientes(),
+      ]).catch((err) => console.warn('[handleRetryProcesoCompletoSAP] refresh:', err))
+      return
+    }
     const msg = e?.response?.data?.message ?? e?.response?.data?.detail ?? e?.message ?? 'No se pudo reintentar'
     toast.error('Error al reintentar envío a SAP', typeof msg === 'string' ? msg : String(msg))
   } finally {
@@ -1545,6 +1554,18 @@ async function handleIntegrarOC(referenciaDespacho: string, almacenDestinoParam?
     // y limpiará sendingOcId solo cuando el estado sea != 'PENDIENTE'
   } catch (error: any) {
     console.error('Error al integrar ODC:', error)
+
+    if (isTransientClientError(error)) {
+      toast.warning('Tiempo de espera agotado', SAP_MAY_STILL_PROCESSING_MESSAGE)
+      await Promise.all([
+        ordenesCompraStore.fetchEstadisticas(),
+        cargarOrdenesCompraPendientes(),
+      ]).catch((err) => console.warn('[handleIntegrarOC] refresh tras timeout:', err))
+      if (ordenCompraTableRef.value?.clearSendingState) {
+        ordenCompraTableRef.value.clearSendingState()
+      }
+      return
+    }
     
     // Mejorar manejo de errores con mensajes más descriptivos
     let errorTitle = 'Error al integrar'
@@ -1719,6 +1740,19 @@ async function handleIntegrarOCMultiples(referencias: string[]) {
         }
       } catch (error: any) {
         console.error(`Error al enviar orden ${referencia}:`, error)
+
+        if (isTransientClientError(error)) {
+          toast.warning(
+            'Tiempo de espera',
+            `${referencia}: ${SAP_MAY_STILL_PROCESSING_MESSAGE}`
+          )
+          procesoStore.progress = Math.round(((i + 1) / totalOrdenes) * 100)
+          if (i < referencias.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 200))
+          }
+          continue
+        }
+
         errorCount++
         
         // Buscar y actualizar la orden en el array local para marcar como error
@@ -1795,12 +1829,10 @@ async function handleIntegrarOCMultiples(referencias: string[]) {
       if (import.meta.env.DEV) console.log('📦 Pedidos cerrados después del envío:', Array.from(pedidosCerradosConsolidados))
     }
     
-    if (successCount > 0) {
-      await Promise.all([
-        ordenesCompraStore.fetchEstadisticas(),
-        cargarOrdenesCompraPendientes(),
-      ])
-    }
+    await Promise.all([
+      ordenesCompraStore.fetchEstadisticas(),
+      cargarOrdenesCompraPendientes(),
+    ]).catch((err) => console.warn('[handleIntegrarOCMultiples] refresh:', err))
     
     // IMPORTANTE: NO limpiar sendingMultiple aquí
     // El watch en OrdenCompraTable detectará automáticamente cuando los estados cambien

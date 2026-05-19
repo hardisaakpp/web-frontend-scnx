@@ -284,6 +284,7 @@ import OdcSapVolverButton from '../components/OdcSapVolverButton.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
 import { ejecutarProcesoCompletoSap } from '../composables/ejecutarProcesoCompletoSap'
+import { isTransientClientError, SAP_MAY_STILL_PROCESSING_MESSAGE } from '../utils/httpErrors'
 
 const route = useRoute()
 const router = useRouter()
@@ -684,8 +685,15 @@ async function handleEnviarOdcSap() {
     await applySAPResponse(response)
   } catch (e: any) {
     console.error('Error al iniciar proceso completo SAP:', e)
-    const message = e?.response?.data?.message || e?.message || 'No se pudo iniciar el proceso'
-    toast.error('Error al enviar a SAP', message || 'No se pudo completar el proceso')
+    const isTransient = isTransientClientError(e) || e?.isTransientClientError === true
+    const message = isTransient
+      ? SAP_MAY_STILL_PROCESSING_MESSAGE
+      : e?.response?.data?.message || e?.message || 'No se pudo iniciar el proceso'
+    if (isTransient) {
+      toast.warning('Tiempo de espera agotado', message)
+    } else {
+      toast.error('Error al enviar a SAP', message || 'No se pudo completar el proceso')
+    }
   } finally {
     enviandoOdcSap.value = false
     setTimeout(() => {

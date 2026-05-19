@@ -3,6 +3,7 @@
  */
 
 import { mba3Api } from '../config/axiosConfig'
+import { calculateIntegrarSapTimeoutMs } from '../../utils/integrarSapTimeout'
 import { buildUrlWithParams } from '../utils/urlBuilder'
 import type { IntegracionSAPResponse, ProcesamientoSAPResponse } from '../../types'
 
@@ -66,24 +67,14 @@ export const procesamientoService = {
 
     const queryString = params.toString()
     const url = queryString ? `/integrar-sap?${queryString}` : '/integrar-sap'
-    
-    // ⭐ TIMEOUT SINCRONIZADO CON BACKEND
-    // Calcular timeout dinámico basado en número de ODCs a procesar
-    const numOrdenes = Array.isArray(referenciaDespacho) ? referenciaDespacho.length : (referenciaDespacho ? 1 : 0)
-    
-    // Timeout base: 60s para 1 ODC, +30s por cada ODC adicional
-    // Esto cubre: envío a SAP (~10s), emails (~4s), transferencias (~1-5s x tienda), notificaciones
-    // El proceso completo puede tomar ~36-40s para 1 ODC según logs
-    const baseTimeout = 60000 // 60 segundos base
-    const timeoutPerOrden = 30000 // +30 segundos por cada ODC adicional
-    const calculatedTimeout = baseTimeout + (numOrdenes > 1 ? (numOrdenes - 1) * timeoutPerOrden : 0)
-    
-    // Timeout máximo de seguridad: 5 minutos (300s)
-    // Timeout mínimo: 60 segundos
-    const minTimeout = 60000
-    const maxTimeout = 300000
-    const finalTimeout = Math.max(minTimeout, Math.min(maxTimeout, calculatedTimeout))
-    
+
+    const finalTimeout = calculateIntegrarSapTimeoutMs(referenciaDespacho)
+    const numOrdenes = Array.isArray(referenciaDespacho)
+      ? referenciaDespacho.length
+      : referenciaDespacho
+        ? 1
+        : 0
+
     console.debug(`⏱️ [integrarSAP] Timeout calculado: ${finalTimeout / 1000}s para ${numOrdenes} ODC(s)`)
     
     const response = await mba3Api.post<IntegracionSAPResponse>(url, undefined, {

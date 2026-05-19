@@ -10,6 +10,8 @@ import { MAX_EXCEL_UPLOAD_SIZE_BYTES, MAX_EXCEL_UPLOAD_SIZE_MB } from '@/config/
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import { normalizeValidationResponse } from '../services/utils/errorHandler'
 import type { UploadPlantillaResponse, PedidoCompleto, PlantillaProcesoEstado } from '../types'
+import { SAP_MAY_STILL_PROCESSING_MESSAGE } from '../utils/httpErrors'
+import { pollAsyncJob } from '../utils/pollAsyncJob'
 
 // Constantes de configuración
 const ALLOWED_FILE_EXTENSIONS = ['.xlsx', '.xls'] as const
@@ -134,48 +136,45 @@ export function useFileUpload(options: {
     uploadMessage.value = initialMessage
     uploadProgress.value = Math.max(uploadProgress.value, 90)
 
-    const startedAt = Date.now()
-    let workerStarted = false
-
-    for (;;) {
-      await new Promise(resolve => setTimeout(resolve, PLANTILLA_POLL_INTERVAL_MS))
-
-      const elapsedMs = Date.now() - startedAt
-      if (elapsedMs > PLANTILLA_PROCESSING_TIMEOUT_MS) {
-        throw new Error('La plantilla sigue en procesamiento y excedió el tiempo máximo de espera. Verifica el worker de Celery e intenta consultar el pedido más tarde.')
-      }
-
-      const pollResult = await mba3ConsultasService.getResultadoPlantilla(processId)
-      if (pollResult.status === 'processing') {
-        const estado = pollResult as PlantillaProcesoEstado
+    const pollResult = await pollAsyncJob({
+      pollIntervalMs: PLANTILLA_POLL_INTERVAL_MS,
+      maxWaitMs: PLANTILLA_PROCESSING_TIMEOUT_MS,
+      maxWaitMessage: SAP_MAY_STILL_PROCESSING_MESSAGE,
+      workerPickupTimeoutMs: PLANTILLA_WORKER_PICKUP_TIMEOUT_MS,
+      workerNotStartedMessage:
+        'El worker de Celery no tomó la plantilla en el tiempo esperado. El procesamiento en segundo plano parece estar detenido.',
+      poll: () => mba3ConsultasService.getResultadoPlantilla(processId),
+      isProcessing: (result) => result.status === 'processing',
+      hasWorkerStarted: (result) => {
+        if (result.status !== 'processing') return false
+        const estado = result as PlantillaProcesoEstado
         const serverProgress = estado.progress ?? 0
         const serverStep = estado.step ?? ''
-
-        if (serverProgress > 0 || (serverStep && serverStep !== 'iniciando')) {
-          workerStarted = true
+        return serverProgress > 0 || !!(serverStep && serverStep !== 'iniciando')
+      },
+      getTerminalError: (result) => {
+        if (result.status === 'error' && 'error' in result) {
+          const err: any = new Error(
+            (result as PlantillaProcesoEstado).error || (result as PlantillaProcesoEstado).message
+          )
+          err.response = { data: result }
+          return err
         }
-
-        if (!workerStarted && elapsedMs > PLANTILLA_WORKER_PICKUP_TIMEOUT_MS) {
-          throw new Error('El worker de Celery no tomó la plantilla en el tiempo esperado. El procesamiento en segundo plano parece estar detenido.')
-        }
-
+        return null
+      },
+      onUpdate: (result) => {
+        if (result.status !== 'processing') return
+        const estado = result as PlantillaProcesoEstado
         uploadMessage.value = estado.message || uploadMessage.value
-        uploadProgress.value = Math.max(uploadProgress.value, serverProgress)
-        continue
-      }
+        uploadProgress.value = Math.max(uploadProgress.value, estado.progress ?? 0)
+      },
+    })
 
-      if (pollResult.status === 'error' && 'error' in pollResult) {
-        const err: any = new Error((pollResult as PlantillaProcesoEstado).error || (pollResult as PlantillaProcesoEstado).message)
-        err.response = { data: pollResult }
-        throw err
-      }
-
-      uploadProgress.value = 100
-      uploadFase.value = 'complete'
-      uploadMessage.value = 'Procesamiento completado'
-      await new Promise(resolve => setTimeout(resolve, 400))
-      return pollResult as UploadPlantillaResponse
-    }
+    uploadProgress.value = 100
+    uploadFase.value = 'complete'
+    uploadMessage.value = 'Procesamiento completado'
+    await new Promise(resolve => setTimeout(resolve, 400))
+    return pollResult as UploadPlantillaResponse
   }
   
   /**

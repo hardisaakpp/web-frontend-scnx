@@ -32,6 +32,7 @@ export * from './domains'
 // Importar configuración de axios y servicios refactorizados para uso interno
 import { mba3Api, API_BASE_URL } from './config/axiosConfig'
 import { pedidosService } from './domains/pedidos'
+import { calculateIntegrarSapTimeoutMs } from '../utils/integrarSapTimeout'
 import { MAX_EXCEL_UPLOAD_SIZE_BYTES, MAX_EXCEL_UPLOAD_SIZE_MB } from '@/config/uploadLimits'
 
 /**
@@ -145,27 +146,14 @@ export const mba3ConsultasService = {
 
     const queryString = params.toString()
     const url = queryString ? `/integrar-sap?${queryString}` : '/integrar-sap'
-    
-    // ⭐ TIMEOUT SINCRONIZADO CON BACKEND
-    // Calcular timeout dinámico basado en:
-    // 1. Número de ODCs a procesar (más ODCs = más tiempo)
-    // 2. Headers del backend si están disponibles (en futuras respuestas)
-    // 3. Timeout por defecto seguro
-    const numOrdenes = Array.isArray(referenciaDespacho) ? referenciaDespacho.length : (referenciaDespacho ? 1 : 0)
-    
-    // Timeout base: 60s para 1 ODC, +30s por cada ODC adicional
-    // Esto cubre: envío a SAP (~10s), emails (~4s), transferencias (~1-5s x tienda), notificaciones
-    // El proceso completo puede tomar ~36-40s para 1 ODC según logs
-    const baseTimeout = 60000 // 60 segundos base
-    const timeoutPerOrden = 30000 // +30 segundos por cada ODC adicional
-    const calculatedTimeout = baseTimeout + (numOrdenes > 1 ? (numOrdenes - 1) * timeoutPerOrden : 0)
-    
-    // Timeout máximo de seguridad: 5 minutos (300s)
-    // Timeout mínimo: 60 segundos
-    const minTimeout = 60000
-    const maxTimeout = 300000
-    const finalTimeout = Math.max(minTimeout, Math.min(maxTimeout, calculatedTimeout))
-    
+
+    const finalTimeout = calculateIntegrarSapTimeoutMs(referenciaDespacho)
+    const numOrdenes = Array.isArray(referenciaDespacho)
+      ? referenciaDespacho.length
+      : referenciaDespacho
+        ? 1
+        : 0
+
     console.debug(`⏱️ [integrarSAP] Timeout calculado: ${finalTimeout / 1000}s para ${numOrdenes} ODC(s)`)
     
     const response = await mba3Api.post<IntegracionSAPResponse>(url, undefined, {

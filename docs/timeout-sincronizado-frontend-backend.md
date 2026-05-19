@@ -20,17 +20,19 @@ El interceptor de respuesta ahora lee headers HTTP del backend que indican el ti
 La función `integrarSAP` ahora calcula el timeout dinámicamente basado en:
 
 - **Número de ODCs a procesar**: Más ODCs = más tiempo necesario
-- **Timeout base**: 60 segundos para 1 ODC
+- **Timeout base**: 120 segundos para 1 ODC (definido en `utils/integrarSapTimeout.ts`)
 - **Timeout adicional**: +30 segundos por cada ODC adicional
 - **Límites de seguridad**: 
-  - Mínimo: 60 segundos
+  - Mínimo: 120 segundos
   - Máximo: 300 segundos (5 minutos)
+- **Errores de red/timeout**: mensaje unificado (`SAP_MAY_STILL_PROCESSING_MESSAGE`) + refresco de lista de ODC
+- **Proceso completo SAP (async)**: polling hasta 10 min vía `utils/pollAsyncJob.ts`
 
 **Ejemplo de cálculo:**
-- 1 ODC: 60 segundos
-- 2 ODCs: 90 segundos
-- 3 ODCs: 120 segundos
-- 10 ODCs: 330 segundos → limitado a 300 segundos (máximo)
+- 1 ODC: 120 segundos
+- 2 ODCs: 150 segundos
+- 3 ODCs: 180 segundos
+- 10 ODCs: 390 segundos → limitado a 300 segundos (máximo)
 
 ## 🔧 Implementación en Backend (Recomendado)
 
