@@ -1,3 +1,5 @@
+name: scnexus-front-dev
+
 # Desarrollo: Vite en :3000 con proxy (sin Nginx). No usar :8081 para probar APIs en dev.
 # Con MBA3 en Docker: docker compose -f docker-compose.dev.yml -f docker-compose.mba3-network.attach.yml up -d
 services:

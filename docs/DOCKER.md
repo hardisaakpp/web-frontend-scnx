@@ -16,6 +16,8 @@ Perfil de despliegue para **servidor de aplicaciones / intranet**, alineado con 
 
 No uses IPs en `VITE_*` del build salvo APIs en otro dominio HTTPS público.
 
+**Tabla ruta / variable:** [ENV.md](./ENV.md)
+
 ## Inicio rápido
 
 ### 1. Configurar upstreams

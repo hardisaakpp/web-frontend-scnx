@@ -25,10 +25,8 @@ export interface UserPreferences {
   [key: string]: any
 }
 
-// Crear instancia de axios específica para preferencias
-// Conecta directamente al backend de Python (puerto 8000)
-// Similar a como mba3ConsultasApi.ts maneja el módulo MBA3
-const API_BASE_URL = import.meta.env.VITE_PREFERENCES_API_URL || import.meta.env.VITE_MBA3_API_BASE_URL || 'http://localhost:8000'
+// Rutas absolutas desde el origen del front: /api/users/preferences (proxy → MBA3 en dev y prod).
+const API_BASE_URL = import.meta.env.VITE_PREFERENCES_API_URL || ''
 
 const preferencesApi = axios.create({
   baseURL: API_BASE_URL,

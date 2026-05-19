@@ -1,7 +1,8 @@
 import axios from 'axios'
 import { attachUnauthorizedRedirect } from '@/services/sessionGuard'
+import { MBA3_API_BASE_URL } from '@/config/apiBaseUrls'
 
-const API_BASE_URL = import.meta.env.VITE_MBA3_API_BASE_URL || 'http://localhost:8000'
+const API_BASE_URL = MBA3_API_BASE_URL
 
 export const mba3Api = axios.create({
   baseURL: API_BASE_URL,

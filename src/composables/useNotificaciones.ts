@@ -22,6 +22,7 @@ import { ref, type Ref } from '@vue/reactivity'
 import { onUnmounted } from '@vue/runtime-core'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
+import { MBA3_API_BASE_URL } from '@/config/apiBaseUrls'
 
 /** Estructura de una notificación recibida del backend */
 export interface SSENotification {
@@ -90,8 +91,8 @@ function extractNotificationFromSSEData(data: Record<string, unknown>): SSENotif
   return null
 }
 
-/** URL base de la API MBA3 */
-const API_BASE_URL = import.meta.env.VITE_MBA3_API_BASE_URL || 'http://localhost:8000'
+/** URL base de la API MBA3 (ruta relativa; el proxy de Vite/Nginx resuelve el host). */
+const API_BASE_URL = MBA3_API_BASE_URL
 const SSE_ENABLED = String(import.meta.env.VITE_ENABLE_NOTIFICACIONES_SSE ?? 'false').toLowerCase() === 'true'
 
 function getSSEStreamCandidates(baseUrl: string): string[] {

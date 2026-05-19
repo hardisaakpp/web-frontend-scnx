@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { attachUnauthorizedRedirect } from '@/services/sessionGuard'
+import { MBA3_AUTH_API_URL } from '@/config/apiBaseUrls'
 
 type AxiosInstanceType = ReturnType<typeof axios.create>
 
@@ -17,10 +18,10 @@ const coreApi = axios.create({
   baseURL: import.meta.env.VITE_CORE_API_URL || import.meta.env.VITE_API_URL || '/api',
 })
 
-/** MBA3 API: /Auth/me, capabilities, preferencias (microservicio distinto al Core). */
+/** MBA3 API: GET /api/Auth/me (capabilities); no usar para rutas bajo /api/mba3 (ver mba3ConsultasApi). */
 export const mba3Api = axios.create({
   ...baseConfig,
-  baseURL: import.meta.env.VITE_MBA3_API_URL || '/api',
+  baseURL: MBA3_AUTH_API_URL,
 })
 
 function addAuthInterceptor(instance: AxiosInstanceType): void {

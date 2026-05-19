@@ -1,5 +1,7 @@
 # Producción / preproducción intranet: imagen con Nginx + SPA + proxy a backends.
 # Copiar .env.docker.example → .env y ajustar IPs antes de build.
+name: scnexus-front
+
 services:
   scnexus-front:
     build:

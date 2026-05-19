@@ -63,9 +63,15 @@ export default defineConfig(({ mode }) => {
           secure: false,
           rewrite: (path) => path.replace(/^\/mba3-api/, '')
         },
-        // /Auth/me → Core API (debe ir antes que /api)
+        // /Auth/me → MBA3 (igual que deploy/nginx/scnexus.conf.example; antes que /api genérico)
         '/api/Auth/me': {
-          target: coreProxyTarget,
+          target: authMeProxyTarget,
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path
+        },
+        '/api/auth/me': {
+          target: authMeProxyTarget,
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path
@@ -83,6 +89,13 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path
+        },
+        // MBA3 consultas (/api/mba3/* → backend sin prefijo; antes que /api → Core)
+        '/api/mba3': {
+          target: mba3ProxyTarget,
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/api\/mba3/, '')
         },
         // Login y resto de /api → Core (VITE_CORE_PROXY_TARGET en .env.development)
         '/api': {

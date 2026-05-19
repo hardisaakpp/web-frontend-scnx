@@ -224,7 +224,7 @@ VITE_PREFERENCES_API_URL=/api/mba3
 VITE_APP_NAME=SCNexus
 ```
 
-**📖 Referencia completa:** [docs/PRODUCTION_ENV_CHECKLIST.md](docs/PRODUCTION_ENV_CHECKLIST.md)
+**📖 Referencias:** [docs/ENV.md](docs/ENV.md) (dev + prod) · [docs/PRODUCTION_ENV_CHECKLIST.md](docs/PRODUCTION_ENV_CHECKLIST.md) · [docs/DOCKER.md](docs/DOCKER.md)
 
 ## 🤝 Colaboración
 
