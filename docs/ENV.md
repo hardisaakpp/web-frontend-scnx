@@ -42,3 +42,9 @@ Código central de defaults: `src/config/apiBaseUrls.ts`.
 - **8081** — contenedor intranet `scnexus-front` (Nginx)
 
 Ver también [DOCKER.md](./DOCKER.md).
+
+## Timeouts SAP (mba3-consultas)
+
+El bundle no define timeouts HTTP; los fija el código del módulo (`integrarSAP` 120–300 s, polling async hasta 10 min). El **proxy** (Vite en dev, Nginx en Docker) debe permitir al menos el mismo tiempo en rutas `/api/mba3` hacia el API; si Nginx corta antes (p. ej. `proxy_read_timeout 120s`), aparecerá **504** (error de servidor), no el toast amarillo de timeout de axios.
+
+Detalle: [timeout-sincronizado-frontend-backend.md](./timeout-sincronizado-frontend-backend.md).

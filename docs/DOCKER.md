@@ -85,6 +85,12 @@ docker exec scnexus-front wget -qO- --timeout=3 http://192.168.2.12:8080/ || ech
 
 Usa IP de red en lugar de `127.0.0.1` para servicios fuera del contenedor.
 
+### Envío a SAP lento o `504` en `/api/mba3`
+
+El front puede esperar hasta **300 s** en `POST /integrar-sap`, pero Nginx en `deploy/nginx/scnexus-docker.conf.template` suele tener `proxy_read_timeout` de **120–180 s** en el `location` de MBA3. Si el API tarda más, sube esos valores y vuelve a `docker compose build --no-cache`.
+
+Guía completa: [timeout-sincronizado-frontend-backend.md](./timeout-sincronizado-frontend-backend.md).
+
 ### Cambios en `.env` no aplican
 
 Los upstreams de Nginx se **hornean en la imagen** en el build. Ejecuta `docker compose build --no-cache`.

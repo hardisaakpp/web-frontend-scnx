@@ -50,13 +50,18 @@
 
 ### ⚙️ Optimizaciones y Mejoras
 
-7. **[Optimización de Actualización de Estados ODC](optimizacion-estados-odc.md)** 
+7. **[Timeouts y envío a SAP (frontend ↔ backend)](timeout-sincronizado-frontend-backend.md)** ⭐
+   - `integrarSAP` 120–300 s, proceso async con polling hasta 10 min
+   - Errores transitorios (toast amarillo + refresh sin `ERROR` local)
+   - Checklist de validación y alineación con proxy/Celery
+
+8. **[Optimización de Actualización de Estados ODC](optimizacion-estados-odc.md)** 
    - Sistema de retry inteligente
    - Optimización de carga paralela
    - Reducción de delays artificiales
    - Métricas de mejora
 
-8. **[Polling Automático de Despachos](polling-automatico-despachos.md)**
+9. **[Polling Automático de Despachos](polling-automatico-despachos.md)**
    - Sistema de actualización automática
    - Indicadores visuales en tiempo real
    - Sincronización con proceso backend
@@ -64,19 +69,19 @@
 
 ### 🔧 Refactorizaciones
 
-9. **[Refactorización Pedido Detalle](REFACTORIZACION_PEDIDO_DETALLE.md)**
+10. **[Refactorización Pedido Detalle](REFACTORIZACION_PEDIDO_DETALLE.md)**
    - Mejoras en la vista de detalle de pedidos
    - Optimización de componentes
    - Separación de responsabilidades
 
 ### 📊 Análisis y Cambios Backend
 
-10. **[Análisis HU-02 Frontend](ANALISIS_HU-02_FRONTEND.md)**
+11. **[Análisis HU-02 Frontend](ANALISIS_HU-02_FRONTEND.md)**
    - Análisis de historia de usuario 02
    - Cambios requeridos en frontend
    - Impacto en componentes
 
-11. **[Cambios Backend - Procesado SAP](cambios-backend-procesado-sap.md)**
+12. **[Cambios Backend - Procesado SAP](cambios-backend-procesado-sap.md)**
    - Integración con nuevo endpoint de SAP
    - Adaptación de componentes frontend
    - Manejo de respuestas SAP
@@ -99,6 +104,7 @@ docs/
 │   └── FUNCIONALIDADES_ESTANDARIZADAS.md ⭐
 │
 ├── ⚙️ OPTIMIZACIONES
+│   ├── timeout-sincronizado-frontend-backend.md ⭐
 │   ├── optimizacion-estados-odc.md
 │   └── polling-automatico-despachos.md
 │
@@ -126,12 +132,14 @@ docs/
 6. [DARK_MODE_GUIDE.md](DARK_MODE_GUIDE.md) - Soporte dark mode
 
 ### 🔧 Optimización y Mejoras
-1. [optimizacion-estados-odc.md](optimizacion-estados-odc.md) - Patrones de optimización
-2. [polling-automatico-despachos.md](polling-automatico-despachos.md) - Actualizaciones en tiempo real
+1. [timeout-sincronizado-frontend-backend.md](timeout-sincronizado-frontend-backend.md) - Envío a SAP y timeouts
+2. [optimizacion-estados-odc.md](optimizacion-estados-odc.md) - Patrones de optimización
+3. [polling-automatico-despachos.md](polling-automatico-despachos.md) - Actualizaciones en tiempo real
 
 ### 🔌 Integración con Backend
-1. [cambios-backend-procesado-sap.md](cambios-backend-procesado-sap.md) - Endpoints SAP
-2. [ANALISIS_HU-02_FRONTEND.md](ANALISIS_HU-02_FRONTEND.md) - Análisis de cambios
+1. [timeout-sincronizado-frontend-backend.md](timeout-sincronizado-frontend-backend.md) - Timeouts SAP, polling async, errores transitorios
+2. [cambios-backend-procesado-sap.md](cambios-backend-procesado-sap.md) - Endpoints SAP
+3. [ANALISIS_HU-02_FRONTEND.md](ANALISIS_HU-02_FRONTEND.md) - Análisis de cambios
 
 ## 📝 Convenciones de Documentación
 

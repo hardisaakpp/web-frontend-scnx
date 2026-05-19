@@ -39,3 +39,7 @@ Con esto, el modal ofrece la **misma información** que el correo y la UI no dep
 ## Referencia backend
 
 En el repositorio del backend, el contrato y los casos de uso del modal están documentados en **`docs/FRONTEND_MODAL_INTEGRACION_SAP.md`**.
+
+## Timeouts y errores de red
+
+Si el envío a SAP tarda más de lo que el navegador espera, ver [timeout-sincronizado-frontend-backend.md](./timeout-sincronizado-frontend-backend.md) (toast amarillo, refresh de ODC, límites 120–300 s en `integrar-sap`).

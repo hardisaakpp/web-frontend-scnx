@@ -81,6 +81,7 @@ Sistema completo de gestión de acceso (RBAC).
 - **[Índice de Documentación](docs/README.md)** - Documentación técnica completa
 
 ### Documentación Técnica
+- [Timeouts y envío a SAP (frontend ↔ backend)](docs/timeout-sincronizado-frontend-backend.md)
 - [Optimización de Estados ODC](docs/optimizacion-estados-odc.md)
 - [Polling Automático de Despachos](docs/polling-automatico-despachos.md)
 - [Refactorización Pedido Detalle](docs/REFACTORIZACION_PEDIDO_DETALLE.md)

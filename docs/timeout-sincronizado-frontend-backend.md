@@ -1,140 +1,147 @@
-# Sistema de Timeout Sincronizado Frontend-Backend
+# Timeouts y envío a SAP — alineación frontend ↔ backend
 
-## 📋 Resumen
+## Resumen
 
-Sistema implementado para sincronizar los timeouts entre frontend y backend, evitando que las conexiones se corten antes de que el proceso del backend termine.
+El frontend evita cortar peticiones HTTP antes de que el backend termine el envío a SAP, y distingue **errores del cliente** (timeout axios, red) de **errores reales del servidor** (504, validación SAP, etc.).
 
-## ✅ Cambios Implementados en Frontend
+| Flujo | Mecanismo | Timeout / espera en front |
+|-------|-----------|---------------------------|
+| **`POST /integrar-sap`** (Proceso completo → Enviar a SAP) | HTTP síncrono | **120 s** base + **30 s** por ODC extra (máx. **300 s**) |
+| **`POST .../proceso-completo-sap`** (fallback sync) | HTTP síncrono | **300 s** (5 min) |
+| **`POST .../proceso-completo-sap-async`** + polling | Celery + `GET .../proceso-sap/resultado/{id}` | POST **90 s**; polling hasta **10 min** |
+| **Plantilla `upload-async`** + polling | Celery + `GET .../resultado/{id}` | POST **60 s**; polling hasta **11 min** |
+| Resto de `mba3Api` | Default axios | **30 s** (salvo overrides por endpoint) |
 
-### 1. Interceptor de Respuesta Mejorado
+**Backend (referencia):** Celery `task_time_limit=600` s; el API puede persistir `ENVIADA` aunque el navegador ya haya cortado la conexión.
 
-El interceptor de respuesta ahora lee headers HTTP del backend que indican el timeout recomendado:
+---
 
-- **`X-Request-Timeout`**: Tiempo en segundos que el backend recomienda para esta operación
-- **`X-Request-Timeout-Min`**: Tiempo mínimo en segundos (fallback seguro)
+## Archivos en el frontend
 
-**Ubicación:** `src/modules/mba3-consultas/services/mba3ConsultasApi.ts`
+| Archivo | Rol |
+|---------|-----|
+| `src/modules/mba3-consultas/utils/integrarSapTimeout.ts` | Cálculo de timeout para `integrarSAP` |
+| `src/modules/mba3-consultas/utils/httpErrors.ts` | `isTransientClientError`, mensaje `SAP_MAY_STILL_PROCESSING_MESSAGE` |
+| `src/modules/mba3-consultas/utils/pollAsyncJob.ts` | Polling genérico (plantilla, proceso SAP) |
+| `src/modules/mba3-consultas/composables/ejecutarProcesoCompletoSap.ts` | Async + polling + fallback sync |
+| `src/modules/mba3-consultas/composables/useFileUpload.ts` | `waitForAsyncPlantillaResult` (usa `pollAsyncJob`) |
+| `src/modules/mba3-consultas/services/domains/procesamiento.ts` | `integrarSAP` |
+| `src/modules/mba3-consultas/services/domains/pedidos.ts` | `procesoCompletoSAP`, `procesoCompletoSAPAsync` |
+| `src/modules/mba3-consultas/views/ProcesoCompletoView.vue` | Toast amarillo + refresh en timeout/red |
+| `src/modules/mba3-consultas/views/MabelTradingRedistribucionView.vue` | Idem en «Enviar ODC a SAP» |
+| `src/modules/mba3-consultas/services/config/axiosConfig.ts` | Interceptor (headers `X-Request-Timeout` en dev) |
 
-### 2. Timeout Dinámico en `integrarSAP`
+---
 
-La función `integrarSAP` ahora calcula el timeout dinámicamente basado en:
+## Timeout dinámico en `integrarSAP`
 
-- **Número de ODCs a procesar**: Más ODCs = más tiempo necesario
-- **Timeout base**: 120 segundos para 1 ODC (definido en `utils/integrarSapTimeout.ts`)
-- **Timeout adicional**: +30 segundos por cada ODC adicional
-- **Límites de seguridad**: 
-  - Mínimo: 120 segundos
-  - Máximo: 300 segundos (5 minutos)
-- **Errores de red/timeout**: mensaje unificado (`SAP_MAY_STILL_PROCESSING_MESSAGE`) + refresco de lista de ODC
-- **Proceso completo SAP (async)**: polling hasta 10 min vía `utils/pollAsyncJob.ts`
+Definido en `calculateIntegrarSapTimeoutMs()`:
 
-**Ejemplo de cálculo:**
-- 1 ODC: 120 segundos
-- 2 ODCs: 150 segundos
-- 3 ODCs: 180 segundos
-- 10 ODCs: 390 segundos → limitado a 300 segundos (máximo)
+- **1 ODC:** 120 s  
+- **N ODCs:** 120 + (N − 1) × 30 s, tope **300 s**
 
-## 🔧 Implementación en Backend (Recomendado)
+Ejemplo: 3 ODCs → 180 s.
 
-Para una sincronización completa, el backend debería enviar headers HTTP en las respuestas del endpoint `/integrar-sap`.
+Uso en `mba3ConsultasApi.integrarSAP` y `procesamientoService.integrarSAP`.
 
-### Ejemplo en Python/FastAPI
+---
+
+## Errores transitorios (cliente)
+
+`isTransientClientError` es verdadero solo para:
+
+- `ECONNABORTED` / mensaje con `timeout`
+- `ERR_NETWORK`, `ECONNRESET`, `Network Error`
+
+**No** incluye respuestas HTTP **504/502** del servidor → siguen siendo toast **rojo** y error de negocio.
+
+### Comportamiento en UI
+
+| Situación | Toast | Estado local en tabla |
+|-----------|-------|------------------------|
+| Éxito HTTP | Verde / modal | `ENVIADA` |
+| Timeout/red en cliente | **Amarillo** + mensaje «el servidor puede seguir procesando…» | **No** se fuerza `ERROR`; se refresca lista desde API |
+| 504 / error SAP / validación | Rojo | `ERROR` si el backend lo indica |
+
+Vistas afectadas: `ProcesoCompletoView` (`handleIntegrarOC`, múltiples, reintento SAP), `MabelTradingRedistribucionView` (`handleEnviarOdcSap`).
+
+---
+
+## Proceso completo SAP (redistribución)
+
+1. `POST /api/pedidos/{numero}/proceso-completo-sap-async` → `202` + `process_id` (o `200` sync inmediato si `fallback: "sync"`).
+2. Polling cada **2 s** con `pollAsyncJob` (máx. **10 min**).
+3. Si **503** (`celery_unavailable` / `storage_required`) → fallback a `proceso-completo-sap` sync (**300 s**).
+
+Ver `ejecutarProcesoCompletoSap.ts`.
+
+---
+
+## Proxy (Vite / Nginx)
+
+El bundle solo usa rutas relativas (`/api/mba3`, …). Los timeouts del **proxy** deben ser ≥ los del axios:
+
+| Entorno | Configuración |
+|---------|----------------|
+| Dev | Vite en `vite.config.ts` (proxy al MBA3 API) |
+| Docker / prod | `deploy/nginx/scnexus-docker.conf.template` — muchos `location` usan `proxy_read_timeout 120s`; bloque MBA3 con **180s** en algunos paths |
+
+Si el front espera hasta **300 s** en `integrar-sap` pero Nginx corta a **120–180 s**, verás **504** (error rojo), no toast amarillo. Ajustar upstream en Nginx/Apache si hace falta.
+
+Ver [ENV.md](./ENV.md) y [DOCKER.md](./DOCKER.md).
+
+---
+
+## Headers opcionales del backend
+
+El interceptor en `axiosConfig.ts` puede leer (solo log en dev):
+
+- `X-Request-Timeout`
+- `X-Request-Timeout-Min`
+
+El cálculo actual **no depende** de ellos; son recomendación futura. Ejemplo backend (valores alineados con front: base **120** s):
 
 ```python
-from fastapi import Response
-from fastapi.responses import JSONResponse
-
-@app.post("/integrar-sap")
-async def integrar_sap(
-    referencia_despacho: list[str] | None = None,
-    almacen_destino: str | None = None
-):
-    # Calcular tiempo estimado basado en:
-    # - Número de ODCs a procesar
-    # - Número de tiendas/bodegas
-    # - Complejidad del proceso
-    
-    num_ordenes = len(referencia_despacho) if referencia_despacho else 0
-    
-    # Timeout base: 60s para 1 ODC, +30s por cada ODC adicional
-    estimated_timeout = 60  # segundos base
-    if num_ordenes > 1:
-        estimated_timeout += (num_ordenes - 1) * 30
-    
-    # Agregar headers a la respuesta
-    response_data = {
-        "status": "success",
-        "metadata": {...}
-    }
-    
-    response = JSONResponse(content=response_data)
-    response.headers["X-Request-Timeout"] = str(estimated_timeout)
-    response.headers["X-Request-Timeout-Min"] = "60"  # Mínimo seguro
-    
-    return response
+estimated_timeout = 120
+if num_ordenes > 1:
+    estimated_timeout += (num_ordenes - 1) * 30
+response.headers["X-Request-Timeout"] = str(estimated_timeout)
+response.headers["X-Request-Timeout-Min"] = "120"
 ```
 
-### Ejemplo en Node.js/Express
+---
 
-```javascript
-app.post('/integrar-sap', async (req, res) => {
-  const { referencia_despacho, almacen_destino } = req.query;
-  
-  const numOrdenes = Array.isArray(referencia_despacho) 
-    ? referencia_despacho.length 
-    : (referencia_despacho ? 1 : 0);
-  
-  // Calcular timeout estimado
-  let estimatedTimeout = 60; // segundos base
-  if (numOrdenes > 1) {
-    estimatedTimeout += (numOrdenes - 1) * 30;
-  }
-  
-  // Agregar headers
-  res.setHeader('X-Request-Timeout', estimatedTimeout.toString());
-  res.setHeader('X-Request-Timeout-Min', '60');
-  
-  // ... procesar lógica ...
-  
-  res.json({
-    status: 'success',
-    metadata: {...}
-  });
-});
-```
+## Checklist de validación en dev
 
-## 📊 Ventajas del Sistema
+1. Stack: API mba3-consultas, Celery (flujos async), front `:3000` con proxy a MBA3.
+2. **ODC lenta (~60–90 s)** en Proceso completo → Enviar a SAP: overlay hasta respuesta; toast verde; fila **`ENVIADA`**; sin badge rojo falso.
+3. **Corte cliente** (si aún ocurre): toast amarillo; tras refresh/F5 → **`ENVIADA`** si SAP terminó.
+4. **DevTools → Network:** éxito → `POST /integrar-sap` o polling `proceso-sap/resultado/*` con **200**; corte → `failed`/`canceled` en axios pero `GET /ordenes-compra` puede mostrar `ENVIADA`.
+5. **Redistribución** con Celery: progreso hasta **10 min** sin caer por `maxWaitMessage` prematuro.
 
-1. **Sincronización**: Frontend y backend trabajan con los mismos valores de timeout
-2. **Adaptativo**: Se ajusta automáticamente según la carga de trabajo
-3. **Escalable**: Funciona con 1 ODC o múltiples ODCs
-4. **Seguro**: Tiene límites mínimo y máximo para evitar timeouts extremos
-5. **Retrocompatible**: Funciona aunque el backend no envíe headers (usa cálculo dinámico)
+### Si algo no cuadra
 
-## 🔍 Debugging
+| Síntoma | Revisar |
+|---------|---------|
+| Rojo local pero `ENVIADA` en BD | Path que marca `ERROR` sin pasar por `isTransientClientError` |
+| Amarillo pero sigue `PENDIENTE` | Backend aún procesando o falló SAP (logs API, `SAP_SERVICE_LAYER_TIMEOUT`) |
+| 504 en Network | Proxy/backend, no timeout axios → debe ser toast **rojo** |
 
-El sistema incluye logs de debugging:
+---
+
+## Próximo paso opcional (no implementado)
+
+`POST /integrar-sap-async` + polling (mismo patrón que `proceso-completo-sap-async`) requeriría endpoint en el backend. Hoy **integrar-sap** sigue siendo una sola petición HTTP síncrona.
+
+---
+
+## Debugging
+
+En consola del navegador (dev):
 
 ```
-⏱️ [integrarSAP] Timeout calculado: 60s para 1 ODC(s)
-⏱️ [MBA3 API] Backend recomienda timeout: 90s (mín: 60s)
+⏱️ [integrarSAP] Timeout calculado: 120s para 1 ODC(s)
+⏱️ [MBA3 API] Backend recomiende timeout: …s (mín: …s)
 ```
 
-Estos logs aparecen en la consola del navegador para facilitar el debugging.
-
-## 📝 Notas Importantes
-
-- El frontend **ya está implementado** y funcionando con cálculo dinámico
-- El backend puede implementar los headers **opcionalmente** para una sincronización más precisa
-- Si el backend no envía headers, el frontend usa el cálculo dinámico basado en el número de ODCs
-- Los headers son **recomendaciones**, el frontend siempre aplica sus límites de seguridad (min/max)
-
-## 🚀 Próximos Pasos (Opcional)
-
-Para operaciones muy largas (>5 minutos), considerar implementar:
-
-1. **Server-Sent Events (SSE)**: Para operaciones asíncronas con progreso en tiempo real
-2. **Polling**: Para verificar el estado de operaciones largas
-3. **WebSockets**: Para comunicación bidireccional en tiempo real
-
-El sistema actual de timeout sincronizado es suficiente para operaciones que toman menos de 5 minutos.
+Documentación relacionada: [optimizacion-estados-odc.md](./optimizacion-estados-odc.md), [MODAL_INTEGRACION_SAP_SOLICITUDES_TRANSFERENCIA.md](./MODAL_INTEGRACION_SAP_SOLICITUDES_TRANSFERENCIA.md).
