@@ -14,7 +14,7 @@ services:
         required: false
     environment:
       SCNEXUS_PROFILE: ${SCNEXUS_PROFILE:-local}
-      UPSTREAM_CORE: ${UPSTREAM_CORE:-http://host.docker.internal:8080}
+      UPSTREAM_CORE: ${UPSTREAM_CORE:-${CORE_UPSTREAM:-http://192.168.2.12:8080}}
       UPSTREAM_MBA3: ${UPSTREAM_MBA3:-http://host.docker.internal:8000}
       UPSTREAM_MBA3_AUTH: ${UPSTREAM_MBA3_AUTH:-http://host.docker.internal:8000}
       UPSTREAM_CAJA_CHICA: ${UPSTREAM_CAJA_CHICA:-http://host.docker.internal:8092}

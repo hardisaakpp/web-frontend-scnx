@@ -2,10 +2,12 @@ import axios from 'axios'
 import { attachUnauthorizedRedirect } from '@/services/sessionGuard'
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
+  baseURL: import.meta.env.VITE_CORE_API_URL || import.meta.env.VITE_API_URL || '/api',
   headers: {
-    'Content-Type': 'application/json'
-  }
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  },
+  withCredentials: true,
 })
 
 // Interceptor para agregar token en cada request

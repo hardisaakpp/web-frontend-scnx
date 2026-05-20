@@ -6,8 +6,9 @@
   "scripts": {
     "env:local": "node scripts/ensure-active-env.mjs",
     "docker:env": "node scripts/copy-docker-env.mjs",
-    "docker:up": "docker compose --env-file deploy/env/active.env up -d --build",
-    "docker:rebuild": "docker compose --env-file deploy/env/active.env build --no-cache && docker compose --env-file deploy/env/active.env up -d",
+    "predocker:up": "node scripts/ensure-docker-env.mjs",
+    "docker:up": "npm run predocker:up && docker compose --env-file deploy/env/active.env up -d --build",
+    "docker:rebuild": "npm run predocker:up && docker compose --env-file deploy/env/active.env build --no-cache && docker compose --env-file deploy/env/active.env up -d",
     "predev": "node scripts/ensure-active-env.mjs",
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",

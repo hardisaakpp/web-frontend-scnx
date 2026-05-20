@@ -160,7 +160,23 @@ export function mergeViteDevEnv(mode, viteModeEnv = {}) {
  * @param {Record<string, string>} env
  * @param {keyof typeof LOCAL_UPSTREAM_DEFAULTS | keyof typeof LEGACY_UPSTREAM_KEYS} key
  */
-export function upstreamUrl(env, key) {
+/** Defaults Docker prod (imagen Nginx); Core en intranet como en refactor. */
+export const DOCKER_UPSTREAM_DEFAULTS = {
+  UPSTREAM_CORE: 'http://192.168.2.12:8080',
+  UPSTREAM_MBA3: 'http://host.docker.internal:8000',
+  UPSTREAM_MBA3_AUTH: 'http://host.docker.internal:8000',
+  UPSTREAM_CAJA_CHICA: 'http://192.168.2.153:8092',
+  UPSTREAM_PYG: 'http://host.docker.internal:5171',
+  UPSTREAM_MAESTRO: 'http://host.docker.internal:8001',
+  UPSTREAM_CONCILIACION: 'http://host.docker.internal:8005',
+  UPSTREAM_SCAN: 'http://host.docker.internal:8080',
+  UPSTREAM_INVENTARIO: 'http://host.docker.internal:8082',
+  UPSTREAM_PROMOCION_SOBRES: 'http://host.docker.internal:8083',
+  UPSTREAM_SLAYER: 'http://host.docker.internal:8093',
+  UPSTREAM_EMPLOYEES: 'http://192.168.2.153:8092',
+}
+
+export function upstreamUrl(env, key, { docker = false } = {}) {
   const primary = `UPSTREAM_${key}`
   if (env[primary]) return env[primary]
 
@@ -174,7 +190,8 @@ export function upstreamUrl(env, key) {
   const dockerLegacy = LEGACY_DOCKER_UPSTREAM[key]
   if (dockerLegacy && env[dockerLegacy]) return env[dockerLegacy]
 
-  return LOCAL_UPSTREAM_DEFAULTS[primary] ?? LOCAL_UPSTREAM_DEFAULTS.UPSTREAM_CORE
+  const defaults = docker ? DOCKER_UPSTREAM_DEFAULTS : LOCAL_UPSTREAM_DEFAULTS
+  return defaults[primary] ?? DOCKER_UPSTREAM_DEFAULTS.UPSTREAM_CORE
 }
 
 /** Mapeo UPSTREAM_* → ARGs del Dockerfile / docker-compose build. */
