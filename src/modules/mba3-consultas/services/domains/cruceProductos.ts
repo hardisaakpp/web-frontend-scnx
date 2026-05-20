@@ -9,6 +9,7 @@ import type {
   ProcesoEstadoSSE,
   ProcesoEstadoResponse,
   CruceProductosResponse,
+  CruceResultadoPollResponse,
   SugerenciasResponse,
   EstadoSincronizacionResponse,
   SincronizarMaestrosResponse
@@ -145,9 +146,11 @@ export const cruceProductosService = {
    * @param processId ID del proceso
    * @returns Estado actual del proceso
    */
-  async obtenerResultadoCruce(processId: string): Promise<ProcesoEstadoResponse> {
+  async obtenerResultadoCruce(processId: string): Promise<CruceResultadoPollResponse> {
     try {
-      const response = await mba3Api.get<ProcesoEstadoResponse>(`/cruce-productos/resultado/${processId}`)
+      const response = await mba3Api.get<CruceResultadoPollResponse>(
+        `/cruce-productos/resultado/${processId}`
+      )
       return response.data
     } catch (error: any) {
       console.error('❌ [obtenerResultadoCruce] Error al obtener resultado:', error)

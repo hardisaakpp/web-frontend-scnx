@@ -12,9 +12,7 @@
           class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
           :disabled="loading"
         >
-          <svg v-if="loading" class="animate-spin h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
+          <LoadingSpinner v-if="loading" layout="inline" size="sm" color="current" aria-label="Cargando ODC con errores" />
           <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
@@ -54,7 +52,10 @@
         </div>
       </div>
       
-      <SkeletonTable v-if="loading && odcErrores.length === 0" />
+      <div v-if="loading && odcErrores.length === 0" class="space-y-4">
+        <LoadingSpinner message="Cargando ODC con errores..." />
+        <SkeletonTable />
+      </div>
 
       <div v-else-if="odcErrores.length === 0" class="px-6 py-12 text-center">
         <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/20 mb-4">
@@ -158,6 +159,7 @@ import { useOrdenesCompraStore } from '../stores/ordenesCompraStore'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import { useToast } from '@/composables/useToast'
 import SkeletonTable from '../components/SkeletonTable.vue'
+import LoadingSpinner from '../components/LoadingSpinner.vue'
 import CorregirSkuModal from '../components/CorregirSkuModal.vue'
 import type { OrdenCompra } from '../types'
 

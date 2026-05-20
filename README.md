@@ -58,6 +58,7 @@ Sistema completo de gestión de pedidos, órdenes de compra y despachos.
   - Polling automático de despachos
   - Gestión de homologaciones SKU
   - Procesamiento de órdenes de compra
+- **Alineación async con backend:** [docs/ALINEACION_FRONT_ASYNC.md](docs/ALINEACION_FRONT_ASYNC.md) (contrato Celery/polling/SSE; backend: `mba3-consultas/docs/ALINEACION_FRONT_ASYNC.md`)
 
 ### Usuarios, Roles y Permisos
 Sistema completo de gestión de acceso (RBAC).
@@ -81,6 +82,7 @@ Sistema completo de gestión de acceso (RBAC).
 - **[Índice de Documentación](docs/README.md)** - Documentación técnica completa
 
 ### Documentación Técnica
+- [Timeouts y envío a SAP (frontend ↔ backend)](docs/timeout-sincronizado-frontend-backend.md)
 - [Optimización de Estados ODC](docs/optimizacion-estados-odc.md)
 - [Polling Automático de Despachos](docs/polling-automatico-despachos.md)
 - [Refactorización Pedido Detalle](docs/REFACTORIZACION_PEDIDO_DETALLE.md)
@@ -195,6 +197,18 @@ npm run build
 # Los archivos compilados estarán en /dist
 ```
 
+### Docker (intranet)
+
+```bash
+cp .env.docker.example .env
+# Desarrollo (Vite :3000)
+docker compose -f docker-compose.dev.yml up -d
+# Producción (Nginx + SPA :8081)
+docker compose up -d --build
+```
+
+Guía completa: [docs/DOCKER.md](docs/DOCKER.md)
+
 ### Variables de Entorno
 
 Configurar en `.env.production`:
@@ -212,7 +226,7 @@ VITE_PREFERENCES_API_URL=/api/mba3
 VITE_APP_NAME=SCNexus
 ```
 
-**📖 Referencia completa:** [docs/PRODUCTION_ENV_CHECKLIST.md](docs/PRODUCTION_ENV_CHECKLIST.md)
+**📖 Referencias:** [docs/ENV.md](docs/ENV.md) (dev + prod) · [docs/PRODUCTION_ENV_CHECKLIST.md](docs/PRODUCTION_ENV_CHECKLIST.md) · [docs/DOCKER.md](docs/DOCKER.md)
 
 ## 🤝 Colaboración
 

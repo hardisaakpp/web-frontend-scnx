@@ -17,12 +17,14 @@ import articuloMaestroRoutes from '../modules/articulo-maestro/router'
 import gestionUsuariosRoutes from '../modules/gestion-usuarios/router'
 import pygRoutes from '../modules/pyg/router'
 import articuloScanerRoutes from '../modules/articulo-scaner/router'
+import inventarioRoutes from '../modules/inventario/router'
+import promocionSobresRoutes from '../modules/promocion-sobres/router'
 
 console.log('🔍 DEBUG usuariosRoutes:', usuariosRoutes)
 console.log('🔍 DEBUG cajaChicaRoutes:', cajaChicaRoutes)
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     {
       path: '/login',
@@ -70,6 +72,8 @@ const router = createRouter({
         ...gestionUsuariosRoutes,
         ...pygRoutes,
         ...articuloScanerRoutes,
+        ...inventarioRoutes,
+        ...promocionSobresRoutes,
         {
           path: 'forbidden',
           name: 'forbidden',

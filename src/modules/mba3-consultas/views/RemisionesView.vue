@@ -12,9 +12,7 @@
           class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           :disabled="consultandoMBA3 || loading"
         >
-          <svg v-if="consultandoMBA3" class="animate-spin h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
+          <LoadingSpinner v-if="consultandoMBA3" layout="inline" size="sm" color="current" aria-label="Consultando MBA3" />
           <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
@@ -25,9 +23,7 @@
           class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           :disabled="loading"
         >
-          <svg v-if="loading" class="animate-spin h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
+          <LoadingSpinner v-if="loading" layout="inline" size="sm" color="current" aria-label="Cargando remisiones" />
           {{ loading ? 'Cargando...' : 'Actualizar' }}
         </button>
       </div>
@@ -37,7 +33,10 @@
     <div class="bg-white/80 dark:bg-gray-900/80 backdrop-blur-xl rounded-xl shadow-2xl dark:shadow-none p-6 border border-white/30 dark:border-gray-700 relative overflow-hidden">
       <div class="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-transparent pointer-events-none dark:hidden"></div>
       
-      <SkeletonTable v-if="loading && remisiones.length === 0" />
+      <div v-if="loading && remisiones.length === 0" class="space-y-4">
+        <LoadingSpinner message="Cargando remisiones..." color="blue" />
+        <SkeletonTable />
+      </div>
 
       <RemisionesTable 
         v-else
@@ -75,6 +74,7 @@ import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import RemisionesTable from '../components/RemisionesTable.vue'
 import SkeletonTable from '../components/SkeletonTable.vue'
 import QuickTablePagination from '../components/QuickTablePagination.vue'
+import LoadingSpinner from '../components/LoadingSpinner.vue'
 import type { Remision } from '../types'
 
 const toast = useToast()

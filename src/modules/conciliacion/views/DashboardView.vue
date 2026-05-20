@@ -127,6 +127,7 @@
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <!-- Importar Movimientos -->
         <router-link
+          v-if="authStore.isAdmin || authStore.hasPermission('conciliacion.importacion')"
           to="/conciliacion/importar"
           class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md transition-all text-left block group"
         >
@@ -145,6 +146,7 @@
 
         <!-- Sincronizar SAP -->
         <router-link
+          v-if="authStore.isAdmin || authStore.hasPermission('conciliacion.importacion')"
           to="/conciliacion/sincronizar-sap"
           class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:border-orange-300 dark:hover:border-orange-600 hover:shadow-md transition-all text-left block group"
         >
@@ -163,6 +165,7 @@
 
         <!-- Conciliación Automática -->
         <router-link
+          v-if="authStore.isAdmin || authStore.hasPermission('conciliacion.conciliar')"
           to="/conciliacion/conciliar"
           class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:border-emerald-300 dark:hover:border-emerald-600 hover:shadow-md transition-all text-left block group"
         >
@@ -181,6 +184,7 @@
 
         <!-- Novedades -->
         <router-link
+          v-if="authStore.isAdmin || authStore.hasPermission('conciliacion.conciliar')"
           to="/conciliacion/novedades"
           class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:border-purple-300 dark:hover:border-purple-600 hover:shadow-md transition-all text-left block group"
         >
@@ -200,6 +204,7 @@
 
         <!-- Historial -->
         <router-link
+          v-if="authStore.isAdmin || authStore.hasPermission('conciliacion.historial')"
           to="/conciliacion/historial"
           class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:border-cyan-300 dark:hover:border-cyan-600 hover:shadow-md transition-all text-left block group"
         >
@@ -218,6 +223,7 @@
 
         <!-- Partidas Abiertas -->
         <router-link
+          v-if="authStore.isAdmin || authStore.hasPermission('conciliacion.conciliar')"
           to="/conciliacion/partidas-abiertas"
           class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:border-rose-300 dark:hover:border-rose-600 hover:shadow-md transition-all text-left block group"
         >
@@ -236,6 +242,7 @@
 
         <!-- SAP Incompletos -->
         <router-link
+          v-if="authStore.isAdmin || authStore.hasPermission('conciliacion.imcompletos')"
           to="/conciliacion/sap-incompletos"
           class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:border-amber-300 dark:hover:border-amber-600 hover:shadow-md transition-all text-left block group"
         >
@@ -254,6 +261,7 @@
 
         <!-- Reporte Maestro -->
         <router-link
+          v-if="authStore.isAdmin || authStore.hasPermission('conciliacion.reporte')"
           to="/conciliacion/reporte-maestro"
           class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:border-indigo-300 dark:hover:border-indigo-600 hover:shadow-md transition-all text-left block group"
         >
@@ -277,8 +285,10 @@
 <script setup lang="ts">
 import { onMounted, reactive } from 'vue'
 import { useConciliacionStore } from '../stores/conciliacionStore'
+import { useAuthStore } from '@/stores/auth'
 
 const store = useConciliacionStore()
+const authStore = useAuthStore()
 
 const meses = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',

@@ -12,6 +12,9 @@
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
     "test:e2e": "playwright test",
+    "test:e2e:mba3": "playwright test tests/e2e/mba3-async.spec.ts tests/e2e/mba3-plantilla-async.spec.ts",
+    "sync:openapi": "powershell -NoProfile -File scripts/sync-openapi-from-mba3.ps1",
+    "test:e2e:mba3:live": "playwright test tests/e2e/mba3-async-live.spec.ts",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
     "test:e2e:report": "playwright show-report"

@@ -95,12 +95,7 @@
     </div>
 
     <!-- Tabla -->
-    <div v-if="loading" class="text-center py-12 text-gray-500 dark:text-gray-400">
-      <svg class="animate-spin h-8 w-8 mx-auto text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-      </svg>
-      <p class="mt-2">Cargando datos...</p>
-    </div>
+    <LoadingSpinner v-if="loading" message="Cargando datos..." color="blue" />
 
     <div v-else-if="filteredOrdenes.length === 0" class="text-center py-12 text-gray-500 dark:text-gray-400">
       <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -182,6 +177,7 @@ import { ref, computed, watch } from '@vue/reactivity'
 import type { OrdenCompraLog } from '../types'
 import { isSapError, getSapErrorMessage } from '../composables/useSapErrorMessages'
 import { useTablePreferences } from '@/composables/useTablePreferences'
+import LoadingSpinner from './LoadingSpinner.vue'
 
 const props = defineProps<{
   ordenesCompra: OrdenCompraLog[]

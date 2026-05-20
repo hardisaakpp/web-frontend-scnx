@@ -1,4 +1,23 @@
 <template>
+  <Teleport to="body">
+    <div
+      v-if="cruceEnCurso"
+      class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center"
+    >
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 max-w-md mx-4 w-full text-center border border-gray-200 dark:border-gray-600">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Cruce de productos MBA3 / SAP</h3>
+        <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">{{ cruceMessage || 'Procesando...' }}</p>
+        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5 mb-2">
+          <div
+            class="bg-violet-600 h-2.5 rounded-full transition-all duration-300"
+            :style="{ width: `${cruceProgress}%` }"
+          />
+        </div>
+        <p class="text-sm font-semibold text-violet-600 dark:text-violet-400">{{ cruceProgress }}%</p>
+      </div>
+    </div>
+  </Teleport>
+
   <div class="space-y-6">
     <!-- Header -->
     <div class="flex items-center justify-between flex-wrap gap-4">
@@ -9,6 +28,18 @@
         </p>
       </div>
       <div class="flex items-center gap-3">
+        <button
+          type="button"
+          :disabled="cruceEnCurso || store.loading"
+          class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center gap-2"
+          @click="ejecutarCruceProductosUi"
+        >
+          <LoadingSpinner v-if="cruceEnCurso" layout="inline" size="sm" color="current" aria-label="Cruce en curso" />
+          <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+          </svg>
+          Cruce MBA3/SAP
+        </button>
         <button
           @click="abrirModalBuscarSku"
           class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center gap-2"
@@ -24,9 +55,7 @@
           :disabled="store.loading"
           class="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium flex items-center gap-2"
         >
-          <svg v-if="store.loading" class="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
+          <LoadingSpinner v-if="store.loading" layout="inline" size="sm" color="current" aria-label="Sincronizando homologaciones" />
           <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
@@ -171,13 +200,7 @@
 
     <!-- Tabla de homologaciones -->
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden transition-colors duration-300">
-      <div v-if="store.loading" class="text-center py-12">
-        <svg class="animate-spin h-8 w-8 text-violet-600 mx-auto" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        <p class="mt-4 text-gray-500 dark:text-gray-400">Cargando homologaciones...</p>
-      </div>
+      <LoadingSpinner v-if="store.loading" message="Cargando homologaciones..." color="violet" />
 
       <div v-else-if="store.error" class="text-center py-12">
         <p class="text-red-600 dark:text-red-400">{{ store.error }}</p>
@@ -368,6 +391,10 @@ import { useToast } from '@/composables/useToast'
 import HomologacionModal from '../components/HomologacionModal.vue'
 import BuscarSkuModal from '../components/BuscarSkuModal.vue'
 import QuickTablePagination from '../components/QuickTablePagination.vue'
+import LoadingSpinner from '../components/LoadingSpinner.vue'
+import { ejecutarCruceProductos } from '../composables/ejecutarCruceProductos'
+import { isProcesoTransientError } from '../utils/procesoAsyncHelpers'
+import { SAP_MAY_STILL_PROCESSING_MESSAGE } from '../utils/httpErrors'
 import type { SkuHomologacion, SkuHomologacionUpdateRequest } from '../types'
 
 const route = useRoute()
@@ -387,6 +414,9 @@ const modalAbierto = ref(false)
 const homologacionSeleccionada = ref<SkuHomologacion | null>(null)
 const guardando = ref(false)
 const modalBuscarSkuAbierto = ref(false)
+const cruceEnCurso = ref(false)
+const cruceProgress = ref(0)
+const cruceMessage = ref('')
 
 // Computed - Los datos ya vienen paginados del servidor, pero filtramos localmente los homologados
 const paginatedHomologaciones = computed(() => {
@@ -515,8 +545,60 @@ async function sincronizarHomologaciones() {
     toast.info('Sincronizando...', 'Buscando SKUs no coincidentes')
     await store.sincronizarHomologaciones()
     toast.success('Sincronización completada', 'Las homologaciones se han actualizado')
-  } catch (error: any) {
-    toast.error('Error al sincronizar', error.message)
+  } catch (error: unknown) {
+    if (isProcesoTransientError(error)) {
+      toast.warning('Tiempo de espera agotado', SAP_MAY_STILL_PROCESSING_MESSAGE)
+      await cargarHomologaciones()
+      return
+    }
+    toast.error('Error al sincronizar', error instanceof Error ? error.message : 'Error desconocido')
+  }
+}
+
+async function ejecutarCruceProductosUi() {
+  if (cruceEnCurso.value) return
+  cruceEnCurso.value = true
+  cruceProgress.value = 0
+  cruceMessage.value = 'Iniciando cruce...'
+
+  try {
+    const result = await ejecutarCruceProductos({
+      onPollingUpdate: ({ message, progress }) => {
+        if (typeof progress === 'number') {
+          cruceProgress.value = Math.min(100, Math.max(cruceProgress.value, progress))
+        }
+        if (message) cruceMessage.value = message
+      },
+    })
+
+    cruceProgress.value = 100
+    cruceMessage.value = 'Cruce completado'
+    const stats = result.data?.estadisticas
+    const pct = stats?.porcentaje_homologacion
+    toast.success(
+      'Cruce completado',
+      stats
+        ? `Homologación: ${stats.homologables ?? 0} homologables, ${stats.solo_en_mba3 ?? 0} solo MBA3, ${stats.solo_en_sap ?? 0} solo SAP${pct != null ? ` (${pct}% homologados)` : ''}`
+        : result.message || 'Revise la lista de homologaciones'
+    )
+    store.currentPage = 1
+    await cargarHomologaciones()
+  } catch (error: unknown) {
+    if (isProcesoTransientError(error)) {
+      toast.warning('Tiempo de espera agotado', SAP_MAY_STILL_PROCESSING_MESSAGE)
+      await cargarHomologaciones()
+    } else {
+      toast.error(
+        'Error en el cruce',
+        error instanceof Error ? error.message : 'No se pudo completar el cruce de productos'
+      )
+    }
+  } finally {
+    cruceEnCurso.value = false
+    setTimeout(() => {
+      cruceProgress.value = 0
+      cruceMessage.value = ''
+    }, 400)
   }
 }
 

@@ -98,8 +98,11 @@ npm run test:e2e:report
 
 ```
 tests/e2e/
+├── helpers/mba3Mocks.ts   # Mocks API MBA3 para E2E sin Celery/SAP
 ├── login.spec.ts          # Tests del flujo de login
-├── mba3-consultas.spec.ts # Tests de MBA3 (próximamente)
+├── mba3-async.spec.ts           # Cruce async (poll/SSE mock) — `npm run test:e2e:mba3`
+├── mba3-plantilla-async.spec.ts # Plantilla upload-async — `npm run test:e2e:mba3`
+├── mba3-async-live.spec.ts      # Smoke live (requiere E2E_LIVE + credenciales)
 └── permissions.spec.ts    # Tests de permisos (próximamente)
 ```
 
@@ -144,9 +147,12 @@ test.describe('Login Flow', () => {
 ### Configuración
 
 - **Archivo de config**: `playwright.config.ts`
-- **Base URL**: `http://localhost:4173` (vite preview)
+- **Base URL**: `http://localhost:3000` (vite dev con proxy a MBA3 en `:8000`)
+- **Preview**: `E2E_WEB_SERVER=preview` → `http://localhost:4173` (sin proxy; no usar para MBA3)
 - **Navegadores**: Chromium (Firefox y Webkit opcionales)
-- **Web server**: Playwright levanta automáticamente `npm run preview`
+- **Web server**: Playwright levanta `npm run dev` por defecto
+- **MBA3 async**: `npm run test:e2e:mba3` (plantilla + cruce, mocks); OpenAPI: `npm run sync:openapi` (API en `:8000`); live: `.env.test` + `E2E_LIVE=1` → `npm run test:e2e:mba3:live` (ver `.env.test.example`)
+- **Contrato async:** [docs/ALINEACION_FRONT_ASYNC.md](../docs/ALINEACION_FRONT_ASYNC.md)
 
 ---
 

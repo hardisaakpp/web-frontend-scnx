@@ -2,6 +2,8 @@ import { defineStore } from 'pinia'
 import { ref, computed } from '@vue/reactivity'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import type { AjusteDetalle, IntegracionSAPDetalle, SolicitudesTransferencia } from '../types'
+import { isProcesoTransientError, rethrowIfTransient } from '../utils/procesoAsyncHelpers'
+import { SAP_MAY_STILL_PROCESSING_MESSAGE } from '../utils/httpErrors'
 
 // Estado del proceso de generación de ODC
 type ODCProcessState = 
@@ -99,8 +101,13 @@ export const useProcesoStore = defineStore('mba3Proceso', () => {
       const data = await mba3ConsultasService.migrar()
       resultados.value = { ...resultados.value, migrar: data }
       return data
-    } catch (err: any) {
-      error.value = err.message || 'Error al migrar'
+    } catch (err: unknown) {
+      if (isProcesoTransientError(err)) {
+        error.value = SAP_MAY_STILL_PROCESSING_MESSAGE
+        rethrowIfTransient(err)
+      }
+      const message = err instanceof Error ? err.message : 'Error al migrar'
+      error.value = message
       throw err
     } finally {
       loading.value = false
@@ -144,8 +151,13 @@ export const useProcesoStore = defineStore('mba3Proceso', () => {
       }
       
       return data
-    } catch (err: any) {
-      error.value = err.message || 'Error al procesar ODC'
+    } catch (err: unknown) {
+      if (isProcesoTransientError(err)) {
+        error.value = SAP_MAY_STILL_PROCESSING_MESSAGE
+        rethrowIfTransient(err)
+      }
+      const message = err instanceof Error ? err.message : 'Error al procesar ODC'
+      error.value = message
       console.error('[ODC Process] Error al procesar:', err)
       throw err
     } finally {
@@ -162,8 +174,13 @@ export const useProcesoStore = defineStore('mba3Proceso', () => {
       const data = await mba3ConsultasService.integrarSAP(referenciaDespacho)
       resultados.value = { ...resultados.value, integrarSAP: data }
       return data
-    } catch (err: any) {
-      error.value = err.message || 'Error al integrar con SAP'
+    } catch (err: unknown) {
+      if (isProcesoTransientError(err)) {
+        error.value = SAP_MAY_STILL_PROCESSING_MESSAGE
+        rethrowIfTransient(err)
+      }
+      const message = err instanceof Error ? err.message : 'Error al integrar con SAP'
+      error.value = message
       throw err
     } finally {
       loading.value = false
@@ -208,8 +225,13 @@ export const useProcesoStore = defineStore('mba3Proceso', () => {
       }
       
       return data
-    } catch (err: any) {
-      error.value = err.message || 'Error al procesar ODC desde pedido'
+    } catch (err: unknown) {
+      if (isProcesoTransientError(err)) {
+        error.value = SAP_MAY_STILL_PROCESSING_MESSAGE
+        rethrowIfTransient(err)
+      }
+      const message = err instanceof Error ? err.message : 'Error al procesar ODC desde pedido'
+      error.value = message
       console.error('[ODC Process Pedido] Error al procesar:', err)
       throw err
     } finally {

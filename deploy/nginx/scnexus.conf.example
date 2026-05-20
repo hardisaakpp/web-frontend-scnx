@@ -169,6 +169,51 @@ server {
     }
 
     # =========================
+    # Promoción Sobres API (/promocion-sobres-api/* -> backend same path without prefix)
+    # Example:
+    #   /promocion-sobres-api/api/promocion-sobres/v1/beneficiarios/... -> http://127.0.0.1:8083/api/promocion-sobres/v1/...
+    # =========================
+    location /promocion-sobres-api/ {
+        rewrite ^/promocion-sobres-api(.*)$ $1 break;
+        proxy_pass http://127.0.0.1:8083;
+        proxy_http_version 1.1;
+        client_max_body_size 50M;
+
+        proxy_connect_timeout 120s;
+        proxy_send_timeout 120s;
+        proxy_read_timeout 120s;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Authorization $http_authorization;
+    }
+
+    # =========================
+    # Inventario API (/inventario-api/* -> backend same path without prefix)
+    # Example:
+    #   /inventario-api/api/v1/inventory-plannings -> http://127.0.0.1:8082/api/v1/inventory-plannings
+    # Keep this block above the SPA fallback to avoid returning index.html.
+    # =========================
+    location /inventario-api/ {
+        rewrite ^/inventario-api(.*)$ $1 break;
+        proxy_pass http://127.0.0.1:8082;
+        proxy_http_version 1.1;
+        client_max_body_size 50M;
+
+        proxy_connect_timeout 180s;
+        proxy_send_timeout 180s;
+        proxy_read_timeout 180s;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Authorization $http_authorization;
+    }
+
+    # =========================
     # CORE - rest of /api
     # =========================
     location /api/ {

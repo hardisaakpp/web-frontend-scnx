@@ -172,10 +172,7 @@
               <svg v-if="!descargandoRedistribucion" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              <svg v-else class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
+              <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Descargando redistribución" />
               {{ descargandoRedistribucion ? 'Descargando...' : 'Descargar Redistribución' }}
             </button>
             <button
@@ -188,10 +185,7 @@
               <svg v-if="!cancelando" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
-              <svg v-else class="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
+              <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Cancelando pedido" />
               {{ cancelando ? 'Cancelando...' : 'Cancelar Pedido' }}
             </button>
             <OdcSapVolverButton
@@ -205,12 +199,8 @@
       </div>
 
       <!-- Estado de carga al montar /redistribucion sin id: GET /api/pedidos/ultimo-redistribucion -->
-      <div v-if="(loading || cargandoUltimoConfirmado) && !pedido" class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-12 text-center">
-        <svg class="animate-spin h-8 w-8 text-indigo-600 dark:text-indigo-400 mx-auto" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        <p class="mt-4 text-sm text-gray-600 dark:text-gray-400">{{ cargandoUltimoConfirmado ? 'Buscando último pedido...' : 'Cargando pedido...' }}</p>
+      <div v-if="(loading || cargandoUltimoConfirmado) && !pedido" class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
+        <LoadingSpinner :message="cargandoUltimoConfirmado ? 'Buscando último pedido...' : 'Cargando pedido...'" />
       </div>
 
       <!-- Error state -->
@@ -234,6 +224,23 @@
         :default-expanded="soloLectura"
         @copy-to-clipboard="copyToClipboard"
       />
+
+      <div
+        v-if="odcSapProcesoEnServidor && !enviandoOdcSap && pedido"
+        class="mb-4 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/25 px-4 py-3 text-sm text-blue-900 dark:text-blue-100 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+        role="status"
+      >
+        <p class="flex-1">
+          Hay un envío a SAP en proceso en el servidor. Puede seguir el progreso sin iniciar otro envío.
+        </p>
+        <button
+          type="button"
+          class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium whitespace-nowrap shrink-0"
+          @click="handleEnviarOdcSap"
+        >
+          Seguir progreso
+        </button>
+      </div>
 
       <!-- Sección de Redistribución (siempre visible si hay pedido) -->
       <RedistribucionTiendas
@@ -291,8 +298,14 @@ import { useProcesoStore } from '../stores/procesoStore'
 import PedidoCabecera from '../components/PedidoCabecera.vue'
 import RedistribucionTiendas from '../components/RedistribucionTiendas.vue'
 import OdcSapVolverButton from '../components/OdcSapVolverButton.vue'
+import LoadingSpinner from '../components/LoadingSpinner.vue'
 import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
-import { ejecutarProcesoCompletoSap } from '../composables/ejecutarProcesoCompletoSap'
+import {
+  ejecutarProcesoCompletoSap,
+  getPendingOdcSapProcessingState,
+} from '../composables/ejecutarProcesoCompletoSap'
+import { useSapProcessProgress } from '../composables/useSapProcessProgress'
+import { isTransientClientError, SAP_MAY_STILL_PROCESSING_MESSAGE } from '../utils/httpErrors'
 
 const route = useRoute()
 const router = useRouter()
@@ -305,61 +318,26 @@ const pedidoIdInput = ref('')
 const descargandoRedistribucion = ref(false)
 const enviandoOdcSap = ref(false)
 
-// ⭐ NUEVO: Variables de progreso para envío ODC a SAP
-const sapProgress = ref(0)
-const sapFase = ref<'idle' | 'redistribucion' | 'generando' | 'enviando' | 'complete'>('idle')
-const sapMessage = ref('')
+const odcSapProcesoEnServidor = ref(false)
 
-// Intervalo para simulación de progreso
-let sapProgressInterval: ReturnType<typeof setInterval> | null = null
+const {
+  sapProgress,
+  sapFase,
+  sapMessage,
+  resetSapProgress,
+  startSapProgressSimulation,
+  applySapPollingUpdate,
+  completeSapProgress,
+  stopSimulation: stopSapProgressSimulation,
+} = useSapProcessProgress()
 
-function resetSapProgress() {
-  sapProgress.value = 0
-  sapFase.value = 'idle'
-  sapMessage.value = ''
-  if (sapProgressInterval) {
-    clearInterval(sapProgressInterval)
-    sapProgressInterval = null
+async function refreshPendingOdcSapState() {
+  if (!numeroPedido.value) {
+    odcSapProcesoEnServidor.value = false
+    return
   }
-}
-
-function startSapProgressSimulation() {
-  resetSapProgress()
-  sapFase.value = 'redistribucion'
-  sapMessage.value = 'Confirmando redistribución...'
-  
-  let currentProgress = 0
-  
-  sapProgressInterval = setInterval(() => {
-    if (currentProgress < 95) {
-      // Progreso más lento a medida que avanza
-      const increment = currentProgress < 30 ? 3 : (currentProgress < 60 ? 2 : (currentProgress < 80 ? 1 : 0.5))
-      currentProgress = Math.min(95, currentProgress + increment)
-      sapProgress.value = Math.round(currentProgress)
-      
-      // Actualizar fase y mensaje según el progreso
-      if (currentProgress < 33) {
-        sapFase.value = 'redistribucion'
-        sapMessage.value = 'Confirmando redistribución...'
-      } else if (currentProgress < 66) {
-        sapFase.value = 'generando'
-        sapMessage.value = 'Generando orden de compra...'
-      } else {
-        sapFase.value = 'enviando'
-        sapMessage.value = 'Enviando a SAP Service Layer...'
-      }
-    }
-  }, 500)
-}
-
-function completeSapProgress() {
-  if (sapProgressInterval) {
-    clearInterval(sapProgressInterval)
-    sapProgressInterval = null
-  }
-  sapProgress.value = 100
-  sapFase.value = 'complete'
-  sapMessage.value = 'Proceso completado'
+  const state = await getPendingOdcSapProcessingState(numeroPedido.value)
+  odcSapProcesoEnServidor.value = state.processing
 }
 
 // ⭐ Set para rastrear columnas modificadas (para resaltado en redistribución)
@@ -683,18 +661,33 @@ async function handleEnviarOdcSap() {
         toast.info('Proceso en segundo plano no disponible', 'Se ejecutará en modo síncrono. No cierre la ventana.')
         sapMessage.value = 'Ejecutando proceso en modo síncrono...'
       },
-      onPollingUpdate: ({ message, progress }) => {
-        if (message) sapMessage.value = message
-        if (typeof progress === 'number') sapProgress.value = progress
-      }
+      onResumePending: () => {
+        toast.info('Proceso en curso', 'Retomando el envío SAP iniciado anteriormente...')
+        odcSapProcesoEnServidor.value = false
+      },
+      onPollingUpdate: applySapPollingUpdate,
     })
     completeSapProgress()
+    odcSapProcesoEnServidor.value = false
     await new Promise(r => setTimeout(r, 400))
     await applySAPResponse(response)
   } catch (e: any) {
     console.error('Error al iniciar proceso completo SAP:', e)
-    const message = e?.response?.data?.message || e?.message || 'No se pudo iniciar el proceso'
-    toast.error('Error al enviar a SAP', message || 'No se pudo completar el proceso')
+    const isTransient = isTransientClientError(e) || e?.isTransientClientError === true
+    const message = isTransient
+      ? SAP_MAY_STILL_PROCESSING_MESSAGE
+      : e?.response?.data?.message || e?.message || 'No se pudo iniciar el proceso'
+    if (isTransient) {
+      toast.warning('Tiempo de espera agotado', message)
+      await refreshPendingOdcSapState()
+    } else {
+      toast.error('Error al enviar a SAP', message || 'No se pudo completar el proceso')
+    }
+    try {
+      await loadPedido()
+    } catch (loadErr) {
+      console.warn('[handleEnviarOdcSap] loadPedido tras error SAP:', loadErr)
+    }
   } finally {
     enviandoOdcSap.value = false
     setTimeout(() => {
@@ -908,6 +901,7 @@ async function cargarRedistribucionSinPedido() {
 onMounted(async () => {
   if (numeroPedido.value) {
     await loadPedido()
+    await refreshPendingOdcSapState()
     cargarColumnasModificadasDesdeStorage()
     if (import.meta.env.DEV) console.log(`🎨 [MabelTradingRedistribucionView] Estado final de columnas modificadas: ${columnasModificadas.value.size} modificaciones`)
     if (columnasModificadas.value.size > 0) {
@@ -923,9 +917,6 @@ onMounted(async () => {
 
 // ⭐ Cleanup al desmontar componente
 onUnmounted(() => {
-  if (sapProgressInterval) {
-    clearInterval(sapProgressInterval)
-    sapProgressInterval = null
-  }
+  stopSapProgressSimulation()
 })
 </script>

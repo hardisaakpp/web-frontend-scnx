@@ -94,9 +94,17 @@ Para que la optimización funcione de manera óptima, el backend debe:
 2. **Transacciones atómicas:** La actualización del estado debe ser atómica (todo o nada)
 3. **Evitar procesamiento asíncrono sin confirmación:** Si se usa async, implementar endpoint de verificación
 
+## ⏱️ Timeouts y errores transitorios (2026)
+
+Complemento a esta optimización: ver **[timeout-sincronizado-frontend-backend.md](./timeout-sincronizado-frontend-backend.md)**.
+
+- Tras **timeout axios** o **error de red**, el front muestra toast **amarillo**, refresca la lista y **no** marca `ERROR` local en la fila.
+- Timeout HTTP de `integrarSAP`: **120–300 s** (`utils/integrarSapTimeout.ts`).
+- Si SAP terminó en servidor pero el cliente cortó, el refresh debe mostrar **`ENVIADA`**.
+
 ---
 
-**Archivo modificado:** `src/modules/mba3-consultas/views/ProcesoCompletoView.vue`
+**Archivos principales:** `ProcesoCompletoView.vue`, `utils/integrarSapTimeout.ts`, `utils/httpErrors.ts`
 
 
 

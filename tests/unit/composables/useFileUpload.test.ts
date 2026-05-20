@@ -1,7 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useFileUpload } from '@/modules/mba3-consultas/composables/useFileUpload'
+import {
+  useFileUpload,
+  mapFileUploadProgress,
+  mapServerProcessingProgress,
+} from '@/modules/mba3-consultas/composables/useFileUpload'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '@/modules/mba3-consultas/services/mba3ConsultasApi'
 
@@ -17,8 +21,11 @@ vi.mock('vue-router', async (importOriginal) => {
 vi.mock('@/modules/mba3-consultas/services/mba3ConsultasApi', () => ({
   mba3ConsultasService: {
     uploadPlantilla: vi.fn(),
-    reintentarPlantillaConCorrecciones: vi.fn()
-  }
+    uploadPlantillaAsync: vi.fn(),
+    getResultadoPlantilla: vi.fn(),
+    getPedido: vi.fn(),
+    reintentarPlantillaConCorrecciones: vi.fn(),
+  },
 }))
 
 describe('useFileUpload', () => {
@@ -68,6 +75,19 @@ describe('useFileUpload', () => {
       const { archivoOriginal } = useFileUpload()
 
       expect(archivoOriginal.value).toBeNull()
+    })
+  })
+
+  describe('progress mapping', () => {
+    it('maps file upload bytes to 0–25% of the bar', () => {
+      expect(mapFileUploadProgress(0)).toBe(0)
+      expect(mapFileUploadProgress(100)).toBe(25)
+    })
+
+    it('maps server processing to 25–100% without exceeding upload weight early', () => {
+      expect(mapServerProcessingProgress(0)).toBe(25)
+      expect(mapServerProcessingProgress(50)).toBe(63)
+      expect(mapServerProcessingProgress(100)).toBe(100)
     })
   })
 

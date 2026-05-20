@@ -319,12 +319,8 @@
       </div>
 
       <!-- Loading state -->
-      <div v-if="loading && !pedido" class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-12 text-center">
-        <svg class="animate-spin h-8 w-8 text-indigo-600 dark:text-indigo-400 mx-auto" fill="none" viewBox="0 0 24 24">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-        </svg>
-        <p class="mt-4 text-sm text-gray-600 dark:text-gray-400">Cargando pedido...</p>
+      <div v-if="loading && !pedido" class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
+        <LoadingSpinner message="Cargando pedido..." />
       </div>
 
       <!-- Error state -->
@@ -361,10 +357,7 @@
             <svg v-if="!uploading" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
             </svg>
-            <svg v-else class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
+            <LoadingSpinner v-else layout="inline" size="sm" color="current" aria-label="Cargando plantilla Excel" />
             {{ uploading ? 'Cargando...' : 'Cargar Plantillas Excel' }}
           </button>
         </div>
@@ -386,6 +379,24 @@
           @update-estado="handleUpdateEstado"
         />
 
+        <!-- Job SAP async aún en Celery (p. ej. tras timeout del navegador) -->
+        <div
+          v-if="odcSapProcesoEnServidor && !enviandoOdcSap"
+          class="mb-4 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/25 px-4 py-3 text-sm text-blue-900 dark:text-blue-100 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+          role="status"
+        >
+          <p class="flex-1">
+            Hay un envío a SAP en proceso en el servidor. Puede seguir el progreso sin iniciar otro envío.
+          </p>
+          <button
+            type="button"
+            class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium whitespace-nowrap shrink-0"
+            @click="handleEnviarOdcSap"
+          >
+            Seguir progreso
+          </button>
+        </div>
+
         <!-- Fallo transitorio SAP (retry_recommended): mismo flujo que "Enviar ODC a SAP" -->
         <div
           v-if="mostrarBannerReintentoConexionSap"
@@ -401,16 +412,7 @@
             class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium whitespace-nowrap shrink-0"
             @click="handleEnviarOdcSap"
           >
-            <svg
-              v-if="enviandoOdcSap"
-              class="animate-spin h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              aria-hidden="true"
-            >
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-            </svg>
+            <LoadingSpinner v-if="enviandoOdcSap" layout="inline" size="sm" color="current" aria-label="Reintentando envío a SAP" />
             {{
               enviandoOdcSap
                 ? 'Reintentando…'
@@ -466,10 +468,7 @@
                 <div class="flex items-center justify-between mb-2 px-2">
                   <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Seleccionar columnas</div>
                   <div v-if="isSyncing" class="flex items-center gap-1">
-                    <svg class="animate-spin w-3 h-3 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24">
-                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
+                    <LoadingSpinner layout="inline" size="xs" aria-label="Guardando preferencias" />
                     <span class="text-xs text-indigo-600 dark:text-indigo-400">Guardando...</span>
                   </div>
                 </div>
@@ -682,12 +681,18 @@ import { useFileUpload, RESALTADO_CODIGOS_STORAGE_PREFIX } from '../composables/
 import { useColumnManagement } from '../composables/useColumnManagement'
 import { usePedidoDetalle } from '../composables/usePedidoDetalle'
 import { useRedistribucion } from '../composables/useRedistribucion'
-import { ejecutarProcesoCompletoSap } from '../composables/ejecutarProcesoCompletoSap'
+import {
+  ejecutarProcesoCompletoSap,
+  getPendingOdcSapProcessingState,
+} from '../composables/ejecutarProcesoCompletoSap'
+import { useSapProcessProgress } from '../composables/useSapProcessProgress'
+import { isTransientClientError, SAP_MAY_STILL_PROCESSING_MESSAGE } from '../utils/httpErrors'
 // Componentes
 import PedidoHeaderActions from '../components/PedidoHeaderActions.vue'
 import PedidoCabecera from '../components/PedidoCabecera.vue'
 import RedistribucionTiendas from '../components/RedistribucionTiendas.vue'
 import UploadErrorModal from '../components/UploadErrorModal.vue'
+import LoadingSpinner from '../components/LoadingSpinner.vue'
 
 // Constantes de configuración
 const SCROLL_DELAY_MS = 100
@@ -951,14 +956,19 @@ const enviandoOdcSap = ref(false)
 const showEnviarOdcSapButton = computed(() => true)
 /** Banner + CTA cuando proceso-completo-sap devuelve retry_recommended (fallo transitorio). */
 const mostrarBannerReintentoConexionSap = ref(false)
+/** Celery aún procesando un envío SAP previo (sessionStorage + GET resultado). */
+const odcSapProcesoEnServidor = ref(false)
 
-// ⭐ NUEVO: Variables de progreso para envío ODC a SAP
-const sapProgress = ref(0)
-const sapFase = ref<'idle' | 'redistribucion' | 'generando' | 'enviando' | 'complete'>('idle')
-const sapMessage = ref('')
-
-// Intervalo para simulación de progreso
-let sapProgressInterval: ReturnType<typeof setInterval> | null = null
+const {
+  sapProgress,
+  sapFase,
+  sapMessage,
+  resetSapProgress,
+  startSapProgressSimulation,
+  applySapPollingUpdate,
+  completeSapProgress,
+  stopSimulation: stopSapProgressSimulation,
+} = useSapProcessProgress()
 
 // Modal de éxito SAP y PDF
 const showSAPSuccessModal = ref(false)
@@ -967,53 +977,13 @@ const sapSuccessMessage = ref('')
 const sapSuccessSolicitudesTransferencia = ref<import('@/modules/mba3-consultas/types').SolicitudesTransferencia | null>(null)
 const descargandoSAPPDF = ref(false)
 
-function resetSapProgress() {
-  sapProgress.value = 0
-  sapFase.value = 'idle'
-  sapMessage.value = ''
-  if (sapProgressInterval) {
-    clearInterval(sapProgressInterval)
-    sapProgressInterval = null
+async function refreshPendingOdcSapState() {
+  if (!numeroPedido.value) {
+    odcSapProcesoEnServidor.value = false
+    return
   }
-}
-
-function startSapProgressSimulation() {
-  resetSapProgress()
-  sapFase.value = 'redistribucion'
-  sapMessage.value = 'Confirmando redistribución...'
-  
-  let currentProgress = 0
-  
-  sapProgressInterval = setInterval(() => {
-    if (currentProgress < 95) {
-      // Progreso más lento a medida que avanza
-      const increment = currentProgress < 30 ? 3 : (currentProgress < 60 ? 2 : (currentProgress < 80 ? 1 : 0.5))
-      currentProgress = Math.min(95, currentProgress + increment)
-      sapProgress.value = Math.round(currentProgress)
-      
-      // Actualizar fase y mensaje según el progreso
-      if (currentProgress < 33) {
-        sapFase.value = 'redistribucion'
-        sapMessage.value = 'Confirmando redistribución...'
-      } else if (currentProgress < 66) {
-        sapFase.value = 'generando'
-        sapMessage.value = 'Generando orden de compra...'
-      } else {
-        sapFase.value = 'enviando'
-        sapMessage.value = 'Enviando a SAP Service Layer...'
-      }
-    }
-  }, 500)
-}
-
-function completeSapProgress() {
-  if (sapProgressInterval) {
-    clearInterval(sapProgressInterval)
-    sapProgressInterval = null
-  }
-  sapProgress.value = 100
-  sapFase.value = 'complete'
-  sapMessage.value = 'Proceso completado'
+  const state = await getPendingOdcSapProcessingState(numeroPedido.value)
+  odcSapProcesoEnServidor.value = state.processing
 }
 
 async function handleDescargarSAPPDF() {
@@ -1779,17 +1749,33 @@ async function handleEnviarOdcSap() {
         toast.info('Proceso en segundo plano no disponible', 'Se ejecutará en modo síncrono. No cierre la ventana.')
         sapMessage.value = 'Ejecutando proceso en modo síncrono...'
       },
-      onPollingUpdate: ({ message, progress }) => {
-        if (message) sapMessage.value = message
-        if (typeof progress === 'number') sapProgress.value = progress
-      }
+      onResumePending: () => {
+        toast.info('Proceso en curso', 'Retomando el envío SAP iniciado anteriormente...')
+        odcSapProcesoEnServidor.value = false
+      },
+      onPollingUpdate: applySapPollingUpdate,
     })
     completeSapProgress()
+    odcSapProcesoEnServidor.value = false
     await new Promise(r => setTimeout(r, 400))
     await applySAPResponseCargarPlantilla(response)
   } catch (e: any) {
     console.error('Error al iniciar proceso completo SAP:', e)
-    toast.error('Error al enviar a SAP', e?.response?.data?.message || e?.message || 'No se pudo iniciar el proceso')
+    const isTransient = isTransientClientError(e) || e?.isTransientClientError === true
+    const message = isTransient
+      ? SAP_MAY_STILL_PROCESSING_MESSAGE
+      : e?.response?.data?.message || e?.message || 'No se pudo iniciar el proceso'
+    if (isTransient) {
+      toast.warning('Tiempo de espera agotado', message)
+      await refreshPendingOdcSapState()
+    } else {
+      toast.error('Error al enviar a SAP', message)
+    }
+    try {
+      await loadPedido()
+    } catch (loadErr) {
+      console.warn('[handleEnviarOdcSap] loadPedido tras error SAP:', loadErr)
+    }
   } finally {
     enviandoOdcSap.value = false
     setTimeout(resetSapProgress, 500)
@@ -1813,6 +1799,8 @@ onMounted(() => {
     // Si hay número de pedido, cargar ese pedido
     loadPedido()
   }
+
+  void refreshPendingOdcSapState()
   
   // Sincronizar códigos a resaltar desde sessionStorage (flujo async: correcciones guardadas antes del redirect)
   syncCodigosResaltadoDesdeStorage()
@@ -1833,6 +1821,8 @@ onActivated(() => {
     // Si hay número de pedido, recargar ese pedido
     loadPedido()
   }
+
+  void refreshPendingOdcSapState()
 })
 
 // Watch para reaccionar a cambios en el parámetro de ruta
@@ -1846,6 +1836,7 @@ watch(
     if (newNumeroPedido && newNumeroPedido !== oldNumeroPedido) {
       if (import.meta.env.DEV) console.log(`🔄 [PedidoDetalleView] Cambio de pedido detectado: ${oldNumeroPedido || '(ninguno)'} → ${newNumeroPedido}`)
       await loadPedido()
+      await refreshPendingOdcSapState()
       // Limpiar el input de búsqueda después de navegar
       pedidoIdInput.value = ''
     }
@@ -1913,10 +1904,7 @@ onUnmounted(() => {
   document.removeEventListener('click', handleClickOutsideColumnSelector)
   
   // ⭐ Limpiar intervalo de progreso SAP si existe
-  if (sapProgressInterval) {
-    clearInterval(sapProgressInterval)
-    sapProgressInterval = null
-  }
+  stopSapProgressSimulation()
 })
 
 function handleClickOutsideColumnSelector(event: MouseEvent) {

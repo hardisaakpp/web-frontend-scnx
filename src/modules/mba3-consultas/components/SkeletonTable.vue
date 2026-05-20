@@ -1,8 +1,8 @@
 <template>
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden border border-gray-200 dark:border-gray-700 transition-colors duration-300">
     <!-- Header skeleton -->
-    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-      <div class="h-6 bg-gray-200 dark:bg-gray-700 rounded w-48 animate-pulse"></div>
+    <div v-if="showHeader" class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+      <div class="h-6 bg-gray-200 dark:bg-gray-700 rounded animate-pulse" :class="titleWidthClass"></div>
     </div>
     
     <!-- Table skeleton -->
@@ -28,13 +28,17 @@
 </template>
 
 <script setup lang="ts">
-defineProps<{
+withDefaults(defineProps<{
   columns?: number
   rows?: number
-}>()
-
-const columns = 7
-const rows = 5
+  titleWidthClass?: string
+  showHeader?: boolean
+}>(), {
+  columns: 7,
+  rows: 5,
+  titleWidthClass: 'w-48',
+  showHeader: true
+})
 
 function getWidthClass(index: number): string {
   const widths = ['w-32', 'w-24', 'w-28', 'w-20', 'w-16', 'w-24', 'w-20']

@@ -1,0 +1,283 @@
+# Nginx dentro del contenedor SCNexus (intranet / servidor de aplicaciones).
+# Upstreams: placeholders __*_UPSTREAM__ sustituidos en el Dockerfile (ver .env.docker.example).
+# Referencia host sin Docker: deploy/nginx/scnexus.conf.example
+
+server {
+    listen 80;
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # =========================
+    # AUTH/me -> MBA3 (capabilities)
+    # =========================
+    location = /api/Auth/me {
+        proxy_pass __MBA3_UPSTREAM__;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Authorization $http_authorization;
+    }
+
+    location = /api/auth/me {
+        proxy_pass __MBA3_UPSTREAM__;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Authorization $http_authorization;
+    }
+
+    # =========================
+    # AUTH -> CORE
+    # =========================
+    location /api/Auth/ {
+        proxy_pass __CORE_UPSTREAM__;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Preferencias UI -> MBA3 (antes del location /api/ genérico)
+    location /api/users/preferences {
+        proxy_pass __MBA3_UPSTREAM__;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Authorization $http_authorization;
+    }
+
+    # =========================
+    # SSE MBA3 (antes de /api/mba3/)
+    # =========================
+    location = /api/mba3/notificaciones/stream {
+        rewrite ^/api/mba3(.*)$ $1 break;
+        proxy_pass __MBA3_UPSTREAM__;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Authorization $http_authorization;
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 86400s;
+        proxy_set_header Connection '';
+        chunked_transfer_encoding off;
+    }
+
+    # =========================
+    # MBA3 Consultas (/api/mba3/* -> backend sin prefijo)
+    # =========================
+    location /api/mba3/ {
+        rewrite ^/api/mba3(.*)$ $1 break;
+        proxy_pass __MBA3_UPSTREAM__;
+        proxy_http_version 1.1;
+        client_max_body_size 50M;
+        proxy_connect_timeout 120s;
+        proxy_send_timeout 120s;
+        proxy_read_timeout 120s;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Authorization $http_authorization;
+    }
+
+    # =========================
+    # Caja Chica
+    # =========================
+    location /caja-chica-api/ {
+        rewrite ^/caja-chica-api(.*)$ /api$1 break;
+        proxy_pass __CAJA_CHICA_UPSTREAM__;
+        proxy_http_version 1.1;
+        client_max_body_size 50M;
+        proxy_connect_timeout 120s;
+        proxy_send_timeout 120s;
+        proxy_read_timeout 120s;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Authorization $http_authorization;
+    }
+
+    location ^~ /uploads/ {
+        proxy_pass __CAJA_CHICA_UPSTREAM__;
+        proxy_http_version 1.1;
+        client_max_body_size 50M;
+        proxy_connect_timeout 120s;
+        proxy_send_timeout 120s;
+        proxy_read_timeout 120s;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Authorization $http_authorization;
+    }
+
+    location /employees-api/ {
+        rewrite ^/employees-api(.*)$ /api$1 break;
+        proxy_pass __CAJA_CHICA_UPSTREAM__;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Authorization $http_authorization;
+    }
+
+    # =========================
+    # PYG
+    # =========================
+    location /pyg-api/ {
+        rewrite ^/pyg-api(.*)$ /api$1 break;
+        proxy_pass __PYG_UPSTREAM__;
+        proxy_http_version 1.1;
+        client_max_body_size 50M;
+        proxy_connect_timeout 120s;
+        proxy_send_timeout 120s;
+        proxy_read_timeout 120s;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Authorization $http_authorization;
+    }
+
+    # =========================
+    # Conciliación
+    # =========================
+    location /conciliacion-api/ {
+        rewrite ^/conciliacion-api(.*)$ $1 break;
+        proxy_pass __CONCILIACION_UPSTREAM__;
+        proxy_http_version 1.1;
+        client_max_body_size 50M;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Authorization $http_authorization;
+    }
+
+    # =========================
+    # Maestro artículos
+    # =========================
+    location /maestro-api/ {
+        rewrite ^/maestro-api(.*)$ $1 break;
+        proxy_pass __MAESTRO_UPSTREAM__;
+        proxy_http_version 1.1;
+        client_max_body_size 50M;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Authorization $http_authorization;
+    }
+
+    # =========================
+    # Slayer (Caja Chica / SAP)
+    # =========================
+    location /slayer-api/ {
+        rewrite ^/slayer-api(.*)$ /api$1 break;
+        proxy_pass __SLAYER_UPSTREAM__;
+        proxy_http_version 1.1;
+        client_max_body_size 50M;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Authorization $http_authorization;
+    }
+
+    # =========================
+    # Articulo Scanner
+    # =========================
+    location /scan-api/ {
+        rewrite ^/scan-api(.*)$ $1 break;
+        proxy_pass __SCAN_API_UPSTREAM__;
+        proxy_http_version 1.1;
+        client_max_body_size 50M;
+        proxy_connect_timeout 120s;
+        proxy_send_timeout 120s;
+        proxy_read_timeout 120s;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Authorization $http_authorization;
+    }
+
+    # =========================
+    # Promoción Sobres
+    # =========================
+    location /promocion-sobres-api/ {
+        rewrite ^/promocion-sobres-api(.*)$ $1 break;
+        proxy_pass __PROMOCION_SOBRES_UPSTREAM__;
+        proxy_http_version 1.1;
+        client_max_body_size 50M;
+        proxy_connect_timeout 120s;
+        proxy_send_timeout 120s;
+        proxy_read_timeout 120s;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Authorization $http_authorization;
+    }
+
+    # =========================
+    # Inventario
+    # =========================
+    location /inventario-api/ {
+        rewrite ^/inventario-api(.*)$ $1 break;
+        proxy_pass __INVENTARIO_UPSTREAM__;
+        proxy_http_version 1.1;
+        client_max_body_size 50M;
+        proxy_connect_timeout 180s;
+        proxy_send_timeout 180s;
+        proxy_read_timeout 180s;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Authorization $http_authorization;
+    }
+
+    # =========================
+    # CORE - resto de /api
+    # =========================
+    location /api/ {
+        proxy_pass __CORE_UPSTREAM__;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Authorization $http_authorization;
+    }
+
+    # =========================
+    # SPA (debe ir después de los proxies de API)
+    # =========================
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+}

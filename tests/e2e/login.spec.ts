@@ -20,8 +20,8 @@ test.describe('Login Flow', () => {
     await expect(page.getByRole('heading', { name: /iniciar sesión|login/i })).toBeVisible()
     
     // Verificar que los campos de email y password existen
-    await expect(page.getByLabel(/usuario|email/i)).toBeVisible()
-    await expect(page.getByLabel(/contraseña|password/i)).toBeVisible()
+    await expect(page.locator('#username')).toBeVisible()
+    await expect(page.locator('#password')).toBeVisible()
     
     // Verificar botón de submit
     await expect(page.getByRole('button', { name: /iniciar sesión|login/i })).toBeVisible()
@@ -29,8 +29,8 @@ test.describe('Login Flow', () => {
 
   test('should show error with invalid credentials', async ({ page }: { page: Page }) => {
     // Llenar el formulario con credenciales inválidas
-    await page.getByLabel(/usuario|email/i).fill('usuario-invalido')
-    await page.getByLabel(/contraseña|password/i).fill('password-incorrecta')
+    await page.locator('#username').fill('usuario-invalido')
+    await page.locator('#password').fill('password-incorrecta')
     
     // Click en el botón de login
     await page.getByRole('button', { name: /iniciar sesión|login/i }).click()
@@ -50,8 +50,8 @@ test.describe('Login Flow', () => {
     const testPassword = process.env.TEST_PASSWORD || 'test-password'
     
     // Llenar el formulario con credenciales válidas
-    await page.getByLabel(/usuario|email/i).fill(testUsername)
-    await page.getByLabel(/contraseña|password/i).fill(testPassword)
+    await page.locator('#username').fill(testUsername)
+    await page.locator('#password').fill(testPassword)
     
     // Click en el botón de login
     await page.getByRole('button', { name: /iniciar sesión|login/i }).click()
@@ -72,8 +72,8 @@ test.describe('Login Flow', () => {
     const testPassword = process.env.TEST_PASSWORD || 'test-password'
     
     // Login
-    await page.getByLabel(/usuario|email/i).fill(testUsername)
-    await page.getByLabel(/contraseña|password/i).fill(testPassword)
+    await page.locator('#username').fill(testUsername)
+    await page.locator('#password').fill(testPassword)
     await page.getByRole('button', { name: /iniciar sesión|login/i }).click()
     
     // Esperar a estar en dashboard
@@ -91,8 +91,8 @@ test.describe('Login Flow', () => {
     const testPassword = process.env.TEST_PASSWORD || 'test-password'
     
     // Login primero
-    await page.getByLabel(/usuario|email/i).fill(testUsername)
-    await page.getByLabel(/contraseña|password/i).fill(testPassword)
+    await page.locator('#username').fill(testUsername)
+    await page.locator('#password').fill(testPassword)
     await page.getByRole('button', { name: /iniciar sesión|login/i }).click()
     await page.waitForURL(/.*\/(dashboard|home|main)/, { timeout: 10000 })
     

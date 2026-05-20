@@ -283,9 +283,7 @@
                   :disabled="sendingOcId === oc.oc_id || props.loading"
                   title="Reintentar envío a SAP"
                 >
-                  <svg v-if="sendingOcId === oc.oc_id" class="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
+                  <LoadingSpinner v-if="sendingOcId === oc.oc_id" layout="inline" size="sm" color="current" aria-label="Reintentando envío a SAP" />
                   <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
@@ -298,9 +296,7 @@
                   :disabled="downloadingPdfOcId === oc.oc_id"
                   title="Descargar PDF de la ODC"
                 >
-                  <svg v-if="downloadingPdfOcId === oc.oc_id" class="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
+                  <LoadingSpinner v-if="downloadingPdfOcId === oc.oc_id" layout="inline" size="sm" color="current" aria-label="Descargando PDF" />
                   <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
@@ -313,9 +309,7 @@
                   :disabled="retryingStOcId === oc.oc_id || props.loading"
                   :title="`Reintentar Solicitudes de Transferencia pendientes (${oc.st_pendientes_reintento ?? 0}${oc.st_total_tiendas ? ' de ' + oc.st_total_tiendas : ''})`"
                 >
-                  <svg v-if="retryingStOcId === oc.oc_id" class="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
+                  <LoadingSpinner v-if="retryingStOcId === oc.oc_id" layout="inline" size="sm" color="current" aria-label="Reintentando solicitudes de transferencia" />
                   <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                   </svg>
@@ -334,12 +328,13 @@
           <!-- Fila expandible con detalles -->
           <tr v-if="detallesExpandidos.has(oc.oc_id)">
             <td :colspan="visibleColumnsCount + (props.readOnly ? 2 : 3)" class="px-6 py-4 bg-gray-50/80 dark:bg-gray-900/50 border-l-4 border-emerald-500 dark:border-emerald-400">
-              <div v-if="loadingDetalles[oc.oc_id]" class="flex items-center justify-center py-4">
-                <svg class="animate-spin h-5 w-5 text-emerald-500 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                <span class="ml-2 text-sm text-emerald-600 dark:text-emerald-300">Cargando detalles...</span>
-              </div>
+              <LoadingSpinner
+                v-if="loadingDetalles[oc.oc_id]"
+                layout="center"
+                size="md"
+                color="emerald"
+                message="Cargando detalles..."
+              />
               <div v-else-if="detallesPorOC[oc.oc_id]?.length > 0" class="py-2">
                 <h4 class="text-sm font-semibold mb-3 text-gray-900 dark:text-white">
                   Detalles de la Orden de Compra ({{ detallesPorOC[oc.oc_id]?.length }} {{ detallesPorOC[oc.oc_id]?.length === 1 ? 'ítem' : 'ítems' }})
@@ -411,7 +406,9 @@ import type { OrdenCompra, DetalleOC } from '../types'
 import { useToast } from '@/composables/useToast'
 import { useTablePreferences } from '@/composables/useTablePreferences'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
+import { isTransientClientError } from '../utils/httpErrors'
 import { formatNumber, formatCurrencyWithDecimals } from '../utils/formatters'
+import LoadingSpinner from './LoadingSpinner.vue'
 
 const props = defineProps<{
   ordenesCompra: OrdenCompra[]
@@ -972,6 +969,12 @@ async function handleReintentarST(oc: OrdenCompra) {
         'Estado no válido',
         error?.response?.data?.message || 'Solo se puede reintentar ST cuando la ODC está ENVIADA.'
       )
+    } else if (isTransientClientError(error)) {
+      toast.warning(
+        'Tiempo de espera agotado',
+        'El reintento de transferencias (ITR) puede seguir en el servidor. Actualice la lista en unos minutos para ver el estado real.'
+      )
+      emit('st-reintentado', { oc, result: null })
     } else {
       toast.error('Error al reintentar ST', error.message || 'No se pudo reintentar Solicitudes de Transferencia')
     }

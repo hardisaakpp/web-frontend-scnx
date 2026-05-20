@@ -2,9 +2,25 @@ import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { fileURLToPath, URL } from 'node:url'
 
+/** loadEnv() solo lee archivos .env; en Docker el ARG/ENV no entra sin fusionar process.env. */
+function viteEnv(mode: string): Record<string, string> {
+  const fromFiles = loadEnv(mode, process.cwd(), '')
+  const merged: Record<string, string> = { ...fromFiles }
+  for (const key of Object.keys(process.env)) {
+    if (key.startsWith('VITE_')) {
+      const v = process.env[key]
+      if (v !== undefined) merged[key] = v
+    }
+  }
+  return merged
+}
+
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '')
+  const env = viteEnv(mode)
+  const rawAppBasePath = env.VITE_APP_BASE_PATH || '/'
+  const normalizedAppBasePath = rawAppBasePath.startsWith('/') ? rawAppBasePath : `/${rawAppBasePath}`
+  const appBasePath = normalizedAppBasePath.endsWith('/') ? normalizedAppBasePath : `${normalizedAppBasePath}/`
   const coreProxyTarget = env.VITE_CORE_PROXY_TARGET || 'http://192.168.2.12:8080'
   const mba3ProxyTarget = env.VITE_MBA3_PROXY_TARGET || 'http://localhost:8000'
   const authMeProxyTarget = env.VITE_AUTH_ME_PROXY_TARGET || mba3ProxyTarget
@@ -15,7 +31,9 @@ export default defineConfig(({ mode }) => {
   const maestroProxyTarget = env.VITE_MAESTRO_API_TARGET || 'http://localhost:8001'
   const conciliacionProxyTarget = env.VITE_CONCILIACION_PROXY_TARGET || 'http://127.0.0.1:8005'
   const articuloScanProxyTarget = env.VITE_ARTICULO_SCAN_PROXY_TARGET || 'http://localhost:8080'
-  const slayerProxyTarget = env.VITE_SLAYER_PROXY_TARGET || 'http://localhost:8093'
+  const inventarioProxyTarget = env.VITE_INVENTARIO_PROXY_TARGET || 'http://localhost:8082'
+  const promocionSobresProxyTarget = env.VITE_PROMOCION_SOBRES_PROXY_TARGET || 'http://localhost:8083'
+  const slayerProxyTarget = env.VITE_SLAYER_PROXY_TARGET || 'http://192.168.2.153:8093'
   /**
    * Prefijo en el backend tras quitar `/pyg-api`. Por defecto `/api` → `/pyg-api/uploads` → `/api/uploads`.
    * Si el servicio expone rutas en raíz, define `VITE_PYG_PROXY_PREFIX=` vacío en `.env.development`.
@@ -23,6 +41,7 @@ export default defineConfig(({ mode }) => {
   const pygProxyPrefix = 'VITE_PYG_PROXY_PREFIX' in env ? env.VITE_PYG_PROXY_PREFIX : '/api'
 
   return {
+    base: appBasePath,
     plugins: [vue()],
     resolve: {
       alias: {
@@ -44,9 +63,15 @@ export default defineConfig(({ mode }) => {
           secure: false,
           rewrite: (path) => path.replace(/^\/mba3-api/, '')
         },
-        // /Auth/me → Core API (debe ir antes que /api)
+        // /Auth/me → MBA3 (igual que deploy/nginx/scnexus.conf.example; antes que /api genérico)
         '/api/Auth/me': {
-          target: coreProxyTarget,
+          target: authMeProxyTarget,
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path
+        },
+        '/api/auth/me': {
+          target: authMeProxyTarget,
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path
@@ -64,6 +89,13 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path
+        },
+        // MBA3 consultas (/api/mba3/* → backend sin prefijo; antes que /api → Core)
+        '/api/mba3': {
+          target: mba3ProxyTarget,
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/api\/mba3/, '')
         },
         // Login y resto de /api → Core (VITE_CORE_PROXY_TARGET en .env.development)
         '/api': {
@@ -129,6 +161,19 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path.replace(/^\/scan-api/, '')
+        },
+        // Inventario (.NET backend local)
+        '/inventario-api': {
+          target: inventarioProxyTarget,
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/inventario-api/, '')
+        },
+        '/promocion-sobres-api': {
+          target: promocionSobresProxyTarget,
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/promocion-sobres-api/, '')
         }
       }
     },
