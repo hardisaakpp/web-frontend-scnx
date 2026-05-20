@@ -263,6 +263,19 @@ const placeholderCodigoManual = 'Codigo impreso en el obsequio o tarjeta del cli
 
 const textoEntregaExitosa = computed(() => store.mensajeEntregaExitosa?.trim() ?? '')
 
+/** Espera montaje/layout tras el GET antes de iniciar la cámara (evita arranque en frame incompleto). */
+async function waitForRenderSettle() {
+  await nextTick()
+  await new Promise<void>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+  })
+}
+
+async function openScannerAfterConsult() {
+  await waitForRenderSettle()
+  isScannerOpen.value = true
+}
+
 async function onConsultar() {
   isScannerOpen.value = false
 
@@ -272,10 +285,9 @@ async function onConsultar() {
     return
   }
 
-  // GET 200: abrir escáner; la validación real (incl. Entregado en BD) es POST /entregas.
+  // GET 200: abrir escáner tras render estable; la validación real es POST /entregas.
   if (store.mostrarEscaneo) {
-    await nextTick()
-    isScannerOpen.value = true
+    await openScannerAfterConsult()
   }
 }
 
@@ -291,9 +303,10 @@ async function onRegistrarEntrega() {
 }
 
 async function onCameraDetected(code: string) {
+  if (store.loading) return
   store.setCodigoEscaneado(code)
+  await store.registrarEntrega()
   isScannerOpen.value = false
-  await onRegistrarEntrega()
 }
 
 /** Cerrar modal sin leer: el cajero puede usar entrada manual o "Abrir escáner de nuevo". */

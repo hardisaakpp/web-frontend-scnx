@@ -55,6 +55,14 @@ export interface BeneficiarioEntregadoItemDto {
   nombre: string
   entregado: 0 | 1
   fechaModificacion?: string | null
+  modificadoPor?: string | null
+}
+
+export interface DatabaseOrigenDto {
+  dataSource: string
+  database: string
+  schema: string
+  tablaBeneficiarios: string
 }
 
 export interface EntregadosMonitoreoDto {
@@ -62,5 +70,6 @@ export interface EntregadosMonitoreoDto {
   totalPendientes: number
   totalBeneficiarios: number
   consultadoEn: string
+  origen?: DatabaseOrigenDto
   beneficiarios: BeneficiarioEntregadoItemDto[]
 }

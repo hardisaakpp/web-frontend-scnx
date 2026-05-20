@@ -107,7 +107,11 @@ export const promocionSobresService = {
 
   async consultarEntregadosMonitoreo(): Promise<EntregadosMonitoreoDto> {
     const response = await promocionSobresApi.get<ApiResponse<EntregadosMonitoreoDto>>(
-      `${promocionSobresApiPrefix}/monitoreo/entregados`
+      `${promocionSobresApiPrefix}/monitoreo/entregados`,
+      {
+        params: { _: Date.now() },
+        headers: { 'Cache-Control': 'no-cache' }
+      }
     )
     const { data } = unwrapSuccess(response.data)
     return data

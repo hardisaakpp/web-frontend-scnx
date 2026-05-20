@@ -16,6 +16,9 @@
           <p v-if="consultadoEn" class="mt-1 text-xs text-slate-500 dark:text-slate-400">
             Última consulta: {{ formatFecha(consultadoEn) }}
           </p>
+          <p v-if="origenLabel" class="mt-1 font-mono text-xs text-violet-700/90 dark:text-violet-300/90">
+            BD: {{ origenLabel }}
+          </p>
         </div>
         <div class="flex flex-wrap gap-2">
           <RouterLink
@@ -35,6 +38,18 @@
         </div>
       </div>
     </header>
+
+    <div
+      v-if="origenIncorrecto"
+      class="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-100"
+      role="alert"
+    >
+      <p class="font-semibold">Base de datos incorrecta</p>
+      <p class="mt-1">
+        La API está leyendo <strong>{{ monitoreo?.origen?.dataSource }}</strong>, no el servidor de desarrollo (210.17.1.54).
+        Reinicie la API con <code class="text-xs">docker compose up -d --build</code> en scnexus-validacionCI (sin docker-compose.local.yml).
+      </p>
+    </div>
 
     <div
       v-if="error"
@@ -85,6 +100,7 @@
               <th class="px-3 py-2 font-semibold">Nombre</th>
               <th class="px-3 py-2 font-semibold">Estado</th>
               <th class="px-3 py-2 font-semibold">Fecha modificación</th>
+              <th class="px-3 py-2 font-semibold">Modificado por</th>
             </tr>
           </thead>
           <tbody>
@@ -105,6 +121,9 @@
               </td>
               <td class="px-3 py-3 text-slate-600 dark:text-slate-300">
                 {{ item.fechaModificacion ? formatFecha(item.fechaModificacion) : '—' }}
+              </td>
+              <td class="px-3 py-3 text-slate-600 dark:text-slate-300">
+                {{ item.modificadoPor || '—' }}
               </td>
             </tr>
           </tbody>
@@ -139,6 +158,18 @@ const monitoreo = ref<EntregadosMonitoreoDto | null>(null)
 const error = ref<UiError | null>(null)
 
 const consultadoEn = computed(() => monitoreo.value?.consultadoEn ?? null)
+
+const origenLabel = computed(() => {
+  const o = monitoreo.value?.origen
+  if (!o?.dataSource) return null
+  return `${o.dataSource} / ${o.database} / ${o.tablaBeneficiarios || `${o.schema}.Beneficiarios`}`
+})
+
+/** API en SQL Docker local en lugar del .env de desarrollo. */
+const origenIncorrecto = computed(() => {
+  const ds = monitoreo.value?.origen?.dataSource ?? ''
+  return /sqlserver|14333/i.test(ds)
+})
 
 const porcentajeEntregados = computed(() => {
   if (!monitoreo.value || monitoreo.value.totalBeneficiarios === 0) return 0
