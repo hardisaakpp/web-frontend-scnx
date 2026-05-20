@@ -73,18 +73,13 @@ export const usePromocionSobresStore = defineStore('promocionSobres', {
     puedeRegistrarEntrega: (state) =>
       Boolean(
         state.beneficiario?.puedeEscanear &&
-          !state.beneficiario.entregado &&
           state.codigoEscaneado.trim() &&
           state.step === 'beneficiario'
       ),
 
-    /** Solo si el API indica pendiente (`entregado=false`). */
+    /** Tras GET 200: escaneo según `puedeEscanear` del API; la validación de entrega es POST /entregas. */
     mostrarEscaneo: (state) =>
-      Boolean(
-        state.beneficiario?.puedeEscanear &&
-          !state.beneficiario.entregado &&
-          state.step === 'beneficiario'
-      ),
+      Boolean(state.beneficiario?.puedeEscanear && state.step === 'beneficiario'),
 
     /** Mensaje de cierre cuando BD ya tiene entregado=true (GET o POST 409). Solo texto del API. */
     mensajeFlujoCerrado: (state) => {
@@ -186,14 +181,8 @@ export const usePromocionSobresStore = defineStore('promocionSobres', {
       this.error = null
 
       try {
-        // Releer BD antes de POST: la fuente de verdad puede haber cambiado.
+        // Releer BD antes de POST: snapshot actual; la decisión final la toma POST /entregas.
         await this.cargarBeneficiarioDesdeApi(identificacion)
-
-        if (this.beneficiario?.entregado) {
-          this.codigoEscaneado = ''
-          this.step = 'beneficiario'
-          return
-        }
 
         if (!this.beneficiario?.puedeEscanear) {
           this.codigoEscaneado = ''

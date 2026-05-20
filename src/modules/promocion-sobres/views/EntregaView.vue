@@ -268,10 +268,11 @@ async function onConsultar() {
 
   await store.consultarBeneficiario()
 
-  if (store.error || store.mostrarYaEntregado) {
+  if (store.error) {
     return
   }
 
+  // GET 200: abrir escáner; la validación real (incl. Entregado en BD) es POST /entregas.
   if (store.mostrarEscaneo) {
     await nextTick()
     isScannerOpen.value = true
