@@ -1,50 +1,58 @@
 # Variables de entorno — SCNexus Frontend
 
-## Regla
+Configuración centralizada en **`deploy/env/`**. Detalle: [deploy/env/README.md](../deploy/env/README.md).
 
-| Capa | Desarrollo | Producción |
-|------|------------|------------|
-| **Bundle** (`VITE_*` en `.env.development` / build) | Rutas relativas (`/api`, `/api/mba3`, …) | Igual |
-| **Proxy** | `VITE_*_PROXY_TARGET` → Vite (`vite.config.ts`) | `*_UPSTREAM` → Nginx (`.env.docker.example` + Docker) |
+## Regla (dos capas)
 
-No uses `http://192.168.x.x` en `VITE_*` del bundle (Mixed Content en HTTPS).
+| Capa | Dónde | Qué contiene |
+|------|-------|----------------|
+| **Bundle** | `deploy/env/bundle.env` (versionado) | `VITE_*` = rutas relativas (`/api`, `/api/mba3`, …). **Igual en local, test y prod.** |
+| **Upstreams** | `deploy/env/active.env` (no commitear) | `UPSTREAM_*` = `http://host:puerto` para proxy Vite o Nginx |
 
-## Archivos
+- **Local:** solo `127.0.0.1` / `localhost` → copiar `local.env.example` → `active.env`
+- **Test/prod:** IPs o `host.docker.internal` → copiar `desa.env.example` o `intranet.env.example` → `active.env`
 
-| Archivo | Uso |
-|---------|-----|
-| `.env.development.example` → `.env.development` | `npm run dev` o `docker-compose.dev.yml` |
-| `.env.production.example` → `.env.production` | `npm run build` (opcional si Docker copia la plantilla) |
-| `.env.docker.example` → `.env` | `docker compose build` (upstreams Nginx) |
+No pongas IPs en `VITE_*` del bundle (Mixed Content en HTTPS).
 
-## Rutas del bundle → proxy
+## Rutas del bundle → upstream
 
-| Módulo / uso | Variable bundle | Ruta HTTP | Proxy dev (env) | Proxy prod (Docker) |
-|--------------|-----------------|-----------|-----------------|---------------------|
-| Login, Core | `VITE_CORE_API_URL` | `/api/*` (excepto reglas abajo) | `VITE_CORE_PROXY_TARGET` | `CORE_UPSTREAM` |
-| Auth/me, capabilities | `VITE_MBA3_API_URL` | `/api/Auth/me` | `VITE_AUTH_ME_PROXY_TARGET` | `MBA3_UPSTREAM` |
-| MBA3 consultas | `VITE_MBA3_API_BASE_URL` | `/api/mba3/*` | `VITE_MBA3_PROXY_TARGET` | `MBA3_UPSTREAM` |
-| Preferencias UI | (vacío) | `/api/users/preferences` | `VITE_MBA3_PROXY_TARGET` | `MBA3_UPSTREAM` |
-| PYG | `VITE_PYG_API_URL` o `/pyg-api` | `/pyg-api/*` | `VITE_PYG_PROXY_TARGET` | `PYG_UPSTREAM` |
-| Caja chica | `VITE_CAJA_CHICA_API_URL` | `/caja-chica-api/*` | `VITE_CAJA_CHICA_PROXY_TARGET` | `CAJA_CHICA_UPSTREAM` |
-| Conciliación | `VITE_CONCILIACION_API_URL` | `/conciliacion-api/*` | `VITE_CONCILIACION_PROXY_TARGET` | `CONCILIACION_UPSTREAM` |
-| Maestro artículos | `VITE_MAESTRO_API_URL` | `/maestro-api/*` | `VITE_MAESTRO_API_TARGET` | `MAESTRO_UPSTREAM` |
-| Scan | `VITE_ARTICULO_SCAN_API_URL` | `/scan-api/*` | `VITE_ARTICULO_SCAN_PROXY_TARGET` | `SCAN_API_UPSTREAM` |
-| Inventario | `VITE_INVENTARIO_API_URL` | `/inventario-api/*` | `VITE_INVENTARIO_PROXY_TARGET` | `INVENTARIO_UPSTREAM` |
-| Promoción sobres | `VITE_PROMOCION_SOBRES_API_URL` | `/promocion-sobres-api/*` | `VITE_PROMOCION_SOBRES_PROXY_TARGET` | `PROMOCION_SOBRES_UPSTREAM` |
-| Slayer (caja chica) | `/slayer-api` en código | `/slayer-api/*` | `VITE_SLAYER_PROXY_TARGET` | `SLAYER_UPSTREAM` |
+| Módulo | Variable bundle | Ruta HTTP | Variable upstream |
+|--------|-----------------|-----------|-------------------|
+| Login, Core | `VITE_CORE_API_URL` | `/api/*` | `UPSTREAM_CORE` |
+| Auth/me | `VITE_MBA3_API_URL` | `/api/Auth/me` | `UPSTREAM_MBA3_AUTH` (default = MBA3) |
+| MBA3 consultas | `VITE_MBA3_API_BASE_URL` | `/api/mba3/*` | `UPSTREAM_MBA3` |
+| PYG | — | `/pyg-api/*` | `UPSTREAM_PYG`, prefijo `UPSTREAM_PYG_PREFIX` |
+| Caja chica | `VITE_CAJA_CHICA_API_URL` | `/caja-chica-api/*` | `UPSTREAM_CAJA_CHICA` |
+| Conciliación | `VITE_CONCILIACION_API_URL` | `/conciliacion-api/*` | `UPSTREAM_CONCILIACION` |
+| Maestro | `VITE_MAESTRO_API_URL` | `/maestro-api/*` | `UPSTREAM_MAESTRO` |
+| Scan | `VITE_ARTICULO_SCAN_API_URL` | `/scan-api/*` | `UPSTREAM_SCAN` |
+| Inventario | `VITE_INVENTARIO_API_URL` | `/inventario-api/*` | `UPSTREAM_INVENTARIO` |
+| Promoción sobres | `VITE_PROMOCION_SOBRES_API_URL` | `/promocion-sobres-api/*` | `UPSTREAM_PROMOCION_SOBRES` |
+| Slayer | — | `/slayer-api/*` | `UPSTREAM_SLAYER` |
 
-Código central de defaults: `src/config/apiBaseUrls.ts`.
+Código de defaults del bundle: `src/config/apiBaseUrls.ts`.  
+Carga de env: `deploy/loadEnv.mjs`, `vite.config.ts`.
+
+## Comandos
+
+```bash
+# Primera vez en tu PC
+npm run env:local
+npm run dev
+
+# Docker prod (tras configurar active.env)
+docker compose up -d --build
+```
 
 ## Puertos
 
-- **3000** — desarrollo (Vite)
-- **8081** — contenedor intranet `scnexus-front` (Nginx)
+- **3000** — `npm run dev` o `docker-compose.dev.yml`
+- **8082** (default) — contenedor `scnexus-front` (`SCNEXUS_FRONT_PORT` en `active.env`)
 
-Ver también [DOCKER.md](./DOCKER.md).
+## Compatibilidad
 
-## Timeouts SAP (mba3-consultas)
+Siguen leyéndose variables antiguas si existen en `.env.development` local: `VITE_*_PROXY_TARGET`, `MBA3_UPSTREAM`, etc.
 
-El bundle no define timeouts HTTP; los fija el código del módulo (`integrarSAP` 120–300 s, polling async hasta 10 min). El **proxy** (Vite en dev, Nginx en Docker) debe permitir al menos el mismo tiempo en rutas `/api/mba3` hacia el API; si Nginx corta antes (p. ej. `proxy_read_timeout 120s`), aparecerá **504** (error de servidor), no el toast amarillo de timeout de axios.
+## Timeouts SAP
 
-Detalle: [timeout-sincronizado-frontend-backend.md](./timeout-sincronizado-frontend-backend.md).
+Ver [timeout-sincronizado-frontend-backend.md](./timeout-sincronizado-frontend-backend.md).

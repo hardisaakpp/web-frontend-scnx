@@ -18,9 +18,14 @@ dist-ssr
 .env.*.local
 .env.development
 .env.production
-# Plantilla sin secretos: sí se versiona como referencia (no usar tal cual en prod sin revisar).
+deploy/env/active.env
+deploy/env/local.env
+deploy/env/desa.env
+deploy/env/intranet.env
+# Stubs deprecados (solo redirigen a deploy/env/)
 !.env.production.example
 !.env.docker.example
+!.env.development.example
 
 # Editor directories and files
 .vscode/*

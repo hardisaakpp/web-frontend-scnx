@@ -6,8 +6,8 @@ RUN npm ci
 
 COPY . .
 
-# Plantilla versionada; en servidor puedes montar .env.production antes del build vía build secrets.
-COPY .env.production.example .env.production
+# Rutas relativas del bundle (sin IPs)
+COPY deploy/env/bundle.env .env.production
 
 # Rutas relativas en el bundle (VITE_*). Sobrescribir en build con --build-arg o ENV.
 ARG VITE_APP_BASE_PATH=/
@@ -17,17 +17,17 @@ RUN npm run build
 
 FROM nginx:1.27-alpine AS runtime
 
-# Upstreams (IPs/hostnames alcanzables DESDE el contenedor). Ver .env.docker.example
-ARG MBA3_UPSTREAM=http://host.docker.internal:8000
-ARG CORE_UPSTREAM=http://192.168.2.12:8080
-ARG CAJA_CHICA_UPSTREAM=http://192.168.2.211:8092
-ARG PYG_UPSTREAM=http://host.docker.internal:5171
-ARG SCAN_API_UPSTREAM=http://host.docker.internal:8080
-ARG PROMOCION_SOBRES_UPSTREAM=http://host.docker.internal:8083
-ARG INVENTARIO_UPSTREAM=http://host.docker.internal:8082
-ARG CONCILIACION_UPSTREAM=http://host.docker.internal:8005
-ARG MAESTRO_UPSTREAM=http://host.docker.internal:8001
-ARG SLAYER_UPSTREAM=http://host.docker.internal:8093
+# Upstreams Nginx (desde deploy/env/active.env vía docker compose build --build-arg)
+ARG MBA3_UPSTREAM=http://127.0.0.1:8000
+ARG CORE_UPSTREAM=http://127.0.0.1:8080
+ARG CAJA_CHICA_UPSTREAM=http://127.0.0.1:8092
+ARG PYG_UPSTREAM=http://127.0.0.1:5171
+ARG SCAN_API_UPSTREAM=http://127.0.0.1:8080
+ARG PROMOCION_SOBRES_UPSTREAM=http://127.0.0.1:8083
+ARG INVENTARIO_UPSTREAM=http://127.0.0.1:8082
+ARG CONCILIACION_UPSTREAM=http://127.0.0.1:8005
+ARG MAESTRO_UPSTREAM=http://127.0.0.1:8001
+ARG SLAYER_UPSTREAM=http://127.0.0.1:8093
 
 COPY deploy/nginx/scnexus-docker.conf.template /tmp/scnexus-docker.conf.template
 RUN sed -e "s|__MBA3_UPSTREAM__|${MBA3_UPSTREAM}|g" \

@@ -1,26 +1,31 @@
 name: scnexus-front-dev
 
-# Desarrollo: Vite en :3000 con proxy (sin Nginx). No usar :8081 para probar APIs en dev.
-# Con MBA3 en Docker: docker compose -f docker-compose.dev.yml -f docker-compose.mba3-network.attach.yml up -d
+# Desarrollo en contenedor (:3000). Misma config que npm run dev: deploy/env/active.env
+# MBA3 en Docker: docker compose -f docker-compose.dev.yml -f docker-compose.mba3-network.attach.yml up -d
 services:
   scnexus-front-dev:
     image: node:20-alpine
     container_name: scnexus-front-dev
     working_dir: /app
     command: sh -c "npm ci && npm run dev -- --host 0.0.0.0 --port 3000"
+    env_file:
+      - deploy/env/bundle.env
+      - path: deploy/env/active.env
+        required: false
     environment:
-      VITE_APP_BASE_PATH: ${VITE_APP_BASE_PATH:-/}
-      VITE_CORE_PROXY_TARGET: ${VITE_CORE_PROXY_TARGET:-http://192.168.2.12:8080}
-      VITE_MBA3_PROXY_TARGET: ${VITE_MBA3_PROXY_TARGET:-http://host.docker.internal:8000}
-      VITE_AUTH_ME_PROXY_TARGET: ${VITE_AUTH_ME_PROXY_TARGET:-http://host.docker.internal:8000}
-      VITE_CAJA_CHICA_PROXY_TARGET: ${VITE_CAJA_CHICA_PROXY_TARGET:-http://192.168.2.153:8092}
-      VITE_PYG_PROXY_TARGET: ${VITE_PYG_PROXY_TARGET:-http://host.docker.internal:5171}
-      VITE_ARTICULO_SCAN_PROXY_TARGET: ${VITE_ARTICULO_SCAN_PROXY_TARGET:-http://host.docker.internal:8080}
-      VITE_INVENTARIO_PROXY_TARGET: ${VITE_INVENTARIO_PROXY_TARGET:-http://host.docker.internal:8082}
-      VITE_PROMOCION_SOBRES_PROXY_TARGET: ${VITE_PROMOCION_SOBRES_PROXY_TARGET:-http://host.docker.internal:8083}
-      VITE_CONCILIACION_PROXY_TARGET: ${VITE_CONCILIACION_PROXY_TARGET:-http://host.docker.internal:8005}
-      VITE_MAESTRO_API_TARGET: ${VITE_MAESTRO_API_TARGET:-http://host.docker.internal:8001}
-      VITE_SLAYER_PROXY_TARGET: ${VITE_SLAYER_PROXY_TARGET:-http://host.docker.internal:8093}
+      SCNEXUS_PROFILE: ${SCNEXUS_PROFILE:-local}
+      UPSTREAM_CORE: ${UPSTREAM_CORE:-http://host.docker.internal:8080}
+      UPSTREAM_MBA3: ${UPSTREAM_MBA3:-http://host.docker.internal:8000}
+      UPSTREAM_MBA3_AUTH: ${UPSTREAM_MBA3_AUTH:-http://host.docker.internal:8000}
+      UPSTREAM_CAJA_CHICA: ${UPSTREAM_CAJA_CHICA:-http://host.docker.internal:8092}
+      UPSTREAM_PYG: ${UPSTREAM_PYG:-http://host.docker.internal:5171}
+      UPSTREAM_PYG_PREFIX: ${UPSTREAM_PYG_PREFIX:-/api}
+      UPSTREAM_SCAN: ${UPSTREAM_SCAN:-http://host.docker.internal:8080}
+      UPSTREAM_INVENTARIO: ${UPSTREAM_INVENTARIO:-http://host.docker.internal:8082}
+      UPSTREAM_PROMOCION_SOBRES: ${UPSTREAM_PROMOCION_SOBRES:-http://host.docker.internal:8083}
+      UPSTREAM_CONCILIACION: ${UPSTREAM_CONCILIACION:-http://host.docker.internal:8005}
+      UPSTREAM_MAESTRO: ${UPSTREAM_MAESTRO:-http://host.docker.internal:8001}
+      UPSTREAM_SLAYER: ${UPSTREAM_SLAYER:-http://host.docker.internal:8093}
     ports:
       - "3000:3000"
     volumes:

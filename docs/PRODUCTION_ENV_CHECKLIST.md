@@ -2,7 +2,7 @@
 
 ## ⚠️ CRÍTICO: Variables de Entorno
 
-Antes de desplegar a producción, **DEBES** revisar y actualizar `.env.production` según tu infraestructura.
+Antes de desplegar a producción, revisar **`deploy/env/bundle.env`** (rutas relativas) y **`deploy/env/active.env`** (upstreams para Nginx/Docker). Ver [deploy/env/README.md](../deploy/env/README.md).
 
 ### Estructura Actual de URLs
 

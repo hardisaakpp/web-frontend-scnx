@@ -1,5 +1,7 @@
-# Producción / preproducción intranet: imagen con Nginx + SPA + proxy a backends.
-# Copiar .env.docker.example → .env y ajustar IPs antes de build.
+# Nginx + SPA en :8082. Los UPSTREAM_* se hornean en la imagen al hacer build.
+# Obligatorio: deploy/env/active.env (ver deploy/env/local.docker.env.example)
+#   npm run docker:env && npm run docker:up
+#   — o — docker compose --env-file deploy/env/active.env up -d --build
 name: scnexus-front
 
 services:
@@ -9,20 +11,25 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_APP_BASE_PATH: ${VITE_APP_BASE_PATH:-/}
-        MBA3_UPSTREAM: ${MBA3_UPSTREAM:-http://host.docker.internal:8000}
-        CORE_UPSTREAM: ${CORE_UPSTREAM:-http://192.168.2.12:8080}
-        CAJA_CHICA_UPSTREAM: ${CAJA_CHICA_UPSTREAM:-http://192.168.2.211:8092}
-        PYG_UPSTREAM: ${PYG_UPSTREAM:-http://host.docker.internal:5171}
-        SCAN_API_UPSTREAM: ${SCAN_API_UPSTREAM:-http://host.docker.internal:8080}
-        PROMOCION_SOBRES_UPSTREAM: ${PROMOCION_SOBRES_UPSTREAM:-http://host.docker.internal:8083}
-        INVENTARIO_UPSTREAM: ${INVENTARIO_UPSTREAM:-http://host.docker.internal:8082}
-        CONCILIACION_UPSTREAM: ${CONCILIACION_UPSTREAM:-http://host.docker.internal:8005}
-        MAESTRO_UPSTREAM: ${MAESTRO_UPSTREAM:-http://host.docker.internal:8001}
-        SLAYER_UPSTREAM: ${SLAYER_UPSTREAM:-http://host.docker.internal:8093}
+        MBA3_UPSTREAM: ${UPSTREAM_MBA3:-http://127.0.0.1:8000}
+        CORE_UPSTREAM: ${UPSTREAM_CORE:-http://127.0.0.1:8080}
+        CAJA_CHICA_UPSTREAM: ${UPSTREAM_CAJA_CHICA:-http://127.0.0.1:8092}
+        PYG_UPSTREAM: ${UPSTREAM_PYG:-http://127.0.0.1:5171}
+        SCAN_API_UPSTREAM: ${UPSTREAM_SCAN:-http://127.0.0.1:8080}
+        PROMOCION_SOBRES_UPSTREAM: ${UPSTREAM_PROMOCION_SOBRES:-http://127.0.0.1:8083}
+        INVENTARIO_UPSTREAM: ${UPSTREAM_INVENTARIO:-http://127.0.0.1:8082}
+        CONCILIACION_UPSTREAM: ${UPSTREAM_CONCILIACION:-http://127.0.0.1:8005}
+        MAESTRO_UPSTREAM: ${UPSTREAM_MAESTRO:-http://127.0.0.1:8001}
+        SLAYER_UPSTREAM: ${UPSTREAM_SLAYER:-http://127.0.0.1:8093}
     image: scnexus-front:latest
     container_name: scnexus-front
+    env_file:
+      - path: deploy/env/bundle.env
+        required: true
+      - path: deploy/env/active.env
+        required: false
     ports:
-      - "${SCNEXUS_FRONT_PORT:-8081}:80"
+      - "${SCNEXUS_FRONT_PORT:-8082}:80"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
