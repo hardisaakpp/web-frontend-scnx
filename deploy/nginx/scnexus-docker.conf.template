@@ -267,12 +267,19 @@ server {
 
     # =========================
     # SPA (debe ir después de los proxies de API)
+    # Subruta /scnexus-front/ (VITE_APP_BASE_PATH=/scnexus-front/). ^~ evita que el regex
+    # de estáticos abajo devuelva 404 al buscar /scnexus-front/assets/* en disco.
     # =========================
+    location ^~ /scnexus-front/ {
+        alias /usr/share/nginx/html/;
+        try_files $uri $uri/ /scnexus-front/index.html;
+    }
+
     location / {
         try_files $uri $uri/ /index.html;
     }
 
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+    location ~* ^/assets/.+\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
         expires 1y;
         add_header Cache-Control "public, immutable";
     }

@@ -10,7 +10,7 @@ COPY . .
 COPY .env.production.example .env.production
 
 # Rutas relativas en el bundle (VITE_*). Sobrescribir en build con --build-arg o ENV.
-ARG VITE_APP_BASE_PATH=/
+ARG VITE_APP_BASE_PATH=/scnexus-front/
 ENV VITE_APP_BASE_PATH=${VITE_APP_BASE_PATH}
 
 RUN npm run build

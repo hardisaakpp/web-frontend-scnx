@@ -8,7 +8,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        VITE_APP_BASE_PATH: ${VITE_APP_BASE_PATH:-/}
+        VITE_APP_BASE_PATH: ${VITE_APP_BASE_PATH:-/scnexus-front/}
         MBA3_UPSTREAM: ${MBA3_UPSTREAM:-http://host.docker.internal:8000}
         CORE_UPSTREAM: ${CORE_UPSTREAM:-http://192.168.2.12:8080}
         CAJA_CHICA_UPSTREAM: ${CAJA_CHICA_UPSTREAM:-http://192.168.2.211:8092}
