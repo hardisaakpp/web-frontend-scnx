@@ -321,10 +321,12 @@ const loadDetalles = async (idLiquidacion: number) => {
   detalleLoading.value[idLiquidacion] = true
   detalleError.value[idLiquidacion] = ''
   try {
-    const response = await cajaChicaApi.get(`/Liquidaciones/${idLiquidacion}/detalle`)
+    const response = await cajaChicaApi.get('/LiquidacionesDetalle')
     const payload = response.data as any
     const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
-    detallesByLiquidacion.value[idLiquidacion] = items.map(normalizeDetalle)
+    detallesByLiquidacion.value[idLiquidacion] = items
+      .map(normalizeDetalle)
+      .filter((d: LiquidacionDetalleItem) => d.idLiquidacion === idLiquidacion)
   } catch {
     detalleError.value[idLiquidacion] = 'No se pudo cargar el detalle de la liquidacion.'
   } finally {
@@ -489,10 +491,12 @@ const downloadLiquidacionPdf = async (idLiquidacion: number) => {
 
   if (!detallesByLiquidacion.value[idLiquidacion]) {
     try {
-      const res = await cajaChicaApi.get(`/Liquidaciones/${idLiquidacion}/detalle`)
+      const res = await cajaChicaApi.get('/LiquidacionesDetalle')
       const p = res.data as any
       const arr: any[] = Array.isArray(p) ? p : Array.isArray(p?.data) ? p.data : []
-      detallesByLiquidacion.value[idLiquidacion] = arr.map(normalizeDetalle)
+      detallesByLiquidacion.value[idLiquidacion] = arr
+        .map(normalizeDetalle)
+        .filter((d: LiquidacionDetalleItem) => d.idLiquidacion === idLiquidacion)
     } catch {
       detallesByLiquidacion.value[idLiquidacion] = []
     }
@@ -629,10 +633,12 @@ const downloadPdf = async () => {
     // Cargar detalles si no están en memoria
     if (!detallesByLiquidacion.value[item.idLiquidacion]) {
       try {
-        const res = await cajaChicaApi.get(`/Liquidaciones/${item.idLiquidacion}/detalle`)
+        const res = await cajaChicaApi.get('/LiquidacionesDetalle')
         const p = res.data as any
         const arr: any[] = Array.isArray(p) ? p : Array.isArray(p?.data) ? p.data : []
-        detallesByLiquidacion.value[item.idLiquidacion] = arr.map(normalizeDetalle)
+        detallesByLiquidacion.value[item.idLiquidacion] = arr
+          .map(normalizeDetalle)
+          .filter((d: LiquidacionDetalleItem) => d.idLiquidacion === item.idLiquidacion)
       } catch {
         detallesByLiquidacion.value[item.idLiquidacion] = []
       }
