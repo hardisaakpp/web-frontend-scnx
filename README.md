@@ -58,6 +58,7 @@ Sistema completo de gestión de pedidos, órdenes de compra y despachos.
   - Polling automático de despachos
   - Gestión de homologaciones SKU
   - Procesamiento de órdenes de compra
+- **Alineación async con backend:** [docs/ALINEACION_FRONT_ASYNC.md](docs/ALINEACION_FRONT_ASYNC.md) (contrato Celery/polling/SSE; backend: `mba3-consultas/docs/ALINEACION_FRONT_ASYNC.md`)
 
 ### Usuarios, Roles y Permisos
 Sistema completo de gestión de acceso (RBAC).

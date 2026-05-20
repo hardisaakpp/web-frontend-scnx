@@ -336,6 +336,7 @@ import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
 import QuickTablePagination from '../components/QuickTablePagination.vue'
 import { ejecutarProcesoCompletoSap } from '../composables/ejecutarProcesoCompletoSap'
 import { isTransientClientError, SAP_MAY_STILL_PROCESSING_MESSAGE } from '../utils/httpErrors'
+import { isProcesoTransientError } from '../utils/procesoAsyncHelpers'
 
 const procesoStore = useProcesoStore()
 const ordenesCompraStore = useOrdenesCompraStore()
@@ -414,7 +415,10 @@ async function handleRetryProcesoCompletoSAP() {
     const response = await ejecutarProcesoCompletoSap(ctx.numeroPedido, ctx.ajustesDetalle, {
       onFallbackSync: () => {
         toast.info('Proceso en segundo plano no disponible', 'Se ejecutará en modo síncrono.')
-      }
+      },
+      onResumePending: () => {
+        toast.info('Proceso en curso', 'Retomando el envío SAP iniciado anteriormente...')
+      },
     })
     aplicarRespuestaProcesoCompletoSAPAlModal(response)
     if (response.envio_sap?.doc_num != null) {
@@ -423,8 +427,8 @@ async function handleRetryProcesoCompletoSAP() {
     } else if (response.envio_sap?.retry_recommended !== true) {
       sapRetryContext.value = null
     }
-  } catch (e: any) {
-    if (isTransientClientError(e) || e?.isTransientClientError === true) {
+  } catch (e: unknown) {
+    if (isProcesoTransientError(e)) {
       toast.warning('Tiempo de espera agotado', SAP_MAY_STILL_PROCESSING_MESSAGE)
       await Promise.all([
         ordenesCompraStore.fetchEstadisticas(),
@@ -432,8 +436,14 @@ async function handleRetryProcesoCompletoSAP() {
       ]).catch((err) => console.warn('[handleRetryProcesoCompletoSAP] refresh:', err))
       return
     }
-    const msg = e?.response?.data?.message ?? e?.response?.data?.detail ?? e?.message ?? 'No se pudo reintentar'
-    toast.error('Error al reintentar envío a SAP', typeof msg === 'string' ? msg : String(msg))
+    const err = e as { response?: { data?: { message?: string; detail?: string } }; message?: string }
+    const detail = err?.response?.data?.detail
+    const msg =
+      (typeof detail === 'string' ? detail : undefined) ??
+      err?.response?.data?.message ??
+      err?.message ??
+      'No se pudo reintentar'
+    toast.error('Error al reintentar envío a SAP', msg)
   } finally {
     sapRetryLoading.value = false
   }
@@ -846,6 +856,22 @@ function handleFilteredOCCountChanged(count: number) {
   }
 }
 
+async function refreshDatosTrasTimeoutProcesoLegado() {
+  try {
+    await Promise.all([
+      ordenesCompraStore.fetchEstadisticas(),
+      cargarOrdenesCompraPendientes(),
+      cargarDespachos(),
+    ])
+  } catch (err) {
+    console.warn('[ProcesoCompletoView] refresh tras timeout:', err)
+  }
+}
+
+function esTimeoutProcesoLegado(error: unknown): boolean {
+  return isProcesoTransientError(error)
+}
+
 // Funciones de ejecución de procesos
 async function ejecutarMigrar() {
   try {
@@ -927,9 +953,11 @@ async function ejecutarMigrar() {
   } catch (error: any) {
     console.error('Error al importar:', error)
     const errorMessage = error.message || 'No se pudo completar la importación'
-    
-    // Si es el error específico de consulta MBA3, mostrar mensaje de reintento
-    if (isConsultaMBA3Error(errorMessage)) {
+
+    if (esTimeoutProcesoLegado(error)) {
+      toast.warning('Tiempo de espera agotado', SAP_MAY_STILL_PROCESSING_MESSAGE)
+      await refreshDatosTrasTimeoutProcesoLegado()
+    } else if (isConsultaMBA3Error(errorMessage)) {
       toast.warning('Error al ejecutar consulta', 'Por favor, intenta nuevamente haciendo clic en "Reintentar"')
     } else {
       toast.error('Error en importación', errorMessage)
@@ -1013,15 +1041,14 @@ async function handleODCResponse(
     return { shouldChangeTab: false, shouldShowWarning: true }
   }
   
-  // Manejar estado processing (asíncrono)
+  // Reservado: backend documenta oc_status 'processing' como futuro; hoy /procesar-oc es síncrono.
   if (ocStatus.status === 'processing') {
     toast.info(
       isMultiple ? 'ODCs en proceso' : 'ODC en proceso',
       'La orden de compra se está generando. Se actualizará automáticamente cuando esté lista.'
     )
     procesoStore.setODCProcessSyncing()
-    // TODO: Implementar polling si el backend requiere verificación asíncrona
-    // Por ahora, recargamos datos una vez
+    // Sin poll de job hasta que el backend exponga process_id + GET resultado para procesar-oc.
     await Promise.all([
       ordenesCompraStore.fetchEstadisticas(),
       cargarOrdenesCompraPendientes(),
@@ -1139,7 +1166,12 @@ async function handleGenerarODCDesdePedido(numeroPedido: string) {
     }
   } catch (error: any) {
     console.error('Error al generar ODC desde pedido:', error)
-    toast.error('Error al generar ODC', error.message || 'No se pudo generar la orden de compra')
+    if (esTimeoutProcesoLegado(error)) {
+      toast.warning('Tiempo de espera agotado', SAP_MAY_STILL_PROCESSING_MESSAGE)
+      await refreshDatosTrasTimeoutProcesoLegado()
+    } else {
+      toast.error('Error al generar ODC', error.message || 'No se pudo generar la orden de compra')
+    }
   } finally {
     generandoODC.value = false
     progresoGenerarODC.value = 0
@@ -1181,22 +1213,22 @@ async function handleGenerarODCIndividual(despachoId: string) {
     
   } catch (error: any) {
     console.error('Error al generar ODC individual:', error)
-    
-    // Marcar error en el estado
-    procesoStore.setODCProcessError(error.message || 'No se pudo generar la orden de compra')
-    
-    toast.error('Error al generar ODC', error.message || 'No se pudo generar la orden de compra')
-    
-    // Limpiar estado del botón individual en caso de error
+
     if (despachosTableRef.value?.clearSendingState) {
       despachosTableRef.value.clearSendingState()
     }
-    
-    // Resetear después de mostrar el error
-    setTimeout(() => {
+
+    if (esTimeoutProcesoLegado(error)) {
       procesoStore.resetODCProcess()
-    }, ERROR_RESET_DELAY)
-    
+      toast.warning('Tiempo de espera agotado', SAP_MAY_STILL_PROCESSING_MESSAGE)
+      await refreshDatosTrasTimeoutProcesoLegado()
+    } else {
+      procesoStore.setODCProcessError(error.message || 'No se pudo generar la orden de compra')
+      toast.error('Error al generar ODC', error.message || 'No se pudo generar la orden de compra')
+      setTimeout(() => {
+        procesoStore.resetODCProcess()
+      }, ERROR_RESET_DELAY)
+    }
   } finally {
     generandoODC.value = false
     progresoGenerarODC.value = 0
@@ -1242,20 +1274,22 @@ async function handleGenerarODCMultiples(despachoIds: string[]) {
     
   } catch (error: any) {
     console.error('Error al generar ODCs múltiples:', error)
-    
-    procesoStore.setODCProcessError(error.message || 'No se pudieron generar las órdenes de compra')
-    
-    toast.error('Error al generar ODCs', error.message || 'No se pudieron generar las órdenes de compra')
-    
-    // Limpiar estado de envío múltiple en caso de error
+
     if (despachosTableRef.value?.clearSendingMultipleState) {
       despachosTableRef.value.clearSendingMultipleState()
     }
-    
-    setTimeout(() => {
+
+    if (esTimeoutProcesoLegado(error)) {
       procesoStore.resetODCProcess()
-    }, ERROR_RESET_DELAY)
-    
+      toast.warning('Tiempo de espera agotado', SAP_MAY_STILL_PROCESSING_MESSAGE)
+      await refreshDatosTrasTimeoutProcesoLegado()
+    } else {
+      procesoStore.setODCProcessError(error.message || 'No se pudieron generar las órdenes de compra')
+      toast.error('Error al generar ODCs', error.message || 'No se pudieron generar las órdenes de compra')
+      setTimeout(() => {
+        procesoStore.resetODCProcess()
+      }, ERROR_RESET_DELAY)
+    }
   } finally {
     generandoODC.value = false
     progresoGenerarODC.value = 0

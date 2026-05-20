@@ -406,6 +406,7 @@ import type { OrdenCompra, DetalleOC } from '../types'
 import { useToast } from '@/composables/useToast'
 import { useTablePreferences } from '@/composables/useTablePreferences'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
+import { isTransientClientError } from '../utils/httpErrors'
 import { formatNumber, formatCurrencyWithDecimals } from '../utils/formatters'
 import LoadingSpinner from './LoadingSpinner.vue'
 
@@ -968,6 +969,12 @@ async function handleReintentarST(oc: OrdenCompra) {
         'Estado no válido',
         error?.response?.data?.message || 'Solo se puede reintentar ST cuando la ODC está ENVIADA.'
       )
+    } else if (isTransientClientError(error)) {
+      toast.warning(
+        'Tiempo de espera agotado',
+        'El reintento de transferencias (ITR) puede seguir en el servidor. Actualice la lista en unos minutos para ver el estado real.'
+      )
+      emit('st-reintentado', { oc, result: null })
     } else {
       toast.error('Error al reintentar ST', error.message || 'No se pudo reintentar Solicitudes de Transferencia')
     }

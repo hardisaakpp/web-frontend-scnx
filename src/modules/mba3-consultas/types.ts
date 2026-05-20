@@ -678,16 +678,42 @@ export interface ProcesoEstado {
   error?: string
 }
 
+/** POST /cruce-productos/iniciar — 200 con process_id (async) o fallback sync sin process_id */
 export interface IniciarCruceResponse {
   status: string
-  process_id: string
-  message: string
+  process_id?: string | null
+  message?: string
+  fallback?: string
+  async?: boolean
+  data?: CruceProductosData
+}
+
+/** GET /cruce-productos/resultado/{id} mientras corre (estado anidado) */
+export interface CrucePollProcessingResponse {
+  status: 'processing'
+  estado: {
+    step?: string
+    progress?: number
+    message?: string
+  }
+}
+
+/** GET /cruce-productos/resultado/{id} terminal OK */
+export interface CrucePollSuccessResponse {
+  status: 'success'
+  message?: string
+  data: CruceProductosData
 }
 
 export interface ProcesoEstadoResponse {
   status: string
   data: ProcesoEstado
 }
+
+export type CruceResultadoPollResponse =
+  | CrucePollProcessingResponse
+  | CrucePollSuccessResponse
+  | ProcesoEstadoResponse
 
 // ========== Plantillas / Pedidos ==========
 export interface ValidacionProductos {

@@ -42,8 +42,6 @@ export async function pollAsyncJob<TPoll>(
   let workerStarted = false
 
   for (;;) {
-    await sleep(pollIntervalMs)
-
     const elapsedMs = Date.now() - startedAt
     if (elapsedMs > maxWaitMs) {
       throw new Error(maxWaitMessage)
@@ -69,5 +67,7 @@ export async function pollAsyncJob<TPoll>(
     }
 
     onUpdate?.(result)
+
+    await sleep(pollIntervalMs)
   }
 }

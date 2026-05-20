@@ -225,6 +225,23 @@
         @copy-to-clipboard="copyToClipboard"
       />
 
+      <div
+        v-if="odcSapProcesoEnServidor && !enviandoOdcSap && pedido"
+        class="mb-4 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/25 px-4 py-3 text-sm text-blue-900 dark:text-blue-100 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+        role="status"
+      >
+        <p class="flex-1">
+          Hay un envío a SAP en proceso en el servidor. Puede seguir el progreso sin iniciar otro envío.
+        </p>
+        <button
+          type="button"
+          class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium whitespace-nowrap shrink-0"
+          @click="handleEnviarOdcSap"
+        >
+          Seguir progreso
+        </button>
+      </div>
+
       <!-- Sección de Redistribución (siempre visible si hay pedido) -->
       <RedistribucionTiendas
         v-if="pedido"
@@ -283,7 +300,11 @@ import RedistribucionTiendas from '../components/RedistribucionTiendas.vue'
 import OdcSapVolverButton from '../components/OdcSapVolverButton.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
-import { ejecutarProcesoCompletoSap } from '../composables/ejecutarProcesoCompletoSap'
+import {
+  ejecutarProcesoCompletoSap,
+  getPendingOdcSapProcessingState,
+} from '../composables/ejecutarProcesoCompletoSap'
+import { useSapProcessProgress } from '../composables/useSapProcessProgress'
 import { isTransientClientError, SAP_MAY_STILL_PROCESSING_MESSAGE } from '../utils/httpErrors'
 
 const route = useRoute()
@@ -297,61 +318,26 @@ const pedidoIdInput = ref('')
 const descargandoRedistribucion = ref(false)
 const enviandoOdcSap = ref(false)
 
-// ⭐ NUEVO: Variables de progreso para envío ODC a SAP
-const sapProgress = ref(0)
-const sapFase = ref<'idle' | 'redistribucion' | 'generando' | 'enviando' | 'complete'>('idle')
-const sapMessage = ref('')
+const odcSapProcesoEnServidor = ref(false)
 
-// Intervalo para simulación de progreso
-let sapProgressInterval: ReturnType<typeof setInterval> | null = null
+const {
+  sapProgress,
+  sapFase,
+  sapMessage,
+  resetSapProgress,
+  startSapProgressSimulation,
+  applySapPollingUpdate,
+  completeSapProgress,
+  stopSimulation: stopSapProgressSimulation,
+} = useSapProcessProgress()
 
-function resetSapProgress() {
-  sapProgress.value = 0
-  sapFase.value = 'idle'
-  sapMessage.value = ''
-  if (sapProgressInterval) {
-    clearInterval(sapProgressInterval)
-    sapProgressInterval = null
+async function refreshPendingOdcSapState() {
+  if (!numeroPedido.value) {
+    odcSapProcesoEnServidor.value = false
+    return
   }
-}
-
-function startSapProgressSimulation() {
-  resetSapProgress()
-  sapFase.value = 'redistribucion'
-  sapMessage.value = 'Confirmando redistribución...'
-  
-  let currentProgress = 0
-  
-  sapProgressInterval = setInterval(() => {
-    if (currentProgress < 95) {
-      // Progreso más lento a medida que avanza
-      const increment = currentProgress < 30 ? 3 : (currentProgress < 60 ? 2 : (currentProgress < 80 ? 1 : 0.5))
-      currentProgress = Math.min(95, currentProgress + increment)
-      sapProgress.value = Math.round(currentProgress)
-      
-      // Actualizar fase y mensaje según el progreso
-      if (currentProgress < 33) {
-        sapFase.value = 'redistribucion'
-        sapMessage.value = 'Confirmando redistribución...'
-      } else if (currentProgress < 66) {
-        sapFase.value = 'generando'
-        sapMessage.value = 'Generando orden de compra...'
-      } else {
-        sapFase.value = 'enviando'
-        sapMessage.value = 'Enviando a SAP Service Layer...'
-      }
-    }
-  }, 500)
-}
-
-function completeSapProgress() {
-  if (sapProgressInterval) {
-    clearInterval(sapProgressInterval)
-    sapProgressInterval = null
-  }
-  sapProgress.value = 100
-  sapFase.value = 'complete'
-  sapMessage.value = 'Proceso completado'
+  const state = await getPendingOdcSapProcessingState(numeroPedido.value)
+  odcSapProcesoEnServidor.value = state.processing
 }
 
 // ⭐ Set para rastrear columnas modificadas (para resaltado en redistribución)
@@ -675,12 +661,14 @@ async function handleEnviarOdcSap() {
         toast.info('Proceso en segundo plano no disponible', 'Se ejecutará en modo síncrono. No cierre la ventana.')
         sapMessage.value = 'Ejecutando proceso en modo síncrono...'
       },
-      onPollingUpdate: ({ message, progress }) => {
-        if (message) sapMessage.value = message
-        if (typeof progress === 'number') sapProgress.value = progress
-      }
+      onResumePending: () => {
+        toast.info('Proceso en curso', 'Retomando el envío SAP iniciado anteriormente...')
+        odcSapProcesoEnServidor.value = false
+      },
+      onPollingUpdate: applySapPollingUpdate,
     })
     completeSapProgress()
+    odcSapProcesoEnServidor.value = false
     await new Promise(r => setTimeout(r, 400))
     await applySAPResponse(response)
   } catch (e: any) {
@@ -691,8 +679,14 @@ async function handleEnviarOdcSap() {
       : e?.response?.data?.message || e?.message || 'No se pudo iniciar el proceso'
     if (isTransient) {
       toast.warning('Tiempo de espera agotado', message)
+      await refreshPendingOdcSapState()
     } else {
       toast.error('Error al enviar a SAP', message || 'No se pudo completar el proceso')
+    }
+    try {
+      await loadPedido()
+    } catch (loadErr) {
+      console.warn('[handleEnviarOdcSap] loadPedido tras error SAP:', loadErr)
     }
   } finally {
     enviandoOdcSap.value = false
@@ -907,6 +901,7 @@ async function cargarRedistribucionSinPedido() {
 onMounted(async () => {
   if (numeroPedido.value) {
     await loadPedido()
+    await refreshPendingOdcSapState()
     cargarColumnasModificadasDesdeStorage()
     if (import.meta.env.DEV) console.log(`🎨 [MabelTradingRedistribucionView] Estado final de columnas modificadas: ${columnasModificadas.value.size} modificaciones`)
     if (columnasModificadas.value.size > 0) {
@@ -922,9 +917,6 @@ onMounted(async () => {
 
 // ⭐ Cleanup al desmontar componente
 onUnmounted(() => {
-  if (sapProgressInterval) {
-    clearInterval(sapProgressInterval)
-    sapProgressInterval = null
-  }
+  stopSapProgressSimulation()
 })
 </script>
