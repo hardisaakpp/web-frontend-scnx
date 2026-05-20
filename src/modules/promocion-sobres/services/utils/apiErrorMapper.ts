@@ -1,19 +1,41 @@
 import type { PromocionSobresErrorCode, UiError } from '../../types'
 
+type ApiErrorBody = {
+  success?: boolean
+  message?: string | null
+  error_code?: string | null
+  errorCode?: string | null
+  details?: unknown
+  correlation_id?: string | null
+  correlationId?: string | null
+}
+
 type AxiosLikeError = {
   response?: {
     status?: number
-    data?: {
-      success?: boolean
-      message?: string | null
-      error_code?: string | null
-      details?: unknown
-      correlation_id?: string | null
-    }
+    data?: ApiErrorBody
     headers?: Record<string, string>
   }
   code?: string
   message?: string
+}
+
+function extractBackendErrorCode(body?: ApiErrorBody): string {
+  if (!body) return ''
+  const raw = body.error_code ?? body.errorCode
+  return typeof raw === 'string' ? raw.trim() : ''
+}
+
+function extractCorrelationId(body?: ApiErrorBody, headers?: Record<string, string>): string | undefined {
+  const fromBody = body?.correlation_id ?? body?.correlationId
+  if (typeof fromBody === 'string' && fromBody.trim()) return fromBody.trim()
+  return correlationFromHeaders(headers)
+}
+
+function looksLikeEscaneoDuplicado(message: string | null): boolean {
+  if (!message) return false
+  const normalized = message.toLowerCase()
+  return normalized.includes('validado') || normalized.includes('finalizado')
 }
 
 const ERROR_MESSAGES: Record<PromocionSobresErrorCode, string> = {
@@ -51,8 +73,8 @@ export function mapPromocionSobresApiError(error: unknown): UiError {
   const err = error as AxiosLikeError
   const status = err.response?.status
   const body = err.response?.data
-  const correlationId = body?.correlation_id ?? correlationFromHeaders(err.response?.headers)
-  const backendCode = (body?.error_code || '').trim()
+  const correlationId = extractCorrelationId(body, err.response?.headers)
+  const backendCode = extractBackendErrorCode(body)
   const backendMessage = typeof body?.message === 'string' && body.message.trim() ? body.message : null
 
   if (backendCode) {
@@ -69,6 +91,13 @@ export function mapPromocionSobresApiError(error: unknown): UiError {
   }
 
   if (status === 409) {
+    if (looksLikeEscaneoDuplicado(backendMessage)) {
+      return {
+        code: 'ESCANEO_DUPLICADO',
+        message: backendMessage ?? ERROR_MESSAGES.ESCANEO_DUPLICADO,
+        correlationId
+      }
+    }
     return {
       code: 'YA_ENTREGADO',
       message: backendMessage ?? ERROR_MESSAGES.YA_ENTREGADO,

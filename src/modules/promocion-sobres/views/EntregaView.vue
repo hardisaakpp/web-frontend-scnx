@@ -29,7 +29,7 @@
     </div>
 
     <div
-      v-if="store.step === 'entrega_ok' && store.ultimaEntrega"
+      v-if="store.step === 'entrega_ok' && store.ultimaEntrega && textoEntregaExitosa"
       class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-100"
       role="status"
     >
@@ -82,11 +82,11 @@
       variant="ya_entregado"
     />
     <p
-      v-if="store.mostrarYaEntregado && textoEscaneoDuplicado"
+      v-if="store.mostrarYaEntregado && store.mensajeFlujoCerrado"
       class="text-center text-sm text-amber-800 dark:text-amber-200"
       role="status"
     >
-      {{ textoEscaneoDuplicado }}
+      {{ store.mensajeFlujoCerrado }}
     </p>
 
     <BeneficiarioCard
@@ -196,7 +196,6 @@ const cedulaModel = computed({
   get: () => store.identificacion,
   set: (value: string) => {
     store.setIdentificacion(value)
-    store.resetError()
   }
 })
 
@@ -262,26 +261,17 @@ const errorPanelClass =
 
 const placeholderCodigoManual = 'Codigo impreso en el obsequio o tarjeta del cliente'
 
-const textoEntregaExitosa = computed(() => {
-  const api = store.mensajeEntregaExitosa?.trim()
-  return api || 'Obsequio entregado correctamente.'
-})
-
-const textoEscaneoDuplicado = computed(() => {
-  if (store.step !== 'ya_entregado') return ''
-  return store.mensajeEntregaExitosa?.trim() || 'Este codigo ya fue validado. El flujo ha finalizado.'
-})
+const textoEntregaExitosa = computed(() => store.mensajeEntregaExitosa?.trim() ?? '')
 
 async function onConsultar() {
   isScannerOpen.value = false
 
   await store.consultarBeneficiario()
 
-  if (store.error) {
+  if (store.error || store.mostrarYaEntregado) {
     return
   }
 
-  // GET 200: abrir escáner aunque entregado sea true; la validación real es POST /entregas.
   if (store.mostrarEscaneo) {
     await nextTick()
     isScannerOpen.value = true

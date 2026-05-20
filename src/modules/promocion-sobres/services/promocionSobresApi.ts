@@ -28,8 +28,8 @@ function normalizeBeneficiarioDto(raw: BeneficiarioDto): BeneficiarioDto {
 }
 
 /**
- * Flags según POST /entregas: priorizar campos explícitos del API.
- * Si faltan, conservar el estado previo del GET (no inferir en cliente).
+ * Flags según POST /entregas: solo campos explícitos del API (BD).
+ * Sin fallback al estado previo del cliente.
  */
 export function resolveEntregaFlagsFromApi(
   entrega: EntregaRegistradaDto,

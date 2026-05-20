@@ -35,20 +35,20 @@ import type { BeneficiarioDto } from '../types'
 const props = withDefaults(
   defineProps<{
     beneficiario: BeneficiarioDto
-    /** `ya_entregado` solo tras POST 409 ESCANEO_DUPLICADO (no por entregado del GET). */
+    /** `ya_entregado`: beneficiario con obsequio ya entregado (GET o POST duplicado). */
     variant?: 'consulta' | 'ya_entregado'
   }>(),
   { variant: 'consulta' }
 )
 
 const statusLabel = computed(() => {
-  if (props.variant === 'ya_entregado') return 'Ya entregado'
+  if (props.variant === 'ya_entregado' || props.beneficiario.entregado) return 'Ya entregado'
   if (props.beneficiario.puedeEscanear) return 'Usuario válido'
   return 'No habilitado'
 })
 
 const statusBadgeClass = computed(() => {
-  if (props.variant === 'ya_entregado') {
+  if (props.variant === 'ya_entregado' || props.beneficiario.entregado) {
     return 'bg-amber-100 text-amber-900 dark:bg-amber-950/50 dark:text-amber-200'
   }
   if (props.beneficiario.puedeEscanear) {
@@ -58,7 +58,7 @@ const statusBadgeClass = computed(() => {
 })
 
 const cardClass = computed(() => {
-  if (props.variant === 'ya_entregado') {
+  if (props.variant === 'ya_entregado' || props.beneficiario.entregado) {
     return 'border-amber-200 bg-amber-50/80 dark:border-amber-900/40 dark:bg-amber-950/20'
   }
   if (props.beneficiario.puedeEscanear) {
