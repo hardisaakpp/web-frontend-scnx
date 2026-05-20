@@ -33,7 +33,7 @@ export default defineConfig(({ mode }) => {
   const articuloScanProxyTarget = env.VITE_ARTICULO_SCAN_PROXY_TARGET || 'http://localhost:8080'
   const inventarioProxyTarget = env.VITE_INVENTARIO_PROXY_TARGET || 'http://localhost:8082'
   const promocionSobresProxyTarget = env.VITE_PROMOCION_SOBRES_PROXY_TARGET || 'http://localhost:8083'
-  const slayerProxyTarget = env.VITE_SLAYER_PROXY_TARGET || 'http://localhost:8093'
+  const slayerProxyTarget = env.VITE_SLAYER_PROXY_TARGET || 'http://192.168.2.153:8093'
   /**
    * Prefijo en el backend tras quitar `/pyg-api`. Por defecto `/api` → `/pyg-api/uploads` → `/api/uploads`.
    * Si el servicio expone rutas en raíz, define `VITE_PYG_PROXY_PREFIX=` vacío en `.env.development`.

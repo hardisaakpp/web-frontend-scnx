@@ -20,7 +20,7 @@ services:
       VITE_PROMOCION_SOBRES_PROXY_TARGET: ${VITE_PROMOCION_SOBRES_PROXY_TARGET:-http://host.docker.internal:8083}
       VITE_CONCILIACION_PROXY_TARGET: ${VITE_CONCILIACION_PROXY_TARGET:-http://host.docker.internal:8005}
       VITE_MAESTRO_API_TARGET: ${VITE_MAESTRO_API_TARGET:-http://host.docker.internal:8001}
-      VITE_SLAYER_PROXY_TARGET: ${VITE_SLAYER_PROXY_TARGET:-http://host.docker.internal:8093}
+      VITE_SLAYER_PROXY_TARGET: ${VITE_SLAYER_PROXY_TARGET:-http://192.168.2.153:8093}
     ports:
       - "3000:3000"
     volumes:

@@ -18,7 +18,7 @@ services:
         INVENTARIO_UPSTREAM: ${INVENTARIO_UPSTREAM:-http://host.docker.internal:8082}
         CONCILIACION_UPSTREAM: ${CONCILIACION_UPSTREAM:-http://host.docker.internal:8005}
         MAESTRO_UPSTREAM: ${MAESTRO_UPSTREAM:-http://host.docker.internal:8001}
-        SLAYER_UPSTREAM: ${SLAYER_UPSTREAM:-http://host.docker.internal:8093}
+        SLAYER_UPSTREAM: ${SLAYER_UPSTREAM:-http://192.168.2.153:8093}
     image: scnexus-front:latest
     container_name: scnexus-front
     ports:
