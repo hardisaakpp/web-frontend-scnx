@@ -2,9 +2,19 @@
   <div class="mx-auto max-w-2xl space-y-4 px-4 py-4 pb-24 sm:px-5 sm:py-6">
     <header class="relative overflow-hidden rounded-2xl border border-slate-200/70 bg-white/90 px-5 py-6 shadow-sm dark:border-slate-700/80 dark:bg-slate-900/80 sm:px-6">
       <div class="pointer-events-none absolute left-0 top-0 h-[3px] w-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-violet-500" />
-      <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-700/90 dark:text-violet-400/90">Punto de caja</p>
-      <h1 class="mt-1.5 text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">Entrega de obsequio</h1>
-      <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">Consulta la cédula y escanea el código de la promoción.</p>
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-700/90 dark:text-violet-400/90">Punto de caja</p>
+          <h1 class="mt-1.5 text-2xl font-semibold tracking-tight text-slate-900 dark:text-white">Entrega de obsequio</h1>
+          <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">Consulta la cédula y escanea el código de la promoción.</p>
+        </div>
+        <RouterLink
+          :to="{ name: 'promocion-sobres-monitoreo' }"
+          class="shrink-0 rounded-xl border border-violet-200 bg-violet-50 px-4 py-2.5 text-sm font-semibold text-violet-700 transition hover:bg-violet-100 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-200 dark:hover:bg-violet-950/60"
+        >
+          Monitorear resultados
+        </RouterLink>
+      </div>
     </header>
 
     <div
@@ -169,6 +179,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import ScannerPanel from '@/modules/articulo-scaner/components/ScannerPanel.vue'
 import BeneficiarioCard from '../components/BeneficiarioCard.vue'
 import { usePromocionSobresStore } from '../stores/promocionSobresStore'

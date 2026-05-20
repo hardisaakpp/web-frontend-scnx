@@ -16,6 +16,17 @@ const routes: RouteRecordRaw[] = [
       icon: 'GiftIcon',
       permissions: [...PROMOCION_SOBRES_OPERATE_PERMISSIONS]
     }
+  },
+  {
+    path: '/promocion-sobres/monitoreo',
+    name: 'promocion-sobres-monitoreo',
+    component: () => import('./views/MonitoreoView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Monitoreo entregas',
+      icon: 'GiftIcon',
+      permissions: [...PROMOCION_SOBRES_OPERATE_PERMISSIONS]
+    }
   }
 ]
 

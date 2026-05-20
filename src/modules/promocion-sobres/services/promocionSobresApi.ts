@@ -4,6 +4,7 @@ import type {
   ApiResponse,
   BeneficiarioDto,
   EntregaRegistradaDto,
+  EntregadosMonitoreoDto,
   RegistrarEntregaRequest,
   UiError
 } from '../types'
@@ -102,5 +103,13 @@ export const promocionSobresService = {
     )
     const { data, message } = unwrapSuccess(response.data)
     return { entrega: data, mensajeApi: message }
+  },
+
+  async consultarEntregadosMonitoreo(): Promise<EntregadosMonitoreoDto> {
+    const response = await promocionSobresApi.get<ApiResponse<EntregadosMonitoreoDto>>(
+      `${promocionSobresApiPrefix}/monitoreo/entregados`
+    )
+    const { data } = unwrapSuccess(response.data)
+    return data
   }
 }
