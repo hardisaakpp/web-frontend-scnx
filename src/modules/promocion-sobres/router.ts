@@ -1,5 +1,8 @@
 import type { RouteRecordRaw } from 'vue-router'
-import { PROMOCION_SOBRES_OPERATE_PERMISSIONS } from './permissions'
+import {
+  PROMOCION_SOBRES_MONITOREO_PERMISSIONS,
+  PROMOCION_SOBRES_OPERATE_PERMISSIONS
+} from './permissions'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -25,7 +28,7 @@ const routes: RouteRecordRaw[] = [
       requiresAuth: true,
       title: 'Monitoreo entregas',
       icon: 'GiftIcon',
-      permissions: [...PROMOCION_SOBRES_OPERATE_PERMISSIONS]
+      permissions: [...PROMOCION_SOBRES_MONITOREO_PERMISSIONS]
     }
   }
 ]

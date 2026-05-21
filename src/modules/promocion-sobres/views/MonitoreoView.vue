@@ -22,6 +22,7 @@
         </div>
         <div class="flex flex-wrap gap-2">
           <RouterLink
+            v-if="canOperate"
             :to="{ name: 'promocion-sobres-entrega' }"
             class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
           >
@@ -150,9 +151,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
+import { usePromocionSobresPermissions } from '../composables/usePromocionSobresPermissions'
 import { mapPromocionSobresApiError, promocionSobresService } from '../services/promocionSobresApi'
 import type { EntregadosMonitoreoDto, UiError } from '../types'
 
+const { canOperate } = usePromocionSobresPermissions()
 const loading = ref(false)
 const monitoreo = ref<EntregadosMonitoreoDto | null>(null)
 const error = ref<UiError | null>(null)

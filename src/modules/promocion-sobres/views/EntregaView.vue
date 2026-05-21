@@ -9,6 +9,7 @@
           <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">Consulta la cédula y escanea el código de la promoción.</p>
         </div>
         <RouterLink
+          v-if="canViewMonitoreo"
           :to="{ name: 'promocion-sobres-monitoreo' }"
           class="shrink-0 rounded-xl border border-violet-200 bg-violet-50 px-4 py-2.5 text-sm font-semibold text-violet-700 transition hover:bg-violet-100 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-200 dark:hover:bg-violet-950/60"
         >
@@ -182,10 +183,12 @@ import { computed, nextTick, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import ScannerPanel from '@/modules/articulo-scaner/components/ScannerPanel.vue'
 import BeneficiarioCard from '../components/BeneficiarioCard.vue'
+import { usePromocionSobresPermissions } from '../composables/usePromocionSobresPermissions'
 import { usePromocionSobresStore } from '../stores/promocionSobresStore'
 import type { PromocionSobresErrorCode } from '../types'
 
 const store = usePromocionSobresStore()
+const { canViewMonitoreo } = usePromocionSobresPermissions()
 const isScannerOpen = ref(false)
 const mostrarPasoEscaneo = computed(() => store.mostrarEscaneo)
 
