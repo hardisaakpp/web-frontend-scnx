@@ -1,202 +1,342 @@
 import { defineConfig, loadEnv } from 'vite'
+
 import vue from '@vitejs/plugin-vue'
+
 import { fileURLToPath, URL } from 'node:url'
 
-/** loadEnv() solo lee archivos .env; en Docker el ARG/ENV no entra sin fusionar process.env. */
+import { mergeViteDevEnv, upstreamUrl } from './deploy/loadEnv.mjs'
+
+/** bundle + active.env + .env.development (VITE_*_PROXY_TARGET → UPSTREAM si no hay active.env) */
 function viteEnv(mode: string): Record<string, string> {
-  const fromFiles = loadEnv(mode, process.cwd(), '')
-  const merged: Record<string, string> = { ...fromFiles }
-  for (const key of Object.keys(process.env)) {
-    if (key.startsWith('VITE_')) {
-      const v = process.env[key]
-      if (v !== undefined) merged[key] = v
-    }
-  }
-  return merged
+  return mergeViteDevEnv(mode, loadEnv(mode, process.cwd(), ''))
 }
 
+
+
 // https://vitejs.dev/config/
+
 export default defineConfig(({ mode }) => {
+
   const env = viteEnv(mode)
+
   const rawAppBasePath = env.VITE_APP_BASE_PATH || '/'
+
   const normalizedAppBasePath = rawAppBasePath.startsWith('/') ? rawAppBasePath : `/${rawAppBasePath}`
+
   const appBasePath = normalizedAppBasePath.endsWith('/') ? normalizedAppBasePath : `${normalizedAppBasePath}/`
-  const coreProxyTarget = env.VITE_CORE_PROXY_TARGET || 'http://192.168.2.12:8080'
-  const mba3ProxyTarget = env.VITE_MBA3_PROXY_TARGET || 'http://localhost:8000'
-  const authMeProxyTarget = env.VITE_AUTH_ME_PROXY_TARGET || mba3ProxyTarget
-  const cajaChicaProxyTarget = env.VITE_CAJA_CHICA_PROXY_TARGET || 'http://192.168.2.153:8092'
-  const employeesProxyTarget = env.VITE_STORE_EMPLOYEES_PROXY_TARGET || cajaChicaProxyTarget
-  /** PYG API (Docker típico: host 5171 → contenedor 8080). Solo afecta al dev server de Vite. */
-  const pygProxyTarget = env.VITE_PYG_PROXY_TARGET || 'http://localhost:5171'
-  const maestroProxyTarget = env.VITE_MAESTRO_API_TARGET || 'http://localhost:8001'
-  const conciliacionProxyTarget = env.VITE_CONCILIACION_PROXY_TARGET || 'http://127.0.0.1:8005'
-  const articuloScanProxyTarget = env.VITE_ARTICULO_SCAN_PROXY_TARGET || 'http://localhost:8080'
-  const inventarioProxyTarget = env.VITE_INVENTARIO_PROXY_TARGET || 'http://localhost:8082'
-  const promocionSobresProxyTarget = env.VITE_PROMOCION_SOBRES_PROXY_TARGET || 'http://localhost:8083'
-  const slayerProxyTarget = env.VITE_SLAYER_PROXY_TARGET || 'http://localhost:8093'
-  /**
-   * Prefijo en el backend tras quitar `/pyg-api`. Por defecto `/api` → `/pyg-api/uploads` → `/api/uploads`.
-   * Si el servicio expone rutas en raíz, define `VITE_PYG_PROXY_PREFIX=` vacío en `.env.development`.
-   */
-  const pygProxyPrefix = 'VITE_PYG_PROXY_PREFIX' in env ? env.VITE_PYG_PROXY_PREFIX : '/api'
+
+
+
+  const coreProxyTarget = upstreamUrl(env, 'CORE')
+
+  const mba3ProxyTarget = upstreamUrl(env, 'MBA3')
+
+  const authMeProxyTarget = upstreamUrl(env, 'MBA3_AUTH')
+
+  const cajaChicaProxyTarget = upstreamUrl(env, 'CAJA_CHICA')
+
+  const employeesProxyTarget = upstreamUrl(env, 'EMPLOYEES')
+
+  const pygProxyTarget = upstreamUrl(env, 'PYG')
+
+  const maestroProxyTarget = upstreamUrl(env, 'MAESTRO')
+
+  const conciliacionProxyTarget = upstreamUrl(env, 'CONCILIACION')
+
+  const articuloScanProxyTarget = upstreamUrl(env, 'SCAN')
+
+  const inventarioProxyTarget = upstreamUrl(env, 'INVENTARIO')
+
+  const promocionSobresProxyTarget = upstreamUrl(env, 'PROMOCION_SOBRES')
+
+  const slayerProxyTarget = upstreamUrl(env, 'SLAYER')
+
+  const pygProxyPrefix =
+
+    'UPSTREAM_PYG_PREFIX' in env
+
+      ? env.UPSTREAM_PYG_PREFIX
+
+      : 'VITE_PYG_PROXY_PREFIX' in env
+
+        ? env.VITE_PYG_PROXY_PREFIX
+
+        : '/api'
+
+
 
   return {
+
     base: appBasePath,
+
     plugins: [vue()],
+
     resolve: {
+
       alias: {
+
         '@': fileURLToPath(new URL('./src', import.meta.url))
+
       }
+
     },
+
     optimizeDeps: {
+
       include: ['vue', 'vue-router', 'pinia', 'axios', 'jwt-decode']
+
     },
-    // Configuración del servidor de desarrollo (solo se usa en desarrollo)
+
     server: {
+
       host: '0.0.0.0',
+
       port: 3000,
+
       proxy: {
-        // MBA3 Consultas (ODC SAP, plantillas, pedidos, etc.) → evita CORS en dev.
+
         '/mba3-api': {
+
           target: mba3ProxyTarget,
+
           changeOrigin: true,
+
           secure: false,
+
           rewrite: (path) => path.replace(/^\/mba3-api/, '')
+
         },
-        // /Auth/me → MBA3 (igual que deploy/nginx/scnexus.conf.example; antes que /api genérico)
+
         '/api/Auth/me': {
+
           target: authMeProxyTarget,
+
           changeOrigin: true,
+
           secure: false,
+
           rewrite: (path) => path
+
         },
+
         '/api/auth/me': {
+
           target: authMeProxyTarget,
+
           changeOrigin: true,
+
           secure: false,
+
           rewrite: (path) => path
+
         },
-        // Preferencias de usuario (persistencia UI) → mba3-consultas
+
         '/api/users/preferences': {
+
           target: mba3ProxyTarget,
+
           changeOrigin: true,
+
           secure: false,
+
           rewrite: (path) => path
+
         },
-        // Stream SSE de notificaciones → mba3-consultas
+
         '/notificaciones': {
+
           target: mba3ProxyTarget,
+
           changeOrigin: true,
+
           secure: false,
+
           rewrite: (path) => path
+
         },
-        // MBA3 consultas (/api/mba3/* → backend sin prefijo; antes que /api → Core)
+
         '/api/mba3': {
+
           target: mba3ProxyTarget,
+
           changeOrigin: true,
+
           secure: false,
+
           rewrite: (path) => path.replace(/^\/api\/mba3/, '')
+
         },
-        // Login y resto de /api → Core (VITE_CORE_PROXY_TARGET en .env.development)
+
         '/api': {
+
           target: coreProxyTarget,
+
           changeOrigin: true,
+
           secure: false,
+
           rewrite: (path) => path
+
         },
 
-        // Caja Chica API via mismo host del frontend (evita localhost del navegador cliente remoto)
         '/caja-chica-api': {
-          target: cajaChicaProxyTarget,
-          changeOrigin: true,
-          secure: false,
-          rewrite: (path) => path.replace(/^\/caja-chica-api/, '/api')
-        },
-        // PYG → VITE_PYG_PROXY_TARGET (evita CORS en dev). Ver `.env.development.example`.
-        '/pyg-api': {
-          target: pygProxyTarget,
-          changeOrigin: true,
-          secure: false,
-          rewrite: (path) => path.replace(/^\/pyg-api/, pygProxyPrefix || '')
-        },
-        // Integracion SAP Slayer -> http://localhost:8093/api (evita CORS en navegador)
-        '/slayer-api': {
-          target: slayerProxyTarget,
-          changeOrigin: true,
-          secure: false,
-          rewrite: (path) => path.replace(/^\/slayer-api/, '/api')
-        },
-        // Archivos estáticos de Caja Chica (ej: /uploads/...)
-        // Archivos estáticos de Caja Chica (ej: /uploads/...)
-        '/uploads': {
-          target: cajaChicaProxyTarget,
-          changeOrigin: true,
-          secure: false,
-          rewrite: (path) => path
-        },
-        // Gestión usuarios (store_employees.php): mismo host que Caja Chica; reescribe a /api/... en el target
-        '/employees-api': {
-          target: employeesProxyTarget,
-          changeOrigin: true,
-          secure: false,
-          rewrite: (path) => path.replace(/^\/employees-api/, '/api')
-        },
-        // Conciliación CORS bypass Proxy
-        '/conciliacion-api': {
-          target: conciliacionProxyTarget,
-          changeOrigin: true,
-          secure: false,
-          rewrite: (path) => path.replace(/^\/conciliacion-api/, '')
-        },
-        // Maestro de Artículos API
-        '/maestro-api': {
-          target: maestroProxyTarget,
-          changeOrigin: true,
-          secure: false,
-          rewrite: (path) => path.replace(/^\/maestro-api/, '')
-        },
-        // Articulo Scanner (.NET backend local)
-        '/scan-api': {
-          target: articuloScanProxyTarget,
-          changeOrigin: true,
-          secure: false,
-          rewrite: (path) => path.replace(/^\/scan-api/, '')
-        },
-        // Inventario (.NET backend local)
-        '/inventario-api': {
-          target: inventarioProxyTarget,
-          changeOrigin: true,
-          secure: false,
-          rewrite: (path) => path.replace(/^\/inventario-api/, '')
-        },
-        '/promocion-sobres-api': {
-          target: promocionSobresProxyTarget,
-          changeOrigin: true,
-          secure: false,
-          rewrite: (path) => path.replace(/^\/promocion-sobres-api/, '')
-        }
-      }
-    },
-    // ⚠️ SECURITY: Removed esbuild.drop: ['console'] to preserve console.error() and error logging
-    // Development console.logs are now protected by import.meta.env.DEV checks
-    // Production build will be smaller because DEV-conditional logs are never reached
 
-    // Configuración de build para producción
-    build: {
-      outDir: 'dist',
-      assetsDir: 'assets',
-      sourcemap: false, // Deshabilitar sourcemaps en producción para seguridad
-      minify: 'esbuild', // Usar esbuild (más rápido, viene incluido con Vite)
-      rollupOptions: {
-        output: {
-          manualChunks: {
-            'vue-vendor': ['vue', 'vue-router', 'pinia'],
-            'ui-vendor': ['@headlessui/vue', '@heroicons/vue'],
-            'utils-vendor': ['axios', 'jwt-decode']
-          }
+          target: cajaChicaProxyTarget,
+
+          changeOrigin: true,
+
+          secure: false,
+
+          rewrite: (path) => path.replace(/^\/caja-chica-api/, '/api')
+
+        },
+
+        '/pyg-api': {
+
+          target: pygProxyTarget,
+
+          changeOrigin: true,
+
+          secure: false,
+
+          rewrite: (path) => path.replace(/^\/pyg-api/, pygProxyPrefix || '')
+
+        },
+
+        '/slayer-api': {
+
+          target: slayerProxyTarget,
+
+          changeOrigin: true,
+
+          secure: false,
+
+          rewrite: (path) => path.replace(/^\/slayer-api/, '/api')
+
+        },
+
+        '/uploads': {
+
+          target: cajaChicaProxyTarget,
+
+          changeOrigin: true,
+
+          secure: false,
+
+          rewrite: (path) => path
+
+        },
+
+        '/employees-api': {
+
+          target: employeesProxyTarget,
+
+          changeOrigin: true,
+
+          secure: false,
+
+          rewrite: (path) => path.replace(/^\/employees-api/, '/api')
+
+        },
+
+        '/conciliacion-api': {
+
+          target: conciliacionProxyTarget,
+
+          changeOrigin: true,
+
+          secure: false,
+
+          rewrite: (path) => path.replace(/^\/conciliacion-api/, '')
+
+        },
+
+        '/maestro-api': {
+
+          target: maestroProxyTarget,
+
+          changeOrigin: true,
+
+          secure: false,
+
+          rewrite: (path) => path.replace(/^\/maestro-api/, '')
+
+        },
+
+        '/scan-api': {
+
+          target: articuloScanProxyTarget,
+
+          changeOrigin: true,
+
+          secure: false,
+
+          rewrite: (path) => path.replace(/^\/scan-api/, '')
+
+        },
+
+        '/inventario-api': {
+
+          target: inventarioProxyTarget,
+
+          changeOrigin: true,
+
+          secure: false,
+
+          rewrite: (path) => path.replace(/^\/inventario-api/, '')
+
+        },
+
+        '/promocion-sobres-api': {
+
+          target: promocionSobresProxyTarget,
+
+          changeOrigin: true,
+
+          secure: false,
+
+          rewrite: (path) => path.replace(/^\/promocion-sobres-api/, '')
+
         }
+
+      }
+
+    },
+
+    build: {
+
+      outDir: 'dist',
+
+      assetsDir: 'assets',
+
+      sourcemap: false,
+
+      minify: 'esbuild',
+
+      rollupOptions: {
+
+        output: {
+
+          manualChunks: {
+
+            'vue-vendor': ['vue', 'vue-router', 'pinia'],
+
+            'ui-vendor': ['@headlessui/vue', '@heroicons/vue'],
+
+            'utils-vendor': ['axios', 'jwt-decode']
+
+          }
+
+        }
+
       },
-      chunkSizeWarningLimit: 500 // Reducido de 1000 para detectar problemas de bundle size más temprano
+
+      chunkSizeWarningLimit: 500
+
     }
+
   }
+
 })
+
+

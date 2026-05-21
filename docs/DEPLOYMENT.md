@@ -50,9 +50,32 @@ El script, en orden habitual:
 
 **Logs:** `/home/admindesa/deploys/dev.log` (revisar ahí errores de build, puerto o runtime).
 
+### Configuración en el servidor (centralizada)
+
+```bash
+cd /opt/frontend/scnexus-front
+cp deploy/env/desa.env.example deploy/env/active.env
+# Editar UPSTREAM_* según docker ps en DESA
+```
+
+Ver [deploy/env/README.md](../deploy/env/README.md). El bundle (`deploy/env/bundle.env`) va versionado; **no** commitear `deploy/env/active.env`.
+
+### Migración a Docker (recomendado en DESA)
+
+Sustituir en `nexus_frontend.sh` el bloque `npm run dev` por:
+
+```bash
+pkill -f "vite" 2>/dev/null
+docker compose -f docker-compose.dev.yml down 2>/dev/null
+git pull origin "$BRANCH"
+cp deploy/env/desa.env.example deploy/env/active.env  # solo la primera vez
+docker compose -f docker-compose.dev.yml up -d --build
+```
+
+O imagen Nginx (`docker compose up -d --build`) en puerto `SCNEXUS_FRONT_PORT` (default 8082).
+
 ### Notas
 
-- Variables `VITE_*` y `.env` del entorno de prueba viven en el servidor; no suelen estar en el repo. Para revisar nombres y patrones de URLs, usar [PRODUCTION_ENV_CHECKLIST.md](PRODUCTION_ENV_CHECKLIST.md) como referencia.
 - Si el script muestra avisos de `npm audit`, coordinar con el equipo antes de ejecutar `npm audit fix` en el servidor compartido.
 
 ---
@@ -63,7 +86,7 @@ El script, en orden habitual:
 
 ### ✅ Variables de Entorno
 
-**IMPORTANTE:** Antes del despliegue, actualizar todas las URLs en `.env.production` con las URLs reales de producción.
+**IMPORTANTE:** El bundle usa rutas relativas en `deploy/env/bundle.env`. Los hosts reales van en `deploy/env/active.env` (Nginx/Docker), no en `VITE_*` con IPs.
 
 #### Despliegue típico: build en tu PC y copiar `dist/` al servidor
 

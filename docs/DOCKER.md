@@ -1,101 +1,67 @@
 # Docker — SCNexus Frontend (intranet)
 
-Perfil de despliegue para **servidor de aplicaciones / intranet**, alineado con `deploy/nginx/scnexus.conf.example`.
-
 | Entorno | Comando | URL típica |
 |---------|---------|------------|
-| Desarrollo | `docker compose -f docker-compose.dev.yml up -d` | http://localhost:3000 |
-| Producción (contenedor) | `docker compose up -d --build` | http://localhost:8081 |
+| Desarrollo en contenedor | `docker compose -f docker-compose.dev.yml up -d` | http://localhost:3000 |
+| Test/prod en contenedor | `docker compose up -d --build` | http://localhost:8082 (default) |
 
-## Regla de configuración
-
-| Capa | Desarrollo | Producción (contenedor) |
-|------|------------|-------------------------|
-| Bundle (`VITE_*`) | Rutas relativas (`/api`, `/api/mba3`, …) | Igual — ver `.env.production.example` |
-| Proxy | `VITE_*_PROXY_TARGET` en Vite (localhost / `host.docker.internal`) | `*_UPSTREAM` en `.env` → build-args → Nginx |
-
-No uses IPs en `VITE_*` del build salvo APIs en otro dominio HTTPS público.
-
-**Tabla ruta / variable:** [ENV.md](./ENV.md)
-
-## Inicio rápido
-
-### 1. Configurar upstreams
+## Configuración (un solo lugar)
 
 ```bash
-cp .env.docker.example .env
-# Editar IPs según tu red (Core, Caja Chica, MBA3, etc.)
+# PC local (Core en 192.168.2.12, MBA3 en host)
+npm run docker:env
+npm run docker:up
+
+# DESA
+cp deploy/env/desa.env.example deploy/env/active.env
+
+# Intranet / prod
+cp deploy/env/intranet.env.example deploy/env/active.env
+
+docker compose --env-file deploy/env/active.env build --no-cache
+docker compose --env-file deploy/env/active.env up -d
 ```
 
-### 2. Desarrollo (Vite + hot reload)
+**Importante:** `env_file` del servicio no alimenta los `build.args`. Usa siempre `--env-file deploy/env/active.env` (o `npm run docker:up`).
+
+- **Bundle:** `deploy/env/bundle.env` (rutas relativas, sin IPs)
+- **Backends:** `UPSTREAM_*` en `deploy/env/active.env`
+
+Ver [deploy/env/README.md](../deploy/env/README.md).
+
+## Desarrollo local sin Docker
 
 ```bash
-docker compose -f docker-compose.dev.yml up -d
-docker compose -f docker-compose.dev.yml logs -f scnexus-front-dev
+npm run env:local   # crea active.env si falta
+npm run dev
 ```
 
-Con **mba3-consultas** en Docker (red `mba3-nexus_edge`):
+## MBA3 en Docker (red compartida)
 
 ```bash
 docker compose -f docker-compose.dev.yml -f docker-compose.mba3-network.attach.yml up -d
 ```
 
-### 3. Producción local (imagen Nginx)
-
-```bash
-docker compose up -d --build
-curl -sI http://127.0.0.1:8081/
-curl -sI http://127.0.0.1:8081/api/mba3/health
-```
-
-Tras cambiar `.env` o upstreams: `docker compose build --no-cache && docker compose up -d`.
+Ajustar en `active.env`: `UPSTREAM_MBA3=http://mba3-api:8000` (y `UPSTREAM_MBA3_AUTH` igual).
 
 ## Integración con Nginx del host
 
-Opción A — **solo contenedor** en puerto interno (`8081`); el Nginx del servidor hace `proxy_pass` a todas las rutas (`/api/`, `/scan-api/`, …) como en `scnexus.conf.example`.
+El contenedor publica `SCNEXUS_FRONT_PORT` (default **8082**; en DESA evitar **8081** si cajachica lo usa).
 
-Opción B — **contenedor autónomo**: publicar `8081` y apuntar el vhost del host al contenedor para `/` y las APIs (misma idea que Apache en despliegues con subruta).
-
-Referencia host sin Docker: `deploy/nginx/scnexus.conf.example`.  
-Template dentro del contenedor: `deploy/nginx/scnexus-docker.conf.template`.
-
-## Variables principales
-
-Ver `.env.docker.example`. Las más usadas:
-
-- `SCNEXUS_FRONT_PORT` — puerto en el host (default `8081`)
-- `VITE_APP_BASE_PATH` — `/` intranet raíz; `/scnexus-front/` si publicas bajo subruta (requiere ajustes extra en Nginx del host)
-- `MBA3_UPSTREAM`, `CORE_UPSTREAM`, `CAJA_CHICA_UPSTREAM`, … — destinos del proxy **dentro** del contenedor
-
-En Linux, `host.docker.internal` requiere `extra_hosts: host-gateway` (ya definido en `docker-compose.yml`).
+Referencia: `deploy/nginx/scnexus.conf.example`, template `deploy/nginx/scnexus-docker.conf.template`.
 
 ## Errores frecuentes
 
-### API devuelve `text/html` en lugar de JSON
+### API devuelve HTML en lugar de JSON
 
-Estás en **:8081** (Nginx prod) pero querías **:3000** (Vite dev), o falta un `location` en el template (comparar con `scnexus.conf.example`).
+Puerto equivocado: **3000** = Vite dev, **8082** = Nginx en contenedor.
 
-### `502` / timeout en un módulo
+### Cambios en `active.env` no aplican (Docker prod)
 
-El upstream no es alcanzable **desde el contenedor**. Prueba:
+Los upstreams se hornean en la imagen: `docker compose build --no-cache`.
 
-```bash
-docker exec scnexus-front wget -qO- --timeout=3 http://192.168.2.12:8080/ || echo fail
-```
+### 502 desde el contenedor
 
-Usa IP de red en lugar de `127.0.0.1` para servicios fuera del contenedor.
+Probar reachability: `docker exec scnexus-front wget -qO- --timeout=3 http://host.docker.internal:8000/`
 
-### Envío a SAP lento o `504` en `/api/mba3`
-
-El front puede esperar hasta **300 s** en `POST /integrar-sap`, pero Nginx en `deploy/nginx/scnexus-docker.conf.template` suele tener `proxy_read_timeout` de **120–180 s** en el `location` de MBA3. Si el API tarda más, sube esos valores y vuelve a `docker compose build --no-cache`.
-
-Guía completa: [timeout-sincronizado-frontend-backend.md](./timeout-sincronizado-frontend-backend.md).
-
-### Cambios en `.env` no aplican
-
-Los upstreams de Nginx se **hornean en la imagen** en el build. Ejecuta `docker compose build --no-cache`.
-
-## Relación con otras ramas
-
-- `frontend-dockerizado`: perfil servidor público `.39` (Apache + subruta). No es requisito para este setup intranet.
-- `refactor/mba3-api-service`: desarrollo activo; Docker vive en esta rama.
+Guía timeouts: [timeout-sincronizado-frontend-backend.md](./timeout-sincronizado-frontend-backend.md).

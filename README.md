@@ -8,11 +8,19 @@ Frontend de la aplicación SCNexus construido con Vue 3, TypeScript y Vite.
 - Node.js 18+
 - npm o yarn
 
+### Configuración de entorno
+
+Un solo directorio: **`deploy/env/`** — rutas del bundle (`bundle.env`) + backends (`active.env`).  
+Primera vez: `npm run env:local` (copia `local.env.example` → `active.env`). Detalle: [deploy/env/README.md](deploy/env/README.md).
+
 ### Instalación y Ejecución
 
 ```bash
 # Instalar dependencias
 npm install
+
+# Perfil local (solo localhost en proxy)
+npm run env:local
 
 # Iniciar servidor de desarrollo
 npm run dev
