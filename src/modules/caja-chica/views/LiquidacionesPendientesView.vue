@@ -96,6 +96,21 @@ interface LiquidacionItem {
   fechaCreacion: string
 }
 
+interface LiquidacionDetalleItem {
+  idDetalle: number
+  idLiquidacion: number
+  nombreGasto: string
+  concepto: string
+  ruc: string
+  nombreProveedor: string
+  numeroComprobante: string
+  fechaConsumo: string
+  subtotalConIva: number
+  subtotalSinIva: number
+  iva: number
+  total: number
+}
+
 const loading = ref(false)
 const error = ref('')
 const pendientes = ref<LiquidacionItem[]>([])
@@ -141,6 +156,21 @@ const normalizeLiquidacion = (item: any): LiquidacionItem => ({
   codAlmacen: normalizeString(item.codAlmacen ?? item.CodAlmacen ?? ''),
   nombreCustodio: normalizeString(item.nombreCustodio ?? item.NombreCustodio ?? ''),
   fechaCreacion: String(item.fechaCreacion ?? item.FechaCreacion ?? '')
+})
+
+const normalizeDetalle = (item: any): LiquidacionDetalleItem => ({
+  idDetalle: Number(item.idDetalle ?? item.IdDetalle ?? 0),
+  idLiquidacion: Number(item.idLiquidacion ?? item.IdLiquidacion ?? 0),
+  nombreGasto: normalizeString(item.nombreGasto ?? item.NombreGasto ?? ''),
+  concepto: normalizeString(item.concepto ?? item.Concepto ?? ''),
+  ruc: normalizeString(item.ruc ?? item.Ruc ?? ''),
+  nombreProveedor: normalizeString(item.nombreProveedor ?? item.NombreProveedor ?? ''),
+  numeroComprobante: normalizeString(item.numeroComprobante ?? item.NumeroComprobante ?? ''),
+  fechaConsumo: String(item.fechaConsumo ?? item.FechaConsumo ?? ''),
+  subtotalConIva: Number(item.subtotal_Con_Iva ?? item.Subtotal_Con_Iva ?? item.subtotalConIva ?? 0),
+  subtotalSinIva: Number(item.subtotal_Sin_Iva ?? item.Subtotal_Sin_Iva ?? item.subtotalSinIva ?? 0),
+  iva: Number(item.iva ?? item.Iva ?? 0),
+  total: Number(item.total ?? item.Total ?? 0)
 })
 
 const getNivelAprobacion = (estado: string) => {
@@ -212,7 +242,7 @@ const downloadPdf = async () => {
       const payload = res.data as any
       const detalles: any[] = (Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : [])
         .map(normalizeDetalle)
-        .filter((d: LiquidacionItem) => d.idLiquidacion === item.idLiquidacion)
+        .filter((d: LiquidacionDetalleItem) => d.idLiquidacion === item.idLiquidacion)
       if (detalles.length > 0) {
         const filas = detalles.map(d => {
           const nombreGasto = esc(d.nombreGasto ?? '-')
