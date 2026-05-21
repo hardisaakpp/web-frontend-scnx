@@ -205,18 +205,25 @@ npm run build
 # Los archivos compilados estarán en /dist
 ```
 
-### Docker (intranet / DESA)
+### Docker (DESA / producción / local)
 
 ```bash
-cp deploy/env/desa.env.example deploy/env/active.env   # o local.docker.env.example en tu PC
+cp deploy/env/desa.env.example deploy/env/active.env   # DESA
+# cp deploy/env/prod-mabuiosapi.env.example deploy/env/active.env   # srv-mabuiosapi
 npm run docker:up
-# DESA: script ~/deploys/nexus_frontend.sh (ver deploy/scripts/nexus_frontend.sh)
 ```
 
-- **DESA / test:** Nginx + SPA en **:8082** (`SCNEXUS_FRONT_PORT`). Cajachica upstream en **:8081** (no es el front).
+| Entorno | Un comando | Doc |
+|---------|------------|-----|
+| DESA | `sh ~/deploys/nexus_frontend.sh` | [DEPLOYMENT.md](docs/DEPLOYMENT.md) |
+| Prod srv-mabuiosapi | `sh ~/deploys/nexus_frontend_prod.sh` | [DEPLOYMENT_PROD_SRV_MABUIOSAPI.md](docs/DEPLOYMENT_PROD_SRV_MABUIOSAPI.md) |
+
+Scripts en repo: `deploy/scripts/nexus_frontend.sh`, `deploy/scripts/nexus_frontend_prod.sh`.
+
+- **DESA / prod:** Nginx + SPA en **:8082** (`SCNEXUS_FRONT_PORT`).
 - **Dev en contenedor:** `docker compose -f docker-compose.dev.yml up -d` → **:3000**
 
-Guía completa: [docs/DOCKER.md](docs/DOCKER.md)
+Guía: [docs/DOCKER.md](docs/DOCKER.md) · Entornos: [deploy/env/README.md](deploy/env/README.md)
 
 ### Variables de Entorno
 

@@ -45,13 +45,26 @@ docker compose --env-file deploy/env/active.env up -d --build
 
 Script versionado: `deploy/scripts/nexus_frontend.sh`.
 
+## Producción (srv-mabuiosapi)
+
+`scnexus.mabelgroup.com.ec` — hoy solo existe `/storage/scnexus/dist` (sin git). Migración a Docker documentada en [docs/DEPLOYMENT_PROD_SRV_MABUIOSAPI.md](../../docs/DEPLOYMENT_PROD_SRV_MABUIOSAPI.md).
+
+```bash
+# Tras clonar en /opt/frontend/scnexus-front
+cp deploy/env/prod-mabuiosapi.env.example deploy/env/active.env
+sh ~/deploys/nexus_frontend_prod.sh
+```
+
+Script: `deploy/scripts/nexus_frontend_prod.sh`. Corte Apache (una vez): `deploy/apache/003-scnexus-docker.conf.example`.
+
 ## Perfiles
 
 | Perfil | Plantilla | Cuándo |
 |--------|-----------|--------|
 | `local` | `local.env.example` | `npm run dev` en tu PC |
 | `desa` | `desa.env.example` | desa-mabuiosapp |
-| `intranet` | `intranet.env.example` | prod / intranet con IPs fijas |
+| `prod-mabuiosapi` | `prod-mabuiosapi.env.example` | srv-mabuiosapi (backends en mismo host) |
+| `intranet` | `intranet.env.example` | intranet con IPs fijas en otros servidores |
 
 Puedes usar **`active.env`** (recomendado en servidores) o **`SCNEXUS_PROFILE=desa`** con archivo `deploy/env/desa.env`.
 

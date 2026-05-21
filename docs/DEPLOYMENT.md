@@ -5,7 +5,8 @@ Esta guía cubre el despliegue de SCNexus Frontend al **servidor de pruebas (DES
 | Entorno | Sección |
 |--------|---------|
 | Pruebas (DESA) | [Servidor de pruebas (DESA)](#servidor-de-pruebas-desa) |
-| Producción | [Checklist y despliegue a producción](#despliegue-produccion) |
+| Producción srv-mabuiosapi | **[DEPLOYMENT_PROD_SRV_MABUIOSAPI.md](./DEPLOYMENT_PROD_SRV_MABUIOSAPI.md)** (Docker + Apache; coordinación mar 2026) |
+| Producción (genérico) | [Checklist y despliegue a producción](#despliegue-produccion) |
 
 ---
 
