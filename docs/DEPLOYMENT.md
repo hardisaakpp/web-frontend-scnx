@@ -94,6 +94,34 @@ docker compose --env-file deploy/env/active.env up -d
 
 Actualizar el `proxy_pass` del sitio SCNexus de `http://127.0.0.1:3000` a `http://127.0.0.1:8082` y recargar Nginx, o usar la URL directa `:8082/scnexus-front/`.
 
+### Autenticación (login / Active Directory)
+
+El navegador llama `POST /api/Auth/login` al **mismo origen** del front (`:8082`). Nginx en el contenedor reenvía a **Core** (`UPSTREAM_CORE`, en DESA suele ser `http://host.docker.internal:5053`).
+
+En `deploy/env/active.env` define también **`CORE_PROXY_HOST`** (ej. `host.docker.internal:5053`). Debe ser el host:puerto que espera Kestrel — equivalente a `changeOrigin: true` en Vite. Si falta o no coincide con `UPSTREAM_CORE`, el Core puede responder **500**.
+
+Tras cambiar `UPSTREAM_CORE` o `CORE_PROXY_HOST`:
+
+```bash
+docker compose --env-file deploy/env/active.env build --no-cache
+docker compose --env-file deploy/env/active.env up -d
+```
+
+Verificación en el servidor:
+
+```bash
+bash deploy/scripts/verify-desa-auth.sh
+docker logs scnexus-core-api --tail 50
+```
+
+| Código | Significado habitual |
+|--------|----------------------|
+| **401 / 400** | Proxy OK; usuario/contraseña o AD |
+| **502 / 504** | Core no alcanzable desde el contenedor front |
+| **500** | Core recibió el login; revisar logs del Core (AD, BD, appsettings) |
+
+`GET /api/Auth/me` (capabilities tras login) va a **MBA3** (`UPSTREAM_MBA3_AUTH`). Si MBA3 no está en `:8000`, el login puede funcionar pero fallará `fetchMe`.
+
 ### Notas
 
 - **MBA3** (`:8000`): si no aparece en `docker ps`, el módulo MBA3 fallará hasta desplegarlo; el resto del front puede cargar.

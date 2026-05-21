@@ -13,6 +13,7 @@ services:
         VITE_APP_BASE_PATH: ${VITE_APP_BASE_PATH:-/scnexus-front/}
         MBA3_UPSTREAM: ${UPSTREAM_MBA3:-${MBA3_UPSTREAM:-http://host.docker.internal:8000}}
         CORE_UPSTREAM: ${UPSTREAM_CORE:-${CORE_UPSTREAM:-http://192.168.2.12:8080}}
+        CORE_PROXY_HOST: ${CORE_PROXY_HOST:-host.docker.internal:5053}
         CAJA_CHICA_UPSTREAM: ${UPSTREAM_CAJA_CHICA:-${CAJA_CHICA_UPSTREAM:-http://192.168.2.153:8092}}
         PYG_UPSTREAM: ${UPSTREAM_PYG:-${PYG_UPSTREAM:-http://host.docker.internal:5171}}
         SCAN_API_UPSTREAM: ${UPSTREAM_SCAN:-${SCAN_API_UPSTREAM:-http://host.docker.internal:8080}}

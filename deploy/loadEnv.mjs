@@ -208,5 +208,6 @@ export function dockerBuildArgsFromEnv(env) {
     MAESTRO_UPSTREAM: upstreamUrl(env, 'MAESTRO'),
     SLAYER_UPSTREAM: upstreamUrl(env, 'SLAYER'),
     VITE_APP_BASE_PATH: env.VITE_APP_BASE_PATH || '/',
+    CORE_PROXY_HOST: env.CORE_PROXY_HOST || 'host.docker.internal:5053',
   }
 }
