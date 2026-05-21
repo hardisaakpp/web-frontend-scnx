@@ -12,8 +12,9 @@
 npm run docker:env
 npm run docker:up
 
-# DESA
+# DESA (front :8082; cajachica upstream :8081)
 cp deploy/env/desa.env.example deploy/env/active.env
+sh ~/deploys/nexus_frontend.sh
 
 # Intranet / prod
 cp deploy/env/intranet.env.example deploy/env/active.env

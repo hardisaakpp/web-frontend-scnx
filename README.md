@@ -205,15 +205,16 @@ npm run build
 # Los archivos compilados estarán en /dist
 ```
 
-### Docker (intranet)
+### Docker (intranet / DESA)
 
 ```bash
-cp .env.docker.example .env
-# Desarrollo (Vite :3000)
-docker compose -f docker-compose.dev.yml up -d
-# Producción (Nginx + SPA :8081)
-docker compose up -d --build
+cp deploy/env/desa.env.example deploy/env/active.env   # o local.docker.env.example en tu PC
+npm run docker:up
+# DESA: script ~/deploys/nexus_frontend.sh (ver deploy/scripts/nexus_frontend.sh)
 ```
+
+- **DESA / test:** Nginx + SPA en **:8082** (`SCNEXUS_FRONT_PORT`). Cajachica upstream en **:8081** (no es el front).
+- **Dev en contenedor:** `docker compose -f docker-compose.dev.yml up -d` → **:3000**
 
 Guía completa: [docs/DOCKER.md](docs/DOCKER.md)
 

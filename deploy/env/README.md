@@ -33,12 +33,17 @@ Si existe `active.env`, sus `UPSTREAM_*` tienen prioridad sobre `.env.developmen
 
 ## Servidor de pruebas (DESA)
 
+Un solo front en Docker (**:8082**). Cajachica API en **:8081** solo como `UPSTREAM_CAJA_CHICA`.
+
 ```bash
 cp deploy/env/desa.env.example deploy/env/active.env
-# editar puertos si cambian (docker ps)
-export SCNEXUS_PROFILE=desa   # opcional si usas desa.env en lugar de active.env
-docker compose up -d --build
+# editar puertos según docker ps (maestro :8004, core :5053, …)
+sh ~/deploys/nexus_frontend.sh
+# o manualmente:
+docker compose --env-file deploy/env/active.env up -d --build
 ```
+
+Script versionado: `deploy/scripts/nexus_frontend.sh`.
 
 ## Perfiles
 

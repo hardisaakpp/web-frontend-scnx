@@ -13,10 +13,18 @@ Esta guía cubre el despliegue de SCNexus Frontend al **servidor de pruebas (DES
 
 Despliegue asistido por script en el servidor de desarrollo/pruebas. El front se actualiza desde la rama **`develop`** del repositorio `scnexus-front`.
 
+**Modo actual:** un solo frontend en **Docker** (Nginx + SPA), puerto host **`8082`**. El backend **cajachica** sigue en **`8081`** como upstream (`UPSTREAM_CAJA_CHICA`); no comparte puerto con el front.
+
+| Antes | Ahora |
+|-------|--------|
+| `npm run dev` → Vite **:3000** | `docker compose` → contenedor `scnexus-front` **:8082** |
+| `~/deploys/dev.log` | `~/deploys/scnexus-front.log` |
+
 ### Acceso
 
 - **Host SSH:** `desa-mabuiosapp` (nombre interno; usar el mismo host que el equipo usa para SSH).
 - **Usuario de despliegue:** `admindesa`.
+- **URL típica tras migrar:** `http://210.17.1.53:8082/scnexus-front/` (ajustar IP según el servidor).
 
 ### Scripts disponibles
 
@@ -24,11 +32,18 @@ En el home del usuario de despliegue existe el directorio `deploys/` con, entre 
 
 | Script | Uso |
 |--------|-----|
-| `nexus_frontend.sh` | Actualiza y levanta **este** frontend (SCNexus) |
+| `nexus_frontend.sh` | Actualiza y levanta **este** frontend (SCNexus) en Docker |
 | `articulo_maestro.sh` | Otro proyecto (artículo maestro) |
 | `conciliacion.sh` | Otro proyecto (conciliación) |
 
-Ruta típica en el servidor: `/home/admindesa/deploys/`.
+Ruta canónica en el repo: `deploy/scripts/nexus_frontend.sh` (copiar al servidor tras `git pull`).
+
+### Instalar o actualizar el script en el servidor (una vez por release)
+
+```bash
+cp /opt/frontend/scnexus-front/deploy/scripts/nexus_frontend.sh ~/deploys/nexus_frontend.sh
+chmod +x ~/deploys/nexus_frontend.sh
+```
 
 ### Desplegar el frontend de pruebas
 
@@ -39,44 +54,50 @@ cd ~
 sh deploys/nexus_frontend.sh
 ```
 
-El script, en orden habitual:
+El script, en orden:
 
-1. Entra al directorio del proyecto clonado del frontend.
-2. Muestra la rama actual (debe ser **`develop`**).
-3. Detiene procesos anteriores del front.
-4. Actualiza el repositorio (`git pull` / fast-forward desde `origin/develop`).
-5. Instala dependencias (`npm`, según lo definido en el script).
-6. Levanta la aplicación en **segundo plano**.
+1. Entra a `/opt/frontend/scnexus-front` y muestra la rama actual (**`develop`**).
+2. Detiene **Vite** en `:3000` (despliegue anterior).
+3. Baja `docker-compose.dev.yml` si quedó algún contenedor dev.
+4. `git pull origin <rama actual>`.
+5. Crea `deploy/env/active.env` desde `desa.env.example` si no existe.
+6. `docker compose --env-file deploy/env/active.env up -d --build` (imagen Nginx + SPA).
 
-**Logs:** `/home/admindesa/deploys/dev.log` (revisar ahí errores de build, puerto o runtime).
+**Logs:** `/home/admindesa/deploys/scnexus-front.log`
 
 ### Configuración en el servidor (centralizada)
 
 ```bash
 cd /opt/frontend/scnexus-front
 cp deploy/env/desa.env.example deploy/env/active.env
-# Editar UPSTREAM_* según docker ps en DESA
+# Editar UPSTREAM_* según docker ps en DESA (maestro :8004, cajachica :8081, core :5053, …)
 ```
 
 Ver [deploy/env/README.md](../deploy/env/README.md). El bundle (`deploy/env/bundle.env`) va versionado; **no** commitear `deploy/env/active.env`.
 
-### Migración a Docker (recomendado en DESA)
-
-Sustituir en `nexus_frontend.sh` el bloque `npm run dev` por:
+Si cambias `UPSTREAM_*` en `active.env`, reconstruir sin caché:
 
 ```bash
-pkill -f "vite" 2>/dev/null
-docker compose -f docker-compose.dev.yml down 2>/dev/null
-git pull origin "$BRANCH"
-cp deploy/env/desa.env.example deploy/env/active.env  # solo la primera vez
-docker compose -f docker-compose.dev.yml up -d --build
+docker compose --env-file deploy/env/active.env build --no-cache
+docker compose --env-file deploy/env/active.env up -d
 ```
 
-O imagen Nginx (`docker compose up -d --build`) en puerto `SCNEXUS_FRONT_PORT` (default 8082).
+### Puertos en DESA (sin choque con cajachica)
+
+| Puerto | Servicio |
+|--------|----------|
+| **8081** | `cajachica-staging` (upstream API; no usar para el front) |
+| **8082** | `scnexus-front` (Nginx + SPA; `SCNEXUS_FRONT_PORT`) |
+| **3000** | Libre tras migrar (antes Vite) |
+
+### Si el acceso era por Nginx del host en :3000
+
+Actualizar el `proxy_pass` del sitio SCNexus de `http://127.0.0.1:3000` a `http://127.0.0.1:8082` y recargar Nginx, o usar la URL directa `:8082/scnexus-front/`.
 
 ### Notas
 
-- Si el script muestra avisos de `npm audit`, coordinar con el equipo antes de ejecutar `npm audit fix` en el servidor compartido.
+- **MBA3** (`:8000`): si no aparece en `docker ps`, el módulo MBA3 fallará hasta desplegarlo; el resto del front puede cargar.
+- Módulos sin backend en DESA (scan, inventario, …): dejar comentados en `active.env` o apuntar al puerto correcto cuando existan. **No** poner inventario en `:8082` si el front usa ese puerto en el host.
 
 ---
 
