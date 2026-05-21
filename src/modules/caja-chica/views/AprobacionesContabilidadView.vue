@@ -520,6 +520,7 @@ interface AprobacionItem {
 
 interface DetalleItem {
   idDetalle: number
+  idLiquidacion: number
   fechaConsumo: string
   ruc: string
   nombreProveedor: string
@@ -951,6 +952,7 @@ const getUserLabel = (id?: string) => {
 
 const normalizeDetalle = (item: any): DetalleItem => ({
   idDetalle: Number(item.idDetalle ?? item.IdDetalle ?? 0),
+  idLiquidacion: Number(item.idLiquidacion ?? item.IdLiquidacion ?? 0),
   fechaConsumo: String(item.fechaConsumo ?? item.FechaConsumo ?? ''),
   ruc: normalizeString(item.ruc ?? item.Ruc ?? ''),
   nombreProveedor: normalizeString(item.nombreProveedor ?? item.NombreProveedor ?? ''),
@@ -1215,10 +1217,12 @@ const loadPendientes = async () => {
     const liquidacionIds = [...new Set(normalized.map(p => p.idLiquidacion))]
     for (const idLiq of liquidacionIds) {
       try {
-        const res = await cajaChicaApi.get(`/Liquidaciones/${idLiq}/detalle`)
+        const res = await cajaChicaApi.get('/LiquidacionesDetalle')
         const payloadRes = res.data as any
         const detailItems = Array.isArray(payloadRes) ? payloadRes : Array.isArray(payloadRes?.data) ? payloadRes.data : []
-        detallesByLiquidacion.value[idLiq] = detailItems.map(normalizeDetalle)
+        detallesByLiquidacion.value[idLiq] = detailItems
+          .map(normalizeDetalle)
+          .filter((d: DetalleItem) => d.idLiquidacion === idLiq)
         for (const d of detallesByLiquidacion.value[idLiq]) {
           try {
             const adjRes = await cajaChicaApi.get(`/Adjuntos/por-detalle/${d.idDetalle}`)
@@ -1236,7 +1240,7 @@ const loadPendientes = async () => {
 
     normalized.forEach(ensureDecision)
     openGroups.value = normalized.reduce<Record<number, boolean>>((acc, item) => {
-      if (acc[item.idLiquidacion] === undefined) acc[item.idLiquidacion] = true
+      if (acc[item.idLiquidacion] === undefined) acc[item.idLiquidacion] = false
       return acc
     }, {})
   } catch {

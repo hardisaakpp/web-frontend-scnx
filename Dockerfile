@@ -29,7 +29,7 @@ ARG PROMOCION_SOBRES_UPSTREAM=http://host.docker.internal:8083
 ARG INVENTARIO_UPSTREAM=http://host.docker.internal:8082
 ARG CONCILIACION_UPSTREAM=http://host.docker.internal:8005
 ARG MAESTRO_UPSTREAM=http://host.docker.internal:8001
-ARG SLAYER_UPSTREAM=http://host.docker.internal:8093
+ARG SLAYER_UPSTREAM=http://192.168.2.153:8093
 
 COPY deploy/nginx/scnexus-docker.conf.template /tmp/scnexus-docker.conf.template
 RUN sed -e "s|__MBA3_UPSTREAM__|${MBA3_UPSTREAM}|g" \

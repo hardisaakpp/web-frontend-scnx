@@ -208,24 +208,26 @@ const downloadPdf = async () => {
   for (const item of pendientes.value) {
     let detallesHtml = ''
     try {
-      const res = await cajaChicaApi.get(`/Liquidaciones/${item.idLiquidacion}/detalle`)
+      const res = await cajaChicaApi.get('/LiquidacionesDetalle')
       const payload = res.data as any
-      const detalles: any[] = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
+      const detalles: any[] = (Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : [])
+        .map(normalizeDetalle)
+        .filter((d: LiquidacionItem) => d.idLiquidacion === item.idLiquidacion)
       if (detalles.length > 0) {
         const filas = detalles.map(d => {
-          const nombreGasto = esc(d.nombreGasto ?? d.NombreGasto ?? '-')
-          const concepto = esc(d.concepto ?? d.Concepto ?? '-')
-          const proveedor = esc(d.nombreProveedor ?? d.NombreProveedor ?? '-')
-          const ruc = esc(d.ruc ?? d.Ruc ?? '-')
-          const comprobante = esc(d.numeroComprobante ?? d.NumeroComprobante ?? '-')
-          const fechaCons = fmt(String(d.fechaConsumo ?? d.FechaConsumo ?? ''))
-          const subConIva = fmtAmt(Number(d.subtotal_Con_Iva ?? d.subtotalConIva ?? 0))
-          const subSinIva = fmtAmt(Number(d.subtotal_Sin_Iva ?? d.subtotalSinIva ?? 0))
-          const iva = fmtAmt(Number(d.iva ?? d.Iva ?? 0))
-          const total = fmtAmt(Number(d.total ?? d.Total ?? 0))
+          const nombreGasto = esc(d.nombreGasto ?? '-')
+          const concepto = esc(d.concepto ?? '-')
+          const proveedor = esc(d.nombreProveedor ?? '-')
+          const ruc = esc(d.ruc ?? '-')
+          const comprobante = esc(d.numeroComprobante ?? '-')
+          const fechaCons = fmt(String(d.fechaConsumo ?? ''))
+          const subConIva = fmtAmt(Number(d.subtotalConIva ?? 0))
+          const subSinIva = fmtAmt(Number(d.subtotalSinIva ?? 0))
+          const iva = fmtAmt(Number(d.iva ?? 0))
+          const total = fmtAmt(Number(d.total ?? 0))
           return `<tr><td>${nombreGasto}</td><td>${concepto}</td><td>${proveedor}</td><td>${ruc}</td><td>${comprobante}</td><td>${fechaCons}</td><td class="amount">${subConIva}</td><td class="amount">${subSinIva}</td><td class="amount">${iva}</td><td class="amount">${total}</td></tr>`
         }).join('')
-        const totalLiq = detalles.reduce((a, d) => a + Number(d.total ?? d.Total ?? 0), 0)
+        const totalLiq = detalles.reduce((a, d) => a + Number(d.total ?? 0), 0)
         detallesHtml = `
           <div class="section-title">Detalle de gastos</div>
           <table><thead><tr><th>Gasto</th><th>Concepto</th><th>Proveedor</th><th>RUC</th><th>Comprobante</th><th>Fecha</th><th>Base 15%</th><th>Base 0%</th><th>IVA</th><th>Total</th></tr></thead><tbody>${filas}</tbody></table>

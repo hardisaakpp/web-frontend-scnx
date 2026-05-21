@@ -25,45 +25,24 @@ export default defineConfig(({ mode }) => {
 
   const appBasePath = normalizedAppBasePath.endsWith('/') ? normalizedAppBasePath : `${normalizedAppBasePath}/`
 
-
-
   const coreProxyTarget = upstreamUrl(env, 'CORE')
-
   const mba3ProxyTarget = upstreamUrl(env, 'MBA3')
-
   const authMeProxyTarget = upstreamUrl(env, 'MBA3_AUTH')
-
   const cajaChicaProxyTarget = upstreamUrl(env, 'CAJA_CHICA')
-
   const employeesProxyTarget = upstreamUrl(env, 'EMPLOYEES')
-
   const pygProxyTarget = upstreamUrl(env, 'PYG')
-
   const maestroProxyTarget = upstreamUrl(env, 'MAESTRO')
-
   const conciliacionProxyTarget = upstreamUrl(env, 'CONCILIACION')
-
   const articuloScanProxyTarget = upstreamUrl(env, 'SCAN')
-
   const inventarioProxyTarget = upstreamUrl(env, 'INVENTARIO')
-
   const promocionSobresProxyTarget = upstreamUrl(env, 'PROMOCION_SOBRES')
-
   const slayerProxyTarget = upstreamUrl(env, 'SLAYER')
-
   const pygProxyPrefix =
-
     'UPSTREAM_PYG_PREFIX' in env
-
       ? env.UPSTREAM_PYG_PREFIX
-
       : 'VITE_PYG_PROXY_PREFIX' in env
-
         ? env.VITE_PYG_PROXY_PREFIX
-
         : '/api'
-
-
 
   return {
 
