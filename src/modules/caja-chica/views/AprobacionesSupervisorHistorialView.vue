@@ -507,6 +507,7 @@
 import { computed, onMounted, onBeforeUnmount, ref, watch, nextTick } from 'vue'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
+import { createBuildAdjuntoUrl } from '../utils/buildAdjuntoUrl'
 import { useTablePreferences } from '@/composables/useTablePreferences'
 
 interface ColumnConfig {
@@ -718,15 +719,7 @@ cajaChicaApi.interceptors.request.use(config => {
   return config
 })
 
-const apiBaseUrl = (import.meta.env.VITE_CAJA_CHICA_API_URL || '/caja-chica-api').replace(/\/+$/, '')
-const fileBaseUrl = apiBaseUrl.endsWith('/api') ? apiBaseUrl.slice(0, -4) : apiBaseUrl
-
-const buildAdjuntoUrl = (ruta: string) => {
-  if (!ruta) return '#'
-  if (ruta.startsWith('http')) return ruta
-  if (ruta.startsWith('/uploads')) return ruta
-  return `${fileBaseUrl}${ruta}`
-}
+const buildAdjuntoUrl = createBuildAdjuntoUrl()
 
 const formatAdjuntoName = (ruta: string) => {
   if (!ruta) return ''

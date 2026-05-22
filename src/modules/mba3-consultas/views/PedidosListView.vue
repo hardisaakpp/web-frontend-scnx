@@ -682,10 +682,7 @@ const dateColumns = ['fecha_pedido', 'creado_en', 'modificado_fecha']
 
 // Pedidos ordenados (computed)
 const sortedPedidos = computed(() => {
-  // Primero aplicar el filtro de pendientes si está activo
-  const lista = filtroSoloPendientes.value
-    ? pedidos.value.filter(p => requiereAccion(p.estado))
-    : pedidos.value
+  const lista = pedidos.value
 
   if (!sortColumn.value || !sortDirection.value) {
     return lista
@@ -740,7 +737,8 @@ async function cargarPedidos() {
     const response: PedidosListadoResponse = await mba3ConsultasService.getPedidosListado({
       ...filtros.value,
       limit: metadata.value.limit,
-      offset: metadata.value.offset
+      offset: metadata.value.offset,
+      solo_pendientes_accion: filtroSoloPendientes.value || undefined,
     })
 
     pedidos.value = response.data

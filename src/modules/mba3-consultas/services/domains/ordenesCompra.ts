@@ -1,6 +1,6 @@
 import { mba3Api } from '../config/axiosConfig'
 import { buildUrlWithParams } from '../utils/urlBuilder'
-import type { OrdenCompraResponse, OrdenCompraLogResponse } from '../../types'
+import type { OrdenCompraResponse, OrdenCompraLogResponse, OrdenesCompraListFilters } from '../../types'
 
 /**
  * Respuesta de POST /ordenes-compra/{oc_id}/reintentar-st.
@@ -28,18 +28,34 @@ export interface ReintentarSTResponse {
  */
 export const ordenesCompraService = {
   /**
-   * Obtener órdenes de compra con filtros opcionales
+   * Obtener órdenes de compra con paginación y filtros en servidor.
    */
-  async getOrdenesCompra(estado?: string, page: number = 1, pageSize: number = 10): Promise<OrdenCompraResponse> {
-    const params: Record<string, any> = {
+  async getOrdenesCompra(
+    estado?: string,
+    page: number = 1,
+    pageSize: number = 10,
+    filters?: OrdenesCompraListFilters
+  ): Promise<OrdenCompraResponse> {
+    const params: Record<string, string> = {
       page: page.toString(),
-      pageSize: pageSize.toString()
+      pageSize: pageSize.toString(),
     }
-    
-    // Solo agregar el parámetro estado si está definido y no es undefined
-    // Si estado es undefined, no se agrega el parámetro, lo que debería devolver todas las órdenes
+
     if (estado !== undefined && estado !== null && estado !== '') {
       params.estado = estado
+    }
+
+    const search = filters?.search?.trim()
+    if (search) {
+      params.search = search
+    }
+    const referencia = filters?.referencia_despacho?.trim()
+    if (referencia) {
+      params.referencia_despacho = referencia
+    }
+    const numeroSap = filters?.numero_oc_sap?.trim()
+    if (numeroSap) {
+      params.numero_oc_sap = numeroSap
     }
 
     const url = buildUrlWithParams('/ordenes-compra', params)

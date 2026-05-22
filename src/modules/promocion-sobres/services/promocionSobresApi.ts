@@ -1,5 +1,6 @@
 import { promocionSobresApi, promocionSobresApiPrefix } from './config/axiosConfig'
 import { mapPromocionSobresApiError } from './utils/apiErrorMapper'
+import { fechaModificacionClienteIso } from './utils/clientLocalDateTime'
 import type {
   ApiResponse,
   BeneficiarioDto,
@@ -98,7 +99,8 @@ export const promocionSobresService = {
       `${promocionSobresApiPrefix}/entregas`,
       {
         identificacion: payload.identificacion.trim(),
-        codigoEscaneado: payload.codigoEscaneado.trim()
+        codigoEscaneado: payload.codigoEscaneado.trim(),
+        fechaModificacion: payload.fechaModificacion ?? fechaModificacionClienteIso()
       }
     )
     const { data, message } = unwrapSuccess(response.data)

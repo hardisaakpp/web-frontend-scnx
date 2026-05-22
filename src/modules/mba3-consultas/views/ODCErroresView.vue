@@ -26,15 +26,15 @@
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div class="text-center">
           <div class="text-2xl font-semibold text-red-600">{{ totalErrores }}</div>
-          <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Total con Error</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Total con error</div>
         </div>
         <div class="text-center border-x border-gray-200 dark:border-gray-700">
           <div class="text-2xl font-semibold text-orange-600">{{ erroresSAP }}</div>
-          <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Errores de SAP</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">SAP (página actual)</div>
         </div>
         <div class="text-center">
           <div class="text-2xl font-semibold text-purple-600">{{ erroresSKU }}</div>
-          <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Errores de SKU</div>
+          <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">SKU (página actual)</div>
         </div>
       </div>
     </div>
@@ -46,7 +46,8 @@
           <div>
             <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Órdenes de Compra con Error</h2>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              Total: <span class="font-semibold">{{ odcErrores.length }}</span> orden(es) con error
+              Total: <span class="font-semibold">{{ totalErrores }}</span> orden(es) con error
+              <span v-if="totalPages > 1"> — página {{ currentPage }} de {{ totalPages }}</span>
             </p>
           </div>
         </div>
@@ -140,6 +141,21 @@
           </tbody>
         </table>
       </div>
+
+      <div
+        v-if="totalPages > 1 && !loading"
+        class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between flex-wrap gap-4"
+      >
+        <p class="text-sm text-gray-600 dark:text-gray-400">
+          Página {{ currentPage }} de {{ totalPages }}
+        </p>
+        <QuickTablePagination
+          v-model="currentPage"
+          :total-pages="totalPages"
+          :disabled="loading"
+          aria-label="Paginación de ODC con error"
+        />
+      </div>
     </div>
 
     <!-- Modal de Corrección de SKU -->
@@ -153,25 +169,30 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from '@vue/reactivity'
+import { ref, computed, watch } from '@vue/reactivity'
 import { onMounted } from '@vue/runtime-core'
 import { useOrdenesCompraStore } from '../stores/ordenesCompraStore'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import { useToast } from '@/composables/useToast'
 import SkeletonTable from '../components/SkeletonTable.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
+import QuickTablePagination from '../components/QuickTablePagination.vue'
 import CorregirSkuModal from '../components/CorregirSkuModal.vue'
 import type { OrdenCompra } from '../types'
 
 const ordenesCompraStore = useOrdenesCompraStore()
 const toast = useToast()
 
+const ODC_ERRORES_PAGE_SIZE = 10
+
 const loading = ref(false)
 const odcErrores = ref<OrdenCompra[]>([])
 const odcSeleccionada = ref<OrdenCompra | null>(null)
+const currentPage = ref(1)
+const totalErrores = ref(0)
+const totalPages = ref(1)
 
-// Estadísticas
-const totalErrores = computed(() => odcErrores.value.length)
+// Desglose en la página visible (no del total global)
 const erroresSAP = computed(() => 
   odcErrores.value.filter(odc => odc.error_source?.toUpperCase() === 'SAP').length
 )
@@ -184,20 +205,44 @@ const erroresSKU = computed(() =>
   ).length
 )
 
-// Función para cargar ODC con errores
 async function cargarODCErrores() {
   loading.value = true
   try {
-    // Cargar con un pageSize grande para obtener todas las ODC con error
-    const response = await mba3ConsultasService.getOrdenesCompra('ERROR', 1, 1000)
+    const response = await mba3ConsultasService.getOrdenesCompra(
+      'ERROR',
+      currentPage.value,
+      ODC_ERRORES_PAGE_SIZE
+    )
     odcErrores.value = response.data || []
+    const total =
+      response.total ??
+      response.metadata?.total ??
+      odcErrores.value.length
+    totalErrores.value = total
+    totalPages.value =
+      response.totalPages ??
+      Math.max(1, Math.ceil(total / ODC_ERRORES_PAGE_SIZE))
+
+    if (currentPage.value > totalPages.value && totalPages.value >= 1) {
+      currentPage.value = totalPages.value
+      return
+    }
   } catch (error: any) {
     console.error('Error al cargar ODC con errores:', error)
     toast.error('Error al cargar ODC', error.message || 'No se pudieron cargar las órdenes de compra con error')
+    odcErrores.value = []
+    totalErrores.value = 0
+    totalPages.value = 1
   } finally {
     loading.value = false
   }
 }
+
+watch(currentPage, (page, prev) => {
+  if (page !== prev) {
+    void cargarODCErrores()
+  }
+})
 
 // Función para actualizar
 async function refreshODCErrores() {
@@ -242,6 +287,7 @@ async function handleCorreccionAplicada(skuOriginal: string, skuNuevo: string) {
 }
 
 onMounted(async () => {
+  await ordenesCompraStore.fetchEstadisticas()
   await cargarODCErrores()
 })
 </script>

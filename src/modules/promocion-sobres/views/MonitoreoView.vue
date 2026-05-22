@@ -153,6 +153,7 @@ import { computed, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { usePromocionSobresPermissions } from '../composables/usePromocionSobresPermissions'
 import { mapPromocionSobresApiError, promocionSobresService } from '../services/promocionSobresApi'
+import { formatPromocionSobresFecha } from '../services/utils/clientLocalDateTime'
 import type { EntregadosMonitoreoDto, UiError } from '../types'
 
 const { canOperate } = usePromocionSobresPermissions()
@@ -192,11 +193,7 @@ const entregadoBadgeClass =
 const pendienteBadgeClass =
   'bg-amber-100 text-amber-900 dark:bg-amber-950/50 dark:text-amber-200'
 
-function formatFecha(iso: string): string {
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return iso
-  return date.toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' })
-}
+const formatFecha = formatPromocionSobresFecha
 
 async function actualizar() {
   loading.value = true

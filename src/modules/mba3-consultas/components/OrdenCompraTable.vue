@@ -124,7 +124,7 @@
             :title="hasRowIssues(oc).issues.length > 0 ? 'Problemas: ' + hasRowIssues(oc).issues.join(', ') : ''"
           >
             <td class="px-4 py-4 whitespace-nowrap text-sm text-center text-gray-500 dark:text-gray-400 font-medium">
-              {{ ((props.currentPage || 1) - 1) * (props.pageSize || sortedOrdenes.length) + Number(ocIndex) + 1 }}
+              {{ ((props.currentPage || 1) - 1) * (props.pageSize || 10) + Number(ocIndex) + 1 }}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-center align-middle">
               <button
@@ -418,6 +418,8 @@ const props = defineProps<{
   readOnly?: boolean // Modo solo lectura (oculta acciones de integración)
   currentPage?: number
   pageSize?: number
+  /** Si true, `ordenesCompra` ya viene paginado del servidor (no aplicar slice). */
+  serverPaginated?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -708,19 +710,30 @@ const sortedOrdenes = computed(() => {
     })
   }
   
-  // Aplicar paginación si se proporcionan los parámetros
-  if (props.currentPage !== undefined && props.pageSize !== undefined && props.currentPage > 0 && props.pageSize > 0) {
+  // Servidor paginado: mostrar como máximo pageSize filas (por si el API devuelve de más)
+  if (props.serverPaginated && props.pageSize && props.pageSize > 0) {
+    return sorted.slice(0, props.pageSize)
+  }
+
+  // Paginación en cliente
+  if (
+    props.currentPage !== undefined &&
+    props.pageSize !== undefined &&
+    props.currentPage > 0 &&
+    props.pageSize > 0
+  ) {
     const start = (props.currentPage - 1) * props.pageSize
     const end = start + props.pageSize
     return sorted.slice(start, end)
   }
-  
+
   return sorted
 })
 
 // Watch para emitir el conteo de órdenes filtradas cuando cambie
 // Debe estar después de la definición de filteredOrdenes
 watch(() => filteredOrdenes.value, (newFiltered) => {
+  if (props.serverPaginated) return
   try {
     if (newFiltered && Array.isArray(newFiltered)) {
       emit('filtered-count-changed', newFiltered.length)

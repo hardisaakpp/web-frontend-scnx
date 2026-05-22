@@ -528,6 +528,11 @@ async function cargarPedidos() {
     const response = await mba3ConsultasService.getPedidosConfirmados({
       page,
       pageSize: metadata.value.limit,
+      fecha_desde: filtros.value.fecha_desde || undefined,
+      fecha_hasta: filtros.value.fecha_hasta || undefined,
+      proveedor_nombre: filtros.value.proveedor_nombre || undefined,
+      numero_pedido: filtros.value.numero_pedido || undefined,
+      creado_por: filtros.value.creado_por || undefined,
     })
 
     // Mapear PedidoCompleto → PedidoResumido para reutilizar la tabla actual

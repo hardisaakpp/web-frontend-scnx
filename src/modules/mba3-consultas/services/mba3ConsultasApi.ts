@@ -32,6 +32,8 @@ export * from './domains'
 // Importar configuración de axios y servicios refactorizados para uso interno
 import { mba3Api, API_BASE_URL } from './config/axiosConfig'
 import { pedidosService } from './domains/pedidos'
+import { ordenesCompraService } from './domains/ordenesCompra'
+import type { OrdenesCompraListFilters } from '../types'
 import { calculateIntegrarSapTimeoutMs } from '../utils/integrarSapTimeout'
 import { MAX_EXCEL_UPLOAD_SIZE_BYTES, MAX_EXCEL_UPLOAD_SIZE_MB } from '@/config/uploadLimits'
 
@@ -171,20 +173,13 @@ export const mba3ConsultasService = {
   },
 
   // Órdenes de compra
-  async getOrdenesCompra(estado?: string, page: number = 1, pageSize: number = 10): Promise<OrdenCompraResponse> {
-    const params = new URLSearchParams()
-    // Solo agregar el parámetro estado si está definido y no es undefined
-    // Si estado es undefined, no se agrega el parámetro, lo que debería devolver todas las órdenes
-    if (estado !== undefined && estado !== null && estado !== '') {
-      params.append('estado', estado)
-    }
-    params.append('page', page.toString())
-    params.append('pageSize', pageSize.toString())
-
-    const queryString = params.toString()
-    const url = queryString ? `/ordenes-compra?${queryString}` : '/ordenes-compra'
-    const response = await mba3Api.get<OrdenCompraResponse>(url)
-    return response.data
+  async getOrdenesCompra(
+    estado?: string,
+    page: number = 1,
+    pageSize: number = 10,
+    filters?: OrdenesCompraListFilters
+  ): Promise<OrdenCompraResponse> {
+    return ordenesCompraService.getOrdenesCompra(estado, page, pageSize, filters)
   },
 
   // Eliminar órdenes de compra (una o múltiples)
@@ -1533,6 +1528,11 @@ export const mba3ConsultasService = {
     page?: number
     pageSize?: number
     estado?: string
+    fecha_desde?: string
+    fecha_hasta?: string
+    proveedor_nombre?: string
+    numero_pedido?: string
+    creado_por?: string
   }): Promise<{
     data: PedidoCompleto[]
     total: number
@@ -1725,6 +1725,7 @@ export const mba3ConsultasService = {
     numero_pedido?: string
     limit?: number
     offset?: number
+    solo_pendientes_accion?: boolean
   }): Promise<PlantillasPedidosResponse> {
     return pedidosService.getPlantillasPedidos(filtros)
   },

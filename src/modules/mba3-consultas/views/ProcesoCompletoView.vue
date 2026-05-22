@@ -251,15 +251,15 @@
 
             <OrdenCompraTable 
               v-else
-              :ordenes-compra="filteredOrdenesCompraProceso"
+              :ordenes-compra="ordenesCompraStore.ordenesCompra"
               :loading="ordenesCompraStore.loading"
-              :total-ordenes="searchProcesarOC ? filteredOrdenesCompraProceso.length : ordenesCompraStore.total"
+              :total-ordenes="ordenesCompraStore.total"
               :allow-delete="false"
               :current-page="currentPageOC"
               :page-size="pageSizeOC"
+              server-paginated
               @integrar="handleIntegrarOC"
               @integrar-multiples="handleIntegrarOCMultiples"
-              @filtered-count-changed="handleFilteredOCCountChanged"
               @ver-detalle-sap="handleVerDetalleSAP"
               @st-reintentado="handleStReintentado"
               ref="ordenCompraTableRef"
@@ -268,8 +268,8 @@
             <!-- Paginación -->
             <div v-if="totalPagesOC > 1 && !ordenesCompraStore.loading" class="mt-4 flex items-center justify-between flex-wrap gap-4">
               <div class="text-sm text-gray-700 dark:text-gray-300 transition-colors duration-300">
-                Mostrando página {{ currentPageOC }} de {{ totalPagesOC }}
-                ({{ filteredOCCount > 0 ? filteredOCCount : ordenesCompraStore.total }} órdenes{{ filteredOCCount > 0 && filteredOCCount !== ordenesCompraStore.total ? ' filtradas' : '' }})
+                Mostrando {{ ocRangeStart }}–{{ ocRangeEnd }} de {{ ordenesCompraStore.total }} órdenes
+                (página {{ currentPageOC }} de {{ totalPagesOC }}{{ searchProcesarOC ? ' — búsqueda en servidor' : '' }})
               </div>
               <QuickTablePagination
                 v-model="currentPageOC"
@@ -468,11 +468,15 @@ const lastRefreshTime = ref<Date | null>(null)
 const nextRefreshTime = ref<Date | null>(null)
 const timeAgoDisplay = ref<string>('')
 
-// Estados para paginación de órdenes de compra
+// Paginación de órdenes de compra (servidor)
+// Paginación ODC en /proceso: tamaño fijo (no configurable desde preferencias ni API)
+const OC_LIST_PAGE_SIZE = 10
+const SEARCH_DEBOUNCE_MS = 400
 const currentPageOC = ref(1)
-const pageSizeOC = ref(10)
-const filteredOCCount = ref(0)
+const pageSizeOC = OC_LIST_PAGE_SIZE
+const totalPagesOCServer = ref(1)
 const searchProcesarOC = ref('')
+let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null
 
 // ⭐ NUEVO: Estados para pedidos confirmados
 const pedidosConfirmados = ref<PedidoCompleto[]>([])
@@ -538,19 +542,6 @@ const filteredPedidosConfirmados = computed(() => {
     const proveedor = (cab?.proveedor_nombre ?? '').toLowerCase()
     const estado = (cab?.estado ?? '').toLowerCase()
     return numero.includes(term) || proveedor.includes(term) || estado.includes(term)
-  })
-})
-
-// Computed: órdenes de compra filtradas por búsqueda en pestaña Procesar ODC
-const filteredOrdenesCompraProceso = computed(() => {
-  const term = searchProcesarOC.value.toLowerCase().trim()
-  if (!term) return ordenesCompraStore.ordenesCompra
-  return ordenesCompraStore.ordenesCompra.filter((oc: OrdenCompra) => {
-    const ref = (oc.referencia_despacho ?? '').toLowerCase()
-    const numSap = (oc.numero_oc_sap ?? '').toString().toLowerCase()
-    const estado = (oc.estado ?? '').toLowerCase()
-    const docEntry = (oc.doc_entry ?? '').toString().toLowerCase()
-    return ref.includes(term) || numSap.includes(term) || estado.includes(term) || docEntry.includes(term)
   })
 })
 
@@ -779,82 +770,77 @@ async function refrescarDatosOrdenesCompra(maxRetries: number = 1, delayMs: numb
   }
 }
 
-// Nota: Ahora carga todas las órdenes (PENDIENTE, ENVIADA, ERROR) para mostrar en la pestaña Procesar ODC
+/** Listado paginado en servidor (todos los estados, búsqueda opcional). */
 async function cargarOrdenesCompraPendientes() {
   ordenesCompraStore.loading = true
   try {
-    // Si el backend no devuelve todas las órdenes cuando no se especifica estado,
-    // hacer llamadas separadas para cada estado y combinar resultados
-    const estados = ['PENDIENTE', 'ENVIADA', 'ERROR']
-    const todasLasOrdenes: any[] = []
-    let totalCombinado = 0
-    
-    // Cargar órdenes de cada estado en paralelo para mayor eficiencia
-    const promesas = estados.map(async (estado) => {
-      try {
-        const response = await mba3ConsultasService.getOrdenesCompra(estado, 1, 1000) // pageSize grande para obtener todas
-        return { estado, response }
-      } catch (err) {
-        console.warn(`Error al cargar órdenes con estado ${estado}:`, err)
-        return { estado, response: null }
-      }
-    })
-    
-    const resultados = await Promise.all(promesas)
-    
-    // Procesar resultados y crear nuevos objetos para asegurar reactividad
-    resultados.forEach(({ response }) => {
-      if (response?.data && Array.isArray(response.data)) {
-        // Crear nuevos objetos usando spread operator para asegurar que Vue detecte los cambios
-        // Esto es crítico para que Vue detecte cambios en propiedades como 'estado'
-        const nuevasOrdenes = response.data.map(oc => ({ ...oc }))
-        todasLasOrdenes.push(...nuevasOrdenes)
-      }
-      // Sumar los totales
-      if (response?.total !== undefined) {
-        totalCombinado += response.total
-      } else if (response?.metadata?.count !== undefined) {
-        totalCombinado += response.metadata.count
-      }
-    })
-    
-    // Actualizar el store con todas las órdenes combinadas
-    // Crear una nueva referencia del array para asegurar que Vue detecte el cambio
-    ordenesCompraStore.ordenesCompra = todasLasOrdenes
-    ordenesCompraStore.total = totalCombinado > 0 ? totalCombinado : todasLasOrdenes.length
+    const search = searchProcesarOC.value.trim()
+    const response = await mba3ConsultasService.getOrdenesCompra(
+      undefined,
+      currentPageOC.value,
+      OC_LIST_PAGE_SIZE,
+      search ? { search } : undefined
+    )
+
+    const rows = (response.data ?? []).slice(0, OC_LIST_PAGE_SIZE)
+    ordenesCompraStore.ordenesCompra = rows.map((oc) => ({ ...oc }))
+    const total =
+      response.total ??
+      response.metadata?.total ??
+      response.metadata?.count ??
+      rows.length
+    ordenesCompraStore.total = total
     ordenesCompraStore.estadoFilter = undefined
-    ordenesCompraStore.currentPage = 1
-    
-    // Resetear paginación local
-    currentPageOC.value = 1
-    filteredOCCount.value = 0
-    
-    // Asegurar que Vue detecte los cambios reactivos
+    ordenesCompraStore.currentPage = currentPageOC.value
+
+    totalPagesOCServer.value = Math.max(1, Math.ceil(total / OC_LIST_PAGE_SIZE))
+
+    if (currentPageOC.value > totalPagesOCServer.value && totalPagesOCServer.value >= 1) {
+      currentPageOC.value = totalPagesOCServer.value
+      return
+    }
+
     await nextTick()
   } catch (error: any) {
     console.error('Error al cargar órdenes de compra:', error)
     toast.error('Error al cargar órdenes', error.message || 'No se pudieron cargar las órdenes de compra')
+    ordenesCompraStore.ordenesCompra = []
+    ordenesCompraStore.total = 0
+    totalPagesOCServer.value = 1
   } finally {
     ordenesCompraStore.loading = false
   }
 }
 
+const totalPagesOC = computed(() => totalPagesOCServer.value)
 
-// Computed para total de páginas de órdenes de compra
-const totalPagesOC = computed(() => {
-  const count = filteredOCCount.value > 0 ? filteredOCCount.value : ordenesCompraStore.total
-  return Math.ceil(count / pageSizeOC.value)
+const ocRangeStart = computed(() => {
+  if (ordenesCompraStore.total === 0) return 0
+  return (currentPageOC.value - 1) * OC_LIST_PAGE_SIZE + 1
 })
 
-// Función para manejar el cambio en el conteo de órdenes filtradas
-function handleFilteredOCCountChanged(count: number) {
-  filteredOCCount.value = count
-  // Resetear a la primera página si estamos en una página que ya no existe
-  const totalPages = Math.ceil(count / pageSizeOC.value)
-  if (currentPageOC.value > totalPages && totalPages > 0) {
-    currentPageOC.value = 1
+const ocRangeEnd = computed(() => {
+  if (ordenesCompraStore.total === 0) return 0
+  return Math.min(currentPageOC.value * OC_LIST_PAGE_SIZE, ordenesCompraStore.total)
+})
+
+watch(currentPageOC, (page, prev) => {
+  if (page !== prev) {
+    void cargarOrdenesCompraPendientes()
   }
-}
+})
+
+watch(searchProcesarOC, () => {
+  if (searchDebounceTimer) clearTimeout(searchDebounceTimer)
+  searchDebounceTimer = setTimeout(() => {
+    searchDebounceTimer = null
+    if (currentPageOC.value !== 1) {
+      currentPageOC.value = 1
+    } else {
+      void cargarOrdenesCompraPendientes()
+    }
+  }, SEARCH_DEBOUNCE_MS)
+})
 
 async function refreshDatosTrasTimeoutProcesoLegado() {
   try {
@@ -1511,17 +1497,14 @@ async function handleIntegrarOC(referenciaDespacho: string, almacenDestinoParam?
         // Crear un nuevo array para forzar reactividad
         ordenesCompraStore.ordenesCompra = [...ordenesCompraStore.ordenesCompra]
         
-        // Actualizar las estadísticas del store manualmente
-        const pendientes = ordenesCompraStore.ordenesCompra.filter((o: OrdenCompra) => o.estado === 'PENDIENTE').length
-        const enviadas = ordenesCompraStore.ordenesCompra.filter((o: OrdenCompra) => o.estado === 'ENVIADA').length
-        const errores = ordenesCompraStore.ordenesCompra.filter((o: OrdenCompra) => o.estado === 'ERROR').length
-        
-        // Asegurar que Vue detecte los cambios
         await nextTick()
-        
-        // Log para debugging
-        if (import.meta.env.DEV) console.log(`[handleIntegrarOC] ✅ Estado actualizado localmente: ${referenciaDespacho} → ${ordenActualizada.estado}`)
-        if (import.meta.env.DEV) console.log(`[handleIntegrarOC] 📊 Estadísticas: ${pendientes} pendientes, ${enviadas} enviadas, ${errores} errores`)
+        void ordenesCompraStore.fetchEstadisticas()
+
+        if (import.meta.env.DEV) {
+          console.log(
+            `[handleIntegrarOC] ✅ Estado actualizado localmente: ${referenciaDespacho} → ${ordenActualizada.estado}`
+          )
+        }
       }
     }
     
@@ -1943,11 +1926,7 @@ async function handleEliminarOC(ocIds: string[]) {
     // Actualizar datos
     await ordenesCompraStore.fetchEstadisticas()
     await cargarOrdenesCompraPendientes()
-    
-    // Actualizar el total del store basándose en las estadísticas actualizadas
-    // Esto asegura que el badge del tab se actualice correctamente
-    ordenesCompraStore.total = ordenesCompraStore.pendientes + ordenesCompraStore.enviadas + ordenesCompraStore.errores
-    
+
     // Limpiar la selección después de eliminar exitosamente
     if (ordenCompraTableRef.value?.clearSelection) {
       ordenCompraTableRef.value.clearSelection()
@@ -1961,15 +1940,19 @@ async function handleEliminarOC(ocIds: string[]) {
   }
 }
 
+onUnmounted(() => {
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer)
+    searchDebounceTimer = null
+  }
+  stopPolling()
+  stopTimeDisplayUpdate()
+})
+
 // Cargar estadísticas al montar el componente
 onMounted(async () => {
-  ordenesCompraStore.loading = true
-  try {
-    await ordenesCompraStore.fetchEstadisticas()
-    await cargarOrdenesCompraPendientes()
-  } finally {
-    ordenesCompraStore.loading = false
-  }
+  await ordenesCompraStore.fetchEstadisticas()
+  await cargarOrdenesCompraPendientes()
   await nextTick()
   
   // ⭐ NUEVO: Verificar si hay resultados pendientes de envío SAP para mostrar modal

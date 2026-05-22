@@ -442,6 +442,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from '@vue/runtime-core'
 import { useRoute, useRouter } from 'vue-router'
+import { createBuildAdjuntoUrl } from '../utils/buildAdjuntoUrl'
 import axios from 'axios'
 
 interface CatalogoGastoItem {
@@ -537,15 +538,7 @@ cajaChicaApi.interceptors.request.use(config => {
   return config
 })
 
-const apiBaseUrl = (import.meta.env.VITE_CAJA_CHICA_API_URL || '/caja-chica-api').replace(/\/+$/, '')
-const fileBaseUrl = apiBaseUrl.endsWith('/api') ? apiBaseUrl.slice(0, -4) : apiBaseUrl
-
-const buildAdjuntoUrl = (ruta: string) => {
-  if (!ruta) return '#'
-  if (ruta.startsWith('http')) return ruta
-  if (ruta.startsWith('/uploads')) return ruta
-  return `${fileBaseUrl}${ruta}`
-}
+const buildAdjuntoUrl = createBuildAdjuntoUrl()
 const hasValue = (value: string | number) => String(value ?? '').trim() !== ''
 
 const canAddDetalle = computed(() =>

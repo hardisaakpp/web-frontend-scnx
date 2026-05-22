@@ -21,6 +21,8 @@ export interface BeneficiarioDto {
 export interface RegistrarEntregaRequest {
   identificacion: string
   codigoEscaneado: string
+  /** Hora local del dispositivo (ISO 8601 con offset); se persiste en FechaModificacion. */
+  fechaModificacion?: string
 }
 
 export interface EntregaRegistradaDto {

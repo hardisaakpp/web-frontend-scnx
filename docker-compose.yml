@@ -34,4 +34,6 @@ services:
       - "${SCNEXUS_FRONT_PORT:-8082}:80"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    volumes:
+      - ${CAJA_CHICA_LEGACY_MEDIA_HOST:-/media/scnexus-cajachica}:/var/lib/caja-chica-legacy:ro
     restart: unless-stopped

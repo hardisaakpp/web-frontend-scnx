@@ -899,9 +899,7 @@ const dateColumns = ['fecha_pedido', 'creado_en', 'modificado_fecha']
 
 // Pedidos ordenados (computed)
 const sortedPedidos = computed(() => {
-  const lista = filtroSoloPendientes.value
-    ? pedidos.value.filter(p => requiereAccion(p.estado))
-    : pedidos.value
+  const lista = pedidos.value
 
   if (!sortColumn.value || !sortDirection.value) {
     return lista
@@ -952,7 +950,8 @@ async function cargarPedidos() {
       estado: filtros.value.estado || undefined,
       numero_pedido: filtros.value.numero_pedido || undefined,
       limit: metadata.value.limit,
-      offset: metadata.value.offset
+      offset: metadata.value.offset,
+      solo_pendientes_accion: filtroSoloPendientes.value || undefined,
     })
     pedidos.value = response.data
     metadata.value = response.metadata

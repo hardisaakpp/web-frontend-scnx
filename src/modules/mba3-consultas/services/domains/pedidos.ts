@@ -417,6 +417,7 @@ export const pedidosService = {
     numero_pedido?: string
     limit?: number
     offset?: number
+    solo_pendientes_accion?: boolean
   }): Promise<PlantillasPedidosResponse> {
     try {
       const url = buildUrlWithParams('/api/plantillas/pedidos', filtros || {})
@@ -1282,6 +1283,11 @@ export const pedidosService = {
     page?: number
     pageSize?: number
     estado?: string
+    fecha_desde?: string
+    fecha_hasta?: string
+    proveedor_nombre?: string
+    numero_pedido?: string
+    creado_por?: string
   }): Promise<{
     data: PedidoCompleto[]
     total: number

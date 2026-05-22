@@ -185,6 +185,7 @@ import ScannerPanel from '@/modules/articulo-scaner/components/ScannerPanel.vue'
 import BeneficiarioCard from '../components/BeneficiarioCard.vue'
 import { usePromocionSobresPermissions } from '../composables/usePromocionSobresPermissions'
 import { usePromocionSobresStore } from '../stores/promocionSobresStore'
+import { formatPromocionSobresFecha } from '../services/utils/clientLocalDateTime'
 import type { PromocionSobresErrorCode } from '../types'
 
 const store = usePromocionSobresStore()
@@ -238,11 +239,7 @@ const ERROR_TITLES: Partial<
   SERVER: 'Error del servidor'
 }
 
-function formatFechaEntrega(iso: string): string {
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return iso
-  return date.toLocaleString('es-EC', { dateStyle: 'medium', timeStyle: 'short' })
-}
+const formatFechaEntrega = formatPromocionSobresFecha
 
 const CODIGO_ERRONEO_CODES: PromocionSobresErrorCode[] = ['CODIGO_INVALIDO', 'YA_ENTREGADO']
 

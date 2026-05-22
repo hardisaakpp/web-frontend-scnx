@@ -125,6 +125,11 @@ server {
         proxy_set_header Authorization $http_authorization;
     }
 
+    # Adjuntos legacy Caja Chica (pre-Docker). Volumen: /var/lib/caja-chica-legacy (ver docker-compose.yml).
+    location ^~ /media/scnexus-cajachica/ {
+        alias /var/lib/caja-chica-legacy/;
+    }
+
     # Empleados tiendas: en prod host era PHP (Nginx :3001 + fastcgi), no cajachica /api.
     location ^~ /employees-api/ {
         proxy_pass __EMPLOYEES_UPSTREAM__;

@@ -160,11 +160,23 @@ export interface OrdenCompra {
   }
 }
 
+/** Parámetros opcionales de listado GET /ordenes-compra (paginación en servidor). */
+export interface OrdenesCompraListFilters {
+  search?: string
+  referencia_despacho?: string
+  numero_oc_sap?: string
+}
+
 export interface OrdenCompraResponse {
   status: string
   data: OrdenCompra[]
   metadata?: {
     count: number
+    total?: number
+    page?: number
+    pageSize?: number
+    totalPages?: number
+    hasMore?: boolean
     estado_filter?: string
     detalles?: Array<{
       sap_response?: Record<string, any>
@@ -1482,6 +1494,8 @@ export interface PedidosListadoFiltros {
   offset?: number
   /** Si true, excluye BORRADOR, NUEVO PEDIDO, GESTIONAR PEDIDO y CANCELADO (solo muestra estado_id >= 4 y != 19) */
   solo_redistribucion?: boolean
+  /** Si true, solo pedidos que requieren acción del proveedor (paginado en servidor) */
+  solo_pendientes_accion?: boolean
 }
 
 // ========== Estados de Pedido (dropdown dinámico) ==========

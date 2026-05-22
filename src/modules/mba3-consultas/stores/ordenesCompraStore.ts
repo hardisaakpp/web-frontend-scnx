@@ -12,6 +12,7 @@ export const useOrdenesCompraStore = defineStore('mba3OrdenesCompra', () => {
   
   // Variables de paginación
   const total = ref(0)
+  const totalPages = ref(1)
   const currentPage = ref(1)
   const pageSize = ref(10)
   
@@ -27,23 +28,24 @@ export const useOrdenesCompraStore = defineStore('mba3OrdenesCompra', () => {
   const enviadas = computed(() => totalEnviadas.value)
   const errores = computed(() => totalErrores.value)
   
-  const totalPages = computed(() => Math.ceil(total.value / pageSize.value))
-  
+  const totalPagesComputed = computed(() =>
+    totalPages.value > 0 ? totalPages.value : Math.ceil(total.value / pageSize.value) || 1
+  )
+
   // Función para actualizar las estadísticas totales
   async function fetchEstadisticas() {
     try {
       // Obtener conteos por estado usando llamadas con paginación para obtener el total
       // Hacemos llamadas con pageSize=1 solo para obtener el metadata.total
       const [pendientesRes, enviadasRes, erroresRes] = await Promise.all([
-        mba3ConsultasService.getOrdenesCompra('PENDIENTE', 1, 1).catch(() => ({ data: [], total: 0, metadata: { count: 0 } })),
-        mba3ConsultasService.getOrdenesCompra('ENVIADA', 1, 1).catch(() => ({ data: [], total: 0, metadata: { count: 0 } })),
-        mba3ConsultasService.getOrdenesCompra('ERROR', 1, 1).catch(() => ({ data: [], total: 0, metadata: { count: 0 } }))
+        mba3ConsultasService.getOrdenesCompra('PENDIENTE', 1, 1).catch(() => ({ data: [], total: 0, metadata: { count: 0, total: 0 } })),
+        mba3ConsultasService.getOrdenesCompra('ENVIADA', 1, 1).catch(() => ({ data: [], total: 0, metadata: { count: 0, total: 0 } })),
+        mba3ConsultasService.getOrdenesCompra('ERROR', 1, 1).catch(() => ({ data: [], total: 0, metadata: { count: 0, total: 0 } }))
       ])
       
-      // Usar total si está disponible, sino usar metadata.count, sino 0
-      totalPendientes.value = pendientesRes.total ?? pendientesRes.metadata?.count ?? 0
-      totalEnviadas.value = enviadasRes.total ?? enviadasRes.metadata?.count ?? 0
-      totalErrores.value = erroresRes.total ?? erroresRes.metadata?.count ?? 0
+      totalPendientes.value = pendientesRes.total ?? pendientesRes.metadata?.total ?? 0
+      totalEnviadas.value = enviadasRes.total ?? enviadasRes.metadata?.total ?? 0
+      totalErrores.value = erroresRes.total ?? erroresRes.metadata?.total ?? 0
     } catch (err) {
       console.error('Error fetching estadisticas:', err)
     }
@@ -62,12 +64,14 @@ export const useOrdenesCompraStore = defineStore('mba3OrdenesCompra', () => {
       // Actualizar información de paginación si viene en la respuesta
       if (response.total !== undefined) {
         total.value = response.total
-      } else if (response.metadata?.count !== undefined) {
-        total.value = response.metadata.count
+      } else if (response.metadata?.total !== undefined) {
+        total.value = response.metadata.total
       } else {
-        // Si no viene total, usar el count de los datos actuales
         total.value = response.data.length
       }
+      totalPages.value =
+        response.totalPages ??
+        Math.max(1, Math.ceil(total.value / pageSize.value))
     } catch (err: any) {
       error.value = err.message || 'Error al obtener órdenes de compra'
       console.error('Error fetching ordenes compra:', err)
@@ -109,7 +113,7 @@ export const useOrdenesCompraStore = defineStore('mba3OrdenesCompra', () => {
     total,
     currentPage,
     pageSize,
-    totalPages,
+    totalPages: totalPagesComputed,
     fetchOrdenesCompra,
     integrarSAP,
     setPage,
