@@ -143,12 +143,12 @@ Mismo patrón que PYG: `host.docker.internal:8005` → timeout; usar red Docker 
 docker ps --format 'table {{.Names}}\t{{.Ports}}' | grep -i concili
 docker inspect app-conciliacion --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}} {{end}}'
 
-# Probar puerto interno (8080 o el que muestre docker ps a la derecha de ->)
+# Probar puerto interno (srv-mabuiosapi: 8005->8000/tcp → :8000)
 docker run --rm --network conciliacion-bancaria_default curlimages/curl:latest \
   -sS -o /dev/null -w "%{http_code}\n" --connect-timeout 15 \
-  "http://app-conciliacion:8080/api/v1/reportes/dashboard?mm=05&yyyy=2026"
+  "http://app-conciliacion:8000/api/v1/reportes/dashboard?mm=05&yyyy=2026"
 
-# active.env: UPSTREAM_CONCILIACION=http://app-conciliacion:8080
+# active.env: UPSTREAM_CONCILIACION=http://app-conciliacion:8000
 # compose: red conciliacion-bancaria_default en docker-compose.prod-network.yml
 docker compose -f docker-compose.yml -f docker-compose.prod-network.yml \
   --env-file deploy/env/active.env up -d --build

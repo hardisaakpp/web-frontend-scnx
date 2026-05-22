@@ -94,7 +94,7 @@ Redes Docker en prod (`docker-compose.prod-network.yml` + `docker network connec
 | Cajachica | `http://172.17.0.2:8092` | `docker network connect bridge` tras el `up` |
 | PYG `/pyg-api/` | `http://scnexus-pyg-api:8080` | red `scnexus-pyg_default` (host publica **5171→8080**; entre contenedores usar **8080**) |
 | Empleados `/employees-api/` | `http://host.docker.internal:3001` | PHP en Nginx **host** :3001, no cajachica |
-| Conciliación `/conciliacion-api/` | `http://app-conciliacion:8080` | red `conciliacion-bancaria_default` (no `:8005` vía host) |
+| Conciliación `/conciliacion-api/` | `http://app-conciliacion:8000` | red `conciliacion-bancaria_default` (`8005->8000/tcp`; no `:8080`) |
 
 **No** declarar la red `bridge` en Compose (error: *network-scoped alias is supported only for user defined networks*).
 
