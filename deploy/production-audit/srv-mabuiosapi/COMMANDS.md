@@ -119,7 +119,7 @@ docker exec scnexus-front grep 'location /api/Auth/' -A1 /etc/nginx/conf.d/defau
 | Ruta | Prod antiguo (Nginx :3001) | `active.env` Docker |
 |------|----------------------------|---------------------|
 | `/employees-api/` | PHP fastcgi en host (`/opt/klienteV1/cws/api/`) | `UPSTREAM_EMPLOYEES=http://host.docker.internal:3001` |
-| `/pyg-api/` | `127.0.0.1:5171` | `UPSTREAM_PYG=http://scnexus-pyg-api:5171` + red `scnexus-pyg_default` |
+| `/pyg-api/` | `127.0.0.1:5171` (host→contenedor **8080**) | `UPSTREAM_PYG=http://scnexus-pyg-api:8080` + red `scnexus-pyg_default` |
 
 ```bash
 # Empleados (debe ser 200, no 404)
