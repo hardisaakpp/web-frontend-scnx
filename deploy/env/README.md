@@ -52,7 +52,7 @@ Script versionado: `deploy/scripts/nexus_frontend.sh`.
 ```bash
 # Tras clonar en /opt/frontend/scnexus-front
 cp deploy/env/prod-mabuiosapi.env.example deploy/env/active.env
-# MBA3 → mba3-api:8000; caja → 172.17.0.2:8092; Core → host.docker.internal:5053
+# MBA3 → mba3-api:8000; caja → 172.17.0.2:8092; Core Auth → 192.168.2.12:8080
 docker compose -f docker-compose.yml -f docker-compose.prod-network.yml \
   --env-file deploy/env/active.env up -d --build
 docker network connect bridge scnexus-front

@@ -72,7 +72,8 @@ Backends en el **mismo servidor** (referencia `docker ps`):
 
 | Servicio | Puerto host | Variable |
 |----------|-------------|----------|
-| scnexus-core-api | 5053 | `UPSTREAM_CORE`, `CORE_PROXY_HOST` |
+| Core Auth (prod) | **192.168.2.12:8080** | `UPSTREAM_CORE`, `CORE_PROXY_HOST` |
+| scnexus-core-api (local) | 5053 | Solo si se valida login; en prod Auth usar **192.168.2.12:8080** |
 | mba3-api | 8000 | `UPSTREAM_MBA3`, `UPSTREAM_MBA3_AUTH` |
 | cajachica | 8092 | `UPSTREAM_CAJA_CHICA` |
 | app-maestro | 8004 | `UPSTREAM_MAESTRO` |
@@ -88,7 +89,7 @@ Redes Docker en prod (`docker-compose.prod-network.yml` + `docker network connec
 
 | Backend | URL en `active.env` | Cómo llega el contenedor |
 |---------|---------------------|---------------------------|
-| Core | `host.docker.internal:5053` | `extra_hosts` + UFW 5053 |
+| Core (`/api/Auth/`, resto `/api/`) | `http://192.168.2.12:8080` | IP del Core de prod (mismo que Apache viejo) |
 | MBA3 | `http://mba3-api:8000` | red externa `mba3-nexus_edge` |
 | Cajachica | `http://172.17.0.2:8092` | `docker network connect bridge` tras el `up` |
 
@@ -278,7 +279,7 @@ Ver historial de conversación y [ENV.md](./ENV.md).
 | 1 | Pegar contenido real de `003-scnexus.conf` y cerrar diff Apache | Infra |
 | 2 | Acordar rama git y usuario SSH en prod | Equipo |
 | 3 | Crear clone en `/opt/frontend/scnexus-front` | Infra |
-| 4 | Validar `active.env` (MBA3 `mba3-api`, caja `172.17.0.2`, Core `:5053`) | DevOps |
+| 4 | Validar `active.env` (MBA3 `mba3-api`, caja `172.17.0.2`, Core `192.168.2.12:8080`) | DevOps |
 | 5 | `docker-compose.prod-network.yml` + `connect bridge` | DevOps |
 | 6 | Ventana de corte + rollback comunicado | Coordinación |
 

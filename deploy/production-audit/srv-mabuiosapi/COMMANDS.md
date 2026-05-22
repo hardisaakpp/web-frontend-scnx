@@ -87,3 +87,27 @@ deploy/production-audit/srv-mabuiosapi/nginx/
 curl -sS -o /dev/null -w "intranet HTTPS: %{http_code}\n" https://intranet.mabelgroup.com.ec/
 curl -sS -o /dev/null -w "scnexus HTTPS: %{http_code}\n" https://scnexus.mabelgroup.com.ec/
 ```
+
+---
+
+## Core Auth: 5053 vs 192.168.2.12:8080
+
+En prod, login debe ir al mismo Core que Apache viejo (`192.168.2.12:8080`). El contenedor local `:5053` puede devolver 500 en `/api/Auth/login`.
+
+```bash
+# Comparar (sin pegar contraseña real en logs compartidos)
+curl -sS -o /dev/null -w "5053: %{http_code}\n" -X POST http://127.0.0.1:5053/api/Auth/login \
+  -H "Content-Type: application/json" -d '{"username":"USER","password":"***","useActiveDirectory":true}'
+curl -sS -o /dev/null -w "Core prod: %{http_code}\n" -X POST http://192.168.2.12:8080/api/Auth/login \
+  -H "Content-Type: application/json" -d '{"username":"USER","password":"***","useActiveDirectory":true}'
+
+# active.env
+grep UPSTREAM_CORE deploy/env/active.env
+# Debe ser: UPSTREAM_CORE=http://192.168.2.12:8080
+
+cd /opt/frontend/scnexus-front
+docker compose -f docker-compose.yml -f docker-compose.prod-network.yml \
+  --env-file deploy/env/active.env up -d --build
+docker network connect bridge scnexus-front 2>/dev/null || true
+docker exec scnexus-front grep 'location /api/Auth/' -A1 /etc/nginx/conf.d/default.conf
+```

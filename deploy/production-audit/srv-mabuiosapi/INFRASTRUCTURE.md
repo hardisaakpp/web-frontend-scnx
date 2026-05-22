@@ -124,7 +124,7 @@ El bloque largo con `root /storage/scnexus/dist` y proxies a `127.0.0.1:8000`, `
 
 | Ruta / uso | Config antigua (ejemplo) | Prod actual (docker ps) |
 |------------|--------------------------|-------------------------|
-| Core login `/api/Auth/` | `192.168.2.12:8080` | `host.docker.internal:5053` |
+| Core login `/api/Auth/` | `192.168.2.12:8080` | `192.168.2.12:8080` (Docker prod; :5053 solo local, login 500) |
 | Caja chica | `192.168.2.153:8080` | `host.docker.internal:8092` |
 | MBA3 | `127.0.0.1:8000` | `host.docker.internal:8000` ✓ |
 
