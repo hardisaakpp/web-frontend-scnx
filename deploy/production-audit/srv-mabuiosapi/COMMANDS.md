@@ -132,3 +132,27 @@ curl -sS -o /dev/null -w "pyg: %{http_code}\n" --connect-timeout 15 \
 
 docker inspect scnexus-pyg-api --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}} {{end}}'
 ```
+
+---
+
+## Conciliación (504 en `/conciliacion-api/`)
+
+Mismo patrón que PYG: `host.docker.internal:8005` → timeout; usar red Docker del contenedor.
+
+```bash
+docker ps --format 'table {{.Names}}\t{{.Ports}}' | grep -i concili
+docker inspect app-conciliacion --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}} {{end}}'
+
+# Probar puerto interno (8080 o el que muestre docker ps a la derecha de ->)
+docker run --rm --network conciliacion-bancaria_default curlimages/curl:latest \
+  -sS -o /dev/null -w "%{http_code}\n" --connect-timeout 15 \
+  "http://app-conciliacion:8080/api/v1/reportes/dashboard?mm=05&yyyy=2026"
+
+# active.env: UPSTREAM_CONCILIACION=http://app-conciliacion:8080
+# compose: red conciliacion-bancaria_default en docker-compose.prod-network.yml
+docker compose -f docker-compose.yml -f docker-compose.prod-network.yml \
+  --env-file deploy/env/active.env up -d --build
+
+curl -sS -o /dev/null -w "conciliacion via 8082: %{http_code}\n" --connect-timeout 20 \
+  "http://127.0.0.1:8082/conciliacion-api/api/v1/reportes/dashboard?mm=05&yyyy=2026"
+```
