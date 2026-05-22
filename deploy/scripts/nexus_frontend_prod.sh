@@ -20,6 +20,7 @@ PROJECT_DIR="${PROJECT_DIR:-/opt/frontend/scnexus-front}"
 LOG_FILE="${LOG_FILE:-$HOME/deploys/scnexus-front-prod.log}"
 ACTIVE_ENV="deploy/env/active.env"
 PROD_EXAMPLE="deploy/env/prod-mabuiosapi.env.example"
+COMPOSE_FILES=(-f docker-compose.yml -f docker-compose.prod-network.yml)
 
 cd "$PROJECT_DIR" || { echo "No existe $PROJECT_DIR — clonar el repo primero (ver docs/DEPLOYMENT_PROD_SRV_MABUIOSAPI.md)"; exit 1; }
 
@@ -40,11 +41,25 @@ source "$ACTIVE_ENV"
 set +a
 FRONT_PORT="${SCNEXUS_FRONT_PORT:-8082}"
 
+if [[ "${VITE_APP_BASE_PATH:-}" != "/" ]]; then
+  echo "ERROR: en prod active.env debe tener VITE_APP_BASE_PATH=/ (actual: ${VITE_APP_BASE_PATH:-vacío})"
+  exit 1
+fi
+
 echo "Build y levantar scnexus-front (Nginx en host :${FRONT_PORT})..."
 mkdir -p "$(dirname "$LOG_FILE")"
 {
   echo "=== $(date -Iseconds) prod deploy branch=$BRANCH port=$FRONT_PORT ==="
-  docker compose --env-file "$ACTIVE_ENV" up -d --build
+  docker compose "${COMPOSE_FILES[@]}" --env-file "$ACTIVE_ENV" up -d --build
+
+  # Cajachica en red bridge (172.17.0.2) — no declarar bridge en compose (falla con alias)
+  if docker network inspect bridge --format '{{range .Containers}}{{.Name}} {{end}}' 2>/dev/null | grep -qw scnexus-front; then
+    echo "scnexus-front ya está en red bridge"
+  else
+    echo "Conectando scnexus-front a red bridge (cajachica 172.17.0.2)..."
+    docker network connect bridge scnexus-front
+  fi
+
   docker ps --filter name=scnexus-front --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
 } 2>&1 | tee -a "$LOG_FILE"
 

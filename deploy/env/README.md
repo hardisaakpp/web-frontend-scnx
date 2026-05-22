@@ -47,12 +47,16 @@ Script versionado: `deploy/scripts/nexus_frontend.sh`.
 
 ## Producción (srv-mabuiosapi)
 
-`scnexus.mabelgroup.com.ec` — hoy solo existe `/storage/scnexus/dist` (sin git). Migración a Docker documentada en [docs/DEPLOYMENT_PROD_SRV_MABUIOSAPI.md](../../docs/DEPLOYMENT_PROD_SRV_MABUIOSAPI.md).
+`scnexus.mabelgroup.com.ec` — hoy solo existe `/storage/scnexus/dist` (sin git). Migración a Docker: [docs/DEPLOYMENT_PROD_SRV_MABUIOSAPI.md](../../docs/DEPLOYMENT_PROD_SRV_MABUIOSAPI.md). Inventario Apache/Nginx del host: [deploy/production-audit/srv-mabuiosapi/](../production-audit/srv-mabuiosapi/).
 
 ```bash
 # Tras clonar en /opt/frontend/scnexus-front
 cp deploy/env/prod-mabuiosapi.env.example deploy/env/active.env
-sh ~/deploys/nexus_frontend_prod.sh
+# MBA3 → mba3-api:8000; caja → 172.17.0.2:8092; Core → host.docker.internal:5053
+docker compose -f docker-compose.yml -f docker-compose.prod-network.yml \
+  --env-file deploy/env/active.env up -d --build
+docker network connect bridge scnexus-front
+sh ~/deploys/nexus_frontend_prod.sh   # incluye redes + connect bridge
 ```
 
 Script: `deploy/scripts/nexus_frontend_prod.sh`. Corte Apache (una vez): `deploy/apache/003-scnexus-docker.conf.example`.

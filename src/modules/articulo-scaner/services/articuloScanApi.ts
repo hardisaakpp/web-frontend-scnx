@@ -12,7 +12,7 @@ import { extractArticlePricing } from '../utils/pricing'
 /**
  * Base URL del microservicio de scan (rutas reales: `/api/v1/warehouses`, `/api/v1/scan/resolve`).
  * - Sin `VITE_ARTICULO_SCAN_API_URL`: **`/scan-api`** en dev y prod (mismo origen → sin Mixed Content).
- *   Nginx debe exponer `location /scan-api/` hacia el host del scanner (ver `deploy/nginx/scnexus.conf.example`):
+ *   Nginx debe exponer `location /scan-api/` hacia el host del scanner (ver `deploy/nginx/scnexus-host.conf.example`):
  *   p. ej. `/scan-api/api/v1/warehouses` → backend `GET /api/v1/warehouses`.
  * - `location /api/` suele ser el **Core**; si el scanner no está detrás del mismo upstream, no uses `/api` como base.
  * - Anular solo si tu despliegue publica el scanner en otra ruta: `VITE_ARTICULO_SCAN_API_URL` (p. ej. `/api` o URL absoluta `https://…`).

@@ -216,7 +216,7 @@ npm run docker:up
 | Entorno | Un comando | Doc |
 |---------|------------|-----|
 | DESA | `sh ~/deploys/nexus_frontend.sh` | [DEPLOYMENT.md](docs/DEPLOYMENT.md) |
-| Prod srv-mabuiosapi | `sh ~/deploys/nexus_frontend_prod.sh` | [DEPLOYMENT_PROD_SRV_MABUIOSAPI.md](docs/DEPLOYMENT_PROD_SRV_MABUIOSAPI.md) |
+| Prod srv-mabuiosapi | `sh ~/deploys/nexus_frontend_prod.sh` | [DEPLOYMENT_PROD](docs/DEPLOYMENT_PROD_SRV_MABUIOSAPI.md) · [Infra audit](deploy/production-audit/srv-mabuiosapi/) |
 
 Scripts en repo: `deploy/scripts/nexus_frontend.sh`, `deploy/scripts/nexus_frontend_prod.sh`.
 

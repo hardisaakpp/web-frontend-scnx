@@ -1,6 +1,6 @@
 # Nginx dentro del contenedor SCNexus (intranet / servidor de aplicaciones).
 # Upstreams: placeholders __*_UPSTREAM__ sustituidos en el Dockerfile (ver .env.docker.example).
-# Referencia host sin Docker: deploy/nginx/scnexus.conf.example
+# Referencia host sin Docker: deploy/nginx/scnexus-host.conf.example
 
 server {
     listen 80;

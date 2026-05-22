@@ -49,7 +49,7 @@ Ajustar en `active.env`: `UPSTREAM_MBA3=http://mba3-api:8000` (y `UPSTREAM_MBA3_
 
 El contenedor publica `SCNEXUS_FRONT_PORT` (default **8082**; en DESA evitar **8081** si cajachica lo usa).
 
-Referencia: `deploy/nginx/scnexus.conf.example`, template `deploy/nginx/scnexus-docker.conf.template`.
+Referencia host: `deploy/nginx/scnexus-host.conf.example` · prod: `deploy/production-audit/srv-mabuiosapi/nginx/` · Docker: `deploy/nginx/scnexus-docker.conf.template`.
 
 ## Errores frecuentes
 

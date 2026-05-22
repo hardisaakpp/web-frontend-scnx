@@ -1,0 +1,17 @@
+# Captura en srv-mabuiosapi — 2026-03-21
+
+nginx -T (resumen):
+  listen 3000; -> server_name srv-mabuiosapi.mabeltrading.com;
+  listen 3001; -> server_name scnexus.mabelgroup.com.ec;
+
+sites-enabled:
+  scnexus -> /etc/nginx/sites-available/scnexus
+
+conf.d:
+  scnexus-front.conf
+
+Puertos (ss -tlnp, extracto):
+  3000, 3001 nginx
+  443, 80 apache2
+  8000, 8004, 8005, 8080, 8083, 8092, 8093 docker-proxy
+  8082 libre (front Docker planificado)

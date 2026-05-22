@@ -1,3 +1,7 @@
+# Plantilla Nginx en el HOST (:3001) — documentación del repo.
+# Snapshot prod: deploy/production-audit/srv-mabuiosapi/nginx/scnexus-host-3001.conf
+# Docker (objetivo): deploy/nginx/scnexus-docker.conf.template + deploy/env/active.env
+
 server {
     listen 3001;
     server_name scnexus.mabelgroup.com.ec;

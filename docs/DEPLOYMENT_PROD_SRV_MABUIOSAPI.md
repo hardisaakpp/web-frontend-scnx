@@ -4,6 +4,8 @@ Documento de coordinación (marzo 2026): estado actual del servidor, migración 
 
 **Relacionado:** [DEPLOYMENT.md](./DEPLOYMENT.md) (DESA), [deploy/env/README.md](../deploy/env/README.md), [DOCKER.md](./DOCKER.md).
 
+**Infraestructura del host (sitios Apache/Nginx, puertos):** [deploy/production-audit/srv-mabuiosapi/INFRASTRUCTURE.md](../deploy/production-audit/srv-mabuiosapi/INFRASTRUCTURE.md) — auditoría 2026-03-21.
+
 ---
 
 ## 1. Resumen ejecutivo
@@ -28,16 +30,16 @@ Usuario
        → /etc/apache2/sites-enabled/003-scnexus.conf
   → Nginx :3001  (server_name scnexus.mabelgroup.com.ec)
        root /storage/scnexus/dist     ← SPA estática (sin git)
-       + proxy /api, /api/mba3, /caja-chica-api, …  (ver deploy/nginx/scnexus.conf.example)
+       + proxy /api, /api/mba3, /caja-chica-api, …  (ver `deploy/production-audit/srv-mabuiosapi/nginx/scnexus-host-3001.conf`)
 ```
 
-Otros listeners (no confundir):
+En el mismo host conviven **otros vhosts Apache** (no tocar al migrar SCNexus): `sapi`, `storecontrol.mabelgroup.com.ec`, `intranet.mabelgroup.com.ec`, `glpi` — ver inventario en [INFRASTRUCTURE.md](../deploy/production-audit/srv-mabuiosapi/INFRASTRUCTURE.md).
 
 | Puerto | Proceso | Uso |
 |--------|---------|-----|
-| **443** | Apache | HTTPS público SCNexus |
-| **3001** | Nginx | Sitio SCNexus (dist) |
-| **3000** | Nginx | Otro vhost (`srv-mabuiosapi.mabeltrading.com`) |
+| **443** | Apache | HTTPS — varios `ServerName`; SCNexus = `003-scnexus.conf` |
+| **3001** | Nginx | Sitio SCNexus (dist) — dejar de usar tras corte |
+| **3000** | Nginx | `srv-mabuiosapi.mabeltrading.com` — **no tocar** |
 | **8082** | (libre) | Reservado para contenedor `scnexus-front` |
 
 Contenido real hoy:
@@ -81,6 +83,18 @@ Backends en el **mismo servidor** (referencia `docker ps`):
 | scnexus-validacionci-api | 8083 | `UPSTREAM_PROMOCION_SOBRES` |
 
 Plantilla versionada: `deploy/env/prod-mabuiosapi.env.example` → copiar a `active.env` en el servidor.
+
+Redes Docker en prod (`docker-compose.prod-network.yml` + `docker network connect bridge`):
+
+| Backend | URL en `active.env` | Cómo llega el contenedor |
+|---------|---------------------|---------------------------|
+| Core | `host.docker.internal:5053` | `extra_hosts` + UFW 5053 |
+| MBA3 | `http://mba3-api:8000` | red externa `mba3-nexus_edge` |
+| Cajachica | `http://172.17.0.2:8092` | `docker network connect bridge` tras el `up` |
+
+**No** declarar la red `bridge` en Compose (error: *network-scoped alias is supported only for user defined networks*).
+
+**No** usar `host.docker.internal:8000` ni `:8092` para MBA3/Cajachica en este host (timeout desde contenedor).
 
 **No** usar `intranet.env.example` sin revisar: las IPs 192.168.x no reflejan “todo en localhost Docker” en este host.
 
@@ -163,7 +177,17 @@ Variables opcionales al ejecutar:
 PROJECT_DIR=/opt/frontend/scnexus-front LOG_FILE=~/deploys/scnexus-front-prod.log sh ~/deploys/nexus_frontend_prod.sh
 ```
 
-### 6.4 Backup del despliegue anterior
+### 6.4 Redes Docker (prod)
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod-network.yml \
+  --env-file deploy/env/active.env up -d --build
+docker network connect bridge scnexus-front   # cajachica 172.17.0.2
+```
+
+El script `deploy/scripts/nexus_frontend_prod.sh` hace el `connect bridge` automáticamente.
+
+### 6.5 Backup del despliegue anterior
 
 ```bash
 sudo cp -a /storage/scnexus/dist /storage/scnexus/dist.bak.$(date +%Y%m%d)
@@ -176,7 +200,7 @@ sudo cp -a /etc/apache2/sites-enabled/003-scnexus.conf /etc/apache2/sites-enable
 
 Fuera de horario laboral recomendado.
 
-- [ ] Backup `dist/` y `003-scnexus.conf` (§6.4)
+- [ ] Backup `dist/` y `003-scnexus.conf` (§6.5)
 - [ ] `sh ~/deploys/nexus_frontend_prod.sh` (build + contenedor en :8082)
 - [ ] Probar **sin tocar Apache** aún:
   ```bash
@@ -254,8 +278,9 @@ Ver historial de conversación y [ENV.md](./ENV.md).
 | 1 | Pegar contenido real de `003-scnexus.conf` y cerrar diff Apache | Infra |
 | 2 | Acordar rama git y usuario SSH en prod | Equipo |
 | 3 | Crear clone en `/opt/frontend/scnexus-front` | Infra |
-| 4 | Validar `active.env` con `docker ps` actualizado | DevOps |
-| 5 | Ventana de corte + rollback comunicado | Coordinación |
+| 4 | Validar `active.env` (MBA3 `mba3-api`, caja `172.17.0.2`, Core `:5053`) | DevOps |
+| 5 | `docker-compose.prod-network.yml` + `connect bridge` | DevOps |
+| 6 | Ventana de corte + rollback comunicado | Coordinación |
 
 ---
 

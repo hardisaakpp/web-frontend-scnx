@@ -1,0 +1,89 @@
+# Comandos — auditoría srv-mabuiosapi
+
+Ejecutar en el servidor como usuario con `sudo`. Guardar salida en `deploy/production-audit/srv-mabuiosapi/` si se versiona en git (sin certificados ni claves).
+
+---
+
+## Sitios Apache activos
+
+```bash
+sudo apache2ctl -S
+sudo ls -la /etc/apache2/sites-enabled/
+```
+
+---
+
+## Nginx host
+
+```bash
+sudo nginx -t
+sudo nginx -T 2>/dev/null | grep -E '^\s*(listen |server_name )'
+sudo ls -la /etc/nginx/sites-enabled/
+sudo ls -la /etc/nginx/conf.d/
+```
+
+---
+
+## Puertos
+
+```bash
+sudo ss -tlnp | grep -E 'apache|nginx|:80|:443|:3000|:3001|:8082'
+docker ps --format 'table {{.Names}}\t{{.Ports}}\t{{.Status}}'
+```
+
+---
+
+## Front actual (sin git)
+
+```bash
+ls -la /storage/scnexus/
+ls -la /storage/scnexus/dist/ | head -20
+```
+
+---
+
+## Exportar configs al repo (en el servidor, luego scp)
+
+```bash
+AUDIT=~/scnexus-prod-audit-$(date +%Y%m%d)
+mkdir -p "$AUDIT/apache" "$AUDIT/nginx"
+
+sudo cp /etc/apache2/sites-available/scnexus.conf "$AUDIT/apache/"
+sudo cp /etc/apache2/sites-available/intranet.conf "$AUDIT/apache/"
+sudo cp /etc/apache2/sites-available/storecontrol.conf "$AUDIT/apache/" 2>/dev/null || true
+sudo cp /etc/apache2/sites-available/sitio.conf "$AUDIT/apache/" 2>/dev/null || true
+sudo cp /etc/apache2/sites-available/glpi.conf "$AUDIT/apache/" 2>/dev/null || true
+
+sudo cp /etc/nginx/sites-available/scnexus "$AUDIT/nginx/" 2>/dev/null || true
+sudo cp /etc/nginx/conf.d/scnexus-front.conf "$AUDIT/nginx/" 2>/dev/null || true
+
+sudo apache2ctl -S > "$AUDIT/apache2ctl-S.txt" 2>&1
+sudo nginx -T > "$AUDIT/nginx-T.txt" 2>/dev/null
+docker ps > "$AUDIT/docker-ps.txt"
+sudo ss -tlnp > "$AUDIT/ss-tlnp.txt"
+
+tar -czf "$AUDIT.tar.gz" -C "$(dirname "$AUDIT")" "$(basename "$AUDIT")"
+echo "Paquete: $AUDIT.tar.gz"
+```
+
+Desde tu PC:
+
+```bash
+scp user@srv-mabuiosapi:~/scnexus-prod-audit-*.tar.gz .
+```
+
+Copiar al repo:
+
+```text
+deploy/production-audit/srv-mabuiosapi/apache/
+deploy/production-audit/srv-mabuiosapi/nginx/
+```
+
+---
+
+## Verificar que intranet no se rompió (post-corte SCNexus)
+
+```bash
+curl -sS -o /dev/null -w "intranet HTTPS: %{http_code}\n" https://intranet.mabelgroup.com.ec/
+curl -sS -o /dev/null -w "scnexus HTTPS: %{http_code}\n" https://scnexus.mabelgroup.com.ec/
+```

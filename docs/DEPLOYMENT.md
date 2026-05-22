@@ -175,7 +175,7 @@ VITE_ARTICULO_SCAN_API_URL=/scan-api
 VITE_APP_NAME=SCNexus
 ```
 
-Para referencia de Nginx del proyecto (incluye routing de Caja Chica), ver `deploy/nginx/scnexus.conf.example`.
+Para referencia de Nginx del proyecto (incluye routing de Caja Chica), ver `deploy/nginx/scnexus-host.conf.example` y prod `deploy/production-audit/srv-mabuiosapi/nginx/`.
 
 Si las APIs viven en **otros hosts** públicos, usa URLs absolutas **https://** (no IPs privadas ni `http://` en producción):
 
@@ -402,7 +402,7 @@ Ademas, en el build de frontend usar base relativa para este modulo:
 VITE_ARTICULO_SCAN_API_URL=/scan-api
 ```
 
-Referencia en este repo: `deploy/nginx/scnexus.conf.example`.
+Referencia en este repo: `deploy/nginx/scnexus-host.conf.example`.
 
 Verificacion rapida:
 

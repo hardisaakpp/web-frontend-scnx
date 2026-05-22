@@ -1,0 +1,25 @@
+# Captura en srv-mabuiosapi — 2026-03-21
+# Comando: sudo apache2ctl -S
+
+VirtualHost configuration:
+*:443                  is a NameVirtualHost
+         default server sapi (/etc/apache2/sites-enabled/000-sitio.conf:37)
+         port 443 namevhost sapi (/etc/apache2/sites-enabled/000-sitio.conf:37)
+                 alias 192.168.2.153
+         port 443 namevhost storecontrol.mabelgroup.com.ec (/etc/apache2/sites-enabled/001-storecontrol.conf:9)
+         port 443 namevhost intranet.mabelgroup.com.ec (/etc/apache2/sites-enabled/002-intranet.conf:13)
+         port 443 namevhost scnexus.mabelgroup.com.ec (/etc/apache2/sites-enabled/003-scnexus.conf:2)
+*:80                   is a NameVirtualHost
+         default server sapi (/etc/apache2/sites-enabled/000-sitio.conf:1)
+         port 80 namevhost sapi (/etc/apache2/sites-enabled/000-sitio.conf:1)
+         port 80 namevhost storecontrol.mabelgroup.com.ec (/etc/apache2/sites-enabled/001-storecontrol.conf:1)
+         port 80 namevhost intranet.mabelgroup.com.ec (/etc/apache2/sites-enabled/002-intranet.conf:2)
+         port 80 namevhost 192.168.2.153 (/etc/apache2/sites-enabled/glpi.conf:1)
+                 alias glpi.local
+
+sites-enabled:
+  000-sitio.conf -> sitio.conf
+  001-storecontrol.conf
+  002-intranet.conf -> intranet.conf
+  003-scnexus.conf -> scnexus.conf
+  glpi.conf
