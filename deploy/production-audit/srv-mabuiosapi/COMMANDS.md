@@ -156,3 +156,18 @@ docker compose -f docker-compose.yml -f docker-compose.prod-network.yml \
 curl -sS -o /dev/null -w "conciliacion via 8082: %{http_code}\n" --connect-timeout 20 \
   "http://127.0.0.1:8082/conciliacion-api/api/v1/reportes/dashboard?mm=05&yyyy=2026"
 ```
+
+---
+
+## Maestro / artículos (504 en `/maestro-api/`)
+
+```bash
+docker ps --format 'table {{.Names}}\t{{.Ports}}' | grep -i maestro
+# Ejemplo: 8004->8000/tcp → UPSTREAM_MAESTRO=http://app-maestro:8000
+
+docker run --rm --network articulomaestro_default curlimages/curl:latest \
+  -sS -o /dev/null -w "directo: %{http_code}\n" --connect-timeout 15 \
+  "http://app-maestro:8000/api/v1/articulos/?page=1&pageSize=1"
+
+# active.env + rebuild + red en docker-compose.prod-network.yml
+```
