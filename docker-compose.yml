@@ -28,7 +28,7 @@ services:
     env_file:
       - path: deploy/env/bundle.env
         required: true
-      - path: deploy/env/active.env
+      - path: deploy/env/active.docker.env
         required: false
     ports:
       - "${SCNEXUS_FRONT_PORT:-8082}:80"

@@ -498,6 +498,7 @@ import api from '@/services/api'
 import { useTablePreferences } from '@/composables/useTablePreferences'
 import { useRouter } from 'vue-router'
 import { createBuildAdjuntoUrl } from '../utils/buildAdjuntoUrl'
+import { resolveUserNames } from '../utils/resolveUserNames'
 
 interface ColumnConfig {
   key: string
@@ -585,21 +586,10 @@ async function fetchLocalUserName(id?: string) {
   if (localUserNames.value[id] || localUserLoading.value[id]) return;
   localUserLoading.value[id] = true;
   try {
-    // Usa el cliente API configurado del frontend para evitar puertos hardcodeados.
-    const base = String(api.defaults.baseURL || '/api').replace(/\/+$/, '');
-    const url = `${base}/Admin/user-local-name/${id}`;
-    console.log('[SupervisorName] idUsuario:', id);
-    console.log('[SupervisorName] endpoint:', url);
-    const resp = await api.get(`/Admin/user-local-name/${id}`);
-    console.log('[SupervisorName] resultado endpoint:', resp.data);
-    const payload = resp.data as { fullName?: unknown } | null | undefined
-    localUserNames.value[id] = typeof payload?.fullName === 'string' && payload.fullName.trim()
-      ? payload.fullName
-      : id
-  } catch (err) {
-    console.error('[SupervisorName] error endpoint:', err);
-    const fallback = usuariosById.value[id]?.label || '-';
-    localUserNames.value[id] = fallback;
+    const resolved = await resolveUserNames([id]);
+    localUserNames.value[id] = resolved[id] || usuariosById.value[id]?.label || id;
+  } catch {
+    localUserNames.value[id] = usuariosById.value[id]?.label || id;
   } finally {
     localUserLoading.value[id] = false;
   }

@@ -1,13 +1,13 @@
 #!/usr/bin/env node
 /**
- * Garantiza deploy/env/active.env antes de docker compose (build hornea UPSTREAM_* en Nginx).
- * Si no existe, copia local.docker.env.example (host.docker.internal para backends en el host).
+ * Garantiza deploy/env/active.docker.env antes de docker compose.
+ * No toca active.env (perfil npm run dev).
  */
 import fs from 'node:fs'
 import path from 'node:path'
 
 const root = process.cwd()
-const active = path.join(root, 'deploy', 'env', 'active.env')
+const active = path.join(root, 'deploy', 'env', 'active.docker.env')
 const template = path.join(root, 'deploy', 'env', 'local.docker.env.example')
 
 function warnInvalidDockerUpstreams(content) {
@@ -22,9 +22,8 @@ function warnInvalidDockerUpstreams(content) {
   }
   if (bad.length === 0) return
 
-  console.error('active.env usa 127.0.0.1 — dentro del contenedor Docker eso NO es tu PC (502 en /caja-chica-api/).')
-  console.error('Perfil incorrecto para Docker. Ejecuta: npm run docker:env')
-  console.error('Variables afectadas:')
+  console.error('active.docker.env usa 127.0.0.1 — dentro del contenedor eso NO es tu PC (502).')
+  console.error('Ejecuta: npm run docker:env')
   for (const b of bad) console.error(`  ${b}`)
   process.exit(1)
 }
@@ -40,5 +39,4 @@ if (!fs.existsSync(template)) {
 }
 
 fs.copyFileSync(template, active)
-console.log('Creado deploy/env/active.env desde local.docker.env.example')
-console.log('UPSTREAM_CAJA_CHICA=http://host.docker.internal:8092 (cajachica en el host :8092).')
+console.log('Creado deploy/env/active.docker.env desde local.docker.env.example')

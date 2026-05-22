@@ -161,6 +161,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { resolveUserNames } from '../utils/resolveUserNames'
 
 const authStore = useAuthStore()
 
@@ -375,39 +376,8 @@ const loadAprobacionesContabilidad = async () => {
   )
 
   if (idsPendientes.length > 0) {
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token')
-    const resolved: Array<{ id: string; nombre: string }> = await Promise.all(
-      idsPendientes.map(async (id) => {
-        try {
-          const resp = await axios.get(`/api/Admin/user-local-name/${encodeURIComponent(id)}`, {
-            headers: token ? { Authorization: `Bearer ${token}` } : undefined
-          })
-          const payload = resp.data as
-            | string
-            | { fullName?: string; nombreCompleto?: string; name?: string; nombre?: string }
-            | null
-            | undefined
-          const nombre = normalizeString(
-            typeof payload === 'string'
-              ? payload
-              : payload?.fullName ??
-                  payload?.nombreCompleto ??
-                  payload?.name ??
-                  payload?.nombre ??
-                  ''
-          )
-          return { id, nombre: nombre || id }
-        } catch {
-          return { id, nombre: id }
-        }
-      })
-    )
-
-    const nextMap = { ...aprobadorNombreById.value }
-    resolved.forEach(({ id, nombre }) => {
-      nextMap[id] = nombre
-    })
-    aprobadorNombreById.value = nextMap
+    const resolved = await resolveUserNames(idsPendientes)
+    aprobadorNombreById.value = { ...aprobadorNombreById.value, ...resolved }
   }
 }
 
