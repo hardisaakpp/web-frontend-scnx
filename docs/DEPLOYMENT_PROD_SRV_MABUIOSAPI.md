@@ -91,7 +91,7 @@ Redes Docker en prod (`docker-compose.prod-network.yml` + `docker network connec
 |---------|---------------------|---------------------------|
 | Core (`/api/Auth/`, resto `/api/`) | `http://192.168.2.12:8080` | IP del Core de prod (mismo que Apache viejo) |
 | MBA3 | `http://mba3-api:8000` | red externa `mba3-nexus_edge` |
-| Cajachica | `http://172.17.0.2:8092` | `docker network connect bridge` tras el `up` |
+| Cajachica | IP bridge actual o `http://192.168.2.153:8092` | `bash deploy/scripts/discover-caja-chica-upstream.sh`; `docker network connect bridge` tras el `up` |
 | PYG `/pyg-api/` | `http://scnexus-pyg-api:8080` | red `scnexus-pyg_default` (host publica **5171→8080**; entre contenedores usar **8080**) |
 | Empleados `/employees-api/` | `http://host.docker.internal:3001` | PHP en Nginx **host** :3001, no cajachica |
 | Conciliación `/conciliacion-api/` | `http://app-conciliacion:8000` | red `conciliacion-bancaria_default` (`8005->8000/tcp`; no `:8080`) |

@@ -357,6 +357,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
 import { createBuildAdjuntoUrl } from '../utils/buildAdjuntoUrl'
+import { resolveUserNames } from '../utils/resolveUserNames'
 
 interface LiquidacionItem {
   idLiquidacion: number
@@ -1344,25 +1345,8 @@ const loadHistorial = async () => {
       .filter(id => id && !initialMap[id])))
 
     if (missingIds.length) {
-      const token = localStorage.getItem('token')
-      await Promise.all(missingIds.map(async idUsuario => {
-        try {
-          const response = await axios.get(`/api/Admin/user-local-name/${encodeURIComponent(idUsuario)}`, {
-            headers: token ? { Authorization: `Bearer ${token}` } : undefined
-          })
-          const payload = response.data as
-            | string
-            | { fullName?: string; name?: string }
-            | null
-            | undefined
-          const resolved = normalizeString(
-            typeof payload === 'string' ? payload : payload?.fullName ?? payload?.name ?? payload
-          )
-          if (resolved) initialMap[idUsuario] = resolved
-        } catch {
-          // Si no se puede resolver, se mantiene fallback a idUsuario.
-        }
-      }))
+      const resolved = await resolveUserNames(missingIds)
+      Object.assign(initialMap, resolved)
     }
 
     aprobadorNombreById.value = initialMap

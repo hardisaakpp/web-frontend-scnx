@@ -114,6 +114,44 @@ docker exec scnexus-front grep 'location /api/Auth/' -A1 /etc/nginx/conf.d/defau
 
 ---
 
+## Caja chica (504 en `/caja-chica-api/`)
+
+El front llama `/caja-chica-api/Almacenes` → Nginx reescribe a `/api/Almacenes` en el upstream `UPSTREAM_CAJA_CHICA`.
+Core (`/api/Users`) puede responder **200** mientras cajachica hace **504** si el upstream está mal.
+
+| Síntoma | Causa habitual |
+|---------|----------------|
+| `Users` 200, `Almacenes` / `UsuariosAlmacenes` 504 | `UPSTREAM_CAJA_CHICA` apunta a IP bridge obsoleta (`172.17.0.2`) o `scnexus-front` no está en `bridge` |
+| Host `127.0.0.1:8092` OK, vía `:8082/caja-chica-api/` 504 | Upstream horneado en la imagen no coincide con `active.env` (falta `--build`) |
+
+```bash
+# 1) API cajachica en el host
+curl -sS -o /dev/null -w "cajachica host: %{http_code}\n" --connect-timeout 10 \
+  "http://127.0.0.1:8092/api/Almacenes"
+
+docker ps --format 'table {{.Names}}\t{{.Ports}}' | grep -i caja
+
+# 2) Descubrir upstream correcto
+bash /opt/frontend/scnexus-front/deploy/scripts/discover-caja-chica-upstream.sh
+
+# 3) Conectar front a bridge (si usa IP del contenedor cajachica)
+docker network connect bridge scnexus-front 2>/dev/null || true
+
+# 4) Ver upstream horneado y active.env
+docker exec scnexus-front grep -A3 'location /caja-chica-api/' /etc/nginx/conf.d/default.conf
+grep UPSTREAM_CAJA_CHICA /opt/frontend/scnexus-front/deploy/env/active.env
+
+# 5) Tras corregir active.env — rebuild obligatorio
+cd /opt/frontend/scnexus-front
+docker compose -f docker-compose.yml -f docker-compose.prod-network.yml \
+  --env-file deploy/env/active.env up -d --build
+
+curl -sS -o /dev/null -w "caja via front: %{http_code}\n" --connect-timeout 15 \
+  "http://127.0.0.1:8082/caja-chica-api/Almacenes"
+```
+
+---
+
 ## Empleados (404) y PYG (504)
 
 | Ruta | Prod antiguo (Nginx :3001) | `active.env` Docker |
