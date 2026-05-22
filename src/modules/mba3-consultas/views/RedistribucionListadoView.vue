@@ -3,6 +3,12 @@
     <div class="space-y-6">
       <!-- Header: fila título + fila de acciones (mismo orden que otros listados MBA3) -->
       <div class="space-y-4">
+        <OdcSapVolverButton
+          v-if="odcSapVolverTarget"
+          :to="odcSapVolverTarget"
+          :title="odcSapVolverTitle"
+          class="shrink-0 self-start"
+        />
         <div class="flex items-center justify-between flex-wrap gap-4">
           <div>
             <div class="flex items-center gap-3">
@@ -49,12 +55,6 @@
             <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Cargando pedidos" />
             {{ loading ? 'Cargando...' : 'Actualizar' }}
           </button>
-          <OdcSapVolverButton
-            v-if="odcSapVolverTarget"
-            :to="odcSapVolverTarget"
-            :title="odcSapVolverTitle"
-            class="shrink-0"
-          />
         </div>
       </div>
 

@@ -1,15 +1,26 @@
 <template>
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 mb-6">
+    <div class="space-y-4 mb-6">
+      <OdcSapVolverButton
+        to="/inventario"
+        title="Volver al módulo Inventario"
+        class="shrink-0 self-start"
+      />
       <div>
         <p class="text-sm font-medium text-blue-600 dark:text-blue-400">Inventario</p>
         <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Planificación de Inventario</h1>
-        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Planifica, ejecuta e importa configuraciones de inventario.</p>
+        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+          Planifica, ejecuta e importa configuraciones. Almacenes y listados filtrados por su marca y bodegas asignadas.
+        </p>
       </div>
-      <div class="flex gap-2">
+      <div class="flex w-full flex-wrap items-center justify-end gap-2">
         <button class="btn-secondary" type="button" @click="loadAll">Refrescar</button>
         <button v-if="canEdit" class="btn-primary" type="button" @click="resetForm">Nueva planificación</button>
       </div>
+    </div>
+
+    <div v-if="canEdit && !canExecute" class="mb-4 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3 text-sm text-amber-800 dark:text-amber-200">
+      Puede editar planificaciones, pero no ejecutarlas: su usuario no tiene activo «Realiza conteo» en configuración legacy (los administradores sí pueden ejecutar).
     </div>
 
     <div v-if="message" class="mb-4 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 p-3 text-sm text-green-700 dark:text-green-300">
@@ -53,9 +64,10 @@
           <label class="block">
             <span class="label">Tipo</span>
             <select v-model="form.inventoryType" class="input">
-              <option value="TT">Total</option>
-              <option value="PARCIAL">Parcial</option>
+              <option :value="INVENTORY_TYPE_TOTAL">Total (TT) — todo el stock SAP</option>
+              <option :value="INVENTORY_TYPE_PARTIAL">Parcial — por categoría/subcategoría</option>
             </select>
+            <span class="hint">{{ isTotalType ? 'Sin categorías ni subcategorías.' : 'Requiere al menos una categoría o subcategoría.' }}</span>
           </label>
           <label class="block">
             <span class="label">Frecuencia</span>
@@ -84,25 +96,37 @@
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
           <label class="block">
-            <span class="label">Almacenes</span>
+            <span class="label">Almacenes (su alcance)</span>
             <select v-model="form.warehouseIds" class="input min-h-[160px]" multiple required>
               <option v-for="warehouse in catalog.warehouses" :key="warehouse.id" :value="warehouse.id">
                 {{ warehouse.display_name || `${warehouse.code} ${warehouse.name}` }}
               </option>
             </select>
-            <span class="hint">{{ form.warehouseIds.length }} seleccionados</span>
+            <span class="hint">{{ form.warehouseIds.length }} seleccionados · solo almacenes de su marca/bodegas</span>
           </label>
-          <label class="block">
+          <label class="block" :class="{ 'opacity-60': isTotalType }">
             <span class="label">Categorías</span>
-            <select v-model="form.categories" class="input min-h-[160px]" multiple>
+            <select
+              v-model="form.categories"
+              class="input min-h-[160px]"
+              multiple
+              :disabled="isTotalType"
+            >
               <option v-for="category in catalog.categories" :key="category" :value="category">{{ category }}</option>
             </select>
+            <span v-if="isTotalType" class="hint">No aplica en inventario total (TT)</span>
           </label>
-          <label class="block">
+          <label class="block" :class="{ 'opacity-60': isTotalType }">
             <span class="label">Subcategorías</span>
-            <select v-model="form.subcategories" class="input min-h-[160px]" multiple>
+            <select
+              v-model="form.subcategories"
+              class="input min-h-[160px]"
+              multiple
+              :disabled="isTotalType"
+            >
               <option v-for="subcategory in catalog.subcategories" :key="subcategory" :value="subcategory">{{ subcategory }}</option>
             </select>
+            <span v-if="isTotalType" class="hint">No aplica en inventario total (TT)</span>
           </label>
         </div>
 
@@ -136,7 +160,7 @@
                 <div class="font-medium text-gray-900 dark:text-white">{{ planning.name }}</div>
                 <div class="text-xs text-gray-500 dark:text-gray-400">{{ planning.description || 'Sin descripción' }}</div>
               </td>
-              <td class="td">{{ planning.inventory_type }}</td>
+              <td class="td">{{ inventoryTypeLabel(planning.inventory_type) }}</td>
               <td class="td">{{ formatDate(planning.generation_date) }}</td>
               <td class="td">{{ planning.total_warehouses }} <span class="text-xs text-gray-500">{{ planning.warehouses }}</span></td>
               <td class="td">
@@ -147,14 +171,22 @@
               <td class="td">
                 <div class="flex flex-wrap justify-end gap-2">
                   <button v-if="canEdit" class="link" type="button" @click="edit(planning.id)">Editar</button>
-                  <button v-if="canEdit" class="link" type="button" @click="execute(planning.id)">Ejecutar</button>
+                  <button
+                    v-if="canExecute"
+                    class="link"
+                    type="button"
+                    :title="executeHint"
+                    @click="execute(planning.id)"
+                  >
+                    Ejecutar
+                  </button>
                   <button v-if="canEdit" class="link" type="button" @click="toggle(planning)">Estado</button>
                   <button v-if="canEdit" class="link-danger" type="button" @click="remove(planning.id)">Eliminar</button>
                 </div>
               </td>
             </tr>
             <tr v-if="plannings.length === 0">
-              <td class="td text-center" colspan="6">No hay planificaciones registradas.</td>
+              <td class="td text-center" colspan="6">No hay planificaciones registradas en su alcance.</td>
             </tr>
           </tbody>
         </table>
@@ -164,12 +196,22 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
+import OdcSapVolverButton from '@/modules/mba3-consultas/components/OdcSapVolverButton.vue'
 import { inventarioService } from '../services/inventarioApi'
+import { useInventarioPermissions } from '../composables/useInventarioPermissions'
 import type { CatalogDataDto, InventoryPlanningSummaryDto, SaveInventoryPlanningRequest } from '../types'
-import { useAuthStore } from '@/stores/auth'
+import {
+  INVENTORY_TYPE_PARTIAL,
+  INVENTORY_TYPE_TOTAL,
+  inventoryTypeLabel,
+  isTotalInventoryType,
+  normalizePlanningFormForType,
+  validatePlanningForm
+} from '../utils/planningRules'
 
-const authStore = useAuthStore()
+const { canEdit, canExecute } = useInventarioPermissions()
+
 const loading = ref(false)
 const saving = ref(false)
 const error = ref<string | null>(null)
@@ -177,10 +219,8 @@ const message = ref<string | null>(null)
 const plannings = ref<InventoryPlanningSummaryDto[]>([])
 const catalog = reactive<CatalogDataDto>({ warehouses: [], categories: [], subcategories: [] })
 
-const canEdit = computed(() =>
-  authStore.userRoles?.includes('Admin') ||
-  authStore.hasPermission('storecontrol.inventory.edit')
-)
+const executeHint =
+  'Genera inventarios; requiere que todos los almacenes de la planificación estén en su alcance y permiso de ejecución.'
 
 const form = reactive<SaveInventoryPlanningRequest>({
   id: null,
@@ -188,7 +228,7 @@ const form = reactive<SaveInventoryPlanningRequest>({
   description: '',
   generationDate: new Date().toISOString().slice(0, 10),
   finalizationDate: '',
-  inventoryType: 'TT',
+  inventoryType: INVENTORY_TYPE_TOTAL,
   recurring: false,
   frequency: '',
   dayOfMonth: null,
@@ -198,6 +238,15 @@ const form = reactive<SaveInventoryPlanningRequest>({
   categories: [],
   subcategories: []
 })
+
+const isTotalType = computed(() => isTotalInventoryType(form.inventoryType))
+
+watch(
+  () => form.inventoryType,
+  () => {
+    normalizePlanningFormForType(form)
+  }
+)
 
 async function loadAll() {
   loading.value = true
@@ -209,8 +258,8 @@ async function loadAll() {
     ])
     Object.assign(catalog, catalogData)
     plannings.value = planningData
-  } catch (err: any) {
-    error.value = err?.message || 'No se pudo cargar planificación.'
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : 'No se pudo cargar planificación.'
   } finally {
     loading.value = false
   }
@@ -222,7 +271,7 @@ function resetForm() {
   form.description = ''
   form.generationDate = new Date().toISOString().slice(0, 10)
   form.finalizationDate = ''
-  form.inventoryType = 'TT'
+  form.inventoryType = INVENTORY_TYPE_TOTAL
   form.recurring = false
   form.frequency = ''
   form.dayOfMonth = null
@@ -252,13 +301,21 @@ async function edit(id: number) {
     form.warehouseIds = [...detail.warehouse_ids]
     form.categories = [...detail.categories]
     form.subcategories = [...detail.subcategories]
+    normalizePlanningFormForType(form)
     window.scrollTo({ top: 0, behavior: 'smooth' })
-  } catch (err: any) {
-    error.value = err?.message || 'No se pudo cargar el detalle de planificación.'
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : 'No se pudo cargar el detalle de planificación.'
   }
 }
 
 async function save() {
+  normalizePlanningFormForType(form)
+  const validationError = validatePlanningForm(form)
+  if (validationError) {
+    error.value = validationError
+    return
+  }
+
   saving.value = true
   error.value = null
   message.value = null
@@ -274,8 +331,8 @@ async function save() {
     message.value = 'Planificación guardada correctamente.'
     resetForm()
     await loadAll()
-  } catch (err: any) {
-    error.value = err?.message || 'No se pudo guardar la planificación.'
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : 'No se pudo guardar la planificación.'
   } finally {
     saving.value = false
   }
@@ -287,10 +344,11 @@ async function execute(id: number) {
   message.value = null
   try {
     const result = await inventarioService.executePlanning(id)
-    message.value = `Ejecución finalizada. Inventarios generados: ${result.generated_count}.`
+    const errorSummary = result.errors?.length ? ` Errores: ${result.errors.slice(0, 3).join(' | ')}` : ''
+    message.value = `Ejecución finalizada. Inventarios generados: ${result.generated_count}.${errorSummary}`
     await loadAll()
-  } catch (err: any) {
-    error.value = err?.message || 'No se pudo ejecutar la planificación.'
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : 'No se pudo ejecutar la planificación.'
   }
 }
 
@@ -301,20 +359,20 @@ async function toggle(planning: InventoryPlanningSummaryDto) {
     await inventarioService.togglePlanningStatus(planning.id, nextStatus)
     message.value = `Estado actualizado a ${nextStatus}.`
     await loadAll()
-  } catch (err: any) {
-    error.value = err?.message || 'No se pudo actualizar el estado.'
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : 'No se pudo actualizar el estado.'
   }
 }
 
 async function remove(id: number) {
-  if (!window.confirm('¿Eliminar esta planificación?')) return
+  if (!window.confirm('¿Eliminar esta planificación? Se registrará historial de auditoría (ELIMINADO).')) return
   error.value = null
   try {
     await inventarioService.deletePlanning(id)
     message.value = 'Planificación eliminada correctamente.'
     await loadAll()
-  } catch (err: any) {
-    error.value = err?.message || 'No se pudo eliminar la planificación.'
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : 'No se pudo eliminar la planificación.'
   }
 }
 
@@ -331,8 +389,8 @@ async function importCsv(event: Event) {
       error.value = result.errors.slice(0, 5).join(' | ')
     }
     await loadAll()
-  } catch (err: any) {
-    error.value = err?.message || 'No se pudo importar el CSV.'
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : 'No se pudo importar el CSV.'
   } finally {
     input.value = ''
   }

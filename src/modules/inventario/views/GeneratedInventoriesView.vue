@@ -1,12 +1,19 @@
 <template>
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+    <div class="space-y-4 mb-6">
+      <OdcSapVolverButton
+        to="/inventario"
+        title="Volver al módulo Inventario"
+        class="shrink-0 self-start"
+      />
       <div>
         <p class="text-sm font-medium text-blue-600 dark:text-blue-400">Inventario</p>
         <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Inventarios Generados</h1>
         <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Consulta los inventarios generados desde planificación.</p>
       </div>
-      <button class="btn-secondary" type="button" @click="load">Refrescar</button>
+      <div class="flex w-full flex-wrap items-center justify-end gap-2">
+        <button class="btn-secondary" type="button" @click="load">Refrescar</button>
+      </div>
     </div>
 
     <div v-if="error" class="mb-4 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 text-sm text-red-700 dark:text-red-300">
@@ -35,7 +42,7 @@
                 <div class="text-xs text-gray-500 dark:text-gray-400">{{ formatDate(inventory.created_at) }}</div>
               </td>
               <td class="td">{{ inventory.warehouse || '-' }}</td>
-              <td class="td">{{ inventory.inventory_type }}</td>
+              <td class="td">{{ inventoryTypeLabel(inventory.inventory_type) }}</td>
               <td class="td">{{ [inventory.level1, inventory.level2].filter(Boolean).join(' / ') || '-' }}</td>
               <td class="td">{{ inventory.status }}</td>
               <td class="td">
@@ -61,8 +68,10 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import OdcSapVolverButton from '@/modules/mba3-consultas/components/OdcSapVolverButton.vue'
 import { inventarioService } from '../services/inventarioApi'
 import type { GeneratedInventoryDto } from '../types'
+import { inventoryTypeLabel } from '../utils/planningRules'
 
 const router = useRouter()
 const inventories = ref<GeneratedInventoryDto[]>([])
@@ -74,8 +83,8 @@ async function load() {
   error.value = null
   try {
     inventories.value = await inventarioService.getInventories()
-  } catch (err: any) {
-    error.value = err?.message || 'No se pudieron cargar los inventarios.'
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : 'No se pudieron cargar los inventarios.'
   } finally {
     loading.value = false
   }

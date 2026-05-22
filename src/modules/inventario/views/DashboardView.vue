@@ -33,21 +33,19 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
+import { useInventarioPermissions } from '../composables/useInventarioPermissions'
+import { getLegacyUserIdFromToken } from '../utils/legacyUserId'
 
 const router = useRouter()
-const authStore = useAuthStore()
+const { canEdit } = useInventarioPermissions()
 
-const canEdit = computed(() =>
-  authStore.userRoles?.includes('Admin') ||
-  authStore.hasPermission('storecontrol.inventory.edit')
-)
+const settingsUserId = computed(() => getLegacyUserIdFromToken() ?? 330)
 
 const cards = computed(() => [
   {
     title: 'Configuración de Usuario',
-    description: 'Editar parámetros operativos de inventario del usuario legacy.',
-    to: '/inventario/configuracion-usuario/330',
+    description: 'Editar parámetros operativos (marca, bodegas, realiza conteo). Almacenes filtrados por marca del usuario.',
+    to: `/inventario/configuracion-usuario/${settingsUserId.value}`,
     badge: 'U',
     editOnly: true
   },

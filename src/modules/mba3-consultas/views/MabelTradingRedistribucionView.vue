@@ -126,6 +126,12 @@
       <!-- Header (misma estructura que listados MBA3: fila título + fila de acciones) -->
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6">
         <div class="space-y-4">
+          <OdcSapVolverButton
+            v-if="odcSapVolverTarget"
+            :to="odcSapVolverTarget"
+            :title="odcSapVolverTitle"
+            class="shrink-0 self-start"
+          />
           <div class="flex items-center justify-between flex-wrap gap-4">
             <div>
               <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
@@ -188,12 +194,6 @@
               <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Cancelando pedido" />
               {{ cancelando ? 'Cancelando...' : 'Cancelar Pedido' }}
             </button>
-            <OdcSapVolverButton
-              v-if="odcSapVolverTarget"
-              :to="odcSapVolverTarget"
-              :title="odcSapVolverTitle"
-              class="shrink-0"
-            />
           </div>
         </div>
       </div>

@@ -1,14 +1,18 @@
 <template>
   <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+    <div class="mb-6 space-y-4">
+      <OdcSapVolverButton
+        to="/inventario"
+        title="Volver"
+        class="shrink-0 self-start"
+      />
       <div>
         <p class="text-sm font-medium text-blue-600 dark:text-blue-400">Inventario</p>
         <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Configuración de Usuario</h1>
-        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">Equivalente a `userE.php?idcab={{ userId }}`.</p>
+        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+          Parámetros legacy (marca, bodegas, realiza conteo). Los almacenes del combo se filtran por la marca del usuario editado.
+        </p>
       </div>
-      <button class="text-sm text-blue-600 dark:text-blue-400 hover:underline" type="button" @click="router.push('/inventario')">
-        Volver al módulo
-      </button>
     </div>
 
     <div v-if="loading" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 text-gray-600 dark:text-gray-300">
@@ -41,7 +45,7 @@
 
       <div class="flex items-center gap-3">
         <input id="random-count" v-model="form.performsRandomCount" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-blue-600" />
-        <label for="random-count" class="text-sm text-gray-700 dark:text-gray-300">Realiza conteo aleatorio</label>
+        <label for="random-count" class="text-sm text-gray-700 dark:text-gray-300">Realiza conteo (requerido para ejecutar inventarios, salvo admin)</label>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -78,12 +82,12 @@
 
 <script setup lang="ts">
 import { computed, defineComponent, h, onMounted, reactive, ref, type PropType } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
+import OdcSapVolverButton from '@/modules/mba3-consultas/components/OdcSapVolverButton.vue'
 import { inventarioService } from '../services/inventarioApi'
 import type { UpdateUserSettingsRequest, WarehouseDto } from '../types'
 
 const route = useRoute()
-const router = useRouter()
 const userId = computed(() => Number(route.params.id || 330))
 const loading = ref(false)
 const saving = ref(false)
@@ -152,8 +156,8 @@ async function load() {
   error.value = null
   try {
     applyUser(await inventarioService.getUserEditData(userId.value))
-  } catch (err: any) {
-    error.value = err?.message || 'No se pudo cargar la configuración del usuario.'
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : 'No se pudo cargar la configuración del usuario.'
   } finally {
     loading.value = false
   }
@@ -166,8 +170,8 @@ async function save() {
   try {
     await inventarioService.updateUserSettings(userId.value, form)
     successMessage.value = 'Configuración actualizada correctamente.'
-  } catch (err: any) {
-    error.value = err?.message || 'No se pudo guardar la configuración.'
+  } catch (err: unknown) {
+    error.value = err instanceof Error ? err.message : 'No se pudo guardar la configuración.'
   } finally {
     saving.value = false
   }

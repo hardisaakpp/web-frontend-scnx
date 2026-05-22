@@ -1,5 +1,11 @@
 <template>
   <div class="space-y-4">
+    <OdcSapVolverButton
+      v-if="odcSapVolverTarget"
+      :to="odcSapVolverTarget"
+      :title="odcSapVolverTitle"
+      class="shrink-0 self-start"
+    />
     <div class="flex items-center justify-between flex-wrap gap-4">
       <div>
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
@@ -170,12 +176,6 @@
         </p>
       </div>
       <slot name="toolbar-extra" />
-      <OdcSapVolverButton
-        v-if="odcSapVolverTarget"
-        :to="odcSapVolverTarget"
-        :title="odcSapVolverTitle"
-        class="shrink-0"
-      />
     </div>
   </div>
 </template>

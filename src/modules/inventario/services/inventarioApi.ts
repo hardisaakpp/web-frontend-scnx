@@ -1,4 +1,5 @@
 import { inventarioApi, inventoryApiPrefix } from './config/axiosConfig'
+import { mapInventarioApiError } from '../utils/apiErrorMapper'
 import type {
   ApiResponse,
   CatalogDataDto,
@@ -18,10 +19,20 @@ import type {
 
 function unwrap<T>(response: ApiResponse<T>): T {
   if (!response.success) {
-    throw new Error(response.message || response.error_code || 'La API de inventario devolvio un error.')
+    throw new Error(response.message || response.error_code || 'La API de inventario devolvió un error.')
   }
   return response.data as T
 }
+
+inventarioApi.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const message = mapInventarioApiError(error, 'No se pudo completar la operación de inventario.')
+    return Promise.reject(Object.assign(new Error(message), { cause: error }))
+  }
+)
+
+export { mapInventarioApiError }
 
 export const inventarioService = {
   async getUserEditData(id: number): Promise<UserEditDataDto> {

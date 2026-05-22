@@ -82,11 +82,17 @@
       }"
     >
       <div class="space-y-6">
+          <OdcSapVolverButton
+            v-if="odcSapVolverTarget"
+            :to="odcSapVolverTarget"
+            :title="odcSapVolverTitle"
+            class="shrink-0 self-start"
+          />
           <!-- Botón de acción y estado -->
-          <div class="flex items-center justify-between flex-wrap gap-4 p-6 rounded-xl border border-white/30 dark:border-gray-600/30 backdrop-blur-xl transition-all duration-300 relative overflow-hidden shadow-2xl"
+          <div class="flex flex-col gap-4 p-6 rounded-xl border border-white/30 dark:border-gray-600/30 backdrop-blur-xl transition-all duration-300 relative overflow-hidden shadow-2xl"
             :class="getProcesoCardClass('procesar-oc')">
             <div class="absolute inset-0 bg-gradient-to-br from-white/20 dark:from-gray-700/20 via-transparent to-transparent pointer-events-none"></div>
-            <div class="flex items-center gap-4 relative z-10">
+            <div class="flex items-center gap-4 relative z-10 flex-1 min-w-0">
               <div 
                 class="w-14 h-14 rounded-full flex items-center justify-center shadow-xl backdrop-blur-md transition-all duration-300 border-2 relative overflow-hidden"
               :class="getProcesoIconClass('procesar-oc')"
@@ -118,12 +124,6 @@
                 <p class="text-sm text-gray-600 dark:text-gray-300 transition-colors duration-300">{{ getStepDescription('procesar-oc') }}</p>
               </div>
             </div>
-            <OdcSapVolverButton
-              v-if="odcSapVolverTarget"
-              :to="odcSapVolverTarget"
-              :title="odcSapVolverTitle"
-              class="relative z-10 shrink-0"
-            />
           </div>
 
           <!-- Barra de progreso para Procesar ODC / Integrar SAP -->

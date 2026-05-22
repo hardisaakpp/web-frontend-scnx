@@ -159,6 +159,88 @@ curl -sS -o /dev/null -w "conciliacion via 8082: %{http_code}\n" --connect-timeo
 
 ---
 
+## Slayer / integración caja chica (504 en `/slayer-api/`)
+
+`host.docker.internal` **no existe en la shell del host Linux**. El `curl` desde `root@srv-mabuiosapi` debe usar `127.0.0.1`. El nombre solo funciona **dentro** de `scnexus-front` (ver `extra_hosts` en `docker-compose.yml`).
+
+| Dónde probar | URL Slayer |
+|--------------|------------|
+| Shell del host | `http://127.0.0.1:8093` |
+| Contenedor `scnexus-front` | `http://host.docker.internal:8093` o `http://172.17.0.1:8093` |
+| Navegador / Apache | `https://scnexus.../slayer-api/...` → Nginx del front :8082 |
+
+```bash
+# 1) Slayer en el host (api-slayer publicado en :8093)
+curl -sS -o /dev/null -w "slayer host: %{http_code} time:%{time_total}\n" --connect-timeout 15 \
+  "http://127.0.0.1:8093/api/health"
+
+docker ps --format 'table {{.Names}}\t{{.Ports}}' | grep -i slayer
+
+# 2) Desde el contenedor del front (como Nginx hace el proxy)
+docker exec scnexus-front wget -qO- --timeout=15 \
+  "http://host.docker.internal:8093/api/health" 2>&1 | head -5
+# Si falla, probar gateway bridge:
+docker exec scnexus-front wget -qO- --timeout=15 \
+  "http://172.17.0.1:8093/api/health" 2>&1 | head -5
+
+# 3) Upstream horneado en la imagen (debe coincidir con active.env al build)
+docker exec scnexus-front grep -A6 'location /slayer-api/' /etc/nginx/conf.d/default.conf
+
+grep UPSTREAM_SLAYER /opt/frontend/scnexus-front/deploy/env/active.env
+
+# 4) Ruta completa vía front (:8082)
+curl -sS -o /dev/null -w "slayer via front: %{http_code}\n" --connect-timeout 15 \
+  "http://127.0.0.1:8082/slayer-api/health"
+
+# Tras cambiar UPSTREAM_SLAYER: rebuild obligatorio
+cd /opt/frontend/scnexus-front
+docker compose -f docker-compose.yml -f docker-compose.prod-network.yml \
+  --env-file deploy/env/active.env up -d --build
+```
+
+**Patrón típico (srv-mabuiosapi):**
+
+| Prueba | Resultado | Significado |
+|--------|-----------|-------------|
+| Host `127.0.0.1:8093` | `404` en ~0.01s | Slayer **sí** escucha en el host (404 = ruta `/api/health` puede no existir; la conexión funciona). |
+| Contenedor → `host.docker.internal:8093` | timeout | El front **no** llega al puerto del host → **504** en `/slayer-api/`. |
+| `8082/slayer-api/health` | `504` | Nginx del front no alcanza el upstream horneado. |
+
+Causas habituales del timeout contenedor→host:
+
+1. Puerto publicado solo en `127.0.0.1:8093` (no en `0.0.0.0`) — ver `docker port api-slayer` y `ss -tlnp | grep 8093`.
+2. Firewall/iptables entre redes Docker y el host.
+
+**Corrección recomendada (misma red Docker que `api-slayer`):**
+
+```bash
+bash /opt/frontend/scnexus-front/deploy/scripts/discover-slayer-upstream.sh
+
+# Ejemplo tras descubrir red y puerto interno (p. ej. 8080, no 8093):
+docker network connect <red-de-api-slayer> scnexus-front
+# deploy/env/active.env:
+#   UPSTREAM_SLAYER=http://api-slayer:8080
+cd /opt/frontend/scnexus-front
+docker compose -f docker-compose.yml -f docker-compose.prod-network.yml \
+  --env-file deploy/env/active.env up -d --build
+
+docker exec scnexus-front wget -qO- --timeout=5 "http://api-slayer:8080/api/" 2>&1 | head -3
+curl -sS -o /dev/null -w "slayer via front: %{http_code}\n" --connect-timeout 15 \
+  "http://127.0.0.1:8082/slayer-api/"
+```
+
+Alternativa si Slayer está en **otro servidor** (como en dev `192.168.2.153:8093`):
+
+```env
+UPSTREAM_SLAYER=http://192.168.2.153:8093
+```
+
+Si (1) responde rápido (2xx/404) pero (2) hace **timeout** → no sirve `host.docker.internal`; usar red Docker o IP del contenedor.
+
+Si (1) y (2) OK pero integrar liquidación sigue en 504 → Slayer/SAP tarda más de `proxy_read_timeout` (180s en plantilla) o SAP no responde en prod; revisar logs de `api-slayer`.
+
+---
+
 ## Maestro / artículos (504 en `/maestro-api/`)
 
 ```bash

@@ -80,7 +80,7 @@ Backends en el **mismo servidor** (referencia `docker ps`):
 | app-conciliacion | 8005 | `UPSTREAM_CONCILIACION` |
 | scnexus-pyg-api | 5171 | `UPSTREAM_PYG` |
 | scnexus-articulo-api (scan) | 8080 | `UPSTREAM_SCAN` |
-| api-slayer | 8093 | `UPSTREAM_SLAYER` |
+| api-slayer | 8093 | `UPSTREAM_SLAYER` (desde contenedor: `host.docker.internal:8093`; en shell del host: `127.0.0.1:8093`) |
 | scnexus-validacionci-api | 8083 | `UPSTREAM_PROMOCION_SOBRES` |
 
 Plantilla versionada: `deploy/env/prod-mabuiosapi.env.example` → copiar a `active.env` en el servidor.

@@ -188,7 +188,7 @@
           :title="effectiveSidebarCollapsed ? 'Inventario' : ''"
         >
           <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-          <CubeIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/inventario') }" />
+          <ArchiveBoxIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/inventario') }" />
           <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Inventario</span>
         </router-link>
 
@@ -425,6 +425,7 @@ import {
   SunIcon,
   MoonIcon,
   CubeIcon,
+  ArchiveBoxIcon,
   DocumentArrowUpIcon,
   QrCodeIcon,
   IdentificationIcon,
@@ -449,7 +450,7 @@ const themeStore = useThemeStore()
 const { connect: connectNotificaciones, disconnect: disconnectNotificaciones } = useNotificaciones()
 const { target: odcSapVolverTarget, title: odcSapVolverTitle } = useOdcSapVolver()
 
-/** Volver en fila de botones de la vista (PedidoHeaderActions / listado Cargar plantilla); en el resto de MBA3, arriba del contenido. */
+/** Volver en patrón A (arriba del título) dentro de cada vista; MainLayout solo si la ruta no lo define en la página. */
 const showOdcSapVolverInMainChrome = computed(() => {
   if (!odcSapVolverTarget.value) return false
   const n = route.name
