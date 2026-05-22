@@ -55,9 +55,12 @@ if [ -z "$CONTAINER_PORT" ]; then
 fi
 
 echo ""
+LAN_IP="${SLAYER_LAN_IP:-192.168.2.153}"
+
 echo "--- Prueba desde scnexus-front (si existe) ---"
 if docker ps --format '{{.Names}}' | grep -qx 'scnexus-front'; then
   for url in \
+    "http://${LAN_IP}:8093/api/" \
     "http://host.docker.internal:8093/api/" \
     "http://172.17.0.1:8093/api/" \
     "http://${SLAYER_NAME}:${CONTAINER_PORT}/api/"; do
@@ -73,16 +76,15 @@ fi
 
 echo ""
 echo "--- Recomendación active.env ---"
+echo "  Prod srv-mabuiosapi (si host.docker.internal hace timeout desde el contenedor):"
+echo "    UPSTREAM_SLAYER=http://${LAN_IP}:8093"
+echo ""
 if [ -n "$FIRST_NET" ]; then
-  echo "  1) Conectar el front a la red de Slayer:"
-  echo "       docker network connect ${FIRST_NET} scnexus-front"
-  echo "  2) En deploy/env/active.env:"
-  echo "       UPSTREAM_SLAYER=http://${SLAYER_NAME}:${CONTAINER_PORT}"
-  echo "  3) Rebuild:"
-  echo "       docker compose -f docker-compose.yml -f docker-compose.prod-network.yml \\"
-  echo "         --env-file deploy/env/active.env up -d --build"
-else
-  echo "  UPSTREAM_SLAYER=http://172.17.0.1:8093"
-  echo "  (o IP del contenedor slayer si host.docker.internal hace timeout)"
+  echo "  Alternativa — red Docker compartida:"
+  echo "    docker network connect ${FIRST_NET} scnexus-front"
+  echo "    UPSTREAM_SLAYER=http://${SLAYER_NAME}:${CONTAINER_PORT}"
 fi
+echo "  Rebuild obligatorio:"
+echo "    docker compose -f docker-compose.yml -f docker-compose.prod-network.yml \\"
+echo "      --env-file deploy/env/active.env up -d --build"
 echo ""

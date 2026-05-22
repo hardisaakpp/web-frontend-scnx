@@ -229,10 +229,15 @@ curl -sS -o /dev/null -w "slayer via front: %{http_code}\n" --connect-timeout 15
   "http://127.0.0.1:8082/slayer-api/"
 ```
 
-Alternativa si Slayer está en **otro servidor** (como en dev `192.168.2.153:8093`):
+**Corrección validada en srv-mabuiosapi** (contenedor no alcanza `host.docker.internal`, pero sí la IP LAN del host):
 
 ```env
 UPSTREAM_SLAYER=http://192.168.2.153:8093
+```
+
+```bash
+docker exec scnexus-front wget -qO- --timeout=5 "http://192.168.2.153:8093/api/" 2>&1 | head -3
+# deploy/env/active.env → rebuild → curl 127.0.0.1:8082/slayer-api/ no debe ser 504
 ```
 
 Si (1) responde rápido (2xx/404) pero (2) hace **timeout** → no sirve `host.docker.internal`; usar red Docker o IP del contenedor.
