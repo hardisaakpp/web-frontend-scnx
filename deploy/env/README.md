@@ -7,6 +7,32 @@ Un solo lugar para **dos capas**:
 | **Bundle** (navegador) | `bundle.env` | `VITE_*` con rutas relativas (`/api`, `/api/mba3`, …). **Versionado.** Igual en todos los entornos. |
 | **Upstreams** (proxy) | `active.env` | `UPSTREAM_*` con `http://host:puerto`. **No commitear** — copiar desde un `.example`. |
 
+Ruta del archivo activo: **`deploy/env/active.env`** (no es un entorno virtual de Python; no existe comando `activate`).
+
+## Crear y usar `active.env`
+
+| Objetivo | Comando |
+|----------|---------|
+| Crear perfil local para `npm run dev` | `npm run env:local` (copia `local.env.example` si falta) |
+| Crear perfil Docker en tu PC | `npm run docker:env` (copia `local.docker.env.example`) |
+| Editar backends / puertos | Abrir `deploy/env/active.env` en el editor |
+| Dev Vite (:3000) | `npm run dev` (lee `active.env` si existe; si no, `.env.development`) |
+| Docker Nginx (:8082) | `npm run docker:up` o `docker compose --env-file deploy/env/active.env up -d --build` |
+| Rebuild sin caché tras cambiar `UPSTREAM_*` | `npm run docker:rebuild` |
+
+Copia manual por perfil (equivalente a los scripts):
+
+```bash
+cp deploy/env/local.env.example deploy/env/active.env          # dev local
+cp deploy/env/local.docker.env.example deploy/env/active.env   # Docker en PC
+cp deploy/env/desa.env.example deploy/env/active.env         # DESA
+cp deploy/env/prod-mabuiosapi.env.example deploy/env/active.env  # prod srv-mabuiosapi
+```
+
+En servidores Linux, los scripts de deploy cargan variables con `source deploy/env/active.env` antes de `docker compose`; en Windows usa los comandos `npm` / `docker compose --env-file` de la tabla.
+
+**No confundir con:** `.env` o `.env.development` en la raíz del repo (solo Vite en desarrollo). El proxy en Docker y en servidores usa **`deploy/env/active.env`**.
+
 ## Inicio rápido (desarrollador)
 
 **Opción A — solo `.env.development` (como antes):**
@@ -25,7 +51,8 @@ Sin `deploy/env/active.env`, esas variables se aplican al proxy (login → Core)
 **Opción B — `active.env` en servidor o perfil fijo:**
 
 ```bash
-cp deploy/env/local.env.example deploy/env/active.env
+npm run env:local
+# o: cp deploy/env/local.env.example deploy/env/active.env
 npm run dev
 ```
 

@@ -3,7 +3,7 @@
 | Entorno | Comando | URL típica |
 |---------|---------|------------|
 | Desarrollo en contenedor | `docker compose -f docker-compose.dev.yml up -d` | http://localhost:3000 |
-| Test/prod en contenedor | `docker compose up -d --build` | http://localhost:8082 (default) |
+| Test/prod en contenedor | `npm run docker:up` (usa `deploy/env/active.env`) | http://localhost:8082 (default) |
 
 ## Configuración (un solo lugar)
 

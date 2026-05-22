@@ -10,8 +10,8 @@ Frontend de la aplicación SCNexus construido con Vue 3, TypeScript y Vite.
 
 ### Configuración de entorno
 
-Un solo directorio: **`deploy/env/`** — rutas del bundle (`bundle.env`) + backends (`active.env`).  
-Primera vez: `npm run env:local` (copia `local.env.example` → `active.env`). Detalle: [deploy/env/README.md](deploy/env/README.md).
+Un solo directorio: **`deploy/env/`** — rutas del bundle (`bundle.env`) + backends (`deploy/env/active.env`).  
+Primera vez: `npm run env:local` (crea `active.env` desde `local.env.example`). No hay comando `activate`; ver tabla en [deploy/env/README.md](deploy/env/README.md).
 
 ### Instalación y Ejecución
 
@@ -227,22 +227,19 @@ Guía: [docs/DOCKER.md](docs/DOCKER.md) · Entornos: [deploy/env/README.md](depl
 
 ### Variables de Entorno
 
-Configurar en `.env.production`:
-```env
-# Patrón 1: URLs relativas (API Gateway/Proxy) - RECOMENDADO
-VITE_API_URL=/api
-VITE_MBA3_API_BASE_URL=/api/mba3
-VITE_CONCILIACION_API_BASE_URL=/api/conciliacion
-VITE_PREFERENCES_API_URL=/api/mba3
+| Capa | Archivo | Uso |
+|------|---------|-----|
+| Rutas del bundle (navegador) | `deploy/env/bundle.env` | Versionado; rutas relativas `/api`, `/api/mba3`, … |
+| Backends (proxy Vite/Nginx) | `deploy/env/active.env` | `UPSTREAM_*`; crear con `npm run env:local` o copiar un `*.env.example` |
+| Solo dev Vite (opcional) | `.env.development` | `VITE_*_PROXY_TARGET` si no usas `active.env` |
 
-# Patrón 2: URLs absolutas (APIs en hosts separados)
-# VITE_MBA3_API_BASE_URL=https://api.production.com:8000
-# VITE_CONCILIACION_API_BASE_URL=https://api.production.com:8002/conciliacion-tesoreria
-
-VITE_APP_NAME=SCNexus
+```bash
+npm run env:local          # active.env para desarrollo
+npm run docker:env       # active.env para Docker local
+npm run docker:up          # levanta contenedor con active.env
 ```
 
-**📖 Referencias:** [docs/ENV.md](docs/ENV.md) (dev + prod) · [docs/PRODUCTION_ENV_CHECKLIST.md](docs/PRODUCTION_ENV_CHECKLIST.md) · [docs/DOCKER.md](docs/DOCKER.md)
+**📖 Referencias:** [deploy/env/README.md](deploy/env/README.md) · [docs/ENV.md](docs/ENV.md) · [docs/PRODUCTION_ENV_CHECKLIST.md](docs/PRODUCTION_ENV_CHECKLIST.md) · [docs/DOCKER.md](docs/DOCKER.md)
 
 ## 🤝 Colaboración
 

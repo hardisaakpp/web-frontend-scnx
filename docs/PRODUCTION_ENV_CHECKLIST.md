@@ -9,6 +9,9 @@ Antes de desplegar a producción, revisar **`deploy/env/bundle.env`** (rutas rel
 El proyecto soporta **dos patrones** de configuración:
 
 #### 1️⃣ **Patrón Relativo (Recomendado para Proxy/API Gateway)**
+
+Rutas en **`deploy/env/bundle.env`**; hosts reales en **`deploy/env/active.env`** (`UPSTREAM_*`):
+
 ```
 VITE_API_URL=/api
 VITE_MBA3_API_BASE_URL=/api/mba3
@@ -46,7 +49,7 @@ VITE_PREFERENCES_API_URL=https://api-backend.mabel-trading.com:8000
 ## 📋 Checklist Pre-Deploy
 
 - [ ] **Decidir patrón de URLs:** ¿Patrón relativo (proxy) o absoluto (APIs separadas)?
-- [ ] **Configurar .env.production** con las URLs correctas según decisión anterior
+- [ ] **Revisar `deploy/env/bundle.env`** (rutas `VITE_*`) y **`deploy/env/active.env`** (`UPSTREAM_*` para Nginx/Docker)
 - [ ] Si es patrón absoluto:
   - [ ] Verificar que todas las URLs usan HTTPS en producción
   - [ ] Habilitar CORS en los backends para el dominio del frontend
@@ -54,7 +57,7 @@ VITE_PREFERENCES_API_URL=https://api-backend.mabel-trading.com:8000
 - [ ] Si es patrón relativo:
   - [ ] Configurar API Gateway/Proxy (nginx) para rutear `/api/*` al backend correcto
   - [ ] Verificar que el proxy está configurado correctamente
-- [ ] Verificar que no hay referencias a `localhost` en `.env.production`
+- [ ] Verificar que no hay referencias a `localhost` en `active.env` en servidores (salvo perfil local)
 - [ ] Ejecutar `npm run build` para verificar que compila sin errores
 
 ## 🔍 Verificación Post-Deploy
@@ -84,13 +87,14 @@ Las siguientes optimizaciones ya están implementadas:
 ## 📝 Notas Importantes
 
 ### Seguridad
-- El archivo `.env.production` **NO debe ser commiteado** al repositorio si contiene URLs/credenciales sensibles
-- Usa un sistema de gestión de secretos (ej: GitHub Secrets, AWS Secrets Manager, etc.)
-- Las URLs en `.env.production` serán visibles en el navegador (son públicas)
+- **`deploy/env/active.env`** no se commitea (gitignored); contiene IPs/hostnames de backends
+- Usa un sistema de gestión de secretos en CI/CD si aplica
+- Las rutas `VITE_*` del bundle son visibles en el navegador (públicas)
 
 ### Desarrollo vs Producción
-- `.env` - Configuración local (localhost:8000, localhost:8002)
-- `.env.production` - Configuración de producción (URLs relativas o absolutas según infraestructura)
+- **Dev:** `.env.development` y/o `deploy/env/active.env` + `npm run dev`
+- **Docker / servidores:** `deploy/env/active.env` + `npm run docker:up` o scripts en `deploy/scripts/`
+- **Bundle:** `deploy/env/bundle.env` (versionado, igual en todos los entornos)
 
 ### Testing
 Antes de ir a producción, prueba:
@@ -102,4 +106,4 @@ npm run build
 npm install -g serve
 serve -s dist
 ```
-Verifica en Network tab que las peticiones van a las URLs correctas de `.env.production`.
+Verifica en Network tab que las peticiones usan las rutas del bundle y que el proxy (Nginx/`UPSTREAM_*`) responde correctamente.

@@ -33,16 +33,31 @@ No pongas IPs en `VITE_*` del bundle (Mixed Content en HTTPS).
 Código de defaults del bundle: `src/config/apiBaseUrls.ts`.  
 Carga de env: `deploy/loadEnv.mjs`, `vite.config.ts`.
 
-## Comandos
+## Comandos (`deploy/env/active.env`)
+
+No hay comando tipo `activate`: el archivo se **crea**, **edita** y se pasa a Docker con `--env-file`. Detalle: [deploy/env/README.md](../deploy/env/README.md).
 
 ```bash
-# Primera vez en tu PC
+# Primera vez en tu PC (crea deploy/env/active.env si falta)
 npm run env:local
 npm run dev
 
-# Docker prod (tras configurar active.env)
-docker compose up -d --build
+# Docker en tu PC o servidor (obligatorio --env-file)
+npm run docker:env    # opcional: plantilla local.docker
+npm run docker:up
+# equivalente manual:
+# docker compose --env-file deploy/env/active.env up -d --build
+
+# Tras cambiar UPSTREAM_* en Docker
+npm run docker:rebuild
 ```
+
+| Script npm | Qué hace |
+|------------|----------|
+| `env:local` | `local.env.example` → `active.env` |
+| `docker:env` | `local.docker.env.example` → `active.env` |
+| `docker:up` | compose con `--env-file deploy/env/active.env` |
+| `docker:rebuild` | build `--no-cache` + up con `active.env` |
 
 ## Puertos
 
