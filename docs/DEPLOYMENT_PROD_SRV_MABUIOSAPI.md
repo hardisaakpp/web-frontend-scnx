@@ -92,6 +92,8 @@ Redes Docker en prod (`docker-compose.prod-network.yml` + `docker network connec
 | Core (`/api/Auth/`, resto `/api/`) | `http://192.168.2.12:8080` | IP del Core de prod (mismo que Apache viejo) |
 | MBA3 | `http://mba3-api:8000` | red externa `mba3-nexus_edge` |
 | Cajachica | `http://172.17.0.2:8092` | `docker network connect bridge` tras el `up` |
+| PYG `/pyg-api/` | `http://scnexus-pyg-api:5171` | red `scnexus-pyg_default` (no `:5171` vía host — 504) |
+| Empleados `/employees-api/` | `http://host.docker.internal:3001` | PHP en Nginx **host** :3001, no cajachica |
 
 **No** declarar la red `bridge` en Compose (error: *network-scoped alias is supported only for user defined networks*).
 

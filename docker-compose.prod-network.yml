@@ -1,6 +1,7 @@
-# Producción srv-mabuiosapi: MBA3 por DNS mba3-api en red externa.
-# Cajachica (bridge 172.17.0.x) no puede declararse aquí — Compose falla en la red "bridge".
-# Tras `up`, el script de prod ejecuta: docker network connect bridge scnexus-front
+# Producción srv-mabuiosapi: MBA3 y PYG por DNS en redes externas.
+# Cajachica (bridge 172.17.0.x) y empleados PHP (Nginx host :3001) — tras `up`:
+#   docker network connect bridge scnexus-front
+# Empleados: UPSTREAM_EMPLOYEES=http://host.docker.internal:3001 (Nginx host con PHP).
 #
 # Uso:
 #   docker compose -f docker-compose.yml -f docker-compose.prod-network.yml \
@@ -11,8 +12,12 @@ services:
     networks:
       - default
       - mba3-nexus_edge
+      - scnexus-pyg_default
 
 networks:
   mba3-nexus_edge:
     name: mba3-nexus_edge
+    external: true
+  scnexus-pyg_default:
+    name: scnexus-pyg_default
     external: true

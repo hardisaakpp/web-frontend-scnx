@@ -23,6 +23,7 @@ ARG CORE_UPSTREAM=http://192.168.2.12:8080
 # Host:puerto que ve Kestrel (changeOrigin). Derivar de UPSTREAM_CORE en active.env.
 ARG CORE_PROXY_HOST=host.docker.internal:5053
 ARG CAJA_CHICA_UPSTREAM=http://192.168.2.153:8092
+ARG EMPLOYEES_UPSTREAM=http://host.docker.internal:3001
 ARG PYG_UPSTREAM=http://host.docker.internal:5171
 ARG SCAN_API_UPSTREAM=http://host.docker.internal:8080
 ARG PROMOCION_SOBRES_UPSTREAM=http://host.docker.internal:8083
@@ -36,6 +37,7 @@ RUN sed -e "s|__MBA3_UPSTREAM__|${MBA3_UPSTREAM}|g" \
         -e "s|__CORE_UPSTREAM__|${CORE_UPSTREAM}|g" \
         -e "s|__CORE_PROXY_HOST__|${CORE_PROXY_HOST}|g" \
         -e "s|__CAJA_CHICA_UPSTREAM__|${CAJA_CHICA_UPSTREAM}|g" \
+        -e "s|__EMPLOYEES_UPSTREAM__|${EMPLOYEES_UPSTREAM}|g" \
         -e "s|__PYG_UPSTREAM__|${PYG_UPSTREAM}|g" \
         -e "s|__SCAN_API_UPSTREAM__|${SCAN_API_UPSTREAM}|g" \
         -e "s|__PROMOCION_SOBRES_UPSTREAM__|${PROMOCION_SOBRES_UPSTREAM}|g" \

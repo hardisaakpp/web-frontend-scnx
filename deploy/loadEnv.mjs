@@ -207,6 +207,7 @@ export function dockerBuildArgsFromEnv(env) {
     CONCILIACION_UPSTREAM: upstreamUrl(env, 'CONCILIACION'),
     MAESTRO_UPSTREAM: upstreamUrl(env, 'MAESTRO'),
     SLAYER_UPSTREAM: upstreamUrl(env, 'SLAYER'),
+    EMPLOYEES_UPSTREAM: upstreamUrl(env, 'EMPLOYEES'),
     VITE_APP_BASE_PATH: env.VITE_APP_BASE_PATH || '/',
     CORE_PROXY_HOST: env.CORE_PROXY_HOST || 'host.docker.internal:5053',
   }

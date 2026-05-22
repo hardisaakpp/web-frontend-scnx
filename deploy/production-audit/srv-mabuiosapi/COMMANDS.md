@@ -111,3 +111,24 @@ docker compose -f docker-compose.yml -f docker-compose.prod-network.yml \
 docker network connect bridge scnexus-front 2>/dev/null || true
 docker exec scnexus-front grep 'location /api/Auth/' -A1 /etc/nginx/conf.d/default.conf
 ```
+
+---
+
+## Empleados (404) y PYG (504)
+
+| Ruta | Prod antiguo (Nginx :3001) | `active.env` Docker |
+|------|----------------------------|---------------------|
+| `/employees-api/` | PHP fastcgi en host (`/opt/klienteV1/cws/api/`) | `UPSTREAM_EMPLOYEES=http://host.docker.internal:3001` |
+| `/pyg-api/` | `127.0.0.1:5171` | `UPSTREAM_PYG=http://scnexus-pyg-api:5171` + red `scnexus-pyg_default` |
+
+```bash
+# Empleados (debe ser 200, no 404)
+curl -sS -o /dev/null -w "employees: %{http_code}\n" \
+  "http://127.0.0.1:8082/employees-api/store_employees.php?health=1"
+
+# PYG (no 504)
+curl -sS -o /dev/null -w "pyg: %{http_code}\n" --connect-timeout 15 \
+  "http://127.0.0.1:8082/pyg-api/uploads"
+
+docker inspect scnexus-pyg-api --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}} {{end}}'
+```

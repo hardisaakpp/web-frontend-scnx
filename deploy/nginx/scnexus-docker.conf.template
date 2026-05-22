@@ -125,9 +125,9 @@ server {
         proxy_set_header Authorization $http_authorization;
     }
 
-    location /employees-api/ {
-        rewrite ^/employees-api(.*)$ /api$1 break;
-        proxy_pass __CAJA_CHICA_UPSTREAM__;
+    # Empleados tiendas: en prod host era PHP (Nginx :3001 + fastcgi), no cajachica /api.
+    location ^~ /employees-api/ {
+        proxy_pass __EMPLOYEES_UPSTREAM__;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
