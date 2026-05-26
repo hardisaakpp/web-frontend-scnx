@@ -1,8 +1,11 @@
 <template>
   <div class="space-y-6 pb-32 md:pb-36">
-    <div class="pr-36 sm:pr-44 md:pr-0">
-      <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Gestión de Permisos</h1>
-      <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Define permisos disponibles en el sistema</p>
+    <div class="flex items-start justify-between gap-4">
+      <div class="pr-36 sm:pr-44 md:pr-0">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Gestión de Permisos</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Define permisos disponibles en el sistema</p>
+      </div>
+      <VolverButton to="/admin" title="Volver al Panel de Administración" class="shrink-0 self-start" />
     </div>
 
     <div v-if="store.loading" class="text-center py-12">
@@ -179,6 +182,7 @@
 import { ref, onMounted } from 'vue'
 import { Dialog, DialogPanel, DialogTitle, TransitionRoot } from '@headlessui/vue'
 import { usePermisosStore } from '../stores/permisosStore'
+import VolverButton from '../components/VolverButton.vue'
 import type { Permiso } from '../types'
 
 const store = usePermisosStore()

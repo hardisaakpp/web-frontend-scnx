@@ -1,16 +1,19 @@
 <template>
   <div class="space-y-6">
-    <div class="flex items-center justify-between">
-      <div>
+    <div class="flex items-center justify-between gap-4">
+      <div class="flex-1">
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Gestión de Roles</h1>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Define roles y asigna permisos</p>
       </div>
-      <button 
+      <div class="flex items-center gap-2 shrink-0">
+        <VolverButton to="/admin" title="Volver al Panel de Administración" />
+        <button 
         @click="openCreateModal"
         class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-lg transition-colors shadow-lg hover:shadow-xl"
       >
         + Nuevo Rol
       </button>
+      </div>
     </div>
 
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 transition-colors duration-300">
@@ -194,6 +197,7 @@ import { usePermisosStore } from '../stores/permisosStore'
 import { permisosService } from '../services/usuariosApi'
 import type { Rol } from '../types'
 import AsignarPermisosModal from '../components/AsignarPermisosModal.vue'
+import VolverButton from '../components/VolverButton.vue'
 
 const rolesStore = useRolesStore()
 const permisosStore = usePermisosStore()
