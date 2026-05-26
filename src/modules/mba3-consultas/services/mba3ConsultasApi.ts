@@ -157,18 +157,18 @@ export const mba3ConsultasService = {
         : 0
 
     console.debug(`⏱️ [integrarSAP] Timeout calculado: ${finalTimeout / 1000}s para ${numOrdenes} ODC(s)`)
-    
+
     const response = await mba3Api.post<IntegracionSAPResponse>(url, undefined, {
       timeout: finalTimeout
     })
-    
+
     // ⭐ FUTURO: Leer headers de respuesta del backend para ajustar timeout en próximas llamadas
     // const backendTimeout = response.headers['x-request-timeout']
     // if (backendTimeout) {
     //   console.debug(`⏱️ [integrarSAP] Backend recomienda timeout: ${backendTimeout}s`)
     //   // Podríamos almacenar esto para futuras llamadas similares
     // }
-    
+
     return response.data
   },
 
@@ -1575,9 +1575,9 @@ export const mba3ConsultasService = {
       return response.data
     } catch (error: any) {
       console.error('❌ [procesarOCDesdePedido] Error al procesar ODC desde pedido:', error)
-      
+
       let message = error.message || 'Error desconocido al procesar ODC desde pedido'
-      
+
       if (error.response?.data) {
         if (error.response.data.detail) {
           message = error.response.data.detail
@@ -1585,7 +1585,7 @@ export const mba3ConsultasService = {
           message = error.response.data.message
         }
       }
-      
+
       throw new Error(message)
     }
   },

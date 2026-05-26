@@ -18,17 +18,22 @@ VITE_MBA3_API_BASE_URL=/api/mba3
 VITE_CONCILIACION_API_BASE_URL=/api/conciliacion
 VITE_PREFERENCES_API_URL=/api/mba3
 ```
+
 ✅ **Cuándo usar:** Frontend y Backend servidos por el mismo dominio con un API Gateway/Proxy (ej: nginx reverse proxy)
+
 - Las peticiones se envían a `/api/...` relativos al dominio actual
 - Ejemplo: `https://scnexus.mabel-trading.com/api/mba3/...`
 
 #### 2️⃣ **Patrón Absoluto (Para APIs en hosts separados)**
+
 ```
 VITE_MBA3_API_BASE_URL=https://api-backend.mabel-trading.com:8000
 VITE_CONCILIACION_API_BASE_URL=https://tesoreria-api.mabel-trading.com:8002/conciliacion-tesoreria
 VITE_PREFERENCES_API_URL=https://api-backend.mabel-trading.com:8000
 ```
+
 ⚠️ **Cuándo usar:** APIs en dominios/IPs diferentes (requiere CORS habilitado)
+
 - Las peticiones van a URLs absolutas con dominio
 - Ejemplo: `https://api-backend.mabel-trading.com:8000/...`
 
@@ -65,7 +70,7 @@ VITE_PREFERENCES_API_URL=https://api-backend.mabel-trading.com:8000
 Después del despliegue, verificar:
 
 1. **Console del navegador:** No debe haber errores de CORS o conexión
-2. **Network tab:** 
+2. **Network tab:**
    - Las peticiones deben ir a las URLs de producción correctas
    - Status codes deben ser 200/201 (no 404 ni CORS errors)
 3. **Login:** Debe funcionar correctamente
@@ -87,17 +92,21 @@ Las siguientes optimizaciones ya están implementadas:
 ## 📝 Notas Importantes
 
 ### Seguridad
+
 - **`deploy/env/active.env`** no se commitea (gitignored); contiene IPs/hostnames de backends
 - Usa un sistema de gestión de secretos en CI/CD si aplica
 - Las rutas `VITE_*` del bundle son visibles en el navegador (públicas)
 
 ### Desarrollo vs Producción
+
 - **Dev:** `.env.development` y/o `deploy/env/active.env` + `npm run dev`
 - **Docker / servidores:** `deploy/env/active.env` + `npm run docker:up` o scripts en `deploy/scripts/`
 - **Bundle:** `deploy/env/bundle.env` (versionado, igual en todos los entornos)
 
 ### Testing
+
 Antes de ir a producción, prueba:
+
 ```bash
 # Build local
 npm run build
@@ -106,4 +115,5 @@ npm run build
 npm install -g serve
 serve -s dist
 ```
+
 Verifica en Network tab que las peticiones usan las rutas del bundle y que el proxy (Nginx/`UPSTREAM_*`) responde correctamente.
