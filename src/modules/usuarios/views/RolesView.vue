@@ -1,13 +1,14 @@
 <template>
   <div class="space-y-6">
-    <div class="flex items-center justify-between gap-4">
-      <div class="flex-1">
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Gestión de Roles</h1>
-        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Define roles y asigna permisos</p>
-      </div>
-      <div class="flex items-center gap-2 shrink-0">
+    <div class="flex items-start justify-between gap-4">
+      <div class="flex items-center gap-3 flex-1">
         <VolverButton to="/admin" title="Volver al Panel de Administración" />
-        <button 
+        <div>
+          <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Gestión de Roles</h1>
+          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Define roles y asigna permisos</p>
+        </div>
+      </div>
+      <button 
         @click="openCreateModal"
         class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-lg transition-colors shadow-lg hover:shadow-xl"
       >

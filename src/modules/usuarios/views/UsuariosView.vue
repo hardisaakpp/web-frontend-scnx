@@ -2,18 +2,19 @@
   <div class="space-y-6">
     <!-- Header -->
     <div class="flex items-start justify-between gap-4">
-      <div>
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Gestión de Usuarios</h1>
-        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Administra usuarios, roles y permisos del sistema
-        </p>
-      </div>
       <div class="flex items-center gap-3">
         <VolverButton to="/admin" title="Volver al Panel de Administración" />
-        <button 
-          @click="openCreateModal"
-          class="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-lg transition-colors shadow-lg hover:shadow-xl"
-        >
+        <div>
+          <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Gestión de Usuarios</h1>
+          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Administra usuarios, roles y permisos del sistema
+          </p>
+        </div>
+      </div>
+      <button 
+        @click="openCreateModal"
+        class="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-lg transition-colors shadow-lg hover:shadow-xl"
+      >
         <UserPlusIcon class="h-5 w-5" />
         Nuevo Usuario
       </button>
