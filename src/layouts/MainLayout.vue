@@ -240,58 +240,7 @@
           <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Importador PYG</span>
         </router-link>
 
-        <!-- Separador Administración -->
-        <div v-if="hasModuleAccess('usuarios') || hasModuleAccess('roles') || hasModuleAccess('permisos') || authStore.isAdmin" v-show="!effectiveSidebarCollapsed" class="px-3 py-2 my-3">
-          <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Administración</p>
-        </div>
 
-        <!-- Usuarios -->
-        <router-link
-          v-if="hasModuleAccess('usuarios')"
-          to="/users"
-          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
-          :class="{
-            'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/50': $route.path.startsWith('/users'),
-            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/users')
-          }"
-          :title="effectiveSidebarCollapsed ? 'Usuarios' : ''"
-        >
-          <div class="absolute inset-0 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-          <UsersIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/users') }" />
-          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Usuarios</span>
-        </router-link>
-
-        <!-- Roles (Solo Admin) -->
-        <router-link
-          v-if="authStore.isAdmin"
-          to="/roles"
-          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
-          :class="{
-            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path === '/roles',
-            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': $route.path !== '/roles'
-          }"
-          :title="effectiveSidebarCollapsed ? 'Roles' : ''"
-        >
-          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-          <ShieldCheckIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path === '/roles' }" />
-          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Roles</span>
-        </router-link>
-
-        <!-- Permisos (Solo Admin) -->
-        <router-link
-          v-if="authStore.isAdmin"
-          to="/permisos"
-          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
-          :class="{
-            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path === '/permisos',
-            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': $route.path !== '/permisos'
-          }"
-          :title="effectiveSidebarCollapsed ? 'Permisos' : ''"
-        >
-          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-          <LockClosedIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path === '/permisos' }" />
-          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Permisos</span>
-        </router-link>
         </nav>
 
         <!-- Footer del Sidebar -->
