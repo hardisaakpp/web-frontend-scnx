@@ -22,6 +22,26 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/datos-adicionales',
+    name: 'datos-adicionales',
+    component: () => import('./views/DatosAdicionalesGeneralView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Datos adicionales',
+      icon: 'UserIcon'
+    }
+  },
+  {
+    path: '/usuarios/users/:id/datos-adicionales',
+    name: 'usuarios-datos-adicionales',
+    component: () => import('./views/DatosAdicionalesView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Datos adicionales',
+      icon: 'UserIcon'
+    }
+  },
+  {
     path: '/roles',
     name: 'roles',
     component: () => import('./views/RolesView.vue'),

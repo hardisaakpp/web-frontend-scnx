@@ -58,6 +58,23 @@
                 </div>
               </div>
             </button>
+            <button
+              type="button"
+              @click="$router.push('/datos-adicionales')"
+              class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left"
+            >
+              <div class="flex items-start gap-3">
+                <div class="w-8 h-8 rounded bg-violet-50 dark:bg-violet-900/30 flex items-center justify-center flex-shrink-0">
+                  <svg class="w-4 h-4 text-violet-600 dark:text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7h18M3 12h18M3 17h10" />
+                  </svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="font-medium text-gray-900 dark:text-white text-sm">Datos adicionales</div>
+                  <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Accesos a almacenes por usuario</div>
+                </div>
+              </div>
+            </button>
       </div>
     </div>
   </div>

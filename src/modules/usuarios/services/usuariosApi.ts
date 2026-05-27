@@ -372,11 +372,7 @@ export const permisosService = {
       } catch (error: any) {
         const status = error?.response?.status
         if (status === 404 || status === 405) {
-          await api.request({
-            method: 'delete',
-            url: '/Permissions/unassign',
-            data
-          })
+          await api.post('/Permissions/unassign', data)
           return
         }
         throw error

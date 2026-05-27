@@ -105,9 +105,9 @@
             </tbody>
           </table>
         </div>
-        <div v-if="filteredUsers.length > 0" class="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div v-if="totalCount > 0" class="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div class="text-xs text-gray-500 dark:text-gray-400">
-            Mostrando {{ pageStart }} - {{ pageEnd }} de {{ filteredUsers.length }}
+            Mostrando {{ pageStart }} - {{ pageEnd }} de {{ totalCount }}
           </div>
           <div class="flex items-center gap-2">
             <button
@@ -200,12 +200,15 @@ import VolverButton from '../components/VolverButton.vue'
 
 type UserRecord = Record<string, unknown>
 
+const SEARCH_DEBOUNCE_MS = 400
+
 const users = ref<UserRecord[]>([])
+const totalCount = ref(0)
 const loading = ref(false)
 const error = ref('')
 const searchQuery = ref('')
 const page = ref(1)
-const pageSize = ref(10)
+const pageSize = ref(20)
 const rolesOpen = ref(false)
 const rolesLoading = ref(false)
 const rolesError = ref('')
@@ -226,6 +229,8 @@ const searchUserLoading = ref(false)
 const searchUserError = ref('')
 const searchUserSuccess = ref('')
 
+let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null
+
 const getValue = (user: UserRecord, keys: string[]) => {
   for (const key of keys) {
     if (user[key] !== undefined && user[key] !== null && user[key] !== '') {
@@ -235,56 +240,36 @@ const getValue = (user: UserRecord, keys: string[]) => {
   return '-'
 }
 
-const totalCount = computed(() => users.value.length)
-
-const filteredUsers = computed(() => {
-  const query = searchQuery.value.toLowerCase()
-  if (!query) {
-    return users.value
-  }
-  return users.value.filter(user => {
-    const values = [
-      getValue(user, ['userName', 'username']),
-      getValue(user, ['fullName', 'name']),
-      getValue(user, ['email', 'mail'])
-    ]
-    return values.some(value => value.toLowerCase().includes(query))
-  })
-})
-
-const totalPages = computed(() => Math.max(1, Math.ceil(filteredUsers.value.length / pageSize.value)))
-
-const pagedUsers = computed(() => {
-  const start = (page.value - 1) * pageSize.value
-  return filteredUsers.value.slice(start, start + pageSize.value)
-})
-
-const pageStart = computed(() => {
-  if (filteredUsers.value.length === 0) {
-    return 0
-  }
-  return (page.value - 1) * pageSize.value + 1
-})
-
-const pageEnd = computed(() => {
-  const end = page.value * pageSize.value
-  return Math.min(end, filteredUsers.value.length)
-})
+const totalPages = computed(() => Math.max(1, Math.ceil(totalCount.value / pageSize.value)))
+const pagedUsers = computed(() => users.value)
+const pageStart = computed(() => totalCount.value === 0 ? 0 : (page.value - 1) * pageSize.value + 1)
+const pageEnd = computed(() => Math.min(page.value * pageSize.value, totalCount.value))
 
 const loadUsers = async () => {
   loading.value = true
   error.value = ''
   try {
-    const response = await api.get('/Users')
-    const payload = response.data as UserRecord[] | { data?: UserRecord[]; users?: UserRecord[] }
+    const response = await api.get('/Users', {
+      params: { page: page.value, pageSize: pageSize.value, search: searchQuery.value || undefined }
+    })
+    const payload = response.data as UserRecord[] | { data?: UserRecord[]; total?: number; users?: UserRecord[] }
     if (Array.isArray(payload)) {
-      users.value = payload
-    } else if (Array.isArray(payload?.data)) {
-      users.value = payload.data
-    } else if (Array.isArray(payload?.users)) {
-      users.value = payload.users
+      // backend sin paginación: filtrar y paginar en cliente
+      const q = searchQuery.value.toLowerCase()
+      const filtered = q
+        ? payload.filter(u =>
+            [getValue(u, ['userName', 'username']), getValue(u, ['fullName', 'name']), getValue(u, ['email', 'mail'])]
+              .some(v => v.toLowerCase().includes(q)))
+        : payload
+      totalCount.value = filtered.length
+      const start = (page.value - 1) * pageSize.value
+      users.value = filtered.slice(start, start + pageSize.value)
     } else {
-      users.value = []
+      // backend con paginación: usa datos y total del servidor
+      users.value = Array.isArray(payload?.data) ? payload.data
+        : Array.isArray((payload as any)?.users) ? (payload as any).users
+        : []
+      totalCount.value = (payload as any)?.total ?? users.value.length
     }
   } catch (err: unknown) {
     const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
@@ -488,6 +473,7 @@ const syncLdap = async () => {
   try {
     await api.post('/Admin/sync-ldap')
     syncSuccess.value = 'Sincronización completada. Los usuarios de AD han sido sincronizados.'
+    page.value = 1
     await loadUsers()
   } catch (err: unknown) {
     const axiosError = err as { response?: { status?: number; data?: { message?: string } } }
@@ -517,6 +503,7 @@ const searchAndImportUser = async () => {
         ? payload.message
         : 'Usuario importado correctamente.'
     searchUserTerm.value = ''
+    page.value = 1
     await loadUsers()
   } catch (err: unknown) {
     const axiosError = err as { response?: { status?: number; data?: { message?: string } } }
@@ -527,14 +514,22 @@ const searchAndImportUser = async () => {
   }
 }
 
-watch([searchQuery, pageSize], () => {
-  page.value = 1
+watch(page, () => {
+  loadUsers()
 })
 
-watch(filteredUsers, () => {
-  if (page.value > totalPages.value) {
-    page.value = totalPages.value
-  }
+watch(pageSize, () => {
+  page.value = 1
+  loadUsers()
+})
+
+watch(searchQuery, () => {
+  if (searchDebounceTimer) clearTimeout(searchDebounceTimer)
+  searchDebounceTimer = setTimeout(() => {
+    searchDebounceTimer = null
+    page.value = 1
+    loadUsers()
+  }, SEARCH_DEBOUNCE_MS)
 })
 
 onMounted(loadUsers)

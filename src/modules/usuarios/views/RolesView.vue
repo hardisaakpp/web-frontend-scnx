@@ -6,12 +6,6 @@
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Gestión de Roles</h1>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Define roles y asigna permisos</p>
       </div>
-      <button 
-        @click="openCreateModal"
-        class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-lg transition-colors shadow-lg hover:shadow-xl"
-      >
-        + Nuevo Rol
-      </button>
     </div>
 
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 transition-colors duration-300">
