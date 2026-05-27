@@ -21,7 +21,7 @@
                 type="text"
                 placeholder="Buscar por nombre o email..."
                 autocomplete="off"
-                class="min-h-[52px] w-full touch-manipulation rounded-2xl border border-slate-200/90 bg-white py-3 pl-4 pr-10 text-sm font-medium text-slate-900 shadow-inner shadow-slate-900/[0.02] ring-1 ring-slate-900/[0.03] transition placeholder:text-slate-400 focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-950/40 dark:text-slate-100 dark:placeholder:text-slate-500 focus:border-emerald-500 focus:ring-emerald-500/25"
+                class="min-h-[52px] w-full touch-manipulation rounded-2xl border border-slate-200/90 bg-white py-3 pl-4 pr-10 text-sm font-medium text-slate-900 shadow-inner shadow-slate-900/[0.02] ring-1 ring-slate-900/[0.03] transition placeholder:text-slate-400 focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-950/40 dark:text-slate-100 dark:placeholder:text-slate-500 focus:border-sky-500 focus:ring-sky-500/25"
                 :disabled="loadingUsuarios"
                 @focus="showDropdown = true"
                 @input="onUserSearchInput"
@@ -74,14 +74,14 @@
             </div>
           </div>
 
+          <!-- Almacén -->
           <div class="flex-1">
             <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Cód. almacén</label>
-            <input
-              v-model.trim="newCodAlmacen"
-              type="text"
-              placeholder="Ej: BYL-NUO"
-              class="min-h-[52px] w-full touch-manipulation rounded-2xl border border-slate-200/90 bg-white py-3 pl-4 pr-10 text-sm font-medium text-slate-900 shadow-inner shadow-slate-900/[0.02] ring-1 ring-slate-900/[0.03] transition placeholder:text-slate-400 focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-950/40 dark:text-slate-100 dark:placeholder:text-slate-500 focus:border-emerald-500 focus:ring-emerald-500/25 uppercase"
-              @keyup.enter="createAsignacion"
+            <WarehouseSelect
+              v-model="newCodAlmacen"
+              :warehouses="almacenesDto"
+              :disabled="loadingAlmacenes"
+              embedded
             />
           </div>
 
@@ -89,7 +89,7 @@
             <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Permiso</label>
             <select
               v-model="newAcceso"
-              class="min-h-[52px] w-full touch-manipulation rounded-2xl border border-slate-200/90 bg-white py-3 pl-4 pr-10 text-sm font-medium text-slate-900 shadow-inner shadow-slate-900/[0.02] ring-1 ring-slate-900/[0.03] transition placeholder:text-slate-400 focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-950/40 dark:text-slate-100 dark:placeholder:text-slate-500 focus:border-emerald-500 focus:ring-emerald-500/25"
+              class="min-h-[52px] w-full touch-manipulation rounded-2xl border border-slate-200/90 bg-white py-3 pl-4 pr-10 text-sm font-medium text-slate-900 shadow-inner shadow-slate-900/[0.02] ring-1 ring-slate-900/[0.03] transition placeholder:text-slate-400 focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-950/40 dark:text-slate-100 dark:placeholder:text-slate-500 focus:border-sky-500 focus:ring-sky-500/25"
             >
               <option value="">Seleccionar permiso</option>
               <option v-for="key in permisos" :key="key" :value="key">{{ key }}</option>
@@ -170,6 +170,8 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import api from '@/services/api'
 import VolverButton from '../components/VolverButton.vue'
+import WarehouseSelect from '@/modules/articulo-scaner/components/WarehouseSelect.vue'
+import type { WarehouseDto } from '@/modules/articulo-scaner/types'
 
 interface AsignacionRecord {
   id: string
@@ -180,28 +182,39 @@ interface AsignacionRecord {
 
 type UserRecord = Record<string, unknown>
 
+interface AlmacenRecord {
+  codAlmacen: string
+  nombre: string | null
+}
+
 const asignaciones = ref<AsignacionRecord[]>([])
 const usuarios = ref<UserRecord[]>([])
-const permisos = ref<string[]>(['Lectura', 'Escritura', 'Administrador'])
+const almacenes = ref<AlmacenRecord[]>([])
+const permisos = ref<string[]>(['Tienda', 'Administrador', 'Supervisor'])
 const loading = ref(false)
 const loadingUsuarios = ref(false)
+const loadingAlmacenes = ref(false)
 const error = ref('')
 
 const newUserId = ref('')
-const newCodAlmacen = ref('')
+const newCodAlmacen = ref<string | null>(null)
 const newAcceso = ref('')
 const assignLoading = ref(false)
 const assignError = ref('')
 const assignSuccess = ref('')
 const deleteLoadingId = ref<string | null>(null)
 
-// Combobox state
+// Usuario combobox state
 const userSearch = ref('')
 const showDropdown = ref(false)
 const highlightedIndex = ref(-1)
 const comboboxRef = ref<HTMLElement | null>(null)
 
-const canAssign = computed(() => newUserId.value && newCodAlmacen.value.trim() && newAcceso.value)
+const almacenesDto = computed<WarehouseDto[]>(() =>
+  almacenes.value.map(a => ({ code: a.codAlmacen, name: a.nombre ?? '' }))
+)
+
+const canAssign = computed(() => newUserId.value && newCodAlmacen.value && newAcceso.value)
 
 const filteredUsuarios = computed(() => {
   const q = userSearch.value.toLowerCase().trim()
@@ -232,7 +245,6 @@ const onUserSearchInput = () => {
 const closeDropdown = () => {
   showDropdown.value = false
   highlightedIndex.value = -1
-  // Si no se confirmó selección, limpiar el texto
   if (!newUserId.value) userSearch.value = ''
 }
 
@@ -278,13 +290,29 @@ const loadUsuarios = async () => {
   }
 }
 
+const loadAlmacenes = async () => {
+  loadingAlmacenes.value = true
+  try {
+    const resp = await api.get('/UsuariosAlmacenes/almacenes')
+    const payload = resp.data as AlmacenRecord[] | { data?: AlmacenRecord[] }
+    if (Array.isArray(payload)) {
+      almacenes.value = payload
+    } else if (Array.isArray((payload as { data?: AlmacenRecord[] }).data)) {
+      almacenes.value = (payload as { data: AlmacenRecord[] }).data
+    }
+  } finally {
+    loadingAlmacenes.value = false
+  }
+}
+
 const loadData = async () => {
   loading.value = true
   error.value = ''
   try {
     const [asignResp] = await Promise.all([
       api.get('/UsuariosAlmacenes'),
-      loadUsuarios()
+      loadUsuarios(),
+      loadAlmacenes()
     ])
     asignaciones.value = asignResp.data as AsignacionRecord[]
   } catch (err: unknown) {
@@ -303,13 +331,13 @@ const createAsignacion = async () => {
   try {
     await api.post('/UsuariosAlmacenes', {
       userId: newUserId.value,
-      codAlmacen: newCodAlmacen.value.toUpperCase(),
+      codAlmacen: (newCodAlmacen.value ?? '').toUpperCase(),
       accesoAlmacen: newAcceso.value
     })
     assignSuccess.value = 'Asignación creada correctamente.'
     newUserId.value = ''
     userSearch.value = ''
-    newCodAlmacen.value = ''
+    newCodAlmacen.value = null
     newAcceso.value = ''
     const asignResp = await api.get('/UsuariosAlmacenes')
     asignaciones.value = asignResp.data as AsignacionRecord[]

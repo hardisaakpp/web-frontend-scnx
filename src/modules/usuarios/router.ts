@@ -42,6 +42,17 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/grupos-almacenes',
+    name: 'grupos-almacenes',
+    component: () => import('./views/GruposAlmacenesView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Grupos de almacenes',
+      icon: 'BuildingStorefrontIcon',
+      role: 'Admin'
+    }
+  },
+  {
     path: '/roles',
     name: 'roles',
     component: () => import('./views/RolesView.vue'),

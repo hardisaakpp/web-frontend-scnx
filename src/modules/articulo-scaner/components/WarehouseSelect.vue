@@ -56,7 +56,7 @@
         v-if="!warehouses.length && !disabled"
         class="text-xs text-amber-700 dark:text-amber-300"
       >
-        No hay almacenes cargados. Reintentá o revisá la conexión con el servicio de escaneo.
+        No hay almacenes cargados. Reintentá o revisá la conexión con el servicio.
       </p>
     </div>
   </div>
