@@ -1,12 +1,10 @@
 <template>
   <div class="space-y-6">
+    <VolverButton to="/admin" title="Volver al Panel de Administración" />
     <div class="flex items-start justify-between gap-4">
-      <div class="flex items-center gap-3 flex-1">
-        <VolverButton to="/admin" title="Volver al Panel de Administración" />
-        <div>
-          <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Gestión de Roles</h1>
-          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Define roles y asigna permisos</p>
-        </div>
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Gestión de Roles</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Define roles y asigna permisos</p>
       </div>
       <button 
         @click="openCreateModal"
@@ -14,7 +12,6 @@
       >
         + Nuevo Rol
       </button>
-      </div>
     </div>
 
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 transition-colors duration-300">

@@ -1,13 +1,12 @@
 <template>
   <div class="space-y-6 pb-32 md:pb-36">
+    <VolverButton to="/admin" title="Volver al Panel de Administración" />
     <div class="flex items-start justify-between gap-4">
-      <div class="flex items-center gap-3 pr-36 sm:pr-44 md:pr-0">
-        <VolverButton to="/admin" title="Volver al Panel de Administración" class="shrink-0 self-start" />
-        <div>
-          <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Gestión de Permisos</h1>
-          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Define permisos disponibles en el sistema</p>
-        </div>
+      <div>
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Gestión de Permisos</h1>
+        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Define permisos disponibles en el sistema</p>
       </div>
+    </div>
 
     <div v-if="store.loading" class="text-center py-12">
       <p class="text-gray-500 dark:text-gray-400">Cargando permisos...</p>
