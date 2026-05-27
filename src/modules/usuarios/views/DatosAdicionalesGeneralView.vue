@@ -11,38 +11,91 @@
       <div class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-5">
         <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Nueva asignación</h2>
         <div class="flex flex-col gap-4 sm:flex-row sm:items-end">
-          <div class="flex-1">
+
+          <!-- Combobox Usuario -->
+          <div class="flex-1 relative" ref="comboboxRef">
             <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Usuario</label>
-            <select
-              v-model="newUserId"
-              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
-            >
-              <option value="">Seleccionar usuario</option>
-              <option v-for="u in usuarios" :key="String(u.id ?? u.userId)" :value="String(u.id ?? u.userId)">
-                {{ u.fullName ?? u.userName ?? u.email ?? u.id }}
-              </option>
-            </select>
+            <div class="relative">
+              <input
+                v-model="userSearch"
+                type="text"
+                placeholder="Buscar por nombre o email..."
+                autocomplete="off"
+                class="min-h-[52px] w-full touch-manipulation rounded-2xl border border-slate-200/90 bg-white py-3 pl-4 pr-10 text-sm font-medium text-slate-900 shadow-inner shadow-slate-900/[0.02] ring-1 ring-slate-900/[0.03] transition placeholder:text-slate-400 focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-950/40 dark:text-slate-100 dark:placeholder:text-slate-500 focus:border-emerald-500 focus:ring-emerald-500/25"
+                :disabled="loadingUsuarios"
+                @focus="showDropdown = true"
+                @input="onUserSearchInput"
+                @keydown.escape="closeDropdown"
+                @keydown.enter.prevent="selectHighlighted"
+                @keydown.arrow-down.prevent="moveHighlight(1)"
+                @keydown.arrow-up.prevent="moveHighlight(-1)"
+              />
+              <span class="pointer-events-none absolute inset-y-0 right-3 flex items-center">
+                <svg v-if="loadingUsuarios" class="h-4 w-4 animate-spin text-slate-400" viewBox="0 0 24 24" fill="none">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                </svg>
+                <svg v-else class="h-4 w-4 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                </svg>
+              </span>
+
+              <!-- Dropdown list -->
+              <ul
+                v-if="showDropdown && filteredUsuarios.length > 0"
+                class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-xl border border-slate-200 bg-white py-1 text-sm shadow-lg dark:border-slate-700 dark:bg-slate-900"
+              >
+                <li
+                  v-for="(u, idx) in filteredUsuarios"
+                  :key="String(u.id ?? u.userId)"
+                  class="flex flex-col cursor-pointer px-4 py-2 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                  :class="{
+                    'bg-emerald-50 dark:bg-emerald-900/20': idx === highlightedIndex,
+                    'bg-emerald-100/60 dark:bg-emerald-800/30': String(u.id ?? u.userId) === newUserId && idx !== highlightedIndex
+                  }"
+                  @mousedown.prevent="selectUser(u)"
+                  @mousemove="highlightedIndex = idx"
+                >
+                  <span class="font-medium text-slate-900 dark:text-slate-100">
+                    {{ String(u.fullName ?? u.userName ?? '') }}
+                  </span>
+                  <span v-if="u.email" class="text-xs text-slate-500 dark:text-slate-400">
+                    {{ String(u.email) }}
+                  </span>
+                </li>
+              </ul>
+
+              <div
+                v-else-if="showDropdown && userSearch.trim().length > 0 && filteredUsuarios.length === 0 && !loadingUsuarios"
+                class="absolute z-50 mt-1 w-full rounded-xl border border-slate-200 bg-white py-3 text-center text-sm text-slate-500 shadow-lg dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400"
+              >
+                Sin resultados para "{{ userSearch }}"
+              </div>
+            </div>
           </div>
+
           <div class="flex-1">
             <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Cód. almacén</label>
             <input
               v-model.trim="newCodAlmacen"
               type="text"
               placeholder="Ej: BYL-NUO"
-              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white uppercase"
+              class="min-h-[52px] w-full touch-manipulation rounded-2xl border border-slate-200/90 bg-white py-3 pl-4 pr-10 text-sm font-medium text-slate-900 shadow-inner shadow-slate-900/[0.02] ring-1 ring-slate-900/[0.03] transition placeholder:text-slate-400 focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-950/40 dark:text-slate-100 dark:placeholder:text-slate-500 focus:border-emerald-500 focus:ring-emerald-500/25 uppercase"
               @keyup.enter="createAsignacion"
             />
           </div>
+
           <div class="flex-1">
             <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Permiso</label>
             <select
               v-model="newAcceso"
-              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+              class="min-h-[52px] w-full touch-manipulation rounded-2xl border border-slate-200/90 bg-white py-3 pl-4 pr-10 text-sm font-medium text-slate-900 shadow-inner shadow-slate-900/[0.02] ring-1 ring-slate-900/[0.03] transition placeholder:text-slate-400 focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-950/40 dark:text-slate-100 dark:placeholder:text-slate-500 focus:border-emerald-500 focus:ring-emerald-500/25"
             >
               <option value="">Seleccionar permiso</option>
               <option v-for="key in permisos" :key="key" :value="key">{{ key }}</option>
             </select>
           </div>
+
           <div>
             <button
               type="button"
@@ -114,7 +167,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import api from '@/services/api'
 import VolverButton from '../components/VolverButton.vue'
 
@@ -131,6 +184,7 @@ const asignaciones = ref<AsignacionRecord[]>([])
 const usuarios = ref<UserRecord[]>([])
 const permisos = ref<string[]>(['Lectura', 'Escritura', 'Administrador'])
 const loading = ref(false)
+const loadingUsuarios = ref(false)
 const error = ref('')
 
 const newUserId = ref('')
@@ -141,7 +195,67 @@ const assignError = ref('')
 const assignSuccess = ref('')
 const deleteLoadingId = ref<string | null>(null)
 
+// Combobox state
+const userSearch = ref('')
+const showDropdown = ref(false)
+const highlightedIndex = ref(-1)
+const comboboxRef = ref<HTMLElement | null>(null)
+
 const canAssign = computed(() => newUserId.value && newCodAlmacen.value.trim() && newAcceso.value)
+
+const filteredUsuarios = computed(() => {
+  const q = userSearch.value.toLowerCase().trim()
+  const list = q
+    ? usuarios.value.filter(u => {
+        const name = String(u.fullName ?? '').toLowerCase()
+        const uname = String(u.userName ?? '').toLowerCase()
+        const email = String(u.email ?? '').toLowerCase()
+        return name.includes(q) || uname.includes(q) || email.includes(q)
+      })
+    : usuarios.value
+  return list.slice(0, 80)
+})
+
+const selectUser = (u: UserRecord) => {
+  newUserId.value = String(u.id ?? u.userId ?? '')
+  userSearch.value = String(u.fullName ?? u.userName ?? u.email ?? '')
+  showDropdown.value = false
+  highlightedIndex.value = -1
+}
+
+const onUserSearchInput = () => {
+  newUserId.value = ''
+  showDropdown.value = true
+  highlightedIndex.value = -1
+}
+
+const closeDropdown = () => {
+  showDropdown.value = false
+  highlightedIndex.value = -1
+  // Si no se confirmó selección, limpiar el texto
+  if (!newUserId.value) userSearch.value = ''
+}
+
+const moveHighlight = (dir: number) => {
+  if (!showDropdown.value) {
+    showDropdown.value = true
+    return
+  }
+  const max = filteredUsuarios.value.length - 1
+  highlightedIndex.value = Math.max(0, Math.min(max, highlightedIndex.value + dir))
+}
+
+const selectHighlighted = () => {
+  if (highlightedIndex.value >= 0 && filteredUsuarios.value[highlightedIndex.value]) {
+    selectUser(filteredUsuarios.value[highlightedIndex.value])
+  }
+}
+
+const handleClickOutside = (e: MouseEvent) => {
+  if (comboboxRef.value && !comboboxRef.value.contains(e.target as Node)) {
+    closeDropdown()
+  }
+}
 
 const resolveUserName = (userId: string) => {
   const u = usuarios.value.find(u => String(u.id ?? u.userId) === userId)
@@ -149,22 +263,29 @@ const resolveUserName = (userId: string) => {
   return String(u.fullName ?? u.userName ?? u.email ?? userId)
 }
 
+const loadUsuarios = async () => {
+  loadingUsuarios.value = true
+  try {
+    const resp = await api.get('/Users', { params: { pageSize: 500, page: 1 } })
+    const payload = resp.data as UserRecord[] | { data?: UserRecord[] }
+    if (Array.isArray(payload)) {
+      usuarios.value = payload
+    } else if (Array.isArray(payload?.data)) {
+      usuarios.value = payload.data
+    }
+  } finally {
+    loadingUsuarios.value = false
+  }
+}
+
 const loadData = async () => {
   loading.value = true
   error.value = ''
   try {
-    const [asignResp, userResp] = await Promise.all([
+    const [asignResp] = await Promise.all([
       api.get('/UsuariosAlmacenes'),
-      api.get('/Users')
+      loadUsuarios()
     ])
-    const usersPayload = userResp.data as UserRecord[] | { data?: UserRecord[]; users?: UserRecord[] }
-    if (Array.isArray(usersPayload)) {
-      usuarios.value = usersPayload
-    } else if (Array.isArray(usersPayload?.data)) {
-      usuarios.value = usersPayload.data
-    } else if (Array.isArray((usersPayload as { users?: UserRecord[] })?.users)) {
-      usuarios.value = (usersPayload as { users: UserRecord[] }).users
-    }
     asignaciones.value = asignResp.data as AsignacionRecord[]
   } catch (err: unknown) {
     const e = err as { response?: { data?: { message?: string } } }
@@ -187,9 +308,11 @@ const createAsignacion = async () => {
     })
     assignSuccess.value = 'Asignación creada correctamente.'
     newUserId.value = ''
+    userSearch.value = ''
     newCodAlmacen.value = ''
     newAcceso.value = ''
-    await loadData()
+    const asignResp = await api.get('/UsuariosAlmacenes')
+    asignaciones.value = asignResp.data as AsignacionRecord[]
   } catch (err: unknown) {
     const e = err as { response?: { data?: { message?: string } } }
     assignError.value = e?.response?.data?.message || 'No se pudo crear la asignación.'
@@ -211,5 +334,12 @@ const deleteAsignacion = async (id: string) => {
   }
 }
 
-onMounted(loadData)
+onMounted(() => {
+  loadData()
+  document.addEventListener('mousedown', handleClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('mousedown', handleClickOutside)
+})
 </script>

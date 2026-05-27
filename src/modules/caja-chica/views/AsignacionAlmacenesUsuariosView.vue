@@ -23,11 +23,11 @@
               v-model.trim="userSearch"
               type="text"
               placeholder="Buscar usuario"
-              class="mb-2 w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+              class="mb-2 w-full px-3 py-2 pr-9 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
             />
             <select
               v-model="selectedUserId"
-              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+              class="w-full px-3 py-2 pr-9 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
             >
               <option value="">Seleccionar usuario</option>
               <option v-for="user in filteredUsuarios" :key="getUserIdValue(user)" :value="getUserIdValue(user)">
@@ -41,7 +41,7 @@
               v-model.trim="selectedCodAlmacen"
               type="text"
               placeholder="Ej: BYL-NUO"
-              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+              class="w-full px-3 py-2 pr-9 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
             />
           </div>
           <div class="w-full lg:w-auto">
@@ -68,7 +68,7 @@
           <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
             <select
               v-model="filterUserId"
-              class="w-full sm:w-64 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+              class="w-full sm:w-64 px-3 py-2 pr-9 rounded-lg border border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100"
             >
               <option value="">Todos los usuarios</option>
               <option v-for="user in filteredUsuarios" :key="getUserIdValue(user)" :value="getUserIdValue(user)">
