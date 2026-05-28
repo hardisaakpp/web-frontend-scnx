@@ -180,14 +180,39 @@
                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Permiso</th>
                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Grupo de almacenes</th>
                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Fecha creación</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Fecha modificación</th>
                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Modificado por</th>
                 <th class="px-4 py-3 text-right text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Acciones</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
               <tr v-for="item in groupedAsignaciones" :key="item.key">
-                <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ resolveUserName(item.userId) }}</td>
-                <td class="px-4 py-3 text-sm font-mono text-gray-900 dark:text-gray-200">{{ item.codAlmacen }}</td>
+                <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+                  <template v-if="editingId === item.key">
+                    <select
+                      v-model="editUserId"
+                      class="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1 text-xs text-gray-900 dark:text-white focus:outline-none focus:border-sky-500"
+                    >
+                      <option v-for="u in usuarios" :key="String(u.id ?? u.userId)" :value="String(u.id ?? u.userId)">
+                        {{ String(u.fullName ?? u.userName ?? u.email ?? u.id) }}
+                      </option>
+                    </select>
+                  </template>
+                  <template v-else>{{ resolveUserName(item.userId) }}</template>
+                </td>
+                <td class="px-4 py-3 text-sm font-mono text-gray-900 dark:text-gray-200">
+                  <template v-if="editingId === item.key">
+                    <select
+                      v-model="editCodAlmacen"
+                      class="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1 text-xs text-gray-900 dark:text-white focus:outline-none focus:border-sky-500"
+                    >
+                      <option v-for="a in almacenes" :key="a.codAlmacen" :value="a.codAlmacen">
+                        {{ a.codAlmacen }}{{ a.nombre ? ` — ${a.nombre}` : '' }}
+                      </option>
+                    </select>
+                  </template>
+                  <template v-else>{{ item.codAlmacen }}</template>
+                </td>
                 <td class="px-4 py-3 text-sm text-gray-900 dark:text-gray-200">
                   <template v-if="editingId === item.key">
                     <select
@@ -222,6 +247,9 @@
                 </td>
                 <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
                   {{ item.fechaCreacion ? new Date(item.fechaCreacion).toLocaleDateString('es-PA', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '—' }}
+                </td>
+                <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                  {{ item.fechaModificacion ? new Date(item.fechaModificacion).toLocaleDateString('es-PA', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '—' }}
                 </td>
                 <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{{ item.modificadoPor ?? '—' }}</td>
                 <td class="px-4 py-3 text-right">
@@ -289,6 +317,7 @@ interface AsignacionRecord {
   grupoId: string | null
   grupoNombre: string | null
   fechaCreacion: string | null
+  fechaModificacion: string | null
   modificadoPor: string | null
 }
 
@@ -312,6 +341,7 @@ interface GroupedAsignacion {
   accesoAlmacen: string
   grupos: { id: string; nombre: string }[]
   fechaCreacion: string | null
+  fechaModificacion: string | null
   modificadoPor: string | null
 }
 
@@ -337,6 +367,8 @@ const deleteLoadingId = ref<string | null>(null)
 
 // Edit inline state
 const editingId = ref<string | null>(null)
+const editUserId = ref('')
+const editCodAlmacen = ref('')
 const editAcceso = ref('')
 const editGrupos = ref<string[]>([])
 const updateLoadingId = ref<string | null>(null)
@@ -389,6 +421,7 @@ const groupedAsignaciones = computed<GroupedAsignacion[]>(() => {
         accesoAlmacen: item.accesoAlmacen,
         grupos: [],
         fechaCreacion: item.fechaCreacion,
+        fechaModificacion: item.fechaModificacion,
         modificadoPor: item.modificadoPor,
       })
     }
@@ -465,12 +498,16 @@ const handleClickOutside = (e: MouseEvent) => {
 
 const startEdit = (item: GroupedAsignacion) => {
   editingId.value = item.key
+  editUserId.value = item.userId
+  editCodAlmacen.value = item.codAlmacen
   editAcceso.value = item.accesoAlmacen
   editGrupos.value = item.grupos.map(g => g.id)
 }
 
 const cancelEdit = () => {
   editingId.value = null
+  editUserId.value = ''
+  editCodAlmacen.value = ''
   editAcceso.value = ''
   editGrupos.value = []
 }
@@ -491,13 +528,15 @@ const updateAsignacion = async (groupKey: string) => {
     const toUpdate = group.ids.filter(id => !toDelete.includes(id))
     await Promise.all([
       ...toUpdate.map(id => api.put(`/UsuariosAlmacenes/${id}`, {
+        userId: editUserId.value,
+        codAlmacen: editCodAlmacen.value,
         accesoAlmacen: editAcceso.value,
         warehouseGroupId: asignaciones.value.find(a => String(a.id) === id)?.grupoId || null
       })),
       ...toDelete.map(id => api.delete(`/UsuariosAlmacenes/${id}`)),
       ...toAdd.map(gId => api.post('/UsuariosAlmacenes', {
-        userId: group.userId,
-        codAlmacen: group.codAlmacen,
+        userId: editUserId.value,
+        codAlmacen: editCodAlmacen.value,
         accesoAlmacen: editAcceso.value,
         warehouseGroupId: gId
       }))
