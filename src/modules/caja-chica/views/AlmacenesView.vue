@@ -95,8 +95,7 @@
         <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-300">
           Total: <span class="font-semibold text-gray-900 dark:text-white">{{ grupos.length }}</span>
         </div>
-        <div v-if="listLoading" class="py-10 text-center text-sm text-gray-500 dark:text-gray-400">Cargando...</div>
-        <div v-else-if="grupos.length === 0" class="py-10 text-center text-sm text-gray-500 dark:text-gray-400">
+        <div v-if="grupos.length === 0" class="py-10 text-center text-sm text-gray-500 dark:text-gray-400">
           Sin grupos registrados.
         </div>
         <div v-else class="overflow-x-auto">
@@ -111,7 +110,7 @@
             </thead>
             <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
               <tr v-for="grupo in grupos" :key="grupo.id">
-                <td class="px-4 py-3 text-sm text-gray-900 dark:text-gray-200">{{ grupo.grupo }}</td>
+                <td class="px-4 py-3 text-sm text-gray-900 dark:text-gray-200">{{ grupo.nombre }}</td>
                 <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{{ grupo.descripcion || '-' }}</td>
                 <td class="px-4 py-3 text-sm text-gray-900 dark:text-gray-200">
                   {{ grupo.almacenes.join(', ') }}
@@ -143,13 +142,12 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from '@vue/runtime-core'
-import api from '@/services/api'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
 
 interface GrupoAlmacenForm {
-  id: string
-  grupo: string
+  id: number
+  nombre: string
   descripcion: string
   almacenes: string[]
 }
@@ -162,14 +160,13 @@ interface AlmacenItem {
 const groupName = ref('')
 const groupDescription = ref('')
 const formError = ref('')
-const editingGroupId = ref<string | null>(null)
+const editingGroupId = ref<number | null>(null)
 const grupos = ref<GrupoAlmacenForm[]>([])
 const almacenSearch = ref('')
 const almacenes = ref<AlmacenItem[]>([])
 const selectedAlmacenes = ref<AlmacenItem[]>([])
 const almacenesLoading = ref(false)
 const almacenesError = ref('')
-const listLoading = ref(false)
 const router = useRouter()
 
 const volver = () => {
@@ -178,15 +175,9 @@ const volver = () => {
 
 const cajaChicaApi = axios.create({
   baseURL: import.meta.env.VITE_CAJA_CHICA_API_URL || '/caja-chica-api',
-  headers: { 'Content-Type': 'application/json' }
-})
-
-cajaChicaApi.interceptors.request.use(config => {
-  const token = localStorage.getItem('token') || sessionStorage.getItem('token')
-  if (token && config.headers) {
-    config.headers['Authorization'] = `Bearer ${token}`
+  headers: {
+    'Content-Type': 'application/json'
   }
-  return config
 })
 
 const canAddGroup = computed(() => groupName.value.trim() && selectedAlmacenes.value.length > 0)
@@ -197,42 +188,66 @@ const resetForm = () => {
   almacenSearch.value = ''
   selectedAlmacenes.value = []
   editingGroupId.value = null
-  formError.value = ''
 }
 
 const addGroup = async () => {
   formError.value = ''
   const nombre = groupName.value.trim()
-  const codsAlmacenes = selectedAlmacenes.value.map(item => item.codAlmacen)
+  const almacenes = selectedAlmacenes.value.map(item => item.codAlmacen)
 
-  if (!nombre) { formError.value = 'El nombre del grupo es obligatorio.'; return }
-  if (codsAlmacenes.length === 0) { formError.value = 'Debes ingresar al menos un codigo de almacen.'; return }
+  if (!nombre) {
+    formError.value = 'El nombre del grupo es obligatorio.'
+    return
+  }
+
+  if (almacenes.length === 0) {
+    formError.value = 'Debes ingresar al menos un codigo de almacen.'
+    return
+  }
 
   try {
-    const payload = { Grupo: nombre, Descripcion: groupDescription.value.trim(), Almacenes: codsAlmacenes }
+    const payloadToSend = {
+      Nombre: nombre,
+      Descripcion: groupDescription.value.trim(),
+      Almacenes: almacenes
+    }
+
     if (editingGroupId.value) {
-      const response = await api.put(`/WarehouseGroups/${editingGroupId.value}`, payload)
-      const data = response.data as any
-      grupos.value = grupos.value.map(g =>
-        g.id === editingGroupId.value
-          ? { id: data?.id ?? g.id, grupo: data?.grupo ?? nombre, descripcion: data?.descripcion ?? groupDescription.value.trim(), almacenes: Array.isArray(data?.almacenes) ? data.almacenes : codsAlmacenes }
-          : g
+      const response = await cajaChicaApi.put(`/GrupoAlmacenes/${editingGroupId.value}`, payloadToSend)
+      const payload = response.data as any
+      grupos.value = grupos.value.map(grupo =>
+        grupo.id === editingGroupId.value
+          ? {
+              id: payload?.id ?? grupo.id,
+              nombre: payload?.nombre ?? nombre,
+              descripcion: payload?.descripcion ?? groupDescription.value.trim(),
+              almacenes: Array.isArray(payload?.almacenes) ? payload.almacenes : almacenes
+            }
+          : grupo
       )
     } else {
-      const response = await api.post('/WarehouseGroups', payload)
-      const data = response.data as any
-      grupos.value.unshift({ id: data?.id ?? crypto.randomUUID(), grupo: data?.grupo ?? nombre, descripcion: data?.descripcion ?? groupDescription.value.trim(), almacenes: Array.isArray(data?.almacenes) ? data.almacenes : codsAlmacenes })
+      const response = await cajaChicaApi.post('/GrupoAlmacenes', payloadToSend)
+      const payload = response.data as any
+      grupos.value.unshift({
+        id: payload?.id ?? Date.now(),
+        nombre: payload?.nombre ?? nombre,
+        descripcion: payload?.descripcion ?? groupDescription.value.trim(),
+        almacenes: Array.isArray(payload?.almacenes) ? payload.almacenes : almacenes
+      })
     }
-    resetForm()
   } catch (err: any) {
-    formError.value = err?.response?.data?.message || err?.response?.data || 'No se pudo guardar el grupo.'
+    const message = err?.response?.data?.message || err?.response?.data
+    formError.value = message || 'No se pudo guardar el grupo.'
+    return
   }
+
+  resetForm()
 }
 
-const removeGroup = async (id: string) => {
+const removeGroup = async (id: number) => {
   try {
-    await api.delete(`/WarehouseGroups/${id}`)
-    grupos.value = grupos.value.filter(g => g.id !== id)
+    await cajaChicaApi.delete(`/GrupoAlmacenes/${id}`)
+    grupos.value = grupos.value.filter(grupo => grupo.id !== id)
   } catch {
     formError.value = 'No se pudo eliminar el grupo.'
   }
@@ -240,42 +255,45 @@ const removeGroup = async (id: string) => {
 
 const editGroup = (grupo: GrupoAlmacenForm) => {
   editingGroupId.value = grupo.id
-  groupName.value = grupo.grupo
+  groupName.value = grupo.nombre
   groupDescription.value = grupo.descripcion
-  selectedAlmacenes.value = grupo.almacenes.map(cod => {
-    const found = almacenes.value.find(a => a.codAlmacen === cod)
-    return found ?? { codAlmacen: cod, nombre: cod }
-  })
+  selectedAlmacenes.value = grupo.almacenes.map(cod => ({
+    codAlmacen: cod,
+    nombre: cod
+  }))
 }
 
-const addAlmacen = (almacen: AlmacenItem) => {
-  if (!selectedAlmacenes.value.some(item => item.codAlmacen === almacen.codAlmacen)) {
-    selectedAlmacenes.value.push(almacen)
-  }
-}
-
-const removeAlmacen = (codAlmacen: string) => {
-  selectedAlmacenes.value = selectedAlmacenes.value.filter(item => item.codAlmacen !== codAlmacen)
-}
-
-const filteredAlmacenes = computed(() => {
-  const query = almacenSearch.value.toLowerCase().trim()
-  const selectedCodes = new Set(selectedAlmacenes.value.map(item => item.codAlmacen))
-  const baseList = almacenes.value.filter(item => !selectedCodes.has(item.codAlmacen))
-  if (!query) return baseList
-  return baseList.filter(item => item.codAlmacen.toLowerCase().includes(query) || item.nombre.toLowerCase().includes(query))
+onMounted(() => {
+  loadAlmacenes()
+  loadGrupos()
 })
 
 const loadAlmacenes = async () => {
   almacenesLoading.value = true
   almacenesError.value = ''
   try {
-    const response = await cajaChicaApi.get('/Almacenes', { headers: { Accept: 'text/plain' }, responseType: 'text' })
+    const response = await cajaChicaApi.get('/Almacenes', {
+      headers: {
+        Accept: 'text/plain'
+      },
+      responseType: 'text'
+    })
+
     let payload = response.data as any
-    if (typeof payload === 'string') { try { payload = JSON.parse(payload) } catch { payload = [] } }
+    if (typeof payload === 'string') {
+      try {
+        payload = JSON.parse(payload)
+      } catch {
+        payload = []
+      }
+    }
+
     const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
     almacenes.value = items
-      .map((item: any) => ({ codAlmacen: String(item.codAlmacen ?? item.CodAlmacen ?? '').trim(), nombre: String(item.nombre ?? item.Nombre ?? '').trim() }))
+      .map((item: any) => ({
+        codAlmacen: String(item.codAlmacen ?? item.CodAlmacen ?? '').trim(),
+        nombre: String(item.nombre ?? item.Nombre ?? '').trim()
+      }))
       .filter((item: AlmacenItem) => item.codAlmacen)
   } catch {
     almacenesError.value = 'No se pudieron cargar los almacenes.'
@@ -285,23 +303,45 @@ const loadAlmacenes = async () => {
 }
 
 const loadGrupos = async () => {
-  listLoading.value = true
   try {
-    const response = await api.get('/WarehouseGroups')
+    const response = await cajaChicaApi.get('/GrupoAlmacenes')
     const payload = response.data as any
     const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
     grupos.value = items.map((item: any) => ({
-      id: item.id ?? item.Id ?? '',
-      grupo: item.grupo ?? item.Grupo ?? '',
+      id: item.id ?? item.Id ?? 0,
+      nombre: item.nombre ?? item.Nombre ?? '',
       descripcion: item.descripcion ?? item.Descripcion ?? '',
       almacenes: Array.isArray(item.almacenes) ? item.almacenes : item.Almacenes ?? []
     }))
   } catch {
     grupos.value = []
-  } finally {
-    listLoading.value = false
   }
 }
 
-onMounted(() => { loadAlmacenes(); loadGrupos() })
+const addAlmacen = (almacen: AlmacenItem) => {
+  if (selectedAlmacenes.value.some(item => item.codAlmacen === almacen.codAlmacen)) {
+    return
+  }
+  selectedAlmacenes.value.push(almacen)
+}
+
+const removeAlmacen = (codAlmacen: string) => {
+  selectedAlmacenes.value = selectedAlmacenes.value.filter(item => item.codAlmacen !== codAlmacen)
+}
+
+const filteredAlmacenes = computed(() => {
+  const query = almacenSearch.value.toLowerCase().trim()
+  const usedCodes = new Set(grupos.value.flatMap(grupo => grupo.almacenes))
+  const selectedCodes = new Set(selectedAlmacenes.value.map(item => item.codAlmacen))
+
+  const baseList = almacenes.value.filter(item => {
+    if (selectedCodes.has(item.codAlmacen)) return true
+    return !usedCodes.has(item.codAlmacen)
+  })
+
+  if (!query) return baseList
+  return baseList.filter(item => {
+    return item.codAlmacen.toLowerCase().includes(query) || item.nombre.toLowerCase().includes(query)
+  })
+})
 </script>
