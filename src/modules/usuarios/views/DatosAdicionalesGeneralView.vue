@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
     <div class="space-y-4">
       <VolverButton to="/admin" title="Volver al Panel de Administración" class="shrink-0" />
       <div>
@@ -74,7 +74,7 @@
             </div>
           </div>
 
-          <!-- Almacén -->
+          <!-- Cód. almacén -->
           <div class="flex-1">
             <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Cód. almacén</label>
             <WarehouseSelect
@@ -96,6 +96,45 @@
             </select>
           </div>
 
+          <!-- Grupo de almacenes -->
+          <div class="flex-1 relative" ref="grupoDropdownRef">
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Grupo de almacenes</label>
+            <button
+              type="button"
+              :disabled="loadingGrupos"
+              class="min-h-[52px] w-full touch-manipulation rounded-2xl border border-slate-200/90 bg-white py-3 pl-4 pr-4 text-sm font-medium text-slate-900 shadow-inner shadow-slate-900/[0.02] ring-1 ring-slate-900/[0.03] transition focus:outline-none focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-600 dark:bg-slate-950/40 dark:text-slate-100 focus:border-emerald-500 focus:ring-emerald-500/25 flex items-center justify-between text-left"
+              @click="toggleGrupoDropdown"
+            >
+              <span class="truncate" :class="selectedGrupoId.length === 0 ? 'text-slate-400 dark:text-slate-500' : ''">
+                {{ selectedGrupoId.length === 0 ? 'Sin grupo' : selectedGrupoLabel }}
+              </span>
+              <svg class="h-4 w-4 text-slate-400 shrink-0 ml-2" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+              </svg>
+            </button>
+            <ul
+              v-if="showGrupoDropdown && grupos.length > 0"
+              class="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-xl border border-slate-200 bg-white py-1 text-sm shadow-lg dark:border-slate-700 dark:bg-slate-900"
+            >
+              <li
+                v-for="g in grupos"
+                :key="g.id"
+                class="flex items-center gap-2 cursor-pointer px-4 py-2 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                :class="{ 'bg-emerald-50 dark:bg-emerald-900/20': selectedGrupoId.includes(g.id) }"
+                @mousedown.prevent="toggleGrupo(g.id)"
+              >
+                <input type="checkbox" :checked="selectedGrupoId.includes(g.id)" class="accent-emerald-500 pointer-events-none" readonly />
+                <span class="text-slate-900 dark:text-slate-100">{{ g.grupo }}</span>
+              </li>
+            </ul>
+            <div
+              v-else-if="showGrupoDropdown && grupos.length === 0 && !loadingGrupos"
+              class="absolute z-50 mt-1 w-full rounded-xl border border-slate-200 bg-white py-3 text-center text-sm text-slate-500 shadow-lg dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400"
+            >
+              Sin grupos disponibles
+            </div>
+          </div>
+
           <div>
             <button
               type="button"
@@ -115,7 +154,7 @@
       <div class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 overflow-hidden">
         <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
           <span class="text-sm text-gray-600 dark:text-gray-300">
-            Total: <span class="font-semibold text-gray-900 dark:text-white">{{ asignaciones.length }}</span>
+            Total: <span class="font-semibold text-gray-900 dark:text-white">{{ groupedAsignaciones.length }}</span>
           </span>
           <button
             type="button"
@@ -139,29 +178,92 @@
                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Usuario</th>
                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Almacén</th>
                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Permiso</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Grupo de almacenes</th>
                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Fecha creación</th>
                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Modificado por</th>
                 <th class="px-4 py-3 text-right text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Acciones</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-              <tr v-for="item in asignaciones" :key="String(item.id)">
+              <tr v-for="item in groupedAsignaciones" :key="item.key">
                 <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ resolveUserName(item.userId) }}</td>
                 <td class="px-4 py-3 text-sm font-mono text-gray-900 dark:text-gray-200">{{ item.codAlmacen }}</td>
-                <td class="px-4 py-3 text-sm text-gray-900 dark:text-gray-200">{{ item.accesoAlmacen }}</td>
+                <td class="px-4 py-3 text-sm text-gray-900 dark:text-gray-200">
+                  <template v-if="editingId === item.key">
+                    <select
+                      v-model="editAcceso"
+                      class="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1 text-xs text-gray-900 dark:text-white focus:outline-none focus:border-sky-500"
+                    >
+                      <option v-for="key in permisos" :key="key" :value="key">{{ key }}</option>
+                    </select>
+                  </template>
+                  <template v-else>{{ item.accesoAlmacen }}</template>
+                </td>
+                <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
+                  <template v-if="editingId === item.key">
+                    <select
+                      v-model="editGrupos"
+                      multiple
+                      class="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1 text-xs text-gray-900 dark:text-white focus:outline-none focus:border-emerald-500"
+                    >
+                      <option v-for="g in grupos" :key="String(g.id)" :value="String(g.id)">{{ g.grupo }}</option>
+                    </select>
+                  </template>
+                  <template v-else>
+                    <span v-if="item.grupos.length === 0">—</span>
+                    <div v-else class="flex flex-wrap gap-1">
+                      <span
+                        v-for="g in item.grupos"
+                        :key="g.id"
+                        class="inline-block rounded-full bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 text-xs text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                      >{{ g.nombre }}</span>
+                    </div>
+                  </template>
+                </td>
                 <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
                   {{ item.fechaCreacion ? new Date(item.fechaCreacion).toLocaleDateString('es-PA', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '—' }}
                 </td>
                 <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{{ item.modificadoPor ?? '—' }}</td>
                 <td class="px-4 py-3 text-right">
-                  <button
-                    type="button"
-                    class="rounded border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-900/20 px-3 py-1 text-xs text-red-700 dark:text-red-300 hover:border-red-300 disabled:opacity-50"
-                    :disabled="deleteLoadingId === String(item.id)"
-                    @click="deleteAsignacion(String(item.id))"
-                  >
-                    {{ deleteLoadingId === String(item.id) ? 'Eliminando...' : 'Eliminar' }}
-                  </button>
+                  <template v-if="editingId === item.key">
+                    <div class="flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        class="rounded border border-emerald-200 dark:border-emerald-900/40 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1 text-xs text-emerald-700 dark:text-emerald-300 hover:border-emerald-300 disabled:opacity-50"
+                        :disabled="updateLoadingId === item.key"
+                        @click="updateAsignacion(item.key)"
+                      >
+                        {{ updateLoadingId === item.key ? 'Guardando...' : 'Guardar' }}
+                      </button>
+                      <button
+                        type="button"
+                        class="rounded border border-gray-200 dark:border-gray-700 px-3 py-1 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                        @click="cancelEdit"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <div class="flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        class="rounded border border-sky-200 dark:border-sky-900/40 bg-sky-50 dark:bg-sky-900/20 px-3 py-1 text-xs text-sky-700 dark:text-sky-300 hover:border-sky-300 disabled:opacity-50"
+                        :disabled="!!deleteLoadingId"
+                        @click="startEdit(item)"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        class="rounded border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-900/20 px-3 py-1 text-xs text-red-700 dark:text-red-300 hover:border-red-300 disabled:opacity-50"
+                        :disabled="deleteLoadingId === item.key"
+                        @click="deleteGrouped(item.key)"
+                      >
+                        {{ deleteLoadingId === item.key ? 'Eliminando...' : 'Eliminar' }}
+                      </button>
+                    </div>
+                  </template>
                 </td>
               </tr>
             </tbody>
@@ -184,6 +286,8 @@ interface AsignacionRecord {
   userId: string
   codAlmacen: string
   accesoAlmacen: string
+  grupoId: string | null
+  grupoNombre: string | null
   fechaCreacion: string | null
   modificadoPor: string | null
 }
@@ -195,22 +299,47 @@ interface AlmacenRecord {
   nombre: string | null
 }
 
+interface GrupoRecord {
+  id: string
+  grupo: string
+}
+
+interface GroupedAsignacion {
+  key: string
+  ids: string[]
+  userId: string
+  codAlmacen: string
+  accesoAlmacen: string
+  grupos: { id: string; nombre: string }[]
+  fechaCreacion: string | null
+  modificadoPor: string | null
+}
+
 const asignaciones = ref<AsignacionRecord[]>([])
 const usuarios = ref<UserRecord[]>([])
 const almacenes = ref<AlmacenRecord[]>([])
+const grupos = ref<GrupoRecord[]>([])
 const permisos = ref<string[]>(['Tienda', 'Administrador', 'Supervisor'])
 const loading = ref(false)
 const loadingUsuarios = ref(false)
 const loadingAlmacenes = ref(false)
+const loadingGrupos = ref(false)
 const error = ref('')
 
 const newUserId = ref('')
 const newCodAlmacen = ref<string | null>(null)
 const newAcceso = ref('')
+const selectedGrupoId = ref<string[]>([])
 const assignLoading = ref(false)
 const assignError = ref('')
 const assignSuccess = ref('')
 const deleteLoadingId = ref<string | null>(null)
+
+// Edit inline state
+const editingId = ref<string | null>(null)
+const editAcceso = ref('')
+const editGrupos = ref<string[]>([])
+const updateLoadingId = ref<string | null>(null)
 
 // Usuario combobox state
 const userSearch = ref('')
@@ -218,22 +347,70 @@ const showDropdown = ref(false)
 const highlightedIndex = ref(-1)
 const comboboxRef = ref<HTMLElement | null>(null)
 
+// Grupo de almacenes dropdown state
+const showGrupoDropdown = ref(false)
+const grupoDropdownRef = ref<HTMLElement | null>(null)
+
+const selectedGrupoLabel = computed(() =>
+  selectedGrupoId.value
+    .map(id => grupos.value.find(g => g.id === id)?.grupo ?? id)
+    .join(', ')
+)
+
+const toggleGrupoDropdown = () => {
+  if (!loadingGrupos.value) showGrupoDropdown.value = !showGrupoDropdown.value
+}
+
+const toggleGrupo = (id: string) => {
+  const idx = selectedGrupoId.value.indexOf(id)
+  if (idx === -1) {
+    selectedGrupoId.value = [...selectedGrupoId.value, id]
+  } else {
+    selectedGrupoId.value = selectedGrupoId.value.filter(v => v !== id)
+  }
+}
+
 const almacenesDto = computed<WarehouseDto[]>(() =>
   almacenes.value.map(a => ({ code: a.codAlmacen, name: a.nombre ?? '' }))
 )
 
 const canAssign = computed(() => newUserId.value && newCodAlmacen.value && newAcceso.value)
 
+const groupedAsignaciones = computed<GroupedAsignacion[]>(() => {
+  const map = new Map<string, GroupedAsignacion>()
+  for (const item of asignaciones.value) {
+    const key = `${item.userId}|${item.codAlmacen}|${item.accesoAlmacen}`
+    if (!map.has(key)) {
+      map.set(key, {
+        key,
+        ids: [],
+        userId: item.userId,
+        codAlmacen: item.codAlmacen,
+        accesoAlmacen: item.accesoAlmacen,
+        grupos: [],
+        fechaCreacion: item.fechaCreacion,
+        modificadoPor: item.modificadoPor,
+      })
+    }
+    const entry = map.get(key)!
+    entry.ids.push(String(item.id))
+    if (item.grupoId && item.grupoNombre) {
+      entry.grupos.push({ id: item.grupoId, nombre: item.grupoNombre })
+    }
+  }
+  return Array.from(map.values())
+})
+
 const filteredUsuarios = computed(() => {
   const q = userSearch.value.toLowerCase().trim()
-  const list = q
-    ? usuarios.value.filter(u => {
-        const name = String(u.fullName ?? '').toLowerCase()
-        const uname = String(u.userName ?? '').toLowerCase()
-        const email = String(u.email ?? '').toLowerCase()
-        return name.includes(q) || uname.includes(q) || email.includes(q)
-      })
-    : usuarios.value
+  const list = usuarios.value.filter(u => {
+    const name = String(u.fullName ?? '').trim()
+    const uname = String(u.userName ?? '').trim()
+    const email = String(u.email ?? '').trim()
+    if (!name && !uname && !email) return false
+    if (!q) return true
+    return name.toLowerCase().includes(q) || uname.toLowerCase().includes(q) || email.toLowerCase().includes(q)
+  })
   return list.slice(0, 80)
 })
 
@@ -271,28 +448,91 @@ const selectHighlighted = () => {
   }
 }
 
-const handleClickOutside = (e: MouseEvent) => {
-  if (comboboxRef.value && !comboboxRef.value.contains(e.target as Node)) {
-    closeDropdown()
-  }
-}
-
 const resolveUserName = (userId: string) => {
   const u = usuarios.value.find(u => String(u.id ?? u.userId) === userId)
   if (!u) return userId
   return String(u.fullName ?? u.userName ?? u.email ?? userId)
 }
 
+const handleClickOutside = (e: MouseEvent) => {
+  if (comboboxRef.value && !comboboxRef.value.contains(e.target as Node)) {
+    closeDropdown()
+  }
+  if (grupoDropdownRef.value && !grupoDropdownRef.value.contains(e.target as Node)) {
+    showGrupoDropdown.value = false
+  }
+}
+
+const startEdit = (item: GroupedAsignacion) => {
+  editingId.value = item.key
+  editAcceso.value = item.accesoAlmacen
+  editGrupos.value = item.grupos.map(g => g.id)
+}
+
+const cancelEdit = () => {
+  editingId.value = null
+  editAcceso.value = ''
+  editGrupos.value = []
+}
+
+const updateAsignacion = async (groupKey: string) => {
+  if (!editAcceso.value) return
+  updateLoadingId.value = groupKey
+  const group = groupedAsignaciones.value.find(g => g.key === groupKey)
+  if (!group) return
+  try {
+    const currentGrupoIds = group.grupos.map(g => g.id)
+    const newGrupoIds = editGrupos.value
+    const toDelete = group.ids.filter(id => {
+      const rec = asignaciones.value.find(a => String(a.id) === id)
+      return rec?.grupoId && !newGrupoIds.includes(rec.grupoId)
+    })
+    const toAdd = newGrupoIds.filter(gId => !currentGrupoIds.includes(gId))
+    const toUpdate = group.ids.filter(id => !toDelete.includes(id))
+    await Promise.all([
+      ...toUpdate.map(id => api.put(`/UsuariosAlmacenes/${id}`, {
+        accesoAlmacen: editAcceso.value,
+        warehouseGroupId: asignaciones.value.find(a => String(a.id) === id)?.grupoId || null
+      })),
+      ...toDelete.map(id => api.delete(`/UsuariosAlmacenes/${id}`)),
+      ...toAdd.map(gId => api.post('/UsuariosAlmacenes', {
+        userId: group.userId,
+        codAlmacen: group.codAlmacen,
+        accesoAlmacen: editAcceso.value,
+        warehouseGroupId: gId
+      }))
+    ])
+    const resp = await api.get('/UsuariosAlmacenes')
+    asignaciones.value = resp.data as AsignacionRecord[]
+    editingId.value = null
+  } catch (err: unknown) {
+    const e = err as { response?: { data?: { message?: string } } }
+    error.value = e?.response?.data?.message || 'No se pudo actualizar la asignación.'
+  } finally {
+    updateLoadingId.value = null
+  }
+}
+
+const deleteGrouped = async (groupKey: string) => {
+  const group = groupedAsignaciones.value.find(g => g.key === groupKey)
+  if (!group) return
+  deleteLoadingId.value = groupKey
+  try {
+    await Promise.all(group.ids.map(id => api.delete(`/UsuariosAlmacenes/${id}`)))
+    asignaciones.value = asignaciones.value.filter(a => !group.ids.includes(String(a.id)))
+  } catch (err: unknown) {
+    const e = err as { response?: { data?: { message?: string } } }
+    error.value = e?.response?.data?.message || 'No se pudo eliminar la asignación.'
+  } finally {
+    deleteLoadingId.value = null
+  }
+}
+
 const loadUsuarios = async () => {
   loadingUsuarios.value = true
   try {
-    const resp = await api.get('/Users', { params: { pageSize: 500, page: 1 } })
-    const payload = resp.data as UserRecord[] | { data?: UserRecord[] }
-    if (Array.isArray(payload)) {
-      usuarios.value = payload
-    } else if (Array.isArray(payload?.data)) {
-      usuarios.value = payload.data
-    }
+    const resp = await api.get('/Users/list')
+    usuarios.value = Array.isArray(resp.data) ? resp.data : []
   } finally {
     loadingUsuarios.value = false
   }
@@ -310,6 +550,18 @@ const loadAlmacenes = async () => {
     }
   } finally {
     loadingAlmacenes.value = false
+  }
+}
+
+const loadGrupos = async () => {
+  loadingGrupos.value = true
+  try {
+    const resp = await api.get('/WarehouseGroups')
+    grupos.value = Array.isArray(resp.data) ? resp.data as GrupoRecord[] : []
+  } catch {
+    // no crítico
+  } finally {
+    loadingGrupos.value = false
   }
 }
 
@@ -337,16 +589,21 @@ const createAsignacion = async () => {
   assignError.value = ''
   assignSuccess.value = ''
   try {
-    await api.post('/UsuariosAlmacenes', {
-      userId: newUserId.value,
-      codAlmacen: (newCodAlmacen.value ?? '').toUpperCase(),
-      accesoAlmacen: newAcceso.value
-    })
+    const gruposToAssign = selectedGrupoId.value.length > 0 ? selectedGrupoId.value : [null]
+    for (const grupoId of gruposToAssign) {
+      await api.post('/UsuariosAlmacenes', {
+        userId: newUserId.value,
+        codAlmacen: (newCodAlmacen.value ?? '').toUpperCase(),
+        accesoAlmacen: newAcceso.value,
+        warehouseGroupId: grupoId || null
+      })
+    }
     assignSuccess.value = 'Asignación creada correctamente.'
     newUserId.value = ''
     userSearch.value = ''
     newCodAlmacen.value = null
     newAcceso.value = ''
+    selectedGrupoId.value = []
     const asignResp = await api.get('/UsuariosAlmacenes')
     asignaciones.value = asignResp.data as AsignacionRecord[]
   } catch (err: unknown) {
@@ -357,21 +614,11 @@ const createAsignacion = async () => {
   }
 }
 
-const deleteAsignacion = async (id: string) => {
-  deleteLoadingId.value = id
-  try {
-    await api.delete(`/UsuariosAlmacenes/${id}`)
-    asignaciones.value = asignaciones.value.filter(a => String(a.id) !== id)
-  } catch (err: unknown) {
-    const e = err as { response?: { data?: { message?: string } } }
-    error.value = e?.response?.data?.message || 'No se pudo eliminar la asignación.'
-  } finally {
-    deleteLoadingId.value = null
-  }
-}
+
 
 onMounted(() => {
   loadData()
+  loadGrupos()
   document.addEventListener('mousedown', handleClickOutside)
 })
 

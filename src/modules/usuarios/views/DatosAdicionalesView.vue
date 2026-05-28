@@ -90,20 +90,61 @@
             <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
               <tr v-for="item in asignaciones" :key="String(item.id)">
                 <td class="px-4 py-3 text-sm font-mono text-gray-900 dark:text-gray-200">{{ item.codAlmacen }}</td>
-                <td class="px-4 py-3 text-sm text-gray-900 dark:text-gray-200">{{ item.accesoAlmacen }}</td>
+                <td class="px-4 py-3 text-sm text-gray-900 dark:text-gray-200">
+                  <template v-if="editingId === String(item.id)">
+                    <select
+                      v-model="editAcceso"
+                      class="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1 text-xs text-gray-900 dark:text-white focus:outline-none focus:border-sky-500"
+                    >
+                      <option v-for="key in permisos" :key="key" :value="key">{{ key }}</option>
+                    </select>
+                  </template>
+                  <template v-else>{{ item.accesoAlmacen }}</template>
+                </td>
                 <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
                   {{ item.fechaCreacion ? new Date(item.fechaCreacion).toLocaleDateString('es-PA', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '—' }}
                 </td>
                 <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{{ item.modificadoPor ?? '—' }}</td>
                 <td class="px-4 py-3 text-right">
-                  <button
-                    type="button"
-                    class="rounded border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-900/20 px-3 py-1 text-xs text-red-700 dark:text-red-300 hover:border-red-300 disabled:opacity-50"
-                    :disabled="deleteLoadingId === String(item.id)"
-                    @click="deleteAsignacion(String(item.id))"
-                  >
-                    {{ deleteLoadingId === String(item.id) ? 'Eliminando...' : 'Eliminar' }}
-                  </button>
+                  <template v-if="editingId === String(item.id)">
+                    <div class="flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        class="rounded border border-emerald-200 dark:border-emerald-900/40 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1 text-xs text-emerald-700 dark:text-emerald-300 hover:border-emerald-300 disabled:opacity-50"
+                        :disabled="updateLoadingId === String(item.id)"
+                        @click="updateAsignacion(String(item.id))"
+                      >
+                        {{ updateLoadingId === String(item.id) ? 'Guardando...' : 'Guardar' }}
+                      </button>
+                      <button
+                        type="button"
+                        class="rounded border border-gray-200 dark:border-gray-700 px-3 py-1 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                        @click="cancelEdit"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <div class="flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        class="rounded border border-sky-200 dark:border-sky-900/40 bg-sky-50 dark:bg-sky-900/20 px-3 py-1 text-xs text-sky-700 dark:text-sky-300 hover:border-sky-300 disabled:opacity-50"
+                        :disabled="!!deleteLoadingId"
+                        @click="startEdit(item)"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        class="rounded border border-red-200 dark:border-red-900/40 bg-red-50 dark:bg-red-900/20 px-3 py-1 text-xs text-red-700 dark:text-red-300 hover:border-red-300 disabled:opacity-50"
+                        :disabled="deleteLoadingId === String(item.id)"
+                        @click="deleteAsignacion(String(item.id))"
+                      >
+                        {{ deleteLoadingId === String(item.id) ? 'Eliminando...' : 'Eliminar' }}
+                      </button>
+                    </div>
+                  </template>
                 </td>
               </tr>
             </tbody>
@@ -145,6 +186,37 @@ const assignLoading = ref(false)
 const assignError = ref('')
 const assignSuccess = ref('')
 const deleteLoadingId = ref<string | null>(null)
+
+// Edit inline state
+const editingId = ref<string | null>(null)
+const editAcceso = ref('')
+const updateLoadingId = ref<string | null>(null)
+
+const startEdit = (item: AsignacionRecord) => {
+  editingId.value = String(item.id)
+  editAcceso.value = item.accesoAlmacen
+}
+
+const cancelEdit = () => {
+  editingId.value = null
+  editAcceso.value = ''
+}
+
+const updateAsignacion = async (id: string) => {
+  if (!editAcceso.value) return
+  updateLoadingId.value = id
+  try {
+    await api.put(`/UsuariosAlmacenes/${id}`, { accesoAlmacen: editAcceso.value })
+    const item = asignaciones.value.find(a => String(a.id) === id)
+    if (item) item.accesoAlmacen = editAcceso.value
+    editingId.value = null
+  } catch (err: unknown) {
+    const e = err as { response?: { data?: { message?: string } } }
+    error.value = e?.response?.data?.message || 'No se pudo actualizar la asignación.'
+  } finally {
+    updateLoadingId.value = null
+  }
+}
 
 const canAssign = computed(() => newCodAlmacen.value.trim() && newAcceso.value)
 
