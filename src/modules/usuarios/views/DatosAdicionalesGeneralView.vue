@@ -139,6 +139,8 @@
                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Usuario</th>
                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Almacén</th>
                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Permiso</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Fecha creación</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Modificado por</th>
                 <th class="px-4 py-3 text-right text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Acciones</th>
               </tr>
             </thead>
@@ -147,6 +149,10 @@
                 <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ resolveUserName(item.userId) }}</td>
                 <td class="px-4 py-3 text-sm font-mono text-gray-900 dark:text-gray-200">{{ item.codAlmacen }}</td>
                 <td class="px-4 py-3 text-sm text-gray-900 dark:text-gray-200">{{ item.accesoAlmacen }}</td>
+                <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                  {{ item.fechaCreacion ? new Date(item.fechaCreacion).toLocaleDateString('es-PA', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '—' }}
+                </td>
+                <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{{ item.modificadoPor ?? '—' }}</td>
                 <td class="px-4 py-3 text-right">
                   <button
                     type="button"
@@ -178,6 +184,8 @@ interface AsignacionRecord {
   userId: string
   codAlmacen: string
   accesoAlmacen: string
+  fechaCreacion: string | null
+  modificadoPor: string | null
 }
 
 type UserRecord = Record<string, unknown>
