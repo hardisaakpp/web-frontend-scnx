@@ -68,6 +68,14 @@ npm run docker:rebuild
 
 Siguen leyéndose variables antiguas si existen en `.env.development` local: `VITE_*_PROXY_TARGET`, `MBA3_UPSTREAM`, etc.
 
+El archivo `.env.development` **solo aplica a `npm run dev`** (Vite). Docker y los scripts de despliegue en servidores usan exclusivamente `deploy/env/active.env`; si `.env.development` llega a existir en el servidor, es ignorado por completo.
+
+## Fallback automático de Core (rama refactor)
+
+En la rama `refactor/mba3-api-service`, `vite.config.ts` incluye una función `resolveActiveBackend` que, en modo `development`, intenta conectarse al backend Core primario con un timeout de 1.5 s. Si no responde, usa el valor de `VITE_CORE_FALLBACK_PROXY_TARGET` (o el mismo primario si no está definido). Esto permite arrancar `npm run dev` sin tener el backend nativo levantado.
+
+Este comportamiento **no aplica en producción ni en Docker** (`mode !== 'development'`).
+
 ## Timeouts SAP
 
 Ver [timeout-sincronizado-frontend-backend.md](./timeout-sincronizado-frontend-backend.md).

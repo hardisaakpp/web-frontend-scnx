@@ -122,10 +122,12 @@ Las IPs/hostnames se aplican en:
 - **`npm run dev` (:3000):** Vite + `.env.development` (`VITE_*_PROXY_TARGET`) o `active.env`.
 - **Docker (:8082):** Nginx en la imagen; `UPSTREAM_*` en `active.env` + `docker compose --env-file deploy/env/active.env build`.
 
-## Archivos antiguos (deprecados)
+## Archivos antiguos (deprecados en el flujo principal)
 
-- `.env.development` / `.env.development.example` → usar `active.env` + `bundle.env`
+- `.env.development` / `.env.development.example` → el flujo recomendado usa `active.env` + `bundle.env`
 - `.env.docker.example` → usar `intranet.env.example` o `desa.env.example`
 - `.env.production.example` → sustituido por `bundle.env`
 
 Variables legacy `VITE_*_PROXY_TARGET` y `MBA3_UPSTREAM` siguen funcionando si aún existen en un `.env` local antiguo.
+
+> **Nota rama `refactor/mba3-api-service`:** esta rama mantiene `.env.development` de forma intencional como opción simplificada para desarrollo local (Opción A, sin necesidad de crear `active.env`). Su alcance es exclusivamente `npm run dev`; Docker y los servidores lo ignoran. Ver [docs/ENV.md](../../docs/ENV.md).

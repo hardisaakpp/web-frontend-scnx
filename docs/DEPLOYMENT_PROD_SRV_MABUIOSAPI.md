@@ -272,7 +272,32 @@ Tras merge de `main` en la rama de trabajo, los conflictos de env se resolvieron
 - `vite.config.ts` con `upstreamUrl()`
 - No volver a IPs en `VITE_*` del bundle
 
-Ver historial de conversación y [ENV.md](./ENV.md).
+Ver [ENV.md](./ENV.md).
+
+### Seguridad de merge entre ramas de trabajo y main
+
+Las configuraciones de producción son **inmunes a merges** porque viven fuera del repositorio:
+
+| Archivo | ¿En el repo? | ¿Afectable por merge? |
+|---|---|---|
+| `deploy/env/active.env` | No (gitignored) | Nunca |
+| `deploy/env/prod-mabuiosapi.env.example` | Sí | Solo si el merge lo modifica explícitamente |
+| `deploy/env/bundle.env` | Sí | Solo si el merge lo modifica explícitamente |
+| `.env.development` | Solo en ramas de dev local | Se agrega como archivo nuevo en main; no afecta Docker |
+
+El flujo Docker (`nexus_frontend_prod.sh`) lee **`deploy/env/active.env`** vía `--env-file` y nunca toca `.env.development`. Si ese archivo llega a main por un merge, los servidores que usan Docker lo ignoran por completo.
+
+### Rama `refactor/mba3-api-service` — diferencias de configuración local
+
+Esta rama mantiene intencionalmente `.env.development` para simplificar el arranque de desarrollo local (`npm run dev` sin necesidad de crear `active.env`). Diferencias respecto a main:
+
+| Aspecto | `refactor/mba3-api-service` | `main` |
+|---|---|---|
+| Config local | `.env.development` (todo en uno) | `deploy/env/active.env` desde un `.example` |
+| Core target local | `localhost:5053` | `192.168.2.12:8080` (según perfil) |
+| Fallback automático Core | Sí (`resolveActiveBackend` en `vite.config.ts`) | No |
+
+El `vite.config.ts` de la rama refactor incluye una función `resolveActiveBackend` que prueba el backend Core primario (1.5 s de timeout) y, si no responde, usa el fallback definido en `VITE_CORE_FALLBACK_PROXY_TARGET`. Este comportamiento **solo aplica en `mode === 'development'`** y no tiene efecto en builds Docker ni en producción.
 
 ---
 
@@ -289,6 +314,6 @@ Ver historial de conversación y [ENV.md](./ENV.md).
 
 ---
 
-**Última actualización:** 2026-03-21  
+**Última actualización:** 2026-05-28  
 **Servidor:** srv-mabuiosapi  
 **Dominio:** scnexus.mabelgroup.com.ec
