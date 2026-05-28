@@ -226,13 +226,35 @@
                 </td>
                 <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
                   <template v-if="editingId === item.key">
-                    <select
-                      v-model="editGrupos"
-                      multiple
-                      class="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1 text-xs text-gray-900 dark:text-white focus:outline-none focus:border-emerald-500"
-                    >
-                      <option v-for="g in grupos" :key="String(g.id)" :value="String(g.id)">{{ g.grupo }}</option>
-                    </select>
+                    <div class="relative" ref="editGrupoDropdownRef">
+                      <button
+                        type="button"
+                        class="w-full rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 px-2 py-1 text-xs text-gray-900 dark:text-white focus:outline-none focus:border-emerald-500 flex items-center justify-between gap-1 min-h-[28px]"
+                        @click="toggleEditGrupoDropdown"
+                      >
+                        <span class="truncate" :class="editGrupos.length === 0 ? 'text-slate-400 dark:text-slate-500' : ''">
+                          {{ editGrupos.length === 0 ? 'Sin grupo' : editGrupoLabel }}
+                        </span>
+                        <svg class="h-3 w-3 text-slate-400 shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                          <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                        </svg>
+                      </button>
+                      <ul
+                        v-if="showEditGrupoDropdown && grupos.length > 0"
+                        class="absolute z-50 mt-1 max-h-48 w-full min-w-[180px] overflow-auto rounded-lg border border-slate-200 bg-white py-1 text-xs shadow-lg dark:border-slate-700 dark:bg-slate-900"
+                      >
+                        <li
+                          v-for="g in grupos"
+                          :key="g.id"
+                          class="flex items-center gap-2 cursor-pointer px-3 py-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
+                          :class="{ 'bg-emerald-50 dark:bg-emerald-900/20': editGrupos.includes(g.id) }"
+                          @mousedown.prevent="toggleEditGrupo(g.id)"
+                        >
+                          <input type="checkbox" :checked="editGrupos.includes(g.id)" class="accent-emerald-500 pointer-events-none" readonly />
+                          <span class="text-slate-900 dark:text-slate-100">{{ g.grupo }}</span>
+                        </li>
+                      </ul>
+                    </div>
                   </template>
                   <template v-else>
                     <span v-if="item.grupos.length === 0">—</span>
@@ -246,10 +268,10 @@
                   </template>
                 </td>
                 <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                  {{ item.fechaCreacion ? new Date(item.fechaCreacion).toLocaleDateString('es-PA', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '—' }}
+                  {{ item.fechaCreacion ? new Date(item.fechaCreacion).toLocaleString('es-PA', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—' }}
                 </td>
                 <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                  {{ item.fechaModificacion ? new Date(item.fechaModificacion).toLocaleDateString('es-PA', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '—' }}
+                  {{ item.fechaModificacion ? new Date(item.fechaModificacion).toLocaleString('es-PA', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—' }}
                 </td>
                 <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{{ item.modificadoPor ?? '—' }}</td>
                 <td class="px-4 py-3 text-right">
@@ -379,9 +401,30 @@ const showDropdown = ref(false)
 const highlightedIndex = ref(-1)
 const comboboxRef = ref<HTMLElement | null>(null)
 
-// Grupo de almacenes dropdown state
+// Grupo de almacenes dropdown state (create form)
 const showGrupoDropdown = ref(false)
 const grupoDropdownRef = ref<HTMLElement | null>(null)
+
+// Grupo de almacenes dropdown state (edit row)
+const showEditGrupoDropdown = ref(false)
+const editGrupoDropdownRef = ref<HTMLElement | null>(null)
+
+const editGrupoLabel = computed(() =>
+  editGrupos.value
+    .map(id => grupos.value.find(g => g.id === id)?.grupo ?? id)
+    .join(', ')
+)
+
+const toggleEditGrupoDropdown = () => { showEditGrupoDropdown.value = !showEditGrupoDropdown.value }
+
+const toggleEditGrupo = (id: string) => {
+  const idx = editGrupos.value.indexOf(id)
+  if (idx === -1) {
+    editGrupos.value = [...editGrupos.value, id]
+  } else {
+    editGrupos.value = editGrupos.value.filter(v => v !== id)
+  }
+}
 
 const selectedGrupoLabel = computed(() =>
   selectedGrupoId.value
@@ -494,6 +537,9 @@ const handleClickOutside = (e: MouseEvent) => {
   if (grupoDropdownRef.value && !grupoDropdownRef.value.contains(e.target as Node)) {
     showGrupoDropdown.value = false
   }
+  if (editGrupoDropdownRef.value && !editGrupoDropdownRef.value.contains(e.target as Node)) {
+    showEditGrupoDropdown.value = false
+  }
 }
 
 const startEdit = (item: GroupedAsignacion) => {
@@ -510,6 +556,7 @@ const cancelEdit = () => {
   editCodAlmacen.value = ''
   editAcceso.value = ''
   editGrupos.value = []
+  showEditGrupoDropdown.value = false
 }
 
 const updateAsignacion = async (groupKey: string) => {

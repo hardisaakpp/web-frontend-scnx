@@ -11,11 +11,23 @@ function viteEnv(mode: string): Record<string, string> {
   return mergeViteDevEnv(mode, loadEnv(mode, process.cwd(), ''))
 }
 
-
+async function resolveActiveBackend(primary: string, fallback: string): Promise<string> {
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 1500)
+    await fetch(`${primary}/api/Roles`, { signal: controller.signal, headers: { Accept: 'application/json' } })
+    clearTimeout(timeout)
+    console.log(`\x1b[32m[proxy]\x1b[0m Core → ${primary} (nativo)`)
+    return primary
+  } catch {
+    console.log(`\x1b[33m[proxy]\x1b[0m Core → ${fallback} (Docker, nativo no disponible)`)
+    return fallback
+  }
+}
 
 // https://vitejs.dev/config/
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(async ({ mode }) => {
 
   const env = viteEnv(mode)
 
@@ -25,7 +37,11 @@ export default defineConfig(({ mode }) => {
 
   const appBasePath = normalizedAppBasePath.endsWith('/') ? normalizedAppBasePath : `${normalizedAppBasePath}/`
 
-  const coreProxyTarget = upstreamUrl(env, 'CORE')
+  const corePrimary = upstreamUrl(env, 'CORE')
+  const coreFallback = env.VITE_CORE_FALLBACK_PROXY_TARGET || corePrimary
+  const coreProxyTarget = mode === 'development'
+    ? await resolveActiveBackend(corePrimary, coreFallback)
+    : corePrimary
   const mba3ProxyTarget = upstreamUrl(env, 'MBA3')
   const authMeProxyTarget = upstreamUrl(env, 'MBA3_AUTH')
   const cajaChicaProxyTarget = upstreamUrl(env, 'CAJA_CHICA')
