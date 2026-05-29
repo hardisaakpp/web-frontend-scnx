@@ -74,17 +74,19 @@ stages:
     
     # 1. Construcción inyectando todas las variables de los Upstreams
     - script: |
-        echo "Construyendo SPA y empaquetando en Nginx con upstreams de producción..."
+    # 1. Construcción inyectando todas las variables de DESA (Test)
+    - script: |
+        echo "Construyendo SPA y empaquetando en Nginx con upstreams de DESA..."
         docker build \
-          --build-arg VITE_APP_BASE_PATH=/ \
-          --build-arg CORE_UPSTREAM="http://192.168.2.12:8080" \
-          --build-arg CORE_PROXY_HOST="192.168.2.12:8080" \
-          --build-arg MBA3_UPSTREAM="http://mba3-api:8000" \
-          --build-arg CAJA_CHICA_UPSTREAM="http://192.168.2.153:8092" \
+          --build-arg VITE_APP_BASE_PATH=/scnexus-front/ \
+          --build-arg CORE_UPSTREAM="http://host.docker.internal:5053" \
+          --build-arg CORE_PROXY_HOST="host.docker.internal:5053" \
+          --build-arg MBA3_UPSTREAM="http://host.docker.internal:8000" \
+          --build-arg CAJA_CHICA_UPSTREAM="http://host.docker.internal:8081" \
           --build-arg EMPLOYEES_UPSTREAM="http://host.docker.internal:3001" \
-          --build-arg CONCILIACION_UPSTREAM="http://app-conciliacion:8000" \
-          --build-arg MAESTRO_UPSTREAM="http://app-maestro:8000" \
-          --build-arg PYG_UPSTREAM="http://scnexus-pyg-api:8080" \
+          --build-arg CONCILIACION_UPSTREAM="http://host.docker.internal:8005" \
+          --build-arg MAESTRO_UPSTREAM="http://host.docker.internal:8004" \
+          --build-arg PYG_UPSTREAM="http://host.docker.internal:5171" \
           --build-arg SCAN_API_UPSTREAM="http://host.docker.internal:8080" \
           -f $(dockerfilePath) \
           -t $(localRegistry)/$(imageRepository):$(tag) \
