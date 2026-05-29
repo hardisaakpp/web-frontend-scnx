@@ -2,9 +2,8 @@
 trigger:
   branches:
     include:
-      - main
-      - develop
-      - test
+      - main       # Producción
+      - test       # Pruebas (DESA)
       - ci/pipeline-azure
 
 pool:
@@ -13,11 +12,19 @@ pool:
     - Agent.OS -equals Linux
 
 variables:
-  nodeVersion: '20.x'
-  localRegistry: 'localhost:5000'
-  imageRepository: 'web-scnexus'
-  dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
-  tag: '$(Build.BuildId)'
+  # 1. Importamos los grupos de variables desde Azure DevOps Library
+  - group: scnexus-prod-env
+  - group: scnexus-test-env
+  
+  # 2. Variables locales estructurales
+  - name: nodeVersion
+    value: '20.x'
+  - name: localRegistry
+    value: 'localhost:5000'
+  - name: imageRepository
+    value: 'web-scnexus'
+  - name: dockerfilePath
+    value: '$(Build.SourcesDirectory)/Dockerfile'
 
 stages:
 # =====================================================================
@@ -29,19 +36,15 @@ stages:
   - job: Frontend_Checks
     displayName: 'Linting, Typecheck y Dependencias'
     
-    # Declaramos la variable para el Caché de NPM
     variables:
       npm_config_cache: $(Pipeline.Workspace)/.npm
 
     steps:
-    
-    # 1. Configurar Node.js 20
     - task: NodeTool@0
       inputs:
         versionSpec: '$(nodeVersion)'
       displayName: 'Instalar Node.js $(nodeVersion)'
 
-    # 2. Configurar Caché de NPM para acelerar el build
     - task: Cache@2
       inputs:
         key: 'npm | "$(Agent.OS)" | package-lock.json'
@@ -50,12 +53,10 @@ stages:
         path: $(npm_config_cache)
       displayName: 'Caché de paquetes NPM'
 
-    # 3. Instalación limpia y determinista
     - script: |
         npm ci
       displayName: 'Instalar Dependencias (npm ci)'
 
-    # 4. Análisis estático estricto (Typecheck sin emitir archivos)
     - script: |
         npx vue-tsc --noEmit
       displayName: 'Verificar Tipado Estricto (TypeScript)'
@@ -71,31 +72,65 @@ stages:
   - job: Docker_Build_Push
     displayName: 'Generar Imagen y Enviar a Registro Intermedio'
     steps:
-    
-    # 1. Construcción inyectando todas las variables de los Upstreams
+
+    # Tarea 1: Detectar la rama y fijar las variables desde el Library
     - script: |
-    # 1. Construcción inyectando todas las variables de DESA (Test)
+        BRANCH_NAME="$(Build.SourceBranchName)"
+        echo "Rama origen del build: $BRANCH_NAME"
+        
+        if [ "$BRANCH_NAME" == "main" ]; then
+          echo "Configurando entorno de PRODUCCIÓN..."
+          echo "##vso[task.setvariable variable=basePath]/"
+          echo "##vso[task.setvariable variable=coreUpstream]$(PROD_CORE_UPSTREAM)"
+          echo "##vso[task.setvariable variable=coreProxyHost]$(PROD_CORE_PROXY_HOST)"
+          echo "##vso[task.setvariable variable=mba3Upstream]$(PROD_MBA3_UPSTREAM)"
+          echo "##vso[task.setvariable variable=cajaChicaUpstream]$(PROD_CAJA_CHICA_UPSTREAM)"
+          echo "##vso[task.setvariable variable=pygUpstream]$(PROD_PYG_UPSTREAM)"
+          echo "##vso[task.setvariable variable=employeesUpstream]$(PROD_EMPLOYEES_UPSTREAM)"
+          echo "##vso[task.setvariable variable=conciliacionUpstream]$(PROD_CONCILIACION_UPSTREAM)"
+          echo "##vso[task.setvariable variable=maestroUpstream]$(PROD_MAESTRO_UPSTREAM)"
+          echo "##vso[task.setvariable variable=scanApiUpstream]$(PROD_SCAN_API_UPSTREAM)"
+          echo "##vso[task.setvariable variable=imageTag]prod-$(Build.BuildId)"
+          echo "##vso[task.setvariable variable=latestTag]prod-latest"
+        else
+          echo "Configurando entorno de PRUEBAS (DESA)..."
+          echo "##vso[task.setvariable variable=basePath]/scnexus-front/"
+          echo "##vso[task.setvariable variable=coreUpstream]$(TEST_CORE_UPSTREAM)"
+          echo "##vso[task.setvariable variable=coreProxyHost]$(TEST_CORE_PROXY_HOST)"
+          echo "##vso[task.setvariable variable=mba3Upstream]$(TEST_MBA3_UPSTREAM)"
+          echo "##vso[task.setvariable variable=cajaChicaUpstream]$(TEST_CAJA_CHICA_UPSTREAM)"
+          echo "##vso[task.setvariable variable=pygUpstream]$(TEST_PYG_UPSTREAM)"
+          echo "##vso[task.setvariable variable=employeesUpstream]$(TEST_EMPLOYEES_UPSTREAM)"
+          echo "##vso[task.setvariable variable=conciliacionUpstream]$(TEST_CONCILIACION_UPSTREAM)"
+          echo "##vso[task.setvariable variable=maestroUpstream]$(TEST_MAESTRO_UPSTREAM)"
+          echo "##vso[task.setvariable variable=scanApiUpstream]$(TEST_SCAN_API_UPSTREAM)"
+          echo "##vso[task.setvariable variable=imageTag]test-$(Build.BuildId)"
+          echo "##vso[task.setvariable variable=latestTag]test-latest"
+        fi
+      displayName: 'Definir Variables Dinámicas según la Rama'
+
+    # Tarea 2: Construir la imagen con las variables mapeadas dinámicamente
     - script: |
-        echo "Construyendo SPA y empaquetando en Nginx con upstreams de DESA..."
+        echo "Construyendo para base path: $(basePath) y tags: $(imageTag)"
         docker build \
-          --build-arg VITE_APP_BASE_PATH=/scnexus-front/ \
-          --build-arg CORE_UPSTREAM="http://host.docker.internal:5053" \
-          --build-arg CORE_PROXY_HOST="host.docker.internal:5053" \
-          --build-arg MBA3_UPSTREAM="http://host.docker.internal:8000" \
-          --build-arg CAJA_CHICA_UPSTREAM="http://host.docker.internal:8081" \
-          --build-arg EMPLOYEES_UPSTREAM="http://host.docker.internal:3001" \
-          --build-arg CONCILIACION_UPSTREAM="http://host.docker.internal:8005" \
-          --build-arg MAESTRO_UPSTREAM="http://host.docker.internal:8004" \
-          --build-arg PYG_UPSTREAM="http://host.docker.internal:5171" \
-          --build-arg SCAN_API_UPSTREAM="http://host.docker.internal:8080" \
+          --build-arg VITE_APP_BASE_PATH=$(basePath) \
+          --build-arg CORE_UPSTREAM="$(coreUpstream)" \
+          --build-arg CORE_PROXY_HOST="$(coreProxyHost)" \
+          --build-arg MBA3_UPSTREAM="$(mba3Upstream)" \
+          --build-arg CAJA_CHICA_UPSTREAM="$(cajaChicaUpstream)" \
+          --build-arg EMPLOYEES_UPSTREAM="$(employeesUpstream)" \
+          --build-arg CONCILIACION_UPSTREAM="$(conciliacionUpstream)" \
+          --build-arg MAESTRO_UPSTREAM="$(maestroUpstream)" \
+          --build-arg PYG_UPSTREAM="$(pygUpstream)" \
+          --build-arg SCAN_API_UPSTREAM="$(scanApiUpstream)" \
           -f $(dockerfilePath) \
-          -t $(localRegistry)/$(imageRepository):$(tag) \
-          -t $(localRegistry)/$(imageRepository):latest .
-      displayName: 'Construir Imagen Docker Multi-stage (Inyección de Upstreams)'
+          -t $(localRegistry)/$(imageRepository):$(imageTag) \
+          -t $(localRegistry)/$(imageRepository):$(latestTag) .
+      displayName: 'Construir Imagen Docker (Multi-stage)'
       
-    # 2. Empujar al Registro Intermedio
+    # Tarea 3: Empujar la imagen al Registro
     - script: |
-        echo "Guardando versión del Frontend en el Registro Central..."
-        docker push $(localRegistry)/$(imageRepository):$(tag)
-        docker push $(localRegistry)/$(imageRepository):latest
+        echo "Guardando versión $(imageTag) en el Registro Central..."
+        docker push $(localRegistry)/$(imageRepository):$(imageTag)
+        docker push $(localRegistry)/$(imageRepository):$(latestTag)
       displayName: 'Publicar en Registro Interno'
