@@ -1,0 +1,99 @@
+# Disparadores estratégicos para el Frontend
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+      - test
+      - ci/pipeline-azure
+
+pool:
+  name: 'Test-Agents'
+  demands:
+    - Agent.OS -equals Linux
+
+variables:
+  nodeVersion: '20.x'
+  localRegistry: 'localhost:5000'
+  imageRepository: 'web-scnexus'
+  dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
+  tag: '$(Build.BuildId)'
+
+stages:
+# =====================================================================
+# ETAPA 1: VALIDACIÓN Y PRUEBAS DEL FRONTEND (Node.js)
+# =====================================================================
+- stage: CI_Validation
+  displayName: 'Validación de Código y Tipado (Vue 3 / TS)'
+  jobs:
+  - job: Frontend_Checks
+    displayName: 'Linting, Typecheck y Dependencias'
+    
+    # Declaramos la variable para el Caché de NPM
+    variables:
+      npm_config_cache: $(Pipeline.Workspace)/.npm
+
+    steps:
+    
+    # 1. Configurar Node.js 20
+    - task: NodeTool@0
+      inputs:
+        versionSpec: '$(nodeVersion)'
+      displayName: 'Instalar Node.js $(nodeVersion)'
+
+    # 2. Configurar Caché de NPM para acelerar el build
+    - task: Cache@2
+      inputs:
+        key: 'npm | "$(Agent.OS)" | package-lock.json'
+        restoreKeys: |
+           npm | "$(Agent.OS)"
+        path: $(npm_config_cache)
+      displayName: 'Caché de paquetes NPM'
+
+    # 3. Instalación limpia y determinista
+    - script: |
+        npm ci
+      displayName: 'Instalar Dependencias (npm ci)'
+
+    # 4. Análisis estático estricto (Typecheck sin emitir archivos)
+    - script: |
+        npx vue-tsc --noEmit
+      displayName: 'Verificar Tipado Estricto (TypeScript)'
+
+# =====================================================================
+# ETAPA 2: CONSTRUCCIÓN DOCKER MULTICAPA Y REGISTRO
+# =====================================================================
+- stage: Build_Docker
+  displayName: 'Construcción y Empaquetado Nginx'
+  dependsOn: CI_Validation
+  condition: succeeded()
+  jobs:
+  - job: Docker_Build_Push
+    displayName: 'Generar Imagen y Enviar a Registro Intermedio'
+    steps:
+    
+    # 1. Construcción inyectando todas las variables de los Upstreams
+    - script: |
+        echo "Construyendo SPA y empaquetando en Nginx con upstreams de producción..."
+        docker build \
+          --build-arg VITE_APP_BASE_PATH=/ \
+          --build-arg CORE_UPSTREAM="http://192.168.2.12:8080" \
+          --build-arg CORE_PROXY_HOST="192.168.2.12:8080" \
+          --build-arg MBA3_UPSTREAM="http://mba3-api:8000" \
+          --build-arg CAJA_CHICA_UPSTREAM="http://192.168.2.153:8092" \
+          --build-arg EMPLOYEES_UPSTREAM="http://host.docker.internal:3001" \
+          --build-arg CONCILIACION_UPSTREAM="http://app-conciliacion:8000" \
+          --build-arg MAESTRO_UPSTREAM="http://app-maestro:8000" \
+          --build-arg PYG_UPSTREAM="http://scnexus-pyg-api:8080" \
+          --build-arg SCAN_API_UPSTREAM="http://host.docker.internal:8080" \
+          -f $(dockerfilePath) \
+          -t $(localRegistry)/$(imageRepository):$(tag) \
+          -t $(localRegistry)/$(imageRepository):latest .
+      displayName: 'Construir Imagen Docker Multi-stage (Inyección de Upstreams)'
+      
+    # 2. Empujar al Registro Intermedio
+    - script: |
+        echo "Guardando versión del Frontend en el Registro Central..."
+        docker push $(localRegistry)/$(imageRepository):$(tag)
+        docker push $(localRegistry)/$(imageRepository):latest
+      displayName: 'Publicar en Registro Interno'
