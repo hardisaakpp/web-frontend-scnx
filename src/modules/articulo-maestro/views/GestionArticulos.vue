@@ -529,26 +529,14 @@ function toggleSort(key: string) {
     }
 }
 
-// 1. Filtrar artículos en base a la búsqueda en la vista, aunque ya vengan paginados del servidor.
-// Como el backend devuelve todos y simulamos paginacion real:
 const filteredArticulos = computed(() => {
-    // Si la bsuqueda es "server side", el store.articulos ya viene filtrado
-    // Como el endpoint devuelve todo, filtramos local por ahora
-    const query = searchQuery.value.toLowerCase().trim()
-    
     // Casting temporal para saltarnos el type-checking de camelCase vs PascalCase
     const artlist = articulos.value as any[]
 
+    // Ya no filtramos localmente por query, confiamos en el filtrado del backend
     let result = artlist
-    if (query) {
-        result = artlist.filter(articulo => {
-            const cod = articulo.itemCode || ''
-            const nom = articulo.itemName || ''
-            return cod.toLowerCase().includes(query) || nom.toLowerCase().includes(query)
-        })
-    }
-
-    // Aplicar ordenamiento
+    
+    // Aplicar ordenamiento local sobre los resultados entregados por el servidor
     if (sortKey.value) {
         result = [...result].sort((a, b) => {
             const valA = a[sortKey.value]
@@ -570,11 +558,12 @@ const filteredArticulos = computed(() => {
     return result
 })
 
-const totalPages = computed(() => Math.max(1, Math.ceil(filteredArticulos.value.length / pageSize.value)))
+const totalPages = computed(() => store.pagination.totalPages)
 
 const pagedArticulos = computed(() => {
-    const start = (page.value - 1) * pageSize.value
-    return filteredArticulos.value.slice(start, start + pageSize.value)
+    // Como ahora la paginación es del lado del servidor, filteredArticulos ya contiene
+    // solo los elementos de la página actual. No necesitamos hacer .slice() local.
+    return filteredArticulos.value
 })
 
 const pageStart = computed(() => {
@@ -584,7 +573,8 @@ const pageStart = computed(() => {
 
 const pageEnd = computed(() => {
     const end = page.value * pageSize.value
-    return Math.min(end, filteredArticulos.value.length)
+    // Usamos totalCount (total real en servidor) para el límite superior
+    return Math.min(end, totalCount.value)
 })
 
 // Observadores (Watchers)

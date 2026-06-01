@@ -17,7 +17,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/inventario/configuracion-usuario/:id',
     name: 'inventario-configuracion-usuario',
-    component: () => import('./views/UserSettingsView.vue'),
+    redirect: '/inventario',
     meta: {
       requiresAuth: true,
       title: 'Configuracion de Usuario',
@@ -27,7 +27,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/inventario/planificaciones',
     name: 'inventario-planificaciones',
-    component: () => import('./views/InventoryPlanningsView.vue'),
+    component: () => import('./views/PlanningWorkbenchView.vue'),
     meta: {
       requiresAuth: true,
       title: 'Planificacion de Inventario',
@@ -35,24 +35,42 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
-    path: '/inventario/generados',
-    name: 'inventario-generados',
-    component: () => import('./views/GeneratedInventoriesView.vue'),
+    path: '/inventario/planificaciones/:planId',
+    name: 'inventario-planificacion-detalle',
+    component: () => import('./views/PlanningDetailView.vue'),
     meta: {
       requiresAuth: true,
-      title: 'Inventarios Generados',
+      title: 'Detalle de Planificacion',
       permissions: INVENTARIO_VIEW_PERMISSIONS
     }
   },
   {
-    path: '/inventario/generados/:id',
-    name: 'inventario-detalle',
-    component: () => import('./views/InventoryDetailView.vue'),
+    path: '/inventario/sesiones',
+    name: 'inventario-sesiones',
+    component: () => import('./views/SessionCenterView.vue'),
     meta: {
       requiresAuth: true,
-      title: 'Detalle de Inventario',
+      title: 'Toma / Sesiones de Inventario',
       permissions: INVENTARIO_VIEW_PERMISSIONS
     }
+  },
+  {
+    path: '/inventario/ajustes',
+    name: 'inventario-ajustes',
+    component: () => import('./views/AdjustmentsBoardView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Bandeja de Ajustes',
+      permissions: INVENTARIO_VIEW_PERMISSIONS
+    }
+  },
+  {
+    path: '/inventario/generados',
+    redirect: '/inventario/planificaciones'
+  },
+  {
+    path: '/inventario/generados/:id',
+    redirect: '/inventario/sesiones'
   }
 ]
 

@@ -4,7 +4,7 @@
       <p class="text-sm font-medium text-blue-600 dark:text-blue-400">StoreControl</p>
       <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Inventario</h1>
       <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-        Flujo migrado de planificación, generación y revisión de inventarios.
+        Flujo operativo completo: planificar, ejecutar toma, monitorear estado, cerrar snapshot y gestionar ajustes.
       </p>
     </div>
 
@@ -43,24 +43,24 @@ const settingsUserId = computed(() => getLegacyUserIdFromToken() ?? 330)
 
 const cards = computed(() => [
   {
-    title: 'Configuración de Usuario',
-    description: 'Editar parámetros operativos (marca, bodegas, realiza conteo). Almacenes filtrados por marca del usuario.',
-    to: `/inventario/configuracion-usuario/${settingsUserId.value}`,
-    badge: 'U',
-    editOnly: true
-  },
-  {
-    title: 'Planificación',
-    description: 'Crear, revisar, activar y ejecutar planificaciones de inventario.',
+    title: 'Generar / Planificar',
+    description: 'Selección de bodega, stock base con filtros level y creación/ejecución de planificaciones.',
     to: '/inventario/planificaciones',
-    badge: 'P',
+    badge: 'P1',
     editOnly: false
   },
   {
-    title: 'Inventarios Generados',
-    description: 'Consultar los inventarios materializados desde las planificaciones.',
-    to: '/inventario/generados',
-    badge: 'I',
+    title: 'Toma y Estado de Sesión',
+    description: 'Crear sesión, conteo/reconteo, monitoreo en tiempo real, cierre de toma y consulta de snapshot.',
+    to: '/inventario/sesiones',
+    badge: 'S',
+    editOnly: false
+  },
+  {
+    title: 'Bandeja de Ajustes',
+    description: 'Crear ajuste desde sesión cerrada, editar líneas, enviar a revisión, aprobar y marcar envío SAP.',
+    to: '/inventario/ajustes',
+    badge: 'A',
     editOnly: false
   }
 ])

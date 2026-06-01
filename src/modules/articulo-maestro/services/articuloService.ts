@@ -105,6 +105,10 @@ apiMaestro.interceptors.response.use((response) => {
     if (response.data) {
         if (Array.isArray(response.data)) {
             response.data = response.data.map(normalizeObject)
+        } else if (response.data.items && Array.isArray(response.data.items)) {
+            // Nueva estructura: { total: number, items: Articulo[] }
+            response.data.items = response.data.items.map(normalizeObject)
+            response.data = normalizeObject(response.data)
         } else {
             response.data = normalizeObject(response.data)
         }
@@ -116,18 +120,32 @@ attachUnauthorizedRedirect(apiMaestro)
 
 
 export const articuloService = {
-    // Listado completo (el backend devuelve un array directo)
+    // Listado paginado (el backend devuelve { total, items })
     getArticulos: async (filters: ArticuloFilters) => {
-        const response = await apiMaestro.get<Articulo[]>('/api/v1/articulos/', {
-            params: filters
+        const pageSize = filters.pageSize || 10
+        const page = filters.page || 1
+        const skip = (page - 1) * pageSize
+
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { page: _p, pageSize: _ps, ...otherFilters } = filters
+
+        const response = await apiMaestro.get<{ total: number, items: Articulo[] }>('/api/v1/articulos/', {
+            params: {
+                ...otherFilters,
+                skip,
+                limit: pageSize
+            }
         })
+        
+        const { items, total } = response.data
+
         return {
-            data: response.data,
+            data: items,
             pagination: {
-                total: response.data.length,
-                page: filters.page || 1,
-                pageSize: filters.pageSize || 10,
-                totalPages: Math.ceil(response.data.length / (filters.pageSize || 10))
+                total,
+                page,
+                pageSize,
+                totalPages: Math.ceil(total / pageSize)
             }
         }
     },
@@ -169,8 +187,8 @@ export const articuloService = {
         params.append('limit', limit.toString())
         estados.forEach(e => params.append('estado', e))
 
-        const response = await apiMaestro.get<Articulo[]>('/api/v1/articulos/', { params })
-        return response.data
+        const response = await apiMaestro.get<{ total: number, items: Articulo[] }>('/api/v1/articulos/', { params })
+        return response.data.items
     },
 
     // Descargar plantilla Excel para carga masiva
