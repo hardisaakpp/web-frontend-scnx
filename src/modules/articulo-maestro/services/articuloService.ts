@@ -102,15 +102,16 @@ apiMaestro.interceptors.response.use((response) => {
         return response
     }
 
-    if (response.data) {
-        if (Array.isArray(response.data)) {
-            response.data = response.data.map(normalizeObject)
-        } else if (response.data.items && Array.isArray(response.data.items)) {
+    const data: any = response.data
+    if (data) {
+        if (Array.isArray(data)) {
+            response.data = data.map(normalizeObject)
+        } else if (data.items && Array.isArray(data.items)) {
             // Nueva estructura: { total: number, items: Articulo[] }
-            response.data.items = response.data.items.map(normalizeObject)
-            response.data = normalizeObject(response.data)
+            data.items = data.items.map(normalizeObject)
+            response.data = normalizeObject(data)
         } else {
-            response.data = normalizeObject(response.data)
+            response.data = normalizeObject(data)
         }
     }
     return response
