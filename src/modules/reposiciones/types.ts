@@ -109,3 +109,15 @@ export interface RepLog {
   respApi: string;
   fecha: string;
 }
+export interface HistorialSolicitudSapLinea {
+  itemCode: string;
+  quantity: string;
+}
+
+export interface HistorialSolicitudSap {
+  docNum: string;
+  fromWhs: string;
+  toWhs: string;
+  comments: string;
+  lines: HistorialSolicitudSapLinea[];
+}

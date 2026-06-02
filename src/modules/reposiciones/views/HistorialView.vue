@@ -2,7 +2,7 @@
 import { onMounted, ref, watch, computed } from 'vue'
 import { useReposicionStore } from '../stores/reposicionStore'
 import reposicionApi from '../services/reposicionApi'
-import type { HistorialCabecera, RepLog, HistorialDetalleItem } from '../types'
+import type { HistorialCabecera, RepLog, HistorialDetalleItem, HistorialSolicitudSap } from '../types'
 import { 
   ArrowLeftIcon, 
   CalendarIcon,
@@ -93,8 +93,22 @@ const downloadPdf = (id: number) => {
   window.open(url, '_blank')
 }
 
-const viewSolicitudes = (id: number) => {
-  alert(`Ver solicitudes de la cabecera #${id} (Pendiente en backend)`)
+const isSapModalOpen = ref(false)
+const sapRequests = ref<HistorialSolicitudSap[]>([])
+const loadingSap = ref(false)
+
+const viewSolicitudes = async (whsCode: string, fecha: string) => {
+  const dateOnly = fecha.split('T')[0]
+  loadingSap.value = true
+  isSapModalOpen.value = true
+  try {
+    sapRequests.value = await reposicionApi.getSolicitudesSap(whsCode, dateOnly)
+  } catch (err) {
+    console.error('Error al cargar solicitudes SAP', err)
+    sapRequests.value = []
+  } finally {
+    loadingSap.value = false
+  }
 }
 </script>
 
@@ -199,7 +213,7 @@ const viewSolicitudes = (id: number) => {
                   <button @click="downloadPdf(item.id)" title="Descargar PDF" class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
                     <DocumentArrowDownIcon class="w-5 h-5" />
                   </button>
-                  <button @click="viewSolicitudes(item.id)" title="Ver Solicitudes (Pendiente)" class="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors">
+                  <button @click="viewSolicitudes(item.toWhs, item.fecha)" title="Ver Solicitudes en SAP" class="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors">
                     <QueueListIcon class="w-5 h-5" />
                   </button>
                 </div>
@@ -264,6 +278,97 @@ const viewSolicitudes = (id: number) => {
                   </div>
                   <div v-else class="py-12 text-center text-gray-500">
                     No se encontraron artículos en esta solicitud.
+                  </div>
+                </div>
+              </DialogPanel>
+            </TransitionChild>
+          </div>
+        </div>
+      </Dialog>
+    </TransitionRoot>
+    <!-- Modal Solicitudes SAP -->
+    <TransitionRoot appear :show="isSapModalOpen" as="template">
+      <Dialog as="div" @close="isSapModalOpen = false" class="relative z-50">
+        <TransitionChild as="template" enter="duration-300 ease-out" enter-from="opacity-0" enter-to="opacity-100" leave="duration-200 ease-in" leave-from="opacity-100" leave-to="opacity-0">
+          <div class="fixed inset-0 bg-black/40 backdrop-blur-sm" />
+        </TransitionChild>
+
+        <div class="fixed inset-0 overflow-y-auto">
+          <div class="flex min-h-full items-center justify-center p-4 text-center">
+            <TransitionChild as="template" enter="duration-300 ease-out" enter-from="opacity-0 scale-95" enter-to="opacity-100 scale-100" leave="duration-200 ease-in" leave-from="opacity-100 scale-100" leave-to="opacity-0 scale-95">
+              <DialogPanel class="w-full max-w-4xl transform overflow-hidden rounded-3xl bg-white p-8 text-left align-middle shadow-2xl transition-all border border-gray-100">
+                <div v-if="loadingSap" class="flex flex-col items-center py-12">
+                  <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mb-4"></div>
+                  <p class="text-gray-500 font-medium">Consultando registros en SAP...</p>
+                </div>
+                
+                <div v-else>
+                  <div class="flex justify-between items-start mb-6">
+                    <div>
+                      <DialogTitle as="h3" class="text-2xl font-bold text-gray-900 pr-8 leading-tight">
+                        Solicitudes Generadas en SAP
+                      </DialogTitle>
+                      <p class="text-sm text-gray-500 mt-1">Documentos oficiales creados a partir de esta reposición.</p>
+                    </div>
+                    <button @click="isSapModalOpen = false" class="p-2 hover:bg-gray-100 rounded-full text-gray-400 transition-colors">
+                      <XMarkIcon class="w-6 h-6" />
+                    </button>
+                  </div>
+
+                  <div v-if="sapRequests.length > 0" class="space-y-6 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
+                    <div v-for="req in sapRequests" :key="req.docNum" class="bg-gray-50/50 rounded-2xl border border-gray-100 overflow-hidden">
+                      <div class="bg-white px-6 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-4">
+                        <div class="flex items-center gap-3">
+                          <div class="bg-emerald-100 p-2 rounded-xl text-emerald-600">
+                            <DocumentTextIcon class="w-5 h-5" />
+                          </div>
+                          <div>
+                            <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Documento SAP</span>
+                            <h4 class="text-lg font-extrabold text-gray-900">#{{ req.docNum }}</h4>
+                          </div>
+                        </div>
+                        <div class="flex items-center gap-4 bg-gray-50 px-4 py-2 rounded-xl border border-gray-100">
+                           <div class="text-center">
+                             <div class="text-[10px] text-gray-400 font-bold uppercase">Origen</div>
+                             <div class="text-sm font-bold text-gray-700">{{ req.fromWhs }}</div>
+                           </div>
+                           <div class="text-gray-300">→</div>
+                           <div class="text-center">
+                             <div class="text-[10px] text-gray-400 font-bold uppercase">Destino</div>
+                             <div class="text-sm font-bold text-emerald-600">{{ req.toWhs }}</div>
+                           </div>
+                        </div>
+                      </div>
+                      
+                      <div class="p-6">
+                        <div v-if="req.comments" class="mb-4 bg-amber-50/50 p-3 rounded-lg border border-amber-100/50 flex items-start gap-2">
+                          <ClockIcon class="w-4 h-4 text-amber-500 mt-0.5" />
+                          <p class="text-xs text-amber-700 font-medium italic line-clamp-2">"{{ req.comments }}"</p>
+                        </div>
+
+                        <table class="w-full text-left border-collapse">
+                          <thead>
+                            <tr class="border-b border-gray-200">
+                              <th class="py-2 text-xs font-bold text-gray-400 uppercase">Código de Artículo</th>
+                              <th class="py-2 text-xs font-bold text-gray-400 uppercase text-right">Cantidad</th>
+                            </tr>
+                          </thead>
+                          <tbody class="divide-y divide-gray-100">
+                            <tr v-for="line in req.lines" :key="line.itemCode">
+                              <td class="py-2.5 text-sm font-medium text-gray-600">{{ line.itemCode }}</td>
+                              <td class="py-2.5 text-sm font-bold text-gray-900 text-right">{{ line.quantity }}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                  <div v-else class="py-20 text-center bg-gray-50/50 rounded-3xl border-2 border-dashed border-gray-100">
+                    <div class="bg-white w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm border border-gray-50">
+                      <XMarkIcon class="w-10 h-10 text-gray-200" />
+                    </div>
+                    <p class="text-xl font-bold text-gray-400">Sin registros en SAP</p>
+                    <p class="text-gray-400 text-sm mt-1 max-w-xs mx-auto">Esta reposición aún no ha sido procesada o no generó documentos de traslado vinculados.</p>
                   </div>
                 </div>
               </DialogPanel>

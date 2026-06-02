@@ -11,7 +11,8 @@ import type {
   HistorialDetalleItem,
   RepLog,
   SaveItemRequest,
-  UpdateCommentRequest
+  UpdateCommentRequest,
+  HistorialSolicitudSap
 } from '../types'
 
 const reposicionApi = {
@@ -90,6 +91,11 @@ const reposicionApi = {
     // or trigger a download via API. Since we use reverse proxy in dev (/api/reposicion-api),
     // it's better to return the proxied path or construct a URL based on the API base.
     return `/api/reposicion-api/Historial/${id}/pdf`
+  },
+
+  getSolicitudesSap: async (whsCode: string, fecha: string) => {
+    const response = await api.get<HistorialSolicitudSap[]>('/reposicion-api/Historial/solicitudes', { params: { whsCode, fecha } })
+    return response.data
   }
 }
 
