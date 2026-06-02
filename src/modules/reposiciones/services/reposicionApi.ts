@@ -8,6 +8,7 @@ import type {
   Almacen,
   SolicitudDetalle,
   HistorialCabecera,
+  HistorialDetalleItem,
   RepLog,
   SaveItemRequest,
   UpdateCommentRequest
@@ -67,8 +68,8 @@ const reposicionApi = {
   },
 
   // Historial
-  getHistorial: async (desde: string, hasta: string, idUser?: number) => {
-    const params: any = { desde, hasta }
+  getHistorial: async (whsCode: string, desde: string, hasta: string, idUser?: number) => {
+    const params: any = { whsCode, desde, hasta }
     if (idUser) params.idUser = idUser
     const response = await api.get<HistorialCabecera[]>('/reposicion-api/Historial', { params })
     return response.data
@@ -77,6 +78,18 @@ const reposicionApi = {
   getLog: async (toWhs: string, fecha: string) => {
     const response = await api.get<RepLog>('/reposicion-api/Historial/log', { params: { toWhs, fecha } })
     return response.data
+  },
+
+  getDetalles: async (id: number) => {
+    const response = await api.get<HistorialDetalleItem[]>(`/reposicion-api/Historial/${id}/detalles`)
+    return response.data
+  },
+
+  getPdfUrl: (id: number) => {
+    // Assuming Vite parses import.meta.env, we can return the direct URL 
+    // or trigger a download via API. Since we use reverse proxy in dev (/api/reposicion-api),
+    // it's better to return the proxied path or construct a URL based on the API base.
+    return `/api/reposicion-api/Historial/${id}/pdf`
   }
 }
 

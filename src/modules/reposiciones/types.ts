@@ -11,6 +11,9 @@ export interface CatalogoItem {
   itemName: string;
   codeBars: string;
   onHand: number;
+  totalTransitoria: number;
+  totalSolicitud: number;
+  totalDisponibleTienda: number;
   totalBodega: number;
   disponibleBodega: number;
   sugerido: number;
@@ -30,8 +33,13 @@ export interface CatalogoItemDetail extends CatalogoItem {
   fechaUltimaVenta: string;
   ultimaFechaIngreso: string;
   diasUltimaFechaIngreso: number;
-  totalTransitoria: number;
-  totalSolicitud: number;
+  minStock: number;
+  maxStock: number;
+  totalTransitoriaBodega: number;
+  uLead: string;
+  uStkSeg: string;
+  uPerRep: string;
+  venta90Dias: number;
 }
 
 export interface CatalogoFilters {
@@ -88,6 +96,12 @@ export interface HistorialCabecera {
   fecha: string;
   integrado: boolean;
   cantidadArticulos: number;
+}
+
+export interface HistorialDetalleItem {
+  itemCode: string;
+  itemName: string;
+  quantity: number;
 }
 
 export interface RepLog {

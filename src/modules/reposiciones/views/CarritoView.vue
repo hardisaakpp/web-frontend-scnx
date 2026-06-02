@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, computed } from 'vue'
 import { useReposicionStore } from '../stores/reposicionStore'
 import { storeToRefs } from 'pinia'
 import { 
@@ -10,7 +10,13 @@ import {
 } from '@heroicons/vue/24/outline'
 
 const store = useReposicionStore()
-const { carrito, loading, filters } = storeToRefs(store)
+const { carrito, loading, filters, almacenes } = storeToRefs(store)
+
+const currentWarehouseName = computed(() => {
+  const code = filters.value.whsCode
+  const whs = almacenes.value.find(a => a.whsCode === code)
+  return whs ? `${code} - ${whs.whsName}` : code
+})
 
 onMounted(async () => {
   await store.fetchCarrito()
@@ -39,7 +45,7 @@ const handleConfirm = () => {
         </router-link>
         <div>
           <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Tu Carrito de Reposición</h1>
-          <p class="text-gray-500 mt-1">Revisa los artículos que has seleccionado para {{ filters.whsCode }}.</p>
+          <p class="text-gray-500 mt-1">Revisa los artículos que has seleccionado para <strong class="text-indigo-600">{{ currentWarehouseName }}</strong>.</p>
         </div>
       </div>
 
