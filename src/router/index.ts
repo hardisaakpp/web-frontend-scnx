@@ -18,6 +18,7 @@ import pygRoutes from '../modules/pyg/router'
 import articuloScanerRoutes from '../modules/articulo-scaner/router'
 import inventarioRoutes from '../modules/inventario/router'
 import promocionSobresRoutes from '../modules/promocion-sobres/router'
+import transaccionesRoutes from '../modules/transacciones/router'
 
 console.log('🔍 DEBUG usuariosRoutes:', usuariosRoutes)
 console.log('🔍 DEBUG cajaChicaRoutes:', cajaChicaRoutes)
@@ -71,6 +72,7 @@ const router = createRouter({
         ...articuloScanerRoutes,
         ...inventarioRoutes,
         ...promocionSobresRoutes,
+        ...transaccionesRoutes,
         {
           path: 'forbidden',
           name: 'forbidden',
