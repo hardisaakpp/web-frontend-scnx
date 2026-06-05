@@ -16,6 +16,10 @@ import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } fro
 import reposicionApi from '../services/reposicionApi'
 import type { CatalogoItemDetail } from '../types'
 
+import { useAuthStore } from '../../../stores/auth'
+
+const authStore = useAuthStore()
+
 const store = useReposicionStore()
 const { 
   catalogo, 
@@ -115,59 +119,60 @@ const getQuantityColor = (item: any) => {
 </script>
 
 <template>
-  <div class="p-6 max-w-[1600px] mx-auto">
+  <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
     <!-- Header -->
     <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
       <div>
-        <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Reposición de Artículos</h1>
-        <p class="text-gray-500 mt-1">Gestiona el reabastecimiento de tu tienda de forma eficiente.</p>
+        <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Reposición de Artículos</h1>
+        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Gestiona el reabastecimiento de tu tienda de forma eficiente.</p>
       </div>
 
-      <div class="flex items-center gap-3">
-        <div v-if="!isOpen" class="bg-red-100 text-red-700 px-4 py-2 rounded-lg flex items-center gap-2 border border-red-200 shadow-sm">
-          <InformationCircleIcon class="w-5 h-5" />
-          <span class="text-sm font-medium">Fuera de horario</span>
+      <div class="flex flex-wrap items-center gap-3">
+        <div v-if="!isOpen" class="bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400 px-3 py-1.5 rounded-lg flex items-center gap-2 border border-red-200 dark:border-red-800 shadow-sm">
+          <InformationCircleIcon class="w-4 h-4" />
+          <span class="text-xs font-medium">Fuera de horario</span>
         </div>
         
         <select 
           v-model="filters.whsCode" 
           @change="store.fetchDataByWarehouse()"
-          class="block w-full rounded-xl border-gray-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm h-11 px-4 border"
+          class="block w-full sm:w-64 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm h-10 px-3 border"
         >
           <option value="" disabled>Seleccione una bodega...</option>
           <option v-for="alm in almacenes" :key="alm.whsCode" :value="alm.whsCode">
-            {{ alm.whsCode }} - {{ alm.whsName }}
+            {{ alm.whsName && alm.whsName !== alm.whsCode ? alm.whsName : alm.whsCode }}
           </option>
         </select>
 
         <button 
           @click="showFilters = !showFilters"
-          :class="[showFilters ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700 border-gray-200', 'flex items-center gap-2 px-4 py-2.5 rounded-xl border shadow-sm transition-all hover:shadow-md']"
+          :class="[showFilters ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700', 'flex items-center gap-2 px-3 py-2 rounded-lg border shadow-sm transition-all text-sm font-medium']"
         >
-          <FunnelIcon class="w-5 h-5" />
-          <span class="font-medium">Filtros</span>
+          <FunnelIcon class="w-4 h-4" />
+          <span>Filtros</span>
         </button>
 
         <router-link 
           to="/reposiciones/historial"
-          class="bg-white text-gray-700 flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 shadow-sm transition-all hover:bg-gray-50 hover:shadow-md"
+          class="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm transition-all hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-medium"
         >
-          <ClockIcon class="w-5 h-5 text-gray-500" />
-          <span class="font-medium">Historial</span>
+          <ClockIcon class="w-4 h-4 text-gray-500 dark:text-gray-400" />
+          <span>Historial</span>
         </router-link>
 
         <router-link 
           to="/reposiciones/carrito"
-          class="bg-indigo-600 text-white flex items-center gap-2 px-5 py-2.5 rounded-xl border shadow-sm hover:bg-indigo-700 transition-all hover:shadow-lg relative"
+          class="bg-blue-600 text-white flex items-center gap-2 px-4 py-2 rounded-lg border border-blue-600 shadow-sm hover:bg-blue-700 transition-all relative text-sm font-medium"
         >
-          <ShoppingCartIcon class="w-5 h-5" />
-          <span class="font-medium">Carrito</span>
-          <span v-if="store.totalSolicitado > 0" class="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold border-2 border-white">
+          <ShoppingCartIcon class="w-4 h-4" />
+          <span>Carrito</span>
+          <span v-if="store.totalSolicitado > 0" class="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold border-2 border-white dark:border-gray-900">
             {{ store.carrito.length }}
           </span>
         </router-link>
       </div>
     </div>
+
 
     <!-- Filters Panel -->
     <Transition
@@ -178,71 +183,71 @@ const getQuantityColor = (item: any) => {
       leave-from-class="transform scale-100 opacity-100"
       leave-to-class="transform scale-95 opacity-0"
     >
-      <div v-if="showFilters" class="bg-white p-6 rounded-2xl shadow-xl mb-8 border border-gray-100 grid grid-cols-1 md:grid-cols-4 gap-5">
+      <div v-if="showFilters" class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm mb-8 border border-gray-200 dark:border-gray-700 grid grid-cols-1 md:grid-cols-4 gap-5">
         <div class="space-y-1.5">
-          <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider ml-1">Descripción / ItemCode</label>
+          <label class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Descripción / ItemCode</label>
           <div class="relative">
             <MagnifyingGlassIcon class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input 
               v-model="filters.descripcion" 
               type="text" 
               placeholder="Buscar por nombre..." 
-              class="w-full pl-9 pr-4 py-2.5 rounded-xl border-gray-200 focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 border transition-all text-sm"
+              class="w-full pl-9 pr-4 py-2 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border transition-all text-sm"
               @keydown.enter="handleSearch"
             />
           </div>
         </div>
 
         <div class="space-y-1.5">
-          <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider ml-1">Marca</label>
-          <select v-model="filters.marca" class="w-full py-2.5 rounded-xl border-gray-200 focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 border text-sm">
+          <label class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Marca</label>
+          <select v-model="filters.marca" class="w-full py-2 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border text-sm">
             <option value="">Todas</option>
             <option v-for="m in listasFiltros.marcas" :key="m" :value="m">{{ m }}</option>
           </select>
         </div>
 
         <div class="space-y-1.5">
-          <label class="text-xs font-semibold text-gray-500 uppercase tracking-wider ml-1">Línea</label>
-          <select v-model="filters.linea" class="w-full py-2.5 rounded-xl border-gray-200 focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 border text-sm">
+          <label class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Línea</label>
+          <select v-model="filters.linea" class="w-full py-2 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border text-sm">
             <option value="">Todas</option>
             <option v-for="l in listasFiltros.lineas" :key="l" :value="l">{{ l }}</option>
           </select>
         </div>
 
         <div class="flex items-end gap-3">
-          <button @click="handleSearch" class="flex-1 bg-gray-900 text-white h-11 rounded-xl font-medium hover:bg-gray-800 transition-colors shadow-sm">
+          <button @click="handleSearch" class="flex-1 bg-blue-600 text-white h-10 rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-sm text-sm">
             Aplicar
           </button>
-          <button @click="handleClearFilters" class="px-3 h-11 rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors shadow-sm">
+          <button @click="handleClearFilters" class="px-3 h-10 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm">
             <ArrowPathIcon class="w-5 h-5" />
           </button>
         </div>
       </div>
     </Transition>
 
-    <!-- Content Table -->
-    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+    <!-- Content Table Container -->
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
       <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse table-fixed min-w-[1400px]">
+        <table class="w-full text-left border-collapse table-auto min-w-full">
           <thead>
-            <tr class="bg-gray-50/50 border-b border-gray-100">
-              <th class="px-4 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-wider w-[280px]">Artículo</th>
-              <th class="px-2 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-wider text-center w-[80px]">Embalaje</th>
-              <th class="px-2 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-wider text-center w-[90px]">Stock Tienda</th>
-              <th class="px-2 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-wider text-center w-[80px]">Tránsito</th>
-              <th class="px-2 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-wider text-center w-[90px]">Comprometido</th>
-              <th class="px-2 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-wider text-center w-[90px]">Total Disponible</th>
-              <th class="px-2 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-wider text-center w-[90px]">Disponible Bodega</th>
-              <th class="px-2 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-wider text-center w-[90px]">Total Venta 30 días</th>
-              <th class="px-2 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-wider text-center w-[80px]">Sugerido</th>
-              <th class="px-2 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-wider text-center w-[90px]">Días de Inv.</th>
-              <th class="px-4 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-wider w-[120px]">Solicitado</th>
-              <th class="px-4 py-4 text-[10px] font-bold text-gray-500 uppercase tracking-wider">Observación</th>
+            <tr class="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+              <th class="px-4 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Artículo</th>
+              <th class="px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Emb.</th>
+              <th class="px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Stock</th>
+              <th class="px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Tránsito</th>
+              <th class="px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Comp.</th>
+              <th class="px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Disp. Tda.</th>
+              <th class="px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Disp. Bod.</th>
+              <th class="px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Venta 30d</th>
+              <th class="px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Sug.</th>
+              <th class="px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Días Inv.</th>
+              <th class="px-4 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[100px]">Solicitado</th>
+              <th class="px-4 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Observación</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-100">
+          <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
             <tr v-if="!filters.whsCode">
-              <td colspan="12" class="px-6 py-20 text-center text-gray-400">
+              <td colspan="12" class="px-6 py-20 text-center text-gray-400 dark:text-gray-500">
                 <div class="flex flex-col items-center">
                   <BuildingOfficeIcon class="w-12 h-12 mb-4 opacity-20" />
                   <p class="text-lg font-medium">Por favor, selecciona una bodega para ver el catálogo.</p>
@@ -250,47 +255,47 @@ const getQuantityColor = (item: any) => {
               </td>
             </tr>
             <tr v-else-if="loading" v-for="i in 5" :key="i" class="animate-pulse">
-              <td class="px-6 py-4"><div class="h-4 bg-gray-100 rounded w-48"></div></td>
-              <td colspan="11" class="px-6 py-4"><div class="h-4 bg-gray-100 rounded w-full"></div></td>
+              <td class="px-6 py-4"><div class="h-4 bg-gray-100 dark:bg-gray-700 rounded w-48"></div></td>
+              <td colspan="11" class="px-6 py-4"><div class="h-4 bg-gray-100 dark:bg-gray-700 rounded w-full"></div></td>
             </tr>
             <tr v-else-if="catalogo.length === 0">
-              <td colspan="12" class="px-6 py-12 text-center text-gray-400">
+              <td colspan="12" class="px-6 py-12 text-center text-gray-400 dark:text-gray-500">
                 <MagnifyingGlassIcon class="w-12 h-12 mx-auto mb-3 opacity-20" />
                 <p>No se encontraron artículos con los filtros aplicados.</p>
               </td>
             </tr>
-            <tr v-for="item in catalogo" :key="item.itemCode" class="hover:bg-gray-50/50 transition-colors group">
+            <tr v-else v-for="item in catalogo" :key="item.itemCode" class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group">
               <td class="px-4 py-3">
                 <div class="flex flex-col">
                   <button 
                     @click="openDetail(item.itemCode)"
-                    class="text-sm font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors text-left truncate hover:underline"
+                    class="text-sm font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors text-left truncate hover:underline"
                   >
                     {{ item.itemName }}
                   </button>
                   <div class="flex items-center gap-2 mt-1">
-                    <span class="text-[10px] font-bold bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{{ item.itemCode }}</span>
-                    <span class="text-[10px] text-gray-400 font-medium">{{ item.codeBars }}</span>
+                    <span class="text-[10px] font-bold bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-1.5 py-0.5 rounded">{{ item.itemCode }}</span>
+                    <span class="text-[10px] text-gray-400 dark:text-gray-500 font-medium">{{ item.codeBars }}</span>
                   </div>
                 </div>
               </td>
-              <td class="px-2 py-3 text-center text-sm font-medium text-gray-600">{{ item.embalaje }}</td>
-              <td class="px-2 py-3 text-center text-sm font-bold text-gray-700">{{ item.onHand }}</td>
-              <td class="px-2 py-3 text-center text-sm text-blue-600 font-medium">{{ item.totalTransitoria }}</td>
-              <td class="px-2 py-3 text-center text-sm text-orange-600 font-medium">{{ item.totalSolicitud }}</td>
-              <td class="px-2 py-3 text-center text-sm text-emerald-600 font-bold border-x border-gray-50 bg-gray-50/30">{{ item.totalDisponibleTienda }}</td>
+              <td class="px-2 py-3 text-center text-sm font-medium text-gray-600 dark:text-gray-400">{{ item.embalaje }}</td>
+              <td class="px-2 py-3 text-center text-sm font-bold text-gray-700 dark:text-gray-300">{{ item.onHand }}</td>
+              <td class="px-2 py-3 text-center text-sm text-blue-600 dark:text-blue-400 font-medium">{{ item.totalTransitoria }}</td>
+              <td class="px-2 py-3 text-center text-sm text-orange-600 dark:text-orange-400 font-medium">{{ item.totalSolicitud }}</td>
+              <td class="px-2 py-3 text-center text-sm text-emerald-600 dark:text-emerald-400 font-bold border-x border-gray-100 dark:border-gray-700 bg-gray-50/30 dark:bg-gray-900/20">{{ item.totalDisponibleTienda }}</td>
               <td class="px-2 py-3 text-center">
-                <span :class="[item.disponibleBodega > 0 ? 'text-blue-600 font-semibold' : 'text-red-400', 'text-sm']">
+                <span :class="[item.disponibleBodega > 0 ? 'text-blue-600 dark:text-blue-400 font-semibold' : 'text-red-400 dark:text-red-500/70', 'text-sm']">
                   {{ item.disponibleBodega }}
                 </span>
               </td>
-              <td class="px-2 py-3 text-center text-sm font-medium text-gray-600">{{ item.venta30Dias }}</td>
+              <td class="px-2 py-3 text-center text-sm font-medium text-gray-600 dark:text-gray-400">{{ item.venta30Dias }}</td>
               <td class="px-2 py-3 text-center">
-                <span :class="[item.sugerido > 0 ? 'text-indigo-600 font-bold' : 'text-gray-400', 'text-sm']">
+                <span :class="[item.sugerido > 0 ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-gray-400 dark:text-gray-500', 'text-sm']">
                   {{ item.sugerido }}
                 </span>
               </td>
-              <td class="px-2 py-3 text-center font-mono text-sm" :class="item.diasInventario < 5 ? 'text-red-500 font-bold' : 'text-gray-500'">
+              <td class="px-2 py-3 text-center font-mono text-xs" :class="item.diasInventario < 5 ? 'text-red-500 dark:text-red-400 font-bold' : 'text-gray-500 dark:text-gray-400'">
                 {{ item.diasInventario.toFixed(1) }}
               </td>
               <td class="px-4 py-3">
@@ -298,7 +303,7 @@ const getQuantityColor = (item: any) => {
                   type="number"
                   :value="store.cantidadPorCodigo(item.itemCode)"
                   @blur="e => updateQuantity(item, parseInt((e.target as HTMLInputElement).value || '0'))"
-                  class="w-full h-9 rounded-lg border-gray-200 focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 border text-center text-sm font-bold"
+                  class="w-full h-9 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border text-center text-sm font-bold"
                   :class="getQuantityColor(item)"
                   min="0"
                 />
@@ -309,7 +314,7 @@ const getQuantityColor = (item: any) => {
                   :value="store.comentarioPorCodigo(item.itemCode)"
                   @blur="e => store.updateItemComment(item.itemCode, (e.target as HTMLInputElement).value)"
                   placeholder="..."
-                  class="w-full h-9 rounded-lg border-gray-200 focus:ring-2 focus:ring-indigo-100 focus:border-indigo-500 border text-xs px-2"
+                  class="w-full h-9 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border text-xs px-2"
                   maxlength="50"
                 />
               </td>
@@ -318,23 +323,25 @@ const getQuantityColor = (item: any) => {
         </table>
       </div>
 
-      <!-- Pagination -->
-      <div v-if="totalItems > 0" class="px-6 py-4 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between">
-        <div class="text-sm text-gray-500">
-          Mostrando <span class="font-semibold">{{ catalogo.length }}</span> de <span class="font-semibold">{{ totalItems }}</span> artículos
+      <!-- Pagination Footer -->
+      <div v-if="totalItems > 0" class="px-6 py-4 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+        <div class="text-xs text-gray-500 dark:text-gray-400">
+          Mostrando <span class="font-medium text-gray-900 dark:text-white">{{ catalogo.length }}</span> de <span class="font-medium text-gray-900 dark:text-white">{{ totalItems }}</span> artículos
         </div>
         <div class="flex items-center gap-2">
           <button 
             @click="store.setPage(currentPage - 1)" 
             :disabled="currentPage === 1"
-            class="p-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-white disabled:opacity-30 disabled:hover:bg-transparent transition-all shadow-sm"
+            class="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 transition-all shadow-sm text-xs font-medium"
           >
             Anterior
           </button>
-          <span class="text-sm font-medium px-4">Página {{ currentPage }}</span>
+          <div class="text-xs text-gray-600 dark:text-gray-300 font-medium bg-white dark:bg-gray-800 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700">
+            Página {{ currentPage }}
+          </div>
           <button 
             @click="store.setPage(currentPage + 1)" 
-            class="p-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-white transition-all shadow-sm"
+            class="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all shadow-sm text-xs font-medium"
           >
             Siguiente
           </button>
@@ -368,140 +375,140 @@ const getQuantityColor = (item: any) => {
               leave-from="opacity-100 scale-100"
               leave-to="opacity-0 scale-95"
             >
-              <DialogPanel class="w-full max-w-2xl transform overflow-hidden rounded-3xl bg-white p-8 text-left align-middle shadow-2xl transition-all border border-gray-100">
+              <DialogPanel class="w-full max-w-2xl transform overflow-hidden rounded-2xl bg-white dark:bg-gray-800 p-8 text-left align-middle shadow-2xl transition-all border border-gray-200 dark:border-gray-700">
                 <div v-if="loadingDetail" class="flex flex-col items-center py-12">
-                  <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
-                  <p class="text-gray-500 font-medium">Cargando detalles...</p>
+                  <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+                  <p class="text-gray-500 dark:text-gray-400 font-medium">Cargando detalles...</p>
                 </div>
                 
                 <div v-else-if="selectedItem">
                   <div class="flex justify-between items-start mb-6">
                     <div>
-                      <DialogTitle as="h3" class="text-2xl font-bold text-gray-900 pr-8 leading-tight">
+                      <DialogTitle as="h3" class="text-2xl font-bold text-gray-900 dark:text-white pr-8 leading-tight">
                         {{ selectedItem.itemName }}
                       </DialogTitle>
                       <div class="flex gap-2 mt-2">
-                        <span class="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-bold">Marca: {{ selectedItem.marca }}</span>
+                        <span class="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-3 py-1 rounded-full text-xs font-bold">Marca: {{ selectedItem.marca }}</span>
                       </div>
                     </div>
-                    <button @click="isDetailOpen = false" class="p-2 hover:bg-gray-100 rounded-full text-gray-400 transition-colors">
+                    <button @click="isDetailOpen = false" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-gray-400 transition-colors">
                       <XMarkIcon class="w-6 h-6" />
                     </button>
                   </div>
 
                   <!-- DETALLE PRODUCTO -->
-                  <div class="bg-gray-50 rounded-xl p-5 mb-4 border border-gray-100">
-                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Detalle Producto</h4>
+                  <div class="bg-gray-50 dark:bg-gray-900/40 rounded-xl p-5 mb-4 border border-gray-100 dark:border-gray-700">
+                    <h4 class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3">Detalle Producto</h4>
                     <div class="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
-                      <div class="flex justify-between border-b border-gray-200/60 pb-1.5">
-                        <span class="text-gray-500">Referencia (ItemCode)</span>
-                        <span class="font-bold text-indigo-700">{{ selectedItem.itemCode }}</span>
+                      <div class="flex justify-between border-b border-gray-200/60 dark:border-gray-700/60 pb-1.5">
+                        <span class="text-gray-500 dark:text-gray-400">Referencia (ItemCode)</span>
+                        <span class="font-bold text-blue-700 dark:text-blue-400">{{ selectedItem.itemCode }}</span>
                       </div>
-                      <div class="flex justify-between border-b border-gray-200/60 pb-1.5">
-                        <span class="text-gray-500">Código de Barras</span>
-                        <span class="font-semibold text-gray-900">{{ selectedItem.codeBars }}</span>
+                      <div class="flex justify-between border-b border-gray-200/60 dark:border-gray-700/60 pb-1.5">
+                        <span class="text-gray-500 dark:text-gray-400">Código de Barras</span>
+                        <span class="font-semibold text-gray-900 dark:text-white">{{ selectedItem.codeBars }}</span>
                       </div>
-                      <div class="flex justify-between border-b border-gray-200/60 pb-1.5">
-                        <span class="text-gray-500">Clasificación ABC</span>
-                        <span class="font-bold text-amber-700">{{ selectedItem.clasificacionABC }}</span>
+                      <div class="flex justify-between border-b border-gray-200/60 dark:border-gray-700/60 pb-1.5">
+                        <span class="text-gray-500 dark:text-gray-400">Clasificación ABC</span>
+                        <span class="font-bold text-amber-700 dark:text-amber-500">{{ selectedItem.clasificacionABC }}</span>
                       </div>
-                      <div class="flex justify-between border-b border-gray-200/60 pb-1.5">
-                        <span class="text-gray-500">Unidad</span>
-                        <span class="font-semibold text-gray-900">{{ selectedItem.unidad }}</span>
+                      <div class="flex justify-between border-b border-gray-200/60 dark:border-gray-700/60 pb-1.5">
+                        <span class="text-gray-500 dark:text-gray-400">Unidad</span>
+                        <span class="font-semibold text-gray-900 dark:text-white">{{ selectedItem.unidad }}</span>
                       </div>
-                      <div class="flex justify-between border-b border-gray-200/60 pb-1.5">
-                        <span class="text-gray-500">Categoría</span>
-                        <span class="font-semibold text-gray-900">{{ selectedItem.categoria }}</span>
+                      <div class="flex justify-between border-b border-gray-200/60 dark:border-gray-700/60 pb-1.5">
+                        <span class="text-gray-500 dark:text-gray-400">Categoría</span>
+                        <span class="font-semibold text-gray-900 dark:text-white">{{ selectedItem.categoria }}</span>
                       </div>
-                      <div class="flex justify-between border-b border-gray-200/60 pb-1.5">
-                        <span class="text-gray-500">Línea</span>
-                        <span class="font-semibold text-gray-900">{{ selectedItem.linea }}</span>
+                      <div class="flex justify-between border-b border-gray-200/60 dark:border-gray-700/60 pb-1.5">
+                        <span class="text-gray-500 dark:text-gray-400">Línea</span>
+                        <span class="font-semibold text-gray-900 dark:text-white">{{ selectedItem.linea }}</span>
                       </div>
                     </div>
                   </div>
 
                   <!-- VENTAS -->
-                  <div class="bg-blue-50/50 rounded-xl p-5 mb-4 border border-blue-100/60">
-                    <h4 class="text-xs font-bold text-blue-400 uppercase tracking-widest mb-3">Ventas</h4>
+                  <div class="bg-blue-50/50 dark:bg-blue-900/20 rounded-xl p-5 mb-4 border border-blue-100/60 dark:border-blue-800/60">
+                    <h4 class="text-[10px] font-bold text-blue-400 dark:text-blue-500 uppercase tracking-widest mb-3">Ventas</h4>
                     <div class="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
-                      <div class="flex justify-between border-b border-blue-200/40 pb-1.5">
-                        <span class="text-gray-500">Venta 30 días</span>
-                        <span class="font-bold text-gray-900">{{ selectedItem.venta30Dias }}</span>
+                      <div class="flex justify-between border-b border-blue-200/40 dark:border-blue-800/40 pb-1.5">
+                        <span class="text-gray-500 dark:text-gray-400">Venta 30 días</span>
+                        <span class="font-bold text-gray-900 dark:text-white">{{ selectedItem.venta30Dias }}</span>
                       </div>
-                      <div class="flex justify-between border-b border-blue-200/40 pb-1.5">
-                        <span class="text-gray-500">Venta 90 días</span>
-                        <span class="font-semibold text-gray-900">{{ selectedItem.venta90Dias }}</span>
+                      <div class="flex justify-between border-b border-blue-200/40 dark:border-blue-800/40 pb-1.5">
+                        <span class="text-gray-500 dark:text-gray-400">Venta 90 días</span>
+                        <span class="font-semibold text-gray-900 dark:text-white">{{ selectedItem.venta90Dias }}</span>
                       </div>
-                      <div class="flex justify-between border-b border-blue-200/40 pb-1.5">
-                        <span class="text-gray-500">Prom. Venta 30 días</span>
-                        <span class="font-semibold text-gray-900">{{ selectedItem.promedioVenta30Dias?.toFixed(2) ?? '0.00' }}</span>
+                      <div class="flex justify-between border-b border-blue-200/40 dark:border-blue-800/40 pb-1.5">
+                        <span class="text-gray-500 dark:text-gray-400">Prom. Venta 30 días</span>
+                        <span class="font-semibold text-gray-900 dark:text-white">{{ selectedItem.promedioVenta30Dias?.toFixed(2) ?? '0.00' }}</span>
                       </div>
-                      <div class="flex justify-between border-b border-blue-200/40 pb-1.5">
-                        <span class="text-gray-500">Prom. Últ. 3 meses</span>
-                        <span class="font-semibold text-gray-900">{{ selectedItem.promedioVenta90Dias?.toFixed(2) ?? '0.00' }}</span>
+                      <div class="flex justify-between border-b border-blue-200/40 dark:border-blue-800/40 pb-1.5">
+                        <span class="text-gray-500 dark:text-gray-400">Prom. Últ. 3 meses</span>
+                        <span class="font-semibold text-gray-900 dark:text-white">{{ selectedItem.promedioVenta90Dias?.toFixed(2) ?? '0.00' }}</span>
                       </div>
-                      <div class="flex justify-between border-b border-blue-200/40 pb-1.5">
-                        <span class="text-gray-500">Última Fecha Venta</span>
-                        <span class="font-semibold text-gray-900">{{ formatDate(selectedItem.fechaUltimaVenta) }}</span>
+                      <div class="flex justify-between border-b border-blue-200/40 dark:border-blue-800/40 pb-1.5">
+                        <span class="text-gray-500 dark:text-gray-400">Última Fecha Venta</span>
+                        <span class="font-semibold text-gray-900 dark:text-white">{{ formatDate(selectedItem.fechaUltimaVenta) }}</span>
                       </div>
-                      <div class="flex justify-between border-b border-blue-200/40 pb-1.5">
-                        <span class="text-gray-500">Días desde Últ. Venta</span>
-                        <span class="font-bold text-orange-600">{{ diasDesdeUltimaVenta }}</span>
+                      <div class="flex justify-between border-b border-blue-200/40 dark:border-blue-800/40 pb-1.5">
+                        <span class="text-gray-500 dark:text-gray-400">Días desde Últ. Venta</span>
+                        <span class="font-bold text-orange-600 dark:text-orange-400">{{ diasDesdeUltimaVenta }}</span>
                       </div>
-                      <div class="flex justify-between border-b border-blue-200/40 pb-1.5">
-                        <span class="text-gray-500">Últ. Fecha Ingreso</span>
-                        <span class="font-semibold text-gray-900">{{ formatDate(selectedItem.ultimaFechaIngreso) }}</span>
+                      <div class="flex justify-between border-b border-blue-200/40 dark:border-blue-800/40 pb-1.5">
+                        <span class="text-gray-500 dark:text-gray-400">Últ. Fecha Ingreso</span>
+                        <span class="font-semibold text-gray-900 dark:text-white">{{ formatDate(selectedItem.ultimaFechaIngreso) }}</span>
                       </div>
-                      <div class="flex justify-between border-b border-blue-200/40 pb-1.5">
-                        <span class="text-gray-500">Días Últ. Fecha Ingreso</span>
-                        <span class="font-semibold text-gray-900">{{ selectedItem.diasUltimaFechaIngreso ?? 0 }}</span>
+                      <div class="flex justify-between border-b border-blue-200/40 dark:border-blue-800/40 pb-1.5">
+                        <span class="text-gray-500 dark:text-gray-400">Días Últ. Fecha Ingreso</span>
+                        <span class="font-semibold text-gray-900 dark:text-white">{{ selectedItem.diasUltimaFechaIngreso ?? 0 }}</span>
                       </div>
                     </div>
                   </div>
 
                   <!-- STOCK Y REP. -->
-                  <div class="bg-emerald-50/50 rounded-xl p-5 border border-emerald-100/60">
-                    <h4 class="text-xs font-bold text-emerald-500 uppercase tracking-widest mb-3">Stock y Reposición</h4>
+                  <div class="bg-emerald-50/50 dark:bg-emerald-900/20 rounded-xl p-5 border border-emerald-100/60 dark:border-emerald-800/60">
+                    <h4 class="text-[10px] font-bold text-emerald-500 dark:text-emerald-400 uppercase tracking-widest mb-3">Stock y Reposición</h4>
                     <div class="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
-                      <div class="flex justify-between border-b border-emerald-200/40 pb-1.5">
-                        <span class="text-gray-500">Stock Actual (Tienda)</span>
-                        <span class="font-bold text-gray-900">{{ Math.round(selectedItem.onHand) }}</span>
+                      <div class="flex justify-between border-b border-emerald-200/40 dark:border-emerald-800/40 pb-1.5">
+                        <span class="text-gray-500 dark:text-gray-400">Stock Actual (Tienda)</span>
+                        <span class="font-bold text-gray-900 dark:text-white">{{ Math.round(selectedItem.onHand) }}</span>
                       </div>
-                      <div class="flex justify-between border-b border-emerald-200/40 pb-1.5">
-                        <span class="text-gray-500">Stock Bodega</span>
-                        <span class="font-bold text-blue-600">{{ Math.round(selectedItem.totalBodega) }}</span>
+                      <div class="flex justify-between border-b border-emerald-200/40 dark:border-emerald-800/40 pb-1.5">
+                        <span class="text-gray-500 dark:text-gray-400">Stock Bodega</span>
+                        <span class="font-bold text-blue-600 dark:text-blue-400">{{ Math.round(selectedItem.totalBodega) }}</span>
                       </div>
-                      <div class="flex justify-between border-b border-emerald-200/40 pb-1.5">
-                        <span class="text-gray-500">Stock Mínimo</span>
-                        <span class="font-semibold text-red-600">{{ Math.round(selectedItem.minStock) }}</span>
+                      <div class="flex justify-between border-b border-emerald-200/40 dark:border-emerald-800/40 pb-1.5">
+                        <span class="text-gray-500 dark:text-gray-400">Stock Mínimo</span>
+                        <span class="font-semibold text-rose-600 dark:text-rose-400">{{ Math.round(selectedItem.minStock) }}</span>
                       </div>
-                      <div class="flex justify-between border-b border-emerald-200/40 pb-1.5">
-                        <span class="text-gray-500">Stock Máximo</span>
-                        <span class="font-semibold text-indigo-600">{{ Math.round(selectedItem.maxStock) }}</span>
+                      <div class="flex justify-between border-b border-emerald-200/40 dark:border-emerald-800/40 pb-1.5">
+                        <span class="text-gray-500 dark:text-gray-400">Stock Máximo</span>
+                        <span class="font-semibold text-blue-600 dark:text-blue-400">{{ Math.round(selectedItem.maxStock) }}</span>
                       </div>
-                      <div class="flex justify-between border-b border-emerald-200/40 pb-1.5">
-                        <span class="text-gray-500">Lead Time (Días)</span>
-                        <span class="font-bold text-gray-900">{{ selectedItem.uLead }}</span>
+                      <div class="flex justify-between border-b border-emerald-200/40 dark:border-emerald-800/40 pb-1.5">
+                        <span class="text-gray-500 dark:text-gray-400">Lead Time (Días)</span>
+                        <span class="font-bold text-gray-900 dark:text-white">{{ selectedItem.uLead }}</span>
                       </div>
-                      <div class="flex justify-between border-b border-emerald-200/40 pb-1.5">
-                        <span class="text-gray-500">Stock de Seguridad</span>
-                        <span class="font-bold text-gray-900">{{ selectedItem.uStkSeg }}</span>
+                      <div class="flex justify-between border-b border-emerald-200/40 dark:border-emerald-800/40 pb-1.5">
+                        <span class="text-gray-500 dark:text-gray-400">Stock de Seguridad</span>
+                        <span class="font-bold text-gray-900 dark:text-white">{{ selectedItem.uStkSeg }}</span>
                       </div>
-                      <div class="flex justify-between border-b border-emerald-200/40 pb-1.5">
-                        <span class="text-gray-500">Perfil Reposición</span>
-                        <span class="font-bold text-gray-900">{{ selectedItem.uPerRep }}</span>
+                      <div class="flex justify-between border-b border-emerald-200/40 dark:border-emerald-800/40 pb-1.5">
+                        <span class="text-gray-500 dark:text-gray-400">Perfil Reposición</span>
+                        <span class="font-bold text-gray-900 dark:text-white">{{ selectedItem.uPerRep }}</span>
                       </div>
-                      <div class="flex justify-between border-b border-emerald-200/40 pb-1.5">
-                        <span class="text-gray-500">Días de Inv.</span>
-                        <span class="font-bold text-orange-600">{{ selectedItem.diasInventario.toFixed(1) }}</span>
+                      <div class="flex justify-between border-b border-emerald-200/40 dark:border-emerald-800/40 pb-1.5">
+                        <span class="text-gray-500 dark:text-gray-400">Días de Inv.</span>
+                        <span class="font-bold text-orange-600 dark:text-orange-400">{{ selectedItem.diasInventario.toFixed(1) }}</span>
                       </div>
-                      <div class="flex justify-between border-b border-emerald-200/40 pb-1.5">
-                        <span class="text-gray-500">Tránsito Bodega</span>
-                        <span class="font-bold text-blue-500">{{ Math.round(selectedItem.totalTransitoriaBodega) }}</span>
+                      <div class="flex justify-between border-b border-emerald-200/40 dark:border-emerald-800/40 pb-1.5">
+                        <span class="text-gray-500 dark:text-gray-400">Tránsito Bodega</span>
+                        <span class="font-bold text-blue-500 dark:text-blue-400">{{ Math.round(selectedItem.totalTransitoriaBodega) }}</span>
                       </div>
-                       <div class="flex justify-between border-b border-emerald-200/40 pb-1.5">
-                        <span class="text-gray-500">Total Disp. Tienda</span>
-                        <span class="font-bold text-emerald-700">{{ Math.round(selectedItem.totalDisponibleTienda) }}</span>
+                       <div class="flex justify-between border-b border-emerald-200/40 dark:border-emerald-800/40 pb-1.5">
+                        <span class="text-gray-500 dark:text-gray-400">Total Disp. Tienda</span>
+                        <span class="font-bold text-emerald-700 dark:text-emerald-400">{{ Math.round(selectedItem.totalDisponibleTienda) }}</span>
                       </div>
                     </div>
                   </div>

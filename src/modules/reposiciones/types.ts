@@ -71,22 +71,26 @@ export interface Almacen {
 export interface SaveItemRequest {
   toWhs: string;
   fromWhs: string;
-  idUser: number;
   itemCode: string;
   quantity: number;
 }
 
 export interface UpdateCommentRequest {
   toWhs: string;
-  idUser: number;
   itemCode: string;
   comment: string;
 }
 
-export interface SolicitudDetalle {
-  itemCode: string;
+export interface CarritoItem extends CatalogoItem {
   quantity: number;
-  comment: string;
+  comment: string | null;
+}
+
+export interface CarritoResponse {
+  fromWhs: string;
+  toWhs: string;
+  fecha: string;
+  items: CarritoItem[];
 }
 
 export interface HistorialCabecera {

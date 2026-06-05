@@ -41,11 +41,19 @@ function clearExpiryTimeout(): void {
   }
 }
 
+export interface WarehouseGroup {
+  id: string
+  name: string
+  almacenes: string[]
+  bodegaCentral: string
+}
+
 export interface WarehouseAccessInfo {
-  codAlmacen: string
-  accesoAlmacen: string
-  warehouseGroupId: string | null
-  warehouseGroupName: string | null
+  codAlmacen?: string
+  accesoAlmacen?: string
+  warehouseGroupId?: string | null
+  warehouseGroupName?: string | null
+  warehouseGroups?: WarehouseGroup[]
 }
 
 interface User {
@@ -55,7 +63,7 @@ interface User {
   fullName: string
   roles: string[]
   permissions: string[]
-  warehouseAccesses: WarehouseAccessInfo[]
+  warehouseAccesses: WarehouseAccessInfo[] | WarehouseAccessInfo
 }
 
 /** Capabilities expuestas por GET /Auth/me (snake_case). */
@@ -254,7 +262,7 @@ export const useAuthStore = defineStore('auth', {
       }
       return []
     },
-    userWarehouseAccesses: (state): WarehouseAccessInfo[] => {
+    userWarehouseAccesses: (state): WarehouseAccessInfo[] | WarehouseAccessInfo | null => {
       if (state.userData?.warehouseAccesses) {
         return state.userData.warehouseAccesses
       }
@@ -262,12 +270,12 @@ export const useAuthStore = defineStore('auth', {
         const userStr = localStorage.getItem('user')
         if (userStr) {
           const user = JSON.parse(userStr) as User
-          return user.warehouseAccesses || []
+          return user.warehouseAccesses || null
         }
       } catch {
-        return []
+        return null
       }
-      return []
+      return null
     },
     userRoles: (state): string[] => {
       if (state.userData?.roles) {

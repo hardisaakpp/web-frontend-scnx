@@ -3,14 +3,18 @@ import { onMounted, computed } from 'vue'
 import { useReposicionStore } from '../stores/reposicionStore'
 import { storeToRefs } from 'pinia'
 import { 
-  TrashIcon, 
   ArrowLeftIcon, 
   CheckCircleIcon,
-  ShoppingCartIcon
+  ShoppingCartIcon,
+  DocumentArrowDownIcon,
+  BuildingOfficeIcon,
+  CalendarIcon,
+  InformationCircleIcon
 } from '@heroicons/vue/24/outline'
+import reposicionApi from '../services/reposicionApi'
 
 const store = useReposicionStore()
-const { carrito, loading, filters, almacenes } = storeToRefs(store)
+const { carrito, filters, almacenes, carritoInfo, isOpen } = storeToRefs(store)
 
 const currentWarehouseName = computed(() => {
   const code = filters.value.whsCode
@@ -18,129 +22,197 @@ const currentWarehouseName = computed(() => {
   return whs ? `${code} - ${whs.whsName}` : code
 })
 
+const formatDate = (dateStr: string) => {
+  if (!dateStr) return ''
+  const date = new Date(dateStr)
+  return new Intl.DateTimeFormat('es-EC', {
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  }).format(date)
+}
+
 onMounted(async () => {
   await store.fetchCarrito()
 })
 
-const removeItem = async (itemCode: string) => {
-  if (confirm('¿Desea eliminar este artículo de la solicitud?')) {
-    await store.updateItemQuantity(itemCode, 0)
-  }
-}
-
-const handleConfirm = () => {
-  // En el sistema actual, el guardado es en tiempo real.
-  // Podríamos agregar una pantalla de "Finalización" si fuera necesario.
-  alert('Solicitud enviada correctamente (Guardado en tiempo real activado)')
+const downloadPdf = () => {
+  if (!filters.value.whsCode) return
+  const url = reposicionApi.getCarritoPdfUrl(filters.value.whsCode)
+  window.open(url, '_blank')
 }
 </script>
 
 <template>
-  <div class="p-6 max-w-7xl mx-auto">
+  <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
     <!-- Header -->
-    <div class="flex items-center justify-between mb-8">
+    <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
       <div class="flex items-center gap-4">
-        <router-link to="/reposiciones" class="p-2 rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 transition-all">
-          <ArrowLeftIcon class="w-6 h-6" />
+        <router-link to="/reposiciones" class="p-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all bg-white dark:bg-gray-900 shadow-sm">
+          <ArrowLeftIcon class="w-5 h-5" />
         </router-link>
         <div>
-          <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Tu Carrito de Reposición</h1>
-          <p class="text-gray-500 mt-1">Revisa los artículos que has seleccionado para <strong class="text-indigo-600">{{ currentWarehouseName }}</strong>.</p>
+          <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Tu Carrito de Reposición</h1>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Revisa y ajusta los artículos para <strong class="text-blue-600 dark:text-blue-400 font-bold uppercase">{{ currentWarehouseName }}</strong>.</p>
         </div>
       </div>
 
-      <button 
-        @click="handleConfirm"
-        :disabled="carrito.length === 0"
-        class="bg-green-600 text-white flex items-center gap-2 px-6 py-3 rounded-xl border shadow-sm hover:bg-green-700 transition-all hover:shadow-lg disabled:opacity-50 disabled:hover:shadow-none"
-      >
-        <CheckCircleIcon class="w-5 h-5" />
-        <span class="font-bold">Finalizar Solicitud</span>
-      </button>
+      <div class="flex flex-wrap gap-2">
+        <button 
+          @click="downloadPdf"
+          :disabled="carrito.length === 0"
+          class="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all disabled:opacity-50 text-sm font-medium"
+        >
+          <DocumentArrowDownIcon class="w-4 h-4 text-gray-500" />
+          <span>Generar PDF</span>
+        </button>
+      </div>
     </div>
 
     <!-- Empty State -->
-    <div v-if="carrito.length === 0" class="bg-white rounded-3xl p-20 text-center border-2 border-dashed border-gray-200">
-      <div class="bg-gray-50 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-6">
-        <ShoppingCartIcon class="w-12 h-12 text-gray-300" />
+    <div v-if="carrito.length === 0" class="bg-white dark:bg-gray-800 rounded-xl p-16 text-center border border-gray-200 dark:border-gray-700 shadow-sm">
+      <div class="bg-gray-50 dark:bg-gray-900 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 border border-gray-100 dark:border-gray-800">
+        <ShoppingCartIcon class="w-10 h-10 text-gray-300 dark:text-gray-600" />
       </div>
-      <h3 class="text-xl font-bold text-gray-900 mb-2">Tu carrito está vacío</h3>
-      <p class="text-gray-500 mb-8 max-w-sm mx-auto">Aún no has agregado ningún artículo a la solicitud de hoy. Vuelve al catálogo para empezar.</p>
-      <router-link to="/reposiciones" class="inline-flex items-center gap-2 bg-indigo-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-md">
-        Ver catálogo
+      <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Tu carrito está vacío</h3>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mb-8 max-w-sm mx-auto">Aún no has agregado ningún artículo a la solicitud para este almacén.</p>
+      <router-link to="/reposiciones" class="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-all shadow-sm text-sm">
+        Volver al catálogo
       </router-link>
     </div>
 
-    <!-- Cart List -->
-    <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      <!-- Items List -->
-      <div class="lg:col-span-2 space-y-4">
-        <div v-for="item in carrito" :key="item.itemCode" class="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow flex items-center gap-6">
-          <div class="flex-1">
-            <h4 class="font-bold text-gray-900">{{ item.itemCode }}</h4>
-            <p v-if="item.comment" class="text-xs text-gray-500 mt-1 italic">"{{ item.comment }}"</p>
+    <!-- Cart Content -->
+    <div v-else>
+      <!-- Info Header -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex items-center gap-4">
+          <div class="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+            <BuildingOfficeIcon class="w-6 h-6 text-blue-600 dark:text-blue-400" />
           </div>
-          
-          <div class="flex items-center gap-8">
-            <div class="text-center">
-              <span class="text-[10px] uppercase font-bold text-gray-400 block mb-1">Cantidad</span>
-              <div class="bg-indigo-50 text-indigo-700 font-bold px-4 py-2 rounded-xl border border-indigo-100 text-lg">
-                {{ item.quantity }}
-              </div>
-            </div>
+          <div>
+            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Origen</p>
+            <p class="text-sm font-bold text-gray-900 dark:text-white">{{ carritoInfo.fromWhs || '---' }}</p>
+          </div>
+        </div>
 
-            <button 
-              @click="removeItem(item.itemCode)"
-              class="p-3 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
-            >
-              <TrashIcon class="w-6 h-6" />
-            </button>
+        <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex items-center gap-4">
+          <div class="p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
+            <CheckCircleIcon class="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+          </div>
+          <div>
+            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Destino</p>
+            <p class="text-sm font-bold text-gray-900 dark:text-white">{{ carritoInfo.toWhs || '---' }}</p>
+          </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex items-center gap-4">
+          <div class="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+            <CalendarIcon class="w-6 h-6 text-purple-600 dark:text-purple-400" />
+          </div>
+          <div>
+            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Fecha Generación</p>
+            <p class="text-sm font-bold text-gray-900 dark:text-white">{{ formatDate(carritoInfo.fecha) || '---' }}</p>
+          </div>
+        </div>
+
+        <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex items-center gap-4">
+          <div class="p-2 rounded-lg" :class="isOpen ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'bg-red-50 dark:bg-red-900/20'">
+            <InformationCircleIcon class="w-6 h-6" :class="isOpen ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'" />
+          </div>
+          <div>
+            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Estado</p>
+            <div class="flex items-center gap-2 mt-0.5">
+              <span class="w-2 h-2 rounded-full" :class="isOpen ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'"></span>
+              <span class="text-sm font-bold" :class="isOpen ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'">
+                {{ isOpen ? 'Abierto' : 'Cerrado' }}
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- Summary Sidebar -->
-      <div class="space-y-6">
-        <div class="bg-gray-900 text-white p-8 rounded-3xl shadow-xl">
-          <h3 class="text-xl font-bold mb-6 flex items-center gap-2">
-            <ShoppingCartIcon class="w-6 h-6 text-indigo-400" />
-            Resumen
-          </h3>
-          
-          <div class="space-y-4 mb-8 border-b border-gray-800 pb-8">
-            <div class="flex justify-between text-gray-400">
-              <span>Total SKU</span>
-              <span class="font-bold text-white">{{ carrito.length }}</span>
-            </div>
-            <div class="flex justify-between text-gray-400">
-              <span>Total Unidades</span>
-              <span class="font-bold text-white">{{ store.totalSolicitado }}</span>
-            </div>
-            <div class="flex justify-between text-gray-400">
-              <span>Almacén Destino</span>
-              <span class="font-bold text-white">{{ filters.whsCode }}</span>
-            </div>
-          </div>
+      <!-- Content Table Container -->
+      <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse table-auto min-w-full">
+          <thead>
+            <tr class="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+              <th class="px-4 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Artículo</th>
+              <th class="px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Emb.</th>
+              <th class="px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Stock</th>
+              <th class="px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Tránsito</th>
+              <th class="px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Comp.</th>
+              <th class="px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Solicitado</th>
+              <th class="px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Disp. Tienda</th>
+              <th class="px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Disp. Bodega</th>
+              <th class="px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Venta 30d</th>
+              <th class="px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Sugerido</th>
+              <th class="px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Días Inv.</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+            <tr v-for="item in carrito" :key="item.itemCode" class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group">
+              <td class="px-4 py-3">
+                <div class="flex flex-col">
+                  <div class="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                    {{ item.itemName }}
+                  </div>
+                  <div class="flex items-center gap-2 mt-1">
+                    <span class="text-[10px] font-bold bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-1.5 py-0.5 rounded">{{ item.itemCode }}</span>
+                    <span class="text-[10px] text-gray-400 dark:text-gray-500 font-medium">{{ item.codeBars }}</span>
+                  </div>
+                </div>
+              </td>
+              <td class="px-2 py-3 text-center text-sm font-medium text-gray-600 dark:text-gray-400">{{ item.embalaje }}</td>
+              <td class="px-2 py-3 text-center text-sm font-medium text-gray-700 dark:text-gray-300">{{ item.onHand }}</td>
+              <td class="px-2 py-3 text-center text-sm text-blue-600 dark:text-blue-400 font-medium">{{ item.totalTransitoria }}</td>
+              <td class="px-2 py-3 text-center text-sm text-orange-600 dark:text-orange-400 font-medium">{{ item.totalSolicitud }}</td>
+              <td class="px-2 py-3 text-center">
+                <span class="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded-full text-xs font-bold">
+                  {{ item.quantity }}
+                </span>
+              </td>
+              <td class="px-2 py-3 text-center text-sm text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-50/10 dark:bg-emerald-900/10">{{ item.totalDisponibleTienda }}</td>
+              <td class="px-2 py-3 text-center">
+                <span :class="[item.disponibleBodega > 0 ? 'text-blue-600 dark:text-blue-400 font-semibold' : 'text-red-400 dark:text-red-500/70', 'text-sm']">
+                  {{ item.disponibleBodega }}
+                </span>
+              </td>
+              <td class="px-2 py-3 text-center text-sm font-medium text-gray-600 dark:text-gray-400">{{ item.venta30Dias }}</td>
+              <td class="px-2 py-3 text-center">
+                <span :class="[item.sugerido > 0 ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-gray-400 dark:text-gray-500', 'text-sm']">
+                  {{ item.sugerido }}
+                </span>
+              </td>
+              <td class="px-2 py-3 text-center font-mono text-xs" :class="item.diasInventario < 5 ? 'text-red-500 dark:text-red-400 font-bold' : 'text-gray-500 dark:text-gray-400'">
+                {{ item.diasInventario?.toFixed(1) || '0.0' }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
-          <div class="flex justify-between items-center mb-8">
-            <span class="text-lg text-gray-400 font-medium">Estado</span>
-            <span class="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-xs font-bold border border-green-500/30 uppercase tracking-wider">
-              En proceso
-            </span>
-          </div>
-
-          <p class="text-xs text-center text-gray-500 leading-relaxed">
-            Las cantidades guardadas se sincronizarán automáticamente con SAP al cierre del horario de reposición.
-          </p>
+      <!-- Footer Summary -->
+      <div class="px-6 py-4 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+        <div class="text-xs text-gray-500 dark:text-gray-400">
+          Total de artículos en carrito: <span class="font-bold text-gray-900 dark:text-white">{{ carrito.length }}</span>
         </div>
-
-        <router-link 
-          to="/reposiciones/historial"
-          class="block w-full bg-white p-6 rounded-3xl border border-gray-100 shadow-sm text-center hover:shadow-md transition-all group"
-        >
-          <span class="text-gray-500 font-medium group-hover:text-indigo-600">Ver historial de solicitudes</span>
-        </router-link>
+        <div class="text-sm font-bold text-gray-900 dark:text-white">
+          Total Unidades Solicitadas: <span class="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 px-3 py-1 rounded-full ml-2">{{ store.totalSolicitado }}</span>
+        </div>
       </div>
     </div>
   </div>
+</div>
 </template>
+
+<style scoped>
+/* Eliminar flechas de input number */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type=number] {
+  -moz-appearance: textfield;
+}
+</style>

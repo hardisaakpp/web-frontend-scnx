@@ -113,32 +113,32 @@ const viewSolicitudes = async (whsCode: string, fecha: string) => {
 </script>
 
 <template>
-  <div class="p-6 max-w-7xl mx-auto">
+  <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
     <!-- Header -->
     <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
       <div class="flex items-center gap-4">
-        <router-link to="/reposiciones" class="p-2 rounded-xl border border-gray-200 text-gray-500 hover:bg-gray-50 transition-all shadow-sm">
-          <ArrowLeftIcon class="w-6 h-6" />
+        <router-link to="/reposiciones" class="p-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all bg-white dark:bg-gray-900 shadow-sm">
+          <ArrowLeftIcon class="w-5 h-5" />
         </router-link>
         <div>
-          <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Historial de Reposiciones</h1>
-          <p class="text-gray-500 mt-1">Consulta tus solicitudes pasadas de <strong class="text-indigo-600">{{ currentWarehouseName || 'una bodega' }}</strong></p>
+          <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Historial de Reposiciones</h1>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Consulta tus solicitudes pasadas de <strong class="text-blue-600 dark:text-blue-400 uppercase font-bold">{{ currentWarehouseName || 'una bodega' }}</strong></p>
         </div>
       </div>
 
-      <div class="flex flex-wrap items-center bg-white p-2 rounded-2xl border border-gray-100 shadow-sm gap-2">
-        <div v-if="!store.filters.whsCode" class="text-xs text-red-500 font-bold px-2">Seleccione una bodega</div>
-        <div class="flex items-center px-4 py-2 border-r border-gray-100 gap-2">
-          <CalendarIcon class="w-5 h-5 text-gray-400" />
-          <input type="date" v-model="fechaDesde" class="border-none focus:ring-0 p-0 text-sm font-medium text-gray-700" />
+      <div class="flex flex-wrap items-center bg-white dark:bg-gray-800 p-2 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm gap-2">
+        <div v-if="!store.filters.whsCode" class="text-xs text-red-500 dark:text-red-400 font-bold px-2">Seleccione una bodega</div>
+        <div class="flex items-center px-4 py-2 border-r border-gray-100 dark:border-gray-700 gap-2">
+          <CalendarIcon class="w-4 h-4 text-gray-400" />
+          <input type="date" v-model="fechaDesde" class="border-none focus:ring-0 p-0 text-sm font-medium text-gray-700 dark:text-gray-300 bg-transparent" />
         </div>
-        <div class="flex items-center px-4 py-2 border-r border-gray-100 gap-2">
-          <CalendarIcon class="w-5 h-5 text-gray-400" />
-          <input type="date" v-model="fechaHasta" class="border-none focus:ring-0 p-0 text-sm font-medium text-gray-700" />
+        <div class="flex items-center px-4 py-2 border-r border-gray-100 dark:border-gray-700 gap-2">
+          <CalendarIcon class="w-4 h-4 text-gray-400" />
+          <input type="date" v-model="fechaHasta" class="border-none focus:ring-0 p-0 text-sm font-medium text-gray-700 dark:text-gray-300 bg-transparent" />
         </div>
         <button 
           @click="fetchHistorial"
-          class="bg-indigo-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-indigo-700 transition-all text-sm ml-2 disabled:opacity-50"
+          class="bg-blue-600 text-white px-5 py-2 rounded-lg font-medium hover:bg-blue-700 transition-all text-sm ml-2 disabled:opacity-50"
           :disabled="!store.filters.whsCode"
         >
           Filtrar
@@ -147,73 +147,89 @@ const viewSolicitudes = async (whsCode: string, fecha: string) => {
     </div>
 
     <!-- Table -->
-    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse min-w-[900px]">
           <thead>
-            <tr class="bg-gray-50/50 border-b border-gray-100">
-              <th class="px-8 py-5 text-xs font-bold text-gray-500 uppercase tracking-wider">Fecha de Solicitud</th>
-              <th class="px-8 py-5 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">ID</th>
-              <th class="px-8 py-5 text-xs font-bold text-gray-500 uppercase tracking-wider">Flujo</th>
-              <th class="px-8 py-5 text-xs font-bold text-gray-500 uppercase tracking-wider text-center">Artículos</th>
-              <th class="px-8 py-5 text-xs font-bold text-gray-500 uppercase tracking-wider">Estado</th>
-              <th class="px-8 py-5 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Acciones</th>
+            <tr class="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+              <th class="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fecha de Solicitud</th>
+              <th class="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">ID</th>
+              <th class="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Origen</th>
+              <th class="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider"></th>
+              <th class="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Destino</th>
+              <th class="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Usuario Solicita</th>
+              <th class="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Artículos</th>
+              <th class="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Estado</th>
+              <th class="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Acciones</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-gray-100">
+          <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
             <tr v-if="loading" v-for="i in 5" :key="i" class="animate-pulse">
-              <td v-for="j in 6" :key="j" class="px-8 py-6"><div class="h-4 bg-gray-100 rounded w-full"></div></td>
+              <td v-for="j in 6" :key="j" class="px-6 py-4"><div class="h-4 bg-gray-100 dark:bg-gray-700 rounded w-full"></div></td>
             </tr>
             <tr v-else-if="!store.filters.whsCode">
-              <td colspan="6" class="px-8 py-20 text-center text-gray-400">
+              <td colspan="6" class="px-8 py-20 text-center text-gray-400 dark:text-gray-500">
                 <DocumentTextIcon class="w-16 h-16 mx-auto mb-4 opacity-10" />
-                <p class="text-lg font-medium">Seleccione una bodega en el catálogo para ver su historial.</p>
+                <p class="text-lg font-medium">Seleccione una bodega para ver su historial.</p>
               </td>
             </tr>
             <tr v-else-if="historial.length === 0">
-              <td colspan="6" class="px-8 py-20 text-center text-gray-400">
+              <td colspan="6" class="px-8 py-20 text-center text-gray-400 dark:text-gray-500">
                 <DocumentTextIcon class="w-16 h-16 mx-auto mb-4 opacity-10" />
                 <p class="text-lg font-medium">No se encontraron registros en este periodo.</p>
               </td>
             </tr>
-            <tr v-for="item in historial" :key="item.id" class="hover:bg-gray-50/50 transition-all group">
-              <td class="px-8 py-4">
+            <tr v-for="item in historial" :key="item.id" class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-all group">
+              <td class="px-6 py-4">
                 <div class="flex items-center gap-3">
-                  <div class="bg-indigo-50 p-2 rounded-xl">
-                    <DocumentTextIcon class="w-5 h-5 text-indigo-400" />
+                  <div class="bg-blue-50 dark:bg-blue-900/20 p-2 rounded-lg text-blue-600 dark:text-blue-400">
+                    <DocumentTextIcon class="w-4 h-4" />
                   </div>
-                  <span class="text-sm font-semibold text-gray-900">{{ formatDate(item.fecha) }}</span>
+                  <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ formatDate(item.fecha) }}</span>
                 </div>
               </td>
-              <td class="px-8 py-4 text-center">
-                <span class="text-xs font-bold bg-gray-100 text-gray-500 px-2 py-1 rounded-lg">#{{ item.id }}</span>
+              <td class="px-6 py-4 text-center">
+                <span class="text-[10px] font-bold bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded">#{{ item.id }}</span>
               </td>
-              <td class="px-8 py-4">
+              <td class="px-6 py-4">
                 <div class="flex items-center gap-2">
-                  <span class="text-sm font-medium text-gray-600">{{ item.fromWhs }}</span>
-                  <span class="text-gray-300">→</span>
-                  <span class="text-sm font-bold text-indigo-600">{{ item.toWhs }}</span>
+                  <span class="text-sm font-medium text-gray-600 dark:text-gray-400">{{ item.fromWhs }}</span>
                 </div>
               </td>
-              <td class="px-8 py-4 text-center">
-                <span class="text-sm font-bold text-gray-900">{{ item.cantidadArticulos }}</span>
+              <td class="px-6 py-4">
+                <div class="flex items-center gap-2">
+                  <span class="text-gray-300">→</span>
+                </div>
               </td>
-              <td class="px-8 py-4">
-                <div :class="[getStatusClass(item.integrado), 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border uppercase tracking-wider']">
-                  <CheckBadgeIcon v-if="item.integrado" class="w-3.5 h-3.5" />
-                  <ClockIcon v-else class="w-3.5 h-3.5" />
+              <td class="px-6 py-4">
+                <div class="flex items-center gap-2">
+                  <span class="text-sm font-bold text-blue-600 dark:text-blue-400">{{ item.toWhs }}</span>
+                </div>
+              </td>
+              <td class="px-6 py-4">
+                <div class="flex items-center gap-2">
+                  <span class="text-sm font-bold text-blue-600 dark:text-blue-400">{{ currentWarehouseName || 'una bodega' }}</span>
+                </div>
+              </td>
+              <td class="px-6 py-4 text-center">
+                <span class="text-sm font-bold text-gray-900 dark:text-white">{{ item.cantidadArticulos }}</span>
+              </td>
+              <td class="px-6 py-4">
+                <div :class="[getStatusClass(item.integrado), 'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wider bg-opacity-10']">
+                  <CheckBadgeIcon v-if="item.integrado" class="w-3 h-3" />
+                  <ClockIcon v-else class="w-3 h-3" />
                   {{ item.integrado ? 'Integrado' : 'Pendiente' }}
                 </div>
               </td>
-              <td class="px-8 py-4 text-right">
-                <div class="flex items-center justify-end gap-2">
-                  <button @click="openDetail(item.id)" title="Ver Detalle" class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+              <td class="px-6 py-4 text-right">
+                <div class="flex items-center justify-end gap-1.5">
+                  <button @click="openDetail(item.id)" title="Ver Detalle" class="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors">
                     <EyeIcon class="w-5 h-5" />
                   </button>
-                  <button @click="downloadPdf(item.id)" title="Descargar PDF" class="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                  <button @click="downloadPdf(item.id)" title="Descargar PDF" class="p-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
                     <DocumentArrowDownIcon class="w-5 h-5" />
                   </button>
-                  <button @click="viewSolicitudes(item.toWhs, item.fecha)" title="Ver Solicitudes en SAP" class="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors">
+                  <button @click="viewSolicitudes(item.toWhs, item.fecha)" title="Ver Solicitudes en SAP" class="p-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg transition-colors">
                     <QueueListIcon class="w-5 h-5" />
                   </button>
                 </div>
@@ -228,47 +244,47 @@ const viewSolicitudes = async (whsCode: string, fecha: string) => {
     <TransitionRoot appear :show="isDetailOpen" as="template">
       <Dialog as="div" @close="isDetailOpen = false" class="relative z-50">
         <TransitionChild as="template" enter="duration-300 ease-out" enter-from="opacity-0" enter-to="opacity-100" leave="duration-200 ease-in" leave-from="opacity-100" leave-to="opacity-0">
-          <div class="fixed inset-0 bg-black/40 backdrop-blur-sm" />
+          <div class="fixed inset-0 bg-black/50 backdrop-blur-sm" />
         </TransitionChild>
 
         <div class="fixed inset-0 overflow-y-auto">
           <div class="flex min-h-full items-center justify-center p-4">
             <TransitionChild as="template" enter="duration-300 ease-out" enter-from="opacity-0 scale-95" enter-to="opacity-100 scale-100" leave="duration-200 ease-in" leave-from="opacity-100 scale-100" leave-to="opacity-0 scale-95">
-              <DialogPanel class="w-full max-w-2xl transform overflow-hidden rounded-3xl bg-white p-8 text-left align-middle shadow-2xl transition-all border border-gray-100">
+              <DialogPanel class="w-full max-w-2xl transform overflow-hidden rounded-xl bg-white dark:bg-gray-800 p-8 text-left align-middle shadow-2xl transition-all border border-gray-200 dark:border-gray-700">
                 <div v-if="loadingDetail" class="flex flex-col items-center py-12">
-                  <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
-                  <p class="text-gray-500 font-medium">Cargando detalle de artículos...</p>
+                  <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+                  <p class="text-gray-500 dark:text-gray-400 font-medium">Cargando detalles...</p>
                 </div>
                 
                 <div v-else>
                   <div class="flex justify-between items-start mb-6">
                     <div>
-                      <DialogTitle as="h3" class="text-2xl font-bold text-gray-900 pr-8 leading-tight">
-                        Detalle de Transacción
+                      <DialogTitle as="h3" class="text-xl font-bold text-gray-900 dark:text-white pr-8 leading-tight">
+                        Detalle de Solicitud
                       </DialogTitle>
-                      <p class="text-sm text-gray-500 mt-1">Artículos procesados en esta solicitud.</p>
+                      <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Artículos seleccionados para esta transacción.</p>
                     </div>
-                    <button @click="isDetailOpen = false" class="p-2 hover:bg-gray-100 rounded-full text-gray-400 transition-colors">
+                    <button @click="isDetailOpen = false" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-gray-400 transition-colors">
                       <XMarkIcon class="w-6 h-6" />
                     </button>
                   </div>
 
-                  <div v-if="selectedItems.length > 0" class="max-h-[60vh] overflow-y-auto border border-gray-100 rounded-xl">
-                    <table class="w-full text-left border-collapse bg-white relative">
-                      <thead class="sticky top-0 bg-gray-50/95 backdrop-blur shadow-sm z-10">
+                  <div v-if="selectedItems.length > 0" class="max-h-[60vh] overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                    <table class="w-full text-left border-collapse bg-white dark:bg-gray-800 relative">
+                      <thead class="sticky top-0 bg-gray-50/95 dark:bg-gray-900/95 backdrop-blur z-10 border-b border-gray-200 dark:border-gray-700">
                         <tr>
-                          <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase">Artículo</th>
-                          <th class="px-4 py-3 text-xs font-bold text-gray-500 uppercase text-center w-24">Cant.</th>
+                          <th class="px-4 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase">Artículo</th>
+                          <th class="px-4 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase text-center w-24">Cant.</th>
                         </tr>
                       </thead>
-                      <tbody class="divide-y divide-gray-100">
-                        <tr v-for="line in selectedItems" :key="line.itemCode" class="hover:bg-gray-50/50">
+                      <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                        <tr v-for="line in selectedItems" :key="line.itemCode" class="hover:bg-gray-50 dark:hover:bg-gray-700/50">
                           <td class="px-4 py-3">
-                            <div class="font-bold text-gray-900 text-sm">{{ line.itemCode }}</div>
-                            <div class="text-xs text-gray-500">{{ line.itemName }}</div>
+                            <div class="font-bold text-gray-900 dark:text-white text-sm">{{ line.itemCode }}</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400 line-clamp-1">{{ line.itemName }}</div>
                           </td>
                           <td class="px-4 py-3 text-center">
-                            <span class="inline-flex items-center justify-center bg-indigo-50 text-indigo-700 font-bold px-3 py-1 rounded-lg min-w-[3rem]">
+                            <span class="inline-flex items-center justify-center bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 font-bold px-3 py-1 rounded-lg min-w-[3rem] text-sm">
                               {{ line.quantity }}
                             </span>
                           </td>
@@ -276,7 +292,7 @@ const viewSolicitudes = async (whsCode: string, fecha: string) => {
                       </tbody>
                     </table>
                   </div>
-                  <div v-else class="py-12 text-center text-gray-500">
+                  <div v-else class="py-12 text-center text-gray-500 dark:text-gray-400">
                     No se encontraron artículos en esta solicitud.
                   </div>
                 </div>
@@ -286,89 +302,88 @@ const viewSolicitudes = async (whsCode: string, fecha: string) => {
         </div>
       </Dialog>
     </TransitionRoot>
+
     <!-- Modal Solicitudes SAP -->
     <TransitionRoot appear :show="isSapModalOpen" as="template">
       <Dialog as="div" @close="isSapModalOpen = false" class="relative z-50">
         <TransitionChild as="template" enter="duration-300 ease-out" enter-from="opacity-0" enter-to="opacity-100" leave="duration-200 ease-in" leave-from="opacity-100" leave-to="opacity-0">
-          <div class="fixed inset-0 bg-black/40 backdrop-blur-sm" />
+          <div class="fixed inset-0 bg-black/50 backdrop-blur-sm" />
         </TransitionChild>
 
         <div class="fixed inset-0 overflow-y-auto">
-          <div class="flex min-h-full items-center justify-center p-4 text-center">
+          <div class="flex min-h-full items-center justify-center p-4">
             <TransitionChild as="template" enter="duration-300 ease-out" enter-from="opacity-0 scale-95" enter-to="opacity-100 scale-100" leave="duration-200 ease-in" leave-from="opacity-100 scale-100" leave-to="opacity-0 scale-95">
-              <DialogPanel class="w-full max-w-4xl transform overflow-hidden rounded-3xl bg-white p-8 text-left align-middle shadow-2xl transition-all border border-gray-100">
+              <DialogPanel class="w-full max-w-4xl transform overflow-hidden rounded-xl bg-white dark:bg-gray-800 p-8 text-left align-middle shadow-2xl transition-all border border-gray-200 dark:border-gray-700">
                 <div v-if="loadingSap" class="flex flex-col items-center py-12">
                   <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mb-4"></div>
-                  <p class="text-gray-500 font-medium">Consultando registros en SAP...</p>
+                  <p class="text-gray-500 dark:text-gray-400 font-medium">Consultando SAP...</p>
                 </div>
                 
                 <div v-else>
                   <div class="flex justify-between items-start mb-6">
                     <div>
-                      <DialogTitle as="h3" class="text-2xl font-bold text-gray-900 pr-8 leading-tight">
-                        Solicitudes Generadas en SAP
+                      <DialogTitle as="h3" class="text-xl font-bold text-gray-900 dark:text-white pr-8 leading-tight">
+                        Documentos en SAP
                       </DialogTitle>
-                      <p class="text-sm text-gray-500 mt-1">Documentos oficiales creados a partir de esta reposición.</p>
+                      <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Solicitudes de traslado generadas automáticamente.</p>
                     </div>
-                    <button @click="isSapModalOpen = false" class="p-2 hover:bg-gray-100 rounded-full text-gray-400 transition-colors">
+                    <button @click="isSapModalOpen = false" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-gray-400 transition-colors">
                       <XMarkIcon class="w-6 h-6" />
                     </button>
                   </div>
 
                   <div v-if="sapRequests.length > 0" class="space-y-6 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
-                    <div v-for="req in sapRequests" :key="req.docNum" class="bg-gray-50/50 rounded-2xl border border-gray-100 overflow-hidden">
-                      <div class="bg-white px-6 py-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-4">
+                    <div v-for="req in sapRequests" :key="req.docNum" class="bg-gray-50 dark:bg-gray-900/40 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                      <div class="bg-white dark:bg-gray-800 px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex flex-wrap items-center justify-between gap-4">
                         <div class="flex items-center gap-3">
-                          <div class="bg-emerald-100 p-2 rounded-xl text-emerald-600">
+                          <div class="bg-emerald-100 dark:bg-emerald-900/20 p-2 rounded-lg text-emerald-600 dark:text-emerald-400">
                             <DocumentTextIcon class="w-5 h-5" />
                           </div>
                           <div>
-                            <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Documento SAP</span>
-                            <h4 class="text-lg font-extrabold text-gray-900">#{{ req.docNum }}</h4>
+                            <span class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Documento SAP</span>
+                            <h4 class="text-lg font-bold text-gray-900 dark:text-white">#{{ req.docNum }}</h4>
                           </div>
                         </div>
-                        <div class="flex items-center gap-4 bg-gray-50 px-4 py-2 rounded-xl border border-gray-100">
+                        <div class="flex items-center gap-4 bg-gray-50 dark:bg-gray-900/50 px-4 py-2 rounded-lg border border-gray-100 dark:border-gray-700">
                            <div class="text-center">
-                             <div class="text-[10px] text-gray-400 font-bold uppercase">Origen</div>
-                             <div class="text-sm font-bold text-gray-700">{{ req.fromWhs }}</div>
+                             <div class="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Origen</div>
+                             <div class="text-sm font-bold text-gray-700 dark:text-gray-300">{{ req.fromWhs }}</div>
                            </div>
-                           <div class="text-gray-300">→</div>
+                           <div class="text-gray-300 dark:text-gray-600 leading-none">→</div>
                            <div class="text-center">
-                             <div class="text-[10px] text-gray-400 font-bold uppercase">Destino</div>
-                             <div class="text-sm font-bold text-emerald-600">{{ req.toWhs }}</div>
+                             <div class="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Destino</div>
+                             <div class="text-sm font-bold text-emerald-600 dark:text-emerald-400">{{ req.toWhs }}</div>
                            </div>
                         </div>
                       </div>
                       
                       <div class="p-6">
-                        <div v-if="req.comments" class="mb-4 bg-amber-50/50 p-3 rounded-lg border border-amber-100/50 flex items-start gap-2">
+                        <div v-if="req.comments" class="mb-5 bg-amber-50 dark:bg-amber-900/10 p-3 rounded-lg border border-amber-100 dark:border-amber-900/20 flex items-start gap-2">
                           <ClockIcon class="w-4 h-4 text-amber-500 mt-0.5" />
-                          <p class="text-xs text-amber-700 font-medium italic line-clamp-2">"{{ req.comments }}"</p>
+                          <p class="text-xs text-amber-700 dark:text-amber-500 font-medium italic">"{{ req.comments }}"</p>
                         </div>
 
                         <table class="w-full text-left border-collapse">
                           <thead>
-                            <tr class="border-b border-gray-200">
-                              <th class="py-2 text-xs font-bold text-gray-400 uppercase">Código de Artículo</th>
-                              <th class="py-2 text-xs font-bold text-gray-400 uppercase text-right">Cantidad</th>
+                            <tr class="border-b border-gray-200 dark:border-gray-700">
+                              <th class="py-2 text-[10px] font-bold text-gray-400 uppercase">Código</th>
+                              <th class="py-2 text-[10px] font-bold text-gray-400 uppercase text-right">Cantidad</th>
                             </tr>
                           </thead>
-                          <tbody class="divide-y divide-gray-100">
+                          <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
                             <tr v-for="line in req.lines" :key="line.itemCode">
-                              <td class="py-2.5 text-sm font-medium text-gray-600">{{ line.itemCode }}</td>
-                              <td class="py-2.5 text-sm font-bold text-gray-900 text-right">{{ line.quantity }}</td>
+                              <td class="py-2 text-sm font-medium text-gray-600 dark:text-gray-400">{{ line.itemCode }}</td>
+                              <td class="py-2 text-sm font-bold text-gray-900 dark:text-white text-right">{{ line.quantity }}</td>
                             </tr>
                           </tbody>
                         </table>
                       </div>
                     </div>
                   </div>
-                  <div v-else class="py-20 text-center bg-gray-50/50 rounded-3xl border-2 border-dashed border-gray-100">
-                    <div class="bg-white w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm border border-gray-50">
-                      <XMarkIcon class="w-10 h-10 text-gray-200" />
-                    </div>
-                    <p class="text-xl font-bold text-gray-400">Sin registros en SAP</p>
-                    <p class="text-gray-400 text-sm mt-1 max-w-xs mx-auto">Esta reposición aún no ha sido procesada o no generó documentos de traslado vinculados.</p>
+                  <div v-else class="py-20 text-center bg-gray-50 dark:bg-gray-900/40 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
+                    <XMarkIcon class="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+                    <p class="text-xl font-bold text-gray-400 dark:text-gray-500">Sin registros en SAP</p>
+                    <p class="text-gray-400 dark:text-gray-500 text-sm mt-1">Este registro aún no ha sido sincronizado.</p>
                   </div>
                 </div>
               </DialogPanel>
