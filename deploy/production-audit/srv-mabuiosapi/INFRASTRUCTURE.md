@@ -87,11 +87,11 @@ Los vhosts **intranet**, **storecontrol**, **sapi**, **glpi** no cambian.
 | 80, 443 | apache2 | Vhosts públicos |
 | 3000 | nginx | srv-mabuiosapi.mabeltrading.com |
 | 3001 | nginx | scnexus.mabelgroup.com.ec (dist) |
-| 8000 | docker-proxy | mba3-api |
+| 8000 | docker-proxy | mba3-api (red `mba3-consultas_default`) |
 | 8004 | docker-proxy | app-maestro |
 | 8005 | docker-proxy | app-conciliacion |
-| 8080 | docker-proxy | scnexus-articulo-api (scan) |
-| 8082 | *(libre)* | **Reservado** contenedor `scnexus-front` |
+| 8080 | docker-proxy | scnexus-articulo-api (scan) — **≠ Core**; Core real: `192.168.2.12:8080` |
+| 8082 | docker-proxy | **scnexus-front** (activo desde 2026-06-05) |
 | 8083 | docker-proxy | scnexus-validacionci-api |
 | 8092 | docker-proxy | cajachica |
 | 8093 | docker-proxy | api-slayer |
@@ -126,7 +126,7 @@ El bloque largo con `root /storage/scnexus/dist` y proxies a `127.0.0.1:8000`, `
 |------------|--------------------------|-------------------------|
 | Core login `/api/Auth/` | `192.168.2.12:8080` | `192.168.2.12:8080` (Docker prod; :5053 solo local, login 500) |
 | Caja chica | `192.168.2.153:8080` | `host.docker.internal:8092` |
-| MBA3 | `127.0.0.1:8000` | `host.docker.internal:8000` ✓ |
+| MBA3 | `127.0.0.1:8000` | `http://mba3-api:8000` vía red `mba3-consultas_default` ✓ (⚠️ `host.docker.internal:8000` hace timeout desde contenedor — ver INCIDENTS.md 2026-06-05) |
 
 Plantilla env: `deploy/env/prod-mabuiosapi.env.example`
 
@@ -167,4 +167,4 @@ Plantilla env: `deploy/env/prod-mabuiosapi.env.example`
 
 ---
 
-**Última actualización:** 2026-03-21
+**Última actualización:** 2026-06-05 (incidente reinicio servidor — ver [INCIDENTS.md](./INCIDENTS.md))

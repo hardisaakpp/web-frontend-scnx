@@ -90,6 +90,40 @@ curl -sS -o /dev/null -w "scnexus HTTPS: %{http_code}\n" https://scnexus.mabelgr
 
 ---
 
+## MBA3 504 en `/api/Auth/me` — aislamiento de redes Docker
+
+`/api/Auth/me` proxea a MBA3 (puerto 8000). Si el contenedor `scnexus-front` no está en la misma red Docker que `mba3-api`, la conexión hace timeout aunque MBA3 responda bien desde el host.
+
+```bash
+# 1) MBA3 responde desde el host (debe dar 401 en <1s)
+curl -sS -o /dev/null -w "mba3 host: %{http_code} time:%{time_total}\n" --connect-timeout 10 \
+  http://127.0.0.1:8000/api/Auth/me
+
+# 2) MBA3 desde DENTRO del contenedor (debe dar 401; si da timeout → problema de red)
+docker exec scnexus-front wget -qO- --timeout=10 \
+  http://host.docker.internal:8000/api/Auth/me 2>&1 | head -3
+
+# Si (1) OK pero (2) timeout → scnexus-front no está en la red de mba3-api
+docker inspect mba3-api | grep -A3 '"Networks"'
+# → mba3-consultas_default
+
+# 3) Verificar que el compose tiene la red externa declarada
+grep -A4 'mba3_net' /opt/frontend/scnexus-front/docker-compose.yml
+
+# 4) Verificar upstream horneado en la imagen
+docker exec scnexus-front grep 'location = /api/Auth/me' -A2 /etc/nginx/conf.d/default.conf
+# Debe mostrar: proxy_pass http://mba3-api:8000;
+
+# 5) Si UPSTREAM_MBA3 en active.docker.env sigue siendo host.docker.internal — corregir y rebuild
+sed -i 's|UPSTREAM_MBA3=.*|UPSTREAM_MBA3=http://mba3-api:8000|' deploy/env/active.docker.env
+sed -i 's|UPSTREAM_MBA3_AUTH=.*|UPSTREAM_MBA3_AUTH=http://mba3-api:8000|' deploy/env/active.docker.env
+docker compose --env-file deploy/env/active.docker.env up -d --build
+```
+
+**Causa raíz:** `host.docker.internal` resuelve a `172.17.0.1` (bridge docker0), pero iptables de Docker bloquea tráfico entre redes de contenedores distintos a través del host. **Solución permanente:** red externa `mba3-consultas_default` en `docker-compose.yml` + upstream `http://mba3-api:8000`.
+
+---
+
 ## Core Auth: 5053 vs 192.168.2.12:8080
 
 En prod, login debe ir al mismo Core que Apache viejo (`192.168.2.12:8080`). El contenedor local `:5053` puede devolver 500 en `/api/Auth/login`.
