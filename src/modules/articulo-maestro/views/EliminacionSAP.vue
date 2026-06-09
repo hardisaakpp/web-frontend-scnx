@@ -8,11 +8,18 @@
                     Gestión de artículos para eliminar del ERP Externo (SAP) e inactivar en el sistema local.
                 </p>
             </div>
-            <router-link
-                class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700 transition-colors shadow-sm"
-                to="/articulo-maestro">
-                Volver al listado
-            </router-link>
+            <div class="flex items-center gap-3">
+                <router-link
+                    class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700 transition-colors shadow-sm"
+                    to="/articulo-maestro/lista">
+                    Gestión de Artículos
+                </router-link>
+                <router-link
+                    class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700 transition-colors shadow-sm"
+                    to="/articulo-maestro">
+                    Menú Principal
+                </router-link>
+            </div>
         </div>
 
         <div class="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -197,46 +204,106 @@
                     </div>
 
                     <div v-if="syncResult" class="overflow-y-auto p-6 space-y-6">
-                        <div class="grid grid-cols-3 gap-4">
-                            <div class="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-4 border border-emerald-100 dark:border-emerald-800">
-                                <p class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{{ syncResult.success }}</p>
-                                <p class="text-xs font-medium uppercase text-emerald-800 dark:text-emerald-400">Correctos</p>
+                        
+                        <!-- CASO 1: Nueva estructura de Tarea / Novedades -->
+                        <template v-if="syncResult.message || syncResult.tarea_id">
+                            <!-- Message & Task ID -->
+                            <div 
+                                class="p-4 rounded-xl border flex items-start gap-4"
+                                :class="syncResult.success ? 'bg-emerald-50 border-emerald-100 dark:bg-emerald-900/20 dark:border-emerald-800' : 'bg-amber-50 border-amber-100 dark:bg-amber-900/20 dark:border-amber-800'"
+                            >
+                                <div class="p-2 rounded-lg" :class="syncResult.success ? 'bg-emerald-100 dark:bg-emerald-800' : 'bg-amber-100 dark:bg-amber-800'">
+                                    <svg v-if="syncResult.success" class="w-6 h-6 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    <svg v-else class="w-6 h-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-sm font-bold" :class="syncResult.success ? 'text-emerald-900 dark:text-emerald-300' : 'text-amber-900 dark:text-amber-300'">
+                                        {{ syncResult.success ? 'Operación Iniciada' : 'Atención' }}
+                                    </h3>
+                                    <p class="text-sm mt-1" :class="syncResult.success ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'">
+                                        {{ syncResult.message }}
+                                    </p>
+                                    <div v-if="syncResult.tarea_id" class="mt-3 flex items-center gap-2">
+                                        <span class="px-2 py-1 bg-white/50 dark:bg-black/20 rounded text-xs font-mono font-bold">
+                                            ID Tarea: #{{ syncResult.tarea_id }}
+                                        </span>
+                                        <router-link to="/articulo-maestro/historial-sap" class="text-xs underline hover:no-underline">
+                                            Ver progreso en auditoría
+                                        </router-link>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="bg-red-50 dark:bg-red-900/20 rounded-xl p-4 border border-red-100 dark:border-red-800">
-                                <p class="text-2xl font-bold text-red-600 dark:text-red-400">{{ syncResult.error }}</p>
-                                <p class="text-xs font-medium uppercase text-red-800 dark:text-red-400">Errores</p>
-                            </div>
-                            <div class="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-                                <p class="text-2xl font-bold text-gray-600 dark:text-gray-400">{{ syncResult.total }}</p>
-                                <p class="text-xs font-medium uppercase text-gray-800 dark:text-gray-400">Total</p>
-                            </div>
-                        </div>
 
-                        <div class="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                            <table class="w-full text-left text-sm">
-                                <thead class="bg-gray-50 dark:bg-gray-900/50 text-[10px] text-gray-500 font-bold uppercase">
-                                    <tr>
-                                        <th class="px-4 py-2">ItemCode</th>
-                                        <th class="px-4 py-2">Estado</th>
-                                        <th class="px-4 py-2">Mensaje</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
-                                    <tr v-for="d in syncResult.details" :key="d.item_code">
-                                        <td class="px-4 py-2 font-mono text-xs">{{ d.item_code }}</td>
-                                        <td class="px-4 py-2">
-                                            <span 
-                                                class="px-2 py-0.5 rounded text-[10px] font-bold uppercase"
-                                                :class="d.status === 'Error' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'"
-                                            >
-                                                {{ d.status }}
-                                            </span>
-                                        </td>
-                                        <td class="px-4 py-2 text-xs text-gray-500">{{ d.message }}</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                            <!-- Novedades Table -->
+                            <div v-if="syncResult.novedades && syncResult.novedades.length > 0" class="space-y-3">
+                                <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    Novedades
+                                </h4>
+                                <div class="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                                    <table class="w-full text-left text-sm">
+                                        <thead class="bg-gray-50 dark:bg-gray-900/50 text-xs text-gray-500 font-semibold uppercase tracking-wider">
+                                            <tr>
+                                                <th class="px-4 py-3">ItemCode</th>
+                                                <th class="px-4 py-3">Motivo</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                                            <tr v-for="n in syncResult.novedades" :key="n.item_code">
+                                                <td class="px-4 py-3 font-mono text-gray-900 dark:text-white">{{ n.item_code }}</td>
+                                                <td class="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">
+                                                    {{ n.motivo }}
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- CASO 2: Estructura antigua (Estadísticas) -->
+                        <template v-else>
+                            <div class="grid grid-cols-3 gap-4">
+                                <div class="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-4 border border-emerald-100 dark:border-emerald-800">
+                                    <p class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{{ (syncResult as any).success }}</p>
+                                    <p class="text-xs font-medium uppercase text-emerald-800 dark:text-emerald-400">Correctos</p>
+                                </div>
+                                <div class="bg-red-50 dark:bg-red-900/20 rounded-xl p-4 border border-red-100 dark:border-red-800">
+                                    <p class="text-2xl font-bold text-red-600 dark:text-red-400">{{ (syncResult as any).error }}</p>
+                                    <p class="text-xs font-medium uppercase text-red-800 dark:text-red-400">Errores</p>
+                                </div>
+                                <div class="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+                                    <p class="text-2xl font-bold text-gray-600 dark:text-gray-400">{{ (syncResult as any).total }}</p>
+                                    <p class="text-xs font-medium uppercase text-gray-800 dark:text-gray-400">Total</p>
+                                </div>
+                            </div>
+
+                            <div v-if="(syncResult as any).details" class="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                                <table class="w-full text-left text-sm">
+                                    <thead class="bg-gray-50 dark:bg-gray-900/50 text-[10px] text-gray-500 font-bold uppercase">
+                                        <tr>
+                                            <th class="px-4 py-2">ItemCode</th>
+                                            <th class="px-4 py-2">Estado</th>
+                                            <th class="px-4 py-2">Mensaje</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                                        <tr v-for="d in (syncResult as any).details" :key="d.item_code">
+                                            <td class="px-4 py-2 font-mono text-xs">{{ d.item_code }}</td>
+                                            <td class="px-4 py-2">
+                                                <span 
+                                                    class="px-2 py-0.5 rounded text-[10px] font-bold uppercase"
+                                                    :class="d.status === 'Error' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'"
+                                                >
+                                                    {{ d.status }}
+                                                </span>
+                                            </td>
+                                            <td class="px-4 py-2 text-xs text-gray-500">{{ d.message }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </template>
                     </div>
 
                     <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end bg-gray-50 dark:bg-gray-800/50 rounded-b-2xl">

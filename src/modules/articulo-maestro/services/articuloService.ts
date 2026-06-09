@@ -137,7 +137,7 @@ export const articuloService = {
                 limit: pageSize
             }
         })
-        
+
         const { items, total } = response.data
 
         return {
@@ -182,7 +182,7 @@ export const articuloService = {
     },
 
     // Obtener artículos filtrados por estado (para migración)
-    getArticulosByEstado: async (estados: string[], limit: number = 100) => {
+    getArticulosByEstado: async (estados: string[], limit: number = 500) => {
         const params = new URLSearchParams()
         params.append('skip', '0')
         params.append('limit', limit.toString())
@@ -200,12 +200,12 @@ export const articuloService = {
                 'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, */*'
             }
         })
-        
+
         // El interceptor ya asegura que si es un Blob lo deja pasar tal cual
-        const blob = new Blob([response.data as BlobPart], { 
-            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+        const blob = new Blob([response.data as BlobPart], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         })
-        
+
         const url = window.URL.createObjectURL(blob)
         const link = document.createElement('a')
         link.href = url
@@ -413,22 +413,36 @@ export const catalogoService = {
 
 // ─── Servicio SAP (Migración) ────────────────────────────────────────────────
 
-export interface SapSyncDetail {
+export interface SapNovedad {
     item_code: string
-    status: string
-    message: string
+    motivo: string
 }
 
 export interface SapSyncResponse {
-    total: number
-    success: number
-    error: number
-    details: SapSyncDetail[]
-    success_bool?: boolean
+    success: boolean
+    message: string
+    tarea_id?: number
+    novedades?: SapNovedad[]
+    // Mantener compatibilidad temporal si es necesario, o limpiar
+    total?: number
+    success_count?: number
+    error_count?: number
+}
+
+export interface SapTask {
+    id: number
+    nombre_tarea: string
+    usuario: string
+    estado: 'PROCESANDO' | 'FINALIZADO' | 'ERROR' | string
+    total_items: number
+    items_procesados: number
+    fecha_creacion: string
+    fecha_fin: string | null
+    progreso_porcentaje: number
 }
 
 export const sapService = {
-    // Enviar artículos a SAP (crear)
+    // Enviar artículos a SAP (crear/sincronizar fondo)
     syncSelection: async (itemCodes: string[]): Promise<SapSyncResponse> => {
         const response = await apiMaestro.post<SapSyncResponse>('/api/v1/sap/sync-selection', {
             item_codes: itemCodes
@@ -462,42 +476,21 @@ export const sapService = {
         return response.data
     },
 
-    // Inteligente: intenta crear, si ya existe en SAP lo actualiza
+    // Inteligente: el backend ahora maneja la lógica de fondo
     syncOrUpdate: async (itemCodes: string[]): Promise<SapSyncResponse> => {
-        // Primero intentar crear
-        const createResult = await apiMaestro.post<SapSyncResponse>('/api/v1/sap/sync-selection', {
-            item_codes: itemCodes
-        })
-        const result = createResult.data
+        return await sapService.syncSelection(itemCodes)
+    },
 
-        // Recoger los que fallaron por "already exists" para actualizar
-        const toUpdate = result.details
-            .filter(d => d.status === 'Error' && d.message.toLowerCase().includes('already exists'))
-            .map(d => d.item_code)
+    // Obtener lista de tareas recientes (últimas 3 según el backend)
+    getTasks: async (): Promise<SapTask[]> => {
+        const response = await apiMaestro.get<SapTask[]>('/api/v1/sap/tasks')
+        return response.data
+    },
 
-        if (toUpdate.length === 0) return result
-
-        // Actualizar los que ya existen
-        const updateResult = await apiMaestro.patch<SapSyncResponse>('/api/v1/sap/update-in-sap', {
-            item_codes: toUpdate
-        })
-
-        // Combinar resultados
-        const combined: SapSyncResponse = {
-            total: result.total,
-            success: 0,
-            error: 0,
-            details: result.details.map(d => {
-                if (toUpdate.includes(d.item_code)) {
-                    const updated = updateResult.data.details.find(u => u.item_code === d.item_code)
-                    return updated || d
-                }
-                return d
-            })
-        }
-        combined.success = combined.details.filter(d => d.status !== 'Error').length
-        combined.error = combined.details.filter(d => d.status === 'Error').length
-        return combined
+    // Obtener detalle de una tarea específica
+    getTaskById: async (id: number): Promise<SapTask> => {
+        const response = await apiMaestro.get<SapTask>(`/api/v1/sap/tasks/${id}`)
+        return response.data
     }
 }
 
