@@ -211,3 +211,88 @@ docker inspect scnexus-front --format '{{.HostConfig.RestartPolicy.Name}}'
 
 **Registrado:** 2026-06-10  
 **Autor:** Carlos Ortiz
+
+---
+
+## 2026-06-10 — 504 en /caja-chica-api/ (cajachica IP bridge cambió)
+
+**Duración estimada:** horas (detectado en /caja-chica/asignacion-almacenes)
+**Impacto:** toda la sección de Caja Chica devuelve 504.
+
+### Síntoma
+
+```
+GET /caja-chica-api/Almacenes → 504 Gateway Time-out
+```
+
+Nginx log:
+```
+upstream timed out (110: Operation timed out) while connecting to upstream,
+upstream: "http://172.17.0.2:8092/api/Almacenes"
+```
+
+### Causa raíz
+
+La imagen fue buildeada con `UPSTREAM_CAJA_CHICA=http://172.17.0.2:8092` (IP bridge de cajachica en ese momento). Al recrear el contenedor `cajachica`, Docker le asignó la IP `172.17.0.4` en la red bridge. La imagen de `scnexus-front` seguía intentando conectar a la IP antigua.
+
+`curl` desde el host a `192.168.2.153:8092` funcionaba, pero desde dentro del contenedor `scnexus-front` hacía timeout porque `scnexus-front` no estaba en la red bridge.
+
+Este es el mismo patrón del incidente MBA3 (2026-06-05, punto 5): usar IPs bridge hardcodeadas en la imagen genera 504 cada vez que se recrea el contenedor destino.
+
+### Corrección permanente
+
+Migrar cajachica a red user-defined con DNS, igual que MBA3.
+
+**En el servidor (una sola vez; repetir tras recrear `cajachica`):**
+```bash
+docker network create cajachica_net
+docker network connect cajachica_net cajachica
+```
+
+**En `active.docker.env` del servidor:**
+```env
+UPSTREAM_CAJA_CHICA=http://cajachica:8092
+```
+
+**En el repo** (`docker-compose.yml`):
+```yaml
+services:
+  scnexus-front:
+    networks:
+      - default
+      - mba3_net
+      - cajachica_net   # ← añadido
+
+networks:
+  cajachica_net:
+    external: true
+    name: cajachica_net
+```
+
+**Rebuild obligatorio** (upstream horneado en imagen):
+```bash
+cd /opt/frontend/scnexus-front
+git pull
+docker compose --env-file deploy/env/active.docker.env up -d --build
+```
+
+**Verificación:**
+```bash
+docker exec scnexus-front wget -qO- --timeout=5 http://cajachica:8092/api/Almacenes
+# Debe retornar JSON (401/403 si no hay token — eso es OK, la API responde)
+curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8085/caja-chica-api/Almacenes
+# 401 ó 200 = OK; 504 = upstream sigue fallando
+```
+
+### Lecciones aprendidas
+
+| # | Lección |
+|---|---------|
+| 1 | **Nunca hardcodear IPs de red bridge** (`172.17.0.x`) en `UPSTREAM_*`. Las IPs bridge cambian al recrear el contenedor. Siempre usar nombre de contenedor + red user-defined con DNS. |
+| 2 | El patrón correcto para cualquier backend en este host: crear red user-defined, conectar ambos contenedores, usar nombre de servicio. La IP LAN (`192.168.2.153`) solo es válida cuando el backend NO está en Docker en este mismo servidor. |
+| 3 | Tras recrear `cajachica` hay que ejecutar `docker network connect cajachica_net cajachica`. Idealmente esto debe estar en el docker-compose.yml de cajachica. |
+
+---
+
+**Registrado:** 2026-06-10
+**Autor:** Carlos Ortiz
