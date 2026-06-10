@@ -84,6 +84,7 @@ const diasDesdeUltimaVenta = computed(() => {
 })
 
 const updateQuantity = async (item: any, quantity: number) => {
+  if (store.cantidadPorCodigo(item.itemCode) === quantity) return
   try {
     if (quantity > 0 && item.embalaje > 0 && quantity % item.embalaje !== 0) {
       const suggested = Math.ceil(quantity / item.embalaje) * item.embalaje
@@ -362,10 +363,28 @@ const getQuantityColor = (item: any) => {
       </div>
 
       <!-- Pagination Footer -->
-      <div v-if="totalItems > 0" class="px-6 py-4 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
-        <div class="text-xs text-gray-500 dark:text-gray-400">
-          Mostrando <span class="font-medium text-gray-900 dark:text-white">{{ catalogo.length }}</span> de <span class="font-medium text-gray-900 dark:text-white">{{ totalItems }}</span> artículos
+      <div v-if="totalItems > 0" class="px-6 py-4 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="flex items-center gap-6">
+          <div class="text-xs text-gray-500 dark:text-gray-400">
+            Mostrando <span class="font-medium text-gray-900 dark:text-white">{{ catalogo.length }}</span> de <span class="font-medium text-gray-900 dark:text-white">{{ totalItems }}</span> artículos
+          </div>
+          
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Ver:</span>
+            <select 
+              v-model="filters.pageSize" 
+              @change="store.fetchCatalogo(true)"
+              class="h-8 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white text-xs px-2 focus:ring-blue-500 focus:border-blue-500 border bg-white shadow-sm"
+            >
+              <option :value="25">25</option>
+              <option :value="50">50</option>
+              <option :value="100">100</option>
+              <option :value="250">250</option>
+              <option :value="500">500</option>
+            </select>
+          </div>
         </div>
+
         <div class="flex items-center gap-2">
           <button 
             @click="store.setPage(currentPage - 1)" 

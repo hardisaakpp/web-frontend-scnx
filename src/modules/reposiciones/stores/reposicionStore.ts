@@ -157,6 +157,7 @@ export const useReposicionStore = defineStore('reposicion', {
     },
 
     async updateItemQuantity(itemCode: string, quantity: number) {
+      if (this.cantidadPorCodigo(itemCode) === quantity) return
       const authStore = useAuthStore()
       if (!this.filters.whsCode || !authStore.userData?.id) return
       
@@ -217,6 +218,7 @@ export const useReposicionStore = defineStore('reposicion', {
     },
 
     async updateItemComment(itemCode: string, comment: string) {
+      if (this.comentarioPorCodigo(itemCode) === comment) return
       const authStore = useAuthStore()
       if (!this.filters.whsCode || !authStore.userData?.id) return
 
