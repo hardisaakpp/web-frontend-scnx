@@ -183,19 +183,41 @@ const getQuantityColor = (item: any) => {
       leave-from-class="transform scale-100 opacity-100"
       leave-to-class="transform scale-95 opacity-0"
     >
-      <div v-if="showFilters" class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm mb-8 border border-gray-200 dark:border-gray-700 grid grid-cols-1 md:grid-cols-4 gap-5">
+      <div v-if="showFilters" class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm mb-8 border border-gray-200 dark:border-gray-700 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5">
         <div class="space-y-1.5">
-          <label class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Descripción / ItemCode</label>
+          <label class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Código Art.</label>
+          <input 
+            v-model="filters.itemCode" 
+            type="text" 
+            placeholder="ItemCode..." 
+            class="w-full px-4 py-2 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border transition-all text-sm"
+            @keydown.enter="handleSearch"
+          />
+        </div>
+
+        <div class="space-y-1.5">
+          <label class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Descripción</label>
           <div class="relative">
             <MagnifyingGlassIcon class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input 
               v-model="filters.descripcion" 
               type="text" 
-              placeholder="Buscar por nombre..." 
+              placeholder="Nombre..." 
               class="w-full pl-9 pr-4 py-2 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border transition-all text-sm"
               @keydown.enter="handleSearch"
             />
           </div>
+        </div>
+
+        <div class="space-y-1.5">
+          <label class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Código Barras</label>
+          <input 
+            v-model="filters.codeBars" 
+            type="text" 
+            placeholder="Codigo de barras..." 
+            class="w-full px-4 py-2 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border transition-all text-sm"
+            @keydown.enter="handleSearch"
+          />
         </div>
 
         <div class="space-y-1.5">
@@ -207,10 +229,26 @@ const getQuantityColor = (item: any) => {
         </div>
 
         <div class="space-y-1.5">
+          <label class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Categoría</label>
+          <select v-model="filters.categoria" class="w-full py-2 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border text-sm">
+            <option value="">Todas</option>
+            <option v-for="c in listasFiltros.categorias" :key="c" :value="c">{{ c }}</option>
+          </select>
+        </div>
+
+        <div class="space-y-1.5">
           <label class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Línea</label>
           <select v-model="filters.linea" class="w-full py-2 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border text-sm">
             <option value="">Todas</option>
             <option v-for="l in listasFiltros.lineas" :key="l" :value="l">{{ l }}</option>
+          </select>
+        </div>
+
+        <div class="space-y-1.5">
+          <label class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Unidad</label>
+          <select v-model="filters.unidad" class="w-full py-2 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border text-sm">
+            <option value="">Todas</option>
+            <option v-for="u in listasFiltros.unidades" :key="u" :value="u">{{ u }}</option>
           </select>
         </div>
 
@@ -227,22 +265,22 @@ const getQuantityColor = (item: any) => {
 
     <!-- Content Table Container -->
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-      <div class="overflow-x-auto">
+      <div class="overflow-x-auto overflow-y-auto max-h-[70vh]">
         <table class="w-full text-left border-collapse table-auto min-w-full">
           <thead>
-            <tr class="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
-              <th class="px-4 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Artículo</th>
-              <th class="px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Emb.</th>
-              <th class="px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Stock</th>
-              <th class="px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Tránsito</th>
-              <th class="px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Comp.</th>
-              <th class="px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Disp. Tda.</th>
-              <th class="px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Disp. Bod.</th>
-              <th class="px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Venta 30d</th>
-              <th class="px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Sug.</th>
-              <th class="px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Días Inv.</th>
-              <th class="px-4 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[100px]">Solicitado</th>
-              <th class="px-4 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Observación</th>
+            <tr class="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+              <th class="sticky top-0 z-20 px-4 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-900">Artículo</th>
+              <th class="sticky top-0 z-20 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Emb.</th>
+              <th class="sticky top-0 z-20 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Stock</th>
+              <th class="sticky top-0 z-20 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Tránsito</th>
+              <th class="sticky top-0 z-20 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Comp.</th>
+              <th class="sticky top-0 z-20 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Disp. Tda.</th>
+              <th class="sticky top-0 z-20 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Disp. Bod.</th>
+              <th class="sticky top-0 z-20 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Venta 30d</th>
+              <th class="sticky top-0 z-20 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Sug.</th>
+              <th class="sticky top-0 z-20 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Días Inv.</th>
+              <th class="sticky top-0 z-20 px-4 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[100px] bg-gray-50 dark:bg-gray-900">Solicitado</th>
+              <th class="sticky top-0 z-20 px-4 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-900">Observación</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
