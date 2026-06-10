@@ -40,7 +40,7 @@ En el mismo host conviven **otros vhosts Apache** (no tocar al migrar SCNexus): 
 | **443** | Apache | HTTPS — varios `ServerName`; SCNexus = `003-scnexus.conf` |
 | **3001** | Nginx | Sitio SCNexus (dist) — dejar de usar tras corte |
 | **3000** | Nginx | `srv-mabuiosapi.mabeltrading.com` — **no tocar** |
-| **8082** | (libre) | Reservado para contenedor `scnexus-front` |
+| **8085** | docker-proxy | Contenedor `scnexus-front` |
 
 Contenido real hoy:
 
@@ -62,8 +62,8 @@ URL de ejemplo que usan los usuarios:
 ```text
 Usuario
   → https://scnexus.mabelgroup.com.ec  (Apache :443)
-       → proxy_pass http://127.0.0.1:8082/   ← cambio único en 003-scnexus.conf
-  → Contenedor scnexus-front (:8082 → Nginx :80 dentro)
+       → proxy_pass http://127.0.0.1:8085/   ← cambio único en 003-scnexus.conf
+  → Contenedor scnexus-front (:8085 → Nginx :80 dentro)
        SPA (bundle con rutas relativas)
        + proxy UPSTREAM_* → backends en el mismo host (docker ps)
 ```
@@ -114,7 +114,7 @@ Igual que desarrollo y DESA:
 | Capa | Archivo | Contenido |
 |------|---------|-----------|
 | Bundle | `deploy/env/bundle.env` | `VITE_*` = rutas `/api`, `/api/mba3`, … (versionado) |
-| Upstreams | `deploy/env/active.env` | `UPSTREAM_*`, `VITE_APP_BASE_PATH=/`, `SCNEXUS_FRONT_PORT=8082` |
+| Upstreams | `deploy/env/active.env` | `UPSTREAM_*`, `VITE_APP_BASE_PATH=/`, `SCNEXUS_FRONT_PORT=8085` |
 
 En producción **obligatorio** en `active.env` para el build Docker:
 
@@ -142,7 +142,7 @@ docker compose --env-file deploy/env/active.env up -d
 | Despliegue viejo | Vite :3000 → migrado | `dist/` en `/storage/scnexus/dist` + Nginx :3001 |
 | Script | `~/deploys/nexus_frontend.sh` | `~/deploys/nexus_frontend_prod.sh` |
 | Plantilla env | `desa.env.example` | `prod-mabuiosapi.env.example` |
-| Acceso público | IP:8082 o Nginx host | Apache 443 → **8082** (tras corte) |
+| Acceso público | IP:8085 o Nginx host | Apache 443 → **8085** (activo) |
 | Cajachica upstream | :8081 (staging) | :8092 (prod) |
 
 ---
@@ -211,8 +211,8 @@ Fuera de horario laboral recomendado.
 - [ ] `sh ~/deploys/nexus_frontend_prod.sh` (build + contenedor en :8082)
 - [ ] Probar **sin tocar Apache** aún:
   ```bash
-  curl -sS -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8082/
-  curl -sS -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8082/mba3-consultas/proceso
+  curl -sS -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8085/
+  curl -sS -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8085/mba3-consultas/proceso
   ```
 - [ ] Revisar login (ver `deploy/scripts/verify-desa-auth.sh` adaptando `FRONT_PORT` y rutas)
 - [ ] Editar Apache `003-scnexus.conf`: apuntar al contenedor (§8)
@@ -230,7 +230,7 @@ Revisar el archivo actual:
 sudo cat /etc/apache2/sites-enabled/003-scnexus.conf
 ```
 
-Buscar el destino actual (suele ser Nginx **3001**). Objetivo: reenviar todo el sitio SCNexus al contenedor **8082**, que ya incluye proxy de APIs.
+Buscar el destino actual (suele ser Nginx **3001**). Objetivo: reenviar todo el sitio SCNexus al contenedor **8085**, que ya incluye proxy de APIs.
 
 Ejemplo de referencia (ajustar según el vhost real): `deploy/apache/003-scnexus-docker.conf.example`
 
@@ -303,21 +303,23 @@ El `vite.config.ts` de la rama refactor incluye una función `resolveActiveBacke
 
 ---
 
-## 12. Estado del despliegue (actualizado 2026-06-05)
+## 12. Estado del despliegue (actualizado 2026-06-10)
 
-El contenedor `scnexus-front` está activo en producción desde la migración a Docker. El incidente de reinicio del 2026-06-05 dejó el sistema operativo con las correcciones aplicadas.
+El contenedor `scnexus-front` está activo en producción desde la migración a Docker.
 
 | # | Tarea | Estado |
 |---|--------|--------|
-| 1 | Apache `003-scnexus.conf` → `ProxyPass / http://127.0.0.1:8082/` | ✅ Activo |
+| 1 | Apache `003-scnexus.conf` → `ProxyPass / http://127.0.0.1:8085/` | ✅ Activo |
 | 2 | Clone en `/opt/frontend/scnexus-front` | ✅ Activo |
-| 3 | `active.docker.env` con Core `192.168.2.12:8080` | ✅ Corregido 2026-06-05 |
+| 3 | `active.env` con Core `192.168.2.12:8080` y MBA3 `mba3-api:8000` | ✅ Activo |
 | 4 | MBA3 via red `mba3-consultas_default` (`mba3-api:8000`) | ✅ Corregido 2026-06-05 |
-| 5 | `restart: unless-stopped` en compose | ⚠️ Considerar `restart: always` para reinicio automático tras reboot del SO |
-| 6 | Verificar otros upstreams con `host.docker.internal` (PYG, Conciliación, Scan, Inventario) | 🔲 Pendiente validar |
+| 5 | `restart: unless-stopped` en compose | ✅ Confirmado 2026-06-10 — suficiente para reboot del SO si no hay conflicto de puerto |
+| 6 | Puerto cambiado 8082 → **8085** (Store Control ocupaba 8082) | ✅ Corregido 2026-06-10 |
+| 7 | `docker image prune -f` en script de despliegue (limpia imágenes dangling) | ✅ Agregado 2026-06-10 |
+| 8 | Verificar otros upstreams con `host.docker.internal` (PYG, Conciliación, Scan, Inventario) | 🔲 Pendiente validar |
 
 ---
 
-**Última actualización:** 2026-06-05 (incidente reinicio servidor)  
+**Última actualización:** 2026-06-10 (cambio de puerto 8082 → 8085; limpieza de imágenes)  
 **Servidor:** srv-mabuiosapi  
 **Dominio:** scnexus.mabelgroup.com.ec

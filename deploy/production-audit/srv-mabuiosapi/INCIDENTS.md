@@ -144,10 +144,70 @@ SCNEXUS_FRONT_PORT=8082
 | 1 | `restart: unless-stopped` **no garantiza** que el contenedor suba tras un reinicio del SO si el daemon Docker también se reinicia. Usar `restart: always` si se requiere arranque automático garantizado. |
 | 2 | Los upstreams de MBA3 (`host.docker.internal`) fallan cuando el contenedor front y MBA3 están en redes Docker distintas. **Siempre usar nombre de servicio + red compartida.** |
 | 3 | El puerto 8080 en este host es `scnexus-articulo-api` (scanner), **no** el Core. El Core real es `192.168.2.12:8080` (servidor LAN separado). |
-| 4 | Tras un reinicio, verificar que los `docker-proxy` huérfanos no estén sosteniendo puertos con `ss -tlnp | grep 8082`. Si los hay, `systemctl restart docker` es la corrección. |
+| 4 | Tras un reinicio, verificar que los `docker-proxy` huérfanos no estén sosteniendo puertos con `ss -tlnp | grep 8085`. Si los hay, `systemctl restart docker` es la corrección. |
 | 5 | Cualquier cambio de `UPSTREAM_*` requiere `--build` (están horneados en la imagen Nginx). |
 
 ---
 
 **Registrado:** 2026-06-05  
+**Autor:** Carlos Ortiz
+
+---
+
+## 2026-06-10 — Conflicto persistente en puerto 8082 tras reinicio del servidor
+
+**Duración estimada:** resuelto en la sesión  
+**Impacto:** `scnexus-front` no podía iniciar tras reinicios del servidor; requería intervención manual cada vez.
+
+### Síntoma
+
+Después del incidente 2026-06-05, al volver a reiniciar el servidor el contenedor fallaba de nuevo con:
+
+```
+Bind for 0.0.0.0:8082 failed: port is already allocated
+```
+
+### Causa raíz
+
+Dos factores combinados:
+
+1. **`docker-proxy` huérfano** — los procesos `docker-proxy` del ciclo anterior retienen el puerto al reiniciarse el daemon Docker.
+2. **Store Control ocupa el 8082** — otro servicio del host arranca en el puerto 8082 durante el inicio del SO, generando conflicto permanente con ese puerto.
+
+### Corrección
+
+Cambio de puerto permanente de **8082 → 8085** en todos los archivos de configuración:
+
+| Archivo | Cambio |
+|---------|--------|
+| `deploy/env/active.env` (servidor, gitignored) | `SCNEXUS_FRONT_PORT=8082` → `8085` |
+| `deploy/env/active.docker.env` | `SCNEXUS_FRONT_PORT=8081` → `8085` |
+| `deploy/env/prod-mabuiosapi.env.example` | `8082` → `8085` |
+| `docker-compose.yml` | port mapping default `8085` |
+| `deploy/apache/003-scnexus-docker.conf.example` | `8082` → `8085` |
+| `deploy/scripts/nexus_frontend_prod.sh` | fallback `8082` → `8085` |
+| Apache `/etc/apache2/sites-enabled/003-scnexus.conf` (servidor) | `ProxyPass / http://127.0.0.1:8082/` → `:8085/` |
+
+Adicionalmente se agregó `docker image prune -f` al script `nexus_frontend_prod.sh` para limpiar imágenes `<none>:<none>` automáticamente tras cada build.
+
+### Verificación post-corrección
+
+```bash
+ss -tlnp | grep 8085
+# LISTEN docker-proxy — solo scnexus-front usa 8085, nada más en el host
+
+docker inspect scnexus-front --format '{{.HostConfig.RestartPolicy.Name}}'
+# unless-stopped ← garantiza reinicio automático tras reboot del SO
+```
+
+### Lecciones aprendidas
+
+| # | Lección |
+|---|---------|
+| 1 | El puerto asignado al contenedor debe ser exclusivo en el host. Verificar con `ss -tlnp` antes de elegir el puerto y confirmar que ningún otro servicio (Docker o nativo) lo ocupe durante el arranque. |
+| 2 | `restart: unless-stopped` sí garantiza que el contenedor levante tras reboot del SO, siempre que no haya conflicto de puerto al arrancar. El problema del 2026-06-05 era el conflicto de puerto, no la política de restart. |
+
+---
+
+**Registrado:** 2026-06-10  
 **Autor:** Carlos Ortiz
