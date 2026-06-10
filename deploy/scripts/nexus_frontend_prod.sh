@@ -5,7 +5,7 @@
 # Requisitos previos (una vez):
 #   - Clone git del repo (ej. /opt/frontend/scnexus-front) — /storage/scnexus/dist NO es un repo
 #   - deploy/env/active.env desde prod-mabuiosapi.env.example
-#   - Apache 003-scnexus.conf apuntando a http://127.0.0.1:8082/ (ver docs/DEPLOYMENT_PROD_SRV_MABUIOSAPI.md)
+#   - Apache 003-scnexus.conf apuntando a http://127.0.0.1:8085/ (ver docs/DEPLOYMENT_PROD_SRV_MABUIOSAPI.md)
 #
 # Instalación del script:
 #   cp /opt/frontend/scnexus-front/deploy/scripts/nexus_frontend_prod.sh ~/deploys/nexus_frontend_prod.sh
@@ -39,7 +39,7 @@ fi
 set -a
 source "$ACTIVE_ENV"
 set +a
-FRONT_PORT="${SCNEXUS_FRONT_PORT:-8082}"
+FRONT_PORT="${SCNEXUS_FRONT_PORT:-8085}"
 
 if [[ "${VITE_APP_BASE_PATH:-}" != "/" ]]; then
   echo "ERROR: en prod active.env debe tener VITE_APP_BASE_PATH=/ (actual: ${VITE_APP_BASE_PATH:-vacío})"
@@ -51,6 +51,7 @@ mkdir -p "$(dirname "$LOG_FILE")"
 {
   echo "=== $(date -Iseconds) prod deploy branch=$BRANCH port=$FRONT_PORT ==="
   docker compose "${COMPOSE_FILES[@]}" --env-file "$ACTIVE_ENV" up -d --build
+  docker image prune -f
 
   # Cajachica en red bridge (172.17.0.2) — no declarar bridge en compose (falla con alias)
   if docker network inspect bridge --format '{{range .Containers}}{{.Name}} {{end}}' 2>/dev/null | grep -qw scnexus-front; then
