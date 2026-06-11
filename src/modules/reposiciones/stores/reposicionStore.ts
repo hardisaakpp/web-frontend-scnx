@@ -67,32 +67,18 @@ export const useReposicionStore = defineStore('reposicion', {
         const accesses: any = authStore.userWarehouseAccesses
         const newAlmacenes: Almacen[] = []
         
-        // Extraemos los almacenes directamente de los grupos del usuario
-        // Ignoramos el endpoint externo /api/Catalogo/almacenes
-        const processGroups = (groups: any[]) => {
-          groups?.forEach(g => {
-            if (Array.isArray(g.almacenes)) {
-              g.almacenes.forEach((code: string) => {
-                if (!newAlmacenes.some(a => a.whsCode === code)) {
-                  newAlmacenes.push({
-                    whsCode: code,
-                    whsName: code // Usamos el código como nombre
-                  })
-                }
-              })
+        if (accesses) {
+          const accessList = Array.isArray(accesses) ? accesses : [accesses]
+          accessList.forEach((a: any) => {
+            if (a.codAlmacen) {
+              if (!newAlmacenes.some(alm => alm.whsCode === a.codAlmacen)) {
+                newAlmacenes.push({
+                  whsCode: a.codAlmacen,
+                  whsName: a.codAlmacen
+                })
+              }
             }
           })
-        }
-
-        if (accesses) {
-          if (accesses.warehouseGroups) {
-            processGroups(accesses.warehouseGroups)
-          } else if (Array.isArray(accesses)) {
-            accesses.forEach((a: any) => {
-              if (a.warehouseGroups) processGroups(a.warehouseGroups)
-              else if (a.almacenes) processGroups([a]) // Si el objeto mismo es el grupo
-            })
-          }
         }
 
         this.almacenes = newAlmacenes

@@ -134,14 +134,24 @@ const getQuantityColor = (item: any) => {
           <span class="text-xs font-medium">Fuera de horario</span>
         </div>
         
+        <div v-if="almacenes.length === 1" 
+             class="flex items-center gap-3 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 rounded-xl border border-blue-100 dark:border-blue-800 shadow-sm">
+          <BuildingOfficeIcon class="w-5 h-5 flex-shrink-0" />
+          <div class="flex flex-col">
+            <span class="text-[10px] font-bold uppercase tracking-wider leading-none">Tienda</span>
+            <span class="text-sm font-extrabold">{{ almacenes[0].whsCode }}</span>
+          </div>
+        </div>
+        
         <select 
+          v-else-if="almacenes.length > 1"
           v-model="filters.whsCode" 
           @change="store.fetchDataByWarehouse()"
           class="block w-full sm:w-64 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm h-10 px-3 border"
         >
           <option value="" disabled>Seleccione una bodega...</option>
           <option v-for="alm in almacenes" :key="alm.whsCode" :value="alm.whsCode">
-            {{ alm.whsName && alm.whsName !== alm.whsCode ? alm.whsName : alm.whsCode }}
+            {{ alm.whsCode }}
           </option>
         </select>
 
@@ -370,7 +380,7 @@ const getQuantityColor = (item: any) => {
           </div>
           
           <div class="flex items-center gap-2">
-            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Ver:</span>
+            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Cantidad por página:</span>
             <select 
               v-model="filters.pageSize" 
               @change="store.fetchCatalogo(true)"

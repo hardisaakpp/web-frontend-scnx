@@ -21,6 +21,7 @@ import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } fro
 const authStore = useAuthStore()
 const store = useReposicionStore()
 const historial = ref<HistorialCabecera[]>([])
+const almacenesTodos = ref<any[]>([])
 const loading = ref(false)
 
 const fechaDesde = ref(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
@@ -47,7 +48,12 @@ const fetchHistorial = async () => {
 }
 
 onMounted(async () => {
-  if (store.almacenes.length === 0) await store.fetchAlmacenes()
+  // Para Admin, cargamos todos los almacenes disponibles en la base de datos
+  try {
+    almacenesTodos.value = await reposicionApi.getAlmacenes()
+  } catch (err) {
+    console.error('Error al cargar almacenes para admin', err)
+  }
   fetchHistorial()
 })
 
@@ -110,20 +116,23 @@ const viewSolicitudes = async (whsCode: string, fecha: string) => {
       </div>
 
       <div class="flex flex-wrap items-center bg-white dark:bg-gray-800 p-2 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm gap-2">
+        <!-- Warehouse Filter (Usa todos los almacenes de la API para Admin) -->
         <div class="flex items-center px-4 py-2 border-r border-gray-100 dark:border-gray-700 gap-2">
-          <BuildingOfficeIcon class="w-4 h-4 text-gray-400" />
-          <select v-model="whsFilter" class="border-none focus:ring-0 p-0 text-sm font-medium text-gray-700 dark:text-gray-300 bg-transparent min-w-[120px]">
-            <option value="">Todas las bodegas</option>
-            <option v-for="alm in store.almacenes" :key="alm.whsCode" :value="alm.whsCode">{{ alm.whsCode }}</option>
+          <BuildingOfficeIcon class="w-4 h-4 text-gray-400 dark:text-gray-500" />
+          <select v-model="whsFilter" class="border-none focus:ring-0 p-0 text-sm font-bold text-gray-700 dark:text-white bg-transparent min-w-[120px] cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+            <option value="" class="bg-white dark:bg-gray-800">Todas las bodegas</option>
+            <option v-for="alm in almacenesTodos" :key="alm.whsCode" :value="alm.whsCode" class="bg-white dark:bg-gray-800">
+              {{ alm.whsCode }}
+            </option>
           </select>
         </div>
         <div class="flex items-center px-4 py-2 border-r border-gray-100 dark:border-gray-700 gap-2">
-          <CalendarIcon class="w-4 h-4 text-gray-400" />
-          <input type="date" v-model="fechaDesde" class="border-none focus:ring-0 p-0 text-sm font-medium text-gray-700 dark:text-gray-300 bg-transparent" />
+          <CalendarIcon class="w-4 h-4 text-gray-400 dark:text-gray-500" />
+          <input type="date" v-model="fechaDesde" class="border-none focus:ring-0 p-0 text-sm font-bold text-gray-900 dark:text-white bg-transparent cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors" />
         </div>
         <div class="flex items-center px-4 py-2 gap-2">
-          <CalendarIcon class="w-4 h-4 text-gray-400" />
-          <input type="date" v-model="fechaHasta" class="border-none focus:ring-0 p-0 text-sm font-medium text-gray-700 dark:text-gray-300 bg-transparent" />
+          <CalendarIcon class="w-4 h-4 text-gray-400 dark:text-gray-500" />
+          <input type="date" v-model="fechaHasta" class="border-none focus:ring-0 p-0 text-sm font-bold text-gray-900 dark:text-white bg-transparent cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors" />
         </div>
       </div>
     </div>
@@ -145,18 +154,18 @@ const viewSolicitudes = async (whsCode: string, fecha: string) => {
 
     <!-- Tabla Historial Global -->
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-      <div class="overflow-x-auto">
+      <div class="overflow-x-auto overflow-y-auto max-h-[70vh]">
         <table class="w-full text-left border-collapse min-w-[900px]">
           <thead>
             <tr class="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
-              <th class="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fecha</th>
-              <th class="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">ID</th>
-              <th class="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Origen</th>
-              <th class="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">→</th>
-              <th class="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Destino</th>
-              <th class="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Artículos</th>
-              <th class="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Estado</th>
-              <th class="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Acciones</th>
+              <th class="sticky top-0 z-20 px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-900">Fecha</th>
+              <th class="sticky top-0 z-20 px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">ID</th>
+              <th class="sticky top-0 z-20 px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-900">Origen</th>
+              <th class="sticky top-0 z-20 px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">→</th>
+              <th class="sticky top-0 z-20 px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-900">Destino</th>
+              <th class="sticky top-0 z-20 px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Artículos</th>
+              <th class="sticky top-0 z-20 px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-900">Estado</th>
+              <th class="sticky top-0 z-20 px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right bg-gray-50 dark:bg-gray-900">Acciones</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200 dark:divide-gray-700">

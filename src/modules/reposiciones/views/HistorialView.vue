@@ -26,7 +26,7 @@ const fechaHasta = ref(new Date().toISOString().split('T')[0])
 const currentWarehouseName = computed(() => {
   const code = store.filters.whsCode
   const whs = store.almacenes.find(a => a.whsCode === code)
-  return whs ? `${code} - ${whs.whsName}` : code
+  return whs ? `${code}` : code
 })
 
 const fetchHistorial = async () => {
@@ -117,24 +117,24 @@ const viewSolicitudes = async (whsCode: string, fecha: string) => {
     <!-- Header -->
     <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
       <div class="flex items-center gap-4">
-        <router-link to="/reposiciones" class="p-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all bg-white dark:bg-gray-900 shadow-sm">
+        <router-link to="/reposiciones/catalogo" class="p-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all bg-white dark:bg-gray-900 shadow-sm">
           <ArrowLeftIcon class="w-5 h-5" />
         </router-link>
         <div>
           <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Historial de Reposiciones</h1>
-          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Consulta tus solicitudes pasadas de <strong class="text-blue-600 dark:text-blue-400 uppercase font-bold">{{ currentWarehouseName || 'una bodega' }}</strong></p>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Consulta tus solicitudes basadas en <strong class="text-blue-600 dark:text-blue-400 uppercase font-bold">{{ currentWarehouseName || 'una bodega' }}</strong></p>
         </div>
       </div>
 
       <div class="flex flex-wrap items-center bg-white dark:bg-gray-800 p-2 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm gap-2">
         <div v-if="!store.filters.whsCode" class="text-xs text-red-500 dark:text-red-400 font-bold px-2">Seleccione una bodega</div>
         <div class="flex items-center px-4 py-2 border-r border-gray-100 dark:border-gray-700 gap-2">
-          <CalendarIcon class="w-4 h-4 text-gray-400" />
-          <input type="date" v-model="fechaDesde" class="border-none focus:ring-0 p-0 text-sm font-medium text-gray-700 dark:text-gray-300 bg-transparent" />
+          <CalendarIcon class="w-4 h-4 text-gray-400 dark:text-gray-500" />
+          <input type="date" v-model="fechaDesde" class="border-none focus:ring-0 p-0 text-sm font-bold text-gray-900 dark:text-white bg-transparent cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors" />
         </div>
         <div class="flex items-center px-4 py-2 border-r border-gray-100 dark:border-gray-700 gap-2">
-          <CalendarIcon class="w-4 h-4 text-gray-400" />
-          <input type="date" v-model="fechaHasta" class="border-none focus:ring-0 p-0 text-sm font-medium text-gray-700 dark:text-gray-300 bg-transparent" />
+          <CalendarIcon class="w-4 h-4 text-gray-400 dark:text-gray-500" />
+          <input type="date" v-model="fechaHasta" class="border-none focus:ring-0 p-0 text-sm font-bold text-gray-900 dark:text-white bg-transparent cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors" />
         </div>
         <button 
           @click="fetchHistorial"
@@ -148,19 +148,19 @@ const viewSolicitudes = async (whsCode: string, fecha: string) => {
 
     <!-- Table -->
     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-      <div class="overflow-x-auto">
+      <div class="overflow-x-auto overflow-y-auto max-h-[70vh]">
         <table class="w-full text-left border-collapse min-w-[900px]">
           <thead>
             <tr class="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
-              <th class="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fecha de Solicitud</th>
-              <th class="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">ID</th>
-              <th class="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Origen</th>
-              <th class="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider"></th>
-              <th class="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Destino</th>
-              <th class="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Usuario Solicita</th>
-              <th class="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Artículos</th>
-              <th class="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Estado</th>
-              <th class="px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Acciones</th>
+              <th class="sticky top-0 z-20 px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-900">Fecha de Solicitud</th>
+              <th class="sticky top-0 z-20 px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">ID</th>
+              <th class="sticky top-0 z-20 px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-900">Origen</th>
+              <th class="sticky top-0 z-20 px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-900"></th>
+              <th class="sticky top-0 z-20 px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-900">Destino</th>
+              <th class="sticky top-0 z-20 px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-900">Usuario Solicita</th>
+              <th class="sticky top-0 z-20 px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Artículos</th>
+              <th class="sticky top-0 z-20 px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-900">Estado</th>
+              <th class="sticky top-0 z-20 px-6 py-4 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right bg-gray-50 dark:bg-gray-900">Acciones</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200 dark:divide-gray-700">

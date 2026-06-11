@@ -19,7 +19,7 @@ const { carrito, filters, almacenes, carritoInfo, isOpen } = storeToRefs(store)
 const currentWarehouseName = computed(() => {
   const code = filters.value.whsCode
   const whs = almacenes.value.find(a => a.whsCode === code)
-  return whs ? `${code} - ${whs.whsName}` : code
+  return whs ? `${code}` : code
 })
 
 const formatDate = (dateStr: string) => {
@@ -47,7 +47,7 @@ const downloadPdf = () => {
     <!-- Header -->
     <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
       <div class="flex items-center gap-4">
-        <router-link to="/reposiciones" class="p-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all bg-white dark:bg-gray-900 shadow-sm">
+        <router-link to="/reposiciones/catalogo" class="p-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all bg-white dark:bg-gray-900 shadow-sm">
           <ArrowLeftIcon class="w-5 h-5" />
         </router-link>
         <div>
@@ -75,7 +75,7 @@ const downloadPdf = () => {
       </div>
       <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-2">Tu carrito está vacío</h3>
       <p class="text-sm text-gray-500 dark:text-gray-400 mb-8 max-w-sm mx-auto">Aún no has agregado ningún artículo a la solicitud para este almacén.</p>
-      <router-link to="/reposiciones" class="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-all shadow-sm text-sm">
+      <router-link to="/reposiciones/catalogo" class="inline-flex items-center gap-2 bg-blue-600 text-white px-6 py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-all shadow-sm text-sm">
         Volver al catálogo
       </router-link>
     </div>
@@ -132,21 +132,21 @@ const downloadPdf = () => {
 
       <!-- Content Table Container -->
       <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-      <div class="overflow-x-auto">
+      <div class="overflow-x-auto overflow-y-auto max-h-[70vh]">
         <table class="w-full text-left border-collapse table-auto min-w-full">
           <thead>
             <tr class="bg-gray-50 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
-              <th class="px-4 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Artículo</th>
-              <th class="px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Emb.</th>
-              <th class="px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Stock</th>
-              <th class="px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Tránsito</th>
-              <th class="px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Comp.</th>
-              <th class="px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Solicitado</th>
-              <th class="px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Disp. Tienda</th>
-              <th class="px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Disp. Bodega</th>
-              <th class="px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Venta 30d</th>
-              <th class="px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Sugerido</th>
-              <th class="px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Días Inv.</th>
+              <th class="sticky top-0 z-20 px-4 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-900">Artículo</th>
+              <th class="sticky top-0 z-20 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Emb.</th>
+              <th class="sticky top-0 z-20 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Stock</th>
+              <th class="sticky top-0 z-20 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Tránsito</th>
+              <th class="sticky top-0 z-20 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Comp.</th>
+              <th class="sticky top-0 z-20 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Solicitado</th>
+              <th class="sticky top-0 z-20 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Disp. Tienda</th>
+              <th class="sticky top-0 z-20 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Disp. Bodega</th>
+              <th class="sticky top-0 z-20 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Venta 30d</th>
+              <th class="sticky top-0 z-20 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Sugerido</th>
+              <th class="sticky top-0 z-20 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Días Inv.</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
