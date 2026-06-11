@@ -18,6 +18,8 @@ import pygRoutes from '../modules/pyg/router'
 import articuloScanerRoutes from '../modules/articulo-scaner/router'
 import inventarioRoutes from '../modules/inventario/router'
 import promocionSobresRoutes from '../modules/promocion-sobres/router'
+import reposicionesRoutes from '../modules/reposiciones/router'
+
 
 console.log('🔍 DEBUG usuariosRoutes:', usuariosRoutes)
 console.log('🔍 DEBUG cajaChicaRoutes:', cajaChicaRoutes)
@@ -71,6 +73,8 @@ const router = createRouter({
         ...articuloScanerRoutes,
         ...inventarioRoutes,
         ...promocionSobresRoutes,
+        ...reposicionesRoutes,
+
         {
           path: 'forbidden',
           name: 'forbidden',
@@ -138,6 +142,7 @@ router.beforeEach(async (to, from, next) => {
   if (requiredPermissions && requiredPermissions.length > 0) {
     // Verificar si es admin desde userRoles (ya que isAdmin getter no funciona)
     const isAdmin = authStore.userRoles?.includes('Admin') || false
+    
     if (!isAdmin) {
       const hasPermission = authStore.hasAnyPermission(requiredPermissions)
       if (!hasPermission) {
