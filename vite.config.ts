@@ -43,6 +43,7 @@ export default defineConfig(async ({ mode }) => {
     ? await resolveActiveBackend(corePrimary, coreFallback)
     : corePrimary
   const mba3ProxyTarget = upstreamUrl(env, 'MBA3')
+  const transaccionesProxyTarget = upstreamUrl(env, 'TRANSACCIONES')
   const authMeProxyTarget = upstreamUrl(env, 'MBA3_AUTH')
   const cajaChicaProxyTarget = upstreamUrl(env, 'CAJA_CHICA')
   const employeesProxyTarget = upstreamUrl(env, 'EMPLOYEES')
@@ -291,6 +292,18 @@ export default defineConfig(async ({ mode }) => {
           secure: false,
 
           rewrite: (path) => path.replace(/^\/promocion-sobres-api/, '')
+
+        },
+
+        '/transacciones-api': {
+
+          target: transaccionesProxyTarget,
+
+          changeOrigin: true,
+
+          secure: false,
+
+          rewrite: (path) => path.replace(/^\/transacciones-api/, '')
 
         }
 
