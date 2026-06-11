@@ -142,9 +142,8 @@ router.beforeEach(async (to, from, next) => {
   if (requiredPermissions && requiredPermissions.length > 0) {
     // Verificar si es admin desde userRoles (ya que isAdmin getter no funciona)
     const isAdmin = authStore.userRoles?.includes('Admin') || false
-    const isReposiciones = to.path.startsWith('/reposiciones')
     
-    if (!isAdmin && !isReposiciones) {
+    if (!isAdmin) {
       const hasPermission = authStore.hasAnyPermission(requiredPermissions)
       if (!hasPermission) {
         if (ALLOW_UNAUTHENTICATED) {

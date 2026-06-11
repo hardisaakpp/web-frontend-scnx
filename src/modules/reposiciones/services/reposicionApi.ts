@@ -70,8 +70,9 @@ const reposicionApi = {
   },
 
   // Historial
-  getHistorial: async (whsCode: string, desde: string, hasta: string, idUser?: number) => {
-    const params: any = { whsCode, desde, hasta }
+  getHistorial: async (whsCode: string | undefined, desde: string, hasta: string, idUser?: number) => {
+    const params: any = { desde, hasta }
+    if (whsCode) params.whsCode = whsCode
     if (idUser) params.idUser = idUser
     const response = await api.get<HistorialCabecera[]>('reposicion-api/Historial', { params })
     return response.data
