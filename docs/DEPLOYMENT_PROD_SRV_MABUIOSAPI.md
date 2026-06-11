@@ -85,23 +85,23 @@ Backends en el **mismo servidor** (referencia `docker ps`):
 
 Plantilla versionada: `deploy/env/prod-mabuiosapi.env.example` → copiar a `active.env` en el servidor.
 
-Redes Docker en prod (`docker-compose.prod-network.yml` + `docker network connect bridge`):
+Redes Docker en prod (`docker-compose.prod-network.yml`):
 
 | Backend | URL en `active.env` | Cómo llega el contenedor |
 |---------|---------------------|---------------------------|
 | Core (`/api/Auth/`, resto `/api/`) | `http://192.168.2.12:8080` | IP del Core de prod (mismo que Apache viejo) |
-| MBA3 | `http://mba3-api:8000` | red externa `mba3-consultas_default` (declarada en `docker-compose.yml`) |
-| Cajachica | IP bridge actual o `http://192.168.2.153:8092` | `bash deploy/scripts/discover-caja-chica-upstream.sh`; `docker network connect bridge` tras el `up` |
+| MBA3 | `http://mba3-api:8000` | red externa `mba3-nexus_edge` (declarada en `docker-compose.prod-network.yml`) |
+| Cajachica | `http://cajachica:8092` | red externa `cajachica_net` (declarada en `docker-compose.prod-network.yml`) — **DNS por nombre de contenedor** |
 | PYG `/pyg-api/` | `http://scnexus-pyg-api:8080` | red `scnexus-pyg_default` (host publica **5171→8080**; entre contenedores usar **8080**) |
 | Empleados `/employees-api/` | `http://host.docker.internal:3001` | PHP en Nginx **host** :3001, no cajachica |
 | Conciliación `/conciliacion-api/` | `http://app-conciliacion:8000` | red `conciliacion-bancaria_default` (`8005->8000/tcp`; no `:8080`) |
 | Maestro `/maestro-api/` | `http://app-maestro:8000` | red `articulomaestro_default` (ver `docker ps` → puerto tras `->`) |
 
-**No** declarar la red `bridge` en Compose (error: *network-scoped alias is supported only for user defined networks*).
-
 **No** usar `host.docker.internal:8000` para MBA3 en este host — hace timeout desde el contenedor (iptables bloquea tráfico entre redes Docker a través del host). Ver [INCIDENTS.md](../deploy/production-audit/srv-mabuiosapi/INCIDENTS.md) 2026-06-05.
 
 **No** usar `host.docker.internal:8092` para Cajachica en este host (timeout desde contenedor).
+
+**No** usar IPs de bridge (`172.17.0.x`) para Cajachica — esas IPs son dinámicas y cambian al recrear el contenedor. Usar siempre el nombre DNS `cajachica` via `cajachica_net`.
 
 **No** usar `intranet.env.example` sin revisar: las IPs 192.168.x no reflejan “todo en localhost Docker” en este host.
 
@@ -189,10 +189,14 @@ PROJECT_DIR=/opt/frontend/scnexus-front LOG_FILE=~/deploys/scnexus-front-prod.lo
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.prod-network.yml \
   --env-file deploy/env/active.env up -d --build
-docker network connect bridge scnexus-front   # cajachica 172.17.0.2
 ```
 
-El script `deploy/scripts/nexus_frontend_prod.sh` hace el `connect bridge` automáticamente.
+`docker-compose.prod-network.yml` declara `cajachica_net` como red externa, por lo que el contenedor se conecta automáticamente al hacer `up`. No se requiere `docker network connect` manual.
+
+> **Prerequisito:** la red `cajachica_net` debe existir y el contenedor `cajachica` debe estar conectado a ella antes del deploy:
+> ```bash
+> docker network inspect cajachica_net  # verificar que cajachica aparece en Containers
+> ```
 
 ### 6.5 Backup del despliegue anterior
 
@@ -246,14 +250,20 @@ Un solo comando (igual filosofía que DESA):
 sh ~/deploys/nexus_frontend_prod.sh
 ```
 
-El script hace: `git pull` → `docker compose --env-file deploy/env/active.env up -d --build` → log.
+El script (`deploy/scripts/nexus_frontend_prod.sh`) hace en orden:
 
-Desde el clone también:
+1. `git pull origin <rama actual>` — trae los últimos cambios del repo
+2. Crea `deploy/env/active.env` desde `prod-mabuiosapi.env.example` si no existe
+3. Valida que `VITE_APP_BASE_PATH=/` (si no, aborta — evita romperse las rutas)
+4. `docker compose -f docker-compose.yml -f docker-compose.prod-network.yml --env-file deploy/env/active.env up -d --build` — rebuild con upstreams horneados en nginx
+5. `docker image prune -f` — limpia imágenes dangling
+6. Muestra estado del contenedor
 
-```bash
-cd /opt/frontend/scnexus-front
-npm run docker:up
-```
+> **Importante:** si cambia el script en el repo, copiarlo manualmente al servidor:
+> ```bash
+> cp /opt/frontend/scnexus-front/deploy/scripts/nexus_frontend_prod.sh ~/deploys/nexus_frontend_prod.sh
+> chmod +x ~/deploys/nexus_frontend_prod.sh
+> ```
 
 ---
 
@@ -303,7 +313,7 @@ El `vite.config.ts` de la rama refactor incluye una función `resolveActiveBacke
 
 ---
 
-## 12. Estado del despliegue (actualizado 2026-06-10)
+## 12. Estado del despliegue (actualizado 2026-06-11)
 
 El contenedor `scnexus-front` está activo en producción desde la migración a Docker.
 
@@ -312,14 +322,56 @@ El contenedor `scnexus-front` está activo en producción desde la migración a 
 | 1 | Apache `003-scnexus.conf` → `ProxyPass / http://127.0.0.1:8085/` | ✅ Activo |
 | 2 | Clone en `/opt/frontend/scnexus-front` | ✅ Activo |
 | 3 | `active.env` con Core `192.168.2.12:8080` y MBA3 `mba3-api:8000` | ✅ Activo |
-| 4 | MBA3 via red `mba3-consultas_default` (`mba3-api:8000`) | ✅ Corregido 2026-06-05 |
-| 5 | `restart: unless-stopped` en compose | ✅ Confirmado 2026-06-10 — suficiente para reboot del SO si no hay conflicto de puerto |
+| 4 | MBA3 via red `mba3-nexus_edge` (`mba3-api:8000`) | ✅ Corregido 2026-06-05 |
+| 5 | `restart: unless-stopped` en compose | ✅ Confirmado 2026-06-10 |
 | 6 | Puerto cambiado 8082 → **8085** (Store Control ocupaba 8082) | ✅ Corregido 2026-06-10 |
 | 7 | `docker image prune -f` en script de despliegue (limpia imágenes dangling) | ✅ Agregado 2026-06-10 |
-| 8 | Verificar otros upstreams con `host.docker.internal` (PYG, Conciliación, Scan, Inventario) | 🔲 Pendiente validar |
+| 8 | Cajachica via `cajachica_net` con DNS `cajachica:8092` (reemplaza IP bridge) | ✅ Corregido 2026-06-11 |
+| 9 | `docker-compose.prod-network.yml` declara `cajachica_net` — no requiere `connect bridge` manual | ✅ Corregido 2026-06-11 |
+| 10 | Verificar otros upstreams con `host.docker.internal` (PYG, Conciliación, Scan, Inventario) | 🔲 Pendiente validar |
 
 ---
 
-**Última actualización:** 2026-06-10 (cambio de puerto 8082 → 8085; limpieza de imágenes)  
+## 13. Incidentes registrados
+
+### 2026-06-11 — 502 Bad Gateway en módulo Asignación de Almacenes (Caja Chica)
+
+**Síntoma:** `GET /caja-chica-api/Almacenes` devolvía **502 Bad Gateway** en producción. En desarrollo funcionaba correctamente. El módulo mostraba "No se pudo cargar la información."
+
+**Causa raíz:** doble problema acumulado:
+
+1. **Upstream incorrecto horneado en nginx:** `active.env` tenía `UPSTREAM_CAJA_CHICA=http://172.17.0.2:8092` — IP dinámica del bridge default asignada a un contenedor anterior. Al recrear `cajachica`, la IP cambió pero el nginx de `scnexus-front` seguía apuntando a la IP vieja.
+
+2. **Contenedor no conectado a `cajachica_net`:** `docker-compose.prod-network.yml` sobreescribía la lista de redes del servicio sin incluir `cajachica_net`, por lo que el contenedor no podía resolver el nombre DNS `cajachica`.
+
+**Diagnóstico:**
+```bash
+docker exec scnexus-front grep "caja-chica-api" -A2 /etc/nginx/conf.d/default.conf
+# → proxy_pass http://172.17.0.2:8092;  ← IP incorrecta
+
+docker network inspect cajachica_net
+# → scnexus-front NO aparecía en Containers
+```
+
+**Fix inmediato (sin rebuild):**
+```bash
+docker network connect cajachica_net scnexus-front
+docker exec scnexus-front sed -i \
+  's|http://172.17.0.2:8092|http://172.28.0.2:8092|g' \
+  /etc/nginx/conf.d/default.conf
+docker exec scnexus-front nginx -s reload
+```
+
+**Fix permanente (aplicado):**
+- `active.env`: `UPSTREAM_CAJA_CHICA=http://cajachica:8092` (nombre DNS en vez de IP)
+- `docker-compose.prod-network.yml`: agrega `cajachica_net` a la lista de redes del servicio
+- `deploy/scripts/nexus_frontend_prod.sh`: elimina el bloque `docker network connect bridge` obsoleto
+- Rebuild: `docker compose -f docker-compose.yml -f docker-compose.prod-network.yml --env-file deploy/env/active.env up -d --build`
+
+**Lección:** nunca usar IPs del bridge default (`172.17.0.x`) como upstreams — son dinámicas. Siempre usar redes user-defined con nombre de contenedor como DNS.
+
+---
+
+**Última actualización:** 2026-06-11 (cajachica_net; incidente 502 cajachica)
 **Servidor:** srv-mabuiosapi  
 **Dominio:** scnexus.mabelgroup.com.ec

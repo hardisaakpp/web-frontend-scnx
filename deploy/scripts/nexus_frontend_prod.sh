@@ -53,14 +53,7 @@ mkdir -p "$(dirname "$LOG_FILE")"
   docker compose "${COMPOSE_FILES[@]}" --env-file "$ACTIVE_ENV" up -d --build
   docker image prune -f
 
-  # Cajachica en red bridge (172.17.0.2) — no declarar bridge en compose (falla con alias)
-  if docker network inspect bridge --format '{{range .Containers}}{{.Name}} {{end}}' 2>/dev/null | grep -qw scnexus-front; then
-    echo "scnexus-front ya está en red bridge"
-  else
-    echo "Conectando scnexus-front a red bridge (cajachica 172.17.0.2)..."
-    docker network connect bridge scnexus-front
-  fi
-
+  # cajachica_net: declarada en docker-compose.prod-network.yml, se conecta automáticamente al hacer up.
   docker ps --filter name=scnexus-front --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
 } 2>&1 | tee -a "$LOG_FILE"
 
