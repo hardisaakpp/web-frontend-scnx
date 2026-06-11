@@ -1,4 +1,4 @@
-# Nginx + SPA en :8082. Los UPSTREAM_* se hornean en la imagen al hacer build.
+# Nginx + SPA en :8085. Los UPSTREAM_* se hornean en la imagen al hacer build.
 # Obligatorio: deploy/env/active.env (ver deploy/env/local.docker.env.example)
 #   npm run docker:env && npm run docker:up
 #   — o — docker compose --env-file deploy/env/active.env up -d --build
@@ -31,9 +31,22 @@ services:
       - path: deploy/env/active.docker.env
         required: false
     ports:
-      - "${SCNEXUS_FRONT_PORT:-8082}:80"
+      - "${SCNEXUS_FRONT_PORT:-8085}:80"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
       - ${CAJA_CHICA_LEGACY_MEDIA_HOST:-/media/scnexus-cajachica}:/var/lib/caja-chica-legacy:ro
+    networks:
+      - default
+      - mba3_net
+      - cajachica_net
     restart: unless-stopped
+
+networks:
+  default: {}
+  mba3_net:
+    external: true
+    name: mba3-consultas_default
+  cajachica_net:
+    external: true
+    name: cajachica_net
