@@ -15,6 +15,7 @@ services:
       - scnexus-pyg_default
       - conciliacion-bancaria_default
       - articulomaestro_default
+      - scnexus-cajachica_default
 
 networks:
   mba3-nexus_edge:
@@ -28,4 +29,7 @@ networks:
     external: true
   articulomaestro_default:
     name: articulomaestro_default
+    external: true
+  scnexus-cajachica_default:
+    name: scnexus-cajachica_default
     external: true
