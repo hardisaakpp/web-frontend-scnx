@@ -53,6 +53,7 @@ export default defineConfig(async ({ mode }) => {
   const inventarioProxyTarget = upstreamUrl(env, 'INVENTARIO')
   const promocionSobresProxyTarget = upstreamUrl(env, 'PROMOCION_SOBRES')
   const slayerProxyTarget = upstreamUrl(env, 'SLAYER')
+  const ruletaProxyTarget = upstreamUrl(env, 'RULETA')
   const pygProxyPrefix =
     'UPSTREAM_PYG_PREFIX' in env
       ? env.UPSTREAM_PYG_PREFIX
@@ -291,6 +292,18 @@ export default defineConfig(async ({ mode }) => {
           secure: false,
 
           rewrite: (path) => path.replace(/^\/promocion-sobres-api/, '')
+
+        },
+
+        '/ruleta-api': {
+
+          target: ruletaProxyTarget,
+
+          changeOrigin: true,
+
+          secure: false,
+
+          rewrite: (path) => path.replace(/^\/ruleta-api/, '')
 
         }
 

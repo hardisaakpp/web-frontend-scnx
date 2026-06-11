@@ -224,6 +224,22 @@
           <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Personal de Tiendas</span>
         </router-link>
 
+        <!-- Ruleta -->
+        <router-link
+          v-if="hasModuleAccess('ruleta')"
+          to="/ruleta"
+          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
+          :class="{
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/ruleta'),
+            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/ruleta')
+          }"
+          :title="effectiveSidebarCollapsed ? 'Ruleta' : ''"
+        >
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <SparklesIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/ruleta') }" />
+          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Ruleta</span>
+        </router-link>
+
         <!-- PYG (main) -->
         <router-link
           v-if="hasModuleAccess('pyg')"
@@ -378,7 +394,8 @@ import {
   DocumentArrowUpIcon,
   QrCodeIcon,
   IdentificationIcon,
-  GiftIcon
+  GiftIcon,
+  SparklesIcon
 } from '@heroicons/vue/24/outline'
 import { Pin, PinOff } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth'
@@ -540,7 +557,18 @@ const pageTitle = computed(() => {
     '/mba3-consultas/proceso': 'Enviar ODC a SAP',
     '/usuarios': 'Gestión de Usuarios',
     '/roles': 'Gestión de Roles',
-    '/permisos': 'Gestión de Permisos'
+    '/permisos': 'Gestión de Permisos',
+    '/ruleta': 'Ruleta One Card',
+    '/ruleta/enrolador': 'Girar Ruleta',
+    '/ruleta/listado': 'Listado de Ruleta',
+    '/ruleta/supervisor': 'Monitoreo de Enroladores',
+    '/ruleta/admin': 'Administración — Ruleta',
+    '/ruleta/admin/campanas': 'Gestión de campañas',
+    '/ruleta/admin/premios': 'Premios y probabilidades',
+    '/ruleta/admin/inventario': 'Inventario por tienda',
+    '/ruleta/admin/dashboard': 'Dashboard global',
+    '/ruleta/admin/reportes': 'Reportes y exportación',
+    '/ruleta/admin/enroladores': 'Enroladores y ranking'
   }
   return titles[route.path] || 'SCNexus'
 })
