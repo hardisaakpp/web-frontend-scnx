@@ -695,7 +695,7 @@ function ocultarDropdown() {
             enter-from-class="opacity-0 scale-95 translate-y-2"
             enter-to-class="opacity-100 scale-100 translate-y-0"
           >
-            <div v-if="modalStep !== 'cerrado'"
+            <div v-if="modalStep === 'paso1' || modalStep === 'paso2'"
                  class="w-full max-w-lg bg-white dark:bg-gray-900 rounded-2xl shadow-2xl ring-1 ring-black/5 flex flex-col max-h-[90vh]">
 
               <!-- ── Step indicator ──────────────────────────────────────── -->
