@@ -316,6 +316,10 @@ async function asignarStock() {
 function quitarAsignacion(idx: number) {
   stockAsignado.value.splice(idx, 1)
 }
+
+function ocultarDropdown() {
+  setTimeout(() => { mostrarDropdown.value = false }, 150)
+}
 </script>
 
 <template>
@@ -968,7 +972,7 @@ function quitarAsignacion(idx: number) {
                     <input v-model="tiendaBusqueda" type="text"
                       placeholder="Ej: Portal, QUI-POR, CCI…"
                       @focus="mostrarDropdown = true"
-                      @blur="setTimeout(() => mostrarDropdown = false, 150)"
+                      @blur="ocultarDropdown"
                       class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700
                              bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white
                              placeholder:text-gray-300 dark:placeholder:text-gray-600
