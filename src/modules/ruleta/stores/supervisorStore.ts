@@ -50,7 +50,8 @@ export const useSupervisorStore = defineStore('supervisor', {
             afiliaciones_delta: 0,
             tasa_conversion: tasa,
             tienda_nombre: 'Global',
-            tienda_ciudad: 'Todas'
+            tienda_ciudad: 'Todas',
+            fecha: new Date().toISOString()
         }
       } catch {
         this.error = 'Error al cargar los datos de monitoreo.'
