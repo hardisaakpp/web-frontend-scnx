@@ -90,6 +90,7 @@ stages:
           echo "##vso[task.setvariable variable=conciliacionUpstream]$(PROD_CONCILIACION_UPSTREAM)"
           echo "##vso[task.setvariable variable=maestroUpstream]$(PROD_MAESTRO_UPSTREAM)"
           echo "##vso[task.setvariable variable=scanApiUpstream]$(PROD_SCAN_API_UPSTREAM)"
+          echo "##vso[task.setvariable variable=campanasUpstream]$(PROD_CAMPANAS_UPSTREAM)"
           echo "##vso[task.setvariable variable=imageTag]prod-$(Build.BuildId)"
           echo "##vso[task.setvariable variable=latestTag]prod-latest"
         else
@@ -105,6 +106,7 @@ stages:
           echo "##vso[task.setvariable variable=maestroUpstream]$(TEST_MAESTRO_UPSTREAM)"
           echo "##vso[task.setvariable variable=scanApiUpstream]$(TEST_SCAN_API_UPSTREAM)"
           echo "##vso[task.setvariable variable=imageTag]test-$(Build.BuildId)"
+          echo "##vso[task.setvariable variable=campanasUpstream]$(TEST_CAMPANAS_UPSTREAM)"
           echo "##vso[task.setvariable variable=latestTag]test-latest"
         fi
       displayName: 'Definir Variables Dinámicas según la Rama'
@@ -123,6 +125,7 @@ stages:
           --build-arg MAESTRO_UPSTREAM="$(maestroUpstream)" \
           --build-arg PYG_UPSTREAM="$(pygUpstream)" \
           --build-arg SCAN_API_UPSTREAM="$(scanApiUpstream)" \
+          --build-arg CAMPANAS_UPSTREAM="$(campanasUpstream)" \
           -f $(dockerfilePath) \
           -t $(localRegistry)/$(imageRepository):$(imageTag) \
           -t $(localRegistry)/$(imageRepository):$(latestTag) .

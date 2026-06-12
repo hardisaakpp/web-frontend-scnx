@@ -32,6 +32,7 @@ ARG CONCILIACION_UPSTREAM=http://host.docker.internal:8005
 ARG MAESTRO_UPSTREAM=http://host.docker.internal:8001
 ARG REPOSICION_UPSTREAM=http://host.docker.internal:8006
 ARG SLAYER_UPSTREAM=http://192.168.2.153:8093
+ARG CAMPANAS_UPSTREAM=http://host.docker.internal:5006
 
 COPY deploy/nginx/scnexus-docker.conf.template /tmp/scnexus-docker.conf.template
 RUN sed -e "s|__MBA3_UPSTREAM__|${MBA3_UPSTREAM}|g" \
@@ -46,6 +47,7 @@ RUN sed -e "s|__MBA3_UPSTREAM__|${MBA3_UPSTREAM}|g" \
         -e "s|__CONCILIACION_UPSTREAM__|${CONCILIACION_UPSTREAM}|g" \
         -e "s|__MAESTRO_UPSTREAM__|${MAESTRO_UPSTREAM}|g" \
         -e "s|__REPOSICION_UPSTREAM__|${REPOSICION_UPSTREAM}|g" \
+        -e "s|__CAMPANAS_UPSTREAM__|${CAMPANAS_UPSTREAM}|g" \
         -e "s|__SLAYER_UPSTREAM__|${SLAYER_UPSTREAM}|g" \
         /tmp/scnexus-docker.conf.template > /etc/nginx/conf.d/default.conf \
     && rm /tmp/scnexus-docker.conf.template
