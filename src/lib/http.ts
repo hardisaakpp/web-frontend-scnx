@@ -15,6 +15,7 @@
  */
 import axios from 'axios'
 import { attachUnauthorizedRedirect } from '@/services/sessionGuard'
+import { ENV } from '@/config/env'
 
 // ─── Helpers internos ────────────────────────────────────────────────────────
 
@@ -99,6 +100,11 @@ export function createModuleApi(baseURL: string, opts: ModuleApiOptions = {}): R
         config.headers['X-Origin'] = 'WEB_APP'
       }
 
+      // 5. Fix: Strip leading slash if baseURL is present to avoid bypassing it
+      if (config.url?.startsWith('/') && config.baseURL) {
+        config.url = config.url.substring(1)
+      }
+
       return config
     },
     (error) => Promise.reject(error),
@@ -118,66 +124,72 @@ export function createModuleApi(baseURL: string, opts: ModuleApiOptions = {}): R
 
 /** Core API (login, Auth, Users, Roles, etc.) */
 export const coreApi = createModuleApi(
-  import.meta.env.VITE_CORE_API_URL || import.meta.env.VITE_API_URL || '/api',
+  ENV.CORE_URL || '/api',
   { ignoreUnauthorized: ['/auth/login'] },
 )
 
 /** MBA3 — consultas bajo /api/mba3/* */
 export const mba3ConsultasHttp = createModuleApi(
-  import.meta.env.VITE_MBA3_API_BASE_URL || '/api/mba3',
+  '/api/mba3',
 )
 
 /** MBA3 — Auth/me y capabilities (misma ruta /api) */
 export const mba3AuthHttp = createModuleApi(
-  import.meta.env.VITE_MBA3_API_URL || '/api',
+  ENV.MBA3_URL || '/api',
 )
 
 /** Caja Chica */
 export const cajaChicaApi = createModuleApi(
-  import.meta.env.VITE_CAJA_CHICA_API_URL || '/caja-chica-api',
+  ENV.CAJA_CHICA_URL || '/caja-chica-api',
 )
 
 /** PYG (Pérdidas y Ganancias) */
 export const pygHttp = createModuleApi(
-  import.meta.env.VITE_PYG_API_URL || '/pyg-api',
+  ENV.PYG_URL || '/pyg-api',
 )
 
 /** Artículo Maestro */
 export const maestroHttp = createModuleApi(
-  import.meta.env.VITE_MAESTRO_API_URL || '/maestro-api',
+  ENV.MAESTRO_URL || '/maestro-api',
   { auditHeaders: true },
 )
 
 /** Conciliación Bancaria */
 export const conciliacionHttp = createModuleApi(
-  import.meta.env.VITE_CONCILIACION_API_URL || '/conciliacion-api',
+  ENV.CONCILIACION_URL || '/conciliacion-api',
   { timeout: 60_000 },
 )
 
 /** Artículo Scanner */
 export const scanHttp = createModuleApi(
-  import.meta.env.VITE_ARTICULO_SCAN_API_URL || '/scan-api',
+  ENV.SCAN_URL || '/scan-api',
   { correlationId: true, timeout: 12_000 },
 )
 
 /** Inventario */
 export const inventarioHttp = createModuleApi(
-  import.meta.env.VITE_INVENTARIO_API_URL || '/inventario-api',
+  ENV.INVENTORY_URL || '/inventario-api',
   { correlationId: true },
 )
 
 /** Promoción Sobres */
 export const promoSobresHttp = createModuleApi(
-  import.meta.env.VITE_PROMOCION_SOBRES_API_URL || '/promocion-sobres-api',
+  ENV.PROMO_SOBRES_URL || '/promocion-sobres-api',
   { correlationId: true, auditHeaders: true },
 )
 
 /** Slayer (Caja Chica / SAP) */
 export const slayerHttp = createModuleApi(
-  import.meta.env.VITE_SLAYER_API_URL || '/slayer-api',
+  ENV.SLAYER_URL || '/slayer-api',
 )
 
 /** Preferencias de usuario (MBA3 vía /api/users/preferences) */
 export const preferencesHttp = createModuleApi(
-  import.meta.env.VITE_PREFERENCES_API_URL || '',
+  ENV.PREFERENCES_URL || '',
+)
+
+/** Reposiciones */
+export const reposicionesApi = createModuleApi(
+  ENV.REPOSICIONES_URL || '/api/reposicion-api',
+  { auditHeaders: true, correlationId: true },
 )
