@@ -14,13 +14,19 @@ dist-ssr
 
 # Environment variables (sensibles)
 .env
-.env.*
-!.env.*.example
-
-# Ignorar todos los .env de deploy para proteger claves de servidores
-deploy/env/*.env
-!deploy/env/*.example
-!deploy/env/README.md
+.env.local
+.env.*.local
+.env.development
+.env.production
+deploy/env/active.env
+deploy/env/active.docker.env
+deploy/env/local.env
+deploy/env/desa.env
+deploy/env/intranet.env
+# Stubs deprecados (solo redirigen a deploy/env/)
+!.env.production.example
+!.env.docker.example
+!.env.development.example
 
 # Editor directories and files
 .vscode/*
@@ -42,12 +48,3 @@ Thumbs.db
 
 # Temporary files
 *.tmp
-
-# Testing
-playwright-report/
-test-results/
-test_output.txt
-coverage/
-
-# Vite Cache
-.vite/
