@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRuletaStore } from '../stores/ruletaStore'
+import { useTemaStore } from '../stores/temaStore'
 import SeleccionTiendaModal from '../components/SeleccionTiendaModal.vue'
 import VolverButton from '../components/VolverButton.vue'
 import RuletaWheel from '../components/RuletaWheel.vue'
@@ -10,6 +11,8 @@ import type { Tienda } from '../types'
 
 const authStore = useAuthStore()
 const store = useRuletaStore()
+const temaStore = useTemaStore()
+const tema = computed(() => temaStore.tema)
 
 const cedula = ref('')
 const cedulaTouched = ref(false)
@@ -92,7 +95,7 @@ async function onNotificacionEnviada(correo: string) {
              relative flex flex-col items-center justify-center gap-5 lg:gap-6
              overflow-hidden
              h-[64vh] sm:h-[68vh] md:h-[72vh] lg:h-auto"
-      style="background: linear-gradient(135deg, #060c18 0%, #0b1828 45%, #0f2238 100%)"
+      :style="`background: linear-gradient(135deg, ${tema.color_fondo_inicio} 0%, ${tema.color_fondo_fin} 45%, ${tema.color_fondo_fin}dd 100%)`"
     >
 
       <!-- Glows decorativos Credicorp -->
@@ -137,6 +140,7 @@ async function onNotificacionEnviada(correo: string) {
           :segmentos="store.segmentos"
           :indice-ganador="indiceGanador"
           :girando="store.girando"
+          :tema="tema"
           @animacion-completada="onAnimacionCompletada"
         />
       </div>
@@ -280,7 +284,7 @@ async function onNotificacionEnviada(correo: string) {
             ? 'text-white shadow-xl'
             : 'bg-gray-100 dark:bg-gray-800 text-gray-300 dark:text-gray-600 cursor-not-allowed'"
           :style="puedeGirar
-            ? 'background: linear-gradient(135deg, #0E97D4 0%, #0574AF 55%, #014ba0 100%); box-shadow: 0 8px 32px rgba(10,134,194,0.45)'
+            ? `background: ${tema.color_boton}; box-shadow: 0 8px 32px ${tema.color_boton}73`
             : ''"
         >
           <span>Girar Ruleta</span>
@@ -311,7 +315,7 @@ async function onNotificacionEnviada(correo: string) {
       <div
         v-if="modoFullscreen"
         class="fixed inset-0 z-[200] flex flex-col items-center justify-center overflow-hidden"
-        style="background: linear-gradient(135deg, #060c18 0%, #0b1828 45%, #0f2238 100%)"
+        :style="`background: linear-gradient(135deg, ${tema.color_fondo_inicio} 0%, ${tema.color_fondo_fin} 45%, ${tema.color_fondo_fin}dd 100%)`"
       >
 
         <!-- Glows de fondo Credicorp -->
@@ -350,6 +354,7 @@ async function onNotificacionEnviada(correo: string) {
               :segmentos="store.segmentos"
               :indice-ganador="indiceGanador"
               :girando="store.girando"
+              :tema="tema"
               @animacion-completada="onAnimacionCompletada"
             />
           </div>

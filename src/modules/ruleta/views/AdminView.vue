@@ -55,6 +55,18 @@ void authStore
         <p class="text-sm text-gray-500 dark:text-gray-400">Métricas a nivel nacional de participación, conversión de afiliaciones y gasto en premios.</p>
       </router-link>
 
+      <!-- Diseño Visual -->
+      <router-link to="/ruleta/admin/tema"
+        class="group bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 shadow-sm hover:shadow-md hover:border-cyan-200 dark:hover:border-cyan-600 transition-all">
+        <div class="w-12 h-12 rounded-xl bg-cyan-50 dark:bg-cyan-900/30 flex items-center justify-center mb-4">
+          <svg class="w-6 h-6 text-cyan-600 dark:text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/>
+          </svg>
+        </div>
+        <p class="text-base font-bold text-gray-900 dark:text-white mb-1">Diseño Visual</p>
+        <p class="text-sm text-gray-500 dark:text-gray-400">Personaliza colores de segmentos, aro, hub, fondo y puntero de la ruleta.</p>
+      </router-link>
+
       <!-- Enroladores y ranking -->
       <router-link to="/ruleta/admin/enroladores"
         class="group bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 shadow-sm hover:shadow-md hover:border-rose-200 dark:hover:border-rose-600 transition-all">

@@ -213,7 +213,7 @@ export const ruletaService = {
     }
 
     return {
-      giro_id: data.id ? Number(data.id.replace(/\D/g, '').slice(0, 8)) : Date.now(),
+      giro_id: data.id || String(Date.now()),
       codigo_canje: data.codigoRedencion,
       premio: segmentoGanador,
       es_ganador: data.esGanador,
@@ -230,7 +230,7 @@ export const ruletaService = {
   },
 
   // ─── Enviar notificación por email ─────────────────────────────────────────
-  async enviarNotificacion(giroId: number, correo: string): Promise<void> {
+  async enviarNotificacion(giroId: string | number, correo: string): Promise<void> {
     await campanaApi.post(`/api/giros/${giroId}/notificacion`, { correo })
   },
 

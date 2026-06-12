@@ -89,6 +89,12 @@ const routes: RouteRecordRaw[] = [
     name: 'ruleta-admin-enroladores',
     component: () => import('./views/admin/EnroladoresRankingView.vue'),
     meta: { title: 'Enroladores y ranking', requiresAuth: true, permissions: ['ruleta.administrar'] }
+  },
+  {
+    path: '/ruleta/admin/tema',
+    name: 'ruleta-admin-tema',
+    component: () => import('./views/admin/TemaRuletaView.vue'),
+    meta: { title: 'Diseño Visual — Ruleta', requiresAuth: true, permissions: ['ruleta.administrar'] }
   }
 ]
 

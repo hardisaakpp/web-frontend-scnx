@@ -230,7 +230,7 @@ export interface EnroladorMetrica {
 
 // ─── Giro ─────────────────────────────────────────────────────────────────────
 export interface ResultadoGiro {
-  giro_id: number
+  giro_id: string | number
   codigo_canje: string
   premio: SegmentoRuleta
   es_ganador: boolean
@@ -333,5 +333,33 @@ export interface GiroBackendResponse {
   premioGanado: PremioBackendResponse
   fechaGiro: string
   clienteIdentificacion: string
+}
+
+// ─── Tema visual de la ruleta ──────────────────────────────────────────────────
+export interface TemaRuleta {
+  // Segmentos de la rueda
+  paleta_segmentos: string[]
+  color_texto_segmentos: string
+
+  // Aro exterior
+  color_aro_primario: string
+  color_aro_secundario: string
+
+  // Hub central
+  color_hub_fondo: string
+  color_hub_acento: string
+
+  // Puntero/flecha
+  color_puntero: string
+
+  // Fondo de pantalla
+  color_fondo_inicio: string
+  color_fondo_fin: string
+
+  // Halo/glow
+  color_halo: string
+
+  // Botón girar
+  color_boton: string
 }
 

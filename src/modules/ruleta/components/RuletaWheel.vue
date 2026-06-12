@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import type { SegmentoRuleta } from '../types'
+import type { SegmentoRuleta, TemaRuleta } from '../types'
+import { TEMA_DEFECTO } from '../stores/temaStore'
 
 const props = defineProps<{
   segmentos: SegmentoRuleta[]
   indiceGanador: number | null
   girando: boolean
+  tema?: TemaRuleta
 }>()
+
+const t = computed(() => props.tema ?? TEMA_DEFECTO)
 
 const emit = defineEmits<{
   animacionCompletada: []
@@ -90,9 +94,9 @@ watch(() => props.indiceGanador, (nuevoIndice) => {
 <template>
   <div class="relative w-full h-full flex items-center justify-center select-none">
 
-    <!-- Halo exterior de luz Credicorp (estático) -->
+    <!-- Halo exterior de luz (estático) -->
     <div class="absolute inset-[-10%] rounded-full"
-         style="background: radial-gradient(circle, rgba(19,168,231,0.20) 0%, rgba(5,116,175,0.10) 40%, transparent 70%); pointer-events:none" />
+         :style="`background: radial-gradient(circle, ${t.color_halo}33 0%, ${t.color_halo}1a 40%, transparent 70%); pointer-events:none`" />
 
     <!-- Flecha indicadora -->
     <div class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-[35%] z-20">
@@ -103,21 +107,21 @@ watch(() => props.indiceGanador, (nuevoIndice) => {
           </filter>
         </defs>
         <polygon points="13,30 2,4 24,4"
-                 fill="#ffffff" stroke="#111111" stroke-width="2.5" stroke-linejoin="round"
+                 :fill="t.color_puntero" stroke="#111111" stroke-width="2.5" stroke-linejoin="round"
                  filter="url(#arrow-shadow)"/>
       </svg>
     </div>
 
-    <!-- Anillo externo decorativo Credicorp -->
+    <!-- Anillo externo decorativo -->
     <div class="absolute inset-0 rounded-full"
-         style="background: conic-gradient(from 0deg, rgba(19,168,231,0.9) 0%, rgba(5,116,175,0.5) 25%, rgba(19,168,231,0.9) 50%, rgba(5,116,175,0.5) 75%, rgba(19,168,231,0.9) 100%);
-                padding: 4px; border-radius: 9999px; box-shadow: 0 0 28px rgba(10,134,194,0.55), 0 0 8px rgba(19,168,231,0.30)">
+         :style="`background: conic-gradient(from 0deg, ${t.color_aro_primario}e6 0%, ${t.color_aro_secundario}80 25%, ${t.color_aro_primario}e6 50%, ${t.color_aro_secundario}80 75%, ${t.color_aro_primario}e6 100%);
+                padding: 4px; border-radius: 9999px; box-shadow: 0 0 28px ${t.color_aro_primario}8c, 0 0 8px ${t.color_aro_primario}4d`">
       <div class="w-full h-full rounded-full bg-transparent" />
     </div>
 
     <!-- Aro interior + ruleta -->
     <div class="relative rounded-full w-[94%] h-[94%] flex items-center justify-center p-[4%] border-4"
-         style="background: #0b1828; border-color: rgba(19,168,231,0.15); box-shadow: 0 10px 60px rgba(0,0,0,0.7), 0 0 50px rgba(19,168,231,0.12)">
+         :style="`background: ${t.color_hub_fondo}; border-color: ${t.color_aro_primario}26; box-shadow: 0 10px 60px rgba(0,0,0,0.7), 0 0 50px ${t.color_aro_primario}1f`">
 
       <svg viewBox="0 0 200 200" :style="estiloRuleta" class="rounded-full block w-full h-full overflow-visible">
 
@@ -168,20 +172,20 @@ watch(() => props.indiceGanador, (nuevoIndice) => {
           :transform="`rotate(${seg.mid <= 180 ? seg.mid - 90 : seg.mid + 90}, ${labelPos(seg.mid).x}, ${labelPos(seg.mid).y})`"
           font-size="4.5"
           font-weight="800"
-          fill="white"
+          :fill="t.color_texto_segmentos"
           opacity="0.95"
           class="pointer-events-none drop-shadow-md"
         >
           {{ seg.nombre }}
         </text>
 
-        <!-- Hub central — capas concéntricas con acento Credicorp -->
-        <circle :cx="CX" :cy="CY" r="19"   fill="#0b1828"/>
-        <circle :cx="CX" :cy="CY" r="16.5" fill="#0574AF"/>
-        <circle :cx="CX" :cy="CY" r="13"   fill="#0A86C2"/>
-        <circle :cx="CX" :cy="CY" r="9.5"  fill="#0b1828"/>
-        <circle :cx="CX" :cy="CY" r="6"    fill="#13A8E7"/>
-        <circle :cx="CX" :cy="CY" r="2.8"  fill="#0b1828"/>
+        <!-- Hub central — capas concéntricas -->
+        <circle :cx="CX" :cy="CY" r="19"   :fill="t.color_hub_fondo"/>
+        <circle :cx="CX" :cy="CY" r="16.5" :fill="t.color_aro_secundario"/>
+        <circle :cx="CX" :cy="CY" r="13"   :fill="t.color_hub_acento"/>
+        <circle :cx="CX" :cy="CY" r="9.5"  :fill="t.color_hub_fondo"/>
+        <circle :cx="CX" :cy="CY" r="6"    :fill="t.color_hub_acento"/>
+        <circle :cx="CX" :cy="CY" r="2.8"  :fill="t.color_hub_fondo"/>
 
       </svg>
     </div>
