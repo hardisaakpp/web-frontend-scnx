@@ -305,11 +305,11 @@ export const ruletaService = {
     await campanaApi.delete(`/api/campanas/${campanaId}/premios/${premioId}`)
   },
 
-  async asignarStockTienda(campanaId: string, premioId: string, tiendaCodigo: string, stockTotal: number): Promise<void> {
+  async asignarStockTienda(campanaId: string, premioId: string, tiendaCodigo: string, cantidad: number): Promise<void> {
     await campanaApi.post(
       `/api/campanas/${campanaId}/premios/${premioId}/stock-tienda`,
       null,
-      { params: { tiendaCodigo, stockTotal } }
+      { params: { tiendaCodigo, cantidad } }
     )
   },
 
@@ -448,10 +448,10 @@ export const ruletaService = {
   },
 
   // ─── Historial de giros ───────────────────────────────────────────────────────
-  async getHistorialGiros(campanaId: string, page = 1, pageSize = 10): Promise<HistorialGirosResponse> {
-    const response = await campanaApi.get<any>('/api/metricas/giros', {
-      params: { CampanaId: campanaId, Page: page, PageSize: pageSize }
-    })
+  async getHistorialGiros(campanaId?: string, page = 1, pageSize = 10): Promise<HistorialGirosResponse> {
+    const params: Record<string, unknown> = { Page: page, PageSize: pageSize }
+    if (campanaId) params.CampanaId = campanaId
+    const response = await campanaApi.get<any>('/api/metricas/giros', { params })
     const d = response.data
     const items: HistorialGiroItem[] = (d.items ?? d.Items ?? []).map((item: any) => ({
       id:               item.id               ?? item.giroId            ?? '',
@@ -473,22 +473,25 @@ export const ruletaService = {
     }
   },
 
-  exportarGirosCsvUrl(campanaId: string): string {
+  exportarGirosCsvUrl(campanaId?: string): string {
     const token = localStorage.getItem('token') ?? ''
     const base = import.meta.env.VITE_RULETA_API_URL || '/ruleta-api'
-    return `${base}/api/Metricas/giros/exportar?CampanaId=${campanaId}&token=${encodeURIComponent(token)}`
+    const id = campanaId ? `&CampanaId=${campanaId}` : ''
+    return `${base}/api/Metricas/giros/exportar?token=${encodeURIComponent(token)}${id}`
   },
 
-  exportarGirosExcelUrl(campanaId: string): string {
+  exportarGirosExcelUrl(campanaId?: string): string {
     const token = localStorage.getItem('token') ?? ''
     const base = import.meta.env.VITE_RULETA_API_URL || '/ruleta-api'
-    return `${base}/api/Metricas/giros/exportar/excel?CampanaId=${campanaId}&token=${encodeURIComponent(token)}`
+    const id = campanaId ? `&CampanaId=${campanaId}` : ''
+    return `${base}/api/Metricas/giros/exportar/excel?token=${encodeURIComponent(token)}${id}`
   },
 
-  exportarGirosPdfUrl(campanaId: string): string {
+  exportarGirosPdfUrl(campanaId?: string): string {
     const token = localStorage.getItem('token') ?? ''
     const base = import.meta.env.VITE_RULETA_API_URL || '/ruleta-api'
-    return `${base}/api/Metricas/giros/exportar/pdf?CampanaId=${campanaId}&token=${encodeURIComponent(token)}`
+    const id = campanaId ? `&CampanaId=${campanaId}` : ''
+    return `${base}/api/Metricas/giros/exportar/pdf?token=${encodeURIComponent(token)}${id}`
   },
 
   async getEnroladoresMetricas(campanaId?: string): Promise<EnroladorMetrica[]> {

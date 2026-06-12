@@ -5,24 +5,32 @@ import { ruletaService } from '../../services/ruletaApi'
 import VolverButton from '../../components/VolverButton.vue'
 
 const store = useAdminStore()
-const campanaSeleccionadaId = ref<string | null>(null)
+const TODOS = 'todos'
+const campanaSeleccionadaId = ref<string>(TODOS)
+const esTodos = computed(() => campanaSeleccionadaId.value === TODOS)
 
 async function cargarDashboard(id: string) {
-  await Promise.all([
-    store.cargarMetricasCampana(id),
-    store.cargarEnroladoresDashboard(id),
-    store.cargarStockDashboard(id),
-    store.cargarHistorialDashboard(id),
-  ])
+  if (id === TODOS) {
+    store.metricasCampana = null
+    store.stockDashboard   = []
+    await Promise.all([
+      store.cargarEnroladoresDashboard(),
+      store.cargarHistorialDashboard(),
+    ])
+  } else {
+    await Promise.all([
+      store.cargarMetricasCampana(id),
+      store.cargarEnroladoresDashboard(id),
+      store.cargarStockDashboard(id),
+      store.cargarHistorialDashboard(id),
+    ])
+  }
 }
 
 onMounted(async () => {
   await store.cargarCampanas()
-  const id = store.campanaDashboardId ?? store.campanas[0]?.id
-  if (id) {
-    campanaSeleccionadaId.value = id
-    await cargarDashboard(id)
-  }
+  campanaSeleccionadaId.value = TODOS
+  await cargarDashboard(TODOS)
 })
 
 async function onCampanaChange(event: Event) {
@@ -33,7 +41,7 @@ async function onCampanaChange(event: Event) {
 }
 
 async function onRefresh() {
-  if (campanaSeleccionadaId.value) await cargarDashboard(campanaSeleccionadaId.value)
+  await cargarDashboard(campanaSeleccionadaId.value)
 }
 
 // ── Enroladores bar chart ──────────────────────────────────────────────────────
@@ -49,17 +57,17 @@ const paginasVisibles = computed(() => {
 })
 
 async function irPagina(page: number) {
-  if (!campanaSeleccionadaId.value) return
-  await store.cargarHistorialDashboard(campanaSeleccionadaId.value, page)
+  const id = esTodos.value ? undefined : campanaSeleccionadaId.value
+  await store.cargarHistorialDashboard(id, page)
 }
 
 // ── Exportar ──────────────────────────────────────────────────────────────────
 function exportar(tipo: 'csv' | 'excel' | 'pdf') {
-  if (!campanaSeleccionadaId.value) return
+  const id = esTodos.value ? undefined : campanaSeleccionadaId.value
   const url =
-    tipo === 'excel' ? ruletaService.exportarGirosExcelUrl(campanaSeleccionadaId.value)
-    : tipo === 'pdf' ? ruletaService.exportarGirosPdfUrl(campanaSeleccionadaId.value)
-    : ruletaService.exportarGirosCsvUrl(campanaSeleccionadaId.value)
+    tipo === 'excel' ? ruletaService.exportarGirosExcelUrl(id)
+    : tipo === 'pdf' ? ruletaService.exportarGirosPdfUrl(id)
+    : ruletaService.exportarGirosCsvUrl(id)
   window.open(url, '_blank')
 }
 
@@ -105,7 +113,7 @@ function fmtFecha(iso: string) {
           class="px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800
                  text-sm text-gray-800 dark:text-white focus:outline-none focus:border-indigo-500
                  transition-colors disabled:opacity-60">
-          <option value="" disabled>Selecciona una campaña</option>
+          <option value="todos">Todas las campañas</option>
           <option v-for="c in store.campanas" :key="c.id" :value="c.id">{{ c.nombre }}</option>
         </select>
         <button
@@ -126,23 +134,14 @@ function fmtFecha(iso: string) {
       </div>
     </div>
 
-    <!-- ── Sin campaña ────────────────────────────────────────────────────── -->
-    <div v-if="!campanaSeleccionadaId && !store.loadingCampanas"
-         class="py-16 text-center text-gray-400 dark:text-gray-500">
-      Selecciona una campaña para ver las métricas.
-    </div>
-
-    <!-- ── Skeleton KPIs ──────────────────────────────────────────────────── -->
-    <template v-else-if="store.loadingMetricasCampana && !store.metricasCampana">
-      <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
+    <!-- ── KPI Cards (solo campaña específica) ─────────────────────────── -->
+    <template v-if="!esTodos">
+      <div v-if="store.loadingMetricasCampana && !store.metricasCampana"
+           class="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <div v-for="i in 5" :key="i" class="h-28 rounded-2xl bg-gray-100 dark:bg-gray-800 animate-pulse"/>
       </div>
-    </template>
 
-    <template v-else-if="store.metricasCampana">
-
-      <!-- ── KPI Cards ────────────────────────────────────────────────────── -->
-      <div class="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div v-else-if="store.metricasCampana" class="grid grid-cols-2 lg:grid-cols-5 gap-4">
 
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm">
           <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Total giros</p>
@@ -184,122 +183,116 @@ function fmtFecha(iso: string) {
 
       </div>
 
-      <!-- ── Top Enroladores + Stock ───────────────────────────────────────── -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    </template><!-- /solo campaña específica -->
 
-        <!-- Top Enroladores -->
-        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
-          <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700">
-            <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Top Enroladores</h3>
-            <span v-if="store.enroladores.length"
-                  class="text-xs text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">
-              {{ store.enroladores.length }} enroladores
-            </span>
-          </div>
-          <div class="p-5">
-            <!-- Skeleton -->
-            <div v-if="store.loadingEnroladores" class="space-y-3">
-              <div v-for="i in 4" :key="i" class="h-7 rounded-lg bg-gray-100 dark:bg-gray-700 animate-pulse"/>
-            </div>
-            <!-- Header de columnas -->
-            <div v-else-if="store.enroladores.length">
-              <div class="flex items-center gap-3 mb-2 pb-1.5 border-b border-gray-100 dark:border-gray-700">
-                <span class="w-28 text-[10px] font-semibold text-gray-400 uppercase tracking-wider flex-shrink-0">Enrolador</span>
-                <span class="flex-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Giros</span>
-                <span class="w-16 text-right text-[10px] font-semibold text-gray-400 uppercase tracking-wider flex-shrink-0">Ganadores</span>
-              </div>
-              <div class="space-y-2.5">
-                <div v-for="e in store.enroladores.slice(0, 8)" :key="e.id"
-                     class="flex items-center gap-3">
-                  <span class="text-sm text-gray-700 dark:text-gray-300 w-28 truncate flex-shrink-0"
-                        :title="e.nombre">{{ e.nombre }}</span>
-                  <div class="flex-1 flex items-center gap-2">
-                    <div class="flex-1 h-5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                      <div class="h-full bg-indigo-500 dark:bg-indigo-400 rounded-full transition-all duration-700"
-                           :style="{ width: `${(e.giros / maxGiros) * 100}%` }"/>
-                    </div>
-                    <span class="text-sm font-bold text-gray-800 dark:text-gray-200 w-8 text-right">{{ e.giros }}</span>
-                  </div>
-                  <span class="text-xs font-semibold text-emerald-600 dark:text-emerald-400 w-8 text-right flex-shrink-0">
-                    {{ e.afiliaciones }}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <p v-else class="text-sm text-gray-400 dark:text-gray-500 text-center py-8">
-              Sin datos de enroladores para esta campaña.
-            </p>
-          </div>
+    <!-- ── Top Enroladores + Stock (Stock solo con campaña) ──────────────── -->
+    <div :class="esTodos ? '' : 'grid grid-cols-1 lg:grid-cols-2 gap-4'">
+
+      <!-- Top Enroladores -->
+      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+          <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Top Enroladores</h3>
+          <span v-if="store.enroladores.length"
+                class="text-xs text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">
+            {{ store.enroladores.length }} enroladores
+          </span>
         </div>
-
-        <!-- Stock de Premios -->
-        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
-          <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700">
-            <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Stock de Premios</h3>
-            <span v-if="store.stockDashboard.some(s => s.alertaBajoStock)"
-                  class="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full
-                         text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20">
-              <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
-              </svg>
-              Stock bajo
-            </span>
+        <div class="p-5">
+          <div v-if="store.loadingEnroladores" class="space-y-3">
+            <div v-for="i in 4" :key="i" class="h-7 rounded-lg bg-gray-100 dark:bg-gray-700 animate-pulse"/>
           </div>
-          <!-- Skeleton -->
-          <div v-if="store.loadingStockDashboard" class="p-5 space-y-2">
-            <div v-for="i in 4" :key="i" class="h-8 rounded-lg bg-gray-100 dark:bg-gray-700 animate-pulse"/>
-          </div>
-          <div v-else-if="store.stockDashboard.length" class="overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead class="bg-gray-50 dark:bg-gray-700/50">
-                <tr>
-                  <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Premio</th>
-                  <th class="px-3 py-2.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Total</th>
-                  <th class="px-3 py-2.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Disponible</th>
-                  <th class="px-3 py-2.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Estado</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                <tr v-for="s in store.stockDashboard" :key="s.id"
-                    class="hover:bg-gray-50/60 dark:hover:bg-gray-700/20 transition-colors"
-                    :class="s.stockDisponible === 0
-                      ? 'bg-red-50/40 dark:bg-red-900/10'
-                      : s.alertaBajoStock ? 'bg-amber-50/40 dark:bg-amber-900/10' : ''">
-                  <td class="px-4 py-2.5">
-                    <span class="font-medium text-gray-800 dark:text-gray-200 truncate block max-w-[150px]"
-                          :title="s.nombre">{{ s.nombre }}</span>
-                  </td>
-                  <td class="px-3 py-2.5 text-right text-gray-500 dark:text-gray-400">{{ s.stockTotal }}</td>
-                  <td class="px-3 py-2.5 text-right font-bold" :class="stockNumCls(s.stockDisponible, s.stockTotal)">
-                    {{ s.stockDisponible }}
-                  </td>
-                  <td class="px-3 py-2.5 text-right">
-                    <span v-if="s.stockDisponible === 0"
-                          class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold
-                                 bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
-                      Agotado
-                    </span>
-                    <span v-else-if="s.alertaBajoStock"
-                          class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold
-                                 bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-                      {{ stockPct(s.stockDisponible, s.stockTotal) }}%
-                    </span>
-                    <span v-else
-                          class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold
-                                 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-                      {{ stockPct(s.stockDisponible, s.stockTotal) }}%
-                    </span>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          <div v-else-if="store.enroladores.length">
+            <div class="flex items-center gap-3 mb-2 pb-1.5 border-b border-gray-100 dark:border-gray-700">
+              <span class="w-28 text-[10px] font-semibold text-gray-400 uppercase tracking-wider flex-shrink-0">Enrolador</span>
+              <span class="flex-1 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Giros</span>
+              <span class="w-16 text-right text-[10px] font-semibold text-gray-400 uppercase tracking-wider flex-shrink-0">Ganadores</span>
+            </div>
+            <div class="space-y-2.5">
+              <div v-for="e in store.enroladores.slice(0, 8)" :key="e.id" class="flex items-center gap-3">
+                <span class="text-sm text-gray-700 dark:text-gray-300 w-28 truncate flex-shrink-0"
+                      :title="e.nombre">{{ e.nombre }}</span>
+                <div class="flex-1 flex items-center gap-2">
+                  <div class="flex-1 h-5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                    <div class="h-full bg-indigo-500 dark:bg-indigo-400 rounded-full transition-all duration-700"
+                         :style="{ width: `${(e.giros / maxGiros) * 100}%` }"/>
+                  </div>
+                  <span class="text-sm font-bold text-gray-800 dark:text-gray-200 w-8 text-right">{{ e.giros }}</span>
+                </div>
+                <span class="text-xs font-semibold text-emerald-600 dark:text-emerald-400 w-8 text-right flex-shrink-0">
+                  {{ e.afiliaciones }}
+                </span>
+              </div>
+            </div>
           </div>
           <p v-else class="text-sm text-gray-400 dark:text-gray-500 text-center py-8">
-            Sin premios con stock para esta campaña.
+            Sin datos de enroladores.
           </p>
         </div>
-
       </div>
+
+      <!-- Stock de Premios: solo campaña específica -->
+      <div v-if="!esTodos"
+           class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+          <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Stock de Premios</h3>
+          <span v-if="store.stockDashboard.some(s => s.alertaBajoStock)"
+                class="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full
+                       text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20">
+            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+            </svg>
+            Stock bajo
+          </span>
+        </div>
+        <div v-if="store.loadingStockDashboard" class="p-5 space-y-2">
+          <div v-for="i in 4" :key="i" class="h-8 rounded-lg bg-gray-100 dark:bg-gray-700 animate-pulse"/>
+        </div>
+        <div v-else-if="store.stockDashboard.length" class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 dark:bg-gray-700/50">
+              <tr>
+                <th class="px-4 py-2.5 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Premio</th>
+                <th class="px-3 py-2.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Total</th>
+                <th class="px-3 py-2.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Disponible</th>
+                <th class="px-3 py-2.5 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Estado</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+              <tr v-for="s in store.stockDashboard" :key="s.id"
+                  class="hover:bg-gray-50/60 dark:hover:bg-gray-700/20 transition-colors"
+                  :class="s.stockDisponible === 0 ? 'bg-red-50/40 dark:bg-red-900/10' : s.alertaBajoStock ? 'bg-amber-50/40 dark:bg-amber-900/10' : ''">
+                <td class="px-4 py-2.5">
+                  <span class="font-medium text-gray-800 dark:text-gray-200 truncate block max-w-[150px]"
+                        :title="s.nombre">{{ s.nombre }}</span>
+                </td>
+                <td class="px-3 py-2.5 text-right text-gray-500 dark:text-gray-400">{{ s.stockTotal }}</td>
+                <td class="px-3 py-2.5 text-right font-bold" :class="stockNumCls(s.stockDisponible, s.stockTotal)">
+                  {{ s.stockDisponible }}
+                </td>
+                <td class="px-3 py-2.5 text-right">
+                  <span v-if="s.stockDisponible === 0"
+                        class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                    Agotado
+                  </span>
+                  <span v-else-if="s.alertaBajoStock"
+                        class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                    {{ stockPct(s.stockDisponible, s.stockTotal) }}%
+                  </span>
+                  <span v-else
+                        class="inline-flex px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                    {{ stockPct(s.stockDisponible, s.stockTotal) }}%
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p v-else class="text-sm text-gray-400 dark:text-gray-500 text-center py-8">
+          Sin premios con stock para esta campaña.
+        </p>
+      </div>
+
+    </div>
 
       <!-- ── Historial de Giros ────────────────────────────────────────────── -->
       <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
@@ -481,8 +474,6 @@ function fmtFecha(iso: string) {
           Segmentación de participantes, conversión semanal y efectividad por tienda estarán disponibles en próximas fases de integración.
         </p>
       </div>
-
-    </template>
 
   </div>
 </template>

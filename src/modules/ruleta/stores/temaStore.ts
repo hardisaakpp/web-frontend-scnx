@@ -5,17 +5,17 @@ import type { TemaRuleta } from '../types'
 const STORAGE_KEY = 'ruleta_tema'
 
 export const TEMA_DEFECTO: TemaRuleta = {
-  paleta_segmentos: ['#C87137', '#4F46E5', '#A8B4C8', '#3B82F6', '#E63946', '#5A5F6B'],
+  paleta_segmentos: ['#1a1a1a', '#e8e0cc', '#1a1a1a', '#e8e0cc', '#1a1a1a', '#e8e0cc', '#1a1a1a', '#e8e0cc'],
   color_texto_segmentos: '#ffffff',
-  color_aro_primario: '#13A8E7',
-  color_aro_secundario: '#0574AF',
-  color_hub_fondo: '#0b1828',
-  color_hub_acento: '#13A8E7',
+  color_aro_primario: '#C9A84C',
+  color_aro_secundario: '#8B6914',
+  color_hub_fondo: '#111111',
+  color_hub_acento: '#C9A84C',
   color_puntero: '#ffffff',
-  color_fondo_inicio: '#060c18',
-  color_fondo_fin: '#0b1828',
-  color_halo: '#13A8E7',
-  color_boton: '#0E97D4',
+  color_fondo_inicio: '#0d0d0d',
+  color_fondo_fin: '#1a1200',
+  color_halo: '#C9A84C',
+  color_boton: '#C9A84C',
 }
 
 function cargarTema(): TemaRuleta {

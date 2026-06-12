@@ -328,7 +328,7 @@ export const useAdminStore = defineStore('admin', {
 
     // ── Dashboard Global ──────────────────────────────────────────────────────
     // ── Dashboard real por campaña ────────────────────────────────────────────
-    async cargarEnroladoresDashboard(campanaId: string) {
+    async cargarEnroladoresDashboard(campanaId?: string) {
       this.loadingEnroladores = true
       try {
         this.enroladores = await ruletaService.getEnroladoresMetricas(campanaId)
@@ -350,7 +350,7 @@ export const useAdminStore = defineStore('admin', {
       }
     },
 
-    async cargarHistorialDashboard(campanaId: string, page = 1) {
+    async cargarHistorialDashboard(campanaId?: string, page = 1) {
       this.loadingHistorial = true
       try {
         const res = await ruletaService.getHistorialGiros(campanaId, page, 10)

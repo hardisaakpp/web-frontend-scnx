@@ -40,6 +40,14 @@ function onCeldaChange(premioId: string, tiendaId: number, event: Event) {
 function totalPorTienda(tiendaId: number): number {
   return store.inventario.reduce((acc, p) => acc + store.valorCelda(p.premio_id, tiendaId), 0)
 }
+
+const hayFilaExcedida = computed(() =>
+  store.inventario.some(p => store.totalAsignadoConEdits(p.premio_id) > p.stock_total)
+)
+
+function filaExcedida(item: { premio_id: string; stock_total: number }): boolean {
+  return store.totalAsignadoConEdits(item.premio_id) > item.stock_total
+}
 </script>
 
 <template>
@@ -95,9 +103,15 @@ function totalPorTienda(tiendaId: number): number {
           <p class="text-sm text-indigo-600 dark:text-indigo-400">Stock ya asignado</p>
           <p class="mt-1 text-3xl font-bold text-indigo-700 dark:text-indigo-300">{{ stockAsignado.toLocaleString() }} <span class="text-base font-normal text-indigo-400">unidades</span></p>
         </div>
-        <div class="bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl border border-emerald-100 dark:border-emerald-800/40 p-5">
-          <p class="text-sm text-emerald-600 dark:text-emerald-400">Disponible por asignar</p>
-          <p class="mt-1 text-3xl font-bold text-emerald-700 dark:text-emerald-300">{{ stockDisponible.toLocaleString() }} <span class="text-base font-normal text-emerald-400">unidades</span></p>
+        <div :class="stockDisponible < 0
+               ? 'bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-800/40'
+               : 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-800/40'"
+             class="rounded-2xl border p-5">
+          <p :class="stockDisponible < 0 ? 'text-sm text-red-600 dark:text-red-400' : 'text-sm text-emerald-600 dark:text-emerald-400'">Disponible por asignar</p>
+          <p :class="stockDisponible < 0 ? 'mt-1 text-3xl font-bold text-red-700 dark:text-red-300' : 'mt-1 text-3xl font-bold text-emerald-700 dark:text-emerald-300'">
+            {{ stockDisponible.toLocaleString() }}
+            <span :class="stockDisponible < 0 ? 'text-base font-normal text-red-400' : 'text-base font-normal text-emerald-400'">unidades</span>
+          </p>
         </div>
       </div>
 
@@ -130,16 +144,23 @@ function totalPorTienda(tiendaId: number): number {
                     type="number" min="0"
                     :value="store.valorCelda(item.premio_id, t.id)"
                     @change="onCeldaChange(item.premio_id, t.id, $event)"
-                    class="w-16 text-center px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-600
-                           bg-white dark:bg-gray-700 text-sm text-gray-800 dark:text-gray-200
-                           focus:outline-none focus:border-indigo-500 transition-colors"
+                    :class="filaExcedida(item)
+                      ? 'w-16 text-center px-2 py-1.5 rounded-lg border text-sm focus:outline-none transition-colors border-red-400 bg-red-50 dark:bg-red-900/20 dark:border-red-500 text-red-700 dark:text-red-300 focus:border-red-500'
+                      : 'w-16 text-center px-2 py-1.5 rounded-lg border text-sm focus:outline-none transition-colors border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:border-indigo-500'"
                   />
                 </td>
                 <td class="px-3 py-3.5 text-right font-medium text-gray-700 dark:text-gray-200">
                   {{ store.totalAsignadoConEdits(item.premio_id) }}
                 </td>
                 <td class="px-3 py-3.5 text-right font-semibold">
-                  <span v-if="item.stock_total - store.totalAsignadoConEdits(item.premio_id) <= item.stock_total * 0.1"
+                  <span v-if="item.stock_total - store.totalAsignadoConEdits(item.premio_id) < 0"
+                        class="inline-flex items-center gap-1 text-red-600 dark:text-red-400 font-bold">
+                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                    </svg>
+                    {{ item.stock_total - store.totalAsignadoConEdits(item.premio_id) }}
+                  </span>
+                  <span v-else-if="item.stock_total - store.totalAsignadoConEdits(item.premio_id) <= item.stock_total * 0.1"
                         class="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
                     <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
@@ -172,6 +193,7 @@ function totalPorTienda(tiendaId: number): number {
         <div class="space-y-1">
           <p class="text-xs text-gray-400 dark:text-gray-500">Los premios de relleno no consumen stock y no se muestran en esta tabla.</p>
           <p v-if="store.hayEdicionesPendientes" class="text-xs text-amber-600 dark:text-amber-400">Los cambios no se guardarán hasta presionar 'Guardar distribución'.</p>
+          <p v-if="hayFilaExcedida" class="text-xs text-red-600 dark:text-red-400 font-medium">El stock asignado supera el stock total en uno o más premios. Corrige los valores para poder guardar.</p>
         </div>
         <div class="flex gap-3 flex-shrink-0">
           <button
@@ -182,8 +204,8 @@ function totalPorTienda(tiendaId: number): number {
           </button>
           <button
             @click="store.guardarDistribucion()"
-            :disabled="!store.hayEdicionesPendientes || store.guardando"
-            class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-sm transition-colors disabled:opacity-50">
+            :disabled="!store.hayEdicionesPendientes || store.guardando || hayFilaExcedida"
+            class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
             {{ store.guardando ? 'Guardando…' : 'Guardar distribución' }}
           </button>
         </div>

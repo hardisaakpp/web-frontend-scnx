@@ -162,6 +162,7 @@ function abrirModal() {
   imagenFile.value    = null
   imagenPreview.value = null
   errorForm.value     = ''
+  errorPaso2.value    = ''
   premioRecienCreado.value = null
   stockAsignado.value = []
   modalStep.value = 'paso1'
@@ -190,7 +191,9 @@ function abrirModalEditar(premio: PremioAdmin) {
   imagenFile.value    = null
   imagenPreview.value = premio.imagen_url ?? null
   errorForm.value     = ''
+  errorPaso2.value    = ''
   premioRecienCreado.value = null
+  stockAsignado.value = []
   modalStep.value = 'paso1'
 }
 
@@ -244,8 +247,25 @@ async function guardarPremio() {
     }
 
     if (premioEditando.value) {
-      await store.actualizarPremio(grupoIdx, premioEditando.value.id, data)
-      cerrarModal()
+      const premioId = premioEditando.value.id
+      await store.actualizarPremio(grupoIdx, premioId, data)
+      if (!form.value.es_vacio && form.value.controla_stock_por_tienda) {
+        premioRecienCreado.value = { id: premioId, ...data }
+        // Pre-populate desde inventario ya cargado si está disponible
+        const inventarioItem = store.inventario.find(i => i.premio_id === premioId)
+        if (inventarioItem && store.tiendasInventario.length > 0) {
+          stockAsignado.value = Object.entries(inventarioItem.por_tienda)
+            .filter(([, cant]) => cant > 0)
+            .map(([tiendaId, cantidad]) => {
+              const inv = store.tiendasInventario.find(t => t.id === Number(tiendaId))
+              return inv ? { tienda: { id: inv.id, codigo: inv.codigo, nombre: inv.nombre, ciudad: '', activa: true }, cantidad } : null
+            })
+            .filter(Boolean) as { tienda: Tienda; cantidad: number }[]
+        }
+        modalStep.value = 'paso2'
+      } else {
+        cerrarModal()
+      }
     } else {
       const nuevo = await store.agregarPremio(grupoIdx, data)
       if (!nuevo) { errorForm.value = 'No se pudo guardar el premio.'; return }
@@ -268,6 +288,7 @@ const stockCantidad     = ref<number | null>(null)
 const stockAsignado     = ref<{ tienda: Tienda; cantidad: number }[]>([])
 const asignando         = ref(false)
 const mostrarDropdown   = ref(false)
+const errorPaso2        = ref('')
 
 const tiendasFiltradas = computed(() => {
   const q = tiendaBusqueda.value.toLowerCase().trim()
@@ -294,20 +315,29 @@ function seleccionarTienda(t: Tienda) {
 async function asignarStock() {
   if (!tiendaSeleccionada.value || !stockCantidad.value || stockCantidad.value <= 0) return
   if (!premioRecienCreado.value) return
+  errorPaso2.value = ''
   asignando.value = true
+  const tiendaAux    = tiendaSeleccionada.value
+  const cantidadAux  = stockCantidad.value
   try {
-    await store.asignarStockTienda(
-      premioRecienCreado.value.id,
-      tiendaSeleccionada.value.codigo,
-      stockCantidad.value
-    )
-    stockAsignado.value.push({
-      tienda:   tiendaSeleccionada.value,
-      cantidad: stockCantidad.value,
-    })
+    await store.asignarStockTienda(premioRecienCreado.value.id, tiendaAux.codigo, cantidadAux)
+    stockAsignado.value.push({ tienda: tiendaAux, cantidad: cantidadAux })
+    // Reflejar en store.inventario si ya estaba cargado (para que InventarioView lo muestre)
+    const premioId = premioRecienCreado.value.id
+    const inventarioItem = store.inventario.find(i => i.premio_id === premioId)
+    if (inventarioItem) {
+      const tiendaInv = store.tiendasInventario.find(t => t.codigo === tiendaAux.codigo)
+      if (tiendaInv) {
+        inventarioItem.por_tienda[tiendaInv.id] = (inventarioItem.por_tienda[tiendaInv.id] ?? 0) + cantidadAux
+        inventarioItem.total_asignado = Object.values(inventarioItem.por_tienda).reduce((a, b) => a + b, 0)
+        inventarioItem.restante_bodega = inventarioItem.stock_total - inventarioItem.total_asignado
+      }
+    }
     tiendaSeleccionada.value = null
     tiendaBusqueda.value     = ''
     stockCantidad.value      = null
+  } catch (e: any) {
+    errorPaso2.value = e?.response?.data?.message ?? e?.message ?? 'Error al asignar el stock. Intenta de nuevo.'
   } finally {
     asignando.value = false
   }
@@ -1026,6 +1056,14 @@ function ocultarDropdown() {
                     </span>
                     <span v-else>+ Asignar</span>
                   </button>
+                </div>
+
+                <!-- Error de asignación -->
+                <div v-if="errorPaso2" class="flex items-start gap-2 px-3.5 py-3 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+                  <svg class="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                  </svg>
+                  <p class="text-sm text-red-700 dark:text-red-300">{{ errorPaso2 }}</p>
                 </div>
 
                 <!-- Lista de asignaciones -->

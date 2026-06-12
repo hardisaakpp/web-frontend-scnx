@@ -126,15 +126,25 @@ async function onNotificacionEnviada(correo: string) {
         </div>
       </div>
 
+      <!-- ── Slogan ─────────────────────────────────────────────────────── -->
+      <div class="relative z-10 text-center select-none">
+        <p class="font-black uppercase leading-none drop-shadow-lg text-2xl sm:text-3xl md:text-4xl">
+          <span class="text-white">¡</span><span style="color: #FFD700; text-shadow: 0 0 24px rgba(255,215,0,0.5)">GIRA Y GANA</span><span class="text-white">!</span>
+        </p>
+        <p class="text-white/60 mt-1 text-[0.65rem] sm:text-sm">
+          Tu suerte te puede dar grandes premios
+        </p>
+      </div>
+
       <!-- ── Rueda ──────────────────────────────────────────────────────── -->
       <div
         class="relative z-10
-               w-[320px]  h-[320px]
-               sm:w-[420px] sm:h-[420px]
-               md:w-[520px] md:h-[520px]
-               lg:w-[560px] lg:h-[560px]
-               xl:w-[640px] xl:h-[640px]
-               2xl:w-[720px] 2xl:h-[720px]"
+               w-[300px]  h-[300px]
+               sm:w-[400px] sm:h-[400px]
+               md:w-[500px] md:h-[500px]
+               lg:w-[540px] lg:h-[540px]
+               xl:w-[620px] xl:h-[620px]
+               2xl:w-[700px] 2xl:h-[700px]"
       >
         <RuletaWheel
           :segmentos="store.segmentos"

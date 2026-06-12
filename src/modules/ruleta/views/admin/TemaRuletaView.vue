@@ -59,7 +59,6 @@ const hayCambios = computed(() =>
                 />
               </div>
               <span class="text-xs text-gray-400 font-mono">{{ color }}</span>
-              <span class="text-xs text-gray-500">Segmento {{ i + 1 }}</span>
             </label>
           </div>
         </div>
