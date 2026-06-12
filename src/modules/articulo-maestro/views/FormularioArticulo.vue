@@ -198,6 +198,7 @@
                                 :options="cats.color"
                                 placeholder="Seleccionar color..."
                                 @change="onColorPrimarioChangeManual"
+                                valueKey="codigo"
                             />
                         </div>
                         <div class="form-field">
@@ -212,6 +213,7 @@
                                 :options="cats.color"
                                 placeholder="Seleccionar color..."
                                 @change="onColorSecundarioChangeManual"
+                                valueKey="codigo"
                             />
                         </div>
 

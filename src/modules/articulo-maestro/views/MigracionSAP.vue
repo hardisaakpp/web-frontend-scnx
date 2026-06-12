@@ -8,11 +8,18 @@
                     Sincronización de artículos entre el sistema local y SAP
                 </p>
             </div>
-            <router-link
-                class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700 transition-colors shadow-sm"
-                to="/articulo-maestro">
-                Volver al listado
-            </router-link>
+            <div class="flex items-center gap-3">
+                <router-link
+                    class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700 transition-colors shadow-sm"
+                    to="/articulo-maestro/lista">
+                    Gestión de Artículos
+                </router-link>
+                <router-link
+                    class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700 transition-colors shadow-sm"
+                    to="/articulo-maestro">
+                    Menú Principal
+                </router-link>
+            </div>
         </div>
 
         <div class="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -84,6 +91,59 @@
 
             <!-- Panel Derecho: Tabla de Artículos Pendientes -->
             <div class="lg:col-span-2 space-y-6">
+                
+                <!-- Monitor de Tareas en Segundo Plano -->
+                <div v-if="recentTasks.length > 0" class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30 flex items-center justify-between">
+                        <h3 class="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider flex items-center gap-2">
+                            <span class="relative flex h-2 w-2">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                            </span>
+                            Sincronización en curso y actividad reciente
+                        </h3>
+                        <span v-if="isPolling" class="text-[10px] font-medium text-blue-600 dark:text-blue-400 animate-pulse">
+                            Actualizando en vivo...
+                        </span>
+                    </div>
+                    <div class="divide-y divide-gray-100 dark:divide-gray-800">
+                        <div v-for="task in recentTasks" :key="task.id" class="p-4 flex flex-col gap-3">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <div class="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600 dark:text-blue-400">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-semibold text-gray-900 dark:text-white">Tarea #{{ task.id }}: {{ task.nombre_tarea }}</p>
+                                        <p class="text-[10px] text-gray-500">Iniciada por {{ task.usuario }}</p>
+                                    </div>
+                                </div>
+                                <div class="flex flex-col items-end">
+                                    <span 
+                                        class="px-2 py-0.5 rounded text-[10px] font-bold uppercase"
+                                        :class="{
+                                            'bg-blue-100 text-blue-700 dark:bg-blue-900/30': task.estado === 'PROCESANDO',
+                                            'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30': task.estado === 'FINALIZADO',
+                                            'bg-red-100 text-red-700 dark:bg-red-900/30': task.estado === 'ERROR'
+                                        }"
+                                    >
+                                        {{ task.estado }}
+                                    </span>
+                                    <p class="text-[10px] text-gray-400 mt-1 uppercase font-medium">Items: {{ task.items_procesados }} / {{ task.total_items }}</p>
+                                </div>
+                            </div>
+                            <!-- Barra de Progreso -->
+                            <div class="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                                <div 
+                                    class="h-full transition-all duration-500 ease-out"
+                                    :class="task.estado === 'ERROR' ? 'bg-red-500' : 'bg-blue-500'"
+                                    :style="{ width: `${task.progreso_porcentaje}%` }"
+                                ></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col min-h-[500px]">
                     <!-- Toolbar Tabla -->
                     <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex flex-wrap items-center justify-between gap-4">
@@ -113,20 +173,6 @@
                             >
                                 Sincronizar con SAP
                             </button>
-                            <!-- <button 
-                                @click="handleBulkAction('update')"
-                                :disabled="selectedCount === 0 || processingAction"
-                                class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg disabled:opacity-50 transition-colors shadow-sm"
-                            >
-                                Actualizar en SAP
-                            </button> -->
-                            <!-- <button 
-                                @click="handleBulkAction('delete')"
-                                :disabled="selectedCount === 0 || processingAction"
-                                class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-lg disabled:opacity-50 transition-colors shadow-sm"
-                            >
-                                Eliminar de SAP
-                            </button> -->
                         </div>
                     </div>
 
@@ -228,50 +274,107 @@
 
                     <!-- Body -->
                     <div v-if="syncResult" class="overflow-y-auto p-6 space-y-6">
-                        <!-- Stats -->
-                        <div class="grid grid-cols-3 gap-4">
-                            <div class="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-4 border border-emerald-100 dark:border-emerald-800">
-                                <p class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{{ syncResult.success }}</p>
-                                <p class="text-xs font-medium text-emerald-800 dark:text-emerald-400 uppercase tracking-wider">Correctos</p>
+                        
+                        <!-- CASO 1: Nueva estructura de Tarea / Novedades -->
+                        <template v-if="syncResult.message || syncResult.tarea_id">
+                            <!-- Message & Task ID -->
+                            <div 
+                                class="p-4 rounded-xl border flex items-start gap-4"
+                                :class="syncResult.success ? 'bg-emerald-50 border-emerald-100 dark:bg-emerald-900/20 dark:border-emerald-800' : 'bg-amber-50 border-amber-100 dark:bg-amber-900/20 dark:border-amber-800'"
+                            >
+                                <div class="p-2 rounded-lg" :class="syncResult.success ? 'bg-emerald-100 dark:bg-emerald-800' : 'bg-amber-100 dark:bg-amber-800'">
+                                    <svg v-if="syncResult.success" class="w-6 h-6 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    <svg v-else class="w-6 h-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-sm font-bold" :class="syncResult.success ? 'text-emerald-900 dark:text-emerald-300' : 'text-amber-900 dark:text-amber-300'">
+                                        {{ syncResult.success ? 'Operación Iniciada' : 'Atención' }}
+                                    </h3>
+                                    <p class="text-sm mt-1" :class="syncResult.success ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'">
+                                        {{ syncResult.message }}
+                                    </p>
+                                    <div v-if="syncResult.tarea_id" class="mt-3 flex items-center gap-2">
+                                        <span class="px-2 py-1 bg-white/50 dark:bg-black/20 rounded text-xs font-mono font-bold">
+                                            ID Tarea: #{{ syncResult.tarea_id }}
+                                        </span>
+                                        <router-link to="/articulo-maestro/historial-sap" class="text-xs underline hover:no-underline">
+                                            Ver progreso en auditoría
+                                        </router-link>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="bg-red-50 dark:bg-red-900/20 rounded-xl p-4 border border-red-100 dark:border-red-800">
-                                <p class="text-2xl font-bold text-red-600 dark:text-red-400">{{ syncResult.error }}</p>
-                                <p class="text-xs font-medium text-red-800 dark:text-red-400 uppercase tracking-wider">Errores</p>
-                            </div>
-                            <div class="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-                                <p class="text-2xl font-bold text-gray-600 dark:text-gray-400">{{ syncResult.total }}</p>
-                                <p class="text-xs font-medium text-gray-800 dark:text-gray-400 uppercase tracking-wider">Total</p>
-                            </div>
-                        </div>
 
-                        <!-- Details Table -->
-                        <div class="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                            <table class="w-full text-left text-sm">
-                                <thead class="bg-gray-50 dark:bg-gray-900/50 text-xs text-gray-500 font-semibold uppercase">
-                                    <tr>
-                                        <th class="px-4 py-3">ItemCode</th>
-                                        <th class="px-4 py-3">Estado</th>
-                                        <th class="px-4 py-3">Mensaje</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
-                                    <tr v-for="d in syncResult.details" :key="d.item_code">
-                                        <td class="px-4 py-3 font-mono text-gray-900 dark:text-white">{{ d.item_code }}</td>
-                                        <td class="px-4 py-3">
-                                            <span 
-                                                class="px-2 py-0.5 rounded text-[10px] font-bold uppercase"
-                                                :class="d.status === 'Error' ? 'bg-red-100 text-red-700 dark:bg-red-900/30' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30'"
-                                            >
-                                                {{ d.status }}
-                                            </span>
-                                        </td>
-                                        <td class="px-4 py-3 text-xs text-gray-500 dark:text-gray-400 whitespace-pre-wrap">
-                                            {{ d.message }}
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                            <!-- Novedades Table -->
+                            <div v-if="syncResult.novedades && syncResult.novedades.length > 0" class="space-y-3">
+                                <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    Artículos con observaciones
+                                </h4>
+                                <div class="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                                    <table class="w-full text-left text-sm">
+                                        <thead class="bg-gray-50 dark:bg-gray-900/50 text-xs text-gray-500 font-semibold uppercase">
+                                            <tr>
+                                                <th class="px-4 py-3">ItemCode</th>
+                                                <th class="px-4 py-3">Motivo / Observación</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                                            <tr v-for="n in syncResult.novedades" :key="n.item_code">
+                                                <td class="px-4 py-3 font-mono text-gray-900 dark:text-white">{{ n.item_code }}</td>
+                                                <td class="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">
+                                                    {{ n.motivo }}
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- CASO 2: Estructura antigua (Estadísticas) -->
+                        <template v-else>
+                            <div class="grid grid-cols-3 gap-4">
+                                <div class="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-4 border border-emerald-100 dark:border-emerald-800">
+                                    <p class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{{ (syncResult as any).success }}</p>
+                                    <p class="text-xs font-medium text-emerald-800 dark:text-emerald-400 uppercase tracking-wider">Correctos</p>
+                                </div>
+                                <div class="bg-red-50 dark:bg-red-900/20 rounded-xl p-4 border border-red-100 dark:border-red-800">
+                                    <p class="text-2xl font-bold text-red-600 dark:text-red-400">{{ (syncResult as any).error }}</p>
+                                    <p class="text-xs font-medium text-red-800 dark:text-red-400 uppercase tracking-wider">Errores</p>
+                                </div>
+                                <div class="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+                                    <p class="text-2xl font-bold text-gray-600 dark:text-gray-400">{{ (syncResult as any).total }}</p>
+                                    <p class="text-xs font-medium text-gray-800 dark:text-gray-400 uppercase tracking-wider">Total</p>
+                                </div>
+                            </div>
+                            <!-- Details Table (Si existe el campo antiguo details) -->
+                            <div v-if="(syncResult as any).details" class="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                                <table class="w-full text-left text-sm">
+                                    <thead class="bg-gray-50 dark:bg-gray-900/50 text-xs text-gray-500 font-semibold uppercase">
+                                        <tr>
+                                            <th class="px-4 py-3">ItemCode</th>
+                                            <th class="px-4 py-3">Estado</th>
+                                            <th class="px-4 py-3">Mensaje</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                                        <tr v-for="d in (syncResult as any).details" :key="d.item_code">
+                                            <td class="px-4 py-3 font-mono text-gray-900 dark:text-white">{{ d.item_code }}</td>
+                                            <td class="px-4 py-3">
+                                                <span 
+                                                    class="px-2 py-0.5 rounded text-[10px] font-bold uppercase"
+                                                    :class="d.status === 'Error' ? 'bg-red-100 text-red-700 dark:bg-red-900/30' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30'"
+                                                >
+                                                    {{ d.status }}
+                                                </span>
+                                            </td>
+                                            <td class="px-4 py-3 text-xs text-gray-500 dark:text-gray-400 whitespace-pre-wrap">{{ d.message }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </template>
+
                     </div>
 
                     <!-- Footer -->
@@ -290,10 +393,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { articuloService, sapService } from '../services/articuloService'
 import type { Articulo } from '../types'
-import type { SapSyncResponse } from '../services/articuloService'
+import type { SapTask, SapSyncResponse } from '../services/articuloService'
 
 // Estados
 const pendingArticulos = ref<Articulo[]>([])
@@ -303,6 +406,11 @@ const searchCode = ref('')
 const pullCodes = ref('')
 const processingPull = ref(false)
 const processingAction = ref(false)
+
+// Estado de Tareas (Task Monitoring)
+const recentTasks = ref<SapTask[]>([])
+const isPolling = ref(false)
+let pollingTimer: ReturnType<typeof setInterval> | null = null
 
 // Modales
 const showResultModal = ref(false)
@@ -326,9 +434,15 @@ const filteredArticulos = computed(() => {
     })
 })
 
-// Cargar pendientes al montar
+// Cargar pendientes y tareas al montar
 onMounted(() => {
     fetchPending()
+    fetchTasks()
+    startPolling()
+})
+
+onUnmounted(() => {
+    stopPolling()
 })
 
 async function fetchPending() {
@@ -343,6 +457,53 @@ async function fetchPending() {
     } finally {
         loadingPending.value = false
     }
+}
+
+// --- Lógica de Monitoreo de Tareas ---
+
+async function fetchTasks() {
+    try {
+        const tasks = await sapService.getTasks()
+        
+        // Verificar si alguna tarea terminó justo ahora para refrescar la tabla de artículos
+        const hadProcessing = recentTasks.value.some(t => t.estado === 'PROCESANDO')
+        const allFinished = tasks.length > 0 && tasks.every(t => t.estado !== 'PROCESANDO')
+        
+        recentTasks.value = tasks
+
+        if (hadProcessing && allFinished) {
+            // Si antes había algo procesando y ahora no, refrescamos la lista de pendientes
+            fetchPending()
+        }
+
+        // Si no hay nada procesando, podríamos bajar la frecuencia o detener el polling
+        if (allFinished && isPolling.value) {
+            stopPolling()
+            // Pero lo dejamos un último fetch asegurado
+        }
+    } catch (err) {
+        console.error('Error fetching tasks:', err)
+    }
+}
+
+function startPolling() {
+    if (pollingTimer) return
+    isPolling.value = true
+    // Primera ejecución inmediata
+    fetchTasks()
+    pollingTimer = setInterval(() => {
+        const hasActiveTasks = recentTasks.value.some(t => t.estado === 'PROCESANDO')
+        // Siempre consultamos si isPolling es true, pero fetchTasks decidirá si apagarlo
+        fetchTasks()
+    }, 2000)
+}
+
+function stopPolling() {
+    if (pollingTimer) {
+        clearInterval(pollingTimer)
+        pollingTimer = null
+    }
+    isPolling.value = false
 }
 
 function toggleSelectAll() {
@@ -417,7 +578,10 @@ async function handleBulkAction(action: 'create' | 'update' | 'delete') {
 
         syncResult.value = result
         showResultModal.value = true
-        fetchPending() // Refrescar lista
+        
+        // Al iniciar una acción masiva, forzamos inicio de polling para ver la tarea
+        startPolling()
+        fetchPending() // Refrescar lista (aunque el polling lo hará cuando termine)
     } catch (err) {
         alert('Error al procesar la acción en SAP.')
         console.error(err)

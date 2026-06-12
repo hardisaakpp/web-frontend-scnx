@@ -96,6 +96,22 @@
           <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Módulos</p>
         </div>
 
+        <!-- Artículo Maestro -->
+        <router-link
+          v-if="hasModuleAccess('articulomaestro')"
+          to="/articulo-maestro"
+          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
+          :class="{
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/articulo-maestro'),
+            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/articulo-maestro')
+          }"
+          :title="effectiveSidebarCollapsed ? 'Artículo Maestro' : ''"
+        >
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <CubeIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/articulo-maestro') }" />
+          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Artículo Maestro</span>
+        </router-link>
+
         <!-- Caja Chica -->
         <router-link
           v-if="hasModuleAccess('cajachica')"
@@ -144,36 +160,20 @@
           <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Gestión ODC SAP</span>
         </router-link>
 
-        <!-- Artículo Maestro -->
+        <!-- Importador PYG (main) -->
         <router-link
-          v-if="hasModuleAccess('articulomaestro')"
-          to="/articulo-maestro"
+          v-if="hasModuleAccess('pyg')"
+          to="/pyg"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
-            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/articulo-maestro'),
-            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/articulo-maestro')
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/pyg'),
+            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/pyg')
           }"
-          :title="effectiveSidebarCollapsed ? 'Artículo Maestro' : ''"
+          :title="effectiveSidebarCollapsed ? 'Importador PYG' : ''"
         >
           <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-          <CubeIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/articulo-maestro') }" />
-          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Artículo Maestro</span>
-        </router-link>
-
-        <!-- Validación de Artículos -->
-        <router-link
-          v-if="hasModuleAccess('articuloscaner')"
-          to="/articulo-scaner"
-          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
-          :class="{
-            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/articulo-scaner'),
-            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/articulo-scaner')
-          }"
-          :title="effectiveSidebarCollapsed ? 'Validación de Artículos' : ''"
-        >
-          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-          <QrCodeIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/articulo-scaner') }" />
-          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Validación de Artículos</span>
+          <DocumentArrowUpIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/pyg') }" />
+          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Importador PYG</span>
         </router-link>
 
         <!-- Inventario -->
@@ -192,6 +192,22 @@
           <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Inventario</span>
         </router-link>
 
+        <!-- Personal de Tiendas -->
+        <router-link
+          v-if="hasModuleAccess('gestionusuarios')"
+          to="/gestion-usuarios"
+          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
+          :class="{
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/gestion-usuarios'),
+            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/gestion-usuarios')
+          }"
+          :title="effectiveSidebarCollapsed ? 'Personal de Tiendas' : ''"
+        >
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <IdentificationIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/gestion-usuarios') }" />
+          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Personal de Tiendas</span>
+        </router-link>
+
         <!-- Promoción Sobres -->
         <router-link
           v-if="hasModuleAccess('promocionsobres')"
@@ -208,20 +224,20 @@
           <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Promoción Sobres</span>
         </router-link>
 
-        <!-- Personal de Tiendas -->
+        <!-- Reposiciones -->
         <router-link
-          v-if="hasModuleAccess('gestionusuarios')"
-          to="/gestion-usuarios"
+          v-if="hasModuleAccess('reposiciones')"
+          to="/reposiciones"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
-            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/gestion-usuarios'),
-            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/gestion-usuarios')
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/reposiciones'),
+            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/reposiciones')
           }"
-          :title="effectiveSidebarCollapsed ? 'Personal de Tiendas' : ''"
-        >
+          :title="effectiveSidebarCollapsed ? 'Reposiciones' : ''"
+          >
           <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-          <IdentificationIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/gestion-usuarios') }" />
-          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Personal de Tiendas</span>
+          <ShoppingCartIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/reposiciones') }" />
+          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Reposiciones</span>
         </router-link>
 
         <!-- Ruleta -->
@@ -240,22 +256,21 @@
           <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Ruleta</span>
         </router-link>
 
-        <!-- PYG (main) -->
+        <!-- Validación de Artículos -->
         <router-link
-          v-if="hasModuleAccess('pyg')"
-          to="/pyg"
+          v-if="hasModuleAccess('articuloscaner')"
+          to="/articulo-scaner"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
-            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/pyg'),
-            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/pyg')
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/articulo-scaner'),
+            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/articulo-scaner')
           }"
-          :title="effectiveSidebarCollapsed ? 'Importador PYG' : ''"
+          :title="effectiveSidebarCollapsed ? 'Validación de Artículos' : ''"
         >
           <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-          <DocumentArrowUpIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/pyg') }" />
-          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Importador PYG</span>
+          <QrCodeIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/articulo-scaner') }" />
+          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Validación de Artículos</span>
         </router-link>
-
 
         </nav>
 
@@ -394,8 +409,7 @@ import {
   DocumentArrowUpIcon,
   QrCodeIcon,
   IdentificationIcon,
-  GiftIcon,
-  SparklesIcon
+  GiftIcon
 } from '@heroicons/vue/24/outline'
 import { Pin, PinOff } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth'
@@ -558,7 +572,10 @@ const pageTitle = computed(() => {
     '/usuarios': 'Gestión de Usuarios',
     '/roles': 'Gestión de Roles',
     '/permisos': 'Gestión de Permisos',
-    '/ruleta': 'Ruleta One Card',
+    '/reposiciones': 'Reposiciones',
+    '/reposiciones/carrito': 'Carrito de Reposición',
+    '/reposiciones/historial': 'Historial de Reposiciones',
+        '/ruleta': 'Ruleta One Card',
     '/ruleta/enrolador': 'Girar Ruleta',
     '/ruleta/listado': 'Listado de Ruleta',
     '/ruleta/supervisor': 'Monitoreo de Enroladores',
@@ -569,7 +586,9 @@ const pageTitle = computed(() => {
     '/ruleta/admin/dashboard': 'Dashboard global',
     '/ruleta/admin/reportes': 'Reportes y exportación',
     '/ruleta/admin/enroladores': 'Enroladores y ranking'
+    
   }
+
   return titles[route.path] || 'SCNexus'
 })
 
@@ -610,6 +629,8 @@ const hasModuleAccess = (moduleName: string): boolean => {
   if (moduleName === 'promocionsobres') {
     return hasPromocionSobresUiPermission(permissions)
   }
+  if (moduleName === 'reposiciones') return true
+
   const normalizedModule = moduleName.toLowerCase()
 
   return permissions.some((permission: string) => {
