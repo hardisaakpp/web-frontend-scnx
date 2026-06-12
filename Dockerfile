@@ -52,5 +52,10 @@ RUN sed -e "s|__MBA3_UPSTREAM__|${MBA3_UPSTREAM}|g" \
 
 COPY --from=build /app/dist /usr/share/nginx/html
 
+COPY deploy/docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 EXPOSE 80
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["nginx", "-g", "daemon off;"]
+

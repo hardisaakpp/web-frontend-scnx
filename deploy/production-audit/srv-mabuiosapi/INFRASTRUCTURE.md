@@ -90,6 +90,7 @@ Los vhosts **intranet**, **storecontrol**, **sapi**, **glpi** no cambian.
 | 8000 | docker-proxy | mba3-api |
 | 8004 | docker-proxy | app-maestro |
 | 8005 | docker-proxy | app-conciliacion |
+| 8006 | docker-proxy | api-reposiciones |
 | 8080 | docker-proxy | scnexus-articulo-api (scan) |
 | 8082 | *(libre)* | **Reservado** contenedor `scnexus-front` |
 | 8083 | docker-proxy | scnexus-validacionci-api |

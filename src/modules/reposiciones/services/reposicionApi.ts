@@ -1,4 +1,5 @@
-import api from '@/services/api'
+import { reposicionesApi } from '@/lib/http'
+
 import type { 
   PagedResult, 
   CatalogoItem, 
@@ -27,45 +28,45 @@ const reposicionApi = {
     })
     const url = 'reposicion-api/Catalogo'
     console.log("🚀 [ReposicionAPI] getCatalogo:", url, filters)
-    const response = await api.get<PagedResult<CatalogoItem>>(url, { params })
+    const response = await reposicionesApi.get<PagedResult<CatalogoItem>>(url, { params })
     return response.data
   },
 
   getAlmacenes: async () => {
     const url = 'reposicion-api/Catalogo/almacenes'
     console.log("🚀 [ReposicionAPI] getAlmacenes:", url)
-    const response = await api.get<Almacen[]>(url)
+    const response = await reposicionesApi.get<Almacen[]>(url)
     return response.data
   },
 
   getFiltros: async (whsCode: string) => {
-    const response = await api.get<ListasFiltros>('reposicion-api/Catalogo/filtros', { params: { whsCode } })
+    const response = await reposicionesApi.get<ListasFiltros>('reposicion-api/Catalogo/filtros', { params: { whsCode } })
     return response.data
   },
 
   getItemDetalle: async (itemCode: string, whsCode: string) => {
-    const response = await api.get<CatalogoItemDetail>(`reposicion-api/Catalogo/${itemCode}`, { params: { whsCode } })
+    const response = await reposicionesApi.get<CatalogoItemDetail>(`reposicion-api/Catalogo/${itemCode}`, { params: { whsCode } })
     return response.data
   },
 
   // Solicitud (Carrito)
   saveItem: async (request: SaveItemRequest) => {
-    const response = await api.post('reposicion-api/Solicitud/item', request)
+    const response = await reposicionesApi.post('reposicion-api/Solicitud/item', request)
     return response.data
   },
 
   saveComment: async (request: UpdateCommentRequest) => {
-    const response = await api.post('reposicion-api/Solicitud/comment', request)
+    const response = await reposicionesApi.post('reposicion-api/Solicitud/comment', request)
     return response.data
   },
 
   getCarrito: async (whsCode: string) => {
-    const response = await api.get<CarritoResponse>('reposicion-api/Solicitud/carrito', { params: { whsCode } })
+    const response = await reposicionesApi.get<CarritoResponse>('reposicion-api/Solicitud/carrito', { params: { whsCode } })
     return response.data
   },
 
   getStatus: async () => {
-    const response = await api.get<{ isOpen: boolean }>('reposicion-api/Solicitud/status')
+    const response = await reposicionesApi.get<{ isOpen: boolean }>('reposicion-api/Solicitud/status')
     return response.data
   },
 
@@ -74,17 +75,17 @@ const reposicionApi = {
     const params: any = { desde, hasta }
     if (whsCode) params.whsCode = whsCode
     if (idUser) params.idUser = idUser
-    const response = await api.get<HistorialCabecera[]>('reposicion-api/Historial', { params })
+    const response = await reposicionesApi.get<HistorialCabecera[]>('reposicion-api/Historial', { params })
     return response.data
   },
 
   getLog: async (toWhs: string, fecha: string) => {
-    const response = await api.get<RepLog>('reposicion-api/Historial/log', { params: { toWhs, fecha } })
+    const response = await reposicionesApi.get<RepLog>('reposicion-api/Historial/log', { params: { toWhs, fecha } })
     return response.data
   },
 
   getDetalles: async (id: number) => {
-    const response = await api.get<HistorialDetalleItem[]>(`reposicion-api/Historial/${id}/detalles`)
+    const response = await reposicionesApi.get<HistorialDetalleItem[]>(`reposicion-api/Historial/${id}/detalles`)
     return response.data
   },
 
@@ -97,9 +98,10 @@ const reposicionApi = {
   },
 
   getSolicitudesSap: async (whsCode: string, fecha: string) => {
-    const response = await api.get<HistorialSolicitudSap[]>('reposicion-api/Historial/solicitudes', { params: { whsCode, fecha } })
+    const response = await reposicionesApi.get<HistorialSolicitudSap[]>('reposicion-api/Historial/solicitudes', { params: { whsCode, fecha } })
     return response.data
   }
+
 }
 
 export default reposicionApi
