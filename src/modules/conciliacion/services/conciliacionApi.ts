@@ -1,5 +1,4 @@
-import axios from 'axios'
-import { attachUnauthorizedRedirect } from '@/services/sessionGuard'
+import { conciliacionHttp as api } from '@/lib/http'
 import type {
   AppResponse,
   DashboardMetricas,
@@ -23,53 +22,6 @@ import type {
   MovimientoReporte,
   ReporteMaestroParams,
 } from '../types'
-
-// ── Instancia Axios ─────────────────────────────────────────
-const API_BASE = import.meta.env.VITE_CONCILIACION_API_URL || '/conciliacion-api'
-
-const api = axios.create({
-  baseURL: API_BASE,
-  headers: {
-    'Content-Type': 'application/json',
-    Accept: 'application/json',
-  },
-  timeout: 60_000, // 60s — import y sync pueden tardar
-})
-
-// Interceptor: agregar JWT si existe
-api.interceptors.request.use(config => {
-  const token = localStorage.getItem('token')
-  if (token && token !== 'undefined' && token !== 'null' && config.headers) {
-    config.headers['Authorization'] = `Bearer ${token}`
-  }
-
-  if (import.meta.env.DEV) {
-    console.debug(`🚀 [Conciliacion API] Request: ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`)
-  }
-
-  return config
-})
-
-// Interceptor: manejo de errores
-api.interceptors.response.use(
-  response => {
-    if (import.meta.env.DEV) {
-      console.debug(`✅ [Conciliacion API] Response: ${response.status} from ${response.config.url}`)
-    }
-    return response
-  },
-  error => {
-    if (import.meta.env.DEV) {
-      console.error(`❌ [Conciliacion API] Error:`, error.message, error.response?.data)
-    }
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-      window.location.href = '/login'
-    }
-    return Promise.reject(error)
-  },
-)
 
 // ── Helper: extraer .data del AppResponse ───────────────────
 function unwrap<T>(response: { data: AppResponse<T> }): T {
