@@ -10,10 +10,10 @@ onMounted(() => store.cargarPremios())
 const grupoActivo = ref(0)
 
 const grupo = computed(() => store.grupos[grupoActivo.value])
-const suma  = computed(() => store.sumaProbabilidades(grupoActivo.value))
+const estadoActual = computed(() => grupo.value?.estado ?? 'incompleto')
 const barraColor = computed(() => {
-  if (suma.value === 100) return 'bg-emerald-500'
-  if (suma.value >= 90)   return 'bg-yellow-400'
+  if (estadoActual.value === 'completo')    return 'bg-emerald-500'
+  if (estadoActual.value === 'advertencia') return 'bg-yellow-400'
   return 'bg-red-400'
 })
 
@@ -32,10 +32,6 @@ function cerrarEdit() { editando.value = null }
 async function guardarEdit() {
   if (!editando.value) return
   errorEdit.value = ''
-  if (editando.value.probabilidad < 0 || editando.value.probabilidad > 100) {
-    errorEdit.value = 'La probabilidad debe estar entre 0 y 100.'
-    return
-  }
   await store.actualizarPremio(editGrupoIdx.value, editando.value.id, editando.value)
   cerrarEdit()
 }
@@ -122,19 +118,19 @@ const TIPO_LABELS: Record<TipoPremio, string> = {
         <!-- Contenido tab activo -->
         <div v-if="grupo" class="p-5 space-y-4">
 
-          <!-- Barra de progreso -->
+          <!-- Estado del grupo -->
           <div class="flex items-center gap-3">
             <div class="flex-1 h-3 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
               <div class="h-full rounded-full transition-all duration-500"
                    :class="barraColor"
-                   :style="{ width: `${Math.min(suma, 100)}%` }"/>
+                   :style="{ width: estadoActual === 'completo' ? '100%' : estadoActual === 'advertencia' ? '50%' : '10%' }"/>
             </div>
             <span class="text-sm font-semibold whitespace-nowrap"
-                  :class="suma === 100 ? 'text-emerald-600 dark:text-emerald-400' : suma >= 90 ? 'text-yellow-600' : 'text-red-500'">
-              <svg v-if="suma === 100" class="w-4 h-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                  :class="estadoActual === 'completo' ? 'text-emerald-600 dark:text-emerald-400' : estadoActual === 'advertencia' ? 'text-yellow-600' : 'text-red-500'">
+              <svg v-if="estadoActual === 'completo'" class="w-4 h-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
               </svg>
-              {{ suma }}% completado
+              {{ estadoActual === 'completo' ? 'Grupo listo' : estadoActual === 'advertencia' ? 'Falta consolación' : 'Sin premios' }}
             </span>
           </div>
 
@@ -157,28 +153,28 @@ const TIPO_LABELS: Record<TipoPremio, string> = {
             </thead>
             <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
               <tr v-for="(p, idx) in grupo.premios" :key="p.id"
-                  :class="p.probabilidad === 0 && !p.es_relleno
+                  :class="false
                     ? 'bg-red-50/60 dark:bg-red-900/10'
                     : 'hover:bg-gray-50/50 dark:hover:bg-gray-700/20'"
                   class="transition-colors">
                 <td class="px-4 py-3.5"
-                    :class="p.probabilidad === 0 && !p.es_relleno ? 'text-red-500' : 'text-gray-400'">
+                    :class="false ? 'text-red-500' : 'text-gray-400'">
                   {{ idx + 1 }}
                 </td>
                 <td class="px-4 py-3.5 font-medium"
-                    :class="p.probabilidad === 0 && !p.es_relleno ? 'text-red-500' : 'text-gray-800 dark:text-gray-200'">
+                    :class="false ? 'text-red-500' : 'text-gray-800 dark:text-gray-200'">
                   {{ p.nombre }}
                 </td>
                 <td class="px-4 py-3.5 hidden sm:table-cell"
-                    :class="p.probabilidad === 0 && !p.es_relleno ? 'text-red-500' : 'text-gray-600 dark:text-gray-300'">
+                    :class="false ? 'text-red-500' : 'text-gray-600 dark:text-gray-300'">
                   {{ TIPO_LABELS[p.tipo] }}
                 </td>
                 <td class="px-4 py-3.5 text-right font-semibold"
-                    :class="p.probabilidad === 0 && !p.es_relleno ? 'text-red-500' : 'text-gray-700 dark:text-gray-200'">
+                    :class="false ? 'text-red-500' : 'text-gray-700 dark:text-gray-200'">
                   {{ p.probabilidad }}%
                 </td>
                 <td class="px-4 py-3.5 text-right hidden md:table-cell"
-                    :class="p.probabilidad === 0 && !p.es_relleno ? 'text-red-500' : 'text-gray-600 dark:text-gray-300'">
+                    :class="false ? 'text-red-500' : 'text-gray-600 dark:text-gray-300'">
                   {{ p.stock_total ?? '—' }}
                 </td>
                 <td class="px-4 py-3.5 text-center hidden md:table-cell">
@@ -191,7 +187,7 @@ const TIPO_LABELS: Record<TipoPremio, string> = {
                 <td class="px-4 py-3.5 text-center">
                   <button @click="abrirEdit(p, grupoActivo)"
                     class="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                    :class="p.probabilidad === 0 && !p.es_relleno ? 'text-red-400' : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'">
+                    :class="false ? 'text-red-400' : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'">
                     <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
                     </svg>

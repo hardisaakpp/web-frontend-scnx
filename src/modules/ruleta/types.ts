@@ -239,6 +239,13 @@ export interface ResultadoGiro {
 }
 
 // ─── Backend DTOs ─────────────────────────────────────────────────────────────
+export interface InventarioTiendaBackend {
+  id: string
+  tiendaCodigo: string
+  stockTotal: number
+  stockDisponible: number
+}
+
 export interface PremioBackendResponse {
   id: string
   nombre: string
@@ -253,6 +260,7 @@ export interface PremioBackendResponse {
   activo: boolean
   imagenUrl?: string
   controlaStockPorTienda?: boolean
+  inventariosTienda?: InventarioTiendaBackend[]
 }
 
 export interface StockPremio {

@@ -82,7 +82,7 @@ function premioToBackend(data: Partial<PremioAdmin>, segmento?: string) {
     nombre: data.nombre,
     descripcion: data.descripcion || null,
     tipo,
-    probabilidad: data.probabilidad,
+    probabilidad: 0,
     stockTotal: data.stock_total ?? null,
     valorReferencial: data.valor_referencial ?? null,
     esVacio: data.es_relleno ?? false,
@@ -281,10 +281,11 @@ export const ruletaService = {
     }
     return ALL_GROUPS.map(g => {
       const premios = byGroup.get(g)!
-      const suma = premios.reduce((a, p) => a + p.probabilidad, 0)
+      const tieneReal = premios.some(p => !p.es_relleno)
+      const tieneConsolacion = premios.some(p => p.es_relleno)
       let estado: EstadoGrupo = 'incompleto'
-      if (suma === 100 && premios.some(p => !p.es_relleno)) estado = 'completo'
-      else if (suma >= 90 && suma < 100) estado = 'advertencia'
+      if (tieneReal && tieneConsolacion) estado = 'completo'
+      else if (tieneReal) estado = 'advertencia'
       return { grupo: g, label: GROUP_LABELS[g], estado, premios }
     })
   },
@@ -309,7 +310,7 @@ export const ruletaService = {
     await campanaApi.post(
       `/api/campanas/${campanaId}/premios/${premioId}/stock-tienda`,
       null,
-      { params: { tiendaCodigo, cantidad } }
+      { params: { tiendaCodigo, stockTotal: cantidad } }
     )
   },
 
@@ -321,19 +322,33 @@ export const ruletaService = {
     return response.data.map((t, i) => ({ id: i + 1, nombre: t.nombre, codigo: t.codigo }))
   },
 
-  async getInventarioCampana(campanaId: string): Promise<InventarioPremio[]> {
+  async getInventarioCampana(campanaId: string, tiendas: TiendaInventario[] = []): Promise<InventarioPremio[]> {
     const response = await campanaApi.get<PremioBackendResponse[]>(`/api/campanas/${campanaId}/premios`)
     return response.data
-      .filter(p => !p.esVacio && (p.stockTotal ?? 0) > 0)
-      .map(p => ({
-        premio_id: p.id,
-        nombre: p.nombre,
-        tipo: p.tipo,
-        stock_total: p.stockTotal ?? 0,
-        por_tienda: {},
-        total_asignado: 0,
-        restante_bodega: p.stockTotal ?? 0,
-      }))
+      .filter(p => !p.esVacio && p.controlaStockPorTienda && (p.stockTotal ?? 0) > 0)
+      .map(p => {
+        const por_tienda: Record<number, number> = {}
+        if (p.inventariosTienda) {
+          for (const inv of p.inventariosTienda) {
+            const tiendaEncontrada = tiendas.find(t => t.codigo === inv.tiendaCodigo)
+            if (tiendaEncontrada) {
+              por_tienda[tiendaEncontrada.id] = inv.stockTotal
+            }
+          }
+        }
+        
+        const total_asignado = Object.values(por_tienda).reduce((a, b) => a + b, 0)
+        
+        return {
+          premio_id: p.id,
+          nombre: p.nombre,
+          tipo: p.tipo,
+          stock_total: p.stockTotal ?? 0,
+          por_tienda,
+          total_asignado,
+          restante_bodega: (p.stockTotal ?? 0) - total_asignado,
+        }
+      })
   },
 
   // ─── Admin: Dashboard Global ──────────────────────────────────────────────────

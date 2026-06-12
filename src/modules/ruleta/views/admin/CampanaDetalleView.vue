@@ -38,10 +38,6 @@ const estadoClase: Record<string, string> = {
 // ─── Progreso global ──────────────────────────────────────────────────────────
 const grupoActivo    = ref<string | null>(null)
 const grupo          = computed(() => store.grupos.find(g => g.grupo === grupoActivo.value))
-const sumaGrupo      = computed(() => {
-  const idx = store.grupos.findIndex(g => g.grupo === grupoActivo.value)
-  return idx !== -1 ? store.sumaProbabilidades(idx) : 0
-})
 
 const gruposRequeridos = computed(() => {
   const permitidos = campana.value?.segmentos_permitidos
@@ -63,18 +59,8 @@ const estadoGrupoIcon: Record<string, { cls: string; dot: string; label: string 
   incompleto:  { cls: 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400',               dot: 'bg-red-500',    label: '✗' },
 }
 
-// ─── Barra de progreso del grupo activo ──────────────────────────────────────
-const barraColor = computed(() => {
-  if (sumaGrupo.value === 100) return 'bg-emerald-500'
-  if (sumaGrupo.value >= 90)  return 'bg-yellow-400'
-  return 'bg-red-400'
-})
-
-const barraTextoColor = computed(() => {
-  if (sumaGrupo.value === 100) return 'text-emerald-600 dark:text-emerald-400'
-  if (sumaGrupo.value >= 90)  return 'text-yellow-600 dark:text-yellow-400'
-  return 'text-red-500 dark:text-red-400'
-})
+// ─── Estado del grupo activo ──────────────────────────────────────────────────
+const estadoGrupoActual = computed(() => grupo.value?.estado ?? 'incompleto')
 
 // ─── Estado de bloqueo de edición ────────────────────────────────────────────
 const campanaActiva = computed(() => estadoEfectivo.value === 'activa')
@@ -181,7 +167,7 @@ function abrirModalEditar(premio: PremioAdmin) {
     descripcion:               premio.descripcion ?? '',
     es_vacio:                  premio.es_relleno,
     tipo:                      premio.tipo,
-    probabilidad:              premio.probabilidad,
+    probabilidad:              0,
     segmento:                  grupo.value?.grupo ?? 'GRUPO_1',
     controla_stock_por_tienda: premio.controla_stock_por_tienda,
     stock_total:               premio.stock_total,
@@ -225,10 +211,6 @@ function limpiarImagen() {
 async function guardarPremio() {
   errorForm.value = ''
   if (!form.value.nombre.trim()) { errorForm.value = 'El nombre es requerido.'; return }
-  if (form.value.probabilidad <= 0 || form.value.probabilidad > 100) {
-    errorForm.value = 'La probabilidad debe ser entre 1 y 100.'
-    return
-  }
   const grupoIdx = store.grupos.findIndex(g => g.grupo === form.value.segmento)
   if (grupoIdx === -1) { errorForm.value = 'Segmento no válido.'; return }
 
@@ -238,7 +220,7 @@ async function guardarPremio() {
       nombre:       form.value.nombre,
       descripcion:  form.value.descripcion || null,
       tipo:         form.value.es_vacio ? 'relleno' : form.value.tipo,
-      probabilidad: form.value.probabilidad,
+      probabilidad: 0,
       stock_total:  form.value.es_vacio ? null : (form.value.stock_total ?? null),
       valor_referencial: form.value.es_vacio ? null : (form.value.valor_referencial ?? null),
       es_relleno:   form.value.es_vacio,
@@ -501,7 +483,7 @@ function ocultarDropdown() {
               {{ activando ? 'Activando…' : 'Activar campaña' }}
             </button>
             <p v-if="!todosCompletos" class="text-xs text-gray-400 dark:text-gray-500 text-right">
-              Completa todos los grupos al 100% para activar.
+              Cada grupo necesita premios reales y al menos una consolación.
             </p>
           </template>
 
@@ -535,11 +517,11 @@ function ocultarDropdown() {
                       :stroke="g.estado === 'completo' ? '#10b981' : g.estado === 'advertencia' ? '#f59e0b' : '#ef4444'"
                       stroke-width="3"
                       stroke-linecap="round"
-                      :stroke-dasharray="`${(store.sumaProbabilidades(store.grupos.findIndex(x => x.grupo === g.grupo)) / 100) * 94.25} 94.25`"/>
+                      :stroke-dasharray="`${g.estado === 'completo' ? 94.25 : g.estado === 'advertencia' ? 47.12 : 9.42} 94.25`"/>
             </svg>
             <span class="absolute inset-0 flex items-center justify-center text-[10px] font-bold"
                   :class="estadoGrupoIcon[g.estado].cls.split(' ').slice(0,2).join(' ')">
-              {{ store.sumaProbabilidades(store.grupos.findIndex(x => x.grupo === g.grupo)) }}
+              {{ g.premios.length }}
             </span>
           </div>
           <div class="min-w-0">
@@ -571,18 +553,26 @@ function ocultarDropdown() {
         <!-- Contenido del tab activo -->
         <div v-if="grupo" class="p-5 space-y-4">
 
-          <!-- Barra de progreso -->
+          <!-- Estado del grupo -->
           <div class="flex items-center gap-3">
             <div class="flex-1 h-2.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
               <div class="h-full rounded-full transition-all duration-700"
-                   :class="barraColor"
-                   :style="{ width: `${Math.min(sumaGrupo, 100)}%` }"/>
+                   :class="{
+                     'bg-emerald-500 w-full':  estadoGrupoActual === 'completo',
+                     'bg-yellow-400 w-1/2':    estadoGrupoActual === 'advertencia',
+                     'bg-red-400 w-[10%]':     estadoGrupoActual === 'incompleto',
+                   }"/>
             </div>
-            <div class="flex items-center gap-1.5 text-sm font-bold whitespace-nowrap" :class="barraTextoColor">
-              <svg v-if="sumaGrupo === 100" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <div class="flex items-center gap-1.5 text-sm font-bold whitespace-nowrap"
+                 :class="{
+                   'text-emerald-600 dark:text-emerald-400': estadoGrupoActual === 'completo',
+                   'text-yellow-600 dark:text-yellow-400':   estadoGrupoActual === 'advertencia',
+                   'text-red-500 dark:text-red-400':         estadoGrupoActual === 'incompleto',
+                 }">
+              <svg v-if="estadoGrupoActual === 'completo'" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
               </svg>
-              {{ sumaGrupo }}% / 100%
+              {{ estadoGrupoActual === 'completo' ? 'Grupo listo' : estadoGrupoActual === 'advertencia' ? 'Falta consolación' : 'Sin premios' }}
             </div>
           </div>
 
@@ -591,15 +581,7 @@ function ocultarDropdown() {
             <svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
               <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
             </svg>
-            Para modificar los premios o probabilidades, primero debes pausar la campaña.
-          </div>
-
-          <!-- Alerta si sobrepasa 100% -->
-          <div v-if="sumaGrupo > 100" class="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400">
-            <svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
-            </svg>
-            La suma excede el 100%. Ajusta las probabilidades.
+            Para modificar los premios, primero debes pausar la campaña.
           </div>
 
           <!-- Lista vacía -->
@@ -619,7 +601,6 @@ function ocultarDropdown() {
                 <tr>
                   <th class="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Premio</th>
                   <th class="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider hidden sm:table-cell">Tipo</th>
-                  <th class="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Probabilidad</th>
                   <th class="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider hidden md:table-cell">Stock</th>
                   <th class="px-4 py-3 w-10"></th>
                 </tr>
@@ -655,18 +636,13 @@ function ocultarDropdown() {
                   <td class="px-4 py-3.5 hidden sm:table-cell">
                     <span class="text-xs text-gray-500 dark:text-gray-400">{{ TIPO_LABELS[p.tipo] }}</span>
                   </td>
-                  <td class="px-4 py-3.5 text-right">
-                    <span class="text-sm font-bold" :class="p.probabilidad === 0 ? 'text-red-500' : 'text-gray-700 dark:text-gray-200'">
-                      {{ p.probabilidad }}%
-                    </span>
-                  </td>
                   <td class="px-4 py-3.5 text-right hidden md:table-cell text-sm text-gray-500 dark:text-gray-400">
                     {{ p.es_relleno ? '—' : (p.stock_total ?? '∞') }}
                   </td>
                   <td class="px-4 py-3.5 text-right">
                     <button
                       :disabled="campanaActiva"
-                      :title="campanaActiva ? 'Para modificar los premios o probabilidades, primero debes pausar la campaña' : 'Editar'"
+                      :title="campanaActiva ? 'Para modificar los premios, primero debes pausar la campaña' : 'Editar'"
                       @click="!campanaActiva && abrirModalEditar(p)"
                       class="p-1.5 rounded-lg transition-colors"
                       :class="campanaActiva
@@ -684,14 +660,15 @@ function ocultarDropdown() {
 
           <!-- Acción de agregar -->
           <div class="flex items-center justify-between">
-            <p v-if="sumaGrupo < 100" class="text-xs text-gray-400 dark:text-gray-500">
-              Faltan <span class="font-semibold" style="color: #0A86C2">{{ 100 - sumaGrupo }}%</span> para completar este grupo.
+            <p v-if="estadoGrupoActual !== 'completo'" class="text-xs text-gray-400 dark:text-gray-500">
+              <span v-if="estadoGrupoActual === 'advertencia'" class="font-semibold text-yellow-600 dark:text-yellow-500">Agrega al menos una casilla "¡Sigue intentando!" como consolación.</span>
+              <span v-else class="font-semibold" style="color: #0A86C2">Agrega al menos un premio real para este grupo.</span>
             </p>
             <span v-else />
             <button
               @click="!campanaActiva && abrirModal()"
               :disabled="campanaActiva"
-              :title="campanaActiva ? 'Para modificar los premios o probabilidades, primero debes pausar la campaña' : undefined"
+              :title="campanaActiva ? 'Para modificar los premios, primero debes pausar la campaña' : undefined"
               class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-semibold transition-colors"
               :class="campanaActiva
                 ? 'border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-600 bg-gray-50 dark:bg-gray-800/40 cursor-not-allowed'
@@ -830,35 +807,17 @@ function ocultarDropdown() {
                            focus:outline-none focus:ring-2 focus:ring-[#0A86C2]/30 focus:border-[#0A86C2] resize-none transition-colors"/>
                 </div>
 
-                <!-- Tipo + Probabilidad (ocultar Tipo si es relleno) -->
-                <div class="grid grid-cols-2 gap-3">
-                  <div v-if="!form.es_vacio">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Tipo</label>
-                    <select v-model="form.tipo"
-                      class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700
-                             bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white
-                             focus:outline-none focus:ring-2 focus:ring-[#0A86C2]/30 focus:border-[#0A86C2] transition-colors">
-                      <option value="fisico">Premio Físico</option>
-                      <option value="digital">Cupón digital</option>
-                      <option value="descuento">Descuento en tienda</option>
-                    </select>
-                  </div>
-                  <div :class="form.es_vacio ? 'col-span-2' : ''">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                      Probabilidad <span class="text-red-500">*</span>
-                    </label>
-                    <div class="relative">
-                      <input v-model.number="form.probabilidad" type="number" min="1" max="100"
-                        placeholder="0"
-                        class="w-full pl-4 pr-10 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700
-                               bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white
-                               focus:outline-none focus:ring-2 focus:ring-[#0A86C2]/30 focus:border-[#0A86C2] transition-colors"/>
-                      <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-semibold">%</span>
-                    </div>
-                    <p class="mt-1 text-xs text-gray-400">
-                      Disponible: {{ 100 - sumaGrupo }}%
-                    </p>
-                  </div>
+                <!-- Tipo (ocultar si es relleno) -->
+                <div v-if="!form.es_vacio">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Tipo</label>
+                  <select v-model="form.tipo"
+                    class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700
+                           bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white
+                           focus:outline-none focus:ring-2 focus:ring-[#0A86C2]/30 focus:border-[#0A86C2] transition-colors">
+                    <option value="fisico">Premio Físico</option>
+                    <option value="digital">Cupón digital</option>
+                    <option value="descuento">Descuento en tienda</option>
+                  </select>
                 </div>
 
                 <!-- Segmento -->

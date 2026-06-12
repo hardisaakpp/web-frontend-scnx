@@ -95,13 +95,6 @@ export const useAdminStore = defineStore('admin', {
   }),
 
   getters: {
-    // Suma de probabilidades del grupo activo
-    sumaProbabilidades: (state) => (grupoIndex: number): number => {
-      const grupo = state.grupos[grupoIndex]
-      if (!grupo) return 0
-      return grupo.premios.reduce((acc, p) => acc + p.probabilidad, 0)
-    },
-
     // Valor editado de una celda de inventario (con fallback al original)
     valorCelda: (state) => (premioId: string, tiendaId: number): number => {
       const key = `${premioId}_${tiendaId}`
@@ -243,10 +236,11 @@ export const useAdminStore = defineStore('admin', {
     recalcularEstadoGrupo(grupoIndex: number) {
       const grupo = this.grupos[grupoIndex]
       if (!grupo) return
-      const suma = grupo.premios.reduce((acc, p) => acc + p.probabilidad, 0)
-      if (suma === 100 && grupo.premios.some(p => !p.es_relleno)) {
+      const tieneReal = grupo.premios.some(p => !p.es_relleno)
+      const tieneConsolacion = grupo.premios.some(p => p.es_relleno)
+      if (tieneReal && tieneConsolacion) {
         grupo.estado = 'completo'
-      } else if (suma >= 90 && suma < 100) {
+      } else if (tieneReal) {
         grupo.estado = 'advertencia'
       } else {
         grupo.estado = 'incompleto'
@@ -259,10 +253,9 @@ export const useAdminStore = defineStore('admin', {
       this.loadingInventario = true
       this.error = null
       try {
-        const [tiendas, inventario] = await Promise.all([
-          ruletaService.getTiendasInventario(),
-          ruletaService.getInventarioCampana(campanaId)
-        ])
+        const tiendas = await ruletaService.getTiendasInventario()
+        const inventario = await ruletaService.getInventarioCampana(campanaId, tiendas)
+
         this.tiendasInventario = tiendas
         this.inventario = inventario
         this.inventarioEditado = {}
