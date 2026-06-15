@@ -66,6 +66,7 @@ function mapPremioFromBackend(p: PremioBackendResponse): PremioAdmin {
     descripcion: p.descripcion ?? null,
     tipo,
     stock_total: p.stockTotal,
+    stock_disponible: p.stockDisponible ?? null,
     valor_referencial: p.valorReferencial ?? null,
     es_relleno: p.esVacio,
     imagen_url: p.imagenUrl ?? undefined,
@@ -302,9 +303,12 @@ export const ruletaService = {
       const premios = byGroup.get(g)!
       const tieneReal = premios.some(p => !p.es_relleno)
       const tieneConsolacion = premios.some(p => p.es_relleno)
+      const permiteSoloConsolacion = g === 'GRUPO_5' || g === 'GRUPO_6'
+      
       let estado: EstadoGrupo = 'incompleto'
-      if (tieneReal && tieneConsolacion) estado = 'completo'
+      if ((tieneReal && tieneConsolacion) || (permiteSoloConsolacion && tieneConsolacion)) estado = 'completo'
       else if (tieneReal) estado = 'advertencia'
+      
       return { grupo: g, label: GROUP_LABELS[g], estado, premios }
     })
   },

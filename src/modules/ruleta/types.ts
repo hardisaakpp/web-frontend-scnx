@@ -117,6 +117,7 @@ export interface PremioAdmin {
   descripcion?: string | null
   tipo: TipoPremio
   stock_total: number | null
+  stock_disponible?: number | null
   valor_referencial?: number | null
   es_relleno: boolean
   imagen_url?: string
