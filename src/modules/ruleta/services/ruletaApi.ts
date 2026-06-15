@@ -135,6 +135,23 @@ export const ruletaService = {
     await api.delete(`/v1/ruleta/${id}`)
   },
 
+  // ─── Tema Global ───────────────────────────────────────────────────────────
+  async getTemaGlobal(): Promise<any> {
+    try {
+      const response = await campanaApi.get<any>('/api/temas')
+      if (response.data && response.data.temaJson) {
+        return JSON.parse(response.data.temaJson)
+      }
+      return null
+    } catch (e) {
+      return null
+    }
+  },
+
+  async updateTemaGlobal(temaJson: any): Promise<void> {
+    await campanaApi.put('/api/temas', temaJson)
+  },
+
   // ─── Tiendas ───────────────────────────────────────────────────────────────
   async getTiendas(): Promise<Tienda[]> {
     const response = await campanaApi.get<{ codigo: string; nombre: string }[]>('/api/tiendas', {

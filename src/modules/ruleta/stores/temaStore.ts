@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { TemaRuleta } from '../types'
+import { ruletaService } from '../services/ruletaApi'
 
 const STORAGE_KEY = 'ruleta_tema'
 
@@ -18,7 +19,7 @@ export const TEMA_DEFECTO: TemaRuleta = {
   color_boton: '#C9A84C',
 }
 
-function cargarTema(): TemaRuleta {
+function cargarTemaLocal(): TemaRuleta {
   try {
     const stored = localStorage.getItem(STORAGE_KEY)
     if (stored) return { ...TEMA_DEFECTO, ...JSON.parse(stored) }
@@ -27,19 +28,46 @@ function cargarTema(): TemaRuleta {
 }
 
 export const useTemaStore = defineStore('ruleta-tema', () => {
-  const tema = ref<TemaRuleta>(cargarTema())
+  const tema = ref<TemaRuleta>(cargarTemaLocal())
+  const cargando = ref(false)
+
+  // Sincronizar al inicio
+  async function cargarTemaDesdeApi() {
+    cargando.value = true
+    try {
+      const temaApi = await ruletaService.getTemaGlobal()
+      if (temaApi) {
+        tema.value = { ...TEMA_DEFECTO, ...temaApi }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(tema.value))
+      }
+    } catch (e) {
+      console.error('Error cargando tema global:', e)
+    } finally {
+      cargando.value = false
+    }
+  }
+
+  // Cargar inmediatamente desde la API cuando el store se usa por primera vez
+  cargarTemaDesdeApi()
 
   if (typeof window !== 'undefined') {
     window.addEventListener('storage', (event) => {
       if (event.key === STORAGE_KEY) {
-        tema.value = cargarTema()
+        tema.value = cargarTemaLocal()
       }
     })
   }
 
-  function actualizarTema(parcial: Partial<TemaRuleta>) {
+  async function actualizarTema(parcial: Partial<TemaRuleta>) {
     tema.value = { ...tema.value, ...parcial }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tema.value))
+    
+    // Sincronizar con el backend de manera asíncrona (fuego y olvido, o esperar)
+    try {
+      await ruletaService.updateTemaGlobal(tema.value)
+    } catch (e) {
+      console.error('Error guardando tema global en la API:', e)
+    }
   }
 
   function actualizarColorPaleta(indice: number, color: string) {
@@ -48,10 +76,15 @@ export const useTemaStore = defineStore('ruleta-tema', () => {
     actualizarTema({ paleta_segmentos: nueva })
   }
 
-  function resetearTema() {
+  async function resetearTema() {
     tema.value = { ...TEMA_DEFECTO }
     localStorage.removeItem(STORAGE_KEY)
+    try {
+      await ruletaService.updateTemaGlobal(tema.value)
+    } catch (e) {
+      console.error('Error reseteando tema global en la API:', e)
+    }
   }
 
-  return { tema, actualizarTema, actualizarColorPaleta, resetearTema }
+  return { tema, cargando, actualizarTema, actualizarColorPaleta, resetearTema, cargarTemaDesdeApi }
 })

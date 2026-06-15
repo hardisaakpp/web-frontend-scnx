@@ -92,9 +92,9 @@ async function onNotificacionEnviada(correo: string) {
     ══════════════════════════════════════════════════ -->
     <div
       class="order-1 lg:order-2 flex-none lg:flex-1
-             relative flex flex-col items-center justify-center gap-3 lg:gap-6
+             relative flex flex-col items-center justify-center gap-2 sm:gap-4 lg:gap-6
              overflow-hidden py-4 lg:py-0
-             min-h-[350px] h-[50vh] sm:h-[55vh] md:h-[50vh] lg:h-auto"
+             min-h-[400px] h-[55vh] sm:h-[60vh] md:h-[55vh] lg:h-auto"
       :style="`background: linear-gradient(135deg, ${tema.color_fondo_inicio} 0%, ${tema.color_fondo_fin} 45%, ${tema.color_fondo_fin}dd 100%)`"
     >
 
@@ -109,7 +109,10 @@ async function onNotificacionEnviada(correo: string) {
         <div class="absolute top-0 left-0 right-0 h-1/3 opacity-30 bg-gradient-to-b from-white/10 to-transparent" />
       </div>
 
-      <!-- (Logo One Card Eliminado por solicitud del usuario) -->
+      <!-- ── Logo One Card ── -->
+      <div class="relative z-10 flex justify-center w-full pt-2 lg:pt-6 mb-1 lg:mb-2 mt-4 lg:mt-0">
+        <img src="/LOGO-ONE-CARD_03.png" alt="One Card Logo" class="h-8 sm:h-12 md:h-16 lg:h-20 xl:h-24 drop-shadow-lg object-contain" />
+      </div>
 
       <!-- ── Slogan ─────────────────────────────────────────────────────── -->
       <div class="relative z-10 text-center select-none">

@@ -225,21 +225,29 @@ async function guardar() {
     errorModal.value = 'Los giros máximos deben estar entre 1 y 100.'
     return
   }
+  const payload = { ...form.value }
   
   if (habilitarHoraFeliz.value) {
-    if (!form.value.hora_feliz_inicio || !form.value.hora_feliz_fin) {
+    if (!payload.hora_feliz_inicio || !payload.hora_feliz_fin) {
       errorModal.value = 'Debe especificar el inicio y fin de la Hora Feliz.'
       return
     }
+    // Si la hora solo tiene 5 caracteres ("12:00"), le agregamos ":00" para que .NET no arroje error
+    if (payload.hora_feliz_inicio && payload.hora_feliz_inicio.length === 5) {
+      payload.hora_feliz_inicio += ':00'
+    }
+    if (payload.hora_feliz_fin && payload.hora_feliz_fin.length === 5) {
+      payload.hora_feliz_fin += ':00'
+    }
   } else {
-    form.value.hora_feliz_inicio = null
-    form.value.hora_feliz_fin = null
+    payload.hora_feliz_inicio = null
+    payload.hora_feliz_fin = null
   }
   
   if (campanaEditando.value) {
-    await store.actualizarCampana(campanaEditando.value.id, form.value)
+    await store.actualizarCampana(campanaEditando.value.id, payload)
   } else {
-    await store.crearCampana(form.value)
+    await store.crearCampana(payload)
   }
   cerrarModal()
 }
