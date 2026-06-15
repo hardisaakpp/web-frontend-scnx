@@ -122,7 +122,6 @@ const form = ref<CrearPremioDTO>({
   descripcion: '',
   es_vacio: false,
   tipo: 'fisico',
-  probabilidad: 0,
   segmento: 'GRUPO_1',
   controla_stock_por_tienda: false,
   stock_total: null,
@@ -138,7 +137,6 @@ function abrirModal() {
     descripcion: '',
     es_vacio: false,
     tipo: 'fisico',
-    probabilidad: 0,
     segmento: grupo.value?.grupo ?? 'GRUPO_1',
     controla_stock_por_tienda: false,
     stock_total: null,
@@ -167,7 +165,6 @@ function abrirModalEditar(premio: PremioAdmin) {
     descripcion:               premio.descripcion ?? '',
     es_vacio:                  premio.es_relleno,
     tipo:                      premio.tipo,
-    probabilidad:              0,
     segmento:                  grupo.value?.grupo ?? 'GRUPO_1',
     controla_stock_por_tienda: premio.controla_stock_por_tienda,
     stock_total:               premio.stock_total,
@@ -192,6 +189,17 @@ watch(() => form.value.es_vacio, (esVacio) => {
   } else {
     form.value.tipo = 'fisico'
   }
+})
+
+const deshabilitaRelleno = computed(() => {
+  if (!grupo.value) return false
+  const yaTiene = grupo.value.premios.some(p => p.es_relleno)
+  if (!yaTiene) return false // No tiene, así que se puede
+  
+  // Si ya tiene, lo bloqueamos, A MENOS que estemos editando ese mismo premio
+  if (premioEditando.value && premioEditando.value.es_relleno) return false
+  
+  return true
 })
 
 function handleImagenChange(e: Event) {
@@ -220,7 +228,6 @@ async function guardarPremio() {
       nombre:       form.value.nombre,
       descripcion:  form.value.descripcion || null,
       tipo:         form.value.es_vacio ? 'relleno' : form.value.tipo,
-      probabilidad: 0,
       stock_total:  form.value.es_vacio ? null : (form.value.stock_total ?? null),
       valor_referencial: form.value.es_vacio ? null : (form.value.valor_referencial ?? null),
       es_relleno:   form.value.es_vacio,
@@ -415,6 +422,9 @@ function ocultarDropdown() {
               </svg>
               Máx. {{ campana.max_giros }} giro{{ campana.max_giros !== 1 ? 's' : '' }} por cliente
             </span>
+            <span v-if="campana.hora_feliz_inicio && campana.hora_feliz_fin" class="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-medium ml-2">
+              ✨ Hora Feliz: {{ campana.hora_feliz_inicio.slice(0, 5) }} - {{ campana.hora_feliz_fin.slice(0, 5) }}
+            </span>
           </div>
         </div>
 
@@ -483,7 +493,7 @@ function ocultarDropdown() {
               {{ activando ? 'Activando…' : 'Activar campaña' }}
             </button>
             <p v-if="!todosCompletos" class="text-xs text-gray-400 dark:text-gray-500 text-right">
-              Cada grupo necesita premios reales y al menos una consolación.
+              Cada grupo necesita al menos una consolación y premios reales (excepto Grupos 5 y 6).
             </p>
           </template>
 
@@ -662,7 +672,11 @@ function ocultarDropdown() {
           <div class="flex items-center justify-between">
             <p v-if="estadoGrupoActual !== 'completo'" class="text-xs text-gray-400 dark:text-gray-500">
               <span v-if="estadoGrupoActual === 'advertencia'" class="font-semibold text-yellow-600 dark:text-yellow-500">Agrega al menos una casilla "¡Sigue intentando!" como consolación.</span>
-              <span v-else class="font-semibold" style="color: #0A86C2">Agrega al menos un premio real para este grupo.</span>
+              <span v-else class="font-semibold" style="color: #0A86C2">
+                {{ (grupo.grupo === 'GRUPO_5' || grupo.grupo === 'GRUPO_6') 
+                  ? 'Agrega la casilla "¡Sigue intentando!" para habilitar este grupo.'
+                  : 'Agrega al menos un premio real para este grupo.' }}
+              </span>
             </p>
             <span v-else />
             <button
@@ -764,17 +778,21 @@ function ocultarDropdown() {
                        ? 'bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700'
                        : 'bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700'">
                   <div>
-                    <p class="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                    <p class="text-sm font-semibold" :class="deshabilitaRelleno ? 'text-gray-400 dark:text-gray-500' : 'text-gray-800 dark:text-gray-200'">
                       Casilla "¡Sigue intentando!"
                     </p>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      No tiene foto ni stock. Solo ocupa porcentaje de la ruleta.
+                    <p class="text-xs mt-0.5" :class="deshabilitaRelleno ? 'text-amber-500 dark:text-amber-400 font-medium' : 'text-gray-500 dark:text-gray-400'">
+                      {{ deshabilitaRelleno ? 'Ya agregaste un premio de consolación a este grupo.' : 'No tiene foto ni stock. Solo ocupa porcentaje de la ruleta.' }}
                     </p>
                   </div>
                   <button type="button" role="switch" :aria-checked="form.es_vacio"
-                    @click="form.es_vacio = !form.es_vacio"
+                    @click="!deshabilitaRelleno && (form.es_vacio = !form.es_vacio)"
+                    :disabled="deshabilitaRelleno"
                     class="relative flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none"
-                    :class="form.es_vacio ? 'bg-slate-500 dark:bg-slate-400' : 'bg-gray-300 dark:bg-gray-600'">
+                    :class="[
+                      form.es_vacio ? 'bg-slate-500 dark:bg-slate-400' : 'bg-gray-300 dark:bg-gray-600',
+                      deshabilitaRelleno ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'
+                    ]">
                     <span class="absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-md transition-transform duration-200"
                           :class="form.es_vacio ? 'translate-x-5' : 'translate-x-0'"/>
                   </button>

@@ -29,6 +29,14 @@ function cargarTema(): TemaRuleta {
 export const useTemaStore = defineStore('ruleta-tema', () => {
   const tema = ref<TemaRuleta>(cargarTema())
 
+  if (typeof window !== 'undefined') {
+    window.addEventListener('storage', (event) => {
+      if (event.key === STORAGE_KEY) {
+        tema.value = cargarTema()
+      }
+    })
+  }
+
   function actualizarTema(parcial: Partial<TemaRuleta>) {
     tema.value = { ...tema.value, ...parcial }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tema.value))

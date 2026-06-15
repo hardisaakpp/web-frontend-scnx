@@ -112,6 +112,7 @@ const TODOS_SEGMENTOS: SegmentoCliente[] = ['GRUPO_1','GRUPO_2','GRUPO_3','GRUPO
 
 const mostrarModal   = ref(false)
 const errorModal     = ref('')
+const habilitarHoraFeliz = ref(false)
 const nombreTouched  = ref(false)
 const cooldownTouched = ref(false)
 const maxGirosTouched = ref(false)
@@ -120,22 +121,58 @@ const form = ref<CrearCampanaDTO>({
   nombre: '', descripcion: '', fecha_inicio: '', fecha_fin: '',
   cooldown_dias: 15, max_giros: 1, segmentos_permitidos: [],
   requiere_validacion_onecard: true,
+  hora_feliz_inicio: null, hora_feliz_fin: null,
 })
+
+const campanaEditando = ref<Campana | null>(null)
 
 function resetForm() {
   form.value = {
     nombre: '', descripcion: '', fecha_inicio: '', fecha_fin: '',
     cooldown_dias: 15, max_giros: 1, segmentos_permitidos: [],
     requiere_validacion_onecard: true,
+    hora_feliz_inicio: null, hora_feliz_fin: null,
   }
+  habilitarHoraFeliz.value = false
   errorModal.value    = ''
   nombreTouched.value  = false
   cooldownTouched.value = false
   maxGirosTouched.value = false
 }
 
-function abrirModal()  { resetForm(); mostrarModal.value = true  }
-function cerrarModal() { mostrarModal.value = false }
+function abrirModal()  { 
+  campanaEditando.value = null
+  resetForm()
+  mostrarModal.value = true  
+}
+
+function abrirModalEditar(c: Campana) {
+  campanaEditando.value = c
+  form.value = {
+    nombre: c.nombre,
+    descripcion: c.descripcion ?? '',
+    fecha_inicio: c.fecha_inicio,
+    fecha_fin: c.fecha_fin,
+    cooldown_dias: c.cooldown_dias,
+    max_giros: c.max_giros,
+    segmentos_permitidos: [...c.segmentos_permitidos],
+    requiere_validacion_onecard: c.requiere_validacion_onecard,
+    hora_feliz_inicio: c.hora_feliz_inicio ?? null,
+    hora_feliz_fin: c.hora_feliz_fin ?? null,
+  }
+  habilitarHoraFeliz.value = !!c.hora_feliz_inicio && !!c.hora_feliz_fin
+  errorModal.value = ''
+  nombreTouched.value = false
+  cooldownTouched.value = false
+  maxGirosTouched.value = false
+  mostrarModal.value = true
+  cerrarMenu()
+}
+
+function cerrarModal() { 
+  mostrarModal.value = false 
+  campanaEditando.value = null
+}
 
 function toggleSegmento(s: SegmentoCliente) {
   const idx = form.value.segmentos_permitidos.indexOf(s)
@@ -188,7 +225,22 @@ async function guardar() {
     errorModal.value = 'Los giros máximos deben estar entre 1 y 100.'
     return
   }
-  await store.crearCampana(form.value)
+  
+  if (habilitarHoraFeliz.value) {
+    if (!form.value.hora_feliz_inicio || !form.value.hora_feliz_fin) {
+      errorModal.value = 'Debe especificar el inicio y fin de la Hora Feliz.'
+      return
+    }
+  } else {
+    form.value.hora_feliz_inicio = null
+    form.value.hora_feliz_fin = null
+  }
+  
+  if (campanaEditando.value) {
+    await store.actualizarCampana(campanaEditando.value.id, form.value)
+  } else {
+    await store.crearCampana(form.value)
+  }
   cerrarModal()
 }
 
@@ -444,6 +496,21 @@ const SEGMENTO_LABELS: Record<SegmentoCliente, string> = {
 
           <div class="border-t border-gray-100 dark:border-gray-700 my-1" />
 
+          <!-- Editar general -->
+          <button
+            v-if="menuCampana.estado === 'borrador' || estadoEfectivo(menuCampana) === 'pausada'"
+            @click="abrirModalEditar(menuCampana)"
+            class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200
+                   hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
+          >
+            <svg class="w-4 h-4 text-indigo-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+            </svg>
+            Editar configuración
+          </button>
+
+          <div class="border-t border-gray-100 dark:border-gray-700 my-1" />
+
           <!-- Activar -->
           <div class="relative group/activar">
             <button
@@ -579,8 +646,10 @@ const SEGMENTO_LABELS: Record<SegmentoCliente, string> = {
                     </svg>
                   </div>
                   <div>
-                    <h3 class="text-base font-bold text-gray-900 dark:text-white leading-tight">Nueva campaña</h3>
-                    <span class="inline-flex items-center gap-1 mt-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+                    <h3 class="text-base font-bold text-gray-900 dark:text-white leading-tight">
+                      {{ campanaEditando ? 'Editar campaña' : 'Nueva campaña' }}
+                    </h3>
+                    <span v-if="!campanaEditando" class="inline-flex items-center gap-1 mt-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
                       <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
                       </svg>
@@ -801,6 +870,56 @@ const SEGMENTO_LABELS: Record<SegmentoCliente, string> = {
                   </div>
                 </div>
 
+                <!-- Hora Feliz -->
+                <div class="space-y-3">
+                  <div class="flex items-center justify-between gap-4 p-4 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border border-amber-200/50 dark:border-amber-700/50">
+                    <div class="flex items-center gap-1.5">
+                      <div class="flex flex-col">
+                        <div class="flex items-center gap-1.5">
+                          <span class="text-sm font-bold text-amber-900 dark:text-amber-200">✨ Habilitar Hora Feliz</span>
+                          <div class="relative inline-block group/tip-hf">
+                            <button type="button" class="text-amber-400 hover:text-amber-600 transition-colors focus:outline-none">
+                              <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+                              </svg>
+                            </button>
+                            <div class="absolute z-30 bottom-full right-0 mb-2.5 w-60 p-3 rounded-xl shadow-xl pointer-events-none
+                                        bg-gray-900 dark:bg-gray-700 text-white text-xs leading-relaxed
+                                        opacity-0 group-hover/tip-hf:opacity-100 transition-opacity duration-150">
+                              Durante este rango de horas diario, se incrementará la probabilidad de que los clientes ganen premios reales.
+                              <div class="absolute top-full right-4 border-[5px] border-transparent border-t-gray-900 dark:border-t-gray-700"/>
+                            </div>
+                          </div>
+                        </div>
+                        <span class="text-xs text-amber-700/70 dark:text-amber-400 mt-0.5">
+                          {{ habilitarHoraFeliz ? 'Configura el rango de horas' : 'Aumenta las probabilidades temporalmente' }}
+                        </span>
+                      </div>
+                    </div>
+                    <button type="button" role="switch" :aria-checked="habilitarHoraFeliz"
+                      @click="habilitarHoraFeliz = !habilitarHoraFeliz"
+                      class="relative flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200
+                             focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
+                      :class="habilitarHoraFeliz ? 'bg-amber-500' : 'bg-gray-300 dark:bg-gray-600'">
+                      <span class="absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-md transition-transform duration-200"
+                            :class="habilitarHoraFeliz ? 'translate-x-5' : 'translate-x-0'" />
+                    </button>
+                  </div>
+                  
+                  <div v-if="habilitarHoraFeliz" class="grid grid-cols-2 gap-3 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Hora Inicio <span class="text-red-500">*</span></label>
+                      <input v-model="form.hora_feliz_inicio" type="time"
+                        class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 transition-colors"/>
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Hora Fin <span class="text-red-500">*</span></label>
+                      <input v-model="form.hora_feliz_fin" type="time"
+                        class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 transition-colors"/>
+                    </div>
+                  </div>
+                </div>
+
                 <!-- Error global -->
                 <p v-if="errorModal" class="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400">
                   <svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -835,7 +954,7 @@ const SEGMENTO_LABELS: Record<SegmentoCliente, string> = {
                     <svg v-else class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
                     </svg>
-                    {{ store.guardando ? 'Creando…' : 'Crear campaña' }}
+                    {{ store.guardando ? 'Guardando…' : (campanaEditando ? 'Guardar cambios' : 'Crear campaña') }}
                   </button>
                 </div>
               </div>

@@ -146,6 +146,20 @@ export const useAdminStore = defineStore('admin', {
       }
     },
 
+    async actualizarCampana(id: string, dto: CrearCampanaDTO) {
+      this.guardando = true
+      try {
+        const actualizada = await ruletaService.actualizarCampana(id, dto)
+        const index = this.campanas.findIndex(c => c.id === id)
+        if (index !== -1) {
+          this.campanas[index] = actualizada
+        }
+        return actualizada
+      } finally {
+        this.guardando = false
+      }
+    },
+
     async cambiarEstado(id: string, estado: Campana['estado']) {
       await ruletaService.cambiarEstadoCampana(id, estado)
       const c = this.campanas.find(x => x.id === id)
@@ -238,7 +252,9 @@ export const useAdminStore = defineStore('admin', {
       if (!grupo) return
       const tieneReal = grupo.premios.some(p => !p.es_relleno)
       const tieneConsolacion = grupo.premios.some(p => p.es_relleno)
-      if (tieneReal && tieneConsolacion) {
+      const permiteSoloConsolacion = grupo.grupo === 'GRUPO_5' || grupo.grupo === 'GRUPO_6'
+
+      if ((tieneReal && tieneConsolacion) || (permiteSoloConsolacion && tieneConsolacion)) {
         grupo.estado = 'completo'
       } else if (tieneReal) {
         grupo.estado = 'advertencia'

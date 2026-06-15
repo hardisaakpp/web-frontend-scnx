@@ -49,7 +49,9 @@ function mapCampana(raw: CampanaBackendResponse): Campana {
     segmentos_permitidos: (raw.segmentosPermitidos as SegmentoCliente[]) ?? [],
     estado: raw.estado.toLowerCase() as EstadoCampana,
     requiere_validacion_onecard: raw.requiereValidacionOneCard ?? false,
-    tiene_premios: Array.isArray(raw.premios) && (raw.premios as unknown[]).length > 0
+    tiene_premios: Array.isArray(raw.premios) && (raw.premios as unknown[]).length > 0,
+    hora_feliz_inicio: raw.horaFelizInicio ?? null,
+    hora_feliz_fin: raw.horaFelizFin ?? null
   }
 }
 
@@ -63,7 +65,6 @@ function mapPremioFromBackend(p: PremioBackendResponse): PremioAdmin {
     nombre: p.nombre,
     descripcion: p.descripcion ?? null,
     tipo,
-    probabilidad: p.probabilidad,
     stock_total: p.stockTotal,
     valor_referencial: p.valorReferencial ?? null,
     es_relleno: p.esVacio,
@@ -82,7 +83,6 @@ function premioToBackend(data: Partial<PremioAdmin>, segmento?: string) {
     nombre: data.nombre,
     descripcion: data.descripcion || null,
     tipo,
-    probabilidad: 0,
     stockTotal: data.stock_total ?? null,
     valorReferencial: data.valor_referencial ?? null,
     esVacio: data.es_relleno ?? false,
@@ -250,9 +250,28 @@ export const ruletaService = {
       maxGirosPorCliente: dto.max_giros,
       segmentosPermitidos: dto.segmentos_permitidos.length > 0 ? dto.segmentos_permitidos : null,
       requiereValidacionOneCard: dto.requiere_validacion_onecard,
+      horaFelizInicio: dto.hora_feliz_inicio || null,
+      horaFelizFin: dto.hora_feliz_fin || null,
       estado: 'Borrador'
     }
     const response = await campanaApi.post<CampanaBackendResponse>('/api/Campanas', payload)
+    return mapCampana(response.data)
+  },
+
+  async actualizarCampana(id: string, dto: CrearCampanaDTO): Promise<Campana> {
+    const payload = {
+      nombre: dto.nombre,
+      descripcion: dto.descripcion ?? null,
+      fechaInicio: dto.fecha_inicio + 'T00:00:00',
+      fechaFin: dto.fecha_fin + 'T00:00:00',
+      diasEntreGiros: dto.cooldown_dias,
+      maxGirosPorCliente: dto.max_giros,
+      segmentosPermitidos: dto.segmentos_permitidos.length > 0 ? dto.segmentos_permitidos : null,
+      requiereValidacionOneCard: dto.requiere_validacion_onecard,
+      horaFelizInicio: dto.hora_feliz_inicio || null,
+      horaFelizFin: dto.hora_feliz_fin || null
+    }
+    const response = await campanaApi.put<CampanaBackendResponse>(`/api/Campanas/${id}`, payload)
     return mapCampana(response.data)
   },
 

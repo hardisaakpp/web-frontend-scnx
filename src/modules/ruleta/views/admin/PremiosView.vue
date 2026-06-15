@@ -39,13 +39,13 @@ async function guardarEdit() {
 // Modal añadir premio
 const mostrarAgregar = ref(false)
 const nuevoForm = ref<Omit<PremioAdmin, 'id'>>({
-  nombre: '', descripcion: '', tipo: 'fisico', probabilidad: 0,
+  nombre: '', descripcion: '', tipo: 'fisico',
   stock_total: null, valor_referencial: null, es_relleno: false, controla_stock_por_tienda: false
 })
 
 function abrirAgregar() {
   nuevoForm.value = {
-    nombre: '', descripcion: '', tipo: 'fisico', probabilidad: 0,
+    nombre: '', descripcion: '', tipo: 'fisico',
     stock_total: null, valor_referencial: null, es_relleno: false, controla_stock_por_tienda: false
   }
   mostrarAgregar.value = true
@@ -73,8 +73,8 @@ const TIPO_LABELS: Record<TipoPremio, string> = {
     <VolverButton to="/ruleta/admin" label="Administración" />
 
     <div>
-      <h2 class="text-xl font-bold text-gray-900 dark:text-white">Premios y probabilidades</h2>
-      <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Configura los premios y probabilidades por grupo de cliente (campaña activa).</p>
+      <h2 class="text-xl font-bold text-gray-900 dark:text-white">Premios de la Campaña</h2>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Configura los premios disponibles por cada grupo de clientes.</p>
     </div>
 
     <div v-if="store.loadingPremios" class="flex justify-center py-12">
@@ -145,7 +145,7 @@ const TIPO_LABELS: Record<TipoPremio, string> = {
                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider w-10">#</th>
                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Premio</th>
                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider hidden sm:table-cell">Tipo</th>
-                <th class="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">Probabilidad (%)</th>
+
                 <th class="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider hidden md:table-cell">Stock total</th>
                 <th class="px-4 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider hidden md:table-cell">¿Es relleno?</th>
                 <th class="px-4 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">Acciones</th>
@@ -169,10 +169,7 @@ const TIPO_LABELS: Record<TipoPremio, string> = {
                     :class="false ? 'text-red-500' : 'text-gray-600 dark:text-gray-300'">
                   {{ TIPO_LABELS[p.tipo] }}
                 </td>
-                <td class="px-4 py-3.5 text-right font-semibold"
-                    :class="false ? 'text-red-500' : 'text-gray-700 dark:text-gray-200'">
-                  {{ p.probabilidad }}%
-                </td>
+
                 <td class="px-4 py-3.5 text-right hidden md:table-cell"
                     :class="false ? 'text-red-500' : 'text-gray-600 dark:text-gray-300'">
                   {{ p.stock_total ?? '—' }}
@@ -231,19 +228,12 @@ const TIPO_LABELS: Record<TipoPremio, string> = {
               <input v-model="editando.nombre" type="text"
                 class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors"/>
             </div>
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Probabilidad (%)</label>
-                <input v-model.number="editando.probabilidad" type="number" min="0" max="100"
-                  class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors"/>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Stock total</label>
-                <input v-model.number="editando.stock_total" type="number" min="0"
-                  :placeholder="editando.es_relleno ? 'Ilimitado' : ''"
-                  :disabled="editando.es_relleno"
-                  class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors disabled:opacity-50"/>
-              </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Stock total</label>
+              <input v-model.number="editando.stock_total" type="number" min="0"
+                :placeholder="editando.es_relleno ? 'Ilimitado' : ''"
+                :disabled="editando.es_relleno"
+                class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors disabled:opacity-50"/>
             </div>
             <p v-if="errorEdit" class="text-sm text-red-500">{{ errorEdit }}</p>
           </div>
@@ -290,26 +280,14 @@ const TIPO_LABELS: Record<TipoPremio, string> = {
                 class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors resize-none"/>
             </div>
 
-            <!-- Tipo + Probabilidad -->
-            <div class="grid grid-cols-2 gap-3">
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Tipo</label>
-                <select v-model="nuevoForm.tipo"
-                  :disabled="nuevoForm.es_relleno"
-                  class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors disabled:opacity-50">
-                  <option v-for="(label, val) in TIPO_LABELS" :key="val" :value="val">{{ label }}</option>
-                </select>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                  Probabilidad <span class="text-red-500">*</span>
-                </label>
-                <div class="relative">
-                  <input v-model.number="nuevoForm.probabilidad" type="number" min="0" max="100"
-                    class="w-full pl-4 pr-8 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors"/>
-                  <span class="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 font-semibold">%</span>
-                </div>
-              </div>
+            <!-- Tipo -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Tipo</label>
+              <select v-model="nuevoForm.tipo"
+                :disabled="nuevoForm.es_relleno"
+                class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors disabled:opacity-50">
+                <option v-for="(label, val) in TIPO_LABELS" :key="val" :value="val">{{ label }}</option>
+              </select>
             </div>
 
             <!-- Stock total + Valor referencial -->
