@@ -7,11 +7,6 @@
  *  - Redirect a login en 401 (via sessionGuard)
  *  - Headers por defecto JSON
  *  - Manejo automático de FormData (elimina Content-Type para que axios lo setee)
- *
- * Opciones extendidas disponibles:
- *  - `correlationId`: agrega X-Correlation-Id por request
- *  - `auditHeaders`: agrega X-User y X-Origin por request
- *  - `timeout`: timeout custom por instancia
  */
 import axios from 'axios'
 import { attachUnauthorizedRedirect } from '@/services/sessionGuard'
@@ -51,18 +46,6 @@ export interface ModuleApiOptions {
 
 /**
  * Crea una instancia Axios preconfigurada con auth interceptor + sessionGuard.
- *
- * @example
- * ```ts
- * // Instancia básica
- * export const pygApi = createModuleApi('/pyg-api')
- *
- * // Con opciones
- * export const maestroApi = createModuleApi('/maestro-api', {
- *   correlationId: true,
- *   auditHeaders: true,
- * })
- * ```
  */
 export function createModuleApi(baseURL: string, opts: ModuleApiOptions = {}): ReturnType<typeof axios.create> {
   const instance = axios.create({
@@ -119,77 +102,75 @@ export function createModuleApi(baseURL: string, opts: ModuleApiOptions = {}): R
 }
 
 // ─── Instancias pre-creadas ──────────────────────────────────────────────────
-// Cada módulo puede importar directamente la que necesite, o crear la suya
-// con `createModuleApi` si necesita opciones extra.
 
 /** Core API (login, Auth, Users, Roles, etc.) */
 export const coreApi = createModuleApi(
-  ENV.CORE_URL || '/api',
+  ENV.CORE_URL,
   { ignoreUnauthorized: ['/auth/login'] },
 )
 
 /** MBA3 — consultas bajo /api/mba3/* */
 export const mba3ConsultasHttp = createModuleApi(
-  '/api/mba3',
+  ENV.MBA3_URL,
 )
 
-/** MBA3 — Auth/me y capabilities (misma ruta /api) */
+/** MBA3 — Auth/me y capabilities */
 export const mba3AuthHttp = createModuleApi(
-  ENV.MBA3_URL || '/api',
+  ENV.MBA3_URL,
 )
 
 /** Caja Chica */
 export const cajaChicaApi = createModuleApi(
-  ENV.CAJA_CHICA_URL || '/caja-chica-api',
+  ENV.CAJA_CHICA_URL,
 )
 
 /** PYG (Pérdidas y Ganancias) */
 export const pygHttp = createModuleApi(
-  ENV.PYG_URL || '/pyg-api',
+  ENV.PYG_URL,
 )
 
 /** Artículo Maestro */
 export const maestroHttp = createModuleApi(
-  ENV.MAESTRO_URL || '/maestro-api',
+  ENV.MAESTRO_URL,
   { auditHeaders: true },
 )
 
 /** Conciliación Bancaria */
 export const conciliacionHttp = createModuleApi(
-  ENV.CONCILIACION_URL || '/conciliacion-api',
+  ENV.CONCILIACION_URL,
   { timeout: 60_000 },
 )
 
 /** Artículo Scanner */
 export const scanHttp = createModuleApi(
-  ENV.SCAN_URL || '/scan-api',
+  ENV.SCAN_URL,
   { correlationId: true, timeout: 12_000 },
 )
 
 /** Inventario */
 export const inventarioHttp = createModuleApi(
-  ENV.INVENTORY_URL || '/inventario-api',
+  ENV.INVENTORY_URL,
   { correlationId: true },
 )
 
 /** Promoción Sobres */
 export const promoSobresHttp = createModuleApi(
-  ENV.PROMO_SOBRES_URL || '/promocion-sobres-api',
+  ENV.PROMO_SOBRES_URL,
   { correlationId: true, auditHeaders: true },
 )
 
 /** Slayer (Caja Chica / SAP) */
 export const slayerHttp = createModuleApi(
-  ENV.SLAYER_URL || '/slayer-api',
+  ENV.SLAYER_URL,
 )
 
-/** Preferencias de usuario (MBA3 vía /api/users/preferences) */
+/** Preferencias de usuario */
 export const preferencesHttp = createModuleApi(
-  ENV.PREFERENCES_URL || '',
+  ENV.PREFERENCES_URL,
 )
 
 /** Reposiciones */
 export const reposicionesApi = createModuleApi(
-  ENV.REPOSICIONES_URL || '/api/reposicion-api',
+  ENV.REPOSICIONES_URL,
   { auditHeaders: true, correlationId: true },
 )

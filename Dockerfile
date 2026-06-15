@@ -34,21 +34,7 @@ ARG REPOSICION_UPSTREAM=http://host.docker.internal:8006
 ARG SLAYER_UPSTREAM=http://192.168.2.153:8093
 
 COPY deploy/nginx/scnexus-docker.conf.template /tmp/scnexus-docker.conf.template
-RUN sed -e "s|__MBA3_UPSTREAM__|${MBA3_UPSTREAM}|g" \
-        -e "s|__CORE_UPSTREAM__|${CORE_UPSTREAM}|g" \
-        -e "s|__CORE_PROXY_HOST__|${CORE_PROXY_HOST}|g" \
-        -e "s|__CAJA_CHICA_UPSTREAM__|${CAJA_CHICA_UPSTREAM}|g" \
-        -e "s|__EMPLOYEES_UPSTREAM__|${EMPLOYEES_UPSTREAM}|g" \
-        -e "s|__PYG_UPSTREAM__|${PYG_UPSTREAM}|g" \
-        -e "s|__SCAN_API_UPSTREAM__|${SCAN_API_UPSTREAM}|g" \
-        -e "s|__PROMOCION_SOBRES_UPSTREAM__|${PROMOCION_SOBRES_UPSTREAM}|g" \
-        -e "s|__INVENTARIO_UPSTREAM__|${INVENTARIO_UPSTREAM}|g" \
-        -e "s|__CONCILIACION_UPSTREAM__|${CONCILIACION_UPSTREAM}|g" \
-        -e "s|__MAESTRO_UPSTREAM__|${MAESTRO_UPSTREAM}|g" \
-        -e "s|__REPOSICION_UPSTREAM__|${REPOSICION_UPSTREAM}|g" \
-        -e "s|__SLAYER_UPSTREAM__|${SLAYER_UPSTREAM}|g" \
-        /tmp/scnexus-docker.conf.template > /etc/nginx/conf.d/default.conf \
-    && rm /tmp/scnexus-docker.conf.template
+
 
 COPY --from=build /app/dist /usr/share/nginx/html
 
