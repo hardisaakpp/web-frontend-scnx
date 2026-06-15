@@ -218,6 +218,9 @@ function limpiarImagen() {
 
 async function guardarPremio() {
   errorForm.value = ''
+  if (form.value.es_vacio && !form.value.nombre.trim()) {
+    form.value.nombre = '¡Sigue intentando!'
+  }
   if (!form.value.nombre.trim()) { errorForm.value = 'El nombre es requerido.'; return }
   const grupoIdx = store.grupos.findIndex(g => g.grupo === form.value.segmento)
   if (grupoIdx === -1) { errorForm.value = 'Segmento no válido.'; return }
@@ -267,6 +270,17 @@ async function guardarPremio() {
     }
   } finally {
     guardando.value = false
+  }
+}
+
+async function confirmarEliminarPremio(premioId: string) {
+  if (!confirm('¿Estás seguro de que deseas eliminar este premio?')) return
+  const grupoIdx = store.grupos.findIndex(g => g.grupo === grupoActivo.value)
+  if (grupoIdx === -1) return
+  try {
+    await store.eliminarPremio(grupoIdx, premioId)
+  } catch (e: any) {
+    alert('Error al eliminar el premio: ' + (e?.response?.data?.error ?? e?.message ?? ''))
   }
 }
 
@@ -611,7 +625,7 @@ function ocultarDropdown() {
                 <tr>
                   <th class="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Premio</th>
                   <th class="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider hidden sm:table-cell">Tipo</th>
-                  <th class="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider hidden md:table-cell">Stock</th>
+                  <th class="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider hidden md:table-cell">Stock (Disp/Total)</th>
                   <th class="px-4 py-3 w-10"></th>
                 </tr>
               </thead>
@@ -647,21 +661,39 @@ function ocultarDropdown() {
                     <span class="text-xs text-gray-500 dark:text-gray-400">{{ TIPO_LABELS[p.tipo] }}</span>
                   </td>
                   <td class="px-4 py-3.5 text-right hidden md:table-cell text-sm text-gray-500 dark:text-gray-400">
-                    {{ p.es_relleno ? '—' : (p.stock_total ?? '∞') }}
+                    <template v-if="p.es_relleno">—</template>
+                    <template v-else>
+                      <span class="font-medium text-gray-900 dark:text-gray-100">{{ p.stock_disponible ?? p.stock_total ?? '∞' }}</span>
+                      <span class="text-gray-400"> / {{ p.stock_total ?? '∞' }}</span>
+                    </template>
                   </td>
                   <td class="px-4 py-3.5 text-right">
-                    <button
-                      :disabled="campanaActiva"
-                      :title="campanaActiva ? 'Para modificar los premios, primero debes pausar la campaña' : 'Editar'"
-                      @click="!campanaActiva && abrirModalEditar(p)"
-                      class="p-1.5 rounded-lg transition-colors"
-                      :class="campanaActiva
-                        ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
-                        : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'">
-                      <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
-                      </svg>
-                    </button>
+                    <div class="flex items-center justify-end gap-1">
+                      <button
+                        :disabled="campanaActiva"
+                        :title="campanaActiva ? 'Para modificar los premios, primero debes pausar la campaña' : 'Editar'"
+                        @click="!campanaActiva && abrirModalEditar(p)"
+                        class="p-1.5 rounded-lg transition-colors"
+                        :class="campanaActiva
+                          ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                          : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
+                        </svg>
+                      </button>
+                      <button
+                        :disabled="campanaActiva"
+                        :title="campanaActiva ? 'Para eliminar premios, primero debes pausar la campaña' : 'Eliminar'"
+                        @click="!campanaActiva && confirmarEliminarPremio(p.id)"
+                        class="p-1.5 rounded-lg transition-colors"
+                        :class="campanaActiva
+                          ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
+                          : 'text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'">
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                      </button>
+                    </div>
                   </td>
                 </tr>
               </tbody>
