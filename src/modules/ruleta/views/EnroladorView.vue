@@ -83,7 +83,7 @@ async function onNotificacionEnviada(correo: string) {
 <template>
   <div
     class="-mx-4 -mt-4 md:-mx-6 md:-mt-6 lg:-mx-8 lg:-mt-8
-           flex flex-col lg:flex-row overflow-hidden"
+           flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden"
     style="min-height: calc(100dvh - 4rem)"
   >
 
@@ -92,39 +92,24 @@ async function onNotificacionEnviada(correo: string) {
     ══════════════════════════════════════════════════ -->
     <div
       class="order-1 lg:order-2 flex-none lg:flex-1
-             relative flex flex-col items-center justify-center gap-5 lg:gap-6
-             overflow-hidden
-             h-[64vh] sm:h-[68vh] md:h-[72vh] lg:h-auto"
+             relative flex flex-col items-center justify-center gap-3 lg:gap-6
+             overflow-hidden py-4 lg:py-0
+             min-h-[350px] h-[50vh] sm:h-[55vh] md:h-[50vh] lg:h-auto"
       :style="`background: linear-gradient(135deg, ${tema.color_fondo_inicio} 0%, ${tema.color_fondo_fin} 45%, ${tema.color_fondo_fin}dd 100%)`"
     >
 
-      <!-- Glows decorativos Credicorp -->
-      <div class="pointer-events-none absolute inset-0">
-        <div class="absolute -top-24 -right-24 w-96 h-96 rounded-full blur-3xl"
-             style="background: rgba(19,168,231,0.12)" />
-        <div class="absolute -bottom-24 -left-24 w-96 h-96 rounded-full blur-3xl"
-             style="background: rgba(5,116,175,0.15)" />
-        <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
-                    w-[36rem] h-[36rem] rounded-full blur-3xl"
-             style="background: rgba(0,99,156,0.07)" />
-        <div class="absolute top-0 left-0 right-0 h-1/3 opacity-20"
-             style="background: linear-gradient(180deg, rgba(19,168,231,0.12) 0%, transparent 100%)" />
+      <!-- Glows decorativos animados basados en el tema -->
+      <div class="pointer-events-none absolute inset-0 overflow-hidden">
+        <div class="absolute -top-32 -right-32 w-[32rem] h-[32rem] rounded-full blur-[90px] animate-blob"
+             :style="`background: ${tema.color_halo}25`" />
+        <div class="absolute -bottom-32 -left-32 w-[32rem] h-[32rem] rounded-full blur-[90px] animate-blob animation-delay-2000"
+             :style="`background: ${tema.color_aro_primario}30`" />
+        <div class="absolute top-1/2 left-1/2 w-[45rem] h-[45rem] rounded-full blur-[110px] animate-pulse-slow"
+             :style="`background: ${tema.color_hub_acento}15`" />
+        <div class="absolute top-0 left-0 right-0 h-1/3 opacity-30 bg-gradient-to-b from-white/10 to-transparent" />
       </div>
 
-      <!-- ── Logo ONE CARD SVG ─────────────────────────────────────────── -->
-      <div class="relative z-10 flex flex-col items-center select-none mt-4">
-        <svg viewBox="0 0 400 120" class="w-64 sm:w-80 md:w-96 drop-shadow-xl" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <text x="120" y="70" font-family="'Brush Script MT', 'Great Vibes', 'Pacifico', cursive" font-size="80" font-weight="normal" fill="white" text-anchor="middle" letter-spacing="-2">one</text>
-          <path d="M 180 65 C 220 100, 280 110, 380 40" stroke="white" stroke-width="8" stroke-linecap="round" fill="none" />
-          <text x="180" y="105" font-family="'Montserrat', 'Helvetica Neue', sans-serif" font-size="22" font-weight="900" fill="white" letter-spacing="8" text-anchor="middle">CARD</text>
-        </svg>
-        <div class="flex items-center gap-2.5 mt-4">
-          <div class="h-px w-10" style="background: rgba(255,255,255,0.2)" />
-          <span class="font-bold uppercase text-white/45"
-                style="font-size: 0.6rem; letter-spacing: 0.28em">Ruleta de Premios</span>
-          <div class="h-px w-10" style="background: rgba(255,255,255,0.2)" />
-        </div>
-      </div>
+      <!-- (Logo One Card Eliminado por solicitud del usuario) -->
 
       <!-- ── Slogan ─────────────────────────────────────────────────────── -->
       <div class="relative z-10 text-center select-none">
@@ -138,13 +123,13 @@ async function onNotificacionEnviada(correo: string) {
 
       <!-- ── Rueda ──────────────────────────────────────────────────────── -->
       <div
-        class="relative z-10
-               w-[300px]  h-[300px]
-               sm:w-[400px] sm:h-[400px]
-               md:w-[500px] md:h-[500px]
-               lg:w-[540px] lg:h-[540px]
-               xl:w-[620px] xl:h-[620px]
-               2xl:w-[700px] 2xl:h-[700px]"
+        class="relative z-10 aspect-square
+               w-[75vw] max-w-[280px]
+               sm:max-w-[340px]
+               md:max-w-[380px]
+               lg:w-[540px] lg:max-w-none
+               xl:w-[620px]
+               2xl:w-[700px]"
       >
         <RuletaWheel
           :segmentos="store.segmentos"
@@ -328,31 +313,17 @@ async function onNotificacionEnviada(correo: string) {
         :style="`background: linear-gradient(135deg, ${tema.color_fondo_inicio} 0%, ${tema.color_fondo_fin} 45%, ${tema.color_fondo_fin}dd 100%)`"
       >
 
-        <!-- Glows de fondo Credicorp -->
-        <div class="pointer-events-none absolute inset-0">
-          <div class="absolute -top-32 -right-32 w-[600px] h-[600px] rounded-full blur-3xl"
-               style="background: rgba(19,168,231,0.14)" />
-          <div class="absolute -bottom-32 -left-32 w-[600px] h-[600px] rounded-full blur-3xl"
-               style="background: rgba(5,116,175,0.16)" />
-          <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
-                      w-[80vw] h-[80vw] rounded-full blur-3xl"
-               style="background: rgba(0,99,156,0.07)" />
+        <!-- Glows de fondo animados fullscreen basados en el tema -->
+        <div class="pointer-events-none absolute inset-0 overflow-hidden">
+          <div class="absolute -top-40 -right-40 w-[800px] h-[800px] rounded-full blur-[120px] animate-blob"
+               :style="`background: ${tema.color_halo}30`" />
+          <div class="absolute -bottom-40 -left-40 w-[800px] h-[800px] rounded-full blur-[120px] animate-blob animation-delay-2000"
+               :style="`background: ${tema.color_aro_primario}35`" />
+          <div class="absolute top-1/2 left-1/2 w-[90vw] h-[90vw] rounded-full blur-[150px] animate-pulse-slow"
+               :style="`background: ${tema.color_hub_acento}1A`" />
         </div>
 
-        <!-- Logo OneCard -->
-        <div class="relative z-10 flex flex-col items-center select-none mb-6 sm:mb-8">
-          <svg viewBox="0 0 400 120" class="w-72 sm:w-80 md:w-[28rem] drop-shadow-2xl" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <text x="120" y="70" font-family="'Brush Script MT', 'Great Vibes', 'Pacifico', cursive" font-size="80" font-weight="normal" fill="white" text-anchor="middle" letter-spacing="-2">one</text>
-            <path d="M 180 65 C 220 100, 280 110, 380 40" stroke="white" stroke-width="8" stroke-linecap="round" fill="none" />
-            <text x="180" y="105" font-family="'Montserrat', 'Helvetica Neue', sans-serif" font-size="22" font-weight="900" fill="white" letter-spacing="8" text-anchor="middle">CARD</text>
-          </svg>
-          <div class="flex items-center gap-3 mt-4">
-            <div class="h-px w-12" style="background: rgba(255,255,255,0.2)" />
-            <span class="font-bold uppercase text-white/40"
-                  style="font-size: 0.6rem; letter-spacing: 0.28em">Ruleta de Premios</span>
-            <div class="h-px w-12" style="background: rgba(255,255,255,0.2)" />
-          </div>
-        </div>
+        <!-- (Logo One Card Eliminado por solicitud del usuario) -->
 
         <!-- Rueda grande -->
         <Transition name="fs-wheel" appear>
@@ -436,5 +407,28 @@ async function onNotificacionEnviada(correo: string) {
 .fs-wheel-enter-from {
   opacity: 0;
   transform: scale(0.75);
+}
+
+/* ── Animaciones decorativas del fondo ─────────────────────────────────────── */
+.animate-blob {
+  animation: blob 12s infinite alternate ease-in-out;
+}
+.animation-delay-2000 {
+  animation-delay: 3s;
+}
+.animate-pulse-slow {
+  /* Se incluye el centrado -50% -50% para que reemplace a -translate-x-1/2 */
+  animation: pulse-slow 8s infinite alternate ease-in-out;
+}
+
+@keyframes blob {
+  0% { transform: translate(0px, 0px) scale(1); }
+  33% { transform: translate(30px, -50px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.9); }
+  100% { transform: translate(0px, 0px) scale(1); }
+}
+@keyframes pulse-slow {
+  0% { opacity: 0.4; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0.8; transform: translate(-50%, -50%) scale(1.05); }
 }
 </style>

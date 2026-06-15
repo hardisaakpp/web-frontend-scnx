@@ -73,6 +73,8 @@ export interface Campana {
   estado: EstadoCampana
   requiere_validacion_onecard: boolean
   tiene_premios: boolean
+  hora_feliz_inicio?: string | null
+  hora_feliz_fin?: string | null
 }
 
 export interface CampanaBackendResponse {
@@ -89,7 +91,8 @@ export interface CampanaBackendResponse {
   createdAt: string
   createdBy: string
   premios: unknown | null
-  sumaProbabilidades: number | null
+  horaFelizInicio: string | null
+  horaFelizFin: string | null
 }
 
 export interface CrearCampanaDTO {
@@ -101,6 +104,8 @@ export interface CrearCampanaDTO {
   max_giros: number
   segmentos_permitidos: SegmentoCliente[]
   requiere_validacion_onecard: boolean
+  hora_feliz_inicio?: string | null
+  hora_feliz_fin?: string | null
 }
 
 // ─── Admin: Premios y probabilidades ─────────────────────────────────────────
@@ -111,7 +116,6 @@ export interface PremioAdmin {
   nombre: string
   descripcion?: string | null
   tipo: TipoPremio
-  probabilidad: number
   stock_total: number | null
   valor_referencial?: number | null
   es_relleno: boolean
@@ -125,7 +129,6 @@ export interface CrearPremioDTO {
   descripcion?: string
   es_vacio: boolean
   tipo: TipoPremio
-  probabilidad: number
   segmento: SegmentoCliente
   controla_stock_por_tienda: boolean
   stock_total: number | null
@@ -252,7 +255,6 @@ export interface PremioBackendResponse {
   descripcion: string | null
   tipo: string
   segmento: string | null
-  probabilidad: number
   stockTotal: number | null
   stockDisponible?: number | null
   valorReferencial: number | null
