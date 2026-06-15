@@ -207,10 +207,10 @@ watch(() => props.indiceGanador, (nuevoIndice) => {
 
         <!-- ── Segmentos ── -->
         <path
-          v-for="seg in segmentosCalculados"
+          v-for="(seg, i) in segmentosCalculados"
           :key="seg.id"
           :d="arcPath(seg.start, seg.end)"
-          :fill="seg.color"
+          :fill="t.paleta_segmentos[i % t.paleta_segmentos.length]"
         />
 
         <!-- ── Overlay de profundidad (sheen) ── -->
