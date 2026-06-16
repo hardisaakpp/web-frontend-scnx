@@ -55,6 +55,14 @@ mkdir -p "$(dirname "$LOG_FILE")"
 
   # cajachica_net: declarada en docker-compose.prod-network.yml, se conecta automáticamente al hacer up.
   docker ps --filter name=scnexus-front --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
+  echo "Red cajachica_net:"
+  docker network inspect cajachica_net --format '{{range .Containers}}  {{.Name}}{{"\n"}}{{end}}'
+
+  # Verificar upstreams horneados en la imagen — si alguno muestra una IP en vez de un nombre DNS,
+  # el build no recibió el UPSTREAM_* correcto de active.env (ver INCIDENTS.md 2026-06-16).
+  echo "Upstreams horneados en nginx (verificar que no haya IPs donde se espera DNS):"
+  docker exec scnexus-front grep -E "^\s+proxy_pass " /etc/nginx/conf.d/default.conf \
+    | sed 's/.*proxy_pass /  /' | sort -u
 } 2>&1 | tee -a "$LOG_FILE"
 
 echo "Front Docker listo."

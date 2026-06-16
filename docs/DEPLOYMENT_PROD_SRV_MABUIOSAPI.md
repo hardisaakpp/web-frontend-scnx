@@ -329,10 +329,39 @@ El contenedor `scnexus-front` está activo en producción desde la migración a 
 | 8 | Cajachica via `cajachica_net` con DNS `cajachica:8092` (reemplaza IP bridge) | ✅ Corregido 2026-06-11 |
 | 9 | `docker-compose.prod-network.yml` declara `cajachica_net` — no requiere `connect bridge` manual | ✅ Corregido 2026-06-11 |
 | 10 | Verificar otros upstreams con `host.docker.internal` (PYG, Conciliación, Scan, Inventario) | 🔲 Pendiente validar |
+| 11 | Verificación post-deploy de upstreams horneados en nginx (previene build con ARG default) | ✅ Agregado 2026-06-16 |
+| 12 | Fallback en `auth.ts` cuando `/api/Auth/me` devuelve error de red (504): deriva capabilities desde JWT | ✅ Agregado 2026-06-16 |
+| 13 | Timeout corto (10 s) en endpoints `/api/Auth/me` y `/api/auth/me` para no bloquear la UI ante 504 | ✅ Agregado 2026-06-16 |
 
 ---
 
 ## 13. Incidentes registrados
+
+### 2026-06-16 — 504 en módulo Asignación de Almacenes (Dockerfile ARG default en imagen)
+
+**Síntoma:** `GET /caja-chica-api/Almacenes` devolvía **504 Gateway Timeout** en producción. En desarrollo funcionaba. Red Docker y DNS internos correctos.
+
+**Causa raíz:** el último build usó el ARG default del Dockerfile (`http://192.168.2.153:8092`) porque `active.env` en el servidor no tenía `UPSTREAM_CAJA_CHICA` definido o lo tenía con la IP LAN. La IP LAN del host **no es accesible desde dentro del contenedor** — cajachica solo es alcanzable por DNS mediante `cajachica:8092` vía `cajachica_net`.
+
+**Diagnóstico clave:**
+```bash
+docker exec scnexus-front grep "proxy_pass" /etc/nginx/conf.d/default.conf
+# → proxy_pass http://192.168.2.153:8092;  ← IP en vez de nombre DNS = build con ARG default
+```
+
+**Fix inmediato (sin rebuild):**
+```bash
+docker exec scnexus-front sed -i \
+  's|proxy_pass http://192.168.2.153:8092;|proxy_pass http://cajachica:8092;|g' \
+  /etc/nginx/conf.d/default.conf
+docker exec scnexus-front nginx -s reload
+```
+
+**Fix permanente:** verificar que `active.env` tenga `UPSTREAM_CAJA_CHICA=http://cajachica:8092` y hacer rebuild con `bash ~/deploys/nexus_frontend_prod.sh`.
+
+**Lección:** ante cualquier 504 en `/caja-chica-api/`, el primer paso es verificar el upstream horneado en nginx. El script de deploy ahora imprime los upstreams tras cada rebuild. Ver [INCIDENTS.md](../deploy/production-audit/srv-mabuiosapi/INCIDENTS.md) 2026-06-16.
+
+---
 
 ### 2026-06-11 — 502 Bad Gateway en módulo Asignación de Almacenes (Caja Chica)
 
@@ -372,6 +401,6 @@ docker exec scnexus-front nginx -s reload
 
 ---
 
-**Última actualización:** 2026-06-11 (cajachica_net; incidente 502 cajachica)
+**Última actualización:** 2026-06-16 (incidente 504 ARG default; fallback auth.ts; timeout auth endpoints)
 **Servidor:** srv-mabuiosapi  
 **Dominio:** scnexus.mabelgroup.com.ec

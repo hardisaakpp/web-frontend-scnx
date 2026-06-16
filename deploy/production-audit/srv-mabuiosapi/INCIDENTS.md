@@ -296,3 +296,111 @@ curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8085/caja-chica-api/Alma
 
 **Registrado:** 2026-06-10
 **Autor:** Carlos Ortiz
+
+---
+
+## 2026-06-16 — 504 en /caja-chica-api/ (Dockerfile ARG default horneado en imagen)
+
+**Duración estimada:** horas (detectado en `/caja-chica/asignacion-almacenes`)
+**Impacto:** módulo Asignación de Almacenes inaccesible en producción; en desarrollo funcionaba correctamente.
+
+### Síntoma
+
+```
+GET https://scnexus.mabelgroup.com.ec/caja-chica-api/Almacenes        → 504 Gateway Timeout
+GET https://scnexus.mabelgroup.com.ec/caja-chica-api/UsuariosAlmacenes → 504 Gateway Timeout
+```
+
+### Diagnóstico
+
+```bash
+# Paso 1: verificar upstream horneado en nginx
+docker exec scnexus-front grep "proxy_pass" /etc/nginx/conf.d/default.conf
+# → proxy_pass http://192.168.2.153:8092;  ← valor por defecto del ARG del Dockerfile, NO cajachica:8092
+```
+
+La red Docker estaba bien — ambos contenedores en `cajachica_net`:
+
+```bash
+docker network inspect cajachica_net --format '{{range .Containers}}  {{.Name}}{{"\n"}}{{end}}'
+# cajachica
+# scnexus-front
+```
+
+Conectividad DNS desde el contenedor también correcta:
+
+```bash
+docker exec scnexus-front wget -qO- --timeout=5 http://cajachica:8092/api/Almacenes
+# → devuelve JSON (la red funciona)
+```
+
+**Conclusión:** la red y el DNS estaban bien. El problema era que nginx usaba la IP LAN del host (`192.168.2.153:8092`) que **no es accesible desde dentro del contenedor** (cajachica no publica el puerto 8092 en la interfaz LAN; solo es alcanzable desde la red `cajachica_net` con su nombre de contenedor).
+
+### Causa raíz
+
+El último `docker compose build` usó el valor por defecto del ARG en el Dockerfile:
+
+```dockerfile
+ARG CAJA_CHICA_UPSTREAM=http://192.168.2.153:8092  # ← default, no el de active.env
+```
+
+El `active.env` del servidor no tenía `UPSTREAM_CAJA_CHICA` definido (o tenía la IP LAN), por lo que `docker compose build --build-arg` no sobreescribió el ARG default. La imagen quedó con la IP LAN hardcodeada.
+
+Este incidente es diferente al de 2026-06-10 (IP bridge dinámica `172.17.0.x`): aquí la IP es estática pero igualmente inaccesible desde el contenedor.
+
+### Fix inmediato (sin rebuild)
+
+```bash
+# Parchar el nginx en el contenedor en ejecución:
+docker exec scnexus-front sed -i \
+  's|proxy_pass http://192.168.2.153:8092;|proxy_pass http://cajachica:8092;|g' \
+  /etc/nginx/conf.d/default.conf
+
+# Verificar:
+docker exec scnexus-front grep "proxy_pass" /etc/nginx/conf.d/default.conf | grep "cajachica"
+
+# Recargar nginx:
+docker exec scnexus-front nginx -s reload
+
+# Probar (debe responder 401 o 200, nunca 504):
+curl -s -o /dev/null -w "%{http_code}" http://127.0.0.1:8085/caja-chica-api/Almacenes
+```
+
+### Fix permanente
+
+1. Verificar que `active.env` del servidor tenga el valor correcto:
+
+   ```bash
+   grep "UPSTREAM_CAJA_CHICA" /opt/frontend/scnexus-front/deploy/env/active.env
+   # Debe ser: UPSTREAM_CAJA_CHICA=http://cajachica:8092
+   ```
+
+2. Si está ausente o incorrecto, corregir:
+
+   ```bash
+   # Si está ausente:
+   echo "UPSTREAM_CAJA_CHICA=http://cajachica:8092" >> /opt/frontend/scnexus-front/deploy/env/active.env
+   # Si tiene el valor incorrecto:
+   sed -i 's|UPSTREAM_CAJA_CHICA=.*|UPSTREAM_CAJA_CHICA=http://cajachica:8092|' \
+     /opt/frontend/scnexus-front/deploy/env/active.env
+   ```
+
+3. Rebuild completo:
+
+   ```bash
+   bash ~/deploys/nexus_frontend_prod.sh
+   ```
+
+### Lecciones aprendidas
+
+| # | Lección |
+|---|---------|
+| 1 | El `active.env` en el servidor puede quedar desactualizado respecto al `.env.example` del repo. Verificarlo explícitamente antes de cualquier deploy. |
+| 2 | La IP LAN `192.168.2.153:8092` es **inaccesible desde dentro del contenedor** — cajachica no publica ese puerto en la LAN; solo es alcanzable mediante `cajachica:8092` a través de `cajachica_net`. |
+| 3 | El primer diagnóstico ante 504 en `/caja-chica-api/` debe ser: `docker exec scnexus-front grep "proxy_pass" /etc/nginx/conf.d/default.conf`. Si aparece una IP en vez de `cajachica`, el build fue con el ARG default. |
+| 4 | El script de deploy ahora imprime los upstreams horneados tras cada rebuild para detectar este problema inmediatamente. |
+
+---
+
+**Registrado:** 2026-06-16
+**Autor:** Carlos Ortiz
