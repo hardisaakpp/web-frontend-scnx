@@ -2,7 +2,7 @@
 # Obligatorio: deploy/env/active.env (ver deploy/env/local.docker.env.example)
 #   npm run docker:env && npm run docker:up
 #   — o — docker compose --env-file deploy/env/active.env up -d --build
-name: scnexus-front
+name: scnexus-front-test
 
 services:
   scnexus-front:
@@ -25,8 +25,8 @@ services:
 
         SLAYER_UPSTREAM: ${UPSTREAM_SLAYER:-${SLAYER_UPSTREAM:-http://host.docker.internal:8093}}
         REPOSICION_UPSTREAM: ${UPSTREAM_REPOSICION:-${REPOSICION_UPSTREAM:-http://host.docker.internal:8006}}
-    image: scnexus-front:latest
-    container_name: scnexus-front
+    image: scnexus-front:test
+    container_name: scnexus-front-test
     env_file:
       - path: deploy/env/bundle.env
         required: true
