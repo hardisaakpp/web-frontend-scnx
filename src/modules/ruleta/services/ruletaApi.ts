@@ -75,20 +75,20 @@ function mapPremioFromBackend(p: PremioBackendResponse): PremioAdmin {
 }
 
 function premioToBackend(data: Partial<PremioAdmin>, segmento?: string) {
-  const tipo = data.tipo === 'fisico' ? 'Fisico'
-    : data.tipo === 'digital'   ? 'Digital'
-    : data.tipo === 'descuento' ? 'Descuento'
-    : 'SinPremio'
+  let tipo = 'SinPremio'
+  if (data.tipo === 'fisico') tipo = 'Fisico'
+  else if (data.tipo === 'digital') tipo = 'Digital'
+  else if (data.tipo === 'descuento') tipo = 'Descuento'
 
   const payload: Record<string, unknown> = {
     nombre: data.nombre,
-    descripcion: data.descripcion || null,
+    descripcion: data.descripcion ?? null,
     tipo,
     stockTotal: data.stock_total ?? null,
     valorReferencial: data.valor_referencial ?? null,
     esVacio: data.es_relleno ?? false,
     segmento,
-    imagenUrl: data.imagen_url || null,
+    imagenUrl: data.imagen_url ?? null,
     controlaStockPorTienda: data.controla_stock_por_tienda ?? false,
     
     // Hardcodeado: Forzamos a que sea 0 sí o sí.
@@ -103,7 +103,7 @@ function premioToBackend(data: Partial<PremioAdmin>, segmento?: string) {
 export const ruletaService = {
   async getRuletas(filters: RuletaFilters): Promise<{ data: Ruleta[]; pagination: RuletaPagination }> {
     const response = await api.get<{ items?: Ruleta[]; total?: number; page?: number; page_size?: number; total_pages?: number } & Ruleta[]>('/v1/ruleta/', {
-      params: { search: filters.search || undefined, page: filters.page ?? 1, page_size: filters.pageSize ?? 10 }
+      params: { search: filters.search ?? undefined, page: filters.page ?? 1, page_size: filters.pageSize ?? 10 }
     })
     return {
       data: (response.data as any).items ?? response.data,
@@ -139,7 +139,7 @@ export const ruletaService = {
   async getTemaGlobal(): Promise<any> {
     try {
       const response = await campanaApi.get<any>('/api/temas')
-      if (response.data && response.data.temaJson) {
+      if (response.data?.temaJson) {
         return JSON.parse(response.data.temaJson)
       }
       return null
@@ -268,8 +268,8 @@ export const ruletaService = {
       maxGirosPorCliente: dto.max_giros,
       segmentosPermitidos: dto.segmentos_permitidos.length > 0 ? dto.segmentos_permitidos : null,
       requiereValidacionOneCard: dto.requiere_validacion_onecard,
-      horaFelizInicio: dto.hora_feliz_inicio || null,
-      horaFelizFin: dto.hora_feliz_fin || null,
+      horaFelizInicio: dto.hora_feliz_inicio ?? null,
+      horaFelizFin: dto.hora_feliz_fin ?? null,
       estado: 'Borrador'
     }
     const response = await campanaApi.post<CampanaBackendResponse>('/api/Campanas', payload)
@@ -286,8 +286,8 @@ export const ruletaService = {
       maxGirosPorCliente: dto.max_giros,
       segmentosPermitidos: dto.segmentos_permitidos.length > 0 ? dto.segmentos_permitidos : null,
       requiereValidacionOneCard: dto.requiere_validacion_onecard,
-      horaFelizInicio: dto.hora_feliz_inicio || null,
-      horaFelizFin: dto.hora_feliz_fin || null
+      horaFelizInicio: dto.hora_feliz_inicio ?? null,
+      horaFelizFin: dto.hora_feliz_fin ?? null
     }
     const response = await campanaApi.put<CampanaBackendResponse>(`/api/Campanas/${id}`, payload)
     return mapCampana(response.data)
@@ -561,7 +561,7 @@ export const ruletaService = {
       clientes_unicos: e.clientesUnicos   ?? e.clientes_unicos     ?? 0,
       afiliaciones:    e.totalGanadores   ?? e.afiliaciones        ?? e.nuevasAfiliaciones ?? 0,
       conversion:      e.tasaConversion   ?? e.conversion          ?? 0,
-      estado:          (e.estado as any)  ?? 'activo',
+      estado:          e.estado  ?? 'activo',
     }))
   }
 }

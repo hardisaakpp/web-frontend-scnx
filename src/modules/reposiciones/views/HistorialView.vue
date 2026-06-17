@@ -2,7 +2,7 @@
 import { onMounted, ref, watch, computed } from 'vue'
 import { useReposicionStore } from '../stores/reposicionStore'
 import reposicionApi from '../services/reposicionApi'
-import type { HistorialCabecera, RepLog, HistorialDetalleItem, HistorialSolicitudSap } from '../types'
+import type { HistorialCabecera, HistorialDetalleItem, HistorialSolicitudSap } from '../types'
 import { 
   ArrowLeftIcon, 
   CalendarIcon,
