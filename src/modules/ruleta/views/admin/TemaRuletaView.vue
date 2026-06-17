@@ -45,6 +45,7 @@ const hayCambios = computed(() =>
             <label
               v-for="(color, i) in tema.paleta_segmentos"
               :key="i"
+              :for="`seg-color-${i}`"
               class="flex flex-col items-center gap-2 cursor-pointer group"
             >
               <div
@@ -52,6 +53,7 @@ const hayCambios = computed(() =>
                 :style="`background: ${color}`"
               >
                 <input
+                  :id="`seg-color-${i}`"
                   type="color"
                   :value="color"
                   @input="temaStore.actualizarColorPaleta(i, ($event.target as HTMLInputElement).value)"
@@ -72,10 +74,10 @@ const hayCambios = computed(() =>
             <span class="text-sm text-gray-600 dark:text-gray-400">Texto en segmentos</span>
             <div class="flex items-center gap-2 shrink-0">
               <span class="text-xs font-mono text-gray-400">{{ tema.color_texto_segmentos }}</span>
-              <label class="relative cursor-pointer">
+              <label for="color-texto-segmentos" class="relative cursor-pointer">
                 <div class="w-8 h-8 rounded-lg border-2 border-gray-200 dark:border-gray-600 hover:border-violet-400 transition-colors overflow-hidden"
                      :style="`background: ${tema.color_texto_segmentos}`">
-                  <input type="color" :value="tema.color_texto_segmentos"
+                  <input id="color-texto-segmentos" type="color" :value="tema.color_texto_segmentos"
                          @input="temaStore.actualizarTema({ color_texto_segmentos: ($event.target as HTMLInputElement).value })"
                          class="opacity-0 w-full h-full cursor-pointer" />
                 </div>
@@ -95,10 +97,10 @@ const hayCambios = computed(() =>
             <span class="text-sm text-gray-600 dark:text-gray-400">Puntero / flecha</span>
             <div class="flex items-center gap-2 shrink-0">
               <span class="text-xs font-mono text-gray-400">{{ tema.color_puntero }}</span>
-              <label class="relative cursor-pointer">
+              <label for="color-puntero" class="relative cursor-pointer">
                 <div class="w-8 h-8 rounded-lg border-2 border-gray-200 dark:border-gray-600 hover:border-violet-400 transition-colors overflow-hidden"
                      :style="`background: ${tema.color_puntero}`">
-                  <input type="color" :value="tema.color_puntero"
+                  <input id="color-puntero" type="color" :value="tema.color_puntero"
                          @input="temaStore.actualizarTema({ color_puntero: ($event.target as HTMLInputElement).value })"
                          class="opacity-0 w-full h-full cursor-pointer" />
                 </div>
@@ -118,10 +120,10 @@ const hayCambios = computed(() =>
             <span class="text-sm text-gray-600 dark:text-gray-400">Botón Girar Ruleta</span>
             <div class="flex items-center gap-2 shrink-0">
               <span class="text-xs font-mono text-gray-400">{{ tema.color_boton }}</span>
-              <label class="relative cursor-pointer">
+              <label for="color-boton" class="relative cursor-pointer">
                 <div class="w-8 h-8 rounded-lg border-2 border-gray-200 dark:border-gray-600 hover:border-violet-400 transition-colors overflow-hidden"
                      :style="`background: ${tema.color_boton}`">
-                  <input type="color" :value="tema.color_boton"
+                  <input id="color-boton" type="color" :value="tema.color_boton"
                          @input="temaStore.actualizarTema({ color_boton: ($event.target as HTMLInputElement).value })"
                          class="opacity-0 w-full h-full cursor-pointer" />
                 </div>
@@ -145,10 +147,10 @@ const hayCambios = computed(() =>
             <span class="text-sm text-gray-600 dark:text-gray-400">Color primario</span>
             <div class="flex items-center gap-2 shrink-0">
               <span class="text-xs font-mono text-gray-400">{{ tema.color_aro_primario }}</span>
-              <label class="relative cursor-pointer">
+              <label for="color-aro-primario" class="relative cursor-pointer">
                 <div class="w-8 h-8 rounded-lg border-2 border-gray-200 dark:border-gray-600 hover:border-violet-400 transition-colors overflow-hidden"
                      :style="`background: ${tema.color_aro_primario}`">
-                  <input type="color" :value="tema.color_aro_primario"
+                  <input id="color-aro-primario" type="color" :value="tema.color_aro_primario"
                          @input="temaStore.actualizarTema({ color_aro_primario: ($event.target as HTMLInputElement).value })"
                          class="opacity-0 w-full h-full cursor-pointer" />
                 </div>
@@ -167,10 +169,10 @@ const hayCambios = computed(() =>
             <span class="text-sm text-gray-600 dark:text-gray-400">Color secundario</span>
             <div class="flex items-center gap-2 shrink-0">
               <span class="text-xs font-mono text-gray-400">{{ tema.color_aro_secundario }}</span>
-              <label class="relative cursor-pointer">
+              <label for="color-aro-secundario" class="relative cursor-pointer">
                 <div class="w-8 h-8 rounded-lg border-2 border-gray-200 dark:border-gray-600 hover:border-violet-400 transition-colors overflow-hidden"
                      :style="`background: ${tema.color_aro_secundario}`">
-                  <input type="color" :value="tema.color_aro_secundario"
+                  <input id="color-aro-secundario" type="color" :value="tema.color_aro_secundario"
                          @input="temaStore.actualizarTema({ color_aro_secundario: ($event.target as HTMLInputElement).value })"
                          class="opacity-0 w-full h-full cursor-pointer" />
                 </div>
@@ -200,10 +202,10 @@ const hayCambios = computed(() =>
             <span class="text-sm text-gray-600 dark:text-gray-400">{{ campo.label }}</span>
             <div class="flex items-center gap-2 shrink-0">
               <span class="text-xs font-mono text-gray-400">{{ tema[campo.key] }}</span>
-              <label class="relative cursor-pointer">
+              <label :for="`color-${campo.key}`" class="relative cursor-pointer">
                 <div class="w-8 h-8 rounded-lg border-2 border-gray-200 dark:border-gray-600 hover:border-violet-400 transition-colors overflow-hidden"
                      :style="`background: ${tema[campo.key]}`">
-                  <input type="color" :value="tema[campo.key]"
+                  <input :id="`color-${campo.key}`" type="color" :value="tema[campo.key]"
                          @input="temaStore.actualizarTema({ [campo.key]: ($event.target as HTMLInputElement).value })"
                          class="opacity-0 w-full h-full cursor-pointer" />
                 </div>

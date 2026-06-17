@@ -208,42 +208,44 @@ const maxGirosError = computed(() => {
   return ''
 })
 
+function validarFormulario(): string {
+  if (!form.value.nombre.trim()) return 'El nombre es requerido.'
+  if (form.value.nombre.length > 150) return 'Máximo 150 caracteres.'
+  if (!form.value.fecha_inicio || !form.value.fecha_fin) return 'Las fechas son requeridas.'
+  if (fechaFinError.value) return fechaFinError.value
+  if (!form.value.cooldown_dias || form.value.cooldown_dias < 1 || form.value.cooldown_dias > 365)
+    return 'El cooldown debe estar entre 1 y 365 días.'
+  if (!form.value.max_giros || form.value.max_giros < 1 || form.value.max_giros > 100)
+    return 'Los giros máximos deben estar entre 1 y 100.'
+  return ''
+}
+
+function normalizarHoraFeliz(payload: CrearCampanaDTO): string {
+  if (!habilitarHoraFeliz.value) {
+    payload.hora_feliz_inicio = null
+    payload.hora_feliz_fin = null
+    return ''
+  }
+  if (!payload.hora_feliz_inicio || !payload.hora_feliz_fin)
+    return 'Debe especificar el inicio y fin de la Hora Feliz.'
+  if (payload.hora_feliz_inicio.length === 5) payload.hora_feliz_inicio += ':00'
+  if (payload.hora_feliz_fin.length === 5) payload.hora_feliz_fin += ':00'
+  return ''
+}
+
 async function guardar() {
   nombreTouched.value   = true
   cooldownTouched.value  = true
   maxGirosTouched.value  = true
   errorModal.value = ''
-  if (!form.value.nombre.trim())                  { errorModal.value = 'El nombre es requerido.'; return }
-  if (form.value.nombre.length > 150)             { errorModal.value = 'Máximo 150 caracteres.'; return }
-  if (!form.value.fecha_inicio || !form.value.fecha_fin) { errorModal.value = 'Las fechas son requeridas.'; return }
-  if (fechaFinError.value)                        { errorModal.value = fechaFinError.value; return }
-  if (!form.value.cooldown_dias || form.value.cooldown_dias < 1 || form.value.cooldown_dias > 365) {
-    errorModal.value = 'El cooldown debe estar entre 1 y 365 días.'
-    return
-  }
-  if (!form.value.max_giros || form.value.max_giros < 1 || form.value.max_giros > 100) {
-    errorModal.value = 'Los giros máximos deben estar entre 1 y 100.'
-    return
-  }
+
+  const errorValidacion = validarFormulario()
+  if (errorValidacion) { errorModal.value = errorValidacion; return }
+
   const payload = { ...form.value }
-  
-  if (habilitarHoraFeliz.value) {
-    if (!payload.hora_feliz_inicio || !payload.hora_feliz_fin) {
-      errorModal.value = 'Debe especificar el inicio y fin de la Hora Feliz.'
-      return
-    }
-    // Si la hora solo tiene 5 caracteres ("12:00"), le agregamos ":00" para que .NET no arroje error
-    if (payload.hora_feliz_inicio && payload.hora_feliz_inicio.length === 5) {
-      payload.hora_feliz_inicio += ':00'
-    }
-    if (payload.hora_feliz_fin && payload.hora_feliz_fin.length === 5) {
-      payload.hora_feliz_fin += ':00'
-    }
-  } else {
-    payload.hora_feliz_inicio = null
-    payload.hora_feliz_fin = null
-  }
-  
+  const errorHora = normalizarHoraFeliz(payload)
+  if (errorHora) { errorModal.value = errorHora; return }
+
   if (campanaEditando.value) {
     await store.actualizarCampana(campanaEditando.value.id, payload)
   } else {
@@ -258,7 +260,8 @@ function labelSegmentos(segmentos: SegmentoCliente[]): string {
   const noAfil  = segmentos.includes('GRUPO_6')
   const afil    = segmentos.filter(s => s !== 'GRUPO_6')
   const parts   = afil.length ? `G${afil.map(s => s.replace('GRUPO_', '')).join(', ')}` : ''
-  return noAfil ? (parts ? `${parts} + No afiliados` : 'No afiliados') : parts
+  if (!noAfil) return parts
+  return parts ? `${parts} + No afiliados` : 'No afiliados'
 }
 
 const SEGMENTO_LABELS: Record<SegmentoCliente, string> = {
@@ -680,14 +683,14 @@ const SEGMENTO_LABELS: Record<SegmentoCliente, string> = {
                   <p class="text-xs font-semibold text-gray-400 uppercase tracking-widest">Datos generales</p>
                   <div>
                     <div class="flex items-center justify-between mb-1.5">
-                      <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      <label for="campana-nombre" class="text-sm font-medium text-gray-700 dark:text-gray-300">
                         Nombre <span class="text-red-500">*</span>
                       </label>
                       <span class="text-xs" :class="nombreRestante < 20 ? 'text-amber-500' : 'text-gray-400'">
                         {{ nombreRestante }} restantes
                       </span>
                     </div>
-                    <input v-model="form.nombre" type="text" maxlength="150" placeholder="Ej: Campaña Verano 2026"
+                    <input id="campana-nombre" v-model="form.nombre" type="text" maxlength="150" placeholder="Ej: Campaña Verano 2026"
                       @blur="nombreTouched = true"
                       class="w-full px-4 py-2.5 rounded-xl border text-sm transition-colors
                              bg-white dark:bg-gray-800 text-gray-900 dark:text-white
@@ -702,10 +705,10 @@ const SEGMENTO_LABELS: Record<SegmentoCliente, string> = {
                     </p>
                   </div>
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                    <label for="campana-descripcion" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                       Descripción <span class="ml-1 text-xs font-normal text-gray-400">(opcional)</span>
                     </label>
-                    <textarea v-model="form.descripcion" rows="2"
+                    <textarea id="campana-descripcion" v-model="form.descripcion" rows="2"
                       placeholder="Notas internas sobre esta campaña…"
                       class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 resize-none
                              bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
@@ -721,19 +724,19 @@ const SEGMENTO_LABELS: Record<SegmentoCliente, string> = {
                   <p class="text-xs font-semibold text-gray-400 uppercase tracking-widest">Vigencia</p>
                   <div class="grid grid-cols-2 gap-3">
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                      <label for="campana-inicio" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                         Inicio <span class="text-red-500">*</span>
                       </label>
-                      <input v-model="form.fecha_inicio" type="date"
+                      <input id="campana-inicio" v-model="form.fecha_inicio" type="date"
                         class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700
                                bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
                                focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-colors"/>
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                      <label for="campana-fin" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                         Fin <span class="text-red-500">*</span>
                       </label>
-                      <input v-model="form.fecha_fin" type="date"
+                      <input id="campana-fin" v-model="form.fecha_fin" type="date"
                         class="w-full px-4 py-2.5 rounded-xl border text-sm transition-colors
                                bg-white dark:bg-gray-800 text-gray-900 dark:text-white
                                focus:outline-none focus:ring-2 focus:ring-indigo-500/40"
@@ -756,7 +759,7 @@ const SEGMENTO_LABELS: Record<SegmentoCliente, string> = {
                   <div class="grid grid-cols-2 gap-3">
                     <div>
                       <div class="flex items-center gap-1.5 mb-1.5">
-                        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Cooldown (días)</label>
+                        <label for="campana-cooldown" class="text-sm font-medium text-gray-700 dark:text-gray-300">Cooldown (días)</label>
                         <div class="relative inline-block group/tip-cd">
                           <button type="button" class="text-gray-400 hover:text-indigo-500 transition-colors focus:outline-none">
                             <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
@@ -771,7 +774,7 @@ const SEGMENTO_LABELS: Record<SegmentoCliente, string> = {
                           </div>
                         </div>
                       </div>
-                      <input v-model.number="form.cooldown_dias" type="number" min="1" max="365"
+                      <input id="campana-cooldown" v-model.number="form.cooldown_dias" type="number" min="1" max="365"
                         @blur="cooldownTouched = true"
                         class="w-full px-4 py-2.5 rounded-xl border bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
                                focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-colors"
@@ -784,10 +787,10 @@ const SEGMENTO_LABELS: Record<SegmentoCliente, string> = {
                       </p>
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                      <label for="campana-max-giros" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                         Máx. giros por cliente
                       </label>
-                      <input v-model.number="form.max_giros" type="number" min="1" max="100"
+                      <input id="campana-max-giros" v-model.number="form.max_giros" type="number" min="1" max="100"
                         @blur="maxGirosTouched = true"
                         class="w-full px-4 py-2.5 rounded-xl border bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm
                                focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-colors"
@@ -814,12 +817,18 @@ const SEGMENTO_LABELS: Record<SegmentoCliente, string> = {
                   </div>
                   <div class="grid grid-cols-2 gap-2 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
                     <label v-for="s in TODOS_SEGMENTOS" :key="s" class="flex items-center gap-2.5 cursor-pointer group/seg">
+                      <input
+                        :id="`seg-${s}`"
+                        type="checkbox"
+                        class="sr-only"
+                        :checked="form.segmentos_permitidos.includes(s)"
+                        @change="toggleSegmento(s)"
+                      />
                       <div class="flex-shrink-0 w-[18px] h-[18px] rounded border-2 transition-colors flex items-center justify-center
                                   group-hover/seg:border-indigo-400"
                            :class="form.segmentos_permitidos.includes(s)
                              ? 'bg-indigo-600 border-indigo-600'
-                             : 'border-gray-300 dark:border-gray-600'"
-                           @click="toggleSegmento(s)">
+                             : 'border-gray-300 dark:border-gray-600'">
                         <svg v-if="form.segmentos_permitidos.includes(s)" class="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3.5">
                           <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
                         </svg>
@@ -916,13 +925,13 @@ const SEGMENTO_LABELS: Record<SegmentoCliente, string> = {
                   
                   <div v-if="habilitarHoraFeliz" class="grid grid-cols-2 gap-3 p-4 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Hora Inicio <span class="text-red-500">*</span></label>
-                      <input v-model="form.hora_feliz_inicio" type="time"
+                      <label for="campana-hora-inicio" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Hora Inicio <span class="text-red-500">*</span></label>
+                      <input id="campana-hora-inicio" v-model="form.hora_feliz_inicio" type="time"
                         class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 transition-colors"/>
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Hora Fin <span class="text-red-500">*</span></label>
-                      <input v-model="form.hora_feliz_fin" type="time"
+                      <label for="campana-hora-fin" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Hora Fin <span class="text-red-500">*</span></label>
+                      <input id="campana-hora-fin" v-model="form.hora_feliz_fin" type="time"
                         class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500 transition-colors"/>
                     </div>
                   </div>

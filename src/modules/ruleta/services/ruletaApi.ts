@@ -49,7 +49,7 @@ function mapCampana(raw: CampanaBackendResponse): Campana {
     segmentos_permitidos: (raw.segmentosPermitidos as SegmentoCliente[]) ?? [],
     estado: raw.estado.toLowerCase() as EstadoCampana,
     requiere_validacion_onecard: raw.requiereValidacionOneCard ?? false,
-    tiene_premios: Array.isArray(raw.premios) && (raw.premios as unknown[]).length > 0,
+    tiene_premios: Array.isArray(raw.premios) && raw.premios.length > 0,
     hora_feliz_inicio: raw.horaFelizInicio ?? null,
     hora_feliz_fin: raw.horaFelizFin ?? null
   }

@@ -64,10 +64,10 @@ async function irPagina(page: number) {
 // ── Exportar ──────────────────────────────────────────────────────────────────
 function exportar(tipo: 'csv' | 'excel' | 'pdf') {
   const id = esTodos.value ? undefined : campanaSeleccionadaId.value
-  const url =
-    tipo === 'excel' ? ruletaService.exportarGirosExcelUrl(id)
-    : tipo === 'pdf' ? ruletaService.exportarGirosPdfUrl(id)
-    : ruletaService.exportarGirosCsvUrl(id)
+  let url: string
+  if (tipo === 'excel') url = ruletaService.exportarGirosExcelUrl(id)
+  else if (tipo === 'pdf') url = ruletaService.exportarGirosPdfUrl(id)
+  else url = ruletaService.exportarGirosCsvUrl(id)
   window.open(url, '_blank')
 }
 

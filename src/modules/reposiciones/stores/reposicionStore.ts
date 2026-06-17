@@ -10,35 +10,27 @@ import type {
 } from '../types'
 import { useAuthStore } from '@/stores/auth'
 
-function getFromWhs(accesses: any, toWhs: string): string {
-  let fromWhs = 'OUT-CD'
-  const findCentralInGroups = (groups: any[]) => {
-    const group = groups?.find(g => g.almacenes?.includes(toWhs))
-    return group?.bodegaCentral
-  }
+function findCentralInGroups(groups: any[], toWhs: string): string | undefined {
+  return groups?.find((g: any) => g.almacenes?.includes(toWhs))?.bodegaCentral
+}
 
-  if (!accesses) return fromWhs
-
-  if (accesses.warehouseGroups) {
-    const central = findCentralInGroups(accesses.warehouseGroups)
-    if (central) fromWhs = central
-  } else if (Array.isArray(accesses)) {
-    for (const a of accesses) {
-      if (a.warehouseGroups) {
-        const central = findCentralInGroups(a.warehouseGroups)
-        if (central) {
-          fromWhs = central
-          break
-        }
-      } else if (a.almacenes?.includes(toWhs)) {
-        if (a.bodegaCentral) {
-          fromWhs = a.bodegaCentral
-          break
-        }
-      }
+function findCentralFromArray(accesses: any[], toWhs: string): string | undefined {
+  for (const a of accesses) {
+    if (a.warehouseGroups) {
+      const central = findCentralInGroups(a.warehouseGroups, toWhs)
+      if (central) return central
+    } else if (a.almacenes?.includes(toWhs) && a.bodegaCentral) {
+      return a.bodegaCentral
     }
   }
-  return fromWhs
+  return undefined
+}
+
+function getFromWhs(accesses: any, toWhs: string): string {
+  if (!accesses) return 'OUT-CD'
+  if (accesses.warehouseGroups) return findCentralInGroups(accesses.warehouseGroups, toWhs) ?? 'OUT-CD'
+  if (Array.isArray(accesses)) return findCentralFromArray(accesses, toWhs) ?? 'OUT-CD'
+  return 'OUT-CD'
 }
 
 export const useReposicionStore = defineStore('reposicion', {

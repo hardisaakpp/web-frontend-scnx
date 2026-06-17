@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useAdminStore } from '../../stores/adminStore'
 import VolverButton from '../../components/VolverButton.vue'
 
@@ -23,8 +23,6 @@ async function onCampanaChange(event: Event) {
   campanaSeleccionadaId.value = id
   await store.cargarInventario(id)
 }
-
-import { computed } from 'vue'
 
 const stockTotal = computed(() => store.inventario.reduce((acc, p) => acc + p.stock_total, 0))
 const stockAsignado = computed(() =>

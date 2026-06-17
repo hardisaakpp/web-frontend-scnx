@@ -238,27 +238,31 @@ function irAPaso2OCerrar(premioGuardado: PremioAdmin) {
   }
 }
 
+function buildPremioData(): Omit<PremioAdmin, 'id'> {
+  const esVacio = form.value.es_vacio
+  return {
+    nombre:                    form.value.nombre,
+    descripcion:               form.value.descripcion ?? null,
+    tipo:                      esVacio ? 'relleno' : form.value.tipo,
+    stock_total:               esVacio ? null : (form.value.stock_total ?? null),
+    valor_referencial:         esVacio ? null : (form.value.valor_referencial ?? null),
+    es_relleno:                esVacio,
+    controla_stock_por_tienda: !esVacio && form.value.controla_stock_por_tienda,
+    imagen_url:                imagenPreview.value ?? form.value.imagen_url ?? undefined,
+  }
+}
+
 async function guardarPremio() {
   errorForm.value = ''
   if (form.value.es_vacio && !form.value.nombre.trim()) form.value.nombre = '¡Sigue intentando!'
   if (!form.value.nombre.trim()) { errorForm.value = 'El nombre es requerido.'; return }
-  
+
   const grupoIdx = store.grupos.findIndex(g => g.grupo === form.value.segmento)
   if (grupoIdx === -1) { errorForm.value = 'Segmento no válido.'; return }
 
   guardando.value = true
   try {
-    const data: Omit<PremioAdmin, 'id'> = {
-      nombre:       form.value.nombre,
-      descripcion:  form.value.descripcion ?? null,
-      tipo:         form.value.es_vacio ? 'relleno' : form.value.tipo,
-      stock_total:  form.value.es_vacio ? null : (form.value.stock_total ?? null),
-      valor_referencial: form.value.es_vacio ? null : (form.value.valor_referencial ?? null),
-      es_relleno:   form.value.es_vacio,
-      controla_stock_por_tienda: !form.value.es_vacio && form.value.controla_stock_por_tienda,
-      imagen_url:   imagenPreview.value ?? form.value.imagen_url ?? undefined,
-    }
-
+    const data = buildPremioData()
     if (premioEditando.value) {
       const premioId = premioEditando.value.id
       await store.actualizarPremio(grupoIdx, premioId, data)
@@ -817,7 +821,7 @@ function ocultarDropdown() {
                       {{ deshabilitaRelleno ? 'Ya agregaste un premio de consolación a este grupo.' : 'No tiene foto ni stock. Solo ocupa porcentaje de la ruleta.' }}
                     </p>
                   </div>
-                  <button type="button" role="switch" :aria-checked="form.es_vacio ? 'true' : 'false'"
+                  <button type="button" role="switch" :aria-checked="form.es_vacio"
                     @click="!deshabilitaRelleno && (form.es_vacio = !form.es_vacio)"
                     :disabled="deshabilitaRelleno"
                     class="relative flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none"
@@ -957,7 +961,7 @@ function ocultarDropdown() {
                         Si activas esto, podrás repartir unidades entre tiendas en el siguiente paso.
                       </p>
                     </div>
-                    <button type="button" role="switch" :aria-checked="form.controla_stock_por_tienda ? 'true' : 'false'"
+                    <button type="button" role="switch" :aria-checked="form.controla_stock_por_tienda"
                       @click="form.controla_stock_por_tienda = !form.controla_stock_por_tienda"
                       class="relative flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none"
                       :style="form.controla_stock_por_tienda ? 'background: #0A86C2' : ''"
