@@ -821,7 +821,7 @@ function ocultarDropdown() {
                       {{ deshabilitaRelleno ? 'Ya agregaste un premio de consolación a este grupo.' : 'No tiene foto ni stock. Solo ocupa porcentaje de la ruleta.' }}
                     </p>
                   </div>
-                  <button type="button" role="switch" :aria-checked="form.es_vacio"
+                  <button type="button" role="switch" :aria-checked="String(form.es_vacio)"
                     @click="!deshabilitaRelleno && (form.es_vacio = !form.es_vacio)"
                     :disabled="deshabilitaRelleno"
                     class="relative flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none"
@@ -961,7 +961,7 @@ function ocultarDropdown() {
                         Si activas esto, podrás repartir unidades entre tiendas en el siguiente paso.
                       </p>
                     </div>
-                    <button type="button" role="switch" :aria-checked="form.controla_stock_por_tienda"
+                    <button type="button" role="switch" :aria-checked="String(form.controla_stock_por_tienda)"
                       @click="form.controla_stock_por_tienda = !form.controla_stock_por_tienda"
                       class="relative flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none"
                       :style="form.controla_stock_por_tienda ? 'background: #0A86C2' : ''"
