@@ -267,8 +267,8 @@ async function enviarNotificacion() {
             <span class="text-3xl">🎯</span>
           </div>
           <p class="text-lg font-bold text-gray-900 dark:text-white text-center">¡Sigue intentando!</p>
-          <p class="text-sm text-gray-500 dark:text-gray-400 text-center">
-            Esta vez no fue, pero puedes volver a intentarlo más adelante.
+          <p class="text-sm text-gray-500 dark:text-gray-400 text-center whitespace-pre-wrap">
+            {{ resultado.premio.descripcion || 'Esta vez no fue, pero puedes volver a intentarlo más adelante.' }}
           </p>
           <button
             @click="emit('cerrar')"

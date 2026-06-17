@@ -34,6 +34,7 @@ export interface Tienda {
 export interface SegmentoRuleta {
   id: number
   nombre: string
+  descripcion?: string | null
   tipo: 'digital' | 'fisico' | 'relleno'
   imagen_url: string | null
   color: string

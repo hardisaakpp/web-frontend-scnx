@@ -68,13 +68,22 @@ const campanaActiva = computed(() => estadoEfectivo.value === 'activa')
 // ─── Transiciones de estado ───────────────────────────────────────────────────
 const activando  = ref(false)
 const pausando   = ref(false)
+const errorEstado = ref('')
 
 async function activarCampana() {
   if (!todosCompletos.value) return
   activando.value = true
+  errorEstado.value = ''
   try {
     await store.cambiarEstado(campanaId, 'activa')
     router.push({ name: 'ruleta-admin-campanas' })
+  } catch (e: any) {
+    const rawError = e?.response?.data?.error || e?.message || 'Error al activar la campaña.'
+    try {
+      errorEstado.value = new TextDecoder('utf-8').decode(Uint8Array.from(rawError, c => c.charCodeAt(0)))
+    } catch {
+      errorEstado.value = rawError
+    }
   } finally {
     activando.value = false
   }
@@ -277,14 +286,34 @@ async function guardarPremio() {
   }
 }
 
-async function confirmarEliminarPremio(premioId: string) {
-  if (!confirm('¿Estás seguro de que deseas eliminar este premio?')) return
+const premioAEliminar = ref<string | null>(null)
+const eliminandoPremio = ref(false)
+const errorEliminar = ref('')
+
+function confirmarEliminarPremio(premioId: string) {
+  premioAEliminar.value = premioId
+  errorEliminar.value = ''
+}
+
+function cancelarEliminarPremio() {
+  premioAEliminar.value = null
+  errorEliminar.value = ''
+}
+
+async function ejecutarEliminarPremio() {
+  if (!premioAEliminar.value) return
   const grupoIdx = store.grupos.findIndex(g => g.grupo === grupoActivo.value)
   if (grupoIdx === -1) return
+  
+  eliminandoPremio.value = true
+  errorEliminar.value = ''
   try {
-    await store.eliminarPremio(grupoIdx, premioId)
+    await store.eliminarPremio(grupoIdx, premioAEliminar.value)
+    premioAEliminar.value = null
   } catch (e: any) {
-    alert('Error al eliminar el premio: ' + (e?.response?.data?.error ?? e?.message ?? ''))
+    errorEliminar.value = 'Error al eliminar el premio: ' + (e?.response?.data?.error ?? e?.message ?? '')
+  } finally {
+    eliminandoPremio.value = false
   }
 }
 
@@ -491,6 +520,11 @@ function ocultarDropdown() {
             <div v-if="!todosCompletos" class="text-right">
               <span class="text-xs text-amber-600 dark:text-amber-400 font-medium">
                 {{ gruposOk }} de {{ gruposRequeridos.length }} grupos completos
+              </span>
+            </div>
+            <div v-if="errorEstado" class="mb-3 text-right">
+              <span class="inline-block text-xs text-red-600 dark:text-red-400 font-medium bg-red-50 dark:bg-red-900/20 px-3 py-1.5 rounded-lg border border-red-200 dark:border-red-800">
+                {{ errorEstado }}
               </span>
             </div>
             <button
@@ -848,8 +882,8 @@ function ocultarDropdown() {
                     :class="!form.nombre.trim() && errorForm ? 'border-red-400' : 'border-gray-200 dark:border-gray-700'"/>
                 </div>
 
-                <!-- Descripción (ocultar si es relleno) -->
-                <div v-if="!form.es_vacio">
+                <!-- Descripción -->
+                <div v-if="!form.es_vacio || form.segmento === 'GRUPO_6'">
                   <label for="premio-descripcion" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                     Descripción <span class="text-xs font-normal text-gray-400">(opcional)</span>
                   </label>
@@ -1169,6 +1203,64 @@ function ocultarDropdown() {
 
               </div>
 
+            </div>
+          </Transition>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         MODAL ELIMINAR PREMIO
+    ══════════════════════════════════════════════════════════════════════ -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition-opacity duration-200"
+        enter-from-class="opacity-0"
+        leave-active-class="transition-opacity duration-150"
+        leave-to-class="opacity-0"
+      >
+        <div v-if="premioAEliminar" class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/50 backdrop-blur-sm" @click.self="!eliminandoPremio && cancelarEliminarPremio()">
+          <Transition
+            enter-active-class="transition-all duration-200"
+            enter-from-class="opacity-0 scale-95 translate-y-2"
+            enter-to-class="opacity-100 scale-100 translate-y-0"
+            appear
+          >
+            <div class="relative bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-sm overflow-hidden flex flex-col">
+              <div class="p-6 text-center">
+                <div class="mx-auto flex items-center justify-center h-14 w-14 rounded-full bg-red-100 dark:bg-red-900/30 mb-4">
+                  <svg class="h-7 w-7 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                  </svg>
+                </div>
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">Eliminar Premio</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                  ¿Estás seguro de que deseas eliminar este premio? Esta acción no se puede deshacer.
+                </p>
+                
+                <div v-if="errorEliminar" class="mt-4 px-3 py-2 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800 text-xs text-red-600 dark:text-red-400 text-left">
+                  {{ errorEliminar }}
+                </div>
+              </div>
+              
+              <div class="bg-gray-50 dark:bg-gray-800/50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-100 dark:border-gray-800">
+                <button 
+                  @click="cancelarEliminarPremio" 
+                  :disabled="eliminandoPremio"
+                  class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-colors disabled:opacity-50">
+                  Cancelar
+                </button>
+                <button 
+                  @click="ejecutarEliminarPremio"
+                  :disabled="eliminandoPremio"
+                  class="inline-flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-sm transition-colors disabled:opacity-50">
+                  <svg v-if="eliminandoPremio" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                  </svg>
+                  {{ eliminandoPremio ? 'Eliminando…' : 'Sí, eliminar' }}
+                </button>
+              </div>
             </div>
           </Transition>
         </div>

@@ -186,6 +186,7 @@ export const ruletaService = {
       return {
         id: p.id ? Number(p.id.replace(/\D/g, '').slice(0,8)) || index + 1 : index + 1,
         nombre: p.nombre, // Mantenemos el nombre original para mostrarlo bonito
+        descripcion: p.descripcion,
         tipo,
         imagen_url: null,
         color: ['#C87137', '#4F46E5', '#A8B4C8', '#3B82F6', '#E63946', '#5A5F6B'][index % 6],
@@ -224,6 +225,7 @@ export const ruletaService = {
     const segmentoGanador: SegmentoRuleta = {
       id: Date.now(),
       nombre: data.premioNombre || 'Sin Premio',
+      descripcion: data.premioDescripcion || null,
       tipo,
       imagen_url: null,
       color: '#4F46E5',
