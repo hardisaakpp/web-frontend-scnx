@@ -2,7 +2,7 @@
 import { useAuthStore } from '@/stores/auth'
 import VolverButton from '../components/VolverButton.vue'
 const authStore = useAuthStore()
-void authStore
+
 </script>
 
 <template>

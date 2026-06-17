@@ -90,7 +90,7 @@ export interface CampanaBackendResponse {
   requiereValidacionOneCard: boolean
   createdAt: string
   createdBy: string
-  premios: unknown | null
+  premios: unknown[] | null
   horaFelizInicio: string | null
   horaFelizFin: string | null
 }

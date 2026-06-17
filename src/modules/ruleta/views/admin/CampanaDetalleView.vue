@@ -216,57 +216,61 @@ function limpiarImagen() {
   form.value.imagen_url = ''
 }
 
+function prePopulateStock(premioId: string) {
+  const inventarioItem = store.inventario.find(i => i.premio_id === premioId)
+  if (!inventarioItem || store.tiendasInventario.length === 0) return
+  stockAsignado.value = Object.entries(inventarioItem.por_tienda)
+    .filter(([, cant]) => cant > 0)
+    .map(([tiendaId, cantidad]) => {
+      const inv = store.tiendasInventario.find(t => t.id === Number(tiendaId))
+      return inv ? { tienda: { id: inv.id, codigo: inv.codigo, nombre: inv.nombre, ciudad: '', activa: true }, cantidad } : null
+    })
+    .filter(Boolean) as { tienda: Tienda; cantidad: number }[]
+}
+
+function irAPaso2OCerrar(premioGuardado: PremioAdmin) {
+  premioRecienCreado.value = premioGuardado
+  if (!form.value.es_vacio && form.value.controla_stock_por_tienda) {
+    prePopulateStock(premioGuardado.id)
+    modalStep.value = 'paso2'
+  } else {
+    cerrarModal()
+  }
+}
+
+function buildPremioData(): Omit<PremioAdmin, 'id'> {
+  const esVacio = form.value.es_vacio
+  return {
+    nombre:                    form.value.nombre,
+    descripcion:               form.value.descripcion ?? null,
+    tipo:                      esVacio ? 'relleno' : form.value.tipo,
+    stock_total:               esVacio ? null : (form.value.stock_total ?? null),
+    valor_referencial:         esVacio ? null : (form.value.valor_referencial ?? null),
+    es_relleno:                esVacio,
+    controla_stock_por_tienda: !esVacio && form.value.controla_stock_por_tienda,
+    imagen_url:                imagenPreview.value ?? form.value.imagen_url ?? undefined,
+  }
+}
+
 async function guardarPremio() {
   errorForm.value = ''
-  if (form.value.es_vacio && !form.value.nombre.trim()) {
-    form.value.nombre = '¡Sigue intentando!'
-  }
+  if (form.value.es_vacio && !form.value.nombre.trim()) form.value.nombre = '¡Sigue intentando!'
   if (!form.value.nombre.trim()) { errorForm.value = 'El nombre es requerido.'; return }
+
   const grupoIdx = store.grupos.findIndex(g => g.grupo === form.value.segmento)
   if (grupoIdx === -1) { errorForm.value = 'Segmento no válido.'; return }
 
   guardando.value = true
   try {
-    const data: Omit<PremioAdmin, 'id'> = {
-      nombre:       form.value.nombre,
-      descripcion:  form.value.descripcion || null,
-      tipo:         form.value.es_vacio ? 'relleno' : form.value.tipo,
-      stock_total:  form.value.es_vacio ? null : (form.value.stock_total ?? null),
-      valor_referencial: form.value.es_vacio ? null : (form.value.valor_referencial ?? null),
-      es_relleno:   form.value.es_vacio,
-      controla_stock_por_tienda: !form.value.es_vacio && form.value.controla_stock_por_tienda,
-      imagen_url:   imagenPreview.value ?? form.value.imagen_url ?? undefined,
-    }
-
+    const data = buildPremioData()
     if (premioEditando.value) {
       const premioId = premioEditando.value.id
       await store.actualizarPremio(grupoIdx, premioId, data)
-      if (!form.value.es_vacio && form.value.controla_stock_por_tienda) {
-        premioRecienCreado.value = { id: premioId, ...data }
-        // Pre-populate desde inventario ya cargado si está disponible
-        const inventarioItem = store.inventario.find(i => i.premio_id === premioId)
-        if (inventarioItem && store.tiendasInventario.length > 0) {
-          stockAsignado.value = Object.entries(inventarioItem.por_tienda)
-            .filter(([, cant]) => cant > 0)
-            .map(([tiendaId, cantidad]) => {
-              const inv = store.tiendasInventario.find(t => t.id === Number(tiendaId))
-              return inv ? { tienda: { id: inv.id, codigo: inv.codigo, nombre: inv.nombre, ciudad: '', activa: true }, cantidad } : null
-            })
-            .filter(Boolean) as { tienda: Tienda; cantidad: number }[]
-        }
-        modalStep.value = 'paso2'
-      } else {
-        cerrarModal()
-      }
+      irAPaso2OCerrar({ id: premioId, ...data } as PremioAdmin)
     } else {
       const nuevo = await store.agregarPremio(grupoIdx, data)
       if (!nuevo) { errorForm.value = 'No se pudo guardar el premio.'; return }
-      premioRecienCreado.value = nuevo
-      if (!form.value.es_vacio && form.value.controla_stock_por_tienda) {
-        modalStep.value = 'paso2'
-      } else {
-        cerrarModal()
-      }
+      irAPaso2OCerrar(nuevo)
     }
   } finally {
     guardando.value = false
@@ -832,10 +836,10 @@ function ocultarDropdown() {
 
                 <!-- Nombre -->
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  <label for="premio-nombre" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                     Nombre del premio <span class="text-red-500">*</span>
                   </label>
-                  <input v-model="form.nombre" type="text"
+                  <input id="premio-nombre" v-model="form.nombre" type="text"
                     :placeholder="form.es_vacio ? '¡Sigue intentando!' : 'Ej: Mochila Roland'"
                     class="w-full px-4 py-2.5 rounded-xl border text-sm transition-colors
                            bg-white dark:bg-gray-800 text-gray-900 dark:text-white
@@ -846,10 +850,10 @@ function ocultarDropdown() {
 
                 <!-- Descripción (ocultar si es relleno) -->
                 <div v-if="!form.es_vacio">
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  <label for="premio-descripcion" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                     Descripción <span class="text-xs font-normal text-gray-400">(opcional)</span>
                   </label>
-                  <textarea v-model="form.descripcion" rows="2"
+                  <textarea id="premio-descripcion" v-model="form.descripcion" rows="2"
                     placeholder="Ej: Mochila de tela resistente con logo Roland"
                     class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm
                            bg-white dark:bg-gray-800 text-gray-900 dark:text-white
@@ -859,8 +863,8 @@ function ocultarDropdown() {
 
                 <!-- Tipo (ocultar si es relleno) -->
                 <div v-if="!form.es_vacio">
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Tipo</label>
-                  <select v-model="form.tipo"
+                  <label for="premio-tipo" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Tipo</label>
+                  <select id="premio-tipo" v-model="form.tipo"
                     class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700
                            bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white
                            focus:outline-none focus:ring-2 focus:ring-[#0A86C2]/30 focus:border-[#0A86C2] transition-colors">
@@ -872,10 +876,10 @@ function ocultarDropdown() {
 
                 <!-- Segmento -->
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  <label for="premio-segmento" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                     Segmento
                   </label>
-                  <select v-model="form.segmento"
+                  <select id="premio-segmento" v-model="form.segmento"
                     class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700
                            bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white
                            focus:outline-none focus:ring-2 focus:ring-[#0A86C2]/30 focus:border-[#0A86C2] transition-colors">
@@ -887,7 +891,7 @@ function ocultarDropdown() {
 
                 <!-- Imagen (solo si no es relleno) -->
                 <div v-if="!form.es_vacio">
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  <label for="premio-imagen" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                     Imagen <span class="text-xs font-normal text-gray-400">(opcional)</span>
                   </label>
 
@@ -907,14 +911,14 @@ function ocultarDropdown() {
                     </button>
                   </div>
 
-                  <label v-else class="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700 cursor-pointer hover:border-[#0A86C2] dark:hover:border-[#0E97D4] transition-colors">
+                  <label for="premio-imagen" v-else class="flex flex-col items-center gap-2 p-4 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700 cursor-pointer hover:border-[#0A86C2] dark:hover:border-[#0E97D4] transition-colors">
                     <svg class="w-7 h-7 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                     </svg>
                     <span class="text-sm text-gray-400 dark:text-gray-500">
                       Haz clic para subir imagen (PNG, JPG)
                     </span>
-                    <input type="file" accept="image/*" class="sr-only" @change="handleImagenChange"/>
+                    <input id="premio-imagen" type="file" accept="image/*" class="sr-only" @change="handleImagenChange"/>
                   </label>
                 </div>
 
@@ -922,10 +926,10 @@ function ocultarDropdown() {
                 <template v-if="!form.es_vacio">
                   <div class="grid grid-cols-2 gap-3">
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                      <label for="premio-stock" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                         Stock total
                       </label>
-                      <input v-model.number="form.stock_total" type="number" min="0"
+                      <input id="premio-stock" v-model.number="form.stock_total" type="number" min="0"
                         placeholder="Ilimitado"
                         class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700
                                bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white
@@ -933,13 +937,13 @@ function ocultarDropdown() {
                                focus:outline-none focus:ring-2 focus:ring-[#0A86C2]/30 focus:border-[#0A86C2] transition-colors"/>
                     </div>
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                      <label for="premio-valor" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                         Valor referencial ($)
                         <span class="text-xs font-normal text-gray-400">(opcional)</span>
                       </label>
                       <div class="relative">
                         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">$</span>
-                        <input v-model.number="form.valor_referencial" type="number" min="0" step="0.01"
+                        <input id="premio-valor" v-model.number="form.valor_referencial" type="number" min="0" step="0.01"
                           placeholder="0.00"
                           class="w-full pl-7 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700
                                  bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white
@@ -999,7 +1003,7 @@ function ocultarDropdown() {
 
                 <!-- Buscador de tiendas -->
                 <div>
-                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                  <label for="tienda-busqueda" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                     Buscar tienda
                   </label>
                   <div class="relative">
@@ -1008,7 +1012,7 @@ function ocultarDropdown() {
                         <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
                       </svg>
                     </div>
-                    <input v-model="tiendaBusqueda" type="text"
+                    <input id="tienda-busqueda" v-model="tiendaBusqueda" type="text"
                       placeholder="Ej: Portal, QUI-POR, CCI…"
                       @focus="mostrarDropdown = true"
                       @blur="ocultarDropdown"
@@ -1041,8 +1045,8 @@ function ocultarDropdown() {
                 <!-- Cantidad + Asignar -->
                 <div class="flex items-end gap-2">
                   <div class="flex-1">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Cantidad</label>
-                    <input v-model.number="stockCantidad" type="number" min="1"
+                    <label for="tienda-cantidad" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Cantidad</label>
+                    <input id="tienda-cantidad" v-model.number="stockCantidad" type="number" min="1"
                       :max="stockDisponible"
                       placeholder="0"
                       class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700

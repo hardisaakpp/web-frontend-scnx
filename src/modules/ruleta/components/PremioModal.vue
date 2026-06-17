@@ -53,23 +53,29 @@ onMounted(() => {
       const shape = shapes[Math.floor(Math.random() * shapes.length)]
       const isRibbon = shape === 'ribbon'
       const isStar = shape === 'star'
+      let duration = 2000 + Math.random() * 2200
+      let width = 5 + Math.random() * 9
+      let height = 7 + Math.random() * 13
+
+      if (isRibbon) {
+        duration = 3200 + Math.random() * 2200
+        width = 2 + Math.random() * 3
+        height = 18 + Math.random() * 16
+      } else if (isStar) {
+        duration = 2400 + Math.random() * 1600
+        width = 10 + Math.random() * 10
+        height = 10 + Math.random() * 10
+      }
+
       return {
         id: i,
         x: Math.random() * 114 - 7,
         delay: Math.random() * 1400,
-        duration: isRibbon
-          ? 3200 + Math.random() * 2200
-          : isStar
-            ? 2400 + Math.random() * 1600
-            : 2000 + Math.random() * 2200,
+        duration,
         color: palette[Math.floor(Math.random() * palette.length)],
         rotation: Math.random() * 360,
-        width:  isRibbon ? 2 + Math.random() * 3
-              : isStar   ? 10 + Math.random() * 10
-              : 5 + Math.random() * 9,
-        height: isRibbon ? 18 + Math.random() * 16
-              : isStar   ? 10 + Math.random() * 10
-              : 7 + Math.random() * 13,
+        width,
+        height,
         shape,
         anim: animTypes[Math.floor(Math.random() * animTypes.length)],
       }
@@ -187,10 +193,11 @@ async function enviarNotificacion() {
           <!-- Email para no afiliados -->
           <template v-if="mostrarCampoEmail">
             <div class="mt-4 border-t border-gray-100 dark:border-gray-700 pt-4">
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label for="correo-cliente" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Correo electrónico del cliente
               </label>
               <input
+                id="correo-cliente"
                 v-model="correo"
                 type="email"
                 placeholder="cliente@ejemplo.com"

@@ -224,13 +224,13 @@ const TIPO_LABELS: Record<TipoPremio, string> = {
           </div>
           <div class="px-6 py-5 space-y-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Nombre</label>
-              <input v-model="editando.nombre" type="text"
+              <label for="edit-nombre" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Nombre</label>
+              <input id="edit-nombre" v-model="editando.nombre" type="text"
                 class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors"/>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Stock total</label>
-              <input v-model.number="editando.stock_total" type="number" min="0"
+              <label for="edit-stock" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Stock total</label>
+              <input id="edit-stock" v-model.number="editando.stock_total" type="number" min="0"
                 :placeholder="editando.es_relleno ? 'Ilimitado' : ''"
                 :disabled="editando.es_relleno"
                 class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors disabled:opacity-50"/>
@@ -264,26 +264,26 @@ const TIPO_LABELS: Record<TipoPremio, string> = {
           <div class="px-6 py-5 space-y-4">
             <!-- Nombre -->
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+              <label for="nuevo-nombre" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                 Nombre <span class="text-red-500">*</span>
               </label>
-              <input v-model="nuevoForm.nombre" type="text" placeholder="Ej: Mochila Roland"
+              <input id="nuevo-nombre" v-model="nuevoForm.nombre" type="text" placeholder="Ej: Mochila Roland"
                 class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors"/>
             </div>
 
             <!-- Descripción -->
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+              <label for="nuevo-descripcion" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                 Descripción <span class="text-xs font-normal text-gray-400">(opcional)</span>
               </label>
-              <textarea v-model="nuevoForm.descripcion" rows="2" placeholder="Ej: Mochila de tela resistente con logo Roland"
+              <textarea id="nuevo-descripcion" v-model="nuevoForm.descripcion" rows="2" placeholder="Ej: Mochila de tela resistente con logo Roland"
                 class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors resize-none"/>
             </div>
 
             <!-- Tipo -->
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Tipo</label>
-              <select v-model="nuevoForm.tipo"
+              <label for="nuevo-tipo" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Tipo</label>
+              <select id="nuevo-tipo" v-model="nuevoForm.tipo"
                 :disabled="nuevoForm.es_relleno"
                 class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors disabled:opacity-50">
                 <option v-for="(label, val) in TIPO_LABELS" :key="val" :value="val">{{ label }}</option>
@@ -293,18 +293,18 @@ const TIPO_LABELS: Record<TipoPremio, string> = {
             <!-- Stock total + Valor referencial -->
             <div v-if="!nuevoForm.es_relleno" class="grid grid-cols-2 gap-3">
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Stock total</label>
-                <input v-model.number="nuevoForm.stock_total" type="number" min="0" placeholder="Ilimitado"
+                <label for="nuevo-stock" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Stock total</label>
+                <input id="nuevo-stock" v-model.number="nuevoForm.stock_total" type="number" min="0" placeholder="Ilimitado"
                   class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder:text-gray-300 dark:placeholder:text-gray-600 focus:outline-none focus:border-indigo-500 transition-colors"/>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                <label for="nuevo-valor" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                   Valor referencial ($)
                   <span class="text-xs font-normal text-gray-400">(opcional)</span>
                 </label>
                 <div class="relative">
                   <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400">$</span>
-                  <input v-model.number="nuevoForm.valor_referencial" type="number" min="0" step="0.01" placeholder="0.00"
+                  <input id="nuevo-valor" v-model.number="nuevoForm.valor_referencial" type="number" min="0" step="0.01" placeholder="0.00"
                     class="w-full pl-7 pr-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white placeholder:text-gray-300 dark:placeholder:text-gray-600 focus:outline-none focus:border-indigo-500 transition-colors"/>
                 </div>
               </div>

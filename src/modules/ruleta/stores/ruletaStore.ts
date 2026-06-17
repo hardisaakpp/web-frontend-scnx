@@ -13,7 +13,7 @@ const fixEncoding = (s: string) => {
 // Clave de localStorage para persistir tienda seleccionada en el día
 const TIENDA_KEY = () => {
   const hoy = new Date().toISOString().slice(0, 10)
-  const user = localStorage.getItem('userName') || 'u'
+  const user = localStorage.getItem('userName') ?? 'u'
   return `ruleta.tienda.${hoy}.${user}`
 }
 
