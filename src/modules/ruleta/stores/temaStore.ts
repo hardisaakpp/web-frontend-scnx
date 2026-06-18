@@ -50,8 +50,8 @@ export const useTemaStore = defineStore('ruleta-tema', () => {
   // Cargar inmediatamente desde la API cuando el store se usa por primera vez
   cargarTemaDesdeApi()
 
-  if (typeof window !== 'undefined') {
-    window.addEventListener('storage', (event) => {
+  if (globalThis.window !== undefined) {
+    globalThis.addEventListener('storage', (event) => {
       if (event.key === STORAGE_KEY) {
         tema.value = cargarTemaLocal()
       }

@@ -184,7 +184,7 @@ export const ruletaService = {
       else if (p.tipo === 'Digital' || p.tipo === 'Cupon') tipo = 'digital'
       
       return {
-        id: p.id ? Number(p.id.replace(/\D/g, '').slice(0,8)) || index + 1 : index + 1,
+        id: Number(p.id?.replace(/\D/g, '').slice(0, 8)) || index + 1,
         nombre: p.nombre, // Mantenemos el nombre original para mostrarlo bonito
         descripcion: p.descripcion,
         tipo,
@@ -530,25 +530,40 @@ export const ruletaService = {
     }
   },
 
-  exportarGirosCsvUrl(campanaId?: string): string {
-    const token = localStorage.getItem('token') ?? ''
-    const base = import.meta.env.VITE_RULETA_API_URL || '/ruleta-api'
-    const id = campanaId ? `&CampanaId=${campanaId}` : ''
-    return `${base}/api/Metricas/giros/exportar?token=${encodeURIComponent(token)}${id}`
+  async exportarGirosCsv(campanaId?: string): Promise<void> {
+    const params: Record<string, string> = {}
+    if (campanaId) params.CampanaId = campanaId
+    const response = await campanaApi.get('/api/Metricas/giros/exportar', { params, responseType: 'blob' })
+    const blobUrl = URL.createObjectURL(new Blob([response.data], { type: 'text/csv' }))
+    const a = document.createElement('a')
+    a.href = blobUrl
+    a.download = campanaId ? `giros-${campanaId}.csv` : 'giros.csv'
+    a.click()
+    URL.revokeObjectURL(blobUrl)
   },
 
-  exportarGirosExcelUrl(campanaId?: string): string {
-    const token = localStorage.getItem('token') ?? ''
-    const base = import.meta.env.VITE_RULETA_API_URL || '/ruleta-api'
-    const id = campanaId ? `&CampanaId=${campanaId}` : ''
-    return `${base}/api/Metricas/giros/exportar/excel?token=${encodeURIComponent(token)}${id}`
+  async exportarGirosExcel(campanaId?: string): Promise<void> {
+    const params: Record<string, string> = {}
+    if (campanaId) params.CampanaId = campanaId
+    const response = await campanaApi.get('/api/Metricas/giros/exportar/excel', { params, responseType: 'blob' })
+    const blobUrl = URL.createObjectURL(new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
+    const a = document.createElement('a')
+    a.href = blobUrl
+    a.download = campanaId ? `giros-${campanaId}.xlsx` : 'giros.xlsx'
+    a.click()
+    URL.revokeObjectURL(blobUrl)
   },
 
-  exportarGirosPdfUrl(campanaId?: string): string {
-    const token = localStorage.getItem('token') ?? ''
-    const base = import.meta.env.VITE_RULETA_API_URL || '/ruleta-api'
-    const id = campanaId ? `&CampanaId=${campanaId}` : ''
-    return `${base}/api/Metricas/giros/exportar/pdf?token=${encodeURIComponent(token)}${id}`
+  async exportarGirosPdf(campanaId?: string): Promise<void> {
+    const params: Record<string, string> = {}
+    if (campanaId) params.CampanaId = campanaId
+    const response = await campanaApi.get('/api/Metricas/giros/exportar/pdf', { params, responseType: 'blob' })
+    const blobUrl = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
+    const a = document.createElement('a')
+    a.href = blobUrl
+    a.download = campanaId ? `giros-${campanaId}.pdf` : 'giros.pdf'
+    a.click()
+    URL.revokeObjectURL(blobUrl)
   },
 
   async getEnroladoresMetricas(campanaId?: string): Promise<EnroladorMetrica[]> {

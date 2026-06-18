@@ -66,8 +66,8 @@ function abrirMenu(e: MouseEvent, id: string) {
   const btn  = e.currentTarget as HTMLElement
   const rect = btn.getBoundingClientRect()
   menuStyle.value = {
-    top:   `${rect.bottom + window.scrollY + 6}px`,
-    right: `${window.innerWidth - rect.right}px`,
+    top:   `${rect.bottom + globalThis.scrollY + 6}px`,
+    right: `${globalThis.innerWidth - rect.right}px`,
   }
   menuAbierto.value = id
 }
