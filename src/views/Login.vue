@@ -13,7 +13,7 @@
     <div class="max-w-md w-full bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-gray-900/50 p-8 transition-colors duration-300">
       <div class="text-center mb-8 flex flex-col items-center">
         <img :src="logoUrl" alt="Logo" class="h-16 w-auto mb-4" />
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{{ appName }}</h1>
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{{ appName || 'SCNexus' }}</h1>
         <p class="text-gray-600 dark:text-gray-400 mt-2">Iniciar Sesión</p>
       </div>
 
@@ -38,14 +38,25 @@
           <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
             Contraseña
           </label>
-          <input
-            id="password"
-            v-model="form.password"
-            type="password"
-            required
-            class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors duration-300"
-            placeholder="••••••••"
-          />
+          <div class="relative mt-1">
+            <input
+              id="password"
+              v-model="form.password"
+              :type="showPassword ? 'text' : 'password'"
+              required
+              class="block w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors duration-300"
+              placeholder="••••••••"
+            />
+            <button
+              type="button"
+              @click="showPassword = !showPassword"
+              class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              :aria-label="showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+            >
+              <EyeSlashIcon v-if="showPassword" class="h-5 w-5" />
+              <EyeIcon v-else class="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
         <!-- Active Directory Checkbox -->
@@ -91,7 +102,7 @@ import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
-import { SunIcon, MoonIcon } from '@heroicons/vue/24/outline'
+import { SunIcon, MoonIcon, EyeIcon, EyeSlashIcon } from '@heroicons/vue/24/outline'
 import logoUrl from '@/assets/logo.png'
 
 const appName = import.meta.env.VITE_APP_NAME
@@ -101,6 +112,7 @@ const themeStore = useThemeStore()
 
 const isLoading = ref(false)
 const error = ref('')
+const showPassword = ref(false)
 
 const form = reactive({
   username: '',

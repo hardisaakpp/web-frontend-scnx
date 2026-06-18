@@ -50,13 +50,9 @@ async function cargarPagina(pagina: number) {
   }
 }
 
-function exportarCsv() {
+async function exportarCsv() {
   if (!campanaSeleccionadaId.value) return
-  const url = ruletaService.exportarGirosCsvUrl(campanaSeleccionadaId.value)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `giros-${campanaSeleccionadaId.value}.csv`
-  a.click()
+  await ruletaService.exportarGirosCsv(campanaSeleccionadaId.value)
 }
 
 const TIPO_LABELS: Record<string, string> = {

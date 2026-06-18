@@ -62,13 +62,11 @@ async function irPagina(page: number) {
 }
 
 // ── Exportar ──────────────────────────────────────────────────────────────────
-function exportar(tipo: 'csv' | 'excel' | 'pdf') {
+async function exportar(tipo: 'csv' | 'excel' | 'pdf') {
   const id = esTodos.value ? undefined : campanaSeleccionadaId.value
-  let url: string
-  if (tipo === 'excel') url = ruletaService.exportarGirosExcelUrl(id)
-  else if (tipo === 'pdf') url = ruletaService.exportarGirosPdfUrl(id)
-  else url = ruletaService.exportarGirosCsvUrl(id)
-  window.open(url, '_blank')
+  if (tipo === 'excel') await ruletaService.exportarGirosExcel(id)
+  else if (tipo === 'pdf') await ruletaService.exportarGirosPdf(id)
+  else await ruletaService.exportarGirosCsv(id)
 }
 
 // ── Helpers stock ─────────────────────────────────────────────────────────────

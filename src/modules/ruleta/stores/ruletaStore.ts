@@ -5,11 +5,6 @@ import type {
   Tienda, SegmentoRuleta, IdentificacionCliente, ResultadoGiro
 } from '../types'
 
-// Corrige mensajes de error con encoding UTF-8 mal interpretado como Latin-1
-const fixEncoding = (s: string) => {
-  try { return new TextDecoder('utf-8').decode(Uint8Array.from(s, c => c.charCodeAt(0))) } catch { return s }
-}
-
 // Clave de localStorage para persistir tienda seleccionada en el día
 const TIENDA_KEY = () => {
   const hoy = new Date().toISOString().slice(0, 10)
@@ -177,7 +172,7 @@ export const useRuletaStore = defineStore('ruleta', {
                            || err.response?.data?.message
                            || err.message
                            || 'Ocurrió un error al procesar el giro.'
-                this.errorEnrolador = fixEncoding(raw)
+                this.errorEnrolador = raw
       } finally {
         this.girando = false
       }
