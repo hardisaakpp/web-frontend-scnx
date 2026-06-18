@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import type { ResultadoGiro } from '../types'
+import { useRuletaStore } from '../stores/ruletaStore'
 
 const props = defineProps<{
   resultado: ResultadoGiro
 }>()
 
+const store = useRuletaStore()
+
 const emit = defineEmits<{
   cerrar: []
-  notificacionEnviada: [correo: string]
 }>()
 
 const correo = ref(props.resultado.cliente.correo ?? '')
@@ -109,8 +111,11 @@ async function enviarNotificacion() {
   if (!correo.value) return
   enviando.value = true
   try {
-    emit('notificacionEnviada', correo.value)
+    await store.enviarNotificacion(correo.value)
     enviado.value = true
+  } catch (error) {
+    console.error('Error al enviar la notificación:', error)
+    alert('Ocurrió un error al enviar la notificación. Verifica el correo e intenta de nuevo.')
   } finally {
     enviando.value = false
   }
