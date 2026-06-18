@@ -144,6 +144,7 @@ export const ruletaService = {
       }
       return null
     } catch (e) {
+      console.error('Error al obtener tema global:', e)
       return null
     }
   },
@@ -534,7 +535,7 @@ export const ruletaService = {
     const params: Record<string, string> = {}
     if (campanaId) params.CampanaId = campanaId
     const response = await campanaApi.get('/api/Metricas/giros/exportar', { params, responseType: 'blob' })
-    const blobUrl = URL.createObjectURL(new Blob([response.data], { type: 'text/csv' }))
+    const blobUrl = URL.createObjectURL(new Blob([response.data as BlobPart], { type: 'text/csv' }))
     const a = document.createElement('a')
     a.href = blobUrl
     a.download = campanaId ? `giros-${campanaId}.csv` : 'giros.csv'
@@ -546,7 +547,7 @@ export const ruletaService = {
     const params: Record<string, string> = {}
     if (campanaId) params.CampanaId = campanaId
     const response = await campanaApi.get('/api/Metricas/giros/exportar/excel', { params, responseType: 'blob' })
-    const blobUrl = URL.createObjectURL(new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
+    const blobUrl = URL.createObjectURL(new Blob([response.data as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
     const a = document.createElement('a')
     a.href = blobUrl
     a.download = campanaId ? `giros-${campanaId}.xlsx` : 'giros.xlsx'
@@ -558,7 +559,7 @@ export const ruletaService = {
     const params: Record<string, string> = {}
     if (campanaId) params.CampanaId = campanaId
     const response = await campanaApi.get('/api/Metricas/giros/exportar/pdf', { params, responseType: 'blob' })
-    const blobUrl = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
+    const blobUrl = URL.createObjectURL(new Blob([response.data as BlobPart], { type: 'application/pdf' }))
     const a = document.createElement('a')
     a.href = blobUrl
     a.download = campanaId ? `giros-${campanaId}.pdf` : 'giros.pdf'

@@ -4,7 +4,9 @@ trigger:
     include:
       - main       # Producción
       - test       # Pruebas (DESA)
-      - ci/pipeline-azure
+      - ci/*
+      - feature/*
+      - fix/*
 
 pool:
   name: 'Test-Agents'

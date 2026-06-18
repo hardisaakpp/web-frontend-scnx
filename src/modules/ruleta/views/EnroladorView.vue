@@ -75,9 +75,6 @@ function onCerrarPremio() {
   store.limpiarGiro()
 }
 
-async function onNotificacionEnviada(correo: string) {
-  await store.enviarNotificacion(correo)
-}
 </script>
 
 <template>
@@ -382,7 +379,6 @@ async function onNotificacionEnviada(correo: string) {
     :resultado="store.resultadoGiro"
     class="z-[300]"
     @cerrar="onCerrarPremio"
-    @notificacion-enviada="onNotificacionEnviada"
   />
 
 </template>
