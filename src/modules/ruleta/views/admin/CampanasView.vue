@@ -876,7 +876,7 @@ const SEGMENTO_LABELS: Record<SegmentoCliente, string> = {
                         </span>
                       </div>
                     </div>
-                    <button type="button" role="switch" :aria-checked="String(form.requiere_validacion_onecard)"
+                    <button type="button" role="switch" :aria-checked="form.requiere_validacion_onecard"
                       @click="form.requiere_validacion_onecard = !form.requiere_validacion_onecard"
                       class="relative flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200
                              focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
@@ -913,7 +913,7 @@ const SEGMENTO_LABELS: Record<SegmentoCliente, string> = {
                         </span>
                       </div>
                     </div>
-                    <button type="button" role="switch" :aria-checked="String(habilitarHoraFeliz)"
+                    <button type="button" role="switch" :aria-checked="habilitarHoraFeliz"
                       @click="habilitarHoraFeliz = !habilitarHoraFeliz"
                       class="relative flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200
                              focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"

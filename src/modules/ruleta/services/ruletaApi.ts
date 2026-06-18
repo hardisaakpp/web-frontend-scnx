@@ -28,14 +28,39 @@ api.interceptors.request.use((config) => {
 // ─── Cliente HTTP para el backend de Ruleta (localhost:5062 en dev) ───────────
 const campanaApi = axios.create({
   baseURL: import.meta.env.VITE_RULETA_API_URL || '/ruleta-api',
-  headers: { 'Content-Type': 'application/json' }
+  headers: { 'Content-Type': 'application/json' },
+  // El backend devuelve Windows-1252; arraybuffer permite decodificar
+  // manualmente antes de que el navegador aplique UTF-8 por defecto.
+  responseType: 'arraybuffer'
 })
+
+function decodificarRespuesta(buffer: ArrayBuffer): unknown {
+  const texto = new TextDecoder('windows-1252').decode(buffer)
+  return JSON.parse(texto)
+}
 
 campanaApi.interceptors.request.use((config) => {
   const token = localStorage.getItem('token')
   if (token && config.headers) config.headers.Authorization = `Bearer ${token}`
   return config
 })
+
+campanaApi.interceptors.response.use(
+  (response) => {
+    if (response.data instanceof ArrayBuffer) {
+      response.data = decodificarRespuesta(response.data)
+    }
+    return response
+  },
+  (error) => {
+    if (error.response?.data instanceof ArrayBuffer) {
+      try {
+        error.response.data = decodificarRespuesta(error.response.data)
+      } catch { /* mantener datos originales si el body no es JSON */ }
+    }
+    return Promise.reject(error)
+  }
+)
 
 function mapCampana(raw: CampanaBackendResponse): Campana {
   return {
@@ -534,7 +559,7 @@ export const ruletaService = {
     const params: Record<string, string> = {}
     if (campanaId) params.CampanaId = campanaId
     const response = await campanaApi.get('/api/Metricas/giros/exportar', { params, responseType: 'blob' })
-    const blobUrl = URL.createObjectURL(new Blob([response.data], { type: 'text/csv' }))
+    const blobUrl = URL.createObjectURL(new Blob([response.data as BlobPart], { type: 'text/csv' }))
     const a = document.createElement('a')
     a.href = blobUrl
     a.download = campanaId ? `giros-${campanaId}.csv` : 'giros.csv'
@@ -546,7 +571,7 @@ export const ruletaService = {
     const params: Record<string, string> = {}
     if (campanaId) params.CampanaId = campanaId
     const response = await campanaApi.get('/api/Metricas/giros/exportar/excel', { params, responseType: 'blob' })
-    const blobUrl = URL.createObjectURL(new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
+    const blobUrl = URL.createObjectURL(new Blob([response.data as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
     const a = document.createElement('a')
     a.href = blobUrl
     a.download = campanaId ? `giros-${campanaId}.xlsx` : 'giros.xlsx'
@@ -558,7 +583,7 @@ export const ruletaService = {
     const params: Record<string, string> = {}
     if (campanaId) params.CampanaId = campanaId
     const response = await campanaApi.get('/api/Metricas/giros/exportar/pdf', { params, responseType: 'blob' })
-    const blobUrl = URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
+    const blobUrl = URL.createObjectURL(new Blob([response.data as BlobPart], { type: 'application/pdf' }))
     const a = document.createElement('a')
     a.href = blobUrl
     a.download = campanaId ? `giros-${campanaId}.pdf` : 'giros.pdf'
