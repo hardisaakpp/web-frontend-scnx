@@ -141,9 +141,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from '@vue/runtime-core'
-import axios from 'axios'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { cajaChicaApi } from '@/lib/http'
+
 
 interface GrupoAlmacenForm {
   id: number
@@ -173,12 +174,8 @@ const volver = () => {
   router.back()
 }
 
-const cajaChicaApi = axios.create({
-  baseURL: import.meta.env.VITE_CAJA_CHICA_API_URL || '/caja-chica-api',
-  headers: {
-    'Content-Type': 'application/json'
-  }
-})
+
+
 
 const canAddGroup = computed(() => groupName.value.trim() && selectedAlmacenes.value.length > 0)
 
