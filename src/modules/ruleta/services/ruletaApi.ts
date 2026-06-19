@@ -185,7 +185,7 @@ export const ruletaService = {
       else if (p.tipo === 'Digital' || p.tipo === 'Cupon') tipo = 'digital'
       
       return {
-        id: Number(p.id?.replace(/\D/g, '').slice(0, 8)) || index + 1,
+        id: index + 1,
         nombre: p.nombre, // Mantenemos el nombre original para mostrarlo bonito
         descripcion: p.descripcion,
         tipo,
@@ -257,7 +257,7 @@ export const ruletaService = {
 
   // ─── Admin: Campañas ─────────────────────────────────────────────────────────
   async getCampanas(): Promise<Campana[]> {
-    const response = await campanaApi.get<CampanaBackendResponse[]>('/api/campanas')
+    const response = await campanaApi.get<CampanaBackendResponse[]>('/api/Campanas')
     return response.data.map(mapCampana)
   },
 
@@ -507,8 +507,8 @@ export const ruletaService = {
 
   // ─── Historial de giros ───────────────────────────────────────────────────────
   async getHistorialGiros(campanaId?: string, page = 1, pageSize = 10): Promise<HistorialGirosResponse> {
-    const params: Record<string, unknown> = { Page: page, PageSize: pageSize }
-    if (campanaId) params.CampanaId = campanaId
+    const params: Record<string, unknown> = { page, pageSize }
+    if (campanaId) params.campanaId = campanaId
     const response = await campanaApi.get<any>('/api/metricas/giros', { params })
     const d = response.data
     const items: HistorialGiroItem[] = (d.items ?? d.Items ?? []).map((item: any) => ({
@@ -534,7 +534,7 @@ export const ruletaService = {
   async exportarGirosCsv(campanaId?: string): Promise<void> {
     const params: Record<string, string> = {}
     if (campanaId) params.CampanaId = campanaId
-    const response = await campanaApi.get('/api/Metricas/giros/exportar', { params, responseType: 'blob' })
+    const response = await campanaApi.get('/api/metricas/giros/exportar', { params, responseType: 'blob' })
     const blobUrl = URL.createObjectURL(new Blob([response.data as BlobPart], { type: 'text/csv' }))
     const a = document.createElement('a')
     a.href = blobUrl
@@ -546,7 +546,7 @@ export const ruletaService = {
   async exportarGirosExcel(campanaId?: string): Promise<void> {
     const params: Record<string, string> = {}
     if (campanaId) params.CampanaId = campanaId
-    const response = await campanaApi.get('/api/Metricas/giros/exportar/excel', { params, responseType: 'blob' })
+    const response = await campanaApi.get('/api/metricas/giros/exportar/excel', { params, responseType: 'blob' })
     const blobUrl = URL.createObjectURL(new Blob([response.data as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
     const a = document.createElement('a')
     a.href = blobUrl
@@ -558,7 +558,7 @@ export const ruletaService = {
   async exportarGirosPdf(campanaId?: string): Promise<void> {
     const params: Record<string, string> = {}
     if (campanaId) params.CampanaId = campanaId
-    const response = await campanaApi.get('/api/Metricas/giros/exportar/pdf', { params, responseType: 'blob' })
+    const response = await campanaApi.get('/api/metricas/giros/exportar/pdf', { params, responseType: 'blob' })
     const blobUrl = URL.createObjectURL(new Blob([response.data as BlobPart], { type: 'application/pdf' }))
     const a = document.createElement('a')
     a.href = blobUrl
@@ -570,7 +570,7 @@ export const ruletaService = {
   async getEnroladoresMetricas(campanaId?: string): Promise<EnroladorMetrica[]> {
     const params: Record<string, string> = {}
     if (campanaId) params.CampanaId = campanaId
-    const response = await campanaApi.get<any[]>('/api/Metricas/enroladores', { params })
+    const response = await campanaApi.get<any[]>('/api/metricas/enroladores', { params })
     return response.data.map((e, i) => ({
       id:              e.id               ?? e.enroladorId         ?? i + 1,
       nombre:          e.enroladorNombre  ?? e.nombre              ?? e.nombreEnrolador ?? '',

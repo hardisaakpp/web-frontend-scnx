@@ -11,6 +11,7 @@ onMounted(async () => {
   await store.cargarCampanas()
   if (store.campanaInventarioId) {
     campanaSeleccionadaId.value = store.campanaInventarioId
+    await store.cargarInventario(store.campanaInventarioId)
   } else if (store.campanas.length > 0) {
     campanaSeleccionadaId.value = store.campanas[0].id
     await store.cargarInventario(store.campanas[0].id)

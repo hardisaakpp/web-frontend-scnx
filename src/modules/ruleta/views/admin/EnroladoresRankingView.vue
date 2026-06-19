@@ -38,7 +38,7 @@ function dotClass(estado: string): string {
 <template>
   <div class="space-y-5">
 
-    <VolverButton to="/ruleta/admin" label="Administración" />
+    <VolverButton to="/ruleta" label="Ruleta One Card" />
 
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
       <div>
