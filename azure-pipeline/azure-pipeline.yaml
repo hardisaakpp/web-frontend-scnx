@@ -93,7 +93,7 @@ stages:
           echo "##vso[task.setvariable variable=maestroUpstream]$(PROD_MAESTRO_UPSTREAM)"
           echo "##vso[task.setvariable variable=scanApiUpstream]$(PROD_SCAN_API_UPSTREAM)"
           echo "##vso[task.setvariable variable=campanasUpstream]$(PROD_CAMPANAS_UPSTREAM)"
-          echo "##vso[task.setvariable variable=imageTag]prod-$(Build.BuildId)"
+          echo "##vso[task.setvariable variable=ruletaUpstream]$(PROD_RULETA_UPSTREAM)"
           echo "##vso[task.setvariable variable=latestTag]prod-latest"
         else
           echo "Configurando entorno de PRUEBAS (DESA)..."
@@ -109,6 +109,7 @@ stages:
           echo "##vso[task.setvariable variable=scanApiUpstream]$(TEST_SCAN_API_UPSTREAM)"
           echo "##vso[task.setvariable variable=imageTag]test-$(Build.BuildId)"
           echo "##vso[task.setvariable variable=campanasUpstream]$(TEST_CAMPANAS_UPSTREAM)"
+          echo "##vso[task.setvariable variable=ruletaUpstream]$(TEST_RULETA_UPSTREAM)"
           echo "##vso[task.setvariable variable=latestTag]test-latest"
         fi
       displayName: 'Definir Variables Dinámicas según la Rama'
