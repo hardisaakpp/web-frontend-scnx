@@ -394,7 +394,7 @@ export interface SapTask {
     id: number
     nombre_tarea: string
     usuario: string
-    estado: 'PROCESANDO' | 'FINALIZADO' | 'ERROR' | string
+    estado: string
     total_items: number
     items_procesados: number
     fecha_creacion: string

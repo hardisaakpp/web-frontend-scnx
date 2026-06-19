@@ -7,7 +7,6 @@ import type {
   CatalogoFilters, 
   ListasFiltros,
   Almacen,
-  CarritoItem,
   CarritoResponse,
   HistorialCabecera,
   HistorialDetalleItem,

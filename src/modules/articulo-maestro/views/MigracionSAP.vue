@@ -492,7 +492,6 @@ function startPolling() {
     // Primera ejecución inmediata
     fetchTasks()
     pollingTimer = setInterval(() => {
-        const hasActiveTasks = recentTasks.value.some(t => t.estado === 'PROCESANDO')
         // Siempre consultamos si isPolling es true, pero fetchTasks decidirá si apagarlo
         fetchTasks()
     }, 2000)

@@ -32,8 +32,10 @@ ARG CONCILIACION_UPSTREAM=http://host.docker.internal:8005
 ARG MAESTRO_UPSTREAM=http://host.docker.internal:8001
 ARG REPOSICION_UPSTREAM=http://host.docker.internal:8006
 ARG SLAYER_UPSTREAM=http://192.168.2.153:8093
+ARG CAMPANAS_UPSTREAM=http://host.docker.internal:5006
 
 COPY deploy/nginx/scnexus-docker.conf.template /tmp/scnexus-docker.conf.template
+
 
 
 COPY --from=build /app/dist /usr/share/nginx/html
