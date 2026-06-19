@@ -128,7 +128,8 @@ export const useAdminStore = defineStore('admin', {
       this.error = null
       try {
         this.campanas = await ruletaService.getCampanas()
-      } catch {
+      } catch (e) {
+        console.error('Error al cargar campañas:', e)
         this.error = 'Error al cargar campañas.'
       } finally {
         this.loadingCampanas = false
@@ -196,7 +197,8 @@ export const useAdminStore = defineStore('admin', {
           this.grupos = []
           this.error = 'No hay ninguna campaña activa.'
         }
-      } catch {
+      } catch (e) {
+        console.error('Error al cargar premios:', e)
         this.error = 'Error al cargar premios.'
       } finally {
         this.loadingPremios = false
@@ -235,7 +237,8 @@ export const useAdminStore = defineStore('admin', {
       try {
         this.campanaActivaId = campanaId
         this.grupos = await ruletaService.getGruposProbabilidad(campanaId)
-      } catch {
+      } catch (e) {
+        console.error('Error al cargar premios de campaña:', e)
         this.error = 'Error al cargar premios.'
       } finally {
         this.loadingPremios = false
@@ -275,7 +278,8 @@ export const useAdminStore = defineStore('admin', {
         this.tiendasInventario = tiendas
         this.inventario = inventario
         this.inventarioEditado = {}
-      } catch {
+      } catch (e) {
+        console.error('Error al cargar inventario:', e)
         this.error = 'Error al cargar inventario.'
       } finally {
         this.loadingInventario = false
@@ -328,7 +332,8 @@ export const useAdminStore = defineStore('admin', {
       this.loadingMetricasCampana = true
       try {
         this.metricasCampana = await ruletaService.getMetricasCampana(campanaId)
-      } catch {
+      } catch (e) {
+        console.error('Error al cargar métricas de campaña:', e)
         this.metricasCampana = null
       } finally {
         this.loadingMetricasCampana = false
@@ -341,7 +346,8 @@ export const useAdminStore = defineStore('admin', {
       this.loadingEnroladores = true
       try {
         this.enroladores = await ruletaService.getEnroladoresMetricas(campanaId)
-      } catch {
+      } catch (e) {
+        console.error('Error al cargar enroladores del dashboard:', e)
         this.enroladores = []
       } finally {
         this.loadingEnroladores = false
@@ -352,7 +358,8 @@ export const useAdminStore = defineStore('admin', {
       this.loadingStockDashboard = true
       try {
         this.stockDashboard = await ruletaService.getStockPremiosCampana(campanaId)
-      } catch {
+      } catch (e) {
+        console.error('Error al cargar stock del dashboard:', e)
         this.stockDashboard = []
       } finally {
         this.loadingStockDashboard = false
@@ -367,7 +374,8 @@ export const useAdminStore = defineStore('admin', {
         this.historialTotalPaginas   = res.totalPaginas
         this.historialPaginaActual   = res.paginaActual
         this.historialTotalRegistros = res.totalRegistros
-      } catch {
+      } catch (e) {
+        console.error('Error al cargar historial de giros:', e)
         this.historialGiros          = []
         this.historialTotalPaginas   = 0
         this.historialPaginaActual   = 1
@@ -391,7 +399,8 @@ export const useAdminStore = defineStore('admin', {
         this.efectividadTiendas = efectividad
         this.segmentacion = segmentacion
         this.conversionSemanal = conversion
-      } catch {
+      } catch (e) {
+        console.error('Error al cargar dashboard global:', e)
         this.error = 'Error al cargar el dashboard.'
       } finally {
         this.loadingDashboard = false

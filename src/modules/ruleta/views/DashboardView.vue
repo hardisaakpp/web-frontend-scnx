@@ -54,22 +54,21 @@ const authStore = useAuthStore()
         </div>
       </router-link>
 
-      <!-- Supervisor: monitoreo de enroladores -->
+      <!-- Supervisor: enroladores y ranking por tienda -->
       <router-link
         v-if="authStore.isAdmin || authStore.hasPermission('ruleta.supervisar')"
-        to="/ruleta/supervisor"
-        class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-violet-400 dark:hover:border-violet-500 hover:shadow-sm transition-all text-left block"
+        to="/ruleta/enroladores"
+        class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-rose-400 dark:hover:border-rose-500 hover:shadow-sm transition-all text-left block"
       >
         <div class="flex items-start gap-3">
-          <div class="w-8 h-8 rounded bg-violet-50 dark:bg-violet-900/30 flex items-center justify-center flex-shrink-0">
-            <svg class="h-5 w-5 text-violet-600 dark:text-violet-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          <div class="w-8 h-8 rounded bg-rose-50 dark:bg-rose-900/30 flex items-center justify-center flex-shrink-0">
+            <svg class="h-5 w-5 text-rose-600 dark:text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
             </svg>
           </div>
           <div class="flex-1 min-w-0">
-            <div class="font-medium text-gray-900 dark:text-white text-sm">Monitoreo de Enroladores</div>
-            <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">KPIs y rendimiento en tiempo real</div>
+            <div class="font-medium text-gray-900 dark:text-white text-sm">Enroladores y ranking</div>
+            <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Desempeño de promotores por tienda</div>
           </div>
         </div>
       </router-link>

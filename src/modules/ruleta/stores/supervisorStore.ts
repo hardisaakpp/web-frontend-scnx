@@ -53,7 +53,8 @@ export const useSupervisorStore = defineStore('supervisor', {
             tienda_ciudad: 'Todas',
             fecha: new Date().toISOString()
         }
-      } catch {
+      } catch (e) {
+        console.error('Error al cargar dashboard de monitoreo:', e)
         this.error = 'Error al cargar los datos de monitoreo.'
       } finally {
         this.loading = false
@@ -65,7 +66,8 @@ export const useSupervisorStore = defineStore('supervisor', {
       this.error = null
       try {
         this.enroladores = await ruletaService.getEnroladoresMetricas(campanaId)
-      } catch {
+      } catch (e) {
+        console.error('Error al cargar enroladores:', e)
         this.error = 'Error al cargar los datos de monitoreo.'
       } finally {
         this.loading = false
