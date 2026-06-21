@@ -9,16 +9,11 @@ trigger:
       - fix/*
 
 pool:
-  name: 'Test-Agents'
+  name: 'agents-srv-test'
   demands:
     - Agent.OS -equals Linux
 
 variables:
-  # 1. Importamos los grupos de variables desde Azure DevOps Library
-  - group: scnexus-prod-env
-  - group: scnexus-test-env
-  
-  # 2. Variables locales estructurales
   - name: nodeVersion
     value: '20.x'
   - name: localRegistry
@@ -37,7 +32,7 @@ stages:
   jobs:
   - job: Frontend_Checks
     displayName: 'Linting, Typecheck y Dependencias'
-    
+
     variables:
       npm_config_cache: $(Pipeline.Workspace)/.npm
 
@@ -65,6 +60,8 @@ stages:
 
 # =====================================================================
 # ETAPA 2: CONSTRUCCIÓN DOCKER MULTICAPA Y REGISTRO
+# Los upstreams ya NO se hornean aquí — el CD los inyecta en runtime
+# desde la Library (scnexus-test-env / scnexus-prod-env).
 # =====================================================================
 - stage: Build_Docker
   displayName: 'Construcción y Empaquetado Nginx'
@@ -75,68 +72,36 @@ stages:
     displayName: 'Generar Imagen y Enviar a Registro Intermedio'
     steps:
 
-    # Tarea 1: Detectar la rama y fijar las variables desde el Library
+    # Detectar rama y fijar base path + tags de imagen
     - script: |
         BRANCH_NAME="$(Build.SourceBranchName)"
         echo "Rama origen del build: $BRANCH_NAME"
-        
+
         if [ "$BRANCH_NAME" == "main" ]; then
           echo "Configurando entorno de PRODUCCIÓN..."
           echo "##vso[task.setvariable variable=basePath]/"
-          echo "##vso[task.setvariable variable=coreUpstream]$(PROD_CORE_UPSTREAM)"
-          echo "##vso[task.setvariable variable=coreProxyHost]$(PROD_CORE_PROXY_HOST)"
-          echo "##vso[task.setvariable variable=mba3Upstream]$(PROD_MBA3_UPSTREAM)"
-          echo "##vso[task.setvariable variable=cajaChicaUpstream]$(PROD_CAJA_CHICA_UPSTREAM)"
-          echo "##vso[task.setvariable variable=pygUpstream]$(PROD_PYG_UPSTREAM)"
-          echo "##vso[task.setvariable variable=employeesUpstream]$(PROD_EMPLOYEES_UPSTREAM)"
-          echo "##vso[task.setvariable variable=conciliacionUpstream]$(PROD_CONCILIACION_UPSTREAM)"
-          echo "##vso[task.setvariable variable=maestroUpstream]$(PROD_MAESTRO_UPSTREAM)"
-          echo "##vso[task.setvariable variable=scanApiUpstream]$(PROD_SCAN_API_UPSTREAM)"
-          echo "##vso[task.setvariable variable=campanasUpstream]$(PROD_CAMPANAS_UPSTREAM)"
-          echo "##vso[task.setvariable variable=ruletaUpstream]$(PROD_RULETA_UPSTREAM)"
+          echo "##vso[task.setvariable variable=imageTag]prod-$(Build.BuildId)"
           echo "##vso[task.setvariable variable=latestTag]prod-latest"
         else
           echo "Configurando entorno de PRUEBAS (DESA)..."
           echo "##vso[task.setvariable variable=basePath]/scnexus-front/"
-          echo "##vso[task.setvariable variable=coreUpstream]$(TEST_CORE_UPSTREAM)"
-          echo "##vso[task.setvariable variable=coreProxyHost]$(TEST_CORE_PROXY_HOST)"
-          echo "##vso[task.setvariable variable=mba3Upstream]$(TEST_MBA3_UPSTREAM)"
-          echo "##vso[task.setvariable variable=cajaChicaUpstream]$(TEST_CAJA_CHICA_UPSTREAM)"
-          echo "##vso[task.setvariable variable=pygUpstream]$(TEST_PYG_UPSTREAM)"
-          echo "##vso[task.setvariable variable=employeesUpstream]$(TEST_EMPLOYEES_UPSTREAM)"
-          echo "##vso[task.setvariable variable=conciliacionUpstream]$(TEST_CONCILIACION_UPSTREAM)"
-          echo "##vso[task.setvariable variable=maestroUpstream]$(TEST_MAESTRO_UPSTREAM)"
-          echo "##vso[task.setvariable variable=scanApiUpstream]$(TEST_SCAN_API_UPSTREAM)"
           echo "##vso[task.setvariable variable=imageTag]test-$(Build.BuildId)"
-          echo "##vso[task.setvariable variable=campanasUpstream]$(TEST_CAMPANAS_UPSTREAM)"
-          echo "##vso[task.setvariable variable=ruletaUpstream]$(TEST_RULETA_UPSTREAM)"
           echo "##vso[task.setvariable variable=latestTag]test-latest"
         fi
-      displayName: 'Definir Variables Dinámicas según la Rama'
+      displayName: 'Definir rama y tags de imagen'
 
-    # Tarea 2: Construir la imagen con las variables mapeadas dinámicamente
+    # Construir imagen genérica — solo el base path varía entre ambientes
     - script: |
-        echo "Construyendo para base path: $(basePath) y tags: $(imageTag)"
+        echo "Construyendo imagen: $(imageTag) / $(latestTag)"
         docker build \
           --build-arg VITE_APP_BASE_PATH=$(basePath) \
-          --build-arg CORE_UPSTREAM="$(coreUpstream)" \
-          --build-arg CORE_PROXY_HOST="$(coreProxyHost)" \
-          --build-arg MBA3_UPSTREAM="$(mba3Upstream)" \
-          --build-arg CAJA_CHICA_UPSTREAM="$(cajaChicaUpstream)" \
-          --build-arg EMPLOYEES_UPSTREAM="$(employeesUpstream)" \
-          --build-arg CONCILIACION_UPSTREAM="$(conciliacionUpstream)" \
-          --build-arg MAESTRO_UPSTREAM="$(maestroUpstream)" \
-          --build-arg PYG_UPSTREAM="$(pygUpstream)" \
-          --build-arg SCAN_API_UPSTREAM="$(scanApiUpstream)" \
-          --build-arg CAMPANAS_UPSTREAM="$(campanasUpstream)" \
           -f $(dockerfilePath) \
           -t $(localRegistry)/$(imageRepository):$(imageTag) \
           -t $(localRegistry)/$(imageRepository):$(latestTag) .
       displayName: 'Construir Imagen Docker (Multi-stage)'
-      
-    # Tarea 3: Empujar la imagen al Registro
+
     - script: |
-        echo "Guardando versión $(imageTag) en el Registro Central..."
+        echo "Publicando $(imageTag) y $(latestTag) en el Registro..."
         docker push $(localRegistry)/$(imageRepository):$(imageTag)
         docker push $(localRegistry)/$(imageRepository):$(latestTag)
       displayName: 'Publicar en Registro Interno'
