@@ -2,7 +2,7 @@
 import { onMounted, computed } from 'vue'
 import { useSupervisorStore } from '../stores/supervisorStore'
 import type { EstadoEnrolador } from '../types'
-import VolverButton from '../components/VolverButton.vue'
+import VolverButton from '@/components/VolverButton.vue'
 
 const store = useSupervisorStore()
 

@@ -126,7 +126,7 @@ const props = withDefaults(
     totalPages: number
     disabled?: boolean
     ariaLabel?: string
-    /** Panel “Otra página” con input numérico. */
+    /** Panel "Otra página" con input numérico. */
     showJumpLink?: boolean
   }>(),
   {

@@ -327,8 +327,8 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import api from '@/services/api'
-import VolverButton from '../components/VolverButton.vue'
-import WarehouseSelect from '@/modules/articulo-scaner/components/WarehouseSelect.vue'
+import VolverButton from '@/components/VolverButton.vue'
+import WarehouseSelect from '@/components/WarehouseSelect.vue'
 import type { WarehouseDto } from '@/modules/articulo-scaner/types'
 
 interface AsignacionRecord {

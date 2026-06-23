@@ -64,7 +64,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
-import type { WarehouseDto } from '../types'
+import type { WarehouseDto } from '@/modules/articulo-scaner/types'
 
 const props = defineProps<{
   modelValue: string | null

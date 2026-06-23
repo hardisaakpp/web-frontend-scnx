@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useAdminStore } from '../../stores/adminStore'
 import type { PremioAdmin, TipoPremio } from '../../types'
-import VolverButton from '../../components/VolverButton.vue'
+import VolverButton from '@/components/VolverButton.vue'
 
 const store = useAdminStore()
 onMounted(() => store.cargarPremios())

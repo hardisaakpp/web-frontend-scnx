@@ -28,6 +28,9 @@ deploy/env/intranet.env
 !.env.docker.example
 !.env.development.example
 
+# Claude Code (sesiones locales, no deben subirse al repo)
+.claude
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

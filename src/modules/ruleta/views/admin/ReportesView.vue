@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useAdminStore } from '../../stores/adminStore'
 import { ruletaService } from '../../services/ruletaApi'
 import type { HistorialGiroItem } from '../../types'
-import VolverButton from '../../components/VolverButton.vue'
+import VolverButton from '@/components/VolverButton.vue'
 
 const store = useAdminStore()
 

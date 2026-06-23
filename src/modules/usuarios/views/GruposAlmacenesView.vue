@@ -422,7 +422,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import api from '@/services/api'
 import axios from 'axios'
-import VolverButton from '../components/VolverButton.vue'
+import VolverButton from '@/components/VolverButton.vue'
 
 interface GrupoAlmacenForm {
   id: string

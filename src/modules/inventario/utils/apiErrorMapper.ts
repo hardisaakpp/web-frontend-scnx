@@ -1,17 +1,16 @@
-import type { ApiResponse } from '../types'
+import { type AxiosLikeError, parseBackendMessage } from '@/utils/apiErrorMapper'
 
-type AxiosLikeError = {
-  response?: {
-    status?: number
-    data?: ApiResponse<unknown> & { detail?: string; error?: string }
-  }
-  code?: string
+type InventarioApiBody = {
+  success?: boolean
   message?: string
+  error_code?: string
+  detail?: string
+  error?: string
 }
 
 export function mapInventarioApiError(error: unknown, fallback: string): string {
   const err = error as AxiosLikeError
-  const body = err.response?.data
+  const body = err.response?.data as InventarioApiBody | undefined
 
   if (body && typeof body === 'object') {
     if (body.success === false) {
@@ -19,9 +18,8 @@ export function mapInventarioApiError(error: unknown, fallback: string): string 
       if (msg) return msg
       if (body.error_code) return `${body.error_code}: operación no permitida.`
     }
-    if (typeof body.message === 'string' && body.message.trim()) return body.message.trim()
-    if (typeof body.detail === 'string' && body.detail.trim()) return body.detail.trim()
-    if (typeof body.error === 'string' && body.error.trim()) return body.error.trim()
+    const backendMsg = parseBackendMessage(body as Record<string, unknown>)
+    if (backendMsg) return backendMsg
   }
 
   if (err.code === 'ECONNABORTED') {

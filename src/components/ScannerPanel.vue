@@ -124,7 +124,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useBarcodeScanner } from '../composables/useBarcodeScanner'
+import { useBarcodeScanner } from '@/modules/articulo-scaner/composables/useBarcodeScanner'
 
 const props = defineProps<{
   visible: boolean

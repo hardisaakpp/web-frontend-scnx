@@ -181,7 +181,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import ScannerPanel from '@/modules/articulo-scaner/components/ScannerPanel.vue'
+import ScannerPanel from '@/components/ScannerPanel.vue'
 import BeneficiarioCard from '../components/BeneficiarioCard.vue'
 import { usePromocionSobresPermissions } from '../composables/usePromocionSobresPermissions'
 import { usePromocionSobresStore } from '../stores/promocionSobresStore'
