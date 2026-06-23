@@ -23,6 +23,20 @@ set -e
 : "${UPSTREAM_SLAYER:=http://192.168.2.153:8093}"
 : "${UPSTREAM_CAMPANAS:=http://host.docker.internal:5006}"
 
+# SMART MAPPING: If any upstream points to localhost/127.0.0.1, 
+# redirect it to host.docker.internal so it works inside the container.
+for var in $(printenv | grep -oE '^UPSTREAM_[A-Z0-9_]+'); do
+    val=$(eval echo \$$var)
+    case "$val" in
+        *localhost*|*127.0.0.1*)
+            new_val=$(echo "$val" | sed -e 's/localhost/host.docker.internal/g' -e 's/127.0.0.1/host.docker.internal/g')
+            echo "Mapping $var: $val -> $new_val"
+            eval "$var=$new_val"
+            export $var
+            ;;
+    esac
+done
+
 # Lista dinámica: incluye todas las UPSTREAM_* presentes en el entorno + CORE_PROXY_HOST.
 # Los módulos nuevos se incorporan automáticamente sin modificar este script.
 VARS=$(printenv | grep -oE '^(UPSTREAM_[A-Z0-9_]+|CORE_PROXY_HOST)' \

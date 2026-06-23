@@ -1,10 +1,12 @@
-import { createApiClient } from '@/plugins/axiosFactory'
+import { createModuleApi } from '@/lib/http'
 import { MBA3_API_BASE_URL } from '@/config/apiBaseUrls'
 
 const API_BASE_URL = MBA3_API_BASE_URL
 
-export const mba3Api = createApiClient(API_BASE_URL, {
-  onResponse: (response) => {
+export const mba3Api = createModuleApi(API_BASE_URL)
+
+mba3Api.interceptors.response.use(
+  (response) => {
     const timeoutHeader = response.headers['x-request-timeout']
     const timeoutMinHeader = response.headers['x-request-timeout-min']
     if (import.meta.env.DEV && (timeoutHeader || timeoutMinHeader)) {
@@ -12,7 +14,7 @@ export const mba3Api = createApiClient(API_BASE_URL, {
     }
     return response
   },
-  onResponseError: (error: unknown) => {
+  (error: any) => {
     const err = error as { config?: { url?: string; method?: string }; response?: { status?: number; data?: unknown }; request?: unknown }
     const url = err.config?.url || ''
     const isExpected404 =
@@ -35,13 +37,12 @@ export const mba3Api = createApiClient(API_BASE_URL, {
       }
     }
 
-    const e = error as Record<string, unknown>
-    if (e['response'] && (e['response'] as Record<string, unknown>)['data'] && !e['responseData']) {
-      e['responseData'] = (e['response'] as Record<string, unknown>)['data']
+    if (err.response?.data && !(error as any).responseData) {
+      (error as any).responseData = err.response.data
     }
 
     return Promise.reject(error)
-  },
-})
+  }
+)
 
 export { API_BASE_URL }

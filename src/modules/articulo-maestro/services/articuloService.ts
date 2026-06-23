@@ -1,43 +1,5 @@
-import axios from 'axios'
-import { attachUnauthorizedRedirect } from '@/services/sessionGuard'
+import { maestroHttp as apiMaestro } from '@/lib/http'
 import type { Articulo, ArticuloFilters } from '../types'
-
-// Instancia separada para el API del Maestro (puerto 8001 vía proxy)
-const apiMaestro = axios.create({
-    baseURL: import.meta.env.VITE_MAESTRO_API_URL || '/maestro-api',
-    headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-    }
-})
-
-// Inyectar token de sesión + headers de auditoría en cada request
-apiMaestro.interceptors.request.use((config) => {
-    config.headers = config.headers ?? {}
-
-    const token = localStorage.getItem('token')
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`
-    }
-
-    // Intentar obtener el usuario logueado desde localStorage
-    try {
-        const userStr = localStorage.getItem('user')
-        if (userStr) {
-            const user = JSON.parse(userStr)
-            config.headers['X-User'] = user.userName || 'desconocido'
-        } else {
-            config.headers['X-User'] = 'desconocido'
-        }
-    } catch {
-        config.headers['X-User'] = 'desconocido'
-    }
-
-    // Origen fijo para operaciones desde la aplicación web
-    config.headers['X-Origin'] = 'WEB_APP'
-
-    return config
-})
 
 // ─── Normalización de respuestas ─────────────────────────────────────────────
 // Esta función mapea el objeto de respuesta a las claves camelCase que espera el front.
@@ -117,7 +79,6 @@ apiMaestro.interceptors.response.use((response) => {
     return response
 })
 
-attachUnauthorizedRedirect(apiMaestro)
 
 
 export const articuloService = {

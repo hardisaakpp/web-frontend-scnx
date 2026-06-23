@@ -189,9 +189,10 @@ server {
     # =========================
     # Reposiciones
     # =========================
-    location /reposicion-api/ {
-        rewrite ^/reposicion-api(.*)$ /api$1 break;
+    location /api/reposicion-api/ {
+        rewrite ^/api/reposicion-api(.*)$ /api$1 break;
         proxy_pass ${UPSTREAM_REPOSICION};
+
         proxy_http_version 1.1;
         client_max_body_size 50M;
         proxy_connect_timeout 180s;

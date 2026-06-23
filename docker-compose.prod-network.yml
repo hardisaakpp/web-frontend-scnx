@@ -15,6 +15,7 @@ services:
       - scnexus-pyg_default
       - conciliacion-bancaria_default
       - articulomaestro_default
+      - reposiciones_default
 
 networks:
   mba3-nexus_edge:
@@ -29,3 +30,7 @@ networks:
   articulomaestro_default:
     name: articulomaestro_default
     external: true
+  reposiciones_default:
+    name: reposiciones_default
+    external: true
+
