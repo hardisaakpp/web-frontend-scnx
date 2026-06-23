@@ -1,4 +1,4 @@
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig, loadEnv, type UserConfig } from 'vite'
 
 import vue from '@vitejs/plugin-vue'
 
@@ -27,7 +27,7 @@ async function resolveActiveBackend(primary: string, fallback: string): Promise<
 
 // https://vitejs.dev/config/
 
-export default defineConfig(async ({ mode }) => {
+export default defineConfig(async ({ mode }): Promise<UserConfig> => {
 
   const env = viteEnv(mode)
 
@@ -99,7 +99,7 @@ export default defineConfig(async ({ mode }) => {
 
           secure: false,
 
-          rewrite: (path) => path.replace(/^\/mba3-api/, '')
+          rewrite: (path: string) => path.replace(/^\/mba3-api/, '')
 
         },
 
@@ -111,7 +111,7 @@ export default defineConfig(async ({ mode }) => {
 
           secure: false,
 
-          rewrite: (path) => path
+          rewrite: (path: string) => path
 
         },
 
@@ -123,7 +123,7 @@ export default defineConfig(async ({ mode }) => {
 
           secure: false,
 
-          rewrite: (path) => path
+          rewrite: (path: string) => path
 
         },
 
@@ -135,7 +135,7 @@ export default defineConfig(async ({ mode }) => {
 
           secure: false,
 
-          rewrite: (path) => path
+          rewrite: (path: string) => path
 
         },
 
@@ -147,7 +147,7 @@ export default defineConfig(async ({ mode }) => {
 
           secure: false,
 
-          rewrite: (path) => path
+          rewrite: (path: string) => path
 
         },
 
@@ -159,7 +159,7 @@ export default defineConfig(async ({ mode }) => {
 
           secure: false,
 
-          rewrite: (path) => path.replace(/^\/api\/mba3/, '')
+          rewrite: (path: string) => path.replace(/^\/api\/mba3/, '')
 
         },
 
@@ -171,7 +171,7 @@ export default defineConfig(async ({ mode }) => {
 
           secure: false,
 
-          rewrite: (path) => path
+          rewrite: (path: string) => path
 
         },
 
@@ -183,7 +183,7 @@ export default defineConfig(async ({ mode }) => {
 
           secure: false,
 
-          rewrite: (path) => path.replace(/^\/caja-chica-api/, '/api')
+          rewrite: (path: string) => path.replace(/^\/caja-chica-api/, '/api')
 
         },
 
@@ -195,7 +195,7 @@ export default defineConfig(async ({ mode }) => {
 
           secure: false,
 
-          rewrite: (path) => path.replace(/^\/pyg-api/, pygProxyPrefix || '')
+          rewrite: (path: string) => path.replace(/^\/pyg-api/, pygProxyPrefix || '')
 
         },
 
@@ -207,7 +207,7 @@ export default defineConfig(async ({ mode }) => {
 
           secure: false,
 
-          rewrite: (path) => path.replace(/^\/slayer-api/, '/api')
+          rewrite: (path: string) => path.replace(/^\/slayer-api/, '/api')
 
         },
 
@@ -219,7 +219,7 @@ export default defineConfig(async ({ mode }) => {
 
           secure: false,
 
-          rewrite: (path) => path
+          rewrite: (path: string) => path
 
         },
 
@@ -231,7 +231,7 @@ export default defineConfig(async ({ mode }) => {
 
           secure: false,
 
-          rewrite: (path) => path.replace(/^\/employees-api/, '/api')
+          rewrite: (path: string) => path.replace(/^\/employees-api/, '/api')
 
         },
 
@@ -243,7 +243,7 @@ export default defineConfig(async ({ mode }) => {
 
           secure: false,
 
-          rewrite: (path) => path.replace(/^\/conciliacion-api/, '')
+          rewrite: (path: string) => path.replace(/^\/conciliacion-api/, '')
 
         },
 
@@ -255,7 +255,7 @@ export default defineConfig(async ({ mode }) => {
 
           secure: false,
 
-          rewrite: (path) => path.replace(/^\/maestro-api/, '')
+          rewrite: (path: string) => path.replace(/^\/maestro-api/, '')
 
         },
 
@@ -267,7 +267,7 @@ export default defineConfig(async ({ mode }) => {
 
           secure: false,
 
-          rewrite: (path) => path.replace(/^\/scan-api/, '')
+          rewrite: (path: string) => path.replace(/^\/scan-api/, '')
 
         },
 
@@ -279,7 +279,7 @@ export default defineConfig(async ({ mode }) => {
 
           secure: false,
 
-          rewrite: (path) => path.replace(/^\/inventario-api/, '')
+          rewrite: (path: string) => path.replace(/^\/inventario-api/, '')
 
         },
 
@@ -291,7 +291,7 @@ export default defineConfig(async ({ mode }) => {
 
           secure: false,
 
-          rewrite: (path) => path.replace(/^\/promocion-sobres-api/, '')
+          rewrite: (path: string) => path.replace(/^\/promocion-sobres-api/, '')
 
         },
 
@@ -303,7 +303,7 @@ export default defineConfig(async ({ mode }) => {
 
           secure: false,
 
-          rewrite: (path) => path.replace(/^\/transacciones-api/, '')
+          rewrite: (path: string) => path.replace(/^\/transacciones-api/, '')
 
         }
 

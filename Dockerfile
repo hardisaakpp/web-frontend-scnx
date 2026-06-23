@@ -31,6 +31,7 @@ ARG INVENTARIO_UPSTREAM=http://host.docker.internal:8082
 ARG CONCILIACION_UPSTREAM=http://host.docker.internal:8005
 ARG MAESTRO_UPSTREAM=http://host.docker.internal:8001
 ARG SLAYER_UPSTREAM=http://192.168.2.153:8093
+ARG TRANSACCIONES_UPSTREAM=http://host.docker.internal:8080
 
 COPY deploy/nginx/scnexus-docker.conf.template /tmp/scnexus-docker.conf.template
 RUN sed -e "s|__MBA3_UPSTREAM__|${MBA3_UPSTREAM}|g" \
@@ -45,6 +46,7 @@ RUN sed -e "s|__MBA3_UPSTREAM__|${MBA3_UPSTREAM}|g" \
         -e "s|__CONCILIACION_UPSTREAM__|${CONCILIACION_UPSTREAM}|g" \
         -e "s|__MAESTRO_UPSTREAM__|${MAESTRO_UPSTREAM}|g" \
         -e "s|__SLAYER_UPSTREAM__|${SLAYER_UPSTREAM}|g" \
+        -e "s|__TRANSACCIONES_UPSTREAM__|${TRANSACCIONES_UPSTREAM}|g" \
         /tmp/scnexus-docker.conf.template > /etc/nginx/conf.d/default.conf \
     && rm /tmp/scnexus-docker.conf.template
 

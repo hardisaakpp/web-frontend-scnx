@@ -23,6 +23,7 @@ services:
         CONCILIACION_UPSTREAM: ${UPSTREAM_CONCILIACION:-${CONCILIACION_UPSTREAM:-http://host.docker.internal:8005}}
         MAESTRO_UPSTREAM: ${UPSTREAM_MAESTRO:-${MAESTRO_UPSTREAM:-http://host.docker.internal:8001}}
         SLAYER_UPSTREAM: ${UPSTREAM_SLAYER:-${SLAYER_UPSTREAM:-http://host.docker.internal:8093}}
+        TRANSACCIONES_UPSTREAM: ${UPSTREAM_TRANSACCIONES:-${TRANSACCIONES_UPSTREAM:-http://host.docker.internal:8080}}
     image: scnexus-front:latest
     container_name: scnexus-front
     env_file:

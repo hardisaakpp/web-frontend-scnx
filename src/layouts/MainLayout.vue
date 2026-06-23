@@ -226,7 +226,7 @@
 
         <!-- Transacciones -->
         <router-link
-          v-if="hasModuleAccess('cajero') || hasModuleAccess('tesoreria')"
+          v-if="hasModuleAccess('transacciones')"
           to="/transacciones"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{

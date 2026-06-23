@@ -15,24 +15,78 @@
         <!-- Body -->
         <div class="px-6 py-4 space-y-4" v-if="transaccion">
           <!-- Detalles solo lectura -->
-          <div class="grid grid-cols-2 gap-3 text-sm bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
-            <div>
-              <span class="text-xs text-gray-500 dark:text-gray-400">Referencia</span>
-              <p class="font-mono font-medium text-gray-900 dark:text-white">{{ transaccion.referenciaTransaccion }}</p>
-            </div>
-            <div>
-              <span class="text-xs text-gray-500 dark:text-gray-400">Monto</span>
-              <p class="font-semibold" :class="transaccion.signo === '+' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'">
-                {{ transaccion.signo }}{{ formatMonto(transaccion.valorMontoTotal) }}
+          <div class="grid grid-cols-2 gap-3 text-sm bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3 max-h-72 overflow-y-auto">
+            <!-- Monto destacado -->
+            <div class="col-span-2 text-center pb-2 border-b border-gray-200 dark:border-gray-700">
+              <span class="text-sm font-medium text-gray-500 dark:text-gray-400">Monto</span>
+              <p class="text-3xl font-bold mt-0.5" :class="transaccion.signo === 'C' ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'">
+                {{ transaccion.signo === 'C' ? '+' : '-' }}{{ formatMonto(transaccion.valorMontoTotal) }}
               </p>
             </div>
+            <!-- Referencia -->
             <div>
-              <span class="text-xs text-gray-500 dark:text-gray-400">Tipo</span>
-              <p class="text-gray-900 dark:text-white">{{ transaccion.tipoTransaccion }}</p>
+              <span class="text-xs text-gray-500 dark:text-gray-400">Referencia</span>
+              <p class="font-mono font-medium text-gray-900 dark:text-white truncate">{{ transaccion.referenciaTransaccion }}</p>
             </div>
             <div>
-              <span class="text-xs text-gray-500 dark:text-gray-400">Fecha</span>
+              <span class="text-xs text-gray-500 dark:text-gray-400">Referencia 2</span>
+              <p class="font-mono text-gray-700 dark:text-gray-300 truncate">{{ transaccion.referenciaTransaccion2 || '—' }}</p>
+            </div>
+            <!-- Tipo y Estado -->
+            <div>
+              <span class="text-xs text-gray-500 dark:text-gray-400">Tipo</span>
+              <p class="text-gray-900 dark:text-white">{{ transaccion.tipoTransaccion || '—' }}</p>
+            </div>
+            <div>
+              <span class="text-xs text-gray-500 dark:text-gray-400">Estado</span>
+              <p class="text-gray-900 dark:text-white">{{ transaccion.estado }}</p>
+            </div>
+            <!-- Fechas -->
+            <div>
+              <span class="text-xs text-gray-500 dark:text-gray-400">Fecha Proceso</span>
               <p class="text-gray-900 dark:text-white">{{ formatFecha(transaccion.fechaProceso) }}</p>
+            </div>
+            <div>
+              <span class="text-xs text-gray-500 dark:text-gray-400">Fecha Ingreso</span>
+              <p class="text-gray-900 dark:text-white">{{ formatFecha(transaccion.fechaIngreso) }}</p>
+            </div>
+            <div>
+              <span class="text-xs text-gray-500 dark:text-gray-400">Fecha Mod.</span>
+              <p class="text-gray-700 dark:text-gray-300">{{ transaccion.fechaModificacion ? formatFecha(transaccion.fechaModificacion) : '—' }}</p>
+            </div>
+            <div>
+              <span class="text-xs text-gray-500 dark:text-gray-400">Almacén</span>
+              <p class="text-gray-700 dark:text-gray-300">{{ transaccion.codigoAlmacen || '—' }}</p>
+            </div>
+            <!-- Descripciones -->
+            <div class="col-span-2">
+              <span class="text-xs text-gray-500 dark:text-gray-400">Descripción</span>
+              <p class="text-gray-900 dark:text-white">{{ transaccion.descripcionTransaccion || '—' }}</p>
+            </div>
+            <div class="col-span-2">
+              <span class="text-xs text-gray-500 dark:text-gray-400">Causal</span>
+              <p class="text-gray-700 dark:text-gray-300">{{ transaccion.descripcionCausal || '—' }}</p>
+            </div>
+            <div class="col-span-2">
+              <span class="text-xs text-gray-500 dark:text-gray-400">Transferencia</span>
+              <p class="text-gray-700 dark:text-gray-300">{{ transaccion.descripcionTransferencia || '—' }}</p>
+            </div>
+            <!-- Nombres -->
+            <div>
+              <span class="text-xs text-gray-500 dark:text-gray-400">Oficina</span>
+              <p class="text-gray-700 dark:text-gray-300">{{ transaccion.nombreOficina || '—' }}</p>
+            </div>
+            <div>
+              <span class="text-xs text-gray-500 dark:text-gray-400">Beneficiario</span>
+              <p class="text-gray-700 dark:text-gray-300">{{ transaccion.nombreBeneficiario || '—' }}</p>
+            </div>
+            <div>
+              <span class="text-xs text-gray-500 dark:text-gray-400">Establecimiento</span>
+              <p class="text-gray-700 dark:text-gray-300">{{ transaccion.nombreEstablecimiento || '—' }}</p>
+            </div>
+            <div>
+              <span class="text-xs text-gray-500 dark:text-gray-400">Cód. Reverso</span>
+              <p class="font-mono text-gray-700 dark:text-gray-300">{{ transaccion.codigoReverso || '—' }}</p>
             </div>
           </div>
 
@@ -110,6 +164,7 @@ const props = defineProps<{
   transaccion: Transaccion | null
   tiendas: OpcionTienda[]
   cargando: boolean
+  codAlmacenDefault?: string
 }>()
 
 const emit = defineEmits<{
@@ -121,7 +176,9 @@ const codVendedorLocal = ref('')
 const tiendaSeleccionada = ref('')
 
 watch(() => props.visible, (visible) => {
-  if (!visible) {
+  if (visible) {
+    tiendaSeleccionada.value = props.codAlmacenDefault ?? ''
+  } else {
     codVendedorLocal.value = ''
     tiendaSeleccionada.value = ''
   }
