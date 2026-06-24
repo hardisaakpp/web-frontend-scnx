@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAdminStore } from '../../stores/adminStore'
 import type { CrearCampanaDTO, EstadoCampana, SegmentoCliente, Campana } from '../../types'
-import VolverButton from '../../components/VolverButton.vue'
+import VolverButton from '@/components/VolverButton.vue'
 
 const store  = useAdminStore()
 const router = useRouter()

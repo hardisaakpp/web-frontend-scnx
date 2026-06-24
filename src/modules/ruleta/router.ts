@@ -8,6 +8,7 @@ const routes: RouteRecordRaw[] = [
     meta: {
       title: 'Ruleta',
       requiresAuth: true,
+      icon: 'SparklesIcon',
       permissions: ['ruleta.view', 'ruleta.enrolar', 'ruleta.supervisar', 'ruleta.administrar']
     }
   },

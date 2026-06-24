@@ -21,9 +21,6 @@ import promocionSobresRoutes from '../modules/promocion-sobres/router'
 import reposicionesRoutes from '../modules/reposiciones/router'
 import ruletaRoutes from '../modules/ruleta/router'
 
-console.log('🔍 DEBUG usuariosRoutes:', usuariosRoutes)
-console.log('🔍 DEBUG cajaChicaRoutes:', cajaChicaRoutes)
-
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [

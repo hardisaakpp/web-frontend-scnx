@@ -8,7 +8,7 @@ declare global {
 }
 
 export function getEnv(key: string, defaultValue = ''): string {
-  if (typeof window !== 'undefined' && window.CONFIG && window.CONFIG[key]) {
+  if (typeof window !== 'undefined' && window.CONFIG?.[key]) {
     return window.CONFIG[key];
   }
   return import.meta.env[key] || defaultValue;

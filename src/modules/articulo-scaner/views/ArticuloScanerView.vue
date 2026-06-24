@@ -100,9 +100,9 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue'
-import WarehouseSelect from '../components/WarehouseSelect.vue'
+import WarehouseSelect from '@/components/WarehouseSelect.vue'
 import ManualCodeInput from '../components/ManualCodeInput.vue'
-import ScannerPanel from '../components/ScannerPanel.vue'
+import ScannerPanel from '@/components/ScannerPanel.vue'
 import ArticleInfoModal from '../components/ArticleInfoModal.vue'
 import { useArticuloScanStore } from '../stores/articuloScanStore'
 import { useAuthStore } from '../../../stores/auth'

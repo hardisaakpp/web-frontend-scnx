@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useAdminStore } from '../../stores/adminStore'
 import { ruletaService } from '../../services/ruletaApi'
-import VolverButton from '../../components/VolverButton.vue'
+import VolverButton from '@/components/VolverButton.vue'
 
 const store = useAdminStore()
 const TODOS = 'todos'

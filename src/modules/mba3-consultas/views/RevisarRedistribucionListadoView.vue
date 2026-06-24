@@ -335,8 +335,8 @@ import type {
   PedidoCompleto,
 } from '../types'
 import { formatDate, formatDateTime } from '../utils/formatters'
-import OdcSapVolverButton from '../components/OdcSapVolverButton.vue'
-import QuickTablePagination from '../components/QuickTablePagination.vue'
+import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
+import QuickTablePagination from '@/components/QuickTablePagination.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
 

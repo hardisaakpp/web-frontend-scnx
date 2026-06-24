@@ -1,4 +1,5 @@
 import type { PromocionSobresErrorCode, UiError } from '../../types'
+import { correlationFromResponseHeaders } from '@/utils/apiErrorMapper'
 
 type ApiErrorBody = {
   success?: boolean
@@ -10,32 +11,14 @@ type ApiErrorBody = {
   correlationId?: string | null
 }
 
-type AxiosLikeError = {
+type PromocionAxiosError = {
   response?: {
     status?: number
     data?: ApiErrorBody
-    headers?: Record<string, string>
+    headers?: unknown
   }
   code?: string
   message?: string
-}
-
-function extractBackendErrorCode(body?: ApiErrorBody): string {
-  if (!body) return ''
-  const raw = body.error_code ?? body.errorCode
-  return typeof raw === 'string' ? raw.trim() : ''
-}
-
-function extractCorrelationId(body?: ApiErrorBody, headers?: Record<string, string>): string | undefined {
-  const fromBody = body?.correlation_id ?? body?.correlationId
-  if (typeof fromBody === 'string' && fromBody.trim()) return fromBody.trim()
-  return correlationFromHeaders(headers)
-}
-
-function looksLikeEscaneoDuplicado(message: string | null): boolean {
-  if (!message) return false
-  const normalized = message.toLowerCase()
-  return normalized.includes('validado') || normalized.includes('finalizado')
 }
 
 const ERROR_MESSAGES: Record<PromocionSobresErrorCode, string> = {
@@ -46,13 +29,25 @@ const ERROR_MESSAGES: Record<PromocionSobresErrorCode, string> = {
     'El codigo escaneado no coincide con el codigo de validacion registrado para este cliente.',
   IDENTIFICACION_INVALIDA: 'La cédula ingresada no es válida.',
   VALIDATION_ERROR: 'Los datos enviados no son válidos.',
-  UNKNOWN: 'No se pudo completar la operación.'
+  UNKNOWN: 'No se pudo completar la operación.',
 }
 
-function correlationFromHeaders(headers?: Record<string, string>): string | undefined {
-  if (!headers) return undefined
-  const entry = Object.entries(headers).find(([key]) => key.toLowerCase() === 'x-correlation-id')
-  return entry?.[1]
+function extractBackendErrorCode(body?: ApiErrorBody): string {
+  if (!body) return ''
+  const raw = body.error_code ?? body.errorCode
+  return typeof raw === 'string' ? raw.trim() : ''
+}
+
+function extractCorrelationId(body?: ApiErrorBody, headers?: unknown): string | undefined {
+  const fromBody = body?.correlation_id ?? body?.correlationId
+  if (typeof fromBody === 'string' && fromBody.trim()) return fromBody.trim()
+  return correlationFromResponseHeaders(headers)
+}
+
+function looksLikeEscaneoDuplicado(message: string | null): boolean {
+  if (!message) return false
+  const normalized = message.toLowerCase()
+  return normalized.includes('validado') || normalized.includes('finalizado')
 }
 
 function mapKnownBackendCode(
@@ -62,15 +57,50 @@ function mapKnownBackendCode(
 ): UiError | null {
   const code = backendCode.toUpperCase() as PromocionSobresErrorCode
   if (!(code in ERROR_MESSAGES)) return null
-  return {
-    code,
-    message: backendMessage ?? ERROR_MESSAGES[code],
-    correlationId
+  return { code, message: backendMessage ?? ERROR_MESSAGES[code], correlationId }
+}
+
+function mapByStatus(
+  status: number | undefined,
+  backendMessage: string | null,
+  correlationId: string | undefined
+): UiError | null {
+  if (status === 404) {
+    return { code: 'NO_ENCONTRADO', message: backendMessage ?? ERROR_MESSAGES.NO_ENCONTRADO, correlationId }
   }
+  if (status === 409) {
+    const code = looksLikeEscaneoDuplicado(backendMessage) ? 'ESCANEO_DUPLICADO' : 'YA_ENTREGADO'
+    return { code, message: backendMessage ?? ERROR_MESSAGES[code], correlationId }
+  }
+  if (status === 403) {
+    return {
+      code: 'FORBIDDEN',
+      message: backendMessage ?? 'Sin permiso. Entrega: promocion.sobres.operate. Monitoreo: boton-monitorear.view.',
+      correlationId,
+    }
+  }
+  if (status === 401) {
+    return {
+      code: 'BAD_REQUEST',
+      message: backendMessage ?? 'Sesión no válida o token ausente. Inicia sesión o habilita DevBypass en el API.',
+      correlationId,
+    }
+  }
+  if (status === 400) {
+    return {
+      code: 'BAD_REQUEST',
+      message: backendMessage ?? 'Solicitud inválida. Verifica los datos e intenta de nuevo.',
+      correlationId,
+    }
+  }
+  if (status && status >= 500) {
+    return { code: 'SERVER', message: backendMessage ?? 'Error interno del servidor. Intenta más tarde.', correlationId }
+  }
+  return null
 }
 
 export function mapPromocionSobresApiError(error: unknown): UiError {
-  const err = error as AxiosLikeError
+  const err = error as PromocionAxiosError
   const status = err.response?.status
   const body = err.response?.data
   const correlationId = extractCorrelationId(body, err.response?.headers)
@@ -82,82 +112,20 @@ export function mapPromocionSobresApiError(error: unknown): UiError {
     if (mapped) return mapped
   }
 
-  if (status === 404) {
-    return {
-      code: 'NO_ENCONTRADO',
-      message: backendMessage ?? ERROR_MESSAGES.NO_ENCONTRADO,
-      correlationId
-    }
-  }
-
-  if (status === 409) {
-    if (looksLikeEscaneoDuplicado(backendMessage)) {
-      return {
-        code: 'ESCANEO_DUPLICADO',
-        message: backendMessage ?? ERROR_MESSAGES.ESCANEO_DUPLICADO,
-        correlationId
-      }
-    }
-    return {
-      code: 'YA_ENTREGADO',
-      message: backendMessage ?? ERROR_MESSAGES.YA_ENTREGADO,
-      correlationId
-    }
-  }
-
-  if (status === 403) {
-    return {
-      code: 'FORBIDDEN',
-      message:
-        backendMessage ??
-        'Sin permiso. Entrega: promocion.sobres.operate. Monitoreo: boton-monitorear.view.',
-      correlationId
-    }
-  }
-
-  if (status === 401) {
-    return {
-      code: 'BAD_REQUEST',
-      message: backendMessage ?? 'Sesión no válida o token ausente. Inicia sesión o habilita DevBypass en el API.',
-      correlationId
-    }
-  }
-
-  if (status === 400) {
-    return {
-      code: 'BAD_REQUEST',
-      message: backendMessage ?? 'Solicitud inválida. Verifica los datos e intenta de nuevo.',
-      correlationId
-    }
-  }
+  const byStatus = mapByStatus(status, backendMessage, correlationId)
+  if (byStatus) return byStatus
 
   if (err.code === 'ECONNABORTED') {
-    return {
-      code: 'TIMEOUT',
-      message: 'El servidor tardó demasiado. Intenta nuevamente.',
-      correlationId
-    }
+    return { code: 'TIMEOUT', message: 'El servidor tardó demasiado. Intenta nuevamente.', correlationId }
   }
 
   if (!err.response) {
     return {
       code: 'NETWORK',
       message: 'No hay conexión con el servicio de promoción. Verifica tu red o el proxy de desarrollo.',
-      correlationId
+      correlationId,
     }
   }
 
-  if (status && status >= 500) {
-    return {
-      code: 'SERVER',
-      message: backendMessage ?? 'Error interno del servidor. Intenta más tarde.',
-      correlationId
-    }
-  }
-
-  return {
-    code: 'UNKNOWN',
-    message: backendMessage ?? err.message ?? ERROR_MESSAGES.UNKNOWN,
-    correlationId
-  }
+  return { code: 'UNKNOWN', message: backendMessage ?? err.message ?? ERROR_MESSAGES.UNKNOWN, correlationId }
 }

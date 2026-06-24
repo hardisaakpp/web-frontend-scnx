@@ -409,7 +409,9 @@ import {
   DocumentArrowUpIcon,
   QrCodeIcon,
   IdentificationIcon,
-  GiftIcon
+  GiftIcon,
+  SparklesIcon,
+  ShoppingCartIcon
 } from '@heroicons/vue/24/outline'
 import { Pin, PinOff } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth'
@@ -417,7 +419,7 @@ import { useThemeStore } from '../stores/theme'
 import ToastContainer from '../components/ToastContainer.vue'
 import { useNotificaciones } from '@/composables/useNotificaciones'
 import { useOdcSapVolver } from '@/composables/useOdcSapVolver'
-import OdcSapVolverButton from '@/modules/mba3-consultas/components/OdcSapVolverButton.vue'
+import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
 import {
   hasPromocionSobresUiPermission,
   promocionSobresDefaultPath

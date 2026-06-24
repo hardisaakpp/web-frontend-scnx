@@ -4,7 +4,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useRuletaStore } from '../stores/ruletaStore'
 import { useTemaStore } from '../stores/temaStore'
 import SeleccionTiendaModal from '../components/SeleccionTiendaModal.vue'
-import VolverButton from '../components/VolverButton.vue'
+import VolverButton from '@/components/VolverButton.vue'
 import RuletaWheel from '../components/RuletaWheel.vue'
 import PremioModal from '../components/PremioModal.vue'
 import type { Tienda } from '../types'
@@ -323,7 +323,10 @@ function onCerrarPremio() {
                :style="`background: ${tema.color_hub_acento}1A`" />
         </div>
 
-        <!-- (Logo One Card Eliminado por solicitud del usuario) -->
+        <!-- Logo One Card -->
+        <div class="relative z-10 flex justify-center w-full">
+          <img src="/LOGO-ONE-CARD_03.png" alt="One Card Logo" class="h-10 sm:h-14 md:h-16 drop-shadow-lg object-contain" />
+        </div>
 
         <!-- Rueda grande -->
         <Transition name="fs-wheel" appear>

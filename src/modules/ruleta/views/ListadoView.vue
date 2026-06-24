@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRuletaStore } from '../stores/ruletaStore'
-import VolverButton from '../components/VolverButton.vue'
+import VolverButton from '@/components/VolverButton.vue'
 
 const store = useRuletaStore()
 const searchInput = ref('')

@@ -4,6 +4,7 @@
       <ComboboxButton as="div" class="relative w-full cursor-default overflow-hidden rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-left focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 transition-all sm:text-sm">
         <ComboboxInput
           class="w-full border-none py-2 pl-3 pr-10 text-sm leading-5 text-gray-900 dark:text-white bg-transparent focus:ring-0 outline-none"
+          :id="inputId"
           :displayValue="(opt: any) => opt?.nombre || ''"
           @change="query = $event.target.value"
           @focus="$event.target.select()"
@@ -93,6 +94,7 @@ const props = defineProps<{
   disabled?: boolean
   required?: boolean
   valueKey?: keyof Option
+  inputId?: string
 }>()
 
 const emit = defineEmits(['update:modelValue', 'change'])

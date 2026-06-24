@@ -15,7 +15,7 @@ import { ENV } from '@/config/env'
 // ─── Helpers internos ────────────────────────────────────────────────────────
 
 function getStoredToken(): string | null {
-  return localStorage.getItem('token') || sessionStorage.getItem('token')
+  return localStorage.getItem('token') ?? sessionStorage.getItem('token')
 }
 
 function getCurrentUserName(): string {
@@ -23,7 +23,7 @@ function getCurrentUserName(): string {
     const raw = localStorage.getItem('user')
     if (!raw) return 'desconocido'
     const user = JSON.parse(raw) as { userName?: string }
-    return user.userName || 'desconocido'
+    return user.userName ?? 'desconocido'
   } catch {
     return 'desconocido'
   }
@@ -90,7 +90,7 @@ export function createModuleApi(baseURL: string, opts: ModuleApiOptions = {}): R
 
       return config
     },
-    (error) => Promise.reject(error),
+    (error: Error) => Promise.reject(error),
   )
 
   // ── 401 → redirect a login ───────────────────────────────────────────────
