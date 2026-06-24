@@ -1,8 +1,12 @@
 FROM node:20-alpine AS build
+
+LABEL stage=build
+LABEL project="web-scnexus"
+
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci && npm cache clean --force
 
 COPY . .
 
@@ -16,6 +20,9 @@ ENV VITE_APP_BASE_PATH=${VITE_APP_BASE_PATH}
 RUN npm run build
 
 FROM nginx:1.27-alpine AS runtime
+
+LABEL maintainer="Jose"
+LABEL description="Runtime image for SCNexus Frontend"
 
 # Entrypoint: sustituye UPSTREAM_* en el template y arranca nginx.
 # Los upstreams llegan como variables de entorno desde docker compose (active.env).
@@ -32,4 +39,3 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
 
 EXPOSE 80
 ENTRYPOINT ["/docker-entrypoint.sh"]
-

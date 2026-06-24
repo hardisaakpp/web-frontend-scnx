@@ -43,11 +43,11 @@ function normalizeObject(obj: any): any {
 
     Object.entries(criticalMappings).forEach(([camelKey, variations]) => {
         // Solo si la clave camelCase no tiene valor (o es null)
-        if (normalized[camelKey] === undefined || normalized[camelKey] === null) {
+        if (normalized[camelKey] == null) {
             for (const v of variations) {
                 // Probar variación exacta y también con posibles espacios al final (caso raro visto en logs)
                 const val = obj[v] ?? obj[`${v} `]
-                if (val !== undefined && val !== null) {
+                if (val != null) {
                     normalized[camelKey] = val
                     break
                 }
@@ -68,7 +68,7 @@ apiMaestro.interceptors.response.use((response) => {
     if (data) {
         if (Array.isArray(data)) {
             response.data = data.map(normalizeObject)
-        } else if (data.items && Array.isArray(data.items)) {
+        } else if (Array.isArray(data?.items)) {
             // Nueva estructura: { total: number, items: Articulo[] }
             data.items = data.items.map(normalizeObject)
             response.data = normalizeObject(data)
@@ -167,14 +167,14 @@ export const articuloService = {
             type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         })
 
-        const url = window.URL.createObjectURL(blob)
+        const url = globalThis.URL.createObjectURL(blob)
         const link = document.createElement('a')
         link.href = url
         link.setAttribute('download', 'plantilla_articulos.xlsx')
         document.body.appendChild(link)
         link.click()
         link.remove()
-        window.URL.revokeObjectURL(url)
+        globalThis.URL.revokeObjectURL(url)
     },
 
     // Carga masiva de artículos desde archivo Excel
@@ -196,8 +196,8 @@ export const articuloService = {
             // o el backend puede retornarla directamente como { mensaje, errores }
             const errorPayload = data?.errores ? data : data?.detail
 
-            // Si el backend respondió con la estructura de validación "todo o nada"
-            if (errorPayload && errorPayload.errores && Array.isArray(errorPayload.errores)) {
+            // Si el backend respondió con la estructura de validación "all-or-nothing"
+            if (Array.isArray(errorPayload?.errores)) {
                 return {
                     success: false,
                     mensaje: errorPayload.mensaje || 'Errores de validación en el archivo.',
@@ -384,10 +384,16 @@ export interface SapSyncResponse {
     message: string
     tarea_id?: number
     novedades?: SapNovedad[]
-    // Mantener compatibilidad temporal si es necesario, o limpiar
+    // Compatibilidad con estructura de estadísticas antigua
     total?: number
     success_count?: number
     error_count?: number
+    error?: number
+    details?: Array<{
+        item_code: string
+        status: 'Success' | 'Error'
+        message: string
+    }>
 }
 
 export interface SapTask {

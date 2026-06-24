@@ -559,7 +559,7 @@ const tabsWithErrors = computed(() => {
     if (!form.value.itemName) errorTabs.add('general')
     if (!form.value.uIxxMarca) errorTabs.add('cat')
     if (!form.value.itemType) errorTabs.add('sap')
-    if (form.value.itemsGroupCode === null || form.value.itemsGroupCode === undefined) errorTabs.add('sap')
+    if (form.value.itemsGroupCode == null) errorTabs.add('sap')
     return errorTabs
 })
 
@@ -569,7 +569,7 @@ const validationErrorsList = computed(() => {
     if (!form.value.itemName) errors.push('Descripción Factura (Tab General)')
     if (!form.value.uIxxMarca) errors.push('Negocio (Tab Categorización)')
     if (!form.value.itemType) errors.push('Tipo de Artículo (Tab Config. SAP)')
-    if (form.value.itemsGroupCode === null || form.value.itemsGroupCode === undefined) errors.push('Grupo de Artículos (Tab Config. SAP)')
+    if (form.value.itemsGroupCode == null) errors.push('Grupo de Artículos (Tab Config. SAP)')
     return errors
 })
 
@@ -578,7 +578,7 @@ function getFirstErrorTab() {
     if (!form.value.itemName) return 'general'
     if (!form.value.uIxxMarca) return 'cat'
     if (!form.value.itemType) return 'sap'
-    if (form.value.itemsGroupCode === null || form.value.itemsGroupCode === undefined) return 'sap'
+    if (form.value.itemsGroupCode == null) return 'sap'
     return null
 }
 
@@ -805,7 +805,7 @@ onMounted(async () => {
                 const k = key as keyof typeof form.value
                 if (articulo && key in articulo) {
                     const val = (articulo as any)[key]
-                    if (val !== undefined && val !== null) {
+                    if (val != null) {
                         (form.value as any)[k] = val
                     }
                 }
@@ -876,7 +876,7 @@ async function handleSubmit() {
         // No enviar el código de artículo en el body del PATCH (se envía en la URL)
         if (key === 'itemCode' && isEdit.value) return
         
-        if (val === '' || val === null || val === undefined) return
+        if (val === '' || val == null) return
         
         // Pydantic strictness: forzar a string los campos que backend espera como texto 
         // pero que Catálogos/jerarquías pudieron asignar como número.

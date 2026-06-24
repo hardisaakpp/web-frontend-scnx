@@ -68,7 +68,7 @@ if [ -f "$TEMPLATE" ]; then
         -e "s|__MAESTRO_UPSTREAM__|${MAESTRO_UPSTREAM}|g" \
         -e "s|__REPOSICION_UPSTREAM__|${REPOSICION_UPSTREAM}|g" \
         -e "s|__SLAYER_UPSTREAM__|${SLAYER_UPSTREAM}|g" \
-        -e "s|__CAMPANAS_UPSTREAM__|${CAMPANAS_UPSTREAM}|g" \
+        -e "s|__CAMPANAS_UPSTREAM__ CAMPANAS_UPSTREAM}|g" \
         "$TEMPLATE" > "$OUTPUT"
     
     echo "Nginx config generated in $OUTPUT"
