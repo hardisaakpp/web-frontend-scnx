@@ -8,18 +8,22 @@ type InventarioApiBody = {
   error?: string
 }
 
+function resolveBodyMessage(body: InventarioApiBody): string | undefined {
+  if (body.success === false) {
+    const msg = body.message?.trim()
+    if (msg) return msg
+    if (body.error_code) return `${body.error_code}: operación no permitida.`
+  }
+  return parseBackendMessage(body) ?? undefined
+}
+
 export function mapInventarioApiError(error: unknown, fallback: string): string {
   const err = error as AxiosLikeError
   const body = err.response?.data as InventarioApiBody | undefined
 
   if (body && typeof body === 'object') {
-    if (body.success === false) {
-      const msg = body.message?.trim()
-      if (msg) return msg
-      if (body.error_code) return `${body.error_code}: operación no permitida.`
-    }
-    const backendMsg = parseBackendMessage(body as Record<string, unknown>)
-    if (backendMsg) return backendMsg
+    const msg = resolveBodyMessage(body)
+    if (msg) return msg
   }
 
   if (err.code === 'ECONNABORTED') {

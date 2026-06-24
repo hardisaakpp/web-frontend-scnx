@@ -60,6 +60,45 @@ function mapKnownBackendCode(
   return { code, message: backendMessage ?? ERROR_MESSAGES[code], correlationId }
 }
 
+function mapByStatus(
+  status: number | undefined,
+  backendMessage: string | null,
+  correlationId: string | undefined
+): UiError | null {
+  if (status === 404) {
+    return { code: 'NO_ENCONTRADO', message: backendMessage ?? ERROR_MESSAGES.NO_ENCONTRADO, correlationId }
+  }
+  if (status === 409) {
+    const code = looksLikeEscaneoDuplicado(backendMessage) ? 'ESCANEO_DUPLICADO' : 'YA_ENTREGADO'
+    return { code, message: backendMessage ?? ERROR_MESSAGES[code], correlationId }
+  }
+  if (status === 403) {
+    return {
+      code: 'FORBIDDEN',
+      message: backendMessage ?? 'Sin permiso. Entrega: promocion.sobres.operate. Monitoreo: boton-monitorear.view.',
+      correlationId,
+    }
+  }
+  if (status === 401) {
+    return {
+      code: 'BAD_REQUEST',
+      message: backendMessage ?? 'Sesión no válida o token ausente. Inicia sesión o habilita DevBypass en el API.',
+      correlationId,
+    }
+  }
+  if (status === 400) {
+    return {
+      code: 'BAD_REQUEST',
+      message: backendMessage ?? 'Solicitud inválida. Verifica los datos e intenta de nuevo.',
+      correlationId,
+    }
+  }
+  if (status && status >= 500) {
+    return { code: 'SERVER', message: backendMessage ?? 'Error interno del servidor. Intenta más tarde.', correlationId }
+  }
+  return null
+}
+
 export function mapPromocionSobresApiError(error: unknown): UiError {
   const err = error as PromocionAxiosError
   const status = err.response?.status
@@ -73,40 +112,8 @@ export function mapPromocionSobresApiError(error: unknown): UiError {
     if (mapped) return mapped
   }
 
-  if (status === 404) {
-    return { code: 'NO_ENCONTRADO', message: backendMessage ?? ERROR_MESSAGES.NO_ENCONTRADO, correlationId }
-  }
-
-  if (status === 409) {
-    if (looksLikeEscaneoDuplicado(backendMessage)) {
-      return { code: 'ESCANEO_DUPLICADO', message: backendMessage ?? ERROR_MESSAGES.ESCANEO_DUPLICADO, correlationId }
-    }
-    return { code: 'YA_ENTREGADO', message: backendMessage ?? ERROR_MESSAGES.YA_ENTREGADO, correlationId }
-  }
-
-  if (status === 403) {
-    return {
-      code: 'FORBIDDEN',
-      message: backendMessage ?? 'Sin permiso. Entrega: promocion.sobres.operate. Monitoreo: boton-monitorear.view.',
-      correlationId,
-    }
-  }
-
-  if (status === 401) {
-    return {
-      code: 'BAD_REQUEST',
-      message: backendMessage ?? 'Sesión no válida o token ausente. Inicia sesión o habilita DevBypass en el API.',
-      correlationId,
-    }
-  }
-
-  if (status === 400) {
-    return {
-      code: 'BAD_REQUEST',
-      message: backendMessage ?? 'Solicitud inválida. Verifica los datos e intenta de nuevo.',
-      correlationId,
-    }
-  }
+  const byStatus = mapByStatus(status, backendMessage, correlationId)
+  if (byStatus) return byStatus
 
   if (err.code === 'ECONNABORTED') {
     return { code: 'TIMEOUT', message: 'El servidor tardó demasiado. Intenta nuevamente.', correlationId }
@@ -118,10 +125,6 @@ export function mapPromocionSobresApiError(error: unknown): UiError {
       message: 'No hay conexión con el servicio de promoción. Verifica tu red o el proxy de desarrollo.',
       correlationId,
     }
-  }
-
-  if (status && status >= 500) {
-    return { code: 'SERVER', message: backendMessage ?? 'Error interno del servidor. Intenta más tarde.', correlationId }
   }
 
   return { code: 'UNKNOWN', message: backendMessage ?? err.message ?? ERROR_MESSAGES.UNKNOWN, correlationId }

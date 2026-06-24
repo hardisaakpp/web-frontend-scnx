@@ -217,7 +217,7 @@ watch(() => props.visible, (isVisible) => {
     return
   }
 
-  void startScannerOnOpen()
+  startScannerOnOpen().catch(() => {})
 })
 
 async function startScannerOnOpen() {

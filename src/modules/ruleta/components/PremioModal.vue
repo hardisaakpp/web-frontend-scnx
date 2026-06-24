@@ -18,7 +18,7 @@ const enviando = ref(false)
 const enviado = ref(false)
 const notificacionError = ref('')
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
+const EMAIL_REGEX = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)*\.[^\s@.]{2,}$/
 
 const mostrarCampoEmail = props.resultado.cliente.segmento === 'GRUPO_6' && !props.resultado.premio.es_vacio
 

@@ -2,6 +2,7 @@
   <div :class="embedded ? '' : 'space-y-2'">
     <label
       v-if="!embedded"
+      for="warehouse-search-input"
       class="flex items-center gap-2 text-sm font-semibold text-slate-800 dark:text-slate-100"
     >
       <span class="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200/80 bg-slate-50 text-slate-600 shadow-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300">
@@ -14,6 +15,7 @@
     <div class="relative flex flex-col gap-1">
       <div class="relative">
         <input
+          id="warehouse-search-input"
           ref="inputRef"
           v-model="searchText"
           type="text"
@@ -75,7 +77,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  (e: 'update:modelValue', value: string | null): void
+  'update:modelValue': [value: string | null]
 }>()
 
 const inputRef = ref<HTMLInputElement | null>(null)

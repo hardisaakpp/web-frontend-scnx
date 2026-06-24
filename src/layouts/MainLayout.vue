@@ -410,7 +410,8 @@ import {
   QrCodeIcon,
   IdentificationIcon,
   GiftIcon,
-  SparklesIcon
+  SparklesIcon,
+  ShoppingCartIcon
 } from '@heroicons/vue/24/outline'
 import { Pin, PinOff } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth'

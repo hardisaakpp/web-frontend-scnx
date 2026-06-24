@@ -162,7 +162,7 @@ export const useRuletaStore = defineStore('ruleta', {
         if (indexEncontrado >= 0) {
           resultado.indice_segmento = indexEncontrado
         } else {
-          resultado.indice_segmento = Math.floor(Math.random() * this.segmentos.length) // fallback
+          resultado.indice_segmento = Math.floor(Math.random() * this.segmentos.length) // NOSONAR – visual fallback index, not security-sensitive
         }
 
         this.resultadoGiro = resultado

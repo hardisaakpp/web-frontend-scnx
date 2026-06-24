@@ -16,7 +16,7 @@ mba3Api.interceptors.response.use(
   },
   (error: any) => {
     const err = error as { config?: { url?: string; method?: string }; response?: { status?: number; data?: unknown }; request?: unknown }
-    const url = err.config?.url || ''
+    const url = err.config?.url ?? ''
     const isExpected404 =
       err.response?.status === 404 &&
       (url.includes('/api/plantillas/ultimo') ||
@@ -37,8 +37,8 @@ mba3Api.interceptors.response.use(
       }
     }
 
-    if (err.response?.data && !(error as any).responseData) {
-      (error as any).responseData = err.response.data
+    if (err.response?.data && !error.responseData) {
+      error.responseData = err.response.data
     }
 
     return Promise.reject(error)

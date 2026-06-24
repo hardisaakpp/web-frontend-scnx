@@ -27,8 +27,11 @@ export function createApiClient(rawBaseUrl: string, options: ApiClientOptions = 
     onResponseError,
   } = options
 
+  let baseURL = rawBaseUrl
+  while (baseURL.endsWith('/')) baseURL = baseURL.slice(0, -1)
+
   const client = axios.create({
-    baseURL: rawBaseUrl.replace(/\/+$/, ''),
+    baseURL,
     timeout,
     headers: {
       Accept: 'application/json',
@@ -39,7 +42,7 @@ export function createApiClient(rawBaseUrl: string, options: ApiClientOptions = 
   client.interceptors.request.use(
     (config: any) => {
       const token =
-        localStorage.getItem('token') ||
+        localStorage.getItem('token') ??
         (sessionStorageFallback ? sessionStorage.getItem('token') : null)
 
       if (token && config.headers) {
@@ -60,7 +63,7 @@ export function createApiClient(rawBaseUrl: string, options: ApiClientOptions = 
         try {
           const raw = localStorage.getItem('user')
           const user = raw ? (JSON.parse(raw) as { userName?: string }) : null
-          config.headers['X-User'] = user?.userName || 'desconocido'
+          config.headers['X-User'] = user?.userName ?? 'desconocido'
         } catch {
           config.headers['X-User'] = 'desconocido'
         }
@@ -68,13 +71,13 @@ export function createApiClient(rawBaseUrl: string, options: ApiClientOptions = 
 
       return config
     },
-    (error: any) => Promise.reject(error)
+    (error: Error) => Promise.reject(error)
   )
 
   if (onResponse || onResponseError) {
     client.interceptors.response.use(
       onResponse ?? ((r: any) => r),
-      onResponseError ?? ((e: any) => Promise.reject(e))
+      onResponseError ?? ((e: Error) => Promise.reject(e))
     )
   }
 

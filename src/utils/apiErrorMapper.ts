@@ -73,6 +73,21 @@ export function extractValidationMessage(details: unknown): string | null {
   return null
 }
 
+function mapByStatus(
+  status: number | undefined,
+  backendMsg: string | null,
+  correlationId: string | undefined
+): UiError | null {
+  if (status === 400) return { code: 'BAD_REQUEST', message: backendMsg ?? 'Solicitud inválida.', correlationId }
+  if (status === 401) return { code: 'UNAUTHORIZED', message: backendMsg ?? 'Sesión no válida.', correlationId }
+  if (status === 403) return { code: 'FORBIDDEN', message: backendMsg ?? 'Sin permiso para esta operación.', correlationId }
+  if (status === 404) return { code: 'NOT_FOUND', message: backendMsg ?? 'Recurso no encontrado.', correlationId }
+  if (status === 408) return { code: 'TIMEOUT', message: 'El servidor tardó demasiado. Intenta nuevamente.', correlationId }
+  if (status === 429) return { code: 'RATE_LIMIT', message: 'Demasiadas consultas. Espera un momento e intenta de nuevo.', correlationId }
+  if (status && status >= 500) return { code: 'SERVER_ERROR', message: backendMsg ?? 'Error interno del servidor. Intenta más tarde.', correlationId }
+  return null
+}
+
 export function mapApiError(error: unknown, fallback = 'No se pudo completar la operación.'): UiError {
   const err = error as AxiosLikeError
   const status = err.response?.status
@@ -80,27 +95,9 @@ export function mapApiError(error: unknown, fallback = 'No se pudo completar la 
   const correlationId = correlationFromResponseHeaders(err.response?.headers)
   const backendMsg = parseBackendMessage(data)
 
-  if (status === 400) {
-    return { code: 'BAD_REQUEST', message: backendMsg ?? 'Solicitud inválida.', correlationId }
-  }
-  if (status === 401) {
-    return { code: 'UNAUTHORIZED', message: backendMsg ?? 'Sesión no válida.', correlationId }
-  }
-  if (status === 403) {
-    return { code: 'FORBIDDEN', message: backendMsg ?? 'Sin permiso para esta operación.', correlationId }
-  }
-  if (status === 404) {
-    return { code: 'NOT_FOUND', message: backendMsg ?? 'Recurso no encontrado.', correlationId }
-  }
-  if (status === 408) {
-    return { code: 'TIMEOUT', message: 'El servidor tardó demasiado. Intenta nuevamente.', correlationId }
-  }
-  if (status === 429) {
-    return { code: 'RATE_LIMIT', message: 'Demasiadas consultas. Espera un momento e intenta de nuevo.', correlationId }
-  }
-  if (status && status >= 500) {
-    return { code: 'SERVER_ERROR', message: backendMsg ?? 'Error interno del servidor. Intenta más tarde.', correlationId }
-  }
+  const byStatus = mapByStatus(status, backendMsg, correlationId)
+  if (byStatus) return byStatus
+
   if (err.code === 'ECONNABORTED') {
     return { code: 'TIMEOUT', message: 'El servidor tardó demasiado. Intenta nuevamente.', correlationId }
   }
