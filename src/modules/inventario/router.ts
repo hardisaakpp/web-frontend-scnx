@@ -25,6 +25,16 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/inventario/planes',
+    name: 'inventario-planes',
+    component: () => import('./views/PlanesInventarioView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Planes de Inventario',
+      permissions: INVENTARIO_VIEW_PERMISSIONS
+    }
+  },
+  {
     path: '/inventario/planificaciones',
     name: 'inventario-planificaciones',
     component: () => import('./views/PlanningWorkbenchView.vue'),
@@ -47,11 +57,29 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/inventario/sesiones',
     name: 'inventario-sesiones',
+    component: () => import('./views/SesionesInventarioView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Sesiones de Conteo',
+      permissions: INVENTARIO_VIEW_PERMISSIONS
+    }
+  },
+  {
+    path: '/inventario/sesiones/:sessionId',
+    name: 'inventario-sesion-detalle',
     component: () => import('./views/SessionCenterView.vue'),
     meta: {
       requiresAuth: true,
-      title: 'Toma / Sesiones de Inventario',
-      permissions: INVENTARIO_VIEW_PERMISSIONS
+      title: 'Toma de Inventario'
+    }
+  },
+  {
+    path: '/inventario/mis-inventarios',
+    name: 'inventario-mis-inventarios',
+    component: () => import('./views/MisInventariosView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Mis Inventarios'
     }
   },
   {

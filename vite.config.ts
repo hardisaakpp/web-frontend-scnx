@@ -51,6 +51,7 @@ export default defineConfig(async ({ mode }) => {
   const conciliacionProxyTarget = upstreamUrl(env, 'CONCILIACION')
   const articuloScanProxyTarget = upstreamUrl(env, 'SCAN')
   const inventarioProxyTarget = upstreamUrl(env, 'INVENTARIO')
+  const invPlanesProxyTarget = upstreamUrl(env, 'INV_PLANES') || upstreamUrl(env, 'INVENTARIO')
   const promocionSobresProxyTarget = upstreamUrl(env, 'PROMOCION_SOBRES')
   const slayerProxyTarget = upstreamUrl(env, 'SLAYER')
   const reposicionProxyTarget = upstreamUrl(env, 'REPOSICION')
@@ -289,6 +290,18 @@ export default defineConfig(async ({ mode }) => {
           secure: false,
 
           rewrite: (path) => path.replace(/^\/inventario-api/, '')
+
+        },
+
+        '/inv-planes-api': {
+
+          target: invPlanesProxyTarget,
+
+          changeOrigin: true,
+
+          secure: false,
+
+          rewrite: (path: string) => path.replace(/^\/inv-planes-api/, '')
 
         },
 

@@ -189,3 +189,77 @@ export interface ImportCsvResult {
   imported: number
   errors: string[]
 }
+
+// --- Nuevo sistema: inventory-plans (api-inventario /api/inventory-plans) ---
+
+export interface InventoryPlanDto {
+  planId: string
+  warehouseCode: string
+  createdByUserId: string
+  description?: string | null
+  status: 'Planned' | 'Executed'
+  plannedOpenDate: string
+  plannedCloseDate: string
+  inventorySessionId?: string | null
+  createdAt: string
+  executedAt?: string | null
+  executedByUserId?: string | null
+  filters: InventoryPlanFilterItem[]
+}
+
+export interface InventoryPlanFilterItem {
+  filterType: string
+  filterValue: string
+}
+
+export interface CreateInventoryPlanRequest {
+  warehouseCode: string
+  description?: string | null
+  plannedOpenDate: string
+  plannedCloseDate: string
+  uNv1Values?: string[]
+  uNv2Values?: string[]
+  uNv3Values?: string[]
+  uGenValues?: string[]
+  materialValues?: string[]
+  packValues?: string[]
+  coleccionValues?: string[]
+}
+
+export interface PlanFilterCatalogDto {
+  uNv1Values: string[]
+  uNv2Values: string[]
+  uNv3Values: string[]
+  uGenValues: string[]
+  materialValues: string[]
+  packValues: string[]
+  coleccionValues: string[]
+}
+
+export interface WarehouseSimpleDto {
+  code: string
+  name: string
+}
+
+export type InventorySessionStatus = 'Open' | 'Recount' | 'Closed'
+
+export interface InventorySessionPickerDto {
+  id: string
+  inventorySessionId: string
+  userId: string
+  assignedByUserId: string
+  assignedAt: string
+}
+
+export interface InventorySessionListItemDto {
+  sessionId: string
+  planId?: string | null
+  warehouseCode: string
+  warehouseName: string
+  createdByUserId: string
+  status: InventorySessionStatus
+  openedAt: string
+  closedAt?: string | null
+  description?: string | null
+  plannedCloseDate?: string | null
+}

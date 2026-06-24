@@ -43,15 +43,22 @@ const settingsUserId = computed(() => getLegacyUserIdFromToken() ?? 330)
 
 const cards = computed(() => [
   {
-    title: 'Generar / Planificar',
-    description: 'Selección de bodega, stock base con filtros level y creación/ejecución de planificaciones.',
-    to: '/inventario/planificaciones',
-    badge: 'P1',
+    title: 'Mis Inventarios',
+    description: 'Ver sesiones de conteo abiertas asignadas a tu bodega o a tu usuario. Acceso para todos.',
+    to: '/inventario/mis-inventarios',
+    badge: 'MI',
     editOnly: false
   },
   {
-    title: 'Toma y Estado de Sesión',
-    description: 'Crear sesión, conteo/reconteo, monitoreo en tiempo real, cierre de toma y consulta de snapshot.',
+    title: 'Planes de inventario',
+    description: 'Crear y ejecutar planificaciones por bodega con filtros de género, nivel y material.',
+    to: '/inventario/planes',
+    badge: 'PL',
+    editOnly: false
+  },
+  {
+    title: 'Ejecutar plan / Crear sesión',
+    description: 'Ejecutar planes pendientes o crear sesiones de conteo directo sin necesidad de plan previo.',
     to: '/inventario/sesiones',
     badge: 'S',
     editOnly: false

@@ -275,9 +275,9 @@ async function loadResults() {
 
 onMounted(async () => {
   await loadWarehouses()
-  const querySession = String(route.query.sessionId || '')
-  if (querySession) {
-    sessionId.value = querySession
+  const paramSession = String(route.params.sessionId || route.query.sessionId || '')
+  if (paramSession) {
+    sessionId.value = paramSession
     await loadStatus()
   }
 })
