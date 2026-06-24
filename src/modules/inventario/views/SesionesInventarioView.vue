@@ -3,9 +3,9 @@
     <div class="mb-6 flex items-start justify-between gap-4">
       <div>
         <p class="text-sm font-medium text-blue-600 dark:text-blue-400">Inventario</p>
-        <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Sesiones de Conteo</h1>
+        <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Toma Física</h1>
         <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-          Tomas físicas generadas. Acceso: supervisores y administradores.
+          Tomas físicas de inventario. Acceso: supervisores y administradores.
         </p>
       </div>
       <div class="flex items-center gap-2 flex-shrink-0">
@@ -15,7 +15,7 @@
         </button>
         <button type="button" class="btn-primary" @click="mostrarModal = true">
           <PlusIcon class="w-4 h-4 mr-1" />
-          Nueva sesión
+          Nueva Toma
         </button>
       </div>
     </div>
@@ -80,7 +80,7 @@
         Cargando...
       </div>
       <div v-else-if="sesionesFiltradas.length === 0" class="py-16 text-center text-sm text-gray-500 dark:text-gray-400">
-        No hay sesiones{{ filtroEstado ? ' en este estado' : '' }}.
+        No hay tomas físicas{{ filtroEstado ? ' en este estado' : '' }}.
       </div>
       <div v-else class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -90,7 +90,7 @@
               <th class="th">Descripción</th>
               <th class="th">Estado</th>
               <th class="th">Plan</th>
-              <th class="th">Sesión</th>
+              <th class="th">ID</th>
               <th class="th">Creado por</th>
               <th class="th">Apertura</th>
               <th class="th">Cierre</th>
@@ -132,12 +132,46 @@
               </td>
               <td class="td text-right whitespace-nowrap">
                 <div class="flex justify-end items-center gap-3">
+                  <!-- Cerrar Toma: solo para Reconteo -->
+                  <template v-if="s.status === 'Recount'">
+                    <template v-if="confirmandoCierre === s.sessionId">
+                      <span class="text-xs text-amber-700 dark:text-amber-300 font-medium">¿Cerrar?</span>
+                      <button
+                        type="button"
+                        class="link text-red-600 dark:text-red-400 hover:text-red-800"
+                        :disabled="cerrando === s.sessionId"
+                        @click="cerrarTomaFisica(s.sessionId)"
+                      >{{ cerrando === s.sessionId ? '...' : 'Sí' }}</button>
+                      <button
+                        type="button"
+                        class="link-muted"
+                        @click="confirmandoCierre = null"
+                      >No</button>
+                    </template>
+                    <button
+                      v-else
+                      type="button"
+                      class="link text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
+                      @click="confirmandoCierre = s.sessionId"
+                    >
+                      Cerrar Toma
+                    </button>
+                  </template>
+
+                  <button
+                    v-if="s.status !== 'Closed'"
+                    type="button"
+                    class="link text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300"
+                    @click="irAResumenSupervisor(s.sessionId)"
+                  >
+                    Resumen
+                  </button>
                   <button
                     type="button"
                     class="link"
                     @click="irASesion(s.sessionId)"
                   >
-                    {{ s.status === 'Closed' ? 'Ver snapshot' : 'Ingresar' }}
+                    {{ s.status === 'Closed' ? 'Ver detalle' : 'Ingresar' }}
                   </button>
                   <button
                     type="button"
@@ -196,6 +230,8 @@ const mostrarModal = ref(false)
 const sesionPickers = ref<InventorySessionListItemDto | null>(null)
 const linkCopiado = ref<string | null>(null)
 const filtroEstado = ref<InventorySessionStatus | null>(null)
+const confirmandoCierre = ref<string | null>(null)
+const cerrando = ref<string | null>(null)
 
 function toISODate(d: Date): string {
   return d.toISOString().slice(0, 10)
@@ -291,6 +327,26 @@ async function cargar() {
 
 function irASesion(sessionId: string) {
   router.push({ name: 'inventario-sesion-detalle', params: { sessionId } })
+}
+
+function irAResumenSupervisor(sessionId: string) {
+  router.push({ name: 'inventario-supervisor-resumen', params: { sessionId } })
+}
+
+async function cerrarTomaFisica(sessionId: string) {
+  cerrando.value = sessionId
+  error.value = null
+  try {
+    await inventarioSesionesService.closeSession(sessionId, null)
+    confirmandoCierre.value = null
+    exito.value = 'Toma física cerrada. El snapshot inmutable fue generado.'
+    setTimeout(() => { exito.value = null }, 4000)
+    await cargar()
+  } catch (e: any) {
+    error.value = e.message ?? 'Error al cerrar la toma física.'
+  } finally {
+    cerrando.value = null
+  }
 }
 
 function copiarLink(sessionId: string) {

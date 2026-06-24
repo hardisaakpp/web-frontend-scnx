@@ -310,3 +310,58 @@ export interface InventoryCountResultDto {
   countedAt: string
   round: number
 }
+
+export interface ItemValidationDto {
+  itemCode: string
+  exists: boolean
+  description?: string | null
+}
+
+export interface LevelCountDto {
+  level: string
+  lines: number
+  totalQuantity: number
+}
+
+export interface RecentCountItemDto {
+  countId: string
+  itemCode: string
+  description?: string | null
+  level1?: string | null
+  level2?: string | null
+  quantity: number
+  countedByUserId: string
+  countedAt: string
+  canDelete: boolean
+}
+
+export interface InventoryPickingSummaryDto {
+  byLevel1: LevelCountDto[]
+  byLevel2: LevelCountDto[]
+  recentCounts: RecentCountItemDto[]
+}
+
+export interface SessionUserStatDto {
+  userId: string
+  countEntries: number
+  uniqueItemsCounted: number
+  lastCountedAt: string
+}
+
+export interface SupervisorSummaryDto {
+  sessionId: string
+  warehouseCode: string
+  warehouseName: string
+  status: InventorySessionStatus
+  description?: string | null
+  openedAt: string
+  closedAt?: string | null
+  totalSystemItems: number
+  countedItems: number
+  pendingItems: number
+  balancedItems: number
+  differenceItems: number
+  newItems: number
+  canClose: boolean
+  userStats: SessionUserStatDto[]
+}

@@ -57,15 +57,15 @@ const cards = computed(() => [
     editOnly: false
   },
   {
-    title: 'Ejecutar plan / Crear sesión',
-    description: 'Ejecutar planes pendientes o crear sesiones de conteo directo sin necesidad de plan previo.',
+    title: 'Toma Física',
+    description: 'Ejecutar planes pendientes o crear tomas físicas de inventario sin necesidad de plan previo.',
     to: '/inventario/sesiones',
-    badge: 'S',
+    badge: 'TF',
     editOnly: false
   },
   {
     title: 'Bandeja de Ajustes',
-    description: 'Crear ajuste desde sesión cerrada, editar líneas, enviar a revisión, aprobar y marcar envío SAP.',
+    description: 'Crear ajuste desde toma física cerrada, editar líneas, enviar a revisión, aprobar y marcar envío SAP.',
     to: '/inventario/ajustes',
     badge: 'A',
     editOnly: false

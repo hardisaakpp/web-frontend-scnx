@@ -21,8 +21,8 @@
           <div class="text-xs text-gray-500 dark:text-gray-400">{{ enviados.length }} enviados</div>
           <div v-if="errores.length > 0" class="text-xs text-red-500">{{ errores.length }} error{{ errores.length !== 1 ? 'es' : '' }}</div>
         </div>
-        <button type="button" class="btn-secondary text-xs px-2.5 py-1.5" @click="irAlDetalle">
-          Ver estado
+        <button type="button" class="btn-secondary text-xs px-2.5 py-1.5" @click="irAlResumen">
+          Ver Resumen
         </button>
       </div>
     </div>
@@ -37,6 +37,10 @@
             Escanear código de barras
           </h2>
           <div class="flex gap-2">
+            <div class="flex items-center gap-1.5 flex-shrink-0">
+              <input v-model.number="cantidadScan" type="number" min="1" max="9999" class="qty-input" @keydown.enter.prevent="onScanEnter" />
+              <span class="text-xs text-gray-400">x</span>
+            </div>
             <input
               ref="barcodeInputRef"
               v-model="scanCode"
@@ -46,10 +50,6 @@
               autocomplete="off"
               @keydown.enter.prevent="onScanEnter"
             />
-            <div class="flex items-center gap-1.5 flex-shrink-0">
-              <span class="text-xs text-gray-400">x</span>
-              <input v-model.number="cantidadScan" type="number" min="1" max="9999" class="qty-input" />
-            </div>
           </div>
         </div>
 
@@ -67,6 +67,10 @@
           </button>
           <div v-show="mostrarManual" class="px-4 pb-4">
             <div class="flex gap-2">
+              <div class="flex items-center gap-1.5 flex-shrink-0">
+                <input v-model.number="cantidadManual" type="number" min="1" max="9999" class="qty-input" @keydown.enter.prevent="onManualEnter" />
+                <span class="text-xs text-gray-400">x</span>
+              </div>
               <input
                 v-model="manualItemCode"
                 type="text"
@@ -75,10 +79,6 @@
                 autocomplete="off"
                 @keydown.enter.prevent="onManualEnter"
               />
-              <div class="flex items-center gap-1.5 flex-shrink-0">
-                <span class="text-xs text-gray-400">x</span>
-                <input v-model.number="cantidadManual" type="number" min="1" max="9999" class="qty-input" />
-              </div>
               <button type="button" class="btn-primary text-xs px-3 py-2 flex-shrink-0" @click="onManualEnter">
                 Agregar
               </button>
@@ -172,15 +172,28 @@
             <div
               v-for="e in enviados"
               :key="e.id"
-              class="flex items-center justify-between text-xs px-3 py-1.5 rounded-lg"
-              :class="e.existe ? 'bg-green-50 dark:bg-green-900/10' : 'bg-red-50 dark:bg-red-900/10'"
+              class="flex items-center justify-between text-xs px-3 py-1.5 rounded-lg gap-2"
+              :class="{
+                'bg-green-50 dark:bg-green-900/10': e.existe === true,
+                'bg-red-50 dark:bg-red-900/10': e.existe === false,
+                'bg-gray-50 dark:bg-gray-700/20': e.existe === null
+              }"
             >
-              <span class="font-mono font-medium text-gray-900 dark:text-white">{{ e.itemCode }}</span>
+              <div class="min-w-0 flex-1">
+                <span class="font-mono font-medium text-gray-900 dark:text-white">{{ e.itemCode }}</span>
+                <span v-if="e.description" class="ml-2 text-gray-400 dark:text-gray-500 truncate hidden sm:inline">{{ e.description }}</span>
+              </div>
               <div class="flex items-center gap-2 flex-shrink-0">
                 <span class="text-gray-500 dark:text-gray-400">x{{ e.quantity }}</span>
-                <span :class="['font-medium', e.existe ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400']">
-                  {{ e.existe ? 'OK' : 'NO EXISTE CÓDIGO' }}
+                <span v-if="e.existe === null" class="text-gray-400 dark:text-gray-500 flex items-center gap-0.5">
+                  <svg class="animate-spin w-2.5 h-2.5" viewBox="0 0 24 24" fill="none">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  <span>...</span>
                 </span>
+                <span v-else-if="e.existe" class="font-medium text-green-600 dark:text-green-400">OK</span>
+                <span v-else class="font-medium text-red-600 dark:text-red-400">NO EXISTE CÓDIGO</span>
               </div>
             </div>
           </div>
@@ -209,7 +222,8 @@ interface EnviadoItem {
   id: string
   itemCode: string
   quantity: number
-  existe: boolean
+  existe: boolean | null  // null = validando en background
+  description: string | null
 }
 
 interface ErrorItem {
@@ -227,6 +241,15 @@ interface SessionInfo {
   description?: string | null
   status: InventorySessionStatus
 }
+
+interface CachedItemInfo {
+  exists: boolean
+  description: string | null
+  cachedAt: number
+}
+
+const ITEM_CACHE_PREFIX = 'inv_item_v1_'
+const ITEM_CACHE_TTL = 24 * 60 * 60 * 1000
 
 const router = useRouter()
 const route = useRoute()
@@ -248,11 +271,86 @@ const enviados = ref<EnviadoItem[]>([])
 const errores = ref<ErrorItem[]>([])
 const procesando = ref(false)
 
-const codigosEnSistema = new Set<string>()
+const validacionPendiente = new Set<string>()
+let validando = false
 
 let idCounter = 0
 function genId() {
   return `${Date.now()}-${++idCounter}`
+}
+
+function getCachedItem(itemCode: string): CachedItemInfo | null {
+  try {
+    const raw = localStorage.getItem(ITEM_CACHE_PREFIX + itemCode.toUpperCase())
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as CachedItemInfo
+    if (Date.now() - parsed.cachedAt > ITEM_CACHE_TTL) {
+      localStorage.removeItem(ITEM_CACHE_PREFIX + itemCode.toUpperCase())
+      return null
+    }
+    return parsed
+  } catch {
+    return null
+  }
+}
+
+function setCachedItem(itemCode: string, info: { exists: boolean; description: string | null }) {
+  try {
+    localStorage.setItem(ITEM_CACHE_PREFIX + itemCode.toUpperCase(), JSON.stringify({
+      ...info,
+      cachedAt: Date.now()
+    }))
+  } catch {
+    // localStorage full or unavailable — skip
+  }
+}
+
+function aplicarValidacion(itemCode: string, info: { exists: boolean; description: string | null }) {
+  for (const item of enviados.value) {
+    if (item.itemCode === itemCode && item.existe === null) {
+      item.existe = info.exists
+      item.description = info.description
+    }
+  }
+}
+
+async function procesarValidaciones() {
+  if (validando || validacionPendiente.size === 0) return
+  validando = true
+
+  while (validacionPendiente.size > 0) {
+    const [itemCode] = validacionPendiente
+    validacionPendiente.delete(itemCode)
+
+    const cached = getCachedItem(itemCode)
+    if (cached) {
+      aplicarValidacion(itemCode, cached)
+      continue
+    }
+
+    try {
+      const result = await inventarioSesionesService.validateItem(itemCode)
+      const info = { exists: result.exists, description: result.description ?? null }
+      setCachedItem(itemCode, info)
+      aplicarValidacion(itemCode, info)
+    } catch {
+      // Validation failed — item stays with existe = null (mostrar "...")
+    }
+  }
+
+  validando = false
+}
+
+function encolarValidacion(itemCode: string) {
+  const cached = getCachedItem(itemCode)
+  if (cached) {
+    aplicarValidacion(itemCode, cached)
+    return
+  }
+  if (!validacionPendiente.has(itemCode)) {
+    validacionPendiente.add(itemCode)
+    procesarValidaciones()
+  }
 }
 
 function onOnline() { online.value = true }
@@ -270,8 +368,8 @@ function volver() {
   router.push({ name: 'inventario-mis-inventarios' })
 }
 
-function irAlDetalle() {
-  router.push({ name: 'inventario-sesion-detalle', params: { sessionId } })
+function irAlResumen() {
+  router.push({ name: 'inventario-resumen-picking', params: { sessionId } })
 }
 
 async function cargarInfoSesion() {
@@ -283,11 +381,6 @@ async function cargarInfoSesion() {
       warehouseName: status.warehouseName,
       description: status.description,
       status: status.status as InventorySessionStatus
-    }
-    for (const line of status.lines) {
-      if (line.systemQuantity > 0 || line.itemDescription) {
-        codigosEnSistema.add(line.itemCode.toUpperCase())
-      }
     }
   } catch (e: any) {
     errorCarga.value = e.message ?? 'No se pudo cargar la sesión.'
@@ -323,8 +416,10 @@ async function procesarCola() {
         id: item.id,
         itemCode: item.itemCode,
         quantity: item.quantity,
-        existe: codigosEnSistema.has(item.itemCode.toUpperCase())
+        existe: null,
+        description: null
       })
+      encolarValidacion(item.itemCode)
     } catch (e: any) {
       errores.value.push({
         id: item.id,
@@ -397,22 +492,10 @@ onUnmounted(() => {
 .btn-secondary {
   @apply inline-flex items-center rounded-lg border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-60 disabled:cursor-not-allowed;
 }
-.badge {
-  @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
-}
-.badge-blue {
-  @apply bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300;
-}
-.badge-amber {
-  @apply bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300;
-}
-.badge-gray {
-  @apply bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400;
-}
-.badge-red {
-  @apply bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300;
-}
-.alert-error {
-  @apply rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-3 py-2 text-sm text-red-700 dark:text-red-300;
-}
+.badge { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium; }
+.badge-blue { @apply bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300; }
+.badge-amber { @apply bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300; }
+.badge-gray { @apply bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400; }
+.badge-red { @apply bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300; }
+.alert-error { @apply rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-3 py-2 text-sm text-red-700 dark:text-red-300; }
 </style>

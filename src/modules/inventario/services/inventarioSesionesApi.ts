@@ -6,7 +6,10 @@ import type {
   WarehouseSimpleDto,
   InventorySessionStatusDto,
   AddInventoryCountRequest,
-  InventoryCountResultDto
+  InventoryCountResultDto,
+  ItemValidationDto,
+  InventoryPickingSummaryDto,
+  SupervisorSummaryDto
 } from '../types'
 
 invPlanesApi.interceptors.response.use(
@@ -83,6 +86,30 @@ export const inventarioSesionesService = {
 
   async addCount(sessionId: string, data: AddInventoryCountRequest): Promise<InventoryCountResultDto> {
     const response = await invPlanesApi.post<InventoryCountResultDto>(`/api/inventory-sessions/${sessionId}/counts`, data)
+    return response.data
+  },
+
+  async validateItem(itemCode: string): Promise<ItemValidationDto> {
+    const response = await invPlanesApi.get<ItemValidationDto>(`/api/stock/items/${encodeURIComponent(itemCode)}`)
+    return response.data
+  },
+
+  async getPickingSummary(sessionId: string): Promise<InventoryPickingSummaryDto> {
+    const response = await invPlanesApi.get<InventoryPickingSummaryDto>(`/api/inventory-sessions/${sessionId}/picking-summary`)
+    return response.data
+  },
+
+  async deleteCount(sessionId: string, countId: string): Promise<void> {
+    await invPlanesApi.delete(`/api/inventory-sessions/${sessionId}/counts/${countId}`)
+  },
+
+  async getSupervisorSummary(sessionId: string): Promise<SupervisorSummaryDto> {
+    const response = await invPlanesApi.get<SupervisorSummaryDto>(`/api/inventory-sessions/${sessionId}/supervisor-summary`)
+    return response.data
+  },
+
+  async closeSession(sessionId: string, note?: string | null): Promise<InventorySessionStatusDto> {
+    const response = await invPlanesApi.post<InventorySessionStatusDto>(`/api/inventory-sessions/${sessionId}/close`, { note: note ?? null })
     return response.data
   }
 }

@@ -11,7 +11,7 @@
             <DialogPanel class="w-full max-w-2xl rounded-xl bg-white dark:bg-gray-800 shadow-xl">
               <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                 <DialogTitle class="text-base font-semibold text-gray-900 dark:text-white">
-                  Nueva sesión de conteo
+                  Nueva Toma Física
                 </DialogTitle>
                 <button type="button" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200" @click="cerrar">
                   <XMarkIcon class="w-5 h-5" />
@@ -96,7 +96,7 @@
                 <div class="flex justify-end gap-3 pt-2 border-t border-gray-100 dark:border-gray-700">
                   <button type="button" class="btn-secondary" @click="cerrar">Cancelar</button>
                   <button type="submit" class="btn-primary" :disabled="guardando || bodegasSeleccionadas.length === 0">
-                    {{ guardando ? 'Generando...' : `Generar ${bodegasSeleccionadas.length > 1 ? bodegasSeleccionadas.length + ' sesiones' : 'sesión'}` }}
+                    {{ guardando ? 'Generando...' : `Generar ${bodegasSeleccionadas.length > 1 ? bodegasSeleccionadas.length + ' tomas' : 'toma'}` }}
                   </button>
                 </div>
               </form>

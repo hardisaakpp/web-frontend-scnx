@@ -60,7 +60,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import('./views/SesionesInventarioView.vue'),
     meta: {
       requiresAuth: true,
-      title: 'Sesiones de Conteo',
+      title: 'Toma Física',
       permissions: INVENTARIO_VIEW_PERMISSIONS
     }
   },
@@ -70,7 +70,7 @@ const routes: RouteRecordRaw[] = [
     component: () => import('./views/SessionCenterView.vue'),
     meta: {
       requiresAuth: true,
-      title: 'Toma de Inventario'
+      title: 'Toma Física - Detalle'
     }
   },
   {
@@ -89,6 +89,24 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresAuth: true,
       title: 'Conteo - Picking'
+    }
+  },
+  {
+    path: '/inventario/sesiones/:sessionId/resumen',
+    name: 'inventario-resumen-picking',
+    component: () => import('./views/ResumenPickingView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Resumen de Picking'
+    }
+  },
+  {
+    path: '/inventario/sesiones/:sessionId/supervisor',
+    name: 'inventario-supervisor-resumen',
+    component: () => import('./views/SupervisorResumenView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Toma Física - Resumen'
     }
   },
   {

@@ -5,7 +5,7 @@
         <p class="text-sm font-medium text-blue-600 dark:text-blue-400">Inventario</p>
         <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Mis Inventarios</h1>
         <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-          Sesiones de conteo abiertas asignadas a tu bodega o a tu usuario.
+          Tomas físicas abiertas asignadas a tu bodega o a tu usuario.
         </p>
       </div>
       <button type="button" class="btn-secondary flex-shrink-0" :disabled="loading" @click="cargar">
@@ -17,12 +17,12 @@
     <div v-if="error" class="mb-4 alert-error">{{ error }}</div>
 
     <div v-if="loading && sesiones.length === 0" class="py-20 text-center text-sm text-gray-500 dark:text-gray-400">
-      Cargando sesiones...
+      Cargando...
     </div>
 
     <div v-else-if="sesiones.length === 0" class="py-20 text-center">
       <ArchiveBoxXMarkIcon class="mx-auto w-12 h-12 text-gray-300 dark:text-gray-600 mb-3" />
-      <p class="text-sm text-gray-500 dark:text-gray-400">No tienes sesiones de conteo abiertas asignadas.</p>
+      <p class="text-sm text-gray-500 dark:text-gray-400">No tienes tomas físicas abiertas asignadas.</p>
     </div>
 
     <div v-else class="space-y-3">
@@ -39,7 +39,7 @@
               <span v-if="s.planId" class="text-xs text-blue-600 dark:text-blue-400 font-mono" :title="'Plan: ' + s.planId">
                 Plan {{ s.planId.slice(0, 8) }}…
               </span>
-              <span v-else class="text-xs text-gray-400 dark:text-gray-500 italic">Sesión directa</span>
+              <span v-else class="text-xs text-gray-400 dark:text-gray-500 italic">Toma directa</span>
             </div>
 
             <h2 class="mt-2 text-base font-semibold text-gray-900 dark:text-white">
