@@ -814,7 +814,7 @@ async function cargarDatosEdicion(itemCode: string) {
         Object.keys(form.value).forEach(key => {
             const k = key as keyof typeof form.value
             if (articulo && key in articulo) {
-                const val = (articulo as Record<string, unknown>)[key]
+                const val = (articulo as unknown as Record<string, unknown>)[key]
                 if (val != null) {
                     (form.value as Record<string, unknown>)[k] = val
                 }
