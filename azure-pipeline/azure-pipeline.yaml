@@ -8,35 +8,45 @@ trigger:
       - feature/*
       - fix/*
 
+# Enrutamiento al servidor Ubuntu corporativo
 pool:
   name: 'agents-srv-test'
   demands:
     - Agent.OS -equals Linux
 
 variables:
-  - name: nodeVersion
-    value: '20.x'
-  - name: localRegistry
-    value: 'localhost:5000'
-  - name: imageRepository
-    value: 'web-scnexus'
-  - name: dockerfilePath
-    value: '$(Build.SourcesDirectory)/Dockerfile'
+  nodeVersion: '20.x'
+  
+  # Ruta al registro corporativo en la nube (ACR)
+  imageName: 'dockermg-g9hrgcc4etdrh8eg.azurecr.io/web-scnexus'
+  dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
+  npm_config_cache: $(Pipeline.Workspace)/.npm
+
+  # Lógica Declarativa de Prefijos Dinámicos y Base Path por Rama
+  ${{ if eq(variables['Build.SourceBranchName'], 'main') }}:
+    envTag: 'prod-latest'
+    uniqueTag: 'prod-$(Build.BuildId)'
+    basePath: '/'
+  ${{ elseif eq(variables['Build.SourceBranchName'], 'test') }}:
+    envTag: 'test-latest'
+    uniqueTag: 'test-$(Build.BuildId)'
+    basePath: '/scnexus-front/'
+  ${{ else }}:
+    envTag: 'none'
+    uniqueTag: 'none'
+    basePath: '/'
 
 stages:
 # =====================================================================
-# ETAPA 1: VALIDACIÓN Y PRUEBAS DEL FRONTEND (Node.js)
+# ETAPA 1: VALIDACIÓN Y PRUEBAS DEL FRONTEND (Vue 3 / TS)
 # =====================================================================
 - stage: CI_Validation
   displayName: 'Validación de Código y Tipado (Vue 3 / TS)'
   jobs:
   - job: Frontend_Checks
     displayName: 'Linting, Typecheck y Dependencias'
-
-    variables:
-      npm_config_cache: $(Pipeline.Workspace)/.npm
-
     steps:
+    
     - task: NodeTool@0
       inputs:
         versionSpec: '$(nodeVersion)'
@@ -59,49 +69,28 @@ stages:
       displayName: 'Verificar Tipado Estricto (TypeScript)'
 
 # =====================================================================
-# ETAPA 2: CONSTRUCCIÓN DOCKER MULTICAPA Y REGISTRO
-# Los upstreams ya NO se hornean aquí — el CD los inyecta en runtime
-# desde la Library (scnexus-test-env / scnexus-prod-env).
+# ETAPA 2: CONSTRUCCIÓN DOCKER MULTICAPA Y PUBLICACIÓN EN ACR
 # =====================================================================
 - stage: Build_Docker
   displayName: 'Construcción y Empaquetado Nginx'
   dependsOn: CI_Validation
-  condition: succeeded()
+  
+  # Candado de Seguridad: Solo construye Docker si pasó la Etapa 1 Y si la rama es main o test
+  condition: and(succeeded(), ne(variables.envTag, 'none'))
   jobs:
   - job: Docker_Build_Push
-    displayName: 'Generar Imagen y Enviar a Registro Intermedio'
+    displayName: 'Construir y Subir a Azure ACR'
     steps:
 
-    # Detectar rama y fijar base path + tags de imagen
     - script: |
-        BRANCH_NAME="$(Build.SourceBranchName)"
-        echo "Rama origen del build: $BRANCH_NAME"
-
-        if [ "$BRANCH_NAME" == "main" ]; then
-          echo "Configurando entorno de PRODUCCIÓN..."
-          echo "##vso[task.setvariable variable=basePath]/"
-          echo "##vso[task.setvariable variable=imageTag]prod-$(Build.BuildId)"
-          echo "##vso[task.setvariable variable=latestTag]prod-latest"
-        else
-          echo "Configurando entorno de PRUEBAS (DESA)..."
-          echo "##vso[task.setvariable variable=basePath]/scnexus-front/"
-          echo "##vso[task.setvariable variable=imageTag]test-$(Build.BuildId)"
-          echo "##vso[task.setvariable variable=latestTag]test-latest"
-        fi
-      displayName: 'Definir rama y tags de imagen'
-
-    # Construir imagen genérica — solo el base path varía entre ambientes
-    - script: |
-        echo "Construyendo imagen: $(imageTag) / $(latestTag)"
+        echo "1. Construyendo la imagen Frontend (Base Path: $(basePath), Entorno: $(envTag))..."
         docker build \
           --build-arg VITE_APP_BASE_PATH=$(basePath) \
           -f $(dockerfilePath) \
-          -t $(localRegistry)/$(imageRepository):$(imageTag) \
-          -t $(localRegistry)/$(imageRepository):$(latestTag) .
-      displayName: 'Construir Imagen Docker (Multi-stage)'
-
-    - script: |
-        echo "Publicando $(imageTag) y $(latestTag) en el Registro..."
-        docker push $(localRegistry)/$(imageRepository):$(imageTag)
-        docker push $(localRegistry)/$(imageRepository):$(latestTag)
-      displayName: 'Publicar en Registro Interno'
+          -t $(imageName):$(uniqueTag) \
+          -t $(imageName):$(envTag) .
+        
+        echo "2. Subiendo la imagen al registro corporativo en Azure..."
+        docker push $(imageName):$(uniqueTag)
+        docker push $(imageName):$(envTag)
+      displayName: 'Empaquetar Nginx y Almacenar en ACR'
