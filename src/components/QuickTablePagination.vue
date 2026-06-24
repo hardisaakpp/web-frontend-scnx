@@ -1,8 +1,7 @@
 <template>
-  <div
+  <nav
     v-if="totalPages > 1"
     class="flex flex-wrap items-center gap-1.5 sm:gap-2"
-    role="navigation"
     :aria-label="ariaLabel"
   >
     <button
@@ -90,9 +89,10 @@
         <PopoverPanel
           class="absolute right-0 bottom-full z-30 mb-2 w-[min(100vw-2rem,16rem)] origin-bottom-right rounded-xl bg-white dark:bg-gray-800 shadow-xl ring-1 ring-black/5 dark:ring-white/10 border border-gray-200 dark:border-gray-600 focus:outline-none p-3"
         >
-          <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Número de página</p>
+          <label for="jumpPageInput" class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Número de página</label>
           <div class="flex gap-2 items-center">
             <input
+              id="jumpPageInput"
               v-model.number="jumpPageDraft"
               type="number"
               :min="1"
@@ -112,7 +112,7 @@
         </PopoverPanel>
       </transition>
     </Popover>
-  </div>
+  </nav>
 </template>
 
 <script setup lang="ts">

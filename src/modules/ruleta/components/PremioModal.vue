@@ -16,6 +16,9 @@ const emit = defineEmits<{
 const correo = ref(props.resultado.cliente.correo ?? '')
 const enviando = ref(false)
 const enviado = ref(false)
+const notificacionError = ref('')
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/
 
 const mostrarCampoEmail = props.resultado.cliente.segmento === 'GRUPO_6' && !props.resultado.premio.es_vacio
 
@@ -38,6 +41,8 @@ interface ConfettiPiece {
 const confettiPieces = ref<ConfettiPiece[]>([])
 const animTypes: AnimType[] = ['a', 'b', 'c', 'd', 'e']
 
+const rnd = () => Math.random() // NOSONAR – visual animation only, not security-sensitive
+
 const palette = [
   '#FFD700', '#FFC200', '#FFE566', '#FFEC8B',   // golds
   '#FF6B6B', '#FF4757', '#FF8FA3', '#FF69B4',   // reds/pinks
@@ -52,34 +57,34 @@ onMounted(() => {
   if (!props.resultado.premio.es_vacio) {
     const shapes: ShapeType[] = ['rect', 'rect', 'circle', 'ribbon', 'star']
     confettiPieces.value = Array.from({ length: 140 }, (_, i) => {
-      const shape = shapes[Math.floor(Math.random() * shapes.length)]
+      const shape = shapes[Math.floor(rnd() * shapes.length)]
       const isRibbon = shape === 'ribbon'
       const isStar = shape === 'star'
-      let duration = 2000 + Math.random() * 2200
-      let width = 5 + Math.random() * 9
-      let height = 7 + Math.random() * 13
+      let duration = 2000 + rnd() * 2200
+      let width = 5 + rnd() * 9
+      let height = 7 + rnd() * 13
 
       if (isRibbon) {
-        duration = 3200 + Math.random() * 2200
-        width = 2 + Math.random() * 3
-        height = 18 + Math.random() * 16
+        duration = 3200 + rnd() * 2200
+        width = 2 + rnd() * 3
+        height = 18 + rnd() * 16
       } else if (isStar) {
-        duration = 2400 + Math.random() * 1600
-        width = 10 + Math.random() * 10
-        height = 10 + Math.random() * 10
+        duration = 2400 + rnd() * 1600
+        width = 10 + rnd() * 10
+        height = 10 + rnd() * 10
       }
 
       return {
         id: i,
-        x: Math.random() * 114 - 7,
-        delay: Math.random() * 1400,
+        x: rnd() * 114 - 7,
+        delay: rnd() * 1400,
         duration,
-        color: palette[Math.floor(Math.random() * palette.length)],
-        rotation: Math.random() * 360,
+        color: palette[Math.floor(rnd() * palette.length)],
+        rotation: rnd() * 360,
         width,
         height,
         shape,
-        anim: animTypes[Math.floor(Math.random() * animTypes.length)],
+        anim: animTypes[Math.floor(rnd() * animTypes.length)],
       }
     })
   }
@@ -104,7 +109,7 @@ function pieceStyle(p: ConfettiPiece): Record<string, string> {
 }
 
 const esEmailValido = computed(() =>
-  /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(correo.value.trim())
+  EMAIL_REGEX.test(correo.value.trim())
 )
 
 async function enviarNotificacion() {
@@ -113,9 +118,8 @@ async function enviarNotificacion() {
   try {
     await store.enviarNotificacion(correo.value)
     enviado.value = true
-  } catch (error) {
-    console.error('Error al enviar la notificación:', error)
-    alert('Ocurrió un error al enviar la notificación. Verifica el correo e intenta de nuevo.')
+  } catch {
+    notificacionError.value = 'Ocurrió un error al enviar la notificación. Verifica el correo e intenta de nuevo.'
   } finally {
     enviando.value = false
   }
@@ -227,6 +231,10 @@ async function enviarNotificacion() {
                   ? 'Ingresa un correo válido (ej: nombre@dominio.com).'
                   : 'Cliente no afiliado — ingresa su correo para enviarle el premio.' }}
               </p>
+              <div v-if="notificacionError" class="mt-2 flex items-center justify-between rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-3 py-2">
+                <span class="text-xs text-red-700 dark:text-red-400">{{ notificacionError }}</span>
+                <button @click="notificacionError = ''" class="text-red-500 hover:text-red-700 ml-2 text-xs font-medium">✕</button>
+              </div>
               <div v-if="enviado" class="mt-2 flex items-center gap-2 text-sm font-medium"
                    style="color: #16a34a">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">

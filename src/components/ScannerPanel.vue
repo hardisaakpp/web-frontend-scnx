@@ -58,6 +58,7 @@
                 v-if="cameras.length > 1"
                 v-model="selectedCamera"
                 :disabled="disabled || !isSupported"
+                aria-label="Seleccionar cámara"
                 class="min-w-[200px] flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-medium text-slate-900 shadow-inner dark:border-slate-600 dark:bg-slate-800 dark:text-white"
               >
                 <option v-for="camera in cameras" :key="camera.id" :value="camera.id">
@@ -206,7 +207,7 @@ watch(() => props.disabled, (isDisabled) => {
     return
   }
   if (props.visible) {
-    void startScannerOnOpen()
+    startScannerOnOpen()
   }
 })
 
