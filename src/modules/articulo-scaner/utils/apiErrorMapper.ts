@@ -24,7 +24,7 @@ function resolveBackendCode(data: any): string | undefined {
 function map400Error(
   backendCode: string | undefined,
   details: unknown,
-  backendMsg: string | undefined,
+  backendMsg: string | null | undefined,
   correlationId: string | undefined,
 ): UiError {
   const isValidation = backendCode === 'VALIDATION_ERROR' || backendCode === 'VALIDATION'
@@ -40,7 +40,7 @@ function map400Error(
 function map5xxError(
   status: number,
   backendCode: string | undefined,
-  backendMsg: string | undefined,
+  backendMsg: string | null | undefined,
   details: unknown,
   correlationId: string | undefined,
 ): UiError {
