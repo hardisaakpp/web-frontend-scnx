@@ -305,12 +305,9 @@ function setCachedItem(itemCode: string, info: { exists: boolean; description: s
   }
 }
 
-function aplicarValidacion(itemCode: string, info: { exists: boolean; description: string | null }, resolvedCode?: string) {
+function aplicarValidacion(itemCode: string, info: { exists: boolean; description: string | null }) {
   for (const item of enviados.value) {
     if (item.itemCode === itemCode && item.existe === null) {
-      if (resolvedCode && resolvedCode !== itemCode) {
-        item.itemCode = resolvedCode
-      }
       item.existe = info.exists
       item.description = info.description
     }
@@ -333,13 +330,9 @@ async function procesarValidaciones() {
 
     try {
       const result = await inventarioSesionesService.validateItem(itemCode)
-      const resolvedCode = result.itemCode
       const info = { exists: result.exists, description: result.description ?? null }
       setCachedItem(itemCode, info)
-      if (resolvedCode && resolvedCode !== itemCode) {
-        setCachedItem(resolvedCode, info)
-      }
-      aplicarValidacion(itemCode, info, resolvedCode)
+      aplicarValidacion(itemCode, info)
     } catch {
       // Validation failed — item stays with existe = null (mostrar "...")
     }
@@ -413,20 +406,33 @@ async function procesarCola() {
   while (cola.value.length > 0) {
     const item = cola.value[0]
     try {
-      await inventarioSesionesService.addCount(sessionId, {
+      const result = await inventarioSesionesService.addCount(sessionId, {
         itemCode: item.itemCode,
         quantity: item.quantity,
         source: item.source,
         scanCode: item.scanCode
       })
-      enviados.value.unshift({
-        id: item.id,
-        itemCode: item.itemCode,
-        quantity: item.quantity,
-        existe: null,
-        description: null
-      })
-      encolarValidacion(item.itemCode)
+      if (item.source === 'Scan') {
+        const resolvedCode = result.itemCode
+        const wasResolved = resolvedCode.toUpperCase() !== item.itemCode.toUpperCase()
+        enviados.value.unshift({
+          id: item.id,
+          itemCode: resolvedCode,
+          quantity: item.quantity,
+          existe: wasResolved ? null : false,
+          description: null
+        })
+        if (wasResolved) encolarValidacion(resolvedCode)
+      } else {
+        enviados.value.unshift({
+          id: item.id,
+          itemCode: item.itemCode,
+          quantity: item.quantity,
+          existe: null,
+          description: null
+        })
+        encolarValidacion(item.itemCode)
+      }
     } catch (e: any) {
       errores.value.push({
         id: item.id,
