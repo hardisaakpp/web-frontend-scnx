@@ -120,7 +120,7 @@ async function cargar() {
 }
 
 function iniciarPicking(sessionId: string) {
-  router.push({ name: 'inventario-sesion-detalle', params: { sessionId } })
+  router.push({ name: 'inventario-picking', params: { sessionId } })
 }
 
 onMounted(cargar)

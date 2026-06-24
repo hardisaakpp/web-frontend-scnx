@@ -1,6 +1,13 @@
 import { invPlanesApi } from './config/invPlanesAxiosConfig'
 import { mapInventarioApiError } from '../utils/apiErrorMapper'
-import type { InventorySessionListItemDto, InventorySessionPickerDto, WarehouseSimpleDto } from '../types'
+import type {
+  InventorySessionListItemDto,
+  InventorySessionPickerDto,
+  WarehouseSimpleDto,
+  InventorySessionStatusDto,
+  AddInventoryCountRequest,
+  InventoryCountResultDto
+} from '../types'
 
 invPlanesApi.interceptors.response.use(
   (response) => response,
@@ -66,6 +73,16 @@ export const inventarioSesionesService = {
 
   async getWarehouses(): Promise<WarehouseSimpleDto[]> {
     const response = await invPlanesApi.get<WarehouseSimpleDto[]>('/api/stock/warehouses')
+    return response.data
+  },
+
+  async getSessionStatus(sessionId: string): Promise<InventorySessionStatusDto> {
+    const response = await invPlanesApi.get<InventorySessionStatusDto>(`/api/inventory-sessions/${sessionId}/status`)
+    return response.data
+  },
+
+  async addCount(sessionId: string, data: AddInventoryCountRequest): Promise<InventoryCountResultDto> {
+    const response = await invPlanesApi.post<InventoryCountResultDto>(`/api/inventory-sessions/${sessionId}/counts`, data)
     return response.data
   }
 }

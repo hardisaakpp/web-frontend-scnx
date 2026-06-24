@@ -263,3 +263,50 @@ export interface InventorySessionListItemDto {
   description?: string | null
   plannedCloseDate?: string | null
 }
+
+export interface InventorySessionLineStatusDto {
+  itemCode: string
+  itemDescription?: string | null
+  systemQuantity: number
+  initialCountedQuantity: number
+  recountedQuantity: number
+  countedQuantity: number
+  initialDifference: number
+  recountDifference: number
+  difference: number
+  balanceStatus: string
+  entryCount: number
+}
+
+export interface InventorySessionStatusDto {
+  sessionId: string
+  warehouseCode: string
+  warehouseName: string
+  createdByUserId: string
+  status: string
+  balanceStatus: string
+  openedAt: string
+  closedAt?: string | null
+  description?: string | null
+  lines: InventorySessionLineStatusDto[]
+}
+
+export interface AddInventoryCountRequest {
+  itemCode: string
+  quantity: number
+  source: 'Manual' | 'Scan'
+  scanCode?: string | null
+}
+
+export interface InventoryCountResultDto {
+  countId: string
+  inventorySessionId: string
+  warehouseCode: string
+  itemCode: string
+  quantity: number
+  userId: string
+  source: string
+  scanCode?: string | null
+  countedAt: string
+  round: number
+}

@@ -83,6 +83,15 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/inventario/sesiones/:sessionId/picking',
+    name: 'inventario-picking',
+    component: () => import('./views/ConteoPickingView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Conteo - Picking'
+    }
+  },
+  {
     path: '/inventario/ajustes',
     name: 'inventario-ajustes',
     component: () => import('./views/AdjustmentsBoardView.vue'),
