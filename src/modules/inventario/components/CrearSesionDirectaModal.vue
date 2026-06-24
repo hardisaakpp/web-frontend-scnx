@@ -49,32 +49,13 @@
                     Bodegas *
                     <span class="font-normal text-gray-400">({{ bodegasSeleccionadas.length }} seleccionadas)</span>
                   </label>
-                  <div class="mt-1 border border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden">
-                    <div class="p-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40">
-                      <input
-                        v-model="busquedaBodega"
-                        type="text"
-                        class="input-sm"
-                        placeholder="Buscar bodega..."
-                      />
-                    </div>
-                    <div class="max-h-36 overflow-y-auto">
-                      <div v-if="loadingBodegas" class="px-3 py-2 text-xs text-gray-400">Cargando bodegas...</div>
-                      <label
-                        v-for="b in bodegasFiltradas"
-                        :key="b.code"
-                        class="flex items-center gap-2 px-3 py-1.5 hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer"
-                      >
-                        <input type="checkbox" :value="b.code" v-model="bodegasSeleccionadas" class="rounded border-gray-300 text-blue-600" />
-                        <span class="text-sm text-gray-800 dark:text-gray-200">
-                          <span class="font-mono text-xs text-gray-500 dark:text-gray-400 mr-1">{{ b.code }}</span>
-                          {{ b.name }}
-                        </span>
-                      </label>
-                      <div v-if="!loadingBodegas && bodegasFiltradas.length === 0" class="px-3 py-2 text-xs text-gray-400">
-                        Sin resultados.
-                      </div>
-                    </div>
+                  <div class="mt-1">
+                    <div v-if="loadingBodegas" class="text-xs text-gray-400 py-2">Cargando bodegas...</div>
+                    <BodegaMultiselect
+                      v-else
+                      :options="bodegas"
+                      v-model="bodegasSeleccionadas"
+                    />
                   </div>
                 </div>
 
@@ -136,7 +117,6 @@ type FiltroKey = 'uNv1' | 'uNv2' | 'uNv3' | 'uGen' | 'material' | 'pack' | 'cole
 
 const form = ref({ plannedCloseDate: '', description: '' })
 const bodegasSeleccionadas = ref<string[]>([])
-const busquedaBodega = ref('')
 const filtrosSeleccionados = ref<Record<FiltroKey, string[]>>({
   uNv1: [], uNv2: [], uNv3: [], uGen: [], material: [], pack: [], coleccion: []
 })
@@ -153,12 +133,6 @@ const error = ref<string | null>(null)
 const fechaHoy = computed(() => new Date().toLocaleDateString('es', {
   weekday: 'long', day: '2-digit', month: 'long', year: 'numeric'
 }))
-
-const bodegasFiltradas = computed(() => {
-  const q = busquedaBodega.value.toLowerCase().trim()
-  if (!q) return bodegas.value
-  return bodegas.value.filter(b => b.code.toLowerCase().includes(q) || b.name.toLowerCase().includes(q))
-})
 
 watch(() => props.isOpen, async (open) => {
   if (!open) return
@@ -181,7 +155,6 @@ watch(() => props.isOpen, async (open) => {
 function resetForm() {
   form.value = { plannedCloseDate: '', description: '' }
   bodegasSeleccionadas.value = []
-  busquedaBodega.value = ''
   filtrosSeleccionados.value = { uNv1: [], uNv2: [], uNv3: [], uGen: [], material: [], pack: [], coleccion: [] }
 }
 
@@ -230,7 +203,95 @@ async function guardar() {
   }
 }
 
-// Sub-componente inline para multiselect de filtros
+// Combobox multiselect para bodegas
+const BodegaMultiselect = defineComponent({
+  name: 'BodegaMultiselect',
+  props: {
+    options: { type: Array as () => WarehouseSimpleDto[], default: () => [] },
+    modelValue: { type: Array as () => string[], default: () => [] }
+  },
+  emits: ['update:modelValue'],
+  setup(props, { emit }) {
+    const search = ref('')
+    const dropOpen = ref(false)
+    const filtered = computed(() => {
+      const q = search.value.toLowerCase().trim()
+      return q
+        ? props.options.filter(b => b.code.toLowerCase().includes(q) || b.name.toLowerCase().includes(q))
+        : props.options
+    })
+    function toggle(code: string) {
+      const current = [...props.modelValue]
+      const idx = current.indexOf(code)
+      if (idx >= 0) current.splice(idx, 1)
+      else current.push(code)
+      emit('update:modelValue', current)
+    }
+    function getLabel(code: string) {
+      const b = props.options.find(o => o.code === code)
+      return b ? `${b.code} · ${b.name}` : code
+    }
+
+    return () => h('div', { class: 'space-y-1' }, [
+      props.modelValue.length > 0
+        ? h('div', { class: 'flex flex-wrap gap-1 mb-2' },
+            props.modelValue.map(code =>
+              h('span', {
+                key: code,
+                class: 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 cursor-pointer select-none',
+                onClick: () => toggle(code)
+              }, [getLabel(code), h('span', { class: 'font-bold text-xs ml-0.5' }, '×')])
+            )
+          )
+        : null,
+      h('div', { class: 'relative' }, [
+        h('input', {
+          type: 'text',
+          value: search.value,
+          placeholder: 'Buscar bodega...',
+          class: 'input-sm',
+          onInput: (e: Event) => { search.value = (e.target as HTMLInputElement).value; dropOpen.value = true },
+          onFocus: () => { dropOpen.value = true },
+          onBlur: () => { setTimeout(() => { dropOpen.value = false }, 150) }
+        }),
+        dropOpen.value
+          ? h('div', {
+              class: 'absolute z-20 mt-1 w-full max-h-48 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-lg',
+              onMousedown: (e: Event) => e.preventDefault()
+            },
+            filtered.value.length > 0
+              ? filtered.value.map(b =>
+                  h('div', {
+                    key: b.code,
+                    class: [
+                      'flex items-center gap-2 px-3 py-1.5 text-sm cursor-pointer',
+                      props.modelValue.includes(b.code)
+                        ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                        : 'text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
+                    ],
+                    onClick: () => { toggle(b.code); search.value = '' }
+                  }, [
+                    h('span', {
+                      class: [
+                        'w-4 h-4 flex-shrink-0 rounded border-2 flex items-center justify-center text-xs font-bold',
+                        props.modelValue.includes(b.code)
+                          ? 'bg-blue-600 border-blue-600 text-white'
+                          : 'border-gray-300 dark:border-gray-500'
+                      ]
+                    }, props.modelValue.includes(b.code) ? '✓' : ''),
+                    h('span', { class: 'font-mono text-xs text-gray-500 dark:text-gray-400 flex-shrink-0' }, b.code),
+                    h('span', { class: 'truncate' }, b.name)
+                  ])
+                )
+              : [h('div', { class: 'px-3 py-2 text-xs text-gray-400' }, 'Sin resultados.')]
+          )
+          : null
+      ])
+    ])
+  }
+})
+
+// Combobox multiselect para filtros de artículos
 const FiltroMultiselect = defineComponent({
   name: 'FiltroMultiselect',
   props: {
@@ -241,7 +302,7 @@ const FiltroMultiselect = defineComponent({
   emits: ['update:modelValue'],
   setup(props, { emit }) {
     const search = ref('')
-    const isOpen = ref(false)
+    const dropOpen = ref(false)
     const filtered = computed(() => {
       const q = search.value.toLowerCase()
       return q ? props.options.filter(o => o.toLowerCase().includes(q)) : props.options
@@ -253,7 +314,6 @@ const FiltroMultiselect = defineComponent({
       else current.push(val)
       emit('update:modelValue', current)
     }
-    function removeTag(val: string) { toggle(val) }
 
     return () => {
       if (props.options.length === 0) return null
@@ -267,8 +327,8 @@ const FiltroMultiselect = defineComponent({
               props.modelValue.map(v =>
                 h('span', {
                   key: v,
-                  class: 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 cursor-pointer',
-                  onClick: () => removeTag(v)
+                  class: 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 cursor-pointer select-none',
+                  onClick: () => toggle(v)
                 }, [v, h('span', { class: 'font-bold text-xs' }, '×')])
               )
             )
@@ -279,11 +339,11 @@ const FiltroMultiselect = defineComponent({
             value: search.value,
             placeholder: 'Buscar y agregar...',
             class: 'input-sm',
-            onInput: (e: Event) => { search.value = (e.target as HTMLInputElement).value; isOpen.value = true },
-            onFocus: () => { isOpen.value = true },
-            onBlur: () => { isOpen.value = false }
+            onInput: (e: Event) => { search.value = (e.target as HTMLInputElement).value; dropOpen.value = true },
+            onFocus: () => { dropOpen.value = true },
+            onBlur: () => { setTimeout(() => { dropOpen.value = false }, 150) }
           }),
-          isOpen.value && filtered.value.length > 0
+          dropOpen.value && filtered.value.length > 0
             ? h('div', {
                 class: 'absolute z-20 mt-1 w-full max-h-36 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-lg',
                 onMousedown: (e: Event) => e.preventDefault()
@@ -293,9 +353,9 @@ const FiltroMultiselect = defineComponent({
                     key: o,
                     class: [
                       'px-3 py-1.5 text-sm cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20',
-                      props.modelValue.includes(o) ? 'text-blue-600 font-medium' : 'text-gray-800 dark:text-gray-200'
+                      props.modelValue.includes(o) ? 'text-blue-600 font-medium bg-blue-50/50 dark:bg-blue-900/10' : 'text-gray-800 dark:text-gray-200'
                     ],
-                    onClick: () => { toggle(o); search.value = ''; isOpen.value = false }
+                    onClick: () => { toggle(o); search.value = '' }
                   }, o)
                 )
               )

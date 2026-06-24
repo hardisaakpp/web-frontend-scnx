@@ -9,7 +9,10 @@ import type {
   InventoryCountResultDto,
   ItemValidationDto,
   InventoryPickingSummaryDto,
-  SupervisorSummaryDto
+  SupervisorSummaryDto,
+  SessionDetailLineDto,
+  SessionDetailStatsDto,
+  SessionScansByUserDto
 } from '../types'
 
 invPlanesApi.interceptors.response.use(
@@ -110,6 +113,22 @@ export const inventarioSesionesService = {
 
   async closeSession(sessionId: string, note?: string | null): Promise<InventorySessionStatusDto> {
     const response = await invPlanesApi.post<InventorySessionStatusDto>(`/api/inventory-sessions/${sessionId}/close`, { note: note ?? null })
+    return response.data
+  },
+
+  async getDetailStats(sessionId: string): Promise<SessionDetailStatsDto> {
+    const response = await invPlanesApi.get<SessionDetailStatsDto>(`/api/inventory-sessions/${sessionId}/detail-stats`)
+    return response.data
+  },
+
+  async getDetailLines(sessionId: string, status?: string): Promise<SessionDetailLineDto[]> {
+    const params = status ? { status } : undefined
+    const response = await invPlanesApi.get<SessionDetailLineDto[]>(`/api/inventory-sessions/${sessionId}/detail-lines`, { params })
+    return response.data
+  },
+
+  async getScansByUser(sessionId: string): Promise<SessionScansByUserDto> {
+    const response = await invPlanesApi.get<SessionScansByUserDto>(`/api/inventory-sessions/${sessionId}/scans-by-user`)
     return response.data
   }
 }

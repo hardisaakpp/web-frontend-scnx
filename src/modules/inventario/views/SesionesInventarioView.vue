@@ -132,8 +132,8 @@
               </td>
               <td class="td text-right whitespace-nowrap">
                 <div class="flex justify-end items-center gap-3">
-                  <!-- Cerrar Toma: solo para Reconteo -->
-                  <template v-if="s.status === 'Recount'">
+                  <!-- Cerrar Toma: para Open y Recount -->
+                  <template v-if="s.status !== 'Closed'">
                     <template v-if="confirmandoCierre === s.sessionId">
                       <span class="text-xs text-amber-700 dark:text-amber-300 font-medium">¿Cerrar?</span>
                       <button
@@ -159,7 +159,6 @@
                   </template>
 
                   <button
-                    v-if="s.status !== 'Closed'"
                     type="button"
                     class="link text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300"
                     @click="irAResumenSupervisor(s.sessionId)"
@@ -169,9 +168,9 @@
                   <button
                     type="button"
                     class="link"
-                    @click="irASesion(s.sessionId)"
+                    @click="irADetalle(s.sessionId)"
                   >
-                    {{ s.status === 'Closed' ? 'Ver detalle' : 'Ingresar' }}
+                    Ver detalle
                   </button>
                   <button
                     type="button"
@@ -331,6 +330,10 @@ function irASesion(sessionId: string) {
 
 function irAResumenSupervisor(sessionId: string) {
   router.push({ name: 'inventario-supervisor-resumen', params: { sessionId } })
+}
+
+function irADetalle(sessionId: string) {
+  router.push({ name: 'inventario-detalle-toma', params: { sessionId } })
 }
 
 async function cerrarTomaFisica(sessionId: string) {

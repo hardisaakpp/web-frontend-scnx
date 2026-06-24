@@ -101,6 +101,15 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/inventario/sesiones/:sessionId/detalle',
+    name: 'inventario-detalle-toma',
+    component: () => import('./views/DetalleTomaFisicaView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Toma Física - Detalle'
+    }
+  },
+  {
     path: '/inventario/sesiones/:sessionId/supervisor',
     name: 'inventario-supervisor-resumen',
     component: () => import('./views/SupervisorResumenView.vue'),

@@ -348,6 +348,52 @@ export interface SessionUserStatDto {
   lastCountedAt: string
 }
 
+export interface SessionDetailLineDto {
+  itemCode: string
+  description?: string | null
+  nivel1?: string | null
+  nivel2?: string | null
+  nivel3?: string | null
+  familia?: string | null
+  barcode?: string | null
+  systemQuantity: number
+  countedQuantity: number
+  difference: number
+  status: 'Balanced' | 'Difference' | 'New' | 'NotCounted'
+}
+
+export interface SessionDetailStatsDto {
+  total: number
+  balanced: number
+  difference: number
+  newItems: number
+  notCounted: number
+}
+
+export interface UserScanSummaryDto {
+  userId: string
+  totalScans: number
+  uniqueItems: number
+  firstScan: string
+  lastScan: string
+}
+
+export interface UserScanDetailEntryDto {
+  scannedAt: string
+  userId: string
+  barcode?: string | null
+  itemCode: string
+  description?: string | null
+  quantity: number
+  nivel3?: string | null
+  round: number
+}
+
+export interface SessionScansByUserDto {
+  summary: UserScanSummaryDto[]
+  detail: UserScanDetailEntryDto[]
+}
+
 export interface SupervisorSummaryDto {
   sessionId: string
   warehouseCode: string

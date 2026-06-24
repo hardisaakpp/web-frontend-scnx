@@ -305,9 +305,12 @@ function setCachedItem(itemCode: string, info: { exists: boolean; description: s
   }
 }
 
-function aplicarValidacion(itemCode: string, info: { exists: boolean; description: string | null }) {
+function aplicarValidacion(itemCode: string, info: { exists: boolean; description: string | null }, resolvedCode?: string) {
   for (const item of enviados.value) {
     if (item.itemCode === itemCode && item.existe === null) {
+      if (resolvedCode && resolvedCode !== itemCode) {
+        item.itemCode = resolvedCode
+      }
       item.existe = info.exists
       item.description = info.description
     }
@@ -330,9 +333,13 @@ async function procesarValidaciones() {
 
     try {
       const result = await inventarioSesionesService.validateItem(itemCode)
+      const resolvedCode = result.itemCode
       const info = { exists: result.exists, description: result.description ?? null }
       setCachedItem(itemCode, info)
-      aplicarValidacion(itemCode, info)
+      if (resolvedCode && resolvedCode !== itemCode) {
+        setCachedItem(resolvedCode, info)
+      }
+      aplicarValidacion(itemCode, info, resolvedCode)
     } catch {
       // Validation failed — item stays with existe = null (mostrar "...")
     }
