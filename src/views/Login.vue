@@ -17,7 +17,7 @@
         <p class="text-gray-600 dark:text-gray-400 mt-2">Iniciar Sesión</p>
       </div>
 
-      <form @submit.prevent="handleLogin" class="space-y-6">
+      <form @submit.prevent="handleLogin" class="space-y-6" novalidate>
         <!-- Username -->
         <div>
           <label for="username" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -27,10 +27,19 @@
             id="username"
             v-model="form.username"
             type="text"
-            required
-            class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors duration-300"
+            autocomplete="username"
+            :class="[
+              'mt-1 block w-full px-3 py-2 rounded-md shadow-sm focus:outline-none focus:ring-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors duration-300',
+              fieldErrors.username
+                ? 'border border-red-500 dark:border-red-500 focus:ring-red-500 focus:border-red-500'
+                : 'border border-gray-300 dark:border-gray-600 focus:ring-indigo-500 focus:border-indigo-500'
+            ]"
             placeholder="admin"
+            @input="fieldErrors.username = ''"
           />
+          <p v-if="fieldErrors.username" class="mt-1 text-sm text-red-600 dark:text-red-400">
+            {{ fieldErrors.username }}
+          </p>
         </div>
 
         <!-- Password -->
@@ -43,9 +52,15 @@
               id="password"
               v-model="form.password"
               :type="showPassword ? 'text' : 'password'"
-              required
-              class="block w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors duration-300"
+              autocomplete="current-password"
+              :class="[
+                'block w-full px-3 py-2 pr-10 rounded-md shadow-sm focus:outline-none focus:ring-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors duration-300',
+                fieldErrors.password
+                  ? 'border border-red-500 dark:border-red-500 focus:ring-red-500 focus:border-red-500'
+                  : 'border border-gray-300 dark:border-gray-600 focus:ring-indigo-500 focus:border-indigo-500'
+              ]"
               placeholder="••••••••"
+              @input="fieldErrors.password = ''"
             />
             <button
               type="button"
@@ -57,6 +72,9 @@
               <EyeIcon v-else class="h-5 w-5" />
             </button>
           </div>
+          <p v-if="fieldErrors.password" class="mt-1 text-sm text-red-600 dark:text-red-400">
+            {{ fieldErrors.password }}
+          </p>
         </div>
 
         <!-- Active Directory Checkbox -->
@@ -120,8 +138,21 @@ const form = reactive({
   useActiveDirectory: true
 })
 
+const fieldErrors = reactive({
+  username: '',
+  password: ''
+})
+
+const validate = () => {
+  fieldErrors.username = form.username.trim() ? '' : 'El usuario es requerido'
+  fieldErrors.password = form.password ? '' : 'La contraseña es requerida'
+  return !fieldErrors.username && !fieldErrors.password
+}
+
 const handleLogin = async () => {
   error.value = ''
+  if (!validate()) return
+
   isLoading.value = true
   try {
     const success = await authStore.login({
@@ -129,7 +160,7 @@ const handleLogin = async () => {
       password: form.password,
       useActiveDirectory: form.useActiveDirectory
     })
-    
+
     if (success) {
       router.push('/')
     } else {
