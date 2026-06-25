@@ -289,7 +289,7 @@
           </div>
           <button
             @click="logout"
-            class="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-[1.02]"
+            class="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
             :title="effectiveSidebarCollapsed ? 'Cerrar Sesión' : ''"
           >
             <ArrowRightOnRectangleIcon class="h-5 w-5 flex-shrink-0" />
@@ -302,12 +302,15 @@
         @click="toggleSidebarPin"
         @mouseenter="onPinHandleMouseEnter"
         @mouseleave="onPinHandleMouseLeave"
-        class="hidden md:flex absolute top-1/2 -right-3 -translate-y-1/2 h-10 w-7 items-center justify-center rounded-r-lg border border-slate-300 dark:border-slate-600/80 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-200 shadow-lg hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white transition-colors z-40"
-        :title="sidebarModeLabel"
-        aria-label="Cambiar modo del sidebar"
+        class="group hidden md:flex absolute top-1/2 -right-3 -translate-y-1/2 h-10 w-7 items-center justify-center rounded-r-lg border border-slate-300 dark:border-slate-600/80 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-200 shadow-lg hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white transition-colors z-40"
+        :aria-label="sidebarModeLabel"
       >
         <PinOff v-if="sidebarMode === 'auto'" class="h-4 w-4 opacity-80 pin-icon pin-icon--auto" />
         <Pin v-else class="h-4 w-4 text-sky-300 pin-icon pin-icon--fixed" />
+        <span class="pointer-events-none absolute left-full ml-2 top-1/2 -translate-y-1/2 whitespace-nowrap rounded-md bg-slate-900 dark:bg-slate-700 px-2.5 py-1.5 text-xs font-medium text-white shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-150 delay-200">
+          <span class="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-slate-900 dark:border-r-slate-700"></span>
+          {{ sidebarModeLabel }}
+        </span>
       </button>
     </aside>
 
@@ -527,8 +530,10 @@ const effectiveSidebarCollapsed = computed(() => {
 })
 
 const sidebarModeLabel = computed(() => {
-  if (sidebarMode.value === 'auto') return 'Anclar sidebar en el estado actual'
-  return 'Desanclar sidebar (volver a automático)'
+  if (sidebarMode.value === 'auto') {
+    return effectiveSidebarCollapsed.value ? 'Anclar sidebar compacto' : 'Anclar sidebar expandido'
+  }
+  return 'Desanclar sidebar'
 })
 
 function persistSidebarMode() {
