@@ -10,7 +10,7 @@
       <MoonIcon v-else class="h-6 w-6 text-gray-600 group-hover:scale-110 transition-transform" />
     </button>
 
-    <div class="max-w-md w-full bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-gray-900/50 p-8 transition-colors duration-300">
+    <div class="max-w-md w-full bg-white dark:bg-gray-800 rounded-lg shadow-card dark:shadow-gray-900/50 p-8 transition-colors duration-300">
       <div class="text-center mb-8 flex flex-col items-center">
         <img :src="logoUrl" alt="Logo" class="h-16 w-auto mb-4" />
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{{ appName || 'SCNexus' }}</h1>
@@ -99,7 +99,7 @@
         <button
           type="submit"
           :disabled="isLoading"
-          class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 transition-colors duration-300"
+          class="interactive w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-cta hover:shadow-cta-hover text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:shadow-none disabled:translate-y-0 disabled:active:scale-100"
         >
           <span v-if="!isLoading">Iniciar Sesión</span>
           <span v-else class="flex items-center">
