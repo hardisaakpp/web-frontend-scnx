@@ -6,13 +6,11 @@
   "scripts": {
     "env:local": "node scripts/ensure-active-env.mjs",
     "core:dev": "node scripts/switch-core.mjs dev",
-
     "core:prod": "node scripts/switch-core.mjs prod",
     "core:dev:up": "npm run core:dev && npm run docker:up",
     "core:prod:up": "npm run core:prod && npm run docker:up",
     "docker:up": "npm run predev && docker compose --env-file deploy/env/active.env up -d --build",
     "docker:rebuild": "npm run predev && docker compose --env-file deploy/env/active.env build --no-cache && docker compose --env-file deploy/env/active.env up -d",
-
     "predev": "node scripts/ensure-active-env.mjs",
     "dev": "vite",
     "build": "vue-tsc --noEmit && vite build",
@@ -30,6 +28,7 @@
     "test:e2e:report": "playwright show-report"
   },
   "dependencies": {
+    "@fontsource-variable/inter": "^5.2.8",
     "@headlessui/vue": "^1.7.23",
     "@heroicons/vue": "^2.2.0",
     "@zxing/browser": "^0.2.0",

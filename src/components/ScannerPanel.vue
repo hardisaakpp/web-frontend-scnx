@@ -33,7 +33,7 @@
               </div>
               <button
                 type="button"
-                class="rounded-xl bg-white/15 p-2 transition-colors hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2 focus-visible:ring-offset-emerald-700"
+                class="touch-target rounded-xl bg-white/15 p-2 transition-colors hover:bg-white/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-2 focus-visible:ring-offset-emerald-700"
                 aria-label="Cerrar"
                 @click="closePanel"
               >
