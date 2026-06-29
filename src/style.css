@@ -2,30 +2,34 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Variables de tema claro */
+/* Variables de tema claro (paleta moderna: índigo + off-white slate) */
 :root {
-  --primary: #646cff;
-  --primary-hover: #535bf2;
-  --bg-primary: #ffffff;
-  --bg-secondary: #f9fafb;
-  --text-primary: #1f2937;
-  --text-secondary: #6b7280;
-  --border-color: #e5e7eb;
+  --primary: #4f46e5;          /* indigo-600 */
+  --primary-hover: #4338ca;    /* indigo-700 */
+  --accent: #10b981;           /* emerald-500 — CTAs / barras de progreso */
+  --accent-hover: #059669;     /* emerald-600 */
+  --bg-primary: #ffffff;       /* superficies / tarjetas */
+  --bg-secondary: #f8fafc;     /* slate-50 — fondo de app (off-white) */
+  --text-primary: #1e293b;     /* slate-800 */
+  --text-secondary: #64748b;   /* slate-500 */
+  --border-color: #e2e8f0;     /* slate-200 */
 }
 
-/* Variables de tema oscuro */
+/* Variables de tema oscuro (slate-900 con superficies slate-800 para profundidad) */
 .dark {
-  --primary: #818cf8;
-  --primary-hover: #6366f1;
-  --bg-primary: #111827;
-  --bg-secondary: #1f2937;
-  --text-primary: #f9fafb;
-  --text-secondary: #d1d5db;
-  --border-color: #374151;
+  --primary: #818cf8;          /* indigo-400 */
+  --primary-hover: #6366f1;    /* indigo-500 */
+  --accent: #34d399;           /* emerald-400 */
+  --accent-hover: #10b981;     /* emerald-500 */
+  --bg-primary: #1e293b;       /* slate-800 — superficies */
+  --bg-secondary: #0f172a;     /* slate-900 — fondo de app */
+  --text-primary: #f1f5f9;     /* slate-100 */
+  --text-secondary: #94a3b8;   /* slate-400 */
+  --border-color: #334155;     /* slate-700 */
 }
 
 body {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  font-family: 'Inter Variable', 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition: background-color 0.3s ease, color 0.3s ease;
@@ -37,4 +41,59 @@ body {
   min-height: 100vh;
   width: 100%;
   background-color: var(--bg-secondary);
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Transición de páginas (router-view en MainLayout): las vistas
+   entran con un suave desvanecimiento + desplazamiento hacia arriba.
+   Duración corta para no penalizar la sensación de velocidad.
+   ────────────────────────────────────────────────────────────── */
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+}
+.fade-slide-enter-from {
+  opacity: 0;
+  transform: translateY(8px);
+}
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Micro-interacciones reutilizables (úsalas en lugar de repetir
+   clases sueltas de hover/active por toda la app).
+   - .interactive       → botones y elementos clicables pequeños
+   - .card-interactive  → tarjetas clicables (NO usar en filas de tabla)
+   ────────────────────────────────────────────────────────────── */
+@layer components {
+  .interactive {
+    @apply transition-all duration-200 ease-out hover:-translate-y-0.5 active:scale-95;
+  }
+  .card-interactive {
+    @apply transition-all duration-200 ease-out shadow-card hover:shadow-card-hover hover:-translate-y-1 cursor-pointer;
+  }
+  /* Garantiza un área cliqueable mínima de 44×44px (accesibilidad táctil).
+     Úsala en botones de icono usados en piso de venta / móvil (ScannerPanel,
+     articulo-scaner). No la pongas en botones de tablas densas de escritorio. */
+  .touch-target {
+    @apply inline-flex items-center justify-center min-h-11 min-w-11;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────
+   Accesibilidad / rendimiento: respeta "movimiento reducido".
+   Desactiva animaciones y transiciones para usuarios que lo piden
+   y en entornos de bajo rendimiento (p. ej. escritorio remoto).
+   ────────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

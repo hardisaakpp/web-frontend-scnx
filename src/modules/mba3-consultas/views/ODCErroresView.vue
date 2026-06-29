@@ -176,7 +176,7 @@ import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import { useToast } from '@/composables/useToast'
 import SkeletonTable from '../components/SkeletonTable.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
-import QuickTablePagination from '../components/QuickTablePagination.vue'
+import QuickTablePagination from '@/components/QuickTablePagination.vue'
 import CorregirSkuModal from '../components/CorregirSkuModal.vue'
 import type { OrdenCompra } from '../types'
 

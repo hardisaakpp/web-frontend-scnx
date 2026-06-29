@@ -189,7 +189,7 @@ import { usePermisosStore } from '../stores/permisosStore'
 import { permisosService } from '../services/usuariosApi'
 import type { Rol } from '../types'
 import AsignarPermisosModal from '../components/AsignarPermisosModal.vue'
-import VolverButton from '../components/VolverButton.vue'
+import VolverButton from '@/components/VolverButton.vue'
 
 const rolesStore = useRolesStore()
 const permisosStore = usePermisosStore()

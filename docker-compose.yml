@@ -1,7 +1,7 @@
-# Nginx + SPA en :8082. Los UPSTREAM_* se hornean en la imagen al hacer build.
+# Nginx + SPA en :8082. Los UPSTREAM_* se inyectan en runtime desde active.env.
 # Obligatorio: deploy/env/active.env (ver deploy/env/local.docker.env.example)
-#   npm run docker:env && npm run docker:up
-#   — o — docker compose --env-file deploy/env/active.env up -d --build
+#   cp deploy/env/local.docker.env.example deploy/env/active.env
+#   docker compose up -d --build
 name: scnexus-front
 
 services:
@@ -11,28 +11,19 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_APP_BASE_PATH: ${VITE_APP_BASE_PATH:-/scnexus-front/}
-        MBA3_UPSTREAM: ${UPSTREAM_MBA3:-${MBA3_UPSTREAM:-http://host.docker.internal:8000}}
-        CORE_UPSTREAM: ${UPSTREAM_CORE:-${CORE_UPSTREAM:-http://192.168.2.12:8080}}
-        CORE_PROXY_HOST: ${CORE_PROXY_HOST:-host.docker.internal:5053}
-        CAJA_CHICA_UPSTREAM: ${UPSTREAM_CAJA_CHICA:-${CAJA_CHICA_UPSTREAM:-http://192.168.2.153:8092}}
-        EMPLOYEES_UPSTREAM: ${UPSTREAM_EMPLOYEES:-${EMPLOYEES_UPSTREAM:-http://host.docker.internal:3001}}
-        PYG_UPSTREAM: ${UPSTREAM_PYG:-${PYG_UPSTREAM:-http://host.docker.internal:5171}}
-        SCAN_API_UPSTREAM: ${UPSTREAM_SCAN:-${SCAN_API_UPSTREAM:-http://host.docker.internal:8080}}
-        PROMOCION_SOBRES_UPSTREAM: ${UPSTREAM_PROMOCION_SOBRES:-${PROMOCION_SOBRES_UPSTREAM:-http://host.docker.internal:8083}}
-        INVENTARIO_UPSTREAM: ${UPSTREAM_INVENTARIO:-${INVENTARIO_UPSTREAM:-http://host.docker.internal:8082}}
-        CONCILIACION_UPSTREAM: ${UPSTREAM_CONCILIACION:-${CONCILIACION_UPSTREAM:-http://host.docker.internal:8005}}
-        MAESTRO_UPSTREAM: ${UPSTREAM_MAESTRO:-${MAESTRO_UPSTREAM:-http://host.docker.internal:8001}}
-        SLAYER_UPSTREAM: ${UPSTREAM_SLAYER:-${SLAYER_UPSTREAM:-http://host.docker.internal:8093}}
-        REPOSICION_UPSTREAM: ${UPSTREAM_REPOSICION:-${REPOSICION_UPSTREAM:-http://host.docker.internal:8006}}
     image: scnexus-front:latest
     container_name: scnexus-front
     env_file:
       - path: deploy/env/bundle.env
         required: true
+      - path: deploy/env/active.env
+        required: false
       - path: deploy/env/active.docker.env
         required: false
+
     ports:
-      - "${SCNEXUS_FRONT_PORT:-8082}:80"
+      - "${SCNEXUS_FRONT_PORT:-8085}:80"
+
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:

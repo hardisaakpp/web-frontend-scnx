@@ -57,6 +57,7 @@ export default defineConfig(async ({ mode }) => {
   const reposicionProxyTarget = upstreamUrl(env, 'REPOSICION')
   console.log(`\x1b[35m[proxy]\x1b[0m Reposiciones → ${reposicionProxyTarget}`)
 
+  const ruletaProxyTarget = upstreamUrl(env, 'RULETA')
   const pygProxyPrefix =
     'UPSTREAM_PYG_PREFIX' in env
       ? env.UPSTREAM_PYG_PREFIX
@@ -314,6 +315,18 @@ export default defineConfig(async ({ mode }) => {
           secure: false,
 
           rewrite: (path) => path.replace(/^\/promocion-sobres-api/, '')
+
+        },
+
+        '/ruleta-api': {
+
+          target: ruletaProxyTarget,
+
+          changeOrigin: true,
+
+          secure: false,
+
+          rewrite: (path) => path.replace(/^\/ruleta-api/, '')
 
         }
 

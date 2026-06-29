@@ -1,0 +1,96 @@
+# Disparadores estratégicos para el Frontend
+trigger:
+  branches:
+    include:
+      - main       # Producción
+      - test       # Pruebas (DESA)
+      - ci/*
+      - feature/*
+      - fix/*
+
+# Enrutamiento al servidor Ubuntu corporativo
+pool:
+  name: 'agents-srv-test'
+  demands:
+    - Agent.OS -equals Linux
+
+variables:
+  nodeVersion: '20.x'
+  
+  # Ruta al registro corporativo en la nube (ACR)
+  imageName: 'dockermg-g9hrgcc4etdrh8eg.azurecr.io/web-scnexus'
+  dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
+  npm_config_cache: $(Pipeline.Workspace)/.npm
+
+  # Lógica Declarativa de Prefijos Dinámicos y Base Path por Rama
+  ${{ if eq(variables['Build.SourceBranchName'], 'main') }}:
+    envTag: 'prod-latest'
+    uniqueTag: 'prod-$(Build.BuildId)'
+    basePath: '/'
+  ${{ elseif eq(variables['Build.SourceBranchName'], 'test') }}:
+    envTag: 'test-latest'
+    uniqueTag: 'test-$(Build.BuildId)'
+    basePath: '/scnexus-front/'
+  ${{ else }}:
+    envTag: 'none'
+    uniqueTag: 'none'
+    basePath: '/'
+
+stages:
+# =====================================================================
+# ETAPA 1: VALIDACIÓN Y PRUEBAS DEL FRONTEND (Vue 3 / TS)
+# =====================================================================
+- stage: CI_Validation
+  displayName: 'Validación de Código y Tipado (Vue 3 / TS)'
+  jobs:
+  - job: Frontend_Checks
+    displayName: 'Linting, Typecheck y Dependencias'
+    steps:
+    
+    - task: NodeTool@0
+      inputs:
+        versionSpec: '$(nodeVersion)'
+      displayName: 'Instalar Node.js $(nodeVersion)'
+
+    - task: Cache@2
+      inputs:
+        key: 'npm | "$(Agent.OS)" | package-lock.json'
+        restoreKeys: |
+           npm | "$(Agent.OS)"
+        path: $(npm_config_cache)
+      displayName: 'Caché de paquetes NPM'
+
+    - script: |
+        npm ci
+      displayName: 'Instalar Dependencias (npm ci)'
+
+    - script: |
+        npx vue-tsc --noEmit
+      displayName: 'Verificar Tipado Estricto (TypeScript)'
+
+# =====================================================================
+# ETAPA 2: CONSTRUCCIÓN DOCKER MULTICAPA Y PUBLICACIÓN EN ACR
+# =====================================================================
+- stage: Build_Docker
+  displayName: 'Construcción y Empaquetado Nginx'
+  dependsOn: CI_Validation
+  
+  # Candado de Seguridad: Solo construye Docker si pasó la Etapa 1 Y si la rama es main o test
+  condition: and(succeeded(), ne(variables.envTag, 'none'))
+  jobs:
+  - job: Docker_Build_Push
+    displayName: 'Construir y Subir a Azure ACR'
+    steps:
+
+    - script: |
+        echo "1. Construyendo la imagen Frontend (Base Path: $(basePath), Entorno: $(envTag))..."
+        docker build \
+          --build-arg VITE_APP_BASE_PATH=$(basePath) \
+          -f $(dockerfilePath) \
+          -t $(imageName):$(uniqueTag) \
+          -t $(imageName):$(envTag) .
+        
+        echo "2. Subiendo la imagen al registro corporativo en Azure..."
+        docker push $(imageName):$(uniqueTag)
+        docker push $(imageName):$(envTag)
+      displayName: 'Empaquetar Nginx y Almacenar en ACR'

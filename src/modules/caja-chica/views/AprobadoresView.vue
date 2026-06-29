@@ -121,13 +121,13 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from '@vue/runtime-core'
+import { cajaChicaApi } from '../services/cajaChicaApi'
 import { useRouter } from 'vue-router'
 const router = useRouter()
 
 const volver = () => {
   router.back()
 }
-import axios from 'axios'
 import api from '@/services/api'
 
 interface GrupoItem {
@@ -148,13 +148,6 @@ const selectedGroupId = ref(0)
 const userSearch = ref('')
 const formError = ref('')
 const formSuccess = ref('')
-
-const cajaChicaApi = axios.create({
-  baseURL: import.meta.env.VITE_CAJA_CHICA_API_URL || '/caja-chica-api',
-  headers: {
-    'Content-Type': 'application/json'
-  }
-})
 
 const filteredUsuarios = computed(() => {
   const query = userSearch.value.toLowerCase().trim()

@@ -16,7 +16,7 @@ import {
   BuildingOfficeIcon,
   ArrowLeftIcon
 } from '@heroicons/vue/24/outline'
-import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue'
+import { Dialog, DialogPanel, DialogTitle, TransitionRoot } from '@headlessui/vue'
 
 const authStore = useAuthStore()
 const store = useReposicionStore()
@@ -116,7 +116,7 @@ const viewSolicitudes = async (whsCode: string, fecha: string) => {
       </div>
 
       <div class="flex flex-wrap items-center bg-white dark:bg-gray-800 p-2 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm gap-2">
-        <!-- Warehouse Filter (Usa todos los almacenes de la API para Admin) -->
+        <!-- Warehouse Filter para Administradores -->
         <div class="flex items-center px-4 py-2 border-r border-gray-100 dark:border-gray-700 gap-2">
           <BuildingOfficeIcon class="w-4 h-4 text-gray-400 dark:text-gray-500" />
           <select v-model="whsFilter" class="border-none focus:ring-0 p-0 text-sm font-bold text-gray-700 dark:text-white bg-transparent min-w-[120px] cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors">

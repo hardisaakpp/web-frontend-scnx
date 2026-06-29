@@ -1,4 +1,4 @@
-import axios from 'axios'
+import { createModuleApi } from '@/lib/http'
 import { STORE_EMPLOYEE_CARGOS, type StoreEmployeeCargo } from '../types/cargo'
 
 export interface StoreEmployee {
@@ -43,9 +43,18 @@ interface HealthResponse {
   ok?: boolean
 }
 
-const endpoint =
+const endpointUrl =
   import.meta.env.VITE_STORE_EMPLOYEES_API_URL ||
   '/employees-api/store_employees.php'
+
+const baseUrl = endpointUrl.includes('.php')
+  ? endpointUrl.split('/').slice(0, -1).join('/')
+  : endpointUrl
+const relativePath = endpointUrl.includes('.php')
+  ? '/' + endpointUrl.split('/').pop()
+  : ''
+
+const employeesApi = createModuleApi(baseUrl, { auditHeaders: true })
 
 function toItems(payload: any): StoreEmployee[] {
   if (Array.isArray(payload)) return payload
@@ -124,7 +133,7 @@ export async function listStoreEmployees(filters: StoreEmployeesFilters): Promis
   if (filters.estado !== '') params.estado = filters.estado
   if (filters.encargado === '0' || filters.encargado === '1') params.encargado = filters.encargado
 
-  const { data } = await axios.get(endpoint, { params })
+  const { data } = await employeesApi.get(relativePath, { params })
   const raw = toItems(data)
   const items = raw.map((row) => mapStoreEmployeeRow(row))
   const total = toTotal(data, items.length)
@@ -136,32 +145,20 @@ type StoreEmployeeServerDates = 'id' | 'fecha_ingreso' | 'fecha_ultima_actualiza
 export async function createStoreEmployee(
   payload: Omit<StoreEmployee, StoreEmployeeServerDates>
 ): Promise<void> {
-  await axios.post(endpoint, payload, {
-    headers: { 'Content-Type': 'application/json', 'X-User': payload.usuario_ultima_actualizacion || '' }
-  })
+  await employeesApi.post(relativePath, payload)
 }
 
 export async function updateStoreEmployee(
   id: number,
   payload: Partial<Omit<StoreEmployee, StoreEmployeeServerDates>>
 ): Promise<StoreEmployee | null> {
-  const { data } = await axios.patch(
-    endpoint,
-    { id, ...payload },
-    {
-      headers: {
-        'Content-Type': 'application/json',
-        'X-User': payload.usuario_ultima_actualizacion || ''
-      }
-    }
-  )
+  const { data } = await employeesApi.patch(relativePath, { id, ...payload })
   return parseStoreEmployeeMutationResponse(data)
 }
 
 export async function inactivateStoreEmployee(id: number, user: string): Promise<void> {
-  await axios.delete(endpoint, {
-    params: { id },
-    headers: { 'X-User': user || '' }
+  await employeesApi.delete(relativePath, {
+    params: { id }
   })
 }
 
@@ -171,7 +168,7 @@ export async function inactivateStoreEmployee(id: number, user: string): Promise
  */
 export async function fetchStoreEmployeeCargos(): Promise<StoreEmployeeCargo[]> {
   try {
-    const { data } = await axios.get<MetaListResponse<unknown>>(endpoint, { params: { meta: 'cargos' } })
+    const { data } = await employeesApi.get<MetaListResponse<unknown>>(relativePath, { params: { meta: 'cargos' } })
     if (data?.ok === true && Array.isArray(data?.data)) {
       const raw = data.data.filter((x: unknown) => typeof x === 'string') as string[]
       const valid = raw.filter((x) =>
@@ -198,7 +195,7 @@ export interface AlmacenOption {
  * Usa meta.value_field / meta.label_field si vienen en la respuesta.
  */
 export async function fetchStoreAlmacenes(): Promise<AlmacenOption[]> {
-  const { data } = await axios.get<MetaListResponse<Record<string, unknown>>>(endpoint, { params: { meta: 'almacenes' } })
+  const { data } = await employeesApi.get<MetaListResponse<Record<string, unknown>>>(relativePath, { params: { meta: 'almacenes' } })
   if (data?.ok !== true || !Array.isArray(data?.data)) {
     return []
   }
@@ -224,7 +221,7 @@ export async function fetchStoreAlmacenes(): Promise<AlmacenOption[]> {
  */
 export async function checkStoreEmployeesHealth(): Promise<boolean> {
   try {
-    const { data } = await axios.get<HealthResponse>(endpoint, {
+    const { data } = await employeesApi.get<HealthResponse>(relativePath, {
       params: { health: '1' },
       timeout: 10_000
     })

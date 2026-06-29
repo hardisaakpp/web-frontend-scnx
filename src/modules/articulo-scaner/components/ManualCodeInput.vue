@@ -57,7 +57,7 @@
           aria-label="Escanear con cámara"
           title="Escanear con cámara"
           :disabled="props.disabled || props.scannerDisabled"
-          class="relative flex shrink-0 items-center justify-center border-l border-sky-600/35 bg-gradient-to-b from-sky-500 via-sky-600 to-blue-600 px-4 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] transition hover:brightness-105 active:brightness-95 disabled:from-slate-300 disabled:to-slate-400 disabled:text-slate-500 disabled:brightness-100"
+          class="touch-target relative shrink-0 border-l border-sky-600/35 bg-gradient-to-b from-sky-500 via-sky-600 to-blue-600 px-4 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] transition hover:brightness-105 active:brightness-95 disabled:from-slate-300 disabled:to-slate-400 disabled:text-slate-500 disabled:brightness-100"
           @click="$emit('open-scanner')"
         >
           <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">

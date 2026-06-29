@@ -101,7 +101,7 @@
 <script setup lang="ts">
 import { computed, defineComponent, h, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import OdcSapVolverButton from '@/modules/mba3-consultas/components/OdcSapVolverButton.vue'
+import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
 import { inventarioService } from '../services/inventarioApi'
 import type { InventoryDetailDto } from '../types'
 import { inventoryTypeLabel } from '../utils/planningRules'

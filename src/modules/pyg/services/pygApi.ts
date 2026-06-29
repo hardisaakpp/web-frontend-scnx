@@ -1,30 +1,4 @@
-import axios from 'axios'
-import { attachUnauthorizedRedirect } from '@/services/sessionGuard'
-
-/**
- * En dev, por defecto `/pyg-api` pasa por el proxy de Vite (ver `vite.config.ts`).
- * Si defines `VITE_PYG_API_URL` apuntando al host Docker, incluye el prefijo de la API, p. ej.
- * `http://localhost:5171/api` (no solo `http://localhost:5171`, porque las rutas son `/uploads`, etc.).
- */
-const pygApi = axios.create({
-  baseURL: import.meta.env.VITE_PYG_API_URL || '/pyg-api',
-  headers: {
-    'Accept': 'application/json'
-  }
-})
-
-pygApi.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token')
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
-    return config
-  },
-  (error) => Promise.reject(error)
-)
-
-attachUnauthorizedRedirect(pygApi)
+import { pygHttp as pygApi } from '@/lib/http'
 
 function shouldUseCompatApiFallback(): boolean {
   const baseUrl = String(import.meta.env.VITE_PYG_API_URL || '/pyg-api').trim()

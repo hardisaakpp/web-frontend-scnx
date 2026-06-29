@@ -454,7 +454,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { lastNotification } from '@/composables/useNotificaciones'
 import { useModuleNotifications } from '@/composables/useModuleNotifications'
 import { useAuthStore } from '@/stores/auth'
-import QuickTablePagination from '@/modules/mba3-consultas/components/QuickTablePagination.vue'
+import QuickTablePagination from '@/components/QuickTablePagination.vue'
 import { TableCellsIcon } from '@heroicons/vue/24/outline'
 import {
   downloadErrors,
