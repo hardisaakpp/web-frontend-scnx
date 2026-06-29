@@ -1,25 +1,4 @@
-import axios from 'axios'
-
-const rawBaseUrl = import.meta.env.VITE_SCNEXUS_INVENTORY_API_URL || 'http://localhost:8094'
-const baseURL = rawBaseUrl.replace(/\/+$/, '')
-
-const api = axios.create({
-  baseURL,
-  timeout: 30000,
-  headers: {
-    Accept: 'application/json',
-    'Content-Type': 'application/json'
-  }
-})
-
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token') || sessionStorage.getItem('token')
-  if (token) {
-    config.headers = config.headers ?? {}
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
-})
+import { inventarioHttp as api } from '@/lib/http'
 
 export interface WarehouseDto {
   warehouseCode: string

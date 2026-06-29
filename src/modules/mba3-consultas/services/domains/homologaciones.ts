@@ -8,7 +8,9 @@ import { createEnrichedError } from '../utils/errorHandler'
 import type { 
   SkuHomologacionResponse, 
   SkuHomologacionUpdateRequest, 
-  SkuHomologacionCreateRequest 
+  SkuHomologacionCreateRequest,
+  SkuHomologacion,
+  ApiResponse
 } from '../../types'
 
 export const homologacionesService = {
@@ -31,7 +33,7 @@ export const homologacionesService = {
     }
   ): Promise<SkuHomologacionResponse> {
     try {
-      const params: Record<string, any> = {
+      const params: Record<string, string | number | boolean | undefined> = {
         page,
         pageSize,
         ...filters
@@ -40,8 +42,7 @@ export const homologacionesService = {
       const url = buildUrlWithParams('/api/homologaciones-sku', params)
       const response = await mba3Api.get<SkuHomologacionResponse>(url)
       return response.data
-    } catch (error: any) {
-      console.error('❌ [getSkuHomologaciones] Error al obtener homologaciones:', error)
+    } catch (error) {
       throw createEnrichedError(error, 'No se pudieron obtener las homologaciones de SKU')
     }
   },
@@ -56,12 +57,11 @@ export const homologacionesService = {
   async updateSkuHomologacion(
     homologacionId: string,
     updateData: SkuHomologacionUpdateRequest
-  ): Promise<any> {
+  ): Promise<ApiResponse<SkuHomologacion>> {
     try {
-      const response = await mba3Api.put(`/api/homologaciones-sku/${homologacionId}`, updateData)
+      const response = await mba3Api.put<ApiResponse<SkuHomologacion>>(`/api/homologaciones-sku/${homologacionId}`, updateData)
       return response.data
-    } catch (error: any) {
-      console.error('❌ [updateSkuHomologacion] Error al actualizar homologación:', error)
+    } catch (error) {
       throw createEnrichedError(error, 'No se pudo actualizar la homologación')
     }
   },
@@ -74,12 +74,11 @@ export const homologacionesService = {
    */
   async bulkUpdateSkuHomologaciones(
     updates: Array<{ homologacion_id: string; data: SkuHomologacionUpdateRequest }>
-  ): Promise<any> {
+  ): Promise<ApiResponse<unknown>> {
     try {
-      const response = await mba3Api.post('/api/homologaciones-sku/bulk-update', { updates })
+      const response = await mba3Api.post<ApiResponse<unknown>>('/api/homologaciones-sku/bulk-update', { updates })
       return response.data
-    } catch (error: any) {
-      console.error('❌ [bulkUpdateSkuHomologaciones] Error al actualizar homologaciones:', error)
+    } catch (error) {
       throw createEnrichedError(error, 'No se pudieron actualizar las homologaciones')
     }
   },
@@ -91,12 +90,11 @@ export const homologacionesService = {
    * 
    * @returns Resultado de la sincronización
    */
-  async sincronizarHomologaciones(): Promise<any> {
+  async sincronizarHomologaciones(): Promise<ApiResponse<unknown>> {
     try {
-      const response = await mba3Api.post('/api/homologaciones-sku/sincronizar')
+      const response = await mba3Api.post<ApiResponse<unknown>>('/api/homologaciones-sku/sincronizar')
       return response.data
-    } catch (error: any) {
-      console.error('❌ [sincronizarHomologaciones] Error al sincronizar homologaciones:', error)
+    } catch (error) {
       throw createEnrichedError(error, 'No se pudieron sincronizar las homologaciones')
     }
   },
@@ -109,12 +107,11 @@ export const homologacionesService = {
    */
   async createSkuHomologacion(
     createData: SkuHomologacionCreateRequest
-  ): Promise<any> {
+  ): Promise<ApiResponse<SkuHomologacion>> {
     try {
-      const response = await mba3Api.post('/api/homologaciones-sku', createData)
+      const response = await mba3Api.post<ApiResponse<SkuHomologacion>>('/api/homologaciones-sku', createData)
       return response.data
-    } catch (error: any) {
-      console.error('❌ [createSkuHomologacion] Error al crear homologación:', error)
+    } catch (error) {
       throw createEnrichedError(error, 'No se pudo crear la homologación')
     }
   },

@@ -1,100 +1,48 @@
-import axios from 'axios'
-import { attachUnauthorizedRedirect } from '@/services/sessionGuard'
+import { createModuleApi } from '@/lib/http'
 import { MBA3_API_BASE_URL } from '@/config/apiBaseUrls'
 
 const API_BASE_URL = MBA3_API_BASE_URL
 
-export const mba3Api = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  timeout: 30000,
-})
+export const mba3Api = createModuleApi(API_BASE_URL)
 
-// Interceptor para agregar token JWT en cada request
-mba3Api.interceptors.request.use(
-  config => {
-    const token = localStorage.getItem('token')
-
-    if (token && config.headers) {
-      config.headers['Authorization'] = `Bearer ${token}`
-    }
-
-    // Si es FormData, eliminar Content-Type para que axios lo establezca automáticamente con boundary
-    if (config.data instanceof FormData && config.headers) {
-      delete config.headers['Content-Type']
-    }
-
-    return config
-  },
-  error => {
-    if (import.meta.env.DEV) {
-      console.error('❌ [MBA3 API Request] Error en interceptor:', error)
-    }
-    return Promise.reject(error)
-  }
-)
-
-/**
- * ⭐ SISTEMA DE TIMEOUT SINCRONIZADO FRONTEND-BACKEND
- * 
- * El backend puede comunicar el timeout recomendado mediante headers HTTP:
- * - X-Request-Timeout: Tiempo en segundos que el backend recomienda para esta operación
- * - X-Request-Timeout-Min: Tiempo mínimo en segundos (fallback seguro)
- * 
- * El frontend lee estos headers y ajusta dinámicamente el timeout.
- * Si el backend no envía headers, se usa un timeout por defecto seguro.
- */
-
-// Interceptor para manejar errores y autenticación
 mba3Api.interceptors.response.use(
   (response) => {
-    // ⭐ Leer headers de timeout del backend y loguear para debugging
     const timeoutHeader = response.headers['x-request-timeout']
     const timeoutMinHeader = response.headers['x-request-timeout-min']
-    
     if (import.meta.env.DEV && (timeoutHeader || timeoutMinHeader)) {
       console.debug(`⏱️ [MBA3 API] Backend recomienda timeout: ${timeoutHeader || 'N/A'}s (mín: ${timeoutMinHeader || 'N/A'}s)`)
     }
-    
     return response
   },
-  (error) => {
-    // Endpoints que pueden retornar 404 como respuesta válida (no son errores críticos)
-    const url = error.config?.url || ''
-    const isExpected404 = error.response?.status === 404 && (
-      url.includes('/api/plantillas/ultimo') || // No hay pedidos es válido
-      url.includes('/api/plantillas/') || // Pedido no encontrado es válido
-      url.includes('/api/pedidos/ultimo-redistribucion') || // No hay último para redistribución es válido
-      url.includes('/redistribucion/borrador') // No hay borrador guardado es válido
-    )
+  (error: any) => {
+    const err = error as { config?: { url?: string; method?: string }; response?: { status?: number; data?: unknown }; request?: unknown }
+    const url = err.config?.url ?? ''
+    const isExpected404 =
+      err.response?.status === 404 &&
+      (url.includes('/api/plantillas/ultimo') ||
+        url.includes('/api/plantillas/') ||
+        url.includes('/api/pedidos/ultimo-redistribucion') ||
+        url.includes('/redistribucion/borrador'))
 
-    // Solo loguear errores que no sean 404 esperados (solo en desarrollo)
     if (!isExpected404 && import.meta.env.DEV) {
-      // Log detallado del error para debugging
       console.error('🔍 [MBA3 API Interceptor] Error capturado:', error)
-      if (error.response) {
-        console.error('🔍 [MBA3 API Interceptor] Status:', error.response.status)
-        console.error('🔍 [MBA3 API Interceptor] Data completa:', error.response.data)
-        console.error('🔍 [MBA3 API Interceptor] URL:', error.config?.url)
-        console.error('🔍 [MBA3 API Interceptor] Method:', error.config?.method)
-      } else if (error.request) {
-        console.error('🔍 [MBA3 API Interceptor] Request Error:', error.request)
+      if (err.response) {
+        console.error('🔍 [MBA3 API Interceptor] Status:', err.response.status)
+        console.error('🔍 [MBA3 API Interceptor] Data completa:', err.response.data)
+        console.error('🔍 [MBA3 API Interceptor] URL:', err.config?.url)
+        console.error('🔍 [MBA3 API Interceptor] Method:', err.config?.method)
+      } else if (err.request) {
+        console.error('🔍 [MBA3 API Interceptor] Request Error:', err.request)
         console.error('🔍 [MBA3 API Interceptor] No se recibió respuesta del servidor')
       }
     }
 
-    // NO modificar el error aquí - dejarlo pasar tal cual para que cada método lo maneje
-    // Solo agregar información del response data al error si no la tiene
-    if (error.response?.data && !error.responseData) {
-      error.responseData = error.response.data
+    if (err.response?.data && !error.responseData) {
+      error.responseData = err.response.data
     }
 
     return Promise.reject(error)
   }
 )
-
-attachUnauthorizedRedirect(mba3Api)
 
 export { API_BASE_URL }

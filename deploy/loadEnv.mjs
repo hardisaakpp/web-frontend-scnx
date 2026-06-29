@@ -14,7 +14,8 @@ const ENV_DIR = path.join(process.cwd(), 'deploy', 'env')
 
 /** Defaults solo para desarrollo local (npm run dev). Sin IPs de red. */
 export const LOCAL_UPSTREAM_DEFAULTS = {
-  UPSTREAM_CORE: 'http://127.0.0.1:8080',
+  // UPSTREAM_CORE: 'http://127.0.0.1:8080',
+  UPSTREAM_CORE: 'http://210.17.1.53:5053',
   UPSTREAM_MBA3: 'http://127.0.0.1:8000',
   UPSTREAM_MBA3_AUTH: 'http://127.0.0.1:8000',
   UPSTREAM_CAJA_CHICA: 'http://127.0.0.1:8092',
@@ -28,6 +29,7 @@ export const LOCAL_UPSTREAM_DEFAULTS = {
   UPSTREAM_SLAYER: 'http://127.0.0.1:8093',
   UPSTREAM_EMPLOYEES: 'http://127.0.0.1:8092',
   UPSTREAM_REPOSICION: 'http://127.0.0.1:8006',
+  UPSTREAM_RULETA: 'http://localhost:5062',
 }
 
 /** Nombres legacy (vite / docker antiguos) → UPSTREAM_* */
@@ -176,7 +178,6 @@ export const DOCKER_UPSTREAM_DEFAULTS = {
   UPSTREAM_PROMOCION_SOBRES: 'http://host.docker.internal:8083',
   UPSTREAM_SLAYER: 'http://host.docker.internal:8093',
   UPSTREAM_EMPLOYEES: 'http://192.168.2.153:8092',
-  UPSTREAM_REPOSICION: 'http://host.docker.internal:8006',
 }
 
 export function upstreamUrl(env, key, { docker = false } = {}) {

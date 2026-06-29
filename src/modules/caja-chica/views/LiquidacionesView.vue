@@ -311,7 +311,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from '@vue/runtime-core'
-import axios from 'axios'
+import { cajaChicaApi } from '../services/cajaChicaApi'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
 
@@ -385,21 +385,6 @@ const sendingId = ref<number | null>(null)
 const volver = () => {
   router.back()
 }
-
-const cajaChicaApi = axios.create({
-  baseURL: import.meta.env.VITE_CAJA_CHICA_API_URL || '/caja-chica-api',
-  headers: {
-    'Content-Type': 'application/json'
-  }
-})
-
-cajaChicaApi.interceptors.request.use(config => {
-  const token = localStorage.getItem('token')
-  if (token && config.headers) {
-    config.headers['Authorization'] = `Bearer ${token}`
-  }
-  return config
-})
 
 const getCurrentUserId = (): string => {
   if (authStore.userData?.id) return authStore.userData.id

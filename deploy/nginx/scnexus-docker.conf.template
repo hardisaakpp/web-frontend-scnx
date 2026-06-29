@@ -1,5 +1,5 @@
 # Nginx dentro del contenedor SCNexus (intranet / servidor de aplicaciones).
-# Upstreams: placeholders __*_UPSTREAM__ sustituidos en el Dockerfile (ver .env.docker.example).
+# Upstreams: variables ${UPSTREAM_*} sustituidas por docker-entrypoint.sh al arrancar.
 # Referencia host sin Docker: deploy/nginx/scnexus-host.conf.example
 
 server {
@@ -13,7 +13,7 @@ server {
     # AUTH/me -> MBA3 (capabilities)
     # =========================
     location = /api/Auth/me {
-        proxy_pass __MBA3_UPSTREAM__;
+        proxy_pass ${UPSTREAM_MBA3};
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -23,7 +23,7 @@ server {
     }
 
     location = /api/auth/me {
-        proxy_pass __MBA3_UPSTREAM__;
+        proxy_pass ${UPSTREAM_MBA3};
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -36,9 +36,9 @@ server {
     # AUTH -> CORE (login). Sin Host $host: equivale a changeOrigin del proxy Vite.
     # =========================
     location /api/Auth/ {
-        proxy_pass __CORE_UPSTREAM__;
+        proxy_pass ${UPSTREAM_CORE};
         proxy_http_version 1.1;
-        proxy_set_header Host __CORE_PROXY_HOST__;
+        proxy_set_header Host ${CORE_PROXY_HOST};
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
@@ -47,7 +47,7 @@ server {
 
     # Preferencias UI -> MBA3 (antes del location /api/ genérico)
     location /api/users/preferences {
-        proxy_pass __MBA3_UPSTREAM__;
+        proxy_pass ${UPSTREAM_MBA3};
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -61,7 +61,7 @@ server {
     # =========================
     location = /api/mba3/notificaciones/stream {
         rewrite ^/api/mba3(.*)$ $1 break;
-        proxy_pass __MBA3_UPSTREAM__;
+        proxy_pass ${UPSTREAM_MBA3};
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -80,7 +80,7 @@ server {
     # =========================
     location /api/mba3/ {
         rewrite ^/api/mba3(.*)$ $1 break;
-        proxy_pass __MBA3_UPSTREAM__;
+        proxy_pass ${UPSTREAM_MBA3};
         proxy_http_version 1.1;
         client_max_body_size 50M;
         proxy_connect_timeout 120s;
@@ -98,7 +98,7 @@ server {
     # =========================
     location /caja-chica-api/ {
         rewrite ^/caja-chica-api(.*)$ /api$1 break;
-        proxy_pass __CAJA_CHICA_UPSTREAM__;
+        proxy_pass ${UPSTREAM_CAJA_CHICA};
         proxy_http_version 1.1;
         client_max_body_size 50M;
         proxy_connect_timeout 120s;
@@ -112,7 +112,7 @@ server {
     }
 
     location ^~ /uploads/ {
-        proxy_pass __CAJA_CHICA_UPSTREAM__;
+        proxy_pass ${UPSTREAM_CAJA_CHICA};
         proxy_http_version 1.1;
         client_max_body_size 50M;
         proxy_connect_timeout 120s;
@@ -132,7 +132,7 @@ server {
 
     # Empleados tiendas: en prod host era PHP (Nginx :3001 + fastcgi), no cajachica /api.
     location ^~ /employees-api/ {
-        proxy_pass __EMPLOYEES_UPSTREAM__;
+        proxy_pass ${UPSTREAM_EMPLOYEES};
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -146,7 +146,7 @@ server {
     # =========================
     location /pyg-api/ {
         rewrite ^/pyg-api(.*)$ /api$1 break;
-        proxy_pass __PYG_UPSTREAM__;
+        proxy_pass ${UPSTREAM_PYG};
         proxy_http_version 1.1;
         client_max_body_size 50M;
         proxy_connect_timeout 120s;
@@ -164,7 +164,7 @@ server {
     # =========================
     location /conciliacion-api/ {
         rewrite ^/conciliacion-api(.*)$ $1 break;
-        proxy_pass __CONCILIACION_UPSTREAM__;
+        proxy_pass ${UPSTREAM_CONCILIACION};
         proxy_http_version 1.1;
         client_max_body_size 50M;
         proxy_set_header Host $host;
@@ -176,7 +176,7 @@ server {
 
     location /maestro-api/ {
         rewrite ^/maestro-api(.*)$ $1 break;
-        proxy_pass __MAESTRO_UPSTREAM__;
+        proxy_pass ${UPSTREAM_MAESTRO};
         proxy_http_version 1.1;
         client_max_body_size 50M;
         proxy_set_header Host $host;
@@ -185,13 +185,14 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header Authorization $http_authorization;
     }
-    
+
     # =========================
     # Reposiciones
     # =========================
     location /api/reposicion-api/ {
         rewrite ^/api/reposicion-api(.*)$ /api$1 break;
-        proxy_pass __REPOSICION_UPSTREAM__;
+        proxy_pass ${UPSTREAM_REPOSICION};
+
         proxy_http_version 1.1;
         client_max_body_size 50M;
         proxy_connect_timeout 180s;
@@ -209,7 +210,7 @@ server {
     # =========================
     location /slayer-api/ {
         rewrite ^/slayer-api(.*)$ /api$1 break;
-        proxy_pass __SLAYER_UPSTREAM__;
+        proxy_pass ${UPSTREAM_SLAYER};
         proxy_http_version 1.1;
         client_max_body_size 50M;
         proxy_connect_timeout 180s;
@@ -227,7 +228,7 @@ server {
     # =========================
     location /scan-api/ {
         rewrite ^/scan-api(.*)$ $1 break;
-        proxy_pass __SCAN_API_UPSTREAM__;
+        proxy_pass ${UPSTREAM_SCAN};
         proxy_http_version 1.1;
         client_max_body_size 50M;
         proxy_connect_timeout 120s;
@@ -245,7 +246,7 @@ server {
     # =========================
     location /promocion-sobres-api/ {
         rewrite ^/promocion-sobres-api(.*)$ $1 break;
-        proxy_pass __PROMOCION_SOBRES_UPSTREAM__;
+        proxy_pass ${UPSTREAM_PROMOCION_SOBRES};
         proxy_http_version 1.1;
         client_max_body_size 50M;
         proxy_connect_timeout 120s;
@@ -263,7 +264,7 @@ server {
     # =========================
     location /inventario-api/ {
         rewrite ^/inventario-api(.*)$ $1 break;
-        proxy_pass __INVENTARIO_UPSTREAM__;
+        proxy_pass ${UPSTREAM_INVENTARIO};
         proxy_http_version 1.1;
         client_max_body_size 50M;
         proxy_connect_timeout 180s;
@@ -277,12 +278,30 @@ server {
     }
 
     # =========================
+    # Campañas / Ruleta
+    # =========================
+    location /ruleta-api/ {
+        rewrite ^/ruleta-api(.*)$ $1 break;
+        proxy_pass ${UPSTREAM_RULETA};
+        proxy_http_version 1.1;
+        client_max_body_size 50M;
+        proxy_connect_timeout 120s;
+        proxy_send_timeout 120s;
+        proxy_read_timeout 120s;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Authorization $http_authorization;
+    }
+
+    # =========================
     # CORE - resto de /api
     # =========================
     location /api/ {
-        proxy_pass __CORE_UPSTREAM__;
+        proxy_pass ${UPSTREAM_CORE};
         proxy_http_version 1.1;
-        proxy_set_header Host __CORE_PROXY_HOST__;
+        proxy_set_header Host ${CORE_PROXY_HOST};
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;

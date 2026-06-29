@@ -19,10 +19,7 @@ import articuloScanerRoutes from '../modules/articulo-scaner/router'
 import inventarioRoutes from '../modules/inventario/router'
 import promocionSobresRoutes from '../modules/promocion-sobres/router'
 import reposicionesRoutes from '../modules/reposiciones/router'
-
-
-console.log('🔍 DEBUG usuariosRoutes:', usuariosRoutes)
-console.log('🔍 DEBUG cajaChicaRoutes:', cajaChicaRoutes)
+import ruletaRoutes from '../modules/ruleta/router'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -74,6 +71,7 @@ const router = createRouter({
         ...inventarioRoutes,
         ...promocionSobresRoutes,
         ...reposicionesRoutes,
+        ...ruletaRoutes,
 
         {
           path: 'forbidden',

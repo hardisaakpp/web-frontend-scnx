@@ -297,7 +297,7 @@ import { useRedistribucion } from '../composables/useRedistribucion'
 import { useProcesoStore } from '../stores/procesoStore'
 import PedidoCabecera from '../components/PedidoCabecera.vue'
 import RedistribucionTiendas from '../components/RedistribucionTiendas.vue'
-import OdcSapVolverButton from '../components/OdcSapVolverButton.vue'
+import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
 import {

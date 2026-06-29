@@ -38,13 +38,14 @@
                         <p class="text-xs text-gray-500 dark:text-gray-400">
                             Ingresa los ItemCode separados por comas o saltos de línea para importarlos o actualizarlos desde SAP.
                         </p>
-                        <textarea 
-                            v-model="pullCodes" 
-                            rows="4" 
+                        <textarea
+                            v-model="pullCodes"
+                            rows="4"
+                            aria-label="Códigos de artículos a importar"
                             class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 text-sm focus:ring-blue-500 focus:border-blue-500"
                             placeholder="ART-01, ART-02..."
                         ></textarea>
-                        <button 
+                        <button
                             @click="handlePullFromSap"
                             :disabled="!pullCodes.trim() || processingPull"
                             class="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
@@ -52,6 +53,10 @@
                             <svg v-if="processingPull" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
                             {{ processingPull ? 'Importando...' : 'Traer del SAP' }}
                         </button>
+                        <div v-if="pullError" class="flex items-center justify-between rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-3 py-2">
+                            <span class="text-xs text-red-700 dark:text-red-400">{{ pullError }}</span>
+                            <button @click="pullError = ''" class="text-red-500 hover:text-red-700 ml-2 text-xs font-medium">✕</button>
+                        </div>
                     </div>
                 </div>
                 <!-- Card: Filtrar por Código -->
@@ -60,9 +65,10 @@
                         <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Filtrar por Código</h2>
                     </div>
                     <div class="px-6 py-5 space-y-4">
-                        <input 
-                            v-model="searchCode" 
+                        <input
+                            v-model="searchCode"
                             type="text"
+                            aria-label="Buscar por ItemCode"
                             class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 text-sm focus:ring-blue-500 focus:border-blue-500"
                             placeholder="Buscar ItemCode..."
                         />
@@ -166,13 +172,17 @@
                             
                             <div class="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-1"></div>
 
-                            <button 
-                                @click="handleBulkAction('create')"
+                            <button
+                                @click="requestBulkAction('create')"
                                 :disabled="selectedCount === 0 || processingAction"
                                 class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded-lg disabled:opacity-50 transition-colors shadow-sm"
                             >
                                 Sincronizar con SAP
                             </button>
+                        </div>
+                        <div v-if="actionError" class="flex items-center justify-between rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-3 py-2 mt-2">
+                            <span class="text-xs text-red-700 dark:text-red-400">{{ actionError }}</span>
+                            <button @click="actionError = ''" class="text-red-500 hover:text-red-700 ml-2 text-xs font-medium">✕</button>
                         </div>
                     </div>
 
@@ -182,9 +192,10 @@
                             <thead class="bg-gray-50 dark:bg-gray-900/50 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                 <tr>
                                     <th class="px-6 py-3 w-10">
-                                        <input 
-                                            type="checkbox" 
-                                            :checked="allSelected" 
+                                        <input
+                                            type="checkbox"
+                                            :checked="allSelected"
+                                            aria-label="Seleccionar todos"
                                             @change="toggleSelectAll"
                                             class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                                         />
@@ -196,13 +207,15 @@
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
-                                <tr v-if="loadingPending" v-for="i in 5" :key="i" class="animate-pulse">
-                                    <td class="px-6 py-4"><div class="h-4 w-4 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
-                                    <td class="px-6 py-4"><div class="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
-                                    <td class="px-6 py-4"><div class="h-4 w-40 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
-                                    <td class="px-6 py-4"><div class="h-6 w-20 bg-gray-200 dark:bg-gray-700 rounded-full"></div></td>
-                                    <td class="px-6 py-4"><div class="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
-                                </tr>
+                                <template v-if="loadingPending">
+                                    <tr v-for="i in 5" :key="i" class="animate-pulse">
+                                        <td class="px-6 py-4"><div class="h-4 w-4 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
+                                        <td class="px-6 py-4"><div class="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
+                                        <td class="px-6 py-4"><div class="h-4 w-40 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
+                                        <td class="px-6 py-4"><div class="h-6 w-20 bg-gray-200 dark:bg-gray-700 rounded-full"></div></td>
+                                        <td class="px-6 py-4"><div class="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
+                                    </tr>
+                                </template>
                                 
                                 <tr v-else-if="pendingArticulos.length === 0">
                                     <td colspan="5" class="px-6 py-12 text-center">
@@ -221,9 +234,10 @@
                                     :class="selectedCodes.includes(art.itemCode) ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''"
                                 >
                                     <td class="px-6 py-4">
-                                        <input 
-                                            type="checkbox" 
-                                            :value="art.itemCode" 
+                                        <input
+                                            type="checkbox"
+                                            :value="art.itemCode"
+                                            :aria-label="'Seleccionar ' + art.itemCode"
                                             v-model="selectedCodes"
                                             class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                                         />
@@ -239,13 +253,13 @@
                                     <td class="px-6 py-4">
                                         <span 
                                             class="px-2.5 py-0.5 rounded-full text-xs font-medium border"
-                                            :class="getStatusBadgeClass(art.controlSap?.estado || 'BORRADOR')"
+                                            :class="getStatusBadgeClass(art.controlSap?.estado ?? 'BORRADOR')"
                                         >
-                                            {{ art.controlSap?.estado || 'BORRADOR' }}
+                                            {{ art.controlSap?.estado ?? 'BORRADOR' }}
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 text-xs text-gray-500 uppercase">
-                                        {{ art.uOrigen || '-' }}
+                                        {{ art.uOrigen ?? '-' }}
                                     </td>
                                 </tr>
                             </tbody>
@@ -389,6 +403,32 @@
                 </div>
             </div>
         </Teleport>
+
+        <!-- Modal Confirmación Acción Masiva -->
+        <Teleport to="body">
+            <div v-if="pendingBulkAction" class="fixed inset-0 z-50 flex items-center justify-center">
+                <div class="absolute inset-0 bg-black/50" @click="pendingBulkAction = null"></div>
+                <div class="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-w-md mx-4 p-6">
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Confirmar acción</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">{{ bulkActionMsg }}</p>
+                    <div class="flex justify-end gap-3">
+                        <button
+                            @click="pendingBulkAction = null"
+                            class="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            @click="confirmBulkAction"
+                            :disabled="processingAction"
+                            class="px-4 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-60 transition-colors"
+                        >
+                            {{ processingAction ? 'Procesando...' : 'Confirmar' }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
     </div>
 </template>
 
@@ -416,6 +456,10 @@ let pollingTimer: ReturnType<typeof setInterval> | null = null
 const showResultModal = ref(false)
 const syncResult = ref<SapSyncResponse | null>(null)
 const modalTitle = ref('')
+const pendingBulkAction = ref<'create' | 'update' | 'delete' | null>(null)
+const bulkActionMsg = ref('')
+const actionError = ref('')
+const pullError = ref('')
 
 // Computed
 const selectedCount = computed(() => selectedCodes.value.length)
@@ -428,8 +472,8 @@ const filteredArticulos = computed(() => {
     if (!searchCode.value) return pendingArticulos.value
     const q = searchCode.value.trim().toUpperCase()
     return pendingArticulos.value.filter(a => {
-        const code = (a.itemCode || '').toString().toUpperCase()
-        const name = (a.itemName || '').toString().toUpperCase()
+        const code = (a.itemCode ?? '').toString().toUpperCase()
+        const name = (a.itemName ?? '').toString().toUpperCase()
         return code.includes(q) || name.includes(q)
     })
 })
@@ -452,8 +496,8 @@ async function fetchPending() {
         const data = await articuloService.getArticulosByEstado(['BORRADOR', 'ERROR', 'PENDIENTE'])
         pendingArticulos.value = data
         selectedCodes.value = [] // Limpiar selección tras refrescar
-    } catch (err) {
-        console.error('Error al cargar pendientes:', err)
+    } catch {
+        // error silencioso — la UI ya muestra estado vacío
     } finally {
         loadingPending.value = false
     }
@@ -481,8 +525,8 @@ async function fetchTasks() {
             stopPolling()
             // Pero lo dejamos un último fetch asegurado
         }
-    } catch (err) {
-        console.error('Error fetching tasks:', err)
+    } catch {
+        // error silencioso — el polling reintentará en el siguiente ciclo
     }
 }
 
@@ -492,7 +536,6 @@ function startPolling() {
     // Primera ejecución inmediata
     fetchTasks()
     pollingTimer = setInterval(() => {
-        const hasActiveTasks = recentTasks.value.some(t => t.estado === 'PROCESANDO')
         // Siempre consultamos si isPolling es true, pero fetchTasks decidirá si apagarlo
         fetchTasks()
     }, 2000)
@@ -527,45 +570,48 @@ function getStatusBadgeClass(status: string) {
 async function handlePullFromSap() {
     // Limpiar códigos e intentar procesar. Acepta comas, espacios o saltos de línea.
     const codes = pullCodes.value
-        .split(/[,\s\n]+/)
+        .split(/[,\s]+/)
         .map(c => c.trim())
         .filter(c => c.length > 0)
     
     if (codes.length === 0) return
 
     processingPull.value = true
+    pullError.value = ''
     try {
         const result = await sapService.pullFromSap(codes)
         syncResult.value = result
         modalTitle.value = 'Importación desde SAP'
         showResultModal.value = true
         pullCodes.value = ''
-        fetchPending() // Refrescar lista local
-    } catch (err) {
-        alert('Ocurrió un error al intentar importar desde SAP.')
-        console.error(err)
+        fetchPending()
+    } catch {
+        pullError.value = 'Ocurrió un error al intentar importar desde SAP.'
     } finally {
         processingPull.value = false
     }
 }
 
-async function handleBulkAction(action: 'create' | 'update' | 'delete') {
+function requestBulkAction(action: 'create' | 'update' | 'delete') {
     if (selectedCodes.value.length === 0) return
-    
-    const confirmMsg = {
-        'create': '¿Deseas sincronizar (crear o actualizar) estos artículos en SAP?',
-        'update': '¿Deseas actualizar estos artículos en SAP con la info local?',
-        'delete': '¿Deseas intentar ELIMINAR estos artículos de SAP?'
-    }[action]
+    const msgs = {
+        create: '¿Deseas sincronizar (crear o actualizar) estos artículos en SAP?',
+        update: '¿Deseas actualizar estos artículos en SAP con la info local?',
+        delete: '¿Deseas intentar ELIMINAR estos artículos de SAP?'
+    }
+    bulkActionMsg.value = msgs[action] ?? '¿Confirmas esta acción?'
+    pendingBulkAction.value = action
+}
 
-    if (!confirm(confirmMsg)) return
-
+async function confirmBulkAction() {
+    if (!pendingBulkAction.value) return
+    const action = pendingBulkAction.value
+    pendingBulkAction.value = null
     processingAction.value = true
+    actionError.value = ''
     try {
         let result: SapSyncResponse
-        
         if (action === 'create') {
-            // Usamos syncOrUpdate para ser más robustos (si ya existe, lo actualiza)
             result = await sapService.syncOrUpdate(selectedCodes.value)
             modalTitle.value = 'Creación / Sincronización en SAP'
         } else if (action === 'update') {
@@ -575,16 +621,12 @@ async function handleBulkAction(action: 'create' | 'update' | 'delete') {
             result = await sapService.deleteFromSap(selectedCodes.value)
             modalTitle.value = 'Eliminación en SAP'
         }
-
         syncResult.value = result
         showResultModal.value = true
-        
-        // Al iniciar una acción masiva, forzamos inicio de polling para ver la tarea
         startPolling()
-        fetchPending() // Refrescar lista (aunque el polling lo hará cuando termine)
-    } catch (err) {
-        alert('Error al procesar la acción en SAP.')
-        console.error(err)
+        fetchPending()
+    } catch {
+        actionError.value = 'Error al procesar la acción en SAP.'
     } finally {
         processingAction.value = false
     }
@@ -592,7 +634,6 @@ async function handleBulkAction(action: 'create' | 'update' | 'delete') {
 
 function closeResultModal() {
     showResultModal.value = false
-    // syncResult.value = null // Dejarlo para que no parpadee al cerrar
 }
 </script>
 

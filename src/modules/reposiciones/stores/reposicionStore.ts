@@ -10,6 +10,29 @@ import type {
 } from '../types'
 import { useAuthStore } from '@/stores/auth'
 
+function findCentralInGroups(groups: any[], toWhs: string): string | undefined {
+  return groups?.find((g: any) => g.almacenes?.includes(toWhs))?.bodegaCentral
+}
+
+function findCentralFromArray(accesses: any[], toWhs: string): string | undefined {
+  for (const a of accesses) {
+    if (a.warehouseGroups) {
+      const central = findCentralInGroups(a.warehouseGroups, toWhs)
+      if (central) return central
+    } else if (a.almacenes?.includes(toWhs) && a.bodegaCentral) {
+      return a.bodegaCentral
+    }
+  }
+  return undefined
+}
+
+function getFromWhs(accesses: any, toWhs: string): string {
+  if (!accesses) return 'OUT-CD'
+  if (accesses.warehouseGroups) return findCentralInGroups(accesses.warehouseGroups, toWhs) ?? 'OUT-CD'
+  if (Array.isArray(accesses)) return findCentralFromArray(accesses, toWhs) ?? 'OUT-CD'
+  return 'OUT-CD'
+}
+
 export const useReposicionStore = defineStore('reposicion', {
   state: () => ({
     catalogo: [] as CatalogoItem[],
@@ -124,7 +147,7 @@ export const useReposicionStore = defineStore('reposicion', {
       
       try {
         const response: any = await reposicionApi.getCarrito(this.filters.whsCode)
-        if (response && response.items) {
+        if (response?.items) {
           this.carrito = response.items
           this.carritoInfo = {
             fromWhs: response.fromWhs || '',
@@ -165,30 +188,8 @@ export const useReposicionStore = defineStore('reposicion', {
       }
 
       // DETERMINAR ORIGEN (Bodega Central) Y DESTINO (Tienda)
-      const accesses: any = authStore.userWarehouseAccesses
       const toWhs = this.filters.whsCode
-      let fromWhs = 'OUT-CD'
-
-      const findCentralInGroups = (groups: any[]) => {
-        const group = groups?.find(g => g.almacenes?.includes(toWhs))
-        return group?.bodegaCentral
-      }
-
-      if (accesses) {
-        if (accesses.warehouseGroups) {
-          const central = findCentralInGroups(accesses.warehouseGroups)
-          if (central) fromWhs = central
-        } else if (Array.isArray(accesses)) {
-          accesses.forEach((a: any) => {
-            if (a.warehouseGroups) {
-              const central = findCentralInGroups(a.warehouseGroups)
-              if (central) fromWhs = central
-            } else if (a.almacenes?.includes(toWhs)) {
-              if (a.bodegaCentral) fromWhs = a.bodegaCentral
-            }
-          })
-        }
-      }
+      const fromWhs = getFromWhs(authStore.userWarehouseAccesses, toWhs)
 
       try {
         await reposicionApi.saveItem({
