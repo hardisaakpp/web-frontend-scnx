@@ -104,13 +104,13 @@ const emit = defineEmits<{
 }>()
 
 const FILTROS_DISPONIBLES = [
-  { key: 'uNv1', label: 'Nivel 1 (u_nv1)', catalogKey: 'uNv1Values' as const },
-  { key: 'uNv2', label: 'Nivel 2 (u_nv2)', catalogKey: 'uNv2Values' as const },
-  { key: 'uNv3', label: 'Nivel 3 (u_nv3)', catalogKey: 'uNv3Values' as const },
-  { key: 'uGen', label: 'Género (u_gen)', catalogKey: 'uGenValues' as const },
-  { key: 'material', label: 'Material', catalogKey: 'materialValues' as const },
-  { key: 'pack', label: 'Pack', catalogKey: 'packValues' as const },
-  { key: 'coleccion', label: 'Colección', catalogKey: 'coleccionValues' as const },
+  { key: 'uNv1' as const, label: 'Nivel 1 (u_nv1)', catalogKey: 'uNv1Values' as const },
+  { key: 'uNv2' as const, label: 'Nivel 2 (u_nv2)', catalogKey: 'uNv2Values' as const },
+  { key: 'uNv3' as const, label: 'Nivel 3 (u_nv3)', catalogKey: 'uNv3Values' as const },
+  { key: 'uGen' as const, label: 'Género (u_gen)', catalogKey: 'uGenValues' as const },
+  { key: 'material' as const, label: 'Material', catalogKey: 'materialValues' as const },
+  { key: 'pack' as const, label: 'Pack', catalogKey: 'packValues' as const },
+  { key: 'coleccion' as const, label: 'Colección', catalogKey: 'coleccionValues' as const },
 ]
 
 type FiltroKey = 'uNv1' | 'uNv2' | 'uNv3' | 'uGen' | 'material' | 'pack' | 'coleccion'
