@@ -130,5 +130,9 @@ export const inventarioSesionesService = {
   async getScansByUser(sessionId: string): Promise<SessionScansByUserDto> {
     const response = await invPlanesApi.get<SessionScansByUserDto>(`/api/inventory-sessions/${sessionId}/scans-by-user`)
     return response.data
+  },
+
+  async syncWarehouseStock(warehouseCode: string): Promise<void> {
+    await invPlanesApi.post(`/api/stock/sync/${encodeURIComponent(warehouseCode)}`)
   }
 }
