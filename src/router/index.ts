@@ -18,6 +18,7 @@ import pygRoutes from '../modules/pyg/router'
 import articuloScanerRoutes from '../modules/articulo-scaner/router'
 import inventarioRoutes from '../modules/inventario/router'
 import promocionSobresRoutes from '../modules/promocion-sobres/router'
+import transaccionesRoutes from '../modules/transacciones/router'
 import reposicionesRoutes from '../modules/reposiciones/router'
 import ruletaRoutes from '../modules/ruleta/router'
 
@@ -70,9 +71,9 @@ const router = createRouter({
         ...articuloScanerRoutes,
         ...inventarioRoutes,
         ...promocionSobresRoutes,
+        ...transaccionesRoutes,
         ...reposicionesRoutes,
         ...ruletaRoutes,
-
         {
           path: 'forbidden',
           name: 'forbidden',

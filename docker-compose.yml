@@ -28,4 +28,13 @@ services:
       - "host.docker.internal:host-gateway"
     volumes:
       - ${CAJA_CHICA_LEGACY_MEDIA_HOST:-/media/scnexus-cajachica}:/var/lib/caja-chica-legacy:ro
+    networks:
+      - default
+      - mba3_net
     restart: unless-stopped
+
+networks:
+  default: {}
+  mba3_net:
+    external: true
+    name: mba3-consultas_default
