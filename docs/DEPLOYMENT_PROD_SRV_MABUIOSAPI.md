@@ -90,7 +90,7 @@ Redes Docker en prod (`docker-compose.prod-network.yml` + `docker network connec
 | Backend | URL en `active.env` | Cómo llega el contenedor |
 |---------|---------------------|---------------------------|
 | Core (`/api/Auth/`, resto `/api/`) | `http://192.168.2.12:8080` | IP del Core de prod (mismo que Apache viejo) |
-| MBA3 | `http://mba3-api:8000` | red externa `mba3-nexus_edge` |
+| MBA3 | `http://mba3-api:8000` | red externa `mba3-consultas_default` (declarada en `docker-compose.yml`) |
 | Cajachica | IP bridge actual o `http://192.168.2.153:8092` | `bash deploy/scripts/discover-caja-chica-upstream.sh`; `docker network connect bridge` tras el `up` |
 | PYG `/pyg-api/` | `http://scnexus-pyg-api:8080` | red `scnexus-pyg_default` (host publica **5171→8080**; entre contenedores usar **8080**) |
 | Empleados `/employees-api/` | `http://host.docker.internal:3001` | PHP en Nginx **host** :3001, no cajachica |
@@ -99,7 +99,9 @@ Redes Docker en prod (`docker-compose.prod-network.yml` + `docker network connec
 
 **No** declarar la red `bridge` en Compose (error: *network-scoped alias is supported only for user defined networks*).
 
-**No** usar `host.docker.internal:8000` ni `:8092` para MBA3/Cajachica en este host (timeout desde contenedor).
+**No** usar `host.docker.internal:8000` para MBA3 en este host — hace timeout desde el contenedor (iptables bloquea tráfico entre redes Docker a través del host). Ver [INCIDENTS.md](../deploy/production-audit/srv-mabuiosapi/INCIDENTS.md) 2026-06-05.
+
+**No** usar `host.docker.internal:8092` para Cajachica en este host (timeout desde contenedor).
 
 **No** usar `intranet.env.example` sin revisar: las IPs 192.168.x no reflejan “todo en localhost Docker” en este host.
 
@@ -301,19 +303,21 @@ El `vite.config.ts` de la rama refactor incluye una función `resolveActiveBacke
 
 ---
 
-## 12. Pendientes antes del primer deploy
+## 12. Estado del despliegue (actualizado 2026-06-05)
 
-| # | Tarea | Responsable |
-|---|--------|-------------|
-| 1 | Pegar contenido real de `003-scnexus.conf` y cerrar diff Apache | Infra |
-| 2 | Acordar rama git y usuario SSH en prod | Equipo |
-| 3 | Crear clone en `/opt/frontend/scnexus-front` | Infra |
-| 4 | Validar `active.env` (MBA3 `mba3-api`, caja `172.17.0.2`, Core `192.168.2.12:8080`) | DevOps |
-| 5 | `docker-compose.prod-network.yml` + `connect bridge` | DevOps |
-| 6 | Ventana de corte + rollback comunicado | Coordinación |
+El contenedor `scnexus-front` está activo en producción desde la migración a Docker. El incidente de reinicio del 2026-06-05 dejó el sistema operativo con las correcciones aplicadas.
+
+| # | Tarea | Estado |
+|---|--------|--------|
+| 1 | Apache `003-scnexus.conf` → `ProxyPass / http://127.0.0.1:8082/` | ✅ Activo |
+| 2 | Clone en `/opt/frontend/scnexus-front` | ✅ Activo |
+| 3 | `active.docker.env` con Core `192.168.2.12:8080` | ✅ Corregido 2026-06-05 |
+| 4 | MBA3 via red `mba3-consultas_default` (`mba3-api:8000`) | ✅ Corregido 2026-06-05 |
+| 5 | `restart: unless-stopped` en compose | ⚠️ Considerar `restart: always` para reinicio automático tras reboot del SO |
+| 6 | Verificar otros upstreams con `host.docker.internal` (PYG, Conciliación, Scan, Inventario) | 🔲 Pendiente validar |
 
 ---
 
-**Última actualización:** 2026-05-28  
+**Última actualización:** 2026-06-05 (incidente reinicio servidor)  
 **Servidor:** srv-mabuiosapi  
 **Dominio:** scnexus.mabelgroup.com.ec
