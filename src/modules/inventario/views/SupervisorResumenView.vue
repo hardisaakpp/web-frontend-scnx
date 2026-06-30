@@ -166,6 +166,32 @@
         </div>
       </div>
 
+      <!-- Sync stock SAP -->
+      <div v-if="summary.status !== 'Closed'" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 mb-4">
+        <h2 class="text-sm font-semibold text-gray-900 dark:text-white mb-1">Actualizar Stock desde SAP</h2>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          Sincroniza el stock del sistema para la bodega <strong>{{ summary.warehouseCode }}</strong> ejecutando el SP de SAP.
+          Las cantidades del sistema en la toma física se actualizarán al recargar.
+        </p>
+        <div class="flex items-center gap-3">
+          <button
+            type="button"
+            class="btn-secondary"
+            :disabled="sincronizando"
+            @click="sincronizarStock"
+          >
+            <svg v-if="sincronizando" class="animate-spin w-4 h-4 mr-1.5" viewBox="0 0 24 24" fill="none">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+            </svg>
+            <ArrowPathIcon v-else class="w-4 h-4 mr-1.5" />
+            {{ sincronizando ? 'Sincronizando...' : 'Actualizar Stock SAP' }}
+          </button>
+          <span v-if="mensajeSincronizacion" class="text-xs text-green-600 dark:text-green-400">{{ mensajeSincronizacion }}</span>
+        </div>
+        <div v-if="errorSincronizacion" class="mt-3 alert-error text-sm">{{ errorSincronizacion }}</div>
+      </div>
+
       <!-- Close session -->
       <div v-if="summary.canClose" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
         <h2 class="text-sm font-semibold text-gray-900 dark:text-white mb-1">Cerrar Toma Física</h2>
@@ -262,6 +288,10 @@ const cerrando = ref(false)
 const errorCierre = ref<string | null>(null)
 const resultadoCierre = ref<string | null>(null)
 
+const sincronizando = ref(false)
+const errorSincronizacion = ref<string | null>(null)
+const mensajeSincronizacion = ref<string | null>(null)
+
 const descargando = ref(false)
 
 const progressPct = computed(() => {
@@ -322,6 +352,23 @@ async function descargarCSV() {
     error.value = e.message ?? 'Error al descargar el detalle.'
   } finally {
     descargando.value = false
+  }
+}
+
+async function sincronizarStock() {
+  if (!summary.value) return
+  sincronizando.value = true
+  errorSincronizacion.value = null
+  mensajeSincronizacion.value = null
+  try {
+    await inventarioSesionesService.syncWarehouseStock(summary.value.warehouseCode)
+    mensajeSincronizacion.value = '✓ Stock actualizado. Recargando...'
+    await cargar()
+    setTimeout(() => { mensajeSincronizacion.value = null }, 3000)
+  } catch (e: any) {
+    errorSincronizacion.value = e.message ?? 'Error al sincronizar el stock.'
+  } finally {
+    sincronizando.value = false
   }
 }
 
