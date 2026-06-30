@@ -176,6 +176,21 @@
           <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Importador PYG</span>
         </router-link>
 
+        <!-- Mis Inventarios (todos los usuarios autenticados) -->
+        <router-link
+          to="/inventario/mis-inventarios"
+          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
+          :class="{
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/inventario/mis-inventarios'),
+            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/inventario/mis-inventarios')
+          }"
+          :title="effectiveSidebarCollapsed ? 'Mis Inventarios' : ''"
+        >
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <ClipboardDocumentListIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/inventario/mis-inventarios') }" />
+          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Mis Inventarios</span>
+        </router-link>
+
         <!-- Inventario -->
         <router-link
           v-if="hasModuleAccess('inventario')"
@@ -418,7 +433,8 @@ import {
   IdentificationIcon,
   GiftIcon,
   SparklesIcon,
-  ShoppingCartIcon
+  ShoppingCartIcon,
+  ClipboardDocumentListIcon
 } from '@heroicons/vue/24/outline'
 import { Pin, PinOff } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth'
