@@ -3,14 +3,15 @@
 | Entorno | Comando | URL típica |
 |---------|---------|------------|
 | Desarrollo en contenedor | `docker compose -f docker-compose.dev.yml up -d` | http://localhost:3000 |
-| Test/prod en contenedor | `npm run docker:up` (usa `deploy/env/active.env`) | http://localhost:8082 (default) |
+| Local con nginx | `docker compose up -d --build` (usa `deploy/env/active.env`) | http://localhost:8082 (default) |
+| Servidores (test/prod) | CD Release Classic — ver [CI_CD_MODULOS.md](./CI_CD_MODULOS.md) | — |
 
 ## Configuración (un solo lugar)
 
 ```bash
 # PC local (Core en 192.168.2.12, MBA3 en host)
-npm run docker:env
-npm run docker:up
+cp deploy/env/local.docker.env.example deploy/env/active.env
+docker compose up -d --build
 
 # DESA (front :8082; cajachica upstream :8081)
 cp deploy/env/desa.env.example deploy/env/active.env
@@ -18,17 +19,19 @@ sh ~/deploys/nexus_frontend.sh
 
 # Intranet / prod
 cp deploy/env/intranet.env.example deploy/env/active.env
-
-docker compose --env-file deploy/env/active.env build --no-cache
-docker compose --env-file deploy/env/active.env up -d
+docker compose up -d --build
 ```
 
-**Importante:** `env_file` del servicio no alimenta los `build.args`. Usa siempre `--env-file deploy/env/active.env` (o `npm run docker:up`).
+Los upstreams (`UPSTREAM_*`) se inyectan en **runtime** desde `active.env` — no se hornean en la imagen. Si cambias un upstream, solo hace falta reiniciar el contenedor (no rebuild):
 
-- **Bundle:** `deploy/env/bundle.env` (rutas relativas, sin IPs)
-- **Backends:** `UPSTREAM_*` en `deploy/env/active.env`
+```bash
+docker compose restart scnexus-front
+```
 
-Ver [deploy/env/README.md](../deploy/env/README.md).
+- **Bundle:** `deploy/env/bundle.env` (rutas relativas VITE_*, sin IPs — versionado)
+- **Backends:** `UPSTREAM_*` en `deploy/env/active.env` (gitignored — copiar desde `*.env.example`)
+
+Ver [CI_CD_MODULOS.md](./CI_CD_MODULOS.md) para arquitectura completa y cómo agregar módulos.
 
 ## Desarrollo local sin Docker
 
@@ -59,7 +62,13 @@ Puerto equivocado: **3000** = Vite dev, **8082** = Nginx en contenedor.
 
 ### Cambios en `active.env` no aplican (Docker prod)
 
-Los upstreams se hornean en la imagen: `docker compose build --no-cache`.
+Los upstreams se inyectan en runtime — solo reiniciar el contenedor:
+
+```bash
+docker compose restart scnexus-front
+# o en producción:
+docker restart web-scnexus
+```
 
 ### 502 desde el contenedor
 

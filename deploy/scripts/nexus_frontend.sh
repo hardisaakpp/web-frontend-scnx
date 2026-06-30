@@ -38,9 +38,15 @@ fi
 
 # shellcheck disable=SC1090
 set -a
-source "$ACTIVE_ENV"
+if [[ -f "$ACTIVE_ENV" ]]; then
+  source "$ACTIVE_ENV"
+  echo "✔ Configuración cargada desde $ACTIVE_ENV"
+else
+  echo "⚠ $ACTIVE_ENV no encontrado, usando valores por defecto."
+fi
 set +a
-FRONT_PORT="${SCNEXUS_FRONT_PORT:-8082}"
+
+FRONT_PORT="${SCNEXUS_FRONT_PORT:-8085}"
 
 echo "Build y levantar scnexus-front (Nginx en host :${FRONT_PORT})..."
 {
@@ -50,6 +56,7 @@ echo "Build y levantar scnexus-front (Nginx en host :${FRONT_PORT})..."
 } 2>&1 | tee -a "$LOG_FILE"
 
 echo "Front Docker listo."
+echo "  Puerto activo: ${FRONT_PORT} (Fuente: ${SCNEXUS_FRONT_PORT:+active.env}${SCNEXUS_FRONT_PORT:-default})"
+echo "  URL: http://$(hostname -I 2>/dev/null | awk '{print $1}'):${FRONT_PORT}/scnexus-front/"
 echo "  Logs: $LOG_FILE"
-echo "  URL directa: http://$(hostname -I 2>/dev/null | awk '{print $1}'):${FRONT_PORT}/scnexus-front/"
-echo "  Si antes usabas :3000, actualiza bookmarks o Nginx del host a :${FRONT_PORT}."
+

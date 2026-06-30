@@ -6,6 +6,7 @@ import permissionDirective from './directives/permission'
 import { setupErrorHandler } from './plugins/errorHandler'
 import { useAuthStore } from './stores/auth'
 import { useThemeStore } from './stores/theme'
+import '@fontsource-variable/inter'
 import './style.css'
 
 const app = createApp(App)

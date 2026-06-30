@@ -4,6 +4,7 @@
       <ComboboxButton as="div" class="relative w-full cursor-default overflow-hidden rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-left focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500 transition-all sm:text-sm">
         <ComboboxInput
           class="w-full border-none py-2 pl-3 pr-10 text-sm leading-5 text-gray-900 dark:text-white bg-transparent focus:ring-0 outline-none"
+          :id="inputId"
           :displayValue="(opt: any) => opt?.nombre || ''"
           @change="query = $event.target.value"
           @focus="$event.target.select()"
@@ -93,6 +94,7 @@ const props = defineProps<{
   disabled?: boolean
   required?: boolean
   valueKey?: keyof Option
+  inputId?: string
 }>()
 
 const emit = defineEmits(['update:modelValue', 'change'])
@@ -104,14 +106,29 @@ const selectedOption = computed({
     // Si no hay valor, devolver null
     if (props.modelValue === null || props.modelValue === undefined || props.modelValue === '') return null
     
+    const checkMatch = (optVal: any, modelVal: any) => {
+      if (optVal === modelVal) return true
+      if (optVal == null || modelVal == null) return false
+      if (String(optVal) === String(modelVal)) return true
+      
+      // Comparación numérica para códigos (ej: "01" vs 1)
+      const nOpt = Number(optVal)
+      const nModel = Number(modelVal)
+      if (!isNaN(nOpt) && !isNaN(nModel) && String(optVal).trim() !== '' && String(modelVal).trim() !== '') {
+        return nOpt === nModel
+      }
+      return false
+    }
+
     // Buscar la opción que coincida con el valor
     const found = props.options.find(opt => {
       if (props.valueKey) {
-        return String(opt[props.valueKey]) === String(props.modelValue)
+        return checkMatch(opt[props.valueKey], props.modelValue)
       }
-      return (opt.codigo !== undefined && String(opt.codigo) === String(props.modelValue)) || 
+      // Sin valueKey: prioridad codigo > id > nombre
+      return (opt.codigo !== undefined && checkMatch(opt.codigo, props.modelValue)) || 
              (opt.id !== undefined && opt.id === props.modelValue) ||
-             (opt.nombre === props.modelValue)
+             checkMatch(opt.nombre, props.modelValue)
     })
     return found || null
   },

@@ -1,43 +1,5 @@
-import axios from 'axios'
-import { attachUnauthorizedRedirect } from '@/services/sessionGuard'
+import { maestroHttp as apiMaestro } from '@/lib/http'
 import type { Articulo, ArticuloFilters } from '../types'
-
-// Instancia separada para el API del Maestro (puerto 8001 vía proxy)
-const apiMaestro = axios.create({
-    baseURL: import.meta.env.VITE_MAESTRO_API_URL || '/maestro-api',
-    headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-    }
-})
-
-// Inyectar token de sesión + headers de auditoría en cada request
-apiMaestro.interceptors.request.use((config) => {
-    config.headers = config.headers ?? {}
-
-    const token = localStorage.getItem('token')
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`
-    }
-
-    // Intentar obtener el usuario logueado desde localStorage
-    try {
-        const userStr = localStorage.getItem('user')
-        if (userStr) {
-            const user = JSON.parse(userStr)
-            config.headers['X-User'] = user.userName || 'desconocido'
-        } else {
-            config.headers['X-User'] = 'desconocido'
-        }
-    } catch {
-        config.headers['X-User'] = 'desconocido'
-    }
-
-    // Origen fijo para operaciones desde la aplicación web
-    config.headers['X-Origin'] = 'WEB_APP'
-
-    return config
-})
 
 // ─── Normalización de respuestas ─────────────────────────────────────────────
 // Esta función mapea el objeto de respuesta a las claves camelCase que espera el front.
@@ -81,11 +43,11 @@ function normalizeObject(obj: any): any {
 
     Object.entries(criticalMappings).forEach(([camelKey, variations]) => {
         // Solo si la clave camelCase no tiene valor (o es null)
-        if (normalized[camelKey] === undefined || normalized[camelKey] === null) {
+        if (normalized[camelKey] == null) {
             for (const v of variations) {
                 // Probar variación exacta y también con posibles espacios al final (caso raro visto en logs)
                 const val = obj[v] ?? obj[`${v} `]
-                if (val !== undefined && val !== null) {
+                if (val != null) {
                     normalized[camelKey] = val
                     break
                 }
@@ -102,32 +64,50 @@ apiMaestro.interceptors.response.use((response) => {
         return response
     }
 
-    if (response.data) {
-        if (Array.isArray(response.data)) {
-            response.data = response.data.map(normalizeObject)
+    const data: any = response.data
+    if (data) {
+        if (Array.isArray(data)) {
+            response.data = data.map(normalizeObject)
+        } else if (Array.isArray(data?.items)) {
+            // Nueva estructura: { total: number, items: Articulo[] }
+            data.items = data.items.map(normalizeObject)
+            response.data = normalizeObject(data)
         } else {
-            response.data = normalizeObject(response.data)
+            response.data = normalizeObject(data)
         }
     }
     return response
 })
 
-attachUnauthorizedRedirect(apiMaestro)
 
 
 export const articuloService = {
-    // Listado completo (el backend devuelve un array directo)
+    // Listado paginado (el backend devuelve { total, items })
     getArticulos: async (filters: ArticuloFilters) => {
-        const response = await apiMaestro.get<Articulo[]>('/api/v1/articulos/', {
-            params: filters
+        const pageSize = filters.pageSize || 10
+        const page = filters.page || 1
+        const skip = (page - 1) * pageSize
+
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { page: _p, pageSize: _ps, ...otherFilters } = filters
+
+        const response = await apiMaestro.get<{ total: number, items: Articulo[] }>('/api/v1/articulos/', {
+            params: {
+                ...otherFilters,
+                skip,
+                limit: pageSize
+            }
         })
+
+        const { items, total } = response.data
+
         return {
-            data: response.data,
+            data: items,
             pagination: {
-                total: response.data.length,
-                page: filters.page || 1,
-                pageSize: filters.pageSize || 10,
-                totalPages: Math.ceil(response.data.length / (filters.pageSize || 10))
+                total,
+                page,
+                pageSize,
+                totalPages: Math.ceil(total / pageSize)
             }
         }
     },
@@ -163,14 +143,14 @@ export const articuloService = {
     },
 
     // Obtener artículos filtrados por estado (para migración)
-    getArticulosByEstado: async (estados: string[], limit: number = 100) => {
+    getArticulosByEstado: async (estados: string[], limit: number = 500) => {
         const params = new URLSearchParams()
         params.append('skip', '0')
         params.append('limit', limit.toString())
         estados.forEach(e => params.append('estado', e))
 
-        const response = await apiMaestro.get<Articulo[]>('/api/v1/articulos/', { params })
-        return response.data
+        const response = await apiMaestro.get<{ total: number, items: Articulo[] }>('/api/v1/articulos/', { params })
+        return response.data.items
     },
 
     // Descargar plantilla Excel para carga masiva
@@ -181,20 +161,20 @@ export const articuloService = {
                 'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, */*'
             }
         })
-        
+
         // El interceptor ya asegura que si es un Blob lo deja pasar tal cual
-        const blob = new Blob([response.data as BlobPart], { 
-            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+        const blob = new Blob([response.data as BlobPart], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         })
-        
-        const url = window.URL.createObjectURL(blob)
+
+        const url = globalThis.URL.createObjectURL(blob)
         const link = document.createElement('a')
         link.href = url
         link.setAttribute('download', 'plantilla_articulos.xlsx')
         document.body.appendChild(link)
         link.click()
         link.remove()
-        window.URL.revokeObjectURL(url)
+        globalThis.URL.revokeObjectURL(url)
     },
 
     // Carga masiva de artículos desde archivo Excel
@@ -216,8 +196,8 @@ export const articuloService = {
             // o el backend puede retornarla directamente como { mensaje, errores }
             const errorPayload = data?.errores ? data : data?.detail
 
-            // Si el backend respondió con la estructura de validación "todo o nada"
-            if (errorPayload && errorPayload.errores && Array.isArray(errorPayload.errores)) {
+            // Si el backend respondió con la estructura de validación "all-or-nothing"
+            if (Array.isArray(errorPayload?.errores)) {
                 return {
                     success: false,
                     mensaje: errorPayload.mensaje || 'Errores de validación en el archivo.',
@@ -394,22 +374,42 @@ export const catalogoService = {
 
 // ─── Servicio SAP (Migración) ────────────────────────────────────────────────
 
-export interface SapSyncDetail {
+export interface SapNovedad {
     item_code: string
-    status: string
-    message: string
+    motivo: string
 }
 
 export interface SapSyncResponse {
-    total: number
-    success: number
-    error: number
-    details: SapSyncDetail[]
-    success_bool?: boolean
+    success: boolean
+    message: string
+    tarea_id?: number
+    novedades?: SapNovedad[]
+    // Compatibilidad con estructura de estadísticas antigua
+    total?: number
+    success_count?: number
+    error_count?: number
+    error?: number
+    details?: Array<{
+        item_code: string
+        status: 'Success' | 'Error'
+        message: string
+    }>
+}
+
+export interface SapTask {
+    id: number
+    nombre_tarea: string
+    usuario: string
+    estado: string
+    total_items: number
+    items_procesados: number
+    fecha_creacion: string
+    fecha_fin: string | null
+    progreso_porcentaje: number
 }
 
 export const sapService = {
-    // Enviar artículos a SAP (crear)
+    // Enviar artículos a SAP (crear/sincronizar fondo)
     syncSelection: async (itemCodes: string[]): Promise<SapSyncResponse> => {
         const response = await apiMaestro.post<SapSyncResponse>('/api/v1/sap/sync-selection', {
             item_codes: itemCodes
@@ -443,42 +443,21 @@ export const sapService = {
         return response.data
     },
 
-    // Inteligente: intenta crear, si ya existe en SAP lo actualiza
+    // Inteligente: el backend ahora maneja la lógica de fondo
     syncOrUpdate: async (itemCodes: string[]): Promise<SapSyncResponse> => {
-        // Primero intentar crear
-        const createResult = await apiMaestro.post<SapSyncResponse>('/api/v1/sap/sync-selection', {
-            item_codes: itemCodes
-        })
-        const result = createResult.data
+        return await sapService.syncSelection(itemCodes)
+    },
 
-        // Recoger los que fallaron por "already exists" para actualizar
-        const toUpdate = result.details
-            .filter(d => d.status === 'Error' && d.message.toLowerCase().includes('already exists'))
-            .map(d => d.item_code)
+    // Obtener lista de tareas recientes (últimas 3 según el backend)
+    getTasks: async (): Promise<SapTask[]> => {
+        const response = await apiMaestro.get<SapTask[]>('/api/v1/sap/tasks')
+        return response.data
+    },
 
-        if (toUpdate.length === 0) return result
-
-        // Actualizar los que ya existen
-        const updateResult = await apiMaestro.patch<SapSyncResponse>('/api/v1/sap/update-in-sap', {
-            item_codes: toUpdate
-        })
-
-        // Combinar resultados
-        const combined: SapSyncResponse = {
-            total: result.total,
-            success: 0,
-            error: 0,
-            details: result.details.map(d => {
-                if (toUpdate.includes(d.item_code)) {
-                    const updated = updateResult.data.details.find(u => u.item_code === d.item_code)
-                    return updated || d
-                }
-                return d
-            })
-        }
-        combined.success = combined.details.filter(d => d.status !== 'Error').length
-        combined.error = combined.details.filter(d => d.status === 'Error').length
-        return combined
+    // Obtener detalle de una tarea específica
+    getTaskById: async (id: number): Promise<SapTask> => {
+        const response = await apiMaestro.get<SapTask>(`/api/v1/sap/tasks/${id}`)
+        return response.data
     }
 }
 

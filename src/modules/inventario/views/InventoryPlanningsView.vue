@@ -197,7 +197,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import OdcSapVolverButton from '@/modules/mba3-consultas/components/OdcSapVolverButton.vue'
+import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
 import { inventarioService } from '../services/inventarioApi'
 import { useInventarioPermissions } from '../composables/useInventarioPermissions'
 import type { CatalogDataDto, InventoryPlanningSummaryDto, SaveInventoryPlanningRequest } from '../types'

@@ -52,8 +52,13 @@ export default defineConfig(async ({ mode }) => {
   const conciliacionProxyTarget = upstreamUrl(env, 'CONCILIACION')
   const articuloScanProxyTarget = upstreamUrl(env, 'SCAN')
   const inventarioProxyTarget = upstreamUrl(env, 'INVENTARIO')
+  const invPlanesProxyTarget = upstreamUrl(env, 'INV_PLANES') || upstreamUrl(env, 'INVENTARIO')
   const promocionSobresProxyTarget = upstreamUrl(env, 'PROMOCION_SOBRES')
   const slayerProxyTarget = upstreamUrl(env, 'SLAYER')
+  const reposicionProxyTarget = upstreamUrl(env, 'REPOSICION')
+  console.log(`\x1b[35m[proxy]\x1b[0m Reposiciones → ${reposicionProxyTarget}`)
+
+  const ruletaProxyTarget = upstreamUrl(env, 'RULETA')
   const pygProxyPrefix =
     'UPSTREAM_PYG_PREFIX' in env
       ? env.UPSTREAM_PYG_PREFIX
@@ -99,7 +104,7 @@ export default defineConfig(async ({ mode }) => {
 
           secure: false,
 
-          rewrite: (path) => path.replace(/^\/mba3-api/, '')
+          rewrite: (path: string) => path.replace(/^\/mba3-api/, '')
 
         },
 
@@ -159,8 +164,15 @@ export default defineConfig(async ({ mode }) => {
 
           secure: false,
 
-          rewrite: (path) => path.replace(/^\/api\/mba3/, '')
+          rewrite: (path: string) => path.replace(/^\/api\/mba3/, '')
 
+        },
+
+        '/api/reposicion-api': {
+          target: reposicionProxyTarget,
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/api\/reposicion-api/, '/api')
         },
 
         '/api': {
@@ -283,6 +295,18 @@ export default defineConfig(async ({ mode }) => {
 
         },
 
+        '/inv-planes-api': {
+
+          target: invPlanesProxyTarget,
+
+          changeOrigin: true,
+
+          secure: false,
+
+          rewrite: (path: string) => path.replace(/^\/inv-planes-api/, '')
+
+        },
+
         '/promocion-sobres-api': {
 
           target: promocionSobresProxyTarget,
@@ -305,7 +329,20 @@ export default defineConfig(async ({ mode }) => {
 
           rewrite: (path) => path.replace(/^\/transacciones-api/, '')
 
+        },
+
+        '/ruleta-api': {
+
+          target: ruletaProxyTarget,
+
+          changeOrigin: true,
+
+          secure: false,
+
+          rewrite: (path) => path.replace(/^\/ruleta-api/, '')
+
         }
+
 
       }
 

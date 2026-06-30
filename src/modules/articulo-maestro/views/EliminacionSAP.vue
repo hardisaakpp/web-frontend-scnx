@@ -8,11 +8,18 @@
                     Gestión de artículos para eliminar del ERP Externo (SAP) e inactivar en el sistema local.
                 </p>
             </div>
-            <router-link
-                class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700 transition-colors shadow-sm"
-                to="/articulo-maestro">
-                Volver al listado
-            </router-link>
+            <div class="flex items-center gap-3">
+                <router-link
+                    class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700 transition-colors shadow-sm"
+                    to="/articulo-maestro/lista">
+                    Gestión de Artículos
+                </router-link>
+                <router-link
+                    class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700 transition-colors shadow-sm"
+                    to="/articulo-maestro">
+                    Menú Principal
+                </router-link>
+            </div>
         </div>
 
         <div class="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -44,13 +51,19 @@
                         <p class="text-xs text-gray-500 dark:text-gray-400">
                             Ingresa los ItemCode para importarlos o asegurar que existen en el ERP antes de eliminar.
                         </p>
+                        <label for="pullCodes" class="sr-only">Códigos para importar</label>
                         <textarea 
+                            id="pullCodes"
                             v-model="pullCodes" 
                             rows="3" 
                             class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 text-sm focus:ring-blue-500 focus:border-blue-500"
                             placeholder="ART-01, ART-02..."
                         ></textarea>
-                        <button 
+                        <div v-if="pullError" class="flex items-center justify-between rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-3 py-2">
+                            <span class="text-xs text-red-700 dark:text-red-400">{{ pullError }}</span>
+                            <button @click="pullError = ''" class="text-red-500 hover:text-red-700 ml-2 text-xs font-medium">✕</button>
+                        </div>
+                        <button
                             @click="handlePullFromSap"
                             :disabled="!pullCodes.trim() || processingPull"
                             class="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
@@ -67,7 +80,9 @@
                         <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Filtrar por Código</h2>
                     </div>
                     <div class="px-6 py-5 space-y-4">
+                        <label for="searchCode" class="sr-only">Filtrar por código</label>
                         <input 
+                            id="searchCode"
                             v-model="searchCode" 
                             type="text"
                             class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 text-sm focus:ring-red-500 focus:border-red-500"
@@ -101,7 +116,7 @@
                             
                             <div class="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-1"></div>
 
-                            <button 
+                            <button
                                 @click="handleBulkDelete"
                                 :disabled="selectedCount === 0 || processingAction"
                                 class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs font-medium rounded-lg disabled:opacity-50 transition-colors shadow-sm flex items-center gap-1.5"
@@ -109,6 +124,10 @@
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
                                 Eliminar de SAP
                             </button>
+                        </div>
+                        <div v-if="actionError" class="flex items-center justify-between rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-3 py-2 mt-2 w-full">
+                            <span class="text-xs text-red-700 dark:text-red-400">{{ actionError }}</span>
+                            <button @click="actionError = ''" class="text-red-500 hover:text-red-700 ml-2 text-xs font-medium">✕</button>
                         </div>
                     </div>
 
@@ -127,13 +146,15 @@
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
-                                <tr v-if="loading" v-for="i in 5" :key="i" class="animate-pulse">
-                                    <td class="px-6 py-4"><div class="h-4 w-4 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
-                                    <td class="px-6 py-4"><div class="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
-                                    <td class="px-6 py-4"><div class="h-4 w-40 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
-                                    <td class="px-6 py-4"><div class="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
-                                    <td class="px-6 py-4"><div class="h-6 w-20 bg-gray-200 dark:bg-gray-700 rounded-full"></div></td>
-                                </tr>
+                                <template v-if="loading">
+                                    <tr v-for="i in 5" :key="i" class="animate-pulse">
+                                        <td class="px-6 py-4"><div class="h-4 w-4 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
+                                        <td class="px-6 py-4"><div class="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
+                                        <td class="px-6 py-4"><div class="h-4 w-40 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
+                                        <td class="px-6 py-4"><div class="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
+                                        <td class="px-6 py-4"><div class="h-6 w-20 bg-gray-200 dark:bg-gray-700 rounded-full"></div></td>
+                                    </tr>
+                                </template>
                                 
                                 <tr v-else-if="filteredArticulos.length === 0">
                                     <td colspan="5" class="px-6 py-12 text-center">
@@ -152,7 +173,9 @@
                                     :class="selectedCodes.includes(art.itemCode) ? 'bg-red-50/30 dark:bg-red-900/10' : ''"
                                 >
                                     <td class="px-6 py-4">
+                                        <label :for="'check-' + art.itemCode" class="sr-only">Seleccionar {{ art.itemCode }}</label>
                                         <input 
+                                            :id="'check-' + art.itemCode"
                                             type="checkbox" 
                                             :value="art.itemCode" 
                                             v-model="selectedCodes"
@@ -168,7 +191,7 @@
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 text-xs">
-                                        {{ art.uSxxSkuSinTalla || '-' }}
+                                        {{ art.uSxxSkuSinTalla ?? '-' }}
                                     </td>
                                     <td class="px-6 py-4 text-xs font-medium text-gray-400">
                                         <!-- SINCRONIZADO implícito -->
@@ -197,50 +220,138 @@
                     </div>
 
                     <div v-if="syncResult" class="overflow-y-auto p-6 space-y-6">
-                        <div class="grid grid-cols-3 gap-4">
-                            <div class="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-4 border border-emerald-100 dark:border-emerald-800">
-                                <p class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{{ syncResult.success }}</p>
-                                <p class="text-xs font-medium uppercase text-emerald-800 dark:text-emerald-400">Correctos</p>
+                        
+                        <!-- CASO 1: Nueva estructura de Tarea / Novedades -->
+                        <template v-if="syncResult.message || syncResult.tarea_id">
+                            <!-- Message & Task ID -->
+                            <div 
+                                class="p-4 rounded-xl border flex items-start gap-4"
+                                :class="syncResult.success ? 'bg-emerald-50 border-emerald-100 dark:bg-emerald-900/20 dark:border-emerald-800' : 'bg-amber-50 border-amber-100 dark:bg-amber-900/20 dark:border-amber-800'"
+                            >
+                                <div class="p-2 rounded-lg" :class="syncResult.success ? 'bg-emerald-100 dark:bg-emerald-800' : 'bg-amber-100 dark:bg-amber-800'">
+                                    <svg v-if="syncResult.success" class="w-6 h-6 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    <svg v-else class="w-6 h-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                                </div>
+                                <div>
+                                    <h3 class="text-sm font-bold" :class="syncResult.success ? 'text-emerald-900 dark:text-emerald-300' : 'text-amber-900 dark:text-amber-300'">
+                                        {{ syncResult.success ? 'Operación Iniciada' : 'Atención' }}
+                                    </h3>
+                                    <p class="text-sm mt-1" :class="syncResult.success ? 'text-emerald-700 dark:text-emerald-400' : 'text-amber-700 dark:text-amber-400'">
+                                        {{ syncResult.message }}
+                                    </p>
+                                    <div v-if="syncResult.tarea_id" class="mt-3 flex items-center gap-2">
+                                        <span class="px-2 py-1 bg-white/50 dark:bg-black/20 rounded text-xs font-mono font-bold">
+                                            ID Tarea: #{{ syncResult.tarea_id }}
+                                        </span>
+                                        <router-link to="/articulo-maestro/historial-sap" class="text-xs underline hover:no-underline">
+                                            Ver progreso en auditoría
+                                        </router-link>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="bg-red-50 dark:bg-red-900/20 rounded-xl p-4 border border-red-100 dark:border-red-800">
-                                <p class="text-2xl font-bold text-red-600 dark:text-red-400">{{ syncResult.error }}</p>
-                                <p class="text-xs font-medium uppercase text-red-800 dark:text-red-400">Errores</p>
-                            </div>
-                            <div class="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-                                <p class="text-2xl font-bold text-gray-600 dark:text-gray-400">{{ syncResult.total }}</p>
-                                <p class="text-xs font-medium uppercase text-gray-800 dark:text-gray-400">Total</p>
-                            </div>
-                        </div>
 
-                        <div class="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                            <table class="w-full text-left text-sm">
-                                <thead class="bg-gray-50 dark:bg-gray-900/50 text-[10px] text-gray-500 font-bold uppercase">
-                                    <tr>
-                                        <th class="px-4 py-2">ItemCode</th>
-                                        <th class="px-4 py-2">Estado</th>
-                                        <th class="px-4 py-2">Mensaje</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
-                                    <tr v-for="d in syncResult.details" :key="d.item_code">
-                                        <td class="px-4 py-2 font-mono text-xs">{{ d.item_code }}</td>
-                                        <td class="px-4 py-2">
-                                            <span 
-                                                class="px-2 py-0.5 rounded text-[10px] font-bold uppercase"
-                                                :class="d.status === 'Error' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'"
-                                            >
-                                                {{ d.status }}
-                                            </span>
-                                        </td>
-                                        <td class="px-4 py-2 text-xs text-gray-500">{{ d.message }}</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                            <!-- Novedades Table -->
+                            <div v-if="syncResult.novedades && syncResult.novedades.length > 0" class="space-y-3">
+                                <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    Novedades
+                                </h4>
+                                <div class="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                                    <table class="w-full text-left text-sm">
+                                        <thead class="bg-gray-50 dark:bg-gray-900/50 text-xs text-gray-500 font-semibold uppercase tracking-wider">
+                                            <tr>
+                                                <th class="px-4 py-3">ItemCode</th>
+                                                <th class="px-4 py-3">Motivo</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                                            <tr v-for="n in syncResult.novedades" :key="n.item_code">
+                                                <td class="px-4 py-3 font-mono text-gray-900 dark:text-white">{{ n.item_code }}</td>
+                                                <td class="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">
+                                                    {{ n.motivo }}
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </template>
+
+                        <!-- CASO 2: Estructura antigua (Estadísticas) -->
+                        <template v-else>
+                            <div class="grid grid-cols-3 gap-4">
+                                <div class="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-4 border border-emerald-100 dark:border-emerald-800">
+                                    <p class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{{ syncResult.success_count || (syncResult.success ? 1 : 0) }}</p>
+                                    <p class="text-xs font-medium uppercase text-emerald-800 dark:text-emerald-400">Correctos</p>
+                                </div>
+                                <div class="bg-red-50 dark:bg-red-900/20 rounded-xl p-4 border border-red-100 dark:border-red-800">
+                                    <p class="text-2xl font-bold text-red-600 dark:text-red-400">{{ (syncResult.error || syncResult.error_count) ?? 0 }}</p>
+                                    <p class="text-xs font-medium uppercase text-red-800 dark:text-red-400">Errores</p>
+                                </div>
+                                <div class="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+                                    <p class="text-2xl font-bold text-gray-600 dark:text-gray-400">{{ syncResult.total ?? 0 }}</p>
+                                    <p class="text-xs font-medium uppercase text-gray-800 dark:text-gray-400">Total</p>
+                                </div>
+                            </div>
+
+                            <div v-if="syncResult.details && syncResult.details.length > 0" class="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                                <table class="w-full text-left text-sm">
+                                    <thead class="bg-gray-50 dark:bg-gray-900/50 text-[10px] text-gray-500 font-bold uppercase">
+                                        <tr>
+                                            <th class="px-4 py-2">ItemCode</th>
+                                            <th class="px-4 py-2">Estado</th>
+                                            <th class="px-4 py-2">Mensaje</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                                        <tr v-for="d in syncResult.details" :key="d.item_code">
+                                            <td class="px-4 py-2 font-mono text-xs">{{ d.item_code }}</td>
+                                            <td class="px-4 py-2">
+                                                <span 
+                                                    class="px-2 py-0.5 rounded text-[10px] font-bold uppercase"
+                                                    :class="d.status === 'Error' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'"
+                                                >
+                                                    {{ d.status }}
+                                                </span>
+                                            </td>
+                                            <td class="px-4 py-2 text-xs text-gray-500">{{ d.message }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </template>
                     </div>
 
                     <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end bg-gray-50 dark:bg-gray-800/50 rounded-b-2xl">
                         <button @click="closeResultModal" class="px-6 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-semibold">Entendido</button>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
+
+        <!-- Modal Confirmación Eliminación Masiva -->
+        <Teleport to="body">
+            <div v-if="pendingDeleteConfirm" class="fixed inset-0 z-50 flex items-center justify-center">
+                <div class="absolute inset-0 bg-black/50" @click="pendingDeleteConfirm = false"></div>
+                <div class="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-red-200 dark:border-red-800 w-full max-w-md mx-4 p-6">
+                    <h3 class="text-lg font-semibold text-red-700 dark:text-red-400 mb-2">⚠ Confirmar Eliminación</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                        Vas a eliminar <strong class="text-gray-900 dark:text-white">{{ selectedCount }}</strong> artículo(s) de SAP y desactivarlos localmente. <strong>Esta acción es irreversible.</strong>
+                    </p>
+                    <div class="flex justify-end gap-3">
+                        <button
+                            @click="pendingDeleteConfirm = false"
+                            class="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            @click="confirmBulkDelete"
+                            :disabled="processingAction"
+                            class="px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 disabled:opacity-60 transition-colors"
+                        >
+                            {{ processingAction ? 'Eliminando...' : 'Sí, eliminar' }}
+                        </button>
                     </div>
                 </div>
             </div>
@@ -265,16 +376,16 @@ const processingAction = ref(false)
 const showResultModal = ref(false)
 const syncResult = ref<SapSyncResponse | null>(null)
 const modalTitle = ref('')
+const pendingDeleteConfirm = ref(false)
+const actionError = ref('')
+const pullError = ref('')
 
 const selectedCount = computed(() => selectedCodes.value.length)
-const allSelected = computed(() => 
-    articulosSincronizados.value.length > 0 && selectedCodes.value.length === articulosSincronizados.value.length
-)
 
 const filteredArticulos = computed(() => {
     if (!searchCode.value) return articulosSincronizados.value
     const q = searchCode.value.trim().toUpperCase()
-    return articulosSincronizados.value.filter(a => a.itemCode.toUpperCase().includes(q))
+    return articulosSincronizados.value.filter(a => a.itemCode?.toUpperCase().includes(q))
 })
 
 onMounted(() => {
@@ -288,35 +399,30 @@ async function fetchSyncArticulos() {
         const data = await articuloService.getArticulosByEstado(['SINCRONIZADO'])
         articulosSincronizados.value = data
         selectedCodes.value = []
-    } catch (err) {
-        console.error('Error al cargar artículos sincronizados:', err)
+    } catch {
+        // error silencioso — la tabla muestra estado vacío
     } finally {
         loading.value = false
     }
 }
 
-function toggleSelectAll() {
-    selectedCodes.value = allSelected.value ? [] : articulosSincronizados.value.map(art => art.itemCode)
+function handleBulkDelete() {
+    if (selectedCodes.value.length === 0) return
+    pendingDeleteConfirm.value = true
 }
 
-async function handleBulkDelete() {
-    if (selectedCodes.value.length === 0) return
-    
-    if (!confirm(`¿ESTÁS SEGURO?\n\nVas a eliminar ${selectedCount.value} artículos de SAP y desactivarlos localmente. Esta acción es irreversible.`)) {
-        return
-    }
-
+async function confirmBulkDelete() {
+    pendingDeleteConfirm.value = false
     processingAction.value = true
+    actionError.value = ''
     try {
-        // Usar el endpoint de eliminación en SAP (delete-from-sap)
         const result = await sapService.deleteFromSap(selectedCodes.value)
         syncResult.value = result
         modalTitle.value = 'Resultado de Eliminación'
         showResultModal.value = true
         fetchSyncArticulos()
-    } catch (err) {
-        console.error('Error en eliminación masiva:', err)
-        alert('Ocurrió un error al procesar la eliminación en SAP.')
+    } catch {
+        actionError.value = 'Ocurrió un error al procesar la eliminación en SAP.'
     } finally {
         processingAction.value = false
     }
@@ -324,13 +430,14 @@ async function handleBulkDelete() {
 
 async function handlePullFromSap() {
     const codes = pullCodes.value
-        .split(/[,\s\n]+/)
+        .split(/[,\s]+/)
         .map(c => c.trim())
         .filter(c => c.length > 0)
     
     if (codes.length === 0) return
 
     processingPull.value = true
+    pullError.value = ''
     try {
         const result = await sapService.pullFromSap(codes)
         syncResult.value = result
@@ -338,9 +445,8 @@ async function handlePullFromSap() {
         showResultModal.value = true
         pullCodes.value = ''
         fetchSyncArticulos()
-    } catch (err) {
-        alert('Error al importar desde SAP.')
-        console.error(err)
+    } catch {
+        pullError.value = 'Error al importar desde SAP.'
     } finally {
         processingPull.value = false
     }

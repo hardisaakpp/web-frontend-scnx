@@ -90,6 +90,7 @@ Los vhosts **intranet**, **storecontrol**, **sapi**, **glpi** no cambian.
 | 8000 | docker-proxy | mba3-api (red `mba3-consultas_default`) |
 | 8004 | docker-proxy | app-maestro |
 | 8005 | docker-proxy | app-conciliacion |
+| 8006 | docker-proxy | api-reposiciones |
 | 8080 | docker-proxy | scnexus-articulo-api (scan) — **≠ Core**; Core real: `192.168.2.12:8080` |
 | 8082 | docker-proxy | **scnexus-front** (activo desde 2026-06-05) |
 | 8083 | docker-proxy | scnexus-validacionci-api |

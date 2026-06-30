@@ -4,7 +4,7 @@
       <p class="text-sm font-medium text-blue-600 dark:text-blue-400">StoreControl</p>
       <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Inventario</h1>
       <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-        Flujo migrado de planificación, generación y revisión de inventarios.
+        Flujo operativo completo: planificar, ejecutar toma, monitorear estado, cerrar snapshot y gestionar ajustes.
       </p>
     </div>
 
@@ -43,24 +43,31 @@ const settingsUserId = computed(() => getLegacyUserIdFromToken() ?? 330)
 
 const cards = computed(() => [
   {
-    title: 'Configuración de Usuario',
-    description: 'Editar parámetros operativos (marca, bodegas, realiza conteo). Almacenes filtrados por marca del usuario.',
-    to: `/inventario/configuracion-usuario/${settingsUserId.value}`,
-    badge: 'U',
-    editOnly: true
-  },
-  {
-    title: 'Planificación',
-    description: 'Crear, revisar, activar y ejecutar planificaciones de inventario.',
-    to: '/inventario/planificaciones',
-    badge: 'P',
+    title: 'Mis Inventarios',
+    description: 'Ver sesiones de conteo abiertas asignadas a tu bodega o a tu usuario. Acceso para todos.',
+    to: '/inventario/mis-inventarios',
+    badge: 'MI',
     editOnly: false
   },
   {
-    title: 'Inventarios Generados',
-    description: 'Consultar los inventarios materializados desde las planificaciones.',
-    to: '/inventario/generados',
-    badge: 'I',
+    title: 'Planes de inventario',
+    description: 'Crear y ejecutar planificaciones por bodega con filtros de género, nivel y material.',
+    to: '/inventario/planes',
+    badge: 'PL',
+    editOnly: false
+  },
+  {
+    title: 'Toma Física',
+    description: 'Ejecutar planes pendientes o crear tomas físicas de inventario sin necesidad de plan previo.',
+    to: '/inventario/sesiones',
+    badge: 'TF',
+    editOnly: false
+  },
+  {
+    title: 'Bandeja de Ajustes',
+    description: 'Crear ajuste desde toma física cerrada, editar líneas, enviar a revisión, aprobar y marcar envío SAP.',
+    to: '/inventario/ajustes',
+    badge: 'A',
     editOnly: false
   }
 ])

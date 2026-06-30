@@ -4,42 +4,49 @@ trigger:
     include:
       - main       # Producción
       - test       # Pruebas (DESA)
-      - ci/pipeline-azure
+      - ci/*
+      - feature/*
+      - fix/*
 
+# Enrutamiento al servidor Ubuntu corporativo
 pool:
-  name: 'Test-Agents'
+  name: 'agents-srv-test'
   demands:
     - Agent.OS -equals Linux
 
 variables:
-  # 1. Importamos los grupos de variables desde Azure DevOps Library
-  - group: scnexus-prod-env
-  - group: scnexus-test-env
+  nodeVersion: '20.x'
   
-  # 2. Variables locales estructurales
-  - name: nodeVersion
-    value: '20.x'
-  - name: localRegistry
-    value: 'localhost:5000'
-  - name: imageRepository
-    value: 'web-scnexus'
-  - name: dockerfilePath
-    value: '$(Build.SourcesDirectory)/Dockerfile'
+  # Ruta al registro corporativo en la nube (ACR)
+  imageName: 'dockermg-g9hrgcc4etdrh8eg.azurecr.io/web-scnexus'
+  dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
+  npm_config_cache: $(Pipeline.Workspace)/.npm
+
+  # Lógica Declarativa de Prefijos Dinámicos y Base Path por Rama
+  ${{ if eq(variables['Build.SourceBranchName'], 'main') }}:
+    envTag: 'prod-latest'
+    uniqueTag: 'prod-$(Build.BuildId)'
+    basePath: '/'
+  ${{ elseif eq(variables['Build.SourceBranchName'], 'test') }}:
+    envTag: 'test-latest'
+    uniqueTag: 'test-$(Build.BuildId)'
+    basePath: '/scnexus-front/'
+  ${{ else }}:
+    envTag: 'none'
+    uniqueTag: 'none'
+    basePath: '/'
 
 stages:
 # =====================================================================
-# ETAPA 1: VALIDACIÓN Y PRUEBAS DEL FRONTEND (Node.js)
+# ETAPA 1: VALIDACIÓN Y PRUEBAS DEL FRONTEND (Vue 3 / TS)
 # =====================================================================
 - stage: CI_Validation
   displayName: 'Validación de Código y Tipado (Vue 3 / TS)'
   jobs:
   - job: Frontend_Checks
     displayName: 'Linting, Typecheck y Dependencias'
-    
-    variables:
-      npm_config_cache: $(Pipeline.Workspace)/.npm
-
     steps:
+    
     - task: NodeTool@0
       inputs:
         versionSpec: '$(nodeVersion)'
@@ -62,75 +69,28 @@ stages:
       displayName: 'Verificar Tipado Estricto (TypeScript)'
 
 # =====================================================================
-# ETAPA 2: CONSTRUCCIÓN DOCKER MULTICAPA Y REGISTRO
+# ETAPA 2: CONSTRUCCIÓN DOCKER MULTICAPA Y PUBLICACIÓN EN ACR
 # =====================================================================
 - stage: Build_Docker
   displayName: 'Construcción y Empaquetado Nginx'
   dependsOn: CI_Validation
-  condition: succeeded()
+  
+  # Candado de Seguridad: Solo construye Docker si pasó la Etapa 1 Y si la rama es main o test
+  condition: and(succeeded(), ne(variables.envTag, 'none'))
   jobs:
   - job: Docker_Build_Push
-    displayName: 'Generar Imagen y Enviar a Registro Intermedio'
+    displayName: 'Construir y Subir a Azure ACR'
     steps:
 
-    # Tarea 1: Detectar la rama y fijar las variables desde el Library
     - script: |
-        BRANCH_NAME="$(Build.SourceBranchName)"
-        echo "Rama origen del build: $BRANCH_NAME"
-        
-        if [ "$BRANCH_NAME" == "main" ]; then
-          echo "Configurando entorno de PRODUCCIÓN..."
-          echo "##vso[task.setvariable variable=basePath]/"
-          echo "##vso[task.setvariable variable=coreUpstream]$(PROD_CORE_UPSTREAM)"
-          echo "##vso[task.setvariable variable=coreProxyHost]$(PROD_CORE_PROXY_HOST)"
-          echo "##vso[task.setvariable variable=mba3Upstream]$(PROD_MBA3_UPSTREAM)"
-          echo "##vso[task.setvariable variable=cajaChicaUpstream]$(PROD_CAJA_CHICA_UPSTREAM)"
-          echo "##vso[task.setvariable variable=pygUpstream]$(PROD_PYG_UPSTREAM)"
-          echo "##vso[task.setvariable variable=employeesUpstream]$(PROD_EMPLOYEES_UPSTREAM)"
-          echo "##vso[task.setvariable variable=conciliacionUpstream]$(PROD_CONCILIACION_UPSTREAM)"
-          echo "##vso[task.setvariable variable=maestroUpstream]$(PROD_MAESTRO_UPSTREAM)"
-          echo "##vso[task.setvariable variable=scanApiUpstream]$(PROD_SCAN_API_UPSTREAM)"
-          echo "##vso[task.setvariable variable=imageTag]prod-$(Build.BuildId)"
-          echo "##vso[task.setvariable variable=latestTag]prod-latest"
-        else
-          echo "Configurando entorno de PRUEBAS (DESA)..."
-          echo "##vso[task.setvariable variable=basePath]/scnexus-front/"
-          echo "##vso[task.setvariable variable=coreUpstream]$(TEST_CORE_UPSTREAM)"
-          echo "##vso[task.setvariable variable=coreProxyHost]$(TEST_CORE_PROXY_HOST)"
-          echo "##vso[task.setvariable variable=mba3Upstream]$(TEST_MBA3_UPSTREAM)"
-          echo "##vso[task.setvariable variable=cajaChicaUpstream]$(TEST_CAJA_CHICA_UPSTREAM)"
-          echo "##vso[task.setvariable variable=pygUpstream]$(TEST_PYG_UPSTREAM)"
-          echo "##vso[task.setvariable variable=employeesUpstream]$(TEST_EMPLOYEES_UPSTREAM)"
-          echo "##vso[task.setvariable variable=conciliacionUpstream]$(TEST_CONCILIACION_UPSTREAM)"
-          echo "##vso[task.setvariable variable=maestroUpstream]$(TEST_MAESTRO_UPSTREAM)"
-          echo "##vso[task.setvariable variable=scanApiUpstream]$(TEST_SCAN_API_UPSTREAM)"
-          echo "##vso[task.setvariable variable=imageTag]test-$(Build.BuildId)"
-          echo "##vso[task.setvariable variable=latestTag]test-latest"
-        fi
-      displayName: 'Definir Variables Dinámicas según la Rama'
-
-    # Tarea 2: Construir la imagen con las variables mapeadas dinámicamente
-    - script: |
-        echo "Construyendo para base path: $(basePath) y tags: $(imageTag)"
+        echo "1. Construyendo la imagen Frontend (Base Path: $(basePath), Entorno: $(envTag))..."
         docker build \
           --build-arg VITE_APP_BASE_PATH=$(basePath) \
-          --build-arg CORE_UPSTREAM="$(coreUpstream)" \
-          --build-arg CORE_PROXY_HOST="$(coreProxyHost)" \
-          --build-arg MBA3_UPSTREAM="$(mba3Upstream)" \
-          --build-arg CAJA_CHICA_UPSTREAM="$(cajaChicaUpstream)" \
-          --build-arg EMPLOYEES_UPSTREAM="$(employeesUpstream)" \
-          --build-arg CONCILIACION_UPSTREAM="$(conciliacionUpstream)" \
-          --build-arg MAESTRO_UPSTREAM="$(maestroUpstream)" \
-          --build-arg PYG_UPSTREAM="$(pygUpstream)" \
-          --build-arg SCAN_API_UPSTREAM="$(scanApiUpstream)" \
           -f $(dockerfilePath) \
-          -t $(localRegistry)/$(imageRepository):$(imageTag) \
-          -t $(localRegistry)/$(imageRepository):$(latestTag) .
-      displayName: 'Construir Imagen Docker (Multi-stage)'
-      
-    # Tarea 3: Empujar la imagen al Registro
-    - script: |
-        echo "Guardando versión $(imageTag) en el Registro Central..."
-        docker push $(localRegistry)/$(imageRepository):$(imageTag)
-        docker push $(localRegistry)/$(imageRepository):$(latestTag)
-      displayName: 'Publicar en Registro Interno'
+          -t $(imageName):$(uniqueTag) \
+          -t $(imageName):$(envTag) .
+        
+        echo "2. Subiendo la imagen al registro corporativo en Azure..."
+        docker push $(imageName):$(uniqueTag)
+        docker push $(imageName):$(envTag)
+      displayName: 'Empaquetar Nginx y Almacenar en ACR'

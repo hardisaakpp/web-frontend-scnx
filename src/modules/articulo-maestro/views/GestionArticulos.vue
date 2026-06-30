@@ -9,11 +9,19 @@
                         Administración de artículos maestros
                     </p>
                 </div>
-                <router-link
-                    class="rounded border border-gray-200 dark:border-gray-700 text-sm px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 transition-colors"
-                    to="/articulo-maestro">
-                    Volver
-                </router-link>
+                <div class="flex items-center gap-3">
+                    <router-link
+                        class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800 transition-colors shadow-sm"
+                        to="/articulo-maestro/migracion">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+                        Sincronización SAP
+                    </router-link>
+                    <router-link
+                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700 transition-colors shadow-sm"
+                        to="/articulo-maestro">
+                        Volver
+                    </router-link>
+                </div>
             </div>
             
             <!-- Actions -->
@@ -92,9 +100,10 @@
                             v-model.trim="searchQuery"
                             type="text"
                             placeholder="Buscar..."
+                            aria-label="Buscar artículos"
                             class="w-full sm:w-48 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white outline-none transition-all"
                         />
-                        <select v-model.number="pageSize" class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white outline-none transition-all cursor-pointer">
+                        <select v-model.number="pageSize" aria-label="Filas por página" class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white outline-none transition-all cursor-pointer">
                             <option :value="5">5 filas</option>
                             <option :value="10">10 filas</option>
                             <option :value="20">20 filas</option>
@@ -104,6 +113,12 @@
                     </div>
                 </div>
 
+
+                <!-- Delete Error -->
+                <div v-if="deleteError" class="mb-4 flex items-center justify-between rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3">
+                    <span class="text-sm text-red-700 dark:text-red-400">{{ deleteError }}</span>
+                    <button @click="deleteError = ''" class="text-red-500 hover:text-red-700 ml-3 text-xs font-medium">Cerrar</button>
+                </div>
 
                 <!-- States -->
                 <div v-if="loading" class="py-8 text-center text-sm text-gray-500 dark:text-gray-400">
@@ -147,13 +162,13 @@
                                     class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 truncate"
                                 >
                                     <template v-if="col.key === 'uPrArq' || col.key === 'price'">
-                                        ${{ (articulo[col.key] || 0).toFixed(2) }}
+                                        ${{ (articulo[col.key] ?? 0).toFixed(2) }}
                                     </template>
                                     <template v-else-if="col.key === 'uGen'">
-                                        {{ (articulo[col.key] || '-').toString().toUpperCase() }}
+                                        {{ articulo[col.key]?.toString().toUpperCase() ?? '-' }}
                                     </template>
                                     <template v-else>
-                                        {{ articulo[col.key] !== null && articulo[col.key] !== undefined ? articulo[col.key] : '-' }}
+                                        {{ articulo[col.key] ?? '-' }}
                                     </template>
                                 </td>
                                 <td class="px-4 py-3 text-sm text-right whitespace-nowrap sticky right-0 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700/50 z-10 shadow-[-4px_0_4px_rgba(0,0,0,0.05)]">
@@ -253,7 +268,7 @@
                             @dragleave.prevent="dragOver = false"
                             @drop.prevent="onDrop"
                         >
-                            <input ref="fileInputRef" type="file" accept=".xlsx,.xls" class="hidden" @change="onFileSelect" />
+                            <input ref="fileInputRef" type="file" accept=".xlsx,.xls" aria-label="Seleccionar archivo Excel" class="hidden" @change="onFileSelect" />
                             <div v-if="!selectedFile" class="space-y-2">
                                 <svg class="mx-auto h-10 w-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
                                 <p class="text-sm text-gray-600 dark:text-gray-400">Arrastra tu archivo aquí o <button type="button" @click="fileInputRef?.click()" class="text-blue-600 dark:text-blue-400 font-medium hover:underline">selecciona uno</button></p>
@@ -271,7 +286,7 @@
                     <!-- Resultados -->
                     <div v-if="cargaResults" class="space-y-4">
 
-                        <!-- Banner: Errores (Todo o Nada) -->
+                        <!-- Banner: Errores (All-or-nothing) -->
                         <div v-if="cargaResults.error_count > 0" class="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 overflow-hidden">
                             <div class="flex items-start gap-3 px-4 py-3">
                                 <svg class="h-5 w-5 text-red-500 dark:text-red-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
@@ -324,7 +339,7 @@
                         </div>
 
                         <!-- Detalle de éxito (solo cuando fue exitoso y hay results) -->
-                        <div v-if="cargaResults.error_count === 0 && cargaResults.results && cargaResults.results.length > 0" class="max-h-52 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700">
+                        <div v-if="cargaResults.error_count === 0 && (cargaResults.results?.length ?? 0) > 0" class="max-h-52 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700">
                             <table class="w-full text-xs">
                                 <thead class="bg-gray-50 dark:bg-gray-900/50 sticky top-0">
                                     <tr>
@@ -378,6 +393,36 @@
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                         </svg>
                         {{ uploading ? 'Procesando...' : 'Subir y Procesar' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </Teleport>
+
+    <!-- Modal Confirmación Eliminar -->
+    <Teleport to="body">
+        <div v-if="pendingDeleteCode" class="fixed inset-0 z-50 flex items-center justify-center">
+            <div class="absolute inset-0 bg-black/50" @click="pendingDeleteCode = null"></div>
+            <div class="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-w-md mx-4 p-6">
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">Confirmar eliminación</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                    ¿Estás seguro de que deseas eliminar el artículo
+                    <strong class="text-gray-900 dark:text-white font-mono">{{ pendingDeleteCode }}</strong>?
+                    Esta acción no se puede deshacer.
+                </p>
+                <div class="flex justify-end gap-3">
+                    <button
+                        @click="pendingDeleteCode = null"
+                        class="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        @click="confirmDelete"
+                        :disabled="!!deletingCode"
+                        class="px-4 py-2 bg-rose-600 text-white text-sm font-medium rounded-lg hover:bg-rose-700 disabled:opacity-60 transition-colors"
+                    >
+                        {{ deletingCode ? 'Eliminando...' : 'Eliminar' }}
                     </button>
                 </div>
             </div>
@@ -529,33 +574,21 @@ function toggleSort(key: string) {
     }
 }
 
-// 1. Filtrar artículos en base a la búsqueda en la vista, aunque ya vengan paginados del servidor.
-// Como el backend devuelve todos y simulamos paginacion real:
 const filteredArticulos = computed(() => {
-    // Si la bsuqueda es "server side", el store.articulos ya viene filtrado
-    // Como el endpoint devuelve todo, filtramos local por ahora
-    const query = searchQuery.value.toLowerCase().trim()
-    
     // Casting temporal para saltarnos el type-checking de camelCase vs PascalCase
     const artlist = articulos.value as any[]
 
+    // Ya no filtramos localmente por query, confiamos en el filtrado del backend
     let result = artlist
-    if (query) {
-        result = artlist.filter(articulo => {
-            const cod = articulo.itemCode || ''
-            const nom = articulo.itemName || ''
-            return cod.toLowerCase().includes(query) || nom.toLowerCase().includes(query)
-        })
-    }
-
-    // Aplicar ordenamiento
+    
+    // Aplicar ordenamiento local sobre los resultados entregados por el servidor
     if (sortKey.value) {
         result = [...result].sort((a, b) => {
             const valA = a[sortKey.value]
             const valB = b[sortKey.value]
             if (valA === valB) return 0
-            if (valA === null || valA === undefined) return 1
-            if (valB === null || valB === undefined) return -1
+            if (valA == null) return 1
+            if (valB == null) return -1
             
             let comparison = 0
             if (typeof valA === 'number' && typeof valB === 'number') {
@@ -570,11 +603,12 @@ const filteredArticulos = computed(() => {
     return result
 })
 
-const totalPages = computed(() => Math.max(1, Math.ceil(filteredArticulos.value.length / pageSize.value)))
+const totalPages = computed(() => store.pagination.totalPages)
 
 const pagedArticulos = computed(() => {
-    const start = (page.value - 1) * pageSize.value
-    return filteredArticulos.value.slice(start, start + pageSize.value)
+    // Como ahora la paginación es del lado del servidor, filteredArticulos ya contiene
+    // solo los elementos de la página actual. No necesitamos hacer .slice() local.
+    return filteredArticulos.value
 })
 
 const pageStart = computed(() => {
@@ -584,7 +618,8 @@ const pageStart = computed(() => {
 
 const pageEnd = computed(() => {
     const end = page.value * pageSize.value
-    return Math.min(end, filteredArticulos.value.length)
+    // Usamos totalCount (total real en servidor) para el límite superior
+    return Math.min(end, totalCount.value)
 })
 
 // Observadores (Watchers)
@@ -606,16 +641,25 @@ onMounted(() => {
 
 // Eliminar artículo con confirmación
 const deletingCode = ref<string | null>(null)
+const pendingDeleteCode = ref<string | null>(null)
+const deleteError = ref('')
 
-async function handleDelete(itemCode: string) {
-    if (!confirm(`¿Estás seguro de que deseas eliminar el artículo "${itemCode}"? Esta acción no se puede deshacer.`)) return
+function handleDelete(itemCode: string) {
+    pendingDeleteCode.value = itemCode
+}
+
+async function confirmDelete() {
+    if (!pendingDeleteCode.value) return
+    const itemCode = pendingDeleteCode.value
     deletingCode.value = itemCode
+    deleteError.value = ''
     try {
         await articuloService.deleteArticulo(itemCode)
+        pendingDeleteCode.value = null
         await store.fetchArticulos()
-    } catch (err) {
-        alert('No se pudo eliminar el artículo. Inténtalo de nuevo.')
-        console.error(err)
+    } catch {
+        deleteError.value = 'No se pudo eliminar el artículo. Inténtalo de nuevo.'
+        pendingDeleteCode.value = null
     } finally {
         deletingCode.value = null
     }
@@ -635,7 +679,7 @@ function closeCargaModal() {
     showCargaModal.value = false
     resetCarga()
     // Solo recargar la tabla si la carga fue exitosa (sin errores)
-    if (cargaResults.value && cargaResults.value.error_count === 0) {
+    if (cargaResults.value?.error_count === 0) {
         store.fetchArticulos()
     }
 }
@@ -658,8 +702,8 @@ function onFileSelect(event: Event) {
 
 function onDrop(event: DragEvent) {
     dragOver.value = false
-    if (event.dataTransfer?.files && event.dataTransfer.files[0]) {
-        const file = event.dataTransfer.files[0]
+    const file = event.dataTransfer?.files?.[0]
+    if (file) {
         if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
             selectedFile.value = file
         } else {
@@ -672,9 +716,8 @@ async function handleDownloadTemplate() {
     downloadingTemplate.value = true
     try {
         await articuloService.downloadTemplate()
-    } catch (err) {
+    } catch {
         cargaError.value = 'No se pudo descargar la plantilla.'
-        console.error(err)
     } finally {
         downloadingTemplate.value = false
     }
@@ -692,7 +735,6 @@ async function handleUpload() {
         // Solo llega aquí si fue un error de red/servidor (no de validación)
         const axiosErr = err as { response?: { data?: { detail?: string } } }
         cargaError.value = axiosErr?.response?.data?.detail || 'Error al procesar el archivo. Verifica el formato e inténtalo de nuevo.'
-        console.error(err)
     } finally {
         uploading.value = false
     }

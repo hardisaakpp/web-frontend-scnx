@@ -17,7 +17,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/inventario/configuracion-usuario/:id',
     name: 'inventario-configuracion-usuario',
-    component: () => import('./views/UserSettingsView.vue'),
+    redirect: '/inventario',
     meta: {
       requiresAuth: true,
       title: 'Configuracion de Usuario',
@@ -25,9 +25,19 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/inventario/planes',
+    name: 'inventario-planes',
+    component: () => import('./views/PlanesInventarioView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Planes de Inventario',
+      permissions: INVENTARIO_VIEW_PERMISSIONS
+    }
+  },
+  {
     path: '/inventario/planificaciones',
     name: 'inventario-planificaciones',
-    component: () => import('./views/InventoryPlanningsView.vue'),
+    component: () => import('./views/PlanningWorkbenchView.vue'),
     meta: {
       requiresAuth: true,
       title: 'Planificacion de Inventario',
@@ -35,24 +45,96 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
-    path: '/inventario/generados',
-    name: 'inventario-generados',
-    component: () => import('./views/GeneratedInventoriesView.vue'),
+    path: '/inventario/planificaciones/:planId',
+    name: 'inventario-planificacion-detalle',
+    component: () => import('./views/PlanningDetailView.vue'),
     meta: {
       requiresAuth: true,
-      title: 'Inventarios Generados',
+      title: 'Detalle de Planificacion',
       permissions: INVENTARIO_VIEW_PERMISSIONS
     }
   },
   {
-    path: '/inventario/generados/:id',
-    name: 'inventario-detalle',
-    component: () => import('./views/InventoryDetailView.vue'),
+    path: '/inventario/sesiones',
+    name: 'inventario-sesiones',
+    component: () => import('./views/SesionesInventarioView.vue'),
     meta: {
       requiresAuth: true,
-      title: 'Detalle de Inventario',
+      title: 'Toma Física',
       permissions: INVENTARIO_VIEW_PERMISSIONS
     }
+  },
+  {
+    path: '/inventario/sesiones/:sessionId',
+    name: 'inventario-sesion-detalle',
+    component: () => import('./views/SessionCenterView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Toma Física - Detalle'
+    }
+  },
+  {
+    path: '/inventario/mis-inventarios',
+    name: 'inventario-mis-inventarios',
+    component: () => import('./views/MisInventariosView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Mis Inventarios'
+    }
+  },
+  {
+    path: '/inventario/sesiones/:sessionId/picking',
+    name: 'inventario-picking',
+    component: () => import('./views/ConteoPickingView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Conteo - Picking'
+    }
+  },
+  {
+    path: '/inventario/sesiones/:sessionId/resumen',
+    name: 'inventario-resumen-picking',
+    component: () => import('./views/ResumenPickingView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Resumen de Picking'
+    }
+  },
+  {
+    path: '/inventario/sesiones/:sessionId/detalle',
+    name: 'inventario-detalle-toma',
+    component: () => import('./views/DetalleTomaFisicaView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Toma Física - Detalle'
+    }
+  },
+  {
+    path: '/inventario/sesiones/:sessionId/supervisor',
+    name: 'inventario-supervisor-resumen',
+    component: () => import('./views/SupervisorResumenView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Toma Física - Resumen'
+    }
+  },
+  {
+    path: '/inventario/ajustes',
+    name: 'inventario-ajustes',
+    component: () => import('./views/AdjustmentsBoardView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Bandeja de Ajustes',
+      permissions: INVENTARIO_VIEW_PERMISSIONS
+    }
+  },
+  {
+    path: '/inventario/generados',
+    redirect: '/inventario/planificaciones'
+  },
+  {
+    path: '/inventario/generados/:id',
+    redirect: '/inventario/sesiones'
   }
 ]
 
