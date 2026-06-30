@@ -71,6 +71,9 @@ const router = createRouter({
         ...articuloScanerRoutes,
         ...inventarioRoutes,
         ...promocionSobresRoutes,
+        ...transaccionesRoutes,
+        ...reposicionesRoutes,
+        ...ruletaRoutes,
         {
           path: 'forbidden',
           name: 'forbidden',
