@@ -2,7 +2,12 @@
 # Obligatorio: deploy/env/active.env (ver deploy/env/local.docker.env.example)
 #   cp deploy/env/local.docker.env.example deploy/env/active.env
 #   docker compose up -d --build
-name: scnexus-front
+#
+# Despliegue paralelo (mismo servidor, otro nombre/puerto): definir CONTAINER_NAME
+# y SCNEXUS_FRONT_PORT en active.env. Vacías -> se despliega igual que hoy
+# (project/contenedor "scnexus-front"). Con valor -> stack independiente
+# (name/container_name propios), sin tocar el despliegue por defecto.
+name: ${CONTAINER_NAME:-scnexus-front}
 
 services:
   scnexus-front:
@@ -11,8 +16,8 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_APP_BASE_PATH: ${VITE_APP_BASE_PATH:-/scnexus-front/}
-    image: scnexus-front:latest
-    container_name: scnexus-front
+    image: scnexus-front:${CONTAINER_NAME:-latest}
+    container_name: ${CONTAINER_NAME:-scnexus-front}
     env_file:
       - path: deploy/env/bundle.env
         required: true
