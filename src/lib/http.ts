@@ -172,5 +172,5 @@ export const preferencesHttp = createModuleApi(
 /** Reposiciones */
 export const reposicionesApi = createModuleApi(
   ENV.REPOSICIONES_URL,
-  { auditHeaders: true, correlationId: true },
+  { auditHeaders: true },
 )
