@@ -1,5 +1,4 @@
-import axios from 'axios'
-import { attachUnauthorizedRedirect } from '@/services/sessionGuard'
+import { createModuleApi } from '@/lib/http'
 import { correlationFromResponseHeaders } from '../utils/apiErrorMapper'
 import type {
   ArticleDetailDto,
@@ -9,42 +8,14 @@ import type {
 } from '../types'
 import { extractArticlePricing } from '../utils/pricing'
 
-/**
- * Base URL del microservicio de scan (rutas reales: `/api/v1/warehouses`, `/api/v1/scan/resolve`).
- * - Sin `VITE_ARTICULO_SCAN_API_URL`: **`/scan-api`** en dev y prod (mismo origen → sin Mixed Content).
- *   Nginx debe exponer `location /scan-api/` hacia el host del scanner (ver `deploy/nginx/scnexus-host.conf.example`):
- *   p. ej. `/scan-api/api/v1/warehouses` → backend `GET /api/v1/warehouses`.
- * - `location /api/` suele ser el **Core**; si el scanner no está detrás del mismo upstream, no uses `/api` como base.
- * - Anular solo si tu despliegue publica el scanner en otra ruta: `VITE_ARTICULO_SCAN_API_URL` (p. ej. `/api` o URL absoluta `https://…`).
- * Bearer: si hay token en `localStorage`/`sessionStorage`, se envía `Authorization` (alineado con JWT del Core cuando el backend exige `Authority`).
- */
 const rawScanBaseUrl = import.meta.env.VITE_ARTICULO_SCAN_API_URL || '/scan-api'
 const normalizedScanBaseUrl = rawScanBaseUrl.replace(/\/+$/, '')
 const scanApiPrefix = /\/api$/i.test(normalizedScanBaseUrl) ? '/v1' : '/api/v1'
 
-const articuloScanApi = axios.create({
-  baseURL: normalizedScanBaseUrl,
-  timeout: 12000,
-  headers: {
-    Accept: 'application/json'
-  }
+const articuloScanApi = createModuleApi(normalizedScanBaseUrl, {
+  correlationId: true,
+  timeout: 12000
 })
-
-articuloScanApi.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token')
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
-
-    config.headers = config.headers ?? {}
-    config.headers['X-Correlation-Id'] = crypto.randomUUID()
-    return config
-  },
-  (error) => Promise.reject(error)
-)
-
-attachUnauthorizedRedirect(articuloScanApi)
 
 type WarehousesApiResponse = {
   data?: WarehouseDto[]

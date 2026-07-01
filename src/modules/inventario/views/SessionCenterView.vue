@@ -1,9 +1,9 @@
 <template>
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
     <section class="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5">
-      <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Toma de Inventario / Estado de Sesión</h1>
+      <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Toma Física / Detalle</h1>
       <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-        Crear sesión, registrar conteos/reconteos, monitorear progreso y cerrar con snapshot.
+        Crear toma física, registrar conteos/reconteos, monitorear progreso y cerrar con snapshot.
       </p>
 
       <div v-if="error" class="mt-4 alert-error">{{ error }}</div>
@@ -26,7 +26,7 @@
       </div>
       <div class="mt-3 flex gap-2">
         <button class="btn-primary" type="button" :disabled="creatingSession || !newSession.warehouseCode" @click="createSession">
-          {{ creatingSession ? 'Creando...' : 'Crear Sesión' }}
+          {{ creatingSession ? 'Creando...' : 'Crear Toma' }}
         </button>
       </div>
     </section>
@@ -75,13 +75,13 @@
         </form>
 
         <form class="rounded-lg border border-gray-200 dark:border-gray-700 p-4" @submit.prevent="closeSession">
-          <h3 class="font-semibold text-gray-900 dark:text-white">Cerrar Sesión (snapshot)</h3>
+          <h3 class="font-semibold text-gray-900 dark:text-white">Cerrar Toma Física (snapshot)</h3>
           <label class="block mt-3">
             <span class="label">Nota de cierre</span>
             <textarea v-model="closeNote" class="input min-h-[100px]" placeholder="Observaciones de cierre" />
           </label>
           <div class="mt-3 flex gap-2">
-            <button class="btn-danger" type="submit" :disabled="closingSession">{{ closingSession ? 'Cerrando...' : 'Cerrar Sesión' }}</button>
+            <button class="btn-danger" type="submit" :disabled="closingSession">{{ closingSession ? 'Cerrando...' : 'Cerrar Toma' }}</button>
             <button class="btn-secondary" type="button" :disabled="loadingResults" @click="loadResults">Ver Snapshot</button>
           </div>
         </form>
@@ -201,7 +201,7 @@ async function createSession() {
   try {
     const created = await scnexusInventoryApi.createSession(newSession.warehouseCode, newSession.description)
     sessionId.value = created.sessionId
-    success.value = `Sesión creada: ${created.sessionId}`
+    success.value = `Toma física creada: ${created.sessionId}`
     await loadStatus()
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'No se pudo crear la sesión.'
@@ -252,7 +252,7 @@ async function closeSession() {
   success.value = null
   try {
     status.value = await scnexusInventoryApi.closeSession(sessionId.value, closeNote.value)
-    success.value = 'Sesión cerrada correctamente.'
+    success.value = 'Toma física cerrada. Snapshot generado.'
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'No se pudo cerrar la sesión.'
   } finally {
@@ -275,9 +275,9 @@ async function loadResults() {
 
 onMounted(async () => {
   await loadWarehouses()
-  const querySession = String(route.query.sessionId || '')
-  if (querySession) {
-    sessionId.value = querySession
+  const paramSession = String(route.params.sessionId || route.query.sessionId || '')
+  if (paramSession) {
+    sessionId.value = paramSession
     await loadStatus()
   }
 })

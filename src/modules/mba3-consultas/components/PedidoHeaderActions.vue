@@ -182,7 +182,7 @@
 
 <script setup lang="ts">
 import { computed, type Ref } from '@vue/reactivity'
-import OdcSapVolverButton from './OdcSapVolverButton.vue'
+import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
 import LoadingSpinner from './LoadingSpinner.vue'
 import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
 

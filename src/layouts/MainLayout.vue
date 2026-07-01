@@ -176,6 +176,21 @@
           <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Importador PYG</span>
         </router-link>
 
+        <!-- Mis Inventarios (todos los usuarios autenticados) -->
+        <router-link
+          to="/inventario/mis-inventarios"
+          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
+          :class="{
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/inventario/mis-inventarios'),
+            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/inventario/mis-inventarios')
+          }"
+          :title="effectiveSidebarCollapsed ? 'Mis Inventarios' : ''"
+        >
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <ClipboardDocumentListIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/inventario/mis-inventarios') }" />
+          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Mis Inventarios</span>
+        </router-link>
+
         <!-- Inventario -->
         <router-link
           v-if="hasModuleAccess('inventario')"
@@ -240,6 +255,38 @@
           <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Reposiciones</span>
         </router-link>
 
+        <!-- Ruleta -->
+        <router-link
+          v-if="hasModuleAccess('ruleta')"
+          to="/ruleta"
+          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
+          :class="{
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/ruleta'),
+            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/ruleta')
+          }"
+          :title="effectiveSidebarCollapsed ? 'Ruleta' : ''"
+        >
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <SparklesIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/ruleta') }" />
+          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Ruleta</span>
+        </router-link>
+
+        <!-- Transacciones -->
+        <router-link
+          v-if="hasModuleAccess('cajero') || hasModuleAccess('tesoreria')"
+          to="/transacciones"
+          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
+          :class="{
+            'bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-lg shadow-emerald-500/50': $route.path.startsWith('/transacciones'),
+            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/transacciones')
+          }"
+          :title="effectiveSidebarCollapsed ? 'Transacciones' : ''"
+        >
+          <div class="absolute inset-0 bg-gradient-to-r from-emerald-600/20 to-teal-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <BanknotesIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/transacciones') }" />
+          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Transacciones</span>
+        </router-link>
+
         <!-- Validación de Artículos -->
         <router-link
           v-if="hasModuleAccess('articuloscaner')"
@@ -273,7 +320,7 @@
           </div>
           <button
             @click="logout"
-            class="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-[1.02]"
+            class="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
             :title="effectiveSidebarCollapsed ? 'Cerrar Sesión' : ''"
           >
             <ArrowRightOnRectangleIcon class="h-5 w-5 flex-shrink-0" />
@@ -286,12 +333,15 @@
         @click="toggleSidebarPin"
         @mouseenter="onPinHandleMouseEnter"
         @mouseleave="onPinHandleMouseLeave"
-        class="hidden md:flex absolute top-1/2 -right-3 -translate-y-1/2 h-10 w-7 items-center justify-center rounded-r-lg border border-slate-300 dark:border-slate-600/80 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-200 shadow-lg hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white transition-colors z-40"
-        :title="sidebarModeLabel"
-        aria-label="Cambiar modo del sidebar"
+        class="group hidden md:flex absolute top-1/2 -right-3 -translate-y-1/2 h-10 w-7 items-center justify-center rounded-r-lg border border-slate-300 dark:border-slate-600/80 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-200 shadow-lg hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white transition-colors z-40"
+        :aria-label="sidebarModeLabel"
       >
         <PinOff v-if="sidebarMode === 'auto'" class="h-4 w-4 opacity-80 pin-icon pin-icon--auto" />
         <Pin v-else class="h-4 w-4 text-sky-300 pin-icon pin-icon--fixed" />
+        <span class="pointer-events-none absolute left-full ml-2 top-1/2 -translate-y-1/2 whitespace-nowrap rounded-md bg-slate-900 dark:bg-slate-700 px-2.5 py-1.5 text-xs font-medium text-white shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-150 delay-200">
+          <span class="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-slate-900 dark:border-r-slate-700"></span>
+          {{ sidebarModeLabel }}
+        </span>
       </button>
     </aside>
 
@@ -361,7 +411,9 @@
             :title="odcSapVolverTitle"
           />
         </div>
-        <router-view></router-view>
+        <router-view v-slot="{ Component, route }">
+          <component :is="Component" :key="route.path" />
+        </router-view>
       </main>
     </div>
 
@@ -394,7 +446,10 @@ import {
   QrCodeIcon,
   IdentificationIcon,
   GiftIcon,
-  ShoppingCartIcon
+  SparklesIcon,
+  ShoppingCartIcon,
+  ClipboardDocumentListIcon,
+  BanknotesIcon
 } from '@heroicons/vue/24/outline'
 import { Pin, PinOff } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth'
@@ -402,7 +457,7 @@ import { useThemeStore } from '../stores/theme'
 import ToastContainer from '../components/ToastContainer.vue'
 import { useNotificaciones } from '@/composables/useNotificaciones'
 import { useOdcSapVolver } from '@/composables/useOdcSapVolver'
-import OdcSapVolverButton from '@/modules/mba3-consultas/components/OdcSapVolverButton.vue'
+import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
 import {
   hasPromocionSobresUiPermission,
   promocionSobresDefaultPath
@@ -510,8 +565,10 @@ const effectiveSidebarCollapsed = computed(() => {
 })
 
 const sidebarModeLabel = computed(() => {
-  if (sidebarMode.value === 'auto') return 'Anclar sidebar en el estado actual'
-  return 'Desanclar sidebar (volver a automático)'
+  if (sidebarMode.value === 'auto') {
+    return effectiveSidebarCollapsed.value ? 'Anclar sidebar compacto' : 'Anclar sidebar expandido'
+  }
+  return 'Desanclar sidebar'
 })
 
 function persistSidebarMode() {
@@ -559,7 +616,19 @@ const pageTitle = computed(() => {
     '/permisos': 'Gestión de Permisos',
     '/reposiciones': 'Reposiciones',
     '/reposiciones/carrito': 'Carrito de Reposición',
-    '/reposiciones/historial': 'Historial de Reposiciones'
+    '/reposiciones/historial': 'Historial de Reposiciones',
+        '/ruleta': 'Ruleta One Card',
+    '/ruleta/enrolador': 'Girar Ruleta',
+    '/ruleta/listado': 'Listado de Ruleta',
+    '/ruleta/supervisor': 'Monitoreo de Enroladores',
+    '/ruleta/admin': 'Administración — Ruleta',
+    '/ruleta/admin/campanas': 'Gestión de campañas',
+    '/ruleta/admin/premios': 'Premios y probabilidades',
+    '/ruleta/admin/inventario': 'Inventario por tienda',
+    '/ruleta/admin/dashboard': 'Dashboard global',
+    '/ruleta/admin/reportes': 'Reportes y exportación',
+    '/ruleta/admin/enroladores': 'Enroladores y ranking'
+    
   }
 
   return titles[route.path] || 'SCNexus'

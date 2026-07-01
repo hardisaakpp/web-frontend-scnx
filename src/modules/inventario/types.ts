@@ -189,3 +189,225 @@ export interface ImportCsvResult {
   imported: number
   errors: string[]
 }
+
+// --- Nuevo sistema: inventory-plans (api-inventario /api/inventory-plans) ---
+
+export interface InventoryPlanDto {
+  planId: string
+  warehouseCode: string
+  createdByUserId: string
+  description?: string | null
+  status: 'Planned' | 'Executed'
+  plannedOpenDate: string
+  plannedCloseDate: string
+  inventorySessionId?: string | null
+  createdAt: string
+  executedAt?: string | null
+  executedByUserId?: string | null
+  filters: InventoryPlanFilterItem[]
+}
+
+export interface InventoryPlanFilterItem {
+  filterType: string
+  filterValue: string
+}
+
+export interface CreateInventoryPlanRequest {
+  warehouseCode: string
+  description?: string | null
+  plannedOpenDate: string
+  plannedCloseDate: string
+  uNv1Values?: string[]
+  uNv2Values?: string[]
+  uNv3Values?: string[]
+  uGenValues?: string[]
+  materialValues?: string[]
+  packValues?: string[]
+  coleccionValues?: string[]
+}
+
+export interface PlanFilterCatalogDto {
+  uNv1Values: string[]
+  uNv2Values: string[]
+  uNv3Values: string[]
+  uGenValues: string[]
+  materialValues: string[]
+  packValues: string[]
+  coleccionValues: string[]
+}
+
+export interface WarehouseSimpleDto {
+  code: string
+  name: string
+}
+
+export type InventorySessionStatus = 'Open' | 'Recount' | 'Closed'
+
+export interface InventorySessionPickerDto {
+  id: string
+  inventorySessionId: string
+  userId: string
+  assignedByUserId: string
+  assignedAt: string
+}
+
+export interface InventorySessionListItemDto {
+  sessionId: string
+  planId?: string | null
+  warehouseCode: string
+  warehouseName: string
+  createdByUserId: string
+  status: InventorySessionStatus
+  openedAt: string
+  closedAt?: string | null
+  description?: string | null
+  plannedCloseDate?: string | null
+}
+
+export interface InventorySessionLineStatusDto {
+  itemCode: string
+  itemDescription?: string | null
+  systemQuantity: number
+  initialCountedQuantity: number
+  recountedQuantity: number
+  countedQuantity: number
+  initialDifference: number
+  recountDifference: number
+  difference: number
+  balanceStatus: string
+  entryCount: number
+}
+
+export interface InventorySessionStatusDto {
+  sessionId: string
+  warehouseCode: string
+  warehouseName: string
+  createdByUserId: string
+  status: string
+  balanceStatus: string
+  openedAt: string
+  closedAt?: string | null
+  description?: string | null
+  lines: InventorySessionLineStatusDto[]
+}
+
+export interface AddInventoryCountRequest {
+  itemCode: string
+  quantity: number
+  source: 'Manual' | 'Scan'
+  scanCode?: string | null
+}
+
+export interface InventoryCountResultDto {
+  countId: string
+  inventorySessionId: string
+  warehouseCode: string
+  itemCode: string
+  quantity: number
+  userId: string
+  source: string
+  scanCode?: string | null
+  countedAt: string
+  round: number
+}
+
+export interface ItemValidationDto {
+  itemCode: string
+  exists: boolean
+  description?: string | null
+}
+
+export interface LevelCountDto {
+  level: string
+  lines: number
+  totalQuantity: number
+}
+
+export interface RecentCountItemDto {
+  countId: string
+  itemCode: string
+  description?: string | null
+  level1?: string | null
+  level2?: string | null
+  quantity: number
+  countedByUserId: string
+  countedAt: string
+  canDelete: boolean
+}
+
+export interface InventoryPickingSummaryDto {
+  byLevel1: LevelCountDto[]
+  byLevel2: LevelCountDto[]
+  recentCounts: RecentCountItemDto[]
+}
+
+export interface SessionUserStatDto {
+  userId: string
+  countEntries: number
+  uniqueItemsCounted: number
+  lastCountedAt: string
+}
+
+export interface SessionDetailLineDto {
+  itemCode: string
+  description?: string | null
+  nivel1?: string | null
+  nivel2?: string | null
+  nivel3?: string | null
+  familia?: string | null
+  barcode?: string | null
+  systemQuantity: number
+  countedQuantity: number
+  difference: number
+  status: 'Balanced' | 'Difference' | 'New' | 'NotCounted'
+}
+
+export interface SessionDetailStatsDto {
+  total: number
+  balanced: number
+  difference: number
+  newItems: number
+  notCounted: number
+}
+
+export interface UserScanSummaryDto {
+  userId: string
+  totalScans: number
+  uniqueItems: number
+  firstScan: string
+  lastScan: string
+}
+
+export interface UserScanDetailEntryDto {
+  scannedAt: string
+  userId: string
+  barcode?: string | null
+  itemCode: string
+  description?: string | null
+  quantity: number
+  nivel3?: string | null
+  round: number
+}
+
+export interface SessionScansByUserDto {
+  summary: UserScanSummaryDto[]
+  detail: UserScanDetailEntryDto[]
+}
+
+export interface SupervisorSummaryDto {
+  sessionId: string
+  warehouseCode: string
+  warehouseName: string
+  status: InventorySessionStatus
+  description?: string | null
+  openedAt: string
+  closedAt?: string | null
+  totalSystemItems: number
+  countedItems: number
+  pendingItems: number
+  balancedItems: number
+  differenceItems: number
+  newItems: number
+  canClose: boolean
+  userStats: SessionUserStatDto[]
+}

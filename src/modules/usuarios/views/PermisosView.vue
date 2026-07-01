@@ -182,7 +182,7 @@
 import { ref, onMounted } from 'vue'
 import { Dialog, DialogPanel, DialogTitle, TransitionRoot } from '@headlessui/vue'
 import { usePermisosStore } from '../stores/permisosStore'
-import VolverButton from '../components/VolverButton.vue'
+import VolverButton from '@/components/VolverButton.vue'
 import type { Permiso } from '../types'
 
 const store = usePermisosStore()

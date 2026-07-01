@@ -10,14 +10,14 @@
       <MoonIcon v-else class="h-6 w-6 text-gray-600 group-hover:scale-110 transition-transform" />
     </button>
 
-    <div class="max-w-md w-full bg-white dark:bg-gray-800 rounded-lg shadow-md dark:shadow-gray-900/50 p-8 transition-colors duration-300">
+    <div class="max-w-md w-full bg-white dark:bg-gray-800 rounded-lg shadow-card dark:shadow-gray-900/50 p-8 transition-colors duration-300">
       <div class="text-center mb-8 flex flex-col items-center">
         <img :src="logoUrl" alt="Logo" class="h-16 w-auto mb-4" />
-        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{{ appName }}</h1>
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">{{ appName || 'SCNexus' }}</h1>
         <p class="text-gray-600 dark:text-gray-400 mt-2">Iniciar Sesión</p>
       </div>
 
-      <form @submit.prevent="handleLogin" class="space-y-6">
+      <form @submit.prevent="handleLogin" class="space-y-6" novalidate>
         <!-- Username -->
         <div>
           <label for="username" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -27,10 +27,19 @@
             id="username"
             v-model="form.username"
             type="text"
-            required
-            class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors duration-300"
+            autocomplete="username"
+            :class="[
+              'mt-1 block w-full px-3 py-2 rounded-md shadow-sm focus:outline-none focus:ring-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors duration-300',
+              fieldErrors.username
+                ? 'border border-red-500 dark:border-red-500 focus:ring-red-500 focus:border-red-500'
+                : 'border border-gray-300 dark:border-gray-600 focus:ring-indigo-500 focus:border-indigo-500'
+            ]"
             placeholder="admin"
+            @input="fieldErrors.username = ''"
           />
+          <p v-if="fieldErrors.username" class="mt-1 text-sm text-red-600 dark:text-red-400">
+            {{ fieldErrors.username }}
+          </p>
         </div>
 
         <!-- Password -->
@@ -38,14 +47,34 @@
           <label for="password" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
             Contraseña
           </label>
-          <input
-            id="password"
-            v-model="form.password"
-            type="password"
-            required
-            class="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors duration-300"
-            placeholder="••••••••"
-          />
+          <div class="relative mt-1">
+            <input
+              id="password"
+              v-model="form.password"
+              :type="showPassword ? 'text' : 'password'"
+              autocomplete="current-password"
+              :class="[
+                'block w-full px-3 py-2 pr-10 rounded-md shadow-sm focus:outline-none focus:ring-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-colors duration-300',
+                fieldErrors.password
+                  ? 'border border-red-500 dark:border-red-500 focus:ring-red-500 focus:border-red-500'
+                  : 'border border-gray-300 dark:border-gray-600 focus:ring-indigo-500 focus:border-indigo-500'
+              ]"
+              placeholder="••••••••"
+              @input="fieldErrors.password = ''"
+            />
+            <button
+              type="button"
+              @click="showPassword = !showPassword"
+              class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+              :aria-label="showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+            >
+              <EyeSlashIcon v-if="showPassword" class="h-5 w-5" />
+              <EyeIcon v-else class="h-5 w-5" />
+            </button>
+          </div>
+          <p v-if="fieldErrors.password" class="mt-1 text-sm text-red-600 dark:text-red-400">
+            {{ fieldErrors.password }}
+          </p>
         </div>
 
         <!-- Active Directory Checkbox -->
@@ -70,7 +99,7 @@
         <button
           type="submit"
           :disabled="isLoading"
-          class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 transition-colors duration-300"
+          class="interactive w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-cta hover:shadow-cta-hover text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:shadow-none disabled:translate-y-0 disabled:active:scale-100"
         >
           <span v-if="!isLoading">Iniciar Sesión</span>
           <span v-else class="flex items-center">
@@ -91,7 +120,7 @@ import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
-import { SunIcon, MoonIcon } from '@heroicons/vue/24/outline'
+import { SunIcon, MoonIcon, EyeIcon, EyeSlashIcon } from '@heroicons/vue/24/outline'
 import logoUrl from '@/assets/logo.png'
 
 const appName = import.meta.env.VITE_APP_NAME
@@ -101,6 +130,7 @@ const themeStore = useThemeStore()
 
 const isLoading = ref(false)
 const error = ref('')
+const showPassword = ref(false)
 
 const form = reactive({
   username: '',
@@ -108,8 +138,21 @@ const form = reactive({
   useActiveDirectory: true
 })
 
+const fieldErrors = reactive({
+  username: '',
+  password: ''
+})
+
+const validate = () => {
+  fieldErrors.username = form.username.trim() ? '' : 'El usuario es requerido'
+  fieldErrors.password = form.password ? '' : 'La contraseña es requerida'
+  return !fieldErrors.username && !fieldErrors.password
+}
+
 const handleLogin = async () => {
   error.value = ''
+  if (!validate()) return
+
   isLoading.value = true
   try {
     const success = await authStore.login({
@@ -117,7 +160,7 @@ const handleLogin = async () => {
       password: form.password,
       useActiveDirectory: form.useActiveDirectory
     })
-    
+
     if (success) {
       router.push('/')
     } else {

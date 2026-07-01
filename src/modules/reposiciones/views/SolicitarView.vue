@@ -196,8 +196,9 @@ const getQuantityColor = (item: any) => {
     >
       <div v-if="showFilters" class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm mb-8 border border-gray-200 dark:border-gray-700 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5">
         <div class="space-y-1.5">
-          <label class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Código Art.</label>
+          <label for="filter-itemcode" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Código Art.</label>
           <input 
+            id="filter-itemcode"
             v-model="filters.itemCode" 
             type="text" 
             placeholder="ItemCode..." 
@@ -207,10 +208,11 @@ const getQuantityColor = (item: any) => {
         </div>
 
         <div class="space-y-1.5">
-          <label class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Descripción</label>
+          <label for="filter-descripcion" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Descripción</label>
           <div class="relative">
             <MagnifyingGlassIcon class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input 
+              id="filter-descripcion"
               v-model="filters.descripcion" 
               type="text" 
               placeholder="Nombre..." 
@@ -221,8 +223,9 @@ const getQuantityColor = (item: any) => {
         </div>
 
         <div class="space-y-1.5">
-          <label class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Código Barras</label>
+          <label for="filter-codebars" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Código Barras</label>
           <input 
+            id="filter-codebars"
             v-model="filters.codeBars" 
             type="text" 
             placeholder="Codigo de barras..." 
@@ -232,32 +235,32 @@ const getQuantityColor = (item: any) => {
         </div>
 
         <div class="space-y-1.5">
-          <label class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Marca</label>
-          <select v-model="filters.marca" class="w-full py-2 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border text-sm">
+          <label for="filter-marca" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Marca</label>
+          <select id="filter-marca" v-model="filters.marca" class="w-full py-2 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border text-sm">
             <option value="">Todas</option>
             <option v-for="m in listasFiltros.marcas" :key="m" :value="m">{{ m }}</option>
           </select>
         </div>
 
         <div class="space-y-1.5">
-          <label class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Categoría</label>
-          <select v-model="filters.categoria" class="w-full py-2 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border text-sm">
+          <label for="filter-categoria" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Categoría</label>
+          <select id="filter-categoria" v-model="filters.categoria" class="w-full py-2 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border text-sm">
             <option value="">Todas</option>
             <option v-for="c in listasFiltros.categorias" :key="c" :value="c">{{ c }}</option>
           </select>
         </div>
 
         <div class="space-y-1.5">
-          <label class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Línea</label>
-          <select v-model="filters.linea" class="w-full py-2 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border text-sm">
+          <label for="filter-linea" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Línea</label>
+          <select id="filter-linea" v-model="filters.linea" class="w-full py-2 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border text-sm">
             <option value="">Todas</option>
             <option v-for="l in listasFiltros.lineas" :key="l" :value="l">{{ l }}</option>
           </select>
         </div>
 
         <div class="space-y-1.5">
-          <label class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Unidad</label>
-          <select v-model="filters.unidad" class="w-full py-2 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border text-sm">
+          <label for="filter-unidad" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Unidad</label>
+          <select id="filter-unidad" v-model="filters.unidad" class="w-full py-2 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border text-sm">
             <option value="">Todas</option>
             <option v-for="u in listasFiltros.unidades" :key="u" :value="u">{{ u }}</option>
           </select>

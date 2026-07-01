@@ -25,6 +25,16 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/inventario/planes',
+    name: 'inventario-planes',
+    component: () => import('./views/PlanesInventarioView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Planes de Inventario',
+      permissions: INVENTARIO_VIEW_PERMISSIONS
+    }
+  },
+  {
     path: '/inventario/planificaciones',
     name: 'inventario-planificaciones',
     component: () => import('./views/PlanningWorkbenchView.vue'),
@@ -47,11 +57,65 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/inventario/sesiones',
     name: 'inventario-sesiones',
+    component: () => import('./views/SesionesInventarioView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Toma Física',
+      permissions: INVENTARIO_VIEW_PERMISSIONS
+    }
+  },
+  {
+    path: '/inventario/sesiones/:sessionId',
+    name: 'inventario-sesion-detalle',
     component: () => import('./views/SessionCenterView.vue'),
     meta: {
       requiresAuth: true,
-      title: 'Toma / Sesiones de Inventario',
-      permissions: INVENTARIO_VIEW_PERMISSIONS
+      title: 'Toma Física - Detalle'
+    }
+  },
+  {
+    path: '/inventario/mis-inventarios',
+    name: 'inventario-mis-inventarios',
+    component: () => import('./views/MisInventariosView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Mis Inventarios'
+    }
+  },
+  {
+    path: '/inventario/sesiones/:sessionId/picking',
+    name: 'inventario-picking',
+    component: () => import('./views/ConteoPickingView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Conteo - Picking'
+    }
+  },
+  {
+    path: '/inventario/sesiones/:sessionId/resumen',
+    name: 'inventario-resumen-picking',
+    component: () => import('./views/ResumenPickingView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Resumen de Picking'
+    }
+  },
+  {
+    path: '/inventario/sesiones/:sessionId/detalle',
+    name: 'inventario-detalle-toma',
+    component: () => import('./views/DetalleTomaFisicaView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Toma Física - Detalle'
+    }
+  },
+  {
+    path: '/inventario/sesiones/:sessionId/supervisor',
+    name: 'inventario-supervisor-resumen',
+    component: () => import('./views/SupervisorResumenView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Toma Física - Resumen'
     }
   },
   {

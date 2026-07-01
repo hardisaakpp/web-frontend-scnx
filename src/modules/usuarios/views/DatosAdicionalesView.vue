@@ -159,7 +159,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '@/services/api'
-import VolverButton from '../components/VolverButton.vue'
+import VolverButton from '@/components/VolverButton.vue'
 
 interface AsignacionRecord {
   id: string

@@ -99,7 +99,7 @@
             </button>
             <button
               type="button"
-              class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-indigo-700/70 transition-colors hover:bg-indigo-100/80 hover:text-indigo-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-indigo-50 dark:text-indigo-300/80 dark:hover:bg-indigo-950/60 dark:hover:text-indigo-100 dark:focus-visible:ring-indigo-400/45 dark:focus-visible:ring-offset-slate-900 sm:h-10 sm:w-10"
+              class="touch-target shrink-0 rounded-xl text-indigo-700/70 transition-colors hover:bg-indigo-100/80 hover:text-indigo-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-indigo-50 dark:text-indigo-300/80 dark:hover:bg-indigo-950/60 dark:hover:text-indigo-100 dark:focus-visible:ring-indigo-400/45 dark:focus-visible:ring-offset-slate-900"
               @click="$emit('close')"
               aria-label="Cerrar modal"
             >
