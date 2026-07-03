@@ -272,6 +272,18 @@ async function guardarPremio() {
   guardando.value = true
   try {
     const data = buildPremioData()
+    
+    // Subir imagen si hay un archivo nuevo
+    if (imagenFile.value) {
+      try {
+        const url = await store.subirImagen(imagenFile.value)
+        data.imagen_url = url
+      } catch (err: any) {
+        errorForm.value = 'Error al subir la imagen: ' + (err.response?.data?.error || err.message)
+        return
+      }
+    }
+
     if (premioEditando.value) {
       const premioId = premioEditando.value.id
       await store.actualizarPremio(grupoIdx, premioId, data)

@@ -349,6 +349,15 @@ export const ruletaService = {
     await campanaApi.delete(`/api/campanas/${campanaId}/premios/${premioId}`)
   },
 
+  async subirImagenPremio(archivo: File): Promise<string> {
+    const formData = new FormData()
+    formData.append('archivo', archivo)
+    const response = await campanaApi.post<{ url: string }>('/api/premios/imagenes', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    return response.data.url
+  },
+
   async asignarStockTienda(campanaId: string, premioId: string, tiendaCodigo: string, cantidad: number): Promise<void> {
     await campanaApi.post(
       `/api/campanas/${campanaId}/premios/${premioId}/stock-tienda`,
