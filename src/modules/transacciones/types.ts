@@ -1,46 +1,79 @@
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
-export type EstadoTransaccion = 'PENDIENTE' | 'RESERVADO' | 'PROCESADO' | 'DESCARTADO'
-export type SignoTransaccion = '+' | '-'
+export type EstadoTransaccion = 'Pendiente' | 'Reservado' | 'Procesado' | 'Descartado'
+export type SignoTransaccion = 'C' | 'D' // C = Crédito, D = Débito
 
-// ─── Transacción (respuesta cajero y tesorería) ───────────────────────────────
+// ─── Transacción cajero ───────────────────────────────────────────────────────
 
 export interface Transaccion {
   id: number
+  idCuenta?: number
+  idSecuencia?: number | null
   referenciaTransaccion: string
+  referenciaTransaccion2?: string | null
   valorMontoTotal: number
   fechaProceso: string
+  fechaIngreso: string
+  fechaModificacion?: string | null
   signo: SignoTransaccion
-  tipoTransaccion: string
-  descripcionTransaccion: string
+  tipoTransaccion?: string | null
+  descripcionTransaccion?: string | null
+  descripcionTransferencia?: string | null
+  descripcionCausal?: string | null
+  nombreOficina?: string | null
+  nombreBeneficiario?: string | null
+  nombreEstablecimiento?: string | null
   estado: EstadoTransaccion
-  codigoAlmacen: string | null
-  identificacionCliente?: string | null
+  codigoAlmacen?: string | null
+  idTransaccionContable?: number | null
+  codigoReverso?: string | null
 }
 
+// ─── Transacción tesorería ────────────────────────────────────────────────────
+
 export interface TransaccionTesoreria extends Transaccion {
-  fechaIngreso: string
-  tienda: string | null
-  codVendedor: string | null
-  cliente: string | null
+  tipoTransaccion: string
+  valorSaldoContable?: number | null
+  valorSaldoDisponible?: number | null
+  nombreAlmacen?: string | null
+  codVendedor?: string | null
+  usuarioReserva?: string | null
+  fechaReserva?: string | null
+}
+
+// ─── Cuenta bancaria (tesorería) ─────────────────────────────────────────────
+
+export interface CuentaTesoreria {
+  id: number
+  codigo: string
+  descripcion: string
+  numeroCuentaMascarado: string
+}
+
+// ─── Almacén ──────────────────────────────────────────────────────────────────
+
+export interface Almacen {
+  codAlmacen: string
+  nombre: string
 }
 
 // ─── Requests ─────────────────────────────────────────────────────────────────
 
 export interface ReservarTransaccionRequest {
-  codVendedor: string
   codigoAlmacen: string
-  nombreAlmacen: string
-  usuarioReserva: string
+  nombreAlmacen?: string
+  codVendedor?: string
 }
 
 // ─── Filtros cajero ───────────────────────────────────────────────────────────
 
 export interface FiltrosCajero {
-  idCuenta: number
-  monto?: number | null
-  referencia?: string | null
-  identificacionCliente?: string | null
+  valorMontoTotal: number
+  referenciaTransaccion: string
+  descripcionTransferencia?: string | null
+  referenciaTransaccion2?: string | null
+  descripcionCausal?: string | null
+  descripcionTransaccion?: string | null
 }
 
 // ─── Filtros tesorería ────────────────────────────────────────────────────────
@@ -51,4 +84,11 @@ export interface FiltrosTesoreria {
   hasta: string
   codigoAlmacen?: string | null
   estado?: EstadoTransaccion | null
+}
+
+// ─── Auditoría cajero ─────────────────────────────────────────────────────────
+
+export interface RegistrarEventoCajeroRequest {
+  tipoEvento: 'INICIO_RESERVA' | 'CANCELAR_RESERVA'
+  idTransaccion: number
 }

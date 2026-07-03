@@ -1,5 +1,4 @@
 import axios from 'axios'
-import { attachUnauthorizedRedirect } from '@/services/sessionGuard'
 import { TRANSACCIONES_API_BASE_URL } from '@/config/apiBaseUrls'
 
 export const transaccionesApi = axios.create({
@@ -9,8 +8,9 @@ export const transaccionesApi = axios.create({
 })
 
 transaccionesApi.interceptors.request.use(config => {
-  const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken')
+  const token = localStorage.getItem('token') || sessionStorage.getItem('token')
   if (token) {
+    config.headers = config.headers ?? {}
     config.headers.Authorization = `Bearer ${token}`
   }
   return config
@@ -25,5 +25,3 @@ transaccionesApi.interceptors.response.use(
     return Promise.reject(error)
   }
 )
-
-attachUnauthorizedRedirect(transaccionesApi)
