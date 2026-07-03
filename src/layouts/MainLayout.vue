@@ -412,9 +412,7 @@
           />
         </div>
         <router-view v-slot="{ Component, route }">
-          <Transition name="fade-slide" mode="out-in">
-            <component :is="Component" :key="route.path" />
-          </Transition>
+          <component :is="Component" :key="route.path" />
         </router-view>
       </main>
     </div>

@@ -262,20 +262,22 @@ export const useAuthStore = defineStore('auth', {
       }
       return []
     },
-    userWarehouseAccesses: (state): WarehouseAccessInfo[] | WarehouseAccessInfo | null => {
-      if (state.userData?.warehouseAccesses) {
-        return state.userData.warehouseAccesses
-      }
-      try {
-        const userStr = localStorage.getItem('user')
-        if (userStr) {
-          const user = JSON.parse(userStr) as User
-          return user.warehouseAccesses || null
+    userWarehouseAccesses: (state): WarehouseAccessInfo[] => {
+      const raw = (() => {
+        if (state.userData?.warehouseAccesses) return state.userData.warehouseAccesses
+        try {
+          const userStr = localStorage.getItem('user')
+          if (userStr) {
+            const user = JSON.parse(userStr) as User
+            return user.warehouseAccesses ?? null
+          }
+        } catch {
+          return null
         }
-      } catch {
         return null
-      }
-      return null
+      })()
+      if (!raw) return []
+      return Array.isArray(raw) ? raw : [raw]
     },
     userRoles: (state): string[] => {
       if (state.userData?.roles) {
