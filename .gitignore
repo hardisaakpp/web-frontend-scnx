@@ -32,6 +32,8 @@ deploy/env/intranet.env
 .vscode/*
 !.vscode/extensions.json
 .idea
+.claude/
+.cursor/
 .DS_Store
 *.suo
 *.ntvs*
