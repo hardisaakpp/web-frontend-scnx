@@ -257,6 +257,7 @@ export interface InventorySessionListItemDto {
   warehouseCode: string
   warehouseName: string
   createdByUserId: string
+  createdByUserName?: string | null
   status: InventorySessionStatus
   openedAt: string
   closedAt?: string | null

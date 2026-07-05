@@ -4,7 +4,7 @@
       <p class="text-sm font-medium text-blue-600 dark:text-blue-400">StoreControl</p>
       <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Inventario</h1>
       <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-        Flujo operativo completo: planificar, ejecutar toma, monitorear estado, cerrar snapshot y gestionar ajustes.
+        Flujo operativo completo: planificar, ejecutar toma, monitorear estado y cerrar snapshot.
       </p>
     </div>
 
@@ -61,13 +61,6 @@ const cards = computed(() => [
     description: 'Ejecutar planes pendientes o crear tomas físicas de inventario sin necesidad de plan previo.',
     to: '/inventario/sesiones',
     badge: 'TF',
-    editOnly: false
-  },
-  {
-    title: 'Bandeja de Ajustes',
-    description: 'Crear ajuste desde toma física cerrada, editar líneas, enviar a revisión, aprobar y marcar envío SAP.',
-    to: '/inventario/ajustes',
-    badge: 'A',
     editOnly: false
   }
 ])

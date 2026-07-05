@@ -176,8 +176,9 @@
           <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Importador PYG</span>
         </router-link>
 
-        <!-- Mis Inventarios (todos los usuarios autenticados) -->
+        <!-- Mis Inventarios (usuarios con acceso tipo Tienda) -->
         <router-link
+          v-if="hasModuleAccess('inventario') && isTiendaAccess"
           to="/inventario/mis-inventarios"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
@@ -191,9 +192,9 @@
           <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Mis Inventarios</span>
         </router-link>
 
-        <!-- Inventario -->
+        <!-- Inventario (Supervisor / Administrador: todas las pantallas) -->
         <router-link
-          v-if="hasModuleAccess('inventario')"
+          v-if="hasModuleAccess('inventario') && !isTiendaAccess"
           to="/inventario"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
@@ -443,6 +444,7 @@ import ToastContainer from '../components/ToastContainer.vue'
 import { useNotificaciones } from '@/composables/useNotificaciones'
 import { useOdcSapVolver } from '@/composables/useOdcSapVolver'
 import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
+import { useWarehouseAccessType } from '@/modules/inventario/composables/useWarehouseAccessType'
 import {
   hasPromocionSobresUiPermission,
   promocionSobresDefaultPath
@@ -454,6 +456,7 @@ const authStore = useAuthStore()
 const themeStore = useThemeStore()
 const { connect: connectNotificaciones, disconnect: disconnectNotificaciones } = useNotificaciones()
 const { target: odcSapVolverTarget, title: odcSapVolverTitle } = useOdcSapVolver()
+const { isTienda: isTiendaAccess } = useWarehouseAccessType()
 
 /** Volver en patrón A (arriba del título) dentro de cada vista; MainLayout solo si la ruta no lo define en la página. */
 const showOdcSapVolverInMainChrome = computed(() => {
@@ -646,12 +649,7 @@ const hasModuleAccess = (moduleName: string): boolean => {
     })
   }
   if (moduleName === 'inventario') {
-    return permissions.some((permission: string) => {
-      const normalizedPermission = permission.toLowerCase()
-      return normalizedPermission === 'storecontrol.inventory.view' ||
-        normalizedPermission === 'storecontrol.inventory.edit' ||
-        normalizedPermission.startsWith('storecontrol.inventory.')
-    })
+    return permissions.some((permission: string) => permission.toLowerCase().startsWith('inventario.'))
   }
   if (moduleName === 'promocionsobres') {
     return hasPromocionSobresUiPermission(permissions)

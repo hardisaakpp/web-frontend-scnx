@@ -132,7 +132,55 @@ export const inventarioSesionesService = {
     return response.data
   },
 
-  async syncWarehouseStock(warehouseCode: string): Promise<void> {
-    await invPlanesApi.post(`/api/stock/sync/${encodeURIComponent(warehouseCode)}`)
+  async syncWarehouseStock(warehouseCode: string): Promise<{ lastSyncAt: string | null }> {
+    const response = await invPlanesApi.post<{ lastSyncAt: string | null }>(`/api/stock/sync/${encodeURIComponent(warehouseCode)}`)
+    return response.data
+  },
+
+  async getWarehouseLastSync(warehouseCode: string): Promise<{ lastSyncAt: string | null }> {
+    const response = await invPlanesApi.get<{ lastSyncAt: string | null }>(`/api/stock/last-sync/${encodeURIComponent(warehouseCode)}`)
+    return response.data
+  },
+
+  async getArticleCounts(sessionId: string): Promise<ArticleCountLineDto[]> {
+    const response = await invPlanesApi.get<ArticleCountLineDto[]>(`/api/inventory-sessions/${sessionId}/article-counts`)
+    return response.data
+  },
+
+  async setManualCount(sessionId: string, itemCode: string, quantity: number): Promise<ArticleCountLineDto> {
+    const response = await invPlanesApi.put<ArticleCountLineDto>(`/api/inventory-sessions/${sessionId}/manual-count`, { itemCode, quantity })
+    return response.data
+  },
+
+  async submitItems(sessionId: string, itemCodes: string[]): Promise<SubmitItemsResultDto> {
+    const response = await invPlanesApi.post<SubmitItemsResultDto>(`/api/inventory-sessions/${sessionId}/submit-items`, { itemCodes })
+    return response.data
   }
+}
+
+export interface ArticleCountLineDto {
+  itemCode: string
+  barcode: string | null
+  itemDescription: string | null
+  level2: string | null
+  systemQuantity: number
+  scannedQuantity: number
+  manualQuantity: number
+  totalCounted: number
+  isSubmitted: boolean
+}
+
+export interface SubmitItemsResultDto {
+  submitted: number
+  balanced: number
+  differences: number
+  items: SubmitItemLineDto[]
+}
+
+export interface SubmitItemLineDto {
+  itemCode: string
+  systemQuantity: number
+  totalCounted: number
+  difference: number
+  balanceStatus: string
 }
