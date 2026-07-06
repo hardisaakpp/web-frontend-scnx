@@ -250,6 +250,10 @@ export const useAdminStore = defineStore('admin', {
       await ruletaService.asignarStockTienda(this.campanaActivaId, premioId, tiendaCodigo, stockTotal)
     },
 
+    async subirImagen(archivo: File): Promise<string> {
+      return await ruletaService.subirImagenPremio(archivo)
+    },
+
     recalcularEstadoGrupo(grupoIndex: number) {
       const grupo = this.grupos[grupoIndex]
       if (!grupo) return

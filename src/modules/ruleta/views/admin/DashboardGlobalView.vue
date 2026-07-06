@@ -62,10 +62,9 @@ async function irPagina(page: number) {
 }
 
 // ── Exportar ──────────────────────────────────────────────────────────────────
-async function exportar(tipo: 'csv' | 'excel' | 'pdf') {
+async function exportar(tipo: 'csv' | 'excel') {
   const id = esTodos.value ? undefined : campanaSeleccionadaId.value
   if (tipo === 'excel') await ruletaService.exportarGirosExcel(id)
-  else if (tipo === 'pdf') await ruletaService.exportarGirosPdf(id)
   else await ruletaService.exportarGirosCsv(id)
 }
 
@@ -315,15 +314,6 @@ function fmtFecha(iso: string) {
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
               </svg>
               Excel
-            </button>
-            <button @click="exportar('pdf')"
-              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
-                     bg-red-50 hover:bg-red-100 dark:bg-red-900/20 dark:hover:bg-red-900/40
-                     text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800">
-              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
-              </svg>
-              PDF
             </button>
             <button @click="exportar('csv')"
               class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
