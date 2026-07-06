@@ -7,7 +7,7 @@
 
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-3xl">
 
-      <!-- Cajero -->
+      <!-- Reserva Tienda -->
       <router-link
         v-if="puedeVerCajero"
         to="/transacciones/cajero"
@@ -20,7 +20,7 @@
           <ArrowRightIcon class="w-5 h-5 text-gray-400 group-hover:text-emerald-500 group-hover:translate-x-1 transition-all duration-200" />
         </div>
         <div>
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Cajero</h2>
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Reserva Tienda</h2>
           <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Consulte y reserve transacciones en tiempo real por monto y referencia.
           </p>
@@ -31,6 +31,31 @@
           </span>
           <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800">
             Reserva online
+          </span>
+        </div>
+      </router-link>
+
+      <!-- Historial Reserva -->
+      <router-link
+        v-if="puedeVerCajero"
+        to="/transacciones/historial-reserva"
+        class="group relative flex flex-col gap-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow hover:shadow-lg hover:border-amber-400 dark:hover:border-amber-500 transition-all duration-200"
+      >
+        <div class="flex items-center justify-between">
+          <div class="flex items-center justify-center w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 group-hover:bg-amber-200 dark:group-hover:bg-amber-900/50 transition-colors">
+            <ClockIcon class="w-6 h-6" />
+          </div>
+          <ArrowRightIcon class="w-5 h-5 text-gray-400 group-hover:text-amber-500 group-hover:translate-x-1 transition-all duration-200" />
+        </div>
+        <div>
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Historial Reserva</h2>
+          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Consulte el historial de reservas realizadas por rango de fechas y tienda.
+          </p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800">
+            Hasta 31 días
           </span>
         </div>
       </router-link>
@@ -69,16 +94,16 @@
 
 <script setup lang="ts">
 import { computed } from '@vue/reactivity'
-import { BanknotesIcon, ChartBarSquareIcon, ArrowRightIcon } from '@heroicons/vue/24/outline'
+import { BanknotesIcon, ChartBarSquareIcon, ClockIcon, ArrowRightIcon } from '@heroicons/vue/24/outline'
 import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()
 
 const puedeVerCajero = computed(() =>
-  authStore.userRoles?.includes('Admin') || authStore.hasAnyPermission(['cajero.view'])
+  authStore.userRoles?.includes('Admin') || authStore.hasAnyPermission(['transacciones.cajero'])
 )
 
 const puedeVerTesoreria = computed(() =>
-  authStore.userRoles?.includes('Admin') || authStore.hasAnyPermission(['tesoreria.view'])
+  authStore.userRoles?.includes('Admin') || authStore.hasAnyPermission(['transacciones.tesoreria'])
 )
 </script>

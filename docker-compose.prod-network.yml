@@ -1,7 +1,7 @@
-# Producción srv-mabuiosapi: MBA3 y PYG por DNS en redes externas.
-# Cajachica (bridge 172.17.0.x) y empleados PHP (Nginx host :3001) — tras `up`:
-#   docker network connect bridge scnexus-front
+# Producción srv-mabuiosapi: MBA3, PYG y Cajachica por DNS en redes externas.
+# Cajachica: red user-defined cajachica_net (NO bridge — la IP bridge cambia al recrear el contenedor).
 # Empleados: UPSTREAM_EMPLOYEES=http://host.docker.internal:3001 (Nginx host con PHP).
+# Prerequisito: docker network create cajachica_net && docker network connect cajachica_net cajachica
 #
 # Uso:
 #   docker compose -f docker-compose.yml -f docker-compose.prod-network.yml \
@@ -16,6 +16,7 @@ services:
       - conciliacion-bancaria_default
       - articulomaestro_default
       - reposiciones_default
+      - cajachica_net
 
 networks:
   mba3-nexus_edge:
@@ -33,4 +34,6 @@ networks:
   reposiciones_default:
     name: reposiciones_default
     external: true
-
+  cajachica_net:
+    name: cajachica_net
+    external: true

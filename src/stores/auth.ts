@@ -450,6 +450,14 @@ export const useAuthStore = defineStore('auth', {
             // Si no se puede decodificar el token, considerarlo inválido y cerrar sesión.
             this.logout()
           }
+        } else {
+          // Error de red (504, sin conexión, etc.): derivar capabilities desde userData/JWT
+          // para que el router no reintente fetchMe() en cada navegación posterior.
+          const permissions = this.userData?.permissions ?? []
+          const roles = this.userData?.roles ?? []
+          if (permissions.length > 0 || roles.length > 0) {
+            this.capabilities = deriveCapabilitiesFromPermissions(permissions, roles)
+          }
         }
       }
     },

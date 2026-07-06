@@ -17,7 +17,7 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresAuth: true,
       title: 'Transacciones · Cajero',
-      permissions: ['cajero.view'],
+      permissions: ['transacciones.cajero'],
     },
   },
   {
@@ -27,7 +27,17 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresAuth: true,
       title: 'Reporte de Tesorería',
-      permissions: ['tesoreria.view'],
+      permissions: ['transacciones.tesoreria'],
+    },
+  },
+  {
+    path: '/transacciones/historial-reserva',
+    name: 'transacciones-historial-reserva',
+    component: () => import('./views/HistorialReservaView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Historial de Reservas',
+      permissions: ['transacciones.cajero'],
     },
   },
 ]
