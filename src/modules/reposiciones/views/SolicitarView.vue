@@ -11,7 +11,13 @@ import {
   BuildingOfficeIcon,
   XMarkIcon,
   ClockIcon,
+<<<<<<< HEAD
   ArrowLeftIcon
+=======
+  ArrowLeftIcon,
+  ExclamationTriangleIcon,
+  QuestionMarkCircleIcon
+>>>>>>> feature/reposiciones-ajuste-horarios-disponibiidad
 } from '@heroicons/vue/24/outline'
 import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue'
 import reposicionApi from '../services/reposicionApi'
@@ -31,7 +37,9 @@ const {
   almacenes, 
   totalItems,
   currentPage,
-  isOpen
+  isOpen,
+  startHour,
+  endHour
 } = storeToRefs(store)
 
 const showFilters = ref(false)
@@ -39,6 +47,46 @@ const selectedItem = ref<CatalogoItemDetail | null>(null)
 const isDetailOpen = ref(false)
 const loadingDetail = ref(false)
 
+<<<<<<< HEAD
+=======
+const isErrorModalOpen = ref(false)
+const errorMessage = ref('')
+
+const showError = (msg: string) => {
+  errorMessage.value = msg
+  isErrorModalOpen.value = true
+}
+
+const isConfirmModalOpen = ref(false)
+const confirmMessage = ref('')
+let confirmResolve: ((value: boolean) => void) | null = null
+
+const showConfirm = (msg: string): Promise<boolean> => {
+  confirmMessage.value = msg
+  isConfirmModalOpen.value = true
+  return new Promise((resolve) => {
+    confirmResolve = resolve
+  })
+}
+
+const handleConfirm = (result: boolean) => {
+  isConfirmModalOpen.value = false
+  if (confirmResolve) {
+    confirmResolve(result)
+    confirmResolve = null
+  }
+}
+
+const handleUpdateComment = async (itemCode: string, comment: string) => {
+  try {
+    await store.updateItemComment(itemCode, comment)
+  } catch (err: any) {
+    const errorMsg = err.response?.data?.message || 'Error al guardar comentario'
+    showError(errorMsg)
+  }
+}
+
+>>>>>>> feature/reposiciones-ajuste-horarios-disponibiidad
 const almacenesTodos = ref<Almacen[]>([])
 const bodegasParaSeleccionar = computed(() => canAdmin.value ? almacenesTodos.value : almacenes.value)
 
@@ -100,24 +148,25 @@ const updateQuantity = async (item: any, quantity: number) => {
   try {
     if (quantity > 0 && item.embalaje > 0 && quantity % item.embalaje !== 0) {
       const suggested = Math.ceil(quantity / item.embalaje) * item.embalaje
-      if (confirm(`La cantidad debe ser múltiplo de ${item.embalaje}. ¿Desea ajustar a ${suggested}?`)) {
+      if (await showConfirm(`La cantidad debe ser múltiplo de ${item.embalaje}. ¿Desea ajustar a ${suggested}?`)) {
         quantity = suggested
       } else {
         return
       }
     }
     if (quantity > item.disponibleBodega) {
-      alert(`No hay suficiente stock en bodega. Disponible: ${item.disponibleBodega}`)
+      showError(`No hay suficiente stock en bodega. Disponible: ${item.disponibleBodega}`)
       return
     }
     if (quantity > item.sugerido && item.sugerido > 0) {
-      if (!confirm(`La cantidad es mayor al sugerido (${item.sugerido}). ¿Desea continuar?`)) {
+      if (!(await showConfirm(`La cantidad es mayor al sugerido (${item.sugerido}). ¿Desea continuar?`))) {
         return
       }
     }
     await store.updateItemQuantity(item.itemCode, quantity)
-  } catch (err) {
-    alert('Error al actualizar cantidad')
+  } catch (err: any) {
+    const errorMsg = err.response?.data?.message || 'Error al actualizar cantidad'
+    showError(errorMsg)
   }
 }
 
@@ -148,7 +197,7 @@ const getQuantityColor = (item: any) => {
       <div class="flex flex-wrap items-center gap-3">
         <div v-if="!isOpen" class="bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-400 px-3 py-1.5 rounded-lg flex items-center gap-2 border border-red-200 dark:border-red-800 shadow-sm">
           <InformationCircleIcon class="w-4 h-4" />
-          <span class="text-xs font-medium">Fuera de horario</span>
+          <span class="text-xs font-medium">Fuera de horario ({{ String(startHour).padStart(2, '0') }}:00 - {{ String(endHour).padStart(2, '0') }}:00)</span>
         </div>
         
         <div v-if="!canAdmin && bodegasParaSeleccionar.length === 1"
@@ -381,7 +430,7 @@ const getQuantityColor = (item: any) => {
                 <input 
                   type="text"
                   :value="store.comentarioPorCodigo(item.itemCode)"
-                  @blur="e => store.updateItemComment(item.itemCode, (e.target as HTMLInputElement).value)"
+                  @blur="e => handleUpdateComment(item.itemCode, (e.target as HTMLInputElement).value)"
                   placeholder="..."
                   class="w-full h-9 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border text-xs px-2"
                   maxlength="50"
@@ -599,6 +648,127 @@ const getQuantityColor = (item: any) => {
                       </div>
                     </div>
                   </div>
+                </div>
+              </DialogPanel>
+            </TransitionChild>
+          </div>
+        </div>
+      </Dialog>
+    </TransitionRoot>
+
+    <!-- Error Modal -->
+    <TransitionRoot appear :show="isErrorModalOpen" as="template">
+      <Dialog as="div" @close="isErrorModalOpen = false" class="relative z-50">
+        <TransitionChild
+          as="template"
+          enter="duration-300 ease-out"
+          enter-from="opacity-0"
+          enter-to="opacity-100"
+          leave="duration-200 ease-in"
+          leave-from="opacity-100"
+          leave-to="opacity-0"
+        >
+          <div class="fixed inset-0 bg-black/40 backdrop-blur-sm" />
+        </TransitionChild>
+
+        <div class="fixed inset-0 overflow-y-auto">
+          <div class="flex min-h-full items-center justify-center p-4">
+            <TransitionChild
+              as="template"
+              enter="duration-300 ease-out"
+              enter-from="opacity-0 scale-95"
+              enter-to="opacity-100 scale-100"
+              leave="duration-200 ease-in"
+              leave-from="opacity-100 scale-100"
+              leave-to="opacity-0 scale-95"
+            >
+              <DialogPanel class="w-full max-w-sm transform overflow-hidden rounded-2xl bg-white dark:bg-gray-800 p-6 text-center align-middle shadow-2xl transition-all border border-gray-200 dark:border-gray-700">
+                <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30 mb-4">
+                  <ExclamationTriangleIcon class="h-10 w-10 text-red-600 dark:text-red-400" aria-hidden="true" />
+                </div>
+                
+                <DialogTitle as="h3" class="text-xl font-bold leading-6 text-gray-900 dark:text-white mb-2">
+                  No se pudo completar la acción
+                </DialogTitle>
+                
+                <div class="mt-2">
+                  <p class="text-sm text-gray-500 dark:text-gray-400">
+                    {{ errorMessage }}
+                  </p>
+                </div>
+
+                <div class="mt-6 flex justify-center">
+                  <button
+                    type="button"
+                    class="inline-flex justify-center rounded-lg border border-transparent bg-red-600 px-6 py-2 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 transition-all shadow-sm"
+                    @click="isErrorModalOpen = false"
+                  >
+                    Entendido
+                  </button>
+                </div>
+              </DialogPanel>
+            </TransitionChild>
+          </div>
+        </div>
+      </Dialog>
+    </TransitionRoot>
+
+    <!-- Confirm Modal -->
+    <TransitionRoot appear :show="isConfirmModalOpen" as="template">
+      <Dialog as="div" @close="handleConfirm(false)" class="relative z-50">
+        <TransitionChild
+          as="template"
+          enter="duration-300 ease-out"
+          enter-from="opacity-0"
+          enter-to="opacity-100"
+          leave="duration-200 ease-in"
+          leave-from="opacity-100"
+          leave-to="opacity-0"
+        >
+          <div class="fixed inset-0 bg-black/40 backdrop-blur-sm" />
+        </TransitionChild>
+
+        <div class="fixed inset-0 overflow-y-auto">
+          <div class="flex min-h-full items-center justify-center p-4">
+            <TransitionChild
+              as="template"
+              enter="duration-300 ease-out"
+              enter-from="opacity-0 scale-95"
+              enter-to="opacity-100 scale-100"
+              leave="duration-200 ease-in"
+              leave-from="opacity-100 scale-100"
+              leave-to="opacity-0 scale-95"
+            >
+              <DialogPanel class="w-full max-w-sm transform overflow-hidden rounded-2xl bg-white dark:bg-gray-800 p-6 text-center align-middle shadow-2xl transition-all border border-gray-200 dark:border-gray-700">
+                <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30 mb-4">
+                  <QuestionMarkCircleIcon class="h-10 w-10 text-blue-600 dark:text-blue-400" aria-hidden="true" />
+                </div>
+                
+                <DialogTitle as="h3" class="text-xl font-bold leading-6 text-gray-900 dark:text-white mb-2">
+                  Confirmar acción
+                </DialogTitle>
+                
+                <div class="mt-2">
+                  <p class="text-sm text-gray-500 dark:text-gray-400">
+                    {{ confirmMessage }}
+                  </p>
+                </div>
+
+                <div class="mt-6 flex justify-center gap-3">
+                  <button
+                    type="button"
+                    class="inline-flex justify-center rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-6 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none transition-all shadow-sm"
+                    @click="handleConfirm(false)"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    class="inline-flex justify-center rounded-lg border border-transparent bg-blue-600 px-6 py-2 text-sm font-medium text-white hover:bg-blue-700 focus:outline-none transition-all shadow-sm"
+                    @click="handleConfirm(true)"
+                  >
+                    Confirmar
+                  </button>
                 </div>
               </DialogPanel>
             </TransitionChild>

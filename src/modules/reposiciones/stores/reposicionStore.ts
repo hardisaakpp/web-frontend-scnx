@@ -66,6 +66,8 @@ export const useReposicionStore = defineStore('reposicion', {
       fecha: ''
     } as Omit<CarritoResponse, 'items'>,
     isOpen: true,
+    startHour: 8,
+    endHour: 20,
     error: null as string | null
   }),
 
@@ -220,8 +222,9 @@ export const useReposicionStore = defineStore('reposicion', {
           itemCode,
           comment
         })
-      } catch (err) {
+      } catch (err: any) {
         console.error('Error al guardar comentario', err)
+        throw err
       }
     },
 
@@ -265,8 +268,10 @@ export const useReposicionStore = defineStore('reposicion', {
 
     async checkStatus() {
       try {
-        const { isOpen } = await reposicionApi.getStatus()
+        const { isOpen, startHour, endHour } = await reposicionApi.getStatus()
         this.isOpen = isOpen
+        this.startHour = startHour
+        this.endHour = endHour
       } catch (err) {
         console.error('Error al verificar estado', err)
       }
