@@ -37,12 +37,6 @@ const routes: RouteRecordRaw[] = [
       title: 'Catálogo de Reposición',
       permissions: ['reposiciones.tienda'],
     },
-    beforeEnter: (to, from, next) => {
-      const authStore = useAuthStore()
-      if (!authStore.isAuthenticated) next('/login')
-      else if (!authStore.hasPermission('reposiciones.tienda')) next('/forbidden')
-      else next()
-    }
   },
   {
     path: '/reposiciones/carrito',
@@ -53,12 +47,6 @@ const routes: RouteRecordRaw[] = [
       title: 'Carrito de Reposición',
       permissions: ['reposiciones.tienda'],
     },
-    beforeEnter: (to, from, next) => {
-      const authStore = useAuthStore()
-      if (!authStore.isAuthenticated) next('/login')
-      else if (!authStore.hasPermission('reposiciones.tienda')) next('/forbidden')
-      else next()
-    }
   },
   {
     path: '/reposiciones/historial',
@@ -69,12 +57,6 @@ const routes: RouteRecordRaw[] = [
       title: 'Mi Historial',
       permissions: ['reposiciones.tienda'],
     },
-    beforeEnter: (to, from, next) => {
-      const authStore = useAuthStore()
-      if (!authStore.isAuthenticated) next('/login')
-      else if (!authStore.hasPermission('reposiciones.tienda')) next('/forbidden')
-      else next()
-    }
   },
   {
     path: '/reposiciones/admin/historial',
@@ -85,12 +67,6 @@ const routes: RouteRecordRaw[] = [
       title: 'Historial Global',
       permissions: ['reposiciones.administrador'],
     },
-    beforeEnter: (to, from, next) => {
-      const authStore = useAuthStore()
-      if (!authStore.isAuthenticated) next('/login')
-      else if (!authStore.hasPermission('reposiciones.administrador')) next('/forbidden')
-      else next()
-    }
   },
 ]
 
