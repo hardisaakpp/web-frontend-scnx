@@ -671,8 +671,6 @@ const hasModuleAccess = (moduleName: string): boolean => {
   if (moduleName === 'promocionsobres') {
     return hasPromocionSobresUiPermission(permissions)
   }
-  if (moduleName === 'reposiciones') return true
-
   const normalizedModule = moduleName.toLowerCase()
 
   return permissions.some((permission: string) => {
