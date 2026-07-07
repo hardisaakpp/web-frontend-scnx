@@ -591,7 +591,9 @@ export const ruletaService = {
       giros:           e.totalGiros       ?? e.giros               ?? 0,
       clientes_unicos: e.clientesUnicos   ?? e.clientes_unicos     ?? 0,
       afiliaciones:    e.totalGanadores   ?? e.afiliaciones        ?? e.nuevasAfiliaciones ?? 0,
-      conversion:      e.tasaConversion   ?? e.conversion          ?? 0,
+      conversion:      (e.totalGiros ?? e.giros ?? 0) > 0 
+                         ? ((e.totalGanadores ?? e.afiliaciones ?? e.nuevasAfiliaciones ?? 0) / (e.totalGiros ?? e.giros ?? 0)) * 100 
+                         : 0,
       estado:          e.estado  ?? 'activo',
     }))
   }

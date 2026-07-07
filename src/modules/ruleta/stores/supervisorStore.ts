@@ -78,7 +78,7 @@ export const useSupervisorStore = defineStore('supervisor', {
 
     exportarCSV() {
       if (!this.enroladores.length) return
-      const headers = ['Enrolador', 'Giros', 'Clientes únicos', 'Afiliaciones', 'Conversión (%)']
+      const headers = ['Enrolador', 'Giros', 'Clientes únicos', 'Ganadores', '% Ganadores']
       const rows = this.enroladores.map(e => [
         e.nombre, e.giros, e.clientes_unicos, e.afiliaciones, e.conversion.toFixed(1)
       ])
