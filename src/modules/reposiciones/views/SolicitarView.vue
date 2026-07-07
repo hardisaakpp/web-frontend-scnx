@@ -15,7 +15,7 @@ import {
 } from '@heroicons/vue/24/outline'
 import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue'
 import reposicionApi from '../services/reposicionApi'
-import type { CatalogoItemDetail } from '../types'
+import type { CatalogoItemDetail, Almacen } from '../types'
 
 import { useAuthStore } from '../../../stores/auth'
 
@@ -39,8 +39,18 @@ const selectedItem = ref<CatalogoItemDetail | null>(null)
 const isDetailOpen = ref(false)
 const loadingDetail = ref(false)
 
+const almacenesTodos = ref<Almacen[]>([])
+const bodegasParaSeleccionar = computed(() => canAdmin.value ? almacenesTodos.value : almacenes.value)
+
 onMounted(async () => {
   await store.initialize()
+  if (canAdmin.value) {
+    try {
+      almacenesTodos.value = await reposicionApi.getAlmacenes()
+    } catch (err) {
+      console.error('Error al cargar todas las bodegas para admin', err)
+    }
+  }
 })
 
 const handleSearch = () => {
@@ -141,23 +151,23 @@ const getQuantityColor = (item: any) => {
           <span class="text-xs font-medium">Fuera de horario</span>
         </div>
         
-        <div v-if="almacenes.length === 1" 
+        <div v-if="!canAdmin && bodegasParaSeleccionar.length === 1"
              class="flex items-center gap-3 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 rounded-xl border border-blue-100 dark:border-blue-800 shadow-sm">
           <BuildingOfficeIcon class="w-5 h-5 flex-shrink-0" />
           <div class="flex flex-col">
             <span class="text-[10px] font-bold uppercase tracking-wider leading-none">Tienda</span>
-            <span class="text-sm font-extrabold">{{ almacenes[0].whsCode }}</span>
+            <span class="text-sm font-extrabold">{{ bodegasParaSeleccionar[0].whsCode }}</span>
           </div>
         </div>
-        
-        <select 
-          v-else-if="almacenes.length > 1"
-          v-model="filters.whsCode" 
+
+        <select
+          v-else-if="bodegasParaSeleccionar.length > 0"
+          v-model="filters.whsCode"
           @change="store.fetchDataByWarehouse()"
           class="block w-full sm:w-64 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm h-10 px-3 border"
         >
           <option value="" disabled>Seleccione una bodega...</option>
-          <option v-for="alm in almacenes" :key="alm.whsCode" :value="alm.whsCode">
+          <option v-for="alm in bodegasParaSeleccionar" :key="alm.whsCode" :value="alm.whsCode">
             {{ alm.whsCode }}
           </option>
         </select>
