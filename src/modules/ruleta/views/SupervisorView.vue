@@ -17,7 +17,7 @@ const fechaHoy = computed(() => {
 
 const subtitulo = computed(() =>
   store.metricas
-    ? `Actividad en tiempo real — Tienda ${store.metricas.tienda_ciudad} ${store.metricas.tienda_nombre} — Hoy`
+    ? `Actividad acumulada histórica — Tienda ${store.metricas.tienda_ciudad} ${store.metricas.tienda_nombre}`
     : 'Cargando…'
 )
 
@@ -34,8 +34,8 @@ function dotClass(estado: EstadoEnrolador): string {
 }
 
 function dotTitle(estado: EstadoEnrolador): string {
-  if (estado === 'alerta') return 'Conversión baja'
-  if (estado === 'inactivo') return 'Inactivo hoy'
+  if (estado === 'alerta') return 'Pocos ganadores'
+  if (estado === 'inactivo') return 'Inactivo'
   return 'Activo'
 }
 </script>
@@ -110,7 +110,7 @@ function dotTitle(estado: EstadoEnrolador): string {
 
         <!-- Total giros -->
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 shadow-sm">
-          <p class="text-sm text-gray-500 dark:text-gray-400">Total giros hoy</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400">Total de giros</p>
           <p class="mt-2 text-4xl font-bold text-gray-900 dark:text-white">
             {{ store.metricas.total_giros }}
           </p>
@@ -126,7 +126,7 @@ function dotTitle(estado: EstadoEnrolador): string {
 
         <!-- Afiliaciones -->
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 shadow-sm">
-          <p class="text-sm text-gray-500 dark:text-gray-400">Afiliaciones logradas</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400">Total de ganadores</p>
           <div class="mt-2 flex items-end gap-2">
             <p class="text-4xl font-bold text-gray-900 dark:text-white">
               {{ store.metricas.afiliaciones }}
@@ -148,7 +148,7 @@ function dotTitle(estado: EstadoEnrolador): string {
 
         <!-- Tasa de conversión -->
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 shadow-sm">
-          <p class="text-sm text-gray-500 dark:text-gray-400">Tasa de conversión</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400">Porcentaje de ganadores</p>
           <p class="mt-2 text-4xl font-bold text-gray-900 dark:text-white">
             {{ store.metricas.tasa_conversion.toFixed(1) }}%
           </p>
@@ -169,7 +169,7 @@ function dotTitle(estado: EstadoEnrolador): string {
         </svg>
         <span>
           <strong>{{ store.totalAlertas }} enrolador{{ store.totalAlertas > 1 ? 'es' : '' }}</strong>
-          con conversión por debajo del umbral ({{ store.umbralConversion }}%).
+          con porcentaje de ganadores por debajo del umbral ({{ store.umbralConversion }}%).
           Se recomienda atención inmediata.
         </span>
       </div>
@@ -180,7 +180,7 @@ function dotTitle(estado: EstadoEnrolador): string {
         <!-- Gráfica de barras horizontales -->
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 shadow-sm">
           <h3 class="text-base font-semibold text-gray-900 dark:text-white mb-5">
-            Giros por enrolador (hoy)
+            Giros por enrolador
           </h3>
           <div class="space-y-4">
             <div
@@ -270,10 +270,10 @@ function dotTitle(estado: EstadoEnrolador): string {
                     Cl. únicos
                   </th>
                   <th class="px-3 py-3 text-right text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-                    Afiliaciones
+                    Ganadores
                   </th>
                   <th class="px-3 py-3 text-right text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-                    Conversión
+                    % Ganadores
                   </th>
                   <th class="px-3 py-3 text-center text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
                     Estado
