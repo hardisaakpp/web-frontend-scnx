@@ -13,7 +13,8 @@ import type {
   RepLog,
   SaveItemRequest,
   UpdateCommentRequest,
-  HistorialSolicitudSap
+  HistorialSolicitudSap,
+  StatusResponse
 } from '../types'
 
 const reposicionApi = {
@@ -65,7 +66,7 @@ const reposicionApi = {
   },
 
   getStatus: async () => {
-    const response = await reposicionesApi.get<{ isOpen: boolean }>('Solicitud/status')
+    const response = await reposicionesApi.get<StatusResponse>('Solicitud/status')
     return response.data
   },
 
