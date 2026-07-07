@@ -2,15 +2,16 @@
 import { onMounted, ref, computed } from 'vue'
 import { useReposicionStore } from '../stores/reposicionStore'
 import { storeToRefs } from 'pinia'
-import { 
-  FunnelIcon, 
-  ArrowPathIcon, 
+import {
+  FunnelIcon,
+  ArrowPathIcon,
   MagnifyingGlassIcon,
   ShoppingCartIcon,
   InformationCircleIcon,
   BuildingOfficeIcon,
   XMarkIcon,
-  ClockIcon
+  ClockIcon,
+  ArrowLeftIcon
 } from '@heroicons/vue/24/outline'
 import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue'
 import reposicionApi from '../services/reposicionApi'
@@ -19,6 +20,7 @@ import type { CatalogoItemDetail } from '../types'
 import { useAuthStore } from '../../../stores/auth'
 
 const authStore = useAuthStore()
+const canAdmin = computed(() => authStore.hasPermission('reposiciones.administrador'))
 
 const store = useReposicionStore()
 const { 
@@ -123,9 +125,14 @@ const getQuantityColor = (item: any) => {
   <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
     <!-- Header -->
     <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-      <div>
-        <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Reposición de Artículos</h1>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Gestiona el reabastecimiento de tu tienda de forma eficiente.</p>
+      <div class="flex items-center gap-4">
+        <router-link v-if="canAdmin" to="/reposiciones" class="p-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 bg-white dark:bg-gray-900 shadow-sm">
+          <ArrowLeftIcon class="w-5 h-5" />
+        </router-link>
+        <div>
+          <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Reposición de Artículos</h1>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Gestiona el reabastecimiento de tu tienda de forma eficiente.</p>
+        </div>
       </div>
 
       <div class="flex flex-wrap items-center gap-3">
