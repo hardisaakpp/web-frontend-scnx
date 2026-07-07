@@ -12,7 +12,8 @@ import type {
   SupervisorSummaryDto,
   SessionDetailLineDto,
   SessionDetailStatsDto,
-  SessionScansByUserDto
+  SessionScansByUserDto,
+  MyCountHistorySessionDto
 } from '../types'
 
 invPlanesApi.interceptors.response.use(
@@ -31,6 +32,11 @@ export const inventarioSesionesService = {
 
   async getMisSesiones(): Promise<InventorySessionListItemDto[]> {
     const response = await invPlanesApi.get<InventorySessionListItemDto[]>('/api/inventory-sessions/my')
+    return response.data
+  },
+
+  async getMiHistorial(): Promise<MyCountHistorySessionDto[]> {
+    const response = await invPlanesApi.get<MyCountHistorySessionDto[]>('/api/inventory-sessions/my/history')
     return response.data
   },
 

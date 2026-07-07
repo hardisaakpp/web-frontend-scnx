@@ -265,6 +265,25 @@ export interface InventorySessionListItemDto {
   plannedCloseDate?: string | null
 }
 
+export interface MyCountHistoryLineDto {
+  itemCode: string
+  itemDescription?: string | null
+  quantity: number
+  round: number
+  lastCountedAt: string
+}
+
+export interface MyCountHistorySessionDto {
+  sessionId: string
+  warehouseCode: string
+  warehouseName: string
+  status: InventorySessionStatus
+  openedAt: string
+  closedAt?: string | null
+  description?: string | null
+  lines: MyCountHistoryLineDto[]
+}
+
 export interface InventorySessionLineStatusDto {
   itemCode: string
   itemDescription?: string | null

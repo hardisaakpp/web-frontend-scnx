@@ -8,10 +8,13 @@
           Tomas físicas abiertas asignadas a tu bodega o a tu usuario.
         </p>
       </div>
-      <button type="button" class="btn-secondary flex-shrink-0" :disabled="loading" @click="cargar">
-        <ArrowPathIcon class="w-4 h-4 mr-1" :class="{ 'animate-spin': loading }" />
-        Actualizar
-      </button>
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <button type="button" class="btn-secondary" @click="irAHistorial">Mi Historial</button>
+        <button type="button" class="btn-secondary" :disabled="loading" @click="cargar">
+          <ArrowPathIcon class="w-4 h-4 mr-1" :class="{ 'animate-spin': loading }" />
+          Actualizar
+        </button>
+      </div>
     </div>
 
     <div v-if="error" class="mb-4 alert-error">{{ error }}</div>
@@ -138,6 +141,10 @@ function iniciarPicking(sessionId: string) {
 
 function irAContarArticulos(sessionId: string) {
   router.push({ name: 'inventario-contar-articulos', params: { sessionId } })
+}
+
+function irAHistorial() {
+  router.push({ name: 'inventario-historial-conteos' })
 }
 
 onMounted(cargar)

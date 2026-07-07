@@ -4,12 +4,14 @@ const INVENTARIO_PLANIFICAR = ['inventario.planificar']
 const INVENTARIO_TOMA = ['inventario.toma']
 const INVENTARIO_ESTADO_SESION = ['inventario.estado_sesion']
 const INVENTARIO_SNAPSHOT = ['inventario.snapshot']
+const INVENTARIO_BANDEJA_AJUSTES = ['inventario.bandeja_ajustes']
 const INVENTARIO_ANY = [
   'inventario.planificar',
   'inventario.generar',
   'inventario.toma',
   'inventario.estado_sesion',
-  'inventario.snapshot'
+  'inventario.snapshot',
+  'inventario.bandeja_ajustes'
 ]
 
 const routes: RouteRecordRaw[] = [
@@ -93,6 +95,16 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/inventario/mis-inventarios/historial',
+    name: 'inventario-historial-conteos',
+    component: () => import('./views/HistorialConteosView.vue'),
+    meta: {
+      // Autoservicio: solo devuelve datos del propio usuario autenticado, sin permiso adicional.
+      requiresAuth: true,
+      title: 'Historial de Conteos'
+    }
+  },
+  {
     path: '/inventario/sesiones/:sessionId/picking',
     name: 'inventario-picking',
     component: () => import('./views/ConteoPickingView.vue'),
@@ -142,6 +154,16 @@ const routes: RouteRecordRaw[] = [
       requiresAuth: true,
       title: 'Conteo de Artículos',
       permissions: INVENTARIO_TOMA
+    }
+  },
+  {
+    path: '/inventario/ajustes',
+    name: 'inventario-ajustes',
+    component: () => import('./views/AdjustmentsBoardView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Bandeja de Ajustes',
+      permissions: INVENTARIO_BANDEJA_AJUSTES
     }
   },
   {
