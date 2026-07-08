@@ -8,6 +8,7 @@ interface SupervisorState {
   loading: boolean
   error: string | null
   umbralConversion: number
+  exportandoExcel: boolean
 }
 
 export const useSupervisorStore = defineStore('supervisor', {
@@ -16,7 +17,8 @@ export const useSupervisorStore = defineStore('supervisor', {
     enroladores: [],
     loading: false,
     error: null,
-    umbralConversion: 20
+    umbralConversion: 20,
+    exportandoExcel: false
   }),
 
   getters: {
@@ -76,7 +78,7 @@ export const useSupervisorStore = defineStore('supervisor', {
 
     exportarCSV() {
       if (!this.enroladores.length) return
-      const headers = ['Enrolador', 'Giros', 'Clientes únicos', 'Afiliaciones', 'Conversión (%)']
+      const headers = ['Enrolador', 'Giros', 'Clientes únicos', 'Ganadores', '% Ganadores']
       const rows = this.enroladores.map(e => [
         e.nombre, e.giros, e.clientes_unicos, e.afiliaciones, e.conversion.toFixed(1)
       ])
@@ -88,6 +90,19 @@ export const useSupervisorStore = defineStore('supervisor', {
       a.download = `monitoreo_enroladores_${new Date().toISOString().slice(0, 10)}.csv`
       a.click()
       URL.revokeObjectURL(url)
+    },
+
+    async exportarExcel(campanaId?: string) {
+      this.exportandoExcel = true
+      this.error = null
+      try {
+        await ruletaService.exportarEnroladoresExcel(campanaId)
+      } catch (e) {
+        console.error('Error al exportar Excel de enroladores:', e)
+        this.error = 'Error al generar el archivo Excel.'
+      } finally {
+        this.exportandoExcel = false
+      }
     }
   }
 })

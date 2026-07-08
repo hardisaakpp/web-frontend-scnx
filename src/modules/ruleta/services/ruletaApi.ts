@@ -80,6 +80,10 @@ function premioToBackend(data: Partial<PremioAdmin>, segmento?: string) {
   else if (data.tipo === 'digital') tipo = 'Digital'
   else if (data.tipo === 'descuento') tipo = 'Descuento'
 
+  // Nunca persistir una URL de blob local del navegador: solo existe en la
+  // sesión de quien la subió y se rompe para cualquier otro usuario.
+  const imagenUrl = data.imagen_url?.startsWith('blob:') ? null : (data.imagen_url ?? null)
+
   const payload: Record<string, unknown> = {
     nombre: data.nombre,
     descripcion: data.descripcion ?? null,
@@ -88,7 +92,7 @@ function premioToBackend(data: Partial<PremioAdmin>, segmento?: string) {
     valorReferencial: data.valor_referencial ?? null,
     esVacio: data.es_relleno ?? false,
     segmento,
-    imagenUrl: data.imagen_url ?? null,
+    imagenUrl,
     controlaStockPorTienda: data.controla_stock_por_tienda ?? false,
     
     // Hardcodeado: Forzamos a que sea 0 sí o sí.
@@ -349,6 +353,15 @@ export const ruletaService = {
     await campanaApi.delete(`/api/campanas/${campanaId}/premios/${premioId}`)
   },
 
+  async subirImagenPremio(archivo: File): Promise<string> {
+    const formData = new FormData()
+    formData.append('archivo', archivo)
+    const response = await campanaApi.post<{ url: string }>('/api/premios/imagenes', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    return response.data.url
+  },
+
   async asignarStockTienda(campanaId: string, premioId: string, tiendaCodigo: string, cantidad: number): Promise<void> {
     await campanaApi.post(
       `/api/campanas/${campanaId}/premios/${premioId}/stock-tienda`,
@@ -555,14 +568,14 @@ export const ruletaService = {
     URL.revokeObjectURL(blobUrl)
   },
 
-  async exportarGirosPdf(campanaId?: string): Promise<void> {
+  async exportarEnroladoresExcel(campanaId?: string): Promise<void> {
     const params: Record<string, string> = {}
     if (campanaId) params.CampanaId = campanaId
-    const response = await campanaApi.get('/api/metricas/giros/exportar/pdf', { params, responseType: 'blob' })
-    const blobUrl = URL.createObjectURL(new Blob([response.data as BlobPart], { type: 'application/pdf' }))
+    const response = await campanaApi.get('/api/metricas/enroladores/exportar/excel', { params, responseType: 'blob' })
+    const blobUrl = URL.createObjectURL(new Blob([response.data as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
     const a = document.createElement('a')
     a.href = blobUrl
-    a.download = campanaId ? `giros-${campanaId}.pdf` : 'giros.pdf'
+    a.download = 'enroladores.xlsx'
     a.click()
     URL.revokeObjectURL(blobUrl)
   },
@@ -578,7 +591,9 @@ export const ruletaService = {
       giros:           e.totalGiros       ?? e.giros               ?? 0,
       clientes_unicos: e.clientesUnicos   ?? e.clientes_unicos     ?? 0,
       afiliaciones:    e.totalGanadores   ?? e.afiliaciones        ?? e.nuevasAfiliaciones ?? 0,
-      conversion:      e.tasaConversion   ?? e.conversion          ?? 0,
+      conversion:      (e.totalGiros ?? e.giros ?? 0) > 0 
+                         ? ((e.totalGanadores ?? e.afiliaciones ?? e.nuevasAfiliaciones ?? 0) / (e.totalGiros ?? e.giros ?? 0)) * 100 
+                         : 0,
       estado:          e.estado  ?? 'activo',
     }))
   }

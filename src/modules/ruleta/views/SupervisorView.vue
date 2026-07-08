@@ -17,7 +17,7 @@ const fechaHoy = computed(() => {
 
 const subtitulo = computed(() =>
   store.metricas
-    ? `Actividad en tiempo real — Tienda ${store.metricas.tienda_ciudad} ${store.metricas.tienda_nombre} — Hoy`
+    ? `Actividad acumulada histórica — Tienda ${store.metricas.tienda_ciudad} ${store.metricas.tienda_nombre}`
     : 'Cargando…'
 )
 
@@ -34,8 +34,8 @@ function dotClass(estado: EstadoEnrolador): string {
 }
 
 function dotTitle(estado: EstadoEnrolador): string {
-  if (estado === 'alerta') return 'Conversión baja'
-  if (estado === 'inactivo') return 'Inactivo hoy'
+  if (estado === 'alerta') return 'Pocos ganadores'
+  if (estado === 'inactivo') return 'Inactivo'
   return 'Activo'
 }
 </script>
@@ -43,7 +43,7 @@ function dotTitle(estado: EstadoEnrolador): string {
 <template>
   <div class="space-y-6">
 
-    <VolverButton to="/ruleta" label="Ruleta One Card" />
+    <VolverButton to="/ruleta/admin" label="Administración" />
 
     <!-- ── Encabezado ────────────────────────────────────────────────────── -->
     <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
@@ -110,7 +110,7 @@ function dotTitle(estado: EstadoEnrolador): string {
 
         <!-- Total giros -->
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 shadow-sm">
-          <p class="text-sm text-gray-500 dark:text-gray-400">Total giros hoy</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400">Total de giros</p>
           <p class="mt-2 text-4xl font-bold text-gray-900 dark:text-white">
             {{ store.metricas.total_giros }}
           </p>
@@ -126,7 +126,7 @@ function dotTitle(estado: EstadoEnrolador): string {
 
         <!-- Afiliaciones -->
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 shadow-sm">
-          <p class="text-sm text-gray-500 dark:text-gray-400">Afiliaciones logradas</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400">Total de ganadores</p>
           <div class="mt-2 flex items-end gap-2">
             <p class="text-4xl font-bold text-gray-900 dark:text-white">
               {{ store.metricas.afiliaciones }}
@@ -148,7 +148,7 @@ function dotTitle(estado: EstadoEnrolador): string {
 
         <!-- Tasa de conversión -->
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 shadow-sm">
-          <p class="text-sm text-gray-500 dark:text-gray-400">Tasa de conversión</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400">Porcentaje de ganadores</p>
           <p class="mt-2 text-4xl font-bold text-gray-900 dark:text-white">
             {{ store.metricas.tasa_conversion.toFixed(1) }}%
           </p>
@@ -169,7 +169,7 @@ function dotTitle(estado: EstadoEnrolador): string {
         </svg>
         <span>
           <strong>{{ store.totalAlertas }} enrolador{{ store.totalAlertas > 1 ? 'es' : '' }}</strong>
-          con conversión por debajo del umbral ({{ store.umbralConversion }}%).
+          con porcentaje de ganadores por debajo del umbral ({{ store.umbralConversion }}%).
           Se recomienda atención inmediata.
         </span>
       </div>
@@ -180,7 +180,7 @@ function dotTitle(estado: EstadoEnrolador): string {
         <!-- Gráfica de barras horizontales -->
         <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 shadow-sm">
           <h3 class="text-base font-semibold text-gray-900 dark:text-white mb-5">
-            Giros por enrolador (hoy)
+            Giros por enrolador
           </h3>
           <div class="space-y-4">
             <div
@@ -215,20 +215,44 @@ function dotTitle(estado: EstadoEnrolador): string {
             <h3 class="text-base font-semibold text-gray-900 dark:text-white">
               Detalle por enrolador
             </h3>
-            <button
-              @click="store.exportarCSV()"
-              class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
-                     border border-gray-200 dark:border-gray-600
-                     bg-white dark:bg-gray-700
-                     text-gray-600 dark:text-gray-300
-                     hover:bg-gray-50 dark:hover:bg-gray-600
-                     transition-colors"
-            >
-              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
-              </svg>
-              Exportar CSV
-            </button>
+            <div class="flex items-center gap-2">
+              <button
+                @click="store.exportarCSV()"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
+                       border border-gray-200 dark:border-gray-600
+                       bg-white dark:bg-gray-700
+                       text-gray-600 dark:text-gray-300
+                       hover:bg-gray-50 dark:hover:bg-gray-600
+                       transition-colors"
+              >
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                </svg>
+                Exportar CSV
+              </button>
+              <button
+                :disabled="store.exportandoExcel"
+                @click="store.exportarExcel()"
+                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
+                       border border-emerald-600
+                       bg-emerald-600
+                       text-white
+                       hover:bg-emerald-700
+                       disabled:opacity-50 disabled:cursor-not-allowed
+                       transition-colors"
+              >
+                <svg
+                  class="w-3.5 h-3.5"
+                  :class="{ 'animate-spin': store.exportandoExcel }"
+                  fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"
+                >
+                  <path v-if="store.exportandoExcel" stroke-linecap="round" stroke-linejoin="round"
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                  <path v-else stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                </svg>
+                {{ store.exportandoExcel ? 'Generando…' : 'Exportar Excel' }}
+              </button>
+            </div>
           </div>
 
           <!-- Tabla -->
@@ -246,10 +270,10 @@ function dotTitle(estado: EstadoEnrolador): string {
                     Cl. únicos
                   </th>
                   <th class="px-3 py-3 text-right text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-                    Afiliaciones
+                    Ganadores
                   </th>
                   <th class="px-3 py-3 text-right text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
-                    Conversión
+                    % Ganadores
                   </th>
                   <th class="px-3 py-3 text-center text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
                     Estado

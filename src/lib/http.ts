@@ -156,7 +156,7 @@ export const inventarioHttp = createModuleApi(
 /** Promoción Sobres */
 export const promoSobresHttp = createModuleApi(
   ENV.PROMO_SOBRES_URL,
-  { correlationId: true, auditHeaders: true },
+  { auditHeaders: true },
 )
 
 /** Slayer (Caja Chica / SAP) */
@@ -172,5 +172,5 @@ export const preferencesHttp = createModuleApi(
 /** Reposiciones */
 export const reposicionesApi = createModuleApi(
   ENV.REPOSICIONES_URL,
-  { auditHeaders: true, correlationId: true },
+  { auditHeaders: true },
 )

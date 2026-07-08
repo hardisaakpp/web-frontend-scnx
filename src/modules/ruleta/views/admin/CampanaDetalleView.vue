@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAdminStore } from '../../stores/adminStore'
 import type { SegmentoCliente, TipoPremio, CrearPremioDTO, PremioAdmin, Tienda } from '../../types'
@@ -16,6 +16,8 @@ onMounted(async () => {
   await store.cargarPremiosCampana(campanaId)
   await store.cargarTiendas()
 })
+
+onUnmounted(() => revocarPreview())
 
 // ─── Datos de la campaña ─────────────────────────────────────────────────────
 const campana = computed(() => store.campanas.find(c => c.id === campanaId))
@@ -124,6 +126,7 @@ const premioRecienCreado = ref<PremioAdmin | null>(null)
 const premioEditando = ref<PremioAdmin | null>(null)
 const errorForm      = ref('')
 const guardando      = ref(false)
+const subiendoImagen = ref(false)
 
 // ─── Paso 1: formulario de premio ────────────────────────────────────────────
 const form = ref<CrearPremioDTO>({
@@ -140,7 +143,17 @@ const form = ref<CrearPremioDTO>({
 const imagenFile    = ref<File | null>(null)
 const imagenPreview = ref<string | null>(null)
 
+const MAX_IMAGEN_MB = 5
+
+// Libera la referencia en memoria de la preview si era un blob local (evita memory leaks)
+function revocarPreview() {
+  if (imagenPreview.value?.startsWith('blob:')) {
+    URL.revokeObjectURL(imagenPreview.value)
+  }
+}
+
 function abrirModal() {
+  revocarPreview()
   form.value = {
     nombre: '',
     descripcion: '',
@@ -162,12 +175,14 @@ function abrirModal() {
 }
 
 function cerrarModal() {
+  revocarPreview()
   modalStep.value = 'cerrado'
   premioRecienCreado.value = null
   premioEditando.value = null
 }
 
 function abrirModalEditar(premio: PremioAdmin) {
+  revocarPreview()
   premioEditando.value = premio
   form.value = {
     nombre:                    premio.nombre,
@@ -212,14 +227,30 @@ const deshabilitaRelleno = computed(() => {
 })
 
 function handleImagenChange(e: Event) {
-  const file = (e.target as HTMLInputElement).files?.[0]
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
   if (!file) { imagenFile.value = null; imagenPreview.value = null; return }
+
+  if (!file.type.startsWith('image/')) {
+    errorForm.value = 'El archivo debe ser una imagen (PNG, JPG).'
+    input.value = ''
+    return
+  }
+  if (file.size > MAX_IMAGEN_MB * 1024 * 1024) {
+    errorForm.value = `La imagen no debe superar los ${MAX_IMAGEN_MB} MB.`
+    input.value = ''
+    return
+  }
+
+  errorForm.value = ''
+  revocarPreview()
   imagenFile.value    = file
   imagenPreview.value = URL.createObjectURL(file)
   form.value.imagen_url = ''
 }
 
 function limpiarImagen() {
+  revocarPreview()
   imagenFile.value    = null
   imagenPreview.value = null
   form.value.imagen_url = ''
@@ -272,6 +303,28 @@ async function guardarPremio() {
   guardando.value = true
   try {
     const data = buildPremioData()
+
+    // Subir imagen si hay un archivo nuevo — se sube primero para obtener la URL
+    // real y pública del backend; nunca se persiste la URL temporal del navegador.
+    if (imagenFile.value) {
+      subiendoImagen.value = true
+      try {
+        const url = await store.subirImagen(imagenFile.value)
+        data.imagen_url = url
+      } catch (err: any) {
+        errorForm.value = 'Error al subir la imagen: ' + (err.response?.data?.error || err.message)
+        return
+      } finally {
+        subiendoImagen.value = false
+      }
+    }
+
+    // Barrera de seguridad: bajo ninguna circunstancia se debe persistir un blob local.
+    if (data.imagen_url?.startsWith('blob:')) {
+      errorForm.value = 'No se pudo obtener la URL definitiva de la imagen. Intenta de nuevo.'
+      return
+    }
+
     if (premioEditando.value) {
       const premioId = premioEditando.value.id
       await store.actualizarPremio(grupoIdx, premioId, data)
@@ -950,7 +1003,7 @@ function ocultarDropdown() {
                       <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                     </svg>
                     <span class="text-sm text-gray-400 dark:text-gray-500">
-                      Haz clic para subir imagen (PNG, JPG)
+                      Haz clic para subir imagen (PNG, JPG, máx. {{ MAX_IMAGEN_MB }}MB)
                     </span>
                     <input id="premio-imagen" type="file" accept="image/*" class="sr-only" @change="handleImagenChange"/>
                   </label>
@@ -1182,7 +1235,7 @@ function ocultarDropdown() {
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                       </svg>
-                      {{ guardando ? 'Guardando…' : form.controla_stock_por_tienda ? 'Guardar y repartir →' : 'Guardar premio' }}
+                      {{ subiendoImagen ? 'Subiendo imagen…' : guardando ? 'Guardando…' : form.controla_stock_por_tienda ? 'Guardar y repartir →' : 'Guardar premio' }}
                     </button>
                   </div>
                 </template>

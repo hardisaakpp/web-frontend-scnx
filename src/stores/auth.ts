@@ -262,20 +262,22 @@ export const useAuthStore = defineStore('auth', {
       }
       return []
     },
-    userWarehouseAccesses: (state): WarehouseAccessInfo[] | WarehouseAccessInfo | null => {
-      if (state.userData?.warehouseAccesses) {
-        return state.userData.warehouseAccesses
-      }
-      try {
-        const userStr = localStorage.getItem('user')
-        if (userStr) {
-          const user = JSON.parse(userStr) as User
-          return user.warehouseAccesses || null
+    userWarehouseAccesses: (state): WarehouseAccessInfo[] => {
+      const raw = (() => {
+        if (state.userData?.warehouseAccesses) return state.userData.warehouseAccesses
+        try {
+          const userStr = localStorage.getItem('user')
+          if (userStr) {
+            const user = JSON.parse(userStr) as User
+            return user.warehouseAccesses ?? null
+          }
+        } catch {
+          return null
         }
-      } catch {
         return null
-      }
-      return null
+      })()
+      if (!raw) return []
+      return Array.isArray(raw) ? raw : [raw]
     },
     userRoles: (state): string[] => {
       if (state.userData?.roles) {
@@ -405,8 +407,13 @@ export const useAuthStore = defineStore('auth', {
       try {
         const { data } = await mba3Api.get<MeResponse & { Capabilities?: unknown }>('/Auth/me')
         if (data?.user) {
-          this.userData = data.user
-          localStorage.setItem('user', JSON.stringify(data.user))
+          // warehouseAccesses viene del login contra Core; MBA3 no es su fuente y puede no traerlo.
+          // Si no viene en esta respuesta, conservar el que ya se cargó al iniciar sesión.
+          this.userData = {
+            ...data.user,
+            warehouseAccesses: data.user.warehouseAccesses ?? this.userData?.warehouseAccesses ?? []
+          }
+          localStorage.setItem('user', JSON.stringify(this.userData))
         }
         const rawCaps =
           (data as Record<string, unknown> | undefined)?.capabilities ??
