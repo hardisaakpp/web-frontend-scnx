@@ -118,12 +118,12 @@
           to="/caja-chica"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
-            'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/50': $route.path.startsWith('/caja-chica'),
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/caja-chica'),
             'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/caja-chica')
           }"
           :title="effectiveSidebarCollapsed ? 'Caja Chica' : ''"
         >
-          <div class="absolute inset-0 bg-gradient-to-r from-indigo-600/20 to-purple-600/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
           <DocumentCheckIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/caja-chica') }" />
           <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Caja Chica</span>
         </router-link>
@@ -230,12 +230,12 @@
           :to="promocionSobresSidebarTo"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
-            'bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white shadow-lg shadow-violet-500/50': $route.path.startsWith('/promocion-sobres'),
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/promocion-sobres'),
             'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/promocion-sobres')
           }"
           :title="effectiveSidebarCollapsed ? 'Promoción Sobres' : ''"
         >
-          <div class="absolute inset-0 bg-gradient-to-r from-violet-600/20 to-fuchsia-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
           <GiftIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/promocion-sobres') }" />
           <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Promoción Sobres</span>
         </router-link>
@@ -278,12 +278,12 @@
           to="/transacciones"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
-            'bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-lg shadow-emerald-500/50': $route.path.startsWith('/transacciones'),
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/transacciones'),
             'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/transacciones')
           }"
           :title="effectiveSidebarCollapsed ? 'Transacciones' : ''"
         >
-          <div class="absolute inset-0 bg-gradient-to-r from-emerald-600/20 to-teal-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
           <BanknotesIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/transacciones') }" />
           <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Transacciones</span>
         </router-link>
@@ -634,7 +634,7 @@ const pageTitle = computed(() => {
     
   }
 
-  return titles[route.path] || 'SCNexus'
+  return (route.meta?.title as string) || titles[route.path] || 'SCNexus'
 })
 
 const logout = () => {
