@@ -14,8 +14,8 @@ const ENV_DIR = path.join(process.cwd(), 'deploy', 'env')
 
 /** Defaults solo para desarrollo local (npm run dev). Sin IPs de red. */
 export const LOCAL_UPSTREAM_DEFAULTS = {
-  // UPSTREAM_CORE: 'http://127.0.0.1:8080',
-  UPSTREAM_CORE: 'http://210.17.1.53:5053',
+  // UPSTREAM_CORE: 'http://210.17.1.53:5053',
+  UPSTREAM_CORE: 'http://localhost:5053',
   UPSTREAM_MBA3: 'http://127.0.0.1:8000',
   UPSTREAM_MBA3_AUTH: 'http://127.0.0.1:8000',
   UPSTREAM_CAJA_CHICA: 'http://127.0.0.1:8092',
