@@ -1,7 +1,18 @@
 import type { RouteRecordRaw } from 'vue-router'
 
-const INVENTARIO_VIEW_PERMISSIONS = ['storecontrol.inventory.view', 'storecontrol.inventory.edit']
-const INVENTARIO_EDIT_PERMISSIONS = ['storecontrol.inventory.edit']
+const INVENTARIO_PLANIFICAR = ['inventario.planificar']
+const INVENTARIO_TOMA = ['inventario.toma']
+const INVENTARIO_ESTADO_SESION = ['inventario.estado_sesion']
+const INVENTARIO_SNAPSHOT = ['inventario.snapshot']
+const INVENTARIO_BANDEJA_AJUSTES = ['inventario.bandeja_ajustes']
+const INVENTARIO_ANY = [
+  'inventario.planificar',
+  'inventario.generar',
+  'inventario.toma',
+  'inventario.estado_sesion',
+  'inventario.snapshot',
+  'inventario.bandeja_ajustes'
+]
 
 const routes: RouteRecordRaw[] = [
   {
@@ -11,7 +22,7 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresAuth: true,
       title: 'Inventario',
-      permissions: INVENTARIO_VIEW_PERMISSIONS
+      permissions: INVENTARIO_ANY
     }
   },
   {
@@ -21,7 +32,7 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresAuth: true,
       title: 'Configuracion de Usuario',
-      permissions: INVENTARIO_EDIT_PERMISSIONS
+      permissions: INVENTARIO_ANY
     }
   },
   {
@@ -31,7 +42,7 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresAuth: true,
       title: 'Planes de Inventario',
-      permissions: INVENTARIO_VIEW_PERMISSIONS
+      permissions: INVENTARIO_PLANIFICAR
     }
   },
   {
@@ -41,7 +52,7 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresAuth: true,
       title: 'Planificacion de Inventario',
-      permissions: INVENTARIO_VIEW_PERMISSIONS
+      permissions: INVENTARIO_PLANIFICAR
     }
   },
   {
@@ -51,7 +62,7 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresAuth: true,
       title: 'Detalle de Planificacion',
-      permissions: INVENTARIO_VIEW_PERMISSIONS
+      permissions: INVENTARIO_PLANIFICAR
     }
   },
   {
@@ -61,7 +72,7 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresAuth: true,
       title: 'Toma Física',
-      permissions: INVENTARIO_VIEW_PERMISSIONS
+      permissions: INVENTARIO_TOMA
     }
   },
   {
@@ -70,7 +81,8 @@ const routes: RouteRecordRaw[] = [
     component: () => import('./views/SessionCenterView.vue'),
     meta: {
       requiresAuth: true,
-      title: 'Toma Física - Detalle'
+      title: 'Toma Física - Detalle',
+      permissions: INVENTARIO_ESTADO_SESION
     }
   },
   {
@@ -83,10 +95,23 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/inventario/mis-inventarios/historial',
+    name: 'inventario-historial-conteos',
+    component: () => import('./views/HistorialConteosView.vue'),
+    meta: {
+      // Autoservicio: solo devuelve datos del propio usuario autenticado, sin permiso adicional.
+      requiresAuth: true,
+      title: 'Historial de Conteos'
+    }
+  },
+  {
     path: '/inventario/sesiones/:sessionId/picking',
     name: 'inventario-picking',
     component: () => import('./views/ConteoPickingView.vue'),
     meta: {
+      // Sin permissions: un picker invitado a esta sesión puntual puede no tener
+      // inventario.toma. El backend autoriza por asignación de picker (ver
+      // EnsureSessionAccessAsync en InventorySessionService), no por permiso RBAC.
       requiresAuth: true,
       title: 'Conteo - Picking'
     }
@@ -96,6 +121,7 @@ const routes: RouteRecordRaw[] = [
     name: 'inventario-resumen-picking',
     component: () => import('./views/ResumenPickingView.vue'),
     meta: {
+      // Mismo caso que picking: accesible a pickers invitados sin inventario.toma.
       requiresAuth: true,
       title: 'Resumen de Picking'
     }
@@ -106,7 +132,8 @@ const routes: RouteRecordRaw[] = [
     component: () => import('./views/DetalleTomaFisicaView.vue'),
     meta: {
       requiresAuth: true,
-      title: 'Toma Física - Detalle'
+      title: 'Toma Física - Detalle',
+      permissions: INVENTARIO_SNAPSHOT
     }
   },
   {
@@ -115,7 +142,18 @@ const routes: RouteRecordRaw[] = [
     component: () => import('./views/SupervisorResumenView.vue'),
     meta: {
       requiresAuth: true,
-      title: 'Toma Física - Resumen'
+      title: 'Toma Física - Resumen',
+      permissions: INVENTARIO_ESTADO_SESION
+    }
+  },
+  {
+    path: '/inventario/sesiones/:sessionId/contar-articulos',
+    name: 'inventario-contar-articulos',
+    component: () => import('./views/ContarArticulosView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Conteo de Artículos',
+      permissions: INVENTARIO_TOMA
     }
   },
   {
@@ -125,7 +163,7 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresAuth: true,
       title: 'Bandeja de Ajustes',
-      permissions: INVENTARIO_VIEW_PERMISSIONS
+      permissions: INVENTARIO_BANDEJA_AJUSTES
     }
   },
   {

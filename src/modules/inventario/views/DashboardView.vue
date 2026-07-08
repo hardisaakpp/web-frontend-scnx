@@ -4,7 +4,7 @@
       <p class="text-sm font-medium text-blue-600 dark:text-blue-400">StoreControl</p>
       <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Inventario</h1>
       <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-        Flujo operativo completo: planificar, ejecutar toma, monitorear estado, cerrar snapshot y gestionar ajustes.
+        Flujo operativo completo: planificar, ejecutar toma, monitorear estado y cerrar snapshot.
       </p>
     </div>
 
@@ -33,11 +33,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { useInventarioPermissions } from '../composables/useInventarioPermissions'
+import { useInventarioModulePermissions } from '../composables/useInventarioModulePermissions'
 import { getLegacyUserIdFromToken } from '../utils/legacyUserId'
 
 const router = useRouter()
-const { canEdit } = useInventarioPermissions()
+const { canVerBandejaAjustes } = useInventarioModulePermissions()
 
 const settingsUserId = computed(() => getLegacyUserIdFromToken() ?? 330)
 
@@ -47,30 +47,30 @@ const cards = computed(() => [
     description: 'Ver sesiones de conteo abiertas asignadas a tu bodega o a tu usuario. Acceso para todos.',
     to: '/inventario/mis-inventarios',
     badge: 'MI',
-    editOnly: false
+    visible: true
   },
   {
     title: 'Planes de inventario',
     description: 'Crear y ejecutar planificaciones por bodega con filtros de género, nivel y material.',
     to: '/inventario/planes',
     badge: 'PL',
-    editOnly: false
+    visible: true
   },
   {
     title: 'Toma Física',
     description: 'Ejecutar planes pendientes o crear tomas físicas de inventario sin necesidad de plan previo.',
     to: '/inventario/sesiones',
     badge: 'TF',
-    editOnly: false
+    visible: true
   },
   {
     title: 'Bandeja de Ajustes',
-    description: 'Crear ajuste desde toma física cerrada, editar líneas, enviar a revisión, aprobar y marcar envío SAP.',
+    description: 'Revisar snapshots cerrados, editar diferencias, aprobar y enviar el ajuste a SAP.',
     to: '/inventario/ajustes',
-    badge: 'A',
-    editOnly: false
+    badge: 'AJ',
+    visible: canVerBandejaAjustes.value
   }
 ])
 
-const visibleCards = computed(() => cards.value.filter(card => !card.editOnly || canEdit.value))
+const visibleCards = computed(() => cards.value.filter(card => card.visible))
 </script>

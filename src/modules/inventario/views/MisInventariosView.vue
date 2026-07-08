@@ -8,10 +8,13 @@
           Tomas físicas abiertas asignadas a tu bodega o a tu usuario.
         </p>
       </div>
-      <button type="button" class="btn-secondary flex-shrink-0" :disabled="loading" @click="cargar">
-        <ArrowPathIcon class="w-4 h-4 mr-1" :class="{ 'animate-spin': loading }" />
-        Actualizar
-      </button>
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <button type="button" class="btn-secondary" @click="irAHistorial">Mi Historial</button>
+        <button type="button" class="btn-secondary" :disabled="loading" @click="cargar">
+          <ArrowPathIcon class="w-4 h-4 mr-1" :class="{ 'animate-spin': loading }" />
+          Actualizar
+        </button>
+      </div>
     </div>
 
     <div v-if="error" class="mb-4 alert-error">{{ error }}</div>
@@ -57,13 +60,23 @@
             </div>
           </div>
 
-          <button
-            type="button"
-            class="btn-primary flex-shrink-0"
-            @click="iniciarPicking(s.sessionId)"
-          >
-            Iniciar picking
-          </button>
+          <div class="flex flex-col gap-2 flex-shrink-0">
+            <button
+              v-if="isTiendaAssignedTo(s.warehouseCode)"
+              type="button"
+              class="btn-secondary"
+              @click="irAContarArticulos(s.sessionId)"
+            >
+              Contar artículos
+            </button>
+            <button
+              type="button"
+              class="btn-primary"
+              @click="iniciarPicking(s.sessionId)"
+            >
+              Iniciar picking
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -76,11 +89,14 @@ import { useRouter } from 'vue-router'
 import { ArrowPathIcon, ArchiveBoxXMarkIcon } from '@heroicons/vue/24/outline'
 import { inventarioSesionesService } from '../services/inventarioSesionesApi'
 import type { InventorySessionListItemDto, InventorySessionStatus } from '../types'
+import { useWarehouseAccessType } from '../composables/useWarehouseAccessType'
 
 const router = useRouter()
 const sesiones = ref<InventorySessionListItemDto[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
+
+const { isTiendaAssignedTo } = useWarehouseAccessType()
 
 function statusLabel(status: InventorySessionStatus): string {
   return { Open: 'Abierta', Recount: 'Reconteo', Closed: 'Cerrada' }[status] ?? status
@@ -121,6 +137,14 @@ async function cargar() {
 
 function iniciarPicking(sessionId: string) {
   router.push({ name: 'inventario-picking', params: { sessionId } })
+}
+
+function irAContarArticulos(sessionId: string) {
+  router.push({ name: 'inventario-contar-articulos', params: { sessionId } })
+}
+
+function irAHistorial() {
+  router.push({ name: 'inventario-historial-conteos' })
 }
 
 onMounted(cargar)

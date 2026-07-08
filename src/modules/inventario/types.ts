@@ -257,11 +257,31 @@ export interface InventorySessionListItemDto {
   warehouseCode: string
   warehouseName: string
   createdByUserId: string
+  createdByUserName?: string | null
   status: InventorySessionStatus
   openedAt: string
   closedAt?: string | null
   description?: string | null
   plannedCloseDate?: string | null
+}
+
+export interface MyCountHistoryLineDto {
+  itemCode: string
+  itemDescription?: string | null
+  quantity: number
+  round: number
+  lastCountedAt: string
+}
+
+export interface MyCountHistorySessionDto {
+  sessionId: string
+  warehouseCode: string
+  warehouseName: string
+  status: InventorySessionStatus
+  openedAt: string
+  closedAt?: string | null
+  description?: string | null
+  lines: MyCountHistoryLineDto[]
 }
 
 export interface InventorySessionLineStatusDto {
