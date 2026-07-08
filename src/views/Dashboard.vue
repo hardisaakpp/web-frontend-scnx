@@ -19,6 +19,12 @@
             <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Email</dt>
             <dd class="mt-1 text-sm text-gray-900 dark:text-white">{{ authStore.userEmail }}</dd>
           </div>
+          <div>
+            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Almacenes disponibles</dt>
+            <dd class="mt-1 text-sm text-gray-900 dark:text-white">
+              {{ almacenesDisponibles || '—' }}
+            </dd>
+          </div>
         </div>
       </div>
     </div>
@@ -67,7 +73,18 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()
+
+const almacenesDisponibles = computed(() =>
+  authStore.userWarehouseAccesses
+    .filter((access) => access.codAlmacen)
+    .map((access) => {
+      const grupos = access.warehouseGroups?.map((g) => g.name) ?? []
+      return grupos.length ? `${access.codAlmacen} (${grupos.join(', ')})` : access.codAlmacen
+    })
+    .join(', ')
+)
 </script>
