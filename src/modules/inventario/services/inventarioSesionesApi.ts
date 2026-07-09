@@ -56,8 +56,8 @@ export const inventarioSesionesService = {
   ): Promise<{ sessionId: string }> {
     const response = await invPlanesApi.post<{ sessionId: string }>('/api/inventory-sessions', {
       warehouseCode,
-      description: description || null,
-      plannedCloseDate: plannedCloseDate || null,
+      description: description ?? null,
+      plannedCloseDate: plannedCloseDate ?? null,
       uNv1Values: filters?.uNv1Values?.length ? filters.uNv1Values : null,
       uNv2Values: filters?.uNv2Values?.length ? filters.uNv2Values : null,
       uNv3Values: filters?.uNv3Values?.length ? filters.uNv3Values : null,

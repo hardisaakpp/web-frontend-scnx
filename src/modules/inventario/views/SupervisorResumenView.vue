@@ -344,9 +344,12 @@ async function descargarCSV() {
     ]
     for (const line of status.lines) {
       const desc = (line.itemDescription ?? '').replace(/"/g, '""')
-      const estado = line.balanceStatus === 'Balanced' ? 'Cuadrado'
-        : line.systemQuantity === 0 ? 'Nuevo'
-        : 'Diferencia'
+      let estado = 'Diferencia'
+      if (line.balanceStatus === 'Balanced') {
+        estado = 'Cuadrado'
+      } else if (line.systemQuantity === 0) {
+        estado = 'Nuevo'
+      }
       rows.push(`${line.itemCode},"${desc}",${line.systemQuantity},${line.countedQuantity},${line.difference},${estado}`)
     }
     const csv = rows.join('\r\n')

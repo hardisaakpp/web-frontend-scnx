@@ -3,8 +3,9 @@
     <div class="flex flex-wrap gap-4 items-end">
       <!-- Cuenta -->
       <div class="flex flex-col gap-1">
-        <label class="text-xs font-medium text-gray-600 dark:text-gray-400">Cuenta <span class="text-red-500">*</span></label>
+        <label for="cuentaSelect" class="text-xs font-medium text-gray-600 dark:text-gray-400">Cuenta <span class="text-red-500">*</span></label>
         <select
+          id="cuentaSelect"
           v-model="idCuentaLocal"
           class="w-56 px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
           :disabled="loadingCuentas"
@@ -18,8 +19,9 @@
 
       <!-- Desde -->
       <div class="flex flex-col gap-1">
-        <label class="text-xs font-medium text-gray-600 dark:text-gray-400">Desde <span class="text-red-500">*</span></label>
+        <label for="fechaDesde" class="text-xs font-medium text-gray-600 dark:text-gray-400">Desde <span class="text-red-500">*</span></label>
         <input
+          id="fechaDesde"
           v-model="desdeLocal"
           type="datetime-local"
           :max="hastaLocal"
@@ -29,8 +31,9 @@
 
       <!-- Hasta -->
       <div class="flex flex-col gap-1">
-        <label class="text-xs font-medium text-gray-600 dark:text-gray-400">Hasta <span class="text-red-500">*</span></label>
+        <label for="fechaHasta" class="text-xs font-medium text-gray-600 dark:text-gray-400">Hasta <span class="text-red-500">*</span></label>
         <input
+          id="fechaHasta"
           v-model="hastaLocal"
           type="datetime-local"
           :min="desdeLocal"
@@ -40,8 +43,9 @@
 
       <!-- Código Almacén -->
       <div class="flex flex-col gap-1">
-        <label class="text-xs font-medium text-gray-600 dark:text-gray-400">Almacén</label>
+        <label for="codigoAlmacen" class="text-xs font-medium text-gray-600 dark:text-gray-400">Almacén</label>
         <input
+          id="codigoAlmacen"
           v-model="codigoAlmacenLocal"
           type="text"
           placeholder="ALM-NORTE"
@@ -51,8 +55,9 @@
 
       <!-- Estado -->
       <div v-if="!estadoFijo" class="flex flex-col gap-1">
-        <label class="text-xs font-medium text-gray-600 dark:text-gray-400">Estado</label>
+        <label for="estadoTransaccion" class="text-xs font-medium text-gray-600 dark:text-gray-400">Estado</label>
         <select
+          id="estadoTransaccion"
           v-model="estadoLocal"
           class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
         >
