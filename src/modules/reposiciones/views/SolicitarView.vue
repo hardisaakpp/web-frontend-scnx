@@ -11,13 +11,9 @@ import {
   BuildingOfficeIcon,
   XMarkIcon,
   ClockIcon,
-<<<<<<< HEAD
-  ArrowLeftIcon
-=======
   ArrowLeftIcon,
   ExclamationTriangleIcon,
   QuestionMarkCircleIcon
->>>>>>> feature/reposiciones-ajuste-horarios-disponibiidad
 } from '@heroicons/vue/24/outline'
 import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue'
 import reposicionApi from '../services/reposicionApi'
@@ -47,8 +43,6 @@ const selectedItem = ref<CatalogoItemDetail | null>(null)
 const isDetailOpen = ref(false)
 const loadingDetail = ref(false)
 
-<<<<<<< HEAD
-=======
 const isErrorModalOpen = ref(false)
 const errorMessage = ref('')
 
@@ -86,7 +80,6 @@ const handleUpdateComment = async (itemCode: string, comment: string) => {
   }
 }
 
->>>>>>> feature/reposiciones-ajuste-horarios-disponibiidad
 const almacenesTodos = ref<Almacen[]>([])
 const bodegasParaSeleccionar = computed(() => canAdmin.value ? almacenesTodos.value : almacenes.value)
 

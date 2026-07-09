@@ -93,10 +93,11 @@
           <!-- Campos que llena el cajero -->
           <div class="space-y-3">
             <div class="flex flex-col gap-1">
-              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+              <label for="codVendedorLocal" class="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Código de Vendedor <span class="text-red-500">*</span>
               </label>
               <input
+                id="codVendedorLocal"
                 v-model="codVendedorLocal"
                 type="text"
                 placeholder="Ingrese su código de vendedor"
@@ -106,10 +107,11 @@
               />
             </div>
             <div class="flex flex-col gap-1">
-              <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+              <label for="tiendaSeleccionada" class="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Tienda <span class="text-red-500">*</span>
               </label>
               <select
+                id="tiendaSeleccionada"
                 v-model="tiendaSeleccionada"
                 :disabled="cargando"
                 class="w-full px-3 py-2 text-sm border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 disabled:opacity-50"

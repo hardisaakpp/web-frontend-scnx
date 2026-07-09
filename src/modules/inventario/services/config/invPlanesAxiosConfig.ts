@@ -12,7 +12,7 @@ export const invPlanesApi = axios.create({
 
 invPlanesApi.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token')
+    const token = localStorage.getItem('token') ?? sessionStorage.getItem('token')
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -20,7 +20,7 @@ invPlanesApi.interceptors.request.use(
     config.headers['X-Correlation-Id'] = crypto.randomUUID()
     return config
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error instanceof Error ? error : new Error(String(error)))
 )
 
 attachUnauthorizedRedirect(invPlanesApi)

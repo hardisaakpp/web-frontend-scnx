@@ -8,7 +8,7 @@ export const transaccionesApi = axios.create({
 })
 
 transaccionesApi.interceptors.request.use(config => {
-  const token = localStorage.getItem('token') || sessionStorage.getItem('token')
+  const token = localStorage.getItem('token') ?? sessionStorage.getItem('token')
   if (token) {
     config.headers = config.headers ?? {}
     config.headers.Authorization = `Bearer ${token}`
@@ -22,6 +22,6 @@ transaccionesApi.interceptors.response.use(
     if (import.meta.env.DEV) {
       console.error('[transaccionesApi]', error?.response?.status, error?.config?.url, error?.response?.data)
     }
-    return Promise.reject(error)
+    return Promise.reject(error instanceof Error ? error : new Error(String(error)))
   }
 )

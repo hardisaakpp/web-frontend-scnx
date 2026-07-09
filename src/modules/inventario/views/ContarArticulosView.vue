@@ -55,15 +55,15 @@
     <!-- Filters -->
     <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 mb-4 flex flex-wrap gap-3 items-end">
       <div class="flex-1 min-w-[160px]">
-        <label class="block text-xs font-medium text-gray-500 mb-1">Filtrar por Nivel 2</label>
-        <select v-model="filterLevel2" class="select-input w-full">
+        <label for="filterLevel2" class="block text-xs font-medium text-gray-500 mb-1">Filtrar por Nivel 2</label>
+        <select id="filterLevel2" v-model="filterLevel2" class="select-input w-full">
           <option value="">TODOS</option>
           <option v-for="nv2 in nivel2Options" :key="nv2" :value="nv2">{{ nv2 }}</option>
         </select>
       </div>
       <div class="flex-[2] min-w-[220px]">
-        <label class="block text-xs font-medium text-gray-500 mb-1">Buscar artículo</label>
-        <input v-model="search" type="text" placeholder="Código o nombre..." class="text-input w-full" />
+        <label for="search" class="block text-xs font-medium text-gray-500 mb-1">Buscar artículo</label>
+        <input id="search" v-model="search" type="text" placeholder="Código o nombre..." class="text-input w-full" />
       </div>
       <div class="flex gap-1">
         <button type="button" class="btn-sm-secondary" @click="selectAll">Todos</button>

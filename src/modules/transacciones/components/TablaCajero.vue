@@ -3,10 +3,11 @@
     <!-- Filtros -->
     <div class="flex flex-wrap gap-3 items-end">
       <div class="flex flex-col gap-1">
-        <label class="text-xs font-medium text-gray-600 dark:text-gray-400">
+        <label for="montoFiltro" class="text-xs font-medium text-gray-600 dark:text-gray-400">
           Monto <span class="text-red-500">*</span>
         </label>
         <input
+          id="montoFiltro"
           v-model.number="montoFiltro"
           type="number"
           step="0.01"
@@ -18,10 +19,11 @@
         />
       </div>
       <div class="flex flex-col gap-1">
-        <label class="text-xs font-medium text-gray-600 dark:text-gray-400">
+        <label for="referenciaFiltro" class="text-xs font-medium text-gray-600 dark:text-gray-400">
           Referencia <span class="text-red-500">*</span>
         </label>
         <input
+          id="referenciaFiltro"
           v-model="referenciaFiltro"
           type="text"
           placeholder="TXN-2024-001"
@@ -31,8 +33,9 @@
         />
       </div>
       <div class="flex flex-col gap-1">
-        <label class="text-xs font-medium text-gray-600 dark:text-gray-400">Desc. Transferencia</label>
+        <label for="descripcionTransferenciaFiltro" class="text-xs font-medium text-gray-600 dark:text-gray-400">Desc. Transferencia</label>
         <input
+          id="descripcionTransferenciaFiltro"
           v-model="descripcionTransferenciaFiltro"
           type="text"
           placeholder="Descripción adicional"
@@ -41,8 +44,9 @@
         />
       </div>
       <div class="flex flex-col gap-1">
-        <label class="text-xs font-medium text-gray-600 dark:text-gray-400">Referencia 2</label>
+        <label for="referenciaTransaccion2Filtro" class="text-xs font-medium text-gray-600 dark:text-gray-400">Referencia 2</label>
         <input
+          id="referenciaTransaccion2Filtro"
           v-model="referenciaTransaccion2Filtro"
           type="text"
           placeholder="Ref. secundaria"
@@ -51,8 +55,9 @@
         />
       </div>
       <div class="flex flex-col gap-1">
-        <label class="text-xs font-medium text-gray-600 dark:text-gray-400">Desc. Causal</label>
+        <label for="descripcionCausalFiltro" class="text-xs font-medium text-gray-600 dark:text-gray-400">Desc. Causal</label>
         <input
+          id="descripcionCausalFiltro"
           v-model="descripcionCausalFiltro"
           type="text"
           placeholder="Causal"
@@ -61,8 +66,9 @@
         />
       </div>
       <div class="flex flex-col gap-1">
-        <label class="text-xs font-medium text-gray-600 dark:text-gray-400">Desc. Transacción</label>
+        <label for="descripcionTransaccionFiltro" class="text-xs font-medium text-gray-600 dark:text-gray-400">Desc. Transacción</label>
         <input
+          id="descripcionTransaccionFiltro"
           v-model="descripcionTransaccionFiltro"
           type="text"
           placeholder="Transacción"

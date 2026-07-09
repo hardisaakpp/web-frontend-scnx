@@ -317,7 +317,14 @@ import { useRouter } from 'vue-router'
 
 function getAlmacenesAsignadosDelToken(authStore: ReturnType<typeof useAuthStore>): string[] {
   const raw = authStore.userWarehouseAccesses
-  const accesses = Array.isArray(raw) ? raw : raw ? [raw] : []
+  let accesses: any[]
+  if (Array.isArray(raw)) {
+    accesses = raw
+  } else if (raw) {
+    accesses = [raw]
+  } else {
+    accesses = []
+  }
   return accesses
     .filter(a => a.accesoAlmacen === 'Tienda' && a.codAlmacen)
     .map(a => a.codAlmacen as string)
