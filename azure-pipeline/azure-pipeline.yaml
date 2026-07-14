@@ -94,3 +94,15 @@ stages:
         docker push $(imageName):$(uniqueTag)
         docker push $(imageName):$(envTag)
       displayName: 'Empaquetar Nginx y Almacenar en ACR'
+      # 3. Publicar metadata del build para el Release (CD)
+    - script: |
+        mkdir -p $(Build.ArtifactStagingDirectory)/deploy-info
+        echo "$(uniqueTag)" > $(Build.ArtifactStagingDirectory)/deploy-info/image-tag.txt
+        echo "Tag publicado para CD: $(uniqueTag)"
+      displayName: 'Generar metadata de despliegue'
+
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)/deploy-info'
+        ArtifactName: 'deploy-info'
+      displayName: 'Publicar artefacto deploy-info'
