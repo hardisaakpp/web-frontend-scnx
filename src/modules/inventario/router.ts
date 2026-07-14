@@ -5,13 +5,15 @@ const INVENTARIO_TOMA = ['inventario.toma']
 const INVENTARIO_ESTADO_SESION = ['inventario.estado_sesion']
 const INVENTARIO_SNAPSHOT = ['inventario.snapshot']
 const INVENTARIO_BANDEJA_AJUSTES = ['inventario.bandeja_ajustes']
+const INVENTARIO_GESTION_SCANS = ['inventario.gestion_scans']
 const INVENTARIO_ANY = [
   'inventario.planificar',
   'inventario.generar',
   'inventario.toma',
   'inventario.estado_sesion',
   'inventario.snapshot',
-  'inventario.bandeja_ajustes'
+  'inventario.bandeja_ajustes',
+  'inventario.gestion_scans'
 ]
 
 const routes: RouteRecordRaw[] = [
@@ -154,6 +156,16 @@ const routes: RouteRecordRaw[] = [
       requiresAuth: true,
       title: 'Conteo de Artículos',
       permissions: INVENTARIO_TOMA
+    }
+  },
+  {
+    path: '/inventario/sesiones/:sessionId/gestion-scans',
+    name: 'inventario-gestion-scans',
+    component: () => import('./views/GestionScansView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Gestión de Scans',
+      permissions: INVENTARIO_GESTION_SCANS
     }
   },
   {

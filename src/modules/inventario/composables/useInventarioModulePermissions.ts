@@ -21,6 +21,7 @@ export function useInventarioModulePermissions() {
   const canVerEstadoSesion = computed(() => has('inventario.estado_sesion'))
   const canVerSnapshot = computed(() => has('inventario.snapshot'))
   const canVerBandejaAjustes = computed(() => has('inventario.bandeja_ajustes'))
+  const canGestionarScans = computed(() => has('inventario.gestion_scans'))
   const canEditarAjuste = computed(() => has('inventario.edicion_ajuste'))
   const canRevisarAjuste = computed(() => has('inventario.revision'))
   const canIntegrarSap = computed(() => has('inventario.integracion_sap'))
@@ -32,6 +33,7 @@ export function useInventarioModulePermissions() {
     canVerEstadoSesion,
     canVerSnapshot,
     canVerBandejaAjustes,
+    canGestionarScans,
     canEditarAjuste,
     canRevisarAjuste,
     canIntegrarSap

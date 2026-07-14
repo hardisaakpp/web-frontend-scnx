@@ -35,8 +35,10 @@ export const inventarioSesionesService = {
     return response.data
   },
 
-  async getMiHistorial(): Promise<MyCountHistorySessionDto[]> {
-    const response = await invPlanesApi.get<MyCountHistorySessionDto[]>('/api/inventory-sessions/my/history')
+  async getMiHistorial(from?: string): Promise<MyCountHistorySessionDto[]> {
+    const response = await invPlanesApi.get<MyCountHistorySessionDto[]>('/api/inventory-sessions/my/history', {
+      params: from ? { from } : undefined
+    })
     return response.data
   },
 
