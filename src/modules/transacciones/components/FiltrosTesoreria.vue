@@ -125,6 +125,8 @@ const emit = defineEmits<{
   (e: 'exportar', filtros: FiltrosTesoreria): void
 }>()
 
+// Switch rápido: poner en false para desactivar el límite de rango de fechas.
+const LIMITE_31_DIAS_ACTIVO = false
 const TREINTA_UN_DIAS_MS = 31 * 24 * 60 * 60 * 1000
 
 const ahora = new Date()
@@ -151,7 +153,7 @@ const errorRango = computed(() => {
   if (!desdeLocal.value || !hastaLocal.value) return ''
   const diff = new Date(hastaLocal.value).getTime() - new Date(desdeLocal.value).getTime()
   if (diff < 0) return 'La fecha "Hasta" debe ser posterior a "Desde".'
-  if (diff > TREINTA_UN_DIAS_MS) return 'El rango máximo permitido es de 31 días.'
+  if (LIMITE_31_DIAS_ACTIVO && diff > TREINTA_UN_DIAS_MS) return 'El rango máximo permitido es de 31 días.'
   return ''
 })
 
