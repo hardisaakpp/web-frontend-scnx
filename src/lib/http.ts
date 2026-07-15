@@ -11,6 +11,7 @@
 import axios from 'axios'
 import { attachUnauthorizedRedirect } from '@/services/sessionGuard'
 import { ENV } from '@/config/env'
+import { randomUUID } from '@/utils/uuid'
 
 // ─── Helpers internos ────────────────────────────────────────────────────────
 
@@ -74,7 +75,7 @@ export function createModuleApi(baseURL: string, opts: ModuleApiOptions = {}): R
 
       // 3. Correlation ID
       if (opts.correlationId && config.headers) {
-        config.headers['X-Correlation-Id'] = crypto.randomUUID()
+        config.headers['X-Correlation-Id'] = randomUUID()
       }
 
       // 4. Audit headers (X-User / X-Origin)

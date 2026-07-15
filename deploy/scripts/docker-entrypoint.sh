@@ -13,6 +13,7 @@ export UPSTREAM_PYG=${UPSTREAM_PYG:-http://host.docker.internal:5171}
 export UPSTREAM_SCAN=${UPSTREAM_SCAN:-http://host.docker.internal:8080}
 export UPSTREAM_PROMOCION_SOBRES=${UPSTREAM_PROMOCION_SOBRES:-http://host.docker.internal:8083}
 export UPSTREAM_INVENTARIO=${UPSTREAM_INVENTARIO:-http://host.docker.internal:8082}
+export UPSTREAM_INV_PLANES=${UPSTREAM_INV_PLANES:-$UPSTREAM_INVENTARIO}
 export UPSTREAM_CONCILIACION=${UPSTREAM_CONCILIACION:-http://host.docker.internal:8005}
 export UPSTREAM_MAESTRO=${UPSTREAM_MAESTRO:-http://host.docker.internal:8004}
 export UPSTREAM_REPOSICION=${UPSTREAM_REPOSICION:-http://host.docker.internal:8006}

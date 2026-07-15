@@ -422,6 +422,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import api from '@/services/api'
 import { cajaChicaApi } from '@/lib/http'
+import { randomUUID } from '@/utils/uuid'
 import VolverButton from '@/components/VolverButton.vue'
 
 
@@ -514,7 +515,7 @@ const addGroup = async () => {
     const response = await api.post('/WarehouseGroups', payload)
     const data = response.data as any
     grupos.value.unshift({
-      id: data?.id ?? crypto.randomUUID(),
+      id: data?.id ?? randomUUID(),
       grupo: data?.grupo ?? nombre,
       descripcion: data?.descripcion ?? groupDescription.value.trim(),
       almacenes: Array.isArray(data?.almacenes) ? data.almacenes : codsAlmacenes,
