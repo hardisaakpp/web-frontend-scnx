@@ -487,7 +487,7 @@ const filteredUsuarios = computed(() => {
     if (!q) return true
     return name.toLowerCase().includes(q) || uname.toLowerCase().includes(q) || email.toLowerCase().includes(q)
   })
-  return list.slice(0, 80)
+  return list
 })
 
 const selectUser = (u: UserRecord) => {

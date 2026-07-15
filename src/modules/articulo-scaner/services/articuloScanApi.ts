@@ -1,5 +1,6 @@
 import { createModuleApi } from '@/lib/http'
 import { correlationFromResponseHeaders } from '../utils/apiErrorMapper'
+import { randomUUID } from '@/utils/uuid'
 import type {
   ArticleDetailDto,
   ScanResolveResponse,
@@ -105,7 +106,7 @@ export const articuloScanService = {
       payload
     )
     const apiData = response.data
-    const correlationId = apiData?.correlationId || correlationFromResponseHeaders(response.headers) || crypto.randomUUID()
+    const correlationId = apiData?.correlationId || correlationFromResponseHeaders(response.headers) || randomUUID()
     const article = mapResolvedArticle(apiData?.article ?? null)
     return {
       success: Boolean(apiData?.success),

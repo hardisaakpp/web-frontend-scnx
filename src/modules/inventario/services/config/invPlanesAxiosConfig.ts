@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { attachUnauthorizedRedirect } from '@/services/sessionGuard'
+import { randomUUID } from '@/utils/uuid'
 
 export const invPlanesApi = axios.create({
   baseURL: '/inv-planes-api',
@@ -17,7 +18,7 @@ invPlanesApi.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`
     }
     config.headers = config.headers ?? {}
-    config.headers['X-Correlation-Id'] = crypto.randomUUID()
+    config.headers['X-Correlation-Id'] = randomUUID()
     return config
   },
   (error) => Promise.reject(error instanceof Error ? error : new Error(String(error)))
