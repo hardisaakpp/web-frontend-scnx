@@ -281,6 +281,8 @@ export interface MyCountHistorySessionDto {
   openedAt: string
   closedAt?: string | null
   description?: string | null
+  totalQuantity: number
+  skuCount: number
   lines: MyCountHistoryLineDto[]
 }
 
@@ -399,6 +401,7 @@ export interface UserScanSummaryDto {
 }
 
 export interface UserScanDetailEntryDto {
+  countId: string
   scannedAt: string
   userId: string
   barcode?: string | null
@@ -407,6 +410,7 @@ export interface UserScanDetailEntryDto {
   quantity: number
   nivel3?: string | null
   round: number
+  canDelete: boolean
 }
 
 export interface SessionScansByUserDto {

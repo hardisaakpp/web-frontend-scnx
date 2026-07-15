@@ -1,12 +1,5 @@
 <template>
   <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-    <button
-      type="button"
-      class="mb-4 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 hover:underline"
-      @click="volver"
-    >
-      <span aria-hidden="true">←</span> Volver
-    </button>
     <div class="space-y-4">
       <!-- Header -->
       <div>
@@ -88,6 +81,24 @@
         </router-link>
 
   <router-link
+          to="/caja-chica/reasignar-aprobadores"
+          class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left block"
+          v-if="canViewAprobadores"
+        >
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded bg-red-50 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4M16 17H4m0 0l4 4m-4-4l4-4" />
+              </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-gray-900 dark:text-white text-sm">Reasignar aprobador</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Cambiar el supervisor asignado a liquidaciones pendientes</div>
+            </div>
+          </div>
+        </router-link>
+
+        <router-link
           to="/caja-chica/almacenes"
           class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left block"
           v-if="canViewAlmacenes"
@@ -202,16 +213,10 @@
 </template>
 
 <script setup lang="ts">
-import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { computed } from 'vue'
 
-const router = useRouter()
 const authStore = useAuthStore()
-
-const volver = () => {
-  router.back()
-}
 
 // Permisos
 const canViewLiquidaciones = computed(() => 

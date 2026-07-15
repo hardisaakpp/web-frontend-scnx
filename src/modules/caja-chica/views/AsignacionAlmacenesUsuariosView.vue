@@ -167,14 +167,14 @@ const volver = () => {
 }
 
 const getUserIdValue = (user: UserRecord): string => {
-  const id = user.IdUsuario ?? user.idUsuario ?? user.id ?? ''
+  const id = user.Id ?? user.IdUsuario ?? user.idUsuario ?? user.id ?? ''
   return String(id)
 }
 
 const getUserLabel = (user: UserRecord): string => {
   const userName = String(user.UsuarioNombre ?? user.userName ?? user.username ?? '').trim()
-  const fullName = String(user.Nombre ?? user.fullName ?? user.name ?? '').trim()
-  const email = String(user.Correo ?? user.email ?? user.mail ?? '').trim()
+  const fullName = String(user.FullName ?? user.Nombre ?? user.fullName ?? user.name ?? '').trim()
+  const email = String(user.Email ?? user.Correo ?? user.email ?? user.mail ?? '').trim()
   const base = fullName || userName || email || 'Usuario'
   return email && base !== email ? `${base} (${email})` : base
 }
@@ -224,7 +224,7 @@ const filteredAsignaciones = computed(() => {
 
 
 const loadUsuarios = async () => {
-  const response = await api.get('/Users')
+  const response = await api.get('/Users/list')
   const payload = response.data as any
   if (Array.isArray(payload)) {
     usuarios.value = payload

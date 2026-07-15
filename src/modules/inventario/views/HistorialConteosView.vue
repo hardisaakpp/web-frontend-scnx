@@ -17,6 +17,12 @@
       </div>
     </div>
 
+    <div class="mb-4 flex items-center gap-2 no-print">
+      <label class="text-sm text-gray-600 dark:text-gray-400" for="desde">Desde</label>
+      <input id="desde" v-model="desde" type="date" class="date-input" @change="cargar" />
+      <span class="text-xs text-gray-400">Por defecto, últimos 15 días.</span>
+    </div>
+
     <div v-if="error" class="mb-4 alert-error no-print">{{ error }}</div>
 
     <div v-if="loading && sesiones.length === 0" class="py-20 text-center text-sm text-gray-500 dark:text-gray-400 no-print">
@@ -53,7 +59,17 @@
           </div>
         </div>
 
-        <div class="mt-4 overflow-x-auto">
+        <div class="mt-4 flex items-center gap-4">
+          <div class="flex items-center gap-3">
+            <span class="stat"><strong>{{ s.totalQuantity }}</strong> cantidad total</span>
+            <span class="stat"><strong>{{ s.skuCount }}</strong> SKUs</span>
+          </div>
+          <button type="button" class="link" @click="toggleDetalle(s.sessionId)">
+            {{ expandidos.has(s.sessionId) ? 'Ocultar detalle' : 'Ver detalle' }}
+          </button>
+        </div>
+
+        <div v-if="expandidos.has(s.sessionId)" class="mt-3 overflow-x-auto">
           <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead>
               <tr>
@@ -119,6 +135,24 @@ const sesiones = ref<MyCountHistorySessionDto[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 const printing = ref<MyCountHistorySessionDto | null>(null)
+const expandidos = ref<Set<string>>(new Set())
+
+function defaultDesde(): string {
+  const d = new Date()
+  d.setDate(d.getDate() - 15)
+  return d.toISOString().slice(0, 10)
+}
+
+const desde = ref(defaultDesde())
+
+function toggleDetalle(sessionId: string) {
+  if (expandidos.value.has(sessionId)) {
+    expandidos.value.delete(sessionId)
+  } else {
+    expandidos.value.add(sessionId)
+  }
+  expandidos.value = new Set(expandidos.value)
+}
 
 function statusLabel(status: InventorySessionStatus): string {
   return { Open: 'Abierta', Recount: 'Reconteo', Closed: 'Cerrada' }[status] ?? status
@@ -143,7 +177,7 @@ async function cargar() {
   loading.value = true
   error.value = null
   try {
-    sesiones.value = await inventarioSesionesService.getMiHistorial()
+    sesiones.value = await inventarioSesionesService.getMiHistorial(desde.value)
   } catch (e: any) {
     error.value = e.message ?? 'Error al cargar el historial.'
   } finally {
@@ -198,6 +232,9 @@ onMounted(cargar)
 .alert-error { @apply rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-3 py-2 text-sm text-red-700 dark:text-red-300; }
 .th { @apply px-3 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400; }
 .td { @apply px-3 py-2 text-sm text-gray-700 dark:text-gray-300; }
+.date-input { @apply rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 text-sm text-gray-700 dark:text-gray-200 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500; }
+.stat { @apply text-sm text-gray-600 dark:text-gray-400; }
+.link { @apply text-sm font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300; }
 
 .print-only { display: none; }
 
