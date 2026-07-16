@@ -19,7 +19,7 @@ ENV VITE_APP_BASE_PATH=${VITE_APP_BASE_PATH}
 
 RUN npm run build
 
-FROM nginx:1.27-alpine AS runtime
+FROM nginx:stable-bookworm AS runtime
 
 LABEL maintainer="Jose"
 LABEL description="Runtime image for SCNexus Frontend"

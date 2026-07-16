@@ -1,7 +1,7 @@
 <template>
   <Teleport to="body">
     <div
-      class="fixed top-4 right-4 z-50 flex flex-col gap-3 max-w-md w-full pointer-events-none"
+      class="fixed top-4 right-4 z-[9999] flex flex-col gap-3 max-w-md w-full pointer-events-none"
       aria-live="polite"
       aria-atomic="true"
     >
@@ -70,7 +70,6 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from '@vue/reactivity'
 import { CheckCircleIcon, XCircleIcon, InformationCircleIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/solid'
 import { useToast, type Toast } from '@/composables/useToast'
 

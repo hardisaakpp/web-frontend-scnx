@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { attachUnauthorizedRedirect } from '@/services/sessionGuard'
+import { randomUUID } from '@/utils/uuid'
 
 type AxiosInstanceType = ReturnType<typeof axios.create>
 
@@ -55,7 +56,7 @@ export function createApiClient(rawBaseUrl: string, options: ApiClientOptions = 
 
       if (correlationId) {
         config.headers = config.headers ?? {}
-        config.headers['X-Correlation-Id'] = crypto.randomUUID()
+        config.headers['X-Correlation-Id'] = randomUUID()
       }
 
       if (userHeader) {

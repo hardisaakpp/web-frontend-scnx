@@ -315,6 +315,21 @@ import { cajaChicaApi } from '../services/cajaChicaApi'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
 
+function getAlmacenesAsignadosDelToken(authStore: ReturnType<typeof useAuthStore>): string[] {
+  const raw = authStore.userWarehouseAccesses
+  let accesses: any[]
+  if (Array.isArray(raw)) {
+    accesses = raw
+  } else if (raw) {
+    accesses = [raw]
+  } else {
+    accesses = []
+  }
+  return accesses
+    .filter(a => a.accesoAlmacen === 'Tienda' && a.codAlmacen)
+    .map(a => a.codAlmacen as string)
+}
+
 interface UsuarioAlmacenItem {
   codAlmacen: string
 }
@@ -577,12 +592,9 @@ const loadAlmacenesAsignados = async () => {
       return
     }
 
-    const response = await cajaChicaApi.get(`/UsuariosAlmacenes/por-usuario/${userId}`)
-    const payload = response.data as any
-    const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
-    asignados.value = items.map((item: any) => ({
-      codAlmacen: String(item.codAlmacen ?? item.CodAlmacen ?? '')
-    }))
+    // Bodegas asignadas al custodio: vienen del warehouse_access del token (CORE),
+    // no de la tabla propia UsuarioAlmacen de caja-chica (ver docs/sdd migración 2026-07-07).
+    asignados.value = getAlmacenesAsignadosDelToken(authStore).map(codAlmacen => ({ codAlmacen }))
 
     const almacenesResponse = await cajaChicaApi.get('/Almacenes', {
       headers: {

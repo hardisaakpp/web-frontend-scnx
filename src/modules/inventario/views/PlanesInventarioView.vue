@@ -13,6 +13,10 @@
           <ArrowPathIcon class="w-4 h-4 mr-1" :class="{ 'animate-spin': loading }" />
           Actualizar
         </button>
+        <router-link to="/inventario/planificaciones" class="btn-secondary">
+          <MagnifyingGlassIcon class="w-4 h-4 mr-1" />
+          Consultar Stock
+        </router-link>
         <button type="button" class="btn-primary" @click="mostrarModal = true">
           <PlusIcon class="w-4 h-4 mr-1" />
           Nuevo plan
@@ -138,7 +142,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { Dialog, DialogPanel, DialogTitle, TransitionRoot, TransitionChild } from '@headlessui/vue'
-import { ArrowPathIcon, PlusIcon } from '@heroicons/vue/24/outline'
+import { ArrowPathIcon, PlusIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline'
 import { inventarioPlanesService } from '../services/inventarioPlanesApi'
 import type { InventoryPlanDto } from '../types'
 import CrearPlanModal from '../components/CrearPlanModal.vue'

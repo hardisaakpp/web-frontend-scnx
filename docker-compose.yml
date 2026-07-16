@@ -1,4 +1,4 @@
-# Nginx + SPA en :8082. Los UPSTREAM_* se inyectan en runtime desde active.env.
+# Nginx + SPA en :8085. Los UPSTREAM_* se inyectan en runtime desde active.env.
 # Obligatorio: deploy/env/active.env (ver deploy/env/local.docker.env.example)
 #   cp deploy/env/local.docker.env.example deploy/env/active.env
 #   docker compose up -d --build
@@ -28,7 +28,6 @@ services:
 
     ports:
       - "${SCNEXUS_FRONT_PORT:-8085}:80"
-
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:

@@ -33,9 +33,10 @@
 
                 <!-- Agregar usuario -->
                 <div>
-                  <label class="label">Agregar usuario (nombre de usuario AD)</label>
+                  <label for="nuevoUserId" class="label">Agregar usuario (nombre de usuario AD)</label>
                   <div class="mt-1 flex gap-2">
                     <input
+                      id="nuevoUserId"
                       v-model="nuevoUserId"
                       type="text"
                       class="input flex-1"

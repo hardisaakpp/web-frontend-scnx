@@ -188,6 +188,10 @@
             {{ sincronizando ? 'Sincronizando...' : 'Actualizar Stock SAP' }}
           </button>
           <span v-if="mensajeSincronizacion" class="text-xs text-green-600 dark:text-green-400">{{ mensajeSincronizacion }}</span>
+          <span v-else-if="ultimaSincronizacion" class="text-xs text-gray-400 dark:text-gray-500">
+            Última sync: {{ formatDateTime(ultimaSincronizacion) }}
+          </span>
+          <span v-else class="text-xs text-gray-400 dark:text-gray-500">Sin sincronización registrada</span>
         </div>
         <div v-if="errorSincronizacion" class="mt-3 alert-error text-sm">{{ errorSincronizacion }}</div>
       </div>
@@ -291,6 +295,7 @@ const resultadoCierre = ref<string | null>(null)
 const sincronizando = ref(false)
 const errorSincronizacion = ref<string | null>(null)
 const mensajeSincronizacion = ref<string | null>(null)
+const ultimaSincronizacion = ref<string | null>(null)
 
 const descargando = ref(false)
 
@@ -319,6 +324,10 @@ async function cargar() {
   error.value = null
   try {
     summary.value = await inventarioSesionesService.getSupervisorSummary(sessionId)
+    if (summary.value?.warehouseCode) {
+      const sync = await inventarioSesionesService.getWarehouseLastSync(summary.value.warehouseCode)
+      ultimaSincronizacion.value = sync.lastSyncAt
+    }
   } catch (e: any) {
     error.value = e.message ?? 'Error al cargar el resumen.'
   } finally {
@@ -335,9 +344,12 @@ async function descargarCSV() {
     ]
     for (const line of status.lines) {
       const desc = (line.itemDescription ?? '').replace(/"/g, '""')
-      const estado = line.balanceStatus === 'Balanced' ? 'Cuadrado'
-        : line.systemQuantity === 0 ? 'Nuevo'
-        : 'Diferencia'
+      let estado = 'Diferencia'
+      if (line.balanceStatus === 'Balanced') {
+        estado = 'Cuadrado'
+      } else if (line.systemQuantity === 0) {
+        estado = 'Nuevo'
+      }
       rows.push(`${line.itemCode},"${desc}",${line.systemQuantity},${line.countedQuantity},${line.difference},${estado}`)
     }
     const csv = rows.join('\r\n')
@@ -361,7 +373,8 @@ async function sincronizarStock() {
   errorSincronizacion.value = null
   mensajeSincronizacion.value = null
   try {
-    await inventarioSesionesService.syncWarehouseStock(summary.value.warehouseCode)
+    const result = await inventarioSesionesService.syncWarehouseStock(summary.value.warehouseCode)
+    ultimaSincronizacion.value = result.lastSyncAt
     mensajeSincronizacion.value = '✓ Stock actualizado. Recargando...'
     await cargar()
     setTimeout(() => { mensajeSincronizacion.value = null }, 3000)

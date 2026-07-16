@@ -424,32 +424,40 @@ export const useAuthStore = defineStore('auth', {
         const derived = deriveCapabilitiesFromPermissions(permissions, roles)
         this.capabilities = mergeCapabilitiesWithDerived(fromApi, derived)
       } catch (err: unknown) {
-        if (import.meta.env.DEV) {
-          console.error('fetchMe failed:', err)
-        }
+        this.handleFetchMeError(err)
+      }
+    },
 
-        const status = (err as { response?: { status?: number } })?.response?.status
-
-        // Solo cerrar sesión si realmente hay un problema con el token (expirado o inválido).
-        if (status === 401) {
-          try {
-            const token = this.token || localStorage.getItem('token')
-            if (!token) {
-              this.logout()
-              return
-            }
-
-            const decoded = jwtDecode<JwtPayload>(token)
-
-            // Si el token ya expiró, cerrar sesión.
-            if (decoded.exp * 1000 < Date.now()) {
-              this.logout()
-            }
-            // Si el token sigue siendo válido, no hacer logout: el error es del microservicio, no de la sesión global.
-          } catch {
-            // Si no se puede decodificar el token, considerarlo inválido y cerrar sesión.
+    handleFetchMeError(err: unknown): void {
+      if (import.meta.env.DEV) {
+        console.error('fetchMe failed:', err)
+      }
+      const status = (err as { response?: { status?: number } })?.response?.status
+      // Solo cerrar sesión si realmente hay un problema con el token (expirado o inválido).
+      if (status === 401) {
+        try {
+          const token = this.token || localStorage.getItem('token')
+          if (!token) {
+            this.logout()
+            return
+          }
+          const decoded = jwtDecode<JwtPayload>(token)
+          // Si el token ya expiró, cerrar sesión.
+          if (decoded.exp * 1000 < Date.now()) {
             this.logout()
           }
+          // Si el token sigue siendo válido, no hacer logout: el error es del microservicio, no de la sesión global.
+        } catch {
+          // Si no se puede decodificar el token, considerarlo inválido y cerrar sesión.
+          this.logout()
+        }
+      } else {
+        // Error de red (504, sin conexión, etc.): derivar capabilities desde userData/JWT
+        // para que el router no reintente fetchMe() en cada navegación posterior.
+        const permissions = this.userData?.permissions ?? []
+        const roles = this.userData?.roles ?? []
+        if (permissions.length > 0 || roles.length > 0) {
+          this.capabilities = deriveCapabilitiesFromPermissions(permissions, roles)
         }
       }
     },
