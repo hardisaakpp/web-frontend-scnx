@@ -15,26 +15,40 @@ pool:
     - Agent.OS -equals Linux
 
 variables:
-  nodeVersion: '20.x'
-  
-  # Ruta al registro corporativo en la nube (ACR)
-  imageName: 'dockermg-g9hrgcc4etdrh8eg.azurecr.io/web-scnexus'
-  dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
-  npm_config_cache: $(Pipeline.Workspace)/.npm
+  - group: acr-credentials 
+  - name: nodeVersion
+    value: '20.x'
+  - name: acrLoginServer
+    value: 'dockermg-g9hrgcc4etdrh8eg.azurecr.io'
+  - name: imageName
+    value: '$(acrLoginServer)/web-scnexus'
+  - name: dockerfilePath
+    value: '$(Build.SourcesDirectory)/Dockerfile'
+  - name: npm_config_cache
+    value: $(Pipeline.Workspace)/.npm
 
   # Lógica Declarativa de Prefijos Dinámicos y Base Path por Rama
-  ${{ if eq(variables['Build.SourceBranchName'], 'main') }}:
-    envTag: 'prod-latest'
-    uniqueTag: 'prod-$(Build.BuildId)'
-    basePath: '/'
-  ${{ elseif eq(variables['Build.SourceBranchName'], 'test') }}:
-    envTag: 'test-latest'
-    uniqueTag: 'test-$(Build.BuildId)'
-    basePath: '/scnexus-front/'
-  ${{ else }}:
-    envTag: 'none'
-    uniqueTag: 'none'
-    basePath: '/'
+  - ${{ if eq(variables['Build.SourceBranchName'], 'main') }}:
+    - name: envTag
+      value: 'prod-latest'
+    - name: uniqueTag
+      value: 'prod-$(Build.BuildId)'
+    - name: basePath
+      value: '/'
+  - ${{ elseif eq(variables['Build.SourceBranchName'], 'test') }}:
+    - name: envTag
+      value: 'test-latest'
+    - name: uniqueTag
+      value: 'test-$(Build.BuildId)'
+    - name: basePath
+      value: '/scnexus-front/'
+  - ${{ else }}:
+    - name: envTag
+      value: 'none'
+    - name: uniqueTag
+      value: 'none'
+    - name: basePath
+      value: '/'
 
 stages:
 # =====================================================================
@@ -74,33 +88,39 @@ stages:
 - stage: Build_Docker
   displayName: 'Construcción y Empaquetado Nginx'
   dependsOn: CI_Validation
-  
-  # Candado de Seguridad: Solo construye Docker si pasó la Etapa 1 Y si la rama es main o test
   condition: and(succeeded(), ne(variables.envTag, 'none'))
   jobs:
   - job: Docker_Build_Push
     displayName: 'Construir y Subir a Azure ACR'
     steps:
 
-    # 2. IMPORTANTE: Integramos el bash con docker login antes de hacer build y push
+    # 2. IMPORTANTE: Mapeamos todo por 'env:' y usamos $VARIABLE en Bash
     - bash: |
         set -euo pipefail
         echo "0. Autenticando en Azure Container Registry..."
-        printf '%s' "$(acrPassword)" | docker login "$(acrLoginServer)" -u "$(acrUsername)" --password-stdin
+        printf '%s' "$ACR_PASSWORD" | docker login "$ACR_LOGIN_SERVER" -u "$ACR_USERNAME" --password-stdin
 
-        echo "1. Construyendo la imagen Frontend (Base Path: $(basePath), Entorno: $(envTag))..."
+        echo "1. Construyendo la imagen Frontend (Base Path: $BASE_PATH, Entorno: $ENV_TAG)..."
         docker build \
-          --build-arg VITE_APP_BASE_PATH=$(basePath) \
-          -f $(dockerfilePath) \
-          -t $(imageName):$(uniqueTag) \
-          -t $(imageName):$(envTag) .
+          --build-arg VITE_APP_BASE_PATH="$BASE_PATH" \
+          -f "$DOCKERFILE_PATH" \
+          -t "$IMAGE_NAME:$UNIQUE_TAG" \
+          -t "$IMAGE_NAME:$ENV_TAG" .
         
         echo "2. Subiendo la imagen al registro corporativo en Azure..."
-        docker push $(imageName):$(uniqueTag)
-        docker push $(imageName):$(envTag)
+        docker push "$IMAGE_NAME:$UNIQUE_TAG"
+        docker push "$IMAGE_NAME:$ENV_TAG"
       displayName: 'Empaquetar Nginx y Almacenar en ACR'
+      env:
+        ACR_USERNAME: $(acrUsername)
+        ACR_PASSWORD: $(acrPassword)
+        ACR_LOGIN_SERVER: $(acrLoginServer)
+        BASE_PATH: $(basePath)
+        ENV_TAG: $(envTag)
+        UNIQUE_TAG: $(uniqueTag)
+        IMAGE_NAME: $(imageName)
+        DOCKERFILE_PATH: $(dockerfilePath)
       
-    # 3. Publicar metadata del build para el Release (CD)
     - script: |
         mkdir -p $(Build.ArtifactStagingDirectory)/deploy-info
         echo "$(uniqueTag)" > $(Build.ArtifactStagingDirectory)/deploy-info/image-tag.txt
@@ -113,7 +133,6 @@ stages:
         ArtifactName: 'deploy-info'
       displayName: 'Publicar artefacto deploy-info'
 
-    # 4. RECOMENDADO: Limpieza de sesión
     - bash: |
         docker logout "$(acrLoginServer)" || true
       displayName: 'Cerrar sesión de ACR'
