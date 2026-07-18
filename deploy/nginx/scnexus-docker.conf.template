@@ -136,8 +136,9 @@ server {
         alias /var/lib/caja-chica-legacy/;
     }
 
-    # Empleados tiendas: en prod host era PHP (Nginx :3001 + fastcgi), no cajachica /api.
+    # Empleados de tienda: API .NET. El frontend usa /employees-api como prefijo interno.
     location ^~ /employees-api/ {
+        rewrite ^/employees-api/(.*)$ /$1 break;
         proxy_pass ${UPSTREAM_EMPLOYEES};
         proxy_http_version 1.1;
         proxy_set_header Host $host;

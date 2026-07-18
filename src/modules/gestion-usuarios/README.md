@@ -38,16 +38,16 @@ Configuración en `router.ts`:
 
 ## Backend Integrado
 
-Este módulo consume el endpoint CRUD (misma base URL; en desarrollo con Vite suele usar el prefijo `/employees-api` respecto al proxy):
+Este módulo consume la API REST .NET usando el prefijo interno `/employees-api`:
 
-- `GET` … `store_employees.php` (listado paginado y filtros)
-- `GET` … `store_employees.php?id={id}` (detalle)
-- `GET` … `store_employees.php?meta=cargos` → `{ ok: true, data: string[] }` (cuatro cargos exactos)
-- `GET` … `store_employees.php?meta=almacenes` → `data[]` con filas de almacén; **`codigo_tienda`** se guarda con el valor del campo indicado en `meta.value_field` (p. ej. `cod_almacen`), etiqueta con `meta.label_field` (`nombre` / `label`). El campo `meta.source` es solo depuración.
-- `GET` … `store_employees.php?health=1` (opcional: comprobar disponibilidad del servicio)
-- `POST` … `store_employees.php`
-- `PUT|PATCH` … `store_employees.php`
-- `DELETE` … `store_employees.php?id={id}` (soft delete, `estado=0`)
+- `GET /api/v1/store-employees` (listado paginado y filtros)
+- `GET /api/v1/store-employees/{id}` (detalle)
+- `GET /api/v1/store-employees/meta/cargos` → `{ ok: true, data: string[] }`
+- `GET /api/v1/store-employees/meta/almacenes` → catálogo de tiendas
+- `GET /api/v1/store-employees/health` (disponibilidad del servicio)
+- `POST /api/v1/store-employees`
+- `PUT|PATCH /api/v1/store-employees/{id}`
+- `DELETE /api/v1/store-employees/{id}` (soft delete, `estado=0`)
 
 ### Orden estándar de columnas (grid)
 
@@ -94,12 +94,12 @@ Vista principal:
 Definir en `.env.development` (o entorno correspondiente):
 
 ```env
-VITE_STORE_EMPLOYEES_API_URL=/employees-api/store_employees.php
-VITE_STORE_EMPLOYEES_PROXY_TARGET=http://localhost:8081/cws/api
+VITE_STORE_EMPLOYEES_API_URL=/employees-api/api/v1/store-employees
+VITE_STORE_EMPLOYEES_PROXY_TARGET=https://localhost:8015
 ```
 
-Si no se define, el módulo usa `/employees-api/store_employees.php` como fallback.
-El proxy de Vite redirige `/employees-api/*` a `VITE_STORE_EMPLOYEES_PROXY_TARGET`.
+Si no se define, el módulo usa `/employees-api/api/v1/store-employees` como fallback.
+El proxy elimina `/employees-api` y redirige la ruta restante a la API .NET.
 
 ## Permisos
 
