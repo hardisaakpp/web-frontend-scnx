@@ -82,7 +82,12 @@ stages:
     displayName: 'Construir y Subir a Azure ACR'
     steps:
 
-    - script: |
+    # 2. IMPORTANTE: Integramos el bash con docker login antes de hacer build y push
+    - bash: |
+        set -euo pipefail
+        echo "0. Autenticando en Azure Container Registry..."
+        printf '%s' "$(acrPassword)" | docker login "$(acrLoginServer)" -u "$(acrUsername)" --password-stdin
+
         echo "1. Construyendo la imagen Frontend (Base Path: $(basePath), Entorno: $(envTag))..."
         docker build \
           --build-arg VITE_APP_BASE_PATH=$(basePath) \
@@ -94,7 +99,8 @@ stages:
         docker push $(imageName):$(uniqueTag)
         docker push $(imageName):$(envTag)
       displayName: 'Empaquetar Nginx y Almacenar en ACR'
-      # 3. Publicar metadata del build para el Release (CD)
+      
+    # 3. Publicar metadata del build para el Release (CD)
     - script: |
         mkdir -p $(Build.ArtifactStagingDirectory)/deploy-info
         echo "$(uniqueTag)" > $(Build.ArtifactStagingDirectory)/deploy-info/image-tag.txt
@@ -106,3 +112,9 @@ stages:
         PathtoPublish: '$(Build.ArtifactStagingDirectory)/deploy-info'
         ArtifactName: 'deploy-info'
       displayName: 'Publicar artefacto deploy-info'
+
+    # 4. RECOMENDADO: Limpieza de sesión
+    - bash: |
+        docker logout "$(acrLoginServer)" || true
+      displayName: 'Cerrar sesión de ACR'
+      condition: always()
