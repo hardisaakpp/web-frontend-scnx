@@ -243,7 +243,7 @@ export default defineConfig(async ({ mode }): Promise<UserConfig> => {
 
           secure: false,
 
-          rewrite: (path: string) => path.replace(/^\/employees-api/, '/api')
+          rewrite: (path: string) => path.replace(/^\/employees-api/, '')
 
         },
 
