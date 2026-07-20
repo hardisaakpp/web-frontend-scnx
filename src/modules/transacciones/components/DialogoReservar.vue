@@ -100,11 +100,17 @@
                 id="codVendedorLocal"
                 v-model="codVendedorLocal"
                 type="text"
-                placeholder="Ingrese su código de vendedor"
-                :disabled="cargando"
+                :placeholder="sinAlmacenAsignado ? 'Requiere almacén asignado' : 'Ingrese su código de vendedor'"
+                :disabled="cargando || sinAlmacenAsignado"
                 class="w-full px-3 py-2 text-sm border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 disabled:opacity-50"
                 :class="!codVendedorLocal.trim() ? 'border-red-300 dark:border-red-700' : 'border-gray-300 dark:border-gray-700'"
               />
+            </div>
+            <div
+              v-if="sinAlmacenAsignado"
+              class="rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-3 py-2 text-sm text-amber-700 dark:text-amber-400"
+            >
+              No tiene un almacén asignado. Solicite a un administrador que le asigne uno para poder reservar transacciones.
             </div>
             <div class="flex flex-col gap-1">
               <label for="tiendaSeleccionada" class="text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -113,11 +119,11 @@
               <select
                 id="tiendaSeleccionada"
                 v-model="tiendaSeleccionada"
-                :disabled="cargando"
+                :disabled="true"
                 class="w-full px-3 py-2 text-sm border rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 disabled:opacity-50"
                 :class="!tiendaSeleccionada ? 'border-red-300 dark:border-red-700' : 'border-gray-300 dark:border-gray-700'"
               >
-                <option value="">Seleccione una tienda</option>
+                <option value="">{{ sinAlmacenAsignado ? 'Sin almacén asignado' : 'Seleccione una tienda' }}</option>
                 <option v-for="t in tiendas" :key="t.codigo" :value="t.codigo">
                   {{ t.nombre }} ({{ t.codigo }})
                 </option>
@@ -155,6 +161,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from '@vue/reactivity'
 import type { Transaccion } from '../types'
+import { APP_LOCALE, NUMBER_LOCALE } from '@/plugins/locale'
 
 export interface OpcionTienda {
   codigo: string
@@ -167,6 +174,7 @@ const props = defineProps<{
   tiendas: OpcionTienda[]
   cargando: boolean
   codAlmacenDefault?: string
+  sinAlmacenAsignado?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -201,11 +209,11 @@ function confirmar() {
 }
 
 function formatMonto(valor: number): string {
-  return new Intl.NumberFormat('es-PA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(valor)
+  return new Intl.NumberFormat(NUMBER_LOCALE, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(valor)
 }
 
 function formatFecha(iso: string): string {
   if (!iso) return '—'
-  return new Date(iso).toLocaleString('es-PA', { dateStyle: 'short', timeStyle: 'short' })
+  return new Date(iso).toLocaleString(APP_LOCALE, { dateStyle: 'short', timeStyle: 'short' })
 }
 </script>

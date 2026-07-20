@@ -319,6 +319,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
+import { APP_LOCALE, NUMBER_LOCALE } from '@/plugins/locale'
 import type { ArticleDetailDto, ScanStatus, WarehouseDto } from '../types'
 import { extractArticlePricing, formatCurrency, formatPercent } from '../utils/pricing'
 
@@ -454,7 +455,7 @@ function asTextFrom(keys: string[], fallback?: string | null): string {
 
 function asNumberText(value: unknown, fallback?: unknown): string {
   const resolved = value ?? fallback
-  if (typeof resolved === 'number' && Number.isFinite(resolved)) return resolved.toLocaleString('es-CL')
+  if (typeof resolved === 'number' && Number.isFinite(resolved)) return resolved.toLocaleString(NUMBER_LOCALE)
   if (typeof resolved === 'string' && resolved.trim()) return resolved
   return 'N/A'
 }
@@ -486,7 +487,7 @@ function formatDate(value: unknown): string {
   if (typeof value !== 'string' && !(value instanceof Date)) return 'N/A'
   const date = value instanceof Date ? value : new Date(value)
   if (Number.isNaN(date.getTime())) return 'N/A'
-  return new Intl.DateTimeFormat('es-CL').format(date)
+  return new Intl.DateTimeFormat(APP_LOCALE).format(date)
 }
 
 

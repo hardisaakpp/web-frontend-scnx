@@ -70,6 +70,7 @@
       :transaccion="transaccionSeleccionada"
       :tiendas="tiendas"
       :cod-almacen-default="codAlmacenDefault"
+      :sin-almacen-asignado="sinAlmacenAsignado"
       :cargando="store.reservando"
       @confirmar="confirmarReserva"
       @cancelar="cerrarDialogo"
@@ -101,6 +102,8 @@ const codAlmacenDefault = computed(() => {
   const first = Array.isArray(accesses) ? accesses[0] : accesses
   return first?.codAlmacen ?? ''
 })
+
+const sinAlmacenAsignado = computed(() => authStore.userWarehouseAccesses.length === 0)
 
 onMounted(() => store.fetchAlmacenes())
 onUnmounted(() => store.limpiarCajero())

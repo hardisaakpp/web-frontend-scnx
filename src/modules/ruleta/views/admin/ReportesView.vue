@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { APP_LOCALE } from '@/plugins/locale'
 import { useAdminStore } from '../../stores/adminStore'
 import { ruletaService } from '../../services/ruletaApi'
 import type { HistorialGiroItem } from '../../types'
@@ -137,7 +138,7 @@ const TIPO_LABELS: Record<string, string> = {
               <tr v-for="r in registros" :key="r.id"
                   class="hover:bg-gray-50/50 dark:hover:bg-gray-700/20 transition-colors">
                 <td class="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs whitespace-nowrap">
-                  {{ new Date(r.fecha).toLocaleDateString('es-EC', { day: '2-digit', month: '2-digit', year: 'numeric' }) }}
+                  {{ new Date(r.fecha).toLocaleDateString(APP_LOCALE, { day: '2-digit', month: '2-digit', year: 'numeric' }) }}
                 </td>
                 <td class="px-4 py-3 font-mono text-gray-700 dark:text-gray-200 text-xs">{{ r.identificacion }}</td>
                 <td class="px-4 py-3 text-gray-600 dark:text-gray-300 hidden md:table-cell">{{ r.tiendaCodigo }}</td>

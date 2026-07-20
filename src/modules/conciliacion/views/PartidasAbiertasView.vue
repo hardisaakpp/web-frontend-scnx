@@ -167,6 +167,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useConciliacionStore } from '../stores/conciliacionStore'
 import { useToast } from '@/composables/useToast'
+import { NUMBER_LOCALE } from '@/plugins/locale'
 
 const store = useConciliacionStore()
 const toast = useToast()
@@ -248,7 +249,7 @@ async function ejecutarBolsa() {
   }
   procesando.value = false; if (bolsa.value.every(g => g.status === 'success')) { toast.success('Completado'); buscar() }
 }
-const formatMonto = (m: number) => m.toLocaleString('en-US', { minimumFractionDigits: 2 })
+const formatMonto = (m: number) => m.toLocaleString(NUMBER_LOCALE, { minimumFractionDigits: 2 })
 </script>
 
 <style scoped>
