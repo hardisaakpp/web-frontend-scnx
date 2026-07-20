@@ -30,6 +30,14 @@
             </button>
             <button
               type="button"
+              class="rounded border border-gray-200 dark:border-gray-700 text-sm px-3 py-1.5 disabled:opacity-50"
+              :disabled="excelLoading"
+              @click="downloadExcel"
+            >
+              {{ excelLoading ? 'Generando...' : 'Descargar Excel' }}
+            </button>
+            <button
+              type="button"
               class="rounded border border-gray-200 dark:border-gray-700 text-sm px-3 py-1.5"
               @click="loadPendientes"
             >
@@ -37,6 +45,7 @@
             </button>
           </div>
         </div>
+        <div v-if="excelError" class="mb-3 text-sm text-red-600 dark:text-red-400">{{ excelError }}</div>
 
         <div v-if="loading" class="text-sm text-gray-500 dark:text-gray-400">Cargando liquidaciones...</div>
         <div v-else-if="error" class="text-sm text-red-600 dark:text-red-400">{{ error }}</div>
@@ -59,7 +68,7 @@
               <tr v-for="item in pendientes" :key="item.idLiquidacion">
                 <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.idLiquidacion }}</td>
                 <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.codAlmacen }}</td>
-                <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.nombreCustodio }}</td>
+                <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.nombreCustodio }} ({{ item.cedulaCustodio || '-' }})</td>
                 <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.fechaCreacion }}</td>
                 <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ getNivelAprobacion(item.estado) }}</td>
                 <td class="py-2 pr-3">
@@ -93,6 +102,7 @@ interface LiquidacionItem {
   estado: string
   codAlmacen: string
   nombreCustodio: string
+  cedulaCustodio: string
   fechaCreacion: string
 }
 
@@ -114,6 +124,8 @@ interface LiquidacionDetalleItem {
 const loading = ref(false)
 const error = ref('')
 const pendientes = ref<LiquidacionItem[]>([])
+const excelLoading = ref(false)
+const excelError = ref('')
 const router = useRouter()
 
 const volver = () => {
@@ -141,6 +153,7 @@ const normalizeLiquidacion = (item: any): LiquidacionItem => ({
   estado: normalizeString(item.estado ?? item.Estado ?? ''),
   codAlmacen: normalizeString(item.codAlmacen ?? item.CodAlmacen ?? ''),
   nombreCustodio: normalizeString(item.nombreCustodio ?? item.NombreCustodio ?? ''),
+  cedulaCustodio: normalizeString(item.cedulaCustodio ?? item.CedulaCustodio ?? ''),
   fechaCreacion: String(item.fechaCreacion ?? item.FechaCreacion ?? '')
 })
 
@@ -263,6 +276,7 @@ const downloadPdf = async () => {
         <div class="meta">
           <div class="meta-item"><div class="meta-label">Almacén / Tienda</div><div class="meta-value">${esc(item.codAlmacen || '-')}</div></div>
           <div class="meta-item"><div class="meta-label">Custodio</div><div class="meta-value">${esc(item.nombreCustodio || '-')}</div></div>
+          <div class="meta-item"><div class="meta-label">Cédula custodio</div><div class="meta-value">${esc(item.cedulaCustodio || '-')}</div></div>
           <div class="meta-item"><div class="meta-label">Fecha creación</div><div class="meta-value">${fmt(item.fechaCreacion)}</div></div>
           <div class="meta-item"><div class="meta-label">Estado</div><div class="meta-value">${esc(item.estado)}</div></div>
         </div>
@@ -284,6 +298,29 @@ const downloadPdf = async () => {
   win.document.close()
   win.focus()
   setTimeout(() => { win.print() }, 600)
+}
+
+const downloadExcel = async () => {
+  excelError.value = ''
+  excelLoading.value = true
+  try {
+    const response = await cajaChicaApi.get('/Liquidaciones/exportar-excel', {
+      responseType: 'blob'
+    })
+    const blob = new Blob([response.data as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'liquidaciones_pendientes.xlsx'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  } catch {
+    excelError.value = 'No se pudo descargar el archivo Excel.'
+  } finally {
+    excelLoading.value = false
+  }
 }
 
 onMounted(() => {

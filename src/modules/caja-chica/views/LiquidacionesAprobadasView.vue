@@ -80,7 +80,7 @@
               <div>
                 <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Liquidacion #{{ item.idLiquidacion }}</h3>
                 <p class="text-xs text-gray-500 dark:text-gray-400">
-                  Tienda: {{ item.codAlmacen }} · Custodio: {{ item.nombreCustodio }} · Fecha: {{ formatDate(item.fechaCreacion) }}
+                  Tienda: {{ item.codAlmacen }} · Custodio: {{ item.nombreCustodio }} ({{ item.cedulaCustodio || '-' }}) · Fecha: {{ formatDate(item.fechaCreacion) }}
                 </p>
               </div>
               <div class="flex items-center gap-3">
@@ -172,6 +172,7 @@ interface LiquidacionItem {
   estado: string
   codAlmacen: string
   nombreCustodio: string
+  cedulaCustodio: string
   fechaCreacion: string
 }
 
@@ -241,6 +242,7 @@ const normalizeLiquidacion = (item: any): LiquidacionItem => ({
   estado: normalizeString(item.estado ?? item.Estado ?? ''),
   codAlmacen: normalizeString(item.codAlmacen ?? item.CodAlmacen ?? ''),
   nombreCustodio: normalizeString(item.nombreCustodio ?? item.NombreCustodio ?? ''),
+  cedulaCustodio: normalizeString(item.cedulaCustodio ?? item.CedulaCustodio ?? ''),
   fechaCreacion: String(item.fechaCreacion ?? item.FechaCreacion ?? '')
 })
 
@@ -537,6 +539,7 @@ const downloadLiquidacionPdf = async (idLiquidacion: number) => {
       <div class="meta">
         <div class="meta-item"><div class="meta-label">Almacén / Tienda</div><div class="meta-value">${esc(item.codAlmacen || '-')}</div></div>
         <div class="meta-item"><div class="meta-label">Custodio</div><div class="meta-value">${esc(item.nombreCustodio || '-')}</div></div>
+        <div class="meta-item"><div class="meta-label">Cédula custodio</div><div class="meta-value">${esc(item.cedulaCustodio || '-')}</div></div>
         <div class="meta-item"><div class="meta-label">Fecha creación</div><div class="meta-value">${fmt(item.fechaCreacion)}</div></div>
         <div class="meta-item"><div class="meta-label">Estado</div><div class="meta-value">${esc(item.estado)}</div></div>
       </div>
@@ -647,6 +650,7 @@ const downloadPdf = async () => {
         <div class="meta">
           <div class="meta-item"><div class="meta-label">Almacén / Tienda</div><div class="meta-value">${esc(item.codAlmacen || '-')}</div></div>
           <div class="meta-item"><div class="meta-label">Custodio</div><div class="meta-value">${esc(item.nombreCustodio || '-')}</div></div>
+          <div class="meta-item"><div class="meta-label">Cédula custodio</div><div class="meta-value">${esc(item.cedulaCustodio || '-')}</div></div>
           <div class="meta-item"><div class="meta-label">Fecha creación</div><div class="meta-value">${fmt(item.fechaCreacion)}</div></div>
           <div class="meta-item"><div class="meta-label">Estado</div><div class="meta-value">${esc(item.estado)}</div></div>
         </div>
