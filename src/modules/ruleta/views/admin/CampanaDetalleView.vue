@@ -796,7 +796,7 @@ function ocultarDropdown() {
             <p v-if="estadoGrupoActual !== 'completo'" class="text-xs text-gray-400 dark:text-gray-500">
               <span v-if="estadoGrupoActual === 'advertencia'" class="font-semibold text-yellow-600 dark:text-yellow-500">Agrega al menos una casilla "¡Sigue intentando!" como consolación.</span>
               <span v-else class="font-semibold" style="color: #0A86C2">
-                {{ (grupo.grupo === 'GRUPO_5' || grupo.grupo === 'GRUPO_6') 
+                {{ (grupo.grupo === 'GRUPO_4' || grupo.grupo === 'GRUPO_5' || grupo.grupo === 'GRUPO_6') 
                   ? 'Agrega la casilla "¡Sigue intentando!" para habilitar este grupo.'
                   : 'Agrega al menos un premio real para este grupo.' }}
               </span>
