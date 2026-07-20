@@ -1,0 +1,12 @@
+# Archivos de texto: LF en el repo, Windows puede tener CRLF en working copy
+* text=auto
+
+# Shell scripts y configs que se ejecutan en Linux/Docker: SIEMPRE LF
+*.sh        text eol=lf
+Dockerfile  text eol=lf
+*.conf      text eol=lf
+*.template  text eol=lf
+*.env       text eol=lf
+*.env.example text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf

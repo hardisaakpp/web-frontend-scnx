@@ -126,7 +126,7 @@ import { useExport } from '../composables/useExport'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import HistorialOrdenesTable from '../components/HistorialOrdenesTable.vue'
 import SkeletonTable from '../components/SkeletonTable.vue'
-import QuickTablePagination from '../components/QuickTablePagination.vue'
+import QuickTablePagination from '@/components/QuickTablePagination.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import type { OrdenCompraLog } from '../types'
 

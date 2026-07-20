@@ -381,7 +381,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useUsuariosStore } from '../stores/usuariosStore'
 import { useRolesStore } from '../stores/rolesStore'
 import type { Usuario, CreateUsuarioDto, UpdateUsuarioDto } from '../types'
-import VolverButton from '../components/VolverButton.vue'
+import VolverButton from '@/components/VolverButton.vue'
 import UsuarioModal from '../components/UsuarioModal.vue'
 import AsignarRolesModal from '../components/AsignarRolesModal.vue'
 import {

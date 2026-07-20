@@ -1,5 +1,4 @@
-import axios from 'axios'
-import { attachUnauthorizedRedirect } from '@/services/sessionGuard'
+import { preferencesHttp as preferencesApi } from '@/lib/http'
 
 export interface TablePreferences {
   visibleColumns: string[]
@@ -24,44 +23,6 @@ export interface UserPreferences {
   sidebar?: SidebarPreferences
   [key: string]: any
 }
-
-// Rutas absolutas desde el origen del front: /api/users/preferences (proxy → MBA3 en dev y prod).
-const API_BASE_URL = import.meta.env.VITE_PREFERENCES_API_URL || ''
-
-const preferencesApi = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  },
-  timeout: 30000,
-})
-
-// Interceptor para agregar token JWT en cada request
-preferencesApi.interceptors.request.use(
-  config => {
-    const token = localStorage.getItem('token')
-    
-    if (token && config.headers) {
-      config.headers['Authorization'] = `Bearer ${token}`
-    }
-    
-    return config
-  },
-  error => {
-    if (import.meta.env.DEV) {
-      console.error('❌ [Preferences API Request] Error en interceptor:', error)
-    }
-    return Promise.reject(error)
-  }
-)
-
-// Interceptor para manejar errores y autenticación
-preferencesApi.interceptors.response.use(
-  response => response,
-  error => Promise.reject(error)
-)
-attachUnauthorizedRedirect(preferencesApi)
 
 /**
  * Servicio para gestionar preferencias de usuario desde el backend

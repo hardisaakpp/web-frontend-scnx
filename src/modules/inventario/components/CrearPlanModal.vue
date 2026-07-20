@@ -24,24 +24,24 @@
                 <!-- Fechas -->
                 <div class="grid grid-cols-2 gap-4">
                   <div>
-                    <label class="label">Fecha apertura *</label>
-                    <input v-model="form.plannedOpenDate" type="date" class="input" required />
+                    <label for="plannedOpenDate" class="label">Fecha apertura *</label>
+                    <input id="plannedOpenDate" v-model="form.plannedOpenDate" type="date" class="input" required />
                   </div>
                   <div>
-                    <label class="label">Fecha cierre *</label>
-                    <input v-model="form.plannedCloseDate" type="date" class="input" required />
+                    <label for="plannedCloseDate" class="label">Fecha cierre *</label>
+                    <input id="plannedCloseDate" v-model="form.plannedCloseDate" type="date" class="input" required />
                   </div>
                 </div>
 
                 <!-- Descripción -->
                 <div>
-                  <label class="label">Descripción (opcional)</label>
-                  <input v-model="form.description" type="text" class="input" maxlength="250" placeholder="Ej: Inventario general Q2" />
+                  <label for="description" class="label">Descripción (opcional)</label>
+                  <input id="description" v-model="form.description" type="text" class="input" maxlength="250" placeholder="Ej: Inventario general Q2" />
                 </div>
 
                 <!-- Bodegas -->
                 <div>
-                  <label class="label">Bodegas * <span class="font-normal text-gray-400">({{ bodegasSeleccionadas.length }} seleccionadas)</span></label>
+                  <p class="label">Bodegas * <span class="font-normal text-gray-400">({{ bodegasSeleccionadas.length }} seleccionadas)</span></p>
                   <div class="mt-1">
                     <div v-if="loadingBodegas" class="text-xs text-gray-400 py-2">Cargando bodegas...</div>
                     <BodegaMultiselect
@@ -96,13 +96,13 @@ const emit = defineEmits<{
 }>()
 
 const FILTROS_DISPONIBLES = [
-  { key: 'uNv1', label: 'Nivel 1 (u_nv1)', catalogKey: 'uNv1Values' as const },
-  { key: 'uNv2', label: 'Nivel 2 (u_nv2)', catalogKey: 'uNv2Values' as const },
-  { key: 'uNv3', label: 'Nivel 3 (u_nv3)', catalogKey: 'uNv3Values' as const },
-  { key: 'uGen', label: 'Género (u_gen)', catalogKey: 'uGenValues' as const },
-  { key: 'material', label: 'Material', catalogKey: 'materialValues' as const },
-  { key: 'pack', label: 'Pack', catalogKey: 'packValues' as const },
-  { key: 'coleccion', label: 'Colección', catalogKey: 'coleccionValues' as const },
+  { key: 'uNv1' as const, label: 'Nivel 1 (u_nv1)', catalogKey: 'uNv1Values' as const },
+  { key: 'uNv2' as const, label: 'Nivel 2 (u_nv2)', catalogKey: 'uNv2Values' as const },
+  { key: 'uNv3' as const, label: 'Nivel 3 (u_nv3)', catalogKey: 'uNv3Values' as const },
+  { key: 'uGen' as const, label: 'Género (u_gen)', catalogKey: 'uGenValues' as const },
+  { key: 'material' as const, label: 'Material', catalogKey: 'materialValues' as const },
+  { key: 'pack' as const, label: 'Pack', catalogKey: 'packValues' as const },
+  { key: 'coleccion' as const, label: 'Colección', catalogKey: 'coleccionValues' as const },
 ]
 
 type FiltroKey = 'uNv1' | 'uNv2' | 'uNv3' | 'uGen' | 'material' | 'pack' | 'coleccion'
@@ -151,6 +151,10 @@ function cerrar() {
   emit('close')
 }
 
+function buildPlanFilter(key: FiltroKey): string[] | undefined {
+  return filtrosSeleccionados.value[key].length ? filtrosSeleccionados.value[key] : undefined
+}
+
 async function guardar() {
   if (bodegasSeleccionadas.value.length === 0) return
   guardando.value = true
@@ -165,13 +169,13 @@ async function guardar() {
         description: form.value.description || null,
         plannedOpenDate: form.value.plannedOpenDate,
         plannedCloseDate: form.value.plannedCloseDate,
-        uNv1Values: filtrosSeleccionados.value.uNv1.length ? filtrosSeleccionados.value.uNv1 : undefined,
-        uNv2Values: filtrosSeleccionados.value.uNv2.length ? filtrosSeleccionados.value.uNv2 : undefined,
-        uNv3Values: filtrosSeleccionados.value.uNv3.length ? filtrosSeleccionados.value.uNv3 : undefined,
-        uGenValues: filtrosSeleccionados.value.uGen.length ? filtrosSeleccionados.value.uGen : undefined,
-        materialValues: filtrosSeleccionados.value.material.length ? filtrosSeleccionados.value.material : undefined,
-        packValues: filtrosSeleccionados.value.pack.length ? filtrosSeleccionados.value.pack : undefined,
-        coleccionValues: filtrosSeleccionados.value.coleccion.length ? filtrosSeleccionados.value.coleccion : undefined,
+        uNv1Values: buildPlanFilter('uNv1'),
+        uNv2Values: buildPlanFilter('uNv2'),
+        uNv3Values: buildPlanFilter('uNv3'),
+        uGenValues: buildPlanFilter('uGen'),
+        materialValues: buildPlanFilter('material'),
+        packValues: buildPlanFilter('pack'),
+        coleccionValues: buildPlanFilter('coleccion'),
       })
       creados++
     } catch (e: any) {
@@ -218,62 +222,71 @@ const BodegaMultiselect = defineComponent({
       return b ? `${b.code} · ${b.name}` : code
     }
 
-    return () => h('div', { class: 'space-y-1' }, [
-      props.modelValue.length > 0
-        ? h('div', { class: 'flex flex-wrap gap-1 mb-2' },
-            props.modelValue.map(code =>
+    return () => {
+      let dropDownContent: any[] = []
+      if (dropOpen.value) {
+        if (filtered.value.length > 0) {
+          dropDownContent = filtered.value.map(b =>
+            h('div', {
+              key: b.code,
+              class: [
+                'flex items-center gap-2 px-3 py-1.5 text-sm cursor-pointer',
+                props.modelValue.includes(b.code)
+                  ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                  : 'text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
+              ],
+              onClick: () => { toggle(b.code); search.value = '' }
+            }, [
               h('span', {
-                key: code,
-                class: 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 cursor-pointer select-none',
-                onClick: () => toggle(code)
-              }, [getLabel(code), h('span', { class: 'font-bold text-xs ml-0.5' }, '×')])
+                class: [
+                  'w-4 h-4 flex-shrink-0 rounded border-2 flex items-center justify-center text-xs font-bold',
+                  props.modelValue.includes(b.code)
+                    ? 'bg-blue-600 border-blue-600 text-white'
+                    : 'border-gray-300 dark:border-gray-500'
+                ]
+              }, props.modelValue.includes(b.code) ? '✓' : ''),
+              h('span', { class: 'font-mono text-xs text-gray-500 dark:text-gray-400 flex-shrink-0' }, b.code),
+              h('span', { class: 'truncate' }, b.name)
+            ])
+          )
+        } else {
+          dropDownContent = [h('div', { class: 'px-3 py-2 text-xs text-gray-400' }, 'Sin resultados.')]
+        }
+      }
+
+      const dropDownElement = dropOpen.value
+        ? h('div', {
+            class: 'absolute z-20 mt-1 w-full max-h-48 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-lg',
+            onMousedown: (e: Event) => e.preventDefault()
+          }, dropDownContent)
+        : null
+
+      return h('div', { class: 'space-y-1' }, [
+        props.modelValue.length > 0
+          ? h('div', { class: 'flex flex-wrap gap-1 mb-2' },
+              props.modelValue.map(code =>
+                h('span', {
+                  key: code,
+                  class: 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 cursor-pointer select-none',
+                  onClick: () => toggle(code)
+                }, [getLabel(code), h('span', { class: 'font-bold text-xs ml-0.5' }, '×')])
+              )
             )
-          )
-        : null,
-      h('div', { class: 'relative' }, [
-        h('input', {
-          type: 'text',
-          value: search.value,
-          placeholder: 'Buscar bodega...',
-          class: 'input-sm',
-          onInput: (e: Event) => { search.value = (e.target as HTMLInputElement).value; dropOpen.value = true },
-          onFocus: () => { dropOpen.value = true },
-          onBlur: () => { setTimeout(() => { dropOpen.value = false }, 150) }
-        }),
-        dropOpen.value
-          ? h('div', {
-              class: 'absolute z-20 mt-1 w-full max-h-48 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-lg',
-              onMousedown: (e: Event) => e.preventDefault()
-            },
-            filtered.value.length > 0
-              ? filtered.value.map(b =>
-                  h('div', {
-                    key: b.code,
-                    class: [
-                      'flex items-center gap-2 px-3 py-1.5 text-sm cursor-pointer',
-                      props.modelValue.includes(b.code)
-                        ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
-                        : 'text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700'
-                    ],
-                    onClick: () => { toggle(b.code); search.value = '' }
-                  }, [
-                    h('span', {
-                      class: [
-                        'w-4 h-4 flex-shrink-0 rounded border-2 flex items-center justify-center text-xs font-bold',
-                        props.modelValue.includes(b.code)
-                          ? 'bg-blue-600 border-blue-600 text-white'
-                          : 'border-gray-300 dark:border-gray-500'
-                      ]
-                    }, props.modelValue.includes(b.code) ? '✓' : ''),
-                    h('span', { class: 'font-mono text-xs text-gray-500 dark:text-gray-400 flex-shrink-0' }, b.code),
-                    h('span', { class: 'truncate' }, b.name)
-                  ])
-                )
-              : [h('div', { class: 'px-3 py-2 text-xs text-gray-400' }, 'Sin resultados.')]
-          )
-          : null
+          : null,
+        h('div', { class: 'relative' }, [
+          h('input', {
+            type: 'text',
+            value: search.value,
+            placeholder: 'Buscar bodega...',
+            class: 'input-sm',
+            onInput: (e: Event) => { search.value = (e.target as HTMLInputElement).value; dropOpen.value = true },
+            onFocus: () => { dropOpen.value = true },
+            onBlur: () => { setTimeout(() => { dropOpen.value = false }, 150) }
+          }),
+          dropDownElement
+        ])
       ])
-    ])
+    }
   }
 })
 

@@ -158,10 +158,11 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import axios from 'axios'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { resolveUserNames } from '../utils/resolveUserNames'
+import { cajaChicaApi } from '@/lib/http'
+
 
 const authStore = useAuthStore()
 
@@ -218,20 +219,8 @@ const volver = () => {
   router.back()
 }
 
-const cajaChicaApi = axios.create({
-  baseURL: import.meta.env.VITE_CAJA_CHICA_API_URL || '/caja-chica-api',
-  headers: {
-    'Content-Type': 'application/json'
-  }
-})
 
-cajaChicaApi.interceptors.request.use(config => {
-  const token = localStorage.getItem('token')
-  if (token && config.headers) {
-    config.headers['Authorization'] = `Bearer ${token}`
-  }
-  return config
-})
+
 
 const normalizeString = (value: any) => String(value ?? '').trim()
 

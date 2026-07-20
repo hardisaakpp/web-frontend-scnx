@@ -15,6 +15,14 @@
         <p v-if="warehouseName" class="mt-0.5 text-sm text-gray-500 dark:text-gray-400">{{ warehouseName }}</p>
       </div>
       <div class="flex items-center gap-2 flex-wrap">
+        <router-link
+          v-if="canGestionarScans"
+          :to="`/inventario/sesiones/${sessionId}/gestion-scans`"
+          class="btn-secondary"
+        >
+          <ShieldExclamationIcon class="w-4 h-4 mr-1" />
+          Gestión de Scans
+        </router-link>
         <button type="button" class="btn-secondary" :disabled="loadingStats" @click="cargarStats">
           <ArrowPathIcon class="w-4 h-4" :class="{ 'animate-spin': loadingStats }" />
         </button>
@@ -270,13 +278,15 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ChevronLeftIcon, ArrowPathIcon, ArrowDownTrayIcon, ShoppingCartIcon } from '@heroicons/vue/24/outline'
+import { ChevronLeftIcon, ArrowPathIcon, ArrowDownTrayIcon, ShoppingCartIcon, ShieldExclamationIcon } from '@heroicons/vue/24/outline'
 import { inventarioSesionesService } from '../services/inventarioSesionesApi'
+import { useInventarioModulePermissions } from '../composables/useInventarioModulePermissions'
 import type { SessionDetailLineDto, SessionDetailStatsDto, SessionScansByUserDto } from '../types'
 
 const router = useRouter()
 const route = useRoute()
 const sessionId = route.params.sessionId as string
+const { canGestionarScans } = useInventarioModulePermissions()
 
 const stats = ref<SessionDetailStatsDto | null>(null)
 const lines = ref<SessionDetailLineDto[]>([])

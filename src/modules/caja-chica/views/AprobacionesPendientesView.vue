@@ -507,10 +507,11 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount, ref, watch, nextTick } from 'vue'
-import axios from 'axios'
 import { useTablePreferences } from '@/composables/useTablePreferences'
 import { useRouter } from 'vue-router'
 import { createBuildAdjuntoUrl } from '../utils/buildAdjuntoUrl'
+import { cajaChicaApi } from '@/lib/http'
+
 
 interface ColumnConfig {
   key: string
@@ -881,22 +882,8 @@ function getStickyStyle(column: ColumnConfig): { right?: string; minWidth?: stri
   return { right, minWidth: minW }
 }
 
-const cajaChicaApi = axios.create({
-  baseURL: import.meta.env.VITE_CAJA_CHICA_API_URL || '/caja-chica-api',
-  headers: {
-    'Content-Type': 'application/json'
-  }
-})
-
-cajaChicaApi.interceptors.request.use(config => {
-  const token = localStorage.getItem('token')
-  if (token && config.headers) {
-    config.headers['Authorization'] = `Bearer ${token}`
-  }
-  return config
-})
-
 const buildAdjuntoUrl = createBuildAdjuntoUrl()
+
 
 const formatAdjuntoName = (ruta: string) => {
   if (!ruta) return ''

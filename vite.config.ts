@@ -1,4 +1,4 @@
-import { defineConfig, loadEnv } from 'vite'
+import { defineConfig, loadEnv, type UserConfig } from 'vite'
 
 import vue from '@vitejs/plugin-vue'
 
@@ -27,7 +27,7 @@ async function resolveActiveBackend(primary: string, fallback: string): Promise<
 
 // https://vitejs.dev/config/
 
-export default defineConfig(async ({ mode }) => {
+export default defineConfig(async ({ mode }): Promise<UserConfig> => {
 
   const env = viteEnv(mode)
 
@@ -43,6 +43,7 @@ export default defineConfig(async ({ mode }) => {
     ? await resolveActiveBackend(corePrimary, coreFallback)
     : corePrimary
   const mba3ProxyTarget = upstreamUrl(env, 'MBA3')
+  const transaccionesProxyTarget = upstreamUrl(env, 'TRANSACCIONES')
   const authMeProxyTarget = upstreamUrl(env, 'MBA3_AUTH')
   const cajaChicaProxyTarget = upstreamUrl(env, 'CAJA_CHICA')
   const employeesProxyTarget = upstreamUrl(env, 'EMPLOYEES')
@@ -57,6 +58,7 @@ export default defineConfig(async ({ mode }) => {
   const reposicionProxyTarget = upstreamUrl(env, 'REPOSICION')
   console.log(`\x1b[35m[proxy]\x1b[0m Reposiciones → ${reposicionProxyTarget}`)
 
+  const ruletaProxyTarget = upstreamUrl(env, 'RULETA')
   const pygProxyPrefix =
     'UPSTREAM_PYG_PREFIX' in env
       ? env.UPSTREAM_PYG_PREFIX
@@ -114,7 +116,7 @@ export default defineConfig(async ({ mode }) => {
 
           secure: false,
 
-          rewrite: (path) => path
+          rewrite: (path: string) => path
 
         },
 
@@ -126,7 +128,7 @@ export default defineConfig(async ({ mode }) => {
 
           secure: false,
 
-          rewrite: (path) => path
+          rewrite: (path: string) => path
 
         },
 
@@ -138,7 +140,7 @@ export default defineConfig(async ({ mode }) => {
 
           secure: false,
 
-          rewrite: (path) => path
+          rewrite: (path: string) => path
 
         },
 
@@ -150,7 +152,7 @@ export default defineConfig(async ({ mode }) => {
 
           secure: false,
 
-          rewrite: (path) => path
+          rewrite: (path: string) => path
 
         },
 
@@ -181,7 +183,7 @@ export default defineConfig(async ({ mode }) => {
 
           secure: false,
 
-          rewrite: (path) => path
+          rewrite: (path: string) => path
 
         },
 
@@ -193,7 +195,7 @@ export default defineConfig(async ({ mode }) => {
 
           secure: false,
 
-          rewrite: (path) => path.replace(/^\/caja-chica-api/, '/api')
+          rewrite: (path: string) => path.replace(/^\/caja-chica-api/, '/api')
 
         },
 
@@ -205,7 +207,7 @@ export default defineConfig(async ({ mode }) => {
 
           secure: false,
 
-          rewrite: (path) => path.replace(/^\/pyg-api/, pygProxyPrefix || '')
+          rewrite: (path: string) => path.replace(/^\/pyg-api/, pygProxyPrefix || '')
 
         },
 
@@ -217,7 +219,7 @@ export default defineConfig(async ({ mode }) => {
 
           secure: false,
 
-          rewrite: (path) => path.replace(/^\/slayer-api/, '/api')
+          rewrite: (path: string) => path.replace(/^\/slayer-api/, '/api')
 
         },
 
@@ -229,7 +231,7 @@ export default defineConfig(async ({ mode }) => {
 
           secure: false,
 
-          rewrite: (path) => path
+          rewrite: (path: string) => path
 
         },
 
@@ -241,7 +243,7 @@ export default defineConfig(async ({ mode }) => {
 
           secure: false,
 
-          rewrite: (path) => path.replace(/^\/employees-api/, '/api')
+          rewrite: (path: string) => path.replace(/^\/employees-api/, '')
 
         },
 
@@ -253,7 +255,7 @@ export default defineConfig(async ({ mode }) => {
 
           secure: false,
 
-          rewrite: (path) => path.replace(/^\/conciliacion-api/, '')
+          rewrite: (path: string) => path.replace(/^\/conciliacion-api/, '')
 
         },
 
@@ -265,7 +267,7 @@ export default defineConfig(async ({ mode }) => {
 
           secure: false,
 
-          rewrite: (path) => path.replace(/^\/maestro-api/, '')
+          rewrite: (path: string) => path.replace(/^\/maestro-api/, '')
 
         },
 
@@ -277,7 +279,7 @@ export default defineConfig(async ({ mode }) => {
 
           secure: false,
 
-          rewrite: (path) => path.replace(/^\/scan-api/, '')
+          rewrite: (path: string) => path.replace(/^\/scan-api/, '')
 
         },
 
@@ -289,7 +291,7 @@ export default defineConfig(async ({ mode }) => {
 
           secure: false,
 
-          rewrite: (path) => path.replace(/^\/inventario-api/, '')
+          rewrite: (path: string) => path.replace(/^\/inventario-api/, '')
 
         },
 
@@ -313,7 +315,31 @@ export default defineConfig(async ({ mode }) => {
 
           secure: false,
 
-          rewrite: (path) => path.replace(/^\/promocion-sobres-api/, '')
+          rewrite: (path: string) => path.replace(/^\/promocion-sobres-api/, '')
+
+        },
+
+        '/transacciones-api': {
+
+          target: transaccionesProxyTarget,
+
+          changeOrigin: true,
+
+          secure: false,
+
+          rewrite: (path: string) => path.replace(/^\/transacciones-api/, '')
+
+        },
+
+        '/ruleta-api': {
+
+          target: ruletaProxyTarget,
+
+          changeOrigin: true,
+
+          secure: false,
+
+          rewrite: (path) => path.replace(/^\/ruleta-api/, '')
 
         }
 

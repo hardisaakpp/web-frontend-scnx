@@ -61,33 +61,35 @@
                     <!-- Tab: General -->
                     <div v-show="activeTab === 'general'" class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div class="form-field" :class="{ required: !isEdit }">
-                            <label>Código Interno (ItemCode)</label>
-                            <input v-model="form.itemCode" type="text" :disabled="isEdit" :required="!isEdit" placeholder="Ej: ART-001" />
+                            <label for="formItemCode">Código Interno (ItemCode)</label>
+                            <input id="formItemCode" v-model="form.itemCode" type="text" :disabled="isEdit" :required="!isEdit" placeholder="Ej: ART-001" />
                             <span v-if="isEdit" class="help">El código no puede cambiarse en edición.</span>
                         </div>
                         <div class="form-field required">
-                            <label>Descripción Factura (ItemName)</label>
-                            <input v-model="form.itemName" type="text" required placeholder="Nombre del artículo" />
+                            <label for="formItemName">Descripción Factura (ItemName)</label>
+                            <input id="formItemName" v-model="form.itemName" type="text" required placeholder="Nombre del artículo" />
                         </div>
                         <div class="form-field">
-                            <label>Código de Barras</label>
-                            <input v-model="form.barCode" type="text" placeholder="EAN / UPC" />
+                            <label for="formBarCode">Código de Barras</label>
+                            <input id="formBarCode" v-model="form.barCode" type="text" placeholder="EAN / UPC" />
                         </div>
                         <div class="form-field">
-                            <label>Referencia / SKU sin talla</label>
-                            <input v-model="form.uSxxSkuSinTalla" type="text" placeholder="Código padre / referencia" />
+                            <label for="formSkuSinTalla">Referencia / SKU sin talla</label>
+                            <input id="formSkuSinTalla" v-model="form.uSxxSkuSinTalla" type="text" placeholder="Código padre / referencia" />
                         </div>
                         <div class="form-field">
-                            <label>Talla</label>
+                            <label for="selectTalla">Talla</label>
                             <SearchableSelect
+                                inputId="selectTalla"
                                 v-model="form.uIxxTalla"
                                 :options="cats.talla"
                                 placeholder="Seleccionar talla..."
                             />
                         </div>
                         <div class="form-field">
-                            <label>Género</label>
+                            <label for="selectGenero">Género</label>
                             <SearchableSelect
+                                inputId="selectGenero"
                                 v-model="form.uGen"
                                 :options="cats.genero"
                                 placeholder="Seleccionar género..."
@@ -95,20 +97,21 @@
                         </div>
 
                         <div class="form-field sm:col-span-2">
-                            <label>Descripción SAP (ForeignName)</label>
-                            <input v-model="form.foreignName" type="text" placeholder="Nombre en idioma extranjero" />
+                            <label for="formForeignName">Descripción SAP (ForeignName)</label>
+                            <input id="formForeignName" v-model="form.foreignName" type="text" placeholder="Nombre en idioma extranjero" />
                         </div>
                         <div class="form-field sm:col-span-2">
-                            <label>Descripción Etiqueta (E-commerce)</label>
-                            <input v-model="form.uDescEcomm" type="text" placeholder="Texto para etiqueta / tienda online" />
+                            <label for="formDescEcomm">Descripción Etiqueta (E-commerce)</label>
+                            <input id="formDescEcomm" v-model="form.uDescEcomm" type="text" placeholder="Texto para etiqueta / tienda online" />
                         </div>
                     </div>
 
                     <!-- Tab: Categorización -->
                     <div v-show="activeTab === 'cat'" class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div class="form-field required">
-                            <label>Negocio (U_IXX_MARCA)</label>
+                            <label for="selectNegocio">Negocio (U_IXX_MARCA)</label>
                             <SearchableSelect
+                                inputId="selectNegocio"
                                 v-model="form.uIxxMarca"
                                 :options="cats.negocio"
                                 placeholder="Seleccionar negocio..."
@@ -117,14 +120,15 @@
                         </div>
 
                         <div class="form-field">
-                            <label>Marca</label>
-                            <input v-model="form.uMarca" type="text" placeholder="Ej: ROLLY" />
+                            <label for="formMarca">Marca</label>
+                            <input id="formMarca" v-model="form.uMarca" type="text" placeholder="Ej: ROLLY" />
                         </div>
 
                         <!-- Jerarquía en cascada: Sección → Categoría → Línea -->
                         <div class="form-field">
-                            <label>Sección (U_NV1)</label>
+                            <label for="selectSeccion">Sección (U_NV1)</label>
                             <SearchableSelect
+                                inputId="selectSeccion"
                                 v-model="form.uNv1"
                                 :options="cats.secciones"
                                 placeholder="Seleccionar sección..."
@@ -133,8 +137,9 @@
                             />
                         </div>
                         <div class="form-field">
-                            <label>Categoría (U_NV2)</label>
+                            <label for="selectCategoria">Categoría (U_NV2)</label>
                             <SearchableSelect
+                                inputId="selectCategoria"
                                 v-model="form.uNv2"
                                 :options="cats.categorias"
                                 placeholder="Seleccionar categoría..."
@@ -144,8 +149,9 @@
                             />
                         </div>
                         <div class="form-field">
-                            <label>Línea (U_NV3)</label>
+                            <label for="selectLinea">Línea (U_NV3)</label>
                             <SearchableSelect
+                                inputId="selectLinea"
                                 v-model="form.uNv3"
                                 :options="cats.lineas"
                                 placeholder="Seleccionar línea..."
@@ -155,32 +161,36 @@
                         </div>
 
                         <div class="form-field">
-                            <label>Nombre Colección</label>
+                            <label for="selectColeccion">Nombre Colección</label>
                             <SearchableSelect
+                                inputId="selectColeccion"
                                 v-model="form.uNomColeccion"
                                 :options="cats.coleccion"
                                 placeholder="Seleccionar colección..."
                             />
                         </div>
                         <div class="form-field">
-                            <label>Estatus de Permanencia</label>
+                            <label for="selectPermanencia">Estatus de Permanencia</label>
                             <SearchableSelect
+                                inputId="selectPermanencia"
                                 v-model="form.uReposicion"
                                 :options="cats.permanencia"
                                 placeholder="Seleccionar estatus..."
                             />
                         </div>
                         <div class="form-field">
-                            <label>Canal de Venta</label>
+                            <label for="selectCanal">Canal de Venta</label>
                             <SearchableSelect
+                                inputId="selectCanal"
                                 v-model="form.uCanalVenta"
                                 :options="cats.canal"
                                 placeholder="Seleccionar canal..."
                             />
                         </div>
                         <div class="form-field">
-                            <label>Región de Venta</label>
+                            <label for="selectRegion">Región de Venta</label>
                             <SearchableSelect
+                                inputId="selectRegion"
                                 v-model="form.uRegion"
                                 :options="cats.region"
                                 placeholder="Seleccionar región..."
@@ -192,8 +202,9 @@
                     <!-- Tab: Color y Material -->
                     <div v-show="activeTab === 'mat'" class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div class="form-field">
-                            <label>Color Primario</label>
+                            <label for="selectColorPrimario">Color Primario</label>
                             <SearchableSelect
+                                inputId="selectColorPrimario"
                                 :modelValue="form.uCodColor"
                                 :options="cats.color"
                                 placeholder="Seleccionar color..."
@@ -202,13 +213,14 @@
                             />
                         </div>
                         <div class="form-field">
-                            <label>Cód. Color Primario</label>
-                            <input :value="form.uCodColor ?? '-'" type="text" disabled />
+                            <label for="formCodColorDisplay">Cód. Color Primario</label>
+                            <input id="formCodColorDisplay" :value="form.uCodColor ?? '-'" type="text" disabled />
                             <span class="help">Se asigna automáticamente al seleccionar un color.</span>
                         </div>
                         <div class="form-field">
-                            <label>Color Secundario</label>
+                            <label for="selectColorSecundario">Color Secundario</label>
                             <SearchableSelect
+                                inputId="selectColorSecundario"
                                 :modelValue="form.uCodColSecu"
                                 :options="cats.color"
                                 placeholder="Seleccionar color..."
@@ -218,23 +230,24 @@
                         </div>
 
                         <div class="form-field">
-                            <label>Cód. Color Secundario</label>
-                            <input :value="form.uCodColSecu ?? '-'" type="text" disabled />
+                            <label for="formCodColSecuDisplay">Cód. Color Secundario</label>
+                            <input id="formCodColSecuDisplay" :value="form.uCodColSecu ?? '-'" type="text" disabled />
                             <span class="help">Se asigna automáticamente al seleccionar un color.</span>
                         </div>
                         <div class="form-field">
-                            <label>Material</label>
-                            <input v-model="form.uIxxMaterial" type="text" placeholder="Tela, Cuero, Sintético..." />
+                            <label for="formMaterial">Material</label>
+                            <input id="formMaterial" v-model="form.uIxxMaterial" type="text" placeholder="Tela, Cuero, Sintético..." />
                         </div>
                         <div class="form-field">
-                            <label>Composición</label>
-                            <input v-model="form.uIxxComposicion" type="text" placeholder="80% Algodón 20% Poliéster" />
+                            <label for="formComposicion">Composición</label>
+                            <input id="formComposicion" v-model="form.uIxxComposicion" type="text" placeholder="80% Algodón 20% Poliéster" />
                         </div>
 
                         <!-- Cascada: Línea de Atributo → Atributo Único -->
                         <div class="form-field">
-                            <label>Línea de Atributo</label>
+                            <label for="selectLineaAtributo">Línea de Atributo</label>
                             <SearchableSelect
+                                inputId="selectLineaAtributo"
                                 v-model="selectedLineaAtributo"
                                 :options="cats.lineasAtributo"
                                 placeholder="Seleccionar línea..."
@@ -243,8 +256,9 @@
                             />
                         </div>
                         <div class="form-field">
-                            <label>Atributo Único Textil/Calzado</label>
+                            <label for="selectAtributo">Atributo Único Textil/Calzado</label>
                             <SearchableSelect
+                                inputId="selectAtributo"
                                 v-model="form.uAtrMed"
                                 :options="cats.atributos"
                                 placeholder="Seleccionar atributo..."
@@ -254,28 +268,30 @@
                         </div>
 
                         <div class="form-field">
-                            <label>Atributo Único 2</label>
-                            <input v-model="form.uAtrUni" type="text" placeholder="Atributo adicional" />
+                            <label for="formAtrUni">Atributo Único 2</label>
+                            <input id="formAtrUni" v-model="form.uAtrUni" type="text" placeholder="Atributo adicional" />
                         </div>
                     </div>
 
                     <!-- Tab: Logística y Precios -->
                     <div v-show="activeTab === 'log'" class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div class="form-field">
-                            <label>Código Proveedor</label>
-                            <input v-model="form.uCodPvr" type="text" placeholder="Código del proveedor" />
+                            <label for="formCodPvr">Código Proveedor</label>
+                            <input id="formCodPvr" v-model="form.uCodPvr" type="text" placeholder="Código del proveedor" />
                         </div>
                         <div class="form-field">
-                            <label>Origen de Compra</label>
+                            <label for="selectOrigen">Origen de Compra</label>
                             <SearchableSelect
+                                inputId="selectOrigen"
                                 v-model="form.uOrigen"
                                 :options="cats.origen"
                                 placeholder="Seleccionar origen..."
                             />
                         </div>
                         <div class="form-field">
-                            <label>País de Origen</label>
+                            <label for="selectPais">País de Origen</label>
                             <SearchableSelect
+                                inputId="selectPais"
                                 v-model="form.uPOri"
                                 :options="cats.pais"
                                 placeholder="Seleccionar país..."
@@ -283,16 +299,17 @@
                         </div>
 
                         <div class="form-field">
-                            <label>Lead Time Proveedor (días)</label>
-                            <input v-model.number="form.leadTime" type="number" placeholder="0" min="0" />
+                            <label for="formLeadTime">Lead Time Proveedor (días)</label>
+                            <input id="formLeadTime" v-model.number="form.leadTime" type="number" placeholder="0" min="0" />
                         </div>
                         <div class="form-field">
-                            <label>Cantidad Mínima de Compra</label>
-                            <input v-model.number="form.minOrderQuantity" type="number" placeholder="1" min="0" />
+                            <label for="formMinOrder">Cantidad Mínima de Compra</label>
+                            <input id="formMinOrder" v-model.number="form.minOrderQuantity" type="number" placeholder="1" min="0" />
                         </div>
                         <div class="form-field">
-                            <label>Envío Directo a Tienda</label>
+                            <label for="selectEnvio">Envío Directo a Tienda</label>
                             <SearchableSelect
+                                inputId="selectEnvio"
                                 v-model="form.uTipAbs"
                                 :options="cats.envio"
                                 placeholder="Seleccionar tipo..."
@@ -300,28 +317,29 @@
                         </div>
 
                         <div class="form-field">
-                            <label>Unidad de Empaque - Outer</label>
-                            <input v-model.number="form.uUnidadDespacho" type="number" placeholder="0" />
+                            <label for="formUnidadDespacho">Unidad de Empaque - Outer</label>
+                            <input id="formUnidadDespacho" v-model.number="form.uUnidadDespacho" type="number" placeholder="0" />
                         </div>
                         <div class="form-field">
-                            <label>Unidad de Empaque - Inner</label>
-                            <input v-model.number="form.uDespIn" type="number" placeholder="0" />
+                            <label for="formDespIn">Unidad de Empaque - Inner</label>
+                            <input id="formDespIn" v-model.number="form.uDespIn" type="number" placeholder="0" />
                         </div>
                         <div class="form-field">
-                            <label>Unidad de Venta (Pack)</label>
-                            <input v-model="form.uIxxPack" type="text" placeholder="PAR, UNIDAD..." />
+                            <label for="formPack">Unidad de Venta (Pack)</label>
+                            <input id="formPack" v-model="form.uIxxPack" type="text" placeholder="PAR, UNIDAD..." />
                         </div>
                         <div class="form-field">
-                            <label>PVP (Precio)</label>
-                            <input v-model.number="form.price" type="number" step="0.01" placeholder="0.00" min="0" />
+                            <label for="formPrice">PVP (Precio)</label>
+                            <input id="formPrice" v-model.number="form.price" type="number" step="0.01" placeholder="0.00" min="0" />
                         </div>
                         <div class="form-field">
-                            <label>Costo de Arranque</label>
-                            <input v-model.number="form.uPrArq" type="number" step="0.01" placeholder="0.00" />
+                            <label for="formPrArq">Costo de Arranque</label>
+                            <input id="formPrArq" v-model.number="form.uPrArq" type="number" step="0.01" placeholder="0.00" />
                         </div>
                         <div class="form-field">
-                            <label>Liquidación</label>
+                            <label for="selectLiquidacion">Liquidación</label>
                             <SearchableSelect
+                                inputId="selectLiquidacion"
                                 v-model="form.uLiq"
                                 :options="cats.liquidacion"
                                 placeholder="Seleccionar..."
@@ -333,137 +351,137 @@
                     <!-- Tab: Config. SAP / Impuestos -->
                     <div v-show="activeTab === 'sap'" class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div class="form-field required">
-                            <label>Tipo de Artículo (ItemType)</label>
-                            <input v-model="form.itemType" type="text" required placeholder="itItems" />
+                            <label for="formItemType">Tipo de Artículo (ItemType)</label>
+                            <input id="formItemType" v-model="form.itemType" type="text" required placeholder="itItems" />
                         </div>
                         <div class="form-field required">
-                            <label>Grupo de Artículos (ItemsGroupCode)</label>
-                            <input v-model.number="form.itemsGroupCode" type="number" required placeholder="100" />
+                            <label for="formItemsGroupCode">Grupo de Artículos (ItemsGroupCode)</label>
+                            <input id="formItemsGroupCode" v-model.number="form.itemsGroupCode" type="number" required placeholder="100" />
                         </div>
                         <div class="form-field">
-                            <label>Sistema de Evaluación</label>
-                            <select v-model="form.costAccountingMethod">
+                            <label for="formCostAccounting">Sistema de Evaluación</label>
+                            <select id="formCostAccounting" v-model="form.costAccountingMethod">
                                 <option value="A">A - Promedio</option>
                                 <option value="S">S - Estándar</option>
                                 <option value="F">F - FIFO</option>
                             </select>
                         </div>
                         <div class="form-field">
-                            <label>GL Method</label>
-                            <select v-model="form.glMethod">
+                            <label for="formGlMethod">GL Method</label>
+                            <select id="formGlMethod" v-model="form.glMethod">
                                 <option value="C">C - Clase de Artículo</option>
                                 <option value="W">W - Almacén</option>
                             </select>
                         </div>
                         <div class="form-field">
-                            <label>Artículo de Inventario</label>
-                            <select v-model="form.inventoryItem">
+                            <label for="formInventoryItem">Artículo de Inventario</label>
+                            <select id="formInventoryItem" v-model="form.inventoryItem">
                                 <option value="Y">Y - Sí</option>
                                 <option value="N">N - No</option>
                             </select>
                         </div>
                         <div class="form-field">
-                            <label>Artículo de Venta</label>
-                            <select v-model="form.salesItem">
+                            <label for="formSalesItem">Artículo de Venta</label>
+                            <select id="formSalesItem" v-model="form.salesItem">
                                 <option value="Y">Y - Sí</option>
                                 <option value="N">N - No</option>
                             </select>
                         </div>
                         <div class="form-field">
-                            <label>Artículo de Compra</label>
-                            <select v-model="form.purchaseItem">
+                            <label for="formPurchaseItem">Artículo de Compra</label>
+                            <select id="formPurchaseItem" v-model="form.purchaseItem">
                                 <option value="Y">Y - Sí</option>
                                 <option value="N">N - No</option>
                             </select>
                         </div>
                         <div class="form-field">
-                            <label>Gestión por Almacén</label>
-                            <select v-model="form.manageStockByWarehouse">
+                            <label for="formManageStock">Gestión por Almacén</label>
+                            <select id="formManageStock" v-model="form.manageStockByWarehouse">
                                 <option value="Y">Y - Sí</option>
                                 <option value="N">N - No</option>
                             </select>
                         </div>
                         <div class="form-field">
-                            <label>IVA (VATLiable)</label>
-                            <select v-model="form.vatLiable">
+                            <label for="formVatLiable">IVA (VATLiable)</label>
+                            <select id="formVatLiable" v-model="form.vatLiable">
                                 <option value="Y">Y - Sí</option>
                                 <option value="N">N - No</option>
                             </select>
                         </div>
                         <div class="form-field">
-                            <label>Retención (WTLiable)</label>
-                            <select v-model="form.wtLiable">
+                            <label for="formWtLiable">Retención (WTLiable)</label>
+                            <select id="formWtLiable" v-model="form.wtLiable">
                                 <option value="Y">Y - Sí</option>
                                 <option value="N">N - No</option>
                             </select>
                         </div>
                         <div class="form-field">
-                            <label>Impuesto Indirecto</label>
-                            <select v-model="form.indirectTax">
+                            <label for="formIndirectTax">Impuesto Indirecto</label>
+                            <select id="formIndirectTax" v-model="form.indirectTax">
                                 <option value="Y">Y - Sí</option>
                                 <option value="N">N - No</option>
                             </select>
                         </div>
                         <div class="form-field">
-                            <label>Código Impuesto AR</label>
-                            <input v-model="form.arTaxCode" type="text" placeholder="IVA, IVAI..." />
+                            <label for="formArTaxCode">Código Impuesto AR</label>
+                            <input id="formArTaxCode" v-model="form.arTaxCode" type="text" placeholder="IVA, IVAI..." />
                         </div>
                         <div class="form-field">
-                            <label>Código Impuesto AP</label>
-                            <input v-model="form.apTaxCode" type="text" placeholder="IVA, IVAI..." />
+                            <label for="formApTaxCode">Código Impuesto AP</label>
+                            <input id="formApTaxCode" v-model="form.apTaxCode" type="text" placeholder="IVA, IVAI..." />
                         </div>
                         <div class="form-field">
-                            <label>Sistema de Planificación</label>
-                            <select v-model="form.planningSystem">
+                            <label for="formPlanningSystem">Sistema de Planificación</label>
+                            <select id="formPlanningSystem" v-model="form.planningSystem">
                                 <option value="M">M - MRP</option>
                                 <option value="N">N - Ninguno</option>
                             </select>
                         </div>
                         <div class="form-field">
-                            <label>Método de Abastecimiento</label>
-                            <select v-model="form.procurementMethod">
+                            <label for="formProcurementMethod">Método de Abastecimiento</label>
+                            <select id="formProcurementMethod" v-model="form.procurementMethod">
                                 <option value="B">B - Compra</option>
                                 <option value="M">M - Fabricación</option>
                             </select>
                         </div>
                         <div class="form-field">
-                            <label>Unidad de Medida Inventario</label>
-                            <input v-model="form.inventoryUom" type="text" placeholder="PAR, UND..." />
+                            <label for="formInventoryUom">Unidad de Medida Inventario</label>
+                            <input id="formInventoryUom" v-model="form.inventoryUom" type="text" placeholder="PAR, UND..." />
                         </div>
                         <div class="form-field">
-                            <label>Unidad de Compra</label>
-                            <input v-model="form.purchaseUnit" type="text" placeholder="PAR, UND..." />
+                            <label for="formPurchaseUnit">Unidad de Compra</label>
+                            <input id="formPurchaseUnit" v-model="form.purchaseUnit" type="text" placeholder="PAR, UND..." />
                         </div>
                         <div class="form-field">
-                            <label>Unidades por Compra</label>
-                            <input v-model.number="form.purchaseItemsPerUnit" type="number" placeholder="1" min="0" />
+                            <label for="formPurchaseItemsPerUnit">Unidades por Compra</label>
+                            <input id="formPurchaseItemsPerUnit" v-model.number="form.purchaseItemsPerUnit" type="number" placeholder="1" min="0" />
                         </div>
                         <div class="form-field">
-                            <label>Unidad de Venta</label>
-                            <input v-model="form.salesUnit" type="text" placeholder="PAR, UND..." />
+                            <label for="formSalesUnit">Unidad de Venta</label>
+                            <input id="formSalesUnit" v-model="form.salesUnit" type="text" placeholder="PAR, UND..." />
                         </div>
                         <div class="form-field">
-                            <label>Unidades por Venta</label>
-                            <input v-model.number="form.salesItemsPerUnit" type="number" placeholder="1" min="0" />
+                            <label for="formSalesItemsPerUnit">Unidades por Venta</label>
+                            <input id="formSalesItemsPerUnit" v-model.number="form.salesItemsPerUnit" type="number" placeholder="1" min="0" />
                         </div>
                         <div class="form-field">
-                            <label>Gestión por Lotes</label>
-                            <select v-model="form.manageBatchNumbers">
+                            <label for="formManageBatch">Gestión por Lotes</label>
+                            <select id="formManageBatch" v-model="form.manageBatchNumbers">
                                 <option value="N">N - No</option>
                                 <option value="Y">Y - Sí</option>
                             </select>
                         </div>
                         <div class="form-field">
-                            <label>Fabricante (FirmCode)</label>
-                            <input v-model.number="form.manufacturer" type="number" placeholder="0" />
+                            <label for="formManufacturer">Fabricante (FirmCode)</label>
+                            <input id="formManufacturer" v-model.number="form.manufacturer" type="number" placeholder="0" />
                         </div>
                         <div class="form-field">
-                            <label>Tipo de Envío</label>
-                            <input v-model.number="form.shipType" type="number" placeholder="0" />
+                            <label for="formShipType">Tipo de Envío</label>
+                            <input id="formShipType" v-model.number="form.shipType" type="number" placeholder="0" />
                         </div>
                         <div class="form-field">
-                            <label>Tipo de Bien</label>
-                            <input v-model="form.uTipoBien" type="text" placeholder="Tipo de bien" />
+                            <label for="formTipoBien">Tipo de Bien</label>
+                            <input id="formTipoBien" v-model="form.uTipoBien" type="text" placeholder="Tipo de bien" />
                         </div>
                     </div>
                 </div>
@@ -529,7 +547,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { articuloService, catalogoService } from '../services/articuloService'
 import type { CatalogoItem, JerarquiaItem } from '../services/articuloService'
@@ -559,7 +577,7 @@ const tabsWithErrors = computed(() => {
     if (!form.value.itemName) errorTabs.add('general')
     if (!form.value.uIxxMarca) errorTabs.add('cat')
     if (!form.value.itemType) errorTabs.add('sap')
-    if (form.value.itemsGroupCode === null || form.value.itemsGroupCode === undefined) errorTabs.add('sap')
+    if (form.value.itemsGroupCode == null) errorTabs.add('sap')
     return errorTabs
 })
 
@@ -569,7 +587,7 @@ const validationErrorsList = computed(() => {
     if (!form.value.itemName) errors.push('Descripción Factura (Tab General)')
     if (!form.value.uIxxMarca) errors.push('Negocio (Tab Categorización)')
     if (!form.value.itemType) errors.push('Tipo de Artículo (Tab Config. SAP)')
-    if (form.value.itemsGroupCode === null || form.value.itemsGroupCode === undefined) errors.push('Grupo de Artículos (Tab Config. SAP)')
+    if (form.value.itemsGroupCode == null) errors.push('Grupo de Artículos (Tab Config. SAP)')
     return errors
 })
 
@@ -578,7 +596,7 @@ function getFirstErrorTab() {
     if (!form.value.itemName) return 'general'
     if (!form.value.uIxxMarca) return 'cat'
     if (!form.value.itemType) return 'sap'
-    if (form.value.itemsGroupCode === null || form.value.itemsGroupCode === undefined) return 'sap'
+    if (form.value.itemsGroupCode == null) return 'sap'
     return null
 }
 
@@ -785,60 +803,53 @@ const handleKeydown = (e: KeyboardEvent) => {
     // Ctrl + 1..5: Cambiar pestañas
     if (e.ctrlKey && e.key >= '1' && e.key <= '5') {
         e.preventDefault()
-        activeTab.value = tabs[parseInt(e.key) - 1].id
+        activeTab.value = tabs[Number.parseInt(e.key, 10) - 1].id
+    }
+}
+
+async function cargarDatosEdicion(itemCode: string) {
+    loadingData.value = true
+    try {
+        const articulo = await articuloService.getArticuloByCode(itemCode)
+        Object.keys(form.value).forEach(key => {
+            const k = key as keyof typeof form.value
+            if (articulo && key in articulo) {
+                const val = (articulo as unknown as Record<string, unknown>)[key]
+                if (val != null) {
+                    (form.value as Record<string, unknown>)[k] = val
+                }
+            }
+        })
+        if (form.value.uNv1) {
+            cats.value.categorias = await catalogoService.getCategorias(form.value.uNv1).catch(() => [])
+        }
+        if (form.value.uNv2) {
+            cats.value.lineas = await catalogoService.getLineas(form.value.uNv2).catch(() => [])
+        }
+        if (form.value.uAtrMed && cats.value.lineasAtributo.length > 0) {
+            for (const lineaItem of cats.value.lineasAtributo) {
+                try {
+                    const attrs = await catalogoService.getAtributos(lineaItem.nombre)
+                    if (attrs.some(a => a.nombre === form.value.uAtrMed)) {
+                        selectedLineaAtributo.value = lineaItem.nombre
+                        cats.value.atributos = attrs
+                        break
+                    }
+                } catch { /* continuar buscando */ }
+            }
+        }
+    } catch {
+        loadError.value = `No se pudo cargar el artículo "${itemCode}". Verifica que el código es correcto.`
+    } finally {
+        loadingData.value = false
     }
 }
 
 onMounted(async () => {
-    window.addEventListener('keydown', handleKeydown)
+    globalThis.addEventListener('keydown', handleKeydown)
     await cargarCatalogos()
-    // ... rest of logic
-
-
     if (isEdit.value) {
-        const itemCode = route.params.itemCode as string
-        loadingData.value = true
-        try {
-            const articulo = await articuloService.getArticuloByCode(itemCode)
-            // Rellenar el form con los datos ya normalizados por el servicio
-            Object.keys(form.value).forEach(key => {
-                const k = key as keyof typeof form.value
-                if (articulo && key in articulo) {
-                    const val = (articulo as any)[key]
-                    if (val !== undefined && val !== null) {
-                        (form.value as any)[k] = val
-                    }
-                }
-            })
-
-            // Cargar la jerarquía en cascada si existen valores guardados
-            if (form.value.uNv1) {
-                cats.value.categorias = await catalogoService.getCategorias(form.value.uNv1).catch(() => [])
-            }
-            if (form.value.uNv2) {
-                cats.value.lineas = await catalogoService.getLineas(form.value.uNv2).catch(() => [])
-            }
-
-            // Si el artículo tiene un atributo único, intentar encontrar la línea de atributo correspondiente
-            if (form.value.uAtrMed && cats.value.lineasAtributo.length > 0) {
-                // Intentar buscar en cada línea cuál contiene el atributo guardado
-                for (const lineaItem of cats.value.lineasAtributo) {
-                    try {
-                        const attrs = await catalogoService.getAtributos(lineaItem.nombre)
-                        if (attrs.some(a => a.nombre === form.value.uAtrMed)) {
-                            selectedLineaAtributo.value = lineaItem.nombre
-                            cats.value.atributos = attrs
-                            break
-                        }
-                    } catch { /* continuar buscando */ }
-                }
-            }
-        } catch (err) {
-            loadError.value = `No se pudo cargar el artículo "${itemCode}". Verifica que el código es correcto.`
-            console.error(err)
-        } finally {
-            loadingData.value = false
-        }
+        await cargarDatosEdicion(route.params.itemCode as string)
     }
 })
 
@@ -865,22 +876,22 @@ async function handleSubmit() {
     const payload: Record<string, unknown> = {}
     
     // Lista de campos que sí deben ser enviados como numéricos
-    const numericFields = [
+    const numericFields = new Set([
         'uCodColor', 'uCodColSecu', 'leadTime', 'minOrderQuantity',
         'uUnidadDespacho', 'uDespIn', 'uPrArq', 'price',
         'itemsGroupCode', 'manufacturer', 'shipType',
         'purchaseItemsPerUnit', 'salesItemsPerUnit'
-    ]
+    ])
 
     Object.entries(form.value).forEach(([key, val]) => {
         // No enviar el código de artículo en el body del PATCH (se envía en la URL)
         if (key === 'itemCode' && isEdit.value) return
-        
-        if (val === '' || val === null || val === undefined) return
-        
-        // Pydantic strictness: forzar a string los campos que backend espera como texto 
+
+        if (val === '' || val == null) return
+
+        // Pydantic strictness: forzar a string los campos que backend espera como texto
         // pero que Catálogos/jerarquías pudieron asignar como número.
-        if (typeof val === 'number' && !numericFields.includes(key)) {
+        if (typeof val === 'number' && !numericFields.has(key)) {
             payload[key] = String(val)
         } else {
             payload[key] = val
@@ -905,14 +916,13 @@ async function handleSubmit() {
         } else {
             submitError.value = 'Ocurrió un error al guardar. Revisa los datos e inténtalo de nuevo.'
         }
-        console.error(err)
     } finally {
         submitting.value = false
     }
 }
 
 onUnmounted(() => {
-    window.removeEventListener('keydown', handleKeydown)
+    globalThis.removeEventListener('keydown', handleKeydown)
 })
 </script>
 

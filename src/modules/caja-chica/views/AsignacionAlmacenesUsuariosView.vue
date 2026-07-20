@@ -133,8 +133,8 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from '@vue/runtime-core'
-import axios from 'axios'
 import api from '@/services/api'
+import { cajaChicaApi } from '../services/cajaChicaApi'
 import { useRouter } from 'vue-router'
 
 type UserRecord = Record<string, unknown>
@@ -167,14 +167,14 @@ const volver = () => {
 }
 
 const getUserIdValue = (user: UserRecord): string => {
-  const id = user.IdUsuario ?? user.idUsuario ?? user.id ?? ''
+  const id = user.Id ?? user.IdUsuario ?? user.idUsuario ?? user.id ?? ''
   return String(id)
 }
 
 const getUserLabel = (user: UserRecord): string => {
   const userName = String(user.UsuarioNombre ?? user.userName ?? user.username ?? '').trim()
-  const fullName = String(user.Nombre ?? user.fullName ?? user.name ?? '').trim()
-  const email = String(user.Correo ?? user.email ?? user.mail ?? '').trim()
+  const fullName = String(user.FullName ?? user.Nombre ?? user.fullName ?? user.name ?? '').trim()
+  const email = String(user.Email ?? user.Correo ?? user.email ?? user.mail ?? '').trim()
   const base = fullName || userName || email || 'Usuario'
   return email && base !== email ? `${base} (${email})` : base
 }
@@ -222,23 +222,9 @@ const filteredAsignaciones = computed(() => {
   return asignaciones.value.filter(item => item.IdUsuario === filterUserId.value)
 })
 
-const cajaChicaApi = axios.create({
-  baseURL: import.meta.env.VITE_CAJA_CHICA_API_URL || '/caja-chica-api',
-  headers: {
-    'Content-Type': 'application/json'
-  }
-})
-
-cajaChicaApi.interceptors.request.use(config => {
-  const token = localStorage.getItem('token') || sessionStorage.getItem('token')
-  if (token && config.headers) {
-    config.headers['Authorization'] = `Bearer ${token}`
-  }
-  return config
-})
 
 const loadUsuarios = async () => {
-  const response = await api.get('/Users')
+  const response = await api.get('/Users/list')
   const payload = response.data as any
   if (Array.isArray(payload)) {
     usuarios.value = payload

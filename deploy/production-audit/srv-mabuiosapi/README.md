@@ -7,6 +7,7 @@ Inventario del host de **producción** (`scnexus.mabelgroup.com.ec`). Guía para
 | Documento | Contenido |
 |-----------|-----------|
 | [INFRASTRUCTURE.md](./INFRASTRUCTURE.md) | Sitios, puertos, flujos, checklist |
+| [INCIDENTS.md](./INCIDENTS.md) | Registro de incidentes y correcciones |
 | [OTHER-SITES-SUMMARY.md](./OTHER-SITES-SUMMARY.md) | sapi, intranet, storecontrol, glpi — no tocar |
 | [apache/](./apache/) | VirtualHosts Apache (prod) |
 | [nginx/](./nginx/) | Nginx host :3001 (prod) |
