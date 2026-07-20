@@ -3,7 +3,7 @@ import type {
   Ruleta, RuletaFilters, RuletaPagination,
   Tienda, SegmentoRuleta, IdentificacionCliente, ResultadoGiro,
   MetricasSupervisor, EnroladorMetrica,
-  Campana, CampanaBackendResponse, CrearCampanaDTO, GrupoProbabilidad, PremioAdmin,
+  Campana, CampanaBackendResponse, CampanaDisponibleBackendResponse, DisponibilidadCampana, CrearCampanaDTO, GrupoProbabilidad, PremioAdmin,
   TiendaInventario, InventarioPremio,
   MetricasGlobal, EfectividadTienda, SegmentacionGrupo, ConversionSemanal,
   EstadoCampana, EstadoGrupo, SegmentoCliente, TipoPremio,
@@ -48,6 +48,10 @@ function mapCampana(raw: CampanaBackendResponse): Campana {
     max_giros: raw.maxGirosPorCliente,
     segmentos_permitidos: (raw.segmentosPermitidos as SegmentoCliente[]) ?? [],
     estado: raw.estado.toLowerCase() as EstadoCampana,
+    estado_operativo: raw.estadoOperativo.toLowerCase() as Campana['estado_operativo'],
+    esta_vigente: raw.estaVigente,
+    disponible_para_giro: raw.disponibleParaGiro,
+    motivo_no_disponible: raw.motivoNoDisponible,
     requiere_validacion_onecard: raw.requiereValidacionOneCard ?? false,
     tiene_premios: Array.isArray(raw.premios) && raw.premios.length > 0,
     hora_feliz_inicio: raw.horaFelizInicio ?? null,
@@ -173,9 +177,20 @@ export const ruletaService = {
 
   // ─── Obtener Campaña Activa ──────────────────────────────────────────────────
   async getCampanaActiva(): Promise<Campana | null> {
-    const response = await campanaApi.get<CampanaBackendResponse[]>('/api/Campanas')
-    const activa = response.data.find(c => c.estado === 'Activa' || c.estado.toLowerCase() === 'activa')
-    return activa ? mapCampana(activa) : null
+    const disponibilidad = await this.getDisponibilidadCampana()
+    return disponibilidad.disponible && disponibilidad.campana
+      ? disponibilidad.campana
+      : null
+  },
+
+  async getDisponibilidadCampana(): Promise<DisponibilidadCampana> {
+    const response = await campanaApi.get<CampanaDisponibleBackendResponse>('/api/Campanas/disponible-para-giro')
+    return {
+      disponible: response.data.disponible,
+      estado_operativo: response.data.estadoOperativo,
+      motivo: response.data.motivo,
+      campana: response.data.campana ? mapCampana(response.data.campana) : null
+    }
   },
 
   // ─── Segmentos campaña activa ──────────────────────────────────────────────
@@ -269,8 +284,8 @@ export const ruletaService = {
     const payload = {
       nombre: dto.nombre,
       descripcion: dto.descripcion ?? null,
-      fechaInicio: dto.fecha_inicio + 'T00:00:00',
-      fechaFin: dto.fecha_fin + 'T00:00:00',
+      fechaInicio: dto.fecha_inicio,
+      fechaFin: dto.fecha_fin,
       diasEntreGiros: dto.cooldown_dias,
       maxGirosPorCliente: dto.max_giros,
       segmentosPermitidos: dto.segmentos_permitidos.length > 0 ? dto.segmentos_permitidos : null,
@@ -287,8 +302,8 @@ export const ruletaService = {
     const payload = {
       nombre: dto.nombre,
       descripcion: dto.descripcion ?? null,
-      fechaInicio: dto.fecha_inicio + 'T00:00:00',
-      fechaFin: dto.fecha_fin + 'T00:00:00',
+      fechaInicio: dto.fecha_inicio,
+      fechaFin: dto.fecha_fin,
       diasEntreGiros: dto.cooldown_dias,
       maxGirosPorCliente: dto.max_giros,
       segmentosPermitidos: dto.segmentos_permitidos.length > 0 ? dto.segmentos_permitidos : null,
@@ -327,7 +342,7 @@ export const ruletaService = {
       const premios = byGroup.get(g)!
       const tieneReal = premios.some(p => !p.es_relleno)
       const tieneConsolacion = premios.some(p => p.es_relleno)
-      const permiteSoloConsolacion = g === 'GRUPO_5' || g === 'GRUPO_6'
+      const permiteSoloConsolacion = g === 'GRUPO_4' || g === 'GRUPO_5' || g === 'GRUPO_6'
       
       let estado: EstadoGrupo = 'incompleto'
       if ((tieneReal && tieneConsolacion) || (permiteSoloConsolacion && tieneConsolacion)) estado = 'completo'
