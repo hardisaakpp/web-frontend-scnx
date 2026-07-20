@@ -18,12 +18,38 @@
       <div class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-5">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Listado</h2>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              class="rounded border border-gray-200 dark:border-gray-700 text-sm px-3 py-1.5 disabled:opacity-50"
+              :disabled="excelLoading"
+              @click="downloadExcel"
+            >
+              {{ excelLoading ? 'Generando...' : 'Descargar Excel' }}
+            </button>
+            <button
+              type="button"
+              class="rounded border border-gray-200 dark:border-gray-700 text-sm px-3 py-1.5"
+              @click="loadHistorial"
+            >
+              Refrescar
+            </button>
+          </div>
+        </div>
+        <div v-if="excelError" class="mb-3 text-sm text-red-600 dark:text-red-400">{{ excelError }}</div>
+
+        <div class="mb-4 flex flex-wrap gap-2 border-b border-gray-200 dark:border-gray-700 pb-3">
           <button
+            v-for="tab in TABS"
+            :key="tab.value"
             type="button"
-            class="rounded border border-gray-200 dark:border-gray-700 text-sm px-3 py-1.5"
-            @click="loadHistorial"
+            class="rounded-full px-3 py-1.5 text-xs font-medium transition-colors"
+            :class="activeTab === tab.value
+              ? 'bg-emerald-600 text-white'
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'"
+            @click="activeTab = tab.value"
           >
-            Refrescar
+            {{ tab.label }}
           </button>
         </div>
 
@@ -44,7 +70,7 @@
               class="mt-1 w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1.5 text-sm"
             />
           </label>
-          <label class="text-xs text-gray-600 dark:text-gray-300">
+          <label v-if="activeTab === 'APROBADAS'" class="text-xs text-gray-600 dark:text-gray-300">
             Integracion
             <select
               v-model="filtroIntegracion"
@@ -92,7 +118,7 @@
                   {{ getIntegrationMessage(group.idLiquidacion)?.texto }}
                 </div>
                 <p class="text-xs text-gray-500 dark:text-gray-400">
-                  {{ group.totalItems }} detalles · Tienda: {{ group.codAlmacen }} · Custodio: {{ group.nombreCustodio }} · Fecha: {{ formatDate(group.fechaCreacion) }}
+                  {{ group.totalItems }} detalles · Tienda: {{ group.codAlmacen }} · Custodio: {{ group.nombreCustodio }} ({{ group.cedulaCustodio }}) · Fecha: {{ formatDate(group.fechaCreacion) }}
                 </p>
               </div>
               <div class="flex items-center gap-3">
@@ -139,6 +165,7 @@
                     <th class="py-2 pr-3">Total</th>
                     <th class="py-2 pr-3">Estado</th>
                     <th class="py-2 pr-3">Monto</th>
+                    <th class="py-2 pr-3">Aprobado por</th>
                     <th class="py-2 pr-3">Comentario</th>
                     <th class="py-2 pr-3">Fecha</th>
                     <th class="py-2 pr-3">Acciones</th>
@@ -157,6 +184,7 @@
                       </span>
                     </td>
                     <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ formatAmount(item.montoAprobado) }}</td>
+                    <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ getAprobadorNombre(item) }}</td>
                     <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.observacion || '-' }}</td>
                     <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ formatDate(item.fechaAprobacion) }}</td>
                     <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">
@@ -251,7 +279,7 @@
             <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-3">Detalle de consumo</div>
             <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
               <div>
-                <dt class="text-xs text-gray-500 dark:text-gray-400">Subtotal Base 15%</dt>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Subtotal Base Gravada</dt>
                 <dd class="text-sm text-gray-900 dark:text-white">{{ selectedDetalle ? formatAmount(selectedDetalle.subtotalConIva) : '-' }}</dd>
               </div>
               <div>
@@ -379,6 +407,15 @@ interface LiquidacionDetalleItem {
   total: number
   subtotalConIva: number
   subtotalSinIva: number
+  idTipoIva: number | null
+}
+
+interface TipoIvaItem {
+  id: number
+  codigo: string
+  descripcion: string
+  porcentaje: number | null
+  taxCodeSap: string
 }
 
 interface AprobacionItem {
@@ -481,6 +518,9 @@ const parseIntegracionResultado = (raw: unknown, fallbackText?: string) => {
 const loading = ref(false)
 const error = ref('')
 const historial = ref<HistorialItem[]>([])
+const catalogoTiposIva = ref<TipoIvaItem[]>([])
+const excelLoading = ref(false)
+const excelError = ref('')
 const openGroups = ref<Record<number, boolean>>({})
 const detallesByLiquidacion = ref<Record<number, LiquidacionDetalleItem[]>>({})
 const integraciones = ref<Record<number, IntegracionEstadoItem>>({})
@@ -598,7 +638,8 @@ const normalizeDetalle = (item: any): LiquidacionDetalleItem => ({
   nombreProveedor: normalizeString(item.nombreProveedor ?? item.NombreProveedor ?? ''),
   total: Number(item.total ?? item.Total ?? 0),
   subtotalConIva: Number(item.subtotal_Con_Iva ?? item.Subtotal_Con_Iva ?? item.subtotalConIva ?? 0),
-  subtotalSinIva: Number(item.subtotal_Sin_Iva ?? item.Subtotal_Sin_Iva ?? item.subtotalSinIva ?? 0)
+  subtotalSinIva: Number(item.subtotal_Sin_Iva ?? item.Subtotal_Sin_Iva ?? item.subtotalSinIva ?? 0),
+  idTipoIva: item.idTipoIva ?? item.IdTipoIva ?? null
 })
 
 const normalizeAprobacion = (item: any): AprobacionItem => ({
@@ -627,6 +668,42 @@ const fechaDesde = ref(formatDateInput(threeDaysAgo))
 const fechaHasta = ref(formatDateInput(today))
 const filtroIntegracion = ref<'PENDIENTES' | 'TODOS'>('PENDIENTES')
 
+type TabHistorial = 'APROBADAS' | 'RECHAZADAS' | 'DEVUELTAS' | 'CERRADAS'
+const activeTab = ref<TabHistorial>('APROBADAS')
+const TABS: Array<{ value: TabHistorial; label: string }> = [
+  { value: 'APROBADAS', label: 'Aprobadas' },
+  { value: 'RECHAZADAS', label: 'Rechazadas' },
+  { value: 'DEVUELTAS', label: 'Devueltas' },
+  { value: 'CERRADAS', label: 'Cerradas (integradas)' }
+]
+
+const loadTiposIva = async () => {
+  try {
+    const response = await cajaChicaApi.get('/TiposIva/all')
+    const payload = response.data as any
+    const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
+    catalogoTiposIva.value = items.map((item: any) => ({
+      id: Number(item.id ?? item.Id ?? 0),
+      codigo: normalizeString(item.codigo ?? item.Codigo ?? ''),
+      descripcion: normalizeString(item.descripcion ?? item.Descripcion ?? ''),
+      porcentaje: item.porcentaje ?? item.Porcentaje ?? null,
+      taxCodeSap: normalizeString(item.taxCodeSap ?? item.TaxCodeSap ?? '')
+    }))
+  } catch {
+    // Si falla la carga del catalogo, se recurre al fallback IVA_15/IVA_0 en resolveTaxCodeGravado.
+  }
+}
+
+// Antes de que existiera el catalogo de TiposIva, todos los detalles gravados usaban IVA_15.
+// Se mantiene ese fallback para no romper la integracion SAP de liquidaciones historicas sin IdTipoIva.
+const resolveTaxCodeGravado = (idTipoIva: number | null | undefined) => {
+  if (idTipoIva) {
+    const tipo = catalogoTiposIva.value.find(t => t.id === idTipoIva)
+    if (tipo?.taxCodeSap) return tipo.taxCodeSap
+  }
+  return 'IVA_15'
+}
+
 const getDateOnly = (value: string) => {
   const normalized = normalizeString(value)
   return normalized ? normalized.substring(0, 10) : ''
@@ -641,9 +718,11 @@ const resetFiltros = () => {
   filtroIntegracion.value = 'PENDIENTES'
 }
 
-type AprobacionMontosByBase = {
-  base15: number
-  base0: number
+type AprobacionMontosPorDetalle = {
+  gravado: number
+  taxCodeGravado: string
+  noGravado: number
+  ivaGravado: number
 }
 
 const resolveTipoBase = (rawTipoBase: unknown, detalle?: LiquidacionDetalleItem): 'BASE_15' | 'BASE_0' | '' => {
@@ -664,14 +743,16 @@ const resolveTipoBase = (rawTipoBase: unknown, detalle?: LiquidacionDetalleItem)
   return ''
 }
 
-const calculateTotalsFromBases = (montosByDetalle: Record<number, AprobacionMontosByBase>) => {
+// Totales para mostrar en pantalla / confirmacion. El IVA se suma desde el monto real
+// calculado por detalle (montos.ivaGravado), no desde una tasa fija, para soportar 15%/8%/0%/manual.
+const calculateTotalsFromBases = (montosByDetalle: Record<number, AprobacionMontosPorDetalle>) => {
   const roundAmount = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100
-  const base15 = roundAmount(Object.values(montosByDetalle).reduce((acc, montos) => acc + Number(montos.base15 ?? 0), 0))
-  const base0 = roundAmount(Object.values(montosByDetalle).reduce((acc, montos) => acc + Number(montos.base0 ?? 0), 0))
-  const subtotal = roundAmount(base15 + base0)
-  const iva = roundAmount(base15 * 0.15)
+  const gravado = roundAmount(Object.values(montosByDetalle).reduce((acc, montos) => acc + Number(montos.gravado ?? 0), 0))
+  const noGravado = roundAmount(Object.values(montosByDetalle).reduce((acc, montos) => acc + Number(montos.noGravado ?? 0), 0))
+  const iva = roundAmount(Object.values(montosByDetalle).reduce((acc, montos) => acc + Number(montos.ivaGravado ?? 0), 0))
+  const subtotal = roundAmount(gravado + noGravado)
   const total = roundAmount(subtotal + iva)
-  return { base15, base0, subtotal, iva, total }
+  return { base15: gravado, base0: noGravado, subtotal, iva, total }
 }
 
 const buildAprobacionMontosByDetalle = (
@@ -679,7 +760,7 @@ const buildAprobacionMontosByDetalle = (
   detalleById: Record<number, LiquidacionDetalleItem> = {}
 ) => {
   const roundAmount = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100
-  const byDetalle: Record<number, AprobacionMontosByBase> = {}
+  const byDetalle: Record<number, AprobacionMontosPorDetalle> = {}
   const approvedDetalleIds = new Set<number>()
 
   items.forEach(item => {
@@ -695,14 +776,21 @@ const buildAprobacionMontosByDetalle = (
     const detalle = detalleById[idDetalle]
     if (!detalle) return
 
-    const base15 = roundAmount(Math.max(0, Number(detalle.subtotalConIva ?? 0)))
-    const base0 = roundAmount(Math.max(0, Number(detalle.subtotalSinIva ?? 0)))
-    if (base15 > 0 || base0 > 0) {
-      byDetalle[idDetalle] = { base15, base0 }
+    const gravado = roundAmount(Math.max(0, Number(detalle.subtotalConIva ?? 0)))
+    const noGravado = roundAmount(Math.max(0, Number(detalle.subtotalSinIva ?? 0)))
+    if (gravado > 0 || noGravado > 0) {
+      const ivaDetalle = roundAmount(Math.max(0, Number(detalle.total ?? 0) - gravado - noGravado))
+      byDetalle[idDetalle] = {
+        gravado,
+        taxCodeGravado: resolveTaxCodeGravado(detalle.idTipoIva),
+        noGravado,
+        ivaGravado: gravado > 0 ? ivaDetalle : 0
+      }
     }
   })
 
-  // Fallback: si no vinieron subtotales en detalle, usar monto aprobado por tipo base.
+  // Fallback: si no vinieron subtotales en detalle, usar monto aprobado por tipo base
+  // (liquidaciones historicas anteriores al catalogo de TiposIva).
   items.forEach(item => {
     const idDetalle = Number(item.idDetalle ?? 0)
     if (!idDetalle) return
@@ -720,13 +808,14 @@ const buildAprobacionMontosByDetalle = (
     if (!tipoBase) return
 
     if (!byDetalle[idDetalle]) {
-      byDetalle[idDetalle] = { base15: 0, base0: 0 }
+      byDetalle[idDetalle] = { gravado: 0, taxCodeGravado: resolveTaxCodeGravado(detalle?.idTipoIva), noGravado: 0, ivaGravado: 0 }
     }
 
     if (tipoBase === 'BASE_15') {
-      byDetalle[idDetalle].base15 = Math.max(byDetalle[idDetalle].base15, monto)
+      byDetalle[idDetalle].gravado = Math.max(byDetalle[idDetalle].gravado, monto)
+      byDetalle[idDetalle].ivaGravado = roundAmount(byDetalle[idDetalle].gravado * 0.15)
     } else if (tipoBase === 'BASE_0') {
-      byDetalle[idDetalle].base0 = Math.max(byDetalle[idDetalle].base0, monto)
+      byDetalle[idDetalle].noGravado = Math.max(byDetalle[idDetalle].noGravado, monto)
     }
   })
 
@@ -754,14 +843,14 @@ const groupedHistorial = computed(() => {
     let subtotalMonto = 0
     let ivaMonto = 0
     Object.values(aprobacionesByDetalle).forEach(montos => {
-      const base15 = Number(montos.base15 ?? 0)
-      const base0 = Number(montos.base0 ?? 0)
+      const gravado = Number(montos.gravado ?? 0)
+      const noGravado = Number(montos.noGravado ?? 0)
 
-      if (base15 > 0) {
-        subtotalMonto += base15
-        ivaMonto += roundAmount(base15 * 0.15)
+      if (gravado > 0) {
+        subtotalMonto += gravado
+        ivaMonto += Number(montos.ivaGravado ?? 0)
       }
-      if (base0 > 0) subtotalMonto += base0
+      if (noGravado > 0) subtotalMonto += noGravado
     })
 
     subtotalMonto = roundAmount(subtotalMonto)
@@ -778,6 +867,7 @@ const groupedHistorial = computed(() => {
       totalItems: items.length,
       codAlmacen: base?.codAlmacen || '-',
       nombreCustodio: base?.nombreCustodio || '-',
+      cedulaCustodio: liquidacionesMap.value[idLiquidacion]?.cedulaCustodio || '-',
       fechaCreacion: base?.fechaCreacion || ''
     }
   })
@@ -787,7 +877,7 @@ const groupedHistorial = computed(() => {
     if (fechaDesde.value && fecha && fecha < fechaDesde.value) return false
     if (fechaHasta.value && fecha && fecha > fechaHasta.value) return false
 
-    if (filtroIntegracion.value === 'PENDIENTES') {
+    if (activeTab.value === 'APROBADAS' && filtroIntegracion.value === 'PENDIENTES') {
       const estado = getIntegracionEstado(group.idLiquidacion).toUpperCase()
       if (estado === 'INTEGRADO') return false
     }
@@ -918,11 +1008,11 @@ const fetchMarcaContab = async (codAlmacen: string): Promise<string> => {
 
 const getUCodSt = (
   detalles: LiquidacionDetalleItem[],
-  montosByDetalle: Record<number, AprobacionMontosByBase>
+  montosByDetalle: Record<number, AprobacionMontosPorDetalle>
 ) => {
   return detalles.some(detalle => {
     const montos = montosByDetalle[detalle.idDetalle]
-    return Number(montos?.base15 ?? 0) > 0
+    return Number(montos?.gravado ?? 0) > 0
   }) ? '01' : '02'
 }
 
@@ -930,7 +1020,7 @@ const buildDocumentLines = (
   detalles: LiquidacionDetalleItem[],
   codAlmacen: string,
   marcaContab: string,
-  montosByDetalle: Record<number, AprobacionMontosByBase>
+  montosByDetalle: Record<number, AprobacionMontosPorDetalle>
 ) => {
   const roundAmount = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100
 
@@ -939,7 +1029,7 @@ const buildDocumentLines = (
     itemDescription: string
     quantity: number
     unitPrice: number
-    taxCode: 'IVA_15' | 'IVA_0'
+    taxCode: string
   }>()
 
   for (const detalle of detalles) {
@@ -949,17 +1039,17 @@ const buildDocumentLines = (
     const accountCode = normalizeString(detalle.idGasto)
     if (!accountCode) continue
 
-    const breakdown = [] as Array<{ taxCode: 'IVA_15' | 'IVA_0'; netAmount: number }>
-    if (Number(montos.base15 ?? 0) > 0) {
+    const breakdown = [] as Array<{ taxCode: string; netAmount: number }>
+    if (Number(montos.gravado ?? 0) > 0) {
       breakdown.push({
-        taxCode: 'IVA_15',
-        netAmount: roundAmount(Number(montos.base15))
+        taxCode: montos.taxCodeGravado,
+        netAmount: roundAmount(Number(montos.gravado))
       })
     }
-    if (Number(montos.base0 ?? 0) > 0) {
+    if (Number(montos.noGravado ?? 0) > 0) {
       breakdown.push({
         taxCode: 'IVA_0',
-        netAmount: roundAmount(Number(montos.base0))
+        netAmount: roundAmount(Number(montos.noGravado))
       })
     }
 
@@ -998,7 +1088,12 @@ const buildDocumentLines = (
   })
 }
 
-const calculatePayloadTotals = (documentLines: Array<{ UnitPrice?: number; Quantity?: number; TaxCode?: string }>) => {
+// El IVA real (soporta 15%/8%/0%/manual) se suma desde montosByDetalle.ivaGravado, no desde
+// una tasa fija por TaxCode, ya que distintas lineas pueden tener distintos porcentajes.
+const calculatePayloadTotals = (
+  documentLines: Array<{ UnitPrice?: number; Quantity?: number; TaxCode?: string }>,
+  montosByDetalle: Record<number, AprobacionMontosPorDetalle>
+) => {
   const roundAmount = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100
 
   const subtotal = roundAmount(documentLines.reduce((acc, line) => {
@@ -1007,12 +1102,7 @@ const calculatePayloadTotals = (documentLines: Array<{ UnitPrice?: number; Quant
     return acc + (quantity * unitPrice)
   }, 0))
 
-  const iva = roundAmount(documentLines.reduce((acc, line) => {
-    if (line.TaxCode !== 'IVA_15') return acc
-    const quantity = Number(line.Quantity ?? 1)
-    const unitPrice = Number(line.UnitPrice ?? 0)
-    return acc + (quantity * unitPrice * 0.15)
-  }, 0))
+  const iva = roundAmount(Object.values(montosByDetalle).reduce((acc, montos) => acc + Number(montos.ivaGravado ?? 0), 0))
 
   const total = roundAmount(subtotal + iva)
 
@@ -1114,7 +1204,7 @@ const integrarLiquidacion = async (idLiquidacion: number) => {
     // Respaldo del JSON exacto antes de enviar a SAP.
     downloadJsonPayload(idLiquidacion, payload)
 
-    const totals = calculatePayloadTotals(payload.DocumentLines)
+    const totals = calculatePayloadTotals(payload.DocumentLines, montosByDetalle)
     const diferenciaTotal = Number((totals.total - totalAprobadoPantalla).toFixed(2))
     const hayDiferencia = Math.abs(diferenciaTotal) >= 0.01
     const payloadJson = JSON.stringify(payload, null, 2)
@@ -1129,7 +1219,7 @@ const integrarLiquidacion = async (idLiquidacion: number) => {
     const confirmationMessage = [
       'Resumen de montos:',
       `Total aprobado (pantalla): ${formatAmount(totalAprobadoPantalla)}`,
-      `Base 15%: ${formatAmount(baseTotals.base15)}`,
+      `Base gravada: ${formatAmount(baseTotals.base15)}`,
       `Base 0%: ${formatAmount(baseTotals.base0)}`,
       `Subtotal base SAP (sin IVA): ${formatAmount(totals.subtotal)}`,
       `IVA SAP: ${formatAmount(totals.iva)}`,
@@ -1238,7 +1328,8 @@ const loadHistorial = async () => {
         idUsuario: userId,
         fechaDesde: fechaDesde.value,
         fechaHasta: fechaHasta.value,
-        soloPendientes: filtroIntegracion.value === 'PENDIENTES'
+        soloPendientes: activeTab.value === 'APROBADAS' && filtroIntegracion.value === 'PENDIENTES',
+        tipo: activeTab.value
       }
     })
 
@@ -1253,7 +1344,8 @@ const loadHistorial = async () => {
       concepto: normalizeString(item.concepto ?? item.Concepto ?? ''),
       total: Number(item.total ?? item.Total ?? 0),
       subtotalConIva: Number(item.subtotalConIva ?? item.SubtotalConIva ?? item.subtotal_Con_Iva ?? 0),
-      subtotalSinIva: Number(item.subtotalSinIva ?? item.SubtotalSinIva ?? item.subtotal_Sin_Iva ?? 0)
+      subtotalSinIva: Number(item.subtotalSinIva ?? item.SubtotalSinIva ?? item.subtotal_Sin_Iva ?? 0),
+      idTipoIva: item.idTipoIva ?? item.IdTipoIva ?? null
     })) as LiquidacionDetalleItem[]
 
     liquidacionesMap.value = (rows as any[]).reduce((acc: Record<number, LiquidacionItem>, item: any) => {
@@ -1560,7 +1652,7 @@ const downloadLiquidacionPdf = (idLiquidacion: number) => {
       <div class="section-head green"><span>Detalle de gastos</span><span class="stats-row"><span>Items: <strong>${detalles.length}</strong></span><span>Total: <strong>$${fmtAmt(totalSolicitado)}</strong></span></span></div>
       <table><thead><tr>
         <th>Cód. Gasto</th><th>Gasto</th><th>Concepto</th><th>Proveedor</th><th>RUC</th>
-        <th>Base 15%</th><th>Base 0%</th><th>IVA</th><th>Total</th><th>Adj.</th>
+        <th>Base Gravada</th><th>Base 0%</th><th>IVA</th><th>Total</th><th>Adj.</th>
       </tr></thead><tbody>${detallesRows || '<tr><td colspan="10" style="color:#9ca3af;font-style:italic;padding:10px">Sin detalles.</td></tr>'}</tbody></table>
       <div class="footer-totals">
         <div class="total-item"><div class="total-label">Total solicitado</div><div class="total-value">$${fmtAmt(totalSolicitado)}</div></div>
@@ -1622,10 +1714,38 @@ const downloadLiquidacionPdf = (idLiquidacion: number) => {
 }
 
 onMounted(() => {
+  loadTiposIva()
   loadHistorial()
 })
 
-watch([fechaDesde, fechaHasta, filtroIntegracion], () => {
+watch([fechaDesde, fechaHasta, filtroIntegracion, activeTab], () => {
   loadHistorial()
 })
+
+const downloadExcel = async () => {
+  excelError.value = ''
+  excelLoading.value = true
+  try {
+    const response = await cajaChicaApi.get('/Liquidaciones/exportar-excel', {
+      params: {
+        fechaDesde: fechaDesde.value,
+        fechaHasta: fechaHasta.value
+      },
+      responseType: 'blob'
+    })
+    const blob = new Blob([response.data as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `liquidaciones_${fechaDesde.value}_${fechaHasta.value}.xlsx`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  } catch {
+    excelError.value = 'No se pudo descargar el archivo Excel.'
+  } finally {
+    excelLoading.value = false
+  }
+}
 </script>

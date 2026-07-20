@@ -119,7 +119,7 @@
               <div class="flex-1">
                 <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Liquidacion #{{ group.idLiquidacion }}</h3>
                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {{ group.items.length }} detalles · Tienda: {{ group.codAlmacen || '-' }} · Custodio: {{ group.nombreCustodio || '-' }} · Fecha: {{ formatDate(group.fechaCreacion) }} · Monto total: {{ formatAmount(group.totalMonto) }}
+                  {{ group.items.length }} detalles · Tienda: {{ group.codAlmacen || '-' }} · Custodio: {{ group.nombreCustodio }} ({{ group.cedulaCustodio || '-' }}) · Fecha: {{ formatDate(group.fechaCreacion) }} · Monto total: {{ formatAmount(group.totalMonto) }}
                 </p>
               </div>
               <div class="flex items-center gap-2">
@@ -561,6 +561,7 @@ interface LiquidacionInfo {
   idLiquidacion: number
   codAlmacen: string
   nombreCustodio: string
+  cedulaCustodio: string
   fechaCreacion: string
 }
 
@@ -815,6 +816,7 @@ const groupedHistorial = computed(() => {
       totalMonto,
       codAlmacen: liquidacionInfo?.codAlmacen || '',
       nombreCustodio: liquidacionInfo?.nombreCustodio || '',
+      cedulaCustodio: liquidacionInfo?.cedulaCustodio || '',
       fechaCreacion: liquidacionInfo?.fechaCreacion || ''
     }
   }).sort((a, b) => b.idLiquidacion - a.idLiquidacion)
@@ -974,6 +976,7 @@ const loadHistorial = async () => {
           idLiquidacion: idLiq,
           codAlmacen: normalizeString(liq.codAlmacen ?? liq.CodAlmacen ?? ''),
           nombreCustodio: normalizeString(liq.nombreCustodio ?? liq.NombreCustodio ?? ''),
+          cedulaCustodio: normalizeString(liq.cedulaCustodio ?? liq.CedulaCustodio ?? ''),
           fechaCreacion: String(liq.fechaCreacion ?? liq.FechaCreacion ?? '')
         }
       }
@@ -1131,6 +1134,7 @@ const downloadLiquidacionPdf = (idLiquidacion: number) => {
       <div class="grid4">
         <div class="meta-cell"><div class="meta-label">Almacén / Tienda</div><div class="meta-value">${esc(liqInfo?.codAlmacen || '-')}</div></div>
         <div class="meta-cell"><div class="meta-label">Custodio</div><div class="meta-value">${esc(liqInfo?.nombreCustodio || '-')}</div></div>
+        <div class="meta-cell"><div class="meta-label">Cédula custodio</div><div class="meta-value">${esc(liqInfo?.cedulaCustodio || '-')}</div></div>
         <div class="meta-cell"><div class="meta-label">Fecha creación</div><div class="meta-value">${fmt(liqInfo?.fechaCreacion)}</div></div>
         <div class="meta-cell"><div class="meta-label">Período filtrado</div><div class="meta-value" style="font-size:10px;font-weight:400">${esc(filtro)}</div></div>
       </div>
@@ -1315,6 +1319,7 @@ const downloadPdf = () => {
         <div class="meta">
           <div class="meta-item"><div class="meta-label">Almacén / Tienda</div><div class="meta-value">${esc(group.codAlmacen || '-')}</div></div>
           <div class="meta-item"><div class="meta-label">Custodio</div><div class="meta-value">${esc(group.nombreCustodio || '-')}</div></div>
+          <div class="meta-item"><div class="meta-label">Cédula custodio</div><div class="meta-value">${esc(group.cedulaCustodio || '-')}</div></div>
           <div class="meta-item"><div class="meta-label">Fecha creación</div><div class="meta-value">${fmt(group.fechaCreacion)}</div></div>
           <div class="meta-item"><div class="meta-label">Período</div><div class="meta-value">${esc(filtro)}</div></div>
         </div>

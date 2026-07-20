@@ -118,7 +118,19 @@
             />
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Subtotal Base 15% *</label>
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Tipo de IVA *</label>
+            <select
+              v-model="selectedTipoIvaId"
+              class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
+            >
+              <option value="">Seleccionar tipo de IVA</option>
+              <option v-for="tipo in catalogoTiposIva" :key="tipo.id" :value="tipo.id">
+                {{ tipo.descripcion }}
+              </option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Subtotal Base (gravado) *</label>
             <input
               v-model="subtotalConIva"
               type="number"
@@ -141,8 +153,10 @@
               v-model="iva"
               type="number"
               step="0.01"
-              readonly
-              class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-700 dark:text-gray-300"
+              :readonly="!isSelectedTipoIvaManual"
+              :class="isSelectedTipoIvaManual
+                ? 'w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors'
+                : 'w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-700 dark:text-gray-300'"
             />
           </div>
           <div>
@@ -200,8 +214,9 @@
                 <th class="py-3 px-4">N° Comprobante</th>
                 <th class="py-3 px-4">Tipo Documento</th>
                 <th class="py-3 px-4">Concepto</th>
-                <th class="py-3 px-4">Subtotal Base 15</th>
+                <th class="py-3 px-4">Subtotal Base</th>
                 <th class="py-3 px-4">Subtotal Base 0</th>
+                <th class="py-3 px-4">Tipo IVA</th>
                 <th class="py-3 px-4">IVA</th>
                 <th class="py-3 px-4">Total</th>
                 <th class="py-3 px-4">Adjuntos</th>
@@ -219,6 +234,7 @@
                 <td class="py-3 px-4 text-gray-700 dark:text-gray-200">{{ item.concepto }}</td>
                 <td class="py-3 px-4 text-gray-700 dark:text-gray-200">{{ formatAmount(item.subtotalConIva) }}</td>
                 <td class="py-3 px-4 text-gray-700 dark:text-gray-200">{{ formatAmount(item.subtotalSinIva) }}</td>
+                <td class="py-3 px-4 text-gray-700 dark:text-gray-200">{{ getTipoIvaLabel(item.idTipoIva) }}</td>
                 <td class="py-3 px-4 text-gray-700 dark:text-gray-200">{{ formatAmount(item.iva) }}</td>
                 <td class="py-3 px-4 text-gray-700 dark:text-gray-200">{{ formatAmount(item.total) }}</td>
                 <td class="py-3 px-4">
@@ -280,6 +296,7 @@
                 <td class="py-3 px-4 text-right font-semibold text-gray-700 dark:text-gray-200" colspan="7">Totales</td>
                 <td class="py-3 px-4 font-semibold text-gray-700 dark:text-gray-200">{{ formatAmount(totalSubtotalConIva) }}</td>
                 <td class="py-3 px-4 font-semibold text-gray-700 dark:text-gray-200">{{ formatAmount(totalSubtotalSinIva) }}</td>
+                <td class="py-3 px-4"></td>
                 <td class="py-3 px-4 font-semibold text-gray-700 dark:text-gray-200">{{ formatAmount(totalIva) }}</td>
                 <td class="py-3 px-4 font-semibold text-gray-700 dark:text-gray-200">{{ formatAmount(totalTotal) }}</td>
                 <td class="py-3 px-4"></td>
@@ -376,7 +393,19 @@
               />
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Subtotal Base 15% *</label>
+              <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Tipo de IVA *</label>
+              <select
+                v-model="editTipoIvaId"
+                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
+              >
+                <option value="">Seleccionar tipo de IVA</option>
+                <option v-for="tipo in catalogoTiposIva" :key="tipo.id" :value="tipo.id">
+                  {{ tipo.descripcion }}
+                </option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Subtotal Base (gravado) *</label>
               <input
                 v-model="editSubtotalConIva"
                 type="number"
@@ -399,8 +428,10 @@
                 v-model="editIva"
                 type="number"
                 step="0.01"
-                readonly
-                class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-700 dark:text-gray-300"
+                :readonly="!isEditTipoIvaManual"
+                :class="isEditTipoIvaManual
+                  ? 'w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors'
+                  : 'w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-700 dark:text-gray-300'"
               />
             </div>
             <div>
@@ -450,6 +481,14 @@ interface CatalogoGastoItem {
   nombreGasto: string
 }
 
+interface TipoIvaItem {
+  id: number
+  codigo: string
+  descripcion: string
+  porcentaje: number | null
+  taxCodeSap: string
+}
+
 interface LiquidacionDetalleItem {
   idDetalle: number
   idLiquidacion: number
@@ -465,6 +504,7 @@ interface LiquidacionDetalleItem {
   subtotalSinIva: number
   iva: number
   total: number
+  idTipoIva: number | null
 }
 
 interface AdjuntoItem {
@@ -484,6 +524,7 @@ const volver = () => {
 }
 
 const catalogoGastos = ref<CatalogoGastoItem[]>([])
+const catalogoTiposIva = ref<TipoIvaItem[]>([])
 const detalles = ref<LiquidacionDetalleItem[]>([])
 const loadingDetalles = ref(false)
 const detalleError = ref('')
@@ -499,11 +540,13 @@ const proveedor = ref('')
 const numeroComprobante = ref('')
 const numeroAutorizacion = ref('')
 const concepto = ref('')
+const selectedTipoIvaId = ref('')
 const subtotalConIva = ref('')
 const subtotalSinIva = ref('')
 const iva = ref('')
 const total = ref('')
 const editingDetalleId = ref<number | null>(null)
+const editTipoIvaId = ref('')
 const editGastoId = ref('')
 const editNombreGasto = ref('')
 const editFechaConsumo = ref(new Date().toISOString().slice(0, 10))
@@ -541,10 +584,22 @@ cajaChicaApi.interceptors.request.use(config => {
 const buildAdjuntoUrl = createBuildAdjuntoUrl()
 const hasValue = (value: string | number) => String(value ?? '').trim() !== ''
 
+const selectedTipoIva = computed(() => catalogoTiposIva.value.find(t => String(t.id) === String(selectedTipoIvaId.value)))
+const isSelectedTipoIvaManual = computed(() => !!selectedTipoIva.value && selectedTipoIva.value.porcentaje === null)
+const editTipoIva = computed(() => catalogoTiposIva.value.find(t => String(t.id) === String(editTipoIvaId.value)))
+const isEditTipoIvaManual = computed(() => !!editTipoIva.value && editTipoIva.value.porcentaje === null)
+
+const getTipoIvaLabel = (idTipoIva: number | null) => {
+  if (!idTipoIva) return '-'
+  const tipo = catalogoTiposIva.value.find(t => t.id === idTipoIva)
+  return tipo ? tipo.descripcion : '-'
+}
+
 const canAddDetalle = computed(() =>
   !isReadOnly.value &&
   liquidacionId.value > 0 &&
   selectedGastoId.value.trim() &&
+  selectedTipoIvaId.value !== '' &&
   numeroAutorizacion.value.trim() &&
   proveedor.value.trim() &&
   concepto.value.trim() &&
@@ -559,6 +614,7 @@ const canUpdateDetalle = computed(() =>
   !isReadOnly.value &&
   editingDetalleId.value !== null &&
   editGastoId.value.trim() &&
+  editTipoIvaId.value !== '' &&
   editNumeroAutorizacion.value.trim() &&
   editProveedor.value.trim() &&
   editConcepto.value.trim() &&
@@ -572,7 +628,6 @@ const canUpdateDetalle = computed(() =>
 const normalizeString = (value: any) => String(value ?? '').trim()
 const toNumber = (value: string) => Number(String(value || '0').replace(',', '.')) || 0
 const onlyDigits = (value: string) => String(value ?? '').replace(/\D+/g, '')
-const IVA_RATE = 0.15
 
 const normalizeDetalle = (item: any): LiquidacionDetalleItem => ({
   idDetalle: Number(item.idDetalle ?? item.IdDetalle ?? 0),
@@ -588,7 +643,8 @@ const normalizeDetalle = (item: any): LiquidacionDetalleItem => ({
   subtotalConIva: Number(item.subtotal_Con_Iva ?? item.Subtotal_Con_Iva ?? item.subtotalConIva ?? 0),
   subtotalSinIva: Number(item.subtotal_Sin_Iva ?? item.Subtotal_Sin_Iva ?? item.subtotalSinIva ?? 0),
   iva: Number(item.iva ?? item.Iva ?? 0),
-  total: Number(item.total ?? item.Total ?? 0)
+  total: Number(item.total ?? item.Total ?? 0),
+  idTipoIva: item.idTipoIva ?? item.IdTipoIva ?? null
 })
 
 const totalSubtotalConIva = computed(() => detalles.value.reduce((sum, item) => sum + item.subtotalConIva, 0))
@@ -610,6 +666,23 @@ const loadCatalogoGastos = async () => {
     }))
   } catch {
     formError.value = 'No se pudo cargar el catalogo de gastos.'
+  }
+}
+
+const loadTiposIva = async () => {
+  try {
+    const response = await cajaChicaApi.get('/TiposIva')
+    const payload = response.data as any
+    const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
+    catalogoTiposIva.value = items.map((item: any) => ({
+      id: Number(item.id ?? item.Id ?? 0),
+      codigo: normalizeString(item.codigo ?? item.Codigo ?? ''),
+      descripcion: normalizeString(item.descripcion ?? item.Descripcion ?? ''),
+      porcentaje: item.porcentaje ?? item.Porcentaje ?? null,
+      taxCodeSap: normalizeString(item.taxCodeSap ?? item.TaxCodeSap ?? '')
+    }))
+  } catch {
+    formError.value = 'No se pudo cargar el catalogo de tipos de IVA.'
   }
 }
 
@@ -674,7 +747,8 @@ const addDetalle = async () => {
       Subtotal_Con_Iva: toNumber(subtotalConIva.value),
       Subtotal_Sin_Iva: toNumber(subtotalSinIva.value),
       Iva: toNumber(iva.value),
-      Total: toNumber(total.value)
+      Total: toNumber(total.value),
+      IdTipoIva: Number(selectedTipoIvaId.value)
     })
 
     formSuccess.value = 'Detalle agregado.'
@@ -686,6 +760,7 @@ const addDetalle = async () => {
     numeroComprobante.value = ''
     numeroAutorizacion.value = ''
     concepto.value = ''
+    selectedTipoIvaId.value = ''
     subtotalConIva.value = ''
     subtotalSinIva.value = ''
     iva.value = ''
@@ -707,6 +782,7 @@ const startEditDetalle = (item: LiquidacionDetalleItem) => {
   editNumeroComprobante.value = item.numeroComprobante
   editNumeroAutorizacion.value = item.numeroAutorizacion
   editConcepto.value = item.concepto
+  editTipoIvaId.value = item.idTipoIva ? String(item.idTipoIva) : ''
   editSubtotalConIva.value = item.subtotalConIva.toString()
   editSubtotalSinIva.value = item.subtotalSinIva.toString()
   editIva.value = item.iva.toString()
@@ -725,6 +801,7 @@ const cancelEditDetalle = () => {
   editNumeroComprobante.value = ''
   editNumeroAutorizacion.value = ''
   editConcepto.value = ''
+  editTipoIvaId.value = ''
   editSubtotalConIva.value = ''
   editSubtotalSinIva.value = ''
   editIva.value = ''
@@ -760,7 +837,8 @@ const updateDetalle = async () => {
       Subtotal_Con_Iva: toNumber(editSubtotalConIva.value),
       Subtotal_Sin_Iva: toNumber(editSubtotalSinIva.value),
       Iva: toNumber(editIva.value),
-      Total: toNumber(editTotal.value)
+      Total: toNumber(editTotal.value),
+      IdTipoIva: Number(editTipoIvaId.value)
     })
 
     editDetalleSuccess.value = 'Detalle actualizado.'
@@ -835,36 +913,54 @@ const deleteAdjunto = async (adjunto: AdjuntoItem, idDetalle: number) => {
   }
 }
 
-watch([subtotalConIva, subtotalSinIva], ([conIva, sinIva]) => {
+watch([subtotalConIva, subtotalSinIva, selectedTipoIvaId], ([conIva, sinIva]) => {
   const hasCon = hasValue(conIva)
   const hasSin = hasValue(sinIva)
   if (!hasCon && !hasSin) {
-    iva.value = ''
+    if (!isSelectedTipoIvaManual.value) iva.value = ''
     total.value = ''
     return
   }
   const baseCon = toNumber(conIva)
   const baseSin = toNumber(sinIva)
-  const ivaCalc = baseCon * IVA_RATE
-  iva.value = ivaCalc.toFixed(2)
-  const totalCalc = baseCon + baseSin + ivaCalc
+  const porcentaje = selectedTipoIva.value?.porcentaje
+  if (porcentaje !== null && porcentaje !== undefined) {
+    iva.value = (baseCon * porcentaje).toFixed(2)
+  }
+  const totalCalc = baseCon + baseSin + toNumber(iva.value)
   total.value = totalCalc.toFixed(2)
 })
 
-watch([editSubtotalConIva, editSubtotalSinIva], ([conIva, sinIva]) => {
+watch(iva, () => {
+  if (!isSelectedTipoIvaManual.value) return
+  const baseCon = toNumber(subtotalConIva.value)
+  const baseSin = toNumber(subtotalSinIva.value)
+  total.value = (baseCon + baseSin + toNumber(iva.value)).toFixed(2)
+})
+
+watch([editSubtotalConIva, editSubtotalSinIva, editTipoIvaId], ([conIva, sinIva]) => {
   const hasCon = hasValue(conIva)
   const hasSin = hasValue(sinIva)
   if (!hasCon && !hasSin) {
-    editIva.value = ''
+    if (!isEditTipoIvaManual.value) editIva.value = ''
     editTotal.value = ''
     return
   }
   const baseCon = toNumber(conIva)
   const baseSin = toNumber(sinIva)
-  const ivaCalc = baseCon * IVA_RATE
-  editIva.value = ivaCalc.toFixed(2)
-  const totalCalc = baseCon + baseSin + ivaCalc
+  const porcentaje = editTipoIva.value?.porcentaje
+  if (porcentaje !== null && porcentaje !== undefined) {
+    editIva.value = (baseCon * porcentaje).toFixed(2)
+  }
+  const totalCalc = baseCon + baseSin + toNumber(editIva.value)
   editTotal.value = totalCalc.toFixed(2)
+})
+
+watch(editIva, () => {
+  if (!isEditTipoIvaManual.value) return
+  const baseCon = toNumber(editSubtotalConIva.value)
+  const baseSin = toNumber(editSubtotalSinIva.value)
+  editTotal.value = (baseCon + baseSin + toNumber(editIva.value)).toFixed(2)
 })
 
 watch(selectedGastoId, () => {
@@ -879,6 +975,7 @@ watch(editGastoId, () => {
 
 onMounted(() => {
   loadCatalogoGastos()
+  loadTiposIva()
   loadDetalles()
 })
 </script>

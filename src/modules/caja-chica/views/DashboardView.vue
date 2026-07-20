@@ -195,7 +195,24 @@
           </div>
         </router-link>
 
-      
+        <router-link
+          to="/caja-chica/tipos-iva"
+          class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left block"
+          v-if="canViewTiposIva"
+        >
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded bg-fuchsia-50 dark:bg-fuchsia-900/30 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-fuchsia-600 dark:text-fuchsia-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m-3-3v.01M12 7a4 4 0 00-4 4c0 1.5.8 2.4 1.6 3.2.8.8 1.4 1.5 1.4 2.8M12 21a2 2 0 002-2h-4a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-gray-900 dark:text-white text-sm">Tipos de IVA</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Administrar catálogo de IVA</div>
+            </div>
+          </div>
+        </router-link>
+
       </div>
     </div>
   </div>
@@ -268,5 +285,9 @@ const canViewUsuariosAlmacenes = computed(() =>
 
 const canViewAdjuntos = computed(() =>
   authStore.hasAnyPermission(['cajachica.adjuntos.view'])
+)
+
+const canViewTiposIva = computed(() =>
+  authStore.hasAnyPermission(['cajachica.tiposiva.admin'])
 )
 </script>

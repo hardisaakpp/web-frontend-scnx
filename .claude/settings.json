@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -E \"vite$|node .*vite|dotnet run\")",
+      "Bash(kill 95067 95068 257675 259777 261915)"
+    ]
+  }
+}

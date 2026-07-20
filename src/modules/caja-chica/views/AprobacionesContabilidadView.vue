@@ -95,7 +95,7 @@
               <div>
                 <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Liquidacion #{{ group.idLiquidacion }}</h3>
                 <p class="text-xs text-gray-500 dark:text-gray-400">
-                  {{ group.totalItems }} detalles pendientes · Tienda: {{ group.codAlmacen }} · Custodio: {{ group.nombreCustodio }} · Fecha: {{ formatDate(group.fechaCreacion) }}
+                  {{ group.totalItems }} detalles pendientes · Tienda: {{ group.codAlmacen }} · Custodio: {{ group.nombreCustodio }} ({{ group.cedulaCustodio || '-' }}) · Fecha: {{ formatDate(group.fechaCreacion) }}
                 </p>
               </div>
               <div class="flex items-center gap-3">
@@ -441,25 +441,67 @@
                 />
               </div>
             </div>
+
+            <div v-if="showRejectChoice" class="mt-4 rounded-lg border border-red-200 dark:border-red-900/40 bg-red-50/60 dark:bg-red-900/10 p-3">
+              <div class="text-xs font-medium text-red-700 dark:text-red-300 mb-2">Confirmar negación</div>
+              <div class="space-y-2 text-sm">
+                <label class="flex items-start gap-2 cursor-pointer">
+                  <input type="radio" name="tipoAccionRechazo" value="DEVOLUCION" v-model="tipoAccionRechazo" class="mt-0.5" />
+                  <span>
+                    <span class="font-medium text-gray-900 dark:text-white">Devolver para corrección</span>
+                    <span class="block text-xs text-gray-500 dark:text-gray-400">La liquidación regresa a Borrador para que el custodio la corrija y reenvíe.</span>
+                  </span>
+                </label>
+                <label class="flex items-start gap-2 cursor-pointer">
+                  <input type="radio" name="tipoAccionRechazo" value="RECHAZO_DEFINITIVO" v-model="tipoAccionRechazo" class="mt-0.5" />
+                  <span>
+                    <span class="font-medium text-gray-900 dark:text-white">Rechazar definitivamente</span>
+                    <span class="block text-xs text-gray-500 dark:text-gray-400">La liquidación queda cerrada y no podrá editarse ni reenviarse.</span>
+                  </span>
+                </label>
+              </div>
+              <p v-if="rejectValidationError" class="mt-2 text-xs text-red-600 dark:text-red-400">{{ rejectValidationError }}</p>
+            </div>
+
             <div class="mt-4 flex items-center justify-end gap-2">
-              <button
-                v-if="selectedItem"
-                type="button"
-                class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700/50 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
-                :disabled="actionLoadingId === selectedItem.idAprobacion"
-                @click="reject(selectedItem)"
-              >
-                Negar
-              </button>
-              <button
-                v-if="selectedItem"
-                type="button"
-                class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors disabled:opacity-50"
-                :disabled="actionLoadingId === selectedItem.idAprobacion"
-                @click="approve(selectedItem)"
-              >
-                Aprobar
-              </button>
+              <template v-if="!showRejectChoice">
+                <button
+                  v-if="selectedItem"
+                  type="button"
+                  class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700/50 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+                  :disabled="actionLoadingId === selectedItem.idAprobacion"
+                  @click="openRejectChoice"
+                >
+                  Negar
+                </button>
+                <button
+                  v-if="selectedItem"
+                  type="button"
+                  class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                  :disabled="actionLoadingId === selectedItem.idAprobacion"
+                  @click="approve(selectedItem)"
+                >
+                  Aprobar
+                </button>
+              </template>
+              <template v-else>
+                <button
+                  type="button"
+                  class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700/50 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  @click="showRejectChoice = false"
+                >
+                  Cancelar
+                </button>
+                <button
+                  v-if="selectedItem"
+                  type="button"
+                  class="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors disabled:opacity-50"
+                  :disabled="actionLoadingId === selectedItem.idAprobacion"
+                  @click="reject(selectedItem)"
+                >
+                  Confirmar negación
+                </button>
+              </template>
             </div>
           </div>
         </div>
@@ -512,6 +554,7 @@ interface AprobacionItem {
   idLiquidacion: number
   codAlmacen: string
   nombreCustodio: string
+  cedulaCustodio: string
   fechaCreacion: string
   nombreGasto: string
   concepto: string
@@ -649,6 +692,9 @@ const showColumnSelector = ref(false)
 const columnSelectorWrapRef = ref<HTMLElement | null>(null)
 
 const showDetallePanel = ref(false)
+const showRejectChoice = ref(false)
+const tipoAccionRechazo = ref<'DEVOLUCION' | 'RECHAZO_DEFINITIVO'>('DEVOLUCION')
+const rejectValidationError = ref('')
 const selectedContext = ref<{ idLiquidacion: number; item: AprobacionItem } | null>(null)
 const selectedItem = computed(() => selectedContext.value?.item ?? null)
 const selectedDetalle = computed(() => {
@@ -820,6 +866,7 @@ const groupedPendientes = computed(() => {
       totalItems: items.length,
       codAlmacen: base?.codAlmacen || '',
       nombreCustodio: base?.nombreCustodio || '',
+      cedulaCustodio: base?.cedulaCustodio || '',
       fechaCreacion: base?.fechaCreacion || ''
     }
   })
@@ -953,6 +1000,7 @@ const normalizeAprobacion = (item: any): AprobacionItem => ({
   idLiquidacion: Number(item.idLiquidacion ?? item.IdLiquidacion ?? 0),
   codAlmacen: normalizeString(item.codAlmacen ?? item.CodAlmacen ?? ''),
   nombreCustodio: normalizeString(item.nombreCustodio ?? item.NombreCustodio ?? ''),
+  cedulaCustodio: normalizeString(item.cedulaCustodio ?? item.CedulaCustodio ?? ''),
   fechaCreacion: String(item.fechaCreacion ?? item.FechaCreacion ?? ''),
   nombreGasto: normalizeString(item.nombreGasto ?? item.NombreGasto ?? ''),
   concepto: normalizeString(item.concepto ?? item.Concepto ?? ''),
@@ -1056,6 +1104,8 @@ function openDetalle(idLiquidacion: number, item: AprobacionItem) {
   selectedAdjuntoId.value = null
   selectedContext.value = { idLiquidacion, item }
   showDetallePanel.value = true
+  showRejectChoice.value = false
+  rejectValidationError.value = ''
   void loadAdjuntosForDetalle(item.idDetalle)
 }
 
@@ -1063,6 +1113,14 @@ function closeDetalle() {
   showDetallePanel.value = false
   selectedContext.value = null
   selectedAdjuntoId.value = null
+  showRejectChoice.value = false
+  rejectValidationError.value = ''
+}
+
+function openRejectChoice() {
+  tipoAccionRechazo.value = 'DEVOLUCION'
+  rejectValidationError.value = ''
+  showRejectChoice.value = true
 }
 
 function closeColumnSelectorOnClickOutside(e: MouseEvent) {
@@ -1277,11 +1335,18 @@ const approve = async (item: AprobacionItem) => {
 }
 
 const reject = async (item: AprobacionItem) => {
+  const decision = decisions.value[item.idAprobacion]
+  const observacion = (decision?.observacion || '').trim()
+  if (!observacion) {
+    rejectValidationError.value = 'El comentario es obligatorio para negar una solicitud.'
+    return
+  }
+
   actionError.value = ''
   actionSuccess.value = ''
+  rejectValidationError.value = ''
   actionLoadingId.value = item.idAprobacion
   try {
-    const decision = decisions.value[item.idAprobacion]
     const montoAprobado = getApprovedMonto(item)
     const split = getApprovedBaseSplit(item)
     await cajaChicaApi.post(`/Aprobaciones/${item.idAprobacion}/rechazar`, {
@@ -1289,7 +1354,8 @@ const reject = async (item: AprobacionItem) => {
       TipoBase: split.tipoBase,
       MontoBase0: split.montoBase0,
       MontoBase15: split.montoBase15,
-      Observacion: decision?.observacion || ''
+      Observacion: observacion,
+      TipoAccion: tipoAccionRechazo.value
     })
     actionSuccess.value = 'Aprobacion rechazada.'
     closeDetalle()
@@ -1401,6 +1467,7 @@ const downloadPdf = () => {
         <div class="meta">
           <div class="meta-item"><div class="meta-label">Almacén / Tienda</div><div class="meta-value">${esc(group.codAlmacen || '-')}</div></div>
           <div class="meta-item"><div class="meta-label">Custodio</div><div class="meta-value">${esc(group.nombreCustodio || '-')}</div></div>
+          <div class="meta-item"><div class="meta-label">Cédula custodio</div><div class="meta-value">${esc(group.cedulaCustodio || '-')}</div></div>
           <div class="meta-item"><div class="meta-label">Fecha creación</div><div class="meta-value">${fmt(group.fechaCreacion)}</div></div>
           <div class="meta-item"><div class="meta-label">Nivel aprobación</div><div class="meta-value">Contabilidad (Niv. 2)</div></div>
         </div>

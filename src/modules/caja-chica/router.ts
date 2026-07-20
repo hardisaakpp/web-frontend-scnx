@@ -28,7 +28,8 @@ const routes: RouteRecordRaw[] = [
         'cajachica.empresas.view',
         'cajachica.grupos-almacenes.view',
         'cajachica.usuarios-almacenes.view',
-        'cajachica.adjuntos.view'
+        'cajachica.adjuntos.view',
+        'cajachica.tiposiva.admin'
       ]
     },
   },
@@ -171,10 +172,20 @@ const routes: RouteRecordRaw[] = [
     path: '/caja-chica/formas-pago',
     name: 'caja-chica-formas-pago',
     component: () => import('./views/FormasPagoView.vue'),
-    meta: { 
+    meta: {
       requiresAuth: true,
       title: 'Formas de Pago',
       permissions: ['cajachica.formaspago.view']
+    },
+  },
+  {
+    path: '/caja-chica/tipos-iva',
+    name: 'caja-chica-tipos-iva',
+    component: () => import('./views/TiposIvaView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Tipos de IVA',
+      permissions: ['cajachica.tiposiva.admin']
     },
   },
 ]
