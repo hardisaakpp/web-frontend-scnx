@@ -8,7 +8,7 @@
           <div class="flex items-center gap-2 mb-1">
             <router-link to="/conciliacion" class="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 transition-colors font-medium">Conciliación</router-link>
             <span class="text-gray-400">/</span>
-            <span class="text-sm text-gray-700 dark:text-gray-300 font-medium font-medium">Movimientos Pendientes</span>
+            <span class="text-sm text-gray-700 dark:text-gray-300 font-medium">Movimientos Pendientes</span>
           </div>
           <h1 class="text-2xl font-semibold text-gray-900 dark:text-white uppercase tracking-tight">Movimientos Pendientes</h1>
         </div>
