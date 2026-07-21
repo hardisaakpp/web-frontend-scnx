@@ -325,14 +325,18 @@ async function guardarPremio() {
       return
     }
 
-    if (premioEditando.value) {
-      const premioId = premioEditando.value.id
-      await store.actualizarPremio(grupoIdx, premioId, data)
-      irAPaso2OCerrar({ id: premioId, ...data } as PremioAdmin)
-    } else {
-      const nuevo = await store.agregarPremio(grupoIdx, data)
-      if (!nuevo) { errorForm.value = 'No se pudo guardar el premio.'; return }
-      irAPaso2OCerrar(nuevo)
+    try {
+      if (premioEditando.value) {
+        const premioId = premioEditando.value.id
+        await store.actualizarPremio(grupoIdx, premioId, data)
+        irAPaso2OCerrar({ id: premioId, ...data } as PremioAdmin)
+      } else {
+        const nuevo = await store.agregarPremio(grupoIdx, data)
+        if (!nuevo) { errorForm.value = 'No se pudo guardar el premio.'; return }
+        irAPaso2OCerrar(nuevo)
+      }
+    } catch (e: any) {
+      errorForm.value = e?.response?.data?.error ?? e?.message ?? 'Error al guardar el premio.'
     }
   } finally {
     guardando.value = false
@@ -598,7 +602,7 @@ function ocultarDropdown() {
               {{ activando ? 'Activando…' : 'Activar campaña' }}
             </button>
             <p v-if="!todosCompletos" class="text-xs text-gray-400 dark:text-gray-500 text-right">
-              Cada grupo necesita al menos una consolación y premios reales (excepto Grupos 5 y 6).
+              Cada grupo necesita al menos una consolación y premios reales (excepto Grupos 4, 5 y 6).
             </p>
           </template>
 
