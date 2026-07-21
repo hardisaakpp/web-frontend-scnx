@@ -193,6 +193,12 @@ function filaExcedida(item: { premio_id: string; stock_total: number }): boolean
           <p class="text-xs text-gray-400 dark:text-gray-500">Los premios de relleno no consumen stock y no se muestran en esta tabla.</p>
           <p v-if="store.hayEdicionesPendientes" class="text-xs text-amber-600 dark:text-amber-400">Los cambios no se guardarán hasta presionar 'Guardar distribución'.</p>
           <p v-if="hayFilaExcedida" class="text-xs text-red-600 dark:text-red-400 font-medium">El stock asignado supera el stock total en uno o más premios. Corrige los valores para poder guardar.</p>
+          <p v-if="store.errorInventario" class="flex items-center gap-1.5 text-xs text-red-600 dark:text-red-400 font-medium">
+            <svg class="w-3.5 h-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+            </svg>
+            {{ store.errorInventario }}
+          </p>
         </div>
         <div class="flex gap-3 flex-shrink-0">
           <button
