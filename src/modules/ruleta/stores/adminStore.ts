@@ -27,6 +27,7 @@ interface AdminState {
   inventarioEditado: Record<string, number>
   campanaInventarioId: string | null
   loadingInventario: boolean
+  errorInventario: string | null
 
   // Dashboard Global — KPIs + analytics mock
   campanaDashboardId: string | null
@@ -70,6 +71,7 @@ export const useAdminStore = defineStore('admin', {
     inventarioEditado: {},
     campanaInventarioId: null,
     loadingInventario: false,
+    errorInventario: null,
 
     campanaDashboardId: null,
     metricas: null,
@@ -259,7 +261,7 @@ export const useAdminStore = defineStore('admin', {
       if (!grupo) return
       const tieneReal = grupo.premios.some(p => !p.es_relleno)
       const tieneConsolacion = grupo.premios.some(p => p.es_relleno)
-      const permiteSoloConsolacion = grupo.grupo === 'GRUPO_5' || grupo.grupo === 'GRUPO_6'
+      const permiteSoloConsolacion = grupo.grupo === 'GRUPO_4' || grupo.grupo === 'GRUPO_5' || grupo.grupo === 'GRUPO_6'
 
       if ((tieneReal && tieneConsolacion) || (permiteSoloConsolacion && tieneConsolacion)) {
         grupo.estado = 'completo'
@@ -275,6 +277,7 @@ export const useAdminStore = defineStore('admin', {
       this.campanaInventarioId = campanaId
       this.loadingInventario = true
       this.error = null
+      this.errorInventario = null
       try {
         const tiendas = await ruletaService.getTiendasInventario()
         const inventario = await ruletaService.getInventarioCampana(campanaId, tiendas)
@@ -302,6 +305,7 @@ export const useAdminStore = defineStore('admin', {
     async guardarDistribucion() {
       if (!this.campanaInventarioId) return
       this.guardando = true
+      this.errorInventario = null
       const campanaId = this.campanaInventarioId
       try {
         const calls = Object.entries(this.inventarioEditado).map(([key, stockTotal]) => {
@@ -325,6 +329,8 @@ export const useAdminStore = defineStore('admin', {
           item.restante_bodega = item.stock_total - item.total_asignado
         }
         this.inventarioEditado = {}
+      } catch (e: any) {
+        this.errorInventario = e?.response?.data?.error ?? e?.message ?? 'Error al guardar la distribución de inventario.'
       } finally {
         this.guardando = false
       }

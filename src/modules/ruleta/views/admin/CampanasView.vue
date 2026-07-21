@@ -90,18 +90,23 @@ async function accionCambiarEstado(estado: EstadoCampana) {
 // ─── Confirmación de eliminación ─────────────────────────────────────────────
 const confirmDelete = ref<{ id: string; nombre: string } | null>(null)
 const eliminando    = ref(false)
+const errorEliminar = ref('')
 
 function pedirConfirmDelete(c: Campana) {
   cerrarMenu()
   confirmDelete.value = { id: c.id, nombre: c.nombre }
+  errorEliminar.value = ''
 }
 
 async function ejecutarEliminar() {
   if (!confirmDelete.value) return
   eliminando.value = true
+  errorEliminar.value = ''
   try {
     await store.eliminarCampana(confirmDelete.value.id)
     confirmDelete.value = null
+  } catch (e: any) {
+    errorEliminar.value = e?.response?.data?.error ?? e?.message ?? 'Error al eliminar la campaña.'
   } finally {
     eliminando.value = false
   }
@@ -606,6 +611,12 @@ const SEGMENTO_LABELS: Record<SegmentoCliente, string> = {
             <p class="text-sm text-gray-600 dark:text-gray-300 mb-5">
               ¿Confirmas que deseas eliminar
               <span class="font-semibold text-gray-900 dark:text-white">«{{ confirmDelete.nombre }}»</span>?
+            </p>
+            <p v-if="errorEliminar" class="mb-4 flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400">
+              <svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+              </svg>
+              {{ errorEliminar }}
             </p>
             <div class="flex gap-3">
               <button @click="confirmDelete = null"
