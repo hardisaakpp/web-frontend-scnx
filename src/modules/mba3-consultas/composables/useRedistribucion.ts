@@ -5,6 +5,7 @@ import { ref, Ref, type ComputedRef, triggerRef } from '@vue/reactivity'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
+import { APP_LOCALE } from '@/plugins/locale'
 import { formatNumber } from '../utils/formatters'
 import type { ProductoRedistribucion, DistribucionTiendaEditada } from '../utils/redistribucionHelpers'
 import { esBodega } from '../utils/redistribucionHelpers'
@@ -760,7 +761,7 @@ export function useRedistribucion(options: {
         
         // Notificar al usuario que se restauró el borrador
         const fechaGuardado = borrador.fecha_guardado 
-          ? new Date(borrador.fecha_guardado).toLocaleString('es-CO', { 
+          ? new Date(borrador.fecha_guardado).toLocaleString(APP_LOCALE, { 
               dateStyle: 'short', 
               timeStyle: 'short' 
             })

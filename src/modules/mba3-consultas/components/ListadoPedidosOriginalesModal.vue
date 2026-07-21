@@ -263,6 +263,7 @@
 import { ref, watch, computed } from '@vue/reactivity'
 import { pedidosService } from '../services/domains/pedidos'
 import { useToast } from '@/composables/useToast'
+import { APP_LOCALE } from '@/plugins/locale'
 import type { ArchivoOriginalItem } from '../types'
 
 const props = defineProps<{
@@ -424,7 +425,7 @@ function formatDate(dateStr: string): string {
   if (!dateStr) return '-'
   const date = new Date(dateStr)
   if (Number.isNaN(date.getTime())) return '-'
-  return date.toLocaleDateString('es-ES', {
+  return date.toLocaleDateString(APP_LOCALE, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',

@@ -187,6 +187,7 @@ import { useConciliacionStore } from '../stores/conciliacionStore'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import { MAX_EXCEL_UPLOAD_SIZE_BYTES, MAX_EXCEL_UPLOAD_SIZE_MB } from '@/config/uploadLimits'
+import { APP_LOCALE } from '@/plugins/locale'
 
 const store = useConciliacionStore()
 const authStore = useAuthStore()
@@ -272,7 +273,7 @@ function formatFileSize(bytes: number): string {
 
 function formatDate(dateStr: string): string {
   try {
-    return new Date(dateStr).toLocaleDateString('es-EC', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    return new Date(dateStr).toLocaleDateString(APP_LOCALE, { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
   } catch {
     return dateStr
   }

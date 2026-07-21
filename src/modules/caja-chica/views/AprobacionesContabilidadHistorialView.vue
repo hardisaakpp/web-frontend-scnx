@@ -358,6 +358,7 @@ import { useRouter } from 'vue-router'
 import { cajaChicaApi, slayerHttp as slayerApi } from '@/lib/http'
 import { createBuildAdjuntoUrl } from '../utils/buildAdjuntoUrl'
 import { resolveUserNames } from '../utils/resolveUserNames'
+import { APP_LOCALE } from '@/plugins/locale'
 
 interface LiquidacionItem {
   idLiquidacion: number
@@ -1574,7 +1575,7 @@ const downloadLiquidacionPdf = (idLiquidacion: number) => {
       </div>
     </div>`
 
-  const generado = new Date().toLocaleString('es-ES')
+  const generado = new Date().toLocaleString(APP_LOCALE)
   const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Liquidacion #${idLiquidacion}</title><style>${CSS}</style></head><body>
     <div class="header-doc">
       <div class="title-block">

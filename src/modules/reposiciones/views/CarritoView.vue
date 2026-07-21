@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, computed } from 'vue'
+import { APP_LOCALE } from '@/plugins/locale'
 import { useReposicionStore } from '../stores/reposicionStore'
 import { storeToRefs } from 'pinia'
 import { 
@@ -25,7 +26,7 @@ const currentWarehouseName = computed(() => {
 const formatDate = (dateStr: string) => {
   if (!dateStr) return ''
   const date = new Date(dateStr)
-  return new Intl.DateTimeFormat('es-EC', {
+  return new Intl.DateTimeFormat(APP_LOCALE, {
     dateStyle: 'medium',
     timeStyle: 'short'
   }).format(date)

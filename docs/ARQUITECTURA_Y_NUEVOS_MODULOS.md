@@ -1192,7 +1192,8 @@ const confirmarEliminar = async (recurso: any) => {
 }
 
 const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString('es-EC', {
+  // Formato estandarizado: importar APP_LOCALE de '@/plugins/locale' (nunca hardcodear el locale)
+  return new Date(dateString).toLocaleDateString(APP_LOCALE, {
     year: 'numeric',
     month: 'short',
     day: 'numeric'
@@ -1204,6 +1205,20 @@ onMounted(() => {
 })
 </script>
 ```
+
+> **📌 Estandarización de formato (obligatorio):** No hardcodees locales. Importa
+> `APP_LOCALE` (fechas) y `NUMBER_LOCALE` (números/montos) desde `@/plugins/locale`:
+>
+> ```ts
+> import { APP_LOCALE, NUMBER_LOCALE } from '@/plugins/locale'
+>
+> fecha.toLocaleDateString(APP_LOCALE, { day: '2-digit', month: 'short', year: 'numeric' })
+> new Intl.NumberFormat(NUMBER_LOCALE, { minimumFractionDigits: 2 }).format(monto)
+> ```
+>
+> La app es en español (`APP_LOCALE = 'es-EC'`) con montos en formato USD
+> (`NUMBER_LOCALE = 'en-US'` → `"1,234.56"`). Cambiar el idioma/formato base es una sola
+> línea en `src/plugins/locale.ts`. Ver también `AGENTS.md`.
 
 ### Paso 7: Agregar al Menú de Navegación
 
@@ -1253,6 +1268,7 @@ Buscar la sección "Módulos" y agregar:
 - [ ] Crear servicio API
 - [ ] Crear store (opcional)
 - [ ] Implementar vistas con validación de permisos
+- [ ] Usar `APP_LOCALE` / `NUMBER_LOCALE` de `@/plugins/locale` para fechas y montos (no hardcodear locales)
 - [ ] Agregar al menú de navegación
 - [ ] Probar flujo completo
 

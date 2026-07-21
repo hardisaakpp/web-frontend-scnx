@@ -84,6 +84,7 @@ import { onMounted, ref } from 'vue'
 import { cajaChicaApi } from '../services/cajaChicaApi'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { APP_LOCALE } from '@/plugins/locale'
 
 const authStore = useAuthStore()
 
@@ -273,7 +274,7 @@ const downloadPdf = async () => {
   const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Liquidaciones Pendientes</title><style>${CSS}</style></head><body>
     <div style="margin-bottom:16px;border-bottom:2px solid #1e3a5f;padding-bottom:8px;display:flex;justify-content:space-between;align-items:flex-end">
       <div><div style="font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#6b7280">Reporte</div><div style="font-size:16px;font-weight:700;color:#1e3a5f">Liquidaciones Pendientes</div></div>
-      <div style="text-align:right;font-size:10px;color:#6b7280">Generado: ${new Date().toLocaleString('es-ES')}<br>${pendientes.value.length} liquidación(es)</div>
+      <div style="text-align:right;font-size:10px;color:#6b7280">Generado: ${new Date().toLocaleString(APP_LOCALE)}<br>${pendientes.value.length} liquidación(es)</div>
     </div>
     ${sectionsHtml}
   </body></html>`

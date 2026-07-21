@@ -28,6 +28,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { NUMBER_LOCALE } from '@/plugins/locale'
 
 interface Props {
   title: string
@@ -40,7 +41,7 @@ interface Props {
 const props = defineProps<Props>()
 
 const formattedValue = computed(() => {
-  return new Intl.NumberFormat('es-MX', {
+  return new Intl.NumberFormat(NUMBER_LOCALE, {
     style: 'currency',
     currency: 'USD'
   }).format(props.value)
