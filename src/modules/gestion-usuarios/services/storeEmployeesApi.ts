@@ -28,6 +28,17 @@ export interface StoreEmployeesFilters {
   encargado: string
 }
 
+export interface StoreEmployeeWrite {
+  cedula_identidad?: string
+  correo?: string
+  nombre?: string
+  cargo?: string
+  codigo_tienda?: string
+  estado?: number
+  encargado?: number
+  usuario_actual?: string
+}
+
 interface ApiListResult {
   items: StoreEmployee[]
   total: number
@@ -45,16 +56,9 @@ interface HealthResponse {
 
 const endpointUrl =
   import.meta.env.VITE_STORE_EMPLOYEES_API_URL ||
-  '/employees-api/store_employees.php'
+  '/employees-api/api/v1/store-employees'
 
-const baseUrl = endpointUrl.includes('.php')
-  ? endpointUrl.split('/').slice(0, -1).join('/')
-  : endpointUrl
-const relativePath = endpointUrl.includes('.php')
-  ? '/' + endpointUrl.split('/').pop()
-  : ''
-
-const employeesApi = createModuleApi(baseUrl, { auditHeaders: true })
+const employeesApi = createModuleApi(endpointUrl.replace(/\/$/, ''), { auditHeaders: true })
 
 function toItems(payload: any): StoreEmployee[] {
   if (Array.isArray(payload)) return payload
@@ -133,42 +137,40 @@ export async function listStoreEmployees(filters: StoreEmployeesFilters): Promis
   if (filters.estado !== '') params.estado = filters.estado
   if (filters.encargado === '0' || filters.encargado === '1') params.encargado = filters.encargado
 
-  const { data } = await employeesApi.get(relativePath, { params })
+  const { data } = await employeesApi.get('', { params })
   const raw = toItems(data)
   const items = raw.map((row) => mapStoreEmployeeRow(row))
   const total = toTotal(data, items.length)
   return { items, total }
 }
 
-type StoreEmployeeServerDates = 'id' | 'fecha_ingreso' | 'fecha_ultima_actualizacion'
-
 export async function createStoreEmployee(
-  payload: Omit<StoreEmployee, StoreEmployeeServerDates>
+  payload: StoreEmployeeWrite
 ): Promise<void> {
-  await employeesApi.post(relativePath, payload)
+  await employeesApi.post('', payload)
 }
 
 export async function updateStoreEmployee(
   id: number,
-  payload: Partial<Omit<StoreEmployee, StoreEmployeeServerDates>>
+  payload: StoreEmployeeWrite
 ): Promise<StoreEmployee | null> {
-  const { data } = await employeesApi.patch(relativePath, { id, ...payload })
+  const { data } = await employeesApi.patch(String(id), payload)
   return parseStoreEmployeeMutationResponse(data)
 }
 
 export async function inactivateStoreEmployee(id: number, user: string): Promise<void> {
-  await employeesApi.delete(relativePath, {
-    params: { id }
+  await employeesApi.delete(String(id), {
+    data: { usuario_actual: user }
   })
 }
 
 /**
- * Catálogo de cargos desde el backend: GET store_employees.php?meta=cargos
+ * Catálogo de cargos desde el backend: GET /meta/cargos
  * Respuesta esperada: { ok: true, data: string[] }
  */
 export async function fetchStoreEmployeeCargos(): Promise<StoreEmployeeCargo[]> {
   try {
-    const { data } = await employeesApi.get<MetaListResponse<unknown>>(relativePath, { params: { meta: 'cargos' } })
+    const { data } = await employeesApi.get<MetaListResponse<unknown>>('meta/cargos')
     if (data?.ok === true && Array.isArray(data?.data)) {
       const raw = data.data.filter((x: unknown) => typeof x === 'string') as string[]
       const valid = raw.filter((x) =>
@@ -191,11 +193,11 @@ export interface AlmacenOption {
 }
 
 /**
- * Catálogo de tiendas/almacenes: GET store_employees.php?meta=almacenes
+ * Catálogo de tiendas/almacenes: GET /meta/almacenes
  * Usa meta.value_field / meta.label_field si vienen en la respuesta.
  */
 export async function fetchStoreAlmacenes(): Promise<AlmacenOption[]> {
-  const { data } = await employeesApi.get<MetaListResponse<Record<string, unknown>>>(relativePath, { params: { meta: 'almacenes' } })
+  const { data } = await employeesApi.get<MetaListResponse<Record<string, unknown>>>('meta/almacenes')
   if (data?.ok !== true || !Array.isArray(data?.data)) {
     return []
   }
@@ -216,13 +218,12 @@ export async function fetchStoreAlmacenes(): Promise<AlmacenOption[]> {
 }
 
 /**
- * Health opcional: GET store_employees.php?health=1
+ * Health: GET /health
  * Devuelve true si el servicio responde usable (ok no false).
  */
 export async function checkStoreEmployeesHealth(): Promise<boolean> {
   try {
-    const { data } = await employeesApi.get<HealthResponse>(relativePath, {
-      params: { health: '1' },
+    const { data } = await employeesApi.get<HealthResponse>('health', {
       timeout: 10_000
     })
     if (data?.ok === false) {
