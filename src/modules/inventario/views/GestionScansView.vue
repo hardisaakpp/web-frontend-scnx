@@ -171,6 +171,7 @@ import { Dialog, DialogPanel, DialogTitle, TransitionRoot, TransitionChild } fro
 import { ChevronLeftIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
 import { inventarioSesionesService } from '../services/inventarioSesionesApi'
 import type { SessionScansByUserDto, UserScanDetailEntryDto } from '../types'
+import { APP_LOCALE } from '@/plugins/locale'
 
 const router = useRouter()
 const route = useRoute()
@@ -249,8 +250,8 @@ function fmtQty(n: number): string {
 
 function fmtDt(v: string): string {
   const d = new Date(v)
-  return d.toLocaleDateString('es', { day: '2-digit', month: '2-digit', year: '2-digit' }) +
-    ' ' + d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  return d.toLocaleDateString(APP_LOCALE, { day: '2-digit', month: '2-digit', year: '2-digit' }) +
+    ' ' + d.toLocaleTimeString(APP_LOCALE, { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }
 
 onMounted(cargar)
