@@ -7,5 +7,6 @@
 </template>
 
 <script setup lang="ts">
-const DASHBOARD_URL = 'http://210.17.1.96:8001/demanda-otb/dashboard'
+// Ruta relativa: Vite (dev) / Nginx (prod) la proxean al backend real sin exponer su IP al navegador.
+const DASHBOARD_URL = '/demanda-otb/dashboard'
 </script>
