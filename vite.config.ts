@@ -59,6 +59,7 @@ export default defineConfig(async ({ mode }): Promise<UserConfig> => {
   console.log(`\x1b[35m[proxy]\x1b[0m Reposiciones → ${reposicionProxyTarget}`)
 
   const ruletaProxyTarget = upstreamUrl(env, 'RULETA')
+  const demandaOtbProxyTarget = upstreamUrl(env, 'DEMANDA_OTB')
   const pygProxyPrefix =
     'UPSTREAM_PYG_PREFIX' in env
       ? env.UPSTREAM_PYG_PREFIX
@@ -340,6 +341,40 @@ export default defineConfig(async ({ mode }): Promise<UserConfig> => {
           secure: false,
 
           rewrite: (path) => path.replace(/^\/ruleta-api/, '')
+
+        },
+
+        // Dashboard externo embebido (iframe). La ruta exacta '/demanda-otb' la sirve el SPA;
+        // solo las subrutas (dashboard, assets, API propia del dashboard) van al backend real.
+        '/demanda-otb': {
+
+          target: demandaOtbProxyTarget,
+
+          changeOrigin: true,
+
+          secure: false,
+
+          bypass: (req) => {
+
+            if (req.url === '/demanda-otb' || req.url === '/demanda-otb/') {
+
+              return '/index.html'
+
+            }
+
+          }
+
+        },
+
+        // El dashboard de Demanda OTB referencia este asset con ruta absoluta ('/static/vendor/plotly.min.js')
+        // en vez de relativa a '/demanda-otb/'. Se proxea aparte al mismo backend hasta que se corrija ahí.
+        '/static': {
+
+          target: demandaOtbProxyTarget,
+
+          changeOrigin: true,
+
+          secure: false
 
         }
 
