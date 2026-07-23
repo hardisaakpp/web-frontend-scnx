@@ -376,6 +376,18 @@ export default defineConfig(async ({ mode }): Promise<UserConfig> => {
 
           secure: false
 
+        },
+
+        // El chatbot mIA del dashboard llama a '/mia/chat', '/mia/avatar', '/mia/feedback' con
+        // ruta absoluta en vez de relativa a '/demanda-otb/'. Mismo caso que '/static' de arriba.
+        '/mia': {
+
+          target: demandaOtbProxyTarget,
+
+          changeOrigin: true,
+
+          secure: false
+
         }
 
 
