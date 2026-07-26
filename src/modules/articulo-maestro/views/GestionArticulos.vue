@@ -247,7 +247,7 @@
                     <div class="flex items-center gap-4 p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800">
                         <div class="flex-1">
                             <p class="text-sm font-medium text-blue-900 dark:text-blue-200">1. Descarga la plantilla Excel</p>
-                            <p class="text-xs text-blue-700 dark:text-blue-400 mt-0.5">Completa los datos de los artículos y súbela en el paso 2.</p>
+                            <p class="text-xs text-blue-700 dark:text-blue-400 mt-0.5">Completa los datos de los artículos y súbela en el paso 3.</p>
                         </div>
                         <button
                             @click="handleDownloadTemplate"
@@ -258,9 +258,24 @@
                         </button>
                     </div>
 
-                    <!-- Paso 2: Subir Archivo -->
+                    <!-- Paso 2: Seleccionar Acción -->
                     <div>
-                        <p class="text-sm font-medium text-gray-900 dark:text-white mb-2">2. Sube el archivo completado</p>
+                        <p class="text-sm font-medium text-gray-900 dark:text-white mb-2">2. ¿Qué deseas hacer con el archivo?</p>
+                        <div class="flex gap-4">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" v-model="tipoCarga" value="crear" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500" />
+                                <span class="text-sm text-gray-700 dark:text-gray-300">Crear nuevos artículos</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" v-model="tipoCarga" value="actualizar" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500" />
+                                <span class="text-sm text-gray-700 dark:text-gray-300">Actualizar existentes</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Paso 3: Subir Archivo -->
+                    <div>
+                        <p class="text-sm font-medium text-gray-900 dark:text-white mb-2">3. Sube el archivo completado</p>
                         <div
                             class="border-2 border-dashed rounded-lg p-6 text-center transition-colors"
                             :class="dragOver ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-300 dark:border-gray-600 hover:border-gray-400'"
@@ -667,6 +682,7 @@ async function confirmDelete() {
 
 // ─── Carga Masiva ─────────────────────────────────────────────────────────────────────
 const showCargaModal = ref(false)
+const tipoCarga = ref<'crear' | 'actualizar'>('crear')
 const selectedFile = ref<File | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const dragOver = ref(false)
@@ -729,8 +745,11 @@ async function handleUpload() {
     cargaError.value = ''
     cargaResults.value = null
     try {
-        // El servicio normaliza tanto respuestas 200 como errores 422 de validación
-        cargaResults.value = await articuloService.cargaMasiva(selectedFile.value)
+        if (tipoCarga.value === 'actualizar') {
+            cargaResults.value = await articuloService.cargaMasivaActualizacion(selectedFile.value)
+        } else {
+            cargaResults.value = await articuloService.cargaMasiva(selectedFile.value)
+        }
     } catch (err: unknown) {
         // Solo llega aquí si fue un error de red/servidor (no de validación)
         const axiosErr = err as { response?: { data?: { detail?: string } } }

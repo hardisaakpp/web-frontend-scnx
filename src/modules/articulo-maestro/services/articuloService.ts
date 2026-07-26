@@ -1,5 +1,5 @@
 import { maestroHttp as apiMaestro } from '@/lib/http'
-import type { Articulo, ArticuloFilters } from '../types'
+import type { Articulo, ArticuloFilters, MultiStatusUploadResponse } from '../types'
 
 // ─── Normalización de respuestas ─────────────────────────────────────────────
 // Esta función mapea el objeto de respuesta a las claves camelCase que espera el front.
@@ -39,6 +39,13 @@ function normalizeObject(obj: any): any {
         uCanalVenta: ['U_CANAL_VENTA', 'u_canal_venta'],
         uRegion: ['U_REGION', 'u_region'],
         uLiq: ['U_LIQ', 'u_liq'],
+        codigoAlterno: ['CODIGO_ALTERNO', 'codigo_alterno'],
+        hasSupplierBarcode: ['HAS_SUPPLIER_BARCODE', 'has_supplier_barcode'],
+        productStatus: ['PRODUCT_STATUS', 'product_status'],
+        priceListId: ['PRICE_LIST_ID', 'price_list_id'],
+        ecommerceApplicable: ['ECOMMERCE_APPLICABLE', 'ecommerce_applicable'],
+        manBtchNum: ['MAN_BTCH_NUM', 'man_btch_num'],
+        isStructuralLocked: ['IS_STRUCTURAL_LOCKED', 'is_structural_locked']
     }
 
     Object.entries(criticalMappings).forEach(([camelKey, variations]) => {
@@ -209,6 +216,35 @@ export const articuloService = {
             }
 
             // Otro tipo de error (red, servidor, etc.)
+            throw err
+        }
+    },
+
+    cargaMasivaActualizacion: async (file: File): Promise<CargaMasivaResponse> => {
+        const formData = new FormData()
+        formData.append('file', file)
+        try {
+            const response = await apiMaestro.post<CargaMasivaResponse>('/api/v1/articulos/carga-masiva-actualizacion', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            })
+            return response.data
+        } catch (err: unknown) {
+            const axiosErr = err as { response?: { status?: number, data?: any } }
+            const data = axiosErr?.response?.data
+
+            const errorPayload = data?.errores ? data : data?.detail
+
+            if (Array.isArray(errorPayload?.errores)) {
+                return {
+                    success: false,
+                    mensaje: errorPayload.mensaje || 'Errores de validación en la actualización.',
+                    total: errorPayload.errores.length,
+                    success_count: 0,
+                    error_count: errorPayload.errores.length,
+                    errores: errorPayload.errores
+                }
+            }
+
             throw err
         }
     }
@@ -509,4 +545,34 @@ export const historialService = {
         return response.data
     }
 }
+
+// ─── Servicio de Imágenes ───────────────────────────────────────────────────
+
+export const imagenService = {
+    // Carga masiva de imágenes
+    uploadImages: async (files: File[], sessionToken?: string): Promise<MultiStatusUploadResponse> => {
+        const formData = new FormData()
+        files.forEach(file => {
+            formData.append('files', file)
+        })
+        if (sessionToken) {
+            formData.append('sessionToken', sessionToken)
+        }
+        
+        try {
+            const response = await apiMaestro.post<MultiStatusUploadResponse>('/api/v1/imagenes/carga-masiva', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            })
+            return response.data
+        } catch (err: any) {
+            // Si el backend devuelve un HTTP 207 y axios lo detecta como error por el status code,
+            // recuperamos el payload aquí.
+            if (err.response && err.response.data && err.response.data.status) {
+                return err.response.data as MultiStatusUploadResponse
+            }
+            throw err
+        }
+    }
+}
+
 

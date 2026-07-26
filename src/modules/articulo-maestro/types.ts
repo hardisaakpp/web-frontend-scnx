@@ -90,9 +90,18 @@ export interface Articulo {
     salesUnit: string | null
     salesItemsPerUnit: number | null
 
-    // Estado
+    // Nuevos campos (SIS-CCPYTD-00014)
+    codigoAlterno?: string | null
+    hasSupplierBarcode?: boolean
+    productStatus?: boolean
+    priceListId?: number | null
+    ecommerceApplicable?: boolean
+    manBtchNum?: string | null
+
+    // Estado y UI
     activo: boolean
     controlSap?: ArticuloControlSap
+    isStructuralLocked?: boolean
 }
 
 export interface ArticuloControlSap {
@@ -122,4 +131,37 @@ export interface ArticuloPagination {
     page: number
     pageSize: number
     totalPages: number
+}
+
+// ─────────────────────────────────────────────
+// Interfaces Multimedia (Imágenes)
+// ─────────────────────────────────────────────
+
+export interface ProductImage {
+    id: number
+    articuloId?: number | null
+    baseCode: string
+    url: string
+    isPrimary: boolean
+    position: number
+    createdAt: string
+    status: 'PENDING' | 'ASSIGNED' | 'DELETED'
+}
+
+export interface UploadError {
+    file_name: string
+    reason: string
+}
+
+export interface MultiStatusSummary {
+    total_received: number
+    successful: number
+    failed: number
+}
+
+export interface MultiStatusUploadResponse {
+    status: 'success' | 'partial_success' | 'error'
+    summary: MultiStatusSummary
+    successful_files: string[]
+    errors: UploadError[]
 }

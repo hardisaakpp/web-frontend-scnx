@@ -58,20 +58,40 @@
                         </button>
                     </div>
 
+                    <!-- Banner de Bloqueo Estructural -->
+                    <div v-if="isEdit && form.isStructuralLocked" class="m-6 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4 flex gap-3">
+                        <svg class="w-6 h-6 text-amber-600 dark:text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                        <div>
+                            <h4 class="text-sm font-bold text-amber-800 dark:text-amber-300">Modificación Estructural Bloqueada</h4>
+                            <p class="text-xs text-amber-700 dark:text-amber-400 mt-1">Este artículo ya se ha sincronizado con SAP. Los campos estructurales (Jerarquía y Marca) no pueden modificarse.</p>
+                        </div>
+                    </div>
+
                     <!-- Tab: General -->
                     <div v-show="activeTab === 'general'" class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div class="form-field" :class="{ required: !isEdit }">
+                        <div class="form-field">
                             <label for="formItemCode">Código Interno (ItemCode)</label>
-                            <input id="formItemCode" v-model="form.itemCode" type="text" :disabled="isEdit" :required="!isEdit" placeholder="Ej: ART-001" />
-                            <span v-if="isEdit" class="help">El código no puede cambiarse en edición.</span>
+                            <input id="formItemCode" :value="form.itemCode" type="text" disabled placeholder="[Generación Automática]" />
+                            <span v-if="!isEdit" class="help">Se genera automáticamente al crear.</span>
                         </div>
-                        <div class="form-field required">
+                        <div class="form-field">
                             <label for="formItemName">Descripción Factura (ItemName)</label>
-                            <input id="formItemName" v-model="form.itemName" type="text" required placeholder="Nombre del artículo" />
+                            <input id="formItemName" v-model="form.itemName" type="text" disabled placeholder="Generado automáticamente..." />
+                            <span class="help">N3 + Género + Marca + Atributo + Color + Pack</span>
+                        </div>
+
+                        <!-- Nuevos campos SIS-CCPYTD-00014 -->
+                        <div class="form-field sm:col-span-2 flex flex-row items-center gap-3 bg-gray-50 dark:bg-gray-900 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                            <input id="formHasSupplierBarcode" v-model="form.hasSupplierBarcode" type="checkbox" class="w-5 h-5 text-blue-600 rounded border-gray-300" />
+                            <label for="formHasSupplierBarcode" class="!text-sm !m-0 !font-medium">¿Tiene código de barras del proveedor?</label>
                         </div>
                         <div class="form-field">
                             <label for="formBarCode">Código de Barras</label>
-                            <input id="formBarCode" v-model="form.barCode" type="text" placeholder="EAN / UPC" />
+                            <input id="formBarCode" v-model="form.barCode" type="text" placeholder="EAN / UPC" :disabled="!form.hasSupplierBarcode" />
+                        </div>
+                        <div class="form-field">
+                            <label for="formCodigoAlterno">Código Alterno</label>
+                            <input id="formCodigoAlterno" v-model="form.codigoAlterno" type="text" placeholder="Código interno alterno" />
                         </div>
                         <div class="form-field">
                             <label for="formSkuSinTalla">Referencia / SKU sin talla</label>
@@ -121,7 +141,7 @@
 
                         <div class="form-field">
                             <label for="formMarca">Marca</label>
-                            <input id="formMarca" v-model="form.uMarca" type="text" placeholder="Ej: ROLLY" />
+                            <input id="formMarca" v-model="form.uMarca" type="text" placeholder="Ej: ROLLY" :disabled="form.isStructuralLocked" />
                         </div>
 
                         <!-- Jerarquía en cascada: Sección → Categoría → Línea -->
@@ -134,6 +154,7 @@
                                 placeholder="Seleccionar sección..."
                                 @change="onSeccionChange"
                                 valueKey="nombre"
+                                :disabled="form.isStructuralLocked"
                             />
                         </div>
                         <div class="form-field">
@@ -143,7 +164,7 @@
                                 v-model="form.uNv2"
                                 :options="cats.categorias"
                                 placeholder="Seleccionar categoría..."
-                                :disabled="!form.uNv1"
+                                :disabled="!form.uNv1 || form.isStructuralLocked"
                                 @change="onCategoriaChange"
                                 valueKey="nombre"
                             />
@@ -155,7 +176,7 @@
                                 v-model="form.uNv3"
                                 :options="cats.lineas"
                                 placeholder="Seleccionar línea..."
-                                :disabled="!form.uNv2"
+                                :disabled="!form.uNv2 || form.isStructuralLocked"
                                 valueKey="nombre"
                             />
                         </div>
@@ -333,6 +354,10 @@
                             <input id="formPrice" v-model.number="form.price" type="number" step="0.01" placeholder="0.00" min="0" />
                         </div>
                         <div class="form-field">
+                            <label for="formPriceListId">ID Lista de Precios</label>
+                            <input id="formPriceListId" v-model.number="form.priceListId" type="number" placeholder="Ej: 1" />
+                        </div>
+                        <div class="form-field">
                             <label for="formPrArq">Costo de Arranque</label>
                             <input id="formPrArq" v-model.number="form.uPrArq" type="number" step="0.01" placeholder="0.00" />
                         </div>
@@ -345,7 +370,10 @@
                                 placeholder="Seleccionar..."
                             />
                         </div>
-
+                        <div class="form-field sm:col-span-2 flex flex-row items-center gap-3 bg-gray-50 dark:bg-gray-900 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                            <input id="formEcommerceApplicable" v-model="form.ecommerceApplicable" type="checkbox" class="w-5 h-5 text-blue-600 rounded border-gray-300" />
+                            <label for="formEcommerceApplicable" class="!text-sm !m-0 !font-medium">Aplica para E-commerce</label>
+                        </div>
                     </div>
 
                     <!-- Tab: Config. SAP / Impuestos -->
@@ -465,10 +493,17 @@
                             <input id="formSalesItemsPerUnit" v-model.number="form.salesItemsPerUnit" type="number" placeholder="1" min="0" />
                         </div>
                         <div class="form-field">
-                            <label for="formManageBatch">Gestión por Lotes</label>
-                            <select id="formManageBatch" v-model="form.manageBatchNumbers">
+                            <label for="formManageBatch">Gestión por Lotes (ManBtchNum)</label>
+                            <select id="formManageBatch" v-model="form.manBtchNum">
                                 <option value="N">N - No</option>
                                 <option value="Y">Y - Sí</option>
+                            </select>
+                        </div>
+                        <div class="form-field">
+                            <label for="formProductStatus">Estado de Producto (SAP)</label>
+                            <select id="formProductStatus" v-model="form.productStatus">
+                                <option :value="true">Activo</option>
+                                <option :value="false">Inactivo</option>
                             </select>
                         </div>
                         <div class="form-field">
@@ -483,6 +518,11 @@
                             <label for="formTipoBien">Tipo de Bien</label>
                             <input id="formTipoBien" v-model="form.uTipoBien" type="text" placeholder="Tipo de bien" />
                         </div>
+                    </div>
+
+                    <!-- Tab: Imágenes -->
+                    <div v-show="activeTab === 'img'" class="p-6">
+                        <GestorImagenes :itemCode="form.itemCode" :sessionToken="sessionToken" />
                     </div>
                 </div>
 
@@ -547,16 +587,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { articuloService, catalogoService } from '../services/articuloService'
 import type { CatalogoItem, JerarquiaItem } from '../services/articuloService'
 import SearchableSelect from '../components/SearchableSelect.vue'
+import GestorImagenes from '../components/GestorImagenes.vue'
 
 const route = useRoute()
 const router = useRouter()
 
 const isEdit = computed(() => !!route.params.itemCode)
+const sessionToken = ref(!isEdit.value ? crypto.randomUUID().substring(0, 30) : '')
 
 const tabs = [
     { id: 'general', label: 'General' },
@@ -564,6 +606,7 @@ const tabs = [
     { id: 'mat',     label: 'Color y Material' },
     { id: 'log',     label: 'Logística y Precios' },
     { id: 'sap',     label: 'Config. SAP / Impuestos' },
+    { id: 'img',     label: 'Imágenes' },
 ]
 const activeTab = ref('general')
 
@@ -573,7 +616,6 @@ const showValidationModal = ref(false)
 
 const tabsWithErrors = computed(() => {
     const errorTabs = new Set<string>()
-    if (!isEdit.value && !form.value.itemCode) errorTabs.add('general')
     if (!form.value.itemName) errorTabs.add('general')
     if (!form.value.uIxxMarca) errorTabs.add('cat')
     if (!form.value.itemType) errorTabs.add('sap')
@@ -583,7 +625,6 @@ const tabsWithErrors = computed(() => {
 
 const validationErrorsList = computed(() => {
     const errors: string[] = []
-    if (!isEdit.value && !form.value.itemCode) errors.push('Código Interno (Tab General)')
     if (!form.value.itemName) errors.push('Descripción Factura (Tab General)')
     if (!form.value.uIxxMarca) errors.push('Negocio (Tab Categorización)')
     if (!form.value.itemType) errors.push('Tipo de Artículo (Tab Config. SAP)')
@@ -592,7 +633,6 @@ const validationErrorsList = computed(() => {
 })
 
 function getFirstErrorTab() {
-    if (!isEdit.value && !form.value.itemCode) return 'general'
     if (!form.value.itemName) return 'general'
     if (!form.value.uIxxMarca) return 'cat'
     if (!form.value.itemType) return 'sap'
@@ -779,9 +819,36 @@ const form = ref({
     salesUnit: '',
     salesItemsPerUnit: 1,
     uTipoBien: 'B',
-    properties63: 'N',
-    properties64: 'N',
+    // Nuevos campos
+    codigoAlterno: '',
+    hasSupplierBarcode: false,
+    productStatus: true,
+    priceListId: null as number | null,
+    ecommerceApplicable: false,
+    manBtchNum: 'N',
+    isStructuralLocked: false,
 })
+
+// Auto-generación de ItemName (Descripción Factura)
+watch([
+    () => form.value.uNv3,
+    () => form.value.uGen,
+    () => form.value.uMarca,
+    () => form.value.uAtrMed,
+    () => form.value.uCodColor,
+    () => form.value.uIxxPack
+], () => {
+    // Buscar descripciones en lugar de usar códigos directamente
+    const n3 = cats.value.lineas.find(l => l.nombre === form.value.uNv3)?.nombre || form.value.uNv3 || ''
+    const genero = cats.value.genero.find(g => g.codigo === String(form.value.uGen))?.nombre || form.value.uGen || ''
+    const marca = form.value.uMarca || ''
+    const atributo = form.value.uAtrMed || ''
+    const color = cats.value.color.find(c => c.codigo === String(form.value.uCodColor))?.nombre || form.value.uCodColor || ''
+    const pack = form.value.uIxxPack || ''
+
+    const parts = [n3, genero, marca, atributo, color, pack].filter(Boolean)
+    form.value.itemName = parts.join(' ').toUpperCase().substring(0, 100)
+}, { deep: true })
 
 const loadingData = ref(false)
 const loadError = ref('')
@@ -903,6 +970,7 @@ async function handleSubmit() {
             const itemCode = route.params.itemCode as string
             await articuloService.updateArticulo(itemCode, payload)
         } else {
+            payload.sessionToken = sessionToken.value
             await articuloService.createArticulo(payload)
         }
         router.push('/articulo-maestro/lista')
