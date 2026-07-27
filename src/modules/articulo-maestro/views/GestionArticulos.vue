@@ -38,6 +38,14 @@
                 >
                     + Cargar archivo
                 </button>
+                <button
+                    class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-60 transition-colors shadow-sm text-sm font-medium flex items-center gap-2"
+                    @click="handleDescargarReporte"
+                    :disabled="downloadingReport"
+                >
+                    <svg v-if="downloadingReport" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                    {{ downloadingReport ? 'Descargando...' : 'Descargar Reporte del Día' }}
+                </button>
             </div>
             
             <!-- Table Container -->
@@ -161,7 +169,7 @@
                                     :key="col.key"
                                     class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 truncate"
                                 >
-                                    <template v-if="col.key === 'uPrArq' || col.key === 'price'">
+                                    <template v-if="col.key === 'costoArranque' || col.key === 'price'">
                                         ${{ (articulo[col.key] ?? 0).toFixed(2) }}
                                     </template>
                                     <template v-else-if="col.key === 'uGen'">
@@ -264,11 +272,11 @@
                         <div class="flex gap-4">
                             <label class="flex items-center gap-2 cursor-pointer">
                                 <input type="radio" v-model="tipoCarga" value="crear" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500" />
-                                <span class="text-sm text-gray-700 dark:text-gray-300">Crear nuevos artículos</span>
+                                <span class="text-sm text-gray-700 dark:text-gray-300">+ Crear Productos</span>
                             </label>
                             <label class="flex items-center gap-2 cursor-pointer">
                                 <input type="radio" v-model="tipoCarga" value="actualizar" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500" />
-                                <span class="text-sm text-gray-700 dark:text-gray-300">Actualizar existentes</span>
+                                <span class="text-sm text-gray-700 dark:text-gray-300">+ Modificar Productos</span>
                             </label>
                         </div>
                     </div>
@@ -305,11 +313,14 @@
                         <div v-if="cargaResults.error_count > 0" class="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 overflow-hidden">
                             <div class="flex items-start gap-3 px-4 py-3">
                                 <svg class="h-5 w-5 text-red-500 dark:text-red-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                                <div>
+                                <div class="flex-1">
                                     <p class="text-sm font-semibold text-red-800 dark:text-red-300">No se importó ningún artículo</p>
-                                    <p class="text-xs text-red-600 dark:text-red-400 mt-0.5">
+                                    <p class="text-xs text-red-600 dark:text-red-400 mt-0.5 mb-2">
                                         {{ cargaResults.mensaje || 'Se encontraron errores de validación. Corrige los problemas señalados e intenta de nuevo.' }}
                                     </p>
+                                    <button @click="descargarReporteErrores" class="px-3 py-1.5 bg-red-600 text-white text-xs font-medium rounded hover:bg-red-700 transition-colors">
+                                        Descargar Reporte de Errores
+                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -490,6 +501,8 @@ const totalCount = computed(() => store.pagination.total)
 const allColumns = [
     { key: 'itemCode', label: 'CODIGO INTERNO' },
     { key: 'barCode', label: 'CODIGO DE BARRAS' },
+    { key: 'codigoAlterno', label: 'CODIGO ALTERNO' },
+    { key: 'tieneCodigoProveedor', label: 'TIENE CODIGO PROVEEDOR' },
     { key: 'uGen', label: 'GENERO' },
     { key: 'foreignName', label: 'DESCRIPCION SAP' },
     { key: 'uDescEcomm', label: 'DESCRIPCION ETIQUETA' },
@@ -521,7 +534,7 @@ const allColumns = [
     { key: 'uDespIn', label: 'UNIDAD DE EMPAQUE - INNER' },
     { key: 'uCanalVenta', label: 'CANAL DE VENTA' },
     { key: 'uRegion', label: 'REGION DE VENTA' },
-    { key: 'uPrArq', label: 'COSTO DE ARRANQUE' },
+    { key: 'costoArranque', label: 'COSTO DE ARRANQUE' },
     { key: 'price', label: 'PVP' },
     { key: 'uLiq', label: 'LIQUIDACION' },
     { key: 'itemsGroupCode', label: 'GRUPO ARTICULOS' },
@@ -540,7 +553,10 @@ const allColumns = [
     { key: 'apTaxCode', label: 'TaxCodeAP' },
     { key: 'manufacturer', label: 'FirmCode' },
     { key: 'shipType', label: 'ShipType' },
-    { key: 'manageBatchNumbers', label: 'ManBtchNum' },
+    { key: 'manBtchNum', label: 'ManBtchNum' },
+    { key: 'estadoProducto', label: 'ESTADO PRODUCTO' },
+    { key: 'idListaPrecios', label: 'LISTA PRECIOS' },
+    { key: 'aplicaEcommerce', label: 'APLICA ECOMMERCE' },
     { key: 'planningSystem', label: 'PlaningSys' },
     { key: 'procurementMethod', label: 'PrcrmntMtd' },
     { key: 'inventoryUom', label: 'InvntryUom' },
@@ -770,5 +786,32 @@ function parseErrors(errorStr: string): string[] {
         .split(';')
         .map(s => s.trim())
         .filter(s => s.length > 0)
+}
+
+const downloadingReport = ref(false)
+
+async function handleDescargarReporte() {
+    downloadingReport.value = true
+    try {
+        await store.descargarReporteDiario()
+    } catch (e: any) {
+        alert(e)
+    } finally {
+        downloadingReport.value = false
+    }
+}
+
+function descargarReporteErrores() {
+    if (!cargaResults.value || !cargaResults.value.errores) return
+    const csvContent = "Fila,ItemCode,Errores\n" + cargaResults.value.errores.map(e => `${e.fila},${e.item_code || ''},"${e.error.replace(/"/g, '""')}"`).join("\n")
+    const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', 'reporte_errores_carga.csv')
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    URL.revokeObjectURL(url)
 }
 </script>

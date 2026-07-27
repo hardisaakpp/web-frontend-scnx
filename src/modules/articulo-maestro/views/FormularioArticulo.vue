@@ -71,7 +71,7 @@
                     <div v-show="activeTab === 'general'" class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div class="form-field">
                             <label for="formItemCode">Código Interno (ItemCode)</label>
-                            <input id="formItemCode" :value="form.itemCode" type="text" disabled placeholder="[Generación Automática]" />
+                            <input id="formItemCode" :value="form.itemCode" type="text" disabled placeholder="[Generación Automática en Backend]" />
                             <span v-if="!isEdit" class="help">Se genera automáticamente al crear.</span>
                         </div>
                         <div class="form-field">
@@ -82,12 +82,12 @@
 
                         <!-- Nuevos campos SIS-CCPYTD-00014 -->
                         <div class="form-field sm:col-span-2 flex flex-row items-center gap-3 bg-gray-50 dark:bg-gray-900 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
-                            <input id="formHasSupplierBarcode" v-model="form.hasSupplierBarcode" type="checkbox" class="w-5 h-5 text-blue-600 rounded border-gray-300" />
-                            <label for="formHasSupplierBarcode" class="!text-sm !m-0 !font-medium">¿Tiene código de barras del proveedor?</label>
+                            <input id="formTieneCodigoProveedor" v-model="form.tieneCodigoProveedor" type="checkbox" class="w-5 h-5 text-blue-600 rounded border-gray-300" />
+                            <label for="formTieneCodigoProveedor" class="!text-sm !m-0 !font-medium">¿El producto posee código de barras del proveedor?</label>
                         </div>
                         <div class="form-field">
                             <label for="formBarCode">Código de Barras</label>
-                            <input id="formBarCode" v-model="form.barCode" type="text" placeholder="EAN / UPC" :disabled="!form.hasSupplierBarcode" />
+                            <input id="formBarCode" v-model="form.barCode" type="text" :placeholder="form.tieneCodigoProveedor ? 'EAN / UPC' : '[Asignación Automática desde Bolsa]'" :disabled="!form.tieneCodigoProveedor" />
                         </div>
                         <div class="form-field">
                             <label for="formCodigoAlterno">Código Alterno</label>
@@ -141,7 +141,7 @@
 
                         <div class="form-field">
                             <label for="formMarca">Marca</label>
-                            <input id="formMarca" v-model="form.uMarca" type="text" placeholder="Ej: ROLLY" :disabled="form.isStructuralLocked" />
+                            <input id="formMarca" v-model="form.uMarca" type="text" placeholder="Ej: ROLLY" :disabled="form.isStructuralLocked" :title="form.isStructuralLocked ? 'El artículo posee historial en SAP y no puede modificar su estructura' : ''" />
                         </div>
 
                         <!-- Jerarquía en cascada: Sección → Categoría → Línea -->
@@ -155,6 +155,7 @@
                                 @change="onSeccionChange"
                                 valueKey="nombre"
                                 :disabled="form.isStructuralLocked"
+                                :title="form.isStructuralLocked ? 'El artículo posee historial en SAP y no puede modificar su estructura' : ''"
                             />
                         </div>
                         <div class="form-field">
@@ -165,6 +166,7 @@
                                 :options="cats.categorias"
                                 placeholder="Seleccionar categoría..."
                                 :disabled="!form.uNv1 || form.isStructuralLocked"
+                                :title="form.isStructuralLocked ? 'El artículo posee historial en SAP y no puede modificar su estructura' : ''"
                                 @change="onCategoriaChange"
                                 valueKey="nombre"
                             />
@@ -177,6 +179,7 @@
                                 :options="cats.lineas"
                                 placeholder="Seleccionar línea..."
                                 :disabled="!form.uNv2 || form.isStructuralLocked"
+                                :title="form.isStructuralLocked ? 'El artículo posee historial en SAP y no puede modificar su estructura' : ''"
                                 valueKey="nombre"
                             />
                         </div>
@@ -283,7 +286,8 @@
                                 v-model="form.uAtrMed"
                                 :options="cats.atributos"
                                 placeholder="Seleccionar atributo..."
-                                :disabled="!selectedLineaAtributo"
+                                :disabled="!selectedLineaAtributo || form.isStructuralLocked"
+                                :title="form.isStructuralLocked ? 'El artículo posee historial en SAP y no puede modificar su estructura' : ''"
                                 valueKey="nombre"
                             />
                         </div>
@@ -354,12 +358,18 @@
                             <input id="formPrice" v-model.number="form.price" type="number" step="0.01" placeholder="0.00" min="0" />
                         </div>
                         <div class="form-field">
-                            <label for="formPriceListId">ID Lista de Precios</label>
-                            <input id="formPriceListId" v-model.number="form.priceListId" type="number" placeholder="Ej: 1" />
+                            <label for="selectListaPrecios">Lista de Precios</label>
+                            <SearchableSelect
+                                inputId="selectListaPrecios"
+                                v-model="form.idListaPrecios"
+                                :options="cats.priceLists"
+                                placeholder="Seleccionar lista..."
+                                valueKey="id"
+                            />
                         </div>
                         <div class="form-field">
-                            <label for="formPrArq">Costo de Arranque</label>
-                            <input id="formPrArq" v-model.number="form.uPrArq" type="number" step="0.01" placeholder="0.00" />
+                            <label for="formCostoArranque">Costo de Arranque</label>
+                            <input id="formCostoArranque" v-model.number="form.costoArranque" type="number" step="0.01" placeholder="0.00" />
                         </div>
                         <div class="form-field">
                             <label for="selectLiquidacion">Liquidación</label>
@@ -371,8 +381,8 @@
                             />
                         </div>
                         <div class="form-field sm:col-span-2 flex flex-row items-center gap-3 bg-gray-50 dark:bg-gray-900 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
-                            <input id="formEcommerceApplicable" v-model="form.ecommerceApplicable" type="checkbox" class="w-5 h-5 text-blue-600 rounded border-gray-300" />
-                            <label for="formEcommerceApplicable" class="!text-sm !m-0 !font-medium">Aplica para E-commerce</label>
+                            <input id="formAplicaEcommerce" v-model="form.aplicaEcommerce" type="checkbox" class="w-5 h-5 text-blue-600 rounded border-gray-300" />
+                            <label for="formAplicaEcommerce" class="!text-sm !m-0 !font-medium">Aplica para E-commerce</label>
                         </div>
                     </div>
 
@@ -500,11 +510,15 @@
                             </select>
                         </div>
                         <div class="form-field">
-                            <label for="formProductStatus">Estado de Producto (SAP)</label>
-                            <select id="formProductStatus" v-model="form.productStatus">
-                                <option :value="true">Activo</option>
-                                <option :value="false">Inactivo</option>
-                            </select>
+                            <label for="formEstadoProducto">Estado de Producto (SAP)</label>
+                            <!-- Switch UI en vez de select simple -->
+                            <div class="flex items-center gap-3 mt-1 h-[42px]">
+                                <label class="relative inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" id="formEstadoProducto" v-model="form.estadoProducto" class="sr-only peer">
+                                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                                    <span class="ml-3 text-sm font-medium text-gray-900 dark:text-gray-300">{{ form.estadoProducto ? 'Activo' : 'Inactivo' }}</span>
+                                </label>
+                            </div>
                         </div>
                         <div class="form-field">
                             <label for="formManufacturer">Fabricante (FirmCode)</label>
@@ -522,7 +536,11 @@
 
                     <!-- Tab: Imágenes -->
                     <div v-show="activeTab === 'img'" class="p-6">
-                        <GestorImagenes :itemCode="form.itemCode" :sessionToken="sessionToken" />
+                        <GestorImagenes 
+                            v-model:urlImagen1="form.urlImagen1" 
+                            v-model:urlImagen2="form.urlImagen2" 
+                            v-model:urlImagen3="form.urlImagen3" 
+                        />
                     </div>
                 </div>
 
@@ -661,16 +679,17 @@ const cats = ref<{
     lineas: JerarquiaItem[]
     lineasAtributo: JerarquiaItem[]
     atributos: JerarquiaItem[]
+    priceLists: { id: number; name: string; nombre: string }[]
 }>({
     talla: [], genero: [], color: [], coleccion: [], permanencia: [],
     origen: [], pais: [], envio: [], canal: [], region: [],
     liquidacion: [], negocio: [],
     secciones: [], categorias: [], lineas: [],
-    lineasAtributo: [], atributos: []
+    lineasAtributo: [], atributos: [], priceLists: []
 })
 
 async function cargarCatalogos() {
-    const [talla, genero, color, coleccion, permanencia, origen, pais, envio, canal, region, liquidacion, negocio, secciones, lineasAtributo] = await Promise.allSettled([
+    const [talla, genero, color, coleccion, permanencia, origen, pais, envio, canal, region, liquidacion, negocio, secciones, lineasAtributo, priceLists] = await Promise.allSettled([
         catalogoService.getGenerales('TALLA'),
         catalogoService.getGenerales('GENERO'),
         catalogoService.getGenerales('COLOR'),
@@ -685,6 +704,7 @@ async function cargarCatalogos() {
         catalogoService.getGenerales('NEGOCIO'),
         catalogoService.getSecciones(),
         catalogoService.getLineasAtributo(),
+        sapService.getPriceLists(),
     ])
 
     if (talla.status === 'fulfilled') cats.value.talla = talla.value
@@ -701,6 +721,7 @@ async function cargarCatalogos() {
     if (negocio.status === 'fulfilled') cats.value.negocio = negocio.value
     if (secciones.status === 'fulfilled') cats.value.secciones = secciones.value
     if (lineasAtributo.status === 'fulfilled') cats.value.lineasAtributo = lineasAtributo.value
+    if (priceLists.status === 'fulfilled') cats.value.priceLists = priceLists.value
 }
 
 async function onSeccionChange() {
@@ -821,11 +842,15 @@ const form = ref({
     uTipoBien: 'B',
     // Nuevos campos
     codigoAlterno: '',
-    hasSupplierBarcode: false,
-    productStatus: true,
-    priceListId: null as number | null,
-    ecommerceApplicable: false,
+    tieneCodigoProveedor: false,
+    estadoProducto: true,
+    idListaPrecios: null as number | null,
+    aplicaEcommerce: false,
     manBtchNum: 'N',
+    costoArranque: null as number | null,
+    urlImagen1: '',
+    urlImagen2: '',
+    urlImagen3: '',
     isStructuralLocked: false,
 })
 
@@ -945,7 +970,7 @@ async function handleSubmit() {
     // Lista de campos que sí deben ser enviados como numéricos
     const numericFields = new Set([
         'uCodColor', 'uCodColSecu', 'leadTime', 'minOrderQuantity',
-        'uUnidadDespacho', 'uDespIn', 'uPrArq', 'price',
+        'uUnidadDespacho', 'uDespIn', 'costoArranque', 'price',
         'itemsGroupCode', 'manufacturer', 'shipType',
         'purchaseItemsPerUnit', 'salesItemsPerUnit'
     ])

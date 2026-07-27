@@ -11,7 +11,6 @@ function normalizeObject(obj: any): any {
 
     // Mapeo manual de campos críticos conocidos por ser inconsistentes
     const criticalMappings: Record<string, string[]> = {
-        uPrArq: ['U_PR_ARQ', 'u_pr_arq', 'u_Pr_Arq', 'UPrArq'],
         uGen: ['U_GEN', 'u_gen', 'u_Gen'],
         uCodColor: ['U_COD_COLOR', 'u_cod_color'],
         uCodColSecu: ['U_COD_COL_SECU', 'u_cod_col_secu'],
@@ -39,13 +38,17 @@ function normalizeObject(obj: any): any {
         uCanalVenta: ['U_CANAL_VENTA', 'u_canal_venta'],
         uRegion: ['U_REGION', 'u_region'],
         uLiq: ['U_LIQ', 'u_liq'],
-        codigoAlterno: ['CODIGO_ALTERNO', 'codigo_alterno'],
-        hasSupplierBarcode: ['HAS_SUPPLIER_BARCODE', 'has_supplier_barcode'],
-        productStatus: ['PRODUCT_STATUS', 'product_status'],
-        priceListId: ['PRICE_LIST_ID', 'price_list_id'],
-        ecommerceApplicable: ['ECOMMERCE_APPLICABLE', 'ecommerce_applicable'],
-        manBtchNum: ['MAN_BTCH_NUM', 'man_btch_num'],
-        isStructuralLocked: ['IS_STRUCTURAL_LOCKED', 'is_structural_locked']
+        codigoAlterno: ['CODIGO_ALTERNO', 'codigo_alterno', 'CodigoAlterno'],
+        tieneCodigoProveedor: ['HAS_SUPPLIER_BARCODE', 'has_supplier_barcode', 'TieneCodigoProveedor'],
+        estadoProducto: ['PRODUCT_STATUS', 'product_status', 'EstadoProducto'],
+        idListaPrecios: ['PRICE_LIST_ID', 'price_list_id', 'IdListaPrecios'],
+        aplicaEcommerce: ['ECOMMERCE_APPLICABLE', 'ecommerce_applicable', 'AplicaEcommerce'],
+        manBtchNum: ['MAN_BTCH_NUM', 'man_btch_num', 'ManBtchNum'],
+        isStructuralLocked: ['IS_STRUCTURAL_LOCKED', 'is_structural_locked'],
+        costoArranque: ['U_PR_ARQ', 'u_pr_arq', 'u_Pr_Arq', 'UPrArq', 'CostoArranque'],
+        urlImagen1: ['urlImagen1', 'url_imagen1', 'url_imagen_1'],
+        urlImagen2: ['urlImagen2', 'url_imagen2', 'url_imagen_2'],
+        urlImagen3: ['urlImagen3', 'url_imagen3', 'url_imagen_3']
     }
 
     Object.entries(criticalMappings).forEach(([camelKey, variations]) => {
@@ -178,6 +181,30 @@ export const articuloService = {
         const link = document.createElement('a')
         link.href = url
         link.setAttribute('download', 'plantilla_articulos.xlsx')
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+        globalThis.URL.revokeObjectURL(url)
+    },
+
+    // Descargar reporte diario de artículos
+    descargarReporteDiario: async (fecha?: string) => {
+        const response = await apiMaestro.get('/api/v1/articulos/reporte-diario', {
+            params: fecha ? { fecha } : {},
+            responseType: 'blob',
+            headers: {
+                'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, */*'
+            }
+        })
+
+        const blob = new Blob([response.data as BlobPart], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        })
+
+        const url = globalThis.URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.setAttribute('download', `reporte_diario_${fecha || new Date().toISOString().split('T')[0]}.xlsx`)
         document.body.appendChild(link)
         link.click()
         link.remove()
@@ -494,6 +521,12 @@ export const sapService = {
     getTaskById: async (id: number): Promise<SapTask> => {
         const response = await apiMaestro.get<SapTask>(`/api/v1/sap/tasks/${id}`)
         return response.data
+    },
+
+    // Obtener catálogo de listas de precios
+    getPriceLists: async (): Promise<Array<{ id: number; name: string; nombre: string }>> => {
+        const response = await apiMaestro.get<Array<{ id: number; name: string }>>('/api/v1/sap/price-lists')
+        return response.data.map(list => ({ ...list, nombre: list.name }))
     }
 }
 

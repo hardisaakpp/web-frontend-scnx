@@ -135,7 +135,7 @@
                                     >
                                         {{ task.estado }}
                                     </span>
-                                    <p class="text-[10px] text-gray-400 mt-1 uppercase font-medium">Items: {{ task.items_procesados }} / {{ task.total_items }}</p>
+                                    <p class="text-[10px] text-gray-400 mt-1 uppercase font-medium">{{ task.items_procesados }} de {{ task.total_items }} completados</p>
                                 </div>
                             </div>
                             <!-- Barra de Progreso -->
@@ -281,8 +281,9 @@
                             <h2 class="text-lg font-bold text-gray-900 dark:text-white">{{ modalTitle }}</h2>
                             <p class="text-xs text-gray-500 mt-0.5">Resumen de la operación realizada en SAP</p>
                         </div>
-                        <button @click="closeResultModal" class="text-gray-400 hover:text-gray-600 transition-colors">
-                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        <button @click="closeResultModal" class="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200 rounded-lg text-sm font-medium transition-colors">
+                            Entendido
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
                         </button>
                     </div>
 
@@ -389,16 +390,6 @@
                             </div>
                         </template>
 
-                    </div>
-
-                    <!-- Footer -->
-                    <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end bg-gray-50 dark:bg-gray-800/50 rounded-b-2xl">
-                        <button 
-                            @click="closeResultModal" 
-                            class="px-6 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
-                        >
-                            Entendido
-                        </button>
                     </div>
                 </div>
             </div>

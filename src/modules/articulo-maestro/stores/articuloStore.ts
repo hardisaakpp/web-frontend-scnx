@@ -76,6 +76,15 @@ export const useArticuloStore = defineStore('articuloMaestro', {
             } catch (err: any) {
                 throw err.response?.data?.detail || 'Error en la sincronización'
             }
+        },
+
+        async descargarReporteDiario(fecha?: string) {
+            try {
+                await articuloService.descargarReporteDiario(fecha)
+                return true
+            } catch (err: any) {
+                throw err.response?.data?.detail || 'Error al descargar el reporte diario'
+            }
         }
     }
 })

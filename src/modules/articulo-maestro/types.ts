@@ -61,7 +61,7 @@ export interface Articulo {
     uRegion: string | null
 
     // Precios y Costos
-    uPrArq: number | null
+    costoArranque: number | null
     price: number | null
     uLiq: string | null
 
@@ -92,11 +92,14 @@ export interface Articulo {
 
     // Nuevos campos (SIS-CCPYTD-00014)
     codigoAlterno?: string | null
-    hasSupplierBarcode?: boolean
-    productStatus?: boolean
-    priceListId?: number | null
-    ecommerceApplicable?: boolean
+    tieneCodigoProveedor?: boolean
+    estadoProducto?: boolean
+    idListaPrecios?: number | null
+    aplicaEcommerce?: boolean
     manBtchNum?: string | null
+    urlImagen1?: string | null
+    urlImagen2?: string | null
+    urlImagen3?: string | null
 
     // Estado y UI
     activo: boolean
