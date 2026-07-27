@@ -336,10 +336,20 @@ server {
     }
 
     # =========================
-    # Demanda OTB (dashboard externo embebido en iframe)
-    # La ruta exacta la sirve el SPA; las subrutas van al backend real (oculta la IP interna).
+    # Demanda OTB (dashboards externos embebidos en iframe: ROLAND y DESCUENTON)
+    # Las rutas exactas del selector y de cada dashboard las sirve el SPA; el resto de
+    # subrutas (dashboard_roland, dashboard_descuenton, assets, API propia) van al backend
+    # real (oculta la IP interna).
     # =========================
     location = /demanda-otb {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location = /demanda-otb/roland {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location = /demanda-otb/descuenton {
         try_files $uri $uri/ /index.html;
     }
 
