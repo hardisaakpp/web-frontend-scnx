@@ -344,8 +344,10 @@ export default defineConfig(async ({ mode }): Promise<UserConfig> => {
 
         },
 
-        // Dashboard externo embebido (iframe). La ruta exacta '/demanda-otb' la sirve el SPA;
-        // solo las subrutas (dashboard, assets, API propia del dashboard) van al backend real.
+        // Dashboards externos embebidos (iframe). Las rutas exactas del selector y de cada
+        // dashboard ('/demanda-otb', '/demanda-otb/roland', '/demanda-otb/descuenton') las
+        // sirve el SPA; el resto de subrutas (dashboard_roland, dashboard_descuenton, assets,
+        // API propia del dashboard) van al backend real.
         '/demanda-otb': {
 
           target: demandaOtbProxyTarget,
@@ -356,7 +358,16 @@ export default defineConfig(async ({ mode }): Promise<UserConfig> => {
 
           bypass: (req) => {
 
-            if (req.url === '/demanda-otb' || req.url === '/demanda-otb/') {
+            const spaPaths = [
+              '/demanda-otb',
+              '/demanda-otb/',
+              '/demanda-otb/roland',
+              '/demanda-otb/roland/',
+              '/demanda-otb/descuenton',
+              '/demanda-otb/descuenton/'
+            ]
+
+            if (req.url !== undefined && spaPaths.includes(req.url)) {
 
               return '/index.html'
 
