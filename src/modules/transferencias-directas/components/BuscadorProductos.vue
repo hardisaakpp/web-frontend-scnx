@@ -146,7 +146,7 @@ const decrementar = () => { if (cantidad.value > 1) cantidad.value-- }
         <div class="flex flex-col sm:flex-row sm:items-end gap-3">
             <!-- Tipo de búsqueda -->
             <div class="sm:w-48">
-                <label for="comBusqueda":class="miniLabel">Buscar por</label>
+                <label for="comBusqueda" :class="miniLabel">Buscar por</label>
                 <select id="comBusqueda" v-model="tipoBusqueda" :class="control">
                     <option value="codeBars">Código de Barras</option>
                     <option value="itemCode">Código de Producto</option>
@@ -154,7 +154,7 @@ const decrementar = () => { if (cantidad.value > 1) cantidad.value-- }
                 </select>
             </div>
             <div class="flex-1 min-w-0">
-                <label for="ingresoBusqueda":class="miniLabel">Valor de búsqueda</label>
+                <label for="ingresoBusqueda" :class="miniLabel">Valor de búsqueda</label>
                 <div id="ingresoBusqueda" class="relative" @focusout="onFocusOut">
                     <input ref="inputRef" v-model="termino" type="text" :placeholder="placeholder" autocomplete="off"
                         :class="[control, 'pr-10']" @keyup.enter="onEnter" />
@@ -180,14 +180,14 @@ const decrementar = () => { if (cantidad.value > 1) cantidad.value-- }
             </div>
 
             <div>
-                <label :class="miniLabel">Cantidad</label>
+                <label for="cantidad" :class="miniLabel">Cantidad</label>
                 <div
                     class="inline-flex items-stretch h-[35px] rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden">
                     <button type="button" @click="decrementar"
                         class="h-full px-2.5 flex items-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 border-r border-gray-300 dark:border-gray-600 transition-colors">
                         <MinusIcon class="w-4 h-4" />
                     </button>
-                    <input v-model.number="cantidad" type="number" min="1"
+                    <input id="cantidad" v-model.number="cantidad" type="number" min="1"
                         class="qty-input h-full w-14 text-center text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-white outline-none" />
                     <button type="button" @click="incrementar"
                         class="h-full px-2.5 flex items-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 border-l border-gray-300 dark:border-gray-600 transition-colors">

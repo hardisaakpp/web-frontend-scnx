@@ -76,17 +76,16 @@ const inputClass =
           <input v-else type="text" :value="origenSel" disabled :class="[inputClass, 'opacity-60 cursor-not-allowed']" />
         </div>
 
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Marcas Destino</label>
+        <fieldset>
+          <legend  class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Marcas Destino</legend >
           <div class="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700 p-3">
-            <label v-for="m in marcas" :key="m" class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200 cursor-pointer">
-              <input type="checkbox" :checked="estaChequeado(m)" @change="toggleDestino(m)"
+            <label v-for="m in marcas" :key="m" :for="`marca-${m}`" class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200 cursor-pointer">
+              <input :id="`marca-${m}`" type="checkbox" :checked="estaChequeado(m)" @change="toggleDestino(m)"
                 class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600" />
               {{ m }}
             </label>
           </div>
-        </div>
-
+        </fieldset>
         <p v-if="error" class="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">{{ error }}</p>
       </div>
 
