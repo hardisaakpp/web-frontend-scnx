@@ -56,6 +56,8 @@ export default defineConfig(async ({ mode }): Promise<UserConfig> => {
   const promocionSobresProxyTarget = upstreamUrl(env, 'PROMOCION_SOBRES')
   const slayerProxyTarget = upstreamUrl(env, 'SLAYER')
   const reposicionProxyTarget = upstreamUrl(env, 'REPOSICION')
+  const transferenciasDirectasProxyTarget = upstreamUrl(env, 'TRANSFERENCIAS_DIRECTAS')
+
   console.log(`\x1b[35m[proxy]\x1b[0m Reposiciones → ${reposicionProxyTarget}`)
 
   const ruletaProxyTarget = upstreamUrl(env, 'RULETA')
@@ -174,6 +176,13 @@ export default defineConfig(async ({ mode }): Promise<UserConfig> => {
           secure: false,
           rewrite: (path) => path.replace(/^\/api\/reposicion-api/, '/api')
         },
+        '/api/transferencias-directas-api': {
+          target: transferenciasDirectasProxyTarget,
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/api\/transferencias-directas-api/, '/api')
+        },
+
 
         '/api': {
 
@@ -341,9 +350,7 @@ export default defineConfig(async ({ mode }): Promise<UserConfig> => {
 
           rewrite: (path) => path.replace(/^\/ruleta-api/, '')
 
-        }
-
-
+        },
       }
 
     },

@@ -31,6 +31,7 @@ export const LOCAL_UPSTREAM_DEFAULTS = {
   UPSTREAM_REPOSICION: 'http://127.0.0.1:8006',
   UPSTREAM_RULETA: 'http://localhost:5062',
   UPSTREAM_TRANSACCIONES: 'http://127.0.0.1:8080',
+  UPSTREAM_TRANSFERENCIAS_DIRECTAS: 'http://localhost:5046',
 }
 
 /** Nombres legacy (vite / docker antiguos) → UPSTREAM_* */
