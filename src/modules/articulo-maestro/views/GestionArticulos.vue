@@ -10,6 +10,15 @@
                     </p>
                 </div>
                 <div class="flex items-center gap-3">
+                    <button
+                        class="p-2 text-gray-500 hover:text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:bg-gray-700 transition-colors shadow-sm"
+                        @click="showKeyboardHelp = true"
+                        title="Atajos de teclado"
+                    >
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h12A2.25 2.25 0 0 1 20.25 6v12a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18V6ZM7.5 9h.008v.008H7.5V9Zm3 0h.008v.008H10.5V9Zm3 0h.008v.008H13.5V9Zm3 0h.008v.008H16.5V9Zm-9 3h.008v.008H7.5V12Zm3 0h.008v.008H10.5V12Zm3 0h.008v.008H13.5V12Zm3 0h.008v.008H16.5V12Zm-6 3h.008v.008H10.5V15Zm3 0h.008v.008H13.5V15Z" />
+                        </svg>
+                    </button>
                     <router-link
                         class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800 transition-colors shadow-sm"
                         to="/articulo-maestro/migracion">
@@ -425,6 +434,12 @@
         </div>
     </Teleport>
 
+    <KeyboardHelpModal
+        :is-open="showKeyboardHelp"
+        :shortcuts="shortcuts"
+        @close="showKeyboardHelp = false"
+    />
+
     <!-- Modal Confirmación Eliminar -->
     <Teleport to="body">
         <div v-if="pendingDeleteCode" class="fixed inset-0 z-50 flex items-center justify-center">
@@ -470,8 +485,38 @@ import {
 import { useArticuloStore } from '../stores/articuloStore'
 import { articuloService } from '../services/articuloService'
 import type { CargaMasivaResponse } from '../services/articuloService'
+import KeyboardHelpModal from '../components/KeyboardHelpModal.vue'
+import { useKeyboardShortcuts } from '../composables/useKeyboardShortcuts'
 
 const router = useRouter()
+
+const showKeyboardHelp = ref(false)
+const shortcuts = {
+    'Ctrl+M': {
+        description: 'Nuevo artículo',
+        action: () => router.push('/articulo-maestro/nuevo')
+    },
+    'Ctrl+F': {
+        description: 'Buscar artículo',
+        action: () => {
+            const input = document.querySelector('input[placeholder="Buscar..."]') as HTMLInputElement
+            if (input) input.focus()
+        }
+    },
+    'Esc': {
+        description: 'Cerrar modal',
+        action: () => {
+            if (showKeyboardHelp.value) {
+                showKeyboardHelp.value = false
+            } else if (showCargaModal.value) {
+                closeCargaModal()
+            } else if (pendingDeleteCode.value) {
+                pendingDeleteCode.value = null
+            }
+        }
+    }
+}
+useKeyboardShortcuts(shortcuts)
 const store = useArticuloStore()
 
 // Obtenemos el estado reactivo desde el store

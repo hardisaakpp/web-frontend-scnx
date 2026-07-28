@@ -12,11 +12,23 @@
                         {{ isEdit ? `Modificando: ${route.params.itemCode}` : 'Completa los campos del nuevo artículo' }}
                     </p>
                 </div>
-                <router-link
-                    class="rounded border border-gray-200 dark:border-gray-700 text-sm px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 transition-colors"
-                    to="/articulo-maestro/lista">
-                    ← Volver a la Lista
-                </router-link>
+                <div class="flex items-center gap-3">
+                    <button
+                        class="p-1.5 text-gray-500 hover:text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-600 dark:hover:bg-gray-700 transition-colors shadow-sm"
+                        @click="showKeyboardHelp = true"
+                        type="button"
+                        title="Atajos de teclado"
+                    >
+                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h12A2.25 2.25 0 0 1 20.25 6v12a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18V6ZM7.5 9h.008v.008H7.5V9Zm3 0h.008v.008H10.5V9Zm3 0h.008v.008H13.5V9Zm3 0h.008v.008H16.5V9Zm-9 3h.008v.008H7.5V12Zm3 0h.008v.008H10.5V12Zm3 0h.008v.008H13.5V12Zm3 0h.008v.008H16.5V12Zm-6 3h.008v.008H10.5V15Zm3 0h.008v.008H13.5V15Z" />
+                        </svg>
+                    </button>
+                    <router-link
+                        class="rounded border border-gray-200 dark:border-gray-700 text-sm px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 transition-colors"
+                        to="/articulo-maestro/lista">
+                        ← Volver a la Lista
+                    </router-link>
+                </div>
             </div>
 
             <!-- Loading state (edit mode fetching) -->
@@ -573,6 +585,12 @@
         </div>
     </div>
 
+    <KeyboardHelpModal
+        :is-open="showKeyboardHelp"
+        :shortcuts="shortcuts"
+        @close="showKeyboardHelp = false"
+    />
+
     <!-- Validation Modal -->
     <Teleport to="body">
         <div v-if="showValidationModal" class="fixed inset-0 z-[60] flex items-center justify-center p-4">
@@ -611,6 +629,8 @@ import { articuloService, catalogoService, sapService } from '../services/articu
 import type { CatalogoItem, JerarquiaItem } from '../services/articuloService'
 import SearchableSelect from '../components/SearchableSelect.vue'
 import GestorImagenes from '../components/GestorImagenes.vue'
+import KeyboardHelpModal from '../components/KeyboardHelpModal.vue'
+import { useKeyboardShortcuts } from '../composables/useKeyboardShortcuts'
 
 const route = useRoute()
 const router = useRouter()
@@ -1017,6 +1037,37 @@ async function handleSubmit() {
 onUnmounted(() => {
     globalThis.removeEventListener('keydown', handleKeydown)
 })
+const showKeyboardHelp = ref(false)
+const shortcuts = {
+    'Ctrl+S': {
+        description: 'Guardar artículo',
+        action: () => {
+            if (!submitting.value && !loadingData.value && !loadError.value) {
+                handleSubmit()
+            }
+        }
+    },
+    'Esc': {
+        description: 'Cerrar modal o Volver',
+        action: () => {
+            if (showValidationModal.value) {
+                showValidationModal.value = false
+            } else if (showKeyboardHelp.value) {
+                showKeyboardHelp.value = false
+            } else {
+                router.push('/articulo-maestro/lista')
+            }
+        }
+    },
+    'Alt+1': { description: 'Ir a General', action: () => { activeTab.value = 'general' } },
+    'Alt+2': { description: 'Ir a Categorización', action: () => { activeTab.value = 'cat' } },
+    'Alt+3': { description: 'Ir a Color y Material', action: () => { activeTab.value = 'mat' } },
+    'Alt+4': { description: 'Ir a Logística y Precios', action: () => { activeTab.value = 'log' } },
+    'Alt+5': { description: 'Ir a Config. SAP', action: () => { activeTab.value = 'sap' } },
+    'Alt+6': { description: 'Ir a Imágenes', action: () => { activeTab.value = 'img' } }
+}
+useKeyboardShortcuts(shortcuts)
+
 </script>
 
 <style scoped>
