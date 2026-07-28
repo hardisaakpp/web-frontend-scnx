@@ -3,7 +3,17 @@
     "allow": [
       "Bash(grep -E \"vite$|node .*vite|dotnet run\")",
       "Bash(kill 95067 95068 257675 259777 261915)",
-      "Bash(dotnet add *)"
+      "Bash(dotnet add *)",
+      "Bash(export ConnectionStrings__InventoryConnection=\"Server=192.168.2.211;Database=sc_inventory;User Id=desadmin;Password=***REMOVED***;TrustServerCertificate=True;Encrypt=False;MultipleActiveResultSets=True\")",
+      "Bash(export ConnectionStrings__MaestrosConnection=\"Server=192.168.2.211;Database=sc_maestros;User Id=desadmin;Password=***REMOVED***;TrustServerCertificate=True;Encrypt=False;MultipleActiveResultSets=True\")",
+      "Bash(dotnet ef *)",
+      "Bash(echo \"exit code: $?\")",
+      "Bash(nohup dotnet run --no-build --urls http://localhost:8094)",
+      "Bash(disown)",
+      "Bash(echo \"PID: $!\")",
+      "Bash(python3 -c ' *)",
+      "Bash(timeout 5 bash -c \"echo > /dev/tcp/210.17.1.54/1433\")",
+      "Bash(node check2.mjs)"
     ]
   }
 }
