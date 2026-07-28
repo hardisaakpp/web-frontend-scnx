@@ -70,7 +70,13 @@
         <div class="flex flex-wrap gap-2">
           <button v-if="canRevisarAjuste" class="btn-secondary" type="button" @click="submitReview" :disabled="current.status !== 'Draft'">Submit</button>
           <button v-if="canRevisarAjuste" class="btn-secondary" type="button" @click="approve" :disabled="current.status !== 'InReview'">Approve</button>
-          <button v-if="canIntegrarSap" class="btn-secondary" type="button" @click="sendToSap" :disabled="current.status !== 'Approved'">SendToSap</button>
+          <button
+            v-if="canIntegrarSap"
+            class="btn-secondary"
+            type="button"
+            @click="descargarInforme"
+            :disabled="!['Approved', 'SentToSap'].includes(String(current.status)) || downloadingReport"
+          >{{ downloadingReport ? 'Descargando...' : 'Descargar informe final' }}</button>
         </div>
       </div>
 
@@ -147,6 +153,7 @@ const success = ref<string | null>(null)
 
 const creating = ref(false)
 const savingLine = ref(false)
+const downloadingReport = ref(false)
 
 const createForm = reactive({
   sessionId: '',
@@ -254,20 +261,26 @@ async function approve() {
   }
 }
 
-async function sendToSap() {
+async function descargarInforme() {
   if (!current.value) return
-  const sapDocumentNumber = window.prompt('Ingrese número de documento SAP:')
-  if (!sapDocumentNumber) return
-
+  downloadingReport.value = true
   error.value = null
   success.value = null
   try {
-    current.value = await scnexusInventoryApi.sendToSap(current.value.adjustmentId, sapDocumentNumber)
-    hydrateLineEdit(current.value)
-    success.value = 'Ajuste marcado como enviado a SAP.'
-    await loadAdjustments()
+    const { blob, fileName } = await scnexusInventoryApi.downloadAdjustmentReport(current.value.adjustmentId)
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = fileName
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+    success.value = 'Informe final descargado.'
   } catch (err) {
-    error.value = err instanceof Error ? err.message : 'No se pudo marcar envío SAP.'
+    error.value = err instanceof Error ? err.message : 'No se pudo descargar el informe final.'
+  } finally {
+    downloadingReport.value = false
   }
 }
 
