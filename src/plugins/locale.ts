@@ -1,8 +1,8 @@
 /**
  * Locale global de la aplicación
  *
- * Fuente única de verdad para el formato de fechas y números en todo el
- * proyecto. Sin esto, `toLocaleString`/`toLocaleDateString`/`toLocaleTimeString`
+ * Fuente única de verdad para el formato de fechas y números del proyecto
+ * completo. Sin esto, `toLocaleString`/`toLocaleDateString`/`toLocaleTimeString`
  * sin locale usan el del navegador, por lo que la app "cambia de idioma" según
  * el navegador de cada usuario.
  *
@@ -33,7 +33,7 @@ export const NUMBER_LOCALE = 'en-US'
  */
 export function setupLocale(): void {
   const numberToLocaleString = Number.prototype.toLocaleString
-  Number.prototype.toLocaleString = function (
+  Number.prototype.toLocaleString = function ( // NOSONAR – parche global intencional, ver comentario de setupLocale()
     locales?: Intl.LocalesArgument,
     options?: Intl.NumberFormatOptions,
   ): string {
@@ -41,7 +41,7 @@ export function setupLocale(): void {
   }
 
   const dateToLocaleString = Date.prototype.toLocaleString
-  Date.prototype.toLocaleString = function (
+  Date.prototype.toLocaleString = function ( // NOSONAR – parche global intencional, ver comentario de setupLocale()
     locales?: Intl.LocalesArgument,
     options?: Intl.DateTimeFormatOptions,
   ): string {
@@ -49,7 +49,7 @@ export function setupLocale(): void {
   }
 
   const dateToLocaleDateString = Date.prototype.toLocaleDateString
-  Date.prototype.toLocaleDateString = function (
+  Date.prototype.toLocaleDateString = function ( // NOSONAR – parche global intencional, ver comentario de setupLocale()
     locales?: Intl.LocalesArgument,
     options?: Intl.DateTimeFormatOptions,
   ): string {
@@ -57,7 +57,7 @@ export function setupLocale(): void {
   }
 
   const dateToLocaleTimeString = Date.prototype.toLocaleTimeString
-  Date.prototype.toLocaleTimeString = function (
+  Date.prototype.toLocaleTimeString = function ( // NOSONAR – parche global intencional, ver comentario de setupLocale()
     locales?: Intl.LocalesArgument,
     options?: Intl.DateTimeFormatOptions,
   ): string {

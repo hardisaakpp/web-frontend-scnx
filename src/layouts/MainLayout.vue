@@ -157,20 +157,37 @@
             <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Importador PYG</span>
           </router-link>
 
-          <!-- Mis Inventarios (usuarios con acceso tipo Tienda) -->
-          <router-link v-if="hasModuleAccess('inventario') && isTiendaAccess" to="/inventario/mis-inventarios"
-            class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
-            :class="{
-              'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/inventario/mis-inventarios'),
-              'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/inventario/mis-inventarios')
-            }" :title="effectiveSidebarCollapsed ? 'Mis Inventarios' : ''">
-            <div
-              class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-            </div>
-            <ClipboardDocumentListIcon class="h-5 w-5 flex-shrink-0 relative z-10"
-              :class="{ 'scale-110': $route.path.startsWith('/inventario/mis-inventarios') }" />
-            <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Mis Inventarios</span>
-          </router-link>
+        <!-- Demanda OTB -->
+        <router-link
+          v-if="hasModuleAccess('demandaotb')"
+          to="/demanda-otb"
+          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
+          :class="{
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/demanda-otb'),
+            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/demanda-otb')
+          }"
+          :title="effectiveSidebarCollapsed ? 'Demanda OTB' : ''"
+        >
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <ChartBarIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/demanda-otb') }" />
+          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Demanda OTB</span>
+        </router-link>
+
+        <!-- Mis Inventarios (usuarios con acceso tipo Tienda) -->
+        <router-link
+          v-if="hasModuleAccess('inventario') && isTiendaAccess"
+          to="/inventario/mis-inventarios"
+          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
+          :class="{
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/inventario/mis-inventarios'),
+            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/inventario/mis-inventarios')
+          }"
+          :title="effectiveSidebarCollapsed ? 'Mis Inventarios' : ''"
+        >
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <ClipboardDocumentListIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/inventario/mis-inventarios') }" />
+          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Mis Inventarios</span>
+        </router-link>
 
           <!-- Inventario (Supervisor / Administrador: todas las pantallas) -->
           <router-link v-if="hasModuleAccess('inventario') && !isTiendaAccess" to="/inventario"
@@ -383,9 +400,18 @@
       </header>
 
       <!-- Page Content -->
-      <main class="p-4 md:p-6 lg:p-8 min-h-[calc(100vh-4rem)]">
-        <div v-if="showOdcSapVolverInMainChrome && odcSapVolverTarget" class="flex justify-end mb-4 -mt-1">
-          <OdcSapVolverButton :to="odcSapVolverTarget" :title="odcSapVolverTitle" />
+      <main
+        class="min-h-[calc(100vh-4rem)]"
+        :class="route.meta?.fullBleed ? '' : 'p-4 md:p-6 lg:p-8'"
+      >
+        <div
+          v-if="showOdcSapVolverInMainChrome && odcSapVolverTarget"
+          class="flex justify-end mb-4 -mt-1"
+        >
+          <OdcSapVolverButton
+            :to="odcSapVolverTarget"
+            :title="odcSapVolverTitle"
+          />
         </div>
         <router-view v-slot="{ Component, route }">
           <component :is="Component" :key="route.path" />
@@ -425,7 +451,8 @@ import {
   SparklesIcon,
   ShoppingCartIcon,
   ClipboardDocumentListIcon,
-  BanknotesIcon
+  BanknotesIcon,
+  ChartBarIcon
 } from '@heroicons/vue/24/outline'
 import { Pin, PinOff, TruckIcon } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth'
