@@ -607,7 +607,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { articuloService, catalogoService } from '../services/articuloService'
+import { articuloService, catalogoService, sapService } from '../services/articuloService'
 import type { CatalogoItem, JerarquiaItem } from '../services/articuloService'
 import SearchableSelect from '../components/SearchableSelect.vue'
 import GestorImagenes from '../components/GestorImagenes.vue'
