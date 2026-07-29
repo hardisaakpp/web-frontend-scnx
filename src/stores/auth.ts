@@ -90,6 +90,8 @@ interface AuthState {
   capabilities: AuthCapabilities | null
   loading: boolean
   error: string | null
+  /** Emoji elegido por el usuario como icono (GET/PUT /Users/me/avatar). */
+  avatarEmoji: string | null
 }
 
 interface LoginCredentials {
@@ -190,7 +192,8 @@ export const useAuthStore = defineStore('auth', {
     userData: null,
     capabilities: null,
     loading: false,
-    error: null
+    error: null,
+    avatarEmoji: null
   }),
 
   getters: {
@@ -389,6 +392,7 @@ export const useAuthStore = defineStore('auth', {
 
         scheduleRedirectOnTokenExpiry(token, this)
         await this.fetchMe()
+        await this.fetchAvatarEmoji()
         return true
       } catch (error) {
         if (import.meta.env.DEV) {
@@ -462,6 +466,35 @@ export const useAuthStore = defineStore('auth', {
       }
     },
 
+    avatarStorageKey(): string {
+      return `avatarEmoji_${this.userName || 'default'}`
+    },
+
+    /** Carga el emoji guardado en localStorage (instantáneo) y luego lo sincroniza con GET /Users/me/avatar. */
+    async fetchAvatarEmoji(): Promise<void> {
+      const key = this.avatarStorageKey()
+      const cached = localStorage.getItem(key)
+      if (cached) this.avatarEmoji = cached
+
+      if (!this.token) return
+      try {
+        const { data } = await api.get<{ emoji?: string }>('/Users/me/avatar')
+        if (data?.emoji) {
+          this.avatarEmoji = data.emoji
+          localStorage.setItem(key, data.emoji)
+        }
+      } catch {
+        // Sin conexión al servidor: se mantiene el valor de localStorage.
+      }
+    },
+
+    /** Guarda el emoji vía PUT /Users/me/avatar (localStorage como respaldo instantáneo). */
+    async setAvatarEmoji(emoji: string): Promise<void> {
+      this.avatarEmoji = emoji
+      localStorage.setItem(this.avatarStorageKey(), emoji)
+      await api.put('/Users/me/avatar', { emoji })
+    },
+
     logout(): void {
       clearExpiryTimeout()
       // Clear state
@@ -472,6 +505,7 @@ export const useAuthStore = defineStore('auth', {
       this.capabilities = null
       this.error = null
       this.loading = false
+      this.avatarEmoji = null
 
       // Remove from storage
       localStorage.removeItem('token')
@@ -548,6 +582,9 @@ export const useAuthStore = defineStore('auth', {
 
           api.defaults.headers.common['Authorization'] = `Bearer ${token}`
           scheduleRedirectOnTokenExpiry(token, this)
+
+          const cachedEmoji = localStorage.getItem(this.avatarStorageKey())
+          if (cachedEmoji) this.avatarEmoji = cachedEmoji
         } catch {
           this.logout()
         }
