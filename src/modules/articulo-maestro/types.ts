@@ -12,6 +12,21 @@ export enum AccionHistorial {
     DELETE = 'DELETE'
 }
 
+export interface ImagenArticuloReferencia {
+    id?: number
+    posicion: 1 | 2 | 3
+    esPrincipal: boolean
+    driveId?: string | null
+    itemId?: string | null
+    urlOriginal: string
+    nombreOriginal?: string | null
+    urlFinal?: string | null
+    nombreFinal?: string | null
+    estado?: 'PENDIENTE' | 'PROCESANDO' | 'COMPLETADA' | 'ERROR'
+    mensajeError?: string | null
+    intentos?: number
+}
+
 export interface Articulo {
     id: number
     itemCode: string
@@ -61,7 +76,7 @@ export interface Articulo {
     uRegion: string | null
 
     // Precios y Costos
-    costoArranque: number | null
+    uPrArq: number | null
     price: number | null
     uLiq: string | null
 
@@ -96,10 +111,11 @@ export interface Articulo {
     estadoProducto?: boolean
     idListaPrecios?: number | null
     aplicaEcommerce?: boolean
-    manBtchNum?: string | null
+    manageBatchNumbers?: string | null
     urlImagen1?: string | null
     urlImagen2?: string | null
     urlImagen3?: string | null
+    imagenes?: ImagenArticuloReferencia[]
 
     // Estado y UI
     activo: boolean

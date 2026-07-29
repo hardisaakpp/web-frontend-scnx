@@ -31,4 +31,10 @@ export const ENV = {
   REPOSICIONES_URL: getEnv('VITE_REPOSICIONES_API_URL', '/api/reposicion-api'),
   SLAYER_URL: getEnv('VITE_SLAYER_API_URL', '/slayer-api'),
   PREFERENCES_URL: getEnv('VITE_PREFERENCES_API_URL', ''),
+  MS_TENANT_ID: getEnv('VITE_MS_TENANT_ID', ''),
+  MS_CLIENT_ID: getEnv('VITE_MS_CLIENT_ID', ''),
+  SHAREPOINT_BASE_URL: getEnv(
+    'VITE_SHAREPOINT_BASE_URL',
+    'https://mabeltradingecuador.sharepoint.com/sites/fotosproductos'
+  ),
 };

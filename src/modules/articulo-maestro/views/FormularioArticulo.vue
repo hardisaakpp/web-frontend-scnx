@@ -88,7 +88,7 @@
                         </div>
                         <div class="form-field">
                             <label for="formItemName">Descripción Factura (ItemName)</label>
-                            <input id="formItemName" v-model="form.itemName" type="text" disabled placeholder="Generado automáticamente..." />
+                            <input id="formItemName" v-model="form.itemName" type="text" maxlength="50" disabled placeholder="Generado automáticamente..." />
                             <span class="help">N3 + Género + Marca + Atributo + Color + Pack</span>
                         </div>
 
@@ -97,9 +97,9 @@
                             <input id="formTieneCodigoProveedor" v-model="form.tieneCodigoProveedor" type="checkbox" class="w-5 h-5 text-blue-600 rounded border-gray-300" />
                             <label for="formTieneCodigoProveedor" class="!text-sm !m-0 !font-medium">¿El producto posee código de barras del proveedor?</label>
                         </div>
-                        <div class="form-field">
+                        <div class="form-field" :class="{ required: form.tieneCodigoProveedor }">
                             <label for="formBarCode">Código de Barras</label>
-                            <input id="formBarCode" v-model="form.barCode" type="text" :placeholder="form.tieneCodigoProveedor ? 'EAN / UPC' : '[Asignación Automática desde Bolsa]'" :disabled="!form.tieneCodigoProveedor" />
+                            <input id="formBarCode" v-model.trim="form.barCode" type="text" maxlength="15" :required="form.tieneCodigoProveedor" :placeholder="form.tieneCodigoProveedor ? 'EAN / UPC' : '[Asignación Automática desde Bolsa]'" :disabled="!form.tieneCodigoProveedor" />
                         </div>
                         <div class="form-field">
                             <label for="formCodigoAlterno">Código Alterno</label>
@@ -381,7 +381,7 @@
                         </div>
                         <div class="form-field">
                             <label for="formCostoArranque">Costo de Arranque</label>
-                            <input id="formCostoArranque" v-model.number="form.costoArranque" type="number" step="0.01" placeholder="0.00" />
+                            <input id="formCostoArranque" v-model.number="form.uPrArq" type="number" step="0.01" placeholder="0.00" />
                         </div>
                         <div class="form-field">
                             <label for="selectLiquidacion">Liquidación</label>
@@ -402,7 +402,11 @@
                     <div v-show="activeTab === 'sap'" class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div class="form-field required">
                             <label for="formItemType">Tipo de Artículo (ItemType)</label>
-                            <input id="formItemType" v-model="form.itemType" type="text" required placeholder="itItems" />
+                            <select id="formItemType" v-model="form.itemType" required>
+                                <option value="I">I - Artículo de inventario</option>
+                                <option value="L">L - Mano de obra</option>
+                                <option value="T">T - Viaje</option>
+                            </select>
                         </div>
                         <div class="form-field required">
                             <label for="formItemsGroupCode">Grupo de Artículos (ItemsGroupCode)</label>
@@ -516,7 +520,7 @@
                         </div>
                         <div class="form-field">
                             <label for="formManageBatch">Gestión por Lotes (ManBtchNum)</label>
-                            <select id="formManageBatch" v-model="form.manBtchNum">
+                            <select id="formManageBatch" v-model="form.manageBatchNumbers">
                                 <option value="N">N - No</option>
                                 <option value="Y">Y - Sí</option>
                             </select>
@@ -548,10 +552,10 @@
 
                     <!-- Tab: Imágenes -->
                     <div v-show="activeTab === 'img'" class="p-6">
-                        <GestorImagenes 
-                            v-model:urlImagen1="form.urlImagen1" 
-                            v-model:urlImagen2="form.urlImagen2" 
-                            v-model:urlImagen3="form.urlImagen3" 
+                        <GestorImagenes
+                            :model-value="form.imagenes"
+                            :disabled="submitting"
+                            @update:model-value="onImagesUpdate"
                         />
                     </div>
                 </div>
@@ -559,6 +563,9 @@
                 <!-- Error al guardar -->
                 <div v-if="submitError" class="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-400">
                     {{ submitError }}
+                </div>
+                <div v-if="submitSuccess" class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400">
+                    {{ submitSuccess }}
                 </div>
 
                 <!-- Botones de acción -->
@@ -626,7 +633,11 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { articuloService, catalogoService, sapService } from '../services/articuloService'
-import type { CatalogoItem, JerarquiaItem } from '../services/articuloService'
+import type {
+    CatalogoItem,
+    JerarquiaItem
+} from '../services/articuloService'
+import type { ImagenArticuloReferencia } from '../types'
 import SearchableSelect from '../components/SearchableSelect.vue'
 import GestorImagenes from '../components/GestorImagenes.vue'
 import KeyboardHelpModal from '../components/KeyboardHelpModal.vue'
@@ -636,8 +647,6 @@ const route = useRoute()
 const router = useRouter()
 
 const isEdit = computed(() => !!route.params.itemCode)
-const sessionToken = ref(!isEdit.value ? crypto.randomUUID().substring(0, 30) : '')
-
 const tabs = [
     { id: 'general', label: 'General' },
     { id: 'cat',     label: 'Categorización' },
@@ -655,6 +664,7 @@ const showValidationModal = ref(false)
 const tabsWithErrors = computed(() => {
     const errorTabs = new Set<string>()
     if (!form.value.itemName) errorTabs.add('general')
+    if (form.value.tieneCodigoProveedor && !form.value.barCode) errorTabs.add('general')
     if (!form.value.uIxxMarca) errorTabs.add('cat')
     if (!form.value.itemType) errorTabs.add('sap')
     if (form.value.itemsGroupCode == null) errorTabs.add('sap')
@@ -664,6 +674,9 @@ const tabsWithErrors = computed(() => {
 const validationErrorsList = computed(() => {
     const errors: string[] = []
     if (!form.value.itemName) errors.push('Descripción Factura (Tab General)')
+    if (form.value.tieneCodigoProveedor && !form.value.barCode) {
+        errors.push('Código de Barras (Tab General)')
+    }
     if (!form.value.uIxxMarca) errors.push('Negocio (Tab Categorización)')
     if (!form.value.itemType) errors.push('Tipo de Artículo (Tab Config. SAP)')
     if (form.value.itemsGroupCode == null) errors.push('Grupo de Artículos (Tab Config. SAP)')
@@ -672,6 +685,7 @@ const validationErrorsList = computed(() => {
 
 function getFirstErrorTab() {
     if (!form.value.itemName) return 'general'
+    if (form.value.tieneCodigoProveedor && !form.value.barCode) return 'general'
     if (!form.value.uIxxMarca) return 'cat'
     if (!form.value.itemType) return 'sap'
     if (form.value.itemsGroupCode == null) return 'sap'
@@ -837,7 +851,7 @@ const form = ref({
     uLiq: '',
     itemsGroupCode: null as number | null,
     uIxxMarca: '',
-    itemType: 'itItems',
+    itemType: 'I',
     costAccountingMethod: 'A',
     glMethod: 'C',
     manageStockByWarehouse: 'Y',
@@ -866,11 +880,10 @@ const form = ref({
     estadoProducto: true,
     idListaPrecios: null as number | null,
     aplicaEcommerce: false,
-    manBtchNum: 'N',
-    costoArranque: null as number | null,
     urlImagen1: '',
     urlImagen2: '',
     urlImagen3: '',
+    imagenes: [] as ImagenArticuloReferencia[],
     isStructuralLocked: false,
 })
 
@@ -892,13 +905,52 @@ watch([
     const pack = form.value.uIxxPack || ''
 
     const parts = [n3, genero, marca, atributo, color, pack].filter(Boolean)
-    form.value.itemName = parts.join(' ').toUpperCase().substring(0, 100)
+    form.value.itemName = parts.join(' ').toUpperCase().substring(0, 50)
 }, { deep: true })
 
 const loadingData = ref(false)
 const loadError = ref('')
 const submitting = ref(false)
 const submitError = ref('')
+const submitSuccess = ref('')
+const imagesDirty = ref(false)
+let imageStatusTimer: ReturnType<typeof setInterval> | null = null
+
+function onImagesUpdate(images: ImagenArticuloReferencia[]): void {
+    stopImageStatusPolling()
+    form.value.imagenes = images
+    imagesDirty.value = true
+}
+
+function stopImageStatusPolling(): void {
+    if (!imageStatusTimer) return
+    globalThis.clearInterval(imageStatusTimer)
+    imageStatusTimer = null
+}
+
+async function refreshImageStatus(itemCode: string): Promise<void> {
+    try {
+        const article = await articuloService.getArticuloByCode(itemCode)
+        form.value.imagenes = article.imagenes ?? []
+        const hasPending = form.value.imagenes.some(image =>
+            ['PENDIENTE', 'PROCESANDO'].includes(image.estado ?? '')
+        )
+        if (!hasPending) stopImageStatusPolling()
+    } catch {
+        stopImageStatusPolling()
+    }
+}
+
+function startImageStatusPolling(itemCode: string): void {
+    stopImageStatusPolling()
+    const hasPending = form.value.imagenes.some(image =>
+        ['PENDIENTE', 'PROCESANDO'].includes(image.estado ?? '')
+    )
+    if (!hasPending) return
+    imageStatusTimer = globalThis.setInterval(() => {
+        void refreshImageStatus(itemCode)
+    }, 2500)
+}
 
 // En edición: cargar los datos del artículo desde la API y pre-poblar la jerarquía de catálogos
 // Shortcuts
@@ -950,6 +1002,7 @@ async function cargarDatosEdicion(itemCode: string) {
                 } catch { /* continuar buscando */ }
             }
         }
+        startImageStatusPolling(itemCode)
     } catch {
         loadError.value = `No se pudo cargar el artículo "${itemCode}". Verifica que el código es correcto.`
     } finally {
@@ -983,6 +1036,7 @@ async function handleSubmit() {
 
     submitting.value = true
     submitError.value = ''
+    submitSuccess.value = ''
 
     // Construir el payload omitiendo nulos y strings vacíos opcionales
     const payload: Record<string, unknown> = {}
@@ -990,7 +1044,7 @@ async function handleSubmit() {
     // Lista de campos que sí deben ser enviados como numéricos
     const numericFields = new Set([
         'uCodColor', 'uCodColSecu', 'leadTime', 'minOrderQuantity',
-        'uUnidadDespacho', 'uDespIn', 'costoArranque', 'price',
+        'uUnidadDespacho', 'uDespIn', 'uPrArq', 'price',
         'itemsGroupCode', 'manufacturer', 'shipType',
         'purchaseItemsPerUnit', 'salesItemsPerUnit'
     ])
@@ -998,6 +1052,18 @@ async function handleSubmit() {
     Object.entries(form.value).forEach(([key, val]) => {
         // No enviar el código de artículo en el body del PATCH (se envía en la URL)
         if (key === 'itemCode' && isEdit.value) return
+        if (key === 'imagenes') {
+            if (isEdit.value && !imagesDirty.value) return
+            payload.imagenes = (val as ImagenArticuloReferencia[]).map(image => ({
+                posicion: image.posicion,
+                esPrincipal: image.esPrincipal,
+                driveId: image.driveId,
+                itemId: image.itemId,
+                urlOriginal: image.urlOriginal,
+                nombreOriginal: image.nombreOriginal
+            }))
+            return
+        }
 
         if (val === '' || val == null) return
 
@@ -1013,12 +1079,19 @@ async function handleSubmit() {
     try {
         if (isEdit.value) {
             const itemCode = route.params.itemCode as string
-            await articuloService.updateArticulo(itemCode, payload)
+            const article = await articuloService.updateArticulo(itemCode, payload)
+            form.value.imagenes = article.imagenes ?? []
+            imagesDirty.value = false
+            submitSuccess.value = `Artículo ${itemCode} actualizado. El estado de las imágenes se actualizará automáticamente.`
+            startImageStatusPolling(itemCode)
         } else {
-            payload.sessionToken = sessionToken.value
-            await articuloService.createArticulo(payload)
+            const article = await articuloService.createArticulo(payload)
+            form.value.imagenes = article.imagenes ?? []
+            imagesDirty.value = false
+            submitSuccess.value = `Artículo ${article.itemCode} creado. Las imágenes se están procesando en segundo plano.`
+            await router.replace(`/articulo-maestro/editar/${article.itemCode}`)
+            startImageStatusPolling(article.itemCode)
         }
-        router.push('/articulo-maestro/lista')
     } catch (err: unknown) {
         const axiosErr = err as { response?: { data?: { detail?: string | { msg: string }[] } } }
         const detail = axiosErr?.response?.data?.detail
@@ -1036,6 +1109,7 @@ async function handleSubmit() {
 
 onUnmounted(() => {
     globalThis.removeEventListener('keydown', handleKeydown)
+    stopImageStatusPolling()
 })
 const showKeyboardHelp = ref(false)
 const shortcuts = {

@@ -1,5 +1,11 @@
 import { maestroHttp as apiMaestro } from '@/lib/http'
-import type { Articulo, ArticuloFilters, MultiStatusUploadResponse } from '../types'
+import type {
+    Articulo,
+    ArticuloFilters,
+    ImagenArticuloReferencia,
+    MultiStatusUploadResponse
+} from '../types'
+export type { ImagenArticuloReferencia } from '../types'
 
 // ─── Normalización de respuestas ─────────────────────────────────────────────
 // Esta función mapea el objeto de respuesta a las claves camelCase que espera el front.
@@ -43,9 +49,21 @@ function normalizeObject(obj: any): any {
         estadoProducto: ['PRODUCT_STATUS', 'product_status', 'EstadoProducto'],
         idListaPrecios: ['PRICE_LIST_ID', 'price_list_id', 'IdListaPrecios'],
         aplicaEcommerce: ['ECOMMERCE_APPLICABLE', 'ecommerce_applicable', 'AplicaEcommerce'],
-        manBtchNum: ['MAN_BTCH_NUM', 'man_btch_num', 'ManBtchNum'],
+        manageBatchNumbers: [
+            'MAN_BTCH_NUM',
+            'man_btch_num',
+            'ManBtchNum',
+            'ManageBatchNumbers'
+        ],
         isStructuralLocked: ['IS_STRUCTURAL_LOCKED', 'is_structural_locked'],
-        costoArranque: ['U_PR_ARQ', 'u_pr_arq', 'u_Pr_Arq', 'UPrArq', 'CostoArranque'],
+        uPrArq: [
+            'U_PR_ARQ',
+            'u_pr_arq',
+            'u_Pr_Arq',
+            'UPrArq',
+            'CostoArranque',
+            'costoArranque'
+        ],
         urlImagen1: ['urlImagen1', 'url_imagen1', 'url_imagen_1'],
         urlImagen2: ['urlImagen2', 'url_imagen2', 'url_imagen_2'],
         urlImagen3: ['urlImagen3', 'url_imagen3', 'url_imagen_3']
@@ -89,7 +107,72 @@ apiMaestro.interceptors.response.use((response) => {
     return response
 })
 
+export type TipoCargaMasiva = 'crear' | 'actualizar'
+export type EstadoImportacion =
+    | 'ESPERANDO'
+    | 'PROCESANDO'
+    | 'COMPLETADO'
+    | 'COMPLETADO_CON_ERRORES'
+    | 'ERROR'
 
+export interface ImportacionFila {
+    id: number
+    numeroFila: number
+    itemCode?: string | null
+    estado: 'PENDIENTE' | 'PROCESANDO' | 'COMPLETADO' | 'ERROR'
+    campoError?: string | null
+    valorRecibido?: string | null
+    codigoError?: string | null
+    mensaje?: string | null
+}
+
+export interface ImportacionGrupo {
+    id: number
+    grupoProducto: string
+    codigoBase?: string | null
+    estado: 'PENDIENTE' | 'PROCESANDO' | 'COMPLETADO' | 'ERROR'
+    mensajeError?: string | null
+    intentos: number
+    filas: ImportacionFila[]
+    imagenes: ImagenArticuloReferencia[]
+}
+
+export interface ImportacionAceptada {
+    jobId: number
+    estado: EstadoImportacion
+    totalFilas: number
+    totalGrupos: number
+}
+
+export interface ImportacionTrabajo {
+    id: number
+    nombreArchivo: string
+    hashArchivo: string
+    tipo: 'CREAR' | 'ACTUALIZAR'
+    usuario: string
+    estado: EstadoImportacion
+    totalGrupos: number
+    gruposProcesados: number
+    totalFilas: number
+    filasCorrectas: number
+    filasError: number
+    fechaInicio?: string | null
+    fechaFin?: string | null
+    grupos: ImportacionGrupo[]
+}
+
+export interface ImportacionError {
+    tipo: 'FILA' | 'IMAGEN'
+    grupoProducto: string
+    numeroFila?: number | null
+    itemCode?: string | null
+    codigoBase?: string | null
+    posicion?: number | null
+    campoError?: string | null
+    valorRecibido?: string | null
+    codigoError?: string | null
+    mensaje: string
+}
 
 export const articuloService = {
     // Listado paginado (el backend devuelve { total, items })
@@ -164,8 +247,9 @@ export const articuloService = {
     },
 
     // Descargar plantilla Excel para carga masiva
-    downloadTemplate: async () => {
+    downloadTemplate: async (tipo: TipoCargaMasiva) => {
         const response = await apiMaestro.get('/api/v1/articulos/template/download', {
+            params: { tipo },
             responseType: 'blob',
             headers: {
                 'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, */*'
@@ -179,12 +263,85 @@ export const articuloService = {
 
         const url = globalThis.URL.createObjectURL(blob)
         const link = document.createElement('a')
+        const contentDisposition = response.headers['content-disposition']
+        const filenameMatch = contentDisposition?.match(/filename="?([^";]+)"?/)
+        const filename = filenameMatch?.[1] ?? `plantilla_articulos_${tipo}.xlsx`
         link.href = url
-        link.setAttribute('download', 'plantilla_articulos.xlsx')
+        link.setAttribute('download', filename)
         document.body.appendChild(link)
         link.click()
         link.remove()
         globalThis.URL.revokeObjectURL(url)
+    },
+
+    crearImportacion: async (
+        file: File,
+        tipo: TipoCargaMasiva
+    ): Promise<ImportacionAceptada> => {
+        const formData = new FormData()
+        formData.append('file', file)
+        const response = await apiMaestro.post<ImportacionAceptada>(
+            '/api/v1/articulos/importaciones',
+            formData,
+            {
+                params: { tipo },
+                headers: { 'Content-Type': 'multipart/form-data' }
+            }
+        )
+        return response.data
+    },
+
+    getImportacion: async (jobId: number): Promise<ImportacionTrabajo> => {
+        const response = await apiMaestro.get<ImportacionTrabajo>(
+            `/api/v1/articulos/importaciones/${jobId}`
+        )
+        return response.data
+    },
+
+    getErroresImportacion: async (
+        jobId: number
+    ): Promise<ImportacionError[]> => {
+        const response = await apiMaestro.get<{ items: ImportacionError[] }>(
+            `/api/v1/articulos/importaciones/${jobId}/errores`
+        )
+        return response.data.items
+    },
+
+    reintentarImportacion: async (
+        jobId: number
+    ): Promise<ImportacionAceptada> => {
+        const response = await apiMaestro.post<ImportacionAceptada>(
+            `/api/v1/articulos/importaciones/${jobId}/reintentar`
+        )
+        return response.data
+    },
+
+    descargarErroresImportacion: async (jobId: number): Promise<void> => {
+        const response = await apiMaestro.get(
+            `/api/v1/articulos/importaciones/${jobId}/errores.xlsx`,
+            { responseType: 'blob' }
+        )
+        const blob = new Blob([response.data as BlobPart], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        })
+        const url = globalThis.URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `errores_importacion_${jobId}.xlsx`
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+        globalThis.URL.revokeObjectURL(url)
+    },
+
+    getSharePointPreview: async (
+        referencia: { driveId: string, itemId: string }
+    ): Promise<Blob> => {
+        const response = await apiMaestro.get(
+            `/api/v1/articulos/sharepoint/preview/${encodeURIComponent(referencia.driveId)}/${encodeURIComponent(referencia.itemId)}`,
+            { responseType: 'blob' }
+        )
+        return response.data as Blob
     },
 
     // Descargar reporte diario de artículos

@@ -43,7 +43,7 @@
                 </button>
                 <button
                     class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors shadow-sm text-sm font-medium"
-                    @click="showCargaModal = true"
+                    @click="openCargaModal"
                 >
                     + Cargar archivo
                 </button>
@@ -56,6 +56,25 @@
                     {{ downloadingReport ? 'Descargando...' : 'Descargar Reporte del Día' }}
                 </button>
             </div>
+
+            <button
+                v-if="importStore.trabajo"
+                type="button"
+                class="w-full rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-left shadow-sm transition-colors hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-900/20 dark:hover:bg-blue-900/30"
+                @click="openCargaModal"
+            >
+                <div class="flex items-center justify-between gap-4">
+                    <div>
+                        <p class="text-sm font-semibold text-blue-900 dark:text-blue-200">
+                            Importación #{{ importStore.trabajo.id }} · {{ estadoImportacionLabel }}
+                        </p>
+                        <p class="mt-0.5 text-xs text-blue-700 dark:text-blue-400">
+                            {{ importStore.trabajo.gruposProcesados }} de {{ importStore.trabajo.totalGrupos }} grupos · {{ importStore.progress }} %
+                        </p>
+                    </div>
+                    <span class="text-xs font-semibold text-blue-700 dark:text-blue-300">Ver detalle</span>
+                </div>
+            </button>
             
             <!-- Table Container -->
             <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
@@ -178,7 +197,7 @@
                                     :key="col.key"
                                     class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 truncate"
                                 >
-                                    <template v-if="col.key === 'costoArranque' || col.key === 'price'">
+                                    <template v-if="col.key === 'uPrArq' || col.key === 'price'">
                                         ${{ (articulo[col.key] ?? 0).toFixed(2) }}
                                     </template>
                                     <template v-else-if="col.key === 'uGen'">
@@ -260,11 +279,26 @@
                 <!-- Body -->
                 <div class="px-6 py-5 overflow-y-auto flex-1 space-y-5">
 
-                    <!-- Paso 1: Descargar Plantilla -->
+                    <!-- Paso 1: Seleccionar Acción -->
+                    <div>
+                        <p class="text-sm font-medium text-gray-900 dark:text-white mb-2">1. ¿Qué deseas hacer?</p>
+                        <div class="flex gap-4">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" v-model="tipoCarga" value="crear" @change="handleTipoCargaChange" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500" />
+                                <span class="text-sm text-gray-700 dark:text-gray-300">Crear productos</span>
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" v-model="tipoCarga" value="actualizar" @change="handleTipoCargaChange" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500" />
+                                <span class="text-sm text-gray-700 dark:text-gray-300">Modificar productos</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Paso 2: Descargar Plantilla -->
                     <div class="flex items-center gap-4 p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800">
                         <div class="flex-1">
-                            <p class="text-sm font-medium text-blue-900 dark:text-blue-200">1. Descarga la plantilla Excel</p>
-                            <p class="text-xs text-blue-700 dark:text-blue-400 mt-0.5">Completa los datos de los artículos y súbela en el paso 3.</p>
+                            <p class="text-sm font-medium text-blue-900 dark:text-blue-200">2. Descarga la plantilla de {{ tipoCarga === 'crear' ? 'creación' : 'modificación' }}</p>
+                            <p class="text-xs text-blue-700 dark:text-blue-400 mt-0.5">Utiliza esta plantilla para garantizar la versión y los campos correctos.</p>
                         </div>
                         <button
                             @click="handleDownloadTemplate"
@@ -273,21 +307,6 @@
                         >
                             {{ downloadingTemplate ? 'Descargando...' : 'Descargar .xlsx' }}
                         </button>
-                    </div>
-
-                    <!-- Paso 2: Seleccionar Acción -->
-                    <div>
-                        <p class="text-sm font-medium text-gray-900 dark:text-white mb-2">2. ¿Qué deseas hacer con el archivo?</p>
-                        <div class="flex gap-4">
-                            <label class="flex items-center gap-2 cursor-pointer">
-                                <input type="radio" v-model="tipoCarga" value="crear" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500" />
-                                <span class="text-sm text-gray-700 dark:text-gray-300">+ Crear Productos</span>
-                            </label>
-                            <label class="flex items-center gap-2 cursor-pointer">
-                                <input type="radio" v-model="tipoCarga" value="actualizar" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500" />
-                                <span class="text-sm text-gray-700 dark:text-gray-300">+ Modificar Productos</span>
-                            </label>
-                        </div>
                     </div>
 
                     <!-- Paso 3: Subir Archivo -->
@@ -300,11 +319,11 @@
                             @dragleave.prevent="dragOver = false"
                             @drop.prevent="onDrop"
                         >
-                            <input ref="fileInputRef" type="file" accept=".xlsx,.xls" aria-label="Seleccionar archivo Excel" class="hidden" @change="onFileSelect" />
+                            <input ref="fileInputRef" type="file" accept=".xlsx" aria-label="Seleccionar archivo Excel" class="hidden" @change="onFileSelect" />
                             <div v-if="!selectedFile" class="space-y-2">
                                 <svg class="mx-auto h-10 w-10 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
                                 <p class="text-sm text-gray-600 dark:text-gray-400">Arrastra tu archivo aquí o <button type="button" @click="fileInputRef?.click()" class="text-blue-600 dark:text-blue-400 font-medium hover:underline">selecciona uno</button></p>
-                                <p class="text-xs text-gray-400">.xlsx o .xls</p>
+                                <p class="text-xs text-gray-400">.xlsx</p>
                             </div>
                             <div v-else class="flex items-center justify-center gap-3">
                                 <svg class="h-6 w-6 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -312,89 +331,10 @@
                                 <button type="button" @click="resetCarga" class="text-xs text-red-500 hover:underline">Quitar</button>
                             </div>
                         </div>
-                        <p class="text-[10px] text-gray-400 mt-1 italic">* Soporta formatos .xlsx y .xls</p>
+                        <p class="text-[10px] text-gray-400 mt-1 italic">* Solo se admite el formato .xlsx</p>
                     </div>
 
-                    <!-- Resultados -->
-                    <div v-if="cargaResults" class="space-y-4">
-
-                        <!-- Banner: Errores (All-or-nothing) -->
-                        <div v-if="cargaResults.error_count > 0" class="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 overflow-hidden">
-                            <div class="flex items-start gap-3 px-4 py-3">
-                                <svg class="h-5 w-5 text-red-500 dark:text-red-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
-                                <div class="flex-1">
-                                    <p class="text-sm font-semibold text-red-800 dark:text-red-300">No se importó ningún artículo</p>
-                                    <p class="text-xs text-red-600 dark:text-red-400 mt-0.5 mb-2">
-                                        {{ cargaResults.mensaje || 'Se encontraron errores de validación. Corrige los problemas señalados e intenta de nuevo.' }}
-                                    </p>
-                                    <button @click="descargarReporteErrores" class="px-3 py-1.5 bg-red-600 text-white text-xs font-medium rounded hover:bg-red-700 transition-colors">
-                                        Descargar Reporte de Errores
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Banner: Éxito -->
-                        <div v-else class="rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 overflow-hidden">
-                            <div class="flex items-start gap-3 px-4 py-3">
-                                <svg class="h-5 w-5 text-emerald-500 dark:text-emerald-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                <div>
-                                    <p class="text-sm font-semibold text-emerald-800 dark:text-emerald-300">Carga exitosa</p>
-                                    <p class="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">
-                                        Se importaron correctamente <strong>{{ cargaResults.success_count }}</strong> artículos.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Detalle de errores por fila (solo cuando hay errores) -->
-                        <div v-if="cargaResults.errores && cargaResults.errores.length > 0" class="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-                            <div class="bg-gray-50 dark:bg-gray-900/50 px-4 py-2 border-b border-gray-200 dark:border-gray-700">
-                                <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                                    Detalle de errores ({{ cargaResults.errores.length }})
-                                </p>
-                            </div>
-                            <div class="divide-y divide-gray-100 dark:divide-gray-800">
-                                <div v-for="err in cargaResults.errores" :key="err.fila" class="px-4 py-3 flex flex-col gap-1.5">
-                                    <!-- Fila + ItemCode -->
-                                    <div class="flex items-center gap-2">
-                                        <span class="inline-flex items-center rounded bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wide">Fila {{ err.fila }}</span>
-                                        <span class="text-sm font-mono font-medium text-gray-900 dark:text-white">{{ err.item_code || '(sin código)' }}</span>
-                                    </div>
-                                    <!-- Errores desglosados -->
-                                    <ul class="flex flex-wrap gap-1.5">
-                                        <li v-for="(msg, i) in parseErrors(err.error)" :key="i"
-                                            class="inline-flex items-center gap-1 rounded-md bg-red-100 dark:bg-red-900/30 px-2 py-1 text-xs text-red-700 dark:text-red-300">
-                                            <svg class="h-3 w-3 shrink-0 text-red-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg>
-                                            {{ msg }}
-                                        </li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Detalle de éxito (solo cuando fue exitoso y hay results) -->
-                        <div v-if="cargaResults.error_count === 0 && (cargaResults.results?.length ?? 0) > 0" class="max-h-52 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700">
-                            <table class="w-full text-xs">
-                                <thead class="bg-gray-50 dark:bg-gray-900/50 sticky top-0">
-                                    <tr>
-                                        <th class="px-3 py-2 text-left font-semibold text-gray-500 dark:text-gray-400">ItemCode</th>
-                                        <th class="px-3 py-2 text-left font-semibold text-gray-500 dark:text-gray-400">Estado</th>
-                                        <th class="px-3 py-2 text-left font-semibold text-gray-500 dark:text-gray-400">Mensaje</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
-                                    <tr v-for="r in cargaResults.results" :key="r.item_code">
-                                        <td class="px-3 py-1.5 font-mono text-gray-900 dark:text-white">{{ r.item_code }}</td>
-                                        <td class="px-3 py-1.5">
-                                            <span class="text-emerald-600 dark:text-emerald-400 font-medium">✓ OK</span>
-                                        </td>
-                                        <td class="px-3 py-1.5 text-gray-500 dark:text-gray-400">{{ r.message || 'Creado correctamente' }}</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                    <ImportacionProgreso v-if="importStore.trabajo" />
 
                     <!-- Error general (red, servidor, etc.) -->
                     <div v-if="cargaError" class="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-400">
@@ -405,8 +345,8 @@
                 <!-- Footer -->
                 <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
                     <button
-                        v-if="cargaResults || cargaError"
-                        @click="resetCarga"
+                        v-if="importStore.isTerminal || cargaError"
+                        @click="prepararOtraCarga"
                         class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors mr-auto"
                     >
                         Cargar otro archivo
@@ -415,10 +355,10 @@
                         @click="closeCargaModal"
                         class="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                     >
-                        {{ cargaResults ? 'Cerrar' : 'Cancelar' }}
+                        {{ importStore.trabajo ? 'Cerrar' : 'Cancelar' }}
                     </button>
                     <button
-                        v-if="!cargaResults"
+                        v-if="!importStore.trabajo"
                         @click="handleUpload"
                         :disabled="!selectedFile || uploading"
                         class="px-5 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-60 transition-colors flex items-center gap-2"
@@ -483,12 +423,17 @@ import {
     CheckIcon
 } from '@heroicons/vue/20/solid'
 import { useArticuloStore } from '../stores/articuloStore'
-import { articuloService } from '../services/articuloService'
-import type { CargaMasivaResponse } from '../services/articuloService'
+import { useImportacionArticulosStore } from '../stores/importacionArticulosStore'
+import {
+    articuloService,
+    type TipoCargaMasiva
+} from '../services/articuloService'
 import KeyboardHelpModal from '../components/KeyboardHelpModal.vue'
+import ImportacionProgreso from '../components/ImportacionProgreso.vue'
 import { useKeyboardShortcuts } from '../composables/useKeyboardShortcuts'
 
 const router = useRouter()
+const importStore = useImportacionArticulosStore()
 
 const showKeyboardHelp = ref(false)
 const shortcuts = {
@@ -579,7 +524,7 @@ const allColumns = [
     { key: 'uDespIn', label: 'UNIDAD DE EMPAQUE - INNER' },
     { key: 'uCanalVenta', label: 'CANAL DE VENTA' },
     { key: 'uRegion', label: 'REGION DE VENTA' },
-    { key: 'costoArranque', label: 'COSTO DE ARRANQUE' },
+    { key: 'uPrArq', label: 'COSTO DE ARRANQUE' },
     { key: 'price', label: 'PVP' },
     { key: 'uLiq', label: 'LIQUIDACION' },
     { key: 'itemsGroupCode', label: 'GRUPO ARTICULOS' },
@@ -598,7 +543,7 @@ const allColumns = [
     { key: 'apTaxCode', label: 'TaxCodeAP' },
     { key: 'manufacturer', label: 'FirmCode' },
     { key: 'shipType', label: 'ShipType' },
-    { key: 'manBtchNum', label: 'ManBtchNum' },
+    { key: 'manageBatchNumbers', label: 'ManageBatchNumbers' },
     { key: 'estadoProducto', label: 'ESTADO PRODUCTO' },
     { key: 'idListaPrecios', label: 'LISTA PRECIOS' },
     { key: 'aplicaEcommerce', label: 'APLICA ECOMMERCE' },
@@ -711,9 +656,25 @@ watch([searchQuery, pageSize], () => {
 })
 
 // Ciclo de Vida
-onMounted(() => {
-    store.fetchArticulos()
+onMounted(async () => {
+    await Promise.all([
+        store.fetchArticulos(),
+        importStore.restaurar()
+    ])
 })
+
+watch(
+    () => importStore.trabajo?.estado,
+    (estado, anterior) => {
+        if (
+            estado &&
+            estado !== anterior &&
+            ['COMPLETADO', 'COMPLETADO_CON_ERRORES', 'ERROR'].includes(estado)
+        ) {
+            void store.fetchArticulos()
+        }
+    }
+)
 
 // Eliminar artículo con confirmación
 const deletingCode = ref<string | null>(null)
@@ -743,37 +704,60 @@ async function confirmDelete() {
 
 // ─── Carga Masiva ─────────────────────────────────────────────────────────────────────
 const showCargaModal = ref(false)
-const tipoCarga = ref<'crear' | 'actualizar'>('crear')
+const tipoCarga = ref<TipoCargaMasiva>('crear')
 const selectedFile = ref<File | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const dragOver = ref(false)
 const uploading = ref(false)
 const downloadingTemplate = ref(false)
-const cargaResults = ref<CargaMasivaResponse | null>(null)
 const cargaError = ref('')
 
 function closeCargaModal() {
     showCargaModal.value = false
     resetCarga()
-    // Solo recargar la tabla si la carga fue exitosa (sin errores)
-    if (cargaResults.value?.error_count === 0) {
-        store.fetchArticulos()
+    if (importStore.isTerminal) {
+        importStore.limpiar()
+        void store.fetchArticulos()
     }
+}
+
+function openCargaModal(): void {
+    showCargaModal.value = true
 }
 
 function resetCarga() {
     selectedFile.value = null
-    cargaResults.value = null
     cargaError.value = ''
     if (fileInputRef.value) {
         fileInputRef.value.value = ''
     }
 }
 
+function handleTipoCargaChange(): void {
+    resetCarga()
+}
+
+function prepararOtraCarga(): void {
+    if (importStore.isTerminal) importStore.limpiar()
+    resetCarga()
+}
+
+function selectExcelFile(file: File): void {
+    if (!file.name.toLowerCase().endsWith('.xlsx')) {
+        selectedFile.value = null
+        cargaError.value = 'Solo se permiten archivos .xlsx'
+        return
+    }
+
+    selectedFile.value = file
+    cargaError.value = ''
+}
+
 function onFileSelect(event: Event) {
     const input = event.target as HTMLInputElement
-    if (input.files && input.files[0]) {
-        selectedFile.value = input.files[0]
+    const file = input.files?.[0]
+    if (file) {
+        selectExcelFile(file)
     }
 }
 
@@ -781,18 +765,14 @@ function onDrop(event: DragEvent) {
     dragOver.value = false
     const file = event.dataTransfer?.files?.[0]
     if (file) {
-        if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-            selectedFile.value = file
-        } else {
-            cargaError.value = 'Solo se permiten archivos .xlsx o .xls'
-        }
+        selectExcelFile(file)
     }
 }
 
 async function handleDownloadTemplate() {
     downloadingTemplate.value = true
     try {
-        await articuloService.downloadTemplate()
+        await articuloService.downloadTemplate(tipoCarga.value)
     } catch {
         cargaError.value = 'No se pudo descargar la plantilla.'
     } finally {
@@ -804,13 +784,10 @@ async function handleUpload() {
     if (!selectedFile.value) return
     uploading.value = true
     cargaError.value = ''
-    cargaResults.value = null
     try {
-        if (tipoCarga.value === 'actualizar') {
-            cargaResults.value = await articuloService.cargaMasivaActualizacion(selectedFile.value)
-        } else {
-            cargaResults.value = await articuloService.cargaMasiva(selectedFile.value)
-        }
+        await importStore.iniciar(selectedFile.value, tipoCarga.value)
+        selectedFile.value = null
+        if (fileInputRef.value) fileInputRef.value.value = ''
     } catch (err: unknown) {
         // Solo llega aquí si fue un error de red/servidor (no de validación)
         const axiosErr = err as { response?: { data?: { detail?: string } } }
@@ -820,18 +797,17 @@ async function handleUpload() {
     }
 }
 
-/**
- * Toma un string de errores del backend que puede venir como:
- * "itemName: Campo requerido; itemsGroupCode: El valor debe ser un número; ..."
- * y lo separa en un array de mensajes individuales legibles.
- */
-function parseErrors(errorStr: string): string[] {
-    if (!errorStr) return []
-    return errorStr
-        .split(';')
-        .map(s => s.trim())
-        .filter(s => s.length > 0)
-}
+const estadoImportacionLabel = computed(() => {
+    const labels = {
+        ESPERANDO: 'En espera',
+        PROCESANDO: 'Procesando',
+        COMPLETADO: 'Completado',
+        COMPLETADO_CON_ERRORES: 'Completado con errores',
+        ERROR: 'Error'
+    }
+    const estado = importStore.trabajo?.estado
+    return estado ? labels[estado] : ''
+})
 
 const downloadingReport = ref(false)
 
@@ -846,17 +822,4 @@ async function handleDescargarReporte() {
     }
 }
 
-function descargarReporteErrores() {
-    if (!cargaResults.value || !cargaResults.value.errores) return
-    const csvContent = "Fila,ItemCode,Errores\n" + cargaResults.value.errores.map(e => `${e.fila},${e.item_code || ''},"${e.error.replace(/"/g, '""')}"`).join("\n")
-    const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.setAttribute('download', 'reporte_errores_carga.csv')
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    URL.revokeObjectURL(url)
-}
 </script>
