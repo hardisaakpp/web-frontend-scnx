@@ -119,6 +119,7 @@ const cancelarConfirm = () => {
   accionPendiente.value = null
   idPendiente.value = null
   confirmError.value = ''
+  cargar()
 }
 
 const cargar = async () => {
@@ -216,7 +217,10 @@ const ejecutarConfirmacion = async () => {
   confirmError.value = ''
   try {
     if (accion === 'enviar') await transferenciasService.enviarAprobacion(id)
-    else await transferenciasService.crearDefinitiva(id)
+    else {
+      const guiaEnvio = solicitudes.value.find((s) => s.id === id)?.guiaEnvio
+      await transferenciasService.crearDefinitiva(id, guiaEnvio)
+    }
 
     confirmAbierto.value = false
     accionPendiente.value = null
@@ -233,7 +237,7 @@ const mensajeError = (e: any, accion: 'enviar' | 'definitiva'): string => {
   const st = e?.response?.status
   const msg = e?.response?.data?.mensaje ?? e?.response?.data?.error
   if (st === 400) return msg ?? 'La solicitud no tiene productos o es inválida.'
-  if (st === 409) return msg ?? 'La solicitud ya no está en el estado requerido.'
+  if (st === 409) return msg ?? 'La solicitud ya no está en el estado requeridob o no existe.'
   if (st === 422) return msg ?? 'No se pudo crear la transferencia. Intenta nuevamente.'
   if (st === 503) return msg ?? 'SAP no está disponible. Intenta más tarde.'
   if (st === 404) return 'La solicitud no existe.'

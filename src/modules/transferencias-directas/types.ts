@@ -147,6 +147,9 @@ export interface SolicitudDetalle {
   tiendaDestino: string
   estado: EstadoTransferencia
   guiaEnvio: string | null
+  comentarioSap: string | null
+  sapDraftDocEntry: number | null
+  sapTransferDocNum: number | null
   productos: DetalleLinea[]
 }
 

@@ -34,6 +34,9 @@ const mostrarGuia = (g: string | null) => (g && g.trim() ? g : '—')
                 <tr>
                     <th
                         class="sticky top-0 z-10 bg-gray-50 dark:bg-gray-900/50 px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 ">
+                        ID</th>
+                    <th
+                        class="sticky top-0 z-10 bg-gray-50 dark:bg-gray-900/50 px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 ">
                         Tienda Origen</th>
                     <th
                         class="sticky top-0 z-10 bg-gray-50 dark:bg-gray-900/50 px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 ">
@@ -41,6 +44,7 @@ const mostrarGuia = (g: string | null) => (g && g.trim() ? g : '—')
                     <th
                         class="sticky top-0 z-10 bg-gray-50 dark:bg-gray-900/50 px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 ">
                         Fecha Creación</th>
+                    
                     <th
                         class="sticky top-0 z-10 bg-gray-50 dark:bg-gray-900/50 px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 ">
                         Estado</th>
@@ -69,6 +73,13 @@ const mostrarGuia = (g: string | null) => (g && g.trim() ? g : '—')
                 </tr>
                 <tr v-for="s in solicitudes" v-else :key="s.id"
                     class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                    <td class="px-2 py-3 text-center">
+                        <span
+                            class="text-[10px] font-bold bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-2 py-0.5 rounded">#{{
+                            s.id }}
+                        </span>
+                    </td>
+
                     <td class="px-4 py-3 text-xs text-gray-600 dark:text-gray-300">{{ s.tiendaOrigen }}</td>
                     <td class="px-4 py-3 text-xs text-gray-600 dark:text-gray-300">{{ s.tiendaDestino }}</td>
                     <td class="px-4 py-3 text-xs text-gray-600 dark:text-gray-300 whitespace-nowrap">{{
