@@ -39,8 +39,26 @@ const mostrarGuia = (g: string | null) => (g && g.trim() ? g : '—')
             <div><dt class="text-xs text-gray-500 dark:text-gray-400">Origen</dt><dd class="text-gray-900 dark:text-white">{{ detalle.tiendaOrigen }}</dd></div>
             <div><dt class="text-xs text-gray-500 dark:text-gray-400">Destino</dt><dd class="text-gray-900 dark:text-white">{{ detalle.tiendaDestino }}</dd></div>
             <div><dt class="text-xs text-gray-500 dark:text-gray-400">Guía</dt><dd class="text-gray-900 dark:text-white">{{ mostrarGuia(detalle.guiaEnvio) }}</dd></div>
-            <div class="sm:col-span-2"><dt class="text-xs text-gray-500 dark:text-gray-400">Justificación</dt><dd class="text-gray-900 dark:text-white">{{ detalle.justificacion || '—' }}</dd></div>
+            <div><dt class="text-xs text-gray-500 dark:text-gray-400">Justificación</dt><dd class="text-gray-900 dark:text-white">{{ detalle.justificacion || '—' }}</dd></div>
           </dl>
+
+          <div v-if="detalle.comentarioSap || detalle.sapDraftDocEntry || detalle.sapTransferDocNum" class="pt-4 border-t border-gray-200 dark:border-gray-700">
+            <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-2">Información SAP</h3>
+            <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+              <div v-if="detalle.comentarioSap" class="sm:col-span-2">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Comentario SAP</dt>
+                <dd class="text-gray-900 dark:text-white">{{ detalle.comentarioSap }}</dd>
+              </div>
+              <div v-if="detalle.sapTransferDocNum">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Doc. Transferencia</dt>
+                <dd class="text-gray-900 dark:text-white">{{ detalle.sapTransferDocNum }}</dd>
+              </div>
+              <div v-else-if="detalle.sapDraftDocEntry">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Doc. Borrador</dt>
+                <dd class="text-gray-900 dark:text-white">{{ detalle.sapDraftDocEntry }}</dd>
+              </div>
+            </dl>
+          </div>
 
           <div>
             <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-2">Productos</h3>

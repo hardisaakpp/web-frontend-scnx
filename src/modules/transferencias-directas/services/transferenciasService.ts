@@ -1,5 +1,5 @@
 import { transferenciasDirectasApi } from "@/lib/http"
-import { ActualizarSolicitudRequest, ConfiguracionEnvio, ConfiguracionEnvioRequest, CrearDefinitivaResponse, CrearSolicitudRequest, CrearSolicitudResponse, ErrorSap, EstadoTransferencia, FiltrosExportar, ListarSolicitudesQuery, ResultadoPaginado, SolicitudDetalle, SolicitudResumen } from "../types"
+import { ActualizarSolicitudRequest, ConfiguracionEnvio, ConfiguracionEnvioRequest, CrearDefinitivaRequest, CrearDefinitivaResponse, CrearSolicitudRequest, CrearSolicitudResponse, ErrorSap, EstadoTransferencia, FiltrosExportar, ListarSolicitudesQuery, ResultadoPaginado, SolicitudDetalle, SolicitudResumen } from "../types"
 import { nombreArchivoDesdeHeader } from "../utils/descargas"
 
 const transferenciasService = {
@@ -53,10 +53,12 @@ const transferenciasService = {
     return data
   },
   // POST {id}/crear-definitiva → genera la transferencia en SAP (solo Aprobado)
-  crearDefinitiva: async (id: number): Promise<CrearDefinitivaResponse> => {
+  crearDefinitiva: async (id: number, guiaEnvio?: string | null): Promise<CrearDefinitivaResponse> => {
+    const body: CrearDefinitivaRequest = {}
+    if (guiaEnvio) body.guiaEnvio = guiaEnvio
     const { data } = await transferenciasDirectasApi.post<CrearDefinitivaResponse>(
       `solicitudes-transferencia/${id}/crear-definitiva`,
-      {} 
+      body
     )
     return data
   },
