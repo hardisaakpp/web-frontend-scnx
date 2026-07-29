@@ -21,6 +21,7 @@ import promocionSobresRoutes from '../modules/promocion-sobres/router'
 import transaccionesRoutes from '../modules/transacciones/router'
 import reposicionesRoutes from '../modules/reposiciones/router'
 import ruletaRoutes from '../modules/ruleta/router'
+import transferenciasDirectasRoutes from '../modules/transferencias-directas/router'
 import demandaOtbRoutes from '../modules/demanda-otb/router'
 
 const router = createRouter({
@@ -73,6 +74,7 @@ const router = createRouter({
         ...inventarioRoutes,
         ...promocionSobresRoutes,
         ...transaccionesRoutes,
+        ...transferenciasDirectasRoutes,
         ...reposicionesRoutes,
         ...ruletaRoutes,
         ...demandaOtbRoutes,
