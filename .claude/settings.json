@@ -23,7 +23,18 @@
       "Bash(curl -s http://localhost:3001/src/modules/caja-chica/views/AprobadoresView.vue -o /dev/null -w \"AprobadoresView.vue: %{http_code}\\\\n\")",
       "Bash(git rm *)",
       "Bash(curl -s http://localhost:3001/src/modules/caja-chica/views/LiquidacionesView.vue -o /dev/null -w \"LiquidacionesView.vue: %{http_code}\\\\n\")",
-      "Bash(curl -s http://127.0.0.1:8092/api/Almacenes -H \"Accept: application/json\")"
+      "Bash(curl -s http://127.0.0.1:8092/api/Almacenes -H \"Accept: application/json\")",
+      "Bash(rm -v \\\\ *)",
+      "Bash(dotnet test *)",
+      "Bash(xargs -I{} sh -c 'echo \"=== {} ===\"; cat {}')",
+      "Bash(find / -maxdepth 6 -iname \"*caja*chica*\" \\\\\\( -iname \"*.service\" -o -iname \"*.env\" -o -iname \"docker-compose*\" \\\\\\))",
+      "Bash(systemctl list-units *)",
+      "Bash(ip addr *)",
+      "Bash(timeout 3 bash -c 'echo > /dev/tcp/192.168.2.211/9100')",
+      "Bash(timeout 3 bash -c 'echo > /dev/tcp/192.168.2.211/8092')"
+    ],
+    "additionalDirectories": [
+      "/home/xavier/repos/api-middleware-sap/src/Middleware.Application/UseCases/StockTransfer"
     ]
   }
 }
