@@ -96,10 +96,10 @@ export const useReposicionStore = defineStore('reposicion', {
           const accessList = Array.isArray(accesses) ? accesses : [accesses]
           accessList.forEach((a: any) => {
             if (a.codAlmacen) {
-              if (!newAlmacenes.some(alm => alm.whsCode === a.codAlmacen)) {
+              if (!newAlmacenes.some(alm => alm.code === a.codAlmacen)) {
                 newAlmacenes.push({
-                  whsCode: a.codAlmacen,
-                  whsName: a.codAlmacen
+                  code: a.codAlmacen,
+                  name: a.codAlmacen
                 })
               }
             }
@@ -109,7 +109,7 @@ export const useReposicionStore = defineStore('reposicion', {
         this.almacenes = newAlmacenes
 
         if (this.almacenes.length > 0 && !this.filters.whsCode) {
-          this.filters.whsCode = this.almacenes[0].whsCode
+          this.filters.whsCode = this.almacenes[0].code
         }
       } catch (err) {
         console.error('Error al procesar almacenes de sesión:', err)

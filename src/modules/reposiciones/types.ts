@@ -63,8 +63,12 @@ export interface ListasFiltros {
 }
 
 export interface Almacen {
-  whsCode: string;
-  whsName: string;
+  id?: number;
+  code: string;
+  name: string;
+  esCentroDistribucion?: boolean;
+  centroDistribucionId?: number | null;
+  centroDistribucionCode?: string | null;
 }
 
 

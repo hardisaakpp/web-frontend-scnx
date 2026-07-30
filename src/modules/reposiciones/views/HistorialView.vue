@@ -25,7 +25,7 @@ const fechaHasta = ref(new Date().toISOString().split('T')[0])
 
 const currentWarehouseName = computed(() => {
   const code = store.filters.whsCode
-  const whs = store.almacenes.find(a => a.whsCode === code)
+  const whs = store.almacenes.find(a => a.code === code)
   return whs ? `${code}` : code
 })
 

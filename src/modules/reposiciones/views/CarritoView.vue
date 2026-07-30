@@ -18,7 +18,7 @@ const { carrito, filters, almacenes, carritoInfo, isOpen, startHour, endHour } =
 
 const currentWarehouseName = computed(() => {
   const code = filters.value.whsCode
-  const whs = almacenes.value.find(a => a.whsCode === code)
+  const whs = almacenes.value.find(a => a.code === code)
   return whs ? `${code}` : code
 })
 

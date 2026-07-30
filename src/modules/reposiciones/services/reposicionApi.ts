@@ -33,7 +33,7 @@ const reposicionApi = {
   },
 
   getAlmacenes: async () => {
-    const url = 'Catalogo/almacenes'
+    const url = 'Almacen'
     console.log("🚀 [ReposicionAPI] getAlmacenes:", url)
     const response = await reposicionesApi.get<Almacen[]>(url)
     return response.data

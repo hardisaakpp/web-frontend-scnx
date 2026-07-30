@@ -3,7 +3,7 @@ import { onMounted, ref, watch, computed } from 'vue'
 import { useReposicionStore } from '../stores/reposicionStore'
 import { useAuthStore } from '@/stores/auth'
 import reposicionApi from '../services/reposicionApi'
-import type { HistorialCabecera, HistorialDetalleItem, HistorialSolicitudSap } from '../types'
+import type { HistorialCabecera, HistorialDetalleItem, HistorialSolicitudSap, Almacen } from '../types'
 import { 
   CalendarIcon,
   DocumentTextIcon,
@@ -21,7 +21,7 @@ import { Dialog, DialogPanel, DialogTitle, TransitionRoot } from '@headlessui/vu
 const authStore = useAuthStore()
 const store = useReposicionStore()
 const historial = ref<HistorialCabecera[]>([])
-const almacenesTodos = ref<any[]>([])
+const almacenesTodos = ref<Almacen[]>([])
 const loading = ref(false)
 
 const fechaDesde = ref(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
@@ -121,8 +121,8 @@ const viewSolicitudes = async (whsCode: string, fecha: string) => {
           <BuildingOfficeIcon class="w-4 h-4 text-gray-400 dark:text-gray-500" />
           <select v-model="whsFilter" class="border-none focus:ring-0 p-0 text-sm font-bold text-gray-700 dark:text-white bg-transparent min-w-[120px] cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
             <option value="" class="bg-white dark:bg-gray-800">Todas las bodegas</option>
-            <option v-for="alm in almacenesTodos" :key="alm.whsCode" :value="alm.whsCode" class="bg-white dark:bg-gray-800">
-              {{ alm.whsCode }}
+            <option v-for="alm in almacenesTodos" :key="alm.code" :value="alm.code" class="bg-white dark:bg-gray-800">
+              {{ alm.code }}
             </option>
           </select>
         </div>

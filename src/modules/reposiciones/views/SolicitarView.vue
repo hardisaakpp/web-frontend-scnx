@@ -198,7 +198,7 @@ const getQuantityColor = (item: any) => {
           <BuildingOfficeIcon class="w-5 h-5 flex-shrink-0" />
           <div class="flex flex-col">
             <span class="text-[10px] font-bold uppercase tracking-wider leading-none">Tienda</span>
-            <span class="text-sm font-extrabold">{{ bodegasParaSeleccionar[0].whsCode }}</span>
+            <span class="text-sm font-extrabold">{{ bodegasParaSeleccionar[0].code }}</span>
           </div>
         </div>
 
@@ -209,8 +209,8 @@ const getQuantityColor = (item: any) => {
           class="block w-full sm:w-64 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-800 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm h-10 px-3 border"
         >
           <option value="" disabled>Seleccione una bodega...</option>
-          <option v-for="alm in bodegasParaSeleccionar" :key="alm.whsCode" :value="alm.whsCode">
-            {{ alm.whsCode }}
+          <option v-for="alm in bodegasParaSeleccionar" :key="alm.code" :value="alm.code">
+            {{ alm.code }}
           </option>
         </select>
 
