@@ -99,42 +99,6 @@
         </router-link>
 
         <router-link
-          to="/caja-chica/almacenes"
-          class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left block"
-          v-if="canViewAlmacenes"
-        >
-          <div class="flex items-start gap-3">
-            <div class="w-8 h-8 rounded bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0">
-              <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
-              </svg>
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="font-medium text-gray-900 dark:text-white text-sm">Grupos almacenes</div>
-              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Configurar grupos y tiendas</div>
-            </div>
-          </div>
-        </router-link>
-
-        <router-link
-          to="/caja-chica/asignacion-almacenes"
-          class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left block"
-          v-if="canViewAlmacenes"
-        >
-          <div class="flex items-start gap-3">
-            <div class="w-8 h-8 rounded bg-rose-50 dark:bg-rose-900/30 flex items-center justify-center flex-shrink-0">
-              <svg class="w-4 h-4 text-rose-600 dark:text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9l-6 6-6-6" />
-              </svg>
-            </div>
-            <div class="flex-1 min-w-0">
-              <div class="font-medium text-gray-900 dark:text-white text-sm">Asignacion almacenes</div>
-              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Vincular usuarios con almacenes</div>
-            </div>
-          </div>
-        </router-link>
-
-        <router-link
           to="/caja-chica/aprobaciones-pendientes"
           class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left block"
           v-if="canViewAprobacionesSupervisor"
@@ -266,10 +230,6 @@ const canViewCatalogo = computed(() =>
 
 const canViewAprobadores = computed(() =>
   authStore.hasAnyPermission(['cajachica.aprobadores.view'])
-)
-
-const canViewAlmacenes = computed(() =>
-  authStore.hasAnyPermission(['cajachica.almacenes.view'])
 )
 
 const canViewFormasPago = computed(() =>

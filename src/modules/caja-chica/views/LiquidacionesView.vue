@@ -34,11 +34,12 @@
         </div>
 
         <div v-if="isCreateOpen" class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <!-- Fila 1: almacén + datos que se llenan solos a partir de él -->
           <div>
             <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Almacén asignado*</label>
             <select
               v-model="selectedCodAlmacen"
-              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+              class="w-full rounded border-2 border-gray-400 dark:border-gray-500 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
             >
               <option value="">Seleccionar almacén</option>
               <option v-for="almacen in assignedAlmacenes" :key="almacen.codAlmacen" :value="almacen.codAlmacen">
@@ -47,62 +48,60 @@
             </select>
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Nombre custodio</label>
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Empresa <span class="italic text-gray-400 dark:text-gray-500">(automático, no editable)</span></label>
             <input
-              v-model.trim="nombreCustodio"
+              v-model="empresa"
               type="text"
-              placeholder="Nombre completo"
               readonly
-              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+              tabindex="-1"
+              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 px-3 py-2 text-sm text-gray-500 dark:text-gray-400 cursor-not-allowed"
             />
           </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Marca <span class="italic text-gray-400 dark:text-gray-500">(automático, no editable)</span></label>
+            <input
+              v-model="marca"
+              type="text"
+              readonly
+              tabindex="-1"
+              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 px-3 py-2 text-sm text-gray-500 dark:text-gray-400 cursor-not-allowed"
+            />
+          </div>
+
+          <!-- Fila 2: cédula + datos del custodio que se llenan solos a partir de ella -->
           <div>
             <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Cédula custodio*</label>
             <input
               v-model.trim="cedulaCustodio"
               type="text"
               placeholder="Identificacion"
-              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+              class="w-full rounded border-2 border-gray-400 dark:border-gray-500 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
               @blur="validateCreateCustodio"
             />
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">CardCode custodio (SAP)</label>
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Nombre custodio <span class="italic text-gray-400 dark:text-gray-500">(automático, no editable)</span></label>
+            <input
+              v-model.trim="nombreCustodio"
+              type="text"
+              placeholder="Se completa al ingresar la cédula"
+              readonly
+              tabindex="-1"
+              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 px-3 py-2 text-sm text-gray-500 dark:text-gray-400 cursor-not-allowed"
+            />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">CardCode custodio (SAP) <span class="italic text-gray-400 dark:text-gray-500">(automático, no editable)</span></label>
             <input
               v-model="cardCodeCustodio"
               type="text"
               readonly
-              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-700 dark:text-gray-300"
+              tabindex="-1"
+              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 px-3 py-2 text-sm text-gray-500 dark:text-gray-400 cursor-not-allowed"
             />
           </div>
-          <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Forma de pago*</label>
-            <select
-              v-model="formatoDePago"
-              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
-            >
-              <option value="Transferencia">Transferencia</option>
-              <option value="Cheque">Cheque</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Empresa</label>
-            <input
-              v-model="empresa"
-              type="text"
-              readonly
-              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-700 dark:text-gray-300"
-            />
-          </div>
-          <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Marca</label>
-            <input
-              v-model="marca"
-              type="text"
-              readonly
-              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-700 dark:text-gray-300"
-            />
-          </div>
+
+          <!-- Fila 3: montos y forma de pago -->
           <div>
             <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Monto inicial recibido*</label>
             <input
@@ -111,8 +110,18 @@
               step="0.01"
               min="0.01"
               placeholder="0.00"
-              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+              class="w-full rounded border-2 border-gray-400 dark:border-gray-500 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
             />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Forma de pago*</label>
+            <select
+              v-model="formatoDePago"
+              class="w-full rounded border-2 border-gray-400 dark:border-gray-500 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+            >
+              <option value="Transferencia">Transferencia</option>
+              <option value="Cheque">Cheque</option>
+            </select>
           </div>
         </div>
         <div v-if="isCreateOpen" class="mt-4 flex items-center gap-3">
@@ -163,6 +172,7 @@
                 <th class="py-2 pr-3">Cédula custodio</th>
                 <th class="py-2 pr-3">Monto inicial</th>
                 <th class="py-2 pr-3">Fecha</th>
+                <th class="py-2 pr-3">Estado</th>
                 <th class="py-2 pr-3">Acciones</th>
               </tr>
             </thead>
@@ -174,6 +184,15 @@
                 <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.cedulaCustodio }}</td>
                 <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ formatAmount(item.montoInicial) }}</td>
                 <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.fechaCreacion }}</td>
+                <td class="py-2 pr-3">
+                  <span
+                    v-if="item.fueDevuelta"
+                    class="inline-block rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 px-2 py-0.5 text-xs font-medium"
+                  >
+                    Devuelta para corrección
+                  </span>
+                  <span v-else class="text-xs text-gray-400">-</span>
+                </td>
                 <td class="py-2 pr-3">
                   <div class="flex items-center gap-2">
                     <button
@@ -197,6 +216,14 @@
                     >
                       Detalles
                     </router-link>
+                    <button
+                      v-if="item.fueDevuelta"
+                      type="button"
+                      class="text-amber-600 hover:text-amber-700 text-xs font-medium"
+                      @click="verMotivo(item)"
+                    >
+                      Ver motivo
+                    </button>
                     <button
                       type="button"
                       class="text-red-600 hover:text-red-700 text-xs font-medium"
@@ -230,12 +257,12 @@
               </select>
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Nombre custodio</label>
+              <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Nombre custodio <span class="italic text-gray-400 dark:text-gray-500">(automático, no editable)</span></label>
               <input
                 v-model.trim="editNombreCustodio"
                 type="text"
                 readonly
-                class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                class="w-full rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 cursor-not-allowed"
               />
             </div>
             <div>
@@ -329,6 +356,79 @@
             <span v-else-if="editSuccess" class="text-sm text-emerald-600 dark:text-emerald-400">{{ editSuccess }}</span>
           </div>
         </div>
+      </div>
+
+      <!-- Rechazadas -->
+      <div v-if="rechazadasFiltradas.length > 0" class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-5">
+        <div class="mb-4">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Rechazadas</h2>
+          <p class="text-xs text-gray-500 dark:text-gray-400">Liquidaciones rechazadas definitivamente</p>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead>
+              <tr class="text-left text-xs uppercase text-gray-500 dark:text-gray-400">
+                <th class="py-2 pr-3">Id</th>
+                <th class="py-2 pr-3">Almacén</th>
+                <th class="py-2 pr-3">Monto inicial</th>
+                <th class="py-2 pr-3">Fecha</th>
+                <th class="py-2 pr-3">Acciones</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+              <tr v-for="item in rechazadasFiltradas" :key="item.idLiquidacion">
+                <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.idLiquidacion }}</td>
+                <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.codAlmacen }}</td>
+                <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ formatAmount(item.montoInicial) }}</td>
+                <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.fechaCreacion }}</td>
+                <td class="py-2 pr-3">
+                  <div class="flex items-center gap-2">
+                    <router-link
+                      class="text-blue-600 hover:text-blue-700 text-xs font-medium"
+                      :to="{ path: `/caja-chica/liquidaciones/${item.idLiquidacion}/detalle`, query: { readonly: '1' } }"
+                    >
+                      Detalles
+                    </router-link>
+                    <button
+                      type="button"
+                      class="text-amber-600 hover:text-amber-700 text-xs font-medium"
+                      @click="verMotivo(item)"
+                    >
+                      Ver motivo
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div v-if="motivoModalItem" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4">
+    <div class="w-full max-w-md rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5 shadow-xl">
+      <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+        Motivo — liquidación #{{ motivoModalItem.idLiquidacion }}
+      </h3>
+      <div v-if="motivoLoading" class="text-sm text-gray-500 dark:text-gray-400">Cargando...</div>
+      <div v-else-if="motivoError" class="text-sm text-red-600 dark:text-red-400">{{ motivoError }}</div>
+      <div v-else-if="motivoData">
+        <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">
+          {{ motivoData.tipoAccion === 'RECHAZO_DEFINITIVO' ? 'Rechazada definitivamente' : 'Devuelta para corrección' }}
+          · {{ motivoData.fecha ? new Date(motivoData.fecha).toLocaleString('es-PA') : '' }}
+        </p>
+        <p class="text-sm text-gray-800 dark:text-gray-100 whitespace-pre-wrap">{{ motivoData.observacion }}</p>
+      </div>
+      <div v-else class="text-sm text-gray-500 dark:text-gray-400">Sin motivo registrado.</div>
+      <div class="mt-4 flex items-center justify-end">
+        <button
+          type="button"
+          class="rounded border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300"
+          @click="motivoModalItem = null"
+        >
+          Cerrar
+        </button>
       </div>
     </div>
   </div>
@@ -453,6 +553,17 @@ const sendSuccess = ref('')
 const sendingId = ref<number | null>(null)
 const confirmSendItem = ref<LiquidacionItem | null>(null)
 
+interface HistorialEstadoItem {
+  observacion: string
+  tipoAccion: string
+  fecha: string
+}
+
+const motivoModalItem = ref<LiquidacionItem | null>(null)
+const motivoLoading = ref(false)
+const motivoError = ref('')
+const motivoData = ref<HistorialEstadoItem | null>(null)
+
 const volver = () => {
   router.back()
 }
@@ -489,6 +600,17 @@ const borradoresFiltrados = computed(() => {
     const isAssigned = assignedSet.size === 0 || assignedSet.has(item.codAlmacen)
     const isCurrentUser = item.idUsuario === currentUserId
     return isBorrador && isAssigned && isCurrentUser
+  })
+})
+
+const rechazadasFiltradas = computed(() => {
+  const currentUserId = getCurrentUserId()
+  const assignedSet = new Set(asignados.value.map(item => item.codAlmacen))
+  return borradores.value.filter(item => {
+    const isRechazada = item.estado.toUpperCase() === 'RECHAZADA'
+    const isAssigned = assignedSet.size === 0 || assignedSet.has(item.codAlmacen)
+    const isCurrentUser = item.idUsuario === currentUserId
+    return isRechazada && isAssigned && isCurrentUser
   })
 })
 
@@ -848,15 +970,40 @@ const sendLiquidacion = async (item: LiquidacionItem) => {
     await loadBorradores()
   } catch (err: any) {
     const status = err?.response?.status
-    const message = err?.response?.data?.message || err?.response?.data
-    if (status === 400 && message) {
-      sendError.value = String(message)
-    } else {
-      sendError.value = 'No se pudo enviar la liquidacion. Intenta nuevamente.'
-    }
+    const rawMessage = err?.response?.data?.message || err?.response?.data
+    const message = typeof rawMessage === 'string' && rawMessage.trim() && !rawMessage.trim().startsWith('<')
+      ? rawMessage.trim()
+      : null
+    sendError.value = message
+      ? message
+      : `No se pudo enviar la liquidacion (código ${status ?? 'desconocido'}). Intenta nuevamente.`
     confirmSendItem.value = null
   } finally {
     sendingId.value = null
+  }
+}
+
+const verMotivo = async (item: LiquidacionItem) => {
+  motivoModalItem.value = item
+  motivoData.value = null
+  motivoError.value = ''
+  motivoLoading.value = true
+  try {
+    const response = await cajaChicaApi.get(`/Liquidaciones/${item.idLiquidacion}/historial-estado`)
+    const payload = response.data as any
+    const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
+    const latest = items[0]
+    motivoData.value = latest
+      ? {
+          observacion: String(latest.observacion ?? latest.Observacion ?? ''),
+          tipoAccion: String(latest.tipoAccion ?? latest.TipoAccion ?? ''),
+          fecha: String(latest.fecha ?? latest.Fecha ?? '')
+        }
+      : null
+  } catch {
+    motivoError.value = 'No se pudo cargar el motivo.'
+  } finally {
+    motivoLoading.value = false
   }
 }
 

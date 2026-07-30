@@ -90,9 +90,9 @@
               v-model.trim="numeroComprobante"
               type="text"
               maxlength="50"
-              pattern="[0-9]*"
+              pattern="[0-9-]*"
               inputmode="numeric"
-              @input="numeroComprobante = onlyDigits(numeroComprobante)"
+              @input="numeroComprobante = onlyDigitsAndDash(numeroComprobante)"
               class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
             />
           </div>
@@ -365,9 +365,9 @@
                 v-model.trim="editNumeroComprobante"
                 type="text"
                 maxlength="50"
-                pattern="[0-9]*"
+                pattern="[0-9-]*"
                 inputmode="numeric"
-                @input="editNumeroComprobante = onlyDigits(editNumeroComprobante)"
+                @input="editNumeroComprobante = onlyDigitsAndDash(editNumeroComprobante)"
                 class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
               />
             </div>
@@ -615,6 +615,7 @@ const canUpdateDetalle = computed(() =>
 const normalizeString = (value: any) => String(value ?? '').trim()
 const toNumber = (value: string) => Number(String(value || '0').replace(',', '.')) || 0
 const onlyDigits = (value: string) => String(value ?? '').replace(/\D+/g, '')
+const onlyDigitsAndDash = (value: string) => String(value ?? '').replace(/[^0-9-]+/g, '')
 
 const normalizeDetalle = (item: any): LiquidacionDetalleItem => ({
   idDetalle: Number(item.idDetalle ?? item.IdDetalle ?? 0),

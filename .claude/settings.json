@@ -13,7 +13,17 @@
       "Bash(echo \"PID: $!\")",
       "Bash(python3 -c ' *)",
       "Bash(timeout 5 bash -c \"echo > /dev/tcp/210.17.1.54/1433\")",
-      "Bash(node check2.mjs)"
+      "Bash(node check2.mjs)",
+      "Bash(curl -s http://localhost:3001/src/views/UserView.vue -o /dev/null -w \"UserView.vue: %{http_code}\\\\n\")",
+      "Bash(curl -s http://localhost:3001/src/layouts/MainLayout.vue -o /dev/null -w \"MainLayout.vue: %{http_code}\\\\n\")",
+      "Bash(curl -s http://localhost:3001/src/stores/auth.ts -o /dev/null -w \"auth.ts: %{http_code}\\\\n\")",
+      "Bash(grep -v \"^warn:\\\\|^No store type\\\\|^info:\\\\|Executed DbCommand\\\\|SELECT\\\\|FROM \\\\[__EF\\\\]\\\\|^\\\\s*$\")",
+      "Bash(curl -s http://localhost:3001/src/modules/caja-chica/router.ts -o /dev/null -w \"router.ts: %{http_code}\\\\n\")",
+      "Bash(curl -s http://localhost:3001/src/modules/caja-chica/views/DashboardView.vue -o /dev/null -w \"DashboardView.vue: %{http_code}\\\\n\")",
+      "Bash(curl -s http://localhost:3001/src/modules/caja-chica/views/AprobadoresView.vue -o /dev/null -w \"AprobadoresView.vue: %{http_code}\\\\n\")",
+      "Bash(git rm *)",
+      "Bash(curl -s http://localhost:3001/src/modules/caja-chica/views/LiquidacionesView.vue -o /dev/null -w \"LiquidacionesView.vue: %{http_code}\\\\n\")",
+      "Bash(curl -s http://127.0.0.1:8092/api/Almacenes -H \"Accept: application/json\")"
     ]
   }
 }
