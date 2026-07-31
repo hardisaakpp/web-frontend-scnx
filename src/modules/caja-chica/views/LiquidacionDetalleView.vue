@@ -440,10 +440,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from '@vue/runtime-core'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { createBuildAdjuntoUrl } from '../utils/buildAdjuntoUrl'
-import axios from 'axios'
+import { cajaChicaApi } from '@/lib/http'
+
 
 interface CatalogoGastoItem {
   idGasto: string
@@ -523,22 +524,8 @@ const uploadTargetId = ref<number | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
 const uploadError = ref('')
 
-const cajaChicaApi = axios.create({
-  baseURL: import.meta.env.VITE_CAJA_CHICA_API_URL || '/caja-chica-api',
-  headers: {
-    'Content-Type': 'application/json'
-  }
-})
-
-cajaChicaApi.interceptors.request.use(config => {
-  const token = localStorage.getItem('token')
-  if (token && config.headers) {
-    config.headers['Authorization'] = `Bearer ${token}`
-  }
-  return config
-})
-
 const buildAdjuntoUrl = createBuildAdjuntoUrl()
+
 const hasValue = (value: string | number) => String(value ?? '').trim() !== ''
 
 const canAddDetalle = computed(() =>

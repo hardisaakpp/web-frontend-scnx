@@ -141,9 +141,19 @@ const routes: RouteRecordRaw[] = [
     path: '/caja-chica/aprobadores',
     name: 'caja-chica-aprobadores',
     component: () => import('./views/AprobadoresView.vue'),
-    meta: { 
+    meta: {
       requiresAuth: true,
       title: 'Aprobadores',
+      permissions: ['cajachica.aprobadores.view']
+    },
+  },
+  {
+    path: '/caja-chica/reasignar-aprobadores',
+    name: 'caja-chica-reasignar-aprobadores',
+    component: () => import('./views/ReasignarAprobadoresView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Reasignar Aprobador',
       permissions: ['cajachica.aprobadores.view']
     },
   },

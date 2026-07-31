@@ -68,7 +68,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import OdcSapVolverButton from '@/modules/mba3-consultas/components/OdcSapVolverButton.vue'
+import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
 import { inventarioService } from '../services/inventarioApi'
 import type { GeneratedInventoryDto } from '../types'
 import { inventoryTypeLabel } from '../utils/planningRules'

@@ -254,12 +254,12 @@
                             </h3>
                             <form @submit.prevent="submitGeneralForm" class="space-y-4">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Código</label>
-                                    <input v-model="generalForm.codigo" required type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+                                    <label for="generalFormCodigo" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Código</label>
+                                    <input id="generalFormCodigo" v-model="generalForm.codigo" required type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre</label>
-                                    <input v-model="generalForm.nombre" required type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
+                                    <label for="generalFormNombre" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre</label>
+                                    <input id="generalFormNombre" v-model="generalForm.nombre" required type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white" />
                                 </div>
                                 <div class="flex items-center gap-2 mt-4">
                                     <input v-model="generalForm.activo" id="checkActivo" type="checkbox" class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
@@ -289,36 +289,36 @@
                             <form @submit.prevent="submitJerarquiaForm" class="space-y-4">
                                 <!-- SECCION -->
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sección (Nivel 1)</label>
-                                    <select v-if="!jerarquiaIsNuevaSeccion" v-model="jerarquiaForm.seccion" @change="onFormSeccionChange" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white">
+                                    <label for="jerarquiaSeccion" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sección (Nivel 1)</label>
+                                    <select id="jerarquiaSeccion" v-if="!jerarquiaIsNuevaSeccion" v-model="jerarquiaForm.seccion" @change="onFormSeccionChange" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white">
                                         <option value="">-- Seleccionar Sección --</option>
                                         <option v-for="s in formSeccionesDisponibles" :key="s.nombre" :value="s.nombre">{{ s.nombre }}</option>
                                         <option value="__nuevo__" class="font-bold text-indigo-600">+ Crear nueva sección</option>
                                     </select>
                                     <div v-if="jerarquiaIsNuevaSeccion" class="flex gap-2">
-                                        <input v-model="jerarquiaForm.seccion" type="text" placeholder="Nombre de nueva sección" required class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white" />
+                                        <input v-model="jerarquiaForm.seccion" aria-label="Nueva sección" type="text" placeholder="Nombre de nueva sección" required class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white" />
                                         <button type="button" @click="cancelNuevaSeccion" class="px-2 text-xs text-red-500 hover:text-red-700">Cancelar</button>
                                     </div>
                                 </div>
 
                                 <!-- CATEGORIA -->
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Categoría (Nivel 2)</label>
-                                    <select v-if="!jerarquiaIsNuevaCategoria" v-model="jerarquiaForm.categoria" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white" :disabled="!jerarquiaForm.seccion && !jerarquiaIsNuevaSeccion">
+                                    <label for="jerarquiaCategoria" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Categoría (Nivel 2)</label>
+                                    <select id="jerarquiaCategoria" v-if="!jerarquiaIsNuevaCategoria" v-model="jerarquiaForm.categoria" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white" :disabled="!jerarquiaForm.seccion && !jerarquiaIsNuevaSeccion">
                                         <option value="">-- Seleccionar Categoría --</option>
                                         <option v-for="c in formCategoriasDisponibles" :key="c.nombre" :value="c.nombre">{{ c.nombre }}</option>
                                         <option v-if="jerarquiaForm.seccion" value="__nuevo__" class="font-bold text-indigo-600">+ Crear nueva categoría</option>
                                     </select>
                                     <div v-if="jerarquiaIsNuevaCategoria" class="flex gap-2">
-                                        <input v-model="jerarquiaForm.categoria" type="text" placeholder="Nombre de nueva categoría" required class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white" />
+                                        <input v-model="jerarquiaForm.categoria" aria-label="Nueva categoría" type="text" placeholder="Nombre de nueva categoría" required class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white" />
                                         <button type="button" @click="cancelNuevaCategoria" class="px-2 text-xs text-red-500 hover:text-red-700">Cancelar</button>
                                     </div>
                                 </div>
 
                                 <!-- LINEA -->
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Línea (Nivel 3)</label>
-                                    <input v-model="jerarquiaForm.linea" required type="text" placeholder="Ej: PANTALON M&M" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white" />
+                                    <label for="jerarquiaLinea" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Línea (Nivel 3)</label>
+                                    <input id="jerarquiaLinea" v-model="jerarquiaForm.linea" required type="text" placeholder="Ej: PANTALON M&M" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white" />
                                 </div>
 
                                 <div class="flex justify-end gap-3 mt-6">
@@ -344,20 +344,20 @@
                             </h3>
                             <form @submit.prevent="submitAtributoForm" class="space-y-4">
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Línea de Atributo</label>
-                                    <select v-if="!atributoIsNuevaLinea" v-model="atributoForm.linea" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white">
+                                    <label for="atributoLinea" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Línea de Atributo</label>
+                                    <select id="atributoLinea" v-if="!atributoIsNuevaLinea" v-model="atributoForm.linea" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white">
                                         <option value="">-- Seleccionar Línea --</option>
                                         <option v-for="l in lineasAtributo" :key="l.nombre" :value="l.nombre">{{ l.nombre }}</option>
                                         <option value="__nuevo__" class="font-bold text-indigo-600">+ Crear nueva línea</option>
                                     </select>
                                     <div v-if="atributoIsNuevaLinea" class="flex gap-2">
-                                        <input v-model="atributoForm.linea" type="text" placeholder="Nombre de nueva línea" required class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white" />
+                                        <input v-model="atributoForm.linea" aria-label="Nueva línea de atributo" type="text" placeholder="Nombre de nueva línea" required class="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white" />
                                         <button type="button" @click="atributoIsNuevaLinea = false; atributoForm.linea = ''" class="px-2 text-xs text-red-500 hover:text-red-700">Cancelar</button>
                                     </div>
                                 </div>
                                 <div>
-                                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre Atributo</label>
-                                    <input v-model="atributoForm.atributo" required type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white" />
+                                    <label for="atributoNombre" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nombre Atributo</label>
+                                    <input id="atributoNombre" v-model="atributoForm.atributo" required type="text" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white" />
                                 </div>
                                 <div class="flex justify-end gap-3 mt-6">
                                     <button type="button" @click="isModalAtributoOpen = false" class="px-4 py-2 text-sm border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">Cancelar</button>
@@ -592,7 +592,7 @@ function cancelNuevaCategoria() {
 function openModalJerarquia(itemToEdit?: { seccion: string, categoria: string, linea: JerarquiaItem }) {
     formSeccionesDisponibles.value = [...secciones.value]
     if (itemToEdit) {
-        jerarquiaEditId.value = itemToEdit.linea.id || null
+        jerarquiaEditId.value = itemToEdit.linea.id ?? null
         jerarquiaForm.value = {
             seccion: itemToEdit.seccion,
             categoria: itemToEdit.categoria,
@@ -692,7 +692,7 @@ async function toggleLineaAtributo(linea: JerarquiaItem) {
 function openModalAtributo(itemToEdit?: JerarquiaItem, lineaNombre?: string) {
     if (itemToEdit && lineaNombre) {
         atributoForm.value = { linea: lineaNombre, atributo: itemToEdit.nombre }
-        atributoEditId.value = itemToEdit.id || null
+        atributoEditId.value = itemToEdit.id ?? null
         atributoIsNuevaLinea.value = false
     } else {
         atributoForm.value = { linea: '', atributo: '' }

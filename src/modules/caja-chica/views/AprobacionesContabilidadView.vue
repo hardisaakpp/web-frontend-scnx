@@ -493,12 +493,14 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount, ref, watch, nextTick } from 'vue'
-import axios from 'axios'
+import { cajaChicaApi } from '@/lib/http'
 import api from '@/services/api'
+
 import { useTablePreferences } from '@/composables/useTablePreferences'
 import { useRouter } from 'vue-router'
 import { createBuildAdjuntoUrl } from '../utils/buildAdjuntoUrl'
 import { resolveUserNames } from '../utils/resolveUserNames'
+import { APP_LOCALE } from '@/plugins/locale'
 
 interface ColumnConfig {
   key: string
@@ -870,20 +872,8 @@ function getStickyStyle(column: ColumnConfig): { right?: string; minWidth?: stri
   return { right, minWidth: minW }
 }
 
-const cajaChicaApi = axios.create({
-  baseURL: import.meta.env.VITE_CAJA_CHICA_API_URL || '/caja-chica-api',
-  headers: { 'Content-Type': 'application/json' }
-})
-
-cajaChicaApi.interceptors.request.use(config => {
-  const token = localStorage.getItem('token')
-  if (token && config.headers) {
-    config.headers['Authorization'] = `Bearer ${token}`
-  }
-  return config
-})
-
 const buildAdjuntoUrl = createBuildAdjuntoUrl()
+
 
 const formatAdjuntoName = (ruta: string) => {
   if (!ruta) return ''
@@ -1419,7 +1409,7 @@ const downloadPdf = () => {
   const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Aprobaciones Contabilidad</title><style>${CSS}</style></head><body>
     <div style="margin-bottom:16px;border-bottom:2px solid #7c3aed;padding-bottom:8px;display:flex;justify-content:space-between;align-items:flex-end">
       <div><div style="font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#6b7280">Reporte</div><div style="font-size:16px;font-weight:700;color:#7c3aed">Aprobaciones Contabilidad</div></div>
-      <div style="text-align:right;font-size:10px;color:#6b7280">Generado: ${new Date().toLocaleString('es-ES')}<br>${groups.length} liquidación(es) pendientes</div>
+      <div style="text-align:right;font-size:10px;color:#6b7280">Generado: ${new Date().toLocaleString(APP_LOCALE)}<br>${groups.length} liquidación(es) pendientes</div>
     </div>
     ${sectionsHtml}
   </body></html>`

@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { onMounted, ref, watch, computed } from 'vue'
+import { APP_LOCALE } from '@/plugins/locale'
 import { useReposicionStore } from '../stores/reposicionStore'
 import reposicionApi from '../services/reposicionApi'
-import type { HistorialCabecera, RepLog, HistorialDetalleItem, HistorialSolicitudSap } from '../types'
+import type { HistorialCabecera, HistorialDetalleItem, HistorialSolicitudSap } from '../types'
 import { 
   ArrowLeftIcon, 
   CalendarIcon,
@@ -61,7 +62,7 @@ const getStatusClass = (integrado: boolean) => {
 }
 
 const formatDate = (dateStr: string) => {
-  return new Date(dateStr).toLocaleDateString('es-ES', {
+  return new Date(dateStr).toLocaleDateString(APP_LOCALE, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',

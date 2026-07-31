@@ -323,6 +323,7 @@ import { useRoute } from 'vue-router'
 import { useProcesoStore } from '../stores/procesoStore'
 import { useOrdenesCompraStore } from '../stores/ordenesCompraStore'
 import { useToast } from '@/composables/useToast'
+import { APP_LOCALE } from '@/plugins/locale'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import type { Despacho, OrdenCompra, PedidoCompleto } from '../types'
 import DespachosTable from '../components/DespachosTable.vue'
@@ -330,10 +331,10 @@ import OrdenCompraTable from '../components/OrdenCompraTable.vue'
 import SkeletonTable from '../components/SkeletonTable.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import IntegracionSAPModal from '../components/IntegracionSAPModal.vue'
-import OdcSapVolverButton from '../components/OdcSapVolverButton.vue'
+import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
 import type { AjusteDetalle, IntegracionSAPDetalle, ProcesoCompletoSAPResponse, SolicitudesTransferencia } from '../types'
 import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
-import QuickTablePagination from '../components/QuickTablePagination.vue'
+import QuickTablePagination from '@/components/QuickTablePagination.vue'
 import { ejecutarProcesoCompletoSap } from '../composables/ejecutarProcesoCompletoSap'
 import { isTransientClientError, SAP_MAY_STILL_PROCESSING_MESSAGE } from '../utils/httpErrors'
 import { isProcesoTransientError } from '../utils/procesoAsyncHelpers'
@@ -705,7 +706,7 @@ function formatTimeAgo(date: Date): string {
   const hours = Math.floor(minutes / 60)
   if (hours < 24) return `Hace ${hours}h ${minutes % 60}min`
   
-  return date.toLocaleString('es-ES', { 
+  return date.toLocaleString(APP_LOCALE, { 
     day: '2-digit', 
     month: 'short', 
     hour: '2-digit', 

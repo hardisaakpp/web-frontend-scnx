@@ -388,9 +388,10 @@ import { onMounted } from '@vue/runtime-core'
 import { useRoute } from 'vue-router'
 import { useHomologacionesStore } from '../stores/homologacionesStore'
 import { useToast } from '@/composables/useToast'
+import { NUMBER_LOCALE } from '@/plugins/locale'
 import HomologacionModal from '../components/HomologacionModal.vue'
 import BuscarSkuModal from '../components/BuscarSkuModal.vue'
-import QuickTablePagination from '../components/QuickTablePagination.vue'
+import QuickTablePagination from '@/components/QuickTablePagination.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import { ejecutarCruceProductos } from '../composables/ejecutarCruceProductos'
 import { isProcesoTransientError } from '../utils/procesoAsyncHelpers'
@@ -604,7 +605,7 @@ async function ejecutarCruceProductosUi() {
 
 function formatCurrency(value: number | null | undefined): string {
   if (value === null || value === undefined) return '-'
-  return new Intl.NumberFormat('es-PE', {
+  return new Intl.NumberFormat(NUMBER_LOCALE, {
     style: 'currency',
     currency: 'PEN',
   }).format(value)

@@ -1,43 +1,5 @@
-import axios from 'axios'
-import { attachUnauthorizedRedirect } from '@/services/sessionGuard'
+import { maestroHttp as apiMaestro } from '@/lib/http'
 import type { Articulo, ArticuloFilters } from '../types'
-
-// Instancia separada para el API del Maestro (puerto 8001 vía proxy)
-const apiMaestro = axios.create({
-    baseURL: import.meta.env.VITE_MAESTRO_API_URL || '/maestro-api',
-    headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-    }
-})
-
-// Inyectar token de sesión + headers de auditoría en cada request
-apiMaestro.interceptors.request.use((config) => {
-    config.headers = config.headers ?? {}
-
-    const token = localStorage.getItem('token')
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`
-    }
-
-    // Intentar obtener el usuario logueado desde localStorage
-    try {
-        const userStr = localStorage.getItem('user')
-        if (userStr) {
-            const user = JSON.parse(userStr)
-            config.headers['X-User'] = user.userName || 'desconocido'
-        } else {
-            config.headers['X-User'] = 'desconocido'
-        }
-    } catch {
-        config.headers['X-User'] = 'desconocido'
-    }
-
-    // Origen fijo para operaciones desde la aplicación web
-    config.headers['X-Origin'] = 'WEB_APP'
-
-    return config
-})
 
 // ─── Normalización de respuestas ─────────────────────────────────────────────
 // Esta función mapea el objeto de respuesta a las claves camelCase que espera el front.
@@ -81,11 +43,11 @@ function normalizeObject(obj: any): any {
 
     Object.entries(criticalMappings).forEach(([camelKey, variations]) => {
         // Solo si la clave camelCase no tiene valor (o es null)
-        if (normalized[camelKey] === undefined || normalized[camelKey] === null) {
+        if (normalized[camelKey] == null) {
             for (const v of variations) {
                 // Probar variación exacta y también con posibles espacios al final (caso raro visto en logs)
                 const val = obj[v] ?? obj[`${v} `]
-                if (val !== undefined && val !== null) {
+                if (val != null) {
                     normalized[camelKey] = val
                     break
                 }
@@ -106,7 +68,7 @@ apiMaestro.interceptors.response.use((response) => {
     if (data) {
         if (Array.isArray(data)) {
             response.data = data.map(normalizeObject)
-        } else if (data.items && Array.isArray(data.items)) {
+        } else if (Array.isArray(data?.items)) {
             // Nueva estructura: { total: number, items: Articulo[] }
             data.items = data.items.map(normalizeObject)
             response.data = normalizeObject(data)
@@ -117,7 +79,6 @@ apiMaestro.interceptors.response.use((response) => {
     return response
 })
 
-attachUnauthorizedRedirect(apiMaestro)
 
 
 export const articuloService = {
@@ -206,14 +167,14 @@ export const articuloService = {
             type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         })
 
-        const url = window.URL.createObjectURL(blob)
+        const url = globalThis.URL.createObjectURL(blob)
         const link = document.createElement('a')
         link.href = url
         link.setAttribute('download', 'plantilla_articulos.xlsx')
         document.body.appendChild(link)
         link.click()
         link.remove()
-        window.URL.revokeObjectURL(url)
+        globalThis.URL.revokeObjectURL(url)
     },
 
     // Carga masiva de artículos desde archivo Excel
@@ -235,8 +196,8 @@ export const articuloService = {
             // o el backend puede retornarla directamente como { mensaje, errores }
             const errorPayload = data?.errores ? data : data?.detail
 
-            // Si el backend respondió con la estructura de validación "todo o nada"
-            if (errorPayload && errorPayload.errores && Array.isArray(errorPayload.errores)) {
+            // Si el backend respondió con la estructura de validación "all-or-nothing"
+            if (Array.isArray(errorPayload?.errores)) {
                 return {
                     success: false,
                     mensaje: errorPayload.mensaje || 'Errores de validación en el archivo.',
@@ -423,17 +384,23 @@ export interface SapSyncResponse {
     message: string
     tarea_id?: number
     novedades?: SapNovedad[]
-    // Mantener compatibilidad temporal si es necesario, o limpiar
+    // Compatibilidad con estructura de estadísticas antigua
     total?: number
     success_count?: number
     error_count?: number
+    error?: number
+    details?: Array<{
+        item_code: string
+        status: 'Success' | 'Error'
+        message: string
+    }>
 }
 
 export interface SapTask {
     id: number
     nombre_tarea: string
     usuario: string
-    estado: 'PROCESANDO' | 'FINALIZADO' | 'ERROR' | string
+    estado: string
     total_items: number
     items_procesados: number
     fecha_creacion: string

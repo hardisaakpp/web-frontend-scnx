@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, computed } from 'vue'
+import { APP_LOCALE } from '@/plugins/locale'
 import { useReposicionStore } from '../stores/reposicionStore'
 import { storeToRefs } from 'pinia'
 import { 
@@ -14,7 +15,7 @@ import {
 import reposicionApi from '../services/reposicionApi'
 
 const store = useReposicionStore()
-const { carrito, filters, almacenes, carritoInfo, isOpen } = storeToRefs(store)
+const { carrito, filters, almacenes, carritoInfo, isOpen, startHour, endHour } = storeToRefs(store)
 
 const currentWarehouseName = computed(() => {
   const code = filters.value.whsCode
@@ -25,7 +26,7 @@ const currentWarehouseName = computed(() => {
 const formatDate = (dateStr: string) => {
   if (!dateStr) return ''
   const date = new Date(dateStr)
-  return new Intl.DateTimeFormat('es-EC', {
+  return new Intl.DateTimeFormat(APP_LOCALE, {
     dateStyle: 'medium',
     timeStyle: 'short'
   }).format(date)
@@ -123,7 +124,7 @@ const downloadPdf = () => {
             <div class="flex items-center gap-2 mt-0.5">
               <span class="w-2 h-2 rounded-full" :class="isOpen ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'"></span>
               <span class="text-sm font-bold" :class="isOpen ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500'">
-                {{ isOpen ? 'Abierto' : 'Cerrado' }}
+                {{ isOpen ? 'Abierto' : `Cerrado (${String(startHour).padStart(2, '0')}:00 - ${String(endHour).padStart(2, '0')}:00)` }}
               </span>
             </div>
           </div>

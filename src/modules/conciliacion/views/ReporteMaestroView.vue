@@ -120,6 +120,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useConciliacionStore } from '../stores/conciliacionStore'
 import { useToast } from '@/composables/useToast'
 import type { ReporteMaestroParams } from '../types'
+import { NUMBER_LOCALE } from '@/plugins/locale'
 
 const store = useConciliacionStore()
 const toast = useToast()
@@ -184,7 +185,7 @@ async function descargarExcel() {
   }
 }
 
-const formatMonto = (m: number) => m.toLocaleString('en-US', { minimumFractionDigits: 2 })
+const formatMonto = (m: number) => m.toLocaleString(NUMBER_LOCALE, { minimumFractionDigits: 2 })
 </script>
 
 <style scoped>

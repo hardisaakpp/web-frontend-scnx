@@ -125,3 +125,10 @@ export interface HistorialSolicitudSap {
   comments: string;
   lines: HistorialSolicitudSapLinea[];
 }
+
+export interface StatusResponse {
+  isOpen: boolean;
+  startHour: number;
+  endHour: number;
+  currentTime: string;
+}

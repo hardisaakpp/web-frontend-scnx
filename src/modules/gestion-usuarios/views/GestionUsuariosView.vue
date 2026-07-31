@@ -382,6 +382,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { APP_LOCALE } from '@/plugins/locale'
 import { useAuthStore } from '@/stores/auth'
 import {
   checkStoreEmployeesHealth,
@@ -494,7 +495,7 @@ function formatAuditDate(value: string | undefined): string {
   if (!s) return '—'
   const d = new Date(s)
   if (Number.isNaN(d.getTime())) return s
-  return d.toLocaleString('es-EC', { dateStyle: 'short', timeStyle: 'short' })
+  return d.toLocaleString(APP_LOCALE, { dateStyle: 'short', timeStyle: 'short' })
 }
 
 function resetForm() {
@@ -645,7 +646,7 @@ async function saveInlineEdit(employee: StoreEmployee) {
   try {
     const payload = {
       [field]: value,
-      usuario_ultima_actualizacion: currentUser.value
+      usuario_actual: currentUser.value
     } as Record<string, string>
     const updated = await updateStoreEmployee(employee.id, payload)
     if (updated) {
@@ -749,7 +750,7 @@ async function saveEmployee() {
       codigo_tienda: form.codigo_tienda,
       estado: form.estado,
       encargado: form.estado === 0 ? 0 : form.encargado,
-      usuario_ultima_actualizacion: currentUser.value
+      usuario_actual: currentUser.value
     }
 
     if (form.id) {
@@ -798,7 +799,7 @@ async function toggleEmployeeEncargado(employee: StoreEmployee) {
     const nextEncargado = employee.encargado === 1 ? 0 : 1
     const updated = await updateStoreEmployee(employee.id, {
       encargado: nextEncargado,
-      usuario_ultima_actualizacion: currentUser.value
+      usuario_actual: currentUser.value
     })
     if (updated) {
       mergeEmployeeFromServer(employee, updated)
@@ -824,7 +825,7 @@ async function toggleEmployeeEstado(employee: StoreEmployee) {
     const updated = await updateStoreEmployee(employee.id, {
       estado: nextEstado,
       encargado: nextEncargado,
-      usuario_ultima_actualizacion: currentUser.value
+      usuario_actual: currentUser.value
     })
     if (updated) {
       mergeEmployeeFromServer(employee, updated)

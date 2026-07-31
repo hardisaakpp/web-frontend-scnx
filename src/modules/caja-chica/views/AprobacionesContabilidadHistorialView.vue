@@ -354,10 +354,11 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import axios from 'axios'
 import { useRouter } from 'vue-router'
+import { cajaChicaApi, slayerHttp as slayerApi } from '@/lib/http'
 import { createBuildAdjuntoUrl } from '../utils/buildAdjuntoUrl'
 import { resolveUserNames } from '../utils/resolveUserNames'
+import { APP_LOCALE } from '@/plugins/locale'
 
 interface LiquidacionItem {
   idLiquidacion: number
@@ -510,20 +511,6 @@ const selectedAdjunto = computed(() => {
   return found || list[0]
 })
 
-const cajaChicaApi = axios.create({
-  baseURL: import.meta.env.VITE_CAJA_CHICA_API_URL || '/caja-chica-api',
-  headers: {
-    'Content-Type': 'application/json'
-  }
-})
-
-const slayerApi = axios.create({
-  // En desarrollo se fuerza proxy local para evitar CORS del navegador
-  baseURL: '/slayer-api',
-  headers: {
-    'Content-Type': 'application/json'
-  }
-})
 
 const buildAdjuntoUrl = createBuildAdjuntoUrl()
 
@@ -536,13 +523,6 @@ const formatAdjuntoName = (ruta: string) => {
 const isImageFile = (ruta: string) => /\.(png|jpe?g|gif|webp)$/i.test(ruta)
 const isPdfFile = (ruta: string) => /\.pdf$/i.test(ruta)
 
-cajaChicaApi.interceptors.request.use(config => {
-  const token = localStorage.getItem('token')
-  if (token && config.headers) {
-    config.headers['Authorization'] = `Bearer ${token}`
-  }
-  return config
-})
 
 const getCurrentUser = (): { id: string; name: string } => {
   try {
@@ -1595,7 +1575,7 @@ const downloadLiquidacionPdf = (idLiquidacion: number) => {
       </div>
     </div>`
 
-  const generado = new Date().toLocaleString('es-ES')
+  const generado = new Date().toLocaleString(APP_LOCALE)
   const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Liquidacion #${idLiquidacion}</title><style>${CSS}</style></head><body>
     <div class="header-doc">
       <div class="title-block">

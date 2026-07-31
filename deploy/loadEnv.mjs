@@ -14,7 +14,8 @@ const ENV_DIR = path.join(process.cwd(), 'deploy', 'env')
 
 /** Defaults solo para desarrollo local (npm run dev). Sin IPs de red. */
 export const LOCAL_UPSTREAM_DEFAULTS = {
-  UPSTREAM_CORE: 'http://127.0.0.1:8080',
+  // UPSTREAM_CORE: 'http://210.17.1.53:5053',
+  UPSTREAM_CORE: 'http://localhost:5053',
   UPSTREAM_MBA3: 'http://127.0.0.1:8000',
   UPSTREAM_MBA3_AUTH: 'http://127.0.0.1:8000',
   UPSTREAM_CAJA_CHICA: 'http://127.0.0.1:8092',
@@ -29,6 +30,11 @@ export const LOCAL_UPSTREAM_DEFAULTS = {
   UPSTREAM_EMPLOYEES: 'http://127.0.0.1:8092',
   UPSTREAM_REPOSICION: 'http://127.0.0.1:8006',
   UPSTREAM_RECEPCION: 'http://127.0.0.1:8007',
+  UPSTREAM_RULETA: 'http://localhost:5062',
+  UPSTREAM_TRANSACCIONES: 'http://127.0.0.1:8080',
+  UPSTREAM_TRANSFERENCIAS_DIRECTAS: 'http://localhost:5046',
+  // IP fija de red interna: no hay instancia local separada para desarrollo.
+  UPSTREAM_DEMANDA_OTB: 'http://210.17.1.96:8001',
 }
 
 /** Nombres legacy (vite / docker antiguos) → UPSTREAM_* */
@@ -179,6 +185,8 @@ export const DOCKER_UPSTREAM_DEFAULTS = {
   UPSTREAM_EMPLOYEES: 'http://192.168.2.153:8092',
   UPSTREAM_REPOSICION: 'http://host.docker.internal:8006',
   UPSTREAM_RECEPCION: 'http://host.docker.internal:8007',
+  UPSTREAM_TRANSACCIONES: 'http://host.docker.internal:8080',
+  UPSTREAM_DEMANDA_OTB: 'http://210.17.1.96:8001',
 }
 
 export function upstreamUrl(env, key, { docker = false } = {}) {
@@ -215,6 +223,7 @@ export function dockerBuildArgsFromEnv(env) {
     EMPLOYEES_UPSTREAM: upstreamUrl(env, 'EMPLOYEES'),
     REPOSICION_UPSTREAM: upstreamUrl(env, 'REPOSICION'),
     RECEPCION_UPSTREAM: upstreamUrl(env, 'RECEPCION'),
+    TRANSACCIONES_UPSTREAM: upstreamUrl(env, 'TRANSACCIONES'),
     VITE_APP_BASE_PATH: env.VITE_APP_BASE_PATH || '/',
     CORE_PROXY_HOST: env.CORE_PROXY_HOST || 'host.docker.internal:5053',
   }

@@ -22,10 +22,11 @@
                     <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                     </span>
-                    <input 
-                        v-model="searchCode" 
-                        type="text" 
-                        placeholder="Filtrar por ItemCode..." 
+                    <input
+                        v-model="searchCode"
+                        type="text"
+                        aria-label="Filtrar por ItemCode"
+                        placeholder="Filtrar por ItemCode..."
                         class="pl-10 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 text-sm focus:ring-blue-500 focus:border-blue-500"
                         @keyup.enter="handleSearch"
                     />
@@ -62,15 +63,17 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
-                        <tr v-if="loading" v-for="i in 10" :key="i" class="animate-pulse">
-                            <td class="px-6 py-4"><div class="h-4 w-10 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
-                            <td class="px-6 py-4"><div class="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
-                            <td class="px-6 py-4"><div class="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
-                            <td class="px-6 py-4"><div class="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
-                            <td class="px-6 py-4"><div class="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
-                            <td class="px-6 py-4"><div class="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
-                            <td class="px-6 py-4"><div class="h-4 w-28 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
-                        </tr>
+                        <template v-if="loading">
+                            <tr v-for="i in 10" :key="i" class="animate-pulse">
+                                <td class="px-6 py-4"><div class="h-4 w-10 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
+                                <td class="px-6 py-4"><div class="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
+                                <td class="px-6 py-4"><div class="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
+                                <td class="px-6 py-4"><div class="h-4 w-32 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
+                                <td class="px-6 py-4"><div class="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
+                                <td class="px-6 py-4"><div class="h-4 w-20 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
+                                <td class="px-6 py-4"><div class="h-4 w-28 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
+                            </tr>
+                        </template>
                         
                         <tr v-else-if="records.length === 0">
                             <td colspan="7" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
@@ -90,7 +93,7 @@
                                 </span>
                             </td>
                             <td class="px-6 py-4 text-xs">{{ record.usuario }}</td>
-                            <td class="px-6 py-4 text-xs font-mono">{{ record.ip_origen || '-' }}</td>
+                            <td class="px-6 py-4 text-xs font-mono">{{ record.ip_origen ?? '-' }}</td>
                             <td class="px-6 py-4 text-xs">
                                 <span class="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">{{ record.origen }}</span>
                             </td>
@@ -155,8 +158,8 @@ async function fetchHistory() {
         )
         records.value = response.data
         total.value = response.total
-    } catch (err) {
-        console.error('Error fetching local history:', err)
+    } catch {
+        // error silencioso — la tabla muestra estado vacío
     } finally {
         loading.value = false
     }

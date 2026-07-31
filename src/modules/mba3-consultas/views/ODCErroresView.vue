@@ -174,9 +174,10 @@ import { onMounted } from '@vue/runtime-core'
 import { useOrdenesCompraStore } from '../stores/ordenesCompraStore'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import { useToast } from '@/composables/useToast'
+import { APP_LOCALE } from '@/plugins/locale'
 import SkeletonTable from '../components/SkeletonTable.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
-import QuickTablePagination from '../components/QuickTablePagination.vue'
+import QuickTablePagination from '@/components/QuickTablePagination.vue'
 import CorregirSkuModal from '../components/CorregirSkuModal.vue'
 import type { OrdenCompra } from '../types'
 
@@ -256,7 +257,7 @@ function formatDate(dateString?: string): string {
   if (!dateString) return '-'
   try {
     const date = new Date(dateString)
-    return date.toLocaleDateString('es-ES', {
+    return date.toLocaleDateString(APP_LOCALE, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',

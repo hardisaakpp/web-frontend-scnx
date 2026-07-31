@@ -378,10 +378,11 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { APP_LOCALE } from '@/plugins/locale'
 import { useUsuariosStore } from '../stores/usuariosStore'
 import { useRolesStore } from '../stores/rolesStore'
 import type { Usuario, CreateUsuarioDto, UpdateUsuarioDto } from '../types'
-import VolverButton from '../components/VolverButton.vue'
+import VolverButton from '@/components/VolverButton.vue'
 import UsuarioModal from '../components/UsuarioModal.vue'
 import AsignarRolesModal from '../components/AsignarRolesModal.vue'
 import {
@@ -577,7 +578,7 @@ const getRoleColor = (role: string): string => {
 
 const formatDate = (dateString: string): string => {
   const date = new Date(dateString)
-  return date.toLocaleDateString('es-EC', {
+  return date.toLocaleDateString(APP_LOCALE, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',

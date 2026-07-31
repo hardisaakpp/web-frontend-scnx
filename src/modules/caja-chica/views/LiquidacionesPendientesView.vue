@@ -81,9 +81,10 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import axios from 'axios'
+import { cajaChicaApi } from '../services/cajaChicaApi'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { APP_LOCALE } from '@/plugins/locale'
 
 const authStore = useAuthStore()
 
@@ -120,20 +121,6 @@ const volver = () => {
   router.back()
 }
 
-const cajaChicaApi = axios.create({
-  baseURL: import.meta.env.VITE_CAJA_CHICA_API_URL || '/caja-chica-api',
-  headers: {
-    'Content-Type': 'application/json'
-  }
-})
-
-cajaChicaApi.interceptors.request.use(config => {
-  const token = localStorage.getItem('token')
-  if (token && config.headers) {
-    config.headers['Authorization'] = `Bearer ${token}`
-  }
-  return config
-})
 
 const normalizeString = (value: any) => String(value ?? '').trim()
 
@@ -287,7 +274,7 @@ const downloadPdf = async () => {
   const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Liquidaciones Pendientes</title><style>${CSS}</style></head><body>
     <div style="margin-bottom:16px;border-bottom:2px solid #1e3a5f;padding-bottom:8px;display:flex;justify-content:space-between;align-items:flex-end">
       <div><div style="font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#6b7280">Reporte</div><div style="font-size:16px;font-weight:700;color:#1e3a5f">Liquidaciones Pendientes</div></div>
-      <div style="text-align:right;font-size:10px;color:#6b7280">Generado: ${new Date().toLocaleString('es-ES')}<br>${pendientes.value.length} liquidación(es)</div>
+      <div style="text-align:right;font-size:10px;color:#6b7280">Generado: ${new Date().toLocaleString(APP_LOCALE)}<br>${pendientes.value.length} liquidación(es)</div>
     </div>
     ${sectionsHtml}
   </body></html>`

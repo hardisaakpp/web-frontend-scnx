@@ -311,9 +311,24 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from '@vue/runtime-core'
-import axios from 'axios'
+import { cajaChicaApi } from '../services/cajaChicaApi'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
+
+function getAlmacenesAsignadosDelToken(authStore: ReturnType<typeof useAuthStore>): string[] {
+  const raw = authStore.userWarehouseAccesses
+  let accesses: any[]
+  if (Array.isArray(raw)) {
+    accesses = raw
+  } else if (raw) {
+    accesses = [raw]
+  } else {
+    accesses = []
+  }
+  return accesses
+    .filter(a => a.accesoAlmacen === 'Tienda' && a.codAlmacen)
+    .map(a => a.codAlmacen as string)
+}
 
 interface UsuarioAlmacenItem {
   codAlmacen: string
@@ -385,21 +400,6 @@ const sendingId = ref<number | null>(null)
 const volver = () => {
   router.back()
 }
-
-const cajaChicaApi = axios.create({
-  baseURL: import.meta.env.VITE_CAJA_CHICA_API_URL || '/caja-chica-api',
-  headers: {
-    'Content-Type': 'application/json'
-  }
-})
-
-cajaChicaApi.interceptors.request.use(config => {
-  const token = localStorage.getItem('token')
-  if (token && config.headers) {
-    config.headers['Authorization'] = `Bearer ${token}`
-  }
-  return config
-})
 
 const getCurrentUserId = (): string => {
   if (authStore.userData?.id) return authStore.userData.id
@@ -592,12 +592,9 @@ const loadAlmacenesAsignados = async () => {
       return
     }
 
-    const response = await cajaChicaApi.get(`/UsuariosAlmacenes/por-usuario/${userId}`)
-    const payload = response.data as any
-    const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
-    asignados.value = items.map((item: any) => ({
-      codAlmacen: String(item.codAlmacen ?? item.CodAlmacen ?? '')
-    }))
+    // Bodegas asignadas al custodio: vienen del warehouse_access del token (CORE),
+    // no de la tabla propia UsuarioAlmacen de caja-chica (ver docs/sdd migración 2026-07-07).
+    asignados.value = getAlmacenesAsignadosDelToken(authStore).map(codAlmacen => ({ codAlmacen }))
 
     const almacenesResponse = await cajaChicaApi.get('/Almacenes', {
       headers: {

@@ -420,9 +420,12 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { APP_LOCALE } from '@/plugins/locale'
 import api from '@/services/api'
-import axios from 'axios'
-import VolverButton from '../components/VolverButton.vue'
+import { cajaChicaApi } from '@/lib/http'
+import { randomUUID } from '@/utils/uuid'
+import VolverButton from '@/components/VolverButton.vue'
+
 
 interface GrupoAlmacenForm {
   id: string
@@ -473,18 +476,8 @@ const editBodegaSearch = ref('')
 const editAlmacenDropdownRef = ref<HTMLElement | null>(null)
 const editBodegaDropdownRef = ref<HTMLElement | null>(null)
 
-const cajaChicaApi = axios.create({
-  baseURL: import.meta.env.VITE_CAJA_CHICA_API_URL || '/caja-chica-api',
-  headers: { 'Content-Type': 'application/json' }
-})
 
-cajaChicaApi.interceptors.request.use(config => {
-  const token = localStorage.getItem('token') || sessionStorage.getItem('token')
-  if (token && config.headers) {
-    config.headers['Authorization'] = `Bearer ${token}`
-  }
-  return config
-})
+
 
 const canAddGroup = computed(() => groupName.value.trim() && selectedAlmacenes.value.length > 0)
 
@@ -523,7 +516,7 @@ const addGroup = async () => {
     const response = await api.post('/WarehouseGroups', payload)
     const data = response.data as any
     grupos.value.unshift({
-      id: data?.id ?? crypto.randomUUID(),
+      id: data?.id ?? randomUUID(),
       grupo: data?.grupo ?? nombre,
       descripcion: data?.descripcion ?? groupDescription.value.trim(),
       almacenes: Array.isArray(data?.almacenes) ? data.almacenes : codsAlmacenes,
@@ -753,7 +746,7 @@ const loadGrupos = async () => {
 const formatDate = (value: string | null): string => {
   if (!value) return '-'
   const d = new Date(value)
-  return isNaN(d.getTime()) ? '-' : d.toLocaleString('es-PA', { dateStyle: 'short', timeStyle: 'short' })
+  return isNaN(d.getTime()) ? '-' : d.toLocaleString(APP_LOCALE, { dateStyle: 'short', timeStyle: 'short' })
 }
 
 onMounted(() => {

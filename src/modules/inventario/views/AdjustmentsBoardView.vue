@@ -9,7 +9,7 @@
       <div v-if="error" class="mt-4 alert-error">{{ error }}</div>
       <div v-if="success" class="mt-4 alert-success">{{ success }}</div>
 
-      <form class="mt-4 grid grid-cols-1 md:grid-cols-4 gap-3" @submit.prevent="createAdjustment">
+      <form v-if="canEditarAjuste" class="mt-4 grid grid-cols-1 md:grid-cols-4 gap-3" @submit.prevent="createAdjustment">
         <label class="block md:col-span-2">
           <span class="label">SessionId cerrado</span>
           <input v-model="createForm.sessionId" class="input font-mono text-xs" required />
@@ -68,9 +68,9 @@
           <p class="text-xs text-gray-500 dark:text-gray-400 font-mono">{{ current.adjustmentId }}</p>
         </div>
         <div class="flex flex-wrap gap-2">
-          <button class="btn-secondary" type="button" @click="submitReview" :disabled="current.status !== 'Draft'">Submit</button>
-          <button class="btn-secondary" type="button" @click="approve" :disabled="current.status !== 'InReview'">Approve</button>
-          <button class="btn-secondary" type="button" @click="sendToSap" :disabled="current.status !== 'Approved'">SendToSap</button>
+          <button v-if="canRevisarAjuste" class="btn-secondary" type="button" @click="submitReview" :disabled="current.status !== 'Draft'">Submit</button>
+          <button v-if="canRevisarAjuste" class="btn-secondary" type="button" @click="approve" :disabled="current.status !== 'InReview'">Approve</button>
+          <button v-if="canIntegrarSap" class="btn-secondary" type="button" @click="sendToSap" :disabled="current.status !== 'Approved'">SendToSap</button>
         </div>
       </div>
 
@@ -105,19 +105,19 @@
                   class="input text-right"
                   type="number"
                   step="0.0001"
-                  :disabled="current.status !== 'Draft'"
+                  :disabled="!canEditarAjuste || current.status !== 'Draft'"
                 />
               </td>
               <td class="td">
                 <input
                   v-model="lineEdit[line.lineId].auditorNotes"
                   class="input"
-                  :disabled="current.status !== 'Draft'"
+                  :disabled="!canEditarAjuste || current.status !== 'Draft'"
                   placeholder="Nota auditor"
                 />
               </td>
               <td class="td text-right">
-                <button class="link" type="button" :disabled="current.status !== 'Draft' || savingLine" @click="saveLine(line.lineId)">Guardar</button>
+                <button class="link" type="button" :disabled="!canEditarAjuste || current.status !== 'Draft' || savingLine" @click="saveLine(line.lineId)">Guardar</button>
               </td>
             </tr>
           </tbody>
@@ -134,8 +134,12 @@ import {
   type AdjustmentSummaryDto,
   scnexusInventoryApi
 } from '../services/scnexusInventoryApi'
+import { useInventarioModulePermissions } from '../composables/useInventarioModulePermissions'
+import { NUMBER_LOCALE } from '@/plugins/locale'
 
-const numberFmt = new Intl.NumberFormat('es-DO', { maximumFractionDigits: 2 })
+const { canEditarAjuste, canRevisarAjuste, canIntegrarSap } = useInventarioModulePermissions()
+
+const numberFmt = new Intl.NumberFormat(NUMBER_LOCALE, { maximumFractionDigits: 2 })
 
 const adjustments = ref<AdjustmentSummaryDto[]>([])
 const current = ref<AdjustmentDetailDto | null>(null)

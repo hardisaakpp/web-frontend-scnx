@@ -1,0 +1,14 @@
+window.CONFIG = {
+    VITE_API_CORE_URL: '/api',
+    VITE_MBA3_API_URL: '/api/mba3',
+    VITE_CAJA_CHICA_API_URL: '/caja-chica-api',
+    VITE_PYG_API_URL: '/pyg-api',
+    VITE_MAESTRO_API_URL: '/maestro-api',
+    VITE_CONCILIACION_API_URL: '/conciliacion-api',
+    VITE_REPOSICIONES_API_URL: '/api/reposicion-api',
+    VITE_ARTICULO_SCAN_API_URL: '/scan-api',
+    VITE_SCNEXUS_INVENTORY_API_URL: '/inventario-api',
+    VITE_PROMOCION_SOBRES_API_URL: '/promocion-sobres-api',
+    VITE_PREFERENCES_API_URL: '',
+    VITE_SLAYER_API_URL: '/slayer-api'
+};

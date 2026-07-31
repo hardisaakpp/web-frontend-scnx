@@ -268,10 +268,10 @@
                   </template>
                 </td>
                 <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                  {{ item.fechaCreacion ? new Date(item.fechaCreacion).toLocaleString('es-PA', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—' }}
+                  {{ item.fechaCreacion ? new Date(item.fechaCreacion).toLocaleString(APP_LOCALE, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—' }}
                 </td>
                 <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                  {{ item.fechaModificacion ? new Date(item.fechaModificacion).toLocaleString('es-PA', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—' }}
+                  {{ item.fechaModificacion ? new Date(item.fechaModificacion).toLocaleString(APP_LOCALE, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—' }}
                 </td>
                 <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{{ item.modificadoPor ?? '—' }}</td>
                 <td class="px-4 py-3 text-right">
@@ -326,9 +326,10 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { APP_LOCALE } from '@/plugins/locale'
 import api from '@/services/api'
-import VolverButton from '../components/VolverButton.vue'
-import WarehouseSelect from '@/modules/articulo-scaner/components/WarehouseSelect.vue'
+import VolverButton from '@/components/VolverButton.vue'
+import WarehouseSelect from '@/components/WarehouseSelect.vue'
 import type { WarehouseDto } from '@/modules/articulo-scaner/types'
 
 interface AsignacionRecord {
@@ -371,7 +372,7 @@ const asignaciones = ref<AsignacionRecord[]>([])
 const usuarios = ref<UserRecord[]>([])
 const almacenes = ref<AlmacenRecord[]>([])
 const grupos = ref<GrupoRecord[]>([])
-const permisos = ref<string[]>(['Tienda', 'Administrador', 'Supervisor'])
+const permisos = ref<string[]>(['Tienda', 'Supervisor'])
 const loading = ref(false)
 const loadingUsuarios = ref(false)
 const loadingAlmacenes = ref(false)
@@ -477,9 +478,13 @@ const groupedAsignaciones = computed<GroupedAsignacion[]>(() => {
   return Array.from(map.values())
 })
 
+const assignedUserIds = computed(() => new Set(asignaciones.value.map(a => a.userId)))
+
 const filteredUsuarios = computed(() => {
   const q = userSearch.value.toLowerCase().trim()
   const list = usuarios.value.filter(u => {
+    const id = String(u.id ?? u.userId ?? '')
+    if (assignedUserIds.value.has(id)) return false
     const name = String(u.fullName ?? '').trim()
     const uname = String(u.userName ?? '').trim()
     const email = String(u.email ?? '').trim()
@@ -487,7 +492,7 @@ const filteredUsuarios = computed(() => {
     if (!q) return true
     return name.toLowerCase().includes(q) || uname.toLowerCase().includes(q) || email.toLowerCase().includes(q)
   })
-  return list.slice(0, 80)
+  return list
 })
 
 const selectUser = (u: UserRecord) => {

@@ -2,7 +2,7 @@
 # NO copiar ciegamente: comparar con /etc/apache2/sites-enabled/003-scnexus.conf
 #
 # Antes: Apache :443 → Nginx :3001 → root /storage/scnexus/dist
-# Después: Apache :443 → contenedor scnexus-front :8082 (Nginx dentro del contenedor + proxy APIs)
+# Después: Apache :443 → contenedor scnexus-front :8085 (Nginx dentro del contenedor + proxy APIs)
 #
 # Tras editar:
 #   sudo apache2ctl configtest
@@ -18,8 +18,8 @@
     RequestHeader set X-Forwarded-Port "443"
 
     # Todo el sitio SCNexus al front Docker (SPA + /api, /api/mba3, /caja-chica-api, …)
-    ProxyPass / http://127.0.0.1:8082/
-    ProxyPassReverse / http://127.0.0.1:8082/
+    ProxyPass / http://127.0.0.1:8085/
+    ProxyPassReverse / http://127.0.0.1:8085/
 
     ErrorLog ${APACHE_LOG_DIR}/scnexus-error.log
     CustomLog ${APACHE_LOG_DIR}/scnexus-access.log combined
