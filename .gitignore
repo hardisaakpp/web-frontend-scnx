@@ -48,3 +48,16 @@ Thumbs.db
 
 # Temporary files
 *.tmp
+
+# SDD skill registry cache
+.atl/
+
+# Claude Code / agent local config (not shared with the team)
+.claude/
+.agents/
+openspec/
+skills-lock.json
+
+# Test run artifacts (regenerated on every local run)
+playwright-report/
+test-results/
