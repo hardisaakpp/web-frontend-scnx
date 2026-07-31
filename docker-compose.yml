@@ -24,6 +24,7 @@ services:
         MAESTRO_UPSTREAM: ${UPSTREAM_MAESTRO:-${MAESTRO_UPSTREAM:-http://host.docker.internal:8001}}
         SLAYER_UPSTREAM: ${UPSTREAM_SLAYER:-${SLAYER_UPSTREAM:-http://host.docker.internal:8093}}
         REPOSICION_UPSTREAM: ${UPSTREAM_REPOSICION:-${REPOSICION_UPSTREAM:-http://host.docker.internal:8006}}
+        RECEPCION_UPSTREAM: ${UPSTREAM_RECEPCION:-${RECEPCION_UPSTREAM:-http://host.docker.internal:8007}}
     image: scnexus-front:latest
     container_name: scnexus-front
     env_file:

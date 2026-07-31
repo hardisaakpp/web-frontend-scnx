@@ -28,6 +28,7 @@ export const LOCAL_UPSTREAM_DEFAULTS = {
   UPSTREAM_SLAYER: 'http://127.0.0.1:8093',
   UPSTREAM_EMPLOYEES: 'http://127.0.0.1:8092',
   UPSTREAM_REPOSICION: 'http://127.0.0.1:8006',
+  UPSTREAM_RECEPCION: 'http://127.0.0.1:8007',
 }
 
 /** Nombres legacy (vite / docker antiguos) → UPSTREAM_* */
@@ -177,6 +178,7 @@ export const DOCKER_UPSTREAM_DEFAULTS = {
   UPSTREAM_SLAYER: 'http://host.docker.internal:8093',
   UPSTREAM_EMPLOYEES: 'http://192.168.2.153:8092',
   UPSTREAM_REPOSICION: 'http://host.docker.internal:8006',
+  UPSTREAM_RECEPCION: 'http://host.docker.internal:8007',
 }
 
 export function upstreamUrl(env, key, { docker = false } = {}) {
@@ -212,6 +214,7 @@ export function dockerBuildArgsFromEnv(env) {
     SLAYER_UPSTREAM: upstreamUrl(env, 'SLAYER'),
     EMPLOYEES_UPSTREAM: upstreamUrl(env, 'EMPLOYEES'),
     REPOSICION_UPSTREAM: upstreamUrl(env, 'REPOSICION'),
+    RECEPCION_UPSTREAM: upstreamUrl(env, 'RECEPCION'),
     VITE_APP_BASE_PATH: env.VITE_APP_BASE_PATH || '/',
     CORE_PROXY_HOST: env.CORE_PROXY_HOST || 'host.docker.internal:5053',
   }

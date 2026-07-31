@@ -55,6 +55,8 @@ export default defineConfig(async ({ mode }) => {
   const slayerProxyTarget = upstreamUrl(env, 'SLAYER')
   const reposicionProxyTarget = upstreamUrl(env, 'REPOSICION')
   console.log(`\x1b[35m[proxy]\x1b[0m Reposiciones → ${reposicionProxyTarget}`)
+  const recepcionProxyTarget = upstreamUrl(env, 'RECEPCION')
+  console.log(`\x1b[35m[proxy]\x1b[0m Recepción Mercadería → ${recepcionProxyTarget}`)
 
   const pygProxyPrefix =
     'UPSTREAM_PYG_PREFIX' in env
@@ -170,6 +172,13 @@ export default defineConfig(async ({ mode }) => {
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path.replace(/^\/api\/reposicion-api/, '/api')
+        },
+
+        '/api/recepcion-api': {
+          target: recepcionProxyTarget,
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/api\/recepcion-api/, '/api')
         },
 
         '/api': {
