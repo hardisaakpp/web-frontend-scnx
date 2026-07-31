@@ -19,6 +19,7 @@ import articuloScanerRoutes from '../modules/articulo-scaner/router'
 import inventarioRoutes from '../modules/inventario/router'
 import promocionSobresRoutes from '../modules/promocion-sobres/router'
 import reposicionesRoutes from '../modules/reposiciones/router'
+import recepcionMercaderiaRoutes from '../modules/recepcion-mercaderia/router'
 
 
 console.log('🔍 DEBUG usuariosRoutes:', usuariosRoutes)
@@ -74,6 +75,7 @@ const router = createRouter({
         ...inventarioRoutes,
         ...promocionSobresRoutes,
         ...reposicionesRoutes,
+        ...recepcionMercaderiaRoutes,
 
         {
           path: 'forbidden',

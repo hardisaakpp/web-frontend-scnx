@@ -240,6 +240,22 @@
           <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Reposiciones</span>
         </router-link>
 
+        <!-- Recepción Mercadería -->
+        <router-link
+          v-if="hasModuleAccess('recepcionmercaderia')"
+          to="/recepcion-mercaderia"
+          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
+          :class="{
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/recepcion-mercaderia'),
+            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/recepcion-mercaderia')
+          }"
+          :title="effectiveSidebarCollapsed ? 'Recepción Mercadería' : ''"
+        >
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <TruckIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/recepcion-mercaderia') }" />
+          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Recepción Mercadería</span>
+        </router-link>
+
         <!-- Validación de Artículos -->
         <router-link
           v-if="hasModuleAccess('articuloscaner')"
@@ -394,7 +410,8 @@ import {
   QrCodeIcon,
   IdentificationIcon,
   GiftIcon,
-  ShoppingCartIcon
+  ShoppingCartIcon,
+  TruckIcon
 } from '@heroicons/vue/24/outline'
 import { Pin, PinOff } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth'
@@ -559,7 +576,11 @@ const pageTitle = computed(() => {
     '/permisos': 'Gestión de Permisos',
     '/reposiciones': 'Reposiciones',
     '/reposiciones/carrito': 'Carrito de Reposición',
-    '/reposiciones/historial': 'Historial de Reposiciones'
+    '/reposiciones/historial': 'Historial de Reposiciones',
+    '/recepcion-mercaderia': 'Recepción Mercadería',
+    '/recepcion-mercaderia/pendientes': 'Transferencias Pendientes',
+    '/recepcion-mercaderia/en-curso': 'Transferencias en Curso',
+    '/recepcion-mercaderia/historial': 'Historial'
   }
 
   return titles[route.path] || 'SCNexus'
@@ -603,6 +624,10 @@ const hasModuleAccess = (moduleName: string): boolean => {
     return hasPromocionSobresUiPermission(permissions)
   }
   if (moduleName === 'reposiciones') return true
+  if (moduleName === 'recepcionmercaderia') {
+    const isAdmin = authStore.userRoles?.includes('Admin') || false
+    return isAdmin || permissions.some((permission: string) => permission.toLowerCase().startsWith('recepcion.'))
+  }
 
   const normalizedModule = moduleName.toLowerCase()
 
