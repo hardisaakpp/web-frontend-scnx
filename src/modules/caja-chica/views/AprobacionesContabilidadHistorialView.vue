@@ -391,6 +391,7 @@
 </template>
 
 <script setup lang="ts">
+import { APP_LOCALE } from '@/plugins/locale'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { cajaChicaApi, slayerHttp as slayerApi } from '@/lib/http'
