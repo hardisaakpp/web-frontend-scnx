@@ -315,16 +315,27 @@
         <div
           class="flex-shrink-0 p-4 border-t border-slate-200 dark:border-slate-700/50 bg-white/70 dark:bg-slate-900/50 backdrop-blur-sm">
           <div v-show="!effectiveSidebarCollapsed" class="mb-3 px-2">
+<<<<<<< HEAD
+            <router-link
+              to="/user"
+              class="flex items-center gap-3 p-2 rounded-lg bg-slate-100/90 dark:bg-slate-800/50 hover:bg-slate-200/70 dark:hover:bg-slate-700/60 transition-colors"
+              title="Panel de Usuario"
+            >
+              <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-sky-500 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                <span v-if="authStore.avatarEmoji" class="text-base leading-none">{{ authStore.avatarEmoji }}</span>
+                <span v-else>{{ authStore.userName?.charAt(0).toUpperCase() || 'U' }}</span>
+=======
             <div class="flex items-center gap-3 p-2 rounded-lg bg-slate-100/90 dark:bg-slate-800/50">
               <div
                 class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-sky-500 flex items-center justify-center text-xs font-bold">
                 {{ authStore.userName?.charAt(0).toUpperCase() || 'U' }}
+>>>>>>> origin/test
               </div>
               <div class="flex-1 min-w-0">
                 <p class="text-sm font-medium text-slate-800 dark:text-white truncate">{{ authStore.userName }}</p>
                 <p class="text-xs text-slate-500 dark:text-slate-400 truncate">{{ authStore.fullName || 'Usuario' }}</p>
               </div>
-            </div>
+            </router-link>
           </div>
           <button @click="logout"
             class="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-200 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20"
@@ -721,6 +732,9 @@ const canAccessGestionOdcSap = computed(() => {
 onMounted(async () => {
   if (authStore.token && !authStore.capabilities) {
     await authStore.fetchMe()
+  }
+  if (authStore.token) {
+    authStore.fetchAvatarEmoji()
   }
   if (typeof window !== 'undefined') {
     const savedSidebarMode = window.localStorage.getItem(SIDEBAR_MODE_STORAGE_KEY)

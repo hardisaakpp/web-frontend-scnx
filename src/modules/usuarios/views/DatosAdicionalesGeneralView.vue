@@ -8,8 +8,22 @@
       </div>
 
       <!-- Formulario nueva asignación -->
-      <div class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-5">
-        <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Nueva asignación</h2>
+      <div class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+        <button
+          type="button"
+          class="w-full flex items-center justify-between px-5 py-4 text-left"
+          @click="showCreateForm = !showCreateForm"
+        >
+          <span class="text-sm font-semibold text-gray-900 dark:text-white">Nueva asignación</span>
+          <svg
+            class="w-4 h-4 text-slate-400 transition-transform shrink-0"
+            :class="{ 'rotate-180': showCreateForm }"
+            viewBox="0 0 20 20" fill="currentColor"
+          >
+            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+          </svg>
+        </button>
+        <div v-if="showCreateForm" class="px-5 pb-5 border-t border-gray-200 dark:border-gray-700 pt-4">
         <div class="flex flex-col gap-4 sm:flex-row sm:items-end">
 
           <!-- Combobox Usuario -->
@@ -148,17 +162,24 @@
         </div>
         <div v-if="assignError" class="mt-3 text-sm text-red-600 dark:text-red-400">{{ assignError }}</div>
         <div v-else-if="assignSuccess" class="mt-3 text-sm text-emerald-600 dark:text-emerald-400">{{ assignSuccess }}</div>
+        </div>
       </div>
 
       <!-- Listado -->
       <div class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700">
-          <span class="text-sm text-gray-600 dark:text-gray-300">
-            Total: <span class="font-semibold text-gray-900 dark:text-white">{{ groupedAsignaciones.length }}</span>
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700 gap-4">
+          <span class="text-sm text-gray-600 dark:text-gray-300 shrink-0">
+            Total: <span class="font-semibold text-gray-900 dark:text-white">{{ filteredGroupedAsignaciones.length }}</span>
           </span>
+          <input
+            v-model.trim="tableSearch"
+            type="text"
+            placeholder="Buscar por usuario, almacén, permiso o grupo..."
+            class="w-full max-w-xs rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-sky-500"
+          />
           <button
             type="button"
-            class="rounded border border-gray-200 dark:border-gray-700 px-3 py-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+            class="rounded border border-gray-200 dark:border-gray-700 px-3 py-2 text-xs text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 shrink-0"
             :disabled="loading"
             @click="loadData"
           >
@@ -170,6 +191,9 @@
         <div v-else-if="error" class="py-10 text-center text-sm text-red-600 dark:text-red-400">{{ error }}</div>
         <div v-else-if="asignaciones.length === 0" class="py-10 text-center text-sm text-gray-500 dark:text-gray-400">
           Sin asignaciones registradas.
+        </div>
+        <div v-else-if="filteredGroupedAsignaciones.length === 0" class="py-10 text-center text-sm text-gray-500 dark:text-gray-400">
+          Sin resultados para "{{ tableSearch }}".
         </div>
         <div v-else class="overflow-x-auto">
           <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -186,7 +210,7 @@
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-              <tr v-for="item in groupedAsignaciones" :key="item.key">
+              <tr v-for="item in filteredGroupedAsignaciones" :key="item.key">
                 <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
                   <template v-if="editingId === item.key">
                     <select
@@ -379,6 +403,7 @@ const loadingAlmacenes = ref(false)
 const loadingGrupos = ref(false)
 const error = ref('')
 
+const showCreateForm = ref(false)
 const newUserId = ref('')
 const newCodAlmacen = ref<string | null>(null)
 const newAcceso = ref('')
@@ -387,6 +412,7 @@ const assignLoading = ref(false)
 const assignError = ref('')
 const assignSuccess = ref('')
 const deleteLoadingId = ref<string | null>(null)
+const tableSearch = ref('')
 
 // Edit inline state
 const editingId = ref<string | null>(null)
@@ -476,6 +502,21 @@ const groupedAsignaciones = computed<GroupedAsignacion[]>(() => {
     }
   }
   return Array.from(map.values())
+})
+
+const filteredGroupedAsignaciones = computed(() => {
+  const q = tableSearch.value.toLowerCase().trim()
+  if (!q) return groupedAsignaciones.value
+  return groupedAsignaciones.value.filter(item => {
+    const userName = resolveUserName(item.userId).toLowerCase()
+    const grupoNames = item.grupos.map(g => g.nombre.toLowerCase()).join(' ')
+    return (
+      userName.includes(q) ||
+      item.codAlmacen.toLowerCase().includes(q) ||
+      item.accesoAlmacen.toLowerCase().includes(q) ||
+      grupoNames.includes(q)
+    )
+  })
 })
 
 const assignedUserIds = computed(() => new Set(asignaciones.value.map(a => a.userId)))
@@ -607,6 +648,7 @@ const updateAsignacion = async (groupKey: string) => {
 const deleteGrouped = async (groupKey: string) => {
   const group = groupedAsignaciones.value.find(g => g.key === groupKey)
   if (!group) return
+  if (!confirm(`¿Está seguro de eliminar la asignación de "${resolveUserName(group.userId)}" al almacén "${group.codAlmacen}"?\n\nEsta acción no se puede deshacer.`)) return
   deleteLoadingId.value = groupKey
   try {
     await Promise.all(group.ids.map(id => api.delete(`/UsuariosAlmacenes/${id}`)))
@@ -697,6 +739,7 @@ const createAsignacion = async () => {
     selectedGrupoId.value = []
     const asignResp = await api.get('/UsuariosAlmacenes')
     asignaciones.value = asignResp.data as AsignacionRecord[]
+    showCreateForm.value = false
   } catch (err: unknown) {
     const e = err as { response?: { data?: { message?: string } } }
     assignError.value = e?.response?.data?.message || 'No se pudo crear la asignación.'
