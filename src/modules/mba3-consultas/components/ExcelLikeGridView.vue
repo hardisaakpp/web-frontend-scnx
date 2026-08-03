@@ -55,6 +55,31 @@
       </div>
     </div>
     
+    <!-- Mensaje de error global: va ANTES del scroller a propósito (no después). El cromo
+         por ENCIMA del scroller se cancela algebraicamente en la fórmula de max-height (ver
+         comentario en <style scoped>), así que aquí su alto variable (1 línea por producto
+         con error) no desalinea el thead congelado contra la barra de indicadores. Estuvo
+         debajo hasta que con varios errores simultáneos el bloque creció lo suficiente para
+         empujar el "reposo" del scroller detrás de esa barra, tapando el encabezado por
+         completo. Además es mejor UX: se ve el motivo del error sin tener que bajar. -->
+    <div v-if="productosConError.length > 0" class="p-4 bg-red-50 dark:bg-red-900/20 border-t border-b border-red-200 dark:border-red-800">
+      <div class="flex items-start gap-2">
+        <svg class="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <div>
+          <p class="text-sm font-medium text-red-800 dark:text-red-200">
+            {{ productosConError.length }} producto(s) con errores
+          </p>
+          <ul class="text-xs text-red-700 dark:text-red-300 mt-1 list-disc list-inside">
+            <li v-for="producto in productosConError" :key="producto.codigo_producto">
+              {{ producto.codigo_producto }}: {{ producto.error }}
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
     <!-- Requerimiento 1.1.1: scroller único y acotado en altura.
          El thead se congela contra el borde superior de ESTE contenedor (no del viewport),
          porque un ancestro con overflow-x:auto ya es el scrollport del sticky
@@ -75,7 +100,7 @@
               v-if="isColumnVisible('numero')"
               data-col="numero"
               :style="stickyLeftStyle('numero')"
-              class="sticky top-0 z-[16] header-shadow bg-gray-50 dark:bg-gray-900 px-2 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 w-10 min-w-[40px]"
+              class="sticky top-0 z-[16] header-shadow bg-gray-50 dark:bg-gray-900 px-2 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider frozen-divider w-10 min-w-[40px]"
             >
               #
             </th>
@@ -83,7 +108,7 @@
               v-if="isColumnVisible('codigo')"
               data-col="codigo"
               :style="stickyLeftStyle('codigo')"
-              class="sticky top-0 z-[16] header-shadow bg-gray-50 dark:bg-gray-900 px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 whitespace-nowrap"
+              class="sticky top-0 z-[16] header-shadow bg-gray-50 dark:bg-gray-900 px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider frozen-divider whitespace-nowrap"
             >
               Código
             </th>
@@ -91,7 +116,7 @@
               v-if="isColumnVisible('producto')"
               data-col="producto"
               :style="stickyLeftStyle('producto')"
-              class="sticky top-0 z-[16] header-shadow bg-gray-50 dark:bg-gray-900 px-6 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 min-w-[200px]"
+              class="sticky top-0 z-[16] header-shadow bg-gray-50 dark:bg-gray-900 px-6 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider frozen-divider min-w-[200px]"
             >
               Producto
             </th>
@@ -100,7 +125,7 @@
               v-if="isColumnVisible('total_confirmado')"
               data-col="total_confirmado"
               :style="stickyLeftStyle('total_confirmado')"
-              class="sticky top-0 z-[16] header-shadow bg-gray-50 dark:bg-gray-900 px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700"
+              class="sticky top-0 z-[16] header-shadow bg-gray-50 dark:bg-gray-900 px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider frozen-divider"
             >
               <span class="flex flex-col items-end leading-tight">
                 <span>Total</span>
@@ -111,7 +136,7 @@
               v-if="isColumnVisible('costo_unitario')"
               data-col="costo_unitario"
               :style="stickyLeftStyle('costo_unitario')"
-              class="sticky top-0 z-[16] frozen-edge bg-gray-50 dark:bg-gray-900 px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 whitespace-nowrap"
+              class="sticky top-0 z-[16] frozen-edge bg-gray-50 dark:bg-gray-900 px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap"
             >
               Precio
             </th>
@@ -134,7 +159,7 @@
             <!-- Columnas calculadas -->
             <th
               v-if="isColumnVisible('total_distribuido')"
-              class="sticky top-0 z-[15] header-shadow px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-100 dark:bg-gray-800 border-l-2 border-gray-300 dark:border-gray-600"
+              class="sticky top-0 z-[15] header-shadow frozen-divider-thick px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-100 dark:bg-gray-800"
             >
               <span class="flex flex-col items-end leading-tight">
                 <span>Total</span>
@@ -143,7 +168,7 @@
             </th>
             <th
               v-if="isColumnVisible('diferencia')"
-              class="sticky top-0 right-0 z-[16] frozen-edge-right px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-100 dark:bg-gray-800 whitespace-nowrap border-l border-gray-200 dark:border-gray-700"
+              class="sticky top-0 right-0 z-[16] frozen-edge-right px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-100 dark:bg-gray-800 whitespace-nowrap"
             >
               Diferencia
             </th>
@@ -162,21 +187,21 @@
             <td
               v-if="isColumnVisible('numero')"
               :style="stickyLeftStyle('numero')"
-              class="sticky z-[5] px-2 py-3 text-sm font-medium text-gray-500 dark:text-gray-400 text-center whitespace-nowrap border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+              class="sticky z-[5] px-2 py-3 text-sm font-medium text-gray-500 dark:text-gray-400 text-center whitespace-nowrap frozen-divider bg-white dark:bg-gray-800"
             >
               {{ Number(index) + 1 }}
             </td>
             <td
               v-if="isColumnVisible('codigo')"
               :style="stickyLeftStyle('codigo')"
-              class="sticky z-[5] px-3 py-3 text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+              class="sticky z-[5] px-3 py-3 text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap frozen-divider bg-white dark:bg-gray-800"
             >
               {{ producto.codigo_producto }}
             </td>
             <td
               v-if="isColumnVisible('producto')"
               :style="stickyLeftStyle('producto')"
-              class="sticky z-[5] px-6 py-3 text-sm text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+              class="sticky z-[5] px-6 py-3 text-sm text-gray-900 dark:text-white frozen-divider bg-white dark:bg-gray-800"
             >
               <div class="max-w-[200px] truncate" :title="producto.descripcion">
                 {{ producto.descripcion }}
@@ -187,10 +212,10 @@
               v-if="isColumnVisible('total_confirmado')"
               :style="stickyLeftStyle('total_confirmado')"
               :class="[
-                'sticky z-[5] px-3 py-3 text-sm font-semibold text-right whitespace-nowrap border-r border-gray-200 dark:border-gray-700',
+                'sticky z-[5] px-3 py-3 text-sm font-semibold text-right whitespace-nowrap',
                 tieneTotalConfirmadoModificado(producto)
-                  ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-200 border-l-2 border-amber-500 dark:border-amber-400'
-                  : 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400'
+                  ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-200 frozen-divider-modified'
+                  : 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 frozen-divider'
               ]"
             >
               {{ formatNumberWithDecimals(producto.cantidad_confirmada, decimalPlaces) }}
@@ -200,10 +225,10 @@
               v-if="isColumnVisible('costo_unitario')"
               :style="stickyLeftStyle('costo_unitario')"
               :class="[
-                'sticky z-[5] frozen-edge px-3 py-3 text-sm font-medium text-right whitespace-nowrap border-r border-gray-200 dark:border-gray-700',
+                'sticky z-[5] px-3 py-3 text-sm font-medium text-right whitespace-nowrap',
                 tienePrecioModificado(producto)
-                  ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-200 border-l-2 border-amber-500 dark:border-amber-400'
-                  : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white'
+                  ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-200 frozen-edge-modified'
+                  : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white frozen-edge'
               ]"
             >
               {{ producto.costo_unitario != null ? formatCurrencyWithDecimals(producto.costo_unitario, 4) : '-' }}
@@ -245,7 +270,7 @@
             </td>
             <td
               v-if="isColumnVisible('diferencia')"
-              class="sticky right-0 z-[5] px-3 py-3 text-sm font-semibold text-right whitespace-nowrap bg-gray-50 dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.2)]"
+              class="sticky right-0 z-[5] px-3 py-3 text-sm font-semibold text-right whitespace-nowrap bg-gray-50 dark:bg-gray-800 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.2)]"
               :class="getDiferenciaClass(producto.diferencia)"
             >
               {{ producto.diferencia > 0 ? '+' : '' }}{{ formatNumberWithDecimals(producto.diferencia, decimalPlaces) }}
@@ -259,33 +284,33 @@
             <td
               v-if="isColumnVisible('numero')"
               :style="stickyLeftStyle('numero')"
-              class="sticky z-[5] bg-gray-100 dark:bg-gray-900 px-2 py-3 text-sm font-semibold text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700 text-center"
+              class="sticky z-[5] bg-gray-100 dark:bg-gray-900 px-2 py-3 text-sm font-semibold text-gray-900 dark:text-white frozen-divider text-center"
             >
               -
             </td>
             <td
               v-if="isColumnVisible('codigo')"
               :style="stickyLeftStyle('codigo')"
-              class="sticky z-[5] bg-gray-100 dark:bg-gray-900 px-3 py-3 text-sm font-semibold text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700 whitespace-nowrap"
+              class="sticky z-[5] bg-gray-100 dark:bg-gray-900 px-3 py-3 text-sm font-semibold text-gray-900 dark:text-white frozen-divider whitespace-nowrap"
             >
               TOTALES
             </td>
             <td
               v-if="isColumnVisible('producto')"
               :style="stickyLeftStyle('producto')"
-              class="sticky z-[5] bg-gray-100 dark:bg-gray-900 px-6 py-3 border-r border-gray-200 dark:border-gray-700"
+              class="sticky z-[5] bg-gray-100 dark:bg-gray-900 px-6 py-3 frozen-divider"
             ></td>
             <td
               v-if="isColumnVisible('total_confirmado')"
               :style="stickyLeftStyle('total_confirmado')"
-              class="sticky z-[5] bg-gray-100 dark:bg-gray-900 px-3 py-3 text-sm font-bold text-blue-600 dark:text-blue-400 text-right border-r border-gray-200 dark:border-gray-700"
+              class="sticky z-[5] bg-gray-100 dark:bg-gray-900 px-3 py-3 text-sm font-bold text-blue-600 dark:text-blue-400 text-right frozen-divider"
             >
               {{ formatNumberWithDecimals(totalesConfirmado, decimalPlaces) }}
             </td>
             <td
               v-if="isColumnVisible('costo_unitario')"
               :style="stickyLeftStyle('costo_unitario')"
-              class="sticky z-[5] frozen-edge bg-gray-100 dark:bg-gray-900 px-3 py-3 text-sm font-semibold text-gray-900 dark:text-white text-right border-r border-gray-200 dark:border-gray-700"
+              class="sticky z-[5] frozen-edge bg-gray-100 dark:bg-gray-900 px-3 py-3 text-sm font-semibold text-gray-900 dark:text-white text-right frozen-divider"
             >
               {{ formatCurrencyWithDecimals(totalesCostoUnitario, 4) }}
             </td>
@@ -304,7 +329,7 @@
             </td>
             <td
               v-if="isColumnVisible('diferencia')"
-              class="sticky right-0 z-[5] px-3 py-3 text-sm font-bold text-right bg-gray-100 dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.08)] dark:shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.25)]"
+              class="sticky right-0 z-[5] px-3 py-3 text-sm font-bold text-right bg-gray-100 dark:bg-gray-800 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.08)] dark:shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.25)]"
               :class="getDiferenciaClass(totalesDiferencia)"
             >
               {{ totalesDiferencia > 0 ? '+' : '' }}{{ formatNumberWithDecimals(totalesDiferencia, decimalPlaces) }}
@@ -312,25 +337,6 @@
           </tr>
         </tfoot>
       </table>
-    </div>
-    
-    <!-- Mensaje de error global si existe -->
-    <div v-if="productosConError.length > 0" class="p-4 bg-red-50 dark:bg-red-900/20 border-t border-red-200 dark:border-red-800">
-      <div class="flex items-start gap-2">
-        <svg class="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <div>
-          <p class="text-sm font-medium text-red-800 dark:text-red-200">
-            {{ productosConError.length }} producto(s) con errores
-          </p>
-          <ul class="text-xs text-red-700 dark:text-red-300 mt-1 list-disc list-inside">
-            <li v-for="producto in productosConError" :key="producto.codigo_producto">
-              {{ producto.codigo_producto }}: {{ producto.error }}
-            </li>
-          </ul>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -923,6 +929,66 @@ thead th.frozen-edge-right {
 
 .dark thead th.frozen-edge-right {
   box-shadow: -4px 0 6px -2px rgba(0, 0, 0, 0.25), 0 2px 6px -2px rgba(0, 0, 0, 0.3);
+}
+
+/* ── Separadores entre columnas congeladas (reemplazan border-r/border-l) ──
+   Mismo problema que header-shadow/frozen-edge: border-collapse:collapse (preflight de
+   Tailwind) hace que el border-* de una celda position:sticky no se pinte NUNCA, ni
+   siquiera en reposo (confirmado muestreando píxeles reales: fondo uniforme, cero línea
+   divisoria) — no solo "durante el scroll" como parecía a simple vista. Sin ese borde
+   opaco tapando el límite exacto entre celdas, cualquier costura de subpíxel del
+   compositor queda expuesta y se nota como una línea transparente al scrollear
+   horizontalmente. El box-shadow no participa del modelo de bordes de la tabla, así que
+   no lo afecta el colapso y sí queda pintado de forma estable. */
+.frozen-divider {
+  box-shadow: inset -1px 0 0 0 #e2e8f0; /* gray-200 (paleta remapeada en tailwind.config.js) */
+}
+
+.dark .frozen-divider {
+  box-shadow: inset -1px 0 0 0 #334155; /* gray-700 */
+}
+
+/* thead: el separador convive con la sombra inferior (header-shadow) en la misma celda */
+thead th.frozen-divider {
+  box-shadow: inset -1px 0 0 0 #e2e8f0, 0 2px 6px -2px rgba(0, 0, 0, 0.1);
+}
+
+.dark thead th.frozen-divider {
+  box-shadow: inset -1px 0 0 0 #334155, 0 2px 6px -2px rgba(0, 0, 0, 0.3);
+}
+
+/* Separador más grueso (equivalente al border-l-2 original) entre la última columna de
+   tienda y "Total Distribuido"; solo existe en thead (sticky top-0), tbody/tfoot no son
+   sticky ahí y su border-l-2 normal renderiza sin problema. */
+thead th.frozen-divider-thick {
+  box-shadow: inset 2px 0 0 0 #cbd5e1, 0 2px 6px -2px rgba(0, 0, 0, 0.1); /* gray-300 */
+}
+
+.dark thead th.frozen-divider-thick {
+  box-shadow: inset 2px 0 0 0 #475569, 0 2px 6px -2px rgba(0, 0, 0, 0.3); /* gray-600 */
+}
+
+/* Acento de "modificado por EL RAYO" en celdas congeladas (Total Confirmado / Precio).
+   Antes era border-l-2 border-amber-500 (un border-left real) además del border-r/frozen-edge
+   del lado derecho — mismo bug: sobre celdas sticky con border-collapse:collapse, el
+   border-left tampoco se pintaba de forma fiable (se veía bien en reposo y desaparecía
+   al hacer scroll horizontal). Sustituido por box-shadow combinando AMBOS lados en una
+   sola declaración, ya que box-shadow es una única propiedad y no se puede alternar por
+   clase sin pisar el valor existente. */
+.frozen-divider-modified {
+  box-shadow: inset 2px 0 0 0 #f59e0b, inset -1px 0 0 0 #e2e8f0; /* amber-500 izq, gray-200 der */
+}
+
+.dark .frozen-divider-modified {
+  box-shadow: inset 2px 0 0 0 #fbbf24, inset -1px 0 0 0 #334155; /* amber-400 izq, gray-700 der */
+}
+
+.frozen-edge-modified {
+  box-shadow: inset 2px 0 0 0 #f59e0b, 4px 0 6px -2px rgba(0, 0, 0, 0.06);
+}
+
+.dark .frozen-edge-modified {
+  box-shadow: inset 2px 0 0 0 #fbbf24, 4px 0 6px -2px rgba(0, 0, 0, 0.2);
 }
 
 /* Asegurar que las columnas fijas tengan fondo completamente opaco */
