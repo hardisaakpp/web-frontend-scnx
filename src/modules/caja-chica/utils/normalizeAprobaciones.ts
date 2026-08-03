@@ -7,7 +7,7 @@ export const getCurrentUserId = (): string => {
     const userStr = localStorage.getItem('user')
     if (!userStr) return ''
     const user = JSON.parse(userStr) as { id?: string }
-    return user.id || ''
+    return user.id ?? ''
   } catch {
     return ''
   }

@@ -120,7 +120,9 @@ export function useColumnDragReorder<T extends DragReorderColumn>(options: UseCo
     }
   }
 
-  function handleDragLeave() {}
+  // Sin efecto: el estado de "sobre esta columna" ya se recalcula en handleDragOver;
+  // se mantiene el binding porque las plantillas escuchan @dragleave.
+  function handleDragLeave() {} // NOSONAR
 
   function handleDrop(event: DragEvent, targetColumnKey: string) {
     event.preventDefault()

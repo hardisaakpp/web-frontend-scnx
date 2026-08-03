@@ -1,6 +1,8 @@
 import { ref, computed, type ComputedRef } from 'vue'
 import { cajaChicaApi } from '@/lib/http'
 import { createBuildAdjuntoUrl } from '@/modules/caja-chica/utils/buildAdjuntoUrl'
+import { extractItemsArray } from '@/modules/caja-chica/utils/apiPayload'
+import { normalizeAdjuntoItem } from '@/modules/caja-chica/utils/normalizeAdjuntoItem'
 import type { AdjuntoItem } from '@/modules/caja-chica/types/aprobaciones'
 
 /**
@@ -29,23 +31,10 @@ export function useAdjuntosByDetalle(selectedDetalleId: ComputedRef<number | und
     loadingAdjuntosMap.value = { ...loadingAdjuntosMap.value, [idDetalle]: true }
     try {
       const response = await cajaChicaApi.get(`/Adjuntos/por-detalle/${idDetalle}`)
-      const payload = response.data as any
-      let items: any[]
-      if (Array.isArray(payload)) {
-        items = payload
-      } else if (Array.isArray(payload?.data)) {
-        items = payload.data
-      } else {
-        items = []
-      }
+      const items = extractItemsArray(response.data)
       adjuntosListByDetalle.value = {
         ...adjuntosListByDetalle.value,
-        [idDetalle]: items.map((item: any) => ({
-          idAdjunto: Number(item.idAdjunto ?? item.IdAdjunto ?? 0),
-          idDetalle: Number(item.idDetalle ?? item.IdDetalle ?? idDetalle),
-          rutaArchivo: String(item.rutaArchivo ?? item.RutaArchivo ?? ''),
-          fechaSubida: String(item.fechaSubida ?? item.FechaSubida ?? '')
-        }))
+        [idDetalle]: items.map((item: any) => normalizeAdjuntoItem(item, idDetalle))
       }
     } catch {
       adjuntosListByDetalle.value = { ...adjuntosListByDetalle.value, [idDetalle]: [] }
