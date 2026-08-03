@@ -533,70 +533,18 @@ import { cajaChicaApi } from '@/lib/http'
 import api from '@/services/api'
 
 import { useColumnDragReorder } from '@/composables/useColumnDragReorder'
+import { useAdjuntosByDetalle } from '@/composables/useAdjuntosByDetalle'
 import { useRouter } from 'vue-router'
-import { createBuildAdjuntoUrl } from '../utils/buildAdjuntoUrl'
 import { resolveUserNames } from '../utils/resolveUserNames'
-
-interface ColumnConfig {
-  key: string
-  label: string
-  fixed: boolean
-}
-
-interface AprobacionItem {
-  idAprobacion: number
-  idDetalle: number
-  idLiquidacion: number
-  codAlmacen: string
-  nombreCustodio: string
-  cedulaCustodio: string
-  fechaCreacion: string
-  nombreGasto: string
-  concepto: string
-  total: number
-  nivelAprobacion: number
-  estado: string
-}
-
-interface DetalleItem {
-  idDetalle: number
-  idLiquidacion: number
-  fechaConsumo: string
-  ruc: string
-  nombreProveedor: string
-  numeroComprobante: string
-  tipoDocumento: string
-  concepto: string
-  subtotalConIva: number
-  subtotalSinIva: number
-  iva: number
-}
-
-interface SupervisorDecision {
-  montoAprobado: number
-  observacion: string
-  estado: string
-  fechaAprobacion?: string
-  idUsuario?: string
-  nombreUsuario?: string
-}
-
-interface UserOption {
-  id: string
-  label: string
-}
-
-interface AdjuntoItem {
-  idAdjunto: number
-  idDetalle: number
-  rutaArchivo: string
-  fechaSubida: string
-}
-
-interface DecisionState {
-  montoAprobado: string
-  observacion: string
-}
+import { normalizeString, getCurrentUserId, normalizeDetalle, normalizeAprobacion } from '../utils/normalizeAprobaciones'
+import type {
+  ColumnConfig,
+  AprobacionItem,
+  DetalleItem,
+  SupervisorDecision,
+  UserOption,
+  DecisionState
+} from '../types/aprobaciones'
 
 const loading = ref(false)
 const error = ref('')
@@ -694,17 +642,17 @@ const selectedDetalle = computed(() => {
   return detallesByLiquidacion.value[idLiquidacion]?.find(d => d.idDetalle === item.idDetalle)
 })
 
-const adjuntosListByDetalle = ref<Record<number, AdjuntoItem[]>>({})
-const loadingAdjuntosMap = ref<Record<number, boolean>>({})
-const selectedAdjuntoId = ref<number | null>(null)
-const selectedAdjunto = computed(() => {
-  if (!selectedItem.value) return null
-  const detalleId = selectedItem.value.idDetalle
-  const list = adjuntosListByDetalle.value[detalleId] || []
-  if (!list.length) return null
-  const found = list.find(a => a.idAdjunto === selectedAdjuntoId.value)
-  return found || list[0]
-})
+const {
+  adjuntosListByDetalle,
+  loadingAdjuntosMap,
+  selectedAdjuntoId,
+  selectedAdjunto,
+  loadAdjuntosForDetalle,
+  buildAdjuntoUrl,
+  formatAdjuntoName,
+  isImageFile,
+  isPdfFile
+} = useAdjuntosByDetalle(computed(() => selectedItem.value?.idDetalle))
 
 const showAdjuntoFull = ref(false)
 
@@ -832,31 +780,6 @@ function getStickyStyle(column: ColumnConfig): { right?: string; minWidth?: stri
   return { right, minWidth: minW }
 }
 
-const buildAdjuntoUrl = createBuildAdjuntoUrl()
-
-
-const formatAdjuntoName = (ruta: string) => {
-  if (!ruta) return ''
-  const parts = ruta.split('/')
-  return parts[parts.length - 1]
-}
-
-const isImageFile = (ruta: string) => /\.(png|jpe?g|gif|webp)$/i.test(ruta)
-const isPdfFile = (ruta: string) => /\.pdf$/i.test(ruta)
-
-const getCurrentUserId = (): string => {
-  try {
-    const userStr = localStorage.getItem('user')
-    if (!userStr) return ''
-    const user = JSON.parse(userStr) as { id?: string }
-    return user.id || ''
-  } catch {
-    return ''
-  }
-}
-
-const normalizeString = (value: any) => String(value ?? '').trim()
-
 const normalizeUser = (user: any): UserOption => {
   const id = String(user.id ?? user.Id ?? user.idUsuario ?? user.IdUsuario ?? '')
   const userName = String(user.userName ?? user.UsuarioNombre ?? user.username ?? '').trim()
@@ -882,35 +805,6 @@ const getUserLabel = (id?: string) => {
   fetchLocalUserName(id);
   return 'Cargando...';
 }
-
-const normalizeDetalle = (item: any): DetalleItem => ({
-  idDetalle: Number(item.idDetalle ?? item.IdDetalle ?? 0),
-  idLiquidacion: Number(item.idLiquidacion ?? item.IdLiquidacion ?? 0),
-  fechaConsumo: String(item.fechaConsumo ?? item.FechaConsumo ?? ''),
-  ruc: normalizeString(item.ruc ?? item.Ruc ?? ''),
-  nombreProveedor: normalizeString(item.nombreProveedor ?? item.NombreProveedor ?? ''),
-  numeroComprobante: normalizeString(item.numeroComprobante ?? item.NumeroComprobante ?? ''),
-  tipoDocumento: normalizeString(item.numeroAutorizacion ?? item.NumeroAutorizacion ?? ''),
-  concepto: normalizeString(item.concepto ?? item.Concepto ?? ''),
-  subtotalConIva: Number(item.subtotal_Con_Iva ?? item.Subtotal_Con_Iva ?? item.subtotalConIva ?? 0),
-  subtotalSinIva: Number(item.subtotal_Sin_Iva ?? item.Subtotal_Sin_Iva ?? item.subtotalSinIva ?? 0),
-  iva: Number(item.iva ?? item.Iva ?? 0)
-})
-
-const normalizeAprobacion = (item: any): AprobacionItem => ({
-  idAprobacion: Number(item.idAprobacion ?? item.IdAprobacion ?? 0),
-  idDetalle: Number(item.idDetalle ?? item.IdDetalle ?? 0),
-  idLiquidacion: Number(item.idLiquidacion ?? item.IdLiquidacion ?? 0),
-  codAlmacen: normalizeString(item.codAlmacen ?? item.CodAlmacen ?? ''),
-  nombreCustodio: normalizeString(item.nombreCustodio ?? item.NombreCustodio ?? ''),
-  cedulaCustodio: normalizeString(item.cedulaCustodio ?? item.CedulaCustodio ?? ''),
-  fechaCreacion: String(item.fechaCreacion ?? item.FechaCreacion ?? ''),
-  nombreGasto: normalizeString(item.nombreGasto ?? item.NombreGasto ?? ''),
-  concepto: normalizeString(item.concepto ?? item.Concepto ?? ''),
-  total: Number(item.total ?? item.Total ?? 0),
-  nivelAprobacion: Number(item.nivelAprobacion ?? item.NivelAprobacion ?? 0),
-  estado: normalizeString(item.estado ?? item.Estado ?? '')
-})
 
 const normalizeSupervisorDecision = (item: any): SupervisorDecision => ({
   montoAprobado: Number(item.montoAprobado ?? item.MontoAprobado ?? 0),
@@ -976,31 +870,6 @@ function getAutoTipoBase(item: AprobacionItem): 'BASE_0' | 'BASE_15' {
 
 function getAutoTipoBaseLabel(item: AprobacionItem): string {
   return getAutoTipoBase(item) === 'BASE_0' ? 'Base 0% (automático)' : 'Base 15% (automático)'
-}
-
-async function loadAdjuntosForDetalle(idDetalle: number) {
-  if (!idDetalle) return
-  if (adjuntosListByDetalle.value[idDetalle]) return
-  if (loadingAdjuntosMap.value[idDetalle]) return
-  loadingAdjuntosMap.value = { ...loadingAdjuntosMap.value, [idDetalle]: true }
-  try {
-    const response = await cajaChicaApi.get(`/Adjuntos/por-detalle/${idDetalle}`)
-    const payload = response.data as any
-    const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
-    adjuntosListByDetalle.value = {
-      ...adjuntosListByDetalle.value,
-      [idDetalle]: items.map((item: any) => ({
-        idAdjunto: Number(item.idAdjunto ?? item.IdAdjunto ?? 0),
-        idDetalle: Number(item.idDetalle ?? item.IdDetalle ?? idDetalle),
-        rutaArchivo: String(item.rutaArchivo ?? item.RutaArchivo ?? ''),
-        fechaSubida: String(item.fechaSubida ?? item.FechaSubida ?? '')
-      }))
-    }
-  } catch {
-    adjuntosListByDetalle.value = { ...adjuntosListByDetalle.value, [idDetalle]: [] }
-  } finally {
-    loadingAdjuntosMap.value = { ...loadingAdjuntosMap.value, [idDetalle]: false }
-  }
 }
 
 function openDetalle(idLiquidacion: number, item: AprobacionItem) {
