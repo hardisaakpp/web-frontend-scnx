@@ -13,7 +13,7 @@
         <div>
           <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Reasignar Aprobador</h1>
           <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Liquidaciones pendientes de aprobación de supervisor y a quién están asignadas
+            Liquidaciones pendientes de aprobación de {{ nivelActivo === 1 ? 'supervisor' : 'contabilidad' }} y a quién están asignadas
           </p>
         </div>
         <button
@@ -25,11 +25,34 @@
         </button>
       </div>
 
+      <div class="flex gap-2">
+        <button
+          type="button"
+          class="rounded-full px-4 py-1.5 text-sm font-medium transition-colors"
+          :class="nivelActivo === 1
+            ? 'bg-emerald-600 text-white'
+            : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'"
+          @click="cambiarNivel(1)"
+        >
+          Supervisores
+        </button>
+        <button
+          type="button"
+          class="rounded-full px-4 py-1.5 text-sm font-medium transition-colors"
+          :class="nivelActivo === 2
+            ? 'bg-emerald-600 text-white'
+            : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200'"
+          @click="cambiarNivel(2)"
+        >
+          Contadores
+        </button>
+      </div>
+
       <div class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-5">
-        <div v-if="loading" class="text-sm text-gray-500 dark:text-gray-400">Cargando pendientes de supervisor...</div>
+        <div v-if="loading" class="text-sm text-gray-500 dark:text-gray-400">Cargando pendientes de {{ nivelActivo === 1 ? 'supervisor' : 'contabilidad' }}...</div>
         <div v-else-if="loadError" class="text-sm text-red-600 dark:text-red-400">{{ loadError }}</div>
         <div v-else-if="!grupos.length" class="text-sm text-gray-500 dark:text-gray-400">
-          No hay liquidaciones pendientes en estado de supervisor.
+          No hay liquidaciones pendientes en estado de {{ nivelActivo === 1 ? 'supervisor' : 'contabilidad' }}.
         </div>
         <div v-else class="space-y-3">
           <div
@@ -58,7 +81,7 @@
                 <input
                   v-model.trim="grupo.query"
                   type="text"
-                  placeholder="Buscar nuevo supervisor..."
+                  :placeholder="`Buscar nuevo ${nivelActivo === 1 ? 'supervisor' : 'contador'}...`"
                   class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
                   :disabled="grupo.reasignando"
                   @focus="grupo.dropdownOpen = true"
@@ -130,6 +153,13 @@ const grupos = ref<GrupoPendiente[]>([])
 const loading = ref(false)
 const loadError = ref('')
 const actionSuccess = ref('')
+const nivelActivo = ref<1 | 2>(1)
+
+const cambiarNivel = (nivel: 1 | 2) => {
+  if (nivelActivo.value === nivel) return
+  nivelActivo.value = nivel
+  loadPendientes()
+}
 
 // Límite de sugerencias renderizadas: evita pintar cientos de filas mientras se escribe.
 const SUGGESTIONS_LIMIT = 8
@@ -184,7 +214,8 @@ const loadPendientes = async () => {
   loadError.value = ''
   actionSuccess.value = ''
   try {
-    const response = await cajaChicaApi.get('/Aprobaciones/pendientes-supervisor')
+    const endpoint = nivelActivo.value === 1 ? '/Aprobaciones/pendientes-supervisor' : '/Aprobaciones/pendientes-contabilidad'
+    const response = await cajaChicaApi.get(endpoint)
     const payload = response.data as any
     const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
 
@@ -220,7 +251,7 @@ const loadPendientes = async () => {
 
     grupos.value = Array.from(grouped.values())
   } catch {
-    loadError.value = 'No se pudieron cargar las liquidaciones pendientes de supervisor.'
+    loadError.value = `No se pudieron cargar las liquidaciones pendientes de ${nivelActivo.value === 1 ? 'supervisor' : 'contabilidad'}.`
   } finally {
     loading.value = false
   }
@@ -235,7 +266,7 @@ const reasignar = async (grupo: GrupoPendiente, nuevoUsuario: UserOption) => {
   try {
     await cajaChicaApi.post('/Aprobaciones/reasignar', {
       IdLiquidacion: grupo.idLiquidacion,
-      NivelAprobacion: 1,
+      NivelAprobacion: nivelActivo.value,
       IdUsuarioActual: grupo.idUsuario,
       IdUsuarioNuevo: nuevoUsuario.id
     })

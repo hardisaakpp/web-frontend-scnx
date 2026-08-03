@@ -118,7 +118,7 @@
                   {{ getIntegrationMessage(group.idLiquidacion)?.texto }}
                 </div>
                 <p class="text-xs text-gray-500 dark:text-gray-400">
-                  {{ group.totalItems }} detalles · Tienda: {{ group.codAlmacen }} · Custodio: {{ group.nombreCustodio }} ({{ group.cedulaCustodio }}) · Fecha: {{ formatDate(group.fechaCreacion) }}
+                  {{ group.totalItems }} detalles · Tienda: {{ group.codAlmacen }} · Custodio: {{ group.nombreCustodio }} ({{ group.cedulaCustodio }}) · Supervisor: {{ group.nombreSupervisor }} · Fecha: {{ formatDate(group.fechaCreacion) }}
                 </p>
               </div>
               <div class="flex items-center gap-3">
@@ -132,12 +132,22 @@
                 <div class="text-xs text-gray-500 dark:text-gray-400">IVA: {{ formatAmount(group.ivaMonto) }}</div>
                 <div class="text-xs text-gray-500 dark:text-gray-400">Total: {{ formatAmount(group.totalMonto) }}</div>
                 <button
+                  v-if="!isEnProcesoJob(group.idLiquidacion)"
                   type="button"
                   class="rounded border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-1 text-xs text-emerald-700 dark:text-emerald-300 disabled:opacity-50"
                   :disabled="integrationLoading[group.idLiquidacion] || isIntegrado(group.idLiquidacion)"
                   @click="integrarLiquidacion(group.idLiquidacion)"
                 >
                   {{ integrationLoading[group.idLiquidacion] ? 'Integrando...' : 'Integrar' }}
+                </button>
+                <button
+                  v-else
+                  type="button"
+                  class="rounded border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/30 px-2 py-1 text-xs text-amber-700 dark:text-amber-300 disabled:opacity-50"
+                  :disabled="integrationLoading[group.idLiquidacion]"
+                  @click="actualizarEstadoJob(group.idLiquidacion)"
+                >
+                  {{ integrationLoading[group.idLiquidacion] ? 'Consultando...' : 'Actualizar estado' }}
                 </button>
                 <button
                   type="button"
@@ -435,6 +445,8 @@ interface HistorialItem {
   idLiquidacion: number
   idUsuario: string
   usuarioNombre: string
+  idUsuarioSupervisor: string
+  nombreSupervisor: string
   nombreGasto: string
   concepto: string
   total: number
@@ -452,6 +464,7 @@ interface IntegracionEstadoItem {
   estado: string
   docEntry?: string | number
   docNum?: string | number
+  jobId?: string
   mensaje?: string
 }
 
@@ -596,6 +609,14 @@ const getAprobadorNombre = (item: HistorialItem) => {
   const current = getCurrentUser()
   if (current.id && current.id === idUsuario && current.name) return current.name
   return idUsuario
+}
+
+const getSupervisorNombre = (nombreSupervisor?: string, idUsuarioSupervisor?: string) => {
+  const nombrePersistido = normalizeString(nombreSupervisor)
+  if (nombrePersistido) return nombrePersistido
+  const idUsuario = normalizeString(idUsuarioSupervisor)
+  if (!idUsuario) return '-'
+  return normalizeString(aprobadorNombreById.value[idUsuario]) || idUsuario
 }
 
 const normalizeLiquidacion = (item: any): LiquidacionItem => ({
@@ -847,6 +868,7 @@ const groupedHistorial = computed(() => {
       codAlmacen: base?.codAlmacen || '-',
       nombreCustodio: base?.nombreCustodio || '-',
       cedulaCustodio: liquidacionesMap.value[idLiquidacion]?.cedulaCustodio || '-',
+      nombreSupervisor: getSupervisorNombre(base?.nombreSupervisor, base?.idUsuarioSupervisor),
       fechaCreacion: base?.fechaCreacion || ''
     }
   })
@@ -872,6 +894,11 @@ const toggleGroup = (idLiquidacion: number) => {
 }
 
 const isIntegrado = (idLiquidacion: number) => integraciones.value[idLiquidacion]?.estado === 'INTEGRADO'
+
+const isEnProcesoJob = (idLiquidacion: number) => {
+  const estado = String(integraciones.value[idLiquidacion]?.estado || '').toUpperCase()
+  return estado === 'ENCOLADO' || estado === 'PROCESANDO'
+}
 
 const getIntegracionEstado = (idLiquidacion: number) => {
   return integraciones.value[idLiquidacion]?.estado || 'PENDIENTE'
@@ -1218,7 +1245,26 @@ const integrarLiquidacion = async (idLiquidacion: number) => {
 
     console.log('[Integracion][Payload Liquidaciones]', JSON.stringify(payload, null, 2))
 
-    const response = await slayerApi.post<SlayerIntegracionResponse | string>('/Liquidaciones', payload)
+    const response = await slayerApi.post<SlayerIntegracionResponse | string>('/v1/liquidaciones', payload)
+
+    if (response.status === 202) {
+      const jobId = normalizeString((response.data as any)?.jobId)
+      const mensaje = `Liquidacion encolada (jobId: ${jobId || '-'}). Actualiza el estado en unos segundos.`
+
+      console.log('[Integracion][Encolado]', { jobId })
+
+      await cajaChicaApi.post('/Integraciones/Compras', {
+        idLiquidacion,
+        estado: 'ENCOLADO',
+        jobId,
+        mensaje
+      })
+
+      integraciones.value[idLiquidacion] = { estado: 'ENCOLADO', jobId, mensaje }
+      integrationMessages.value[idLiquidacion] = { tipo: 'ok', texto: mensaje }
+      return
+    }
+
     const responseText = normalizeString((response as any)?.request?.responseText)
     const { docEntry, docNum, mensaje } = parseIntegracionResultado(response.data, responseText)
 
@@ -1263,6 +1309,64 @@ const integrarLiquidacion = async (idLiquidacion: number) => {
       tipo: 'error',
       texto: mensaje
     }
+  } finally {
+    integrationLoading.value[idLiquidacion] = false
+  }
+}
+
+const actualizarEstadoJob = async (idLiquidacion: number) => {
+  const jobId = integraciones.value[idLiquidacion]?.jobId
+  if (!jobId) {
+    error.value = 'No hay jobId para esta liquidacion.'
+    return
+  }
+  if (integrationLoading.value[idLiquidacion]) return
+
+  integrationLoading.value[idLiquidacion] = true
+  error.value = ''
+  try {
+    const response = await slayerApi.get(`/v1/jobs/${jobId}`)
+    const job = response.data as {
+      status: string
+      result?: unknown
+      error?: string | null
+    }
+    const status = String(job.status || '').toUpperCase()
+
+    if (status === 'COMPLETADO') {
+      const { docEntry, docNum, mensaje } = parseIntegracionResultado(job.result)
+      await cajaChicaApi.post('/Integraciones/Compras', {
+        idLiquidacion,
+        estado: 'INTEGRADO',
+        docEntry,
+        docNum,
+        mensaje
+      })
+      integraciones.value[idLiquidacion] = { estado: 'INTEGRADO', docEntry, docNum, mensaje }
+      integrationMessages.value[idLiquidacion] = {
+        tipo: 'ok',
+        texto: docEntry || docNum
+          ? `Liquidacion creada. DocEntry: ${docEntry || '-'}, DocNum: ${docNum || '-'}.`
+          : mensaje
+      }
+    } else if (status === 'ERROR') {
+      const mensaje = normalizeString(job.error) || 'El job de SAP fallo.'
+      await cajaChicaApi.post('/Integraciones/Compras', {
+        idLiquidacion,
+        estado: 'ERROR',
+        mensaje
+      })
+      integraciones.value[idLiquidacion] = { estado: 'ERROR', jobId, mensaje }
+      integrationMessages.value[idLiquidacion] = { tipo: 'error', texto: mensaje }
+    } else {
+      const mensaje = `Todavia en proceso (${status || 'ENCOLADO'}). Intenta de nuevo en unos segundos.`
+      integraciones.value[idLiquidacion] = { estado: status || 'ENCOLADO', jobId, mensaje }
+      integrationMessages.value[idLiquidacion] = { tipo: 'ok', texto: mensaje }
+    }
+  } catch (err: any) {
+    const mensaje = err?.response?.data?.message || err?.message || 'No se pudo consultar el estado del job.'
+    error.value = mensaje
+    console.error('[ActualizarEstadoJob][Error]', { idLiquidacion, jobId, err })
   } finally {
     integrationLoading.value[idLiquidacion] = false
   }
@@ -1358,6 +1462,7 @@ const loadHistorial = async () => {
         estado: normalizeString(item.estadoIntegracion ?? item.EstadoIntegracion ?? 'PENDIENTE') || 'PENDIENTE',
         docEntry: item.docEntry ?? item.DocEntry,
         docNum: item.docNum ?? item.DocNum,
+        jobId: normalizeString(item.jobId ?? item.JobId ?? '') || undefined,
         mensaje: normalizeString(item.mensajeIntegracion ?? item.MensajeIntegracion ?? '')
       }
       return acc
@@ -1383,7 +1488,9 @@ const loadHistorial = async () => {
       idLiquidacion: Number(item.idLiquidacion ?? item.IdLiquidacion ?? 0),
       idUsuario: normalizeString(item.idUsuario ?? item.IdUsuario ?? ''),
       usuarioNombre: normalizeString(
-        item.usuarioNombre
+        item.nombreUsuarioAprobador
+        ?? item.NombreUsuarioAprobador
+        ?? item.usuarioNombre
         ?? item.UsuarioNombre
         ?? item.nombreUsuario
         ?? item.NombreUsuario
@@ -1391,6 +1498,8 @@ const loadHistorial = async () => {
         ?? item.AprobadoPor
         ?? ''
       ),
+      idUsuarioSupervisor: normalizeString(item.idUsuarioSupervisor ?? item.IdUsuarioSupervisor ?? ''),
+      nombreSupervisor: normalizeString(item.nombreSupervisor ?? item.NombreSupervisor ?? ''),
       nombreGasto: normalizeString(item.nombreGasto ?? item.NombreGasto ?? '-'),
       concepto: normalizeString(item.concepto ?? item.Concepto ?? '-'),
       total: Number(item.total ?? item.Total ?? 0),
@@ -1412,7 +1521,7 @@ const loadHistorial = async () => {
     }, {})
 
     const missingIds = Array.from(new Set(historial.value
-      .map(item => normalizeString(item.idUsuario))
+      .flatMap(item => [normalizeString(item.idUsuario), normalizeString(item.idUsuarioSupervisor)])
       .filter(id => id && !initialMap[id])))
 
     if (missingIds.length) {
