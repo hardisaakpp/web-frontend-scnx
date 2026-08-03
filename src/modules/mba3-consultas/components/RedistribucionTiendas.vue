@@ -602,7 +602,9 @@
                   ? 'Enviando a SAP...'
                   : puedeEnviarOdcSap
                     ? 'Enviar ODC a SAP'
-                    : 'Redistribución incompleta'
+                    : pedidoYaEnviado
+                      ? 'Pedido Enviado'
+                      : 'Redistribución incompleta'
               }}
             </button>
             <Teleport to="body">
@@ -818,6 +820,12 @@ const puedeReintentarEnvioOdcSapValue = computed(
   () => props.pedido?.puede_reintentar_envio_odc_sap === true
 )
 
+// El pedido ya fue enviado a SAP (estado_id 12, CONFIRMADO_ENVIADO): no es "redistribución
+// incompleta", es que la ODC ya se generó y no corresponde reenviar.
+const pedidoYaEnviado = computed(
+  () => Number(props.pedido?.cabecera?.estado_id) === 12
+)
+
 // Computed para resumen de redistribución
 const resumenRedistribucion = computed(() => {
   if (productosArray.value.length === 0) {
@@ -859,7 +867,9 @@ const tituloBotonEnviarOdcSap = computed(() => {
     return 'Complete la redistribución (debe quedar completa y válida) antes de enviar a SAP'
   }
   if (!puedeReintentarEnvioOdcSapValue.value) {
-    return 'Acción no disponible para el estado actual del pedido'
+    return pedidoYaEnviado.value
+      ? 'Este pedido ya fue enviado a SAP; no corresponde reenviarlo'
+      : 'Acción no disponible para el estado actual del pedido'
   }
   return 'Enviar ODC a SAP'
 })

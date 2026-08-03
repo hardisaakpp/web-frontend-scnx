@@ -126,12 +126,28 @@
       <!-- Header (misma estructura que listados MBA3: fila título + fila de acciones) -->
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6">
         <div class="space-y-4">
-          <OdcSapVolverButton
-            v-if="odcSapVolverTarget"
-            :to="odcSapVolverTarget"
-            :title="odcSapVolverTitle"
-            class="shrink-0 self-start"
-          />
+          <div v-if="odcSapVolverTarget || !soloLectura" class="flex items-center flex-wrap gap-4">
+            <OdcSapVolverButton
+              v-if="odcSapVolverTarget"
+              :to="odcSapVolverTarget"
+              :title="odcSapVolverTitle"
+              class="shrink-0"
+            />
+            <div v-if="!soloLectura" class="relative shrink-0 ml-auto">
+              <input
+                v-model="pedidoIdInput"
+                @keyup.enter="goToPedido"
+                type="text"
+                placeholder="Buscar por N° de pedido"
+                class="w-64 pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-purple-500 focus:border-purple-500"
+              />
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg class="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+            </div>
+          </div>
           <div class="flex items-center justify-between flex-wrap gap-4">
             <div>
               <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
@@ -151,49 +167,35 @@
                 </button>
               </p>
             </div>
-            <div v-if="!soloLectura" class="relative shrink-0">
-              <input
-                v-model="pedidoIdInput"
-                @keyup.enter="goToPedido"
-                type="text"
-                placeholder="Buscar por N° de pedido"
-                class="w-64 pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-purple-500 focus:border-purple-500"
-              />
-              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg class="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            <div class="flex flex-wrap items-center justify-end gap-3 shrink-0">
+              <button
+                v-if="soloLectura && pedido && tieneDistribucionConfirmada"
+                type="button"
+                @click="handleDescargarDistribucionExcel"
+                :disabled="descargandoRedistribucion"
+                class="shrink-0 inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-green-600 dark:bg-green-500 rounded-lg shadow-sm hover:bg-green-700 dark:hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Descargar distribución por tiendas en formato Excel"
+              >
+                <svg v-if="!descargandoRedistribucion" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-              </div>
+                <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Descargando redistribución" />
+                {{ descargandoRedistribucion ? 'Descargando...' : 'Descargar Redistribución' }}
+              </button>
+              <button
+                v-if="!soloLectura && pedido"
+                type="button"
+                @click="handleCancelar"
+                :disabled="cancelando || (pedido != null && pedido.puede_cancelar_pedido === false)"
+                class="shrink-0 px-4 py-2 border border-red-300 dark:border-red-600 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                <svg v-if="!cancelando" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Cancelando pedido" />
+                {{ cancelando ? 'Cancelando...' : 'Cancelar Pedido' }}
+              </button>
             </div>
-          </div>
-          <div class="flex w-full flex-wrap items-center justify-end gap-3">
-            <button
-              v-if="soloLectura && pedido && tieneDistribucionConfirmada"
-              type="button"
-              @click="handleDescargarDistribucionExcel"
-              :disabled="descargandoRedistribucion"
-              class="shrink-0 inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-green-600 dark:bg-green-500 rounded-lg shadow-sm hover:bg-green-700 dark:hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Descargar distribución por tiendas en formato Excel"
-            >
-              <svg v-if="!descargandoRedistribucion" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Descargando redistribución" />
-              {{ descargandoRedistribucion ? 'Descargando...' : 'Descargar Redistribución' }}
-            </button>
-            <button
-              v-if="!soloLectura && pedido"
-              type="button"
-              @click="handleCancelar"
-              :disabled="cancelando || (pedido != null && pedido.puede_cancelar_pedido === false)"
-              class="shrink-0 px-4 py-2 border border-red-300 dark:border-red-600 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              <svg v-if="!cancelando" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Cancelando pedido" />
-              {{ cancelando ? 'Cancelando...' : 'Cancelar Pedido' }}
-            </button>
           </div>
         </div>
       </div>

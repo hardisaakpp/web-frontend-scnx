@@ -832,19 +832,20 @@ onUnmounted(() => {
      K (esta constante)  −  B (cromo por DEBAJO del scroller, en esta vista)
    Objetivo: que el reposo coincida con el borde inferior de la barra de indicadores.
      borde inferior de la barra = 64 (ancla `top-16`) + 47 (alto medido, escritorio) = 111px
-     B en MabelTradingRedistribucionView (con pb-6 en RedistribucionTiendas.vue):
+     B en MabelTradingRedistribucionView (con pb-6 en RedistribucionTiendas.vue y el
+     padding de MainLayout.vue reducido a la mitad, p-2/md:p-3/lg:p-4):
        1 (borde .excel-grid-container) + 24 (pb-6) + 75 (barra de acciones sticky)
-       + 1 (borde card) + 24 (py-6 de la vista) + 32 (lg:p-8 del <main>) = 157
-     K = 111 + 157 = 268 → se usa 272 (margen de 4px para soloLectura y subpíxel)
+       + 1 (borde card) + 24 (py-6 de la vista) + 16 (lg:p-4 del <main>, antes 32 con lg:p-8) = 141
+     K = 111 + 141 = 252 → se usa 256 (margen de 4px para soloLectura y subpíxel)
    Si se toca la barra de indicadores, la barra de acciones, o el padding de
-   RedistribucionTiendas.vue/MabelTradingRedistribucionView.vue, recalcular con
-   esta misma fórmula (K = borde_inferior_barra_indicadores + B). Medido con Playwright
+   RedistribucionTiendas.vue/MabelTradingRedistribucionView.vue/MainLayout.vue, recalcular
+   con esta misma fórmula (K = borde_inferior_barra_indicadores + B). Medido con Playwright
    contra el CSS compilado real tras fusionar las 3 métricas en "pills" de color: la
    altura de escritorio NO cambió (sigue en 47px, porque el pill de Diferencia ya
    marcaba el alto máximo de la fila); ver constante <768px para el caso que sí cambió. */
 .grid-scroller {
   overflow: auto;
-  max-height: calc(100dvh - 272px);
+  max-height: calc(100dvh - 256px);
   min-height: 280px;
   /* alto del thead (fila con nombre de tienda en 2 líneas): evita que Tab deje
      una celda enfocada oculta debajo del encabezado congelado */
@@ -857,9 +858,16 @@ onUnmounted(() => {
 @media (max-width: 767px) {
   .grid-scroller {
     /* la barra de indicadores se parte en 2 filas por flex-wrap: 89px medidos a 420px
-       (3 pills de color, no 83px de la versión sin pills) y <main> baja a p-4 (16px, no 32px).
-       target = 64 + 89 = 153 ; B_móvil = 125 (parte fija de B) + 16 (p-4) = 141 ; K = 153+141 = 294 → 298 */
-    max-height: calc(100dvh - 298px);
+       (3 pills de color, no 83px de la versión sin pills) y <main> usa p-2 (8px, antes p-4=16px).
+       PERO la barra de acciones (RedistribucionTiendas.vue) es un `flex justify-between` con
+       texto de estado a la izquierda y botones a la derecha, SIN manejo responsive — a 420px
+       probablemente envuelve a más de los 75px que asume el cálculo de escritorio (medido ~99px
+       en una réplica simplificada sin el texto de estado real, así que el alto real en
+       producción podría ser mayor todavía). No se pudo medir con precisión sin la app corriendo.
+       Por eso esta constante prioriza seguridad (margen amplio) sobre exactitud: mejor sobrar
+       espacio muerto que repetir el bug de encabezado tapado en pantallas angostas.
+       target = 64 + 89 = 153 ; K conservador = 330 (en vez de los 286 "exactos" de la fórmula) */
+    max-height: calc(100dvh - 330px);
   }
 }
 

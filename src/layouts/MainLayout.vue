@@ -402,7 +402,7 @@
       <!-- Page Content -->
       <main
         class="min-h-[calc(100vh-4rem)]"
-        :class="route.meta?.fullBleed ? '' : 'p-4 md:p-6 lg:p-8'"
+        :class="route.meta?.fullBleed ? '' : 'p-2 md:p-3 lg:p-4'"
       >
         <div
           v-if="showOdcSapVolverInMainChrome && odcSapVolverTarget"
