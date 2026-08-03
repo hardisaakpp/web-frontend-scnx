@@ -4,7 +4,7 @@ import { useReposicionStore } from '../stores/reposicionStore'
 import { useAuthStore } from '@/stores/auth'
 import reposicionApi from '../services/reposicionApi'
 import type { HistorialCabecera, HistorialDetalleItem, HistorialSolicitudSap, Almacen } from '../types'
-import { 
+import {
   CalendarIcon,
   DocumentTextIcon,
   CheckBadgeIcon,
@@ -14,7 +14,8 @@ import {
   QueueListIcon,
   XMarkIcon,
   BuildingOfficeIcon,
-  ArrowLeftIcon
+  ArrowLeftIcon,
+  TableCellsIcon
 } from '@heroicons/vue/24/outline'
 import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue'
 
@@ -93,6 +94,16 @@ const openDetail = async (id: number) => {
 
 const downloadPdf = (id: number) => window.open(reposicionApi.getPdfUrl(id), '_blank')
 
+// cdCode se omite a propósito: el reporte general incluye todos los Centros de
+// Distribución. whsFilter filtra por tienda (destino), no aplica aquí.
+const reporteGeneralParams = () => ({
+  desde: fechaDesde.value,
+  hasta: fechaHasta.value
+})
+
+const downloadPdfGeneral = () => window.open(reposicionApi.getHistorialPdfGeneralUrl(reporteGeneralParams()), '_blank')
+const downloadExcelGeneral = () => window.open(reposicionApi.getHistorialExcelGeneralUrl(reporteGeneralParams()), '_blank')
+
 const isSapModalOpen = ref(false)
 const sapRequests = ref<HistorialSolicitudSap[]>([])
 const loadingSap = ref(false)
@@ -142,6 +153,24 @@ const viewSolicitudes = async (whsCode: string, fecha: string) => {
           <input type="date" v-model="fechaHasta" class="border-none focus:ring-0 p-0 text-sm font-bold text-gray-900 dark:text-white bg-transparent cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors" />
         </div>
       </div>
+    </div>
+
+    <!-- Reportes Generales (todas las bodegas, agrupado por Centro de Distribución) -->
+    <div class="flex flex-wrap items-center justify-end gap-2 mb-6">
+      <button
+        @click="downloadExcelGeneral"
+        class="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all text-sm font-medium"
+      >
+        <TableCellsIcon class="w-4 h-4 text-emerald-600" />
+        <span>Excel General</span>
+      </button>
+      <button
+        @click="downloadPdfGeneral"
+        class="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm hover:bg-gray-50 dark:hover:bg-gray-700 transition-all text-sm font-medium"
+      >
+        <DocumentArrowDownIcon class="w-4 h-4 text-red-600" />
+        <span>PDF General</span>
+      </button>
     </div>
 
     <!-- KPIs -->

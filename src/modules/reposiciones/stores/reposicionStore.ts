@@ -213,7 +213,8 @@ export const useReposicionStore = defineStore('reposicion', {
           toWhs,
           fromWhs,
           itemCode,
-          quantity
+          quantity,
+          usuarioNombre: authStore.fullName || authStore.userName
         })
       } catch (err) {
         await this.fetchCarrito()

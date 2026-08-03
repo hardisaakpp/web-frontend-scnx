@@ -77,6 +77,7 @@ export interface SaveItemRequest {
   fromWhs: string;
   itemCode: string;
   quantity: number;
+  usuarioNombre: string;
 }
 
 export interface UpdateCommentRequest {

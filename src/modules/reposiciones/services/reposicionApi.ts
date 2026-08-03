@@ -17,6 +17,21 @@ import type {
   StatusResponse
 } from '../types'
 
+interface ReporteGeneralParams {
+  cdCode?: string;
+  desde?: string;
+  hasta?: string;
+}
+
+function buildReporteGeneralQuery(params?: ReporteGeneralParams): string {
+  const qs = new URLSearchParams()
+  if (params?.cdCode) qs.append('cdCode', params.cdCode)
+  if (params?.desde) qs.append('desde', params.desde)
+  if (params?.hasta) qs.append('hasta', params.hasta)
+  const query = qs.toString()
+  return query ? `?${query}` : ''
+}
+
 const reposicionApi = {
   // Catalogo
   getCatalogo: async (filters: CatalogoFilters) => {
@@ -103,6 +118,18 @@ const reposicionApi = {
   getSolicitudesSap: async (whsCode: string, fecha: string) => {
     const response = await reposicionesApi.get<HistorialSolicitudSap[]>('Historial/solicitudes', { params: { whsCode, fecha } })
     return response.data
+  },
+
+  getHistorialPdfGeneralUrl: (params?: ReporteGeneralParams) => {
+    const base = reposicionesApi.defaults.baseURL?.replace(/\/$/, '') || ''
+    const qs = buildReporteGeneralQuery(params)
+    return `${base}/Historial/pdf/general${qs}`
+  },
+
+  getHistorialExcelGeneralUrl: (params?: ReporteGeneralParams) => {
+    const base = reposicionesApi.defaults.baseURL?.replace(/\/$/, '') || ''
+    const qs = buildReporteGeneralQuery(params)
+    return `${base}/Historial/excel/general${qs}`
   }
 
 }

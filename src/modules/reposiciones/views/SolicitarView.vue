@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, onUnmounted, ref, computed, watch } from 'vue'
 import { useReposicionStore } from '../stores/reposicionStore'
 import { storeToRefs } from 'pinia'
 import {
@@ -99,6 +99,27 @@ onMounted(async () => {
 const handleSearch = () => {
   store.fetchCatalogo(true)
 }
+
+let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null
+watch(
+  () => [
+    filters.value.descripcion,
+    filters.value.itemCode,
+    filters.value.codeBars,
+    filters.value.marca,
+    filters.value.categoria,
+    filters.value.linea,
+    filters.value.unidad
+  ],
+  () => {
+    if (searchDebounceTimer) clearTimeout(searchDebounceTimer)
+    searchDebounceTimer = setTimeout(handleSearch, 400)
+  }
+)
+
+onUnmounted(() => {
+  if (searchDebounceTimer) clearTimeout(searchDebounceTimer)
+})
 
 const handleClearFilters = () => {
   store.setFilters({
