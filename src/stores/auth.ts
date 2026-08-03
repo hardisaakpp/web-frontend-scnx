@@ -41,6 +41,37 @@ function clearExpiryTimeout(): void {
   }
 }
 
+const CLAIM_NAME = 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'
+const CLAIM_ROLE = 'http://schemas.microsoft.com/ws/2008/06/identity/claims/role'
+
+/** Usuario: preferir claims .NET; fallback a tokens "simples" si existieran. */
+function extractUserFromClaims(decoded: JwtPayload): string | null {
+  const fromClaimName = typeof decoded[CLAIM_NAME] === 'string' ? (decoded[CLAIM_NAME] as string) : undefined
+  const fromUniqueName = typeof decoded.unique_name === 'string' ? decoded.unique_name : undefined
+  const fromName = typeof decoded.name === 'string' ? (decoded.name as string) : undefined
+  return fromClaimName || fromUniqueName || fromName || null
+}
+
+/** Roles: preferir claim .NET; fallback a "role" si existiera. */
+function extractRolesFromClaims(decoded: JwtPayload): string[] {
+  const roleClaim = decoded[CLAIM_ROLE] ?? decoded.role
+  if (Array.isArray(roleClaim)) {
+    return roleClaim.filter((r): r is string => typeof r === 'string')
+  }
+  return typeof roleClaim === 'string' ? [roleClaim] : []
+}
+
+/** Carga userData desde localStorage; null si no existe o no se puede parsear. */
+function loadCachedUserData(): User | null {
+  const userStr = localStorage.getItem('user')
+  if (!userStr) return null
+  try {
+    return JSON.parse(userStr) as User
+  } catch {
+    return null
+  }
+}
+
 export interface WarehouseGroup {
   id: string
   name: string
@@ -500,57 +531,32 @@ export const useAuthStore = defineStore('auth', {
 
     initializeAuth(): void {
       const token = localStorage.getItem('token')
-      if (token) {
-        try {
-          const decoded = jwtDecode<JwtPayload>(token)
+      if (!token) return
 
-          const CLAIM_NAME = 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'
-          const CLAIM_ROLE = 'http://schemas.microsoft.com/ws/2008/06/identity/claims/role'
+      try {
+        const decoded = jwtDecode<JwtPayload>(token)
 
-          // Verificar si el token ha expirado
-          if (decoded.exp * 1000 < Date.now()) {
-            this.logout()
-            return
-          }
-
-          this.token = token
-
-          // Usuario: preferir claims .NET; fallback a tokens "simples" si existieran
-          const userFromClaims =
-            (typeof decoded[CLAIM_NAME] === 'string' ? (decoded[CLAIM_NAME] as string) : undefined) ||
-            (typeof decoded.unique_name === 'string' ? decoded.unique_name : undefined) ||
-            (typeof decoded.name === 'string' ? (decoded.name as string) : undefined)
-
-          this.user = userFromClaims || null
-
-          // Roles: preferir claim .NET; fallback a "role" si existiera
-          const roleClaim =
-            decoded[CLAIM_ROLE] ??
-            decoded.role
-
-          const roles = Array.isArray(roleClaim)
-            ? roleClaim.filter((r): r is string => typeof r === 'string')
-            : typeof roleClaim === 'string'
-              ? [roleClaim]
-              : []
-
-          this.role = roles[0] || null
-
-          // Cargar datos del usuario desde localStorage
-          const userStr = localStorage.getItem('user')
-          if (userStr) {
-            try {
-              this.userData = JSON.parse(userStr) as User
-            } catch {
-              // Si no se puede parsear, mantener null
-            }
-          }
-
-          api.defaults.headers.common['Authorization'] = `Bearer ${token}`
-          scheduleRedirectOnTokenExpiry(token, this)
-        } catch {
+        // Verificar si el token ha expirado
+        if (decoded.exp * 1000 < Date.now()) {
           this.logout()
+          return
         }
+
+        this.token = token
+        this.user = extractUserFromClaims(decoded)
+        this.role = extractRolesFromClaims(decoded)[0] || null
+
+        // Cargar datos del usuario desde localStorage (si no se puede parsear, mantener el actual)
+        const cachedUser = loadCachedUserData()
+        if (cachedUser) this.userData = cachedUser
+
+        api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+        scheduleRedirectOnTokenExpiry(token, this)
+
+        const cachedEmoji = localStorage.getItem(this.avatarStorageKey())
+        if (cachedEmoji) this.avatarEmoji = cachedEmoji
+      } catch {
+        this.logout()
       }
     }
   }

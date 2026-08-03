@@ -797,6 +797,14 @@ function handleDragEnd() {
   dragOverColumnKey.value = null
 }
 
+function formatDetalleAmount(d: DetalleItem | undefined, amount: number | undefined): string {
+  return d != null ? formatAmount(amount ?? 0) : '-'
+}
+
+function formatSupervisorList(list: SupervisorDecision[], mapper: (dec: SupervisorDecision) => string): string {
+  return list.length ? list.map(mapper).join(', ') : '-'
+}
+
 function getCellValue(group: { idLiquidacion: number }, item: AprobacionItem, columnKey: string): string | number {
   const d = detallesByLiquidacion.value[group.idLiquidacion]?.find(det => det.idDetalle === item.idDetalle)
   const list = getSupervisorDecisions(item.idDetalle)
@@ -820,19 +828,19 @@ function getCellValue(group: { idLiquidacion: number }, item: AprobacionItem, co
     case 'concepto':
       return d?.concepto ?? item.concepto ?? '-'
     case 'subtotalConIva':
-      return d != null ? formatAmount(d.subtotalConIva) : '-'
+      return formatDetalleAmount(d, d?.subtotalConIva)
     case 'subtotalSinIva':
-      return d != null ? formatAmount(d.subtotalSinIva) : '-'
+      return formatDetalleAmount(d, d?.subtotalSinIva)
     case 'iva':
-      return d != null ? formatAmount(d.iva) : '-'
+      return formatDetalleAmount(d, d?.iva)
     case 'total':
       return formatAmount(item.total)
     case 'usuario':
-      return list.length ? list.map(dec => dec.nombreUsuario || getUserLabel(dec.idUsuario)).join(', ') : '-'
+      return formatSupervisorList(list, dec => dec.nombreUsuario || getUserLabel(dec.idUsuario))
     case 'montoSupervisor':
-      return list.length ? list.map(dec => formatAmount(dec.montoAprobado)).join(', ') : '-'
+      return formatSupervisorList(list, dec => formatAmount(dec.montoAprobado))
     case 'obsSupervisor':
-      return list.length ? list.map(dec => dec.observacion || '-').join(', ') : '-'
+      return formatSupervisorList(list, dec => dec.observacion || '-')
     case 'novedad':
       return hasSupervisorNovedad(item) ? 'Sí' : 'No'
     case 'nivel':

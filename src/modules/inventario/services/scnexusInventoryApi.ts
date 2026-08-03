@@ -251,9 +251,9 @@ export const scnexusInventoryApi = {
 
   async downloadAdjustmentReport(adjustmentId: string): Promise<{ blob: Blob; fileName: string }> {
     const response = await api.get(`/api/inventory-adjustments/${adjustmentId}/report`, { responseType: 'blob' })
-    const disposition = (response.headers['content-disposition'] as string | undefined) || ''
-    const match = disposition.match(/filename[^;=\n]*=["']?([^"';\n]+)["']?/)
-    const fileName = match?.[1]?.trim() || `informe-final-${adjustmentId}.xlsx`
+    const disposition = (response.headers['content-disposition'] as string | undefined) ?? ''
+    const match = /filename[^;=\n]*=["']?([^"';\n]+)["']?/.exec(disposition)
+    const fileName = match?.[1]?.trim() ?? `informe-final-${adjustmentId}.xlsx`
     return { blob: response.data as Blob, fileName }
   }
 }

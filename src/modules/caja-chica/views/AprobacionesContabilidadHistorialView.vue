@@ -594,6 +594,20 @@ const getCurrentUserId = (): string => getCurrentUser().id
 
 const normalizeString = (value: any) => String(value ?? '').trim()
 
+// Los payloads del backend mezclan claves camelCase y PascalCase para el mismo campo;
+// firstNonNull prueba cada clave en orden y devuelve la primera con valor real.
+const firstNonNull = (item: any, keys: string[]): any => {
+  for (const key of keys) {
+    const value = item?.[key]
+    if (value !== null && value !== undefined) return value
+  }
+  return undefined
+}
+
+const pickString = (item: any, keys: string[], fallback = '') => normalizeString(firstNonNull(item, keys) ?? fallback)
+const pickNumber = (item: any, keys: string[], fallback = 0) => Number(firstNonNull(item, keys) ?? fallback)
+const pickDate = (item: any, keys: string[]) => String(firstNonNull(item, keys) ?? '')
+
 const getAprobadorNombre = (item: HistorialItem) => {
   const nombreDirecto = normalizeString(item.usuarioNombre)
   if (nombreDirecto) return nombreDirecto
@@ -681,7 +695,14 @@ const loadTiposIva = async () => {
   try {
     const response = await cajaChicaApi.get('/TiposIva/all')
     const payload = response.data as any
-    const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
+    let items: any[]
+    if (Array.isArray(payload)) {
+      items = payload
+    } else if (Array.isArray(payload?.data)) {
+      items = payload.data
+    } else {
+      items = []
+    }
     catalogoTiposIva.value = items.map((item: any) => ({
       id: Number(item.id ?? item.Id ?? 0),
       codigo: normalizeString(item.codigo ?? item.Codigo ?? ''),
@@ -1022,6 +1043,57 @@ const getUCodSt = (
   }) ? '01' : '02'
 }
 
+type DocumentLineGroup = {
+  accountCode: string
+  itemDescription: string
+  quantity: number
+  unitPrice: number
+  taxCode: string
+}
+
+const buildTaxBreakdown = (montos: AprobacionMontosPorDetalle) => {
+  const roundAmount = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100
+  const breakdown = [] as Array<{ taxCode: string; netAmount: number }>
+  if (Number(montos.gravado ?? 0) > 0) {
+    breakdown.push({
+      taxCode: montos.taxCodeGravado,
+      netAmount: roundAmount(Number(montos.gravado))
+    })
+  }
+  if (Number(montos.noGravado ?? 0) > 0) {
+    breakdown.push({
+      taxCode: 'IVA_0',
+      netAmount: roundAmount(Number(montos.noGravado))
+    })
+  }
+  return breakdown
+}
+
+const accumulateDocumentLineGroup = (
+  grouped: Map<string, DocumentLineGroup>,
+  accountCode: string,
+  itemDescription: string,
+  part: { taxCode: string; netAmount: number }
+) => {
+  if (part.netAmount <= 0) return
+
+  const groupKey = `${accountCode}::${part.taxCode}`
+  const current = grouped.get(groupKey)
+  if (current) {
+    // Para evitar multiplicaciones no deseadas en SAP, agrupamos en una sola línea por cuenta/impuesto.
+    current.quantity = 1
+    current.unitPrice = current.unitPrice + part.netAmount
+  } else {
+    grouped.set(groupKey, {
+      accountCode,
+      itemDescription,
+      quantity: 1,
+      unitPrice: part.netAmount,
+      taxCode: part.taxCode
+    })
+  }
+}
+
 const buildDocumentLines = (
   detalles: LiquidacionDetalleItem[],
   codAlmacen: string,
@@ -1030,13 +1102,7 @@ const buildDocumentLines = (
 ) => {
   const roundAmount = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100
 
-  const grouped = new Map<string, {
-    accountCode: string
-    itemDescription: string
-    quantity: number
-    unitPrice: number
-    taxCode: string
-  }>()
+  const grouped = new Map<string, DocumentLineGroup>()
 
   for (const detalle of detalles) {
     const montos = montosByDetalle[detalle.idDetalle]
@@ -1045,38 +1111,9 @@ const buildDocumentLines = (
     const accountCode = normalizeString(detalle.idGasto)
     if (!accountCode) continue
 
-    const breakdown = [] as Array<{ taxCode: string; netAmount: number }>
-    if (Number(montos.gravado ?? 0) > 0) {
-      breakdown.push({
-        taxCode: montos.taxCodeGravado,
-        netAmount: roundAmount(Number(montos.gravado))
-      })
-    }
-    if (Number(montos.noGravado ?? 0) > 0) {
-      breakdown.push({
-        taxCode: 'IVA_0',
-        netAmount: roundAmount(Number(montos.noGravado))
-      })
-    }
-
-    for (const part of breakdown) {
-      if (part.netAmount <= 0) continue
-      const groupKey = `${accountCode}::${part.taxCode}`
-
-      const current = grouped.get(groupKey)
-      if (current) {
-        // Para evitar multiplicaciones no deseadas en SAP, agrupamos en una sola línea por cuenta/impuesto.
-        current.quantity = 1
-        current.unitPrice = current.unitPrice + part.netAmount
-      } else {
-        grouped.set(groupKey, {
-          accountCode,
-          itemDescription: detalle.nombreGasto || detalle.concepto || '',
-          quantity: 1,
-          unitPrice: part.netAmount,
-          taxCode: part.taxCode
-        })
-      }
+    const itemDescription = detalle.nombreGasto || detalle.concepto || ''
+    for (const part of buildTaxBreakdown(montos)) {
+      accumulateDocumentLineGroup(grouped, accountCode, itemDescription, part)
     }
   }
 
@@ -1142,173 +1179,219 @@ const downloadJsonPayload = (idLiquidacion: number, payload: unknown) => {
   }
 }
 
-const integrarLiquidacion = async (idLiquidacion: number) => {
-  if (integrationLoading.value[idLiquidacion]) return
+type IntegracionGroup = (typeof groupedHistorial.value)[number]
 
+const getIntegracionContext = (
+  idLiquidacion: number
+): { ok: false; error: string } | { ok: true; selectedGroup: IntegracionGroup; liquidacion: LiquidacionItem } => {
   const selectedGroup = groupedHistorial.value.find(group => group.idLiquidacion === idLiquidacion)
   if (!selectedGroup) {
-    error.value = 'No se encontro la liquidacion seleccionada en la vista actual.'
-    return
+    return { ok: false, error: 'No se encontro la liquidacion seleccionada en la vista actual.' }
   }
 
   const liquidacion = liquidacionesMap.value[idLiquidacion]
   if (!liquidacion || !liquidacion.cedulaCustodio) {
-    error.value = 'No se encontro la cedula del custodio.'
+    return { ok: false, error: 'No se encontro la cedula del custodio.' }
+  }
+
+  return { ok: true, selectedGroup, liquidacion }
+}
+
+const buildIntegracionPayload = async (
+  idLiquidacion: number,
+  selectedGroup: IntegracionGroup,
+  liquidacion: LiquidacionItem
+) => {
+  const aprobacionesLiquidacion = selectedGroup.items
+
+  const detalleIdsAprobacion = new Set(aprobacionesLiquidacion.map(item => item.idDetalle))
+  const detalles = (detallesByLiquidacion.value[idLiquidacion] || [])
+    .filter(detalle => detalle.idLiquidacion === idLiquidacion && detalleIdsAprobacion.has(detalle.idDetalle))
+
+  if (!detalles.length) {
+    return { ok: false as const, error: 'No se encontraron detalles para integrar.' }
+  }
+
+  const docDate = buildDocDate()
+  const codAlmacen = normalizeString(liquidacion.codAlmacen)
+  const [cardCodeCustodio, marcaContab] = await Promise.all([
+    resolveCardCodeByCedula(liquidacion.cedulaCustodio),
+    fetchMarcaContab(codAlmacen)
+  ])
+  const detalleById = detalles.reduce<Record<number, LiquidacionDetalleItem>>((acc, detalle) => {
+    acc[detalle.idDetalle] = detalle
+    return acc
+  }, {})
+  const montosByDetalle = buildAprobacionMontosByDetalle(aprobacionesLiquidacion, detalleById)
+  const documentLines = buildDocumentLines(detalles, codAlmacen, marcaContab, montosByDetalle)
+  if (!documentLines.length) {
+    return { ok: false as const, error: 'No hay valores aprobados por contabilidad para integrar.' }
+  }
+
+  const baseTotals = calculateTotalsFromBases(montosByDetalle)
+
+  const payload = {
+    CardCode: cardCodeCustodio,
+    Series: 217,
+    DocDate: docDate,
+    Comments: 'LIQUIDACION DE COMPRA',
+    DocType: 'dDocument_Service',
+    DocCurrency: 'USD',
+    JournalMemo: `REPOSICION CAJA CHICA ${codAlmacen}`.trim(),
+    U_COD_ST: getUCodSt(detalles, montosByDetalle),
+    U_tipo_comprob: '03',
+    U_ORIGEN: 'C',
+    U_SER_EST: '001',
+    U_SER_PE: '100',
+    DocumentLines: documentLines
+  }
+
+  return { ok: true as const, payload, baseTotals, montosByDetalle }
+}
+
+type IntegracionPayloadOk = Extract<Awaited<ReturnType<typeof buildIntegracionPayload>>, { ok: true }>
+
+const buildConfirmationMessage = (
+  idLiquidacion: number,
+  payload: IntegracionPayloadOk['payload'],
+  baseTotals: IntegracionPayloadOk['baseTotals'],
+  montosByDetalle: IntegracionPayloadOk['montosByDetalle']
+) => {
+  // Respaldo del JSON exacto antes de enviar a SAP.
+  downloadJsonPayload(idLiquidacion, payload)
+
+  const totalAprobadoPantalla = baseTotals.total
+  const totals = calculatePayloadTotals(payload.DocumentLines, montosByDetalle)
+  const diferenciaTotal = Number((totals.total - totalAprobadoPantalla).toFixed(2))
+  const hayDiferencia = Math.abs(diferenciaTotal) >= 0.01
+  const payloadJson = JSON.stringify(payload, null, 2)
+
+  const warningLines = hayDiferencia
+    ? [
+        '',
+        `ADVERTENCIA: Total SAP difiere del total aprobado en ${formatAmount(diferenciaTotal)}.`
+      ]
+    : []
+
+  return [
+    'Resumen de montos:',
+    `Total aprobado (pantalla): ${formatAmount(totalAprobadoPantalla)}`,
+    `Base gravada: ${formatAmount(baseTotals.base15)}`,
+    `Base 0%: ${formatAmount(baseTotals.base0)}`,
+    `Subtotal base SAP (sin IVA): ${formatAmount(totals.subtotal)}`,
+    `IVA SAP: ${formatAmount(totals.iva)}`,
+    `Total SAP (subtotal + IVA): ${formatAmount(totals.total)}`,
+    `Lineas (JSON): ${payload.DocumentLines.length}`,
+    ...warningLines,
+    '',
+    'JSON a enviar a SAP:',
+    payloadJson,
+    '',
+    'Esta seguro de integrar y enviar?'
+  ].join('\n')
+}
+
+const handleIntegracionEncolada = async (idLiquidacion: number, response: { data: unknown }) => {
+  const jobId = normalizeString((response.data as any)?.jobId)
+  const mensaje = `Liquidacion encolada (jobId: ${jobId || '-'}). Actualiza el estado en unos segundos.`
+
+  console.log('[Integracion][Encolado]', { jobId })
+
+  await cajaChicaApi.post('/Integraciones/Compras', {
+    idLiquidacion,
+    estado: 'ENCOLADO',
+    jobId,
+    mensaje
+  })
+
+  integraciones.value[idLiquidacion] = { estado: 'ENCOLADO', jobId, mensaje }
+  integrationMessages.value[idLiquidacion] = { tipo: 'ok', texto: mensaje }
+}
+
+const handleIntegracionExitosa = async (idLiquidacion: number, response: { data: unknown }) => {
+  const responseText = normalizeString((response as any)?.request?.responseText)
+  const { docEntry, docNum, mensaje } = parseIntegracionResultado(response.data, responseText)
+
+  console.log('[Integracion][Respuesta OK]', { docEntry, docNum, mensaje })
+
+  await cajaChicaApi.post('/Integraciones/Compras', {
+    idLiquidacion,
+    estado: 'INTEGRADO',
+    docEntry,
+    docNum,
+    mensaje
+  })
+
+  integraciones.value[idLiquidacion] = {
+    estado: 'INTEGRADO',
+    docEntry,
+    docNum,
+    mensaje
+  }
+  const okTexto = docEntry || docNum
+    ? `Liquidacion creada. DocEntry: ${docEntry || '-'}, DocNum: ${docNum || '-'}.`
+    : mensaje
+  integrationMessages.value[idLiquidacion] = {
+    tipo: 'ok',
+    texto: okTexto
+  }
+}
+
+const handleIntegracionError = async (idLiquidacion: number, err: any) => {
+  const rawMsg = err?.response?.data?.message || err?.response?.data
+  const mensaje = typeof rawMsg === 'string' ? rawMsg : JSON.stringify(rawMsg) || 'No se pudo integrar la liquidacion.'
+  console.error('[Integracion][Error]', { idLiquidacion, mensaje, err })
+  error.value = mensaje
+  await cajaChicaApi.post('/Integraciones/Compras', {
+    idLiquidacion,
+    estado: 'ERROR',
+    mensaje
+  })
+  integraciones.value[idLiquidacion] = {
+    estado: 'ERROR',
+    mensaje
+  }
+  integrationMessages.value[idLiquidacion] = {
+    tipo: 'error',
+    texto: mensaje
+  }
+}
+
+const integrarLiquidacion = async (idLiquidacion: number) => {
+  if (integrationLoading.value[idLiquidacion]) return
+
+  const context = getIntegracionContext(idLiquidacion)
+  if (!context.ok) {
+    error.value = context.error
     return
   }
 
   integrationLoading.value[idLiquidacion] = true
   error.value = ''
   try {
-    const aprobacionesLiquidacion = selectedGroup.items
-
-    const detalleIdsAprobacion = new Set(aprobacionesLiquidacion.map(item => item.idDetalle))
-    const detalles = (detallesByLiquidacion.value[idLiquidacion] || [])
-      .filter(detalle => detalle.idLiquidacion === idLiquidacion && detalleIdsAprobacion.has(detalle.idDetalle))
-
-    if (!detalles.length) {
-      error.value = 'No se encontraron detalles para integrar.'
+    const built = await buildIntegracionPayload(idLiquidacion, context.selectedGroup, context.liquidacion)
+    if (!built.ok) {
+      error.value = built.error
       return
     }
 
-    const docDate = buildDocDate()
-    const codAlmacen = normalizeString(liquidacion.codAlmacen)
-    const [cardCodeCustodio, marcaContab] = await Promise.all([
-      resolveCardCodeByCedula(liquidacion.cedulaCustodio),
-      fetchMarcaContab(codAlmacen)
-    ])
-    const detalleById = detalles.reduce<Record<number, LiquidacionDetalleItem>>((acc, detalle) => {
-      acc[detalle.idDetalle] = detalle
-      return acc
-    }, {})
-    const montosByDetalle = buildAprobacionMontosByDetalle(aprobacionesLiquidacion, detalleById)
-    const documentLines = buildDocumentLines(detalles, codAlmacen, marcaContab, montosByDetalle)
-    if (!documentLines.length) {
-      error.value = 'No hay valores aprobados por contabilidad para integrar.'
-      return
-    }
-
-    const baseTotals = calculateTotalsFromBases(montosByDetalle)
-    const totalAprobadoPantalla = baseTotals.total
-
-    const payload = {
-      CardCode: cardCodeCustodio,
-      Series: 217,
-      DocDate: docDate,
-      Comments: 'LIQUIDACION DE COMPRA',
-      DocType: 'dDocument_Service',
-      DocCurrency: 'USD',
-      JournalMemo: `REPOSICION CAJA CHICA ${codAlmacen}`.trim(),
-      U_COD_ST: getUCodSt(detalles, montosByDetalle),
-      U_tipo_comprob: '03',
-      U_ORIGEN: 'C',
-      U_SER_EST: '001',
-      U_SER_PE: '100',
-      DocumentLines: documentLines
-    }
-
-    // Respaldo del JSON exacto antes de enviar a SAP.
-    downloadJsonPayload(idLiquidacion, payload)
-
-    const totals = calculatePayloadTotals(payload.DocumentLines, montosByDetalle)
-    const diferenciaTotal = Number((totals.total - totalAprobadoPantalla).toFixed(2))
-    const hayDiferencia = Math.abs(diferenciaTotal) >= 0.01
-    const payloadJson = JSON.stringify(payload, null, 2)
-
-    const warningLines = hayDiferencia
-      ? [
-          '',
-          `ADVERTENCIA: Total SAP difiere del total aprobado en ${formatAmount(diferenciaTotal)}.`
-        ]
-      : []
-
-    const confirmationMessage = [
-      'Resumen de montos:',
-      `Total aprobado (pantalla): ${formatAmount(totalAprobadoPantalla)}`,
-      `Base gravada: ${formatAmount(baseTotals.base15)}`,
-      `Base 0%: ${formatAmount(baseTotals.base0)}`,
-      `Subtotal base SAP (sin IVA): ${formatAmount(totals.subtotal)}`,
-      `IVA SAP: ${formatAmount(totals.iva)}`,
-      `Total SAP (subtotal + IVA): ${formatAmount(totals.total)}`,
-      `Lineas (JSON): ${payload.DocumentLines.length}`,
-      ...warningLines,
-      '',
-      'JSON a enviar a SAP:',
-      payloadJson,
-      '',
-      'Esta seguro de integrar y enviar?'
-    ].join('\n')
-
+    const confirmationMessage = buildConfirmationMessage(idLiquidacion, built.payload, built.baseTotals, built.montosByDetalle)
     if (!window.confirm(confirmationMessage)) {
       return
     }
 
-    console.log('[Integracion][Payload Liquidaciones]', JSON.stringify(payload, null, 2))
+    console.log('[Integracion][Payload Liquidaciones]', JSON.stringify(built.payload, null, 2))
 
-    const response = await slayerApi.post<SlayerIntegracionResponse | string>('/v1/liquidaciones', payload)
+    const response = await slayerApi.post<SlayerIntegracionResponse | string>('/v1/liquidaciones', built.payload)
 
     if (response.status === 202) {
-      const jobId = normalizeString((response.data as any)?.jobId)
-      const mensaje = `Liquidacion encolada (jobId: ${jobId || '-'}). Actualiza el estado en unos segundos.`
-
-      console.log('[Integracion][Encolado]', { jobId })
-
-      await cajaChicaApi.post('/Integraciones/Compras', {
-        idLiquidacion,
-        estado: 'ENCOLADO',
-        jobId,
-        mensaje
-      })
-
-      integraciones.value[idLiquidacion] = { estado: 'ENCOLADO', jobId, mensaje }
-      integrationMessages.value[idLiquidacion] = { tipo: 'ok', texto: mensaje }
+      await handleIntegracionEncolada(idLiquidacion, response)
       return
     }
 
-    const responseText = normalizeString((response as any)?.request?.responseText)
-    const { docEntry, docNum, mensaje } = parseIntegracionResultado(response.data, responseText)
-
-    console.log('[Integracion][Respuesta OK]', { docEntry, docNum, mensaje })
-
-    await cajaChicaApi.post('/Integraciones/Compras', {
-      idLiquidacion,
-      estado: 'INTEGRADO',
-      docEntry,
-      docNum,
-      mensaje
-    })
-
-    integraciones.value[idLiquidacion] = {
-      estado: 'INTEGRADO',
-      docEntry,
-      docNum,
-      mensaje
-    }
-    const okTexto = docEntry || docNum
-      ? `Liquidacion creada. DocEntry: ${docEntry || '-'}, DocNum: ${docNum || '-'}.`
-      : mensaje
-    integrationMessages.value[idLiquidacion] = {
-      tipo: 'ok',
-      texto: okTexto
-    }
+    await handleIntegracionExitosa(idLiquidacion, response)
   } catch (err: any) {
-    const rawMsg = err?.response?.data?.message || err?.response?.data
-    const mensaje = typeof rawMsg === 'string' ? rawMsg : JSON.stringify(rawMsg) || 'No se pudo integrar la liquidacion.'
-    console.error('[Integracion][Error]', { idLiquidacion, mensaje, err })
-    error.value = mensaje
-    await cajaChicaApi.post('/Integraciones/Compras', {
-      idLiquidacion,
-      estado: 'ERROR',
-      mensaje
-    })
-    integraciones.value[idLiquidacion] = {
-      estado: 'ERROR',
-      mensaje
-    }
-    integrationMessages.value[idLiquidacion] = {
-      tipo: 'error',
-      texto: mensaje
-    }
+    await handleIntegracionError(idLiquidacion, err)
   } finally {
     integrationLoading.value[idLiquidacion] = false
   }
@@ -1483,34 +1566,33 @@ const loadHistorial = async () => {
     }
 
     historial.value = rows.map((item: any) => ({
-      idAprobacion: Number(item.idAprobacion ?? item.IdAprobacion ?? 0),
-      idDetalle: Number(item.idDetalle ?? item.IdDetalle ?? 0),
-      idLiquidacion: Number(item.idLiquidacion ?? item.IdLiquidacion ?? 0),
-      idUsuario: normalizeString(item.idUsuario ?? item.IdUsuario ?? ''),
-      usuarioNombre: normalizeString(
-        item.nombreUsuarioAprobador
-        ?? item.NombreUsuarioAprobador
-        ?? item.usuarioNombre
-        ?? item.UsuarioNombre
-        ?? item.nombreUsuario
-        ?? item.NombreUsuario
-        ?? item.aprobadoPor
-        ?? item.AprobadoPor
-        ?? ''
-      ),
-      idUsuarioSupervisor: normalizeString(item.idUsuarioSupervisor ?? item.IdUsuarioSupervisor ?? ''),
-      nombreSupervisor: normalizeString(item.nombreSupervisor ?? item.NombreSupervisor ?? ''),
-      nombreGasto: normalizeString(item.nombreGasto ?? item.NombreGasto ?? '-'),
-      concepto: normalizeString(item.concepto ?? item.Concepto ?? '-'),
-      total: Number(item.total ?? item.Total ?? 0),
-      estado: normalizeString(item.estado ?? item.Estado ?? ''),
-      montoAprobado: Number(item.montoAprobado ?? item.MontoAprobado ?? 0),
-      observacion: normalizeString(item.observacion ?? item.Observacion ?? ''),
-      tipoBase: normalizeString(item.tipoBase ?? item.TipoBase ?? ''),
-      fechaAprobacion: String(item.fechaAprobacion ?? item.FechaAprobacion ?? ''),
-      codAlmacen: normalizeString(item.codAlmacen ?? item.CodAlmacen ?? '-'),
-      nombreCustodio: normalizeString(item.nombreCustodio ?? item.NombreCustodio ?? '-'),
-      fechaCreacion: String(item.fechaCreacion ?? item.FechaCreacion ?? '')
+      idAprobacion: pickNumber(item, ['idAprobacion', 'IdAprobacion']),
+      idDetalle: pickNumber(item, ['idDetalle', 'IdDetalle']),
+      idLiquidacion: pickNumber(item, ['idLiquidacion', 'IdLiquidacion']),
+      idUsuario: pickString(item, ['idUsuario', 'IdUsuario']),
+      usuarioNombre: pickString(item, [
+        'nombreUsuarioAprobador',
+        'NombreUsuarioAprobador',
+        'usuarioNombre',
+        'UsuarioNombre',
+        'nombreUsuario',
+        'NombreUsuario',
+        'aprobadoPor',
+        'AprobadoPor'
+      ]),
+      idUsuarioSupervisor: pickString(item, ['idUsuarioSupervisor', 'IdUsuarioSupervisor']),
+      nombreSupervisor: pickString(item, ['nombreSupervisor', 'NombreSupervisor']),
+      nombreGasto: pickString(item, ['nombreGasto', 'NombreGasto'], '-'),
+      concepto: pickString(item, ['concepto', 'Concepto'], '-'),
+      total: pickNumber(item, ['total', 'Total']),
+      estado: pickString(item, ['estado', 'Estado']),
+      montoAprobado: pickNumber(item, ['montoAprobado', 'MontoAprobado']),
+      observacion: pickString(item, ['observacion', 'Observacion']),
+      tipoBase: pickString(item, ['tipoBase', 'TipoBase']),
+      fechaAprobacion: pickDate(item, ['fechaAprobacion', 'FechaAprobacion']),
+      codAlmacen: pickString(item, ['codAlmacen', 'CodAlmacen'], '-'),
+      nombreCustodio: pickString(item, ['nombreCustodio', 'NombreCustodio'], '-'),
+      fechaCreacion: pickDate(item, ['fechaCreacion', 'FechaCreacion'])
     }))
 
     const initialMap = historial.value.reduce<Record<string, string>>((acc, item) => {

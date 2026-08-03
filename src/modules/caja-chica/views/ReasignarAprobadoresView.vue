@@ -209,47 +209,56 @@ const loadUsuarios = async () => {
   }
 }
 
+const endpointForNivel = (nivel: 1 | 2) =>
+  nivel === 1 ? '/Aprobaciones/pendientes-supervisor' : '/Aprobaciones/pendientes-contabilidad'
+
+const extractItemsArray = (payload: any): any[] => {
+  if (Array.isArray(payload)) return payload
+  if (Array.isArray(payload?.data)) return payload.data
+  return []
+}
+
+const groupPendientesItems = (items: any[]): Map<string, GrupoPendiente> => {
+  const grouped = new Map<string, GrupoPendiente>()
+  for (const item of items) {
+    const idLiquidacion = Number(item.idLiquidacion ?? item.IdLiquidacion ?? 0)
+    const idUsuario = String(item.idUsuario ?? item.IdUsuario ?? '')
+    const key = `${idLiquidacion}-${idUsuario}`
+    const total = Number(item.total ?? item.Total ?? 0)
+
+    const existing = grouped.get(key)
+    if (existing) {
+      existing.detalles += 1
+      existing.total += total
+      continue
+    }
+
+    grouped.set(key, {
+      idLiquidacion,
+      idUsuario,
+      userLabel: labelForUsuario(idUsuario),
+      codAlmacen: String(item.codAlmacen ?? item.CodAlmacen ?? ''),
+      nombreCustodio: String(item.nombreCustodio ?? item.NombreCustodio ?? ''),
+      fechaCreacion: String(item.fechaCreacion ?? item.FechaCreacion ?? ''),
+      detalles: 1,
+      total,
+      query: '',
+      dropdownOpen: false,
+      reasignando: false,
+      error: ''
+    })
+  }
+  return grouped
+}
+
 const loadPendientes = async () => {
   loading.value = true
   loadError.value = ''
   actionSuccess.value = ''
   try {
-    const endpoint = nivelActivo.value === 1 ? '/Aprobaciones/pendientes-supervisor' : '/Aprobaciones/pendientes-contabilidad'
-    const response = await cajaChicaApi.get(endpoint)
-    const payload = response.data as any
-    const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
-
-    const grouped = new Map<string, GrupoPendiente>()
-    for (const item of items) {
-      const idLiquidacion = Number(item.idLiquidacion ?? item.IdLiquidacion ?? 0)
-      const idUsuario = String(item.idUsuario ?? item.IdUsuario ?? '')
-      const key = `${idLiquidacion}-${idUsuario}`
-      const total = Number(item.total ?? item.Total ?? 0)
-
-      const existing = grouped.get(key)
-      if (existing) {
-        existing.detalles += 1
-        existing.total += total
-        continue
-      }
-
-      grouped.set(key, {
-        idLiquidacion,
-        idUsuario,
-        userLabel: labelForUsuario(idUsuario),
-        codAlmacen: String(item.codAlmacen ?? item.CodAlmacen ?? ''),
-        nombreCustodio: String(item.nombreCustodio ?? item.NombreCustodio ?? ''),
-        fechaCreacion: String(item.fechaCreacion ?? item.FechaCreacion ?? ''),
-        detalles: 1,
-        total,
-        query: '',
-        dropdownOpen: false,
-        reasignando: false,
-        error: ''
-      })
-    }
-
-    grupos.value = Array.from(grouped.values())
+    const response = await cajaChicaApi.get(endpointForNivel(nivelActivo.value))
+    const items = extractItemsArray(response.data)
+    grupos.value = Array.from(groupPendientesItems(items).values())
   } catch {
     loadError.value = `No se pudieron cargar las liquidaciones pendientes de ${nivelActivo.value === 1 ? 'supervisor' : 'contabilidad'}.`
   } finally {

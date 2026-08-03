@@ -48,8 +48,9 @@
             </select>
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Empresa <span class="italic text-gray-400 dark:text-gray-500">(automático, no editable)</span></label>
+            <label for="liquidacion-empresa" class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Empresa <span class="italic text-gray-400 dark:text-gray-500">(automático, no editable)</span></label>
             <input
+              id="liquidacion-empresa"
               v-model="empresa"
               type="text"
               readonly
@@ -58,8 +59,9 @@
             />
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Marca <span class="italic text-gray-400 dark:text-gray-500">(automático, no editable)</span></label>
+            <label for="liquidacion-marca" class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Marca <span class="italic text-gray-400 dark:text-gray-500">(automático, no editable)</span></label>
             <input
+              id="liquidacion-marca"
               v-model="marca"
               type="text"
               readonly
@@ -974,9 +976,7 @@ const sendLiquidacion = async (item: LiquidacionItem) => {
     const message = typeof rawMessage === 'string' && rawMessage.trim() && !rawMessage.trim().startsWith('<')
       ? rawMessage.trim()
       : null
-    sendError.value = message
-      ? message
-      : `No se pudo enviar la liquidacion (código ${status ?? 'desconocido'}). Intenta nuevamente.`
+    sendError.value = message || `No se pudo enviar la liquidacion (código ${status ?? 'desconocido'}). Intenta nuevamente.`
     confirmSendItem.value = null
   } finally {
     sendingId.value = null
@@ -991,7 +991,14 @@ const verMotivo = async (item: LiquidacionItem) => {
   try {
     const response = await cajaChicaApi.get(`/Liquidaciones/${item.idLiquidacion}/historial-estado`)
     const payload = response.data as any
-    const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
+    let items: any[]
+    if (Array.isArray(payload)) {
+      items = payload
+    } else if (Array.isArray(payload?.data)) {
+      items = payload.data
+    } else {
+      items = []
+    }
     const latest = items[0]
     motivoData.value = latest
       ? {
