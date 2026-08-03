@@ -95,16 +95,10 @@
               <div>
                 <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Liquidacion #{{ group.idLiquidacion }}</h3>
                 <p class="text-xs text-gray-500 dark:text-gray-400">
-                  {{ group.totalItems }} detalles pendientes · Tienda: {{ group.codAlmacen }} · Custodio: {{ group.nombreCustodio }} ({{ group.cedulaCustodio || '-' }}) · Fecha: {{ formatDate(group.fechaCreacion) }}
+                  {{ group.totalItems }} detalles pendientes · Tienda: {{ group.codAlmacen }} · Custodio: {{ group.nombreCustodio }} ({{ group.cedulaCustodio || '-' }}) · Supervisor: {{ getGroupSupervisorLabel(group.items) }} · Fecha: {{ formatDate(group.fechaCreacion) }}
                 </p>
               </div>
               <div class="flex items-center gap-3">
-                <router-link
-                  class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-600/50 px-2 py-1 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
-                  :to="`/caja-chica/liquidaciones/${group.idLiquidacion}/detalle`"
-                >
-                  Ver liquidación
-                </router-link>
                 <div class="text-xs text-gray-500 dark:text-gray-400">
                   Antes integrar: {{ formatAmount(group.totalMonto) }} · Después integrar: {{ formatAmount(group.totalMontoFinal) }}
                 </div>
@@ -283,7 +277,7 @@
                 >
                   <div class="flex justify-between gap-2">
                     <span class="text-gray-500 dark:text-gray-400">Supervisor:</span>
-                    <span class="text-gray-900 dark:text-white">{{ getUserLabel(decision.idUsuario) }}</span>
+                    <span class="text-gray-900 dark:text-white">{{ decision.nombreUsuario || getUserLabel(decision.idUsuario) }}</span>
                   </div>
                   <div class="flex justify-between gap-2">
                     <span class="text-gray-500 dark:text-gray-400">Estado:</span>
@@ -584,6 +578,7 @@ interface SupervisorDecision {
   estado: string
   fechaAprobacion?: string
   idUsuario?: string
+  nombreUsuario?: string
 }
 
 interface UserOption {
@@ -833,7 +828,7 @@ function getCellValue(group: { idLiquidacion: number }, item: AprobacionItem, co
     case 'total':
       return formatAmount(item.total)
     case 'usuario':
-      return list.length ? list.map(dec => getUserLabel(dec.idUsuario)).join(', ') : '-'
+      return list.length ? list.map(dec => dec.nombreUsuario || getUserLabel(dec.idUsuario)).join(', ') : '-'
     case 'montoSupervisor':
       return list.length ? list.map(dec => formatAmount(dec.montoAprobado)).join(', ') : '-'
     case 'obsSupervisor':
@@ -1003,7 +998,8 @@ const normalizeSupervisorDecision = (item: any): SupervisorDecision => ({
   observacion: normalizeString(item.observacion ?? item.Observacion ?? ''),
   estado: normalizeString(item.estado ?? item.Estado ?? ''),
   fechaAprobacion: item.fechaAprobacion ?? item.FechaAprobacion,
-  idUsuario: item.idUsuario ?? item.IdUsuario
+  idUsuario: item.idUsuario ?? item.IdUsuario,
+  nombreUsuario: normalizeString(item.nombreUsuario ?? item.NombreUsuario ?? '') || undefined
 })
 
 function ensureDecision(item: AprobacionItem) {
@@ -1179,6 +1175,17 @@ async function downloadAdjunto() {
 }
 
 const getSupervisorDecisions = (idDetalle: number) => supervisorByDetalle.value[idDetalle] || []
+
+const getGroupSupervisorLabel = (items: AprobacionItem[]) => {
+  for (const item of items) {
+    const decisions = getSupervisorDecisions(item.idDetalle)
+    if (decisions.length) {
+      const lastDecision = decisions[decisions.length - 1]
+      return lastDecision.nombreUsuario || getUserLabel(lastDecision.idUsuario)
+    }
+  }
+  return '-'
+}
 
 const hasSupervisorNovedad = (item: AprobacionItem) => {
   const decisionsList = supervisorByDetalle.value[item.idDetalle] || []

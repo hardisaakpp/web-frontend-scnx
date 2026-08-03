@@ -23,7 +23,29 @@
       "Bash(curl -s http://localhost:3001/src/modules/caja-chica/views/AprobadoresView.vue -o /dev/null -w \"AprobadoresView.vue: %{http_code}\\\\n\")",
       "Bash(git rm *)",
       "Bash(curl -s http://localhost:3001/src/modules/caja-chica/views/LiquidacionesView.vue -o /dev/null -w \"LiquidacionesView.vue: %{http_code}\\\\n\")",
-      "Bash(curl -s http://127.0.0.1:8092/api/Almacenes -H \"Accept: application/json\")"
+      "Bash(curl -s http://127.0.0.1:8092/api/Almacenes -H \"Accept: application/json\")",
+      "Bash(rm -v \\\\ *)",
+      "Bash(dotnet test *)",
+      "Bash(xargs -I{} sh -c 'echo \"=== {} ===\"; cat {}')",
+      "Bash(find / -maxdepth 6 -iname \"*caja*chica*\" \\\\\\( -iname \"*.service\" -o -iname \"*.env\" -o -iname \"docker-compose*\" \\\\\\))",
+      "Bash(systemctl list-units *)",
+      "Bash(ip addr *)",
+      "Bash(timeout 3 bash -c 'echo > /dev/tcp/192.168.2.211/9100')",
+      "Bash(timeout 3 bash -c 'echo > /dev/tcp/192.168.2.211/8092')",
+      "Bash(xargs -I{} git log --oneline -5 -- {})",
+      "Bash(xargs -I{} sh -c 'echo === {} ===; cat {}')",
+      "Bash(echo \"keys in src/Middleware.Api/.env:\"; grep -oE '^[A-Za-z0-9_]+' /home/xavier/repos/api-middleware-sap/src/Middleware.Api/.env; echo; echo \"keys in root .env:\"; grep -oE '^[A-Za-z0-9_]+' /home/xavier/repos/api-middleware-sap/.env; echo; echo \"--- DotNetEnv TraversePath behavior check \\(docs comment in code\\) ---\"; sed -n '1,30p' /home/xavery/repos/api-middleware-sap/src/Middleware.Api/Program.cs 2>/dev/null; sed -n '1,30p' /home/xavier/repos/api-middleware-sap/src/Middleware.Api/Program.cs)",
+      "Read(//home/xavery/repos/api-middleware-sap/src/Middleware.Api/**)",
+      "Bash(git -C /home/xavier/repos/api-middleware-sap log --oneline -3 -- .env)",
+      "Bash(git -C /home/xavier/repos/api-middleware-sap status --short .env src/Middleware.Api/.env)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://127.0.0.1:8011/api/v1/liquidaciones -X POST -H \"Content-Type: application/json\" -d '{}')",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://127.0.0.1:8011/api/v1/liquidaciones)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://127.0.0.1:3001/slayer-api/v1/liquidaciones -X POST -H \"Content-Type: application/json\" -d '{}')",
+      "Bash(grep -n \"ExecuteWithRetryOn401Async\\(.*companyDb\\\\|ExecuteWithRetryOn401Async\\($\" -r /home/xavier/repos/api-middleware-sap/src/Middleware.Infrastructure/Sap/SapGateway.cs)",
+      "Bash(awk '/ExecuteWithRetryOn401Async\\\\\\(/{print NR\": \"$0}' /home/xavier/repos/api-middleware-sap/src/Middleware.Infrastructure/Sap/SapGateway.cs)"
+    ],
+    "additionalDirectories": [
+      "/home/xavier/repos/api-middleware-sap/src/Middleware.Application/UseCases/StockTransfer"
     ]
   }
 }

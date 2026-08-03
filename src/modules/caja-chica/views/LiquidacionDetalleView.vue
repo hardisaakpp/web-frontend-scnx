@@ -657,6 +657,12 @@ const loadCatalogoGastos = async () => {
   }
 }
 
+const getDefaultTipoIvaId = () => {
+  const iva15 = catalogoTiposIva.value.find(t => t.codigo === 'IVA_15')
+  if (iva15) return String(iva15.id)
+  return catalogoTiposIva.value[0] ? String(catalogoTiposIva.value[0].id) : ''
+}
+
 const loadTiposIva = async () => {
   try {
     const response = await cajaChicaApi.get('/TiposIva')
@@ -669,6 +675,9 @@ const loadTiposIva = async () => {
       porcentaje: item.porcentaje ?? item.Porcentaje ?? null,
       taxCodeSap: normalizeString(item.taxCodeSap ?? item.TaxCodeSap ?? '')
     }))
+    if (!selectedTipoIvaId.value) {
+      selectedTipoIvaId.value = getDefaultTipoIvaId()
+    }
   } catch {
     formError.value = 'No se pudo cargar el catalogo de tipos de IVA.'
   }
@@ -748,7 +757,7 @@ const addDetalle = async () => {
     numeroComprobante.value = ''
     numeroAutorizacion.value = ''
     concepto.value = ''
-    selectedTipoIvaId.value = ''
+    selectedTipoIvaId.value = getDefaultTipoIvaId()
     subtotalConIva.value = ''
     subtotalSinIva.value = ''
     iva.value = ''
