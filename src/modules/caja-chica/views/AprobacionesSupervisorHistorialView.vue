@@ -504,10 +504,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount, ref, watch, nextTick } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { createBuildAdjuntoUrl } from '../utils/buildAdjuntoUrl'
-import { useTablePreferences } from '@/composables/useTablePreferences'
+import { useColumnDragReorder } from '@/composables/useColumnDragReorder'
 import { cajaChicaApi } from '@/lib/http'
 
 
@@ -621,76 +621,22 @@ const availableColumns: ColumnConfig[] = [
 ]
 
 const defaultVisibleColumns = ['gasto', 'total', 'montoAprobado', 'estado', 'fechaAprobacion', 'acciones']
-const defaultColumnOrder = availableColumns.map(col => col.key)
 
 const {
-  visibleColumns,
-  columnOrder,
-  orderedVisibleColumns: orderedVisibleColumnKeys,
-  savePreferences
-} = useTablePreferences({
+  orderedVisibleColumns,
+  availableColumnsWithVisibility,
+  toggleColumnVisibility,
+  showColumnSelector,
+  columnSelectorWrapRef
+} = useColumnDragReorder({
   tableId: 'caja-chica-historial-supervisor',
-  defaultVisibleColumns,
-  defaultColumnOrder,
-  enableFilters: false,
-  enablePageSize: false
-})
-
-const orderedVisibleColumns = computed(() => {
-  const ordered = orderedVisibleColumnKeys.value
-    .map(key => availableColumns.find(col => col.key === key))
-    .filter((col): col is ColumnConfig => col !== undefined)
-  const fixedColumns = ordered.filter(col => col.fixed)
-  const nonFixedColumns = ordered.filter(col => !col.fixed)
-  return [...nonFixedColumns, ...fixedColumns]
+  availableColumns,
+  defaultVisibleColumns
 })
 
 const tableColumns = orderedVisibleColumns
 
-const showColumnSelector = ref(false)
-const columnSelectorWrapRef = ref<HTMLElement | null>(null)
-
-const availableColumnsWithVisibility = computed(() =>
-  availableColumns.map(col => ({
-    ...col,
-    visible: col.fixed ? true : visibleColumns.value.includes(col.key)
-  }))
-)
-
-function toggleColumnVisibility(columnKey: string) {
-  const column = availableColumns.find(col => col.key === columnKey)
-  if (column?.fixed) return
-  const current = visibleColumns.value
-  const index = current.indexOf(columnKey)
-  const visibleNonFixed = current.filter(
-    key => !availableColumns.find(c => c.key === key)?.fixed
-  )
-  if (index > -1 && visibleNonFixed.length <= 1) return
-  if (index > -1) {
-    visibleColumns.value = current.filter(k => k !== columnKey)
-  } else {
-    visibleColumns.value = [...current, columnKey]
-  }
-  savePreferences()
-}
-
-function closeColumnSelectorOnClickOutside(e: MouseEvent) {
-  if (columnSelectorWrapRef.value && !columnSelectorWrapRef.value.contains(e.target as Node)) {
-    showColumnSelector.value = false
-    document.removeEventListener('click', closeColumnSelectorOnClickOutside)
-  }
-}
-
-watch(showColumnSelector, (isOpen) => {
-  if (isOpen) {
-    nextTick(() => document.addEventListener('click', closeColumnSelectorOnClickOutside))
-  } else {
-    document.removeEventListener('click', closeColumnSelectorOnClickOutside)
-  }
-})
-
 onBeforeUnmount(() => {
-  document.removeEventListener('click', closeColumnSelectorOnClickOutside)
   document.removeEventListener('keydown', onDetalleKeydown)
   document.body.classList.remove('overflow-hidden')
 })
