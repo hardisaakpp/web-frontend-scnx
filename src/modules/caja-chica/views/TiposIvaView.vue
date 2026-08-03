@@ -229,7 +229,14 @@ const loadTiposIva = async () => {
   try {
     const response = await cajaChicaApi.get('/TiposIva/all')
     const payload = response.data as any
-    const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
+    let items: any[]
+    if (Array.isArray(payload)) {
+      items = payload
+    } else if (Array.isArray(payload?.data)) {
+      items = payload.data
+    } else {
+      items = []
+    }
     tiposIva.value = items.map(normalizeTipoIva)
   } catch {
     formError.value = 'No se pudieron cargar los tipos de IVA.'

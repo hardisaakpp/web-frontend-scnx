@@ -36,8 +36,9 @@
         <div v-if="isCreateOpen" class="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <!-- Fila 1: almacén + datos que se llenan solos a partir de él -->
           <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Almacén asignado*</label>
+            <label for="liquidacion-almacen" class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Almacén asignado*</label>
             <select
+              id="liquidacion-almacen"
               v-model="selectedCodAlmacen"
               class="w-full rounded border-2 border-gray-400 dark:border-gray-500 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
             >
@@ -72,8 +73,9 @@
 
           <!-- Fila 2: cédula + datos del custodio que se llenan solos a partir de ella -->
           <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Cédula custodio*</label>
+            <label for="liquidacion-cedula-custodio" class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Cédula custodio*</label>
             <input
+              id="liquidacion-cedula-custodio"
               v-model.trim="cedulaCustodio"
               type="text"
               placeholder="Identificacion"
@@ -82,8 +84,9 @@
             />
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Nombre custodio <span class="italic text-gray-400 dark:text-gray-500">(automático, no editable)</span></label>
+            <label for="liquidacion-nombre-custodio" class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Nombre custodio <span class="italic text-gray-400 dark:text-gray-500">(automático, no editable)</span></label>
             <input
+              id="liquidacion-nombre-custodio"
               v-model.trim="nombreCustodio"
               type="text"
               placeholder="Se completa al ingresar la cédula"
@@ -93,8 +96,9 @@
             />
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">CardCode custodio (SAP) <span class="italic text-gray-400 dark:text-gray-500">(automático, no editable)</span></label>
+            <label for="liquidacion-cardcode-custodio" class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">CardCode custodio (SAP) <span class="italic text-gray-400 dark:text-gray-500">(automático, no editable)</span></label>
             <input
+              id="liquidacion-cardcode-custodio"
               v-model="cardCodeCustodio"
               type="text"
               readonly
@@ -105,8 +109,9 @@
 
           <!-- Fila 3: montos y forma de pago -->
           <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Monto inicial recibido*</label>
+            <label for="liquidacion-monto-inicial" class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Monto inicial recibido*</label>
             <input
+              id="liquidacion-monto-inicial"
               v-model="montoInicial"
               type="number"
               step="0.01"
@@ -116,8 +121,9 @@
             />
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Forma de pago*</label>
+            <label for="liquidacion-forma-pago" class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Forma de pago*</label>
             <select
+              id="liquidacion-forma-pago"
               v-model="formatoDePago"
               class="w-full rounded border-2 border-gray-400 dark:border-gray-500 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
             >
