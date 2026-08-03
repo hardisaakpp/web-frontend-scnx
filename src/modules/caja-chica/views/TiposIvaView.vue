@@ -166,6 +166,7 @@
 import { computed, onMounted, ref } from '@vue/runtime-core'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
+import { extractItemsArray } from '../utils/apiPayload'
 
 interface TipoIvaItem {
   id: number
@@ -228,15 +229,7 @@ const loadTiposIva = async () => {
   loading.value = true
   try {
     const response = await cajaChicaApi.get('/TiposIva/all')
-    const payload = response.data as any
-    let items: any[]
-    if (Array.isArray(payload)) {
-      items = payload
-    } else if (Array.isArray(payload?.data)) {
-      items = payload.data
-    } else {
-      items = []
-    }
+    const items = extractItemsArray(response.data)
     tiposIva.value = items.map(normalizeTipoIva)
   } catch {
     formError.value = 'No se pudieron cargar los tipos de IVA.'

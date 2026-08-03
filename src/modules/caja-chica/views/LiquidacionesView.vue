@@ -475,6 +475,7 @@ import { computed, onMounted, ref, watch } from '@vue/runtime-core'
 import { cajaChicaApi } from '../services/cajaChicaApi'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
+import { extractItemsArray } from '../utils/apiPayload'
 
 function getAlmacenesAsignadosDelToken(authStore: ReturnType<typeof useAuthStore>): string[] {
   const raw = authStore.userWarehouseAccesses
@@ -998,15 +999,7 @@ const verMotivo = async (item: LiquidacionItem) => {
   motivoLoading.value = true
   try {
     const response = await cajaChicaApi.get(`/Liquidaciones/${item.idLiquidacion}/historial-estado`)
-    const payload = response.data as any
-    let items: any[]
-    if (Array.isArray(payload)) {
-      items = payload
-    } else if (Array.isArray(payload?.data)) {
-      items = payload.data
-    } else {
-      items = []
-    }
+    const items = extractItemsArray(response.data)
     const latest = items[0]
     motivoData.value = latest
       ? {

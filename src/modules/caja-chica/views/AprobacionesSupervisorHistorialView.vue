@@ -506,9 +506,10 @@
 <script setup lang="ts">
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { createBuildAdjuntoUrl } from '../utils/buildAdjuntoUrl'
 import { useColumnDragReorder } from '@/composables/useColumnDragReorder'
+import { useAdjuntosByDetalle } from '@/composables/useAdjuntosByDetalle'
 import { cajaChicaApi } from '@/lib/http'
+import { getCurrentUserId } from '../utils/normalizeAprobaciones'
 
 
 interface ColumnConfig {
@@ -566,13 +567,6 @@ interface LiquidacionInfo {
   fechaCreacion: string
 }
 
-interface AdjuntoItem {
-  idAdjunto: number
-  idDetalle: number
-  rutaArchivo: string
-  fechaSubida: string
-}
-
 const router = useRouter()
 
 const volver = () => {
@@ -594,9 +588,6 @@ const selectedItem = ref<HistorialItem | null>(null)
 const selectedDetalle = ref<LiquidacionDetalleItem | undefined>(undefined)
 const detallesByIdDetalle = ref<Record<number, LiquidacionDetalleItem>>({})
 const adjuntosByDetalle = ref<Record<number, number>>({})
-const adjuntosListByDetalle = ref<Record<number, AdjuntoItem[]>>({})
-const loadingAdjuntosMap = ref<Record<number, boolean>>({})
-const selectedAdjuntoId = ref<number | null>(null)
 const showAdjuntoFull = ref(false)
 const zoomLevel = ref(1)
 
@@ -641,39 +632,19 @@ onBeforeUnmount(() => {
   document.body.classList.remove('overflow-hidden')
 })
 
-const selectedAdjunto = computed(() => {
-  if (!selectedItem.value) return null
-  const detalleId = selectedItem.value.idDetalle
-  const list = adjuntosListByDetalle.value[detalleId] || []
-  if (!list.length) return null
-  const found = list.find(a => a.idAdjunto === selectedAdjuntoId.value)
-  return found || list[0]
-})
+const {
+  adjuntosListByDetalle,
+  loadingAdjuntosMap,
+  selectedAdjuntoId,
+  selectedAdjunto,
+  loadAdjuntosForDetalle,
+  buildAdjuntoUrl,
+  formatAdjuntoName,
+  isImageFile,
+  isPdfFile
+} = useAdjuntosByDetalle(computed(() => selectedItem.value?.idDetalle))
 
 const zoomPercent = computed(() => Math.round(zoomLevel.value * 100))
-
-const buildAdjuntoUrl = createBuildAdjuntoUrl()
-
-
-const formatAdjuntoName = (ruta: string) => {
-  if (!ruta) return ''
-  const parts = ruta.split('/')
-  return parts[parts.length - 1]
-}
-
-const isImageFile = (ruta: string) => /\.(png|jpe?g|gif|webp)$/i.test(ruta)
-const isPdfFile = (ruta: string) => /\.pdf$/i.test(ruta)
-
-const getCurrentUserId = (): string => {
-  try {
-    const userStr = localStorage.getItem('user')
-    if (!userStr) return ''
-    const user = JSON.parse(userStr) as { id?: string }
-    return user.id || ''
-  } catch {
-    return ''
-  }
-}
 
 const normalizeString = (value: any) => String(value ?? '').trim()
 
@@ -796,32 +767,6 @@ function closeDetalle() {
   selectedItem.value = null
   selectedDetalle.value = undefined
   selectedAdjuntoId.value = null
-}
-
-async function loadAdjuntosForDetalle(idDetalle: number) {
-  if (!idDetalle) return
-  if (adjuntosListByDetalle.value[idDetalle]) return
-  if (loadingAdjuntosMap.value[idDetalle]) return
-
-  loadingAdjuntosMap.value = { ...loadingAdjuntosMap.value, [idDetalle]: true }
-  try {
-    const response = await cajaChicaApi.get(`/Adjuntos/por-detalle/${idDetalle}`)
-    const payload = response.data as any
-    const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
-    adjuntosListByDetalle.value = {
-      ...adjuntosListByDetalle.value,
-      [idDetalle]: items.map((item: any) => ({
-        idAdjunto: Number(item.idAdjunto ?? item.IdAdjunto ?? 0),
-        idDetalle: Number(item.idDetalle ?? item.IdDetalle ?? idDetalle),
-        rutaArchivo: String(item.rutaArchivo ?? item.RutaArchivo ?? ''),
-        fechaSubida: String(item.fechaSubida ?? item.FechaSubida ?? '')
-      }))
-    }
-  } catch {
-    adjuntosListByDetalle.value = { ...adjuntosListByDetalle.value, [idDetalle]: [] }
-  } finally {
-    loadingAdjuntosMap.value = { ...loadingAdjuntosMap.value, [idDetalle]: false }
-  }
 }
 
 function onDetalleKeydown(e: KeyboardEvent) {

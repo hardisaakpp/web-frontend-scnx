@@ -511,7 +511,7 @@ import { useColumnDragReorder } from '@/composables/useColumnDragReorder'
 import { useAdjuntosByDetalle } from '@/composables/useAdjuntosByDetalle'
 import { useRouter } from 'vue-router'
 import { cajaChicaApi } from '@/lib/http'
-import { normalizeString, getCurrentUserId, normalizeDetalle, normalizeAprobacion } from '../utils/normalizeAprobaciones'
+import { getCurrentUserId, normalizeDetalle, normalizeAprobacion } from '../utils/normalizeAprobaciones'
 import type { ColumnConfig, AprobacionItem, DetalleItem, DecisionState } from '../types/aprobaciones'
 
 const loading = ref(false)

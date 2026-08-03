@@ -479,6 +479,8 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { createBuildAdjuntoUrl } from '../utils/buildAdjuntoUrl'
 import { cajaChicaApi } from '@/lib/http'
+import { extractItemsArray } from '../utils/apiPayload'
+import { normalizeAdjuntoItem } from '../utils/normalizeAdjuntoItem'
 
 
 interface CatalogoGastoItem {
@@ -650,8 +652,7 @@ const formatDate = (value: string) => value ? value.substring(0, 10) : ''
 const loadCatalogoGastos = async () => {
   try {
     const response = await cajaChicaApi.get('/CatalogoGastos')
-    const payload = response.data as any
-    const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
+    const items = extractItemsArray(response.data)
     catalogoGastos.value = items.map((item: any) => ({
       idGasto: normalizeString(item.idGasto ?? item.IdGasto ?? ''),
       nombreGasto: normalizeString(item.nombreGasto ?? item.NombreGasto ?? '')
@@ -670,15 +671,7 @@ const getDefaultTipoIvaId = () => {
 const loadTiposIva = async () => {
   try {
     const response = await cajaChicaApi.get('/TiposIva')
-    const payload = response.data as any
-    let items: any[]
-    if (Array.isArray(payload)) {
-      items = payload
-    } else if (Array.isArray(payload?.data)) {
-      items = payload.data
-    } else {
-      items = []
-    }
+    const items = extractItemsArray(response.data)
     catalogoTiposIva.value = items.map((item: any) => ({
       id: Number(item.id ?? item.Id ?? 0),
       codigo: normalizeString(item.codigo ?? item.Codigo ?? ''),
@@ -700,8 +693,7 @@ const loadDetalles = async () => {
   detalleError.value = ''
   try {
     const response = await cajaChicaApi.get('/LiquidacionesDetalle')
-    const payload = response.data as any
-    const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
+    const items = extractItemsArray(response.data)
     detalles.value = items
       .map(normalizeDetalle)
       .filter((item: LiquidacionDetalleItem) => item.idLiquidacion === liquidacionId.value)
@@ -717,14 +709,8 @@ const loadAdjuntosForDetalle = async (idDetalle: number) => {
   if (!idDetalle) return
   try {
     const response = await cajaChicaApi.get(`/Adjuntos/por-detalle/${idDetalle}`)
-    const payload = response.data as any
-    const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
-    adjuntosByDetalle.value[idDetalle] = items.map((item: any) => ({
-      idAdjunto: Number(item.idAdjunto ?? item.IdAdjunto ?? 0),
-      idDetalle: Number(item.idDetalle ?? item.IdDetalle ?? idDetalle),
-      rutaArchivo: String(item.rutaArchivo ?? item.RutaArchivo ?? ''),
-      fechaSubida: String(item.fechaSubida ?? item.FechaSubida ?? '')
-    }))
+    const items = extractItemsArray(response.data)
+    adjuntosByDetalle.value[idDetalle] = items.map((item: any) => normalizeAdjuntoItem(item, idDetalle))
   } catch {
     adjuntosByDetalle.value[idDetalle] = []
   }
