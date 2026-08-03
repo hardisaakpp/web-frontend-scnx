@@ -59,6 +59,7 @@ export const useReposicionStore = defineStore('reposicion', {
       unidades: []
     } as ListasFiltros,
     almacenes: [] as Almacen[],
+    catalogoAlmacenes: [] as Almacen[],
     carrito: [] as CarritoItem[],
     carritoInfo: {
       fromWhs: '',
@@ -82,6 +83,12 @@ export const useReposicionStore = defineStore('reposicion', {
     comentarioPorCodigo: (state) => (itemCode: string) => {
       const item = state.carrito.find((i: CarritoItem) => i.itemCode === itemCode)
       return item ? item.comment ?? '' : ''
+    },
+    etiquetaAlmacen: (state) => (code: string | null | undefined) => {
+      if (!code) return ''
+      const info = state.catalogoAlmacenes.find(a => a.code === code)
+      if (!info || !info.name || info.name === info.code) return code
+      return `${info.code} — ${info.name}`
     }
   },
 
@@ -90,16 +97,24 @@ export const useReposicionStore = defineStore('reposicion', {
       try {
         const authStore = useAuthStore()
         const accesses: any = authStore.userWarehouseAccesses
+
+        try {
+          this.catalogoAlmacenes = await reposicionApi.getAlmacenes()
+        } catch (err) {
+          console.error('Error al cargar catálogo de almacenes', err)
+        }
+
         const newAlmacenes: Almacen[] = []
-        
+
         if (accesses) {
           const accessList = Array.isArray(accesses) ? accesses : [accesses]
           accessList.forEach((a: any) => {
             if (a.codAlmacen) {
               if (!newAlmacenes.some(alm => alm.code === a.codAlmacen)) {
+                const info = this.catalogoAlmacenes.find(c => c.code === a.codAlmacen)
                 newAlmacenes.push({
                   code: a.codAlmacen,
-                  name: a.codAlmacen
+                  name: info?.name ?? a.codAlmacen
                 })
               }
             }

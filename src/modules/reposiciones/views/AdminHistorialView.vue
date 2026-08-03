@@ -16,13 +16,20 @@ import {
   BuildingOfficeIcon,
   ArrowLeftIcon
 } from '@heroicons/vue/24/outline'
-import { Dialog, DialogPanel, DialogTitle, TransitionRoot } from '@headlessui/vue'
+import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue'
 
 const authStore = useAuthStore()
 const store = useReposicionStore()
 const historial = ref<HistorialCabecera[]>([])
 const almacenesTodos = ref<Almacen[]>([])
 const loading = ref(false)
+
+const formatAlmacen = (a: Almacen) => a.name && a.name !== a.code ? `${a.code} — ${a.name}` : a.code
+const etiquetaAlmacen = (code: string | null | undefined) => {
+  if (!code) return ''
+  const info = almacenesTodos.value.find(a => a.code === code)
+  return info ? formatAlmacen(info) : code
+}
 
 const fechaDesde = ref(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
 const fechaHasta = ref(new Date().toISOString().split('T')[0])
@@ -122,7 +129,7 @@ const viewSolicitudes = async (whsCode: string, fecha: string) => {
           <select v-model="whsFilter" class="border-none focus:ring-0 p-0 text-sm font-bold text-gray-700 dark:text-white bg-transparent min-w-[120px] cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
             <option value="" class="bg-white dark:bg-gray-800">Todas las bodegas</option>
             <option v-for="alm in almacenesTodos" :key="alm.code" :value="alm.code" class="bg-white dark:bg-gray-800">
-              {{ alm.code }}
+              {{ formatAlmacen(alm) }}
             </option>
           </select>
         </div>
@@ -183,9 +190,9 @@ const viewSolicitudes = async (whsCode: string, fecha: string) => {
               <td class="px-6 py-4 text-center">
                 <span class="text-[10px] font-bold bg-gray-100 dark:bg-gray-700 text-gray-500 px-2 py-0.5 rounded">#{{ item.id }}</span>
               </td>
-              <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{{ item.fromWhs }}</td>
+              <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{{ etiquetaAlmacen(item.fromWhs) }}</td>
               <td class="px-6 py-4 text-center text-gray-300">→</td>
-              <td class="px-6 py-4 font-bold text-blue-600 dark:text-blue-400 text-sm">{{ item.toWhs }}</td>
+              <td class="px-6 py-4 font-bold text-blue-600 dark:text-blue-400 text-sm">{{ etiquetaAlmacen(item.toWhs) }}</td>
               <td class="px-6 py-4 text-center font-bold text-gray-900 dark:text-white text-sm">{{ item.cantidadArticulos }}</td>
               <td class="px-6 py-4">
                 <div :class="[getStatusClass(item.integrado), 'inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wider bg-opacity-10']">
@@ -251,6 +258,94 @@ const viewSolicitudes = async (whsCode: string, fecha: string) => {
       </Dialog>
     </TransitionRoot>
 
-    <!-- Modal SAP (Omitido para brevedad, se puede añadir igual que el anterior) -->
+    <!-- Modal Solicitudes SAP -->
+    <TransitionRoot appear :show="isSapModalOpen" as="template">
+      <Dialog as="div" @close="isSapModalOpen = false" class="relative z-50">
+        <TransitionChild as="template" enter="duration-300 ease-out" enter-from="opacity-0" enter-to="opacity-100" leave="duration-200 ease-in" leave-from="opacity-100" leave-to="opacity-0">
+          <div class="fixed inset-0 bg-black/50 backdrop-blur-sm" />
+        </TransitionChild>
+
+        <div class="fixed inset-0 overflow-y-auto">
+          <div class="flex min-h-full items-center justify-center p-4">
+            <TransitionChild as="template" enter="duration-300 ease-out" enter-from="opacity-0 scale-95" enter-to="opacity-100 scale-100" leave="duration-200 ease-in" leave-from="opacity-100 scale-100" leave-to="opacity-0 scale-95">
+              <DialogPanel class="w-full max-w-4xl transform overflow-hidden rounded-xl bg-white dark:bg-gray-800 p-8 text-left align-middle shadow-2xl transition-all border border-gray-200 dark:border-gray-700">
+                <div v-if="loadingSap" class="flex flex-col items-center py-12">
+                  <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mb-4"></div>
+                  <p class="text-gray-500 dark:text-gray-400 font-medium">Consultando SAP...</p>
+                </div>
+
+                <div v-else>
+                  <div class="flex justify-between items-start mb-6">
+                    <div>
+                      <DialogTitle as="h3" class="text-xl font-bold text-gray-900 dark:text-white pr-8 leading-tight">
+                        Documentos en SAP
+                      </DialogTitle>
+                      <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Solicitudes de traslado generadas automáticamente.</p>
+                    </div>
+                    <button @click="isSapModalOpen = false" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full text-gray-400 transition-colors">
+                      <XMarkIcon class="w-6 h-6" />
+                    </button>
+                  </div>
+
+                  <div v-if="sapRequests.length > 0" class="space-y-6 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
+                    <div v-for="req in sapRequests" :key="req.docNum" class="bg-gray-50 dark:bg-gray-900/40 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+                      <div class="bg-white dark:bg-gray-800 px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex flex-wrap items-center justify-between gap-4">
+                        <div class="flex items-center gap-3">
+                          <div class="bg-emerald-100 dark:bg-emerald-900/20 p-2 rounded-lg text-emerald-600 dark:text-emerald-400">
+                            <DocumentTextIcon class="w-5 h-5" />
+                          </div>
+                          <div>
+                            <span class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Documento SAP</span>
+                            <h4 class="text-lg font-bold text-gray-900 dark:text-white">#{{ req.docNum }}</h4>
+                          </div>
+                        </div>
+                        <div class="flex items-center gap-4 bg-gray-50 dark:bg-gray-900/50 px-4 py-2 rounded-lg border border-gray-100 dark:border-gray-700">
+                           <div class="text-center">
+                             <div class="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Origen</div>
+                             <div class="text-sm font-bold text-gray-700 dark:text-gray-300">{{ etiquetaAlmacen(req.fromWhs) }}</div>
+                           </div>
+                           <div class="text-gray-300 dark:text-gray-600 leading-none">→</div>
+                           <div class="text-center">
+                             <div class="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Destino</div>
+                             <div class="text-sm font-bold text-emerald-600 dark:text-emerald-400">{{ etiquetaAlmacen(req.toWhs) }}</div>
+                           </div>
+                        </div>
+                      </div>
+
+                      <div class="p-6">
+                        <div v-if="req.comments" class="mb-5 bg-amber-50 dark:bg-amber-900/10 p-3 rounded-lg border border-amber-100 dark:border-amber-900/20 flex items-start gap-2">
+                          <ClockIcon class="w-4 h-4 text-amber-500 mt-0.5" />
+                          <p class="text-xs text-amber-700 dark:text-amber-500 font-medium italic">"{{ req.comments }}"</p>
+                        </div>
+
+                        <table class="w-full text-left border-collapse">
+                          <thead>
+                            <tr class="border-b border-gray-200 dark:border-gray-700">
+                              <th class="py-2 text-[10px] font-bold text-gray-400 uppercase">Código</th>
+                              <th class="py-2 text-[10px] font-bold text-gray-400 uppercase text-right">Cantidad</th>
+                            </tr>
+                          </thead>
+                          <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                            <tr v-for="line in req.lines" :key="line.itemCode">
+                              <td class="py-2 text-sm font-medium text-gray-600 dark:text-gray-400">{{ line.itemCode }}</td>
+                              <td class="py-2 text-sm font-bold text-gray-900 dark:text-white text-right">{{ line.quantity }}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                  <div v-else class="py-20 text-center bg-gray-50 dark:bg-gray-900/40 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
+                    <XMarkIcon class="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+                    <p class="text-xl font-bold text-gray-400 dark:text-gray-500">Sin registros en SAP</p>
+                    <p class="text-gray-400 dark:text-gray-500 text-sm mt-1">Este registro aún no ha sido sincronizado.</p>
+                  </div>
+                </div>
+              </DialogPanel>
+            </TransitionChild>
+          </div>
+        </div>
+      </Dialog>
+    </TransitionRoot>
   </div>
 </template>

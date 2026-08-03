@@ -83,6 +83,8 @@ const handleUpdateComment = async (itemCode: string, comment: string) => {
 const almacenesTodos = ref<Almacen[]>([])
 const bodegasParaSeleccionar = computed(() => canAdmin.value ? almacenesTodos.value : almacenes.value)
 
+const formatAlmacen = (a: Almacen) => a.name && a.name !== a.code ? `${a.code} — ${a.name}` : a.code
+
 onMounted(async () => {
   await store.initialize()
   if (canAdmin.value) {
@@ -198,7 +200,7 @@ const getQuantityColor = (item: any) => {
           <BuildingOfficeIcon class="w-5 h-5 flex-shrink-0" />
           <div class="flex flex-col">
             <span class="text-[10px] font-bold uppercase tracking-wider leading-none">Tienda</span>
-            <span class="text-sm font-extrabold">{{ bodegasParaSeleccionar[0].code }}</span>
+            <span class="text-sm font-extrabold">{{ formatAlmacen(bodegasParaSeleccionar[0]) }}</span>
           </div>
         </div>
 
@@ -210,7 +212,7 @@ const getQuantityColor = (item: any) => {
         >
           <option value="" disabled>Seleccione una bodega...</option>
           <option v-for="alm in bodegasParaSeleccionar" :key="alm.code" :value="alm.code">
-            {{ alm.code }}
+            {{ formatAlmacen(alm) }}
           </option>
         </select>
 
