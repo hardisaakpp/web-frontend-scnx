@@ -152,6 +152,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ChevronLeftIcon, ArrowPathIcon, TrashIcon } from '@heroicons/vue/24/outline'
 import { inventarioSesionesService } from '../services/inventarioSesionesApi'
 import type { InventoryPickingSummaryDto, RecentCountItemDto } from '../types'
+import { APP_LOCALE } from '@/plugins/locale'
 
 type LocalRecentCountItem = RecentCountItemDto & { _deleted?: boolean }
 
@@ -175,8 +176,8 @@ function formatQty(n: number): string {
 
 function formatTime(value: string): string {
   const d = new Date(value)
-  return d.toLocaleDateString('es', { day: '2-digit', month: '2-digit' })
-    + ' ' + d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleDateString(APP_LOCALE, { day: '2-digit', month: '2-digit' })
+    + ' ' + d.toLocaleTimeString(APP_LOCALE, { hour: '2-digit', minute: '2-digit' })
 }
 
 function volver() {

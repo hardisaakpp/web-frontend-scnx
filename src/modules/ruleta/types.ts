@@ -61,6 +61,7 @@ export interface IdentificacionCliente {
 
 // ─── Admin: Campañas ──────────────────────────────────────────────────────────
 export type EstadoCampana = 'activa' | 'programada' | 'finalizada' | 'borrador' | 'pausada'
+export type EstadoOperativoCampana = 'borrador' | 'programada' | 'disponible' | 'pausada' | 'vencida' | 'finalizada'
 
 export interface Campana {
   id: string
@@ -72,6 +73,10 @@ export interface Campana {
   max_giros: number
   segmentos_permitidos: SegmentoCliente[]
   estado: EstadoCampana
+  estado_operativo: EstadoOperativoCampana
+  esta_vigente: boolean
+  disponible_para_giro: boolean
+  motivo_no_disponible?: string | null
   requiere_validacion_onecard: boolean
   tiene_premios: boolean
   hora_feliz_inicio?: string | null
@@ -85,6 +90,10 @@ export interface CampanaBackendResponse {
   fechaInicio: string
   fechaFin: string
   estado: string
+  estadoOperativo: string
+  estaVigente: boolean
+  disponibleParaGiro: boolean
+  motivoNoDisponible: string | null
   diasEntreGiros: number
   maxGirosPorCliente: number
   segmentosPermitidos: string[] | null
@@ -107,6 +116,20 @@ export interface CrearCampanaDTO {
   requiere_validacion_onecard: boolean
   hora_feliz_inicio?: string | null
   hora_feliz_fin?: string | null
+}
+
+export interface CampanaDisponibleBackendResponse {
+  disponible: boolean
+  estadoOperativo: string
+  motivo: string | null
+  campana: CampanaBackendResponse | null
+}
+
+export interface DisponibilidadCampana {
+  disponible: boolean
+  estado_operativo: string
+  motivo: string | null
+  campana: Campana | null
 }
 
 // ─── Admin: Premios y probabilidades ─────────────────────────────────────────

@@ -335,6 +335,7 @@ import type { InventorySessionListItemDto, InventorySessionStatus } from '../typ
 import CrearSesionDirectaModal from '../components/CrearSesionDirectaModal.vue'
 import PickerManagementModal from '../components/PickerManagementModal.vue'
 import { useInventarioModulePermissions } from '../composables/useInventarioModulePermissions'
+import { APP_LOCALE } from '@/plugins/locale'
 
 const { canGenerar } = useInventarioModulePermissions()
 const router = useRouter()
@@ -457,8 +458,8 @@ function badgeClass(status: InventorySessionStatus): string {
 function formatDateTime(value?: string | null): string {
   if (!value) return '—'
   const d = new Date(value)
-  return d.toLocaleDateString('es', { day: '2-digit', month: '2-digit', year: '2-digit' })
-    + ' ' + d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })
+  return d.toLocaleDateString(APP_LOCALE, { day: '2-digit', month: '2-digit', year: '2-digit' })
+    + ' ' + d.toLocaleTimeString(APP_LOCALE, { hour: '2-digit', minute: '2-digit' })
 }
 
 async function cargar() {

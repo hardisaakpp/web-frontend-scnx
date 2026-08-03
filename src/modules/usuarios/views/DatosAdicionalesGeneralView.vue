@@ -292,10 +292,10 @@
                   </template>
                 </td>
                 <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                  {{ item.fechaCreacion ? new Date(item.fechaCreacion).toLocaleString('es-PA', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—' }}
+                  {{ item.fechaCreacion ? new Date(item.fechaCreacion).toLocaleString(APP_LOCALE, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—' }}
                 </td>
                 <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                  {{ item.fechaModificacion ? new Date(item.fechaModificacion).toLocaleString('es-PA', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—' }}
+                  {{ item.fechaModificacion ? new Date(item.fechaModificacion).toLocaleString(APP_LOCALE, { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—' }}
                 </td>
                 <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{{ item.modificadoPor ?? '—' }}</td>
                 <td class="px-4 py-3 text-right">
@@ -350,6 +350,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { APP_LOCALE } from '@/plugins/locale'
 import api from '@/services/api'
 import VolverButton from '@/components/VolverButton.vue'
 import WarehouseSelect from '@/components/WarehouseSelect.vue'
@@ -503,6 +504,7 @@ const groupedAsignaciones = computed<GroupedAsignacion[]>(() => {
   return Array.from(map.values())
 })
 
+<<<<<<< HEAD
 const filteredGroupedAsignaciones = computed(() => {
   const q = tableSearch.value.toLowerCase().trim()
   if (!q) return groupedAsignaciones.value
@@ -517,10 +519,15 @@ const filteredGroupedAsignaciones = computed(() => {
     )
   })
 })
+=======
+const assignedUserIds = computed(() => new Set(asignaciones.value.map(a => a.userId)))
+>>>>>>> origin/test
 
 const filteredUsuarios = computed(() => {
   const q = userSearch.value.toLowerCase().trim()
   const list = usuarios.value.filter(u => {
+    const id = String(u.id ?? u.userId ?? '')
+    if (assignedUserIds.value.has(id)) return false
     const name = String(u.fullName ?? '').trim()
     const uname = String(u.userName ?? '').trim()
     const email = String(u.email ?? '').trim()

@@ -21,6 +21,8 @@ import promocionSobresRoutes from '../modules/promocion-sobres/router'
 import transaccionesRoutes from '../modules/transacciones/router'
 import reposicionesRoutes from '../modules/reposiciones/router'
 import ruletaRoutes from '../modules/ruleta/router'
+import transferenciasDirectasRoutes from '../modules/transferencias-directas/router'
+import demandaOtbRoutes from '../modules/demanda-otb/router'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -72,8 +74,10 @@ const router = createRouter({
         ...inventarioRoutes,
         ...promocionSobresRoutes,
         ...transaccionesRoutes,
+        ...transferenciasDirectasRoutes,
         ...reposicionesRoutes,
         ...ruletaRoutes,
+        ...demandaOtbRoutes,
         {
           path: 'forbidden',
           name: 'forbidden',

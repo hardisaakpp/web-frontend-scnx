@@ -939,7 +939,7 @@ const formatDateTime = (value: string) => {
   if (!value) return '-'
   try {
     const date = new Date(value)
-    return date.toLocaleString('es-ES', {
+    return date.toLocaleString(APP_LOCALE, {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -1086,7 +1086,7 @@ const downloadLiquidacionPdf = (idLiquidacion: number) => {
       </div>
     </div>`
 
-  const generado = new Date().toLocaleString('es-ES')
+  const generado = new Date().toLocaleString(APP_LOCALE)
   const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Liquidacion #${idLiquidacion}</title><style>${CSS}</style></head><body>
     <div class="header-doc">
       <div class="title-block">
@@ -1215,7 +1215,7 @@ const downloadPdf = () => {
   const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Historial Supervisor</title><style>${CSS}</style></head><body>
     <div style="margin-bottom:16px;border-bottom:2px solid #1e40af;padding-bottom:8px;display:flex;justify-content:space-between;align-items:flex-end">
       <div><div style="font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#6b7280">Reporte</div><div style="font-size:16px;font-weight:700;color:#1e40af">Historial de Aprobaciones — Supervisor</div></div>
-      <div style="text-align:right;font-size:10px;color:#6b7280">Generado: ${new Date().toLocaleString('es-ES')}<br>Período: ${esc(filtro)} &middot; ${groups.length} liquidación(es)</div>
+      <div style="text-align:right;font-size:10px;color:#6b7280">Generado: ${new Date().toLocaleString(APP_LOCALE)}<br>Período: ${esc(filtro)} &middot; ${groups.length} liquidación(es)</div>
     </div>
     ${sectionsHtml}
   </body></html>`

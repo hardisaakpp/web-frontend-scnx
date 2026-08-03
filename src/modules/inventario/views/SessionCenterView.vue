@@ -156,9 +156,10 @@ import {
   type WarehouseDto,
   scnexusInventoryApi
 } from '../services/scnexusInventoryApi'
+import { NUMBER_LOCALE } from '@/plugins/locale'
 
 const route = useRoute()
-const numberFmt = new Intl.NumberFormat('es-DO', { maximumFractionDigits: 2 })
+const numberFmt = new Intl.NumberFormat(NUMBER_LOCALE, { maximumFractionDigits: 2 })
 
 const warehouses = ref<WarehouseDto[]>([])
 const sessionId = ref('')
