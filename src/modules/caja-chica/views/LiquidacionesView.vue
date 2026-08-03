@@ -265,8 +265,9 @@
               </select>
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Nombre custodio <span class="italic text-gray-400 dark:text-gray-500">(automático, no editable)</span></label>
+              <label for="liquidacion-edit-nombre-custodio" class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Nombre custodio <span class="italic text-gray-400 dark:text-gray-500">(automático, no editable)</span></label>
               <input
+                id="liquidacion-edit-nombre-custodio"
                 v-model.trim="editNombreCustodio"
                 type="text"
                 readonly
@@ -334,8 +335,9 @@
               />
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Monto inicial recibido*</label>
+              <label for="liquidacion-edit-monto-inicial" class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Monto inicial recibido*</label>
               <input
+                id="liquidacion-edit-monto-inicial"
                 v-model="editMontoInicial"
                 type="number"
                 step="0.01"
