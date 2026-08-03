@@ -116,27 +116,19 @@
               Precio
             </th>
 
-            <!-- Columnas de tiendas/bodegas (dinámicas) - siempre visibles -->
-            <!-- ⭐ ACTUALIZADO: Muestra código y nombre según formato de dos filas de encabezado del backend -->
+            <!-- Columnas de tiendas/bodegas (dinámicas) - siempre visibles.
+                 Solo se muestra el código; el nombre completo (variable en longitud, algunos
+                 envuelven a 2-3 líneas y estiraban el alto del thead) queda en el :title,
+                 visible al pasar el mouse sobre toda la celda. -->
             <th
               v-for="tienda in tiendasUnicas"
               :key="tienda.codigo"
               class="sticky top-0 z-[15] header-shadow px-6 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[120px] bg-gray-50 dark:bg-gray-900"
               :title="`${tienda.codigo} - ${tienda.nombre}`"
             >
-              <div class="flex flex-col items-end gap-0.5">
-                <!-- Código (de la fila 2 del Excel) -->
-                <span class="font-semibold text-sm text-gray-900 dark:text-gray-100 leading-tight whitespace-nowrap">
-                  {{ tienda.codigo }}
-                </span>
-                <!-- Nombre (de la fila 1 del Excel) -->
-                <span
-                  class="text-[10px] font-normal text-gray-600 dark:text-gray-400 leading-tight break-words max-w-[120px] text-right"
-                  :title="tienda.nombre"
-                >
-                  {{ tienda.nombre || tienda.codigo }}
-                </span>
-              </div>
+              <span class="font-semibold text-sm text-gray-900 dark:text-gray-100 leading-tight whitespace-nowrap">
+                {{ tienda.codigo }}
+              </span>
             </th>
 
             <!-- Columnas calculadas -->
@@ -833,14 +825,17 @@ onUnmounted(() => {
    algebraicamente contra el propio alto del scroller. Solo depende de:
      K (esta constante)  −  B (cromo por DEBAJO del scroller, en esta vista)
    Objetivo: que el reposo coincida con el borde inferior de la barra de indicadores.
-     borde inferior de la barra = 64 (ancla `top-16`) + 47 (alto medido) = 111px
+     borde inferior de la barra = 64 (ancla `top-16`) + 47 (alto medido, escritorio) = 111px
      B en MabelTradingRedistribucionView (con pb-6 en RedistribucionTiendas.vue):
        1 (borde .excel-grid-container) + 24 (pb-6) + 75 (barra de acciones sticky)
        + 1 (borde card) + 24 (py-6 de la vista) + 32 (lg:p-8 del <main>) = 157
      K = 111 + 157 = 268 → se usa 272 (margen de 4px para soloLectura y subpíxel)
    Si se toca la barra de indicadores, la barra de acciones, o el padding de
    RedistribucionTiendas.vue/MabelTradingRedistribucionView.vue, recalcular con
-   esta misma fórmula (K = borde_inferior_barra_indicadores + B). */
+   esta misma fórmula (K = borde_inferior_barra_indicadores + B). Medido con Playwright
+   contra el CSS compilado real tras fusionar las 3 métricas en "pills" de color: la
+   altura de escritorio NO cambió (sigue en 47px, porque el pill de Diferencia ya
+   marcaba el alto máximo de la fila); ver constante <768px para el caso que sí cambió. */
 .grid-scroller {
   overflow: auto;
   max-height: calc(100dvh - 272px);
@@ -855,8 +850,10 @@ onUnmounted(() => {
 
 @media (max-width: 767px) {
   .grid-scroller {
-    /* la barra de indicadores se parte en 2 filas por flex-wrap (83px) y <main> baja a p-4 */
-    max-height: calc(100dvh - 292px);
+    /* la barra de indicadores se parte en 2 filas por flex-wrap: 89px medidos a 420px
+       (3 pills de color, no 83px de la versión sin pills) y <main> baja a p-4 (16px, no 32px).
+       target = 64 + 89 = 153 ; B_móvil = 125 (parte fija de B) + 16 (p-4) = 141 ; K = 153+141 = 294 → 298 */
+    max-height: calc(100dvh - 298px);
   }
 }
 

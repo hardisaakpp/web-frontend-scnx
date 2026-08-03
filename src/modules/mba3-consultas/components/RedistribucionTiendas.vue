@@ -68,18 +68,26 @@
       v-if="pedidoValue?.respuesta_proveedor"
       class="sticky top-16 z-20 bg-white dark:bg-gray-800 px-6 py-2 border-b border-gray-200 dark:border-gray-700 shadow-sm"
     >
-      <div class="flex items-center gap-4 flex-wrap">
-        <div class="flex items-baseline gap-1.5" title="Ajustado por EL RAYO">
-          <span class="text-[10px] font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wide">Confirmado</span>
+      <!-- Fusión del diseño original (tarjetas de color, identificables de un vistazo) con la
+           versión compacta (una sola fila): las 3 métricas van en "pills" de color, todas con el
+           mismo alto (px-2.5 py-1 rounded-full border) que ya tenía el pill de Diferencia, para
+           que el contenedor NO crezca de alto (el máximo de la fila ya lo marcaba ese pill). -->
+      <div class="flex items-center gap-3 flex-wrap">
+        <div
+          class="flex items-baseline gap-1.5 px-2.5 py-1 rounded-full border bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
+          title="Ajustado por EL RAYO"
+        >
+          <span class="text-[10px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Confirmado</span>
           <span class="text-sm font-bold text-blue-900 dark:text-blue-200">
             {{ formatNumberWithDecimals(resumenRedistribucion.total_confirmado, decimalPlaces) }}
           </span>
         </div>
 
-        <div class="h-4 w-px bg-gray-300 dark:bg-gray-600" aria-hidden="true"></div>
-
-        <div class="flex items-baseline gap-1.5" title="Repartido entre tiendas">
-          <span class="text-[10px] font-medium text-purple-600 dark:text-purple-400 uppercase tracking-wide">Distribuido</span>
+        <div
+          class="flex items-baseline gap-1.5 px-2.5 py-1 rounded-full border bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800"
+          title="Repartido entre tiendas"
+        >
+          <span class="text-[10px] font-semibold text-purple-600 dark:text-purple-400 uppercase tracking-wide">Distribuido</span>
           <span class="text-sm font-bold text-purple-900 dark:text-purple-200">
             {{ formatNumberWithDecimals(resumenRedistribucion.total_distribuido, decimalPlaces) }}
           </span>
