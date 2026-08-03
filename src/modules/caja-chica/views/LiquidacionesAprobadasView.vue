@@ -555,13 +555,94 @@ const downloadLiquidacionPdf = async (idLiquidacion: number) => {
   setTimeout(() => { win.print() }, 600)
 }
 
+const escPdf = (s: string | number | undefined | null) =>
+  String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+const fmtPdf = (v: string) => v ? v.substring(0, 10) : '-'
+const fmtAmtPdf = (v: number) => v != null ? v.toFixed(2) : '0.00'
+
+const ensureDetallesLoadedForPdf = async (idLiquidacion: number) => {
+  if (detallesByLiquidacion.value[idLiquidacion]) return
+  try {
+    const res = await cajaChicaApi.get('/LiquidacionesDetalle')
+    const payload = res.data as any
+    let arr: any[]
+    if (Array.isArray(payload)) {
+      arr = payload
+    } else if (Array.isArray(payload?.data)) {
+      arr = payload.data
+    } else {
+      arr = []
+    }
+    detallesByLiquidacion.value[idLiquidacion] = arr
+      .map(normalizeDetalle)
+      .filter((d: LiquidacionDetalleItem) => d.idLiquidacion === idLiquidacion)
+  } catch {
+    detallesByLiquidacion.value[idLiquidacion] = []
+  }
+}
+
+const buildDetalleRowHtml = (d: LiquidacionDetalleItem) => {
+  const monto = getDetalleContabilidadMonto(d.idDetalle, d.total)
+  const obs = getDetalleContabilidadObs(d.idDetalle)
+  const aprobadoPor = getDetalleContabilidadAprobador(d.idDetalle)
+  const fechaAprob = getContabilidadFecha(d.idDetalle)
+  const iva = d.iva > 0 ? d.iva : Math.max(0, d.total - d.subtotalConIva - d.subtotalSinIva)
+  return `<tr>
+    <td>${escPdf(d.nombreGasto)}</td>
+    <td>${escPdf(d.concepto)}</td>
+    <td>${escPdf(d.nombreProveedor || '-')}</td>
+    <td>${escPdf(d.ruc || '-')}</td>
+    <td class="amount">${fmtAmtPdf(iva)}</td>
+    <td class="amount">${fmtAmtPdf(d.total)}</td>
+    <td class="amount highlight">${fmtAmtPdf(monto)}</td>
+    <td>${escPdf(obs || '-')}</td>
+    <td>${escPdf(aprobadoPor)}</td>
+    <td>${escPdf(fechaAprob)}</td>
+  </tr>`
+}
+
+const buildDetallesSectionHtml = (detalles: LiquidacionDetalleItem[]) => {
+  if (detalles.length === 0) {
+    return `<div class="section-title">Detalle de gastos</div><div class="no-data">Sin detalles registrados.</div>`
+  }
+
+  const initialTotal = detalles.reduce((a, d) => a + d.total, 0)
+  const contabilidadTotal = detalles.reduce((a, d) => a + getDetalleContabilidadMonto(d.idDetalle, d.total), 0)
+  const filas = detalles.map(buildDetalleRowHtml).join('')
+
+  return `
+    <div class="section-title">Detalle de gastos</div>
+    <table><thead><tr><th>Gasto</th><th>Concepto</th><th>Proveedor</th><th>RUC</th><th>IVA</th><th>Total inicial</th><th>Monto contabilidad</th><th>Obs. contabilidad</th><th>Aprobado por</th><th>Fecha aprobación</th></tr></thead><tbody>${filas}</tbody></table>
+    <div class="footer-bar">
+      <span>Total inicial&nbsp;<strong>$${fmtAmtPdf(initialTotal)}</strong></span>
+      <span>Total contabilidad&nbsp;<strong>$${fmtAmtPdf(contabilidadTotal)}</strong></span>
+    </div>`
+}
+
+const buildLiquidacionSectionHtml = async (item: LiquidacionItem) => {
+  await ensureDetallesLoadedForPdf(item.idLiquidacion)
+  const detalles = detallesByLiquidacion.value[item.idLiquidacion] || []
+
+  return `
+    <div class="liquidacion">
+      <div class="cabecera">
+        <div><div class="sub">Liquidación de caja chica — APROBADA</div><h2>Liquidación #${escPdf(item.idLiquidacion)}</h2></div>
+        <div class="badge">APROBADO</div>
+      </div>
+      <div class="meta">
+        <div class="meta-item"><div class="meta-label">Almacén / Tienda</div><div class="meta-value">${escPdf(item.codAlmacen || '-')}</div></div>
+        <div class="meta-item"><div class="meta-label">Custodio</div><div class="meta-value">${escPdf(item.nombreCustodio || '-')}</div></div>
+        <div class="meta-item"><div class="meta-label">Cédula custodio</div><div class="meta-value">${escPdf(item.cedulaCustodio || '-')}</div></div>
+        <div class="meta-item"><div class="meta-label">Fecha creación</div><div class="meta-value">${fmtPdf(item.fechaCreacion)}</div></div>
+        <div class="meta-item"><div class="meta-label">Estado</div><div class="meta-value">${escPdf(item.estado)}</div></div>
+      </div>
+      ${buildDetallesSectionHtml(detalles)}
+    </div>`
+}
+
 const downloadPdf = async () => {
   const items = filteredAprobadas.value
   if (items.length === 0) return
-  const esc = (s: string | number | undefined | null) =>
-    String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  const fmt = (v: string) => v ? v.substring(0, 10) : '-'
-  const fmtAmt = (v: number) => v != null ? v.toFixed(2) : '0.00'
 
   const CSS = `
     *{box-sizing:border-box;margin:0;padding:0}
@@ -592,70 +673,7 @@ const downloadPdf = async () => {
 
   let sectionsHtml = ''
   for (const item of items) {
-    // Cargar detalles si no están en memoria
-    if (!detallesByLiquidacion.value[item.idLiquidacion]) {
-      try {
-        const res = await cajaChicaApi.get('/LiquidacionesDetalle')
-        const p = res.data as any
-        const arr: any[] = Array.isArray(p) ? p : Array.isArray(p?.data) ? p.data : []
-        detallesByLiquidacion.value[item.idLiquidacion] = arr
-          .map(normalizeDetalle)
-          .filter((d: LiquidacionDetalleItem) => d.idLiquidacion === item.idLiquidacion)
-      } catch {
-        detallesByLiquidacion.value[item.idLiquidacion] = []
-      }
-    }
-    const detalles = detallesByLiquidacion.value[item.idLiquidacion] || []
-    const initialTotal = detalles.reduce((a, d) => a + d.total, 0)
-    const contabilidadTotal = detalles.reduce((a, d) => a + getDetalleContabilidadMonto(d.idDetalle, d.total), 0)
-
-    let detallesHtml = ''
-    if (detalles.length > 0) {
-      const filas = detalles.map(d => {
-        const monto = getDetalleContabilidadMonto(d.idDetalle, d.total)
-        const obs = getDetalleContabilidadObs(d.idDetalle)
-        const aprobadoPor = getDetalleContabilidadAprobador(d.idDetalle)
-        const fechaAprob = getContabilidadFecha(d.idDetalle)
-        const iva = d.iva > 0 ? d.iva : Math.max(0, d.total - d.subtotalConIva - d.subtotalSinIva)
-        return `<tr>
-          <td>${esc(d.nombreGasto)}</td>
-          <td>${esc(d.concepto)}</td>
-          <td>${esc(d.nombreProveedor || '-')}</td>
-          <td>${esc(d.ruc || '-')}</td>
-          <td class="amount">${fmtAmt(iva)}</td>
-          <td class="amount">${fmtAmt(d.total)}</td>
-          <td class="amount highlight">${fmtAmt(monto)}</td>
-          <td>${esc(obs || '-')}</td>
-          <td>${esc(aprobadoPor)}</td>
-          <td>${esc(fechaAprob)}</td>
-        </tr>`
-      }).join('')
-      detallesHtml = `
-        <div class="section-title">Detalle de gastos</div>
-        <table><thead><tr><th>Gasto</th><th>Concepto</th><th>Proveedor</th><th>RUC</th><th>IVA</th><th>Total inicial</th><th>Monto contabilidad</th><th>Obs. contabilidad</th><th>Aprobado por</th><th>Fecha aprobación</th></tr></thead><tbody>${filas}</tbody></table>
-        <div class="footer-bar">
-          <span>Total inicial&nbsp;<strong>$${fmtAmt(initialTotal)}</strong></span>
-          <span>Total contabilidad&nbsp;<strong>$${fmtAmt(contabilidadTotal)}</strong></span>
-        </div>`
-    } else {
-      detallesHtml = `<div class="section-title">Detalle de gastos</div><div class="no-data">Sin detalles registrados.</div>`
-    }
-
-    sectionsHtml += `
-      <div class="liquidacion">
-        <div class="cabecera">
-          <div><div class="sub">Liquidación de caja chica — APROBADA</div><h2>Liquidación #${esc(item.idLiquidacion)}</h2></div>
-          <div class="badge">APROBADO</div>
-        </div>
-        <div class="meta">
-          <div class="meta-item"><div class="meta-label">Almacén / Tienda</div><div class="meta-value">${esc(item.codAlmacen || '-')}</div></div>
-          <div class="meta-item"><div class="meta-label">Custodio</div><div class="meta-value">${esc(item.nombreCustodio || '-')}</div></div>
-          <div class="meta-item"><div class="meta-label">Cédula custodio</div><div class="meta-value">${esc(item.cedulaCustodio || '-')}</div></div>
-          <div class="meta-item"><div class="meta-label">Fecha creación</div><div class="meta-value">${fmt(item.fechaCreacion)}</div></div>
-          <div class="meta-item"><div class="meta-label">Estado</div><div class="meta-value">${esc(item.estado)}</div></div>
-        </div>
-        ${detallesHtml}
-      </div>`
+    sectionsHtml += await buildLiquidacionSectionHtml(item)
   }
 
   const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Liquidaciones Aprobadas</title><style>${CSS}</style></head><body>

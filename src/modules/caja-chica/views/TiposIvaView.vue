@@ -18,8 +18,9 @@
       <div class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-5">
         <div class="grid grid-cols-1 gap-4 lg:grid-cols-4">
           <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Código</label>
+            <label for="tipo-iva-codigo" class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Código</label>
             <input
+              id="tipo-iva-codigo"
               v-model.trim="codigo"
               type="text"
               placeholder="Ej: IVA_12"
@@ -27,8 +28,9 @@
             />
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Descripción</label>
+            <label for="tipo-iva-descripcion" class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Descripción</label>
             <input
+              id="tipo-iva-descripcion"
               v-model.trim="descripcion"
               type="text"
               placeholder="Ej: IVA 12%"
@@ -36,8 +38,9 @@
             />
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Porcentaje</label>
+            <label for="tipo-iva-porcentaje" class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Porcentaje</label>
             <input
+              id="tipo-iva-porcentaje"
               v-model="porcentaje"
               type="number"
               step="0.01"
@@ -53,8 +56,9 @@
             </label>
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">TaxCode SAP</label>
+            <label for="tipo-iva-taxcode" class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">TaxCode SAP</label>
             <input
+              id="tipo-iva-taxcode"
               v-model.trim="taxCodeSap"
               type="text"
               placeholder="Ej: IVA_12"

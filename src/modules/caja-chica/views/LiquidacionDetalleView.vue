@@ -118,8 +118,9 @@
             />
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Tipo de IVA *</label>
+            <label for="liquidacion-tipo-iva" class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Tipo de IVA *</label>
             <select
+              id="liquidacion-tipo-iva"
               v-model="selectedTipoIvaId"
               class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
             >
@@ -130,8 +131,9 @@
             </select>
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Subtotal Base (gravado) *</label>
+            <label for="liquidacion-subtotal-con-iva" class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Subtotal Base (gravado) *</label>
             <input
+              id="liquidacion-subtotal-con-iva"
               v-model="subtotalConIva"
               type="number"
               step="0.01"
@@ -393,8 +395,9 @@
               />
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Tipo de IVA *</label>
+              <label for="liquidacion-edit-tipo-iva" class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Tipo de IVA *</label>
               <select
+                id="liquidacion-edit-tipo-iva"
                 v-model="editTipoIvaId"
                 class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-colors"
               >
@@ -405,8 +408,9 @@
               </select>
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Subtotal Base (gravado) *</label>
+              <label for="liquidacion-edit-subtotal-con-iva" class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Subtotal Base (gravado) *</label>
               <input
+                id="liquidacion-edit-subtotal-con-iva"
                 v-model="editSubtotalConIva"
                 type="number"
                 step="0.01"
@@ -667,7 +671,14 @@ const loadTiposIva = async () => {
   try {
     const response = await cajaChicaApi.get('/TiposIva')
     const payload = response.data as any
-    const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
+    let items: any[]
+    if (Array.isArray(payload)) {
+      items = payload
+    } else if (Array.isArray(payload?.data)) {
+      items = payload.data
+    } else {
+      items = []
+    }
     catalogoTiposIva.value = items.map((item: any) => ({
       id: Number(item.id ?? item.Id ?? 0),
       codigo: normalizeString(item.codigo ?? item.Codigo ?? ''),
