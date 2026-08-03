@@ -55,49 +55,73 @@
       </div>
     </div>
     
-    <!-- Scroll horizontal; thead con misma lógica visual que la barra de totales (px-6 py-3, borde, fondo gris) -->
-    <div class="overflow-x-auto">
+    <!-- Requerimiento 1.1.1: scroller único y acotado en altura.
+         El thead se congela contra el borde superior de ESTE contenedor (no del viewport),
+         porque un ancestro con overflow-x:auto ya es el scrollport del sticky
+         (overflow-x:auto + overflow-y:visible ⇒ overflow-y computa a auto).
+         Mismo patrón usado en CargarPlantillaView.vue:207 y conciliacion/ReporteMaestroView.vue. -->
+    <div
+      ref="scrollerRef"
+      class="grid-scroller"
+      tabindex="0"
+      role="region"
+      aria-label="Matriz de redistribución por tienda"
+    >
       <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-        <thead class="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
-          <tr>
-            <!-- Columnas fijas -->
+        <thead class="bg-gray-50 dark:bg-gray-900">
+          <tr ref="headerRowRef">
+            <!-- Columnas fijas: congeladas en vertical (top-0) y horizontal (left medido en runtime) -->
             <th
               v-if="isColumnVisible('numero')"
-              class="sticky left-0 z-10 bg-gray-50 dark:bg-gray-900 px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 w-12 min-w-[48px] shadow-[4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[4px_0_6px_-2px_rgba(0,0,0,0.2)]"
+              data-col="numero"
+              :style="stickyLeftStyle('numero')"
+              class="sticky top-0 z-[16] header-shadow bg-gray-50 dark:bg-gray-900 px-2 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 w-10 min-w-[40px]"
             >
               #
             </th>
             <th
               v-if="isColumnVisible('codigo')"
-              class="sticky left-[48px] z-10 bg-gray-50 dark:bg-gray-900 px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 min-w-[120px] shadow-[4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[4px_0_6px_-2px_rgba(0,0,0,0.2)]"
+              data-col="codigo"
+              :style="stickyLeftStyle('codigo')"
+              class="sticky top-0 z-[16] header-shadow bg-gray-50 dark:bg-gray-900 px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 whitespace-nowrap"
             >
               Código
             </th>
             <th
               v-if="isColumnVisible('producto')"
-              class="bg-gray-50 dark:bg-gray-900 px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 min-w-[200px]"
+              data-col="producto"
+              :style="stickyLeftStyle('producto')"
+              class="sticky top-0 z-[16] header-shadow bg-gray-50 dark:bg-gray-900 px-6 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 min-w-[200px]"
             >
               Producto
             </th>
+            <!-- Etiqueta en dos líneas: el ancho de la columna lo manda el número, no el título -->
             <th
               v-if="isColumnVisible('total_confirmado')"
-              class="bg-gray-50 dark:bg-gray-900 px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 min-w-[120px]"
+              data-col="total_confirmado"
+              :style="stickyLeftStyle('total_confirmado')"
+              class="sticky top-0 z-[16] header-shadow bg-gray-50 dark:bg-gray-900 px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700"
             >
-              Total Confirmado
+              <span class="flex flex-col items-end leading-tight">
+                <span>Total</span>
+                <span>Confirmado</span>
+              </span>
             </th>
             <th
               v-if="isColumnVisible('costo_unitario')"
-              class="bg-gray-50 dark:bg-gray-900 px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 min-w-[120px]"
+              data-col="costo_unitario"
+              :style="stickyLeftStyle('costo_unitario')"
+              class="sticky top-0 z-[16] frozen-edge bg-gray-50 dark:bg-gray-900 px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider border-r border-gray-200 dark:border-gray-700 whitespace-nowrap"
             >
               Precio
             </th>
-            
+
             <!-- Columnas de tiendas/bodegas (dinámicas) - siempre visibles -->
             <!-- ⭐ ACTUALIZADO: Muestra código y nombre según formato de dos filas de encabezado del backend -->
             <th
               v-for="tienda in tiendasUnicas"
               :key="tienda.codigo"
-              class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[120px] bg-gray-50 dark:bg-gray-900"
+              class="sticky top-0 z-[15] header-shadow px-6 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[120px] bg-gray-50 dark:bg-gray-900"
               :title="`${tienda.codigo} - ${tienda.nombre}`"
             >
               <div class="flex flex-col items-end gap-0.5">
@@ -106,7 +130,7 @@
                   {{ tienda.codigo }}
                 </span>
                 <!-- Nombre (de la fila 1 del Excel) -->
-                <span 
+                <span
                   class="text-[10px] font-normal text-gray-600 dark:text-gray-400 leading-tight break-words max-w-[120px] text-right"
                   :title="tienda.nombre"
                 >
@@ -114,17 +138,20 @@
                 </span>
               </div>
             </th>
-            
+
             <!-- Columnas calculadas -->
             <th
               v-if="isColumnVisible('total_distribuido')"
-              class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-100 dark:bg-gray-800 min-w-[120px] border-l-2 border-gray-300 dark:border-gray-600"
+              class="sticky top-0 z-[15] header-shadow px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-100 dark:bg-gray-800 border-l-2 border-gray-300 dark:border-gray-600"
             >
-              Total Distribuido
+              <span class="flex flex-col items-end leading-tight">
+                <span>Total</span>
+                <span>Distribuido</span>
+              </span>
             </th>
             <th
               v-if="isColumnVisible('diferencia')"
-              class="sticky right-0 z-[5] px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-100 dark:bg-gray-800 min-w-[120px] border-l border-gray-200 dark:border-gray-700 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.08)] dark:shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.25)]"
+              class="sticky top-0 right-0 z-[16] frozen-edge-right px-3 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-100 dark:bg-gray-800 whitespace-nowrap border-l border-gray-200 dark:border-gray-700"
             >
               Diferencia
             </th>
@@ -142,23 +169,22 @@
             <!-- Columnas fijas - fondo neutro sin colores de estado -->
             <td
               v-if="isColumnVisible('numero')"
-              class="sticky left-0 z-[5] px-6 py-3 text-sm font-medium text-gray-500 dark:text-gray-400 text-center whitespace-nowrap border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+              :style="stickyLeftStyle('numero')"
+              class="sticky z-[5] px-2 py-3 text-sm font-medium text-gray-500 dark:text-gray-400 text-center whitespace-nowrap border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
             >
               {{ Number(index) + 1 }}
             </td>
             <td
               v-if="isColumnVisible('codigo')"
-              class="sticky z-[5] px-6 py-3 text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
-              :class="getStickyLeftClass('codigo')"
+              :style="stickyLeftStyle('codigo')"
+              class="sticky z-[5] px-3 py-3 text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
             >
               {{ producto.codigo_producto }}
             </td>
             <td
               v-if="isColumnVisible('producto')"
-              :class="[
-                'sticky z-[5] px-6 py-3 text-sm text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800',
-                getStickyLeftClass('producto')
-              ]"
+              :style="stickyLeftStyle('producto')"
+              class="sticky z-[5] px-6 py-3 text-sm text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
             >
               <div class="max-w-[200px] truncate" :title="producto.descripcion">
                 {{ producto.descripcion }}
@@ -167,11 +193,11 @@
             <!-- Total Confirmado: resaltar en ámbar si fue modificado en el flujo de EL RAYO -->
             <td
               v-if="isColumnVisible('total_confirmado')"
+              :style="stickyLeftStyle('total_confirmado')"
               :class="[
-                'sticky z-[5] px-6 py-3 text-sm font-semibold text-right whitespace-nowrap border-r border-gray-200 dark:border-gray-700',
-                getStickyLeftClass('total_confirmado'),
-                tieneTotalConfirmadoModificado(producto) 
-                  ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-200 border-l-2 border-amber-500 dark:border-amber-400' 
+                'sticky z-[5] px-3 py-3 text-sm font-semibold text-right whitespace-nowrap border-r border-gray-200 dark:border-gray-700',
+                tieneTotalConfirmadoModificado(producto)
+                  ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-200 border-l-2 border-amber-500 dark:border-amber-400'
                   : 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400'
               ]"
             >
@@ -180,11 +206,11 @@
             <!-- Precio: resaltar en ámbar si fue modificado en el flujo de EL RAYO -->
             <td
               v-if="isColumnVisible('costo_unitario')"
+              :style="stickyLeftStyle('costo_unitario')"
               :class="[
-                'sticky z-[5] px-6 py-3 text-sm font-medium text-right whitespace-nowrap border-r border-gray-200 dark:border-gray-700',
-                getStickyLeftClass('costo_unitario'),
-                tienePrecioModificado(producto) 
-                  ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-200 border-l-2 border-amber-500 dark:border-amber-400' 
+                'sticky z-[5] frozen-edge px-3 py-3 text-sm font-medium text-right whitespace-nowrap border-r border-gray-200 dark:border-gray-700',
+                tienePrecioModificado(producto)
+                  ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-200 border-l-2 border-amber-500 dark:border-amber-400'
                   : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white'
               ]"
             >
@@ -221,13 +247,13 @@
             <!-- Columnas calculadas -->
             <td
               v-if="isColumnVisible('total_distribuido')"
-              class="px-6 py-3 text-sm font-semibold text-purple-600 dark:text-purple-400 text-right whitespace-nowrap bg-gray-50 dark:bg-gray-900/50 border-l-2 border-gray-300 dark:border-gray-600"
+              class="px-3 py-3 text-sm font-semibold text-purple-600 dark:text-purple-400 text-right whitespace-nowrap bg-gray-50 dark:bg-gray-900/50 border-l-2 border-gray-300 dark:border-gray-600"
             >
               {{ formatNumberWithDecimals(producto.cantidad_distribuida, decimalPlaces) }}
             </td>
             <td
               v-if="isColumnVisible('diferencia')"
-              class="sticky right-0 z-[5] px-6 py-3 text-sm font-semibold text-right whitespace-nowrap min-w-[120px] bg-gray-50 dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.2)]"
+              class="sticky right-0 z-[5] px-3 py-3 text-sm font-semibold text-right whitespace-nowrap bg-gray-50 dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.2)]"
               :class="getDiferenciaClass(producto.diferencia)"
             >
               {{ producto.diferencia > 0 ? '+' : '' }}{{ formatNumberWithDecimals(producto.diferencia, decimalPlaces) }}
@@ -240,39 +266,34 @@
           <tr>
             <td
               v-if="isColumnVisible('numero')"
-              class="sticky left-0 z-[5] bg-gray-100 dark:bg-gray-900 px-6 py-3 text-sm font-semibold text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700 text-center"
+              :style="stickyLeftStyle('numero')"
+              class="sticky z-[5] bg-gray-100 dark:bg-gray-900 px-2 py-3 text-sm font-semibold text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700 text-center"
             >
               -
             </td>
             <td
               v-if="isColumnVisible('codigo')"
-              class="sticky z-[5] bg-gray-100 dark:bg-gray-900 px-6 py-3 text-sm font-semibold text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700"
-              :class="getStickyLeftClass('codigo')"
+              :style="stickyLeftStyle('codigo')"
+              class="sticky z-[5] bg-gray-100 dark:bg-gray-900 px-3 py-3 text-sm font-semibold text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700 whitespace-nowrap"
             >
               TOTALES
             </td>
             <td
               v-if="isColumnVisible('producto')"
-              :class="[
-                'sticky z-[5] bg-gray-100 dark:bg-gray-900 px-6 py-3 border-r border-gray-200 dark:border-gray-700',
-                getStickyLeftClass('producto')
-              ]"
+              :style="stickyLeftStyle('producto')"
+              class="sticky z-[5] bg-gray-100 dark:bg-gray-900 px-6 py-3 border-r border-gray-200 dark:border-gray-700"
             ></td>
             <td
               v-if="isColumnVisible('total_confirmado')"
-              :class="[
-                'sticky z-[5] bg-gray-100 dark:bg-gray-900 px-6 py-3 text-sm font-bold text-blue-600 dark:text-blue-400 text-right border-r border-gray-200 dark:border-gray-700',
-                getStickyLeftClass('total_confirmado')
-              ]"
+              :style="stickyLeftStyle('total_confirmado')"
+              class="sticky z-[5] bg-gray-100 dark:bg-gray-900 px-3 py-3 text-sm font-bold text-blue-600 dark:text-blue-400 text-right border-r border-gray-200 dark:border-gray-700"
             >
               {{ formatNumberWithDecimals(totalesConfirmado, decimalPlaces) }}
             </td>
             <td
               v-if="isColumnVisible('costo_unitario')"
-              :class="[
-                'sticky z-[5] bg-gray-100 dark:bg-gray-900 px-6 py-3 text-sm font-semibold text-gray-900 dark:text-white text-right border-r border-gray-200 dark:border-gray-700',
-                getStickyLeftClass('costo_unitario')
-              ]"
+              :style="stickyLeftStyle('costo_unitario')"
+              class="sticky z-[5] frozen-edge bg-gray-100 dark:bg-gray-900 px-3 py-3 text-sm font-semibold text-gray-900 dark:text-white text-right border-r border-gray-200 dark:border-gray-700"
             >
               {{ formatCurrencyWithDecimals(totalesCostoUnitario, 4) }}
             </td>
@@ -285,13 +306,13 @@
             </td>
             <td
               v-if="isColumnVisible('total_distribuido')"
-              class="px-6 py-3 text-sm font-bold text-purple-600 dark:text-purple-400 text-right border-l-2 border-gray-300 dark:border-gray-600"
+              class="px-3 py-3 text-sm font-bold text-purple-600 dark:text-purple-400 text-right border-l-2 border-gray-300 dark:border-gray-600"
             >
               {{ formatNumberWithDecimals(totalesDistribuido, decimalPlaces) }}
             </td>
             <td
               v-if="isColumnVisible('diferencia')"
-              class="sticky right-0 z-[5] px-6 py-3 text-sm font-bold text-right min-w-[120px] bg-gray-100 dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.08)] dark:shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.25)]"
+              class="sticky right-0 z-[5] px-3 py-3 text-sm font-bold text-right bg-gray-100 dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.08)] dark:shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.25)]"
               :class="getDiferenciaClass(totalesDiferencia)"
             >
               {{ totalesDiferencia > 0 ? '+' : '' }}{{ formatNumberWithDecimals(totalesDiferencia, decimalPlaces) }}
@@ -324,7 +345,7 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, type Ref } from '@vue/reactivity'
-import { onMounted, onUnmounted } from '@vue/runtime-core'
+import { onMounted, onUnmounted, nextTick } from '@vue/runtime-core'
 import type { ProductoRedistribucion, DistribucionTiendaEditada } from '../utils/redistribucionHelpers'
 import { formatNumberWithDecimals, formatCurrencyWithDecimals, type ColumnConfig } from '../utils/formatters'
 import { getDiferenciaClass } from '../utils/styleHelpers'
@@ -484,28 +505,62 @@ function isColumnVisible(columnKey: string): boolean {
   return column.fixed ? true : visibleColumns.value.includes(columnKey)
 }
 
-// Función para obtener la clase sticky-left según las columnas visibles
-function getStickyLeftClass(columnKey: string): string {
-  const columnIndex = availableColumns.findIndex(col => col.key === columnKey)
-  if (columnIndex === -1) return ''
-  
-  let leftPosition = 0
-  const widths: Record<string, number> = {
-    numero: 48,
-    codigo: 120,
-    producto: 200,
-    total_confirmado: 120,
-    costo_unitario: 120
+// ── Requerimiento 1.1.1: inmovilización horizontal de "#" hasta "Precio" ──
+// Los offsets se MIDEN en runtime en lugar de derivarse de anchos hardcodeados.
+// Motivo doble:
+//   1) La versión anterior construía la clase en runtime (`left-[${n}px]`). El JIT de
+//      Tailwind sólo escanea clases estáticas, así que left-[168px]/[368px]/[488px]
+//      nunca se compilaban y producto/total_confirmado/costo_unitario no se pegaban.
+//   2) Las columnas ahora dimensionan según su contenido (sin min-w fijo), así que
+//      cualquier ancho asumido quedaría desalineado.
+const FROZEN_COLUMN_KEYS = ['numero', 'codigo', 'producto', 'total_confirmado', 'costo_unitario'] as const
+
+const scrollerRef = ref<HTMLElement | null>(null)
+const headerRowRef = ref<HTMLTableRowElement | null>(null)
+const stickyLeftOffsets = ref<Record<string, number>>({})
+
+/** Estilo `left` para las celdas congeladas. undefined mientras no se haya medido. */
+function stickyLeftStyle(columnKey: string): { left: string } | undefined {
+  const offset = stickyLeftOffsets.value[columnKey]
+  return offset === undefined ? undefined : { left: `${offset}px` }
+}
+
+/** Acumula el ancho real de cada columna congelada visible para obtener su offset izquierdo. */
+function measureStickyOffsets(): void {
+  const row = headerRowRef.value
+  if (!row) return
+
+  let accumulated = 0
+  const offsets: Record<string, number> = {}
+
+  for (const key of FROZEN_COLUMN_KEYS) {
+    if (!isColumnVisible(key)) continue
+    offsets[key] = accumulated
+    const cell = row.querySelector<HTMLElement>(`[data-col="${key}"]`)
+    // getBoundingClientRect en lugar de offsetWidth: conserva subpíxeles y evita
+    // que el redondeo se acumule y desalinee las últimas columnas.
+    if (cell) accumulated += cell.getBoundingClientRect().width
   }
-  
-  for (let i = 0; i < columnIndex; i++) {
-    const col = availableColumns[i]
-    if (isColumnVisible(col.key)) {
-      leftPosition += widths[col.key] || 120
-    }
+
+  stickyLeftOffsets.value = offsets
+}
+
+let headerResizeObserver: ResizeObserver | null = null
+
+/** (Re)observa las celdas del encabezado; se llama de nuevo si cambian las columnas visibles. */
+function observeHeaderCells(): void {
+  const row = headerRowRef.value
+  if (!row || typeof ResizeObserver === 'undefined') return
+
+  headerResizeObserver?.disconnect()
+  headerResizeObserver = new ResizeObserver(() => measureStickyOffsets())
+
+  for (const key of FROZEN_COLUMN_KEYS) {
+    const cell = row.querySelector<HTMLElement>(`[data-col="${key}"]`)
+    if (cell) headerResizeObserver.observe(cell)
   }
-  
-  return leftPosition > 0 ? `left-[${leftPosition}px]` : ''
+
+  measureStickyOffsets()
 }
 
 // Función para toggle de visibilidad de columnas
@@ -737,13 +792,32 @@ function handleBlur(producto: ProductoRedistribucion, tiendaCodigo: string, even
   }
 }
 
+// Re-medir cuando cambia algo que puede alterar el ancho de las columnas congeladas.
+// El ResizeObserver cubre los cambios de ancho, pero al añadir/quitar columnas hay que
+// volver a observar porque los <th> se destruyen y se recrean (v-if).
+watch(
+  () => [visibleColumns.value.join('|'), tiendasUnicas.value.length, props.decimalPlaces],
+  () => {
+    nextTick(observeHeaderCells)
+  }
+)
+
 // Agregar listener para cerrar dropdown al hacer click fuera
 onMounted(() => {
   document.addEventListener('click', handleClickOutsideColumnSelector)
+
+  nextTick(observeHeaderCells)
+
+  // Las fuentes web (Inter) cambian el ancho del texto al cargar: re-medir cuando estén listas.
+  if (typeof document !== 'undefined' && 'fonts' in document) {
+    document.fonts.ready.then(() => measureStickyOffsets()).catch(() => { /* sin impacto: los offsets ya están medidos */ })
+  }
 })
 
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutsideColumnSelector)
+  headerResizeObserver?.disconnect()
+  headerResizeObserver = null
 })
 </script>
 
@@ -753,27 +827,105 @@ onUnmounted(() => {
   position: relative;
 }
 
-/* Sombra para indicar scroll horizontal disponible */
-.overflow-x-auto {
+/* ── Requerimiento 1.1.1: scroller único y acotado en altura ──
+   La posición de reposo del panel al hacer scroll de página NO depende del cromo
+   por ENCIMA del scroller (header, barra de indicadores, etc.) — se cancela
+   algebraicamente contra el propio alto del scroller. Solo depende de:
+     K (esta constante)  −  B (cromo por DEBAJO del scroller, en esta vista)
+   Objetivo: que el reposo coincida con el borde inferior de la barra de indicadores.
+     borde inferior de la barra = 64 (ancla `top-16`) + 47 (alto medido) = 111px
+     B en MabelTradingRedistribucionView (con pb-6 en RedistribucionTiendas.vue):
+       1 (borde .excel-grid-container) + 24 (pb-6) + 75 (barra de acciones sticky)
+       + 1 (borde card) + 24 (py-6 de la vista) + 32 (lg:p-8 del <main>) = 157
+     K = 111 + 157 = 268 → se usa 272 (margen de 4px para soloLectura y subpíxel)
+   Si se toca la barra de indicadores, la barra de acciones, o el padding de
+   RedistribucionTiendas.vue/MabelTradingRedistribucionView.vue, recalcular con
+   esta misma fórmula (K = borde_inferior_barra_indicadores + B). */
+.grid-scroller {
+  overflow: auto;
+  max-height: calc(100dvh - 272px);
+  min-height: 280px;
+  /* alto del thead (fila con nombre de tienda en 2 líneas): evita que Tab deje
+     una celda enfocada oculta debajo del encabezado congelado */
+  scroll-padding-top: 72px;
+  scrollbar-gutter: stable;
   scrollbar-width: thin;
   scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
 }
 
-.overflow-x-auto::-webkit-scrollbar {
-  height: 8px;
+@media (max-width: 767px) {
+  .grid-scroller {
+    /* la barra de indicadores se parte en 2 filas por flex-wrap (83px) y <main> baja a p-4 */
+    max-height: calc(100dvh - 292px);
+  }
 }
 
-.overflow-x-auto::-webkit-scrollbar-track {
+@media print {
+  .grid-scroller {
+    max-height: none;
+    overflow: visible;
+  }
+  .grid-scroller thead th {
+    position: static;
+  }
+}
+
+.grid-scroller::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+.grid-scroller::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.overflow-x-auto::-webkit-scrollbar-thumb {
+.grid-scroller::-webkit-scrollbar-thumb {
   background-color: rgba(156, 163, 175, 0.5);
   border-radius: 4px;
 }
 
-.overflow-x-auto::-webkit-scrollbar-thumb:hover {
+.grid-scroller::-webkit-scrollbar-thumb:hover {
   background-color: rgba(156, 163, 175, 0.7);
+}
+
+/* ── Requerimiento 1.1.1: sombras de los bordes congelados ──
+   Tailwind preflight aplica `border-collapse: collapse`, con lo que los border-* de una
+   celda sticky desaparecen al despegarse. Por eso el borde se simula con box-shadow.
+   La sombra vertical va SÓLO en la última columna congelada (Precio) para no apilar
+   cinco sombras, una por columna. */
+.frozen-edge {
+  box-shadow: 4px 0 6px -2px rgba(0, 0, 0, 0.06);
+}
+
+.dark .frozen-edge {
+  box-shadow: 4px 0 6px -2px rgba(0, 0, 0, 0.2);
+}
+
+/* Sombra inferior del encabezado congelado, para separarlo de las filas al hacer scroll */
+thead th.header-shadow {
+  box-shadow: 0 2px 6px -2px rgba(0, 0, 0, 0.1);
+}
+
+.dark thead th.header-shadow {
+  box-shadow: 0 2px 6px -2px rgba(0, 0, 0, 0.3);
+}
+
+/* Esquina superior izquierda: necesita las dos sombras a la vez */
+thead th.frozen-edge {
+  box-shadow: 4px 0 6px -2px rgba(0, 0, 0, 0.06), 0 2px 6px -2px rgba(0, 0, 0, 0.1);
+}
+
+.dark thead th.frozen-edge {
+  box-shadow: 4px 0 6px -2px rgba(0, 0, 0, 0.2), 0 2px 6px -2px rgba(0, 0, 0, 0.3);
+}
+
+/* Esquina superior derecha (columna Diferencia): sombra izquierda + inferior */
+thead th.frozen-edge-right {
+  box-shadow: -4px 0 6px -2px rgba(0, 0, 0, 0.08), 0 2px 6px -2px rgba(0, 0, 0, 0.1);
+}
+
+.dark thead th.frozen-edge-right {
+  box-shadow: -4px 0 6px -2px rgba(0, 0, 0, 0.25), 0 2px 6px -2px rgba(0, 0, 0, 0.3);
 }
 
 /* Asegurar que las columnas fijas tengan fondo completamente opaco */

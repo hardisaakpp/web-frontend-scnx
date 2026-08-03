@@ -143,8 +143,13 @@
       </div>
     </div>
 
-    <!-- Contenido Principal: Tabla de Productos -->
-    <div v-if="pedidoValue?.respuesta_proveedor" class="p-6 pb-24">
+    <!-- Contenido Principal: Tabla de Productos.
+         pb-24 reserva espacio para que la barra de acciones sticky no tape las últimas filas
+         al hacer scroll de página — necesario en Compacta (tabla sin altura acotada). En Matriz
+         ya no hace falta: el scroller de ExcelLikeGridView está acotado en altura (calc(100dvh-Kpx),
+         ver ExcelLikeGridView.vue) y esos Kpx ya incluyen la barra de acciones en su fórmula;
+         mantener pb-24 aquí además desalinearía el thead congelado respecto a la barra de indicadores. -->
+    <div v-if="pedidoValue?.respuesta_proveedor" :class="modoVista === 'compacta' ? 'p-6 pb-24' : 'p-6 pb-6'">
       <!-- Header de la tabla con selector de columnas (solo vista compacta) -->
       <div v-if="modoVista === 'compacta'" class="flex items-center justify-between mb-4">
         <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300">Tabla de Redistribución</h3>
@@ -201,7 +206,11 @@
       </div>
       
       <!-- Tabla Principal -->
-      <div class="overflow-x-auto min-w-0">
+      <!-- Requerimiento 1.1.1: en vista Matriz NO se pone overflow aquí. ExcelLikeGridView
+           tiene su propio scroller acotado y un segundo scrollport anidado impediría que su
+           thead se congele (el sticky se resolvería contra este div, que nunca scrollea).
+           La vista Compacta sí lo necesita porque su tabla no trae scroller propio. -->
+      <div :class="modoVista === 'compacta' ? 'overflow-x-auto min-w-0' : 'min-w-0'">
         <!-- Vista Excel -->
         <ExcelLikeGridView
           v-if="modoVista === 'excel'"
