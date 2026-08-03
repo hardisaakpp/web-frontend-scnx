@@ -382,13 +382,13 @@ const guardarEdicion = async () => {
 
           <FormField label="Responsable del Envío" required :error="errores.usuarioSolicitante" v-slot="{ id }">
             <input :id="id" :value="form.usuarioSolicitante" @input="onResponsableInput" type="text"
-              placeholder="Nombre del responsable" :class="[inputClass, 'uppercase']" maxlength="200"
+              placeholder="Nombre del responsable" :class="[inputClass, 'uppercase']" maxlength="139"
               :disabled="modoEdicion" />
           </FormField>
 
           <FormField label="Observaciones" class="lg:col-span-2" v-slot="{ id }">
             <textarea :id="id" v-model="form.justificacion" rows="1" placeholder="Detalle opcional de la transferencia…"
-              :class="textareaClass" maxlength="500"></textarea>
+              :class="textareaClass" maxlength="100"></textarea>
           </FormField>
         </div>
         <p v-if="errorTiendas" class="mt-3 text-xs text-red-600 dark:text-red-400">{{ errorTiendas }}</p>
