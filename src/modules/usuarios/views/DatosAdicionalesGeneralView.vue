@@ -504,7 +504,6 @@ const groupedAsignaciones = computed<GroupedAsignacion[]>(() => {
   return Array.from(map.values())
 })
 
-<<<<<<< HEAD
 const filteredGroupedAsignaciones = computed(() => {
   const q = tableSearch.value.toLowerCase().trim()
   if (!q) return groupedAsignaciones.value
@@ -519,9 +518,8 @@ const filteredGroupedAsignaciones = computed(() => {
     )
   })
 })
-=======
+
 const assignedUserIds = computed(() => new Set(asignaciones.value.map(a => a.userId)))
->>>>>>> origin/test
 
 const filteredUsuarios = computed(() => {
   const q = userSearch.value.toLowerCase().trim()
