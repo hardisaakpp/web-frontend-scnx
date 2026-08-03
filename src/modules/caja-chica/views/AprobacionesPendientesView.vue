@@ -506,8 +506,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount, ref, watch, nextTick } from 'vue'
-import { useTablePreferences } from '@/composables/useTablePreferences'
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
+import { useColumnDragReorder } from '@/composables/useColumnDragReorder'
 import { useRouter } from 'vue-router'
 import { createBuildAdjuntoUrl } from '../utils/buildAdjuntoUrl'
 import { cajaChicaApi } from '@/lib/http'
@@ -599,35 +599,29 @@ const availableColumns: ColumnConfig[] = [
 // Por defecto solo mostramos un resumen compacto;
 // el usuario puede activar más columnas desde el selector.
 const defaultVisibleColumns = ['id', 'fechaConsumo', 'gasto', 'total', 'acciones']
-const defaultColumnOrder = availableColumns.map(col => col.key)
 
 const {
   visibleColumns,
-  columnOrder,
-  orderedVisibleColumns: orderedVisibleColumnKeys,
-  savePreferences
-} = useTablePreferences({
+  orderedVisibleColumns,
+  availableColumnsWithVisibility,
+  toggleColumnVisibility,
+  showColumnSelector,
+  columnSelectorWrapRef,
+  draggedColumnKey,
+  dragOverColumnKey,
+  handleDragStart,
+  handleDragOver,
+  handleDragLeave,
+  handleDrop,
+  handleDragEnd
+} = useColumnDragReorder({
   tableId: 'caja-chica-aprobaciones-pendientes',
-  defaultVisibleColumns,
-  defaultColumnOrder,
-  enableFilters: false,
-  enablePageSize: false
-})
-
-const orderedVisibleColumns = computed(() => {
-  const ordered = orderedVisibleColumnKeys.value
-    .map(key => availableColumns.find(col => col.key === key))
-    .filter((col): col is ColumnConfig => col !== undefined)
-  const fixedColumns = ordered.filter(col => col.fixed)
-  const nonFixedColumns = ordered.filter(col => !col.fixed)
-  return [...nonFixedColumns, ...fixedColumns]
+  availableColumns,
+  defaultVisibleColumns
 })
 
 // Columnas efectivamente visibles y ordenadas (no fijas primero, luego fijas)
 const tableColumns = orderedVisibleColumns
-
-const showColumnSelector = ref(false)
-const columnSelectorWrapRef = ref<HTMLElement | null>(null)
 
 const showDetallePanel = ref(false)
 const showRejectChoice = ref(false)
@@ -681,112 +675,10 @@ function openRejectChoice() {
   showRejectChoice.value = true
 }
 
-function closeColumnSelectorOnClickOutside(e: MouseEvent) {
-  if (columnSelectorWrapRef.value && !columnSelectorWrapRef.value.contains(e.target as Node)) {
-    showColumnSelector.value = false
-    document.removeEventListener('click', closeColumnSelectorOnClickOutside)
-  }
-}
-
-watch(showColumnSelector, (isOpen) => {
-  if (isOpen) {
-    nextTick(() => document.addEventListener('click', closeColumnSelectorOnClickOutside))
-  } else {
-    document.removeEventListener('click', closeColumnSelectorOnClickOutside)
-  }
-})
-
 onBeforeUnmount(() => {
-  document.removeEventListener('click', closeColumnSelectorOnClickOutside)
   document.removeEventListener('keydown', onDetalleKeydown)
   document.body.classList.remove('overflow-hidden')
 })
-
-const availableColumnsWithVisibility = computed(() =>
-  availableColumns.map(col => ({
-    ...col,
-    visible: col.fixed ? true : visibleColumns.value.includes(col.key)
-  }))
-)
-
-function toggleColumnVisibility(columnKey: string) {
-  const column = availableColumns.find(col => col.key === columnKey)
-  if (column?.fixed) return
-  const current = visibleColumns.value
-  const index = current.indexOf(columnKey)
-  const visibleNonFixed = current.filter(
-    key => !availableColumns.find(c => c.key === key)?.fixed
-  )
-  if (index > -1 && visibleNonFixed.length <= 1) return
-  if (index > -1) {
-    visibleColumns.value = current.filter(k => k !== columnKey)
-  } else {
-    visibleColumns.value = [...current, columnKey]
-  }
-  savePreferences()
-}
-
-const draggedColumnKey = ref<string | null>(null)
-const dragOverColumnKey = ref<string | null>(null)
-
-function handleDragStart(event: DragEvent, columnKey: string) {
-  const column = availableColumns.find(col => col.key === columnKey)
-  if (column?.fixed) return
-  draggedColumnKey.value = columnKey
-  if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = 'move'
-    event.dataTransfer.setData('text/plain', columnKey)
-  }
-}
-
-function handleDragOver(event: DragEvent, columnKey: string) {
-  event.preventDefault()
-  if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
-  if (draggedColumnKey.value !== null && draggedColumnKey.value !== columnKey) {
-    const target = availableColumns.find(col => col.key === columnKey)
-    if (!target?.fixed) dragOverColumnKey.value = columnKey
-  } else {
-    dragOverColumnKey.value = null
-  }
-}
-
-function handleDragLeave() {}
-
-function handleDrop(event: DragEvent, targetColumnKey: string) {
-  event.preventDefault()
-  if (!draggedColumnKey.value || draggedColumnKey.value === targetColumnKey) {
-    draggedColumnKey.value = null
-    dragOverColumnKey.value = null
-    return
-  }
-  const draggedColumn = availableColumns.find(col => col.key === draggedColumnKey.value)
-  const targetColumn = availableColumns.find(col => col.key === targetColumnKey)
-  if (draggedColumn?.fixed || targetColumn?.fixed) {
-    draggedColumnKey.value = null
-    dragOverColumnKey.value = null
-    return
-  }
-  const fullOrder = [...columnOrder.value]
-  const draggedIndexInFull = fullOrder.indexOf(draggedColumnKey.value)
-  const targetIndexInFull = fullOrder.indexOf(targetColumnKey)
-  if (draggedIndexInFull === -1 || targetIndexInFull === -1) {
-    draggedColumnKey.value = null
-    dragOverColumnKey.value = null
-    return
-  }
-  fullOrder.splice(draggedIndexInFull, 1)
-  const adjustedTarget = targetIndexInFull > draggedIndexInFull ? targetIndexInFull - 1 : targetIndexInFull
-  fullOrder.splice(adjustedTarget, 0, draggedColumnKey.value)
-  columnOrder.value = fullOrder
-  savePreferences()
-  draggedColumnKey.value = null
-  dragOverColumnKey.value = null
-}
-
-function handleDragEnd() {
-  draggedColumnKey.value = null
-  dragOverColumnKey.value = null
-}
 
 function getCellValue(group: { idLiquidacion: number }, item: AprobacionItem, columnKey: string): string | number {
   const d = getDetalle(group.idLiquidacion, item.idDetalle)
