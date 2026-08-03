@@ -63,66 +63,58 @@
       </div>
     </div>
 
-    <!-- Barra de indicadores (solo la cuadrícula de totales es sticky) -->
+    <!-- Barra de indicadores: fila única con separadores (compacta) -->
     <div
       v-if="pedidoValue?.respuesta_proveedor"
-      class="sticky top-16 z-20 bg-white dark:bg-gray-800 px-6 py-3 border-b border-gray-200 dark:border-gray-700 shadow-sm"
+      class="sticky top-16 z-20 bg-white dark:bg-gray-800 px-6 py-2 border-b border-gray-200 dark:border-gray-700 shadow-sm"
     >
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-      <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2.5 border border-blue-200 dark:border-blue-800">
-        <label class="text-[10px] font-medium text-blue-600 dark:text-blue-400 uppercase leading-tight">Total Confirmado</label>
-        <p class="mt-0.5 text-lg font-bold text-blue-900 dark:text-blue-200 leading-tight">
-          {{ formatNumberWithDecimals(resumenRedistribucion.total_confirmado, decimalPlaces) }}
-        </p>
-        <p class="text-[10px] text-blue-700 dark:text-blue-300 mt-0.5 leading-tight">
-          Ajustado por EL RAYO
-        </p>
-      </div>
-      <div class="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-2.5 border border-purple-200 dark:border-purple-800">
-        <label class="text-[10px] font-medium text-purple-600 dark:text-purple-400 uppercase leading-tight">Total Distribuido</label>
-        <p class="mt-0.5 text-lg font-bold text-purple-900 dark:text-purple-200 leading-tight">
-          {{ formatNumberWithDecimals(resumenRedistribucion.total_distribuido, decimalPlaces) }}
-        </p>
-        <p class="text-[10px] text-purple-700 dark:text-purple-300 mt-0.5 leading-tight">
-          Repartido entre tiendas
-        </p>
-      </div>
-      <div 
-        class="rounded-lg p-2.5 border-2"
-        :class="cercaDeCero(resumenRedistribucion.diferencia_pendiente) 
-          ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700' 
-          : resumenRedistribucion.diferencia_pendiente < 0
-          ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700'
-          : 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700'"
-      >
-        <label 
-          class="text-[10px] font-medium uppercase leading-tight"
-          :class="cercaDeCero(resumenRedistribucion.diferencia_pendiente) 
-            ? 'text-green-600 dark:text-green-400' 
+      <div class="flex items-center gap-4 flex-wrap">
+        <div class="flex items-baseline gap-1.5" title="Ajustado por EL RAYO">
+          <span class="text-[10px] font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wide">Confirmado</span>
+          <span class="text-sm font-bold text-blue-900 dark:text-blue-200">
+            {{ formatNumberWithDecimals(resumenRedistribucion.total_confirmado, decimalPlaces) }}
+          </span>
+        </div>
+
+        <div class="h-4 w-px bg-gray-300 dark:bg-gray-600" aria-hidden="true"></div>
+
+        <div class="flex items-baseline gap-1.5" title="Repartido entre tiendas">
+          <span class="text-[10px] font-medium text-purple-600 dark:text-purple-400 uppercase tracking-wide">Distribuido</span>
+          <span class="text-sm font-bold text-purple-900 dark:text-purple-200">
+            {{ formatNumberWithDecimals(resumenRedistribucion.total_distribuido, decimalPlaces) }}
+          </span>
+        </div>
+
+        <div
+          class="flex items-baseline gap-1.5 ml-auto px-2.5 py-1 rounded-full border"
+          :class="cercaDeCero(resumenRedistribucion.diferencia_pendiente)
+            ? 'bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700'
             : resumenRedistribucion.diferencia_pendiente < 0
-            ? 'text-yellow-600 dark:text-yellow-400'
-            : 'text-red-600 dark:text-red-400'"
+            ? 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700'
+            : 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700'"
+          :title="cercaDeCero(resumenRedistribucion.diferencia_pendiente) ? 'Listo para confirmar' : resumenRedistribucion.diferencia_pendiente < 0 ? 'Faltan por distribuir' : 'Excede el total'"
         >
-          {{ cercaDeCero(resumenRedistribucion.diferencia_pendiente) ? '✓ Completo' : resumenRedistribucion.diferencia_pendiente < 0 ? '⚠ Falta' : '✗ Excede' }}
-        </label>
-        <p 
-          class="mt-0.5 text-lg font-bold leading-tight"
-          :class="cercaDeCero(resumenRedistribucion.diferencia_pendiente) 
-            ? 'text-green-900 dark:text-green-200' 
-            : resumenRedistribucion.diferencia_pendiente < 0
-            ? 'text-yellow-900 dark:text-yellow-200'
-            : 'text-red-900 dark:text-red-200'"
-        >
-          {{ resumenRedistribucion.diferencia_pendiente > 0 ? '+' : '' }}{{ formatNumberWithDecimals(resumenRedistribucion.diferencia_pendiente, decimalPlaces) }}
-        </p>
-        <p class="text-[10px] mt-0.5 leading-tight" :class="cercaDeCero(resumenRedistribucion.diferencia_pendiente) 
-          ? 'text-green-700 dark:text-green-300' 
-          : resumenRedistribucion.diferencia_pendiente < 0
-          ? 'text-yellow-700 dark:text-yellow-300'
-          : 'text-red-700 dark:text-red-300'">
-          {{ cercaDeCero(resumenRedistribucion.diferencia_pendiente) ? 'Listo para confirmar' : resumenRedistribucion.diferencia_pendiente < 0 ? 'Faltan por distribuir' : 'Excede el total' }}
-        </p>
-      </div>
+          <span
+            class="text-[10px] font-semibold uppercase tracking-wide"
+            :class="cercaDeCero(resumenRedistribucion.diferencia_pendiente)
+              ? 'text-green-600 dark:text-green-400'
+              : resumenRedistribucion.diferencia_pendiente < 0
+              ? 'text-yellow-600 dark:text-yellow-400'
+              : 'text-red-600 dark:text-red-400'"
+          >
+            {{ cercaDeCero(resumenRedistribucion.diferencia_pendiente) ? '✓ Completo' : resumenRedistribucion.diferencia_pendiente < 0 ? '⚠ Falta' : '✗ Excede' }}
+          </span>
+          <span
+            class="text-sm font-bold"
+            :class="cercaDeCero(resumenRedistribucion.diferencia_pendiente)
+              ? 'text-green-900 dark:text-green-200'
+              : resumenRedistribucion.diferencia_pendiente < 0
+              ? 'text-yellow-900 dark:text-yellow-200'
+              : 'text-red-900 dark:text-red-200'"
+          >
+            {{ resumenRedistribucion.diferencia_pendiente > 0 ? '+' : '' }}{{ formatNumberWithDecimals(resumenRedistribucion.diferencia_pendiente, decimalPlaces) }}
+          </span>
+        </div>
       </div>
     </div>
 
