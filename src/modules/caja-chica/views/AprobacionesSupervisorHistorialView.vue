@@ -119,7 +119,7 @@
               <div class="flex-1">
                 <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Liquidacion #{{ group.idLiquidacion }}</h3>
                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  {{ group.items.length }} detalles · Tienda: {{ group.codAlmacen || '-' }} · Custodio: {{ group.nombreCustodio || '-' }} · Fecha: {{ formatDate(group.fechaCreacion) }} · Monto total: {{ formatAmount(group.totalMonto) }}
+                  {{ group.items.length }} detalles · Tienda: {{ group.codAlmacen || '-' }} · Custodio: {{ group.nombreCustodio }} ({{ group.cedulaCustodio || '-' }}) · Fecha: {{ formatDate(group.fechaCreacion) }} · Monto total: {{ formatAmount(group.totalMonto) }}
                 </p>
               </div>
               <div class="flex items-center gap-2">
@@ -504,11 +504,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount, ref, watch, nextTick } from 'vue'
+import { APP_LOCALE } from '@/plugins/locale'
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { createBuildAdjuntoUrl } from '../utils/buildAdjuntoUrl'
-import { useTablePreferences } from '@/composables/useTablePreferences'
+import { useColumnDragReorder } from '@/composables/useColumnDragReorder'
+import { useAdjuntosByDetalle } from '@/composables/useAdjuntosByDetalle'
 import { cajaChicaApi } from '@/lib/http'
+import { getCurrentUserId } from '../utils/normalizeAprobaciones'
 
 
 interface ColumnConfig {
@@ -562,14 +564,8 @@ interface LiquidacionInfo {
   idLiquidacion: number
   codAlmacen: string
   nombreCustodio: string
+  cedulaCustodio: string
   fechaCreacion: string
-}
-
-interface AdjuntoItem {
-  idAdjunto: number
-  idDetalle: number
-  rutaArchivo: string
-  fechaSubida: string
 }
 
 const router = useRouter()
@@ -593,9 +589,6 @@ const selectedItem = ref<HistorialItem | null>(null)
 const selectedDetalle = ref<LiquidacionDetalleItem | undefined>(undefined)
 const detallesByIdDetalle = ref<Record<number, LiquidacionDetalleItem>>({})
 const adjuntosByDetalle = ref<Record<number, number>>({})
-const adjuntosListByDetalle = ref<Record<number, AdjuntoItem[]>>({})
-const loadingAdjuntosMap = ref<Record<number, boolean>>({})
-const selectedAdjuntoId = ref<number | null>(null)
 const showAdjuntoFull = ref(false)
 const zoomLevel = ref(1)
 
@@ -620,113 +613,39 @@ const availableColumns: ColumnConfig[] = [
 ]
 
 const defaultVisibleColumns = ['gasto', 'total', 'montoAprobado', 'estado', 'fechaAprobacion', 'acciones']
-const defaultColumnOrder = availableColumns.map(col => col.key)
 
 const {
-  visibleColumns,
-  columnOrder,
-  orderedVisibleColumns: orderedVisibleColumnKeys,
-  savePreferences
-} = useTablePreferences({
+  orderedVisibleColumns,
+  availableColumnsWithVisibility,
+  toggleColumnVisibility,
+  showColumnSelector,
+  columnSelectorWrapRef
+} = useColumnDragReorder({
   tableId: 'caja-chica-historial-supervisor',
-  defaultVisibleColumns,
-  defaultColumnOrder,
-  enableFilters: false,
-  enablePageSize: false
-})
-
-const orderedVisibleColumns = computed(() => {
-  const ordered = orderedVisibleColumnKeys.value
-    .map(key => availableColumns.find(col => col.key === key))
-    .filter((col): col is ColumnConfig => col !== undefined)
-  const fixedColumns = ordered.filter(col => col.fixed)
-  const nonFixedColumns = ordered.filter(col => !col.fixed)
-  return [...nonFixedColumns, ...fixedColumns]
+  availableColumns,
+  defaultVisibleColumns
 })
 
 const tableColumns = orderedVisibleColumns
 
-const showColumnSelector = ref(false)
-const columnSelectorWrapRef = ref<HTMLElement | null>(null)
-
-const availableColumnsWithVisibility = computed(() =>
-  availableColumns.map(col => ({
-    ...col,
-    visible: col.fixed ? true : visibleColumns.value.includes(col.key)
-  }))
-)
-
-function toggleColumnVisibility(columnKey: string) {
-  const column = availableColumns.find(col => col.key === columnKey)
-  if (column?.fixed) return
-  const current = visibleColumns.value
-  const index = current.indexOf(columnKey)
-  const visibleNonFixed = current.filter(
-    key => !availableColumns.find(c => c.key === key)?.fixed
-  )
-  if (index > -1 && visibleNonFixed.length <= 1) return
-  if (index > -1) {
-    visibleColumns.value = current.filter(k => k !== columnKey)
-  } else {
-    visibleColumns.value = [...current, columnKey]
-  }
-  savePreferences()
-}
-
-function closeColumnSelectorOnClickOutside(e: MouseEvent) {
-  if (columnSelectorWrapRef.value && !columnSelectorWrapRef.value.contains(e.target as Node)) {
-    showColumnSelector.value = false
-    document.removeEventListener('click', closeColumnSelectorOnClickOutside)
-  }
-}
-
-watch(showColumnSelector, (isOpen) => {
-  if (isOpen) {
-    nextTick(() => document.addEventListener('click', closeColumnSelectorOnClickOutside))
-  } else {
-    document.removeEventListener('click', closeColumnSelectorOnClickOutside)
-  }
-})
-
 onBeforeUnmount(() => {
-  document.removeEventListener('click', closeColumnSelectorOnClickOutside)
   document.removeEventListener('keydown', onDetalleKeydown)
   document.body.classList.remove('overflow-hidden')
 })
 
-const selectedAdjunto = computed(() => {
-  if (!selectedItem.value) return null
-  const detalleId = selectedItem.value.idDetalle
-  const list = adjuntosListByDetalle.value[detalleId] || []
-  if (!list.length) return null
-  const found = list.find(a => a.idAdjunto === selectedAdjuntoId.value)
-  return found || list[0]
-})
+const {
+  adjuntosListByDetalle,
+  loadingAdjuntosMap,
+  selectedAdjuntoId,
+  selectedAdjunto,
+  loadAdjuntosForDetalle,
+  buildAdjuntoUrl,
+  formatAdjuntoName,
+  isImageFile,
+  isPdfFile
+} = useAdjuntosByDetalle(computed(() => selectedItem.value?.idDetalle))
 
 const zoomPercent = computed(() => Math.round(zoomLevel.value * 100))
-
-const buildAdjuntoUrl = createBuildAdjuntoUrl()
-
-
-const formatAdjuntoName = (ruta: string) => {
-  if (!ruta) return ''
-  const parts = ruta.split('/')
-  return parts[parts.length - 1]
-}
-
-const isImageFile = (ruta: string) => /\.(png|jpe?g|gif|webp)$/i.test(ruta)
-const isPdfFile = (ruta: string) => /\.pdf$/i.test(ruta)
-
-const getCurrentUserId = (): string => {
-  try {
-    const userStr = localStorage.getItem('user')
-    if (!userStr) return ''
-    const user = JSON.parse(userStr) as { id?: string }
-    return user.id || ''
-  } catch {
-    return ''
-  }
-}
 
 const normalizeString = (value: any) => String(value ?? '').trim()
 
@@ -802,6 +721,7 @@ const groupedHistorial = computed(() => {
       totalMonto,
       codAlmacen: liquidacionInfo?.codAlmacen || '',
       nombreCustodio: liquidacionInfo?.nombreCustodio || '',
+      cedulaCustodio: liquidacionInfo?.cedulaCustodio || '',
       fechaCreacion: liquidacionInfo?.fechaCreacion || ''
     }
   }).sort((a, b) => b.idLiquidacion - a.idLiquidacion)
@@ -848,32 +768,6 @@ function closeDetalle() {
   selectedItem.value = null
   selectedDetalle.value = undefined
   selectedAdjuntoId.value = null
-}
-
-async function loadAdjuntosForDetalle(idDetalle: number) {
-  if (!idDetalle) return
-  if (adjuntosListByDetalle.value[idDetalle]) return
-  if (loadingAdjuntosMap.value[idDetalle]) return
-
-  loadingAdjuntosMap.value = { ...loadingAdjuntosMap.value, [idDetalle]: true }
-  try {
-    const response = await cajaChicaApi.get(`/Adjuntos/por-detalle/${idDetalle}`)
-    const payload = response.data as any
-    const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
-    adjuntosListByDetalle.value = {
-      ...adjuntosListByDetalle.value,
-      [idDetalle]: items.map((item: any) => ({
-        idAdjunto: Number(item.idAdjunto ?? item.IdAdjunto ?? 0),
-        idDetalle: Number(item.idDetalle ?? item.IdDetalle ?? idDetalle),
-        rutaArchivo: String(item.rutaArchivo ?? item.RutaArchivo ?? ''),
-        fechaSubida: String(item.fechaSubida ?? item.FechaSubida ?? '')
-      }))
-    }
-  } catch {
-    adjuntosListByDetalle.value = { ...adjuntosListByDetalle.value, [idDetalle]: [] }
-  } finally {
-    loadingAdjuntosMap.value = { ...loadingAdjuntosMap.value, [idDetalle]: false }
-  }
 }
 
 function onDetalleKeydown(e: KeyboardEvent) {
@@ -961,6 +855,7 @@ const loadHistorial = async () => {
           idLiquidacion: idLiq,
           codAlmacen: normalizeString(liq.codAlmacen ?? liq.CodAlmacen ?? ''),
           nombreCustodio: normalizeString(liq.nombreCustodio ?? liq.NombreCustodio ?? ''),
+          cedulaCustodio: normalizeString(liq.cedulaCustodio ?? liq.CedulaCustodio ?? ''),
           fechaCreacion: String(liq.fechaCreacion ?? liq.FechaCreacion ?? '')
         }
       }
@@ -1118,6 +1013,7 @@ const downloadLiquidacionPdf = (idLiquidacion: number) => {
       <div class="grid4">
         <div class="meta-cell"><div class="meta-label">Almacén / Tienda</div><div class="meta-value">${esc(liqInfo?.codAlmacen || '-')}</div></div>
         <div class="meta-cell"><div class="meta-label">Custodio</div><div class="meta-value">${esc(liqInfo?.nombreCustodio || '-')}</div></div>
+        <div class="meta-cell"><div class="meta-label">Cédula custodio</div><div class="meta-value">${esc(liqInfo?.cedulaCustodio || '-')}</div></div>
         <div class="meta-cell"><div class="meta-label">Fecha creación</div><div class="meta-value">${fmt(liqInfo?.fechaCreacion)}</div></div>
         <div class="meta-cell"><div class="meta-label">Período filtrado</div><div class="meta-value" style="font-size:10px;font-weight:400">${esc(filtro)}</div></div>
       </div>
@@ -1302,6 +1198,7 @@ const downloadPdf = () => {
         <div class="meta">
           <div class="meta-item"><div class="meta-label">Almacén / Tienda</div><div class="meta-value">${esc(group.codAlmacen || '-')}</div></div>
           <div class="meta-item"><div class="meta-label">Custodio</div><div class="meta-value">${esc(group.nombreCustodio || '-')}</div></div>
+          <div class="meta-item"><div class="meta-label">Cédula custodio</div><div class="meta-value">${esc(group.cedulaCustodio || '-')}</div></div>
           <div class="meta-item"><div class="meta-label">Fecha creación</div><div class="meta-value">${fmt(group.fechaCreacion)}</div></div>
           <div class="meta-item"><div class="meta-label">Período</div><div class="meta-value">${esc(filtro)}</div></div>
         </div>

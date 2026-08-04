@@ -20,10 +20,10 @@
           <div>
             <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Grupo de almacenes</label>
             <select
-              v-model.number="selectedGroupId"
+              v-model="selectedGroupId"
               class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
             >
-              <option :value="0">Seleccionar grupo</option>
+              <option value="">Seleccionar grupo</option>
               <option v-for="grupo in grupos" :key="grupo.id" :value="grupo.id">
                 {{ grupo.nombre }}
               </option>
@@ -163,7 +163,7 @@ const volver = () => {
 }
 
 interface GrupoItem {
-  id: number
+  id: string
   nombre: string
 }
 
@@ -176,8 +176,8 @@ const grupos = ref<GrupoItem[]>([])
 const usuarios = ref<UserOption[]>([])
 const supervisores = ref<UserOption[]>([])
 const contabilidad = ref<UserOption[]>([])
-const selectedGroupId = ref(0)
-const searchedGroupId = ref(0)
+const selectedGroupId = ref('')
+const searchedGroupId = ref('')
 const loadingAprobadores = ref(false)
 const formError = ref('')
 const formSuccess = ref('')
@@ -191,7 +191,7 @@ const contabilidadDropdownOpen = ref(false)
 const SUGGESTIONS_LIMIT = 8
 
 const canSave = computed(() =>
-  searchedGroupId.value > 0 && supervisores.value.length > 0 && contabilidad.value.length > 0
+  !!searchedGroupId.value && supervisores.value.length > 0 && contabilidad.value.length > 0
 )
 
 const supervisorSuggestions = computed(() => {
@@ -256,12 +256,12 @@ const handleContabilidadBlur = () => {
 }
 
 const loadGrupos = async () => {
-  const response = await cajaChicaApi.get('/GrupoAlmacenes')
+  const response = await api.get('/WarehouseGroups')
   const payload = response.data as any
   const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
   grupos.value = items.map((item: any) => ({
-    id: item.id ?? item.Id ?? 0,
-    nombre: item.nombre ?? item.Nombre ?? ''
+    id: String(item.id ?? item.Id ?? ''),
+    nombre: item.grupo ?? item.Grupo ?? ''
   }))
 }
 
