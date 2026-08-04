@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref, computed, watch } from 'vue'
+import { onMounted, onUnmounted, nextTick, ref, computed, watch } from 'vue'
 import { useReposicionStore } from '../stores/reposicionStore'
 import { storeToRefs } from 'pinia'
 import {
@@ -13,7 +13,9 @@ import {
   ClockIcon,
   ArrowLeftIcon,
   ExclamationTriangleIcon,
-  QuestionMarkCircleIcon
+  QuestionMarkCircleIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon
 } from '@heroicons/vue/24/outline'
 import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue'
 import reposicionApi from '../services/reposicionApi'
@@ -85,7 +87,47 @@ const bodegasParaSeleccionar = computed(() => canAdmin.value ? almacenesTodos.va
 
 const formatAlmacen = (a: Almacen) => a.name && a.name !== a.code ? `${a.code} — ${a.name}` : a.code
 
+// Dos cuadros de scroll INDEPENDIENTES, no uno compartido: header+filtros queda sticky
+// contra la ventana (top: altura real de la barra de la app), y la tabla tiene su PROPIO
+// cuadro con alto fijo + scroll interno, con su encabezado de columnas sticky DENTRO de
+// ESE cuadro (top:0, sin necesidad de sumar nada). Al no compartir un mismo contenedor,
+// los dos sticky no interfieren entre sí (evita un glitch de renderizado del navegador
+// que aparece cuando dos sticky anidados comparten el mismo scroll).
+const appBarHeight = ref(72)
+const headerFiltersRef = ref<HTMLElement | null>(null)
+const headerFiltersTopStyle = computed(() => ({ top: `${appBarHeight.value}px` }))
+const tableWrapperRef = ref<HTMLElement | null>(null)
+const tableWrapperHeight = ref(400)
+const tableWrapperStyle = computed(() => ({ height: `${tableWrapperHeight.value}px` }))
+const paginationRef = ref<HTMLElement | null>(null)
+const paginationHeight = ref(0)
+// Alto total de la tarjeta de la tabla (área con scroll + pie de paginación), para que
+// el panel de filtros alcance exactamente el mismo borde inferior que la tabla.
+const filterPanelStyle = computed(() => ({ maxHeight: `${tableWrapperHeight.value + paginationHeight.value}px` }))
+let appBarResizeObserver: ResizeObserver | null = null
+let tableWrapperResizeObserver: ResizeObserver | null = null
+let paginationResizeObserver: ResizeObserver | null = null
+
+function measureTableWrapperHeight() {
+  if (!tableWrapperRef.value) return
+  const documentTop = tableWrapperRef.value.getBoundingClientRect().top + window.scrollY
+  paginationHeight.value = paginationRef.value?.offsetHeight ?? 0
+  tableWrapperHeight.value = Math.max(200, window.innerHeight - documentTop - paginationHeight.value - 24)
+}
+
+// Bloqueamos el scroll de la página externa: así TODO el scroll queda forzado a
+// ocurrir dentro de la tabla (su único cuadro con overflow real). Esto evita que el
+// encabezado de columnas se quede "huérfano" cuando la página se mueve un poco por
+// fuera de la tabla (el sticky de la tabla solo reacciona a su propio scroll interno).
+let previousBodyOverflow = ''
+let previousHtmlOverflow = ''
+
 onMounted(async () => {
+  previousBodyOverflow = document.body.style.overflow
+  previousHtmlOverflow = document.documentElement.style.overflow
+  document.body.style.overflow = 'hidden'
+  document.documentElement.style.overflow = 'hidden'
+
   await store.initialize()
   if (canAdmin.value) {
     try {
@@ -94,6 +136,44 @@ onMounted(async () => {
       console.error('Error al cargar todas las bodegas para admin', err)
     }
   }
+
+  const appHeaders = Array.from(document.querySelectorAll('header'))
+  if (appHeaders.length) {
+    appBarResizeObserver = new ResizeObserver(() => {
+      const visibleHeight = Math.max(...appHeaders.map(h => h.offsetHeight))
+      if (visibleHeight > 0) appBarHeight.value = visibleHeight
+    })
+    appHeaders.forEach(h => appBarResizeObserver?.observe(h))
+  }
+
+  if (headerFiltersRef.value) {
+    tableWrapperResizeObserver = new ResizeObserver(measureTableWrapperHeight)
+    tableWrapperResizeObserver.observe(headerFiltersRef.value)
+  }
+
+  // El pie de paginación aparece/desaparece según totalItems (v-if): observarlo en
+  // cuanto exista para que su alto también se reste del espacio de la tabla.
+  watch(paginationRef, (el) => {
+    paginationResizeObserver?.disconnect()
+    if (el) {
+      paginationResizeObserver = new ResizeObserver(measureTableWrapperHeight)
+      paginationResizeObserver.observe(el)
+    }
+    measureTableWrapperHeight()
+  })
+
+  await nextTick()
+  measureTableWrapperHeight()
+  window.addEventListener('resize', measureTableWrapperHeight)
+})
+
+onUnmounted(() => {
+  appBarResizeObserver?.disconnect()
+  tableWrapperResizeObserver?.disconnect()
+  paginationResizeObserver?.disconnect()
+  window.removeEventListener('resize', measureTableWrapperHeight)
+  document.body.style.overflow = previousBodyOverflow
+  document.documentElement.style.overflow = previousHtmlOverflow
 })
 
 const handleSearch = () => {
@@ -198,12 +278,14 @@ const getQuantityColor = (item: any) => {
 
 <template>
   <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-    <!-- Header -->
-    <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-      <div class="flex items-center gap-4">
-        <router-link v-if="canAdmin" to="/reposiciones" class="p-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 bg-white dark:bg-gray-900 shadow-sm">
-          <ArrowLeftIcon class="w-5 h-5" />
-        </router-link>
+    <!-- Header + Filtros como una sola unidad sticky (evita huecos no-sticky que causan solapamiento) -->
+    <div ref="headerFiltersRef" :style="headerFiltersTopStyle" class="sticky z-20 bg-gray-100 dark:bg-gray-900 pb-4">
+      <!-- Header -->
+      <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+        <div class="flex items-center gap-4">
+          <router-link v-if="canAdmin" to="/reposiciones" class="p-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 bg-white dark:bg-gray-900 shadow-sm">
+            <ArrowLeftIcon class="w-5 h-5" />
+          </router-link>
         <div>
           <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Reposición de Artículos</h1>
           <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Gestiona el reabastecimiento de tu tienda de forma eficiente.</p>
@@ -237,14 +319,6 @@ const getQuantityColor = (item: any) => {
           </option>
         </select>
 
-        <button 
-          @click="showFilters = !showFilters"
-          :class="[showFilters ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700', 'flex items-center gap-2 px-3 py-2 rounded-lg border shadow-sm transition-all text-sm font-medium']"
-        >
-          <FunnelIcon class="w-4 h-4" />
-          <span>Filtros</span>
-        </button>
-
         <router-link 
           to="/reposiciones/historial"
           class="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm transition-all hover:bg-gray-50 dark:hover:bg-gray-700 text-sm font-medium"
@@ -253,7 +327,7 @@ const getQuantityColor = (item: any) => {
           <span>Historial</span>
         </router-link>
 
-        <router-link 
+        <router-link
           to="/reposiciones/carrito"
           class="bg-blue-600 text-white flex items-center gap-2 px-4 py-2 rounded-lg border border-blue-600 shadow-sm hover:bg-blue-700 transition-all relative text-sm font-medium"
         >
@@ -263,120 +337,43 @@ const getQuantityColor = (item: any) => {
             {{ store.carrito.length }}
           </span>
         </router-link>
+
+        <button
+          @click="showFilters = !showFilters"
+          :class="showFilters ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'"
+          class="flex items-center gap-2 px-3 py-2 rounded-lg border shadow-sm transition-all text-sm font-medium"
+        >
+          <FunnelIcon class="w-4 h-4" />
+          <span>Filtros</span>
+        </button>
       </div>
     </div>
 
 
-    <!-- Filters Panel -->
-    <Transition
-      enter-active-class="transition duration-200 ease-out"
-      enter-from-class="transform scale-95 opacity-0"
-      enter-to-class="transform scale-100 opacity-100"
-      leave-active-class="transition duration-150 ease-in"
-      leave-from-class="transform scale-100 opacity-100"
-      leave-to-class="transform scale-95 opacity-0"
-    >
-      <div v-if="showFilters" class="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm mb-8 border border-gray-200 dark:border-gray-700 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-5">
-        <div class="space-y-1.5">
-          <label for="filter-itemcode" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Código Art.</label>
-          <input 
-            id="filter-itemcode"
-            v-model="filters.itemCode" 
-            type="text" 
-            placeholder="ItemCode..." 
-            class="w-full px-4 py-2 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border transition-all text-sm"
-            @keydown.enter="handleSearch"
-          />
-        </div>
+    </div>
 
-        <div class="space-y-1.5">
-          <label for="filter-descripcion" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Descripción</label>
-          <div class="relative">
-            <MagnifyingGlassIcon class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input 
-              id="filter-descripcion"
-              v-model="filters.descripcion" 
-              type="text" 
-              placeholder="Nombre..." 
-              class="w-full pl-9 pr-4 py-2 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border transition-all text-sm"
-              @keydown.enter="handleSearch"
-            />
-          </div>
-        </div>
-
-        <div class="space-y-1.5">
-          <label for="filter-codebars" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Código Barras</label>
-          <input 
-            id="filter-codebars"
-            v-model="filters.codeBars" 
-            type="text" 
-            placeholder="Codigo de barras..." 
-            class="w-full px-4 py-2 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border transition-all text-sm"
-            @keydown.enter="handleSearch"
-          />
-        </div>
-
-        <div class="space-y-1.5">
-          <label for="filter-marca" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Marca</label>
-          <select id="filter-marca" v-model="filters.marca" class="w-full py-2 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border text-sm">
-            <option value="">Todas</option>
-            <option v-for="m in listasFiltros.marcas" :key="m" :value="m">{{ m }}</option>
-          </select>
-        </div>
-
-        <div class="space-y-1.5">
-          <label for="filter-categoria" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Categoría</label>
-          <select id="filter-categoria" v-model="filters.categoria" class="w-full py-2 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border text-sm">
-            <option value="">Todas</option>
-            <option v-for="c in listasFiltros.categorias" :key="c" :value="c">{{ c }}</option>
-          </select>
-        </div>
-
-        <div class="space-y-1.5">
-          <label for="filter-linea" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Línea</label>
-          <select id="filter-linea" v-model="filters.linea" class="w-full py-2 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border text-sm">
-            <option value="">Todas</option>
-            <option v-for="l in listasFiltros.lineas" :key="l" :value="l">{{ l }}</option>
-          </select>
-        </div>
-
-        <div class="space-y-1.5">
-          <label for="filter-unidad" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Unidad</label>
-          <select id="filter-unidad" v-model="filters.unidad" class="w-full py-2 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border text-sm">
-            <option value="">Todas</option>
-            <option v-for="u in listasFiltros.unidades" :key="u" :value="u">{{ u }}</option>
-          </select>
-        </div>
-
-        <div class="flex items-end gap-3">
-          <button @click="handleSearch" class="flex-1 bg-blue-600 text-white h-10 rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-sm text-sm">
-            Aplicar
-          </button>
-          <button @click="handleClearFilters" class="px-3 h-10 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm">
-            <ArrowPathIcon class="w-5 h-5" />
-          </button>
-        </div>
-      </div>
-    </Transition>
-
+    <!-- Fila: tabla (columna principal) + panel de filtros colapsable (ocupa espacio
+    real, empuja la tabla, igual patrón que el sidebar izquierdo) -->
+    <div class="flex gap-4 items-start">
+    <div class="flex-1 min-w-0">
     <!-- Content Table Container -->
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-      <div class="overflow-x-auto overflow-y-auto max-h-[70vh]">
-        <table class="w-full text-left border-collapse table-auto min-w-full">
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+      <div ref="tableWrapperRef" :style="tableWrapperStyle" class="overflow-auto">
+        <table class="w-full text-left border-separate border-spacing-0 table-auto min-w-full">
           <thead>
             <tr class="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
-              <th class="sticky top-0 z-20 px-4 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-900">Artículo</th>
-              <th class="sticky top-0 z-20 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Emb.</th>
-              <th class="sticky top-0 z-20 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Stock</th>
-              <th class="sticky top-0 z-20 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Tránsito</th>
-              <th class="sticky top-0 z-20 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Comp.</th>
-              <th class="sticky top-0 z-20 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Disp. Tda.</th>
-              <th class="sticky top-0 z-20 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Disp. Bod.</th>
-              <th class="sticky top-0 z-20 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Venta 30d</th>
-              <th class="sticky top-0 z-20 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Sug.</th>
-              <th class="sticky top-0 z-20 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Días Inv.</th>
-              <th class="sticky top-0 z-20 px-4 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[100px] bg-gray-50 dark:bg-gray-900">Solicitado</th>
-              <th class="sticky top-0 z-20 px-4 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-900">Observación</th>
+              <th class="sticky top-0 z-10 px-4 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-900 rounded-tl-xl">Artículo</th>
+              <th class="sticky top-0 z-10 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Emb.</th>
+              <th class="sticky top-0 z-10 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Stock</th>
+              <th class="sticky top-0 z-10 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Tránsito</th>
+              <th class="sticky top-0 z-10 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Comp.</th>
+              <th class="sticky top-0 z-10 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Disp. Tda.</th>
+              <th class="sticky top-0 z-10 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Disp. Bod.</th>
+              <th class="sticky top-0 z-10 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Venta 30d</th>
+              <th class="sticky top-0 z-10 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Sug.</th>
+              <th class="sticky top-0 z-10 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Días Inv.</th>
+              <th class="sticky top-0 z-10 px-4 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[100px] bg-gray-50 dark:bg-gray-900">Solicitado</th>
+              <th class="sticky top-0 z-10 px-4 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-900 rounded-tr-xl">Observación</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -458,7 +455,7 @@ const getQuantityColor = (item: any) => {
       </div>
 
       <!-- Pagination Footer -->
-      <div v-if="totalItems > 0" class="px-6 py-4 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div v-if="totalItems > 0" ref="paginationRef" class="px-6 py-4 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-4 rounded-b-xl">
         <div class="flex items-center gap-6">
           <div class="text-xs text-gray-500 dark:text-gray-400">
             Mostrando <span class="font-medium text-gray-900 dark:text-white">{{ catalogo.length }}</span> de <span class="font-medium text-gray-900 dark:text-white">{{ totalItems }}</span> artículos
@@ -499,6 +496,97 @@ const getQuantityColor = (item: any) => {
           </button>
         </div>
       </div>
+    </div>
+    </div>
+
+    <!-- Panel de filtros colapsable: se abre/cierra con el botón "Filtros" del header,
+    ocupa espacio real y empuja la tabla en vez de tapar nada -->
+    <div class="flex-shrink-0">
+      <div class="overflow-hidden transition-all duration-300 ease-out" :class="showFilters ? 'w-80' : 'w-0'">
+        <div :style="filterPanelStyle" class="w-80 flex flex-col bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
+        <div class="flex-1 min-h-0 overflow-y-auto p-6 space-y-5">
+          <div class="space-y-1.5">
+            <label for="filter-itemcode" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Código Art.</label>
+            <input
+              id="filter-itemcode"
+              v-model="filters.itemCode"
+              type="text"
+              placeholder="ItemCode..."
+              class="w-full px-4 py-2 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border transition-all text-sm"
+              @keydown.enter="handleSearch"
+            />
+          </div>
+
+          <div class="space-y-1.5">
+            <label for="filter-descripcion" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Descripción</label>
+            <div class="relative">
+              <MagnifyingGlassIcon class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                id="filter-descripcion"
+                v-model="filters.descripcion"
+                type="text"
+                placeholder="Nombre..."
+                class="w-full pl-9 pr-4 py-2 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border transition-all text-sm"
+                @keydown.enter="handleSearch"
+              />
+            </div>
+          </div>
+
+          <div class="space-y-1.5">
+            <label for="filter-codebars" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Código Barras</label>
+            <input
+              id="filter-codebars"
+              v-model="filters.codeBars"
+              type="text"
+              placeholder="Codigo de barras..."
+              class="w-full px-4 py-2 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border transition-all text-sm"
+              @keydown.enter="handleSearch"
+            />
+          </div>
+
+          <div class="space-y-1.5">
+            <label for="filter-marca" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Marca</label>
+            <select id="filter-marca" v-model="filters.marca" class="w-full py-2 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border text-sm">
+              <option value="">Todas</option>
+              <option v-for="m in listasFiltros.marcas" :key="m" :value="m">{{ m }}</option>
+            </select>
+          </div>
+
+          <div class="space-y-1.5">
+            <label for="filter-categoria" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Categoría</label>
+            <select id="filter-categoria" v-model="filters.categoria" class="w-full py-2 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border text-sm">
+              <option value="">Todas</option>
+              <option v-for="c in listasFiltros.categorias" :key="c" :value="c">{{ c }}</option>
+            </select>
+          </div>
+
+          <div class="space-y-1.5">
+            <label for="filter-linea" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Línea</label>
+            <select id="filter-linea" v-model="filters.linea" class="w-full py-2 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border text-sm">
+              <option value="">Todas</option>
+              <option v-for="l in listasFiltros.lineas" :key="l" :value="l">{{ l }}</option>
+            </select>
+          </div>
+
+          <div class="space-y-1.5">
+            <label for="filter-unidad" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Unidad</label>
+            <select id="filter-unidad" v-model="filters.unidad" class="w-full py-2 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border text-sm">
+              <option value="">Todas</option>
+              <option v-for="u in listasFiltros.unidades" :key="u" :value="u">{{ u }}</option>
+            </select>
+          </div>
+
+        </div>
+
+        <div class="flex-shrink-0 border-t border-gray-200 dark:border-gray-700 p-4">
+          <button @click="handleClearFilters" class="w-full flex items-center justify-center gap-2 h-10 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm text-sm font-medium">
+            <ArrowPathIcon class="w-4 h-4" />
+            <span>Limpiar</span>
+          </button>
+        </div>
+        </div>
+      </div>
+    </div>
     </div>
 
     <!-- Product Detail Modal -->
