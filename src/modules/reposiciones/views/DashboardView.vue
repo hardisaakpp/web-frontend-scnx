@@ -1,38 +1,55 @@
 <script setup lang="ts">
-import { 
-  BuildingStorefrontIcon, 
+import { computed } from 'vue'
+import {
+  BuildingStorefrontIcon,
   PresentationChartLineIcon,
+  ClipboardDocumentListIcon,
   ChevronRightIcon
 } from '@heroicons/vue/24/outline'
+import { useAuthStore } from '@/stores/auth'
 
-const options = [
-  {
+const authStore = useAuthStore()
+const isTienda = computed(() => authStore.hasPermission('reposiciones.tienda'))
+const isAdmin = computed(() => authStore.hasPermission('reposiciones.administrador'))
+
+const options = computed(() => [
+  ...(isTienda.value ? [{
     title: 'Operativa de Tienda',
     description: 'Solicita artículos, gestiona tu carrito y revisa el historial específico de tus bodegas asignadas.',
     link: '/reposiciones/catalogo',
     icon: BuildingStorefrontIcon,
     color: 'bg-emerald-50 text-emerald-600',
     border: 'border-emerald-100 hover:border-emerald-500'
-  },
-  {
-    title: 'Control Administrativo',
-    description: 'Accede al panel de control global, consulta el historial de todas las tiendas y descarga reportes consolidados.',
-    link: '/reposiciones/admin/historial',
-    icon: PresentationChartLineIcon,
-    color: 'bg-blue-50 text-blue-600',
-    border: 'border-blue-100 hover:border-blue-500'
-  }
-]
+  }] : []),
+  ...(isAdmin.value ? [
+    {
+      title: 'Catálogo (Administrador)',
+      description: 'Consulta el catálogo y las solicitudes en curso de cualquier bodega, en modo de solo lectura.',
+      link: '/reposiciones/admin/catalogo',
+      icon: ClipboardDocumentListIcon,
+      color: 'bg-blue-50 text-blue-600',
+      border: 'border-blue-100 hover:border-blue-500'
+    },
+    {
+      title: 'Historial Global',
+      description: 'Accede al panel de control global, consulta el historial de todas las tiendas y descarga reportes consolidados.',
+      link: '/reposiciones/admin/historial',
+      icon: PresentationChartLineIcon,
+      color: 'bg-blue-50 text-blue-600',
+      border: 'border-blue-100 hover:border-blue-500'
+    }
+  ] : [])
+])
 </script>
 
 <template>
-  <div class="max-w-4xl mx-auto px-4 py-20 flex flex-col items-center">
+  <div class="max-w-6xl mx-auto px-4 py-20 flex flex-col items-center">
     <div class="text-center mb-12">
       <h1 class="text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight mb-4">Bienvenido al Módulo de Reposiciones</h1>
       <p class="text-xl text-gray-500 dark:text-gray-400">Selecciona el perfil con el que deseas trabajar hoy.</p>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full">
       <router-link 
         v-for="opt in options" 
         :key="opt.title" 
