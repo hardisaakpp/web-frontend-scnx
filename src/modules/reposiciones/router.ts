@@ -17,12 +17,10 @@ const routes: RouteRecordRaw[] = [
       const isTienda = authStore.hasPermission('reposiciones.tienda')
       const isAdmin = authStore.hasPermission('reposiciones.administrador')
 
-      if (isTienda && isAdmin) {
-        next() // Tiene ambos, mostrar Dashboard de elección
-      } else if (isTienda) {
-        next('/reposiciones/catalogo') // Solo tienda
-      } else if (isAdmin) {
-        next('/reposiciones/admin/historial') // Solo admin
+      if (isTienda && !isAdmin) {
+        next('/reposiciones/catalogo') // Solo tienda: única vista operativa, acceso directo
+      } else if (isTienda || isAdmin) {
+        next() // Admin (con o sin tienda): tiene múltiples vistas, debe elegir en el Dashboard
       } else {
         next('/login') // No debería pasar si hay guardia global
       }
@@ -65,6 +63,16 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresAuth: true,
       title: 'Historial Global',
+      permissions: ['reposiciones.administrador'],
+    },
+  },
+  {
+    path: '/reposiciones/admin/catalogo',
+    name: 'reposiciones-admin-catalogo',
+    component: () => import('./views/AdminCatalogoView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Catálogo (Administrador)',
       permissions: ['reposiciones.administrador'],
     },
   },

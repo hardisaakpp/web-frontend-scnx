@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, watch, computed } from 'vue'
 import { useReposicionStore } from '../stores/reposicionStore'
-import { useAuthStore } from '@/stores/auth'
 import reposicionApi from '../services/reposicionApi'
 import type { HistorialCabecera, HistorialDetalleItem, HistorialSolicitudSap, Almacen } from '../types'
 import {
@@ -19,7 +18,6 @@ import {
 } from '@heroicons/vue/24/outline'
 import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue'
 
-const authStore = useAuthStore()
 const store = useReposicionStore()
 const historial = ref<HistorialCabecera[]>([])
 const almacenesTodos = ref<Almacen[]>([])
@@ -35,8 +33,6 @@ const etiquetaAlmacen = (code: string | null | undefined) => {
 const fechaDesde = ref(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
 const fechaHasta = ref(new Date().toISOString().split('T')[0])
 const whsFilter = ref('')
-
-const canRequest = computed(() => authStore.hasPermission('reposiciones.tienda'))
 
 const kpis = computed(() => [
   { name: 'Total Solicitudes', value: historial.value.length, icon: DocumentTextIcon, color: 'text-blue-600', bg: 'bg-blue-50' },
@@ -121,7 +117,7 @@ const viewSolicitudes = async (whsCode: string, fecha: string) => {
     <!-- Header -->
     <div class="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
       <div class="flex items-center gap-4">
-        <router-link v-if="canRequest" to="/reposiciones" class="p-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 bg-white dark:bg-gray-900 shadow-sm">
+        <router-link to="/reposiciones" class="p-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 bg-white dark:bg-gray-900 shadow-sm">
           <ArrowLeftIcon class="w-5 h-5" />
         </router-link>
         <div>
