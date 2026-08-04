@@ -65,7 +65,7 @@ function measureTableWrapperHeight() {
   tableWrapperHeight.value = Math.max(200, window.innerHeight - documentTop - paginationHeight.value - 24)
 }
 
-// Bloqueamos el scroll de la página externa: así TODO el scroll queda forzado a
+// Bloqueamos el scroll de la página externa: así todo el scroll queda forzado a
 // ocurrir dentro de la tabla (su único cuadro con overflow real). Esto evita que el
 // encabezado de columnas se quede "huérfano" cuando la página se mueve un poco por
 // fuera de la tabla (el sticky de la tabla solo reacciona a su propio scroll interno).

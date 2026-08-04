@@ -87,7 +87,7 @@ export const useReposicionStore = defineStore('reposicion', {
     etiquetaAlmacen: (state) => (code: string | null | undefined) => {
       if (!code) return ''
       const info = state.catalogoAlmacenes.find(a => a.code === code)
-      if (!info || !info.name || info.name === info.code) return code
+      if (!info?.name || info.name === info.code) return code
       return `${info.code} — ${info.name}`
     }
   },
