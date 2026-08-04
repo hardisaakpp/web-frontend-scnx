@@ -78,9 +78,9 @@
                       DocEntry: {{ detalle.doc_entry }}
                     </div>
                     <div class="text-xs text-gray-600 dark:text-gray-400 ml-7">
-                      Num ODC: {{ detalle.numero_oc_sap ?? '—' }}
+                      Num ODC: {{ numeroOdcMostrado }}
                     </div>
-                    <div v-if="detalle.doc_num != null && !solicitudesTransferencia" class="text-xs text-gray-600 dark:text-gray-400 ml-7">
+                    <div v-if="detalle.doc_num != null && !solicitudesTransferencia && detalle.numero_oc_sap != null" class="text-xs text-gray-600 dark:text-gray-400 ml-7">
                       DocNum: {{ detalle.doc_num }}
                     </div>
                     <div v-if="mensajeExito" class="text-xs text-gray-600 dark:text-gray-400 ml-7">
@@ -122,7 +122,7 @@
                   <div class="mb-4 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
                     <div class="flex items-center gap-2 text-sm">
                       <span
-                        :class="solicitudesTransferencia?.transferencias_errores === 0 ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'"
+                        :class="erroresTransferencia === 0 ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'"
                         class="font-medium"
                       >
                         {{ resumenSolicitudesTexto }}
@@ -255,6 +255,12 @@ const tituloModal = computed(() => {
   }
 })
 
+// Num ODC: si el backend aún no informó numero_oc_sap, se muestra el DocNum de SAP en su lugar
+const numeroOdcMostrado = computed(() => {
+  const d = props.detalle
+  return d?.numero_oc_sap ?? (d?.doc_num != null ? String(d.doc_num) : '—')
+})
+
 // Mensaje de éxito: "con DocNum" solo cuando hay exactamente 1 solicitud de transferencia (ITR)
 const mensajeExito = computed(() => {
   const d = props.detalle
@@ -267,11 +273,14 @@ const mensajeExito = computed(() => {
   return d.message ?? null
 })
 
+// El backend no siempre informa transferencias_errores (queda undefined); se asume 0 en ese caso
+const erroresTransferencia = computed(() => props.solicitudesTransferencia?.transferencias_errores ?? 0)
+
 const resumenSolicitudesTexto = computed(() => {
   const st = props.solicitudesTransferencia
   if (!st) return ''
 
-  if (st.transferencias_errores === 0) {
+  if (erroresTransferencia.value === 0) {
     return `✅ ${st.transferencias_creadas} de ${st.total_tiendas} creadas exitosamente`
   }
 
@@ -279,7 +288,7 @@ const resumenSolicitudesTexto = computed(() => {
     return `✅ ${st.transferencias_creadas} de ${st.total_tiendas} creadas`
   }
 
-  return `⚠️ ${st.transferencias_creadas} exitosas, ${st.transferencias_errores} con errores`
+  return `⚠️ ${st.transferencias_creadas} exitosas, ${erroresTransferencia.value} con errores`
 })
 
 // Filas para la tabla ITR: preferir itrs_por_tienda del backend; si no, derivar de resultados

@@ -81,15 +81,15 @@
       <button
         v-if="!esModoMabelTrading && !hideConfirmAndDownload"
         @click="$emit('descargar-plano-mba')"
-        :disabled="loading || !pedido || descargandoPlanoMba"
+        :disabled="loading || !pedido || descargandoPlanoMba || !puedeGenerarTxtMba3"
         class="px-4 py-2 bg-cyan-600 dark:bg-cyan-500 text-white rounded-lg hover:bg-cyan-700 dark:hover:bg-cyan-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
-        title="Descargar archivo TXT para MBA (Cliente CLI1795, moneda US)"
+        title="Generar archivo TXT MBA3 (Cliente CLI1795, moneda US). Requiere estado Confirmado por El Rayo."
       >
-        <LoadingSpinner v-if="descargandoPlanoMba" layout="inline" size="md" color="current" aria-label="Descargando archivo MBA" />
+        <LoadingSpinner v-if="descargandoPlanoMba" layout="inline" size="md" color="current" aria-label="Generando archivo MBA3" />
         <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
-        {{ descargandoPlanoMba ? 'Descargando...' : 'Descargar para MBA' }}
+        {{ descargandoPlanoMba ? 'Descargando...' : 'Generar TXT MBA3' }}
       </button>
       <button
         v-if="canGenerarOC"
@@ -218,6 +218,8 @@ const props = defineProps<{
   puedeDescargarPedido?: boolean
   /** @deprecated Botón "Descargar Excel" retirado. Prop mantenida para compatibilidad. */
   puedeDescargarCsv?: boolean
+  /** Habilita "Generar TXT MBA3" solo cuando la OC está en estado Confirmado por El Rayo (flag puede_generar_txt_mba3 del backend) */
+  puedeGenerarTxtMba3?: boolean
   /** Indica si existe el archivo Excel original en storage (MinIO/S3) para mostrar botón de descarga */
   tieneArchivoOriginal?: boolean
   /** Indica si se puede finalizar el pedido (flag puede_finalizar del backend, true cuando estado_id === 17) */

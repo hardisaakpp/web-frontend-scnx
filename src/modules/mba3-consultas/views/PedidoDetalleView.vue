@@ -118,6 +118,7 @@
         :show-despachar-y-facturar="true"
         :puede-descargar-pedido="puedeDescargarPedido"
         :puede-descargar-csv="puedeDescargarCsv"
+        :puede-generar-txt-mba3="puedeGenerarTxtMba3"
         :tiene-archivo-original="false"
         @cargar-plantillas="goToCargarPlantillas"
         @generar-oc="handleGenerarOCDesdePedido"
@@ -854,6 +855,14 @@ const puedeCancelarPorElRayo = computed(() => {
 
 // Permitir descargar CSV solo en estado CONFIRMADO (estado_id = 4)
 const puedeDescargarCsv = computed(() => {
+  const cabecera = pedido.value?.cabecera
+  if (!cabecera) return false
+  const estadoId = cabecera.estado_id != null ? Number(cabecera.estado_id) : null
+  return estadoId === 4
+})
+
+// Permitir generar TXT MBA3 solo en estado CONFIRMADO POR EL RAYO (estado_id = 4)
+const puedeGenerarTxtMba3 = computed(() => {
   const cabecera = pedido.value?.cabecera
   if (!cabecera) return false
   const estadoId = cabecera.estado_id != null ? Number(cabecera.estado_id) : null
