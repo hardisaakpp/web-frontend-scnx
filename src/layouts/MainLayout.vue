@@ -176,9 +176,9 @@
           <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Importador PYG</span>
         </router-link>
 
-        <!-- Mis Inventarios (usuarios con acceso tipo Tienda) -->
+        <!-- Mis Inventarios (usuarios con acceso tipo Tienda, o pickers invitados a una sesión puntual) -->
         <router-link
-          v-if="hasModuleAccess('inventario') && isTiendaAccess"
+          v-if="(hasModuleAccess('inventario') && isTiendaAccess) || (!hasModuleAccess('inventario') && hasPickerSessions)"
           to="/inventario/mis-inventarios"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
@@ -309,15 +309,20 @@
         <!-- Footer del Sidebar -->
         <div class="flex-shrink-0 p-4 border-t border-slate-200 dark:border-slate-700/50 bg-white/70 dark:bg-slate-900/50 backdrop-blur-sm">
           <div v-show="!effectiveSidebarCollapsed" class="mb-3 px-2">
-            <div class="flex items-center gap-3 p-2 rounded-lg bg-slate-100/90 dark:bg-slate-800/50">
-              <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-sky-500 flex items-center justify-center text-xs font-bold">
-                {{ authStore.userName?.charAt(0).toUpperCase() || 'U' }}
+            <router-link
+              to="/user"
+              class="flex items-center gap-3 p-2 rounded-lg bg-slate-100/90 dark:bg-slate-800/50 hover:bg-slate-200/70 dark:hover:bg-slate-700/60 transition-colors"
+              title="Panel de Usuario"
+            >
+              <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-sky-500 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                <span v-if="authStore.avatarEmoji" class="text-base leading-none">{{ authStore.avatarEmoji }}</span>
+                <span v-else>{{ authStore.userName?.charAt(0).toUpperCase() || 'U' }}</span>
               </div>
               <div class="flex-1 min-w-0">
                 <p class="text-sm font-medium text-slate-800 dark:text-white truncate">{{ authStore.userName }}</p>
                 <p class="text-xs text-slate-500 dark:text-slate-400 truncate">{{ authStore.fullName || 'Usuario' }}</p>
               </div>
-            </div>
+            </router-link>
           </div>
           <button
             @click="logout"
@@ -460,6 +465,7 @@ import { useNotificaciones } from '@/composables/useNotificaciones'
 import { useOdcSapVolver } from '@/composables/useOdcSapVolver'
 import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
 import { useWarehouseAccessType } from '@/modules/inventario/composables/useWarehouseAccessType'
+import { usePickerSessionAccess } from '@/modules/inventario/composables/usePickerSessionAccess'
 import {
   hasPromocionSobresUiPermission,
   promocionSobresDefaultPath
@@ -472,6 +478,7 @@ const themeStore = useThemeStore()
 const { connect: connectNotificaciones, disconnect: disconnectNotificaciones } = useNotificaciones()
 const { target: odcSapVolverTarget, title: odcSapVolverTitle } = useOdcSapVolver()
 const { isTienda: isTiendaAccess } = useWarehouseAccessType()
+const { hasPickerSessions, checkPickerAccess } = usePickerSessionAccess()
 
 /** Volver en patrón A (arriba del título) dentro de cada vista; MainLayout solo si la ruta no lo define en la página. */
 const showOdcSapVolverInMainChrome = computed(() => {
@@ -716,6 +723,12 @@ const canAccessGestionOdcSap = computed(() => {
 onMounted(async () => {
   if (authStore.token && !authStore.capabilities) {
     await authStore.fetchMe()
+  }
+  if (authStore.token) {
+    authStore.fetchAvatarEmoji()
+  }
+  if (authStore.isAuthenticated && !hasModuleAccess('inventario') && authStore.userData?.id) {
+    checkPickerAccess(authStore.userData.id)
   }
   if (typeof window !== 'undefined') {
     const savedSidebarMode = window.localStorage.getItem(SIDEBAR_MODE_STORAGE_KEY)

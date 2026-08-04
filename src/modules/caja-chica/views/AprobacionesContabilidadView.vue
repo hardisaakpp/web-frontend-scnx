@@ -528,7 +528,6 @@
 </template>
 
 <script setup lang="ts">
-import { APP_LOCALE } from '@/plugins/locale'
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { cajaChicaApi } from '@/lib/http'
 import api from '@/services/api'
