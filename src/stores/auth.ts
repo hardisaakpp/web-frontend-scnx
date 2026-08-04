@@ -557,9 +557,6 @@ export const useAuthStore = defineStore('auth', {
 
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`
         scheduleRedirectOnTokenExpiry(token, this)
-
-        const cachedEmoji = localStorage.getItem(this.avatarStorageKey())
-        if (cachedEmoji) this.avatarEmoji = cachedEmoji
       } catch {
         this.logout()
       }
