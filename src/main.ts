@@ -4,10 +4,13 @@ import App from './App.vue'
 import router from './router'
 import permissionDirective from './directives/permission'
 import { setupErrorHandler } from './plugins/errorHandler'
+import { setupLocale } from './plugins/locale'
 import { useAuthStore } from './stores/auth'
 import { useThemeStore } from './stores/theme'
 import '@fontsource-variable/inter'
 import './style.css'
+
+setupLocale()
 
 const app = createApp(App)
 const pinia = createPinia()
