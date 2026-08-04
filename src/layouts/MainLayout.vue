@@ -173,9 +173,9 @@
           <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Demanda OTB</span>
         </router-link>
 
-        <!-- Mis Inventarios (usuarios con acceso tipo Tienda) -->
+        <!-- Mis Inventarios (usuarios con acceso tipo Tienda, o pickers invitados a una sesión puntual) -->
         <router-link
-          v-if="hasModuleAccess('inventario') && isTiendaAccess"
+          v-if="(hasModuleAccess('inventario') && isTiendaAccess) || (!hasModuleAccess('inventario') && hasPickerSessions)"
           to="/inventario/mis-inventarios"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
           :class="{
@@ -466,6 +466,7 @@ import { useNotificaciones } from '@/composables/useNotificaciones'
 import { useOdcSapVolver } from '@/composables/useOdcSapVolver'
 import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
 import { useWarehouseAccessType } from '@/modules/inventario/composables/useWarehouseAccessType'
+import { usePickerSessionAccess } from '@/modules/inventario/composables/usePickerSessionAccess'
 import {
   hasPromocionSobresUiPermission,
   promocionSobresDefaultPath
@@ -478,6 +479,7 @@ const themeStore = useThemeStore()
 const { connect: connectNotificaciones, disconnect: disconnectNotificaciones } = useNotificaciones()
 const { target: odcSapVolverTarget, title: odcSapVolverTitle } = useOdcSapVolver()
 const { isTienda: isTiendaAccess } = useWarehouseAccessType()
+const { hasPickerSessions, checkPickerAccess } = usePickerSessionAccess()
 
 /** Volver en patrón A (arriba del título) dentro de cada vista; MainLayout solo si la ruta no lo define en la página. */
 const showOdcSapVolverInMainChrome = computed(() => {
@@ -728,6 +730,9 @@ onMounted(async () => {
   }
   if (authStore.token) {
     authStore.fetchAvatarEmoji()
+  }
+  if (authStore.isAuthenticated && !hasModuleAccess('inventario') && authStore.userData?.id) {
+    checkPickerAccess(authStore.userData.id)
   }
   if (typeof window !== 'undefined') {
     const savedSidebarMode = window.localStorage.getItem(SIDEBAR_MODE_STORAGE_KEY)
