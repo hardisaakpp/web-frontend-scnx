@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useHistoryStore } from '../stores/historyStore'
 import { useAuthStore } from '@/stores/auth'
 import { CalendarIcon, DocumentArrowDownIcon, PencilIcon, ArrowLeftIcon } from '@heroicons/vue/24/outline'
@@ -206,10 +206,11 @@ async function handleExportCsv(): Promise<void> {
       <!-- Filters: fixed per role — single picking-date for a store user, range + transfer# for admin/supervisor -->
       <div v-if="mode === 'own'" class="flex flex-wrap items-end gap-3">
           <div>
-            <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Fecha de picking</label>
+            <label for="picking-date-input" class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Fecha de picking</label>
             <div class="flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 transition-shadow focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
               <CalendarIcon class="w-4 h-4 text-gray-400" />
               <input
+                id="picking-date-input"
                 data-testid="picking-date-input"
                 v-model="pickingDateInput"
                 type="date"
@@ -231,10 +232,11 @@ async function handleExportCsv(): Promise<void> {
         <div v-else class="space-y-1">
           <div class="flex flex-wrap items-end gap-3">
             <div>
-              <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Desde</label>
+              <label for="date-from-input" class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Desde</label>
               <div class="flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 transition-shadow focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
                 <CalendarIcon class="w-4 h-4 text-gray-400" />
                 <input
+                  id="date-from-input"
                   data-testid="date-from-input"
                   v-model="dateFromInput"
                   type="date"
@@ -244,10 +246,11 @@ async function handleExportCsv(): Promise<void> {
               </div>
             </div>
             <div>
-              <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Hasta</label>
+              <label for="date-to-input" class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Hasta</label>
               <div class="flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 transition-shadow focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
                 <CalendarIcon class="w-4 h-4 text-gray-400" />
                 <input
+                  id="date-to-input"
                   data-testid="date-to-input"
                   v-model="dateToInput"
                   type="date"
@@ -257,8 +260,9 @@ async function handleExportCsv(): Promise<void> {
               </div>
             </div>
             <div>
-              <label class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">O N° transferencia</label>
+              <label for="transfer-number-input" class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">O N° transferencia</label>
               <input
+                id="transfer-number-input"
                 data-testid="transfer-number-input"
                 type="text"
                 placeholder="N° transferencia"

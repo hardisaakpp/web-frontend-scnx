@@ -4,7 +4,7 @@ import { useRoute } from 'vue-router'
 import { usePickingStore } from '../stores/pickingStore'
 import { useAuthStore } from '@/stores/auth'
 import { ExclamationTriangleIcon, PencilIcon, DocumentArrowDownIcon, TrashIcon, ArrowLeftIcon } from '@heroicons/vue/24/outline'
-import type { ReceptionTransferStatus } from '../types'
+import type { ReceptionLine, ReceptionTransferStatus } from '../types'
 import { triggerBlobDownload } from '../utils/downloadBlob'
 import ErrorDialog from '../components/ErrorDialog.vue'
 
@@ -17,6 +17,16 @@ const STATUS_META: Record<ReceptionTransferStatus, { label: string; classes: str
 
 function statusMeta(status: ReceptionTransferStatus) {
   return STATUS_META[status] ?? { label: status, classes: 'bg-gray-100 text-gray-700 border-gray-200' }
+}
+
+function buildScanFeedback(result: { matchedLine: ReceptionLine | null; fillAmount: number; excess: number }): string {
+  if (!result.matchedLine) {
+    return `Código no reconocido — registrado como diferencia (${result.excess}).`
+  }
+  if (result.excess > 0) {
+    return `${result.fillAmount} escaneado(s) para ${result.matchedLine.itemCode}, ${result.excess} excedente(s) registrados como diferencia.`
+  }
+  return `${result.fillAmount} escaneado(s) para ${result.matchedLine.itemCode}.`
 }
 
 function formatDateTime(dateStr: string): string {
@@ -96,11 +106,7 @@ async function handleBarcodeScan(): Promise<void> {
   })
   if (!result) return
 
-  scanFeedback.value = !result.matchedLine
-    ? `Código no reconocido — registrado como diferencia (${result.excess}).`
-    : result.excess > 0
-      ? `${result.fillAmount} escaneado(s) para ${result.matchedLine.itemCode}, ${result.excess} excedente(s) registrados como diferencia.`
-      : `${result.fillAmount} escaneado(s) para ${result.matchedLine.itemCode}.`
+  scanFeedback.value = buildScanFeedback(result)
   resetBarcodeInputs()
 }
 
@@ -306,8 +312,9 @@ async function handleDownloadPickingReport(): Promise<void> {
                the barcode input or the Agregar button both trigger handleBarcodeScan directly. -->
           <div v-if="canScan" class="flex flex-wrap gap-3 items-end mb-4 bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Código de barras</label>
+              <label for="barcode-scan-input" class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Código de barras</label>
               <input
+                id="barcode-scan-input"
                 ref="barcodeInputEl"
                 data-testid="barcode-scan-input"
                 v-model="scanBarcodeInput"
@@ -319,8 +326,9 @@ async function handleDownloadPickingReport(): Promise<void> {
               />
             </div>
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Cantidad</label>
+              <label for="barcode-scan-quantity-input" class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Cantidad</label>
               <input
+                id="barcode-scan-quantity-input"
                 data-testid="barcode-scan-quantity-input"
                 v-model.number="scanBarcodeQuantity"
                 type="number"
@@ -393,8 +401,9 @@ async function handleDownloadPickingReport(): Promise<void> {
 
           <div v-if="canScan" class="flex flex-wrap gap-4 items-end mt-4">
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Responsable (opcional)</label>
+              <label for="scan-responsible-input" class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Responsable (opcional)</label>
               <input
+                id="scan-responsible-input"
                 data-testid="scan-responsible-input"
                 v-model="scanResponsibleName"
                 type="text"
@@ -403,8 +412,9 @@ async function handleDownloadPickingReport(): Promise<void> {
               />
             </div>
             <div class="flex flex-col gap-1.5">
-              <label class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Guía courier</label>
+              <label for="scan-courier-input" class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Guía courier</label>
               <input
+                id="scan-courier-input"
                 data-testid="scan-courier-input"
                 v-model="scanCourierWaybill"
                 type="text"
