@@ -1329,6 +1329,17 @@ export const mba3ConsultasService = {
   },
 
   /**
+   * Exporta las Solicitudes de Traslado del pedido en formato Excel
+   * GET /api/pedidos/{pedido_id}/traslados/exportar-excel
+   * @param pedidoId ID del pedido (UUID)
+   * @param version Versión específica (opcional)
+   * @returns Blob del archivo Excel
+   */
+  async exportarTrasladosExcel(pedidoId: string, version?: number): Promise<Blob> {
+    return pedidosService.exportarTrasladosExcel(pedidoId, version)
+  },
+
+  /**
    * Cancela (elimina) un pedido desde Redistribución. Misma acción que descartar a nivel de BD.
    * @param pedidoId ID del pedido (UUID)
    */

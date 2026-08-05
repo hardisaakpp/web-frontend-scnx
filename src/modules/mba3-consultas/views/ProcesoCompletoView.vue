@@ -126,56 +126,6 @@
             </div>
           </div>
 
-          <!-- Barra de progreso para Procesar ODC / Integrar SAP -->
-          <div v-if="procesoStore.loading && (procesoStore.currentStep === 'procesar-oc' || procesoStore.currentStep === 'integrar-sap')" 
-               class="bg-white/80 dark:bg-gray-800/80 backdrop-blur-xl rounded-xl shadow-2xl p-4 border border-white/30 dark:border-gray-600/30 relative overflow-hidden transition-all duration-300">
-            <div class="absolute inset-0 bg-gradient-to-br from-white/20 dark:from-gray-700/20 via-transparent to-transparent pointer-events-none"></div>
-            
-            <!-- Efecto de ondas animadas (shimmer) -->
-            <div class="absolute inset-0 overflow-hidden pointer-events-none">
-              <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
-            </div>
-            
-            <!-- Partículas/puntos animados -->
-            <div class="absolute inset-0 pointer-events-none">
-              <div class="absolute top-2 left-1/4 w-2 h-2 bg-indigo-400/60 rounded-full animate-bounce" style="animation-delay: 0s; animation-duration: 1s;"></div>
-              <div class="absolute top-2 left-1/2 w-2 h-2 bg-purple-400/60 rounded-full animate-bounce" style="animation-delay: 0.3s; animation-duration: 1s;"></div>
-              <div class="absolute top-2 left-3/4 w-2 h-2 bg-pink-400/60 rounded-full animate-bounce" style="animation-delay: 0.6s; animation-duration: 1s;"></div>
-            </div>
-            
-            <div class="flex items-center justify-between mb-2 relative z-10">
-              <div class="flex items-center gap-2">
-                <!-- Spinner animado -->
-                <div class="relative w-4 h-4">
-                  <svg class="animate-spin h-4 w-4 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  <div class="absolute inset-0 border-2 border-indigo-300/30 dark:border-indigo-500/30 rounded-full animate-ping"></div>
-                </div>
-                <span class="text-sm font-medium text-gray-700 dark:text-gray-200 transition-colors duration-300">Progreso del proceso</span>
-              </div>
-              <span class="text-sm text-gray-500 dark:text-gray-400 font-semibold transition-colors duration-300">{{ procesoStore.progress }}%</span>
-            </div>
-            <div class="w-full h-4 bg-gray-200/60 dark:bg-gray-700/60 backdrop-blur-sm rounded-full overflow-hidden shadow-inner relative z-10 transition-colors duration-300">
-              <div
-                class="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 transition-all duration-300 ease-out shadow-lg relative overflow-hidden"
-                :style="{ width: `${procesoStore.progress}%` }"
-              >
-                <!-- Efecto shimmer sobre la barra de progreso -->
-                <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent animate-shimmer"></div>
-                
-                <!-- Barra de progreso animada interna -->
-                <div class="absolute bottom-0 left-0 right-0 h-1 bg-white/30 overflow-hidden">
-                  <div class="h-full bg-gradient-to-r from-emerald-300 via-emerald-400 to-emerald-300 animate-progress-bar"></div>
-                </div>
-                
-                <!-- Efecto de pulso en la barra -->
-                <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-pulse"></div>
-              </div>
-            </div>
-          </div>
-
           <!-- Barra de progreso para Eliminar ODC -->
           <div v-if="eliminando" 
                class="flex items-center justify-between flex-wrap gap-4 p-6 rounded-xl border border-emerald-300/50 dark:border-emerald-700/50 backdrop-blur-xl transition-all duration-300 relative overflow-hidden shadow-2xl bg-gradient-to-br from-emerald-100/80 dark:from-emerald-900/30 to-emerald-200/60 dark:to-emerald-800/40">
@@ -1359,10 +1309,17 @@ async function handleVerDetalleSAP(oc: OrdenCompra) {
 
 /**
  * El usuario reintentó las ITR/ST de una OC ya enviada (no reenvía la ODC).
- * El backend ya invalidó su caché; aquí refrescamos estadísticas y la lista de OCs
- * para que los flags `st_pendientes_reintento` / `mostrar_reintentar_st` queden sincronizados.
+ * Además de refrescar estadísticas y la lista de OCs, invalidamos el detalle de
+ * integración SAP cacheado en memoria para esta OC: si estaba cacheado con el
+ * resumen del envío original (ej. "2 de 6"), un siguiente "Ver detalle SAP" debe
+ * volver a pedirlo al backend en vez de reutilizar el snapshot desactualizado.
  */
-async function handleStReintentado(_payload: { oc: OrdenCompra; result: any }) {
+async function handleStReintentado(payload: { oc: OrdenCompra; result: any }) {
+  if (integracionSAPDetalle.value?.oc_id === payload.oc.oc_id) {
+    integracionSAPDetalle.value = null
+    integracionSAPSolicitudes.value = null
+  }
+
   try {
     await Promise.all([
       ordenesCompraStore.fetchEstadisticas(),

@@ -762,6 +762,30 @@ export const pedidosService = {
   },
 
   /**
+   * Exporta las Solicitudes de Traslado del pedido en formato Excel
+   * GET /api/pedidos/{pedido_id}/traslados/exportar-excel
+   * Respuestas: 200 con archivo Excel; 404 si no hay distribución confirmada
+   * (el cuerpo del error llega como Blob por responseType: 'blob').
+   *
+   * @param pedidoId ID del pedido (UUID)
+   * @param version Versión específica (opcional, por defecto última)
+   * @returns Blob del archivo Excel
+   */
+  async exportarTrasladosExcel(pedidoId: string, version?: number): Promise<Blob> {
+    try {
+      const params = version != null ? `?version=${version}` : ''
+      const response = await mba3Api.get<Blob>(
+        `/api/pedidos/${encodeURIComponent(pedidoId)}/traslados/exportar-excel${params}`,
+        { responseType: 'blob' }
+      )
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [exportarTrasladosExcel] Error:', error)
+      throw createEnrichedError(error, 'Error al exportar traslados a Excel')
+    }
+  },
+
+  /**
    * Cancela un pedido cambiando su estado a CANCELADO (estado_id = 19) y notifica a EL RAYO por correo.
    * El pedido NO se elimina, solo cambia de estado.
    * POST /api/pedidos/{pedido_id}/cancelar

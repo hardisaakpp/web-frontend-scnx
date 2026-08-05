@@ -169,7 +169,7 @@
             </div>
             <div class="flex flex-wrap items-center justify-end gap-3 shrink-0">
               <button
-                v-if="soloLectura && pedido && tieneDistribucionConfirmada"
+                v-if="pedido && tieneDistribucionConfirmada && pedidoConfirmadoYEnviado"
                 type="button"
                 @click="handleDescargarDistribucionExcel"
                 :disabled="descargandoRedistribucion"
@@ -181,6 +181,20 @@
                 </svg>
                 <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Descargando redistribución" />
                 {{ descargandoRedistribucion ? 'Descargando...' : 'Descargar Redistribución' }}
+              </button>
+              <button
+                v-if="pedido && tieneDistribucionConfirmada && pedidoConfirmadoYEnviado"
+                type="button"
+                @click="handleExportarTrasladosExcel"
+                :disabled="exportandoTraslados"
+                class="shrink-0 inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-teal-600 dark:bg-teal-500 rounded-lg shadow-sm hover:bg-teal-700 dark:hover:bg-teal-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Exportar solicitudes de traslado a Excel"
+              >
+                <svg v-if="!exportandoTraslados" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                </svg>
+                <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Exportando traslados" />
+                {{ exportandoTraslados ? 'Exportando...' : 'Exportar a Excel' }}
               </button>
               <button
                 v-if="!soloLectura && pedido"
@@ -318,6 +332,7 @@ const procesoStore = useProcesoStore()
 const pedido = ref<PedidoCompleto | null>(null)
 const pedidoIdInput = ref('')
 const descargandoRedistribucion = ref(false)
+const exportandoTraslados = ref(false)
 const enviandoOdcSap = ref(false)
 
 const odcSapProcesoEnServidor = ref(false)
@@ -705,6 +720,13 @@ const tieneDistribucionConfirmada = computed(() => {
   return redistribucion.productosRedistribucion.value.length > 0
 })
 
+// Descarga/exportación a Excel solo aplica desde CONFIRMADO_ENVIADO (estado_id 12) en adelante:
+// antes de enviar la OC a SAP no existen Solicitudes de Traslado (ITR) que exportar
+const pedidoConfirmadoYEnviado = computed(() => {
+  const estadoId = pedido.value?.cabecera?.estado_id
+  return estadoId != null && estadoId >= 12
+})
+
 // Descargar distribución en formato Excel
 async function handleDescargarDistribucionExcel() {
   const pedidoId = pedido.value?.cabecera?.pedido_id
@@ -749,6 +771,65 @@ async function handleDescargarDistribucionExcel() {
     }
   } finally {
     descargandoRedistribucion.value = false
+  }
+}
+
+// Exportar Solicitudes de Traslado en formato Excel (req. 1.9)
+async function handleExportarTrasladosExcel() {
+  const pedidoId = pedido.value?.cabecera?.pedido_id
+  if (!pedidoId) {
+    toast.error('Error', 'No hay pedido para exportar')
+    return
+  }
+
+  if (exportandoTraslados.value) return
+
+  exportandoTraslados.value = true
+  toast.info('Generando archivo Excel...', 'Por favor espera')
+
+  try {
+    const blob = await mba3ConsultasService.exportarTrasladosExcel(pedidoId)
+
+    // Crear nombre de archivo con timestamp
+    const numeroPedidoDisplay = pedido.value?.cabecera?.numero_pedido ?? 'pedido'
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+    const nombreArchivo = `traslados_${numeroPedidoDisplay.replace(/[^a-zA-Z0-9.-]/g, '_')}_${timestamp}.xlsx`
+
+    // Crear URL del blob y descargar
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = nombreArchivo
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+
+    toast.success('Exportación completada', 'El archivo de solicitudes de traslado se ha descargado correctamente')
+  } catch (e: any) {
+    console.error('Error al exportar traslados a Excel:', e)
+
+    if (e.response?.status === 404) {
+      toast.error('Sin traslados', 'Este pedido no tiene distribución confirmada para exportar')
+    } else {
+      // Con responseType: 'blob' el cuerpo del error llega como Blob, no como JSON:
+      // extractErrorMessage no puede leerlo. El envelope real de error es
+      // {"error": {"error": "...", "message": "..."}, "type": "http_exception"}
+      // (ver src/middleware/exception_handlers.py del backend), así que se lee
+      // error.message y no error directamente.
+      let message: string | null = null
+      if (e.response?.data instanceof Blob) {
+        try {
+          const json = JSON.parse(await e.response.data.text())
+          message = json?.error?.message ?? null
+        } catch {
+          message = null
+        }
+      }
+      toast.error('Error al exportar', message || 'Ocurrió un error al exportar las solicitudes de traslado')
+    }
+  } finally {
+    exportandoTraslados.value = false
   }
 }
 

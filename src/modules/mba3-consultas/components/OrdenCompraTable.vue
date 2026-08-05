@@ -957,6 +957,11 @@ async function handleReintentarST(oc: OrdenCompra) {
 
     if (status === 'success' && objetivo === 0) {
       toast.info('Sin pendientes', result?.message || 'No hay solicitudes de transferencia pendientes para reintentar.')
+    } else if (status === 'en_cola') {
+      toast.info(
+        'Sigue en proceso en SAP',
+        result?.message || 'SAP está saturado y la solicitud sigue en cola. Intenta de nuevo en unos minutos.'
+      )
     } else if (status === 'success') {
       toast.success(
         'Reintento ST exitoso',
