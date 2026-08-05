@@ -56,4 +56,10 @@ Registro append-only de los hitos del módulo. Cada fase se cierra con su estado
 
 **Marca el cierre del desarrollo por fases numeradas del módulo.** A partir de esta fase, el trabajo sobre reposiciones pasa a manejarse como ramas por requerimiento puntual (una rama por feature/fix, sin numeración de fase), igual que el resto de módulos del repo. Por eso este dato se deja aquí y no en el nombre de la rama: la rama se borra al mergear, este documento no.
 
+**Control de cambios — 3 puntos (frontend), origen QA:**
+
+1. **Limpiar filtros del catálogo al cambiar de vista y volver** ✅. Causa: el store de Pinia es singleton durante toda la sesión SPA; `filters` no se reseteaba al salir de `SolicitarView`. Fix: acción `resetFilters()` en `reposicionStore.ts` (sin fetch), invocada en `onUnmounted` de `SolicitarView.vue`. No afecta `whsCode` (bodega seleccionada), solo los 7 campos de búsqueda.
+2. **Renombrar "Observación" → "Observación/Responsable" en catálogo (frontend) + mostrar el campo en reportes Excel/PDF (backend)** ✅ frontend / ⏳ backend. Encabezado ya actualizado en `SolicitarView.vue`. La parte de reportes es 100% backend, fuera de este repo.
+3. **Confirmar antes de solicitar si ya hay tránsito para el artículo** ✅. Origen: QA identificó que un usuario puede pedir cantidad de un producto sin saber que ya tiene unidades en tránsito (solicitadas días anteriores, pendientes de llegar a tienda) — al llegar el tránsito, recibiría lo nuevo más lo viejo, generando sobre-stock accidental. Decisión: 100% frontend, sin auditoría en backend (si el usuario confirma pese al aviso, se registra como solicitud normal, sin flag adicional). Implementado en `updateQuantity` (`SolicitarView.vue`): si `item.totalTransitoria > 0` y la cantidad solicitada es > 0, se muestra modal de confirmación antes de guardar — mismo patrón ya usado para el chequeo de "cantidad > sugerido".
+
 Este bloque se completa/actualiza cuando el alcance quede definido con más detalle. Cuando fase 3 se cierre, este bloque queda fijo y se documenta la siguiente fase debajo — no se sobrescribe.

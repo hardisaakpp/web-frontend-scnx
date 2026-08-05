@@ -197,18 +197,14 @@ watch(
 
 onUnmounted(() => {
   if (searchDebounceTimer) clearTimeout(searchDebounceTimer)
+  // Filtros de búsqueda se limpian al salir de la vista, para que no queden
+  // aplicados de una visita anterior si el usuario vuelve al catálogo.
+  store.resetFilters()
 })
 
 const handleClearFilters = () => {
-  store.setFilters({
-    descripcion: '',
-    itemCode: '',
-    codeBars: '',
-    marca: '',
-    unidad: '',
-    categoria: '',
-    linea: ''
-  })
+  store.resetFilters()
+  store.fetchCatalogo(true)
 }
 
 const openDetail = async (itemCode: string) => {
@@ -251,6 +247,11 @@ const updateQuantity = async (item: any, quantity: number) => {
     if (quantity > item.disponibleBodega) {
       showError(`No hay suficiente stock en bodega. Disponible: ${item.disponibleBodega}`)
       return
+    }
+    if (quantity > 0 && item.totalTransitoria > 0) {
+      if (!(await showConfirm(`Este artículo ya tiene ${item.totalTransitoria} unidades en tránsito (solicitadas anteriormente y pendientes de llegar a tienda). Si continúas, esta cantidad se sumará a lo que ya está en camino. ¿Desea continuar?`))) {
+        return
+      }
     }
     if (quantity > item.sugerido && item.sugerido > 0) {
       if (!(await showConfirm(`La cantidad es mayor al sugerido (${item.sugerido}). ¿Desea continuar?`))) {
@@ -371,7 +372,7 @@ const getQuantityColor = (item: any) => {
               <th class="sticky top-0 z-10 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Sug.</th>
               <th class="sticky top-0 z-10 px-2 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center bg-gray-50 dark:bg-gray-900">Días Inv.</th>
               <th class="sticky top-0 z-10 px-4 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-[100px] bg-gray-50 dark:bg-gray-900">Solicitado</th>
-              <th class="sticky top-0 z-10 px-4 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-900 rounded-tr-xl">Observación</th>
+              <th class="sticky top-0 z-10 px-4 py-3 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-900 rounded-tr-xl">Observación/ Responsable</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -503,6 +504,19 @@ const getQuantityColor = (item: any) => {
       <div class="overflow-hidden transition-all duration-300 ease-out" :class="showFilters ? 'w-80' : 'w-0'">
         <div :style="filterPanelStyle" class="w-80 flex flex-col bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700">
         <div class="flex-1 min-h-0 overflow-y-auto p-6 space-y-5">
+
+          <div class="space-y-1.5">
+            <label for="filter-codebars" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Código Barras</label>
+            <input
+              id="filter-codebars"
+              v-model="filters.codeBars"
+              type="text"
+              placeholder="Codigo de barras..."
+              class="w-full px-4 py-2 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border transition-all text-sm"
+              @keydown.enter="handleSearch"
+            />
+          </div>
+          
           <div class="space-y-1.5">
             <label for="filter-itemcode" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Código Art.</label>
             <input
@@ -528,18 +542,6 @@ const getQuantityColor = (item: any) => {
                 @keydown.enter="handleSearch"
               />
             </div>
-          </div>
-
-          <div class="space-y-1.5">
-            <label for="filter-codebars" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Código Barras</label>
-            <input
-              id="filter-codebars"
-              v-model="filters.codeBars"
-              type="text"
-              placeholder="Codigo de barras..."
-              class="w-full px-4 py-2 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border transition-all text-sm"
-              @keydown.enter="handleSearch"
-            />
           </div>
 
           <div class="space-y-1.5">

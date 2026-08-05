@@ -260,6 +260,17 @@ export const useReposicionStore = defineStore('reposicion', {
       this.fetchCatalogo()
     },
 
+    resetFilters() {
+      this.filters.descripcion = ''
+      this.filters.itemCode = ''
+      this.filters.codeBars = ''
+      this.filters.marca = ''
+      this.filters.unidad = ''
+      this.filters.categoria = ''
+      this.filters.linea = ''
+      this.filters.pageNumber = 1
+    },
+
     async initialize() {
       await this.fetchAlmacenes()
       if (this.filters.whsCode) {
