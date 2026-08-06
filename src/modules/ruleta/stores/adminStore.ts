@@ -379,7 +379,7 @@ export const useAdminStore = defineStore('admin', {
     async cargarHistorialDashboard(campanaId?: string, page = 1) {
       this.loadingHistorial = true
       try {
-        const res = await ruletaService.getHistorialGiros(campanaId, page, 10)
+        const res = await ruletaService.getHistorialGiros({ campanaId }, page, 10)
         this.historialGiros          = res.items
         this.historialTotalPaginas   = res.totalPaginas
         this.historialPaginaActual   = res.paginaActual

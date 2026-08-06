@@ -9,7 +9,7 @@ import type {
   EstadoCampana, EstadoGrupo, SegmentoCliente, TipoPremio,
   PremioBackendResponse, GiroRequestDTO,
   GiroVerificacionResponse, RedencionResponse, MetricasCampana,
-  HistorialGiroItem, HistorialGirosResponse,
+  HistorialGiroItem, HistorialGirosResponse, GiroFilters, DistribucionSegmentos,
   StockPremio
 } from '../types'
 
@@ -105,6 +105,19 @@ function premioToBackend(data: Partial<PremioAdmin>, segmento?: string) {
 
 
   return payload
+}
+
+function toGiroParams(filters: GiroFilters): Record<string, string> {
+  const params: Record<string, string> = {}
+
+  if (filters.campanaId) params.campanaId = filters.campanaId
+  if (filters.premioNombre?.trim()) params.premioNombre = filters.premioNombre.trim()
+  if (filters.segmento) params.segmento = filters.segmento
+  if (filters.fechaInicio) params.fechaInicio = filters.fechaInicio
+  if (filters.fechaFin) params.fechaFin = filters.fechaFin
+  if (filters.estado) params.estado = filters.estado
+
+  return params
 }
 
 // ─── CRUD base (listado admin) ────────────────────────────────────────────────
@@ -534,19 +547,20 @@ export const ruletaService = {
   },
 
   // ─── Historial de giros ───────────────────────────────────────────────────────
-  async getHistorialGiros(campanaId?: string, page = 1, pageSize = 10): Promise<HistorialGirosResponse> {
-    const params: Record<string, unknown> = { page, pageSize }
-    if (campanaId) params.campanaId = campanaId
+  async getHistorialGiros(filters: GiroFilters = {}, page = 1, pageSize = 10): Promise<HistorialGirosResponse> {
+    const params: Record<string, unknown> = { ...toGiroParams(filters), page, pageSize }
     const response = await campanaApi.get<any>('/api/metricas/giros', { params })
     const d = response.data
     const items: HistorialGiroItem[] = (d.items ?? d.Items ?? []).map((item: any) => ({
       id:               item.id               ?? item.giroId            ?? '',
       fecha:            item.fecha            ?? item.fechaGiro         ?? '',
       identificacion:   item.identificacion   ?? item.clienteIdentificacion ?? '',
-      tiendaCodigo:     item.tiendaCodigo     ?? item.tienda            ?? '',
+      tiendaCodigo:     item.enroladorTienda  ?? item.tiendaCodigo      ?? item.tienda ?? '',
       enroladorNombre:  item.enroladorNombre  ?? null,
       premioNombre:     item.premioNombre     ?? '',
       premioTipo:       item.premioTipo       ?? item.tipo              ?? '',
+      segmento:         item.segmento         ?? null,
+      estado:           item.estado           ?? '',
       esGanador:        item.esGanador        ?? false,
       codigoRedencion:  item.codigoRedencion  ?? item.codigo            ?? null,
       redimido:         item.redimido         ?? item.estado === 'Redimido',
@@ -559,26 +573,31 @@ export const ruletaService = {
     }
   },
 
-  async exportarGirosCsv(campanaId?: string): Promise<void> {
-    const params: Record<string, string> = {}
-    if (campanaId) params.CampanaId = campanaId
+  async getDistribucionSegmentos(filters: GiroFilters = {}): Promise<DistribucionSegmentos> {
+    const response = await campanaApi.get<DistribucionSegmentos>('/api/metricas/giros/distribucion-segmentos', {
+      params: toGiroParams(filters)
+    })
+    return response.data
+  },
+
+  async exportarGirosCsv(filters: GiroFilters = {}): Promise<void> {
+    const params = toGiroParams(filters)
     const response = await campanaApi.get('/api/metricas/giros/exportar', { params, responseType: 'blob' })
     const blobUrl = URL.createObjectURL(new Blob([response.data as BlobPart], { type: 'text/csv' }))
     const a = document.createElement('a')
     a.href = blobUrl
-    a.download = campanaId ? `giros-${campanaId}.csv` : 'giros.csv'
+    a.download = filters.campanaId ? `giros-${filters.campanaId}.csv` : 'giros.csv'
     a.click()
     URL.revokeObjectURL(blobUrl)
   },
 
-  async exportarGirosExcel(campanaId?: string): Promise<void> {
-    const params: Record<string, string> = {}
-    if (campanaId) params.CampanaId = campanaId
+  async exportarGirosExcel(filters: GiroFilters = {}): Promise<void> {
+    const params = toGiroParams(filters)
     const response = await campanaApi.get('/api/metricas/giros/exportar/excel', { params, responseType: 'blob' })
     const blobUrl = URL.createObjectURL(new Blob([response.data as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
     const a = document.createElement('a')
     a.href = blobUrl
-    a.download = campanaId ? `giros-${campanaId}.xlsx` : 'giros.xlsx'
+    a.download = filters.campanaId ? `giros-${filters.campanaId}.xlsx` : 'giros.xlsx'
     a.click()
     URL.revokeObjectURL(blobUrl)
   },

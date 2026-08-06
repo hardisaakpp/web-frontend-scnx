@@ -342,9 +342,27 @@ export interface HistorialGiroItem {
   enroladorNombre: string | null
   premioNombre: string
   premioTipo: string
+  segmento: SegmentoCliente | null
+  estado: string
   esGanador: boolean
   codigoRedencion: string | null
   redimido: boolean
+}
+
+export type EstadoPremioFiltro = 'Ganador' | 'SinPremio'
+
+export interface GiroFilters {
+  campanaId?: string
+  premioNombre?: string
+  segmento?: SegmentoCliente
+  fechaInicio?: string
+  fechaFin?: string
+  estado?: EstadoPremioFiltro
+}
+
+export interface DistribucionSegmentos {
+  labels: SegmentoCliente[]
+  data: number[]
 }
 
 export interface HistorialGirosResponse {

@@ -64,8 +64,8 @@ async function irPagina(page: number) {
 // ── Exportar ──────────────────────────────────────────────────────────────────
 async function exportar(tipo: 'csv' | 'excel') {
   const id = esTodos.value ? undefined : campanaSeleccionadaId.value
-  if (tipo === 'excel') await ruletaService.exportarGirosExcel(id)
-  else await ruletaService.exportarGirosCsv(id)
+  if (tipo === 'excel') await ruletaService.exportarGirosExcel({ campanaId: id })
+  else await ruletaService.exportarGirosCsv({ campanaId: id })
 }
 
 // ── Helpers stock ─────────────────────────────────────────────────────────────
