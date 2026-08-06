@@ -49,6 +49,8 @@ function normalizeObject(obj: any): any {
         estadoProducto: ['PRODUCT_STATUS', 'product_status', 'EstadoProducto'],
         idListaPrecios: ['PRICE_LIST_ID', 'price_list_id', 'IdListaPrecios'],
         aplicaEcommerce: ['ECOMMERCE_APPLICABLE', 'ecommerce_applicable', 'AplicaEcommerce'],
+        aplicaPrecioMinorista: ['APLICA_PRECIO_MINORISTA', 'aplica_precio_minorista', 'AplicaPrecioMinorista'],
+        aplicaPrecioInternacional: ['APLICA_PRECIO_INTERNACIONAL', 'aplica_precio_internacional', 'AplicaPrecioInternacional'],
         manageBatchNumbers: [
             'MAN_BTCH_NUM',
             'man_btch_num',

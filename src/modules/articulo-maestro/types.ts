@@ -111,6 +111,8 @@ export interface Articulo {
     estadoProducto?: boolean
     idListaPrecios?: number | null
     aplicaEcommerce?: boolean
+    aplicaPrecioMinorista?: boolean
+    aplicaPrecioInternacional?: boolean
     manageBatchNumbers?: string | null
     urlImagen1?: string | null
     urlImagen2?: string | null

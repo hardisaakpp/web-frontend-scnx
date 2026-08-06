@@ -369,6 +369,19 @@
                             <label for="formPrice">PVP (Precio)</label>
                             <input id="formPrice" v-model.number="form.price" type="number" step="0.01" placeholder="0.00" min="0" />
                         </div>
+                        <div class="form-field sm:col-span-2 flex flex-col gap-2 bg-gray-50 dark:bg-gray-900 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                            <label class="!text-sm !m-0 !font-medium">Listas de Precios Aplicables</label>
+                            <div class="flex items-center gap-6">
+                                <div class="flex items-center gap-2">
+                                    <input id="formAplicaPrecioMinorista" v-model="form.aplicaPrecioMinorista" @change="onPrecioListasChange('minorista')" type="checkbox" class="w-4 h-4 text-blue-600 rounded border-gray-300" />
+                                    <label for="formAplicaPrecioMinorista" class="!text-sm !m-0">Minorista</label>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input id="formAplicaPrecioInternacional" v-model="form.aplicaPrecioInternacional" @change="onPrecioListasChange('internacional')" type="checkbox" class="w-4 h-4 text-blue-600 rounded border-gray-300" />
+                                    <label for="formAplicaPrecioInternacional" class="!text-sm !m-0">Internacional</label>
+                                </div>
+                            </div>
+                        </div>
                         <div class="form-field">
                             <label for="selectListaPrecios">Lista de Precios</label>
                             <SearchableSelect
@@ -811,6 +824,17 @@ async function onLineaAtributoChange() {
     }
 }
 
+function onPrecioListasChange(tipo: 'minorista' | 'internacional') {
+    if (!form.value.aplicaPrecioMinorista && !form.value.aplicaPrecioInternacional) {
+        if (tipo === 'minorista') {
+            form.value.aplicaPrecioMinorista = true
+        } else {
+            form.value.aplicaPrecioInternacional = true
+        }
+        alert('Debe seleccionar al menos una lista de precios aplicable.')
+    }
+}
+
 // ─── Formulario ──────────────────────────────────────────────────────────────
 const form = ref({
     itemCode: '',
@@ -880,6 +904,8 @@ const form = ref({
     estadoProducto: true,
     idListaPrecios: null as number | null,
     aplicaEcommerce: false,
+    aplicaPrecioMinorista: true,
+    aplicaPrecioInternacional: false,
     urlImagen1: '',
     urlImagen2: '',
     urlImagen3: '',
