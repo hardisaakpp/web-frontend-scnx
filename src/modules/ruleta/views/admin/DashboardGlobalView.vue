@@ -339,6 +339,7 @@ function fmtFecha(iso: string) {
               <tr>
                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Fecha</th>
                 <th class="px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Cédula</th>
+                <th class="px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider hidden sm:table-cell">Grupo</th>
                 <th class="px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider hidden md:table-cell">Enrolador</th>
                 <th class="px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Premio</th>
                 <th class="px-3 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">¿Ganó?</th>
@@ -353,6 +354,9 @@ function fmtFecha(iso: string) {
                 </td>
                 <td class="px-3 py-3 font-mono text-xs text-gray-700 dark:text-gray-200">
                   {{ g.identificacion || '—' }}
+                </td>
+                <td class="px-3 py-3 text-xs text-gray-600 dark:text-gray-300 hidden sm:table-cell">
+                  {{ g.grupo || '—' }}
                 </td>
                 <td class="px-3 py-3 text-xs text-gray-600 dark:text-gray-300 hidden md:table-cell">
                   {{ g.enroladorNombre || '—' }}

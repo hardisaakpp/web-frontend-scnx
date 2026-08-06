@@ -550,6 +550,7 @@ export const ruletaService = {
       esGanador:        item.esGanador        ?? false,
       codigoRedencion:  item.codigoRedencion  ?? item.codigo            ?? null,
       redimido:         item.redimido         ?? item.estado === 'Redimido',
+      grupo:            item.grupo            ?? item.clienteGrupo     ?? null,
     }))
     return {
       totalRegistros: d.totalRegistros ?? 0,
