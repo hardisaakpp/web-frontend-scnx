@@ -347,6 +347,8 @@ export interface HistorialGiroItem {
   esGanador: boolean
   codigoRedencion: string | null
   redimido: boolean
+  // Grupo/segmento del cliente (API Credicorp): GRUPO_1..GRUPO_6, sin lista cerrada
+  grupo: string | null
 }
 
 export type EstadoPremioFiltro = 'Ganador' | 'SinPremio'
