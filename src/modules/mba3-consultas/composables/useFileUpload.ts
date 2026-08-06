@@ -74,6 +74,9 @@ function applyPlantillaProcessingUpdate(estado: PlantillaProcesoEstado, refs: {
 
 /** Prefijo para guardar correcciones a resaltar por pedido (origen de verdad tras redirect en flujo async) */
 export const RESALTADO_CODIGOS_STORAGE_PREFIX = 'resaltado_codigos_'
+/** Prefijos para resaltar códigos con Pack/PVP corregido usando el valor de SAP (RN-02) */
+export const RESALTADO_PACK_STORAGE_PREFIX = 'resaltado_pack_'
+export const RESALTADO_PVP_STORAGE_PREFIX = 'resaltado_pvp_'
 
 function saveCorreccionesParaResaltado(numeroPedido: string, response: UploadPlantillaResponse | PlantillaProcesoEstado | undefined): void {
   if (!numeroPedido) return
@@ -85,6 +88,32 @@ function saveCorreccionesParaResaltado(numeroPedido: string, response: UploadPla
     sessionStorage.setItem(RESALTADO_CODIGOS_STORAGE_PREFIX + numeroPedido, JSON.stringify(list))
   } catch (e) {
     if (import.meta.env.DEV) console.warn('[useFileUpload] No se pudo guardar correcciones en sessionStorage:', e)
+  }
+}
+
+/**
+ * Persiste en sessionStorage los códigos cuyo Pack y/o PVP se corrigió usando el valor de SAP (RN-02),
+ * para que la vista de destino pueda resaltar esas celdas — igual que se hace con código arriba.
+ * Centralizado aquí (en vez de en cada vista que llama reintentarConCorrecciones) para que funcione
+ * sin importar desde qué vista se inició la carga (listado o detalle de pedido).
+ */
+function saveCorreccionesPackPvpParaResaltado(
+  numeroPedido: string,
+  correccionesPackPvp: Record<string, { pack?: string; pvp?: number }> | undefined,
+  validacionPackPvp: UploadErrorInfo['validacion_pack_pvp'] | undefined
+): void {
+  if (!numeroPedido || !correccionesPackPvp) return
+  const codigosPackSap = (validacionPackPvp?.pack_mismatches ?? [])
+    .filter((m) => correccionesPackPvp[m.codigo]?.pack === m.pack_sap)
+    .map((m) => String(m.codigo).trim())
+  const codigosPvpSap = (validacionPackPvp?.pvp_mismatches ?? [])
+    .filter((m) => correccionesPackPvp[m.codigo]?.pvp === m.pvp_sap)
+    .map((m) => String(m.codigo).trim())
+  try {
+    sessionStorage.setItem(RESALTADO_PACK_STORAGE_PREFIX + numeroPedido, JSON.stringify(codigosPackSap))
+    sessionStorage.setItem(RESALTADO_PVP_STORAGE_PREFIX + numeroPedido, JSON.stringify(codigosPvpSap))
+  } catch (e) {
+    if (import.meta.env.DEV) console.warn('[useFileUpload] No se pudo guardar resaltado Pack/PVP en sessionStorage:', e)
   }
 }
 
@@ -127,6 +156,23 @@ export interface UploadErrorInfo {
       }>
     }>
   }
+  // ⭐ NUEVO: Discrepancias de Pack/PVP contra SAP (RN-02) — error_code 'PACK_PVP_INVALIDOS_SAP'
+  validacion_pack_pvp?: {
+    pack_mismatches: Array<{ codigo: string; pack_excel: string; pack_sap: string }>
+    pvp_mismatches: Array<{ codigo: string; pvp_excel: number; pvp_sap: number }>
+    mensajes?: string[]
+  }
+}
+
+/**
+ * Correcciones que el usuario puede aplicar desde UploadErrorModal en un solo reintento.
+ * Las 3 validaciones contra SAP (código, pack, pvp) son secuenciales en el backend —
+ * nunca se reportan combinadas hoy — pero este payload admite ambas a la vez para no
+ * depender de esa secuencialidad si el backend cambia.
+ */
+export interface CorreccionesPlantilla {
+  correccionesCodigos?: Record<string, string>
+  correccionesPackPvp?: Record<string, { pack?: string; pvp?: number }>
 }
 
 export function useFileUpload(options: {
@@ -780,6 +826,12 @@ export function useFileUpload(options: {
     } else if (errorCode === 'FORMATO_RESPUESTA_PROVEEDOR_INVALIDO') {
       errorTitle = 'Formato de Respuesta Proveedor Inválido'
       errorMessage = `El archivo de respuesta del proveedor no contiene la hoja requerida.\n\nEl archivo debe incluir una hoja llamada 'RESUMEN'.\n\n⚠️ Solicita al proveedor que use el formato correcto de respuesta.`
+    } else if (errorCode === 'PACK_PVP_INVALIDOS_SAP') {
+      // ⭐ NUEVO: Discrepancias de Pack/PVP contra SAP (RN-02). Título deliberadamente sin 'SAP'/'producto'
+      // para no activar la detección genérica de isSAPError (códigos no encontrados) más abajo,
+      // que tiene un significado distinto (código de producto inexistente vs. valor Pack/PVP incorrecto).
+      errorTitle = 'Discrepancias de Pack/PVP'
+      // errorMessage ya contiene el mensaje del backend (asignado al inicio de la función)
     } else if (isSAPError) {
       // ✅ Determinar si es producto, tienda o bodega
       const totalErrores = productosNoEncontradosSAP.length + tiendasNoEncontradasSAP.length + bodegasNoEncontradasSAP.length
@@ -972,13 +1024,17 @@ export function useFileUpload(options: {
     // 1. Directamente en data.validacion_sap (formato estándar)
     // 2. En data.data.validacion_sap (cuando viene de BusinessException con exc.data)
     const validacionSap = e.response?.data?.validacion_sap || e.response?.data?.data?.validacion_sap
-    
+
+    // ⭐ NUEVO: Extraer validacion_pack_pvp del backend (RN-02: discrepancias de Pack/PVP contra SAP)
+    // Misma búsqueda dual-path que validacion_sap arriba (BusinessException puede anidar un nivel más)
+    const validacionPackPvp = e.response?.data?.validacion_pack_pvp || e.response?.data?.data?.validacion_pack_pvp
+
     // ⭐ NUEVO: Extraer numero_pedido si es un error de duplicado
     const numeroPedidoFromBackend = (isDuplicateError || errorCode === 'NUMERO_PEDIDO_DUPLICADO') ? (
-      e.response?.data?.numero_pedido || 
+      e.response?.data?.numero_pedido ||
       e.response?.data?.data?.numero_pedido
     ) : undefined
-    
+
     return {
       title: errorTitle,
       message: errorMessage,
@@ -991,6 +1047,12 @@ export function useFileUpload(options: {
       // ⭐ Incluir validacion_sap completa del backend
       validacion_sap: validacionSap ? {
         detalle_validacion: validacionSap.detalle_validacion || {}
+      } : undefined,
+      // ⭐ NUEVO: Incluir validacion_pack_pvp completa del backend (RN-02)
+      validacion_pack_pvp: validacionPackPvp ? {
+        pack_mismatches: validacionPackPvp.pack_mismatches || [],
+        pvp_mismatches: validacionPackPvp.pvp_mismatches || [],
+        mensajes: validacionPackPvp.mensajes
       } : undefined
     }
   }
@@ -1185,9 +1247,10 @@ export function useFileUpload(options: {
       showErrorModal.value = true
       
       // ⭐ Guardar archivo original para posible reintento con correcciones
-      // Solo si el error es de códigos no válidos en SAP
+      // Solo si el error es de códigos no válidos en SAP, o de discrepancias de Pack/PVP (RN-02)
       const esErrorSap = errorInfo.title?.includes('SAP') || errorInfo.title?.includes('producto') || errorInfo.title?.includes('no encontrados')
-      if (esErrorSap) {
+      const esErrorPackPvp = !!errorInfo.validacion_pack_pvp
+      if (esErrorSap || esErrorPackPvp) {
         archivoOriginal.value = file
         if (import.meta.env.DEV) console.log('💾 [useFileUpload] Archivo original guardado para posible reintento con correcciones')
       }
@@ -1220,26 +1283,31 @@ export function useFileUpload(options: {
   }
   
   /**
-   * ⭐ Reintenta la carga del archivo con correcciones de códigos aplicadas (en segundo plano, async).
+   * ⭐ Reintenta la carga del archivo con correcciones aplicadas (en segundo plano, async).
+   * Unifica los 3 escenarios de validación contra SAP (código, pack, pvp): el llamador solo
+   * llena las claves que correspondan al tipo de discrepancia que el backend reportó — ambas
+   * pueden viajar en un mismo reintento si algún día el backend las reporta combinadas.
    * Usa upload-async + polling igual que la primera subida.
    */
   async function reintentarConCorrecciones(
     file: File,
-    correcciones: Record<string, string>
+    correcciones: CorreccionesPlantilla
   ): Promise<void> {
     if (!file) {
       throw new Error('Archivo no disponible para reintento')
     }
-    
-    if (!correcciones || Object.keys(correcciones).length === 0) {
-      throw new Error('No se proporcionaron correcciones de códigos')
+
+    const tieneCodigos = !!correcciones.correccionesCodigos && Object.keys(correcciones.correccionesCodigos).length > 0
+    const tienePackPvp = !!correcciones.correccionesPackPvp && Object.keys(correcciones.correccionesPackPvp).length > 0
+    if (!tieneCodigos && !tienePackPvp) {
+      throw new Error('No se proporcionaron correcciones')
     }
-    
+
     uploading.value = true
     resetProgress()
     uploadFase.value = 'upload'
     uploadMessage.value = 'Preparando archivo con correcciones...'
-    
+
     try {
       const handleProgress = (progress: number, fase: 'upload' | 'processing') => {
         if (fase === 'upload') {
@@ -1250,14 +1318,17 @@ export function useFileUpload(options: {
           stopProcessingProgressSimulation(true)
         }
       }
-      
+
       let response: UploadPlantillaResponse
 
       try {
         // ⭐ Subir con correcciones en segundo plano (upload-async + Celery)
         const accepted = await mba3ConsultasService.uploadPlantillaAsync(
           file,
-          { correcciones_codigos: correcciones },
+          {
+            ...(tieneCodigos ? { correcciones_codigos: correcciones.correccionesCodigos } : {}),
+            ...(tienePackPvp ? { correcciones_pack_pvp: correcciones.correccionesPackPvp } : {})
+          },
           handleProgress
         )
         // Backend puede devolver 200 con resultado completo (fallback sync: process_id null, async false) — no hacer polling
@@ -1284,9 +1355,9 @@ export function useFileUpload(options: {
         }
         throw asyncErr
       }
-      
+
       archivoOriginal.value = null
-      
+
       const resAnyReintento = response as any
       let numeroPedido = response.numero_pedido ?? resAnyReintento.resultado?.numero_pedido ?? resAnyReintento.result?.numero_pedido
       if (!numeroPedido && response.pedido_id && options?.pedido?.value) {
@@ -1297,25 +1368,26 @@ export function useFileUpload(options: {
           console.warn('No se pudo obtener el numero_pedido del pedido cargado:', e)
         }
       }
-      
+
       const mensajeDetalle = `Correcciones aplicadas exitosamente.\n\nNúmero de pedido: ${numeroPedido || 'N/A'}\nArtículos: ${response.articulos_cargados}\nDistribuciones: ${response.distribuciones_cargadas}`
-      
+
       if (response.status === 'success') {
         toast.success('Plantilla procesada con correcciones', mensajeDetalle)
       } else if (response.status === 'validation_error') {
         toast.warning('Plantilla procesada con advertencias', mensajeDetalle)
       }
-      
+
       // Guardar correcciones en sessionStorage antes de redirect para que la vista muestre el resaltado (flujo async)
       if (numeroPedido) {
         saveCorreccionesParaResaltado(numeroPedido, response)
+        saveCorreccionesPackPvpParaResaltado(numeroPedido, correcciones.correccionesPackPvp, uploadErrorInfo.value?.validacion_pack_pvp)
       }
-      
+
       if (numeroPedido && options?.onUploadSuccess) {
         if (import.meta.env.DEV) console.log('[useFileUpload] reintentarConCorrecciones éxito, response:', { hasCorrecciones: !!(response as any).correcciones_aplicadas?.length, keys: Object.keys(response || {}) })
         await options.onUploadSuccess(numeroPedido, response)
       }
-      
+
       if (numeroPedido) {
         const currentPedidoNumero = options?.pedido?.value?.cabecera.numero_pedido
         const pathBase = options?.redirectToCargarPlantilla ? RUTA_CARGAR_PLANTILLA_BASE : RUTA_PEDIDOS_BASE
@@ -1335,20 +1407,20 @@ export function useFileUpload(options: {
       }
     } catch (e: any) {
       stopProcessingProgressSimulation(false)
-      
+
       const errorInfo = processUploadError(e, file.name)
       uploadErrorInfo.value = errorInfo
       showErrorModal.value = true
-      
+
       toast.error(
         'Error al aplicar correcciones',
         errorInfo.message.split('\n')[0] || 'No se pudo procesar el archivo con las correcciones aplicadas'
       )
-      
+
       if (options?.onUploadError) {
         options.onUploadError(errorInfo)
       }
-      
+
       throw e
     } finally {
       uploading.value = false

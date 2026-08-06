@@ -213,6 +213,8 @@ export const pedidosService = {
       modo_tiendas?: 'validar_estricto' | 'crear_si_no_existe' | 'sincronizar_maestro'
       confirmar_sincronizacion?: boolean
       correcciones_codigos?: Record<string, string>
+      // ⭐ NUEVO: Correcciones de Pack/PVP (RN-02) — form-field hermano de correcciones_codigos
+      correcciones_pack_pvp?: Record<string, { pack?: string; pvp?: number }>
     },
     onProgress?: (progress: number, fase: 'upload' | 'processing') => void
   ): Promise<UploadPlantillaAsyncAcceptedResponse> {
@@ -221,6 +223,9 @@ export const pedidosService = {
     formData.append('file', file)
     if (opts?.correcciones_codigos && Object.keys(opts.correcciones_codigos).length > 0) {
       formData.append('correcciones_codigos', JSON.stringify(opts.correcciones_codigos))
+    }
+    if (opts?.correcciones_pack_pvp && Object.keys(opts.correcciones_pack_pvp).length > 0) {
+      formData.append('correcciones_pack_pvp', JSON.stringify(opts.correcciones_pack_pvp))
     }
     const params = new URLSearchParams()
     if (opts?.validar !== undefined) params.set('validar', String(opts.validar))

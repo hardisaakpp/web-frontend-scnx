@@ -214,8 +214,23 @@ export interface ColumnConfig {
   label: string
   visible: boolean
   align?: 'left' | 'right' | 'center'
-  format?: 'text' | 'number' | 'currency'
+  format?: 'text' | 'number' | 'currency' | 'percent'
   fixed?: boolean // Si es true, la columna no puede ser ocultada ni arrastrada
+}
+
+/**
+ * Calcula el Margen de Rentabilidad (req. 1.5, SIS-PYTD-0002): 1 - (Costo / (PVP / 1.15)).
+ * `costoMargen` es la columna "Costo" de la plantilla Excel (req. 1.4) — informativa,
+ * distinta de costo_doc_sin_iva. Devuelve una fracción decimal (ej. 0.35 = 35%).
+ * Devuelve null si falta el costo o si el PVP es nulo/cero (división inválida).
+ */
+export function calcularMargenRentabilidad(
+  costoMargen: number | null | undefined,
+  pvp: number | null | undefined
+): number | null {
+  if (costoMargen === null || costoMargen === undefined) return null
+  if (pvp === null || pvp === undefined || pvp === 0) return null
+  return 1 - (costoMargen / (pvp / 1.15))
 }
 
 /**
@@ -226,9 +241,15 @@ export function formatColumnValue(detalle: any, column: ColumnConfig, index?: nu
   if (column.key === 'numero' && index !== undefined) {
     return (index + 1).toString()
   }
-  
+
+  // Margen de Rentabilidad: computado (no es un campo persistido), a partir de costo_margen y pvp
+  if (column.key === 'margen') {
+    const margen = calcularMargenRentabilidad(detalle.costo_margen, detalle.pvp)
+    return margen === null ? 'N/A' : `${(margen * 100).toFixed(2)}%`
+  }
+
   const value = detalle[column.key]
-  
+
   // Manejar valores null/undefined (pero NO 0)
   // El valor 0 es válido y debe mostrarse formateado
   if (value === null || value === undefined) {
@@ -238,23 +259,25 @@ export function formatColumnValue(detalle: any, column: ColumnConfig, index?: nu
     }
     return 'N/A'
   }
-  
+
   // Formatear descuentos como porcentaje
   if (column.key === 'descuento_1' || column.key.includes('descuento')) {
     return formatPorcentaje(value)
   }
-  
+
   // Formatear según el tipo
   // Nota: El valor 0 pasará por aquí y se formateará correctamente
   switch (column.format) {
     case 'currency':
-      // Columna COSTO UNIT. (costo_doc_sin_iva): hasta 4 decimales
-      if (column.key === 'costo_doc_sin_iva') {
+      // Columna COSTO UNIT. (costo_doc_sin_iva) y COSTO (costo_margen): hasta 4 decimales
+      if (column.key === 'costo_doc_sin_iva' || column.key === 'costo_margen') {
         return formatCurrencyWithDecimals(value, 4)
       }
       return formatCurrency(value)
     case 'number':
       return formatNumber(value)
+    case 'percent':
+      return formatPorcentaje(value)
     case 'text':
     default:
       return value.toString()

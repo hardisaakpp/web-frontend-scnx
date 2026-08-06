@@ -582,6 +582,7 @@ import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import { useFileUpload } from '../composables/useFileUpload'
+import type { CorreccionesPlantilla } from '../composables/useFileUpload'
 import UploadErrorModal from '../components/UploadErrorModal.vue'
 import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
 import QuickTablePagination from '@/components/QuickTablePagination.vue'
@@ -722,7 +723,7 @@ const {
   uploadMessage
 } = fileUploadComposable
 
-async function aplicarCorreccionesYContinuar(correcciones: Record<string, string>): Promise<void> {
+async function aplicarCorreccionesYContinuar(correcciones: CorreccionesPlantilla): Promise<void> {
   const archivo = archivoOriginalDelComposable.value
   if (!archivo) {
     toast.error('Error', 'No se encontró el archivo original. Por favor, vuelve a subir el archivo.')

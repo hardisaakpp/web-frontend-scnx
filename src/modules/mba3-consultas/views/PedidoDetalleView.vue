@@ -452,6 +452,7 @@ import {
 } from '../utils/redistribucionHelpers'
 // Composables
 import { useFileUpload } from '../composables/useFileUpload'
+import type { CorreccionesPlantilla } from '../composables/useFileUpload'
 import { useColumnManagement } from '../composables/useColumnManagement'
 import { usePedidoDetalle } from '../composables/usePedidoDetalle'
 import { useRedistribucion } from '../composables/useRedistribucion'
@@ -916,14 +917,14 @@ const {
 // - todosCodigosTienenCorreccion (computed)
 
 /**
- * Aplica las correcciones seleccionadas y reintenta el flujo de carga
+ * Aplica las correcciones seleccionadas (código y/o pack/pvp) y reintenta el flujo de carga
  * ⭐ ACTUALIZADO: Ahora recibe las correcciones como parámetro desde UploadErrorModal
  */
-async function aplicarCorreccionesYContinuar(correcciones: Record<string, string>): Promise<void> {
+async function aplicarCorreccionesYContinuar(correcciones: CorreccionesPlantilla): Promise<void> {
   // Obtener archivo original desde el composable
   // El composable lo guarda cuando hay error SAP
   const archivo = archivoOriginalDelComposable.value
-  
+
   if (!archivo) {
     toast.error(
       'Error',
@@ -931,11 +932,11 @@ async function aplicarCorreccionesYContinuar(correcciones: Record<string, string
     )
     return
   }
-  
+
   try {
     // Ocultar modal temporalmente mientras se procesa
     showErrorModal.value = false
-    
+
     // Llamar a la función de reintento con correcciones
     await reintentarConCorrecciones(
       archivo,

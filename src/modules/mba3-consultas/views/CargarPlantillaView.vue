@@ -541,6 +541,12 @@
                       column.key === 'codigo_interno' && detalle.codigo_interno != null && isCodigoCorregidoHighlight(detalle.codigo_interno)
                         ? 'bg-emerald-50 dark:bg-emerald-900/25 border-l-2 border-emerald-500 dark:border-emerald-400'
                         : '',
+                      column.key === 'pack' && detalle.codigo_interno != null && isPackCorregidoHighlight(detalle.codigo_interno)
+                        ? 'bg-emerald-50 dark:bg-emerald-900/25 border-l-2 border-emerald-500 dark:border-emerald-400'
+                        : '',
+                      column.key === 'pvp' && detalle.codigo_interno != null && isPvpCorregidoHighlight(detalle.codigo_interno)
+                        ? 'bg-emerald-50 dark:bg-emerald-900/25 border-l-2 border-emerald-500 dark:border-emerald-400'
+                        : '',
                       column.key === 'numero' ? 'font-medium text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/50' :
                       column.key === 'codigo_interno' ? 'font-medium text-gray-900 dark:text-white whitespace-nowrap' :
                       column.key === 'total' ? 'font-medium text-gray-900 dark:text-white' :
@@ -677,7 +683,8 @@ import {
   type DistribucionTiendaEditada
 } from '../utils/redistribucionHelpers'
 // Composables
-import { useFileUpload, RESALTADO_CODIGOS_STORAGE_PREFIX } from '../composables/useFileUpload'
+import { useFileUpload, RESALTADO_CODIGOS_STORAGE_PREFIX, RESALTADO_PACK_STORAGE_PREFIX, RESALTADO_PVP_STORAGE_PREFIX } from '../composables/useFileUpload'
+import type { CorreccionesPlantilla } from '../composables/useFileUpload'
 import { useColumnManagement } from '../composables/useColumnManagement'
 import { usePedidoDetalle } from '../composables/usePedidoDetalle'
 import { useRedistribucion } from '../composables/useRedistribucion'
@@ -842,6 +849,8 @@ const availableColumns: ColumnConfig[] = [
   { key: 'costo_doc_sin_iva', label: 'Costo Unit.', visible: true, align: 'right', format: 'currency' },
   { key: 'descuento_1', label: 'Descuento', visible: false, align: 'right', format: 'number' },
   { key: 'pvp', label: 'PVP', visible: false, align: 'right', format: 'currency' },
+  { key: 'costo_margen', label: 'Costo', visible: true, align: 'right', format: 'currency' },
+  { key: 'margen', label: 'Margen', visible: true, align: 'right', format: 'percent' },
   { key: 'subtotal', label: 'Subtotal', visible: false, align: 'right', format: 'number' },
   { key: 'total', label: 'Total', visible: true, align: 'right', format: 'number' },
   { key: 'comentario', label: 'Comentario', visible: true, align: 'left', format: 'text' }
@@ -1334,6 +1343,43 @@ function isCodigoCorregidoHighlight(codigo: string | null | undefined): boolean 
   return codigosCorregidosHighlight.value.has(String(codigo).trim())
 }
 
+// Códigos cuyo Pack y/o PVP se corrigió usando el valor de SAP (RN-02), para resaltar la celda en la tabla.
+// A diferencia de código (sugerencia del backend), acá el usuario elige "usar SAP" o "usar Excel" por cada
+// discrepancia; solo se resalta cuando eligió SAP, ya que por definición un "mismatch" implica que difiere del Excel.
+const packsCorregidosHighlight = ref<Set<string>>(new Set())
+const pvpsCorregidosHighlight = ref<Set<string>>(new Set())
+
+function syncPackPvpResaltadoDesdeStorage(): void {
+  const num = numeroPedido.value
+  if (!num) {
+    packsCorregidosHighlight.value = new Set()
+    pvpsCorregidosHighlight.value = new Set()
+    return
+  }
+  try {
+    const rawPack = sessionStorage.getItem(RESALTADO_PACK_STORAGE_PREFIX + num)
+    packsCorregidosHighlight.value = new Set(rawPack ? JSON.parse(rawPack) : [])
+  } catch {
+    packsCorregidosHighlight.value = new Set()
+  }
+  try {
+    const rawPvp = sessionStorage.getItem(RESALTADO_PVP_STORAGE_PREFIX + num)
+    pvpsCorregidosHighlight.value = new Set(rawPvp ? JSON.parse(rawPvp) : [])
+  } catch {
+    pvpsCorregidosHighlight.value = new Set()
+  }
+}
+
+function isPackCorregidoHighlight(codigo: string | null | undefined): boolean {
+  if (codigo == null) return false
+  return packsCorregidosHighlight.value.has(String(codigo).trim())
+}
+
+function isPvpCorregidoHighlight(codigo: string | null | undefined): boolean {
+  if (codigo == null) return false
+  return pvpsCorregidosHighlight.value.has(String(codigo).trim())
+}
+
 // Inicializar composable de carga de archivos
 const fileUploadComposable = useFileUpload({
   pedido,
@@ -1399,14 +1445,14 @@ const {
 // - todosCodigosTienenCorreccion (computed)
 
 /**
- * Aplica las correcciones seleccionadas y reintenta el flujo de carga
- * ⭐ ACTUALIZADO: Ahora recibe las correcciones como parámetro desde UploadErrorModal
+ * Aplica las correcciones seleccionadas (código y/o pack/pvp, lo que UploadErrorModal reporte
+ * en esta respuesta) y reintenta el flujo de carga en un solo reintento.
  */
-async function aplicarCorreccionesYContinuar(correcciones: Record<string, string>): Promise<void> {
+async function aplicarCorreccionesYContinuar(correcciones: CorreccionesPlantilla): Promise<void> {
   // Obtener archivo original desde el composable
   // El composable lo guarda cuando hay error SAP
   const archivo = archivoOriginalDelComposable.value
-  
+
   if (!archivo) {
     toast.error(
       'Error',
@@ -1414,16 +1460,21 @@ async function aplicarCorreccionesYContinuar(correcciones: Record<string, string
     )
     return
   }
-  
+
   try {
     // Ocultar modal temporalmente mientras se procesa
     showErrorModal.value = false
-    
-    // Llamar a la función de reintento con correcciones
-    await reintentarConCorrecciones(
-      archivo,
-      correcciones
-    )
+
+    // Llamar a la función de reintento con correcciones (persiste el resaltado de Pack/PVP en
+    // sessionStorage de forma centralizada, sin importar desde qué vista se inició la carga)
+    await reintentarConCorrecciones(archivo, correcciones)
+
+    // Si hubo redirect por cambio de pedido, el watch(numeroPedido) ya sincronizó los refs desde
+    // sessionStorage; si no hubo redirect (mismo pedido), ese watch no se dispara, así que
+    // sincronizamos aquí para reflejar el resaltado sin esperar a un cambio de ruta.
+    if (correcciones.correccionesPackPvp) {
+      syncPackPvpResaltadoDesdeStorage()
+    }
   } catch (error: any) {
     console.error('❌ Error al aplicar correcciones:', error)
     // Mostrar modal de nuevo con el nuevo error si existe
@@ -1804,7 +1855,8 @@ onMounted(() => {
   
   // Sincronizar códigos a resaltar desde sessionStorage (flujo async: correcciones guardadas antes del redirect)
   syncCodigosResaltadoDesdeStorage()
-  
+  syncPackPvpResaltadoDesdeStorage()
+
   // ⭐ Las columnas modificadas se cargan automáticamente en loadPedido()
   // Agregar listener para cerrar dropdown al hacer click fuera
   document.addEventListener('click', handleClickOutsideColumnSelector)
@@ -1832,6 +1884,7 @@ watch(
   async (newNumeroPedido, oldNumeroPedido) => {
     // Sincronizar Set de códigos a resaltar desde sessionStorage (origen de verdad tras flujo async)
     syncCodigosResaltadoDesdeStorage()
+    syncPackPvpResaltadoDesdeStorage()
     // Solo recargar si el número de pedido realmente cambió y no es la carga inicial
     if (newNumeroPedido && newNumeroPedido !== oldNumeroPedido) {
       if (import.meta.env.DEV) console.log(`🔄 [PedidoDetalleView] Cambio de pedido detectado: ${oldNumeroPedido || '(ninguno)'} → ${newNumeroPedido}`)

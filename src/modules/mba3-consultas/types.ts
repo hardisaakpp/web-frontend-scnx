@@ -982,6 +982,9 @@ export interface PedidoDetalle {
   subtotal: number | null
   total: number | null
   comentario?: string | null  // ⭐ Campo editable para comentarios
+  /** Columna "Costo" de la plantilla Excel (req. 1.4): informativa para el Margen de
+   * Rentabilidad; distinta de costo_doc_sin_iva (que sí alimenta la OC). */
+  costo_margen?: number | null
   tiendas: TiendaDistribucion[]
 }
 

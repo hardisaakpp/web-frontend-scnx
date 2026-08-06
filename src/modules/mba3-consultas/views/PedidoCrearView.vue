@@ -515,6 +515,7 @@ import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import type { CrearPedidoRequest, DistribucionTiendaRequest, ArticuloRequest, PedidoCompleto } from '../types'
 import { useFileUpload } from '../composables/useFileUpload'
+import type { CorreccionesPlantilla } from '../composables/useFileUpload'
 import UploadErrorModal from '../components/UploadErrorModal.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 
@@ -547,11 +548,11 @@ const {
 } = fileUploadComposable
 
 /**
- * Aplica las correcciones seleccionadas y reintenta el flujo de carga
+ * Aplica las correcciones seleccionadas (código y/o pack/pvp) y reintenta el flujo de carga
  */
-async function aplicarCorreccionesYContinuar(correcciones: Record<string, string>): Promise<void> {
+async function aplicarCorreccionesYContinuar(correcciones: CorreccionesPlantilla): Promise<void> {
   const archivo = archivoOriginalDelComposable.value
-  
+
   if (!archivo) {
     toast.error(
       'Error',
@@ -559,11 +560,11 @@ async function aplicarCorreccionesYContinuar(correcciones: Record<string, string
     )
     return
   }
-  
+
   try {
     // Ocultar modal temporalmente mientras se procesa
     showErrorModal.value = false
-    
+
     // Llamar a la función de reintento con correcciones
     await reintentarConCorrecciones(
       archivo,

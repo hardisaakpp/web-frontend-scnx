@@ -598,29 +598,136 @@
             </div>
           </div>
 
+          <!-- ⭐ NUEVO: Discrepancias de Pack/PVP contra SAP (RN-02) — selector "usar SAP / usar Excel" -->
+          <div v-if="tieneMismatchesPackPvp" class="border border-red-200 dark:border-red-800 rounded-lg overflow-hidden bg-red-50 dark:bg-red-900/30 transition-colors duration-300">
+            <div class="bg-red-100 dark:bg-red-900/50 px-4 py-3 border-b border-red-200 dark:border-red-800">
+              <p class="text-sm font-semibold text-red-900 dark:text-red-200">
+                Discrepancias de Pack/PVP contra SAP
+              </p>
+            </div>
+            <div class="max-h-80 overflow-y-auto bg-white dark:bg-gray-800 p-4 space-y-3">
+              <!-- Discrepancias de Pack -->
+              <div
+                v-for="mismatch in uploadErrorInfo?.validacion_pack_pvp?.pack_mismatches || []"
+                :key="`pack-${mismatch.codigo}`"
+                class="border border-gray-200 dark:border-gray-700 rounded-lg p-3"
+              >
+                <div class="flex items-center gap-2 mb-2">
+                  <span class="text-sm font-semibold text-gray-900 dark:text-white font-mono">{{ mismatch.codigo }}</span>
+                  <span class="px-2 py-0.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded">Pack</span>
+                </div>
+                <div class="space-y-2">
+                  <label
+                    class="flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300 rounded-lg px-2 py-1.5 transition-colors"
+                    :class="{ 'ring-2 ring-purple-500 bg-purple-50 dark:bg-purple-900/20': correccionesPackPvp[mismatch.codigo]?.pack === mismatch.pack_sap }"
+                  >
+                    <input
+                      type="radio"
+                      :name="`pack-${mismatch.codigo}`"
+                      :checked="correccionesPackPvp[mismatch.codigo]?.pack === mismatch.pack_sap"
+                      @change="setPackCorreccion(mismatch.codigo, mismatch.pack_sap)"
+                      class="w-3.5 h-3.5 text-purple-600 border-gray-300 dark:border-gray-600 focus:ring-purple-500 dark:focus:ring-purple-600"
+                    />
+                    Usar valor de SAP (<span class="font-mono font-semibold">{{ mismatch.pack_sap }}</span>)
+                  </label>
+                  <label
+                    class="flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300 rounded-lg px-2 py-1.5 transition-colors"
+                    :class="{ 'ring-2 ring-purple-500 bg-purple-50 dark:bg-purple-900/20': correccionesPackPvp[mismatch.codigo]?.pack === mismatch.pack_excel }"
+                  >
+                    <input
+                      type="radio"
+                      :name="`pack-${mismatch.codigo}`"
+                      :checked="correccionesPackPvp[mismatch.codigo]?.pack === mismatch.pack_excel"
+                      @change="setPackCorreccion(mismatch.codigo, mismatch.pack_excel)"
+                      class="w-3.5 h-3.5 text-purple-600 border-gray-300 dark:border-gray-600 focus:ring-purple-500 dark:focus:ring-purple-600"
+                    />
+                    Usar valor del Excel (<span class="font-mono font-semibold">{{ mismatch.pack_excel }}</span>)
+                  </label>
+                </div>
+              </div>
+
+              <!-- Discrepancias de PVP -->
+              <div
+                v-for="mismatch in uploadErrorInfo?.validacion_pack_pvp?.pvp_mismatches || []"
+                :key="`pvp-${mismatch.codigo}`"
+                class="border border-gray-200 dark:border-gray-700 rounded-lg p-3"
+              >
+                <div class="flex items-center gap-2 mb-2">
+                  <span class="text-sm font-semibold text-gray-900 dark:text-white font-mono">{{ mismatch.codigo }}</span>
+                  <span class="px-2 py-0.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded">PVP</span>
+                </div>
+                <div class="space-y-2">
+                  <label
+                    class="flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300 rounded-lg px-2 py-1.5 transition-colors"
+                    :class="{ 'ring-2 ring-purple-500 bg-purple-50 dark:bg-purple-900/20': correccionesPackPvp[mismatch.codigo]?.pvp === mismatch.pvp_sap }"
+                  >
+                    <input
+                      type="radio"
+                      :name="`pvp-${mismatch.codigo}`"
+                      :checked="correccionesPackPvp[mismatch.codigo]?.pvp === mismatch.pvp_sap"
+                      @change="setPvpCorreccion(mismatch.codigo, mismatch.pvp_sap)"
+                      class="w-3.5 h-3.5 text-purple-600 border-gray-300 dark:border-gray-600 focus:ring-purple-500 dark:focus:ring-purple-600"
+                    />
+                    Usar valor de SAP (<span class="font-mono font-semibold">{{ mismatch.pvp_sap.toFixed(2) }}</span>)
+                  </label>
+                  <label
+                    class="flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300 rounded-lg px-2 py-1.5 transition-colors"
+                    :class="{ 'ring-2 ring-purple-500 bg-purple-50 dark:bg-purple-900/20': correccionesPackPvp[mismatch.codigo]?.pvp === mismatch.pvp_excel }"
+                  >
+                    <input
+                      type="radio"
+                      :name="`pvp-${mismatch.codigo}`"
+                      :checked="correccionesPackPvp[mismatch.codigo]?.pvp === mismatch.pvp_excel"
+                      @change="setPvpCorreccion(mismatch.codigo, mismatch.pvp_excel)"
+                      class="w-3.5 h-3.5 text-purple-600 border-gray-300 dark:border-gray-600 focus:ring-purple-500 dark:focus:ring-purple-600"
+                    />
+                    Usar valor del Excel (<span class="font-mono font-semibold">{{ mismatch.pvp_excel.toFixed(2) }}</span>)
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Botones de acción -->
           <div class="flex items-center justify-between gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <!-- Mensaje de validación de correcciones -->
-            <div v-if="uploadErrorInfo?.title?.includes('producto') || uploadErrorInfo?.title?.includes('SAP')" class="flex items-center gap-2 text-sm">
-              <span 
-                v-if="!todosCodigosTienenCorreccion"
-                class="text-amber-600 dark:text-amber-400 font-medium"
-              >
-                ⚠️ Debes seleccionar una sugerencia para cada código inválido
-              </span>
-              <span 
-                v-else
-                class="text-green-600 dark:text-green-400 font-medium"
-              >
-                ✅ Todas las correcciones seleccionadas
-              </span>
+            <div class="flex flex-col gap-1">
+              <!-- Mensaje de validación de correcciones (códigos de producto no encontrados en SAP) -->
+              <div v-if="tieneErroresCodigo" class="flex items-center gap-2 text-sm">
+                <span
+                  v-if="!todosCodigosTienenCorreccion"
+                  class="text-amber-600 dark:text-amber-400 font-medium"
+                >
+                  ⚠️ Debes seleccionar una sugerencia para cada código inválido
+                </span>
+                <span
+                  v-else
+                  class="text-green-600 dark:text-green-400 font-medium"
+                >
+                  ✅ Todas las correcciones seleccionadas
+                </span>
+              </div>
+              <!-- ⭐ NUEVO: Mensaje de validación de correcciones de Pack/PVP (RN-02) -->
+              <div v-if="tieneMismatchesPackPvp" class="flex items-center gap-2 text-sm">
+                <span
+                  v-if="!todosPackPvpTienenCorreccion"
+                  class="text-amber-600 dark:text-amber-400 font-medium"
+                >
+                  ⚠️ Debes elegir SAP o Excel para cada código con discrepancia de Pack/PVP
+                </span>
+                <span
+                  v-else
+                  class="text-green-600 dark:text-green-400 font-medium"
+                >
+                  ✅ Todas las correcciones de Pack/PVP seleccionadas
+                </span>
+              </div>
             </div>
             <div class="flex items-center gap-3">
-              <!-- Botón aplicar correcciones (solo si hay códigos de producto no encontrados) -->
+              <!-- Botón único: aplica correcciones de código y/o pack/pvp, lo que esta respuesta reporte -->
               <button
-                v-if="(uploadErrorInfo?.title?.includes('producto') || uploadErrorInfo?.title?.includes('SAP')) && todosCodigosTienenCorreccion"
+                v-if="tieneErroresCodigo || tieneMismatchesPackPvp"
                 @click="handleApplyCorrections"
-                :disabled="aplicandoCorrecciones"
+                :disabled="!todasLasCorreccionesListas || aplicandoCorrecciones"
                 class="px-4 py-2.5 bg-purple-600 dark:bg-purple-700 text-white rounded-lg hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 <svg v-if="aplicandoCorrecciones" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
@@ -652,7 +759,7 @@ import { nextTick, onUnmounted } from '@vue/runtime-core'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import type { SugerenciaSkuSap, SugerenciasSkuResponse } from '../types'
 import { formatError } from '../utils/formatters'
-import type { UploadErrorInfo } from '../composables/useFileUpload'
+import type { UploadErrorInfo, CorreccionesPlantilla } from '../composables/useFileUpload'
 
 interface Props {
   modelValue: boolean
@@ -666,7 +773,8 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<{
   'update:modelValue': [value: boolean]
-  'apply-corrections': [correcciones: Record<string, string>]
+  // Único evento de correcciones: unifica código, pack y pvp (RN-02) en un solo payload
+  'apply-corrections': [correcciones: CorreccionesPlantilla]
 }>()
 
 // Estado interno del modal
@@ -678,6 +786,9 @@ const sugerenciasEstado = ref<Record<string, 'idle' | 'buscando' | 'completado' 
 const correccionesSeleccionadas = ref<Record<string, string>>({})
 const limiteSugerenciasMostradas = ref<Record<string, number>>({})
 const aplicandoCorrecciones = ref(false)
+
+// ⭐ NUEVO: Selección "usar SAP / usar Excel" para discrepancias de Pack/PVP (RN-02)
+const correccionesPackPvp = ref<Record<string, { pack?: string; pvp?: number }>>({})
 
 /**
  * ⭐ Computed: Determina los estilos del modal según el tipo de error
@@ -939,19 +1050,26 @@ function limpiarSugerencias(): void {
   sugerenciasEstado.value = {}
   correccionesSeleccionadas.value = {}
   limiteSugerenciasMostradas.value = {}
+  // ⭐ NUEVO: Limpiar selección de correcciones de Pack/PVP (RN-02)
+  correccionesPackPvp.value = {}
   isModalMaximized.value = false
 }
+
+/**
+ * Computed: true si esta respuesta reporta al menos un código de producto no encontrado en SAP
+ */
+const tieneErroresCodigo = computed(() => extraerCodigosProductoNoEncontrados().length > 0)
 
 /**
  * Computed: Verifica si todos los códigos inválidos tienen una corrección seleccionada
  */
 const todosCodigosTienenCorreccion = computed(() => {
   const codigosInvalidos = extraerCodigosProductoNoEncontrados()
-  
+
   if (codigosInvalidos.length === 0) {
     return false
   }
-  
+
   return codigosInvalidos.every(codigo => {
     const correccion = correccionesSeleccionadas.value[codigo]
     return correccion && correccion.trim().length > 0
@@ -959,17 +1077,81 @@ const todosCodigosTienenCorreccion = computed(() => {
 })
 
 /**
- * Maneja la aplicación de correcciones
+ * Computed: true si hay al menos una discrepancia de Pack o PVP contra SAP (RN-02)
+ */
+const tieneMismatchesPackPvp = computed(() => {
+  const validacion = props.uploadErrorInfo?.validacion_pack_pvp
+  if (!validacion) return false
+  return (validacion.pack_mismatches?.length ?? 0) > 0 || (validacion.pvp_mismatches?.length ?? 0) > 0
+})
+
+/**
+ * Computed: true si todos los códigos con discrepancia de Pack y/o PVP tienen una elección
+ * "usar SAP / usar Excel" seleccionada. Un mismo código puede requerir ambas elecciones si aparece
+ * en pack_mismatches y pvp_mismatches a la vez.
+ */
+const todosPackPvpTienenCorreccion = computed(() => {
+  const validacion = props.uploadErrorInfo?.validacion_pack_pvp
+  if (!validacion) return false
+  const packMismatches = validacion.pack_mismatches || []
+  const pvpMismatches = validacion.pvp_mismatches || []
+  if (packMismatches.length === 0 && pvpMismatches.length === 0) return false
+
+  const packOk = packMismatches.every(m => !!correccionesPackPvp.value[m.codigo]?.pack)
+  const pvpOk = pvpMismatches.every(m => {
+    const valor = correccionesPackPvp.value[m.codigo]?.pvp
+    return valor !== undefined && valor !== null
+  })
+  return packOk && pvpOk
+})
+
+/**
+ * Computed: true si todas las discrepancias presentes en esta respuesta (código y/o pack/pvp)
+ * ya tienen corrección seleccionada. El backend hoy nunca combina código con pack/pvp en una
+ * misma respuesta (código se valida primero y bloquea), pero este chequeo cubre igual el caso
+ * de que ambas aparezcan juntas si el backend cambia esa secuencia en el futuro.
+ */
+const todasLasCorreccionesListas = computed(() => {
+  if (!tieneErroresCodigo.value && !tieneMismatchesPackPvp.value) {
+    return false
+  }
+  const codigoOk = !tieneErroresCodigo.value || todosCodigosTienenCorreccion.value
+  const packPvpOk = !tieneMismatchesPackPvp.value || todosPackPvpTienenCorreccion.value
+  return codigoOk && packPvpOk
+})
+
+/**
+ * Guarda la elección de Pack ("usar SAP" o "usar Excel") para un código, preservando
+ * la elección de PVP si ya existía para ese mismo código (un código puede tener ambas discrepancias).
+ */
+function setPackCorreccion(codigo: string, valor?: string): void {
+  correccionesPackPvp.value[codigo] = { ...correccionesPackPvp.value[codigo], pack: valor }
+}
+
+/**
+ * Guarda la elección de PVP ("usar SAP" o "usar Excel") para un código, preservando
+ * la elección de Pack si ya existía para ese mismo código.
+ */
+function setPvpCorreccion(codigo: string, valor?: number): void {
+  correccionesPackPvp.value[codigo] = { ...correccionesPackPvp.value[codigo], pvp: valor }
+}
+
+/**
+ * Maneja la aplicación de correcciones: emite en un solo evento las correcciones de código
+ * y/o de pack/pvp, cualquiera que esté presente en esta respuesta (ver CorreccionesPlantilla).
  */
 async function handleApplyCorrections(): Promise<void> {
-  if (!todosCodigosTienenCorreccion.value) {
+  if (!todasLasCorreccionesListas.value) {
     return
   }
-  
+
   aplicandoCorrecciones.value = true
-  
+
   try {
-    emit('apply-corrections', { ...correccionesSeleccionadas.value })
+    emit('apply-corrections', {
+      correccionesCodigos: tieneErroresCodigo.value ? { ...correccionesSeleccionadas.value } : undefined,
+      correccionesPackPvp: tieneMismatchesPackPvp.value ? { ...correccionesPackPvp.value } : undefined
+    })
   } finally {
     aplicandoCorrecciones.value = false
   }
