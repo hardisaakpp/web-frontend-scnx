@@ -415,6 +415,7 @@ interface LiquidacionDetalleItem {
   concepto: string
   ruc: string
   nombreProveedor: string
+  numeroComprobante: string
   total: number
   subtotalConIva: number
   subtotalSinIva: number
@@ -1482,6 +1483,9 @@ const loadHistorial = async () => {
       idGasto: normalizeString(item.idGasto ?? item.IdGasto ?? ''),
       nombreGasto: normalizeString(item.nombreGasto ?? item.NombreGasto ?? ''),
       concepto: normalizeString(item.concepto ?? item.Concepto ?? ''),
+      ruc: normalizeString(item.ruc ?? item.Ruc ?? ''),
+      nombreProveedor: normalizeString(item.nombreProveedor ?? item.NombreProveedor ?? ''),
+      numeroComprobante: normalizeString(item.numeroComprobante ?? item.NumeroComprobante ?? ''),
       total: Number(item.total ?? item.Total ?? 0),
       subtotalConIva: Number(item.subtotalConIva ?? item.SubtotalConIva ?? item.subtotal_Con_Iva ?? 0),
       subtotalSinIva: Number(item.subtotalSinIva ?? item.SubtotalSinIva ?? item.subtotal_Sin_Iva ?? 0),
@@ -1759,6 +1763,7 @@ const downloadLiquidacionPdf = (idLiquidacion: number) => {
       <td>${esc(d.concepto)}</td>
       <td>${esc(d.nombreProveedor || '-')}</td>
       <td>${esc(d.ruc || '-')}</td>
+      <td>${esc(d.numeroComprobante || '-')}</td>
       <td class="amount">${fmtAmt(d.subtotalConIva)}</td>
       <td class="amount">${fmtAmt(d.subtotalSinIva)}</td>
       <td class="amount">${fmtAmt(iva < 0 ? 0 : iva)}</td>
@@ -1770,9 +1775,9 @@ const downloadLiquidacionPdf = (idLiquidacion: number) => {
     <div class="section">
       <div class="section-head green"><span>Detalle de gastos</span><span class="stats-row"><span>Items: <strong>${detalles.length}</strong></span><span>Total: <strong>$${fmtAmt(totalSolicitado)}</strong></span></span></div>
       <table><thead><tr>
-        <th>Cód. Gasto</th><th>Gasto</th><th>Concepto</th><th>Proveedor</th><th>RUC</th>
+        <th>Cód. Gasto</th><th>Gasto</th><th>Concepto</th><th>Proveedor</th><th>RUC</th><th>N° Comprobante</th>
         <th>Base Gravada</th><th>Base 0%</th><th>IVA</th><th>Total</th><th>Adj.</th>
-      </tr></thead><tbody>${detallesRows || '<tr><td colspan="10" style="color:#9ca3af;font-style:italic;padding:10px">Sin detalles.</td></tr>'}</tbody></table>
+      </tr></thead><tbody>${detallesRows || '<tr><td colspan="11" style="color:#9ca3af;font-style:italic;padding:10px">Sin detalles.</td></tr>'}</tbody></table>
       <div class="footer-totals">
         <div class="total-item"><div class="total-label">Total solicitado</div><div class="total-value">$${fmtAmt(totalSolicitado)}</div></div>
       </div>
