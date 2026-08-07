@@ -19,14 +19,14 @@ import type {
 } from '../types'
 
 interface ReporteGeneralParams {
-  cdCode?: string;
+  whsCode?: string;
   desde?: string;
   hasta?: string;
 }
 
 function buildReporteGeneralQuery(params?: ReporteGeneralParams): string {
   const qs = new URLSearchParams()
-  if (params?.cdCode) qs.append('cdCode', params.cdCode)
+  if (params?.whsCode) qs.append('whsCode', params.whsCode)
   if (params?.desde) qs.append('desde', params.desde)
   if (params?.hasta) qs.append('hasta', params.hasta)
   const query = qs.toString()

@@ -90,9 +90,11 @@ const openDetail = async (id: number) => {
 
 const downloadPdf = (id: number) => window.open(reposicionApi.getPdfUrl(id), '_blank')
 
-// cdCode se omite a propósito: el reporte general incluye todos los Centros de
-// Distribución. whsFilter filtra por tienda (destino), no aplica aquí.
+// whsCode acepta tanto un CD como una tienda puntual (el backend resuelve cuál
+// es), igual que en GET /api/Historial: reutilizamos el mismo whsFilter que ya
+// filtra la tabla en pantalla para acotar también el reporte general.
 const reporteGeneralParams = () => ({
+  whsCode: whsFilter.value || undefined,
   desde: fechaDesde.value,
   hasta: fechaHasta.value
 })
@@ -122,10 +124,10 @@ const viewSolicitudes = async (whsCode: string, fecha: string) => {
         </router-link>
         <div>
           <div class="flex items-center gap-2">
-            <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Panel de Control Global</h1>
+            <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Panel administrativo</h1>
             <span class="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-blue-200 uppercase tracking-wider">Administrador</span>
           </div>
-          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Supervisión general de reposiciones en todas las bodegas.</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Administración general de reposiciones en todas las bodegas.</p>
         </div>
       </div>
 
