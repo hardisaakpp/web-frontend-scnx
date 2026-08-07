@@ -633,6 +633,7 @@ const normalizeDetalle = (item: any): LiquidacionDetalleItem => ({
   concepto: normalizeString(item.concepto ?? item.Concepto ?? ''),
   ruc: normalizeString(item.ruc ?? item.Ruc ?? ''),
   nombreProveedor: normalizeString(item.nombreProveedor ?? item.NombreProveedor ?? ''),
+  numeroComprobante: normalizeString(item.numeroComprobante ?? item.NumeroComprobante ?? ''),
   total: Number(item.total ?? item.Total ?? 0),
   subtotalConIva: Number(item.subtotal_Con_Iva ?? item.Subtotal_Con_Iva ?? item.subtotalConIva ?? 0),
   subtotalSinIva: Number(item.subtotal_Sin_Iva ?? item.Subtotal_Sin_Iva ?? item.subtotalSinIva ?? 0),
