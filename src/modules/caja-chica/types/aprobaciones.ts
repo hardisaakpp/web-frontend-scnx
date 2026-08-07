@@ -12,6 +12,7 @@ export interface AprobacionItem {
   nombreCustodio: string
   cedulaCustodio: string
   fechaCreacion: string
+  montoInicial: number
   nombreGasto: string
   concepto: string
   total: number
