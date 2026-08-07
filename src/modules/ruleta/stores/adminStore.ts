@@ -4,7 +4,7 @@ import type {
   Campana, CrearCampanaDTO, GrupoProbabilidad, PremioAdmin,
   TiendaInventario, InventarioPremio, Tienda,
   MetricasGlobal, EfectividadTienda, SegmentacionGrupo, ConversionSemanal,
-  MetricasCampana, EnroladorMetrica, StockPremio, HistorialGiroItem
+  MetricasCampana, EnroladorMetrica, StockPremio, HistorialGiroItem, GiroFilters
 } from '../types'
 
 interface AdminState {
@@ -49,6 +49,7 @@ interface AdminState {
   historialPaginaActual: number
   historialTotalRegistros: number
   loadingHistorial: boolean
+  historialRequestSeq: number
 
   error: string | null
   guardando: boolean
@@ -91,6 +92,7 @@ export const useAdminStore = defineStore('admin', {
     historialPaginaActual: 1,
     historialTotalRegistros: 0,
     loadingHistorial: false,
+    historialRequestSeq: 0,
 
     error: null,
     guardando: false
@@ -376,22 +378,27 @@ export const useAdminStore = defineStore('admin', {
       }
     },
 
-    async cargarHistorialDashboard(campanaId?: string, page = 1) {
+    async cargarHistorialDashboard(campanaId?: string, page = 1, filtros: Omit<GiroFilters, 'campanaId'> = {}) {
+      // Con auto-aplicar (selects/fechas inmediatos + debounce en texto) pueden
+      // quedar dos peticiones en vuelo; solo la más reciente puede escribir el estado.
+      const seq = ++this.historialRequestSeq
       this.loadingHistorial = true
       try {
-        const res = await ruletaService.getHistorialGiros({ campanaId }, page, 10)
+        const res = await ruletaService.getHistorialGiros({ campanaId, ...filtros }, page, 10)
+        if (seq !== this.historialRequestSeq) return
         this.historialGiros          = res.items
         this.historialTotalPaginas   = res.totalPaginas
         this.historialPaginaActual   = res.paginaActual
         this.historialTotalRegistros = res.totalRegistros
       } catch (e) {
+        if (seq !== this.historialRequestSeq) return
         console.error('Error al cargar historial de giros:', e)
         this.historialGiros          = []
         this.historialTotalPaginas   = 0
         this.historialPaginaActual   = 1
         this.historialTotalRegistros = 0
       } finally {
-        this.loadingHistorial = false
+        if (seq === this.historialRequestSeq) this.loadingHistorial = false
       }
     },
 
