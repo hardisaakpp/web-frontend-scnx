@@ -76,6 +76,16 @@ const routes: RouteRecordRaw[] = [
       permissions: ['reposiciones.administrador'],
     },
   },
+  {
+    path: '/reposiciones/admin/configuracion',
+    name: 'reposiciones-admin-configuracion',
+    component: () => import('./views/AdminConfiguracionView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Configuración (Administrador)',
+      permissions: ['reposiciones.administrador'],
+    },
+  },
 ]
 
 export default routes

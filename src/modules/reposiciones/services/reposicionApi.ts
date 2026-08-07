@@ -7,6 +7,7 @@ import type {
   CatalogoFilters, 
   ListasFiltros,
   Almacen,
+  ConfigurarAlmacenRequest,
   CarritoResponse,
   HistorialCabecera,
   HistorialDetalleItem,
@@ -51,6 +52,21 @@ const reposicionApi = {
     const url = 'Almacen'
     console.log("🚀 [ReposicionAPI] getAlmacenes:", url)
     const response = await reposicionesApi.get<Almacen[]>(url)
+    return response.data
+  },
+
+  syncAlmacenes: async () => {
+    const response = await reposicionesApi.post('Almacen/sync')
+    return response.data
+  },
+
+  configurarAlmacen: async (id: number, request: ConfigurarAlmacenRequest) => {
+    const response = await reposicionesApi.put(`Almacen/${id}`, request)
+    return response.data
+  },
+
+  deleteAlmacen: async (id: number) => {
+    const response = await reposicionesApi.delete(`Almacen/${id}`)
     return response.data
   },
 

@@ -71,6 +71,11 @@ export interface Almacen {
   centroDistribucionCode?: string | null;
 }
 
+export interface ConfigurarAlmacenRequest {
+  esCentroDistribucion: boolean;
+  centroDistribucionId?: number | null;
+}
+
 
 export interface SaveItemRequest {
   toWhs: string;
