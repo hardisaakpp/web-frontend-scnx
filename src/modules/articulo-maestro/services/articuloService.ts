@@ -2,8 +2,7 @@ import { maestroHttp as apiMaestro } from '@/lib/http'
 import type {
     Articulo,
     ArticuloFilters,
-    ImagenArticuloReferencia,
-    MultiStatusUploadResponse
+    ImagenArticuloReferencia
 } from '../types'
 export type { ImagenArticuloReferencia } from '../types'
 
@@ -47,7 +46,6 @@ function normalizeObject(obj: any): any {
         codigoAlterno: ['CODIGO_ALTERNO', 'codigo_alterno', 'CodigoAlterno'],
         tieneCodigoProveedor: ['HAS_SUPPLIER_BARCODE', 'has_supplier_barcode', 'TieneCodigoProveedor'],
         estadoProducto: ['PRODUCT_STATUS', 'product_status', 'EstadoProducto'],
-        idListaPrecios: ['PRICE_LIST_ID', 'price_list_id', 'IdListaPrecios'],
         aplicaEcommerce: ['ECOMMERCE_APPLICABLE', 'ecommerce_applicable', 'AplicaEcommerce'],
         aplicaPrecioMinorista: ['APLICA_PRECIO_MINORISTA', 'aplica_precio_minorista', 'AplicaPrecioMinorista'],
         aplicaPrecioInternacional: ['APLICA_PRECIO_INTERNACIONAL', 'aplica_precio_internacional', 'AplicaPrecioInternacional'],
@@ -176,6 +174,17 @@ export interface ImportacionError {
     mensaje: string
 }
 
+// RF-002: respuesta de POST /articulos/{item_code}/promover-alterno.
+// Snake_case a propósito: replica ArticuloPromoverAlternoResponse del backend
+// (mismo criterio que SapSyncTareaResponse/SapTask, sin alias camelCase).
+export interface PromoverAlternoResponse {
+    success: boolean
+    message: string
+    item_code_anterior: string
+    item_code_nuevo: string
+    tarea_id: number
+}
+
 export const articuloService = {
     // Listado paginado (el backend devuelve { total, items })
     getArticulos: async (filters: ArticuloFilters) => {
@@ -234,6 +243,14 @@ export const articuloService = {
     // Sincronizar con SAP (sin trailing slash)
     sincronizarConSap: async (itemCode: string) => {
         const response = await apiMaestro.post<{ status: string, message: string }>(`/api/v1/articulos/${itemCode}/sincronizar`)
+        return response.data
+    },
+
+    // RF-002: Promover el Código Alterno del artículo a su ItemCode principal
+    promoverCodigoAlterno: async (itemCode: string): Promise<PromoverAlternoResponse> => {
+        const response = await apiMaestro.post<PromoverAlternoResponse>(
+            `/api/v1/articulos/${itemCode}/promover-alterno`
+        )
         return response.data
     },
 
@@ -336,6 +353,27 @@ export const articuloService = {
         globalThis.URL.revokeObjectURL(url)
     },
 
+    // Copia corregible: mismas columnas de la plantilla original + columna
+    // final "Mensaje de Error", solo con las filas que fallaron. Pensada
+    // para corregir directamente sobre este archivo y volver a subirlo.
+    descargarErroresPlantillaImportacion: async (jobId: number): Promise<void> => {
+        const response = await apiMaestro.get(
+            `/api/v1/articulos/importaciones/${jobId}/errores-plantilla.xlsx`,
+            { responseType: 'blob' }
+        )
+        const blob = new Blob([response.data as BlobPart], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        })
+        const url = globalThis.URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `correcciones_importacion_${jobId}.xlsx`
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+        globalThis.URL.revokeObjectURL(url)
+    },
+
     getSharePointPreview: async (
         referencia: { driveId: string, itemId: string }
     ): Promise<Blob> => {
@@ -370,100 +408,6 @@ export const articuloService = {
         globalThis.URL.revokeObjectURL(url)
     },
 
-    // Carga masiva de artículos desde archivo Excel
-    // El backend responde con éxito (200) o con error de validación (422)
-    // En ambos casos normalizamos la respuesta para la vista.
-    cargaMasiva: async (file: File): Promise<CargaMasivaResponse> => {
-        const formData = new FormData()
-        formData.append('file', file)
-        try {
-            const response = await apiMaestro.post<CargaMasivaResponse>('/api/v1/articulos/carga-masiva', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            })
-            return response.data
-        } catch (err: unknown) {
-            const axiosErr = err as { response?: { status?: number, data?: any } }
-            const data = axiosErr?.response?.data
-
-            // FastAPI puede envolver la respuesta en { detail: { mensaje, errores } }
-            // o el backend puede retornarla directamente como { mensaje, errores }
-            const errorPayload = data?.errores ? data : data?.detail
-
-            // Si el backend respondió con la estructura de validación "all-or-nothing"
-            if (Array.isArray(errorPayload?.errores)) {
-                return {
-                    success: false,
-                    mensaje: errorPayload.mensaje || 'Errores de validación en el archivo.',
-                    total: errorPayload.errores.length,
-                    success_count: 0,
-                    error_count: errorPayload.errores.length,
-                    errores: errorPayload.errores
-                }
-            }
-
-            // Otro tipo de error (red, servidor, etc.)
-            throw err
-        }
-    },
-
-    cargaMasivaActualizacion: async (file: File): Promise<CargaMasivaResponse> => {
-        const formData = new FormData()
-        formData.append('file', file)
-        try {
-            const response = await apiMaestro.post<CargaMasivaResponse>('/api/v1/articulos/carga-masiva-actualizacion', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            })
-            return response.data
-        } catch (err: unknown) {
-            const axiosErr = err as { response?: { status?: number, data?: any } }
-            const data = axiosErr?.response?.data
-
-            const errorPayload = data?.errores ? data : data?.detail
-
-            if (Array.isArray(errorPayload?.errores)) {
-                return {
-                    success: false,
-                    mensaje: errorPayload.mensaje || 'Errores de validación en la actualización.',
-                    total: errorPayload.errores.length,
-                    success_count: 0,
-                    error_count: errorPayload.errores.length,
-                    errores: errorPayload.errores
-                }
-            }
-
-            throw err
-        }
-    }
-}
-
-// ─── Tipos de Carga Masiva ──────────────────────────────────────────────────
-
-export interface CargaMasivaErrorItem {
-    fila: number
-    item_code: string
-    error: string
-}
-
-export interface CargaMasivaErrorResponse {
-    mensaje: string
-    errores: CargaMasivaErrorItem[]
-}
-
-export interface CargaMasivaResult {
-    item_code: string
-    success: boolean
-    message: string | null
-    id: number | null
-}
-
-export interface CargaMasivaResponse {
-    success?: boolean
-    mensaje?: string
-    total: number
-    success_count: number
-    error_count: number
-    results?: CargaMasivaResult[]
-    errores?: CargaMasivaErrorItem[]
 }
 
 // ─── Servicio de Catálogos ───────────────────────────────────────────────────
@@ -737,34 +681,4 @@ export const historialService = {
         return response.data
     }
 }
-
-// ─── Servicio de Imágenes ───────────────────────────────────────────────────
-
-export const imagenService = {
-    // Carga masiva de imágenes
-    uploadImages: async (files: File[], sessionToken?: string): Promise<MultiStatusUploadResponse> => {
-        const formData = new FormData()
-        files.forEach(file => {
-            formData.append('files', file)
-        })
-        if (sessionToken) {
-            formData.append('sessionToken', sessionToken)
-        }
-        
-        try {
-            const response = await apiMaestro.post<MultiStatusUploadResponse>('/api/v1/imagenes/carga-masiva', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            })
-            return response.data
-        } catch (err: any) {
-            // Si el backend devuelve un HTTP 207 y axios lo detecta como error por el status code,
-            // recuperamos el payload aquí.
-            if (err.response && err.response.data && err.response.data.status) {
-                return err.response.data as MultiStatusUploadResponse
-            }
-            throw err
-        }
-    }
-}
-
 

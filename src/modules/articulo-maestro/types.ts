@@ -109,7 +109,6 @@ export interface Articulo {
     codigoAlterno?: string | null
     tieneCodigoProveedor?: boolean
     estadoProducto?: boolean
-    idListaPrecios?: number | null
     aplicaEcommerce?: boolean
     aplicaPrecioMinorista?: boolean
     aplicaPrecioInternacional?: boolean
@@ -169,20 +168,3 @@ export interface ProductImage {
     status: 'PENDING' | 'ASSIGNED' | 'DELETED'
 }
 
-export interface UploadError {
-    file_name: string
-    reason: string
-}
-
-export interface MultiStatusSummary {
-    total_received: number
-    successful: number
-    failed: number
-}
-
-export interface MultiStatusUploadResponse {
-    status: 'success' | 'partial_success' | 'error'
-    summary: MultiStatusSummary
-    successful_files: string[]
-    errors: UploadError[]
-}

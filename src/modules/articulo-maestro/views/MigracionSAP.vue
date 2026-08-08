@@ -3,9 +3,9 @@
         <!-- Header -->
         <div class="flex items-center justify-between">
             <div>
-                <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Migración a SAP</h1>
+                <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Monitoreo de Sincronización SAP</h1>
                 <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    Sincronización de artículos entre el sistema local y SAP
+                    Auditoría en tiempo real y resolución de excepciones
                 </p>
             </div>
             <div class="flex items-center gap-3">
@@ -20,6 +20,16 @@
                     Menú Principal
                 </router-link>
             </div>
+        </div>
+
+        <!-- Aviso: la sincronización ya no requiere acción manual -->
+        <div class="mt-6 flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 dark:border-emerald-800 dark:bg-emerald-900/20">
+            <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            <p class="text-sm text-emerald-800 dark:text-emerald-300">
+                <strong>La sincronización con SAP ahora es automática.</strong>
+                Al crear o editar un artículo (individual o por Excel), el sistema lo encola y lo envía en segundo plano de inmediato.
+                Usa este panel solo para ver el progreso en vivo y para reintentar los artículos que SAP haya rechazado.
+            </p>
         </div>
 
         <div class="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -80,16 +90,24 @@
                     <h3 class="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-3">Información de Sincronización</h3>
                     <ul class="space-y-2 text-xs text-blue-800 dark:text-blue-400">
                         <li class="flex gap-2">
-                            <span class="w-1.5 h-1.5 rounded-full bg-blue-500 mt-1 shrink-0"></span>
-                            <span><strong>BORRADOR:</strong> Artículo nuevo que no existe en SAP.</span>
+                            <span class="w-1.5 h-1.5 rounded-full bg-gray-400 mt-1 shrink-0"></span>
+                            <span><strong>BORRADOR:</strong> No debería verse aquí más que un instante; se encola solo al guardar.</span>
+                        </li>
+                        <li class="flex gap-2">
+                            <span class="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1 shrink-0"></span>
+                            <span><strong>EN_COLA:</strong> El worker lo está enviando a SAP en este momento. Bloqueado para edición.</span>
                         </li>
                         <li class="flex gap-2">
                             <span class="w-1.5 h-1.5 rounded-full bg-orange-500 mt-1 shrink-0"></span>
-                            <span><strong>PENDIENTE:</strong> Listo para enviar o actualizar en SAP.</span>
+                            <span><strong>PENDIENTE:</strong> Se guardó localmente pero todavía no se ha encolado (caso raro).</span>
                         </li>
                         <li class="flex gap-2">
                             <span class="w-1.5 h-1.5 rounded-full bg-red-500 mt-1 shrink-0"></span>
-                            <span><strong>ERROR:</strong> Falló el último intento de sincronización.</span>
+                            <span><strong>ERROR:</strong> SAP rechazó el último intento. Corrige el dato y usa "Reintentar Fallidos".</span>
+                        </li>
+                        <li class="flex gap-2">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1 shrink-0"></span>
+                            <span><strong>SINCRONIZADO:</strong> Confirmado en SAP. No aparece en esta tabla.</span>
                         </li>
                     </ul>
                 </div>
@@ -154,30 +172,31 @@
                     <!-- Toolbar Tabla -->
                     <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex flex-wrap items-center justify-between gap-4">
                         <div class="flex items-center gap-3">
-                            <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Artículos Pendientes de SAP</h2>
+                            <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Excepciones y Artículos en Cola</h2>
                             <span v-if="selectedCount > 0" class="px-2 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded text-xs font-medium">
                                 {{ selectedCount }} seleccionados
                             </span>
                         </div>
-                        
+
                         <div class="flex items-center gap-2">
-                            <button 
-                                @click="fetchPending" 
+                            <button
+                                @click="fetchPending"
                                 class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
                                 title="Refrescar lista"
                                 :disabled="loadingPending"
                             >
                                 <svg class="w-5 h-5" :class="loadingPending ? 'animate-spin' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                             </button>
-                            
+
                             <div class="h-6 w-px bg-gray-200 dark:bg-gray-700 mx-1"></div>
 
                             <button
                                 @click="requestBulkAction('create')"
                                 :disabled="selectedCount === 0 || processingAction"
                                 class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium rounded-lg disabled:opacity-50 transition-colors shadow-sm"
+                                title="Vuelve a encolar los artículos seleccionados (útil para los que quedaron en ERROR)"
                             >
-                                Sincronizar con SAP
+                                Reintentar Fallidos
                             </button>
                         </div>
                         <div v-if="actionError" class="flex items-center justify-between rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-3 py-2 mt-2">
@@ -221,8 +240,8 @@
                                     <td colspan="5" class="px-6 py-12 text-center">
                                         <div class="flex flex-col items-center justify-center text-gray-500 dark:text-gray-400">
                                             <svg class="w-12 h-12 mb-3 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                                            <p class="text-base font-medium">No hay artículos pendientes</p>
-                                            <p class="text-sm">Todos los artículos están sincronizados con SAP.</p>
+                                            <p class="text-base font-medium">Sin excepciones</p>
+                                            <p class="text-sm">Todos los artículos están sincronizados o no hay nada en cola.</p>
                                         </div>
                                     </td>
                                 </tr>
@@ -483,8 +502,9 @@ onUnmounted(() => {
 async function fetchPending() {
     loadingPending.value = true
     try {
-        // Obtenemos los que no están en SAP o tienen errores
-        const data = await articuloService.getArticulosByEstado(['BORRADOR', 'ERROR', 'PENDIENTE'])
+        // Incluye EN_COLA (no solo lo que falló) para poder ver en vivo
+        // qué se está enviando ahora mismo (fire & forget).
+        const data = await articuloService.getArticulosByEstado(['BORRADOR', 'PENDIENTE', 'EN_COLA', 'ERROR'])
         pendingArticulos.value = data
         selectedCodes.value = [] // Limpiar selección tras refrescar
     } catch {
@@ -552,6 +572,8 @@ function getStatusBadgeClass(status: string) {
     switch (status) {
         case 'BORRADOR': return 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-900/50 dark:text-gray-400 dark:border-gray-700'
         case 'PENDIENTE': return 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800'
+        case 'EN_COLA': return 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800'
+        case 'SINCRONIZADO': return 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800'
         case 'ERROR': return 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800'
         default: return 'bg-gray-100 text-gray-700 border-gray-200'
     }
@@ -586,7 +608,7 @@ async function handlePullFromSap() {
 function requestBulkAction(action: 'create' | 'update' | 'delete') {
     if (selectedCodes.value.length === 0) return
     const msgs = {
-        create: '¿Deseas sincronizar (crear o actualizar) estos artículos en SAP?',
+        create: '¿Deseas volver a encolar estos artículos para SAP (crearlos o reintentar el envío si fallaron)?',
         update: '¿Deseas actualizar estos artículos en SAP con la info local?',
         delete: '¿Deseas intentar ELIMINAR estos artículos de SAP?'
     }

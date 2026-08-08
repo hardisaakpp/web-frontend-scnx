@@ -545,7 +545,6 @@ const allColumns = [
     { key: 'shipType', label: 'ShipType' },
     { key: 'manageBatchNumbers', label: 'ManageBatchNumbers' },
     { key: 'estadoProducto', label: 'ESTADO PRODUCTO' },
-    { key: 'idListaPrecios', label: 'LISTA PRECIOS' },
     { key: 'aplicaEcommerce', label: 'APLICA ECOMMERCE' },
     { key: 'planningSystem', label: 'PlaningSys' },
     { key: 'procurementMethod', label: 'PrcrmntMtd' },

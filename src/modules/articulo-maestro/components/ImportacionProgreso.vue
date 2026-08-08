@@ -26,6 +26,14 @@
                 <Metric label="Grupos pendientes" :value="store.gruposPendientes" tone="warning" />
                 <Metric label="Imágenes pendientes" :value="store.imagenesPendientes" tone="info" />
             </div>
+            <p
+                v-if="(job.estado === 'COMPLETADO' || job.estado === 'COMPLETADO_CON_ERRORES') && job.filasCorrectas > 0"
+                class="mt-3 text-xs text-gray-500 dark:text-gray-400"
+            >
+                Los artículos guardados correctamente ya se encolaron y se están sincronizando con SAP en segundo plano.
+                Puedes seguir el avance en
+                <router-link to="/articulo-maestro/migracion" class="underline hover:no-underline">Monitoreo de Sincronización SAP</router-link>.
+            </p>
         </div>
 
         <div
@@ -38,17 +46,27 @@
                         {{ store.errores.length }} error(es) disponibles
                     </p>
                     <p class="text-xs text-red-600 dark:text-red-400">
-                        Descarga el Excel, corrige los valores y vuelve a cargarlo.
+                        Descarga solo las filas con error, corrige los valores marcados y vuelve a cargarlas.
                     </p>
                 </div>
-                <button
-                    type="button"
-                    class="rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-60"
-                    :disabled="store.downloading"
-                    @click="store.descargarErrores"
-                >
-                    {{ store.downloading ? 'Descargando...' : 'Descargar .xlsx' }}
-                </button>
+                <div class="flex shrink-0 flex-col items-end gap-1">
+                    <button
+                        type="button"
+                        class="rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+                        :disabled="store.downloading"
+                        @click="store.descargarErroresPlantilla"
+                    >
+                        {{ store.downloading ? 'Descargando...' : 'Descargar filas para corregir' }}
+                    </button>
+                    <button
+                        type="button"
+                        class="text-xs font-semibold text-red-700 underline disabled:opacity-60 dark:text-red-300"
+                        :disabled="store.downloading"
+                        @click="store.descargarErrores"
+                    >
+                        Descargar log técnico completo
+                    </button>
+                </div>
             </div>
             <ul class="mt-3 max-h-36 space-y-2 overflow-y-auto text-xs text-red-700 dark:text-red-300">
                 <li

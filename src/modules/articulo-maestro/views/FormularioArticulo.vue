@@ -88,8 +88,8 @@
                         </div>
                         <div class="form-field">
                             <label for="formItemName">Descripción Factura (ItemName)</label>
-                            <input id="formItemName" v-model="form.itemName" type="text" maxlength="50" disabled placeholder="Generado automáticamente..." />
-                            <span class="help">N3 + Género + Marca + Atributo + Color + Pack</span>
+                            <input id="formItemName" v-model="form.itemName" type="text" maxlength="50" placeholder="Se sugiere automáticamente; puede editarla" />
+                            <span class="help">Sugerido: Línea + Género + Marca + Atributo + Color + Pack. Editable: sus cambios no se sobrescriben.</span>
                         </div>
 
                         <!-- Nuevos campos SIS-CCPYTD-00014 -->
@@ -103,7 +103,20 @@
                         </div>
                         <div class="form-field">
                             <label for="formCodigoAlterno">Código Alterno</label>
-                            <input id="formCodigoAlterno" v-model="form.codigoAlterno" type="text" placeholder="Código interno alterno" />
+                            <div class="flex items-center gap-2">
+                                <input id="formCodigoAlterno" :value="form.codigoAlterno" type="text" disabled class="flex-1" placeholder="Se genera automáticamente al crear" />
+                                <button
+                                    v-if="isEdit && puedePromoverAlterno"
+                                    type="button"
+                                    :disabled="promoviendo"
+                                    @click="handlePromoverAlterno"
+                                    class="shrink-0 px-3 py-2 text-xs font-medium rounded-lg border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 disabled:opacity-60 transition-colors whitespace-nowrap"
+                                    title="Reemplaza el ItemCode actual por este Código Alterno"
+                                >
+                                    {{ promoviendo ? 'Promoviendo...' : 'Promover a Código Principal' }}
+                                </button>
+                            </div>
+                            <span class="help">No editable: solo cambia con "Promover a Código Principal".</span>
                         </div>
                         <div class="form-field">
                             <label for="formSkuSinTalla">Referencia / SKU sin talla</label>
@@ -148,12 +161,14 @@
                                 :options="cats.negocio"
                                 placeholder="Seleccionar negocio..."
                                 required
+                                :disabled="isEdit"
+                                :title="isEdit ? 'Marca/Negocio definen el ItemCode y no pueden modificarse después de creado el artículo.' : ''"
                             />
                         </div>
 
-                        <div class="form-field">
+                        <div class="form-field required">
                             <label for="formMarca">Marca</label>
-                            <input id="formMarca" v-model="form.uMarca" type="text" placeholder="Ej: ROLLY" :disabled="form.isStructuralLocked" :title="form.isStructuralLocked ? 'El artículo posee historial en SAP y no puede modificar su estructura' : ''" />
+                            <input id="formMarca" v-model="form.uMarca" type="text" placeholder="Ej: ROLLY" required :disabled="isEdit" :title="isEdit ? 'Marca/Negocio definen el ItemCode y no pueden modificarse después de creado el artículo.' : ''" />
                         </div>
 
                         <!-- Jerarquía en cascada: Sección → Categoría → Línea -->
@@ -383,18 +398,8 @@
                             </div>
                         </div>
                         <div class="form-field">
-                            <label for="selectListaPrecios">Lista de Precios</label>
-                            <SearchableSelect
-                                inputId="selectListaPrecios"
-                                v-model="form.idListaPrecios"
-                                :options="cats.priceLists"
-                                placeholder="Seleccionar lista..."
-                                valueKey="id"
-                            />
-                        </div>
-                        <div class="form-field">
                             <label for="formCostoArranque">Costo de Arranque</label>
-                            <input id="formCostoArranque" v-model.number="form.uPrArq" type="number" step="0.01" placeholder="0.00" />
+                            <input id="formCostoArranque" :value="form.uPrArq ?? ''" @input="onCostoArranqueInput($event)" type="number" step="0.01" min="0" placeholder="0.00" />
                         </div>
                         <div class="form-field">
                             <label for="selectLiquidacion">Liquidación</label>
@@ -533,10 +538,18 @@
                         </div>
                         <div class="form-field">
                             <label for="formManageBatch">Gestión por Lotes (ManBtchNum)</label>
-                            <select id="formManageBatch" v-model="form.manageBatchNumbers">
+                            <select
+                                id="formManageBatch"
+                                v-model="form.manageBatchNumbers"
+                                :disabled="isEdit && form.isStructuralLocked"
+                                :title="isEdit && form.isStructuralLocked ? 'Este artículo posee historial en SAP y su gestión por lotes ya no puede modificarse.' : ''"
+                            >
                                 <option value="N">N - No</option>
                                 <option value="Y">Y - Sí</option>
                             </select>
+                            <span v-if="isEdit && form.isStructuralLocked" class="help text-amber-600 dark:text-amber-400">
+                                Este artículo posee historial en SAP y su gestión por lotes ya no puede modificarse.
+                            </span>
                         </div>
                         <div class="form-field">
                             <label for="formEstadoProducto">Estado de Producto (SAP)</label>
@@ -645,7 +658,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { articuloService, catalogoService, sapService } from '../services/articuloService'
+import { articuloService, catalogoService } from '../services/articuloService'
 import type {
     CatalogoItem,
     JerarquiaItem
@@ -726,17 +739,16 @@ const cats = ref<{
     lineas: JerarquiaItem[]
     lineasAtributo: JerarquiaItem[]
     atributos: JerarquiaItem[]
-    priceLists: { id: number; name: string; nombre: string }[]
 }>({
     talla: [], genero: [], color: [], coleccion: [], permanencia: [],
     origen: [], pais: [], envio: [], canal: [], region: [],
     liquidacion: [], negocio: [],
     secciones: [], categorias: [], lineas: [],
-    lineasAtributo: [], atributos: [], priceLists: []
+    lineasAtributo: [], atributos: []
 })
 
 async function cargarCatalogos() {
-    const [talla, genero, color, coleccion, permanencia, origen, pais, envio, canal, region, liquidacion, negocio, secciones, lineasAtributo, priceLists] = await Promise.allSettled([
+    const [talla, genero, color, coleccion, permanencia, origen, pais, envio, canal, region, liquidacion, negocio, secciones, lineasAtributo] = await Promise.allSettled([
         catalogoService.getGenerales('TALLA'),
         catalogoService.getGenerales('GENERO'),
         catalogoService.getGenerales('COLOR'),
@@ -751,7 +763,6 @@ async function cargarCatalogos() {
         catalogoService.getGenerales('NEGOCIO'),
         catalogoService.getSecciones(),
         catalogoService.getLineasAtributo(),
-        sapService.getPriceLists(),
     ])
 
     if (talla.status === 'fulfilled') cats.value.talla = talla.value
@@ -768,7 +779,6 @@ async function cargarCatalogos() {
     if (negocio.status === 'fulfilled') cats.value.negocio = negocio.value
     if (secciones.status === 'fulfilled') cats.value.secciones = secciones.value
     if (lineasAtributo.status === 'fulfilled') cats.value.lineasAtributo = lineasAtributo.value
-    if (priceLists.status === 'fulfilled') cats.value.priceLists = priceLists.value
 }
 
 async function onSeccionChange() {
@@ -833,6 +843,25 @@ function onPrecioListasChange(tipo: 'minorista' | 'internacional') {
         }
         alert('Debe seleccionar al menos una lista de precios aplicable.')
     }
+}
+
+// RF-021/CA-10: Costo de Arranque conserva únicamente dos decimales en toda la app.
+function onCostoArranqueInput(event: Event) {
+    const input = event.target as HTMLInputElement
+    const raw = input.value
+
+    if (raw === '' || raw === '-') {
+        form.value.uPrArq = null
+        return
+    }
+
+    const truncado = raw.match(/^-?\d*(?:\.\d{0,2})?/)?.[0] ?? raw
+    if (truncado !== raw) {
+        input.value = truncado
+    }
+
+    const parsed = Number(truncado)
+    form.value.uPrArq = Number.isNaN(parsed) ? null : Math.round(parsed * 100) / 100
 }
 
 // ─── Formulario ──────────────────────────────────────────────────────────────
@@ -902,7 +931,6 @@ const form = ref({
     codigoAlterno: '',
     tieneCodigoProveedor: false,
     estadoProducto: true,
-    idListaPrecios: null as number | null,
     aplicaEcommerce: false,
     aplicaPrecioMinorista: true,
     aplicaPrecioInternacional: false,
@@ -913,15 +941,13 @@ const form = ref({
     isStructuralLocked: false,
 })
 
-// Auto-generación de ItemName (Descripción Factura)
-watch([
-    () => form.value.uNv3,
-    () => form.value.uGen,
-    () => form.value.uMarca,
-    () => form.value.uAtrMed,
-    () => form.value.uCodColor,
-    () => form.value.uIxxPack
-], () => {
+// RF-003: Auto-generación de ItemName (Descripción Factura) sin bloquear el
+// input. Solo se sobrescribe mientras el valor actual siga siendo la última
+// sugerencia (o esté vacío); en cuanto el usuario escribe algo distinto,
+// dejamos de pisarlo aunque cambie Marca/Talla/etc. después.
+const ultimoItemNameSugerido = ref('')
+
+function calcularItemNameSugerido(): string {
     // Buscar descripciones en lugar de usar códigos directamente
     const n3 = cats.value.lineas.find(l => l.nombre === form.value.uNv3)?.nombre || form.value.uNv3 || ''
     const genero = cats.value.genero.find(g => g.codigo === String(form.value.uGen))?.nombre || form.value.uGen || ''
@@ -931,7 +957,25 @@ watch([
     const pack = form.value.uIxxPack || ''
 
     const parts = [n3, genero, marca, atributo, color, pack].filter(Boolean)
-    form.value.itemName = parts.join(' ').toUpperCase().substring(0, 50)
+    return parts.join(' ').toUpperCase().substring(0, 50)
+}
+
+watch([
+    () => form.value.uNv3,
+    () => form.value.uGen,
+    () => form.value.uMarca,
+    () => form.value.uAtrMed,
+    () => form.value.uCodColor,
+    () => form.value.uIxxPack
+], () => {
+    const sugerido = calcularItemNameSugerido()
+    const valorActual = (form.value.itemName || '').trim()
+    const sigueSiendoLaSugerencia = valorActual === '' || valorActual === ultimoItemNameSugerido.value.trim()
+
+    if (sigueSiendoLaSugerencia) {
+        form.value.itemName = sugerido
+    }
+    ultimoItemNameSugerido.value = sugerido
 }, { deep: true })
 
 const loadingData = ref(false)
@@ -941,6 +985,38 @@ const submitError = ref('')
 const submitSuccess = ref('')
 const imagesDirty = ref(false)
 let imageStatusTimer: ReturnType<typeof setInterval> | null = null
+
+// ─── RF-002: Promoción de Código Alterno ──────────────────────────────────────
+const promoviendo = ref(false)
+const puedePromoverAlterno = computed(() =>
+    !!form.value.codigoAlterno && form.value.codigoAlterno !== form.value.itemCode
+)
+
+async function handlePromoverAlterno(): Promise<void> {
+    const itemCodeActual = route.params.itemCode as string
+    const confirmado = window.confirm(
+        `Esto reemplazará el ItemCode "${itemCodeActual}" por el código alterno ` +
+        `"${form.value.codigoAlterno}" y se encolará una nueva sincronización con SAP. ` +
+        '¿Desea continuar?'
+    )
+    if (!confirmado) return
+
+    promoviendo.value = true
+    submitError.value = ''
+    submitSuccess.value = ''
+    try {
+        const resultado = await articuloService.promoverCodigoAlterno(itemCodeActual)
+        submitSuccess.value = resultado.message
+        await router.replace(`/articulo-maestro/editar/${resultado.item_code_nuevo}`)
+        await cargarDatosEdicion(resultado.item_code_nuevo)
+    } catch (err: unknown) {
+        const axiosErr = err as { response?: { data?: { detail?: string } } }
+        submitError.value = axiosErr?.response?.data?.detail
+            || 'No se pudo promover el código alterno. Inténtalo de nuevo.'
+    } finally {
+        promoviendo.value = false
+    }
+}
 
 function onImagesUpdate(images: ImagenArticuloReferencia[]): void {
     stopImageStatusPolling()
@@ -1028,6 +1104,12 @@ async function cargarDatosEdicion(itemCode: string) {
                 } catch { /* continuar buscando */ }
             }
         }
+        // RF-003: recién con las cascadas de catálogo ya cargadas podemos
+        // calcular la sugerencia "real" y usarla como base de comparación;
+        // si el ItemName guardado coincide, seguirá auto-actualizándose al
+        // tocar Marca/Talla/etc. Si no coincide (fue editado a mano), el
+        // watcher ya no lo va a pisar.
+        ultimoItemNameSugerido.value = calcularItemNameSugerido()
         startImageStatusPolling(itemCode)
     } catch {
         loadError.value = `No se pudo cargar el artículo "${itemCode}". Verifica que el código es correcto.`
@@ -1078,6 +1160,19 @@ async function handleSubmit() {
     Object.entries(form.value).forEach(([key, val]) => {
         // No enviar el código de artículo en el body del PATCH (se envía en la URL)
         if (key === 'itemCode' && isEdit.value) return
+        // RF-002: codigoAlterno es de solo lectura y está bloqueado por el
+        // backend en PATCH; solo cambia vía "Promover a Código Principal".
+        if (key === 'codigoAlterno' && isEdit.value) return
+        // Marca/Negocio definen el ItemCode y quedan bloqueados por el
+        // backend en PATCH (ver CAMPOS_ESTRUCTURALES_BLOQUEADOS); el
+        // formulario los muestra precargados y deshabilitados en edición,
+        // pero no deben reenviarse o el backend rechaza toda la petición.
+        if ((key === 'uMarca' || key === 'uIxxMarca') && isEdit.value) return
+        // manageBatchNumbers queda bloqueado por el backend en PATCH cuando
+        // el artículo ya tiene historial en SAP (ver
+        // _ensure_manage_batch_numbers_editable); el formulario lo muestra
+        // deshabilitado en ese caso y no debe reenviarlo.
+        if (key === 'manageBatchNumbers' && isEdit.value && form.value.isStructuralLocked) return
         if (key === 'imagenes') {
             if (isEdit.value && !imagesDirty.value) return
             payload.imagenes = (val as ImagenArticuloReferencia[]).map(image => ({
@@ -1108,13 +1203,13 @@ async function handleSubmit() {
             const article = await articuloService.updateArticulo(itemCode, payload)
             form.value.imagenes = article.imagenes ?? []
             imagesDirty.value = false
-            submitSuccess.value = `Artículo ${itemCode} actualizado. El estado de las imágenes se actualizará automáticamente.`
+            submitSuccess.value = `Artículo ${itemCode} actualizado. Sincronización con SAP iniciada en segundo plano.`
             startImageStatusPolling(itemCode)
         } else {
             const article = await articuloService.createArticulo(payload)
             form.value.imagenes = article.imagenes ?? []
             imagesDirty.value = false
-            submitSuccess.value = `Artículo ${article.itemCode} creado. Las imágenes se están procesando en segundo plano.`
+            submitSuccess.value = `Artículo ${article.itemCode} creado. Sincronización con SAP e imágenes iniciadas en segundo plano.`
             await router.replace(`/articulo-maestro/editar/${article.itemCode}`)
             startImageStatusPolling(article.itemCode)
         }

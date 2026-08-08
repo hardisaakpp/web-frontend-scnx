@@ -161,7 +161,7 @@ function parseSelectedItem(item: PickerItem): ImagenArticuloReferencia {
         throw new Error('Selecciona una imagen JPG, JPEG, PNG o WEBP.')
     }
     
-    const parsed = {
+    const parsed: ImagenArticuloReferencia = {
         posicion: 1,
         esPrincipal: true,
         driveId,

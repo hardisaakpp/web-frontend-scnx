@@ -189,6 +189,18 @@ export const useImportacionArticulosStore = defineStore(
                 }
             },
 
+            async descargarErroresPlantilla(): Promise<void> {
+                if (!this.jobId) return
+                this.downloading = true
+                try {
+                    await articuloService.descargarErroresPlantillaImportacion(
+                        this.jobId
+                    )
+                } finally {
+                    this.downloading = false
+                }
+            },
+
             limpiar(): void {
                 this.detenerPolling()
                 this.jobId = null
