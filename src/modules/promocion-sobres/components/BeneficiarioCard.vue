@@ -31,6 +31,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { BeneficiarioDto } from '../types'
+import { NUMBER_LOCALE } from '@/plugins/locale'
 
 const props = withDefaults(
   defineProps<{
@@ -68,6 +69,6 @@ const cardClass = computed(() => {
 })
 
 function formatCupo(value: number): string {
-  return new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value)
+  return new Intl.NumberFormat(NUMBER_LOCALE, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value)
 }
 </script>

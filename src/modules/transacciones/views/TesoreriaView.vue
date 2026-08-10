@@ -15,7 +15,7 @@
     <div>
       <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Reporte de Tesorería</h1>
       <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-        Consulta el historial de transacciones con filtros avanzados · rango máximo 31 días
+        Consulta el historial de transacciones con filtros avanzados
       </p>
     </div>
 
@@ -26,7 +26,7 @@
       :cuentas="store.cuentas"
       :loading-cuentas="store.loadingCuentas"
       :hay-resultados="store.transaccionesTesoreria.length > 0"
-      :estados="['Pendiente', 'Reservado']"
+      estado-fijo="Reservado"
       @consultar="consultar"
       @exportar="exportar"
     />
@@ -156,6 +156,7 @@ import { useTransaccionesStore } from '../store/transacciones'
 import { useToast } from '@/composables/useToast'
 import FiltrosTesoreria from '../components/FiltrosTesoreria.vue'
 import type { EstadoTransaccion, FiltrosTesoreria as TFiltrosTesoreria } from '../types'
+import { APP_LOCALE, NUMBER_LOCALE } from '@/plugins/locale'
 
 const store = useTransaccionesStore()
 const toast = useToast()
@@ -187,12 +188,12 @@ async function exportar(filtros: TFiltrosTesoreria) {
 }
 
 function formatMonto(valor: number): string {
-  return new Intl.NumberFormat('es-PA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(valor)
+  return new Intl.NumberFormat(NUMBER_LOCALE, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(valor)
 }
 
 function formatFecha(iso: string): string {
   if (!iso) return '—'
-  return new Date(iso).toLocaleString('es-PA', { dateStyle: 'short', timeStyle: 'short' })
+  return new Date(iso).toLocaleString(APP_LOCALE, { dateStyle: 'short', timeStyle: 'short' })
 }
 
 function clasePorEstado(estado: EstadoTransaccion): string {

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, computed } from 'vue'
+import { APP_LOCALE } from '@/plugins/locale'
 import { useReposicionStore } from '../stores/reposicionStore'
 import { storeToRefs } from 'pinia'
 import { 
@@ -14,18 +15,14 @@ import {
 import reposicionApi from '../services/reposicionApi'
 
 const store = useReposicionStore()
-const { carrito, filters, almacenes, carritoInfo, isOpen, startHour, endHour } = storeToRefs(store)
+const { carrito, filters, carritoInfo, isOpen, startHour, endHour } = storeToRefs(store)
 
-const currentWarehouseName = computed(() => {
-  const code = filters.value.whsCode
-  const whs = almacenes.value.find(a => a.whsCode === code)
-  return whs ? `${code}` : code
-})
+const currentWarehouseName = computed(() => store.etiquetaAlmacen(filters.value.whsCode))
 
 const formatDate = (dateStr: string) => {
   if (!dateStr) return ''
   const date = new Date(dateStr)
-  return new Intl.DateTimeFormat('es-EC', {
+  return new Intl.DateTimeFormat(APP_LOCALE, {
     dateStyle: 'medium',
     timeStyle: 'short'
   }).format(date)
@@ -90,7 +87,7 @@ const downloadPdf = () => {
           </div>
           <div>
             <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Origen</p>
-            <p class="text-sm font-bold text-gray-900 dark:text-white">{{ carritoInfo.fromWhs || '---' }}</p>
+            <p class="text-sm font-bold text-gray-900 dark:text-white">{{ store.etiquetaAlmacen(carritoInfo.fromWhs) || '---' }}</p>
           </div>
         </div>
 
@@ -100,7 +97,7 @@ const downloadPdf = () => {
           </div>
           <div>
             <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Destino</p>
-            <p class="text-sm font-bold text-gray-900 dark:text-white">{{ carritoInfo.toWhs || '---' }}</p>
+            <p class="text-sm font-bold text-gray-900 dark:text-white">{{ store.etiquetaAlmacen(carritoInfo.toWhs) || '---' }}</p>
           </div>
         </div>
 

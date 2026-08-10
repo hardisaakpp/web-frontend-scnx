@@ -10,20 +10,19 @@ const router = useRouter()
 onMounted(() => store.cargarCampanas())
 
 // ─── Tipos de vista ──────────────────────────────────────────────────────────
-type EstadoVista  = EstadoCampana | 'programada'
+type EstadoVista  = EstadoCampana | 'vencida'
 type FiltroEstado = EstadoVista   | 'todos'
 
 // ─── "Programada" es estado lógico del frontend: activa pero aún no iniciada
-const hoy = new Date().toISOString().slice(0, 10)
 function estadoEfectivo(c: Campana): EstadoVista {
-  if (c.estado === 'activa' && c.fecha_inicio > hoy) return 'programada'
-  return c.estado
+  return c.estado_operativo === 'disponible' ? 'activa' : c.estado_operativo
 }
 
 // ─── Config visual por estado ────────────────────────────────────────────────
 const estadoConfig: Record<EstadoVista, { label: string; cls: string; dot: string }> = {
   activa:     { label: 'Activa',     cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', dot: 'bg-emerald-500' },
   programada: { label: 'Programada', cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',             dot: 'bg-blue-500'   },
+  vencida:    { label: 'Vencida',    cls: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',                dot: 'bg-red-500'    },
   pausada:    { label: 'Pausada',    cls: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',     dot: 'bg-orange-500' },
   finalizada: { label: 'Finalizada', cls: 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400',               dot: 'bg-gray-400'   },
   borrador:   { label: 'Borrador',   cls: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',    dot: 'bg-yellow-500' },
@@ -34,6 +33,7 @@ const FILTROS: { value: FiltroEstado; label: string }[] = [
   { value: 'todos',      label: 'Todos'      },
   { value: 'activa',     label: 'Activa'     },
   { value: 'programada', label: 'Programada' },
+  { value: 'vencida',    label: 'Vencida'    },
   { value: 'pausada',    label: 'Pausada'    },
   { value: 'finalizada', label: 'Finalizada' },
   { value: 'borrador',   label: 'Borrador'   },
@@ -90,18 +90,23 @@ async function accionCambiarEstado(estado: EstadoCampana) {
 // ─── Confirmación de eliminación ─────────────────────────────────────────────
 const confirmDelete = ref<{ id: string; nombre: string } | null>(null)
 const eliminando    = ref(false)
+const errorEliminar = ref('')
 
 function pedirConfirmDelete(c: Campana) {
   cerrarMenu()
   confirmDelete.value = { id: c.id, nombre: c.nombre }
+  errorEliminar.value = ''
 }
 
 async function ejecutarEliminar() {
   if (!confirmDelete.value) return
   eliminando.value = true
+  errorEliminar.value = ''
   try {
     await store.eliminarCampana(confirmDelete.value.id)
     confirmDelete.value = null
+  } catch (e: any) {
+    errorEliminar.value = e?.response?.data?.error ?? e?.message ?? 'Error al eliminar la campaña.'
   } finally {
     eliminando.value = false
   }
@@ -183,8 +188,8 @@ function toggleSegmento(s: SegmentoCliente) {
 const nombreRestante = computed(() => 150 - form.value.nombre.length)
 
 const fechaFinError = computed(() =>
-  form.value.fecha_inicio && form.value.fecha_fin && form.value.fecha_fin <= form.value.fecha_inicio
-    ? 'La fecha de fin debe ser posterior a la de inicio.'
+  form.value.fecha_inicio && form.value.fecha_fin && form.value.fecha_fin < form.value.fecha_inicio
+    ? 'La fecha de fin debe ser igual o posterior a la de inicio.'
     : ''
 )
 
@@ -606,6 +611,12 @@ const SEGMENTO_LABELS: Record<SegmentoCliente, string> = {
             <p class="text-sm text-gray-600 dark:text-gray-300 mb-5">
               ¿Confirmas que deseas eliminar
               <span class="font-semibold text-gray-900 dark:text-white">«{{ confirmDelete.nombre }}»</span>?
+            </p>
+            <p v-if="errorEliminar" class="mb-4 flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400">
+              <svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+              </svg>
+              {{ errorEliminar }}
             </p>
             <div class="flex gap-3">
               <button @click="confirmDelete = null"

@@ -187,6 +187,7 @@ import { usePromocionSobresPermissions } from '../composables/usePromocionSobres
 import { usePromocionSobresStore } from '../stores/promocionSobresStore'
 import { formatPromocionSobresFecha } from '../services/utils/clientLocalDateTime'
 import type { PromocionSobresErrorCode } from '../types'
+import { NUMBER_LOCALE } from '@/plugins/locale'
 
 const store = usePromocionSobresStore()
 const { canViewMonitoreo } = usePromocionSobresPermissions()
@@ -216,7 +217,7 @@ const identMin = 10
 const identMax = 13
 
 function formatCupo(value: number): string {
-  return new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(
+  return new Intl.NumberFormat(NUMBER_LOCALE, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(
     value
   )
 }
