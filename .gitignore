@@ -56,6 +56,7 @@ Thumbs.db
 
 # Claude Code / agent local config (not shared with the team)
 .agents/
+.github/
 openspec/
 skills-lock.json
 
