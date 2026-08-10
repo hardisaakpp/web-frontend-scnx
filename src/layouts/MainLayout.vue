@@ -314,9 +314,8 @@
               class="flex items-center gap-3 p-2 rounded-lg bg-slate-100/90 dark:bg-slate-800/50 hover:bg-slate-200/70 dark:hover:bg-slate-700/60 transition-colors"
               title="Panel de Usuario"
             >
-              <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-sky-500 flex items-center justify-center text-xs font-bold flex-shrink-0">
-                <span v-if="authStore.avatarEmoji" class="text-base leading-none">{{ authStore.avatarEmoji }}</span>
-                <span v-else>{{ authStore.userName?.charAt(0).toUpperCase() || 'U' }}</span>
+              <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-sky-500 flex items-center justify-center text-xs font-bold flex-shrink-0 text-white">
+                <span>{{ authStore.userName?.charAt(0).toUpperCase() || 'U' }}</span>
               </div>
               <div class="flex-1 min-w-0">
                 <p class="text-sm font-medium text-slate-800 dark:text-white truncate">{{ authStore.userName }}</p>
@@ -723,9 +722,6 @@ const canAccessGestionOdcSap = computed(() => {
 onMounted(async () => {
   if (authStore.token && !authStore.capabilities) {
     await authStore.fetchMe()
-  }
-  if (authStore.token) {
-    authStore.fetchAvatarEmoji()
   }
   if (authStore.isAuthenticated && !hasModuleAccess('inventario') && authStore.userData?.id) {
     checkPickerAccess(authStore.userData.id)

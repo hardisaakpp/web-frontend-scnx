@@ -181,6 +181,18 @@ function formatearFecha(fecha: string): string {
 function etiquetaSegmento(segmento: string): string {
   return segmento.replace('_', ' ')
 }
+
+function getGrupoCls(grupo: string): string {
+  switch (grupo) {
+    case 'GRUPO_1': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+    case 'GRUPO_2': return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+    case 'GRUPO_3': return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+    case 'GRUPO_4': return 'bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/30 dark:text-fuchsia-400'
+    case 'GRUPO_5': return 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400'
+    case 'GRUPO_6': return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+    default: return 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+  }
+}
 </script>
 
 <template>
@@ -257,6 +269,7 @@ function etiquetaSegmento(segmento: string): string {
             <option value="">Todos los resultados</option>
             <option value="Ganador">Ganó premio</option>
             <option value="SinPremio">Sigue intentando</option>
+            <option value="Redimido">Redimido</option>
           </select>
         </div>
 
@@ -339,12 +352,12 @@ function etiquetaSegmento(segmento: string): string {
       </div>
 
       <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
-        <article class="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-5 dark:border-emerald-900/40 dark:bg-emerald-950/20">
+        <article class="rounded-2xl border border-emerald-100 bg-emerald-50/70 p-5 dark:border-emerald-900/40 dark:bg-emerald-950/20 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-emerald-500/10 hover:border-emerald-300 dark:hover:border-emerald-500/50">
           <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">Zona caliente</p>
           <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{{ totalZonaCaliente.toLocaleString() }}</p>
           <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">Giros de GRUPO 1, 2 y 3 que compiten por premios físicos.</p>
         </article>
-        <article class="rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-700 dark:bg-slate-800/60">
+        <article class="rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-700 dark:bg-slate-800/60 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-500/10 hover:border-slate-300 dark:hover:border-slate-500/50">
           <p class="text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">Zona cero</p>
           <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{{ totalZonaCero.toLocaleString() }}</p>
           <p class="mt-1 text-sm text-gray-600 dark:text-gray-300">Giros de GRUPO 4, 5 y 6 con premio de consolación.</p>
@@ -394,7 +407,7 @@ function etiquetaSegmento(segmento: string): string {
               <td class="whitespace-nowrap px-4 py-3 text-xs text-gray-500 dark:text-gray-400">{{ formatearFecha(registro.fecha) }}</td>
               <td class="px-4 py-3 font-mono text-xs text-gray-700 dark:text-gray-200">{{ registro.identificacion }}</td>
               <td class="px-4 py-3">
-                <span v-if="registro.segmento" class="whitespace-nowrap rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-200">{{ etiquetaSegmento(registro.segmento) }}</span>
+                <span v-if="registro.segmento" :class="getGrupoCls(registro.segmento)" class="whitespace-nowrap rounded-full px-2 py-1 text-xs font-medium">{{ etiquetaSegmento(registro.segmento) }}</span>
                 <span v-else class="text-gray-400">—</span>
               </td>
               <td class="hidden px-4 py-3 text-gray-600 dark:text-gray-300 md:table-cell">{{ registro.tiendaCodigo || '—' }}</td>

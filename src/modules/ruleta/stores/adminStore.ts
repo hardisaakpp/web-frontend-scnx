@@ -4,7 +4,8 @@ import type {
   Campana, CrearCampanaDTO, GrupoProbabilidad, PremioAdmin,
   TiendaInventario, InventarioPremio, Tienda,
   MetricasGlobal, EfectividadTienda, SegmentacionGrupo, ConversionSemanal,
-  MetricasCampana, EnroladorMetrica, StockPremio, HistorialGiroItem, GiroFilters
+  MetricasCampana, EnroladorMetrica, StockPremio, HistorialGiroItem, GiroFilters,
+  RedencionResponse, PreviewImpactoStockItem, ImpactoStock, ProbabilidadGrupo
 } from '../types'
 
 interface AdminState {
@@ -28,6 +29,7 @@ interface AdminState {
   campanaInventarioId: string | null
   loadingInventario: boolean
   errorInventario: string | null
+  verificandoImpactoStock: boolean
 
   // Dashboard Global — KPIs + analytics mock
   campanaDashboardId: string | null
@@ -50,9 +52,19 @@ interface AdminState {
   historialTotalRegistros: number
   loadingHistorial: boolean
   historialRequestSeq: number
+  // Últimos filtros usados en cargarHistorialDashboard, para poder re-emitir
+  // la misma consulta (misma página, mismos filtros) tras una redención sin
+  // que el refresco reactivo le "borre" al usuario los filtros que tenía aplicados.
+  historialFiltrosActuales: Omit<GiroFilters, 'campanaId'>
+
+  // Redención de premios
+  redimiendo: boolean
 
   error: string | null
   guardando: boolean
+
+  probabilidadesEnVivo: ProbabilidadGrupo[]
+  loadingProbabilidades: boolean
 }
 
 export const useAdminStore = defineStore('admin', {
@@ -73,6 +85,7 @@ export const useAdminStore = defineStore('admin', {
     campanaInventarioId: null,
     loadingInventario: false,
     errorInventario: null,
+    verificandoImpactoStock: false,
 
     campanaDashboardId: null,
     metricas: null,
@@ -93,9 +106,15 @@ export const useAdminStore = defineStore('admin', {
     historialTotalRegistros: 0,
     loadingHistorial: false,
     historialRequestSeq: 0,
+    historialFiltrosActuales: {},
+
+    redimiendo: false,
 
     error: null,
-    guardando: false
+    guardando: false,
+
+    probabilidadesEnVivo: [],
+    loadingProbabilidades: false
   }),
 
   getters: {
@@ -151,6 +170,18 @@ export const useAdminStore = defineStore('admin', {
       }
     },
 
+    async cargarProbabilidadesEnVivo(campanaId: string, tiendaCodigo: string) {
+      this.loadingProbabilidades = true
+      try {
+        this.probabilidadesEnVivo = await ruletaService.getProbabilidadesEnVivo(campanaId, tiendaCodigo)
+      } catch (e) {
+        console.error('Error al cargar probabilidades en vivo:', e)
+        this.probabilidadesEnVivo = []
+      } finally {
+        this.loadingProbabilidades = false
+      }
+    },
+
     async actualizarCampana(id: string, dto: CrearCampanaDTO) {
       this.guardando = true
       try {
@@ -166,9 +197,9 @@ export const useAdminStore = defineStore('admin', {
     },
 
     async cambiarEstado(id: string, estado: Campana['estado']) {
-      await ruletaService.cambiarEstadoCampana(id, estado)
-      const c = this.campanas.find(x => x.id === id)
-      if (c) c.estado = estado
+      const actualizada = await ruletaService.cambiarEstadoCampana(id, estado)
+      const index = this.campanas.findIndex(c => c.id === id)
+      if (index !== -1) this.campanas[index] = actualizada
     },
 
     async eliminarCampana(id: string) {
@@ -209,30 +240,47 @@ export const useAdminStore = defineStore('admin', {
       }
     },
 
-    async actualizarPremio(grupoIndex: number, premioId: string, data: Partial<PremioAdmin>) {
+    async actualizarPremio(grupoIndex: number, premioId: string, data: Partial<PremioAdmin>, confirmarReduccionStock = false) {
       const grupo = this.grupos[grupoIndex]
       if (!grupo || !this.campanaActivaId) return
-      await ruletaService.actualizarPremio(this.campanaActivaId, premioId, data)
-      const p = grupo.premios.find(x => x.id === premioId)
-      if (p) Object.assign(p, data)
-      this.recalcularEstadoGrupo(grupoIndex)
+      this.guardando = true
+      try {
+        const actualizado = await ruletaService.actualizarPremio(this.campanaActivaId, premioId, data, confirmarReduccionStock)
+        const p = grupo.premios.find(x => x.id === premioId)
+        // Se copia la respuesta del servidor (incluye el rowVersion nuevo) en vez de `data`,
+        // para que la siguiente edición compare contra el valor real que quedó en BD.
+        if (p) Object.assign(p, actualizado)
+        this.recalcularEstadoGrupo(grupoIndex)
+      } finally {
+        this.guardando = false
+      }
     },
 
     async agregarPremio(grupoIndex: number, data: Omit<PremioAdmin, 'id'>) {
       const grupo = this.grupos[grupoIndex]
       if (!grupo || !this.campanaActivaId) return
-      const nuevo = await ruletaService.agregarPremio(this.campanaActivaId, grupo.grupo, data)
-      grupo.premios.push(nuevo)
-      this.recalcularEstadoGrupo(grupoIndex)
-      return nuevo
+      this.guardando = true
+      try {
+        const nuevo = await ruletaService.agregarPremio(this.campanaActivaId, grupo.grupo, data)
+        grupo.premios.push(nuevo)
+        this.recalcularEstadoGrupo(grupoIndex)
+        return nuevo
+      } finally {
+        this.guardando = false
+      }
     },
 
     async eliminarPremio(grupoIndex: number, premioId: string) {
       const grupo = this.grupos[grupoIndex]
       if (!grupo || !this.campanaActivaId) return
-      await ruletaService.eliminarPremio(this.campanaActivaId, premioId)
-      grupo.premios = grupo.premios.filter(p => p.id !== premioId)
-      this.recalcularEstadoGrupo(grupoIndex)
+      this.guardando = true
+      try {
+        await ruletaService.eliminarPremio(this.campanaActivaId, premioId)
+        grupo.premios = grupo.premios.filter(p => p.id !== premioId)
+        this.recalcularEstadoGrupo(grupoIndex)
+      } finally {
+        this.guardando = false
+      }
     },
 
     async cargarPremiosCampana(campanaId: string) {
@@ -251,7 +299,12 @@ export const useAdminStore = defineStore('admin', {
 
     async asignarStockTienda(premioId: string, tiendaCodigo: string, stockTotal: number) {
       if (!this.campanaActivaId) return
-      await ruletaService.asignarStockTienda(this.campanaActivaId, premioId, tiendaCodigo, stockTotal)
+      this.guardando = true
+      try {
+        await ruletaService.asignarStockTienda(this.campanaActivaId, premioId, tiendaCodigo, stockTotal)
+      } finally {
+        this.guardando = false
+      }
     },
 
     async subirImagen(archivo: File): Promise<string> {
@@ -302,6 +355,40 @@ export const useAdminStore = defineStore('admin', {
 
     restablecerInventario() {
       this.inventarioEditado = {}
+    },
+
+    // Convierte las celdas editadas (premioId_tiendaId -> nuevoValor) en los items que
+    // espera el backend (premioId + código de tienda), reutilizando el mismo parseo de
+    // clave que ya usa guardarDistribucion.
+    construirItemsImpactoStock(): PreviewImpactoStockItem[] {
+      return Object.entries(this.inventarioEditado)
+        .map(([key, nuevoStockTotal]): PreviewImpactoStockItem | null => {
+          const underscoreIdx = key.lastIndexOf('_')
+          const premioId = key.slice(0, underscoreIdx)
+          const tiendaId = Number(key.slice(underscoreIdx + 1))
+          const tienda = this.tiendasInventario.find(t => t.id === tiendaId)
+          return tienda ? { premioId, tiendaCodigo: tienda.codigo, nuevoStockTotal } : null
+        })
+        .filter((item): item is PreviewImpactoStockItem => item !== null)
+    },
+
+    // Antes de guardar, calcula si alguno de los cambios pendientes desbloquearía stock
+    // de inmediato (campaña Activa). Si la lista vuelve vacía, no hay nada que advertir
+    // y el llamador puede guardar directo.
+    async previsualizarImpactoDistribucion(): Promise<ImpactoStock[]> {
+      if (!this.campanaInventarioId) return []
+      this.verificandoImpactoStock = true
+      try {
+        const items = this.construirItemsImpactoStock()
+        return await ruletaService.previewImpactoStock(this.campanaInventarioId, items)
+      } catch (e) {
+        // Si la previsualización falla (ej. red caída), no bloqueamos el guardado real —
+        // el usuario simplemente no ve el aviso, pero puede seguir guardando.
+        console.error('Error al previsualizar el impacto de stock:', e)
+        return []
+      } finally {
+        this.verificandoImpactoStock = false
+      }
     },
 
     async guardarDistribucion() {
@@ -383,6 +470,7 @@ export const useAdminStore = defineStore('admin', {
       // quedar dos peticiones en vuelo; solo la más reciente puede escribir el estado.
       const seq = ++this.historialRequestSeq
       this.loadingHistorial = true
+      this.historialFiltrosActuales = filtros
       try {
         const res = await ruletaService.getHistorialGiros({ campanaId, ...filtros }, page, 10)
         if (seq !== this.historialRequestSeq) return
@@ -399,6 +487,34 @@ export const useAdminStore = defineStore('admin', {
         this.historialTotalRegistros = 0
       } finally {
         if (seq === this.historialRequestSeq) this.loadingHistorial = false
+      }
+    },
+
+    // ── Redención de premios ──────────────────────────────────────────────────
+    async redimirPremio(codigo: string, notas?: string): Promise<RedencionResponse> {
+      this.redimiendo = true
+      try {
+        const redencion = await ruletaService.redimirPremio(codigo, notas)
+
+        // Refresco reactivo tras una redención exitosa: sin esto, los contadores
+        // superiores (Premios entregados, Stock restante) y la fila del historial
+        // quedan desactualizados hasta que el usuario recarga la página (F5).
+        // Solo aplica si el dashboard tiene una campaña específica cargada — en
+        // la vista "todas las campañas" metricasCampana no se usa.
+        if (this.campanaDashboardId) {
+          await Promise.all([
+            this.cargarMetricasCampana(this.campanaDashboardId),
+            this.cargarHistorialDashboard(
+              this.campanaDashboardId,
+              this.historialPaginaActual,
+              this.historialFiltrosActuales
+            )
+          ])
+        }
+
+        return redencion
+      } finally {
+        this.redimiendo = false
       }
     },
 

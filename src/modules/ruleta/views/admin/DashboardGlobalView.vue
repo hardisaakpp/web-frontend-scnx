@@ -124,6 +124,12 @@ async function onRefresh() {
 
 // ── Enroladores bar chart ──────────────────────────────────────────────────────
 const maxGiros = computed(() => Math.max(...store.enroladores.map(e => e.giros), 1))
+const animatedBars = ref(false)
+
+watch(() => store.enroladores, () => {
+  animatedBars.value = false
+  setTimeout(() => { animatedBars.value = true }, 50)
+}, { immediate: true, deep: true })
 
 // ── Historial: paginación ─────────────────────────────────────────────────────
 const paginasVisibles = computed(() => {
@@ -143,6 +149,20 @@ async function exportar(tipo: 'csv' | 'excel') {
   const filtrosExport: GiroFilters = { campanaId: idCampanaActual(), ...filtrosAplicados.value }
   if (tipo === 'excel') await ruletaService.exportarGirosExcel(filtrosExport)
   else await ruletaService.exportarGirosCsv(filtrosExport)
+}
+
+// ── Helpers estéticos ─────────────────────────────────────────────────────────
+function getGrupoCls(grupo: string | undefined | null) {
+  if (!grupo) return ''
+  switch (grupo.toUpperCase()) {
+    case 'GRUPO_1': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+    case 'GRUPO_2': return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+    case 'GRUPO_3': return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+    case 'GRUPO_4': return 'bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/30 dark:text-fuchsia-400'
+    case 'GRUPO_5': return 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400'
+    case 'GRUPO_6': return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+    default: return 'bg-gray-100 text-gray-700 dark:bg-gray-700/50 dark:text-gray-300'
+  }
 }
 
 // ── Helpers stock ─────────────────────────────────────────────────────────────
@@ -217,35 +237,35 @@ function fmtFecha(iso: string) {
 
       <div v-else-if="store.metricasCampana" class="grid grid-cols-2 lg:grid-cols-5 gap-4">
 
-        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 dark:hover:border-indigo-500/50">
           <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Total giros</p>
           <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
             {{ store.metricasCampana.totalGiros.toLocaleString() }}
           </p>
         </div>
 
-        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 dark:hover:border-indigo-500/50">
           <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Ganadores</p>
           <p class="mt-2 text-3xl font-bold text-emerald-600 dark:text-emerald-400">
             {{ store.metricasCampana.totalGanadores.toLocaleString() }}
           </p>
         </div>
 
-        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 dark:hover:border-indigo-500/50">
           <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Tasa ganadores</p>
           <p class="mt-2 text-3xl font-bold text-indigo-600 dark:text-indigo-400">
             {{ store.metricasCampana.porcentajeGanadores.toFixed(1) }}%
           </p>
         </div>
 
-        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 dark:hover:border-indigo-500/50">
           <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Premios entregados</p>
           <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
             {{ store.metricasCampana.premiosEntregados.toLocaleString() }}
           </p>
         </div>
 
-        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 dark:hover:border-indigo-500/50">
           <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Stock restante</p>
           <p class="mt-2 text-3xl font-bold"
              :class="store.metricasCampana.stockRestanteGlobal < 10
@@ -287,8 +307,8 @@ function fmtFecha(iso: string) {
                       :title="e.nombre">{{ e.nombre }}</span>
                 <div class="flex-1 flex items-center gap-2">
                   <div class="flex-1 h-5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                    <div class="h-full bg-indigo-500 dark:bg-indigo-400 rounded-full transition-all duration-700"
-                         :style="{ width: `${(e.giros / maxGiros) * 100}%` }"/>
+                    <div class="h-full bg-gradient-to-r from-indigo-500 to-purple-500 dark:from-indigo-600 dark:to-purple-600 rounded-full transition-all duration-1000 ease-out"
+                         :style="{ width: animatedBars ? `${(e.giros / maxGiros) * 100}%` : '0%' }"/>
                   </div>
                   <span class="text-sm font-bold text-gray-800 dark:text-gray-200 w-8 text-right">{{ e.giros }}</span>
                 </div>
@@ -417,6 +437,7 @@ function fmtFecha(iso: string) {
               <option value="">Todos los resultados</option>
               <option value="Ganador">Ganó premio</option>
               <option value="SinPremio">Sigue intentando</option>
+              <option value="Redimido">Redimido</option>
             </select>
           </div>
 
@@ -452,7 +473,13 @@ function fmtFecha(iso: string) {
         <!-- Header historial -->
         <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-gray-100 dark:border-gray-700">
           <div class="flex items-center gap-3">
-            <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Historial de Giros</h3>
+            <div class="flex items-center gap-2" title="Actualización en tiempo real">
+              <span class="relative flex h-2.5 w-2.5">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+              </span>
+              <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Historial de Giros</h3>
+            </div>
             <span v-if="store.historialTotalRegistros > 0"
                   class="text-xs text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">
               {{ store.historialTotalRegistros.toLocaleString() }} registros
@@ -510,8 +537,13 @@ function fmtFecha(iso: string) {
                 <td class="px-3 py-3 font-mono text-xs text-gray-700 dark:text-gray-200">
                   {{ g.identificacion || '—' }}
                 </td>
-                <td class="px-3 py-3 text-xs text-gray-600 dark:text-gray-300 hidden sm:table-cell">
-                  {{ g.grupo || '—' }}
+                <td class="px-3 py-3 hidden sm:table-cell">
+                  <span v-if="g.grupo"
+                        class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider"
+                        :class="getGrupoCls(g.grupo)">
+                    {{ etiquetaSegmento(g.grupo) }}
+                  </span>
+                  <span v-else class="text-xs text-gray-400 dark:text-gray-500">—</span>
                 </td>
                 <td class="px-3 py-3 text-xs text-gray-600 dark:text-gray-300 hidden md:table-cell">
                   {{ g.enroladorNombre || '—' }}

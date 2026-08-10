@@ -1,16 +1,54 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useAdminStore } from '../../stores/adminStore'
 import type { PremioAdmin, TipoPremio } from '../../types'
 import VolverButton from '@/components/VolverButton.vue'
 
 const store = useAdminStore()
-onMounted(() => store.cargarPremios())
+let probInterval: ReturnType<typeof setInterval> | null = null
+
+onMounted(async () => {
+  await Promise.all([
+    store.cargarPremios(),
+    store.cargarTiendas()
+  ])
+})
+
+onBeforeUnmount(() => {
+  if (probInterval) clearInterval(probInterval)
+})
 
 const grupoActivo = ref(0)
+const selectedTiendaInfo = ref<string>('')
+
+async function refetchProbabilidades() {
+  if (store.campanaActivaId && selectedTiendaInfo.value) {
+    await store.cargarProbabilidadesEnVivo(store.campanaActivaId, selectedTiendaInfo.value)
+  } else {
+    store.probabilidadesEnVivo = []
+  }
+}
+
+watch(selectedTiendaInfo, async () => {
+  if (probInterval) {
+    clearInterval(probInterval)
+    probInterval = null
+  }
+  await refetchProbabilidades()
+  
+  if (selectedTiendaInfo.value) {
+     probInterval = setInterval(refetchProbabilidades, 5 * 60 * 1000) // refresca cada 5 min
+  }
+})
 
 const grupo = computed(() => store.grupos[grupoActivo.value])
 const estadoActual = computed(() => grupo.value?.estado ?? 'incompleto')
+
+const currentProbability = computed(() => {
+  if (!grupo.value || store.probabilidadesEnVivo.length === 0) return null
+  return store.probabilidadesEnVivo.find(p => p.grupo === grupo.value.grupo)?.porcentajeGanar ?? 0
+})
+
 const barraColor = computed(() => {
   if (estadoActual.value === 'completo')    return 'bg-emerald-500'
   if (estadoActual.value === 'advertencia') return 'bg-yellow-400'
@@ -32,8 +70,13 @@ function cerrarEdit() { editando.value = null }
 async function guardarEdit() {
   if (!editando.value) return
   errorEdit.value = ''
-  await store.actualizarPremio(editGrupoIdx.value, editando.value.id, editando.value)
-  cerrarEdit()
+  try {
+    await store.actualizarPremio(editGrupoIdx.value, editando.value.id, editando.value)
+    cerrarEdit()
+  } catch (e: any) {
+    // No cerramos el modal: el admin decide si reintenta o recarga (ver toast global).
+    errorEdit.value = e?.response?.data?.error || 'No se pudo guardar el premio. Intenta de nuevo.'
+  }
 }
 
 // Modal añadir premio
@@ -83,16 +126,27 @@ const TIPO_LABELS: Record<TipoPremio, string> = {
 
     <template v-else-if="store.grupos.length">
 
-      <!-- Estado Global -->
-      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 px-5 py-4 shadow-sm">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 px-5 py-4 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div class="flex flex-wrap items-center gap-2">
           <span class="text-sm font-medium text-gray-600 dark:text-gray-400 mr-1">Estado Global:</span>
           <span v-for="(g, i) in store.grupos" :key="g.grupo"
             @click="grupoActivo = i"
             class="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold cursor-pointer transition-opacity hover:opacity-80"
-            :class="estadoBadge[g.estado].cls">
+            :class="[estadoBadge[g.estado].cls, { 'ring-2 ring-indigo-500 ring-offset-1 dark:ring-offset-gray-800': grupoActivo === i }]">
             G{{ i + 1 }} {{ estadoBadge[g.estado].icon }}
           </span>
+        </div>
+        
+        <div class="flex items-center gap-3">
+           <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              Simulador de Probabilidad
+           </label>
+           <select 
+             v-model="selectedTiendaInfo"
+             class="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-colors">
+              <option value="" disabled>Seleccione una tienda...</option>
+              <option v-for="t in store.tiendas" :key="t.id" :value="t.codigo">{{ t.nombre }} ({{ t.codigo }})</option>
+           </select>
         </div>
       </div>
 
@@ -118,20 +172,45 @@ const TIPO_LABELS: Record<TipoPremio, string> = {
         <!-- Contenido tab activo -->
         <div v-if="grupo" class="p-5 space-y-4">
 
-          <!-- Estado del grupo -->
-          <div class="flex items-center gap-3">
-            <div class="flex-1 h-3 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-              <div class="h-full rounded-full transition-all duration-500"
-                   :class="barraColor"
-                   :style="{ width: estadoActual === 'completo' ? '100%' : estadoActual === 'advertencia' ? '50%' : '10%' }"/>
+          <!-- Estado del grupo y Probabilidad -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-center">
+            <div class="flex items-center gap-3">
+              <div class="flex-1 h-3 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                <div class="h-full rounded-full transition-all duration-500"
+                     :class="barraColor"
+                     :style="{ width: estadoActual === 'completo' ? '100%' : estadoActual === 'advertencia' ? '50%' : '10%' }"/>
+              </div>
+              <span class="text-sm font-semibold whitespace-nowrap"
+                    :class="estadoActual === 'completo' ? 'text-emerald-600 dark:text-emerald-400' : estadoActual === 'advertencia' ? 'text-yellow-600' : 'text-red-500'">
+                <svg v-if="estadoActual === 'completo'" class="w-4 h-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                {{ estadoActual === 'completo' ? 'Configuración lista' : estadoActual === 'advertencia' ? 'Falta consolación' : 'Sin premios' }}
+              </span>
             </div>
-            <span class="text-sm font-semibold whitespace-nowrap"
-                  :class="estadoActual === 'completo' ? 'text-emerald-600 dark:text-emerald-400' : estadoActual === 'advertencia' ? 'text-yellow-600' : 'text-red-500'">
-              <svg v-if="estadoActual === 'completo'" class="w-4 h-4 inline mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-              </svg>
-              {{ estadoActual === 'completo' ? 'Grupo listo' : estadoActual === 'advertencia' ? 'Falta consolación' : 'Sin premios' }}
-            </span>
+
+            <!-- Widget Live Probability -->
+            <div v-if="selectedTiendaInfo" class="flex flex-col border-l border-gray-100 dark:border-gray-700 pl-6 pb-1">
+              <span class="text-xs font-semibold text-gray-400 tracking-wider uppercase mb-2">Live Probability (G{{ grupoActivo + 1 }})</span>
+              <div v-if="store.loadingProbabilidades" class="flex items-center gap-2 text-indigo-500 text-xs">
+                <div class="w-4 h-4 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin"/>
+                Calculando tiempo real...
+              </div>
+              <div v-else class="flex flex-col gap-1.5 w-full">
+                 <div class="flex items-center justify-between text-xs font-medium dark:text-gray-200">
+                    <span>Oportunidad de Ganar:</span>
+                    <span class="text-emerald-600 dark:text-emerald-400 font-bold text-[13px]">{{ currentProbability?.toFixed(1) ?? '0.0' }}%</span>
+                 </div>
+                 <div class="w-full h-2 rounded-full overflow-hidden flex bg-gray-100 dark:bg-gray-700 shadow-inner">
+                    <div class="h-full bg-emerald-500 dark:bg-emerald-400 shadow-md transition-all duration-[2000ms] ease-out relative"
+                         :style="{ width: `${currentProbability ?? 0}%` }">
+                         <div class="absolute inset-0 bg-white/20 w-full animate-[pulse_2s_ease-in-out_infinite]"/>
+                    </div>
+                 </div>
+                 <p class="text-[10px] text-gray-400">Variación depende del pacing actual (refresh 5m).</p>
+              </div>
+            </div>
+            
           </div>
 
           <!-- Tabla de premios -->

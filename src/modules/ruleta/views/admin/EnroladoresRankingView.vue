@@ -21,11 +21,17 @@ const enroladoresFiltrados = computed(() => {
 })
 
 const maxGiros = computed(() => store.maxGiros)
+const animatedBars = ref(false)
+import { watch } from 'vue'
+watch(() => enroladoresFiltrados.value, () => {
+  animatedBars.value = false
+  setTimeout(() => { animatedBars.value = true }, 50)
+}, { immediate: true, deep: true })
 
 function barColor(estado: string): string {
-  if (estado === 'alerta')   return 'bg-amber-400'
+  if (estado === 'alerta')   return 'bg-gradient-to-r from-amber-400 to-amber-500'
   if (estado === 'inactivo') return 'bg-slate-300 dark:bg-slate-600'
-  return 'bg-indigo-500'
+  return 'bg-gradient-to-r from-indigo-500 to-purple-500 dark:from-indigo-600 dark:to-purple-600'
 }
 
 function dotClass(estado: string): string {
@@ -63,19 +69,19 @@ function dotClass(estado: string): string {
 
     <!-- KPI mini -->
     <div v-else class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm text-center">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 dark:hover:border-indigo-500/50">
         <p class="text-xs text-gray-400">Total enroladores</p>
         <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ store.enroladores.length }}</p>
       </div>
-      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm text-center">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 dark:hover:border-indigo-500/50">
         <p class="text-xs text-gray-400">Total giros</p>
         <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ store.enroladores.reduce((a,e) => a+e.giros,0) }}</p>
       </div>
-      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm text-center">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 dark:hover:border-indigo-500/50">
         <p class="text-xs text-gray-400">Total afiliaciones</p>
         <p class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">{{ store.enroladores.reduce((a,e) => a+e.afiliaciones,0) }}</p>
       </div>
-      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm text-center">
+      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 dark:hover:border-indigo-500/50">
         <p class="text-xs text-gray-400">Con alerta</p>
         <p class="mt-1 text-2xl font-bold text-amber-500">{{ store.totalAlertas }}</p>
       </div>
@@ -94,9 +100,9 @@ function dotClass(estado: string): string {
               <p class="text-xs text-gray-400">{{ e.tienda }}</p>
             </div>
             <div class="flex-1 h-7 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
-              <div class="h-full rounded-lg transition-all duration-700"
+              <div class="h-full rounded-lg transition-all duration-1000 ease-out"
                    :class="barColor(e.estado)"
-                   :style="{ width: `${(e.giros / maxGiros) * 100}%` }"/>
+                   :style="{ width: animatedBars ? `${(e.giros / maxGiros) * 100}%` : '0%' }"/>
             </div>
             <span class="w-7 flex-shrink-0 text-right text-sm font-semibold text-gray-700 dark:text-gray-200">{{ e.giros }}</span>
           </div>

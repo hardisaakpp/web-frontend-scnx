@@ -147,6 +147,9 @@ export interface PremioAdmin {
   imagen_url?: string
   controla_stock_por_tienda: boolean
   orden_ruleta?: number | null
+  // Token de concurrencia optimista (base64) recibido del backend. Se debe reenviar
+  // tal cual al guardar para que el servidor detecte ediciones simultáneas (409).
+  rowVersion?: string
 }
 
 export interface CrearPremioDTO {
@@ -174,6 +177,11 @@ export interface GrupoProbabilidad {
   label: string
   estado: EstadoGrupo
   premios: PremioAdmin[]
+}
+
+export interface ProbabilidadGrupo {
+  grupo: string
+  porcentajeGanar: number
 }
 
 // ─── Admin: Inventario por tienda ─────────────────────────────────────────────
@@ -288,6 +296,7 @@ export interface PremioBackendResponse {
   imagenUrl?: string
   controlaStockPorTienda?: boolean
   inventariosTienda?: InventarioTiendaBackend[]
+  rowVersion?: string
 }
 
 export interface StockPremio {
@@ -297,6 +306,23 @@ export interface StockPremio {
   stockTotal: number
   stockDisponible: number
   alertaBajoStock: boolean
+}
+
+// ─── Preview de impacto de stock en el pacing (SpinEngine) ───────────────────
+export interface PreviewImpactoStockItem {
+  premioId: string
+  tiendaCodigo: string
+  nuevoStockTotal: number
+}
+
+export interface ImpactoStock {
+  premioId: string
+  premioNombre: string
+  tiendaCodigo: string
+  stockActual: number
+  stockNuevo: number
+  disponibleHoyActual: number
+  disponibleHoyNuevo: number
 }
 
 // ─── Verificación y redención ─────────────────────────────────────────────────
@@ -351,7 +377,22 @@ export interface HistorialGiroItem {
   grupo: string | null
 }
 
-export type EstadoPremioFiltro = 'Ganador' | 'SinPremio'
+// Enum del backend (Ruleta.Domain.Enums.EstadoGiro). Pendiente/Anulado no se
+// ofrecen como filtro en la UI: en la práctica cualquier Giro se resuelve a
+// Ganador o SinPremio al crearse, y nunca se marca Anulado.
+export enum EstadoGiro {
+  Pendiente = 0,
+  Ganador = 1,
+  SinPremio = 2,
+  Anulado = 3,
+  Redimido = 4
+}
+
+// Se filtra por el NOMBRE del enum (?estado=Redimido), no por su valor numérico:
+// así el query string es legible en devtools/logs y no se rompe si el backend
+// reordena el enum. El model binder de ASP.NET Core para [FromQuery] resuelve
+// el nombre directo a GiroFilterDto.Estado sin necesidad de mandar "4".
+export type EstadoPremioFiltro = 'Ganador' | 'SinPremio' | 'Redimido'
 
 export interface GiroFilters {
   campanaId?: string
