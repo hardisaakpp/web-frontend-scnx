@@ -22,7 +22,6 @@ export UPSTREAM_SLAYER=${UPSTREAM_SLAYER:-http://192.168.2.153:8093}
 export UPSTREAM_RULETA=${UPSTREAM_RULETA:-http://host.docker.internal:5006}
 export UPSTREAM_TRANSACCIONES=${UPSTREAM_TRANSACCIONES:-http://host.docker.internal:8080}
 export UPSTREAM_TRANSFERENCIAS_DIRECTAS=${UPSTREAM_TRANSFERENCIAS_DIRECTAS:-http://host.docker.internal:8014}
-export UPSTREAM_DEMANDA_OTB=${UPSTREAM_DEMANDA_OTB:-http://210.17.1.96:8001}
 
 # ==============================================================================
 # 2. SMART MAPPING (localhost -> host.docker.internal)
