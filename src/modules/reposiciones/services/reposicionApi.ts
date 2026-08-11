@@ -18,6 +18,11 @@ import type {
   StatusResponse
 } from '../types'
 
+interface AlmacenListResponse {
+  items: Almacen[];
+  cdCodesInvalidos?: { codigo: string; razon: string }[];
+}
+
 interface ReporteGeneralParams {
   whsCode?: string;
   desde?: string;
@@ -51,8 +56,8 @@ const reposicionApi = {
   getAlmacenes: async () => {
     const url = 'Almacen'
     console.log("🚀 [ReposicionAPI] getAlmacenes:", url)
-    const response = await reposicionesApi.get<Almacen[]>(url)
-    return response.data
+    const response = await reposicionesApi.get<AlmacenListResponse>(url)
+    return response.data.items
   },
 
   syncAlmacenes: async () => {
