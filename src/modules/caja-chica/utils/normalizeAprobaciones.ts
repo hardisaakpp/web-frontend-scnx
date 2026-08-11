@@ -35,6 +35,7 @@ export const normalizeAprobacion = (item: any): AprobacionItem => ({
   nombreCustodio: normalizeString(item.nombreCustodio ?? item.NombreCustodio ?? ''),
   cedulaCustodio: normalizeString(item.cedulaCustodio ?? item.CedulaCustodio ?? ''),
   fechaCreacion: String(item.fechaCreacion ?? item.FechaCreacion ?? ''),
+  montoInicial: Number(item.montoInicial ?? item.MontoInicial ?? 0),
   nombreGasto: normalizeString(item.nombreGasto ?? item.NombreGasto ?? ''),
   concepto: normalizeString(item.concepto ?? item.Concepto ?? ''),
   total: Number(item.total ?? item.Total ?? 0),
