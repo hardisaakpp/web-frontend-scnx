@@ -368,6 +368,7 @@ async function enviarNotificacion() {
 /* ── Escena 3D y Contenedor Flip ─────────────────────────────────────────── */
 .scene-3d {
   perspective: 1200px;
+  animation: card-pop-in 0.6s cubic-bezier(0.34, 1.5, 0.64, 1) both;
 }
 .card-flip-container {
   display: grid;
@@ -375,7 +376,6 @@ async function enviarNotificacion() {
   position: relative;
   transition: transform 0.8s cubic-bezier(0.34, 1.5, 0.64, 1);
   transform-style: preserve-3d;
-  animation: card-pop-in 0.6s cubic-bezier(0.34, 1.5, 0.64, 1) both;
 }
 .card-flip-container.is-flipped {
   transform: rotateY(180deg);
