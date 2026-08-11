@@ -123,6 +123,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useConciliacionStore } from '../stores/conciliacionStore'
 import { useToast } from '@/composables/useToast'
+import { NUMBER_LOCALE } from '@/plugins/locale'
 
 const store = useConciliacionStore()
 const toast = useToast()
@@ -145,7 +146,7 @@ onMounted(() => {
 })
 
 function formatMonto(monto: number): string {
-  return monto.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return monto.toLocaleString(NUMBER_LOCALE, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 async function ejecutarConciliacion() {

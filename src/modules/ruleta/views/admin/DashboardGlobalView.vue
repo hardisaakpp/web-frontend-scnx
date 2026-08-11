@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { APP_LOCALE } from '@/plugins/locale'
 import { useAdminStore } from '../../stores/adminStore'
 import { ruletaService } from '../../services/ruletaApi'
 import VolverButton from '@/components/VolverButton.vue'
@@ -179,7 +180,7 @@ function stockNumCls(disponible: number, total: number) {
 function fmtFecha(iso: string) {
   if (!iso) return '—'
   try {
-    return new Date(iso).toLocaleString('es-EC', {
+    return new Date(iso).toLocaleString(APP_LOCALE, {
       day: '2-digit', month: '2-digit', year: '2-digit',
       hour: '2-digit', minute: '2-digit', hour12: false,
     })

@@ -282,6 +282,7 @@ import { ChevronLeftIcon, ArrowPathIcon, ArrowDownTrayIcon, ShoppingCartIcon, Sh
 import { inventarioSesionesService } from '../services/inventarioSesionesApi'
 import { useInventarioModulePermissions } from '../composables/useInventarioModulePermissions'
 import type { SessionDetailLineDto, SessionDetailStatsDto, SessionScansByUserDto } from '../types'
+import { APP_LOCALE } from '@/plugins/locale'
 
 const router = useRouter()
 const route = useRoute()
@@ -373,8 +374,8 @@ function fmtQty(n: number): string {
 
 function fmtDt(v: string): string {
   const d = new Date(v)
-  return d.toLocaleDateString('es', { day: '2-digit', month: '2-digit', year: '2-digit' }) +
-    ' ' + d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  return d.toLocaleDateString(APP_LOCALE, { day: '2-digit', month: '2-digit', year: '2-digit' }) +
+    ' ' + d.toLocaleTimeString(APP_LOCALE, { hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }
 
 function rowClass(status: string): string {

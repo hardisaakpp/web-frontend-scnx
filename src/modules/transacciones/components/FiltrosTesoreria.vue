@@ -49,7 +49,8 @@
           v-model="codigoAlmacenLocal"
           type="text"
           placeholder="ALM-NORTE"
-          class="w-36 px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+          :disabled="!!almacenFijo"
+          class="w-36 px-3 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 disabled:opacity-50"
         />
       </div>
 
@@ -114,6 +115,7 @@ const props = withDefaults(defineProps<{
   hayResultados?: boolean
   estados?: EstadoTransaccion[]
   estadoFijo?: EstadoTransaccion
+  almacenFijo?: string
 }>(), {
   mostrarExportar: true,
   hayResultados: false,
@@ -125,10 +127,6 @@ const emit = defineEmits<{
   (e: 'exportar', filtros: FiltrosTesoreria): void
 }>()
 
-// Switch rápido: poner en false para desactivar el límite de rango de fechas.
-const LIMITE_31_DIAS_ACTIVO = false
-const TREINTA_UN_DIAS_MS = 31 * 24 * 60 * 60 * 1000
-
 const ahora = new Date()
 const haceSieteDias = new Date(ahora.getTime() - 7 * 24 * 60 * 60 * 1000)
 
@@ -139,7 +137,7 @@ function toDatetimeLocal(d: Date): string {
 const idCuentaLocal = ref<number>(0)
 const desdeLocal = ref(toDatetimeLocal(haceSieteDias))
 const hastaLocal = ref(toDatetimeLocal(ahora))
-const codigoAlmacenLocal = ref('')
+const codigoAlmacenLocal = ref(props.almacenFijo ?? '')
 const estadoLocal = ref<EstadoTransaccion | ''>('')
 
 // Auto-seleccionar si solo hay una cuenta
@@ -149,11 +147,15 @@ watch(() => props.cuentas, (lista) => {
   }
 }, { immediate: true })
 
+// El código de almacén fijo puede llegar después del montaje (p. ej. tras cargar el usuario en sesión)
+watch(() => props.almacenFijo, (codigo) => {
+  codigoAlmacenLocal.value = codigo ?? ''
+})
+
 const errorRango = computed(() => {
   if (!desdeLocal.value || !hastaLocal.value) return ''
   const diff = new Date(hastaLocal.value).getTime() - new Date(desdeLocal.value).getTime()
   if (diff < 0) return 'La fecha "Hasta" debe ser posterior a "Desde".'
-  if (LIMITE_31_DIAS_ACTIVO && diff > TREINTA_UN_DIAS_MS) return 'El rango máximo permitido es de 31 días.'
   return ''
 })
 
@@ -166,7 +168,7 @@ function buildFiltros(): FiltrosTesoreria {
     idCuenta: idCuentaLocal.value,
     desde: new Date(desdeLocal.value).toISOString(),
     hasta: new Date(hastaLocal.value).toISOString(),
-    codigoAlmacen: codigoAlmacenLocal.value || null,
+    codigoAlmacen: props.almacenFijo ?? (codigoAlmacenLocal.value || null),
     estado: props.estadoFijo ?? ((estadoLocal.value as EstadoTransaccion) || null),
   }
 }

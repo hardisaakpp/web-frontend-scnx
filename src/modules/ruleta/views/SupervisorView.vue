@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, computed } from 'vue'
+import { APP_LOCALE } from '@/plugins/locale'
 import { useSupervisorStore } from '../stores/supervisorStore'
 import type { EstadoEnrolador } from '../types'
 import VolverButton from '@/components/VolverButton.vue'
@@ -10,7 +11,7 @@ onMounted(() => store.cargarDashboard())
 
 const fechaHoy = computed(() => {
   if (!store.metricas) return 'Hoy'
-  return new Date(store.metricas.fecha + 'T00:00:00').toLocaleDateString('es-EC', {
+  return new Date(store.metricas.fecha + 'T00:00:00').toLocaleDateString(APP_LOCALE, {
     weekday: 'long', day: 'numeric', month: 'long'
   })
 })

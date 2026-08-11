@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, watch, computed } from 'vue'
+import { APP_LOCALE } from '@/plugins/locale'
 import { useReposicionStore } from '../stores/reposicionStore'
 import reposicionApi from '../services/reposicionApi'
 import type { HistorialCabecera, HistorialDetalleItem, HistorialSolicitudSap } from '../types'
@@ -23,11 +24,7 @@ const loading = ref(false)
 const fechaDesde = ref(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
 const fechaHasta = ref(new Date().toISOString().split('T')[0])
 
-const currentWarehouseName = computed(() => {
-  const code = store.filters.whsCode
-  const whs = store.almacenes.find(a => a.whsCode === code)
-  return whs ? `${code}` : code
-})
+const currentWarehouseName = computed(() => store.etiquetaAlmacen(store.filters.whsCode))
 
 const fetchHistorial = async () => {
   if (!store.filters.whsCode) return
@@ -61,7 +58,7 @@ const getStatusClass = (integrado: boolean) => {
 }
 
 const formatDate = (dateStr: string) => {
-  return new Date(dateStr).toLocaleDateString('es-ES', {
+  return new Date(dateStr).toLocaleDateString(APP_LOCALE, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -193,7 +190,7 @@ const viewSolicitudes = async (whsCode: string, fecha: string) => {
               </td>
               <td class="px-6 py-4">
                 <div class="flex items-center gap-2">
-                  <span class="text-sm font-medium text-gray-600 dark:text-gray-400">{{ item.fromWhs }}</span>
+                  <span class="text-sm font-medium text-gray-600 dark:text-gray-400">{{ store.etiquetaAlmacen(item.fromWhs) }}</span>
                 </div>
               </td>
               <td class="px-6 py-4">
@@ -203,7 +200,7 @@ const viewSolicitudes = async (whsCode: string, fecha: string) => {
               </td>
               <td class="px-6 py-4">
                 <div class="flex items-center gap-2">
-                  <span class="text-sm font-bold text-blue-600 dark:text-blue-400">{{ item.toWhs }}</span>
+                  <span class="text-sm font-bold text-blue-600 dark:text-blue-400">{{ store.etiquetaAlmacen(item.toWhs) }}</span>
                 </div>
               </td>
               <td class="px-6 py-4">

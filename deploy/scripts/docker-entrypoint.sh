@@ -17,9 +17,11 @@ export UPSTREAM_INV_PLANES=${UPSTREAM_INV_PLANES:-$UPSTREAM_INVENTARIO}
 export UPSTREAM_CONCILIACION=${UPSTREAM_CONCILIACION:-http://host.docker.internal:8005}
 export UPSTREAM_MAESTRO=${UPSTREAM_MAESTRO:-http://host.docker.internal:8004}
 export UPSTREAM_REPOSICION=${UPSTREAM_REPOSICION:-http://host.docker.internal:8006}
+export UPSTREAM_RECEPCION=${UPSTREAM_RECEPCION:-http://host.docker.internal:8007}
 export UPSTREAM_SLAYER=${UPSTREAM_SLAYER:-http://192.168.2.153:8093}
 export UPSTREAM_RULETA=${UPSTREAM_RULETA:-http://host.docker.internal:5006}
 export UPSTREAM_TRANSACCIONES=${UPSTREAM_TRANSACCIONES:-http://host.docker.internal:8080}
+export UPSTREAM_TRANSFERENCIAS_DIRECTAS=${UPSTREAM_TRANSFERENCIAS_DIRECTAS:-http://host.docker.internal:8014}
 
 # ==============================================================================
 # 2. SMART MAPPING (localhost -> host.docker.internal)

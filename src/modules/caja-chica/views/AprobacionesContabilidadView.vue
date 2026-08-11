@@ -95,7 +95,7 @@
               <div>
                 <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Liquidacion #{{ group.idLiquidacion }}</h3>
                 <p class="text-xs text-gray-500 dark:text-gray-400">
-                  {{ group.totalItems }} detalles pendientes · Tienda: {{ group.codAlmacen }} · Custodio: {{ group.nombreCustodio }} ({{ group.cedulaCustodio || '-' }}) · Supervisor: {{ getGroupSupervisorLabel(group.items) }} · Fecha: {{ formatDate(group.fechaCreacion) }}
+                  {{ group.totalItems }} detalles pendientes · Tienda: {{ group.codAlmacen }} · Custodio: {{ group.nombreCustodio }} ({{ group.cedulaCustodio || '-' }}) · Supervisor: {{ getGroupSupervisorLabel(group.items) }} · Fecha: {{ formatDate(group.fechaCreacion) }} · Monto inicial: {{ formatAmount(group.montoInicial) }}
                 </p>
               </div>
               <div class="flex items-center gap-3">
@@ -528,6 +528,7 @@
 </template>
 
 <script setup lang="ts">
+import { APP_LOCALE } from '@/plugins/locale'
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { cajaChicaApi } from '@/lib/http'
 import api from '@/services/api'
@@ -730,7 +731,8 @@ const groupedPendientes = computed(() => {
       codAlmacen: base?.codAlmacen || '',
       nombreCustodio: base?.nombreCustodio || '',
       cedulaCustodio: base?.cedulaCustodio || '',
-      fechaCreacion: base?.fechaCreacion || ''
+      fechaCreacion: base?.fechaCreacion || '',
+      montoInicial: base?.montoInicial ?? 0
     }
   })
 })
@@ -1160,7 +1162,7 @@ const downloadPdf = () => {
     .cabecera .stats{display:flex;gap:14px;margin-top:4px}
     .cabecera .stat{font-size:10px;opacity:.85}
     .cabecera .stat strong{font-weight:700;opacity:1}
-    .meta{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border-bottom:1px solid #e5e7eb}
+    .meta{display:grid;grid-template-columns:repeat(3,1fr);gap:0;border-bottom:1px solid #e5e7eb}
     .meta-item{padding:8px 14px;border-right:1px solid #e5e7eb}
     .meta-item:last-child{border-right:none}
     .meta-label{font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:2px}
@@ -1237,6 +1239,7 @@ const downloadPdf = () => {
           <div class="meta-item"><div class="meta-label">Custodio</div><div class="meta-value">${esc(group.nombreCustodio || '-')}</div></div>
           <div class="meta-item"><div class="meta-label">Cédula custodio</div><div class="meta-value">${esc(group.cedulaCustodio || '-')}</div></div>
           <div class="meta-item"><div class="meta-label">Fecha creación</div><div class="meta-value">${fmt(group.fechaCreacion)}</div></div>
+          <div class="meta-item"><div class="meta-label">Monto inicial</div><div class="meta-value">$${fmtAmt(group.montoInicial)}</div></div>
           <div class="meta-item"><div class="meta-label">Nivel aprobación</div><div class="meta-value">Contabilidad (Niv. 2)</div></div>
         </div>
         <div class="section-title">Ítems pendientes de aprobación</div>
@@ -1254,7 +1257,7 @@ const downloadPdf = () => {
   const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Aprobaciones Contabilidad</title><style>${CSS}</style></head><body>
     <div style="margin-bottom:16px;border-bottom:2px solid #7c3aed;padding-bottom:8px;display:flex;justify-content:space-between;align-items:flex-end">
       <div><div style="font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#6b7280">Reporte</div><div style="font-size:16px;font-weight:700;color:#7c3aed">Aprobaciones Contabilidad</div></div>
-      <div style="text-align:right;font-size:10px;color:#6b7280">Generado: ${new Date().toLocaleString('es-ES')}<br>${groups.length} liquidación(es) pendientes</div>
+      <div style="text-align:right;font-size:10px;color:#6b7280">Generado: ${new Date().toLocaleString(APP_LOCALE)}<br>${groups.length} liquidación(es) pendientes</div>
     </div>
     ${sectionsHtml}
   </body></html>`

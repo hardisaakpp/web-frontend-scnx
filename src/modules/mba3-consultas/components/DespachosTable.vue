@@ -520,6 +520,7 @@ import { useRouter } from 'vue-router'
 import type { Despacho, DespachoDetalle } from '../types'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import { useToast } from '@/composables/useToast'
+import { APP_LOCALE, NUMBER_LOCALE } from '@/plugins/locale'
 import { useTablePreferences } from '@/composables/useTablePreferences'
 import LoadingSpinner from './LoadingSpinner.vue'
 
@@ -907,7 +908,7 @@ function formatDate(dateString: string): string {
   if (!dateString) return '-'
   try {
     const date = new Date(dateString)
-    return date.toLocaleDateString('es-ES', { 
+    return date.toLocaleDateString(APP_LOCALE, { 
       year: 'numeric', 
       month: '2-digit', 
       day: '2-digit' 
@@ -1017,7 +1018,7 @@ async function copyToClipboard(text: string) {
 
 function formatCurrency(value: number | undefined | null): string {
   if (value === null || value === undefined) return '-'
-  return new Intl.NumberFormat('es-ES', {
+  return new Intl.NumberFormat(NUMBER_LOCALE, {
     style: 'currency',
     currency: 'USD',
     minimumFractionDigits: 2,
@@ -1026,7 +1027,7 @@ function formatCurrency(value: number | undefined | null): string {
 
 function formatNumber(value: number | undefined | null): string {
   if (value === null || value === undefined) return '-'
-  return new Intl.NumberFormat('es-ES', {
+  return new Intl.NumberFormat(NUMBER_LOCALE, {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(value)
