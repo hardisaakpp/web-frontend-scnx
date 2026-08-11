@@ -15,6 +15,12 @@ import {
 import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue'
 import reposicionApi from '../services/reposicionApi'
 import type { CatalogoItemDetail, Almacen } from '../types'
+import { useAuthStore } from '@/stores/auth'
+import { useNegocioScope } from '../composables/useNegocioScope'
+
+const authStore = useAuthStore()
+const isAdmin = computed(() => authStore.hasPermission('reposiciones.administrador'))
+const { misCdCodes } = useNegocioScope()
 
 const store = useReposicionStore()
 const {
@@ -79,7 +85,8 @@ onMounted(async () => {
   document.documentElement.style.overflow = 'hidden'
 
   try {
-    almacenes.value = await reposicionApi.getAlmacenes()
+    // Admin ve todo (sin filtro); un usuario "negocio" solo su(s) Centro(s) de Distribución.
+    almacenes.value = await reposicionApi.getAlmacenes(isAdmin.value ? undefined : misCdCodes.value)
   } catch (err) {
     console.error('Error al cargar bodegas', err)
   }

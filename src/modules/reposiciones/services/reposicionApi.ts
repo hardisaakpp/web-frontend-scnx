@@ -53,10 +53,13 @@ const reposicionApi = {
     return response.data
   },
 
-  getAlmacenes: async () => {
+  getAlmacenes: async (cdCode?: string | string[]) => {
     const url = 'Almacen'
-    console.log("🚀 [ReposicionAPI] getAlmacenes:", url)
-    const response = await reposicionesApi.get<AlmacenListResponse>(url)
+    const codes = cdCode ? (Array.isArray(cdCode) ? cdCode : [cdCode]).filter(Boolean) : []
+    const params = new URLSearchParams()
+    codes.forEach(c => params.append('cdCode', c))
+    console.log("🚀 [ReposicionAPI] getAlmacenes:", url, codes)
+    const response = await reposicionesApi.get<AlmacenListResponse>(url, { params })
     return response.data.items
   },
 

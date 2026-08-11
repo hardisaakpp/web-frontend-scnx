@@ -110,8 +110,12 @@ export const useReposicionStore = defineStore('reposicion', {
           const accessList = Array.isArray(accesses) ? accesses : [accesses]
           accessList.forEach((a: any) => {
             if (a.codAlmacen) {
+              const info = this.catalogoAlmacenes.find(c => c.code === a.codAlmacen)
+              // Un Centro de Distribución no es un destino de reposición: si el
+              // codAlmacen asignado resulta ser un CD (uso del rol "negocio"),
+              // se excluye de las bodegas seleccionables en el catálogo de tienda.
+              if (info?.esCentroDistribucion) return
               if (!newAlmacenes.some(alm => alm.code === a.codAlmacen)) {
-                const info = this.catalogoAlmacenes.find(c => c.code === a.codAlmacen)
                 newAlmacenes.push({
                   code: a.codAlmacen,
                   name: info?.name ?? a.codAlmacen

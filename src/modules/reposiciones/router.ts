@@ -10,17 +10,18 @@ const routes: RouteRecordRaw[] = [
       requiresAuth: true,
       title: 'Reposiciones',
       icon: 'CubeIcon',
-      permissions: ['reposiciones.tienda', 'reposiciones.administrador'],
+      permissions: ['reposiciones.tienda', 'reposiciones.administrador', 'reposiciones.negocio'],
     },
     beforeEnter: (to, from, next) => {
       const authStore = useAuthStore()
       const isTienda = authStore.hasPermission('reposiciones.tienda')
       const isAdmin = authStore.hasPermission('reposiciones.administrador')
+      const isNegocio = authStore.hasPermission('reposiciones.negocio')
 
-      if (isTienda && !isAdmin) {
+      if (isTienda && !isAdmin && !isNegocio) {
         next('/reposiciones/catalogo') // Solo tienda: única vista operativa, acceso directo
-      } else if (isTienda || isAdmin) {
-        next() // Admin (con o sin tienda): tiene múltiples vistas, debe elegir en el Dashboard
+      } else if (isTienda || isAdmin || isNegocio) {
+        next() // Tiene más de un perfil o vistas de gestión: debe elegir en el Dashboard
       } else {
         next('/login') // No debería pasar si hay guardia global
       }
@@ -63,7 +64,7 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresAuth: true,
       title: 'Historial Global',
-      permissions: ['reposiciones.administrador'],
+      permissions: ['reposiciones.administrador', 'reposiciones.negocio'],
     },
   },
   {
@@ -73,7 +74,7 @@ const routes: RouteRecordRaw[] = [
     meta: {
       requiresAuth: true,
       title: 'Catálogo (Administrador)',
-      permissions: ['reposiciones.administrador'],
+      permissions: ['reposiciones.administrador', 'reposiciones.negocio'],
     },
   },
   {

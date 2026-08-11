@@ -11,6 +11,8 @@ import { useAuthStore } from '@/stores/auth'
 const authStore = useAuthStore()
 const isTienda = computed(() => authStore.hasPermission('reposiciones.tienda'))
 const isAdmin = computed(() => authStore.hasPermission('reposiciones.administrador'))
+const isNegocio = computed(() => authStore.hasPermission('reposiciones.negocio'))
+const canManage = computed(() => isAdmin.value || isNegocio.value)
 
 const options = computed(() => [
   ...(isTienda.value ? [{
@@ -20,7 +22,7 @@ const options = computed(() => [
     icon: BuildingStorefrontIcon,
     color: 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400'
   }] : []),
-  ...(isAdmin.value ? [
+  ...(canManage.value ? [
     {
       title: 'Catálogo - Administrador',
       description: 'Consulta el catálogo por tienda y solicitudes en curso - Diseñado para administradores',
@@ -34,7 +36,9 @@ const options = computed(() => [
       link: '/reposiciones/admin/historial',
       icon: PresentationChartLineIcon,
       color: 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
-    },
+    }
+  ] : []),
+  ...(isAdmin.value ? [
     {
       title: 'Configuración',
       description: 'Administración general del módulo, almacenes, centros de distribución y más parámetros.',
