@@ -138,10 +138,11 @@ const TIPO_LABELS: Record<TipoPremio, string> = {
         </div>
         
         <div class="flex items-center gap-3">
-           <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+           <label for="simulador-probabilidad-tienda" class="text-xs font-semibold text-gray-500 uppercase tracking-wide">
               Simulador de Probabilidad
            </label>
-           <select 
+           <select
+             id="simulador-probabilidad-tienda"
              v-model="selectedTiendaInfo"
              class="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-colors">
               <option value="" disabled>Seleccione una tienda...</option>

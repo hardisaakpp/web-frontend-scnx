@@ -384,9 +384,9 @@ function getGrupoCls(grupo: string): string {
         <span v-if="totalPaginas" class="text-xs text-gray-400">Página {{ paginaActual }} de {{ totalPaginas }}</span>
       </div>
 
-      <div v-if="loading" class="flex justify-center py-14" role="status" aria-label="Cargando historial">
+      <output v-if="loading" class="flex justify-center py-14" aria-label="Cargando historial">
         <div class="h-8 w-8 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent" />
-      </div>
+      </output>
 
       <div v-else class="overflow-x-auto">
         <table class="w-full text-sm">

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useSupervisorStore } from '../../stores/supervisorStore'
 import VolverButton from '@/components/VolverButton.vue'
 
@@ -22,7 +22,6 @@ const enroladoresFiltrados = computed(() => {
 
 const maxGiros = computed(() => store.maxGiros)
 const animatedBars = ref(false)
-import { watch } from 'vue'
 watch(() => enroladoresFiltrados.value, () => {
   animatedBars.value = false
   setTimeout(() => { animatedBars.value = true }, 50)

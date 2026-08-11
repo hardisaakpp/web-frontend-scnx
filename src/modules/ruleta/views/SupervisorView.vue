@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, computed } from 'vue'
+import { onMounted, computed, ref, watch } from 'vue'
 import { APP_LOCALE } from '@/plugins/locale'
 import { useSupervisorStore } from '../stores/supervisorStore'
 import type { EstadoEnrolador } from '../types'
@@ -23,7 +23,6 @@ const subtitulo = computed(() =>
 )
 
 const animatedBars = ref(false)
-import { ref, watch } from 'vue' // Vue imports auto-merged by compiler but let's be safe
 watch(() => store.enroladoresOrdenados, () => {
   animatedBars.value = false
   setTimeout(() => { animatedBars.value = true }, 50)

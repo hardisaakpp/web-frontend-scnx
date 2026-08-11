@@ -356,6 +356,65 @@ async function confirmarReduccionStockYGuardar() {
   }
 }
 
+// Sube la imagen nueva (si hay una) y la vuelca en `data` — primero para obtener la URL
+// real y pública del backend; nunca se persiste la URL temporal del navegador.
+async function subirImagenSiCorresponde(data: Omit<PremioAdmin, 'id'>): Promise<boolean> {
+  if (!imagenFile.value) return true
+  subiendoImagen.value = true
+  try {
+    data.imagen_url = await store.subirImagen(imagenFile.value)
+    return true
+  } catch (err: any) {
+    errorForm.value = 'Error al subir la imagen: ' + (err.response?.data?.error || err.message)
+    return false
+  } finally {
+    subiendoImagen.value = false
+  }
+}
+
+// Editar el stock total reemplaza el valor absoluto, no lo suma, así que con la campaña
+// Activa ese cambio aplica de inmediato sobre lo que el SpinEngine ofrece al cliente:
+// se detecta la reducción aquí para pedir confirmación antes de guardar (ver el comentario
+// de premioParaConfirmarReduccion más abajo).
+function detectarReduccionStockConCampanaActiva(
+  grupoIdx: number,
+  data: Omit<PremioAdmin, 'id'>,
+): typeof premioParaConfirmarReduccion.value {
+  const premioActual = premioEditando.value
+  if (
+    !premioActual ||
+    !campanaActiva.value ||
+    typeof data.stock_total !== 'number' ||
+    typeof premioActual.stock_total !== 'number' ||
+    data.stock_total >= premioActual.stock_total
+  ) {
+    return null
+  }
+  return {
+    grupoIdx,
+    premioId: premioActual.id,
+    data,
+    stockActual: premioActual.stock_total,
+    stockNuevo: data.stock_total,
+  }
+}
+
+async function persistirPremio(grupoIdx: number, data: Omit<PremioAdmin, 'id'>) {
+  try {
+    if (premioEditando.value) {
+      const premioId = premioEditando.value.id
+      await store.actualizarPremio(grupoIdx, premioId, data)
+      irAPaso2OCerrar({ id: premioId, ...data } as PremioAdmin)
+    } else {
+      const nuevo = await store.agregarPremio(grupoIdx, data)
+      if (!nuevo) { errorForm.value = 'No se pudo guardar el premio.'; return }
+      irAPaso2OCerrar(nuevo)
+    }
+  } catch (e: any) {
+    errorForm.value = e?.response?.data?.error ?? e?.message ?? 'Error al guardar el premio.'
+  }
+}
+
 async function guardarPremio() {
   errorForm.value = ''
   if (form.value.es_vacio && !form.value.nombre.trim()) form.value.nombre = '¡Sigue intentando!'
@@ -368,20 +427,7 @@ async function guardarPremio() {
   try {
     const data = buildPremioData()
 
-    // Subir imagen si hay un archivo nuevo — se sube primero para obtener la URL
-    // real y pública del backend; nunca se persiste la URL temporal del navegador.
-    if (imagenFile.value) {
-      subiendoImagen.value = true
-      try {
-        const url = await store.subirImagen(imagenFile.value)
-        data.imagen_url = url
-      } catch (err: any) {
-        errorForm.value = 'Error al subir la imagen: ' + (err.response?.data?.error || err.message)
-        return
-      } finally {
-        subiendoImagen.value = false
-      }
-    }
+    if (!(await subirImagenSiCorresponde(data))) return
 
     // Barrera de seguridad: bajo ninguna circunstancia se debe persistir un blob local.
     if (data.imagen_url?.startsWith('blob:')) {
@@ -389,36 +435,13 @@ async function guardarPremio() {
       return
     }
 
-    if (
-      premioEditando.value &&
-      campanaActiva.value &&
-      typeof data.stock_total === 'number' &&
-      typeof premioEditando.value.stock_total === 'number' &&
-      data.stock_total < premioEditando.value.stock_total
-    ) {
-      premioParaConfirmarReduccion.value = {
-        grupoIdx,
-        premioId: premioEditando.value.id,
-        data,
-        stockActual: premioEditando.value.stock_total,
-        stockNuevo: data.stock_total,
-      }
+    const reduccionPendiente = detectarReduccionStockConCampanaActiva(grupoIdx, data)
+    if (reduccionPendiente) {
+      premioParaConfirmarReduccion.value = reduccionPendiente
       return
     }
 
-    try {
-      if (premioEditando.value) {
-        const premioId = premioEditando.value.id
-        await store.actualizarPremio(grupoIdx, premioId, data)
-        irAPaso2OCerrar({ id: premioId, ...data } as PremioAdmin)
-      } else {
-        const nuevo = await store.agregarPremio(grupoIdx, data)
-        if (!nuevo) { errorForm.value = 'No se pudo guardar el premio.'; return }
-        irAPaso2OCerrar(nuevo)
-      }
-    } catch (e: any) {
-      errorForm.value = e?.response?.data?.error ?? e?.message ?? 'Error al guardar el premio.'
-    }
+    await persistirPremio(grupoIdx, data)
   } finally {
     guardando.value = false
   }

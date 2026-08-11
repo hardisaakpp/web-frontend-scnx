@@ -1,4 +1,4 @@
-import axios from 'axios'
+import axios, { type AxiosError } from 'axios'
 import { useToast } from '@/composables/useToast'
 import type {
   Ruleta, RuletaFilters, RuletaPagination,
@@ -44,8 +44,8 @@ campanaApi.interceptors.request.use((config) => {
 // (p. ej. no cerrar un modal, mostrar un mensaje inline puntual).
 campanaApi.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 409 && error.response?.data?.code === 'CONCURRENCY_CONFLICT') {
+  (error: AxiosError<{ code?: string; error?: string }>) => {
+    if (error.response?.status === 409 && error.response.data?.code === 'CONCURRENCY_CONFLICT') {
       useToast().addToast({
         type: 'warning',
         title: 'Datos desactualizados',
