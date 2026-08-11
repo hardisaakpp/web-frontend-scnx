@@ -10,6 +10,8 @@ const router = useRouter()
 
 const campanaId = route.params.campanaId as string
 
+let probInterval: ReturnType<typeof setInterval> | null = null
+
 // ─── Carga inicial ────────────────────────────────────────────────────────────
 onMounted(async () => {
   if (store.campanas.length === 0) await store.cargarCampanas()
@@ -17,7 +19,33 @@ onMounted(async () => {
   await store.cargarTiendas()
 })
 
-onUnmounted(() => revocarPreview())
+onUnmounted(() => {
+  revocarPreview()
+  if (probInterval) clearInterval(probInterval)
+})
+
+const selectedTiendaInfo = ref<string>('')
+
+async function refetchProbabilidades() {
+  if (campanaId && selectedTiendaInfo.value) {
+    await store.cargarProbabilidadesEnVivo(campanaId, selectedTiendaInfo.value)
+  } else {
+    store.probabilidadesEnVivo = []
+  }
+}
+
+watch(selectedTiendaInfo, async () => {
+  if (probInterval) {
+    clearInterval(probInterval)
+    probInterval = null
+  }
+  await refetchProbabilidades()
+  
+  if (selectedTiendaInfo.value) {
+     probInterval = setInterval(refetchProbabilidades, 5 * 60 * 1000)
+  }
+})
+
 
 // ─── Datos de la campaña ─────────────────────────────────────────────────────
 const campana = computed(() => store.campanas.find(c => c.id === campanaId))
@@ -64,6 +92,12 @@ const estadoGrupoIcon: Record<string, { cls: string; dot: string; label: string 
 // ─── Estado del grupo activo ──────────────────────────────────────────────────
 const estadoGrupoActual = computed(() => grupo.value?.estado ?? 'incompleto')
 
+const currentProbability = computed(() => {
+  const g = grupo.value
+  if (!g || store.probabilidadesEnVivo.length === 0) return null
+  return store.probabilidadesEnVivo.find(p => p.grupo === g.grupo)?.porcentajeGanar ?? 0
+})
+
 // ─── Estado de bloqueo de edición ────────────────────────────────────────────
 const campanaActiva = computed(() => estadoEfectivo.value === 'activa')
 
@@ -80,12 +114,7 @@ async function activarCampana() {
     await store.cambiarEstado(campanaId, 'activa')
     router.push({ name: 'ruleta-admin-campanas' })
   } catch (e: any) {
-    const rawError = e?.response?.data?.error || e?.message || 'Error al activar la campaña.'
-    try {
-      errorEstado.value = new TextDecoder('utf-8').decode(Uint8Array.from(rawError, (c: string) => c.charCodeAt(0)))
-    } catch {
-      errorEstado.value = rawError
-    }
+    errorEstado.value = e?.response?.data?.error || e?.message || 'Error al activar la campaña.'
   } finally {
     activando.value = false
   }
@@ -292,6 +321,100 @@ function buildPremioData(): Omit<PremioAdmin, 'id'> {
   }
 }
 
+// ─── Confirmación de reducción de stock con la campaña Activa ────────────────
+// Editar el stock total reemplaza el valor absoluto, no lo suma: un admin que
+// escribe "200" pensando en agregar 200 más a un premio que ya tenía 210 lo
+// reduce sin darse cuenta. Con la campaña Activa ese error aplica de inmediato
+// sobre lo que el SpinEngine ofrece al cliente, así que se pide confirmar antes
+// de guardar (aumentar stock nunca pasa por aquí). El backend exige lo mismo
+// como red de seguridad (ver PremioService.UpdateAsync / REDUCCION_STOCK_SIN_CONFIRMAR).
+const premioParaConfirmarReduccion = ref<{
+  grupoIdx: number
+  premioId: string
+  data: Omit<PremioAdmin, 'id'>
+  stockActual: number
+  stockNuevo: number
+} | null>(null)
+
+function cancelarReduccionStock() {
+  premioParaConfirmarReduccion.value = null
+}
+
+async function confirmarReduccionStockYGuardar() {
+  const pendiente = premioParaConfirmarReduccion.value
+  if (!pendiente) return
+  guardando.value = true
+  try {
+    await store.actualizarPremio(pendiente.grupoIdx, pendiente.premioId, pendiente.data, true)
+    premioParaConfirmarReduccion.value = null
+    irAPaso2OCerrar({ id: pendiente.premioId, ...pendiente.data } as PremioAdmin)
+  } catch (e: any) {
+    premioParaConfirmarReduccion.value = null
+    errorForm.value = e?.response?.data?.error ?? e?.message ?? 'Error al guardar el premio.'
+  } finally {
+    guardando.value = false
+  }
+}
+
+// Sube la imagen nueva (si hay una) y la vuelca en `data` — primero para obtener la URL
+// real y pública del backend; nunca se persiste la URL temporal del navegador.
+async function subirImagenSiCorresponde(data: Omit<PremioAdmin, 'id'>): Promise<boolean> {
+  if (!imagenFile.value) return true
+  subiendoImagen.value = true
+  try {
+    data.imagen_url = await store.subirImagen(imagenFile.value)
+    return true
+  } catch (err: any) {
+    errorForm.value = 'Error al subir la imagen: ' + (err.response?.data?.error || err.message)
+    return false
+  } finally {
+    subiendoImagen.value = false
+  }
+}
+
+// Editar el stock total reemplaza el valor absoluto, no lo suma, así que con la campaña
+// Activa ese cambio aplica de inmediato sobre lo que el SpinEngine ofrece al cliente:
+// se detecta la reducción aquí para pedir confirmación antes de guardar (ver el comentario
+// de premioParaConfirmarReduccion más abajo).
+function detectarReduccionStockConCampanaActiva(
+  grupoIdx: number,
+  data: Omit<PremioAdmin, 'id'>,
+): typeof premioParaConfirmarReduccion.value {
+  const premioActual = premioEditando.value
+  if (
+    !premioActual ||
+    !campanaActiva.value ||
+    typeof data.stock_total !== 'number' ||
+    typeof premioActual.stock_total !== 'number' ||
+    data.stock_total >= premioActual.stock_total
+  ) {
+    return null
+  }
+  return {
+    grupoIdx,
+    premioId: premioActual.id,
+    data,
+    stockActual: premioActual.stock_total,
+    stockNuevo: data.stock_total,
+  }
+}
+
+async function persistirPremio(grupoIdx: number, data: Omit<PremioAdmin, 'id'>) {
+  try {
+    if (premioEditando.value) {
+      const premioId = premioEditando.value.id
+      await store.actualizarPremio(grupoIdx, premioId, data)
+      irAPaso2OCerrar({ id: premioId, ...data } as PremioAdmin)
+    } else {
+      const nuevo = await store.agregarPremio(grupoIdx, data)
+      if (!nuevo) { errorForm.value = 'No se pudo guardar el premio.'; return }
+      irAPaso2OCerrar(nuevo)
+    }
+  } catch (e: any) {
+    errorForm.value = e?.response?.data?.error ?? e?.message ?? 'Error al guardar el premio.'
+  }
+}
+
 async function guardarPremio() {
   errorForm.value = ''
   if (form.value.es_vacio && !form.value.nombre.trim()) form.value.nombre = '¡Sigue intentando!'
@@ -304,20 +427,7 @@ async function guardarPremio() {
   try {
     const data = buildPremioData()
 
-    // Subir imagen si hay un archivo nuevo — se sube primero para obtener la URL
-    // real y pública del backend; nunca se persiste la URL temporal del navegador.
-    if (imagenFile.value) {
-      subiendoImagen.value = true
-      try {
-        const url = await store.subirImagen(imagenFile.value)
-        data.imagen_url = url
-      } catch (err: any) {
-        errorForm.value = 'Error al subir la imagen: ' + (err.response?.data?.error || err.message)
-        return
-      } finally {
-        subiendoImagen.value = false
-      }
-    }
+    if (!(await subirImagenSiCorresponde(data))) return
 
     // Barrera de seguridad: bajo ninguna circunstancia se debe persistir un blob local.
     if (data.imagen_url?.startsWith('blob:')) {
@@ -325,19 +435,13 @@ async function guardarPremio() {
       return
     }
 
-    try {
-      if (premioEditando.value) {
-        const premioId = premioEditando.value.id
-        await store.actualizarPremio(grupoIdx, premioId, data)
-        irAPaso2OCerrar({ id: premioId, ...data } as PremioAdmin)
-      } else {
-        const nuevo = await store.agregarPremio(grupoIdx, data)
-        if (!nuevo) { errorForm.value = 'No se pudo guardar el premio.'; return }
-        irAPaso2OCerrar(nuevo)
-      }
-    } catch (e: any) {
-      errorForm.value = e?.response?.data?.error ?? e?.message ?? 'Error al guardar el premio.'
+    const reduccionPendiente = detectarReduccionStockConCampanaActiva(grupoIdx, data)
+    if (reduccionPendiente) {
+      premioParaConfirmarReduccion.value = reduccionPendiente
+      return
     }
+
+    await persistirPremio(grupoIdx, data)
   } finally {
     guardando.value = false
   }
@@ -617,12 +721,27 @@ function ocultarDropdown() {
 
     <template v-else-if="store.grupos.length">
 
+      <!-- ── Simulación de Probabilidades ──────────────────────────────────── -->
+      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm mb-4">
+        <div class="flex items-center gap-3">
+           <label class="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              Simulador de Probabilidad
+           </label>
+           <select 
+             v-model="selectedTiendaInfo"
+             class="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block p-2 transition-colors">
+              <option value="" disabled>Seleccione una tienda...</option>
+              <option v-for="t in store.tiendas" :key="t.id" :value="t.codigo">{{ t.nombre }} ({{ t.codigo }})</option>
+           </select>
+        </div>
+      </div>
+
       <!-- ── Resumen de progreso global ──────────────────────────────────── -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         <button
           v-for="g in gruposRequeridos" :key="g.grupo"
           @click="grupoActivo = g.grupo"
-          class="flex items-center gap-3 p-3.5 rounded-xl border transition-all text-left"
+          class="flex items-center gap-3 p-3.5 rounded-xl border transition-all duration-300 hover:-translate-y-1 hover:shadow-lg text-left"
           :class="grupoActivo === g.grupo
             ? 'border-[#0A86C2] dark:border-[#0E97D4] bg-[#EFF8FD] dark:bg-[#0574AF]/15 ring-1 ring-[#0A86C2]/25'
             : 'border-gray-100 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-200 dark:hover:border-gray-600'"
@@ -672,27 +791,51 @@ function ocultarDropdown() {
         <!-- Contenido del tab activo -->
         <div v-if="grupo" class="p-5 space-y-4">
 
-          <!-- Estado del grupo -->
-          <div class="flex items-center gap-3">
-            <div class="flex-1 h-2.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-              <div class="h-full rounded-full transition-all duration-700"
-                   :class="{
-                     'bg-emerald-500 w-full':  estadoGrupoActual === 'completo',
-                     'bg-yellow-400 w-1/2':    estadoGrupoActual === 'advertencia',
-                     'bg-red-400 w-[10%]':     estadoGrupoActual === 'incompleto',
-                   }"/>
-            </div>
-            <div class="flex items-center gap-1.5 text-sm font-bold whitespace-nowrap"
-                 :class="{
-                   'text-emerald-600 dark:text-emerald-400': estadoGrupoActual === 'completo',
-                   'text-yellow-600 dark:text-yellow-400':   estadoGrupoActual === 'advertencia',
-                   'text-red-500 dark:text-red-400':         estadoGrupoActual === 'incompleto',
-                 }">
-              <svg v-if="estadoGrupoActual === 'completo'" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-              </svg>
-              {{ estadoGrupoActual === 'completo' ? 'Grupo listo' : estadoGrupoActual === 'advertencia' ? 'Falta consolación' : 'Sin premios' }}
-            </div>
+          <!-- Estado del grupo y Probabilidad -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-center">
+             <div class="flex items-center gap-3">
+               <div class="flex-1 h-2.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                 <div class="h-full rounded-full transition-all duration-700"
+                      :class="{
+                        'bg-emerald-500 w-full':  estadoGrupoActual === 'completo',
+                        'bg-yellow-400 w-1/2':    estadoGrupoActual === 'advertencia',
+                        'bg-red-400 w-[10%]':     estadoGrupoActual === 'incompleto',
+                      }"/>
+               </div>
+               <div class="flex items-center gap-1.5 text-sm font-bold whitespace-nowrap"
+                    :class="{
+                      'text-emerald-600 dark:text-emerald-400': estadoGrupoActual === 'completo',
+                      'text-yellow-600 dark:text-yellow-400':   estadoGrupoActual === 'advertencia',
+                      'text-red-500 dark:text-red-400':         estadoGrupoActual === 'incompleto',
+                    }">
+                 <svg v-if="estadoGrupoActual === 'completo'" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                   <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                 </svg>
+                 {{ estadoGrupoActual === 'completo' ? 'Grupo listo' : estadoGrupoActual === 'advertencia' ? 'Falta consolación' : 'Sin premios' }}
+               </div>
+             </div>
+             
+             <!-- Widget Live Probability -->
+             <div v-if="selectedTiendaInfo" class="flex flex-col border-l border-gray-100 dark:border-gray-700 pl-6 pb-1">
+               <span class="text-xs font-semibold text-gray-400 tracking-wider uppercase mb-2">Live Probability</span>
+               <div v-if="store.loadingProbabilidades" class="flex items-center gap-2 text-indigo-500 text-xs">
+                 <div class="w-4 h-4 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin"/>
+                 Calculando tiempo real...
+               </div>
+               <div v-else class="flex flex-col gap-1.5 w-full">
+                  <div class="flex items-center justify-between text-xs font-medium dark:text-gray-200">
+                     <span>Oportunidad de Ganar:</span>
+                     <span class="text-emerald-600 dark:text-emerald-400 font-bold text-[13px]">{{ currentProbability?.toFixed(1) ?? '0.0' }}%</span>
+                  </div>
+                  <div class="w-full h-2 rounded-full overflow-hidden flex bg-gray-100 dark:bg-gray-700 shadow-inner">
+                     <div class="h-full bg-emerald-500 dark:bg-emerald-400 shadow-md transition-all duration-[2000ms] ease-out relative"
+                          :style="{ width: `${currentProbability ?? 0}%` }">
+                          <div class="absolute inset-0 bg-white/20 w-full animate-[pulse_2s_ease-in-out_infinite]"/>
+                     </div>
+                  </div>
+                  <p class="text-[10px] text-gray-400">Variación depende del pacing actual (refresh 5m).</p>
+               </div>
+             </div>
           </div>
 
           <!-- Aviso campaña activa -->
@@ -1316,6 +1459,71 @@ function ocultarDropdown() {
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                   </svg>
                   {{ eliminandoPremio ? 'Eliminando…' : 'Sí, eliminar' }}
+                </button>
+              </div>
+            </div>
+          </Transition>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         MODAL CONFIRMAR REDUCCIÓN DE STOCK (campaña Activa)
+    ══════════════════════════════════════════════════════════════════════ -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition-opacity duration-200"
+        enter-from-class="opacity-0"
+        leave-active-class="transition-opacity duration-150"
+        leave-to-class="opacity-0"
+      >
+        <div v-if="premioParaConfirmarReduccion" class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/50 backdrop-blur-sm" @click.self="!guardando && cancelarReduccionStock()">
+          <Transition
+            enter-active-class="transition-all duration-200"
+            enter-from-class="opacity-0 scale-95 translate-y-2"
+            enter-to-class="opacity-100 scale-100 translate-y-0"
+            appear
+          >
+            <div class="relative bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-sm overflow-hidden flex flex-col">
+              <div class="p-6 text-center">
+                <div class="mx-auto flex items-center justify-center h-14 w-14 rounded-full bg-amber-100 dark:bg-amber-900/30 mb-4">
+                  <svg class="h-7 w-7 text-amber-600 dark:text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                  </svg>
+                </div>
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">Vas a reducir el stock</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                  Esta campaña está <span class="font-semibold text-emerald-600 dark:text-emerald-400">Activa</span>.
+                  El stock total pasará de
+                  <span class="font-semibold text-gray-800 dark:text-gray-200">{{ premioParaConfirmarReduccion?.stockActual }}</span>
+                  a
+                  <span class="font-semibold text-gray-800 dark:text-gray-200">{{ premioParaConfirmarReduccion?.stockNuevo }}</span>,
+                  y el cambio aplica de inmediato para los clientes que estén girando ahora mismo.
+                </p>
+
+                <div v-if="errorForm" class="mt-4 px-3 py-2 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800 text-xs text-red-600 dark:text-red-400 text-left">
+                  {{ errorForm }}
+                </div>
+              </div>
+
+              <div class="bg-gray-50 dark:bg-gray-800/50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-100 dark:border-gray-800">
+                <button
+                  type="button"
+                  @click="cancelarReduccionStock"
+                  :disabled="guardando"
+                  class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-colors disabled:opacity-50">
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  @click="confirmarReduccionStockYGuardar"
+                  :disabled="guardando"
+                  class="inline-flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl shadow-sm transition-colors disabled:opacity-50">
+                  <svg v-if="guardando" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                  </svg>
+                  {{ guardando ? 'Guardando…' : 'Sí, reducir stock' }}
                 </button>
               </div>
             </div>

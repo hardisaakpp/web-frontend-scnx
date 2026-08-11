@@ -63,3 +63,6 @@ skills-lock.json
 # Playwright output (generado localmente, no subir al repo)
 test-results/
 playwright-report/
+
+# API specs (generados automáticamente, no subir al repo)
+openapi.json
