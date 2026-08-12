@@ -203,6 +203,14 @@
                                     <template v-else-if="col.key === 'uGen'">
                                         {{ articulo[col.key]?.toString().toUpperCase() ?? '-' }}
                                     </template>
+                                    <template v-else-if="col.key === 'estadoProducto'">
+                                        <span :class="articulo.estadoProducto ? 'text-emerald-600 dark:text-emerald-400 font-medium' : 'text-rose-600 dark:text-rose-400 font-medium'">
+                                            {{ articulo.estadoProducto ? 'Activo' : 'Inactivo' }}
+                                        </span>
+                                    </template>
+                                    <template v-else-if="col.key === 'listasPrecio'">
+                                        {{ formatListasPrecio(articulo) }}
+                                    </template>
                                     <template v-else>
                                         {{ articulo[col.key] ?? '-' }}
                                     </template>
@@ -527,6 +535,7 @@ const allColumns = [
     { key: 'uPrArq', label: 'COSTO DE ARRANQUE' },
     { key: 'price', label: 'PVP' },
     { key: 'uLiq', label: 'LIQUIDACION' },
+    { key: 'listasPrecio', label: 'LISTAS DE PRECIO' },
     { key: 'itemsGroupCode', label: 'GRUPO ARTICULOS' },
     { key: 'uIxxMarca', label: 'NEGOCIO' },
     { key: 'itemType', label: 'ItemType' },
@@ -557,6 +566,13 @@ const allColumns = [
     { key: 'properties63', label: 'QryGroup63' },
     { key: 'properties64', label: 'Columna1' },
 ]
+
+function formatListasPrecio(articulo: any): string {
+    const listas: string[] = []
+    if (articulo.aplicaPrecioMinorista) listas.push('Minorista')
+    if (articulo.aplicaPrecioInternacional) listas.push('Internacional')
+    return listas.length ? listas.join(', ') : '-'
+}
 
 const hiddenColumns = ref<Set<string>>(new Set())
 
