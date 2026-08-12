@@ -50,7 +50,8 @@ import type {
   ProcesoCompletoSAPResponse,
   ProcesoCompletoSAPAsyncResponse,
   ProcesoCompletoSAPResultadoPolling,
-  EstadosPedidoResponse
+  EstadosPedidoResponse,
+  SapInfoProductosResponse
 } from '../../types'
 
 export const pedidosService = {
@@ -248,6 +249,27 @@ export const pedidosService = {
     } catch (error: any) {
       console.error('❌ [uploadPlantillaAsync] Error al iniciar procesamiento:', error)
       throw createEnrichedError(error, 'No se pudo iniciar el procesamiento de plantilla en segundo plano')
+    }
+  },
+
+  /**
+   * Consulta información de SAP (pack, pvp, código de barras, etc.) para uno o más códigos,
+   * sin subir archivo. GET /api/plantillas/sap-info-productos?codigos=COD1,COD2,...
+   * Siempre responde 200; `motivo` indica por qué un código no se encontró ('no_existe' | 'inactivo').
+   * Se usa para comparar Pack/PVP contra el Excel apenas el usuario elige una sugerencia de código
+   * en UploadErrorModal, sin esperar a un nuevo reintento (RN-02).
+   *
+   * @param codigos Lista de códigos SAP a consultar (máx. 100)
+   */
+  async getSapInfoProductos(codigos: string[]): Promise<SapInfoProductosResponse> {
+    try {
+      const response = await mba3Api.get<SapInfoProductosResponse>('/api/plantillas/sap-info-productos', {
+        params: { codigos: codigos.join(',') }
+      })
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [getSapInfoProductos] Error:', error)
+      throw createEnrichedError(error, 'Error al consultar información de SAP para los códigos')
     }
   },
 

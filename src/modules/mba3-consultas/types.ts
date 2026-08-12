@@ -575,6 +575,20 @@ export interface SugerenciasSkuResponse {
   total_encontrados: number
 }
 
+// Información de SAP (pack/pvp/etc.) para uno o más códigos — GET /api/plantillas/sap-info-productos
+export interface SapInfoProducto {
+  encontrado: boolean
+  motivo: 'no_existe' | 'inactivo' | 'mismatch' | null
+  pack_sap?: string | null
+  pvp_sap?: number | null
+  codigo_barras?: string | null
+  item_name?: string | null
+}
+
+export interface SapInfoProductosResponse {
+  productos: Record<string, SapInfoProducto>
+}
+
 // Tipo para respuesta de buscar SKU en MBA3 (con sugerencias opcionales)
 export interface BuscarSkuMba3Response {
   status: 'success' | 'not_found'
@@ -985,6 +999,9 @@ export interface PedidoDetalle {
   /** Columna "Costo" de la plantilla Excel (req. 1.4): informativa para el Margen de
    * Rentabilidad; distinta de costo_doc_sin_iva (que sí alimenta la OC). */
   costo_margen?: number | null
+  /** Margen de Rentabilidad (req. 1.5): calculado en el backend a partir de costo_margen
+   * y pvp (ver calcular_margen_rentabilidad en pedido_utils.py). Fracción decimal (0.35 = 35%). */
+  margen?: number | null
   tiendas: TiendaDistribucion[]
 }
 

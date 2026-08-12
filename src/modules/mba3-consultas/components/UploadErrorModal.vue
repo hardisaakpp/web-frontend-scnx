@@ -1,13 +1,57 @@
 <template>
+  <Teleport to="body">
   <div
     v-if="modelValue"
     class="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4"
-    @click.self="closeModal"
+    @click.self="solicitarCierre"
   >
-    <div :class="[
-      'bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden flex flex-col transition-all duration-300',
-      isModalMaximized ? 'w-full h-full max-w-none max-h-none m-0 rounded-none' : 'max-w-2xl w-full max-h-[90vh]'
-    ]">
+    <div
+      ref="modalRef"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="upload-error-modal-title"
+      tabindex="-1"
+      @keydown.tab="atraparFoco"
+      @keydown.esc="solicitarCierre"
+      :class="[
+        'relative bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden flex flex-col transition-all duration-300 focus:outline-none',
+        isModalMaximized ? 'w-full h-full max-w-none max-h-none m-0 rounded-none' : `${anchoModal} w-full max-h-[90vh]`
+      ]"
+    >
+      <!-- Confirmación antes de descartar correcciones ya seleccionadas (cierre accidental) -->
+      <div
+        v-if="mostrarConfirmacionDescarte"
+        class="absolute inset-0 z-10 bg-white/98 dark:bg-gray-800/98 flex items-center justify-center p-6"
+      >
+        <div class="max-w-sm text-center space-y-4">
+          <div class="mx-auto w-12 h-12 rounded-full bg-amber-100 dark:bg-amber-900 flex items-center justify-center">
+            <svg class="w-6 h-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-gray-900 dark:text-white">¿Descartar las correcciones seleccionadas?</p>
+            <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
+              Vas a perder las selecciones que ya hiciste. Vas a tener que volver a elegirlas si subís el archivo de nuevo.
+            </p>
+          </div>
+          <div class="flex items-center justify-center gap-3">
+            <button
+              @click="cancelarDescarte"
+              class="px-4 py-2 text-sm font-medium bg-purple-600 dark:bg-purple-700 text-white rounded-lg hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors"
+            >
+              Seguir editando
+            </button>
+            <button
+              @click="confirmarDescarte"
+              class="px-4 py-2 text-sm font-medium bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+            >
+              Descartar
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Encabezado del modal con color según tipo de error -->
       <div :class="[
         'px-6 py-4 border-b flex items-center justify-between transition-colors duration-300',
@@ -18,19 +62,24 @@
             'flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center',
             getErrorStyle.iconBg
           ]">
-            <svg :class="[
-              'w-6 h-6',
-              getErrorStyle.iconColor
-            ]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <!-- Ícono de "decisión pendiente" cuando el usuario puede resolverlo aquí mismo -->
+            <svg v-if="esResolubleEnElModal" :class="['w-6 h-6', getErrorStyle.iconColor]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+            </svg>
+            <svg v-else :class="['w-6 h-6', getErrorStyle.iconColor]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
             </svg>
           </div>
           <div>
-            <h3 :class="[
+            <h3 id="upload-error-modal-title" :class="[
               'text-lg font-semibold',
               getErrorStyle.titleColor
             ]">{{ uploadErrorInfo?.title || 'Error al cargar archivo Excel' }}</h3>
-            <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">El archivo no pudo ser procesado</p>
+            <p class="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+              {{ esResolubleEnElModal
+                ? 'Elegí cómo resolver cada diferencia y continuá sin volver a subir el archivo'
+                : 'El archivo no pudo ser procesado' }}
+            </p>
           </div>
         </div>
         <div class="flex items-center gap-2">
@@ -39,6 +88,7 @@
             @click="isModalMaximized = !isModalMaximized"
             class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors flex-shrink-0"
             :title="isModalMaximized ? 'Restaurar' : 'Maximizar'"
+            :aria-label="isModalMaximized ? 'Restaurar tamaño del modal' : 'Maximizar modal'"
           >
             <svg v-if="!isModalMaximized" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5 5m5-5v4m0-4h-4" />
@@ -49,8 +99,9 @@
           </button>
           <!-- Botón de cerrar -->
           <button
-            @click="closeModal"
+            @click="solicitarCierre"
             class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors flex-shrink-0"
+            aria-label="Cerrar"
           >
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -58,27 +109,25 @@
           </button>
         </div>
       </div>
-      
+
       <!-- Contenido del modal con scroll -->
       <div class="overflow-y-auto flex-1 p-6">
-        <div class="space-y-4">
-          <!-- Mensaje de protección de datos (opcional) -->
-          <div v-if="showDataProtectionMessage" class="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 transition-colors duration-300">
-            <div class="flex items-start gap-3">
-              <svg class="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-              <div class="flex-1">
-                <p class="text-sm font-semibold text-blue-900 dark:text-blue-200">Los datos actuales no han sido modificados</p>
-                <p class="text-xs text-blue-700 dark:text-blue-300 mt-1">La información del pedido que ves en pantalla sigue siendo válida y no se ha alterado.</p>
-              </div>
-            </div>
+        <div :class="['space-y-4', (isModalMaximized && !esResolubleEnElModal) ? 'max-w-3xl mx-auto' : '']">
+          <!-- Mensaje de protección de datos + archivo (compacto: es contexto, no la acción principal) -->
+          <div v-if="showDataProtectionMessage" class="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg px-3 py-2 transition-colors duration-300">
+            <svg class="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+            <p class="text-xs text-blue-800 dark:text-blue-300">
+              <span class="font-semibold">Los datos actuales no han sido modificados.</span>
+              La información del pedido que ves en pantalla sigue siendo válida.
+            </p>
           </div>
 
           <!-- Información del archivo -->
-          <div v-if="uploadErrorInfo?.fileName" class="bg-gray-50 dark:bg-gray-900 rounded-lg p-3 border border-gray-200 dark:border-gray-700 transition-colors duration-300">
-            <p class="text-sm text-gray-700 dark:text-gray-300">
-              <span class="font-semibold text-gray-900 dark:text-white">Archivo rechazado:</span>
+          <div v-if="uploadErrorInfo?.fileName" class="bg-gray-50 dark:bg-gray-900 rounded-lg px-3 py-2 border border-gray-200 dark:border-gray-700 transition-colors duration-300">
+            <p class="text-xs text-gray-700 dark:text-gray-300 break-all">
+              <span class="font-semibold text-gray-900 dark:text-white">{{ esResolubleEnElModal ? 'Archivo:' : 'Archivo rechazado:' }}</span>
               <span class="ml-2 font-mono text-gray-600 dark:text-gray-400">{{ uploadErrorInfo.fileName }}</span>
             </p>
           </div>
@@ -344,18 +393,40 @@
           <!-- Lista de errores detallados (si existen) -->
           <div v-if="uploadErrorInfo?.errors && uploadErrorInfo.errors.length > 0" class="border border-red-200 dark:border-red-800 rounded-lg overflow-hidden bg-red-50 dark:bg-red-900/30 transition-colors duration-300">
             <div class="bg-red-100 dark:bg-red-900/50 px-4 py-3 border-b border-red-200 dark:border-red-800">
-              <div class="flex items-center justify-between">
+              <div class="flex items-center justify-between gap-3 flex-wrap">
                 <p class="text-sm font-semibold text-red-900 dark:text-red-200">
                   Detalles del error ({{ uploadErrorInfo.errors.length }} problema{{ uploadErrorInfo.errors.length !== 1 ? 's' : '' }})
                 </p>
-                <span class="text-xs text-red-700 dark:text-red-300 font-medium">
-                  {{ (uploadErrorInfo.title?.includes('SAP') || uploadErrorInfo.title?.includes('no encontrados')) ? 'Códigos inválidos' : 'Revisar y corregir' }}
-                </span>
+                <!-- Progreso de correcciones de código: cuántos códigos inválidos ya tienen sugerencia elegida -->
+                <div v-if="tieneErroresCodigo" class="flex items-center gap-2">
+                  <div class="w-24 h-1.5 rounded-full bg-red-200 dark:bg-red-900 overflow-hidden">
+                    <div
+                      class="h-full bg-purple-600 dark:bg-purple-500 transition-all duration-300"
+                      :style="{ width: `${totalCodigos ? (codigosResueltos / totalCodigos) * 100 : 0}%` }"
+                    ></div>
+                  </div>
+                  <span class="text-xs font-medium text-red-800 dark:text-red-200 tabular-nums">
+                    {{ codigosResueltos }} de {{ totalCodigos }} resueltos
+                  </span>
+                </div>
+                <span v-else class="text-xs text-red-700 dark:text-red-300 font-medium">Revisar y corregir</span>
               </div>
             </div>
-            <div class="max-h-80 overflow-y-auto bg-white dark:bg-gray-800">
-              <ul class="divide-y divide-gray-200 dark:divide-gray-700">
-                <li v-for="(error, index) in uploadErrorInfo.errors" :key="index" class="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+            <div class="bg-white dark:bg-gray-800">
+              <!-- Tamaño normal: lista de una columna con separadores. Maximizado: columnas tipo "masonry"
+                   (no grid) porque cada tarjeta tiene alto variable (sugerencias, motivos expandibles, info
+                   MBA3) — con grid, una fila con una tarjeta larga dejaría huecos vacíos junto a las cortas. -->
+              <ul
+                :class="isModalMaximized ? 'columns-1 xl:columns-2 2xl:columns-3 gap-4 p-4' : 'divide-y divide-gray-200 dark:divide-gray-700'"
+              >
+                <li
+                  v-for="(error, index) in uploadErrorInfo.errors"
+                  :key="index"
+                  :id="typeof error !== 'string' && error.producto ? `pendiente-codigo-${error.producto}` : undefined"
+                  :class="isModalMaximized
+                    ? 'break-inside-avoid mb-4 rounded-lg border border-gray-200 dark:border-gray-700 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors'
+                    : 'px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors'"
+                >
                   <div v-if="typeof error !== 'string' && error.producto" class="flex items-start gap-3">
                     <div class="flex-shrink-0 mt-0.5">
                       <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-red-100 dark:bg-red-900 text-red-600 dark:text-red-300 text-xs font-bold">
@@ -598,168 +669,249 @@
             </div>
           </div>
 
-          <!-- ⭐ NUEVO: Discrepancias de Pack/PVP contra SAP (RN-02) — selector "usar SAP / usar Excel" -->
-          <div v-if="tieneMismatchesPackPvp" class="border border-red-200 dark:border-red-800 rounded-lg overflow-hidden bg-red-50 dark:bg-red-900/30 transition-colors duration-300">
-            <div class="bg-red-100 dark:bg-red-900/50 px-4 py-3 border-b border-red-200 dark:border-red-800">
-              <p class="text-sm font-semibold text-red-900 dark:text-red-200">
-                Discrepancias de Pack/PVP contra SAP
-              </p>
+          <!-- ⭐ Discrepancias de Pack/PVP contra SAP (RN-02) — agrupadas por código, comparación lado a lado, con acciones masivas -->
+          <div v-if="tieneMismatchesPackPvp" class="border border-amber-200 dark:border-amber-800 rounded-lg overflow-hidden bg-amber-50 dark:bg-amber-900/20 transition-colors duration-300">
+            <div class="bg-amber-100 dark:bg-amber-900/40 px-4 py-3 border-b border-amber-200 dark:border-amber-800">
+              <div class="flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                  <p class="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                    Discrepancias de Pack/PVP contra SAP
+                  </p>
+                  <p class="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
+                    {{ gruposPackPvp.length }} código{{ gruposPackPvp.length !== 1 ? 's' : '' }} con valores distintos entre el Excel y SAP —
+                    {{ decisionesPackPvpResueltas }} de {{ totalDecisionesPackPvp }} resueltas
+                  </p>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button
+                    type="button"
+                    @click="usarSapEnTodasLasDiscrepancias"
+                    class="px-2.5 py-1.5 text-xs font-semibold bg-white dark:bg-gray-800 text-purple-700 dark:text-purple-300 border border-purple-300 dark:border-purple-700 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-colors"
+                  >
+                    Usar SAP en todos
+                  </button>
+                  <button
+                    type="button"
+                    @click="usarExcelEnTodasLasDiscrepancias"
+                    class="px-2.5 py-1.5 text-xs font-semibold bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    Usar Excel en todos
+                  </button>
+                </div>
+              </div>
             </div>
-            <div class="max-h-80 overflow-y-auto bg-white dark:bg-gray-800 p-4 space-y-3">
-              <!-- Discrepancias de Pack -->
+            <div
+              :class="[
+                'bg-white dark:bg-gray-800 p-4',
+                isModalMaximized ? 'grid grid-cols-1 xl:grid-cols-4 gap-3' : 'space-y-3'
+              ]"
+            >
               <div
-                v-for="mismatch in uploadErrorInfo?.validacion_pack_pvp?.pack_mismatches || []"
-                :key="`pack-${mismatch.codigo}`"
+                v-for="grupo in gruposPackPvp"
+                :key="grupo.codigo"
                 class="border border-gray-200 dark:border-gray-700 rounded-lg p-3"
               >
-                <div class="flex items-center gap-2 mb-2">
-                  <span class="text-sm font-semibold text-gray-900 dark:text-white font-mono">{{ mismatch.codigo }}</span>
-                  <span class="px-2 py-0.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded">Pack</span>
+                <div class="flex items-center gap-2 mb-3">
+                  <span class="text-sm font-semibold text-gray-900 dark:text-white font-mono">{{ grupo.codigo }}</span>
+                  <span v-if="grupo.pack" class="px-2 py-0.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded">Pack</span>
+                  <span v-if="grupo.pvp" class="px-2 py-0.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded">PVP</span>
                 </div>
-                <div class="space-y-2">
-                  <label
-                    class="flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300 rounded-lg px-2 py-1.5 transition-colors"
-                    :class="{ 'ring-2 ring-purple-500 bg-purple-50 dark:bg-purple-900/20': correccionesPackPvp[mismatch.codigo]?.pack === mismatch.pack_sap }"
-                  >
-                    <input
-                      type="radio"
-                      :name="`pack-${mismatch.codigo}`"
-                      :checked="correccionesPackPvp[mismatch.codigo]?.pack === mismatch.pack_sap"
-                      @change="setPackCorreccion(mismatch.codigo, mismatch.pack_sap)"
-                      class="w-3.5 h-3.5 text-purple-600 border-gray-300 dark:border-gray-600 focus:ring-purple-500 dark:focus:ring-purple-600"
-                    />
-                    Usar valor de SAP (<span class="font-mono font-semibold">{{ mismatch.pack_sap }}</span>)
-                  </label>
-                  <label
-                    class="flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300 rounded-lg px-2 py-1.5 transition-colors"
-                    :class="{ 'ring-2 ring-purple-500 bg-purple-50 dark:bg-purple-900/20': correccionesPackPvp[mismatch.codigo]?.pack === mismatch.pack_excel }"
-                  >
-                    <input
-                      type="radio"
-                      :name="`pack-${mismatch.codigo}`"
-                      :checked="correccionesPackPvp[mismatch.codigo]?.pack === mismatch.pack_excel"
-                      @change="setPackCorreccion(mismatch.codigo, mismatch.pack_excel)"
-                      class="w-3.5 h-3.5 text-purple-600 border-gray-300 dark:border-gray-600 focus:ring-purple-500 dark:focus:ring-purple-600"
-                    />
-                    Usar valor del Excel (<span class="font-mono font-semibold">{{ mismatch.pack_excel }}</span>)
-                  </label>
-                </div>
-              </div>
 
-              <!-- Discrepancias de PVP -->
-              <div
-                v-for="mismatch in uploadErrorInfo?.validacion_pack_pvp?.pvp_mismatches || []"
-                :key="`pvp-${mismatch.codigo}`"
-                class="border border-gray-200 dark:border-gray-700 rounded-lg p-3"
-              >
-                <div class="flex items-center gap-2 mb-2">
-                  <span class="text-sm font-semibold text-gray-900 dark:text-white font-mono">{{ mismatch.codigo }}</span>
-                  <span class="px-2 py-0.5 text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded">PVP</span>
+                <!-- Discrepancia de Pack: SAP y Excel enfrentados en dos columnas -->
+                <div v-if="grupo.pack" :class="grupo.pvp ? 'mb-3' : ''">
+                  <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">Pack</p>
+                  <div class="grid grid-cols-2 gap-2">
+                    <label
+                      class="flex flex-col gap-0.5 cursor-pointer rounded-lg border-2 px-3 py-2 transition-colors"
+                      :class="correccionesPackPvp[grupo.codigo]?.pack === grupo.pack.sap
+                        ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'"
+                    >
+                      <span class="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        <input
+                          type="radio"
+                          :name="`pack-${grupo.codigo}`"
+                          :checked="correccionesPackPvp[grupo.codigo]?.pack === grupo.pack.sap"
+                          @change="setPackCorreccion(grupo.codigo, grupo.pack!.sap)"
+                          class="w-3.5 h-3.5 text-purple-600 border-gray-300 dark:border-gray-600 focus:ring-purple-500 dark:focus:ring-purple-600"
+                        />
+                        SAP
+                      </span>
+                      <span class="font-mono font-semibold text-sm text-gray-900 dark:text-white pl-5">{{ grupo.pack.sap }}</span>
+                    </label>
+                    <label
+                      class="flex flex-col gap-0.5 cursor-pointer rounded-lg border-2 px-3 py-2 transition-colors"
+                      :class="correccionesPackPvp[grupo.codigo]?.pack === grupo.pack.excel
+                        ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'"
+                    >
+                      <span class="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        <input
+                          type="radio"
+                          :name="`pack-${grupo.codigo}`"
+                          :checked="correccionesPackPvp[grupo.codigo]?.pack === grupo.pack.excel"
+                          @change="setPackCorreccion(grupo.codigo, grupo.pack!.excel)"
+                          class="w-3.5 h-3.5 text-purple-600 border-gray-300 dark:border-gray-600 focus:ring-purple-500 dark:focus:ring-purple-600"
+                        />
+                        Excel
+                      </span>
+                      <span class="font-mono font-semibold text-sm text-gray-900 dark:text-white pl-5">{{ grupo.pack.excel }}</span>
+                    </label>
+                  </div>
                 </div>
-                <div class="space-y-2">
-                  <label
-                    class="flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300 rounded-lg px-2 py-1.5 transition-colors"
-                    :class="{ 'ring-2 ring-purple-500 bg-purple-50 dark:bg-purple-900/20': correccionesPackPvp[mismatch.codigo]?.pvp === mismatch.pvp_sap }"
-                  >
-                    <input
-                      type="radio"
-                      :name="`pvp-${mismatch.codigo}`"
-                      :checked="correccionesPackPvp[mismatch.codigo]?.pvp === mismatch.pvp_sap"
-                      @change="setPvpCorreccion(mismatch.codigo, mismatch.pvp_sap)"
-                      class="w-3.5 h-3.5 text-purple-600 border-gray-300 dark:border-gray-600 focus:ring-purple-500 dark:focus:ring-purple-600"
-                    />
-                    Usar valor de SAP (<span class="font-mono font-semibold">{{ mismatch.pvp_sap.toFixed(2) }}</span>)
-                  </label>
-                  <label
-                    class="flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300 rounded-lg px-2 py-1.5 transition-colors"
-                    :class="{ 'ring-2 ring-purple-500 bg-purple-50 dark:bg-purple-900/20': correccionesPackPvp[mismatch.codigo]?.pvp === mismatch.pvp_excel }"
-                  >
-                    <input
-                      type="radio"
-                      :name="`pvp-${mismatch.codigo}`"
-                      :checked="correccionesPackPvp[mismatch.codigo]?.pvp === mismatch.pvp_excel"
-                      @change="setPvpCorreccion(mismatch.codigo, mismatch.pvp_excel)"
-                      class="w-3.5 h-3.5 text-purple-600 border-gray-300 dark:border-gray-600 focus:ring-purple-500 dark:focus:ring-purple-600"
-                    />
-                    Usar valor del Excel (<span class="font-mono font-semibold">{{ mismatch.pvp_excel.toFixed(2) }}</span>)
-                  </label>
-                </div>
-              </div>
-            </div>
-          </div>
 
-          <!-- Botones de acción -->
-          <div class="flex items-center justify-between gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <div class="flex flex-col gap-1">
-              <!-- Mensaje de validación de correcciones (códigos de producto no encontrados en SAP) -->
-              <div v-if="tieneErroresCodigo" class="flex items-center gap-2 text-sm">
-                <span
-                  v-if="!todosCodigosTienenCorreccion"
-                  class="text-amber-600 dark:text-amber-400 font-medium"
-                >
-                  ⚠️ Debes seleccionar una sugerencia para cada código inválido
-                </span>
-                <span
-                  v-else
-                  class="text-green-600 dark:text-green-400 font-medium"
-                >
-                  ✅ Todas las correcciones seleccionadas
-                </span>
+                <!-- Discrepancia de PVP: SAP y Excel enfrentados, con la diferencia calculada -->
+                <div v-if="grupo.pvp">
+                  <div class="flex items-center justify-between mb-1.5">
+                    <p class="text-xs font-medium text-gray-500 dark:text-gray-400">PVP</p>
+                    <span
+                      class="text-xs font-semibold"
+                      :class="grupo.pvp.excel > grupo.pvp.sap ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'"
+                    >
+                      Excel {{ grupo.pvp.excel > grupo.pvp.sap ? '+' : '' }}{{ formatCurrency(grupo.pvp.excel - grupo.pvp.sap) }} vs. SAP
+                    </span>
+                  </div>
+                  <div class="grid grid-cols-2 gap-2">
+                    <label
+                      class="flex flex-col gap-0.5 cursor-pointer rounded-lg border-2 px-3 py-2 transition-colors"
+                      :class="correccionesPackPvp[grupo.codigo]?.pvp === grupo.pvp.sap
+                        ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'"
+                    >
+                      <span class="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        <input
+                          type="radio"
+                          :name="`pvp-${grupo.codigo}`"
+                          :checked="correccionesPackPvp[grupo.codigo]?.pvp === grupo.pvp.sap"
+                          @change="setPvpCorreccion(grupo.codigo, grupo.pvp!.sap)"
+                          class="w-3.5 h-3.5 text-purple-600 border-gray-300 dark:border-gray-600 focus:ring-purple-500 dark:focus:ring-purple-600"
+                        />
+                        SAP
+                      </span>
+                      <span class="font-mono font-semibold text-sm text-gray-900 dark:text-white pl-5">{{ formatCurrency(grupo.pvp.sap) }}</span>
+                    </label>
+                    <label
+                      class="flex flex-col gap-0.5 cursor-pointer rounded-lg border-2 px-3 py-2 transition-colors"
+                      :class="correccionesPackPvp[grupo.codigo]?.pvp === grupo.pvp.excel
+                        ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'"
+                    >
+                      <span class="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+                        <input
+                          type="radio"
+                          :name="`pvp-${grupo.codigo}`"
+                          :checked="correccionesPackPvp[grupo.codigo]?.pvp === grupo.pvp.excel"
+                          @change="setPvpCorreccion(grupo.codigo, grupo.pvp!.excel)"
+                          class="w-3.5 h-3.5 text-purple-600 border-gray-300 dark:border-gray-600 focus:ring-purple-500 dark:focus:ring-purple-600"
+                        />
+                        Excel
+                      </span>
+                      <span class="font-mono font-semibold text-sm text-gray-900 dark:text-white pl-5">{{ formatCurrency(grupo.pvp.excel) }}</span>
+                    </label>
+                  </div>
+                </div>
               </div>
-              <!-- ⭐ NUEVO: Mensaje de validación de correcciones de Pack/PVP (RN-02) -->
-              <div v-if="tieneMismatchesPackPvp" class="flex items-center gap-2 text-sm">
-                <span
-                  v-if="!todosPackPvpTienenCorreccion"
-                  class="text-amber-600 dark:text-amber-400 font-medium"
-                >
-                  ⚠️ Debes elegir SAP o Excel para cada código con discrepancia de Pack/PVP
-                </span>
-                <span
-                  v-else
-                  class="text-green-600 dark:text-green-400 font-medium"
-                >
-                  ✅ Todas las correcciones de Pack/PVP seleccionadas
-                </span>
-              </div>
-            </div>
-            <div class="flex items-center gap-3">
-              <!-- Botón único: aplica correcciones de código y/o pack/pvp, lo que esta respuesta reporte -->
-              <button
-                v-if="tieneErroresCodigo || tieneMismatchesPackPvp"
-                @click="handleApplyCorrections"
-                :disabled="!todasLasCorreccionesListas || aplicandoCorrecciones"
-                class="px-4 py-2.5 bg-purple-600 dark:bg-purple-700 text-white rounded-lg hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              >
-                <svg v-if="aplicandoCorrecciones" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                </svg>
-                {{ aplicandoCorrecciones ? 'Aplicando correcciones...' : 'Aplicar correcciones y continuar' }}
-              </button>
-              <button
-                @click="closeModal"
-                class="px-4 py-2.5 bg-gray-600 dark:bg-gray-700 text-white rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors font-medium shadow-sm"
-              >
-                Descartar
-              </button>
             </div>
           </div>
         </div>
       </div>
+
+      <!-- Barra de acciones: fija fuera del área con scroll (progreso + botones), siempre visible sin bajar -->
+      <div class="flex-shrink-0 flex items-center justify-between gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex-wrap">
+        <div class="flex flex-col gap-1">
+          <!-- Mensaje de validación de correcciones (códigos de producto no encontrados en SAP) -->
+          <div v-if="tieneErroresCodigo" class="flex items-center gap-2 text-sm flex-wrap">
+            <span
+              v-if="!todosCodigosTienenCorreccion"
+              class="text-amber-600 dark:text-amber-400 font-medium"
+            >
+              ⚠️ Faltan {{ totalCodigos - codigosResueltos }} de {{ totalCodigos }} códigos por resolver
+            </span>
+            <span
+              v-else
+              class="text-green-600 dark:text-green-400 font-medium"
+            >
+              ✅ Todas las correcciones de código seleccionadas
+            </span>
+            <button
+              v-if="!todosCodigosTienenCorreccion"
+              type="button"
+              @click="irAlSiguientePendiente"
+              class="text-xs font-semibold text-purple-600 dark:text-purple-400 hover:underline"
+            >
+              Ir al siguiente pendiente
+            </button>
+          </div>
+          <!-- Verificando Pack/PVP en SAP para la sugerencia recién elegida (antes de mostrar la discrepancia) -->
+          <div v-if="consultandoInfoSapPendiente" class="flex items-center gap-2 text-sm text-purple-600 dark:text-purple-400">
+            <svg class="animate-spin h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span class="font-medium">Verificando Pack/PVP en SAP para la corrección elegida...</span>
+          </div>
+          <!-- Mensaje de validación de correcciones de Pack/PVP (RN-02) -->
+          <div v-if="tieneMismatchesPackPvp" class="flex items-center gap-2 text-sm">
+            <span
+              v-if="!todosPackPvpTienenCorreccion"
+              class="text-amber-600 dark:text-amber-400 font-medium"
+            >
+              ⚠️ Faltan {{ totalDecisionesPackPvp - decisionesPackPvpResueltas }} de {{ totalDecisionesPackPvp }} discrepancias de Pack/PVP por resolver
+            </span>
+            <span
+              v-else
+              class="text-green-600 dark:text-green-400 font-medium"
+            >
+              ✅ Todas las correcciones de Pack/PVP seleccionadas
+            </span>
+          </div>
+        </div>
+        <div class="flex items-center gap-3">
+          <!-- Botón único: aplica correcciones de código y/o pack/pvp, lo que esta respuesta reporte -->
+          <button
+            v-if="tieneErroresCodigo || tieneMismatchesPackPvp"
+            @click="handleApplyCorrections"
+            :disabled="!todasLasCorreccionesListas || aplicandoCorrecciones"
+            class="px-4 py-2.5 bg-purple-600 dark:bg-purple-700 text-white rounded-lg hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            <svg v-if="aplicandoCorrecciones" class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+            </svg>
+            {{ aplicandoCorrecciones ? 'Aplicando correcciones...' : 'Aplicar correcciones y continuar' }}
+          </button>
+          <button
+            @click="solicitarCierre"
+            class="px-4 py-2.5 bg-gray-600 dark:bg-gray-700 text-white rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors font-medium shadow-sm"
+          >
+            Descartar
+          </button>
+        </div>
+      </div>
     </div>
   </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch } from '@vue/reactivity'
 import { nextTick, onUnmounted } from '@vue/runtime-core'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
-import type { SugerenciaSkuSap, SugerenciasSkuResponse } from '../types'
-import { formatError } from '../utils/formatters'
+import { pedidosService } from '../services/domains/pedidos'
+import type { SugerenciaSkuSap, SugerenciasSkuResponse, SapInfoProducto } from '../types'
+import { formatError, formatCurrency } from '../utils/formatters'
 import type { UploadErrorInfo, CorreccionesPlantilla } from '../composables/useFileUpload'
+
+/** Discrepancia de Pack y/o PVP para un mismo código, agrupada para comparar SAP vs. Excel lado a lado */
+interface GrupoPackPvp {
+  codigo: string
+  pack?: { excel: string; sap: string }
+  pvp?: { excel: number; sap: number }
+}
+
 
 interface Props {
   modelValue: boolean
@@ -779,6 +931,8 @@ const emit = defineEmits<{
 
 // Estado interno del modal
 const isModalMaximized = ref(false)
+const modalRef = ref<HTMLElement | null>(null)
+const mostrarConfirmacionDescarte = ref(false)
 
 // ⭐ Funcionalidad de sugerencias SAP
 const sugerenciasPorCodigo = ref<Record<string, SugerenciaSkuSap[]>>({})
@@ -789,6 +943,28 @@ const aplicandoCorrecciones = ref(false)
 
 // ⭐ NUEVO: Selección "usar SAP / usar Excel" para discrepancias de Pack/PVP (RN-02)
 const correccionesPackPvp = ref<Record<string, { pack?: string; pvp?: number }>>({})
+
+// ⭐ NUEVO: Info de SAP (pack/pvp) para la sugerencia de código elegida, para detectar discrepancias
+// Pack/PVP en la misma ronda en que se corrige el código (sin esperar a un reintento). Clave: código SAP elegido.
+const sapInfoPorSugerencia = ref<Record<string, SapInfoProducto>>({})
+const sapInfoEstado = ref<Record<string, 'buscando' | 'completado' | 'error'>>({})
+
+/**
+ * Computed: true cuando el usuario puede resolver el problema en este mismo modal
+ * (eligiendo sugerencias de código y/o Pack/PVP), en vez de tener que corregir el Excel y volver a subirlo.
+ * Cambia el tono del modal: de "rechazo" a "decisión pendiente".
+ */
+const esResolubleEnElModal = computed(() => tieneErroresCodigo.value || tieneMismatchesPackPvp.value)
+
+/**
+ * Computed: ancho del modal. Se ensancha cuando hay comparaciones SAP/Excel lado a lado,
+ * que necesitan más espacio horizontal que un mensaje de error simple.
+ */
+const anchoModal = computed(() => {
+  if (tieneMismatchesPackPvp.value) return 'max-w-4xl'
+  if (tieneErroresCodigo.value) return 'max-w-3xl'
+  return 'max-w-2xl'
+})
 
 /**
  * ⭐ Computed: Determina los estilos del modal según el tipo de error
@@ -833,7 +1009,19 @@ const getErrorStyle = computed(() => {
       titleColor: 'text-red-900 dark:text-red-200'
     }
   }
-  
+
+  // Si el usuario puede resolverlo aquí mismo (elegir sugerencia de código y/o Pack/PVP), es una
+  // decisión pendiente, no un archivo rechazado: tono ámbar en vez de rojo (independiente del título,
+  // que para el caso de código sigue mencionando "SAP" por compatibilidad con el backend).
+  if (esResolubleEnElModal.value) {
+    return {
+      header: 'bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800',
+      iconBg: 'bg-amber-100 dark:bg-amber-900',
+      iconColor: 'text-amber-600 dark:text-amber-400',
+      titleColor: 'text-amber-900 dark:text-amber-200'
+    }
+  }
+
   // Fallback a detección por título (compatibilidad con versiones anteriores)
   if (title.includes('duplicado')) {
     return {
@@ -905,6 +1093,54 @@ const shouldHideGenericMessage = computed(() => {
 function closeModal(): void {
   emit('update:modelValue', false)
   limpiarSugerencias()
+  mostrarConfirmacionDescarte.value = false
+}
+
+/**
+ * Computed: true si el usuario ya hizo alguna selección (código y/o Pack/PVP) que se perdería al cerrar.
+ */
+const hayCorreccionesEnProgreso = computed(() => {
+  return Object.keys(correccionesSeleccionadas.value).length > 0 || Object.keys(correccionesPackPvp.value).length > 0
+})
+
+/**
+ * Pide cerrar el modal (botón "Descartar", click fuera del modal o Escape). Si el usuario ya eligió
+ * alguna corrección, confirma antes de perder ese trabajo en vez de cerrar directamente.
+ */
+function solicitarCierre(): void {
+  if (esResolubleEnElModal.value && hayCorreccionesEnProgreso.value) {
+    mostrarConfirmacionDescarte.value = true
+    return
+  }
+  closeModal()
+}
+
+function confirmarDescarte(): void {
+  closeModal()
+}
+
+function cancelarDescarte(): void {
+  mostrarConfirmacionDescarte.value = false
+}
+
+/**
+ * Mantiene el foco del teclado dentro del modal (accesibilidad: Tab/Shift+Tab no debe escapar al fondo).
+ */
+function atraparFoco(evento: KeyboardEvent): void {
+  if (!modalRef.value) return
+  const focosDisponibles = modalRef.value.querySelectorAll<HTMLElement>(
+    'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
+  )
+  if (focosDisponibles.length === 0) return
+  const primero = focosDisponibles[0]
+  const ultimo = focosDisponibles[focosDisponibles.length - 1]
+  if (evento.shiftKey && document.activeElement === primero) {
+    evento.preventDefault()
+    ultimo.focus()
+  } else if (!evento.shiftKey && document.activeElement === ultimo) {
+    evento.preventDefault()
+    primero.focus()
+  }
 }
 
 /**
@@ -937,6 +1173,28 @@ function getInfoMba3(codigo: string) {
   
   const detalle = props.uploadErrorInfo.validacion_sap.detalle_validacion[codigo]
   return detalle?.mba3 || null
+}
+
+/**
+ * Consulta en SAP el Pack/PVP del código elegido como corrección (GET sap-info-productos), para
+ * poder detectar una discrepancia contra el Excel en la misma ronda en que se elige la sugerencia,
+ * sin esperar al reintento. Idempotente por código: no repite la consulta si ya está en curso o resuelta.
+ */
+async function consultarSapInfoParaSugerencia(codigoSap: string): Promise<void> {
+  if (!codigoSap || sapInfoEstado.value[codigoSap]) {
+    return
+  }
+
+  sapInfoEstado.value[codigoSap] = 'buscando'
+
+  try {
+    const resultado = await pedidosService.getSapInfoProductos([codigoSap])
+    sapInfoPorSugerencia.value[codigoSap] = resultado.productos?.[codigoSap] ?? { encontrado: false, motivo: null }
+    sapInfoEstado.value[codigoSap] = 'completado'
+  } catch (error) {
+    console.error(`❌ [UploadErrorModal] Error al consultar info SAP para ${codigoSap}:`, error)
+    sapInfoEstado.value[codigoSap] = 'error'
+  }
 }
 
 /**
@@ -1052,6 +1310,9 @@ function limpiarSugerencias(): void {
   limiteSugerenciasMostradas.value = {}
   // ⭐ NUEVO: Limpiar selección de correcciones de Pack/PVP (RN-02)
   correccionesPackPvp.value = {}
+  // ⭐ NUEVO: Limpiar info de SAP consultada para sugerencias elegidas
+  sapInfoPorSugerencia.value = {}
+  sapInfoEstado.value = {}
   isModalMaximized.value = false
 }
 
@@ -1076,34 +1337,129 @@ const todosCodigosTienenCorreccion = computed(() => {
   })
 })
 
+/** Computed: total de códigos de producto no encontrados (para el indicador de progreso) */
+const totalCodigos = computed(() => extraerCodigosProductoNoEncontrados().length)
+
+/** Computed: cuántos de esos códigos ya tienen una sugerencia elegida */
+const codigosResueltos = computed(() =>
+  extraerCodigosProductoNoEncontrados().filter(codigo => {
+    const correccion = correccionesSeleccionadas.value[codigo]
+    return !!correccion && correccion.trim().length > 0
+  }).length
+)
+
 /**
- * Computed: true si hay al menos una discrepancia de Pack o PVP contra SAP (RN-02)
+ * Desplaza el modal hasta el primer código inválido que todavía no tiene una sugerencia elegida.
+ * Evita que el usuario tenga que hacer scroll manual buscando cuál de los N códigos le falta.
  */
-const tieneMismatchesPackPvp = computed(() => {
-  const validacion = props.uploadErrorInfo?.validacion_pack_pvp
-  if (!validacion) return false
-  return (validacion.pack_mismatches?.length ?? 0) > 0 || (validacion.pvp_mismatches?.length ?? 0) > 0
+function irAlSiguientePendiente(): void {
+  const siguiente = extraerCodigosProductoNoEncontrados().find(codigo => {
+    const correccion = correccionesSeleccionadas.value[codigo]
+    return !correccion || correccion.trim().length === 0
+  })
+  if (!siguiente) return
+  document.getElementById(`pendiente-codigo-${siguiente}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+}
+
+/**
+ * Computed: discrepancias Pack/PVP detectadas ANTES de reintentar, apenas el usuario elige una
+ * sugerencia SAP para un código inválido. Compara pack_excel/pvp_excel de esa fila del Excel
+ * (ya vienen en detalle_validacion) contra pack_sap/pvp_sap del código elegido (consultados vía
+ * GET sap-info-productos apenas se elige la sugerencia). Evita una ronda extra: sin esto, la
+ * discrepancia recién se vería en el reintento siguiente. Se agrupan con la clave del código SAP
+ * elegido (no el código original inválido), igual que hace el backend en la ronda posterior.
+ */
+const gruposPackPvpPreemptivos = computed<GrupoPackPvp[]>(() => {
+  const detalleValidacion = props.uploadErrorInfo?.validacion_sap?.detalle_validacion
+  if (!detalleValidacion) return []
+
+  const grupos: GrupoPackPvp[] = []
+  for (const [producto, codigoSap] of Object.entries(correccionesSeleccionadas.value)) {
+    if (!codigoSap) continue
+    const info = sapInfoPorSugerencia.value[codigoSap]
+    if (!info?.encontrado) continue
+    const detalle = detalleValidacion[producto]
+    if (!detalle) continue
+
+    const grupo: GrupoPackPvp = { codigo: codigoSap }
+    if (detalle.pack_excel != null && info.pack_sap != null && detalle.pack_excel.trim() !== info.pack_sap.trim()) {
+      grupo.pack = { excel: detalle.pack_excel, sap: info.pack_sap }
+    }
+    if (detalle.pvp_excel != null && info.pvp_sap != null && detalle.pvp_excel !== info.pvp_sap) {
+      grupo.pvp = { excel: detalle.pvp_excel, sap: info.pvp_sap }
+    }
+    if (grupo.pack || grupo.pvp) grupos.push(grupo)
+  }
+  return grupos
 })
+
+/**
+ * Computed: agrupa pack_mismatches y pvp_mismatches (reportados por el backend, post-reintento)
+ * junto con las discrepancias preemptivas (detectadas al elegir una sugerencia, antes de reintentar),
+ * para comparar SAP vs. Excel en un solo bloque por SKU sin importar de qué momento venga el dato.
+ */
+const gruposPackPvp = computed<GrupoPackPvp[]>(() => {
+  const validacion = props.uploadErrorInfo?.validacion_pack_pvp
+
+  const porCodigo = new Map<string, GrupoPackPvp>()
+  for (const m of validacion?.pack_mismatches ?? []) {
+    const grupo = porCodigo.get(m.codigo) ?? { codigo: m.codigo }
+    grupo.pack = { excel: m.pack_excel, sap: m.pack_sap }
+    porCodigo.set(m.codigo, grupo)
+  }
+  for (const m of validacion?.pvp_mismatches ?? []) {
+    const grupo = porCodigo.get(m.codigo) ?? { codigo: m.codigo }
+    grupo.pvp = { excel: m.pvp_excel, sap: m.pvp_sap }
+    porCodigo.set(m.codigo, grupo)
+  }
+  for (const grupo of gruposPackPvpPreemptivos.value) {
+    porCodigo.set(grupo.codigo, grupo)
+  }
+  return Array.from(porCodigo.values())
+})
+
+/**
+ * Computed: true si hay al menos una discrepancia de Pack o PVP contra SAP (RN-02), reportada por
+ * el backend o detectada de forma preemptiva al elegir una sugerencia de código.
+ */
+const tieneMismatchesPackPvp = computed(() => gruposPackPvp.value.length > 0)
 
 /**
  * Computed: true si todos los códigos con discrepancia de Pack y/o PVP tienen una elección
- * "usar SAP / usar Excel" seleccionada. Un mismo código puede requerir ambas elecciones si aparece
- * en pack_mismatches y pvp_mismatches a la vez.
+ * "usar SAP / usar Excel" seleccionada. Un mismo código puede requerir ambas elecciones si tiene
+ * discrepancia de Pack y de PVP a la vez.
  */
 const todosPackPvpTienenCorreccion = computed(() => {
-  const validacion = props.uploadErrorInfo?.validacion_pack_pvp
-  if (!validacion) return false
-  const packMismatches = validacion.pack_mismatches || []
-  const pvpMismatches = validacion.pvp_mismatches || []
-  if (packMismatches.length === 0 && pvpMismatches.length === 0) return false
-
-  const packOk = packMismatches.every(m => !!correccionesPackPvp.value[m.codigo]?.pack)
-  const pvpOk = pvpMismatches.every(m => {
-    const valor = correccionesPackPvp.value[m.codigo]?.pvp
-    return valor !== undefined && valor !== null
+  if (gruposPackPvp.value.length === 0) return false
+  return gruposPackPvp.value.every(grupo => {
+    const packOk = !grupo.pack || !!correccionesPackPvp.value[grupo.codigo]?.pack
+    const pvpOk = !grupo.pvp || (correccionesPackPvp.value[grupo.codigo]?.pvp !== undefined && correccionesPackPvp.value[grupo.codigo]?.pvp !== null)
+    return packOk && pvpOk
   })
-  return packOk && pvpOk
 })
+
+/** Computed: total de decisiones Pack/PVP pendientes (un código con ambas discrepancias cuenta 2 veces) */
+const totalDecisionesPackPvp = computed(() =>
+  gruposPackPvp.value.reduce((total, grupo) => total + (grupo.pack ? 1 : 0) + (grupo.pvp ? 1 : 0), 0)
+)
+
+/** Computed: cuántas de esas decisiones ya están resueltas */
+const decisionesPackPvpResueltas = computed(() =>
+  gruposPackPvp.value.reduce((total, grupo) => {
+    const packOk = grupo.pack && !!correccionesPackPvp.value[grupo.codigo]?.pack
+    const pvpOk = grupo.pvp && correccionesPackPvp.value[grupo.codigo]?.pvp !== undefined && correccionesPackPvp.value[grupo.codigo]?.pvp !== null
+    return total + (packOk ? 1 : 0) + (pvpOk ? 1 : 0)
+  }, 0)
+)
+
+/**
+ * Computed: true si hay al menos una consulta de info SAP en curso para una sugerencia recién
+ * elegida. Mientras esté en curso, no se puede saber todavía si esa elección trajo una discrepancia
+ * de Pack/PVP nueva, así que "Aplicar correcciones" debe esperar (ver todasLasCorreccionesListas).
+ */
+const consultandoInfoSapPendiente = computed(() =>
+  Object.values(correccionesSeleccionadas.value).some(codigoSap => !!codigoSap && sapInfoEstado.value[codigoSap] === 'buscando')
+)
 
 /**
  * Computed: true si todas las discrepancias presentes en esta respuesta (código y/o pack/pvp)
@@ -1113,6 +1469,9 @@ const todosPackPvpTienenCorreccion = computed(() => {
  */
 const todasLasCorreccionesListas = computed(() => {
   if (!tieneErroresCodigo.value && !tieneMismatchesPackPvp.value) {
+    return false
+  }
+  if (consultandoInfoSapPendiente.value) {
     return false
   }
   const codigoOk = !tieneErroresCodigo.value || todosCodigosTienenCorreccion.value
@@ -1134,6 +1493,27 @@ function setPackCorreccion(codigo: string, valor?: string): void {
  */
 function setPvpCorreccion(codigo: string, valor?: number): void {
   correccionesPackPvp.value[codigo] = { ...correccionesPackPvp.value[codigo], pvp: valor }
+}
+
+/**
+ * Acción masiva: usa el valor de SAP para todas las discrepancias de Pack y PVP de esta respuesta.
+ * Cubre el caso típico (SAP es la fuente de verdad) sin obligar a elegir código por código.
+ */
+function usarSapEnTodasLasDiscrepancias(): void {
+  for (const grupo of gruposPackPvp.value) {
+    if (grupo.pack) setPackCorreccion(grupo.codigo, grupo.pack.sap)
+    if (grupo.pvp) setPvpCorreccion(grupo.codigo, grupo.pvp.sap)
+  }
+}
+
+/**
+ * Acción masiva: usa el valor del Excel para todas las discrepancias de Pack y PVP de esta respuesta.
+ */
+function usarExcelEnTodasLasDiscrepancias(): void {
+  for (const grupo of gruposPackPvp.value) {
+    if (grupo.pack) setPackCorreccion(grupo.codigo, grupo.pack.excel)
+    if (grupo.pvp) setPvpCorreccion(grupo.codigo, grupo.pvp.excel)
+  }
 }
 
 /**
@@ -1209,10 +1589,12 @@ watch(
     if (isVisible) {
       // Esperar a que el DOM se actualice y el modal esté completamente renderizado
       await nextTick()
+      // Foco inicial en el modal (accesibilidad: lector de pantalla anuncia el diálogo, Escape/Tab funcionan de inmediato)
+      modalRef.value?.focus()
       // Pequeño delay adicional para asegurar que el modal esté completamente visible
       await new Promise(resolve => setTimeout(resolve, 100))
-      
-      const esErrorSap = props.uploadErrorInfo?.title?.includes('SAP') || 
+
+      const esErrorSap = props.uploadErrorInfo?.title?.includes('SAP') ||
                          props.uploadErrorInfo?.title?.includes('no encontrados') ||
                          props.uploadErrorInfo?.title?.includes('producto')
       
@@ -1246,6 +1628,18 @@ watch(
         await new Promise(resolve => setTimeout(resolve, 100))
         await buscarSugerenciasAutomaticas()
       }
+    }
+  },
+  { deep: true }
+)
+
+// ⭐ Watcher: apenas el usuario elige (o cambia) una sugerencia SAP para un código inválido,
+// consulta el Pack/PVP de ese código en SAP para detectar una discrepancia en la misma ronda.
+watch(
+  () => correccionesSeleccionadas.value,
+  () => {
+    for (const codigoSap of Object.values(correccionesSeleccionadas.value)) {
+      if (codigoSap) consultarSapInfoParaSugerencia(codigoSap)
     }
   },
   { deep: true }
