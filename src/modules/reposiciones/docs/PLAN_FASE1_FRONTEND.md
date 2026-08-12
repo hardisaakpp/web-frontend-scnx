@@ -1,4 +1,6 @@
-# Plan de Implementación: Fase 2 - Frontend (Nexus)
+# Plan de Implementación: Fase 1 - Frontend (Nexus)
+
+> **Archivado.** Este documento se llamaba originalmente `PLAN_FASE2_FRONTEND.md`, pero su contenido corresponde al plan de la fase 1 (migración del legacy a Nexus). Se renombró para que el nombre coincida con el hito real. Ver [HISTORIAL.md](HISTORIAL.md) para el registro histórico de fases del módulo.
 
 Este documento guía el desarrollo del módulo de Reposiciones en el frontend `scnexus-front`, migrando la lógica de `sc22` a una arquitectura moderna en Vue 3.
 
