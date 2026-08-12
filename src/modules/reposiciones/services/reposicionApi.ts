@@ -55,7 +55,10 @@ const reposicionApi = {
 
   getAlmacenes: async (cdCode?: string | string[]) => {
     const url = 'Almacen'
-    const codes = cdCode ? (Array.isArray(cdCode) ? cdCode : [cdCode]).filter(Boolean) : []
+    let codes: string[] = []
+    if (cdCode) {
+      codes = (Array.isArray(cdCode) ? cdCode : [cdCode]).filter(Boolean)
+    }
     const params = new URLSearchParams()
     codes.forEach(c => params.append('cdCode', c))
     console.log("🚀 [ReposicionAPI] getAlmacenes:", url, codes)

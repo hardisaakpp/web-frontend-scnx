@@ -233,32 +233,38 @@ const diasDesdeUltimaVenta = computed(() => {
   return Math.abs(Math.floor((hoy.getTime() - fecha.getTime()) / (1000 * 60 * 60 * 24)))
 })
 
+const resolveEmbalajeQuantity = async (item: any, quantity: number): Promise<number | null> => {
+  if (quantity <= 0 || item.embalaje <= 0 || quantity % item.embalaje === 0) return quantity
+  const suggested = Math.ceil(quantity / item.embalaje) * item.embalaje
+  const confirmed = await showConfirm(`La cantidad debe ser múltiplo de ${item.embalaje}. ¿Desea ajustar a ${suggested}?`)
+  return confirmed ? suggested : null
+}
+
+const confirmQuantityChange = async (item: any, quantity: number): Promise<boolean> => {
+  if (quantity > item.disponibleBodega) {
+    showError(`No hay suficiente stock en bodega. Disponible: ${item.disponibleBodega}`)
+    return false
+  }
+  if (quantity > 0 && item.totalTransitoria > 0) {
+    const confirmed = await showConfirm(`Este artículo ya tiene ${item.totalTransitoria} unidades en tránsito (solicitadas anteriormente y pendientes de llegar a tienda). Si continúas, esta cantidad se sumará a lo que ya está en camino. ¿Desea continuar?`)
+    if (!confirmed) return false
+  }
+  if (quantity > item.sugerido && item.sugerido > 0) {
+    const confirmed = await showConfirm(`La cantidad es mayor al sugerido (${item.sugerido}). ¿Desea continuar?`)
+    if (!confirmed) return false
+  }
+  return true
+}
+
 const updateQuantity = async (item: any, quantity: number) => {
   if (store.cantidadPorCodigo(item.itemCode) === quantity) return
   try {
-    if (quantity > 0 && item.embalaje > 0 && quantity % item.embalaje !== 0) {
-      const suggested = Math.ceil(quantity / item.embalaje) * item.embalaje
-      if (await showConfirm(`La cantidad debe ser múltiplo de ${item.embalaje}. ¿Desea ajustar a ${suggested}?`)) {
-        quantity = suggested
-      } else {
-        return
-      }
-    }
-    if (quantity > item.disponibleBodega) {
-      showError(`No hay suficiente stock en bodega. Disponible: ${item.disponibleBodega}`)
-      return
-    }
-    if (quantity > 0 && item.totalTransitoria > 0) {
-      if (!(await showConfirm(`Este artículo ya tiene ${item.totalTransitoria} unidades en tránsito (solicitadas anteriormente y pendientes de llegar a tienda). Si continúas, esta cantidad se sumará a lo que ya está en camino. ¿Desea continuar?`))) {
-        return
-      }
-    }
-    if (quantity > item.sugerido && item.sugerido > 0) {
-      if (!(await showConfirm(`La cantidad es mayor al sugerido (${item.sugerido}). ¿Desea continuar?`))) {
-        return
-      }
-    }
-    await store.updateItemQuantity(item.itemCode, quantity)
+    const resolvedQuantity = await resolveEmbalajeQuantity(item, quantity)
+    if (resolvedQuantity === null) return
+
+    if (!(await confirmQuantityChange(item, resolvedQuantity))) return
+
+    await store.updateItemQuantity(item.itemCode, resolvedQuantity)
   } catch (err: any) {
     const errorMsg = err.response?.data?.message || 'Error al actualizar cantidad'
     showError(errorMsg)
