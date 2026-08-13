@@ -45,6 +45,25 @@
           </div>
         </button>
 
+        <!-- Producción El Rayo: solo capability can_view_produccion_elrayo (produccion-elrayo.view, req. 1.8). -->
+        <button
+          v-if="authStore.canViewProduccionElRayo"
+          @click="$router.push('/mba3-consultas/produccion/pedidos')"
+          class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left"
+        >
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-gray-900 dark:text-white text-sm">Producción El Rayo</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">EL RAYO - Ver pedidos</div>
+            </div>
+          </div>
+        </button>
+
         <!-- Listado de Pedidos: solo capability can_view_order_list (odcsap.view). Ver docs/FRONTEND.md § 0.5.7.2 -->
         <button
           v-if="authStore.canViewOrderList"
@@ -127,7 +146,8 @@
         </button>
 
         <!-- Contenedor colapsable: Órdenes de Compra, ODC con Errores, Reporte de Diferencias -->
-        <div class="xl:col-span-full lg:col-span-3 md:col-span-2 col-span-1">
+        <!-- Único requisito de acceso: permiso funcionalidades-admin.view (reemplaza los permisos internos de cada botón) -->
+        <div v-if="authStore.canViewFuncionalidadesAdmin" class="xl:col-span-full lg:col-span-3 md:col-span-2 col-span-1">
           <div class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 overflow-hidden transition-colors duration-300">
             <button
               type="button"
@@ -210,9 +230,8 @@
                     </div>
                   </button>
 
-                  <!-- Listado Pedidos Originales: capability can_view_plantillas_originales (mabel.view o admin) o odcsap.view (EL RAYO) -->
+                  <!-- Listado Pedidos Originales: acceso ya controlado por funcionalidades-admin.view en el contenedor -->
                   <button
-                    v-if="authStore.canViewPlantillasOriginales || authStore.canViewOrderList"
                     @click="showListadoPedidosOriginalesModal = true"
                     class="bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-600 p-4 hover:border-gray-300 dark:hover:border-gray-500 hover:shadow-sm transition-all text-left"
                   >
@@ -229,9 +248,8 @@
                     </div>
                   </button>
 
-                  <!-- Procesamiento SAP: capability mabel_view (mabel.view). Navega a lista de pedidos. -->
+                  <!-- Procesamiento SAP: acceso ya controlado por funcionalidades-admin.view en el contenedor. Navega a lista de pedidos. -->
                   <button
-                    v-if="authStore.canViewMabel"
                     @click="$router.push('/mba3-consultas/procesamiento-sap')"
                     class="bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-600 p-4 hover:border-gray-300 dark:hover:border-gray-500 hover:shadow-sm transition-all text-left"
                   >
@@ -248,9 +266,8 @@
                     </div>
                   </button>
 
-                  <!-- Homologaciones: capability mabel_view (mabel.view) o odcsap.view (EL RAYO). Ambos usuarios. -->
+                  <!-- Homologaciones: acceso ya controlado por funcionalidades-admin.view en el contenedor -->
                   <button
-                    v-if="authStore.canViewMabel || authStore.canViewOrderList"
                     @click="$router.push('/mba3-consultas/homologaciones')"
                     class="bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-600 p-4 hover:border-gray-300 dark:hover:border-gray-500 hover:shadow-sm transition-all text-left"
                   >
