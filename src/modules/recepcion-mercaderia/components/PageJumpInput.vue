@@ -1,6 +1,6 @@
 <script setup lang="ts">
 const props = defineProps<{ page: number; totalPages: number }>()
-const emit = defineEmits<{ (e: 'go', page: number): void }>()
+const emit = defineEmits<(e: 'go', page: number) => void>()
 
 function onPageInput(event: Event): void {
   const input = event.target as HTMLInputElement
