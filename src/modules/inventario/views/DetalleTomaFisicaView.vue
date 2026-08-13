@@ -108,16 +108,16 @@
             <table class="min-w-full divide-y divide-gray-100 dark:divide-gray-700 text-sm">
               <thead class="bg-gray-50 dark:bg-gray-900/50 sticky top-0">
                 <tr>
-                  <th class="th">Nivel 1</th>
-                  <th class="th">Nivel 2</th>
-                  <th class="th">Nivel 3</th>
-                  <th class="th">Familia</th>
-                  <th class="th">Cód. Barras</th>
-                  <th class="th">Item Code</th>
-                  <th class="th">Descripción</th>
-                  <th class="th text-right">Stock</th>
-                  <th class="th text-right">Scan</th>
-                  <th class="th text-right">Diferencia</th>
+                  <th class="th cursor-pointer select-none" @click="toggleSort('nivel1')">Nivel 1{{ sortIndicator('nivel1') }}</th>
+                  <th class="th cursor-pointer select-none" @click="toggleSort('nivel2')">Nivel 2{{ sortIndicator('nivel2') }}</th>
+                  <th class="th cursor-pointer select-none" @click="toggleSort('nivel3')">Nivel 3{{ sortIndicator('nivel3') }}</th>
+                  <th class="th cursor-pointer select-none" @click="toggleSort('familia')">Familia{{ sortIndicator('familia') }}</th>
+                  <th class="th cursor-pointer select-none" @click="toggleSort('barcode')">Cód. Barras{{ sortIndicator('barcode') }}</th>
+                  <th class="th cursor-pointer select-none" @click="toggleSort('itemCode')">Item Code{{ sortIndicator('itemCode') }}</th>
+                  <th class="th cursor-pointer select-none" @click="toggleSort('description')">Descripción{{ sortIndicator('description') }}</th>
+                  <th class="th text-right cursor-pointer select-none" @click="toggleSort('systemQuantity')">Stock{{ sortIndicator('systemQuantity') }}</th>
+                  <th class="th text-right cursor-pointer select-none" @click="toggleSort('countedQuantity')">Scan{{ sortIndicator('countedQuantity') }}</th>
+                  <th class="th text-right cursor-pointer select-none" @click="toggleSort('difference')">Diferencia{{ sortIndicator('difference') }}</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-50 dark:divide-gray-700/50">
@@ -215,7 +215,7 @@
             </thead>
             <tbody class="divide-y divide-gray-50 dark:divide-gray-700/50">
               <tr v-for="u in scansData.summary" :key="u.userId" class="hover:bg-gray-50 dark:hover:bg-gray-700/20">
-                <td class="td font-mono font-semibold">{{ u.userId }}</td>
+                <td class="td font-semibold">{{ userLabel(u.userId) }}</td>
                 <td class="td text-right">
                   <span class="inline-flex items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2.5 py-0.5 text-xs font-bold">{{ u.totalScans.toLocaleString() }}</span>
                 </td>
@@ -250,7 +250,7 @@
               <tbody class="divide-y divide-gray-50 dark:divide-gray-700/50">
                 <tr v-for="(d, i) in pagedScanDetail" :key="i" class="hover:bg-gray-50 dark:hover:bg-gray-700/20">
                   <td class="td text-xs whitespace-nowrap text-gray-500 dark:text-gray-400">{{ fmtDt(d.scannedAt) }}</td>
-                  <td class="td font-mono text-xs font-semibold">{{ d.userId }}</td>
+                  <td class="td text-xs font-semibold">{{ userLabel(d.userId) }}</td>
                   <td class="td font-mono text-xs">{{ d.barcode ?? '—' }}</td>
                   <td class="td font-mono text-xs font-semibold">{{ d.itemCode }}</td>
                   <td class="td text-xs max-w-xs truncate">{{ d.description ?? '—' }}</td>
@@ -281,6 +281,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ChevronLeftIcon, ArrowPathIcon, ArrowDownTrayIcon, ShoppingCartIcon, ShieldExclamationIcon } from '@heroicons/vue/24/outline'
 import { inventarioSesionesService } from '../services/inventarioSesionesApi'
 import { useInventarioModulePermissions } from '../composables/useInventarioModulePermissions'
+import { resolveUserNames } from '@/utils/resolveUserNames'
 import type { SessionDetailLineDto, SessionDetailStatsDto, SessionScansByUserDto } from '../types'
 
 const router = useRouter()
@@ -301,6 +302,11 @@ const loadingScans = ref(false)
 const scanTab = ref<'summary' | 'detail'>('summary')
 const scanSearch = ref('')
 const scanPage = ref(0)
+const userNames = ref<Record<string, string>>({})
+
+function userLabel(userId: string): string {
+  return userNames.value[userId] || userId
+}
 
 type FilterKey = 'Balanced' | 'Difference' | 'New' | 'NotCounted'
 const activeFilter = ref<FilterKey | null>(null)
@@ -308,7 +314,25 @@ const search = ref('')
 const page = ref(0)
 const pageSize = ref(100)
 
-watch([activeFilter, search, pageSize], () => { page.value = 0 })
+type LineSortKey = 'nivel1' | 'nivel2' | 'nivel3' | 'familia' | 'barcode' | 'itemCode' | 'description' | 'systemQuantity' | 'countedQuantity' | 'difference'
+const sortKey = ref<LineSortKey>('itemCode')
+const sortDir = ref<'asc' | 'desc'>('asc')
+
+function toggleSort(key: LineSortKey) {
+  if (sortKey.value === key) {
+    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortKey.value = key
+    sortDir.value = 'asc'
+  }
+}
+
+function sortIndicator(key: LineSortKey) {
+  if (sortKey.value !== key) return ''
+  return sortDir.value === 'asc' ? ' ▲' : ' ▼'
+}
+
+watch([activeFilter, search, pageSize, sortKey, sortDir], () => { page.value = 0 })
 watch(scanSearch, () => { scanPage.value = 0 })
 
 const FILTER_CARDS = computed(() => [
@@ -348,9 +372,22 @@ const filteredLines = computed(() => {
   )
 })
 
+const sortedLines = computed(() => {
+  const dir = sortDir.value === 'asc' ? 1 : -1
+  const key = sortKey.value
+  return [...filteredLines.value].sort((a, b) => {
+    const av = a[key] ?? (typeof a[key] === 'number' ? 0 : '')
+    const bv = b[key] ?? (typeof b[key] === 'number' ? 0 : '')
+    if (typeof av === 'string' || typeof bv === 'string') {
+      return String(av).localeCompare(String(bv)) * dir
+    }
+    return ((av as number) - (bv as number)) * dir
+  })
+})
+
 const totalPages = computed(() => Math.max(1, Math.ceil(filteredLines.value.length / pageSize.value)))
 const pageStart = computed(() => page.value * pageSize.value)
-const pagedLines = computed(() => filteredLines.value.slice(pageStart.value, pageStart.value + pageSize.value))
+const pagedLines = computed(() => sortedLines.value.slice(pageStart.value, pageStart.value + pageSize.value))
 
 const filteredScanDetail = computed(() => {
   if (!scansData.value) return []
@@ -358,6 +395,7 @@ const filteredScanDetail = computed(() => {
   if (!q) return scansData.value.detail
   return scansData.value.detail.filter(d =>
     d.userId.toLowerCase().includes(q) ||
+    userLabel(d.userId).toLowerCase().includes(q) ||
     d.itemCode.toLowerCase().includes(q) ||
     (d.barcode ?? '').toLowerCase().includes(q) ||
     (d.description ?? '').toLowerCase().includes(q)
@@ -415,7 +453,7 @@ function linesToCSVRows(rows: SessionDetailLineDto[]) {
 const LINE_HEADERS = ['Nivel1', 'Nivel2', 'Nivel3', 'Familia', 'CodigoBarras', 'ItemCode', 'Descripcion', 'Stock', 'Scan', 'Diferencia', 'Estado']
 
 function descargarFiltrado() {
-  const csv = toCSV(LINE_HEADERS, linesToCSVRows(filteredLines.value))
+  const csv = toCSV(LINE_HEADERS, linesToCSVRows(sortedLines.value))
   downloadCSV(`toma_${sessionId.slice(0, 8)}_${activeLabelShort.value.toLowerCase()}.csv`, csv)
 }
 
@@ -438,13 +476,13 @@ function descargarScans() {
   if (scanTab.value === 'summary') {
     const csv = toCSV(
       ['Usuario', 'TotalScans', 'ArticulosUnicos', 'PrimerScan', 'UltimoScan'],
-      scansData.value.summary.map(u => [u.userId, String(u.totalScans), String(u.uniqueItems), fmtDt(u.firstScan), fmtDt(u.lastScan)])
+      scansData.value.summary.map(u => [userLabel(u.userId), String(u.totalScans), String(u.uniqueItems), fmtDt(u.firstScan), fmtDt(u.lastScan)])
     )
     downloadCSV(`toma_${sessionId.slice(0, 8)}_scans_resumen.csv`, csv)
   } else {
     const csv = toCSV(
       ['FechaScan', 'Usuario', 'CodigoBarras', 'ItemCode', 'Descripcion', 'Cantidad', 'Grupo', 'Ronda'],
-      filteredScanDetail.value.map(d => [fmtDt(d.scannedAt), d.userId, d.barcode ?? '', d.itemCode, d.description ?? '', String(d.quantity), d.nivel3 ?? '', String(d.round)])
+      filteredScanDetail.value.map(d => [fmtDt(d.scannedAt), userLabel(d.userId), d.barcode ?? '', d.itemCode, d.description ?? '', String(d.quantity), d.nivel3 ?? '', String(d.round)])
     )
     downloadCSV(`toma_${sessionId.slice(0, 8)}_scans_detalle.csv`, csv)
   }
@@ -473,6 +511,13 @@ async function cargarScans() {
   loadingScans.value = true
   try {
     scansData.value = await inventarioSesionesService.getScansByUser(sessionId)
+    if (scansData.value) {
+      const ids = [
+        ...scansData.value.summary.map(u => u.userId),
+        ...scansData.value.detail.map(d => d.userId),
+      ]
+      userNames.value = await resolveUserNames(ids)
+    }
   } catch (e: any) {
     error.value = e.message ?? 'Error al cargar scans.'
   } finally {

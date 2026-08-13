@@ -40,6 +40,7 @@
         <select id="filterLevel2" v-model="filterLevel2" class="select-input w-full">
           <option value="">TODOS</option>
           <option v-for="nv2 in nivel2Options" :key="nv2" :value="nv2">{{ nv2 }}</option>
+          <option v-if="hasItemsWithoutLevel2" :value="OTROS_SENTINEL">OTROS CÓDIGOS</option>
         </select>
       </div>
       <div class="flex-[2] min-w-[220px]">
@@ -64,20 +65,20 @@
           <thead class="bg-gray-50 dark:bg-gray-900/40">
             <tr>
               <th class="th w-10 text-right">#</th>
-              <th class="th">Código</th>
-              <th class="th">Cód. Barras</th>
-              <th class="th">Nombre</th>
-              <th class="th">Nivel 2</th>
-              <th class="th text-right">Escaneados</th>
-              <th class="th text-right w-36">Cant. Manual</th>
-              <th class="th text-right font-semibold">Total</th>
-              <th v-if="!isTienda" class="th text-right">Stock SAP</th>
+              <th class="th cursor-pointer select-none" @click="toggleSort('itemCode')">Código{{ sortIndicator('itemCode') }}</th>
+              <th class="th cursor-pointer select-none" @click="toggleSort('barcode')">Cód. Barras{{ sortIndicator('barcode') }}</th>
+              <th class="th cursor-pointer select-none" @click="toggleSort('itemDescription')">Nombre{{ sortIndicator('itemDescription') }}</th>
+              <th class="th cursor-pointer select-none" @click="toggleSort('level2')">Nivel 2{{ sortIndicator('level2') }}</th>
+              <th class="th text-right cursor-pointer select-none" @click="toggleSort('scannedQuantity')">Escaneados{{ sortIndicator('scannedQuantity') }}</th>
+              <th class="th text-right w-36 cursor-pointer select-none" @click="toggleSort('manualQuantity')">Cant. Manual{{ sortIndicator('manualQuantity') }}</th>
+              <th class="th text-right font-semibold cursor-pointer select-none" @click="toggleSort('total')">Total{{ sortIndicator('total') }}</th>
+              <th v-if="!isTienda || sessionInfo?.status === 'Recount'" class="th text-right cursor-pointer select-none" @click="toggleSort('systemQuantity')">Stock SAP{{ sortIndicator('systemQuantity') }}</th>
               <th class="th w-28">Estado</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-50 dark:divide-gray-700/50">
             <tr
-              v-for="(line, idx) in filteredLines"
+              v-for="(line, idx) in sortedLines"
               :key="line.itemCode"
               :class="[
                 'hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors',
@@ -114,7 +115,7 @@
                   {{ computedTotal(line) }}
                 </span>
               </td>
-              <td v-if="!isTienda" class="td text-right text-sm text-gray-500">{{ line.systemQuantity }}</td>
+              <td v-if="!isTienda || sessionInfo?.status === 'Recount'" class="td text-right text-sm text-gray-500">{{ line.systemQuantity }}</td>
               <td class="td">
                 <span v-if="line.isSubmitted" class="badge badge-green">Confirmado</span>
                 <span v-else-if="computedTotal(line) > 0" class="badge badge-blue">Con conteo</span>
@@ -161,13 +162,23 @@ const erroredItems = ref(new Set<string>())
 const filterLevel2 = ref('')
 const search = ref('')
 
+// Sentinel value for the "OTROS CÓDIGOS" filter option — groups items with no Nivel 2
+// classification (e.g. counted items that don't exist in the item master catalog).
+const OTROS_SENTINEL = '__OTROS__'
+
 const nivel2Options = computed(() =>
   [...new Set(lines.value.map(l => l.level2).filter(Boolean) as string[])].sort()
 )
 
+const hasItemsWithoutLevel2 = computed(() => lines.value.some(l => !l.level2))
+
 const filteredLines = computed(() => {
   let result = lines.value
-  if (filterLevel2.value) result = result.filter(l => l.level2 === filterLevel2.value)
+  if (filterLevel2.value === OTROS_SENTINEL) {
+    result = result.filter(l => !l.level2)
+  } else if (filterLevel2.value) {
+    result = result.filter(l => l.level2 === filterLevel2.value)
+  }
   if (search.value.trim()) {
     const q = search.value.trim().toLowerCase()
     result = result.filter(l =>
@@ -177,6 +188,51 @@ const filteredLines = computed(() => {
     )
   }
   return result
+})
+
+type SortKey = 'itemCode' | 'barcode' | 'itemDescription' | 'level2' | 'scannedQuantity' | 'manualQuantity' | 'total' | 'systemQuantity'
+
+const sortKey = ref<SortKey>('itemCode')
+const sortDir = ref<'asc' | 'desc'>('asc')
+
+function toggleSort(key: SortKey) {
+  if (sortKey.value === key) {
+    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortKey.value = key
+    sortDir.value = 'asc'
+  }
+}
+
+function sortIndicator(key: SortKey) {
+  if (sortKey.value !== key) return ''
+  return sortDir.value === 'asc' ? ' ▲' : ' ▼'
+}
+
+function sortValue(line: ArticleCountLineDto, key: SortKey): string | number {
+  switch (key) {
+    case 'manualQuantity': return manualInputs[line.itemCode] ?? line.manualQuantity
+    case 'total': return computedTotal(line)
+    case 'scannedQuantity': return line.scannedQuantity
+    case 'systemQuantity': return line.systemQuantity
+    case 'barcode': return line.barcode ?? ''
+    case 'itemDescription': return line.itemDescription ?? ''
+    case 'level2': return line.level2 ?? ''
+    default: return line.itemCode
+  }
+}
+
+const sortedLines = computed(() => {
+  const dir = sortDir.value === 'asc' ? 1 : -1
+  const key = sortKey.value
+  return [...filteredLines.value].sort((a, b) => {
+    const av = sortValue(a, key)
+    const bv = sortValue(b, key)
+    if (typeof av === 'string' || typeof bv === 'string') {
+      return String(av).localeCompare(String(bv)) * dir
+    }
+    return (av - bv) * dir
+  })
 })
 
 const conCuentaCount = computed(() => lines.value.filter(l => computedTotal(l) > 0).length)
@@ -204,6 +260,20 @@ function onManualInput(itemCode: string, event: Event) {
 
 function onManualBlur(itemCode: string) {
   if (!pendingManual.value.has(itemCode)) return
+
+  // Only send if the value actually changed from what's currently shown on screen
+  // (the last value loaded/saved for this line). Otherwise two devices on the same
+  // user/session can "resend" a stale unchanged number on blur and wipe out a more
+  // recent update from the other device.
+  const line = lines.value.find(l => l.itemCode === itemCode)
+  const currentValue = manualInputs[itemCode] ?? 0
+  const originalValue = line?.manualQuantity ?? 0
+  if (currentValue === originalValue) {
+    pendingManual.value.delete(itemCode)
+    delete manualInputs[itemCode]
+    return
+  }
+
   guardarLinea(itemCode)
 }
 

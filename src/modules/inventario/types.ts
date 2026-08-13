@@ -434,4 +434,10 @@ export interface SupervisorSummaryDto {
   newItems: number
   canClose: boolean
   userStats: SessionUserStatDto[]
+  totalSystemUnits: number
+  countedUnits: number
+  pendingUnits: number
+  balancedUnits: number
+  differenceUnits: number
+  newUnits: number
 }
