@@ -487,6 +487,8 @@ const showOdcSapVolverInMainChrome = computed(() => {
   if (n === 'mba3-consultas-pedido-redistribucion') return false
   if (n === 'mba3-consultas-revisar-redistribucion') return false
   if (n === 'mba3-consultas-proceso') return false
+  if (n === 'mba3-consultas-admin-destinatarios') return false
+  if (n === 'mba3-consultas-admin-catalogo-correos') return false
   return true
 })
 

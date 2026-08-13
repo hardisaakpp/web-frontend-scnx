@@ -218,11 +218,37 @@ const routes: RouteRecordRaw[] = [
     path: '/mba3-consultas/reporte-diferencias/:id?',
     name: 'mba3-consultas-reporte-diferencias',
     component: () => import('./views/ReporteDiferenciasView.vue'),
-    meta: { 
+    meta: {
       requiresAuth: true,
       title: 'Reporte de Diferencias',
       icon: 'ChartBarIcon',
       permissions: ['mabel.view']
+    }
+  },
+
+  // =============================================
+  // Administración - solo rol Admin
+  // =============================================
+  {
+    path: '/mba3-consultas/admin/destinatarios',
+    name: 'mba3-consultas-admin-destinatarios',
+    component: () => import('./views/AdminDestinatariosView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Destinatarios de Notificaciones',
+      icon: 'EnvelopeIcon',
+      role: 'Admin'
+    }
+  },
+  {
+    path: '/mba3-consultas/admin/catalogo-correos',
+    name: 'mba3-consultas-admin-catalogo-correos',
+    component: () => import('./views/AdminCatalogoCorreosView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Catálogo de Correos',
+      icon: 'EnvelopeIcon',
+      role: 'Admin'
     }
   }
 ]
