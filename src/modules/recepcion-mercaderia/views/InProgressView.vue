@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { usePickingStore } from '../stores/pickingStore'
 import { ArrowLeftIcon } from '@heroicons/vue/24/outline'
 import type { ReceptionTransferStatus } from '../types'
+import PageJumpInput from '../components/PageJumpInput.vue'
 
 const store = usePickingStore()
 const search = ref('')
@@ -30,14 +31,6 @@ const pageEnd = computed(() => Math.min(store.page * store.pageSize, total.value
 
 function goToPage(newPage: number): void {
   store.setPage(newPage)
-}
-
-function onPageInput(event: Event): void {
-  const input = event.target as HTMLInputElement
-  const parsed = Number(input.value)
-  const clamped = Number.isFinite(parsed) ? Math.min(Math.max(1, Math.trunc(parsed)), totalPages.value) : store.page
-  input.value = String(clamped)
-  if (clamped !== store.page) goToPage(clamped)
 }
 
 function changePageSize(newSize: number): void {
@@ -161,19 +154,7 @@ function statusMeta(status: ReceptionTransferStatus) {
             >
               Anterior
             </button>
-            <div class="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300 font-medium">
-              <input
-                data-testid="pagination-page-input"
-                type="text"
-                inputmode="numeric"
-                pattern="[0-9]*"
-                :value="store.page"
-                class="w-14 text-center rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-500"
-                @keydown.enter="onPageInput"
-                @blur="onPageInput"
-              />
-              <span>/ {{ totalPages }}</span>
-            </div>
+            <PageJumpInput :page="store.page" :total-pages="totalPages" @go="goToPage" />
             <button
               type="button"
               data-testid="pagination-next"

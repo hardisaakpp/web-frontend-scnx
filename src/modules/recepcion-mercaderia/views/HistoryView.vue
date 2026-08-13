@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import { CalendarIcon, DocumentArrowDownIcon, PencilIcon, ArrowLeftIcon } from '@heroicons/vue/24/outline'
 import type { HistoryRow } from '../types'
 import { triggerBlobDownload } from '../utils/downloadBlob'
+import PageJumpInput from '../components/PageJumpInput.vue'
 
 const store = useHistoryStore()
 const authStore = useAuthStore()
@@ -132,14 +133,6 @@ const pageEnd = computed(() => Math.min(page.value * pageSize.value, total.value
 
 function goToPage(newPage: number): void {
   activeScope.value.setPage(newPage)
-}
-
-function onPageInput(event: Event): void {
-  const input = event.target as HTMLInputElement
-  const parsed = Number(input.value)
-  const clamped = Number.isFinite(parsed) ? Math.min(Math.max(1, Math.trunc(parsed)), totalPages.value) : page.value
-  input.value = String(clamped)
-  if (clamped !== page.value) goToPage(clamped)
 }
 
 function changePageSize(newSize: number): void {
@@ -435,19 +428,7 @@ async function handleExportCsv(): Promise<void> {
             >
               Anterior
             </button>
-            <div class="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300 font-medium">
-              <input
-                data-testid="pagination-page-input"
-                type="text"
-                inputmode="numeric"
-                pattern="[0-9]*"
-                :value="page"
-                class="w-14 text-center rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-500"
-                @keydown.enter="onPageInput"
-                @blur="onPageInput"
-              />
-              <span>/ {{ totalPages }}</span>
-            </div>
+            <PageJumpInput :page="page" :total-pages="totalPages" @go="goToPage" />
             <button
               type="button"
               data-testid="pagination-next"

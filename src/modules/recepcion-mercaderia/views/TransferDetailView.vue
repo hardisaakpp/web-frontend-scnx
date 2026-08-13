@@ -36,7 +36,7 @@ function buildScanFeedback(result: { matchedLine: ReceptionLine | null; fillAmou
 // otherwise parse as LOCAL time instead of UTC. Append 'Z' when no zone marker is present so this
 // keeps working once the backend fix ships too (a real offset/'Z' short-circuits the append).
 function parseUtc(dateStr: string): Date {
-  return new Date(/Z|[+-]\d{2}:\d{2}$/.test(dateStr) ? dateStr : `${dateStr}Z`)
+  return new Date(/(?:Z|[+-]\d{2}:\d{2})$/.test(dateStr) ? dateStr : `${dateStr}Z`)
 }
 
 function formatDateTime(dateStr: string): string {
