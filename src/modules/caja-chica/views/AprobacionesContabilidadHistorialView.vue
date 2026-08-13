@@ -395,7 +395,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { cajaChicaApi, slayerHttp as slayerApi } from '@/lib/http'
 import { useAdjuntosByDetalle } from '@/composables/useAdjuntosByDetalle'
-import { resolveUserNames } from '../utils/resolveUserNames'
+import { resolveUserNames } from '@/utils/resolveUserNames'
 import { extractItemsArray } from '../utils/apiPayload'
 
 interface LiquidacionItem {
