@@ -1083,7 +1083,7 @@ function ocultarDropdown() {
                 </div>
 
                 <!-- Descripción -->
-                <div v-if="!form.es_vacio || form.segmento === 'GRUPO_6'">
+                <div>
                   <label for="premio-descripcion" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                     Descripción <span class="text-xs font-normal text-gray-400">(opcional)</span>
                   </label>
