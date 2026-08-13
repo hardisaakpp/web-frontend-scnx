@@ -65,6 +65,19 @@ export const usePendingStore = defineStore('recepcionPending', () => {
   }
 
   /**
+   * The store outlives the view (Pinia singleton), so a leftover search/page from a previous
+   * visit would otherwise silently apply again on the next mount — e.g. a search for a
+   * nonexistent code, or a page far into the list, both surviving a trip to another route and
+   * back even though the visible input/page control look reset. Views should call this instead
+   * of fetchPending() directly in onMounted.
+   */
+  function resetAndFetch(): void {
+    page.value = 1
+    searchQuery.value = ''
+    fetchPending()
+  }
+
+  /**
    * Pending lines have no numeric id — keyed by (sapTransferRequestNumber, itemCode). Materialize
    * needs the SAP request number + the destination warehouse to materialize into.
    */
@@ -74,7 +87,18 @@ export const usePendingStore = defineStore('recepcionPending', () => {
     isSubmitting.value = true
     try {
       await recepcionApi.materializePendingTransfer(sapTransferRequestNumber, warehouseCode)
-      transfers.value = transfers.value.filter((t) => t.sapTransferRequestNumber !== sapTransferRequestNumber)
+      // Re-fetch the current page from the server instead of splicing the local array: a
+      // transfer can have several item lines, each its own row, so removing them client-side
+      // left totalCount stale and, if every row on the current page belonged to that transfer,
+      // the page rendered empty instead of being replenished from the server's real next batch.
+      await fetchPending()
+      // The page just materialized could have been the last one and is now empty (e.g. every
+      // row on it belonged to this transfer) — step back instead of stranding the user on a
+      // blank page while real data still exists earlier in the list.
+      if (transfers.value.length === 0 && page.value > 1) {
+        page.value -= 1
+        await fetchPending()
+      }
     } catch {
       error.value = 'No se pudo materializar la transferencia.'
       status.value = 'error'
@@ -93,6 +117,7 @@ export const usePendingStore = defineStore('recepcionPending', () => {
     totalCount,
     searchQuery,
     fetchPending,
+    resetAndFetch,
     setPage,
     setPageSize,
     setSearchQuery,

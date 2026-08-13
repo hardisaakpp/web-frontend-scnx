@@ -6,8 +6,10 @@ import ConfirmDialog from '../components/ConfirmDialog.vue'
 
 const store = usePendingStore()
 
+// resetAndFetch (not fetchPending) — the store is a Pinia singleton that outlives this view, so
+// a leftover search/page from a previous visit must not silently re-apply on remount.
 onMounted(() => {
-  store.fetchPending()
+  store.resetAndFetch()
 })
 
 // Materialize is a real, irreversible-from-the-UI mutating action (creates a ReceptionTransfer,
@@ -38,6 +40,14 @@ const pageEnd = computed(() => Math.min(store.page * store.pageSize, store.total
 
 function goToPage(newPage: number): void {
   store.setPage(newPage)
+}
+
+function onPageInput(event: Event): void {
+  const input = event.target as HTMLInputElement
+  const parsed = Number(input.value)
+  const clamped = Number.isFinite(parsed) ? Math.min(Math.max(1, Math.trunc(parsed)), totalPages.value) : store.page
+  input.value = String(clamped)
+  if (clamped !== store.page) goToPage(clamped)
 }
 
 function changePageSize(newSize: number): void {
@@ -167,7 +177,7 @@ function applySearch(): void {
                     :disabled="store.isSubmitting"
                     @click="handleMaterialize(t.sapTransferRequestNumber, t.destinationWarehouseCode, t.sapTransferRequestNumber)"
                   >
-                    Materializar
+                    Recibir
                   </button>
                 </td>
               </tr>
@@ -201,8 +211,18 @@ function applySearch(): void {
             >
               Anterior
             </button>
-            <div class="text-xs text-gray-600 dark:text-gray-300 font-medium bg-gray-50 dark:bg-gray-900 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700">
-              {{ store.page }} / {{ totalPages }}
+            <div class="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300 font-medium">
+              <input
+                data-testid="pagination-page-input"
+                type="text"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                :value="store.page"
+                class="w-14 text-center rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-2 py-1.5 outline-none focus:ring-2 focus:ring-blue-500"
+                @keydown.enter="onPageInput"
+                @blur="onPageInput"
+              />
+              <span>/ {{ totalPages }}</span>
             </div>
             <button
               type="button"
@@ -221,9 +241,9 @@ function applySearch(): void {
 
     <ConfirmDialog
       :open="materializeTarget !== null"
-      title="Materializar transferencia"
+      title="Recibir transferencia"
       :message="materializeTarget ? `¿Querés proceder a recibir la transferencia número ${materializeTarget.documentNumber}?` : ''"
-      confirm-label="Materializar"
+      confirm-label="Recibir"
       @confirm="confirmMaterialize"
       @cancel="cancelMaterialize"
     />

@@ -414,6 +414,42 @@ describe('HistoryView', () => {
       expect(recepcionApi.getAllHistory).toHaveBeenLastCalledWith({ transferNumber: 'DOC-1' }, { pageNumber: 1, pageSize: 20 })
       expect(wrapper.text()).toContain('Mostrando 1 a')
     })
+
+    it('typing a page number and pressing Enter jumps directly to that page', async () => {
+      mockAuth({ canViewAll: false })
+      vi.mocked(recepcionApi.getHistory)
+        .mockResolvedValueOnce(paged([buildRow({ documentNumber: 'DOC-1' })], { totalCount: 100, pageNumber: 1 }))
+        .mockResolvedValueOnce(paged([buildRow({ documentNumber: 'DOC-5' })], { totalCount: 100, pageNumber: 5 }))
+
+      const wrapper = mount(HistoryView)
+      await flushPromises()
+
+      const pageInput = wrapper.find<HTMLInputElement>('[data-testid="pagination-page-input"]')
+      await pageInput.setValue('5')
+      await pageInput.trigger('keydown.enter')
+      await flushPromises()
+
+      expect(recepcionApi.getHistory).toHaveBeenLastCalledWith(expect.anything(), { pageNumber: 5, pageSize: 20 })
+      expect(wrapper.text()).toContain('DOC-5')
+    })
+
+    it('clamps an out-of-range typed page number to the closest valid page', async () => {
+      mockAuth({ canViewAll: false })
+      vi.mocked(recepcionApi.getHistory)
+        .mockResolvedValueOnce(paged([buildRow()], { totalCount: 25, pageNumber: 1 }))
+        .mockResolvedValueOnce(paged([buildRow()], { totalCount: 25, pageNumber: 2 }))
+
+      const wrapper = mount(HistoryView)
+      await flushPromises()
+
+      // totalCount 25 / pageSize 20 → 2 pages max; typing 999 must clamp to 2, not request page 999.
+      const pageInput = wrapper.find<HTMLInputElement>('[data-testid="pagination-page-input"]')
+      await pageInput.setValue('999')
+      await pageInput.trigger('keydown.enter')
+      await flushPromises()
+
+      expect(recepcionApi.getHistory).toHaveBeenLastCalledWith(expect.anything(), { pageNumber: 2, pageSize: 20 })
+    })
   })
 
   it('surfaces a history export error in the UI instead of presenting a fake/empty download', async () => {

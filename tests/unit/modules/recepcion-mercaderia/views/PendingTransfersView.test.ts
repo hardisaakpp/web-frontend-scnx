@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises, DOMWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import PendingTransfersView from '@/modules/recepcion-mercaderia/views/PendingTransfersView.vue'
+import { usePendingStore } from '@/modules/recepcion-mercaderia/stores/pendingStore'
 import recepcionApi from '@/modules/recepcion-mercaderia/services/recepcionApi'
 import { featureReadiness } from '@/modules/recepcion-mercaderia/config/featureReadiness'
 import { useAuthStore } from '@/stores/auth'
@@ -227,5 +228,56 @@ describe('PendingTransfersView', () => {
     await flushPromises()
 
     expect(recepcionApi.getPendingTransfers).toHaveBeenLastCalledWith({ pageNumber: 1, pageSize: 20, search: 'SAP-9' })
+  })
+
+  it('clears a stale page/search left over from a previous visit to this view on mount', async () => {
+    featureReadiness.pendingTransfersReady = true
+    vi.mocked(recepcionApi.getPendingTransfers).mockResolvedValue(paged([buildLine()]))
+    // The store is a Pinia singleton — simulate what a prior visit left behind (page 6, a search
+    // for a code that no longer matches anything) before this view mounts again.
+    const store = usePendingStore()
+    store.page = 6
+    store.searchQuery = 'NONEXISTENT'
+
+    mount(PendingTransfersView)
+    await flushPromises()
+
+    expect(recepcionApi.getPendingTransfers).toHaveBeenCalledWith({ pageNumber: 1, pageSize: 20, search: undefined })
+  })
+
+  it('typing a page number and pressing Enter jumps directly to that page', async () => {
+    featureReadiness.pendingTransfersReady = true
+    vi.mocked(recepcionApi.getPendingTransfers)
+      .mockResolvedValueOnce(paged([buildLine({ sapTransferRequestNumber: 'SAP-1' })], { totalCount: 100, pageNumber: 1 }))
+      .mockResolvedValueOnce(paged([buildLine({ sapTransferRequestNumber: 'SAP-5' })], { totalCount: 100, pageNumber: 5 }))
+
+    const wrapper = mount(PendingTransfersView)
+    await flushPromises()
+
+    const pageInput = wrapper.find<HTMLInputElement>('[data-testid="pagination-page-input"]')
+    await pageInput.setValue('5')
+    await pageInput.trigger('keydown.enter')
+    await flushPromises()
+
+    expect(recepcionApi.getPendingTransfers).toHaveBeenLastCalledWith({ pageNumber: 5, pageSize: 20 })
+    expect(wrapper.text()).toContain('SAP-5')
+  })
+
+  it('clamps an out-of-range typed page number to the closest valid page', async () => {
+    featureReadiness.pendingTransfersReady = true
+    vi.mocked(recepcionApi.getPendingTransfers)
+      .mockResolvedValueOnce(paged([buildLine()], { totalCount: 25, pageNumber: 1 }))
+      .mockResolvedValueOnce(paged([buildLine()], { totalCount: 25, pageNumber: 2 }))
+
+    const wrapper = mount(PendingTransfersView)
+    await flushPromises()
+
+    // totalCount 25 / pageSize 20 → 2 pages max; typing 999 must clamp to 2, not request page 999.
+    const pageInput = wrapper.find<HTMLInputElement>('[data-testid="pagination-page-input"]')
+    await pageInput.setValue('999')
+    await pageInput.trigger('keydown.enter')
+    await flushPromises()
+
+    expect(recepcionApi.getPendingTransfers).toHaveBeenLastCalledWith({ pageNumber: 2, pageSize: 20 })
   })
 })
