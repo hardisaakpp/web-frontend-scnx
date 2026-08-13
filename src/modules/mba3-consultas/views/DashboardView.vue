@@ -266,6 +266,25 @@
                       </div>
                     </div>
                   </button>
+
+                  <!-- Destinatarios de Notificaciones: solo rol Admin -->
+                  <button
+                    v-if="authStore.hasRole('Admin')"
+                    @click="$router.push('/mba3-consultas/admin/destinatarios')"
+                    class="bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-600 p-4 hover:border-gray-300 dark:hover:border-gray-500 hover:shadow-sm transition-all text-left"
+                  >
+                    <div class="flex items-start gap-3">
+                      <div class="w-8 h-8 rounded bg-teal-50 dark:bg-teal-900/30 flex items-center justify-center flex-shrink-0">
+                        <svg class="w-4 h-4 text-teal-600 dark:text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <div class="font-medium text-gray-900 dark:text-white text-sm">Destinatarios de Notificaciones</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Administrar correos por tipo</div>
+                      </div>
+                    </div>
+                  </button>
                 </div>
               </div>
             </div>

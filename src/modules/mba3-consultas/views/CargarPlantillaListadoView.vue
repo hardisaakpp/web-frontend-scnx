@@ -821,7 +821,9 @@ function getEstadoLabel(estado: string): string {
     'CANCELADO POR EL RAYO': 'Cancelado por El Rayo',
     'CANCELADO_POR_EL_RAYO': 'Cancelado por El Rayo',
     'CONFIRMADO POR EL RAYO': 'Confirmado por El Rayo',
-    'CONFIRMADO_POR_EL_RAYO': 'Confirmado por El Rayo'
+    'CONFIRMADO_POR_EL_RAYO': 'Confirmado por El Rayo',
+    'CONFIRMADO POR PRODUCCION': 'Confirmado por Producción',
+    'CONFIRMADO_POR_PRODUCCION': 'Confirmado por Producción'
   }
   return labels[estado] || estado
 }
@@ -858,7 +860,9 @@ function getEstadoBadgeClass(estado: string): string {
     'CANCELADO POR EL RAYO': `bg-rose-100 text-rose-800 ${darkClasses} dark:bg-rose-900/50 dark:text-rose-200`,
     'CANCELADO_POR_EL_RAYO': `bg-rose-100 text-rose-800 ${darkClasses} dark:bg-rose-900/50 dark:text-rose-200`,
     'CONFIRMADO POR EL RAYO': `bg-pink-100 text-pink-800 ${darkClasses} dark:bg-pink-900/50 dark:text-pink-200`,
-    'CONFIRMADO_POR_EL_RAYO': `bg-pink-100 text-pink-800 ${darkClasses} dark:bg-pink-900/50 dark:text-pink-200`
+    'CONFIRMADO_POR_EL_RAYO': `bg-pink-100 text-pink-800 ${darkClasses} dark:bg-pink-900/50 dark:text-pink-200`,
+    'CONFIRMADO POR PRODUCCION': `bg-yellow-100 text-yellow-800 ${darkClasses} dark:bg-yellow-900/50 dark:text-yellow-200`,
+    'CONFIRMADO_POR_PRODUCCION': `bg-yellow-100 text-yellow-800 ${darkClasses} dark:bg-yellow-900/50 dark:text-yellow-200`
   }
   return `${baseClasses} ${classes[estado] || `bg-gray-100 text-gray-800 ${darkClasses} dark:bg-gray-700 dark:text-gray-200`}`
 }

@@ -1516,6 +1516,8 @@ export interface PedidosListadoFiltros {
   solo_redistribucion?: boolean
   /** Si true, solo pedidos que requieren acción del proveedor (paginado en servidor) */
   solo_pendientes_accion?: boolean
+  /** Si true, restringe a NUEVO_PEDIDO/GESTIONAR_PEDIDO (pantalla Producción El Rayo, req. 1.8) */
+  solo_produccion_elrayo?: boolean
 }
 
 // ========== Estados de Pedido (dropdown dinámico) ==========

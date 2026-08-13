@@ -1751,7 +1751,7 @@ export const mba3ConsultasService = {
    * @returns Lista de estados con id, nombre y orden
    * @deprecated Usar pedidosService.getEstadosPedido() directamente
    */
-  async getEstadosPedido(contexto?: 'pedidos' | 'redistribucion' | 'cargar-plantilla'): Promise<EstadosPedidoResponse> {
+  async getEstadosPedido(contexto?: 'pedidos' | 'redistribucion' | 'cargar-plantilla' | 'produccion'): Promise<EstadosPedidoResponse> {
     return pedidosService.getEstadosPedido(contexto)
   },
 }

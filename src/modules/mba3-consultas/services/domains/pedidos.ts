@@ -1551,10 +1551,11 @@ export const pedidosService = {
    *   - 'pedidos': Excluye BORRADOR (para listado general de pedidos)
    *   - 'redistribucion': Solo estados del flujo de redistribución (estado_id 4-14)
    *   - 'cargar-plantilla': Todos los estados incluyendo BORRADOR
+   *   - 'produccion': Solo NUEVO_PEDIDO/GESTIONAR_PEDIDO (pantalla Producción El Rayo, req. 1.8)
    *   - undefined: Todos los estados activos
    * @returns Lista de estados con id, nombre y orden
    */
-  async getEstadosPedido(contexto?: 'pedidos' | 'redistribucion' | 'cargar-plantilla'): Promise<EstadosPedidoResponse> {
+  async getEstadosPedido(contexto?: 'pedidos' | 'redistribucion' | 'cargar-plantilla' | 'produccion'): Promise<EstadosPedidoResponse> {
     try {
       const params = contexto ? `?contexto=${contexto}` : ''
       const response = await mba3Api.get<EstadosPedidoResponse>(`/api/pedidos/estados${params}`)

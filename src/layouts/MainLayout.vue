@@ -701,7 +701,8 @@ const canAccessGestionOdcSap = computed(() => {
     authStore.canViewOdcSap ||
     authStore.canManageOrder ||
     authStore.canViewOrderList ||
-    authStore.canViewMabel
+    authStore.canViewMabel ||
+    authStore.canViewProduccionElRayo
   ) {
     return true
   }
@@ -713,6 +714,7 @@ const canAccessGestionOdcSap = computed(() => {
       normalized === 'odc.view' ||
       normalized === 'odcsap.view' ||
       normalized === 'mabel.view' ||
+      normalized === 'produccion-elrayo.view' ||
       normalized.startsWith('odc.') ||
       normalized.startsWith('odcsap.') ||
       normalized.startsWith('mabel.')

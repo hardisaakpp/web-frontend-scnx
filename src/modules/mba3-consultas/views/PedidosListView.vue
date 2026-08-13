@@ -13,7 +13,7 @@
           <div>
             <div class="flex items-center gap-3">
               <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
-                Listado de Pedidos - EL RAYO
+                {{ esProduccionElRayo ? 'Listado de Pedidos - Producción EL RAYO' : 'Listado de Pedidos - EL RAYO' }}
               </h1>
               <span v-if="esModoElRayo" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
                 EL RAYO
@@ -530,6 +530,13 @@ const esModoElRayo = computed(() => {
   return route.query.usuario === 'el-rayo' || route.query.modo === 'el-rayo'
 })
 
+// Pantalla exclusiva de Producción El Rayo (req. 1.8): mismo componente que
+// /mba3-consultas/pedidos, pero restringido a NUEVO_PEDIDO/GESTIONAR_PEDIDO.
+// Se detecta por ruta (no por permiso) para no afectar /mba3-consultas/pedidos.
+const esProduccionElRayo = computed(() => {
+  return route.name === 'mba3-consultas-produccion-pedidos-listado'
+})
+
 // Filtro rápido para pedidos pendientes
 const filtroSoloPendientes = ref(false)
 const mostrarFiltroRapido = ref(true) // Mostrar siempre el filtro rápido
@@ -581,6 +588,8 @@ function getEstadoLabel(estado: string): string {
     'CANCELADO_POR_EL_RAYO': 'Cancelado por El Rayo',
     'CONFIRMADO POR EL RAYO': 'Confirmado por El Rayo',
     'CONFIRMADO_POR_EL_RAYO': 'Confirmado por El Rayo',
+    'CONFIRMADO POR PRODUCCION': 'Confirmado por Producción',
+    'CONFIRMADO_POR_PRODUCCION': 'Confirmado por Producción',
     'ERROR ENVIO SAP REINTENTO': 'Error envío SAP (reintentar)',
     'ERROR_ENVIO_SAP_REINTENTO': 'Error envío SAP (reintentar)'
   }
@@ -622,6 +631,8 @@ function getEstadoBadgeClass(estado: string): string {
     'CANCELADO_POR_EL_RAYO': `bg-rose-100 text-rose-800 ${darkClasses} dark:bg-rose-900/50 dark:text-rose-200`,
     'CONFIRMADO POR EL RAYO': `bg-pink-100 text-pink-800 ${darkClasses} dark:bg-pink-900/50 dark:text-pink-200`,
     'CONFIRMADO_POR_EL_RAYO': `bg-pink-100 text-pink-800 ${darkClasses} dark:bg-pink-900/50 dark:text-pink-200`,
+    'CONFIRMADO POR PRODUCCION': `bg-yellow-100 text-yellow-800 ${darkClasses} dark:bg-yellow-900/50 dark:text-yellow-200`,
+    'CONFIRMADO_POR_PRODUCCION': `bg-yellow-100 text-yellow-800 ${darkClasses} dark:bg-yellow-900/50 dark:text-yellow-200`,
     'ERROR ENVIO SAP REINTENTO': `bg-amber-100 text-amber-900 ${darkClasses} dark:bg-amber-900/40 dark:text-amber-100`,
     'ERROR_ENVIO_SAP_REINTENTO': `bg-amber-100 text-amber-900 ${darkClasses} dark:bg-amber-900/40 dark:text-amber-100`
   }
@@ -720,7 +731,7 @@ const sortedPedidos = computed(() => {
 // Cargar estados disponibles para el dropdown de filtros
 async function cargarEstados() {
   try {
-    const response = await mba3ConsultasService.getEstadosPedido('pedidos')
+    const response = await mba3ConsultasService.getEstadosPedido(esProduccionElRayo.value ? 'produccion' : 'pedidos')
     estadosDisponibles.value = response.data
   } catch (e: any) {
     console.error('Error al cargar estados:', e)
@@ -739,6 +750,7 @@ async function cargarPedidos() {
       limit: metadata.value.limit,
       offset: metadata.value.offset,
       solo_pendientes_accion: filtroSoloPendientes.value || undefined,
+      solo_produccion_elrayo: esProduccionElRayo.value || undefined,
     })
 
     pedidos.value = response.data

@@ -78,6 +78,10 @@ export interface AuthCapabilities {
   mabel_view?: boolean
   /** true con permiso mabel.view o admin. Botón "Listado Pedidos Originales" para ver/descargar/eliminar archivos Excel en MinIO. */
   can_view_plantillas_originales?: boolean
+  /** true solo con permiso produccion-elrayo.view (sin admin override). Botón "Producción El Rayo" en dashboard (req. 1.8). */
+  can_view_produccion_elrayo?: boolean
+  /** true solo con permiso funcionalidades-admin.view (sin admin override). Único requisito para ver el desplegable "Información Pedidos y ODC". */
+  can_view_funcionalidades_admin?: boolean
   [key: string]: boolean | undefined
 }
 
@@ -134,6 +138,8 @@ const MBA3_CAPABILITY_DEFS: { snake: keyof AuthCapabilities; aliases: string[] }
   { snake: 'can_view_order_list', aliases: ['CanViewOrderList'] },
   { snake: 'mabel_view', aliases: ['MabelView'] },
   { snake: 'can_view_plantillas_originales', aliases: ['CanViewPlantillasOriginales'] },
+  { snake: 'can_view_produccion_elrayo', aliases: ['CanViewProduccionElRayo'] },
+  { snake: 'can_view_funcionalidades_admin', aliases: ['CanViewFuncionalidadesAdmin'] },
 ]
 
 function capabilitiesFromApiCapabilitiesObject(raw: unknown): Partial<AuthCapabilities> {
@@ -158,12 +164,16 @@ function deriveCapabilitiesFromPermissions(permissions: string[], roles: string[
   const odcsap = p.has('odcsap.view')
   const mabel = p.has('mabel.view')
   const odc = p.has('odc.view')
+  const produccionElRayo = p.has('produccion-elrayo.view')
+  const funcionalidadesAdmin = p.has('funcionalidades-admin.view')
   return {
     can_view_odc_sap: odc,
     can_manage_order: odcsap,
     can_view_order_list: odcsap,
     mabel_view: mabel,
     can_view_plantillas_originales: mabel || isAdmin,
+    can_view_produccion_elrayo: produccionElRayo,
+    can_view_funcionalidades_admin: funcionalidadesAdmin,
   }
 }
 
@@ -354,7 +364,11 @@ export const useAuthStore = defineStore('auth', {
     /** true solo si capabilities.mabel_view === true (permiso mabel.view). Cargar Plantilla, Redistribución, Procesamiento SAP, Procesos, Homologaciones. Solo leer de capabilities. */
     canViewMabel: (state): boolean => state.capabilities?.mabel_view === true,
     /** true solo si capabilities.can_view_plantillas_originales === true (permiso mabel.view o admin). Botón "Listado Pedidos Originales" en sección Información ODC. */
-    canViewPlantillasOriginales: (state): boolean => state.capabilities?.can_view_plantillas_originales === true
+    canViewPlantillasOriginales: (state): boolean => state.capabilities?.can_view_plantillas_originales === true,
+    /** true solo si capabilities.can_view_produccion_elrayo === true (permiso produccion-elrayo.view). Botón "Producción El Rayo" (req. 1.8). */
+    canViewProduccionElRayo: (state): boolean => state.capabilities?.can_view_produccion_elrayo === true,
+    /** true solo si capabilities.can_view_funcionalidades_admin === true (permiso funcionalidades-admin.view). Único requisito del desplegable "Información Pedidos y ODC". */
+    canViewFuncionalidadesAdmin: (state): boolean => state.capabilities?.can_view_funcionalidades_admin === true
   },
 
   actions: {
