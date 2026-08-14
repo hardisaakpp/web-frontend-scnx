@@ -3,12 +3,15 @@ import { computed, onMounted, ref } from 'vue'
 import { usePickingStore } from '../stores/pickingStore'
 import { ArrowLeftIcon } from '@heroicons/vue/24/outline'
 import type { ReceptionTransferStatus } from '../types'
+import PageJumpInput from '../components/PageJumpInput.vue'
 
 const store = usePickingStore()
 const search = ref('')
 
+// resetInProgressAndFetch (not fetchInProgress) — the store is a Pinia singleton that outlives
+// this view, so a leftover page from a previous visit must not silently re-apply on remount.
 onMounted(() => {
-  store.fetchInProgress()
+  store.resetInProgressAndFetch()
 })
 
 // Real server-side pagination (verified InProgressTransfersController: pageNumber/pageSize
@@ -151,9 +154,7 @@ function statusMeta(status: ReceptionTransferStatus) {
             >
               Anterior
             </button>
-            <div class="text-xs text-gray-600 dark:text-gray-300 font-medium bg-gray-50 dark:bg-gray-900 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700">
-              {{ store.page }} / {{ totalPages }}
-            </div>
+            <PageJumpInput :page="store.page" :total-pages="totalPages" @go="goToPage" />
             <button
               type="button"
               data-testid="pagination-next"

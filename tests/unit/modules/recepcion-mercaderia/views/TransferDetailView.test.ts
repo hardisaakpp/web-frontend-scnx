@@ -408,6 +408,27 @@ describe('TransferDetailView', () => {
     expect(cells[3].text()).toContain('Eliminar')
   })
 
+  it('treats a naive scannedAtUtc (no trailing Z — the confirmed EF Core DateTimeKind.Unspecified bug) as UTC, not local time', async () => {
+    mockAuth(['recepcion.picking.scan'])
+    const transfer = buildTransfer({ lines: [buildLine()] })
+    // Same instant, one with the zone marker the backend SHOULD send and one "naive" like the
+    // real backend currently sends — both must render identically once parsed defensively.
+    const withZ = buildDifference({ differenceId: 1, barcode: '111', scannedAtUtc: '2026-01-02T15:30:00Z' })
+    const naive = buildDifference({ differenceId: 2, barcode: '222', scannedAtUtc: '2026-01-02T15:30:00' })
+
+    vi.mocked(recepcionApi.getTransfer).mockResolvedValueOnce(mockGetTransfer(transfer, [withZ]))
+    const wrapperWithZ = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+    const withZText = wrapperWithZ.find('[data-testid="differences-table"]').findAll('tbody tr')[0].findAll('td')[2].text()
+
+    vi.mocked(recepcionApi.getTransfer).mockResolvedValueOnce(mockGetTransfer(transfer, [naive]))
+    const wrapperNaive = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+    const naiveText = wrapperNaive.find('[data-testid="differences-table"]').findAll('tbody tr')[0].findAll('td')[2].text()
+
+    expect(naiveText).toBe(withZText)
+  })
+
   it('shows a placeholder in the Producto column when the backend could not identify the product', async () => {
     mockAuth(['recepcion.picking.scan', 'recepcion.diferencias.gestionar'])
     const transfer = buildTransfer({ lines: [buildLine({ barcode: '7791234' })] })

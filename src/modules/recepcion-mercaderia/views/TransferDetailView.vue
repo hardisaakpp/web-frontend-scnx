@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { usePickingStore } from '../stores/pickingStore'
 import { useAuthStore } from '@/stores/auth'
+import { APP_LOCALE } from '@/plugins/locale'
 import { ExclamationTriangleIcon, PencilIcon, DocumentArrowDownIcon, TrashIcon, ArrowLeftIcon } from '@heroicons/vue/24/outline'
 import type { ReceptionLine, ReceptionTransferStatus } from '../types'
 import { triggerBlobDownload } from '../utils/downloadBlob'
@@ -29,8 +30,17 @@ function buildScanFeedback(result: { matchedLine: ReceptionLine | null; fillAmou
   return `${result.fillAmount} escaneado(s) para ${result.matchedLine.itemCode}.`
 }
 
+// Backend datetime2 columns don't preserve DateTimeKind.Utc on read (confirmed backend-side —
+// EF Core returns Unspecified, so System.Text.Json serializes without a trailing 'Z'). A *Utc
+// field can therefore arrive as a naive string ("2026-08-13T19:31:53"), which `new Date()` would
+// otherwise parse as LOCAL time instead of UTC. Append 'Z' when no zone marker is present so this
+// keeps working once the backend fix ships too (a real offset/'Z' short-circuits the append).
+function parseUtc(dateStr: string): Date {
+  return new Date(/(?:Z|[+-]\d{2}:\d{2})$/.test(dateStr) ? dateStr : `${dateStr}Z`)
+}
+
 function formatDateTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('es-ES', {
+  return parseUtc(dateStr).toLocaleDateString(APP_LOCALE, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
@@ -310,9 +320,9 @@ async function handleDownloadPickingReport(): Promise<void> {
           <!-- Barcode-scanner-gun input: legacy recP.php parity. Not a <form> of its own (avoids
                nested-form/Enter conflicts with the batch "Guardar escaneo" form below) — Enter on
                the barcode input or the Agregar button both trigger handleBarcodeScan directly. -->
-          <div v-if="canScan" class="flex flex-wrap gap-3 items-end mb-4 bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
-            <div class="flex flex-col gap-1.5">
-              <label for="barcode-scan-input" class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Código de barras</label>
+          <div v-if="canScan" class="flex flex-wrap gap-2 items-end mb-3 bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700 rounded-lg p-2">
+            <div class="flex flex-col gap-0.5">
+              <label for="barcode-scan-input" class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Código de barras</label>
               <input
                 id="barcode-scan-input"
                 ref="barcodeInputEl"
@@ -321,75 +331,84 @@ async function handleDownloadPickingReport(): Promise<void> {
                 type="text"
                 autofocus
                 placeholder="Escaneá o ingresá el código"
-                class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                 @keyup.enter.prevent="handleBarcodeScan"
               />
             </div>
-            <div class="flex flex-col gap-1.5">
-              <label for="barcode-scan-quantity-input" class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Cantidad</label>
+            <div class="flex flex-col gap-0.5">
+              <label for="barcode-scan-quantity-input" class="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Cantidad</label>
               <input
                 id="barcode-scan-quantity-input"
                 data-testid="barcode-scan-quantity-input"
                 v-model.number="scanBarcodeQuantity"
                 type="number"
                 min="1"
-                class="w-20 text-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1 text-sm font-semibold text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                class="w-16 text-center rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1.5 text-sm font-semibold text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
               />
             </div>
             <button
               type="button"
               data-testid="barcode-scan-add-btn"
               :disabled="store.isSubmitting || !scanBarcodeInput"
-              class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              class="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               @click="handleBarcodeScan"
             >
               Agregar
             </button>
-            <p v-if="scanFeedback" data-testid="scan-feedback" class="text-xs text-gray-500 dark:text-gray-400">{{ scanFeedback }}</p>
+            <p v-if="scanFeedback" data-testid="scan-feedback" class="text-[10px] text-gray-500 dark:text-gray-400">{{ scanFeedback }}</p>
           </div>
 
-          <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+          <div class="overflow-auto max-h-[28rem] rounded-lg border border-gray-200 dark:border-gray-700">
             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead class="bg-gray-50 dark:bg-gray-900/50">
+              <thead class="sticky top-0 z-10 bg-gray-50 dark:bg-gray-900/50">
                 <tr>
-                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Artículo</th>
-                  <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cantidad</th>
-                  <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Escaneados</th>
-                  <th class="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Diferencia</th>
+                  <th class="px-3 py-1.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">N.°</th>
+                  <th class="px-3 py-1.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Código de barras</th>
+                  <th class="px-3 py-1.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Artículo</th>
+                  <th class="px-3 py-1.5 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cantidad</th>
+                  <th class="px-3 py-1.5 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Escaneados</th>
+                  <th class="px-3 py-1.5 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Diferencia</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
                 <tr
-                  v-for="line in store.currentTransfer.lines"
+                  v-for="(line, index) in store.currentTransfer.lines"
                   :key="line.lineId"
                   data-testid="line-row"
                   :class="[recountLineIds.has(line.lineId) ? 'bg-amber-50 dark:bg-amber-900/10' : '', 'hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group']"
                 >
-                  <td class="px-4 py-3 text-sm">
-                    <div class="font-medium text-gray-900 dark:text-white">{{ line.itemCode }}</div>
-                    <div class="text-xs text-gray-500 dark:text-gray-400">{{ line.itemName }}</div>
-                    <div data-testid="barcode-cell" class="text-xs font-mono text-gray-400 dark:text-gray-500 mt-0.5">{{ line.barcode || 'Sin código de barras' }}</div>
+                  <td class="px-3 py-1 text-xs text-gray-400 dark:text-gray-500">{{ index + 1 }}</td>
+                  <td
+                    data-testid="barcode-cell"
+                    class="px-3 py-1 text-xs font-mono text-gray-500 dark:text-gray-400 truncate"
+                    :title="line.barcode || 'Sin código de barras'"
+                  >
+                    {{ line.barcode || 'Sin código de barras' }}
                   </td>
-                  <td class="px-4 py-3 text-center text-sm font-semibold text-gray-900 dark:text-white">{{ line.quantity }}</td>
-                  <td class="px-4 py-3 text-center text-sm">
+                  <td class="px-3 py-1 max-w-xs truncate" :title="`${line.itemCode} — ${line.itemName}`">
+                    <span class="text-xs font-medium text-gray-900 dark:text-white">{{ line.itemCode }}</span>
+                    <span class="text-xs text-gray-500 dark:text-gray-400"> {{ line.itemName }}</span>
+                  </td>
+                  <td class="px-3 py-1 text-center text-sm font-semibold text-gray-900 dark:text-white">{{ line.quantity }}</td>
+                  <td class="px-3 py-1 text-center text-sm">
                     <!-- Manual fallback: only for lines with NO barcode — the scanner input above
                          can't address them. Lines that DO have a barcode are read-only here; their
                          scanned total comes exclusively from handleBarcodeScan. -->
-                    <div v-if="canScan && line.barcode === null" class="flex flex-col items-center gap-1">
+                    <div v-if="canScan && line.barcode === null" class="flex flex-col items-center gap-0.5">
                       <input
                         :data-testid="`scan-quantity-input-${line.lineId}`"
                         v-model.number="scanQuantities[line.lineId]"
                         type="number"
                         min="0"
                         :max="line.quantity"
-                        class="w-20 text-center rounded-lg border border-amber-300 dark:border-amber-800 bg-gray-50 dark:bg-gray-900 px-2 py-1 text-sm font-semibold text-blue-600 dark:text-blue-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                        class="w-16 text-center rounded-md border border-amber-300 dark:border-amber-800 bg-gray-50 dark:bg-gray-900 px-2 py-0.5 text-sm font-semibold text-blue-600 dark:text-blue-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                       />
-                      <span class="text-[10px] text-amber-600 dark:text-amber-400">Sin código — carga manual</span>
+                      <span class="text-[9px] text-amber-600 dark:text-amber-400">Sin código — carga manual</span>
                     </div>
                     <span v-else class="font-semibold text-blue-600 dark:text-blue-400">{{ line.scanned }}</span>
                   </td>
                   <td
-                    class="px-4 py-3 text-center text-sm font-semibold"
+                    class="px-3 py-1 text-center text-sm font-semibold"
                     :class="store.lineDiferencia(line) !== 0 ? 'text-amber-600 dark:text-amber-400' : 'text-gray-900 dark:text-white'"
                   >
                     {{ store.lineDiferencia(line) }}
@@ -433,24 +452,24 @@ async function handleDownloadPickingReport(): Promise<void> {
           </div>
         </form>
 
-        <div v-if="store.differences.length > 0" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
-          <h2 class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-4">Diferencias registradas</h2>
+        <div v-if="store.differences.length > 0" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
+          <h2 class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-2">Diferencias registradas</h2>
           <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
             <table data-testid="differences-table" class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead class="bg-gray-50 dark:bg-gray-900/50">
                 <tr>
-                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Código de barras</th>
-                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Producto</th>
-                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fecha / Hora</th>
-                  <th class="px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Acciones</th>
+                  <th class="px-3 py-1.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Código de barras</th>
+                  <th class="px-3 py-1.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Producto</th>
+                  <th class="px-3 py-1.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fecha / Hora</th>
+                  <th class="px-3 py-1.5 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Acciones</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
                 <tr v-for="d in store.differences" :key="d.differenceId" class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                  <td class="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">{{ d.barcode }}</td>
-                  <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{{ d.productDescription ?? '—' }}</td>
-                  <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{{ formatDateTime(d.scannedAtUtc) }}</td>
-                  <td class="px-4 py-3 text-right">
+                  <td class="px-3 py-1 text-sm font-medium text-gray-900 dark:text-white">{{ d.barcode }}</td>
+                  <td class="px-3 py-1 text-xs text-gray-600 dark:text-gray-300">{{ d.productDescription ?? '—' }}</td>
+                  <td class="px-3 py-1 text-xs text-gray-600 dark:text-gray-300">{{ formatDateTime(d.scannedAtUtc) }}</td>
+                  <td class="px-3 py-1 text-right">
                     <button
                       v-if="canManageDifferences"
                       :disabled="store.isSubmitting"
