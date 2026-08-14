@@ -159,7 +159,8 @@
         {{ descargandoExcelOriginal ? 'Descargando...' : 'Descargar Excel Original' }}
       </button>
       <!-- Botón Confirmar (movido al final, junto a Descargar Excel Original) -->
-      <div v-if="!esModoMabelTrading && !hideConfirmAndDownload" class="flex flex-col items-end gap-1">
+      <!-- Oculto para produccion-elrayo.view (req. 1.8): usa "Confirmar Producción" en su lugar -->
+      <div v-if="!esModoMabelTrading && !hideConfirmAndDownload && !puedeConfirmarProduccion" class="flex flex-col items-end gap-1">
         <button
           @click="$emit('confirmar')"
           :disabled="loading || !pedido || confirmando || confirmarDeshabilitado"
@@ -173,6 +174,24 @@
         </button>
         <p v-if="esInmediatoSinFecha" class="text-xs text-amber-600 dark:text-amber-400">
           Seleccione una fecha de entrega para confirmar
+        </p>
+      </div>
+      <!-- Botón Confirmar Producción (req. 1.8): exclusivo de produccion-elrayo.view, solo en Gestionar Pedido -->
+      <div v-if="puedeConfirmarProduccion" class="flex flex-col items-end gap-1">
+        <button
+          @click="$emit('confirmar-produccion')"
+          :disabled="loading || !pedido || confirmandoProduccion || confirmarProduccionDeshabilitado"
+          class="px-4 py-2 bg-amber-600 dark:bg-amber-500 text-white rounded-lg hover:bg-amber-700 dark:hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-medium"
+          title="Confirma el pedido desde Producción y notifica a Administración El Rayo"
+        >
+          <svg v-if="!confirmandoProduccion" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Confirmando producción" />
+          {{ confirmandoProduccion ? 'Confirmando...' : 'Confirmar Producción' }}
+        </button>
+        <p v-if="confirmarProduccionDeshabilitado && !confirmandoProduccion" class="text-xs text-amber-600 dark:text-amber-400">
+          Seleccione la Fecha Facturación para confirmar producción
         </p>
       </div>
       <slot name="toolbar-extra" />
@@ -226,12 +245,22 @@ const props = defineProps<{
   puedeFinalizarPedido?: boolean
   /** Mostrar botón "Finalizar Pedido" (solo en vista Cargar Plantilla, no en Detalle del Pedido) */
   showFinalizarPedido?: boolean
+  /**
+   * Req. 1.8: true si el usuario tiene produccion-elrayo.view y el pedido está en
+   * Gestionar Pedido. Oculta "Confirmar" y muestra "Confirmar Producción" en su lugar.
+   */
+  puedeConfirmarProduccion?: boolean
+  /** Confirmación de producción en curso (deshabilita el botón mientras se envía) */
+  confirmandoProduccion?: boolean
+  /** Deshabilita "Confirmar Producción" hasta que se seleccione la Fecha Facturación */
+  confirmarProduccionDeshabilitado?: boolean
 }>()
 
 const emit = defineEmits<{
   'cargar-plantillas': []
   'generar-oc': []
   'confirmar': []
+  'confirmar-produccion': []
   'go-to-pedido': []
   'search-blur': []
   'descargar-plano-mba': []

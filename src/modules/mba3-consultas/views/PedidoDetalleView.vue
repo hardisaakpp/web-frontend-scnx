@@ -120,9 +120,13 @@
         :puede-descargar-csv="puedeDescargarCsv"
         :puede-generar-txt-mba3="puedeGenerarTxtMba3"
         :tiene-archivo-original="false"
+        :puede-confirmar-produccion="puedeConfirmarProduccion"
+        :confirmar-produccion-deshabilitado="confirmarProduccionDeshabilitadoPorFecha"
+        :confirmando-produccion="confirmandoProduccion"
         @cargar-plantillas="goToCargarPlantillas"
         @generar-oc="handleGenerarOCDesdePedido"
         @confirmar="handleConfirmar"
+        @confirmar-produccion="handleConfirmarProduccion"
         @update-estado="handleUpdateEstado"
         @go-to-pedido="goToPedido"
         @search-blur="handleSearchBlur"
@@ -161,9 +165,11 @@
           :permitir-edicion-fechas-en-gestionar="true"
           :show-inmediato-option="false"
           :fecha-pedido-editable="false"
+          :puede-editar-fecha-facturacion="authStore.canViewProduccionElRayo"
           @copy-to-clipboard="copyToClipboard"
           @update-fecha-pedido="handleUpdateFechaPedido"
           @update-fecha-entrega="handleUpdateFechaEntrega"
+          @update-fecha-facturacion="handleUpdateFechaFacturacion"
           @update-estado="handleUpdateEstado"
         />
 
@@ -409,6 +415,15 @@
       @close="handleCerrarModalConfirmacion"
     />
 
+    <!-- Modal de confirmación: pedido confirmado por Producción (req. 1.8) -->
+    <SimpleConfirmModal
+      :is-open="showConfirmacionProduccionModal"
+      title="Pedido confirmado por Producción"
+      message="El pedido cambió al estado Confirmado por Producción y se notificó a Administración El Rayo."
+      confirm-label="Aceptar"
+      @close="handleCerrarModalConfirmacionProduccion"
+    />
+
   </div>
 </template>
 
@@ -416,6 +431,7 @@
 import { ref, computed, watch, type Ref } from '@vue/reactivity'
 import { onMounted, onActivated, onUnmounted, nextTick, Teleport } from '@vue/runtime-core'
 import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import { lastNotification } from '@/composables/useNotificaciones'
 import { useTablePreferences } from '@/composables/useTablePreferences'
@@ -472,6 +488,7 @@ const COPY_FEEDBACK_DURATION_MS = 2000
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 const toast = useToast()
 
 const pedido = ref<PedidoCompleto | null>(null)
@@ -482,12 +499,17 @@ const descargandoPlanoMba = ref(false)
 // Modal de confirmación tras "Confirmar" (pedido confirmado)
 const showConfirmacionModal = ref(false)
 
+// Modal de confirmación tras "Confirmar Producción" (req. 1.8): a diferencia del
+// modal de "Confirmar", al cerrar este redirige al listado de pedidos de Producción.
+const showConfirmacionProduccionModal = ref(false)
+
 // ⭐ Set para rastrear columnas modificadas (formato: "detalleId:columnKey")
 const columnasModificadas = ref<Set<string>>(new Set())
 
 // Gestión de columnas visibles en la tabla
 const showColumnSelector = ref(false)
 const confirmando = ref(false)
+const confirmandoProduccion = ref(false)
 const cancelandoPorElRayo = ref(false)
 const descargandoPedido = ref(false)
 const descargandoCsv = ref(false)
@@ -556,13 +578,18 @@ function limpiarColumnasModificadasEnStorage() {
 }
 
 // Por defecto: #, CÓDIGO, DESCRIPCIÓN, COSTO UNIT., TOTAL, COMENTARIO (dev y prod)
+// "Costo Unit." se excluye por completo (ni visible ni disponible en el selector de
+// columnas) para produccion-elrayo.view (req. 1.8): Producción no debe ver costos.
 const availableColumns: ColumnConfig[] = [
   { key: 'numero', label: '#', visible: true, align: 'center', format: 'number', fixed: true },
   { key: 'codigo_interno', label: 'Código', visible: true, align: 'left', format: 'text' },
   { key: 'descripcion_sap', label: 'Descripción', visible: true, align: 'left', format: 'text' },
   { key: 'codigo_barras', label: 'Código de Barras', visible: false, align: 'left', format: 'text' },
   { key: 'pack', label: 'Pack', visible: false, align: 'left', format: 'text' },
-  { key: 'costo_doc_sin_iva', label: 'Costo Unit.', visible: true, align: 'right', format: 'currency' },
+  { key: 'marca', label: 'Marca', visible: true, align: 'left', format: 'text' },
+  ...(authStore.canViewProduccionElRayo
+    ? []
+    : [{ key: 'costo_doc_sin_iva', label: 'Costo Unit.', visible: true, align: 'right' as const, format: 'currency' as const }]),
   { key: 'descuento_1', label: 'Descuento', visible: false, align: 'right', format: 'number' },
   { key: 'pvp', label: 'PVP', visible: false, align: 'right', format: 'currency' },
   { key: 'subtotal', label: 'Subtotal', visible: false, align: 'right', format: 'number' },
@@ -787,29 +814,15 @@ const canGenerarOC = computed(() => {
   return estado === 'CONFIRMADO_PROVEEDOR'
 })
 
-// ⭐ Deshabilitar "Confirmar" desde estado CONFIRMADO (id 4) en adelante (ver docs/FRONTEND.md §2)
-const ESTADOS_YA_CONFIRMADOS = [
-  'CONFIRMADO', // Backend devuelve este estado al confirmar (estado_id 4)
-  'RESPUESTA_PROVEEDOR_CARGADA',
-  'CONFIRMADO_PROVEEDOR',
-  'CONFIRMADO REDISTRIBUCION',
-  'PEDIDO_CONFIRMADO',
-  'CONFIRMADO_ENVIADO',
-  'PROCESADO_SAP',
-  'REDISTRIBUCION',
-  'CANCELADO POR EL RAYO',
-  'CANCELADO_POR_EL_RAYO'
-]
+// Req. 1.8: "Confirmar" (odcsap.view) se habilita únicamente en el estado
+// "Confirmado por Producción" (estado_id 23). La habilitación previa desde
+// Gestionar Pedido (3) queda obsoleta con el nuevo flujo intermedio
+// Gestionar Pedido -> Confirmar Producción -> Confirmar.
 const confirmarDeshabilitadoPorEstado = computed(() => {
   const cabecera = pedido.value?.cabecera
-  if (!cabecera) return false
+  if (!cabecera) return true
   const estadoId = cabecera.estado_id != null ? Number(cabecera.estado_id) : null
-  const estado = cabecera.estado ?? ''
-  // Cancelado por EL RAYO (estado_id 20)
-  if (estadoId === 20) return true
-  if (estadoId === 4 || estado === 'CONFIRMADO') return true
-  if (estadoId != null && estadoId >= 4) return true
-  if (ESTADOS_YA_CONFIRMADOS.includes(estado)) return true
+  if (estadoId !== 23) return true
 
   // Si la fecha de entrega es "INMEDIATO", el usuario debe seleccionar una fecha real antes de confirmar
   const fechaEntrega = cabecera.fecha_entrega?.trim()?.toUpperCase()
@@ -818,14 +831,27 @@ const confirmarDeshabilitadoPorEstado = computed(() => {
   return false
 })
 
+// Req. 1.8: "Confirmar" se oculta y "Confirmar Producción" se muestra en su lugar
+// solo para produccion-elrayo.view, y solo mientras el pedido está en Gestionar Pedido.
+const puedeConfirmarProduccion = computed(() => {
+  if (!authStore.canViewProduccionElRayo) return false
+  const estadoIdRaw = pedido.value?.cabecera?.estado_id
+  const estadoId = estadoIdRaw != null ? Number(estadoIdRaw) : null
+  return estadoId === 3
+})
+
+// "Confirmar Producción" solo se activa cuando se seleccionó la Fecha Facturación
+const confirmarProduccionDeshabilitadoPorFecha = computed(() => {
+  return !pedido.value?.cabecera?.fecha_facturacion
+})
+
 // Indica si el botón está deshabilitado específicamente porque el pedido es INMEDIATO y falta seleccionar fecha de entrega
 const esInmediatoSinFecha = computed(() => {
   const cabecera = pedido.value?.cabecera
   if (!cabecera) return false
   const estadoId = cabecera.estado_id != null ? Number(cabecera.estado_id) : null
-  // Solo aplica si el pedido NO está ya confirmado (estado_id < 4)
-  if (estadoId != null && estadoId >= 4) return false
-  if (ESTADOS_YA_CONFIRMADOS.includes(cabecera.estado ?? '')) return false
+  // Solo aplica en el estado donde "Confirmar" está habilitado: Confirmado por Producción (23)
+  if (estadoId !== 23) return false
   const fechaEntrega = cabecera.fecha_entrega?.trim()?.toUpperCase()
   return fechaEntrega === 'INMEDIATO'
 })
@@ -835,13 +861,15 @@ const confirmarRedistribucionDeshabilitadoPorEstado = computed(() =>
   pedido.value?.puede_confirmar_redistribucion === false
 )
 
-// Solo permitir editar COSTO UNIT., TOTAL y COMENTARIO en estado GESTIONAR PEDIDO (docs/FRONTEND.md §0.5.8.2)
+// Permitir editar COSTO UNIT., TOTAL y COMENTARIO en GESTIONAR PEDIDO (docs/FRONTEND.md §0.5.8.2)
+// y también en CONFIRMADO POR PRODUCCIÓN (23): odcsap.view hereda en ese estado las mismas
+// funcionalidades que tenía en Gestionar Pedido (req. 1.8).
 const puedeEditarCostoTotalComentario = computed(() => {
   const cabecera = pedido.value?.cabecera
   if (!cabecera) return false
   const estadoId = cabecera.estado_id != null ? Number(cabecera.estado_id) : null
   const estado = String(cabecera.estado ?? '').trim().toUpperCase()
-  if (estadoId === 3) return true
+  if (estadoId === 3 || estadoId === 23) return true
   if (estado === 'GESTIONAR_PEDIDO' || estado === 'GESTIONAR PEDIDO') return true
   return false
 })
@@ -1023,13 +1051,36 @@ async function handleUpdateFechaEntrega(fecha: string | null) {
     }
     
     toast.success('Fecha actualizada', 'La fecha de entrega se ha actualizado correctamente')
-    
+
     // Recargar el pedido para asegurar sincronización
     await loadPedido()
   } catch (e: any) {
     console.error('Error al actualizar fecha de entrega:', e)
     toast.error('Error al actualizar', e.message || 'No se pudo actualizar la fecha de entrega')
     // Recargar para restaurar valor original
+    await loadPedido()
+  }
+}
+
+// Fecha Facturación (req. 1.8): exclusiva de Producción El Rayo, solo en Gestionar Pedido
+async function handleUpdateFechaFacturacion(fecha: string | null) {
+  if (!pedido.value?.cabecera?.pedido_id) return
+
+  try {
+    await mba3ConsultasService.actualizarCabeceraPedido(pedido.value.cabecera.pedido_id, {
+      fecha_facturacion: fecha
+    })
+
+    if (pedido.value.cabecera) {
+      pedido.value.cabecera.fecha_facturacion = fecha
+    }
+
+    toast.success('Fecha actualizada', 'La fecha de facturación se ha actualizado correctamente')
+
+    await loadPedido()
+  } catch (e: any) {
+    console.error('Error al actualizar fecha de facturación:', e)
+    toast.error('Error al actualizar', e.message || 'No se pudo actualizar la fecha de facturación')
     await loadPedido()
   }
 }
@@ -1125,6 +1176,32 @@ function handleCerrarModalConfirmacion() {
   showConfirmacionModal.value = false
   // El usuario permanece en la misma página (Detalle del Pedido)
   // No se realiza redirección
+}
+
+// Confirmar Producción (req. 1.8): exclusivo de produccion-elrayo.view, Gestionar Pedido -> Confirmado por Producción
+async function handleConfirmarProduccion() {
+  if (confirmandoProduccion.value || !pedido.value?.cabecera?.pedido_id) return
+
+  const pedidoId = pedido.value.cabecera.pedido_id
+  confirmandoProduccion.value = true
+
+  try {
+    await mba3ConsultasService.confirmarProduccion(pedidoId)
+    // No se recarga el pedido: al pasar a Confirmado por Producción (estado 23),
+    // produccion-elrayo.view ya no puede acceder a su detalle (ver requisito de
+    // acceso solo a Nuevo Pedido/Gestionar Pedido); el modal redirige al listado.
+    showConfirmacionProduccionModal.value = true
+  } catch (e: any) {
+    console.error('Error al confirmar producción:', e)
+    toast.error('Error al confirmar', e.message || 'No se pudo confirmar el pedido')
+  } finally {
+    confirmandoProduccion.value = false
+  }
+}
+
+function handleCerrarModalConfirmacionProduccion() {
+  showConfirmacionProduccionModal.value = false
+  router.push('/mba3-consultas/produccion/pedidos')
 }
 
 // Función para descargar pedido ORIGINAL en formato Excel (valores antes de ediciones)

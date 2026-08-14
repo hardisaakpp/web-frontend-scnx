@@ -1285,6 +1285,10 @@ export const mba3ConsultasService = {
     return pedidosService.cancelarPedidoPorElRayo(pedidoId)
   },
 
+  async confirmarProduccion(pedidoId: string): Promise<any> {
+    return pedidosService.confirmarProduccion(pedidoId)
+  },
+
   /**
    * Descarga un pedido como Excel con estructura de "Descargar Pedido"
    * GET /api/pedidos/{pedido_id}/descargar-pedido

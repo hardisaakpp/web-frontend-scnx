@@ -974,6 +974,9 @@ export interface PedidoCabecera {
   // ⭐ Campos de SAP (disponibles cuando estado_id = 12 CONFIRMADO_ENVIADO)
   numero_oc_sap?: string | null  // Número de OC en SAP (DocNum)
   doc_entry?: number | null      // DocEntry de SAP para trazabilidad
+  /** Fecha Facturación (req. 1.8): en blanco por defecto, exclusiva de Producción El Rayo,
+   * editable solo mientras el pedido está en Gestionar Pedido (estado_id = 3). */
+  fecha_facturacion?: string | null
 }
 
 export interface TiendaDistribucion {
@@ -1306,6 +1309,8 @@ export interface ModificarPedidoCabeceraRequest {
   comprador_codigo?: string | null
   origen_traslado?: string | null
   serie?: string | null
+  /** Fecha Facturación (req. 1.8): exclusiva de Producción El Rayo, solo en Gestionar Pedido. */
+  fecha_facturacion?: string | null
 }
 
 export interface ModificarPedidoCabeceraResponse {

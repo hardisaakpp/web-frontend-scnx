@@ -697,6 +697,21 @@ export const pedidosService = {
   },
 
   /**
+   * Confirma el pedido desde Producción El Rayo (req. 1.8, botón "Confirmar Producción").
+   * Exclusivo de produccion-elrayo.view; solo válido en estado Gestionar Pedido.
+   * Transiciona a Confirmado por Producción y notifica por correo a Administración El Rayo.
+   */
+  async confirmarProduccion(pedidoId: string): Promise<any> {
+    try {
+      const response = await mba3Api.post(`/api/pedidos/${encodeURIComponent(pedidoId)}/confirmar-produccion`)
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [confirmarProduccion] Error:', error)
+      throw createEnrichedError(error, 'Error al confirmar producción del pedido')
+    }
+  },
+
+  /**
    * Descarga un pedido en formato Excel con estructura de "Descargar Pedido"
    * GET /api/pedidos/{pedido_id}/descargar-pedido
    * Válido desde estado GESTIONAR PEDIDO (3) en adelante.

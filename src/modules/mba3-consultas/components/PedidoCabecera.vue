@@ -56,19 +56,12 @@
       </div>
       <div>
         <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Fecha de Pedido</label>
-        <input
+        <AppDateInput
           v-if="editable && fechaPedidoEditable !== false"
           v-model="fechaPedidoLocal"
-          type="date"
           :disabled="!fechasEditables"
-          @blur="actualizarFechaPedido"
-          @keydown.enter="actualizarFechaPedido"
-          :class="[
-            'mt-1 w-full px-3 py-2 border rounded-lg text-sm',
-            fechasEditables
-              ? 'border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white'
-              : 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed'
-          ]"
+          class="mt-1"
+          @change="actualizarFechaPedido"
         />
         <p v-else class="mt-1 text-sm text-gray-900 dark:text-white">{{ formatDate(pedido.cabecera.fecha_pedido) }}</p>
       </div>
@@ -103,19 +96,11 @@
             </label>
           </div>
           <!-- Input de fecha: mostrar si showInmediatoOption es false, o si no está seleccionado INMEDIATO -->
-          <input
+          <AppDateInput
             v-if="showInmediatoOption === false || fechaEntregaLocal !== 'INMEDIATO'"
             v-model="fechaEntregaLocal"
-            type="date"
             :disabled="!fechasEditables"
-            @blur="actualizarFechaEntrega"
-            @keydown.enter="actualizarFechaEntrega"
-            :class="[
-              'w-full px-3 py-2 border rounded-lg text-sm',
-              fechasEditables
-                ? 'border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white'
-                : 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed'
-            ]"
+            @change="actualizarFechaEntrega"
           />
           <!-- Badge INMEDIATO: se muestra cuando showInmediatoOption !== false y está seleccionado INMEDIATO (implícito por v-else) -->
           <div
@@ -131,6 +116,16 @@
           </div>
         </div>
         <p v-else class="mt-1 text-sm text-gray-900 dark:text-white">{{ formatDate(pedido.cabecera.fecha_entrega) }}</p>
+      </div>
+      <div>
+        <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Fecha Facturación</label>
+        <AppDateInput
+          v-if="fechaFacturacionEditable"
+          v-model="fechaFacturacionLocal"
+          class="mt-1"
+          @change="actualizarFechaFacturacion"
+        />
+        <p v-else class="mt-1 text-sm text-gray-900 dark:text-white">{{ formatDate(pedido.cabecera.fecha_facturacion ?? null) }}</p>
       </div>
       <div>
         <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Proveedor</label>
@@ -223,6 +218,7 @@ import { ref, watch, computed } from '@vue/reactivity'
 import type { PedidoCompleto } from '../types'
 import { formatDate, formatEstadoPedido } from '../utils/formatters'
 import { getEstadoPedidoBadgeClass } from '../utils/styleHelpers'
+import AppDateInput from './AppDateInput.vue'
 
 const props = defineProps<{
   pedido: PedidoCompleto
@@ -251,6 +247,12 @@ const props = defineProps<{
    * Usar false en la interfaz de detalle de pedido (/pedidos/{id}).
    */
   fechaPedidoEditable?: boolean
+  /**
+   * Si true, el usuario actual tiene permiso para editar Fecha Facturación (req. 1.8:
+   * exclusiva de Producción El Rayo). Se combina con el estado del pedido: solo se
+   * habilita el input mientras el pedido está en GESTIONAR_PEDIDO (estado_id = 3).
+   */
+  puedeEditarFechaFacturacion?: boolean
 }>()
 
 /**
@@ -258,6 +260,8 @@ const props = defineProps<{
  * son editables según el estado del pedido:
  * - BORRADOR (estado_id = 1): siempre editable
  * - GESTIONAR_PEDIDO (estado_id = 3): editable solo si permitirEdicionFechasEnGestionar es true
+ * - CONFIRMADO_POR_PRODUCCION (estado_id = 23): mismo caso que GESTIONAR_PEDIDO (req. 1.8:
+ *   odcsap.view hereda en este estado las funcionalidades que tenía en Gestionar Pedido)
  * - Otros estados: no editable
  */
 const fechasEditables = computed(() => {
@@ -287,8 +291,10 @@ const fechasEditables = computed(() => {
   // En BORRADOR (estado_id = 1): siempre editable
   if (estadoId === 1) return true
   
-  // En GESTIONAR_PEDIDO (estado_id = 3): editable solo si permitirEdicionFechasEnGestionar es true
-  if (estadoId === 3 && props.permitirEdicionFechasEnGestionar) return true
+  // En GESTIONAR_PEDIDO (3) o CONFIRMADO_POR_PRODUCCION (23): editable solo si
+  // permitirEdicionFechasEnGestionar es true (req. 1.8: odcsap.view hereda en 23
+  // las funcionalidades que tenía en Gestionar Pedido)
+  if ((estadoId === 3 || estadoId === 23) && props.permitirEdicionFechasEnGestionar) return true
   
   // En cualquier otro estado: no editable
   return false
@@ -298,8 +304,20 @@ const emit = defineEmits<{
   'copy-to-clipboard': [text: string]
   'update-fecha-pedido': [fecha: string | null]
   'update-fecha-entrega': [fecha: string | null]
+  'update-fecha-facturacion': [fecha: string | null]
   'update-estado': [estado: string | null]
 }>()
+
+/**
+ * Fecha Facturación (req. 1.8): exclusiva de Producción El Rayo (puedeEditarFechaFacturacion),
+ * y solo mientras el pedido está en GESTIONAR_PEDIDO (estado_id = 3).
+ */
+const fechaFacturacionEditable = computed(() => {
+  if (!props.puedeEditarFechaFacturacion) return false
+  const estadoIdRaw = props.pedido?.cabecera?.estado_id
+  const estadoId = typeof estadoIdRaw === 'string' ? parseInt(estadoIdRaw, 10) : estadoIdRaw
+  return estadoId === 3
+})
 
 // Estado colapsable - por defecto encogido, a menos que se especifique defaultExpanded
 const isExpanded = ref(props.defaultExpanded ?? false)
@@ -307,6 +325,7 @@ const isExpanded = ref(props.defaultExpanded ?? false)
 // Estados locales para edición
 const fechaPedidoLocal = ref<string>('')
 const fechaEntregaLocal = ref<string | null>(null)
+const fechaFacturacionLocal = ref<string>('')
 const estadoLocal = ref<string>('')
 
 // Convertir fecha a formato YYYY-MM-DD para input type="date"
@@ -327,6 +346,7 @@ watch(() => props.pedido, (newPedido) => {
   if (newPedido?.cabecera) {
     fechaPedidoLocal.value = dateToInputFormat(newPedido.cabecera.fecha_pedido)
     fechaEntregaLocal.value = newPedido.cabecera.fecha_entrega || null
+    fechaFacturacionLocal.value = dateToInputFormat(newPedido.cabecera.fecha_facturacion ?? null)
     estadoLocal.value = newPedido.cabecera.estado || ''
   }
 }, { immediate: true, deep: true })
@@ -378,5 +398,10 @@ function handleInmediatoChange(event: Event) {
 
 function actualizarEstado() {
   emit('update-estado', estadoLocal.value || null)
+}
+
+function actualizarFechaFacturacion() {
+  if (!fechaFacturacionEditable.value) return
+  emit('update-fecha-facturacion', fechaFacturacionLocal.value || null)
 }
 </script>
