@@ -217,6 +217,13 @@
                                 </td>
                                 <td class="px-4 py-3 text-sm text-right whitespace-nowrap sticky right-0 bg-white dark:bg-gray-800 group-hover:bg-gray-50 dark:group-hover:bg-gray-700/50 z-10 shadow-[-4px_0_4px_rgba(0,0,0,0.05)]">
                                     <button
+                                        class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium mr-3 transition-colors text-xs inline-flex items-center gap-1"
+                                        @click="openInspeccion(articulo)"
+                                    >
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+                                        Fotos
+                                    </button>
+                                    <button
                                         class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium mr-3 transition-colors text-xs"
                                         @click="router.push(`/articulo-maestro/editar/${articulo.itemCode}`)"
                                     >
@@ -342,6 +349,34 @@
                         <p class="text-[10px] text-gray-400 mt-1 italic">* Solo se admite el formato .xlsx</p>
                     </div>
 
+                    <!-- Paso 4 (opcional, solo creación): ZIP de imágenes -->
+                    <div v-if="tipoCarga === 'crear'">
+                        <p class="text-sm font-medium text-gray-900 dark:text-white mb-2">
+                            4. Adjunta el ZIP de imágenes (opcional)
+                        </p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                            Si las columnas foto1/foto2/foto3 de la plantilla llevan nombres de archivo, adjunta aquí el .zip que los contiene.
+                        </p>
+                        <div
+                            class="border-2 border-dashed rounded-lg p-6 text-center transition-colors"
+                            :class="dragOverZip ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-300 dark:border-gray-600 hover:border-gray-400'"
+                            @dragover.prevent="dragOverZip = true"
+                            @dragleave.prevent="dragOverZip = false"
+                            @drop.prevent="onZipDrop"
+                        >
+                            <input ref="zipInputRef" type="file" accept=".zip" aria-label="Seleccionar archivo ZIP de imágenes" class="hidden" @change="onZipSelect" />
+                            <div v-if="!selectedZip" class="space-y-2">
+                                <svg class="mx-auto h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375"/></svg>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">Arrastra el .zip aquí o <button type="button" @click="zipInputRef?.click()" class="text-blue-600 dark:text-blue-400 font-medium hover:underline">selecciona uno</button></p>
+                            </div>
+                            <div v-else class="flex items-center justify-center gap-3">
+                                <svg class="h-6 w-6 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                <span class="text-sm text-gray-900 dark:text-white font-medium">{{ selectedZip.name }}</span>
+                                <button type="button" @click="resetZip" class="text-xs text-red-500 hover:underline">Quitar</button>
+                            </div>
+                        </div>
+                    </div>
+
                     <ImportacionProgreso v-if="importStore.trabajo" />
 
                     <!-- Error general (red, servidor, etc.) -->
@@ -417,6 +452,14 @@
             </div>
         </div>
     </Teleport>
+
+    <Teleport to="body">
+        <InspeccionVisualModal 
+            :is-open="modalInspeccionAbierto" 
+            :articulo-base="articuloAInspeccionar" 
+            @close="modalInspeccionAbierto = false" 
+        />
+    </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -438,7 +481,16 @@ import {
 } from '../services/articuloService'
 import KeyboardHelpModal from '../components/KeyboardHelpModal.vue'
 import ImportacionProgreso from '../components/ImportacionProgreso.vue'
+import InspeccionVisualModal from '../components/InspeccionVisualModal.vue'
 import { useKeyboardShortcuts } from '../composables/useKeyboardShortcuts'
+
+const modalInspeccionAbierto = ref(false)
+const articuloAInspeccionar = ref<any>(null)
+
+function openInspeccion(articulo: any) {
+    articuloAInspeccionar.value = articulo
+    modalInspeccionAbierto.value = true
+}
 
 const router = useRouter()
 const importStore = useImportacionArticulosStore()
@@ -723,6 +775,9 @@ const tipoCarga = ref<TipoCargaMasiva>('crear')
 const selectedFile = ref<File | null>(null)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const dragOver = ref(false)
+const selectedZip = ref<File | null>(null)
+const zipInputRef = ref<HTMLInputElement | null>(null)
+const dragOverZip = ref(false)
 const uploading = ref(false)
 const downloadingTemplate = ref(false)
 const cargaError = ref('')
@@ -746,6 +801,36 @@ function resetCarga() {
     if (fileInputRef.value) {
         fileInputRef.value.value = ''
     }
+    resetZip()
+}
+
+function resetZip() {
+    selectedZip.value = null
+    if (zipInputRef.value) {
+        zipInputRef.value.value = ''
+    }
+}
+
+function selectZipFile(file: File): void {
+    if (!file.name.toLowerCase().endsWith('.zip')) {
+        selectedZip.value = null
+        cargaError.value = 'El archivo de imágenes debe ser formato .zip'
+        return
+    }
+    selectedZip.value = file
+    cargaError.value = ''
+}
+
+function onZipSelect(event: Event) {
+    const input = event.target as HTMLInputElement
+    const file = input.files?.[0]
+    if (file) selectZipFile(file)
+}
+
+function onZipDrop(event: DragEvent) {
+    dragOverZip.value = false
+    const file = event.dataTransfer?.files?.[0]
+    if (file) selectZipFile(file)
 }
 
 function handleTipoCargaChange(): void {
@@ -800,9 +885,14 @@ async function handleUpload() {
     uploading.value = true
     cargaError.value = ''
     try {
-        await importStore.iniciar(selectedFile.value, tipoCarga.value)
+        await importStore.iniciar(
+            selectedFile.value,
+            tipoCarga.value,
+            tipoCarga.value === 'crear' ? selectedZip.value : null
+        )
         selectedFile.value = null
         if (fileInputRef.value) fileInputRef.value.value = ''
+        resetZip()
     } catch (err: unknown) {
         // Solo llega aquí si fue un error de red/servidor (no de validación)
         const axiosErr = err as { response?: { data?: { detail?: string } } }

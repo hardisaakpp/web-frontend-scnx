@@ -579,9 +579,11 @@
                     <!-- Tab: Imágenes -->
                     <div v-show="activeTab === 'img'" class="p-6">
                         <GestorImagenes
-                            :model-value="form.imagenes"
+                            ref="gestorImagenesRef"
+                            :item-code="isEdit ? (route.params.itemCode as string) : null"
+                            :images="form.imagenes"
                             :disabled="submitting"
-                            @update:model-value="onImagesUpdate"
+                            @update:images="onImagesUpdate"
                         />
                     </div>
                 </div>
@@ -934,9 +936,6 @@ const form = ref({
     aplicaEcommerce: false,
     aplicaPrecioMinorista: true,
     aplicaPrecioInternacional: false,
-    urlImagen1: '',
-    urlImagen2: '',
-    urlImagen3: '',
     imagenes: [] as ImagenArticuloReferencia[],
     isStructuralLocked: false,
 })
@@ -983,8 +982,7 @@ const loadError = ref('')
 const submitting = ref(false)
 const submitError = ref('')
 const submitSuccess = ref('')
-const imagesDirty = ref(false)
-let imageStatusTimer: ReturnType<typeof setInterval> | null = null
+const gestorImagenesRef = ref<InstanceType<typeof GestorImagenes> | null>(null)
 
 // ─── RF-002: Promoción de Código Alterno ──────────────────────────────────────
 const promoviendo = ref(false)
@@ -1019,39 +1017,7 @@ async function handlePromoverAlterno(): Promise<void> {
 }
 
 function onImagesUpdate(images: ImagenArticuloReferencia[]): void {
-    stopImageStatusPolling()
     form.value.imagenes = images
-    imagesDirty.value = true
-}
-
-function stopImageStatusPolling(): void {
-    if (!imageStatusTimer) return
-    globalThis.clearInterval(imageStatusTimer)
-    imageStatusTimer = null
-}
-
-async function refreshImageStatus(itemCode: string): Promise<void> {
-    try {
-        const article = await articuloService.getArticuloByCode(itemCode)
-        form.value.imagenes = article.imagenes ?? []
-        const hasPending = form.value.imagenes.some(image =>
-            ['PENDIENTE', 'PROCESANDO'].includes(image.estado ?? '')
-        )
-        if (!hasPending) stopImageStatusPolling()
-    } catch {
-        stopImageStatusPolling()
-    }
-}
-
-function startImageStatusPolling(itemCode: string): void {
-    stopImageStatusPolling()
-    const hasPending = form.value.imagenes.some(image =>
-        ['PENDIENTE', 'PROCESANDO'].includes(image.estado ?? '')
-    )
-    if (!hasPending) return
-    imageStatusTimer = globalThis.setInterval(() => {
-        void refreshImageStatus(itemCode)
-    }, 2500)
 }
 
 // En edición: cargar los datos del artículo desde la API y pre-poblar la jerarquía de catálogos
@@ -1110,7 +1076,6 @@ async function cargarDatosEdicion(itemCode: string) {
         // tocar Marca/Talla/etc. Si no coincide (fue editado a mano), el
         // watcher ya no lo va a pisar.
         ultimoItemNameSugerido.value = calcularItemNameSugerido()
-        startImageStatusPolling(itemCode)
     } catch {
         loadError.value = `No se pudo cargar el artículo "${itemCode}". Verifica que el código es correcto.`
     } finally {
@@ -1172,19 +1137,10 @@ async function handleSubmit() {
         // el artículo ya tiene historial en SAP (ver
         // _ensure_manage_batch_numbers_editable); el formulario lo muestra
         // deshabilitado en ese caso y no debe reenviarlo.
-        if (key === 'manageBatchNumbers' && isEdit.value && form.value.isStructuralLocked) return
-        if (key === 'imagenes') {
-            if (isEdit.value && !imagesDirty.value) return
-            payload.imagenes = (val as ImagenArticuloReferencia[]).map(image => ({
-                posicion: image.posicion,
-                esPrincipal: image.esPrincipal,
-                driveId: image.driveId,
-                itemId: image.itemId,
-                urlOriginal: image.urlOriginal,
-                nombreOriginal: image.nombreOriginal
-            }))
-            return
-        }
+        // Las imágenes se gestionan exclusivamente por sus endpoints dedicados
+        // (GestorImagenes / articuloService.subirImagenArticulo): nunca viajan
+        // en el payload de creación/edición del artículo.
+        if (key === 'imagenes') return
 
         if (val === '' || val == null) return
 
@@ -1202,16 +1158,16 @@ async function handleSubmit() {
             const itemCode = route.params.itemCode as string
             const article = await articuloService.updateArticulo(itemCode, payload)
             form.value.imagenes = article.imagenes ?? []
-            imagesDirty.value = false
             submitSuccess.value = `Artículo ${itemCode} actualizado. Sincronización con SAP iniciada en segundo plano.`
-            startImageStatusPolling(itemCode)
         } else {
             const article = await articuloService.createArticulo(payload)
             form.value.imagenes = article.imagenes ?? []
-            imagesDirty.value = false
-            submitSuccess.value = `Artículo ${article.itemCode} creado. Sincronización con SAP e imágenes iniciadas en segundo plano.`
+            // Las imágenes elegidas antes de crear el artículo quedaron en
+            // espera (GestorImagenes no tenía ItemCode todavía); ahora que ya
+            // existe, se suben.
+            await gestorImagenesRef.value?.flushPendingUploads(article.itemCode)
+            submitSuccess.value = `Artículo ${article.itemCode} creado. Sincronización con SAP iniciada en segundo plano.`
             await router.replace(`/articulo-maestro/editar/${article.itemCode}`)
-            startImageStatusPolling(article.itemCode)
         }
     } catch (err: unknown) {
         const axiosErr = err as { response?: { data?: { detail?: string | { msg: string }[] } } }
@@ -1230,7 +1186,6 @@ async function handleSubmit() {
 
 onUnmounted(() => {
     globalThis.removeEventListener('keydown', handleKeydown)
-    stopImageStatusPolling()
 })
 const showKeyboardHelp = ref(false)
 const shortcuts = {

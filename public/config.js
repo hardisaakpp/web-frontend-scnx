@@ -10,8 +10,5 @@ window.CONFIG = {
     VITE_SCNEXUS_INVENTORY_API_URL: '/inventario-api',
     VITE_PROMOCION_SOBRES_API_URL: '/promocion-sobres-api',
     VITE_PREFERENCES_API_URL: '',
-    VITE_SLAYER_API_URL: '/slayer-api',
-    VITE_MS_TENANT_ID: '',
-    VITE_MS_CLIENT_ID: '',
-    VITE_SHAREPOINT_BASE_URL: 'https://mabeltradingecuador.sharepoint.com/sites/fotosproductos'
+    VITE_SLAYER_API_URL: '/slayer-api'
 };

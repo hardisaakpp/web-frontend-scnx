@@ -24,7 +24,7 @@
                 <Metric label="Filas con error" :value="job.filasError" tone="error" />
                 <Metric label="Grupos correctos" :value="store.gruposCorrectos" tone="success" />
                 <Metric label="Grupos pendientes" :value="store.gruposPendientes" tone="warning" />
-                <Metric label="Imágenes pendientes" :value="store.imagenesPendientes" tone="info" />
+                <Metric label="Imágenes con error" :value="store.imagenesConError" tone="error" />
             </div>
             <p
                 v-if="(job.estado === 'COMPLETADO' || job.estado === 'COMPLETADO_CON_ERRORES') && job.filasCorrectas > 0"

@@ -16,13 +16,10 @@ export interface ImagenArticuloReferencia {
     id?: number
     posicion: 1 | 2 | 3
     esPrincipal: boolean
-    driveId?: string | null
-    itemId?: string | null
-    urlOriginal: string
     nombreOriginal?: string | null
     urlFinal?: string | null
     nombreFinal?: string | null
-    estado?: 'PENDIENTE' | 'PROCESANDO' | 'COMPLETADA' | 'ERROR'
+    estado?: 'COMPLETADA' | 'ERROR'
     mensajeError?: string | null
     intentos?: number
 }
@@ -113,9 +110,6 @@ export interface Articulo {
     aplicaPrecioMinorista?: boolean
     aplicaPrecioInternacional?: boolean
     manageBatchNumbers?: string | null
-    urlImagen1?: string | null
-    urlImagen2?: string | null
-    urlImagen3?: string | null
     imagenes?: ImagenArticuloReferencia[]
 
     // Estado y UI
@@ -151,20 +145,5 @@ export interface ArticuloPagination {
     page: number
     pageSize: number
     totalPages: number
-}
-
-// ─────────────────────────────────────────────
-// Interfaces Multimedia (Imágenes)
-// ─────────────────────────────────────────────
-
-export interface ProductImage {
-    id: number
-    articuloId?: number | null
-    baseCode: string
-    url: string
-    isPrimary: boolean
-    position: number
-    createdAt: string
-    status: 'PENDING' | 'ASSIGNED' | 'DELETED'
 }
 

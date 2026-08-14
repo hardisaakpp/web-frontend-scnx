@@ -63,10 +63,7 @@ function normalizeObject(obj: any): any {
             'UPrArq',
             'CostoArranque',
             'costoArranque'
-        ],
-        urlImagen1: ['urlImagen1', 'url_imagen1', 'url_imagen_1'],
-        urlImagen2: ['urlImagen2', 'url_imagen2', 'url_imagen_2'],
-        urlImagen3: ['urlImagen3', 'url_imagen3', 'url_imagen_3']
+        ]
     }
 
     Object.entries(criticalMappings).forEach(([camelKey, variations]) => {
@@ -295,10 +292,14 @@ export const articuloService = {
 
     crearImportacion: async (
         file: File,
-        tipo: TipoCargaMasiva
+        tipo: TipoCargaMasiva,
+        zipImagenes?: File | null
     ): Promise<ImportacionAceptada> => {
         const formData = new FormData()
         formData.append('file', file)
+        if (zipImagenes) {
+            formData.append('zip_imagenes', zipImagenes)
+        }
         const response = await apiMaestro.post<ImportacionAceptada>(
             '/api/v1/articulos/importaciones',
             formData,
@@ -374,14 +375,31 @@ export const articuloService = {
         globalThis.URL.revokeObjectURL(url)
     },
 
-    getSharePointPreview: async (
-        referencia: { driveId: string, itemId: string }
-    ): Promise<Blob> => {
-        const response = await apiMaestro.get(
-            `/api/v1/articulos/sharepoint/preview/${encodeURIComponent(referencia.driveId)}/${encodeURIComponent(referencia.itemId)}`,
-            { responseType: 'blob' }
+    // Subir (o reemplazar) la imagen de una posición (1=Principal, 2/3=Secundarias).
+    // Subida síncrona a MinIO: la respuesta ya trae la urlFinal pública.
+    subirImagenArticulo: async (
+        itemCode: string,
+        posicion: 1 | 2 | 3,
+        archivo: File
+    ): Promise<ImagenArticuloReferencia> => {
+        const formData = new FormData()
+        formData.append('archivo', archivo)
+        const response = await apiMaestro.post<ImagenArticuloReferencia>(
+            `/api/v1/articulos/${itemCode}/imagenes/${posicion}`,
+            formData,
+            { headers: { 'Content-Type': 'multipart/form-data' } }
         )
-        return response.data as Blob
+        return response.data
+    },
+
+    // Eliminar la imagen de una posición.
+    eliminarImagenArticulo: async (
+        itemCode: string,
+        posicion: 1 | 2 | 3
+    ): Promise<void> => {
+        await apiMaestro.delete(
+            `/api/v1/articulos/${itemCode}/imagenes/${posicion}`
+        )
     },
 
     // Descargar reporte diario de artículos

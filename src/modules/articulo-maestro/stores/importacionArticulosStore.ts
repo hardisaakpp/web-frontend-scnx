@@ -86,18 +86,21 @@ export const useImportacionArticulosStore = defineStore(
                 state.trabajo?.grupos.filter(grupo =>
                     ['PENDIENTE', 'PROCESANDO'].includes(grupo.estado)
                 ).length ?? 0,
-            imagenesPendientes: (state): number =>
+            // La subida a MinIO es síncrona (sin estados intermedios): una
+            // imagen que falla (p.ej. no encontrada dentro del ZIP) queda
+            // registrada directamente en ERROR, nunca en PENDIENTE/PROCESANDO.
+            imagenesConError: (state): number =>
                 state.trabajo?.grupos
                     .flatMap(grupo => grupo.imagenes)
-                    .filter(imagen =>
-                        ['PENDIENTE', 'PROCESANDO'].includes(
-                            imagen.estado ?? ''
-                        )
-                    ).length ?? 0
+                    .filter(imagen => imagen.estado === 'ERROR').length ?? 0
         },
 
         actions: {
-            async iniciar(file: File, tipo: TipoCargaMasiva): Promise<void> {
+            async iniciar(
+                file: File,
+                tipo: TipoCargaMasiva,
+                zipImagenes?: File | null
+            ): Promise<void> {
                 this.detenerPolling()
                 this.loading = true
                 this.error = null
@@ -105,7 +108,8 @@ export const useImportacionArticulosStore = defineStore(
                 try {
                     const aceptada = await articuloService.crearImportacion(
                         file,
-                        tipo
+                        tipo,
+                        zipImagenes
                     )
                     this.jobId = aceptada.jobId
                     globalThis.localStorage?.setItem(
