@@ -1,40 +1,131 @@
 <template>
-  <input
-    type="text"
-    inputmode="numeric"
-    autocomplete="off"
-    :value="textValue"
-    :disabled="disabled"
-    placeholder="DD/MM/AAAA"
-    @input="handleInput"
-    @blur="handleBlur"
-    @keydown="handleKeydown"
-    :class="[
-      'w-full px-3 py-2 border rounded-lg text-sm',
-      disabled
-        ? 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed'
-        : 'border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white'
-    ]"
-  />
+  <div ref="rootRef" class="relative">
+    <input
+      type="text"
+      inputmode="numeric"
+      autocomplete="off"
+      :value="textValue"
+      :disabled="disabled"
+      placeholder="DD/MM/AAAA"
+      @input="handleInput"
+      @focus="handleFocus"
+      @blur="handleBlur"
+      @keydown="handleKeydown"
+      :class="[
+        'w-full pl-3 pr-9 py-2 border rounded-lg text-sm',
+        disabled
+          ? 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+          : 'border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white dark:bg-gray-700 text-gray-900 dark:text-white'
+      ]"
+    />
+    <button
+      v-if="!disabled"
+      type="button"
+      tabindex="-1"
+      title="Abrir calendario"
+      class="absolute inset-y-0 right-0 flex items-center pr-2.5 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
+      @mousedown.prevent="toggleCalendar"
+    >
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+      </svg>
+    </button>
+
+    <div
+      v-if="showCalendar"
+      class="absolute z-20 mt-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-lg p-2"
+      style="width: 17rem;"
+      @mousedown.prevent
+    >
+      <div class="flex items-center justify-between px-1 py-1">
+        <button
+          type="button"
+          class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300"
+          @click="prevMonth"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+        <span class="text-sm font-medium text-gray-700 dark:text-gray-200">{{ monthYearLabel }}</span>
+        <button
+          type="button"
+          class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300"
+          @click="nextMonth"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      </div>
+      <!-- grid-template-columns inline (no clase de Tailwind): así el layout nunca
+           depende de que esa clase ya esté generada en el CSS del build/caché del
+           navegador que la sirve. -->
+      <div class="grid gap-0.5 mt-1 px-1" style="grid-template-columns: repeat(7, minmax(0, 1fr));">
+        <span
+          v-for="d in WEEK_DAYS"
+          :key="d"
+          class="text-center text-[11px] font-medium text-gray-400 dark:text-gray-500"
+        >{{ d }}</span>
+      </div>
+      <div class="grid gap-0.5 mt-0.5 px-1 pb-1" style="grid-template-columns: repeat(7, minmax(0, 1fr));">
+        <button
+          v-for="cell in calendarCells"
+          :key="cell.key"
+          type="button"
+          class="h-7 rounded text-xs transition-colors"
+          :class="[
+            cell.isSelected
+              ? 'bg-indigo-600 text-white font-medium'
+              : cell.isToday
+                ? 'border border-indigo-400 dark:border-indigo-500 text-indigo-600 dark:text-indigo-300'
+                : cell.isCurrentMonth
+                  ? 'text-gray-700 dark:text-gray-200 hover:bg-indigo-50 dark:hover:bg-gray-600'
+                  : 'text-gray-300 dark:text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-600/50'
+          ]"
+          @click="selectDay(cell)"
+        >
+          {{ cell.day }}
+        </button>
+      </div>
+      <div class="flex items-center justify-between px-1 pt-1 border-t border-gray-100 dark:border-gray-600">
+        <button
+          type="button"
+          class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-medium px-1 py-1"
+          @click="selectToday"
+        >
+          Hoy
+        </button>
+        <button
+          type="button"
+          class="text-xs text-gray-500 dark:text-gray-400 hover:underline font-medium px-1 py-1"
+          @click="clear"
+        >
+          Limpiar
+        </button>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup lang="ts">
 /**
- * Input de fecha propio (texto DD/MM/AAAA con máscara automática) que no depende
- * del input nativo <input type="date">: el navegador renderiza ese control (orden
- * de día/mes/año) según el idioma/región configurados en el propio navegador, no
- * según el `lang` de la página, así que no se puede forzar día/mes/año de forma
- * confiable con el control nativo.
+ * Input de fecha propio (texto DD/MM/AAAA con máscara + calendario desplegable)
+ * que no depende del input nativo <input type="date">: el navegador renderiza
+ * ese control (orden de día/mes/año, idioma del calendario) según el idioma/
+ * región configurados en el propio navegador, no según el `lang` de la página,
+ * así que no se puede forzar día/mes/año de forma confiable con el control nativo.
  *
- * Sin calendario desplegable a propósito (feedback de UX): más simple y sin
- * riesgo de bugs de layout/posición; encaja además con campos como Fecha
- * Facturación, que se copian de un documento real en vez de "navegarse".
+ * El grid de días usa grid-template-columns inline (no la clase de Tailwind
+ * grid-cols-7): esa clase es poco común en el resto de la app, así que en un
+ * build/caché de CSS que no la haya generado todavía el calendario se veía como
+ * una sola columna en vez de 7. Con estilo inline el layout no depende de eso.
  *
  * v-model expone y recibe siempre 'YYYY-MM-DD' (o '' si no hay fecha), igual que
  * el input nativo, para no tener que tocar el resto del código que ya trabaja con
  * ese formato.
  */
-import { ref, watch } from 'vue'
+import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 
 const props = defineProps<{
   modelValue: string | null
@@ -46,7 +137,19 @@ const emit = defineEmits<{
   'change': [value: string]
 }>()
 
+const WEEK_DAYS = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do']
+
+const rootRef = ref<HTMLElement | null>(null)
+const showCalendar = ref(false)
 const textValue = ref('')
+
+const now = new Date()
+const viewYear = ref(now.getFullYear())
+const viewMonth = ref(now.getMonth())
+
+function pad2(n: number): string {
+  return String(n).padStart(2, '0')
+}
 
 function isoToDisplay(iso: string): string {
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '')
@@ -63,13 +166,26 @@ function displayToIso(display: string): string | null {
   if (month < 1 || month > 12) return null
   const daysInMonth = new Date(year, month, 0).getDate()
   if (day < 1 || day > daysInMonth) return null
-  return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+  return `${String(year).padStart(4, '0')}-${pad2(month)}-${pad2(day)}`
+}
+
+function syncViewToValue(iso: string) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '')
+  if (m) {
+    viewYear.value = Number(m[1])
+    viewMonth.value = Number(m[2]) - 1
+  } else {
+    const today = new Date()
+    viewYear.value = today.getFullYear()
+    viewMonth.value = today.getMonth()
+  }
 }
 
 watch(
   () => props.modelValue,
   (value) => {
     textValue.value = isoToDisplay(value ?? '')
+    syncViewToValue(value ?? '')
   },
   { immediate: true }
 )
@@ -89,6 +205,11 @@ function handleInput(event: Event) {
   }
 }
 
+function handleFocus() {
+  if (props.disabled) return
+  showCalendar.value = true
+}
+
 function handleBlur() {
   commitFromText()
 }
@@ -96,7 +217,10 @@ function handleBlur() {
 function handleKeydown(event: KeyboardEvent) {
   if (event.key === 'Enter') {
     commitFromText()
+    showCalendar.value = false
     ;(event.target as HTMLInputElement).blur()
+  } else if (event.key === 'Escape') {
+    showCalendar.value = false
   }
 }
 
@@ -115,9 +239,146 @@ function commitFromText() {
       emit('update:modelValue', iso)
       emit('change', iso)
     }
+    syncViewToValue(iso)
   } else {
     // Fecha incompleta o inválida: revertir al último valor válido
     textValue.value = isoToDisplay(props.modelValue ?? '')
   }
 }
+
+function toggleCalendar() {
+  if (props.disabled) return
+  showCalendar.value = !showCalendar.value
+}
+
+const monthYearLabel = computed(() => {
+  const label = new Date(viewYear.value, viewMonth.value, 1).toLocaleDateString('es-EC', {
+    month: 'long',
+    year: 'numeric'
+  })
+  return label.charAt(0).toUpperCase() + label.slice(1)
+})
+
+interface CalendarCell {
+  key: string
+  day: number
+  iso: string
+  isCurrentMonth: boolean
+  isSelected: boolean
+  isToday: boolean
+}
+
+const calendarCells = computed<CalendarCell[]>(() => {
+  const year = viewYear.value
+  const month = viewMonth.value
+  const firstOfMonth = new Date(year, month, 1)
+  // JS: 0=domingo..6=sábado. WEEK_DAYS empieza en lunes, así que desplazamos.
+  const leading = (firstOfMonth.getDay() + 6) % 7
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const daysInPrevMonth = new Date(year, month, 0).getDate()
+
+  const today = new Date()
+
+  const cells: CalendarCell[] = []
+
+  for (let i = 0; i < leading; i++) {
+    const day = daysInPrevMonth - leading + 1 + i
+    const cellDate = new Date(year, month - 1, day)
+    cells.push({
+      key: `prev-${day}`,
+      day,
+      iso: `${cellDate.getFullYear()}-${pad2(cellDate.getMonth() + 1)}-${pad2(cellDate.getDate())}`,
+      isCurrentMonth: false,
+      isSelected: false,
+      isToday: false
+    })
+  }
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const iso = `${year}-${pad2(month + 1)}-${pad2(day)}`
+    cells.push({
+      key: `cur-${day}`,
+      day,
+      iso,
+      isCurrentMonth: true,
+      isSelected: iso === props.modelValue,
+      isToday: year === today.getFullYear() && month === today.getMonth() && day === today.getDate()
+    })
+  }
+
+  const remaining = (7 - (cells.length % 7)) % 7
+  for (let day = 1; day <= remaining; day++) {
+    const cellDate = new Date(year, month + 1, day)
+    cells.push({
+      key: `next-${day}`,
+      day,
+      iso: `${cellDate.getFullYear()}-${pad2(cellDate.getMonth() + 1)}-${pad2(cellDate.getDate())}`,
+      isCurrentMonth: false,
+      isSelected: false,
+      isToday: false
+    })
+  }
+
+  return cells
+})
+
+function prevMonth() {
+  if (viewMonth.value === 0) {
+    viewMonth.value = 11
+    viewYear.value -= 1
+  } else {
+    viewMonth.value -= 1
+  }
+}
+
+function nextMonth() {
+  if (viewMonth.value === 11) {
+    viewMonth.value = 0
+    viewYear.value += 1
+  } else {
+    viewMonth.value += 1
+  }
+}
+
+function commitIso(iso: string) {
+  textValue.value = isoToDisplay(iso)
+  syncViewToValue(iso)
+  emit('update:modelValue', iso)
+  emit('change', iso)
+  showCalendar.value = false
+}
+
+function selectDay(cell: CalendarCell) {
+  commitIso(cell.iso)
+}
+
+function selectToday() {
+  const today = new Date()
+  commitIso(`${today.getFullYear()}-${pad2(today.getMonth() + 1)}-${pad2(today.getDate())}`)
+}
+
+function clear() {
+  textValue.value = ''
+  emit('update:modelValue', '')
+  emit('change', '')
+  showCalendar.value = false
+}
+
+function handleDocumentClick(event: MouseEvent) {
+  if (rootRef.value && !rootRef.value.contains(event.target as Node)) {
+    showCalendar.value = false
+  }
+}
+
+watch(showCalendar, (open) => {
+  if (open) {
+    nextTick(() => document.addEventListener('click', handleDocumentClick))
+  } else {
+    document.removeEventListener('click', handleDocumentClick)
+  }
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('click', handleDocumentClick)
+})
 </script>
