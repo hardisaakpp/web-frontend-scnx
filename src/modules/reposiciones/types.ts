@@ -79,7 +79,6 @@ export interface ConfigurarAlmacenRequest {
 
 export interface SaveItemRequest {
   toWhs: string;
-  fromWhs: string;
   itemCode: string;
   quantity: number;
   usuarioNombre: string;

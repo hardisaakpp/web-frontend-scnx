@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, nextTick, ref, computed, watch } from 'vue'
+import { onMounted, onUnmounted, nextTick, ref, reactive, computed, watch } from 'vue'
 import { useReposicionStore } from '../stores/reposicionStore'
 import { storeToRefs } from 'pinia'
 import {
@@ -71,12 +71,13 @@ const handleConfirm = (result: boolean) => {
   }
 }
 
+const getApiErrorMessage = (err: any, fallback: string): string => err?.response?.data?.message || fallback
+
 const handleUpdateComment = async (itemCode: string, comment: string) => {
   try {
     await store.updateItemComment(itemCode, comment)
   } catch (err: any) {
-    const errorMsg = err.response?.data?.message || 'Error al guardar comentario'
-    showError(errorMsg)
+    showError(getApiErrorMessage(err, 'Error al guardar comentario'))
   }
 }
 
@@ -256,8 +257,36 @@ const confirmQuantityChange = async (item: any, quantity: number): Promise<boole
   return true
 }
 
+// Valor "en edición" por artículo, desacoplado de store.cantidadPorCodigo: mientras
+// existe, el input muestra este valor en vez del store. Evita que un re-render ajeno
+// (los ResizeObserver de arriba, el debounce de filtros, etc.) pise lo que el usuario
+// está escribiendo antes de que la validación async termine y confirme el valor real.
+const draftQuantities = reactive<Record<string, string>>({})
+
+const quantityDisplayValue = (item: any) =>
+  draftQuantities[item.itemCode] ?? String(store.cantidadPorCodigo(item.itemCode))
+
+const onQuantityInput = (item: any, e: Event) => {
+  draftQuantities[item.itemCode] = (e.target as HTMLInputElement).value
+}
+
+// No usar @blur directo aquí: si Enter dispara un modal de confirmación (sugerido/
+// embalaje/tránsito), Headless UI mueve el foco al modal EN EL MISMO tick en que el
+// navegador todavía está procesando el "keyup" de Enter — y ese keyup, al caer ahora
+// sobre el botón recién enfocado, lo activa como si se hubiera hecho click (Cancelar).
+// Diferir el blur a un tick posterior evita que el keyup de Enter quede "flotando"
+// hacia el modal.
+const onQuantityEnter = (e: KeyboardEvent) => {
+  e.preventDefault()
+  const target = e.target as HTMLInputElement
+  setTimeout(() => target.blur(), 0)
+}
+
 const updateQuantity = async (item: any, quantity: number) => {
-  if (store.cantidadPorCodigo(item.itemCode) === quantity) return
+  if (store.cantidadPorCodigo(item.itemCode) === quantity) {
+    delete draftQuantities[item.itemCode]
+    return
+  }
   try {
     const resolvedQuantity = await resolveEmbalajeQuantity(item, quantity)
     if (resolvedQuantity === null) return
@@ -266,8 +295,9 @@ const updateQuantity = async (item: any, quantity: number) => {
 
     await store.updateItemQuantity(item.itemCode, resolvedQuantity)
   } catch (err: any) {
-    const errorMsg = err.response?.data?.message || 'Error al actualizar cantidad'
-    showError(errorMsg)
+    showError(getApiErrorMessage(err, 'Error al actualizar cantidad'))
+  } finally {
+    delete draftQuantities[item.itemCode]
   }
 }
 
@@ -435,22 +465,26 @@ const getQuantityColor = (item: any) => {
                 {{ item.diasInventario.toFixed(1) }}
               </td>
               <td class="px-4 py-3">
-                <input 
+                <input
                   type="number"
-                  :value="store.cantidadPorCodigo(item.itemCode)"
+                  :value="quantityDisplayValue(item)"
+                  @input="e => onQuantityInput(item, e)"
                   @blur="e => updateQuantity(item, parseInt((e.target as HTMLInputElement).value || '0'))"
+                  @keydown.enter="onQuantityEnter"
                   class="w-full h-9 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border text-center text-sm font-bold"
                   :class="getQuantityColor(item)"
                   min="0"
                 />
               </td>
               <td class="px-4 py-3">
-                <input 
+                <input
                   type="text"
                   :value="store.comentarioPorCodigo(item.itemCode)"
                   @blur="e => handleUpdateComment(item.itemCode, (e.target as HTMLInputElement).value)"
+                  :disabled="store.cantidadPorCodigo(item.itemCode) === 0"
+                  :title="store.cantidadPorCodigo(item.itemCode) === 0 ? 'Agrega una cantidad primero' : ''"
                   placeholder="..."
-                  class="w-full h-9 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border text-xs px-2"
+                  class="w-full h-9 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border text-xs px-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   maxlength="50"
                 />
               </td>
