@@ -120,6 +120,17 @@ export const usePickingStore = defineStore('recepcionPicking', () => {
     fetchInProgress()
   }
 
+  /**
+   * The store is a Pinia singleton and outlives InProgressView — without this, leaving the view
+   * on e.g. page 6 and coming back would silently re-fetch page 6 again instead of starting
+   * fresh, even though nothing on screen suggests the list remembers where you left it. Views
+   * should call this instead of fetchInProgress() directly in onMounted.
+   */
+  function resetInProgressAndFetch(): void {
+    page.value = 1
+    fetchInProgress()
+  }
+
   async function fetchTransfer(transferId: number): Promise<void> {
     // Mark this transfer as the active one BEFORE the request goes out, so a concurrent,
     // slower-resolving fetch for a previous/different transferId can detect it is stale once it
@@ -388,6 +399,7 @@ export const usePickingStore = defineStore('recepcionPicking', () => {
     hasRecounted,
     lineDiferencia,
     fetchInProgress,
+    resetInProgressAndFetch,
     setPage,
     setPageSize,
     fetchTransfer,

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import InProgressView from '@/modules/recepcion-mercaderia/views/InProgressView.vue'
+import { usePickingStore } from '@/modules/recepcion-mercaderia/stores/pickingStore'
 import recepcionApi from '@/modules/recepcion-mercaderia/services/recepcionApi'
 import type { PagedResponse, ReceptionTransfer } from '@/modules/recepcion-mercaderia/types'
 
@@ -120,6 +121,53 @@ describe('InProgressView', () => {
       expect(recepcionApi.getInProgressTransfers).toHaveBeenLastCalledWith({ pageNumber: 1, pageSize: 10 })
       expect(wrapper.text()).toContain('DOC-1')
       expect(wrapper.text()).not.toContain('DOC-11')
+    })
+
+    it('clears a stale page left over from a previous visit to this view on mount', async () => {
+      vi.mocked(recepcionApi.getInProgressTransfers).mockResolvedValue(paged([buildTransfer()], { totalCount: 45 }))
+      // The store is a Pinia singleton — simulate what a prior visit left behind (page 6)
+      // before this view mounts again.
+      const store = usePickingStore()
+      store.page = 6
+
+      mount(InProgressView, { global: { stubs: { RouterLink: true } } })
+      await flushPromises()
+
+      expect(recepcionApi.getInProgressTransfers).toHaveBeenCalledWith({ pageNumber: 1, pageSize: 20 })
+    })
+
+    it('typing a page number and pressing Enter jumps directly to that page', async () => {
+      vi.mocked(recepcionApi.getInProgressTransfers)
+        .mockResolvedValueOnce(paged([buildTransfer({ documentNumber: 'DOC-1' })], { totalCount: 100, pageNumber: 1 }))
+        .mockResolvedValueOnce(paged([buildTransfer({ documentNumber: 'DOC-5' })], { totalCount: 100, pageNumber: 5 }))
+
+      const wrapper = mount(InProgressView, { global: { stubs: { RouterLink: true } } })
+      await flushPromises()
+
+      const pageInput = wrapper.find<HTMLInputElement>('[data-testid="pagination-page-input"]')
+      await pageInput.setValue('5')
+      await pageInput.trigger('keydown.enter')
+      await flushPromises()
+
+      expect(recepcionApi.getInProgressTransfers).toHaveBeenLastCalledWith({ pageNumber: 5, pageSize: 20 })
+      expect(wrapper.text()).toContain('DOC-5')
+    })
+
+    it('clamps an out-of-range typed page number to the closest valid page', async () => {
+      vi.mocked(recepcionApi.getInProgressTransfers)
+        .mockResolvedValueOnce(paged([buildTransfer()], { totalCount: 25, pageNumber: 1 }))
+        .mockResolvedValueOnce(paged([buildTransfer()], { totalCount: 25, pageNumber: 2 }))
+
+      const wrapper = mount(InProgressView, { global: { stubs: { RouterLink: true } } })
+      await flushPromises()
+
+      // totalCount 25 / pageSize 20 → 2 pages max; typing 999 must clamp to 2, not request page 999.
+      const pageInput = wrapper.find<HTMLInputElement>('[data-testid="pagination-page-input"]')
+      await pageInput.setValue('999')
+      await pageInput.trigger('keydown.enter')
+      await flushPromises()
+
+      expect(recepcionApi.getInProgressTransfers).toHaveBeenLastCalledWith({ pageNumber: 2, pageSize: 20 })
     })
   })
 })

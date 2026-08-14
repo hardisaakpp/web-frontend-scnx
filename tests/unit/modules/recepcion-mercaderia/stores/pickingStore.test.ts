@@ -123,6 +123,18 @@ describe('usePickingStore', () => {
       expect(store.page).toBe(1)
       expect(store.pageSize).toBe(50)
     })
+
+    it('resetInProgressAndFetch clears a leftover page from a previous visit before refetching', async () => {
+      vi.mocked(recepcionApi.getInProgressTransfers).mockResolvedValue(pagedTransfers([buildTransfer()], { totalCount: 45 }))
+      const store = usePickingStore()
+      // Simulate state left behind by a prior visit to InProgressView: page 6.
+      store.page = 6
+
+      store.resetInProgressAndFetch()
+      await vi.waitFor(() => expect(recepcionApi.getInProgressTransfers).toHaveBeenCalledWith({ pageNumber: 1, pageSize: 20 }))
+
+      expect(store.page).toBe(1)
+    })
   })
 
   describe('fetchTransfer (detail)', () => {

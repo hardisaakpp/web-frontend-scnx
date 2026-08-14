@@ -3,11 +3,14 @@ import { computed, onMounted, ref } from 'vue'
 import { usePendingStore } from '../stores/pendingStore'
 import { ExclamationTriangleIcon, ArrowLeftIcon } from '@heroicons/vue/24/outline'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
+import PageJumpInput from '../components/PageJumpInput.vue'
 
 const store = usePendingStore()
 
+// resetAndFetch (not fetchPending) — the store is a Pinia singleton that outlives this view, so
+// a leftover search/page from a previous visit must not silently re-apply on remount.
 onMounted(() => {
-  store.fetchPending()
+  store.resetAndFetch()
 })
 
 // Materialize is a real, irreversible-from-the-UI mutating action (creates a ReceptionTransfer,
@@ -167,7 +170,7 @@ function applySearch(): void {
                     :disabled="store.isSubmitting"
                     @click="handleMaterialize(t.sapTransferRequestNumber, t.destinationWarehouseCode, t.sapTransferRequestNumber)"
                   >
-                    Materializar
+                    Recibir
                   </button>
                 </td>
               </tr>
@@ -201,9 +204,7 @@ function applySearch(): void {
             >
               Anterior
             </button>
-            <div class="text-xs text-gray-600 dark:text-gray-300 font-medium bg-gray-50 dark:bg-gray-900 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700">
-              {{ store.page }} / {{ totalPages }}
-            </div>
+            <PageJumpInput :page="store.page" :total-pages="totalPages" @go="goToPage" />
             <button
               type="button"
               data-testid="pagination-next"
@@ -221,9 +222,9 @@ function applySearch(): void {
 
     <ConfirmDialog
       :open="materializeTarget !== null"
-      title="Materializar transferencia"
+      title="Recibir transferencia"
       :message="materializeTarget ? `¿Querés proceder a recibir la transferencia número ${materializeTarget.documentNumber}?` : ''"
-      confirm-label="Materializar"
+      confirm-label="Recibir"
       @confirm="confirmMaterialize"
       @cancel="cancelMaterialize"
     />

@@ -155,6 +155,22 @@ describe('usePendingStore', () => {
 
       expect(recepcionApi.getPendingTransfers).toHaveBeenCalledWith({ pageNumber: 1, pageSize: 20, search: undefined })
     })
+
+    it('resetAndFetch clears a leftover page/search from a previous visit before refetching', async () => {
+      featureReadiness.pendingTransfersReady = true
+      vi.mocked(recepcionApi.getPendingTransfers).mockResolvedValue({ items: [], totalCount: 0, pageNumber: 1, pageSize: 20 })
+      const store = usePendingStore()
+      // Simulate state left behind by a prior visit: page 6, a search for a nonexistent code.
+      store.page = 6
+      store.searchQuery = 'NONEXISTENT'
+
+      store.resetAndFetch()
+      await Promise.resolve()
+
+      expect(store.page).toBe(1)
+      expect(store.searchQuery).toBe('')
+      expect(recepcionApi.getPendingTransfers).toHaveBeenCalledWith({ pageNumber: 1, pageSize: 20, search: undefined })
+    })
   })
 
   describe('materialize', () => {
@@ -167,16 +183,45 @@ describe('usePendingStore', () => {
       expect(recepcionApi.materializePendingTransfer).not.toHaveBeenCalled()
     })
 
-    it('calls the API with (sapTransferRequestNumber, warehouseCode) and removes the materialized line from the list when ready', async () => {
+    it('calls the API with (sapTransferRequestNumber, warehouseCode) and re-fetches the current page from the server when ready', async () => {
       featureReadiness.pendingTransfersReady = true
       const store = usePendingStore()
+      store.page = 2
       store.transfers = [buildLine({ sapTransferRequestNumber: 'SAP-1' }), buildLine({ sapTransferRequestNumber: 'SAP-2' })]
       vi.mocked(recepcionApi.materializePendingTransfer).mockResolvedValue(42)
+      vi.mocked(recepcionApi.getPendingTransfers).mockResolvedValue({
+        items: [buildLine({ sapTransferRequestNumber: 'SAP-2' })],
+        totalCount: 21,
+        pageNumber: 2,
+        pageSize: 20,
+      })
 
       await store.materialize('SAP-1', 'T01')
 
       expect(recepcionApi.materializePendingTransfer).toHaveBeenCalledWith('SAP-1', 'T01')
+      // Re-fetches the CURRENT page (2), not just splicing the local array — a transfer can
+      // have several item rows, so a client-side filter alone would leave totalCount stale and,
+      // if this transfer's rows filled the whole page, render it empty instead of replenished.
+      expect(recepcionApi.getPendingTransfers).toHaveBeenCalledWith({ pageNumber: 2, pageSize: 20, search: undefined })
       expect(store.transfers.map((t) => t.sapTransferRequestNumber)).toEqual(['SAP-2'])
+      expect(store.totalCount).toBe(21)
+    })
+
+    it('steps back one page when materializing empties the current (non-first) page', async () => {
+      featureReadiness.pendingTransfersReady = true
+      const store = usePendingStore()
+      store.page = 2
+      vi.mocked(recepcionApi.materializePendingTransfer).mockResolvedValue(42)
+      vi.mocked(recepcionApi.getPendingTransfers)
+        // Every row on page 2 belonged to the materialized transfer — the refetch comes back empty.
+        .mockResolvedValueOnce({ items: [], totalCount: 20, pageNumber: 2, pageSize: 20 })
+        .mockResolvedValueOnce({ items: [buildLine({ sapTransferRequestNumber: 'SAP-9' })], totalCount: 20, pageNumber: 1, pageSize: 20 })
+
+      await store.materialize('SAP-1', 'T01')
+
+      expect(store.page).toBe(1)
+      expect(store.transfers.map((t) => t.sapTransferRequestNumber)).toEqual(['SAP-9'])
+      expect(recepcionApi.getPendingTransfers).toHaveBeenCalledTimes(2)
     })
 
     it('sets status "error" when materialize fails', async () => {
@@ -194,6 +239,7 @@ describe('usePendingStore', () => {
       featureReadiness.pendingTransfersReady = true
       const store = usePendingStore()
       store.transfers = [buildLine()]
+      vi.mocked(recepcionApi.getPendingTransfers).mockResolvedValue({ items: [buildLine()], totalCount: 1, pageNumber: 1, pageSize: 20 })
 
       let resolveMaterialize!: (v: number) => void
       vi.mocked(recepcionApi.materializePendingTransfer).mockReturnValue(

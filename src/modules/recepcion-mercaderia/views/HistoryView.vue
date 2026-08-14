@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import { CalendarIcon, DocumentArrowDownIcon, PencilIcon, ArrowLeftIcon } from '@heroicons/vue/24/outline'
 import type { HistoryRow } from '../types'
 import { triggerBlobDownload } from '../utils/downloadBlob'
+import PageJumpInput from '../components/PageJumpInput.vue'
 
 const store = useHistoryStore()
 const authStore = useAuthStore()
@@ -427,9 +428,7 @@ async function handleExportCsv(): Promise<void> {
             >
               Anterior
             </button>
-            <div class="text-xs text-gray-600 dark:text-gray-300 font-medium bg-gray-50 dark:bg-gray-900 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700">
-              {{ page }} / {{ totalPages }}
-            </div>
+            <PageJumpInput :page="page" :total-pages="totalPages" @go="goToPage" />
             <button
               type="button"
               data-testid="pagination-next"
