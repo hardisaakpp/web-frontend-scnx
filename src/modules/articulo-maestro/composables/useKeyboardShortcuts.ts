@@ -10,9 +10,11 @@ export interface ShortcutMap {
 
 export function useKeyboardShortcuts(shortcuts: ShortcutMap) {
     const handleKeyDown = (event: KeyboardEvent) => {
+        if (!event || !event.key) return
+
         // Ignorar si el usuario está escribiendo en un input o textarea (a menos que use Ctrl/Cmd)
         const target = event.target as HTMLElement
-        const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT'
+        const isInput = target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.tagName === 'SELECT'
         
         for (const [keyCombo, config] of Object.entries(shortcuts)) {
             const keys = keyCombo.toLowerCase().split('+').map(k => k.trim())

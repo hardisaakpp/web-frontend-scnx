@@ -1122,24 +1122,24 @@ async function handleSubmit() {
         'purchaseItemsPerUnit', 'salesItemsPerUnit'
     ])
 
+    // Campos estructurales e inmutables de SAP bloqueados por el backend en PATCH
+    const structuralFields = new Set([
+        'itemCode', 'codigoAlterno', 'uMarca', 'uIxxMarca',
+        'inventoryItem', 'itemType', 'itemsGroupCode', 
+        'purchaseItem', 'salesItem', 'uGen', 'uIxxTalla'
+    ])
+
     Object.entries(form.value).forEach(([key, val]) => {
-        // No enviar el código de artículo en el body del PATCH (se envía en la URL)
-        if (key === 'itemCode' && isEdit.value) return
-        // RF-002: codigoAlterno es de solo lectura y está bloqueado por el
-        // backend en PATCH; solo cambia vía "Promover a Código Principal".
-        if (key === 'codigoAlterno' && isEdit.value) return
-        // Marca/Negocio definen el ItemCode y quedan bloqueados por el
-        // backend en PATCH (ver CAMPOS_ESTRUCTURALES_BLOQUEADOS); el
-        // formulario los muestra precargados y deshabilitados en edición,
-        // pero no deben reenviarse o el backend rechaza toda la petición.
-        if ((key === 'uMarca' || key === 'uIxxMarca') && isEdit.value) return
+        // No reenviar campos de configuración estructural y nativos si estamos editando,
+        // esto previene que el backend rechace la petición con un HTTP 422
+        if (isEdit.value && structuralFields.has(key)) return
+        
         // manageBatchNumbers queda bloqueado por el backend en PATCH cuando
-        // el artículo ya tiene historial en SAP (ver
-        // _ensure_manage_batch_numbers_editable); el formulario lo muestra
-        // deshabilitado en ese caso y no debe reenviarlo.
+        // el artículo ya tiene historial en SAP (ver _ensure_manage_batch_numbers_editable);
+        // Sin embargo ese se detecta via "isStructuralLocked", así que lo evitamos si aplica.
+        if (isEdit.value && key === 'manageBatchNumbers' && form.value.isStructuralLocked) return
+
         // Las imágenes se gestionan exclusivamente por sus endpoints dedicados
-        // (GestorImagenes / articuloService.subirImagenArticulo): nunca viajan
-        // en el payload de creación/edición del artículo.
         if (key === 'imagenes') return
 
         if (val === '' || val == null) return
