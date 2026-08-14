@@ -190,7 +190,7 @@
                       </button>
                       <div
                         v-if="correoDropdownAbierto === persona.email"
-                        class="absolute z-10 mt-1 min-w-[240px] rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 max-h-48 overflow-y-auto shadow-lg"
+                        class="absolute z-10 right-0 mt-1 w-96 max-w-[90vw] rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 max-h-72 overflow-y-auto shadow-lg"
                       >
                         <div v-if="!correosDisponiblesPara(persona).length" class="px-3 py-2 text-xs text-gray-400 dark:text-gray-500">
                           Ya tiene todos los correos del catálogo
@@ -200,7 +200,7 @@
                           v-for="correo in correosDisponiblesPara(persona)"
                           :key="correo.id"
                           type="button"
-                          class="w-full text-left px-3 py-2 text-xs text-gray-700 dark:text-gray-200 hover:bg-violet-50 dark:hover:bg-gray-600"
+                          class="w-full text-left px-3 py-2 text-xs text-gray-700 dark:text-gray-200 hover:bg-violet-50 dark:hover:bg-gray-600 leading-snug"
                           @click="agregarCorreoAPersona(persona, String(correo.id)); correoDropdownAbierto = null"
                         >
                           <span class="font-medium text-indigo-600 dark:text-indigo-400">{{ etiquetaTipo(correo.tipo_notificacion) }}</span>
@@ -226,138 +226,6 @@
       </template>
     </div>
 
-    <!-- Destinatarios por Tipo: tabla histórica, ya no controla el envío real -->
-    <div>
-      <h2 class="font-semibold text-gray-900 dark:text-white mb-1">Destinatarios por Tipo (histórico)</h2>
-      <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">
-        Configuración anterior, por tipo de notificación completo. Ya no controla el envío real de
-        correos (eso pasó a "Personas y Correos" más arriba); se conserva como referencia.
-      </p>
-
-      <LoadingSpinner v-if="loading" message="Cargando destinatarios..." color="violet" />
-
-      <div v-else-if="error" class="bg-white dark:bg-gray-800 rounded-lg shadow p-8 text-center">
-        <p class="text-red-600 dark:text-red-400">{{ error }}</p>
-        <button @click="cargarDestinatarios" class="mt-4 text-violet-600 dark:text-violet-400 hover:underline">
-          Reintentar
-        </button>
-      </div>
-
-      <div v-else class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden transition-colors duration-300">
-        <!-- Agregar destinatario -->
-        <form
-          @submit.prevent="agregarDestinatario"
-          class="px-4 py-3 bg-gray-50 dark:bg-gray-700/30 border-b border-gray-200 dark:border-gray-700 flex flex-wrap items-center gap-2"
-        >
-          <select
-            v-model="nuevoTipo"
-            required
-            class="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
-          >
-            <option value="" disabled>Tipo de notificación</option>
-            <option v-for="tipo in tiposNotificacion" :key="tipo" :value="tipo">{{ etiquetaTipo(tipo) }}</option>
-          </select>
-          <div class="relative flex-1 min-w-[220px]">
-            <input
-              v-model.trim="nuevoEmail"
-              type="text"
-              required
-              placeholder="Buscar usuario o escribir un correo externo"
-              class="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
-              @focus="usuarioDropdownOpen = true"
-              @blur="handleUsuarioBlur"
-            />
-            <div
-              v-if="usuarioDropdownOpen && nuevoEmail.length >= 1"
-              class="absolute z-10 mt-1 w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 max-h-48 overflow-y-auto shadow-lg"
-            >
-              <div v-if="!usuarioSugerencias.length" class="px-3 py-2 text-xs text-gray-400 dark:text-gray-500">
-                Sin coincidencias internas — puedes agregar este correo externo directamente
-              </div>
-              <button
-                v-else
-                v-for="usuario in usuarioSugerencias"
-                :key="usuario.id"
-                type="button"
-                class="w-full text-left px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600"
-                @click="elegirUsuario(usuario)"
-              >
-                {{ usuario.label }}
-              </button>
-            </div>
-          </div>
-          <button
-            type="submit"
-            :disabled="agregando"
-            class="px-4 py-2 bg-violet-600 text-white text-sm font-medium rounded-lg hover:bg-violet-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Agregar
-          </button>
-        </form>
-
-        <!-- Tabla -->
-        <div class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead class="bg-gray-50 dark:bg-gray-700/50">
-              <tr>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tipo</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Email</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Alcance</th>
-                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Estado</th>
-                <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Acciones</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-              <tr v-if="destinatarios.length === 0">
-                <td colspan="5" class="px-4 py-4 text-sm text-gray-400 dark:text-gray-500 text-center">
-                  Sin destinatarios configurados
-                </td>
-              </tr>
-              <tr
-                v-for="destinatario in destinatarios"
-                :key="destinatario.id"
-                class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-              >
-                <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ etiquetaTipo(destinatario.tipo_notificacion) }}</td>
-                <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">{{ destinatario.email }}</td>
-                <td class="px-4 py-3 text-xs">
-                  <span v-if="!destinatario.codigo_evento" class="text-gray-400 dark:text-gray-500">Todos los eventos</span>
-                  <span v-else class="px-2 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 font-medium">
-                    Excepción: {{ destinatario.codigo_evento }}
-                  </span>
-                </td>
-                <td class="px-4 py-3">
-                  <span
-                    class="px-2 py-1 text-xs font-medium rounded-full"
-                    :class="destinatario.activo
-                      ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'"
-                  >
-                    {{ destinatario.activo ? 'Activo' : 'Inactivo' }}
-                  </span>
-                </td>
-                <td class="px-4 py-3 text-right whitespace-nowrap">
-                  <button
-                    :disabled="procesandoId === destinatario.id"
-                    @click="toggleActivo(destinatario)"
-                    class="text-sm text-violet-600 dark:text-violet-400 hover:underline font-medium disabled:opacity-50 disabled:cursor-not-allowed mr-4"
-                  >
-                    {{ destinatario.activo ? 'Desactivar' : 'Activar' }}
-                  </button>
-                  <button
-                    :disabled="procesandoId === destinatario.id"
-                    @click="eliminarDestinatario(destinatario)"
-                    class="text-sm text-red-600 dark:text-red-400 hover:underline font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Eliminar
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -365,7 +233,6 @@
 import { ref, computed, onMounted } from 'vue'
 import { useToast } from '@/composables/useToast'
 import api from '@/services/api'
-import { notificacionDestinatariosService, type NotificacionDestinatario } from '../services/domains/notificacionDestinatarios'
 import { notificacionTipoCorreoService, type TipoCorreo } from '../services/domains/notificacionTipoCorreo'
 import { notificacionPersonaCorreoService, type PersonaCorreoRow } from '../services/domains/notificacionPersonaCorreo'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
@@ -389,9 +256,9 @@ function extraerMensajeError(err: any, fallback: string): string {
   return err?.response?.data?.detail || err?.message || fallback
 }
 
-// Búsqueda de usuarios existentes en Core/AD (GET /Users/list, solo Admin), compartida
-// entre el formulario de "Destinatarios por Tipo" y el de "Personas y Correos". No
-// reemplaza el texto libre: hay destinatarios externos (proveedores, El Rayo) sin cuenta en AD.
+// Búsqueda de usuarios existentes en Core/AD (GET /Users/list, solo Admin), usada por
+// el formulario de "Personas y Correos". No reemplaza el texto libre: hay destinatarios
+// externos (proveedores, El Rayo) sin cuenta en AD.
 interface UsuarioOption {
   id: string
   label: string
@@ -520,6 +387,15 @@ async function cargarPersonas() {
   }
 }
 
+// El backend de crearLink solo devuelve id/nombre/email/tipo_correo_id (no
+// tipo_correo/tipo_notificacion/descripcion ya resueltos), y reconstruirlos a
+// mano localmente quedaba desincronizado en algunos casos (había que refrescar
+// la página para verlos bien). Más simple y confiable: recargar desde el
+// backend después de cada alta.
+async function recargarPersonasCorreo() {
+  personasCorreo.value = await notificacionPersonaCorreoService.getPersonasCorreo()
+}
+
 async function agregarPersona() {
   const email = nuevaPersonaEmail.value.trim()
   const nombre = nuevaPersonaNombre.value.trim() || email
@@ -535,26 +411,16 @@ async function agregarPersona() {
   agregandoPersona.value = true
   try {
     for (const tipoCorreoId of nuevaPersonaCorreoIds.value) {
-      const nuevo = await notificacionPersonaCorreoService.crearLink(nombre, email, tipoCorreoId)
-      const catalogo = tiposCorreoCatalogo.value.find((c) => c.id === tipoCorreoId)
-      personasCorreo.value.push({
-        id: nuevo.id,
-        nombre,
-        email,
-        creado_fecha: new Date().toISOString(),
-        creado_por: null,
-        tipo_correo_id: tipoCorreoId,
-        tipo_correo: catalogo?.tipo_correo || '',
-        tipo_notificacion: catalogo?.tipo_notificacion || '',
-        descripcion: catalogo?.descripcion ?? null,
-      })
+      await notificacionPersonaCorreoService.crearLink(nombre, email, tipoCorreoId)
     }
+    await recargarPersonasCorreo()
     toast.success('Persona agregada', `${nombre} (${email})`)
     nuevaPersonaNombre.value = ''
     nuevaPersonaEmail.value = ''
     nuevaPersonaCorreoIds.value = []
   } catch (err: any) {
     toast.error('No se pudo agregar', extraerMensajeError(err, 'Error desconocido'))
+    await recargarPersonasCorreo()
   } finally {
     agregandoPersona.value = false
   }
@@ -566,19 +432,8 @@ async function agregarCorreoAPersona(persona: PersonaAgrupada, tipoCorreoIdStr: 
 
   procesandoPersonaId.value = persona.email
   try {
-    const nuevo = await notificacionPersonaCorreoService.crearLink(persona.nombre, persona.email, tipoCorreoId)
-    const catalogo = tiposCorreoCatalogo.value.find((c) => c.id === tipoCorreoId)
-    personasCorreo.value.push({
-      id: nuevo.id,
-      nombre: persona.nombre,
-      email: persona.email,
-      creado_fecha: new Date().toISOString(),
-      creado_por: null,
-      tipo_correo_id: tipoCorreoId,
-      tipo_correo: catalogo?.tipo_correo || '',
-      tipo_notificacion: catalogo?.tipo_notificacion || '',
-      descripcion: catalogo?.descripcion ?? null,
-    })
+    await notificacionPersonaCorreoService.crearLink(persona.nombre, persona.email, tipoCorreoId)
+    await recargarPersonasCorreo()
   } catch (err: any) {
     toast.error('No se pudo agregar el correo', extraerMensajeError(err, 'Error desconocido'))
   } finally {
@@ -615,110 +470,7 @@ async function eliminarPersona(persona: PersonaAgrupada) {
   }
 }
 
-// ── Destinatarios por Tipo (histórico, ya no controla el envío real) ─────
-const loading = ref(true)
-const error = ref<string | null>(null)
-const tiposNotificacion = ref<string[]>([])
-const destinatarios = ref<NotificacionDestinatario[]>([])
-const nuevoTipo = ref('')
-const nuevoEmail = ref('')
-const agregando = ref(false)
-const procesandoId = ref<number | null>(null)
-const usuarioDropdownOpen = ref(false)
-
-const usuarioSugerencias = computed<UsuarioOption[]>(() => {
-  const query = nuevoEmail.value.toLowerCase().trim()
-  if (!query) return []
-  return usuarios.value.filter((u) => u.label.toLowerCase().includes(query)).slice(0, 8)
-})
-
-function elegirUsuario(usuario: UsuarioOption) {
-  nuevoEmail.value = usuario.email
-  usuarioDropdownOpen.value = false
-}
-
-function handleUsuarioBlur() {
-  setTimeout(() => {
-    usuarioDropdownOpen.value = false
-  }, 150)
-}
-
-async function cargarDestinatarios() {
-  loading.value = true
-  error.value = null
-  try {
-    const data = await notificacionDestinatariosService.getDestinatarios()
-    tiposNotificacion.value = data.tipos_notificacion
-    destinatarios.value = data.destinatarios
-    if (!nuevoTipo.value) nuevoTipo.value = data.tipos_notificacion[0] || ''
-  } catch (err: any) {
-    error.value = extraerMensajeError(err, 'No se pudieron cargar los destinatarios')
-  } finally {
-    loading.value = false
-  }
-}
-
-async function agregarDestinatario() {
-  const email = nuevoEmail.value.trim()
-  if (!email || !nuevoTipo.value) return
-  if (!email.includes('@')) {
-    toast.error('Correo inválido', `'${email}' no parece un email válido`)
-    return
-  }
-
-  agregando.value = true
-  try {
-    const nuevo = await notificacionDestinatariosService.crearDestinatario(nuevoTipo.value, email)
-    destinatarios.value.push({
-      ...nuevo,
-      codigo_evento: null,
-      creado_fecha: new Date().toISOString(),
-      creado_por: null,
-      modificado_fecha: null,
-      modificado_por: null,
-    })
-    nuevoEmail.value = ''
-    toast.success('Destinatario agregado', `${email} recibirá notificaciones de ${etiquetaTipo(nuevo.tipo_notificacion)}`)
-  } catch (err: any) {
-    toast.error('No se pudo agregar', extraerMensajeError(err, 'Error desconocido'))
-  } finally {
-    agregando.value = false
-  }
-}
-
-async function toggleActivo(destinatario: NotificacionDestinatario) {
-  procesandoId.value = destinatario.id
-  const nuevoEstado = !destinatario.activo
-  try {
-    await notificacionDestinatariosService.actualizarActivo(destinatario.id, nuevoEstado)
-    destinatario.activo = nuevoEstado
-    toast.success(nuevoEstado ? 'Destinatario activado' : 'Destinatario desactivado', destinatario.email)
-  } catch (err: any) {
-    toast.error('No se pudo actualizar', extraerMensajeError(err, 'Error desconocido'))
-  } finally {
-    procesandoId.value = null
-  }
-}
-
-async function eliminarDestinatario(destinatario: NotificacionDestinatario) {
-  if (!window.confirm(`¿Eliminar a ${destinatario.email} de ${etiquetaTipo(destinatario.tipo_notificacion)}?`)) {
-    return
-  }
-
-  procesandoId.value = destinatario.id
-  try {
-    await notificacionDestinatariosService.eliminarDestinatario(destinatario.id)
-    destinatarios.value = destinatarios.value.filter((d) => d.id !== destinatario.id)
-    toast.success('Destinatario eliminado', destinatario.email)
-  } catch (err: any) {
-    toast.error('No se pudo eliminar', extraerMensajeError(err, 'Error desconocido'))
-  } finally {
-    procesandoId.value = null
-  }
-}
-
 onMounted(() => {
-  cargarDestinatarios()
   cargarUsuarios()
   cargarPersonas()
 })

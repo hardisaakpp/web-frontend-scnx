@@ -31,9 +31,6 @@ export { reportesService } from './reportes'
 // Servicios de pedidos (dominio completo)
 export { pedidosService } from './pedidos'
 
-// Administración de destinatarios de notificaciones (solo Admin)
-export { notificacionDestinatariosService } from './notificacionDestinatarios'
-
 // Administración del catálogo de correos por tipo de notificación (solo Admin)
 export { notificacionTipoCorreoService } from './notificacionTipoCorreo'
 
