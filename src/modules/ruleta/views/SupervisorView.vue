@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted, computed } from 'vue'
+import { onMounted, computed, ref, watch } from 'vue'
+import { APP_LOCALE } from '@/plugins/locale'
 import { useSupervisorStore } from '../stores/supervisorStore'
 import type { EstadoEnrolador } from '../types'
 import VolverButton from '@/components/VolverButton.vue'
@@ -10,7 +11,7 @@ onMounted(() => store.cargarDashboard())
 
 const fechaHoy = computed(() => {
   if (!store.metricas) return 'Hoy'
-  return new Date(store.metricas.fecha + 'T00:00:00').toLocaleDateString('es-EC', {
+  return new Date(store.metricas.fecha + 'T00:00:00').toLocaleDateString(APP_LOCALE, {
     weekday: 'long', day: 'numeric', month: 'long'
   })
 })
@@ -21,10 +22,16 @@ const subtitulo = computed(() =>
     : 'Cargando…'
 )
 
+const animatedBars = ref(false)
+watch(() => store.enroladoresOrdenados, () => {
+  animatedBars.value = false
+  setTimeout(() => { animatedBars.value = true }, 50)
+}, { immediate: true, deep: true })
+
 function barColor(estado: EstadoEnrolador): string {
-  if (estado === 'alerta') return 'bg-amber-400'
+  if (estado === 'alerta') return 'bg-gradient-to-r from-amber-400 to-amber-500'
   if (estado === 'inactivo') return 'bg-slate-300 dark:bg-slate-600'
-  return 'bg-indigo-500'
+  return 'bg-gradient-to-r from-indigo-500 to-purple-500 dark:from-indigo-600 dark:to-purple-600'
 }
 
 function dotClass(estado: EstadoEnrolador): string {
@@ -109,7 +116,7 @@ function dotTitle(estado: EstadoEnrolador): string {
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
 
         <!-- Total giros -->
-        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 shadow-sm">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 dark:hover:border-indigo-500/50">
           <p class="text-sm text-gray-500 dark:text-gray-400">Total de giros</p>
           <p class="mt-2 text-4xl font-bold text-gray-900 dark:text-white">
             {{ store.metricas.total_giros }}
@@ -117,7 +124,7 @@ function dotTitle(estado: EstadoEnrolador): string {
         </div>
 
         <!-- Clientes únicos -->
-        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 shadow-sm">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 dark:hover:border-indigo-500/50">
           <p class="text-sm text-gray-500 dark:text-gray-400">Clientes únicos atendidos</p>
           <p class="mt-2 text-4xl font-bold text-gray-900 dark:text-white">
             {{ store.metricas.clientes_unicos }}
@@ -125,7 +132,7 @@ function dotTitle(estado: EstadoEnrolador): string {
         </div>
 
         <!-- Afiliaciones -->
-        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 shadow-sm">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 dark:hover:border-indigo-500/50">
           <p class="text-sm text-gray-500 dark:text-gray-400">Total de ganadores</p>
           <div class="mt-2 flex items-end gap-2">
             <p class="text-4xl font-bold text-gray-900 dark:text-white">
@@ -147,7 +154,7 @@ function dotTitle(estado: EstadoEnrolador): string {
         </div>
 
         <!-- Tasa de conversión -->
-        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 shadow-sm">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 dark:hover:border-indigo-500/50">
           <p class="text-sm text-gray-500 dark:text-gray-400">Porcentaje de ganadores</p>
           <p class="mt-2 text-4xl font-bold text-gray-900 dark:text-white">
             {{ store.metricas.tasa_conversion.toFixed(1) }}%
@@ -195,9 +202,9 @@ function dotTitle(estado: EstadoEnrolador): string {
               <!-- Barra -->
               <div class="flex-1 h-8 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
                 <div
-                  class="h-full rounded-lg transition-all duration-700"
+                  class="h-full rounded-lg transition-all duration-1000 ease-out"
                   :class="barColor(enrolador.estado)"
-                  :style="{ width: `${(enrolador.giros / store.maxGiros) * 100}%` }"
+                  :style="{ width: animatedBars ? `${(enrolador.giros / store.maxGiros) * 100}%` : '0%' }"
                 />
               </div>
               <!-- Valor -->
