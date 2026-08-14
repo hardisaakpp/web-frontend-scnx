@@ -71,12 +71,13 @@ const handleConfirm = (result: boolean) => {
   }
 }
 
+const getApiErrorMessage = (err: any, fallback: string): string => err?.response?.data?.message || fallback
+
 const handleUpdateComment = async (itemCode: string, comment: string) => {
   try {
     await store.updateItemComment(itemCode, comment)
   } catch (err: any) {
-    const errorMsg = err.response?.data?.message || 'Error al guardar comentario'
-    showError(errorMsg)
+    showError(getApiErrorMessage(err, 'Error al guardar comentario'))
   }
 }
 
@@ -266,8 +267,7 @@ const updateQuantity = async (item: any, quantity: number) => {
 
     await store.updateItemQuantity(item.itemCode, resolvedQuantity)
   } catch (err: any) {
-    const errorMsg = err.response?.data?.message || 'Error al actualizar cantidad'
-    showError(errorMsg)
+    showError(getApiErrorMessage(err, 'Error al actualizar cantidad'))
   }
 }
 
@@ -445,12 +445,14 @@ const getQuantityColor = (item: any) => {
                 />
               </td>
               <td class="px-4 py-3">
-                <input 
+                <input
                   type="text"
                   :value="store.comentarioPorCodigo(item.itemCode)"
                   @blur="e => handleUpdateComment(item.itemCode, (e.target as HTMLInputElement).value)"
+                  :disabled="store.cantidadPorCodigo(item.itemCode) === 0"
+                  :title="store.cantidadPorCodigo(item.itemCode) === 0 ? 'Agrega una cantidad primero' : ''"
                   placeholder="..."
-                  class="w-full h-9 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border text-xs px-2"
+                  class="w-full h-9 rounded-lg border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border text-xs px-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   maxlength="50"
                 />
               </td>
