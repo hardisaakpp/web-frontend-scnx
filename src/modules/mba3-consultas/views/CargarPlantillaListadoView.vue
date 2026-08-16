@@ -629,22 +629,31 @@ async function ejecutarBusquedaNumeroPedido(query: string) {
 
 function handleBusquedaNumeroPedido() {
   mostrarDropdownBusqueda.value = true
-  
+
   // Limpiar timeout anterior
   if (debounceTimeout) {
     clearTimeout(debounceTimeout)
   }
-  
-  // Si el texto es muy corto, limpiar resultados inmediatamente
+
+  // Si el texto es muy corto, limpiar resultados inmediatamente y volver a la
+  // tabla sin filtrar por número de pedido (si es que había una búsqueda previa).
   if (busquedaNumeroPedido.value.length < MIN_CHARS_BUSQUEDA) {
     resultadosBusqueda.value = []
     buscandoNumeroPedido.value = false
+    if (filtros.value.numero_pedido) {
+      filtros.value.numero_pedido = ''
+      aplicarFiltros()
+    }
     return
   }
-  
-  // Iniciar debounce
+
+  // Iniciar debounce: además del dropdown, filtra en vivo la Tabla de Pedidos
+  // de abajo (mismo criterio, misma llamada al backend con LIKE parcial).
   debounceTimeout = setTimeout(() => {
-    ejecutarBusquedaNumeroPedido(busquedaNumeroPedido.value.trim())
+    const query = busquedaNumeroPedido.value.trim()
+    ejecutarBusquedaNumeroPedido(query)
+    filtros.value.numero_pedido = query
+    aplicarFiltros()
   }, DEBOUNCE_MS)
 }
 
@@ -672,6 +681,10 @@ function limpiarBusquedaNumeroPedido() {
   mostrarDropdownBusqueda.value = false
   indiceResultadoActivo.value = -1
   numeroPedidoInputRef.value?.focus()
+  if (filtros.value.numero_pedido) {
+    filtros.value.numero_pedido = ''
+    aplicarFiltros()
+  }
 }
 
 function navegarResultados(direccion: 'up' | 'down') {
@@ -857,10 +870,10 @@ function getEstadoBadgeClass(estado: string): string {
     'FINALIZADO': `bg-lime-100 text-lime-800 ${darkClasses} dark:bg-lime-900/50 dark:text-lime-200`,
     'CERRADO': `bg-stone-100 text-stone-700 ${darkClasses} dark:bg-stone-600 dark:text-stone-200`,
     'CANCELADO': `bg-rose-100 text-rose-800 ${darkClasses} dark:bg-rose-900/50 dark:text-rose-200`,
-    'CANCELADO POR EL RAYO': `bg-rose-100 text-rose-800 ${darkClasses} dark:bg-rose-900/50 dark:text-rose-200`,
-    'CANCELADO_POR_EL_RAYO': `bg-rose-100 text-rose-800 ${darkClasses} dark:bg-rose-900/50 dark:text-rose-200`,
-    'CONFIRMADO POR EL RAYO': `bg-pink-100 text-pink-800 ${darkClasses} dark:bg-pink-900/50 dark:text-pink-200`,
-    'CONFIRMADO_POR_EL_RAYO': `bg-pink-100 text-pink-800 ${darkClasses} dark:bg-pink-900/50 dark:text-pink-200`,
+    'CANCELADO POR EL RAYO': `bg-red-100 text-red-800 ${darkClasses} dark:bg-red-900/50 dark:text-red-200`,
+    'CANCELADO_POR_EL_RAYO': `bg-red-100 text-red-800 ${darkClasses} dark:bg-red-900/50 dark:text-red-200`,
+    'CONFIRMADO POR EL RAYO': `bg-violet-100 text-violet-800 ${darkClasses} dark:bg-violet-900/50 dark:text-violet-200`,
+    'CONFIRMADO_POR_EL_RAYO': `bg-violet-100 text-violet-800 ${darkClasses} dark:bg-violet-900/50 dark:text-violet-200`,
     'CONFIRMADO POR PRODUCCION': `bg-yellow-100 text-yellow-800 ${darkClasses} dark:bg-yellow-900/50 dark:text-yellow-200`,
     'CONFIRMADO_POR_PRODUCCION': `bg-yellow-100 text-yellow-800 ${darkClasses} dark:bg-yellow-900/50 dark:text-yellow-200`
   }
@@ -1005,6 +1018,9 @@ function limpiarFiltros() {
     limit: PAGE_SIZE,
     offset: 0
   }
+  // Mantener en sync el input de búsqueda con debounce (Número de Pedido)
+  busquedaNumeroPedido.value = ''
+  resultadosBusqueda.value = []
   filtroSoloPendientes.value = false
   metadata.value.offset = 0
   cargarPedidos()
@@ -1040,11 +1056,11 @@ function toggleAutoRefresh() {
   else stopPolling()
 }
 
-// Recargar listado automáticamente cuando llega una notificación de pedido eliminado
+// Recargar listado automáticamente cuando llega una notificación de pedido cancelado por El Rayo
 watch(lastNotification, (notif) => {
   if (!notif) return
   const accion = notif.metadata?.accion
-  if (accion === 'pedido_eliminado') {
+  if (accion === 'pedido_cancelado_por_el_rayo') {
     cargarPedidos()
   }
 })

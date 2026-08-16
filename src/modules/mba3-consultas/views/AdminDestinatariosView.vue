@@ -182,31 +182,44 @@
                       <button
                         type="button"
                         :disabled="procesandoPersonaId === persona.email"
-                        @click="toggleCorreoDropdown(persona.email)"
+                        @click="toggleCorreoDropdown(persona.email, $event)"
                         @blur="handleCorreoDropdownBlur"
                         class="inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full border border-dashed border-violet-300 dark:border-violet-600 text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20 disabled:opacity-50 transition-colors"
                       >
                         <span class="text-sm leading-none">+</span> Correo
                       </button>
-                      <div
-                        v-if="correoDropdownAbierto === persona.email"
-                        class="absolute z-10 right-0 mt-1 w-96 max-w-[90vw] rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 max-h-72 overflow-y-auto shadow-lg"
-                      >
-                        <div v-if="!correosDisponiblesPara(persona).length" class="px-3 py-2 text-xs text-gray-400 dark:text-gray-500">
-                          Ya tiene todos los correos del catálogo
-                        </div>
-                        <button
-                          v-else
-                          v-for="correo in correosDisponiblesPara(persona)"
-                          :key="correo.id"
-                          type="button"
-                          class="w-full text-left px-3 py-2 text-xs text-gray-700 dark:text-gray-200 hover:bg-violet-50 dark:hover:bg-gray-600 leading-snug"
-                          @click="agregarCorreoAPersona(persona, String(correo.id)); correoDropdownAbierto = null"
+                      <!-- Teleport a <body>: la tarjeta "Personas y Correos" tiene overflow-hidden
+                           (para redondear las esquinas de la tabla), así que un desplegable
+                           absolute anidado adentro quedaba recortado. Con posición fixed calculada
+                           desde el botón, ya no depende de ningún overflow de sus ancestros. -->
+                      <Teleport to="body">
+                        <div
+                          v-if="correoDropdownAbierto === persona.email && correoDropdownPosition"
+                          ref="correoDropdownRef"
+                          class="fixed z-50 w-96 max-w-[90vw] rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 overflow-y-auto shadow-lg"
+                          :style="{
+                            top: correoDropdownPosition.top !== undefined ? correoDropdownPosition.top + 'px' : undefined,
+                            bottom: correoDropdownPosition.bottom !== undefined ? correoDropdownPosition.bottom + 'px' : undefined,
+                            right: correoDropdownPosition.right + 'px',
+                            maxHeight: correoDropdownPosition.maxHeight + 'px',
+                          }"
                         >
-                          <span class="font-medium text-indigo-600 dark:text-indigo-400">{{ etiquetaTipo(correo.tipo_notificacion) }}</span>
-                          · {{ correo.tipo_correo }}
-                        </button>
-                      </div>
+                          <div v-if="!correosDisponiblesPara(persona).length" class="px-3 py-2 text-xs text-gray-400 dark:text-gray-500">
+                            Ya tiene todos los correos del catálogo
+                          </div>
+                          <button
+                            v-else
+                            v-for="correo in correosDisponiblesPara(persona)"
+                            :key="correo.id"
+                            type="button"
+                            class="w-full text-left px-3 py-2 text-xs text-gray-700 dark:text-gray-200 hover:bg-violet-50 dark:hover:bg-gray-600 leading-snug"
+                            @click="agregarCorreoAPersona(persona, String(correo.id)); correoDropdownAbierto = null"
+                          >
+                            <span class="font-medium text-indigo-600 dark:text-indigo-400">{{ etiquetaTipo(correo.tipo_notificacion) }}</span>
+                            · {{ correo.tipo_correo }}
+                          </button>
+                        </div>
+                      </Teleport>
                     </div>
                   </div>
                 </td>
@@ -230,7 +243,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useToast } from '@/composables/useToast'
 import api from '@/services/api'
 import { notificacionTipoCorreoService, type TipoCorreo } from '../services/domains/notificacionTipoCorreo'
@@ -358,17 +371,67 @@ function tiposDePersona(persona: PersonaAgrupada): string[] {
   return Array.from(new Set(persona.correos.map((c) => c.tipo_notificacion)))
 }
 
-const correoDropdownAbierto = ref<string | null>(null)
+interface CorreoDropdownPosition {
+  right: number
+  maxHeight: number
+  top?: number
+  bottom?: number
+}
 
-function toggleCorreoDropdown(email: string) {
-  correoDropdownAbierto.value = correoDropdownAbierto.value === email ? null : email
+const DROPDOWN_MAX_HEIGHT = 288 // equivalente a max-h-72
+const DROPDOWN_MIN_ESPACIO = 150 // debajo del botón, por debajo de esto se prueba abrir hacia arriba
+
+const correoDropdownAbierto = ref<string | null>(null)
+const correoDropdownPosition = ref<CorreoDropdownPosition | null>(null)
+const correoDropdownRef = ref<HTMLElement | null>(null)
+
+function toggleCorreoDropdown(email: string, event: MouseEvent) {
+  if (correoDropdownAbierto.value === email) {
+    correoDropdownAbierto.value = null
+    correoDropdownPosition.value = null
+    return
+  }
+  const boton = event.currentTarget as HTMLElement
+  const rect = boton.getBoundingClientRect()
+  const gap = 4
+  const espacioAbajo = window.innerHeight - rect.bottom - gap
+  const espacioArriba = rect.top - gap
+  const abrirHaciaArriba = espacioAbajo < DROPDOWN_MIN_ESPACIO && espacioArriba > espacioAbajo
+
+  correoDropdownPosition.value = {
+    right: window.innerWidth - rect.right,
+    maxHeight: Math.max(120, Math.min(DROPDOWN_MAX_HEIGHT, abrirHaciaArriba ? espacioArriba : espacioAbajo)),
+    ...(abrirHaciaArriba ? { bottom: window.innerHeight - rect.top + gap } : { top: rect.bottom + gap }),
+  }
+  correoDropdownAbierto.value = email
 }
 
 function handleCorreoDropdownBlur() {
   setTimeout(() => {
     correoDropdownAbierto.value = null
+    correoDropdownPosition.value = null
   }, 150)
 }
+
+// Cierra el desplegable teleportado si el usuario hace scroll de la página (su
+// posición fixed quedaría desalineada del botón que lo abrió). El scroll interno
+// de la lista (overflow-y-auto) también dispara 'scroll' en la fase de captura de
+// window, así que se ignora cuando el evento viene de dentro del propio desplegable.
+function handleWindowScrollCierraCorreoDropdown(event: Event) {
+  if (correoDropdownAbierto.value === null) return
+  const target = event.target as Node | null
+  if (correoDropdownRef.value && target && correoDropdownRef.value.contains(target)) return
+  correoDropdownAbierto.value = null
+  correoDropdownPosition.value = null
+}
+
+onMounted(() => {
+  window.addEventListener('scroll', handleWindowScrollCierraCorreoDropdown, true)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('scroll', handleWindowScrollCierraCorreoDropdown, true)
+})
 
 async function cargarPersonas() {
   loadingPersonas.value = true
