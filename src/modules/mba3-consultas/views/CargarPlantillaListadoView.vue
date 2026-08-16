@@ -263,7 +263,7 @@
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 text-sm"
               />
             </div>
-            <div class="relative">
+            <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Número de Pedido</label>
               <div class="relative">
                 <input
@@ -271,23 +271,14 @@
                   type="text"
                   v-model="busquedaNumeroPedido"
                   @input="handleBusquedaNumeroPedido"
-                  @focus="handleBusquedaFocus"
-                  @blur="handleBusquedaBlur"
-                  @keydown.down.prevent="navegarResultados('down')"
-                  @keydown.up.prevent="navegarResultados('up')"
-                  @keydown.enter.prevent="seleccionarResultadoActivo"
-                  @keydown.escape="cerrarDropdownBusqueda"
+                  @keyup.enter="buscarNumeroPedidoInmediato"
                   placeholder="Buscar por número de pedido (ej: P-12.08)"
                   autocomplete="off"
                   class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 text-sm"
                 />
-                <!-- Loading indicator -->
-                <div v-if="buscandoNumeroPedido" class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                  <LoadingSpinner layout="inline" size="sm" aria-label="Buscando pedido" />
-                </div>
                 <!-- Clear button -->
                 <button
-                  v-else-if="busquedaNumeroPedido"
+                  v-if="busquedaNumeroPedido"
                   @mousedown.prevent="limpiarBusquedaNumeroPedido"
                   class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                 >
@@ -295,43 +286,6 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
-              </div>
-              
-              <!-- Dropdown de resultados de búsqueda -->
-              <div
-                v-if="mostrarDropdownBusqueda && (resultadosBusqueda.length > 0 || (busquedaNumeroPedido.length >= 2 && !buscandoNumeroPedido))"
-                class="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-auto"
-              >
-                <div v-if="resultadosBusqueda.length === 0 && !buscandoNumeroPedido" class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 text-center">
-                  No se encontraron pedidos con "{{ busquedaNumeroPedido }}"
-                </div>
-                <ul v-else class="py-1">
-                  <li
-                    v-for="(resultado, index) in resultadosBusqueda"
-                    :key="resultado.pedido_id"
-                    @mousedown.prevent="seleccionarResultado(resultado)"
-                    @mouseenter="indiceResultadoActivo = index"
-                    :class="[
-                      'px-4 py-2.5 cursor-pointer transition-colors',
-                      indiceResultadoActivo === index
-                        ? 'bg-indigo-50 dark:bg-indigo-900/30'
-                        : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
-                    ]"
-                  >
-                    <div class="flex items-center justify-between">
-                      <div>
-                        <span class="text-sm font-medium text-gray-900 dark:text-white">{{ resultado.numero_pedido }}</span>
-                        <span v-if="resultado.proveedor_nombre" class="ml-2 text-xs text-gray-500 dark:text-gray-400">
-                          · {{ resultado.proveedor_nombre }}
-                        </span>
-                      </div>
-                      <span :class="getEstadoBadgeClass(resultado.estado)" class="text-xs">{{ getEstadoLabel(resultado.estado) }}</span>
-                    </div>
-                    <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                      {{ resultado.fecha_pedido ? formatDate(resultado.fecha_pedido) : 'Sin fecha' }}
-                    </div>
-                  </li>
-                </ul>
               </div>
             </div>
             <div>
@@ -588,7 +542,7 @@ import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
 import QuickTablePagination from '@/components/QuickTablePagination.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
-import type { PedidosListadoResponse, PedidoResumido, PedidosListadoFiltros, PedidosListadoMetadata, BuscarPlantillaResultado, PlantillasPedidosResponse, EstadoPedidoOption } from '../types'
+import type { PedidosListadoResponse, PedidoResumido, PedidosListadoFiltros, PedidosListadoMetadata, PlantillasPedidosResponse, EstadoPedidoOption } from '../types'
 import { formatDate, formatDateTime } from '../utils/formatters'
 import { lastNotification } from '@/composables/useNotificaciones'
 
@@ -596,50 +550,22 @@ const { target: odcSapVolverTarget, title: odcSapVolverTitle } = useOdcSapVolver
 const router = useRouter()
 const toast = useToast()
 
-// ========== Búsqueda por Número de Pedido (con debounce y dropdown) ==========
+// ========== Búsqueda por Número de Pedido (con debounce, filtra en vivo la Tabla de Pedidos) ==========
 const busquedaNumeroPedido = ref('')
-const resultadosBusqueda = ref<BuscarPlantillaResultado[]>([])
-const buscandoNumeroPedido = ref(false)
-const mostrarDropdownBusqueda = ref(false)
-const indiceResultadoActivo = ref(-1)
 const numeroPedidoInputRef = ref<HTMLInputElement | null>(null)
 let debounceTimeout: ReturnType<typeof setTimeout> | null = null
 
 const DEBOUNCE_MS = 300
 const MIN_CHARS_BUSQUEDA = 2
 
-async function ejecutarBusquedaNumeroPedido(query: string) {
-  if (query.length < MIN_CHARS_BUSQUEDA) {
-    resultadosBusqueda.value = []
-    return
-  }
-
-  buscandoNumeroPedido.value = true
-  try {
-    const response = await mba3ConsultasService.buscarPlantillas(query)
-    resultadosBusqueda.value = response.data
-    indiceResultadoActivo.value = response.data.length > 0 ? 0 : -1
-  } catch (e: any) {
-    console.error('Error en búsqueda de pedidos:', e)
-    resultadosBusqueda.value = []
-  } finally {
-    buscandoNumeroPedido.value = false
-  }
-}
-
 function handleBusquedaNumeroPedido() {
-  mostrarDropdownBusqueda.value = true
-
-  // Limpiar timeout anterior
   if (debounceTimeout) {
     clearTimeout(debounceTimeout)
   }
 
-  // Si el texto es muy corto, limpiar resultados inmediatamente y volver a la
-  // tabla sin filtrar por número de pedido (si es que había una búsqueda previa).
+  // Si el texto es muy corto, volver a la tabla sin filtrar por número de
+  // pedido (si es que había una búsqueda previa).
   if (busquedaNumeroPedido.value.length < MIN_CHARS_BUSQUEDA) {
-    resultadosBusqueda.value = []
-    buscandoNumeroPedido.value = false
     if (filtros.value.numero_pedido) {
       filtros.value.numero_pedido = ''
       aplicarFiltros()
@@ -647,73 +573,25 @@ function handleBusquedaNumeroPedido() {
     return
   }
 
-  // Iniciar debounce: además del dropdown, filtra en vivo la Tabla de Pedidos
-  // de abajo (mismo criterio, misma llamada al backend con LIKE parcial).
-  debounceTimeout = setTimeout(() => {
-    const query = busquedaNumeroPedido.value.trim()
-    ejecutarBusquedaNumeroPedido(query)
-    filtros.value.numero_pedido = query
-    aplicarFiltros()
-  }, DEBOUNCE_MS)
+  debounceTimeout = setTimeout(buscarNumeroPedidoInmediato, DEBOUNCE_MS)
 }
 
-function handleBusquedaFocus() {
-  if (busquedaNumeroPedido.value.length >= MIN_CHARS_BUSQUEDA || resultadosBusqueda.value.length > 0) {
-    mostrarDropdownBusqueda.value = true
+function buscarNumeroPedidoInmediato() {
+  if (debounceTimeout) {
+    clearTimeout(debounceTimeout)
+    debounceTimeout = null
   }
-}
-
-function handleBusquedaBlur() {
-  // Delay para permitir clicks en el dropdown
-  setTimeout(() => {
-    mostrarDropdownBusqueda.value = false
-  }, 150)
-}
-
-function cerrarDropdownBusqueda() {
-  mostrarDropdownBusqueda.value = false
-  indiceResultadoActivo.value = -1
+  filtros.value.numero_pedido = busquedaNumeroPedido.value.trim()
+  aplicarFiltros()
 }
 
 function limpiarBusquedaNumeroPedido() {
   busquedaNumeroPedido.value = ''
-  resultadosBusqueda.value = []
-  mostrarDropdownBusqueda.value = false
-  indiceResultadoActivo.value = -1
   numeroPedidoInputRef.value?.focus()
   if (filtros.value.numero_pedido) {
     filtros.value.numero_pedido = ''
     aplicarFiltros()
   }
-}
-
-function navegarResultados(direccion: 'up' | 'down') {
-  if (resultadosBusqueda.value.length === 0) return
-  
-  if (direccion === 'down') {
-    indiceResultadoActivo.value = (indiceResultadoActivo.value + 1) % resultadosBusqueda.value.length
-  } else {
-    indiceResultadoActivo.value = indiceResultadoActivo.value <= 0
-      ? resultadosBusqueda.value.length - 1
-      : indiceResultadoActivo.value - 1
-  }
-}
-
-function seleccionarResultadoActivo() {
-  if (indiceResultadoActivo.value >= 0 && indiceResultadoActivo.value < resultadosBusqueda.value.length) {
-    seleccionarResultado(resultadosBusqueda.value[indiceResultadoActivo.value])
-  } else if (busquedaNumeroPedido.value.trim()) {
-    // Si no hay resultado seleccionado pero hay texto, aplicar filtro tradicional
-    filtros.value.numero_pedido = busquedaNumeroPedido.value.trim()
-    aplicarFiltros()
-    cerrarDropdownBusqueda()
-  }
-}
-
-function seleccionarResultado(resultado: BuscarPlantillaResultado) {
-  cerrarDropdownBusqueda()
-  busquedaNumeroPedido.value = ''
-  router.push(`/mba3-consultas/cargar-plantilla/${encodeURIComponent(resultado.numero_pedido)}`)
 }
 
 // Carga de plantillas Excel (redirige a cargar-plantilla/:id tras subir). useAsyncUpload: no bloquea la app (Celery).
@@ -1020,7 +898,6 @@ function limpiarFiltros() {
   }
   // Mantener en sync el input de búsqueda con debounce (Número de Pedido)
   busquedaNumeroPedido.value = ''
-  resultadosBusqueda.value = []
   filtroSoloPendientes.value = false
   metadata.value.offset = 0
   cargarPedidos()
