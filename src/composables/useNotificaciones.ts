@@ -93,7 +93,6 @@ function extractNotificationFromSSEData(data: Record<string, unknown>): SSENotif
 
 /** URL base de la API MBA3 (ruta relativa; el proxy de Vite/Nginx resuelve el host). */
 const API_BASE_URL = MBA3_API_BASE_URL
-const SSE_ENABLED = String(import.meta.env.VITE_ENABLE_NOTIFICACIONES_SSE ?? 'false').toLowerCase() === 'true'
 
 function getSSEStreamCandidates(baseUrl: string): string[] {
   const normalizedBase = baseUrl.replace(/\/+$/, '')
@@ -144,13 +143,6 @@ export function useNotificaciones() {
    * Se reconecta automáticamente si la conexión se pierde.
    */
   async function connect() {
-    if (!SSE_ENABLED) {
-      if (import.meta.env.DEV) {
-        console.info('📢 [Notificaciones] SSE deshabilitado por VITE_ENABLE_NOTIFICACIONES_SSE')
-      }
-      return
-    }
-
     const token = localStorage.getItem('token')
     if (!token) {
       if (import.meta.env.DEV) {
