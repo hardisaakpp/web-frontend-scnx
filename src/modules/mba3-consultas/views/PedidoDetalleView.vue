@@ -372,8 +372,8 @@
           </div>
         </div>
 
-        <!-- Botón Cancelar Pedido (parte inferior) - Estado GESTIONAR PEDIDO -->
-        <div 
+        <!-- Botón Cancelar Pedido (parte inferior) - Estado CONFIRMADO POR PRODUCCION, solo odcsap.view -->
+        <div
           v-if="puedeCancelarPorElRayo" 
           class="mt-6 pb-6 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 pt-6"
         >
@@ -874,12 +874,14 @@ const puedeEditarCostoTotalComentario = computed(() => {
   return false
 })
 
-// Permitir cancelar pedido por EL RAYO solo en estado GESTIONAR PEDIDO (estado_id = 3)
+// Permitir cancelar pedido por EL RAYO solo en estado CONFIRMADO POR PRODUCCION (estado_id = 23),
+// una vez que Producción ya confirmó (req. 1.8 segunda fase). Exclusivo de odcsap.view.
 const puedeCancelarPorElRayo = computed(() => {
+  if (!authStore.canManageOrder) return false
   const cabecera = pedido.value?.cabecera
   if (!cabecera) return false
   const estadoId = cabecera.estado_id != null ? Number(cabecera.estado_id) : null
-  return estadoId === 3
+  return estadoId === 23
 })
 
 // Permitir descargar CSV solo en estado CONFIRMADO (estado_id = 4)
@@ -890,12 +892,13 @@ const puedeDescargarCsv = computed(() => {
   return estadoId === 4
 })
 
-// Permitir generar TXT MBA3 solo en estado CONFIRMADO POR EL RAYO (estado_id = 4)
+// Permitir generar TXT MBA3 solo en estado CONFIRMADO Y ENVIADO (estado_id = 12),
+// ya que la columna Orden Compra Cliente del TXT depende del DocNum de la OC en SAP.
 const puedeGenerarTxtMba3 = computed(() => {
   const cabecera = pedido.value?.cabecera
   if (!cabecera) return false
   const estadoId = cabecera.estado_id != null ? Number(cabecera.estado_id) : null
-  return estadoId === 4
+  return estadoId === 12
 })
 
 // Permitir descargar pedido desde estado GESTIONAR PEDIDO (estado_id >= 3) en adelante
@@ -1412,7 +1415,7 @@ async function handleDescargarExcelOriginal() {
   }
 }
 
-// Función para cancelar pedido por EL RAYO (desde Detalle del Pedido - estado GESTIONAR PEDIDO)
+// Función para cancelar pedido por EL RAYO (desde Detalle del Pedido - estado CONFIRMADO POR PRODUCCION)
 async function handleCancelarPorElRayo() {
   if (!pedido.value?.cabecera?.pedido_id) {
     toast.error('Error', 'No hay pedido para cancelar')
@@ -1635,8 +1638,8 @@ watch(lastNotification, async (notification) => {
       console.log('🔄 [PedidoDetalleView] Notificación SSE recibida para pedido actual:', meta.accion)
     }
 
-    // Si el pedido fue eliminado, redirigir a cargar-plantilla (el pedido ya no existe)
-    if (meta.accion === 'pedido_eliminado' || meta.accion === 'pedido_descartado' || meta.accion === 'pedido_cancelado') {
+    // Si el pedido fue descartado/cancelado, redirigir a cargar-plantilla (el pedido ya no existe)
+    if (meta.accion === 'pedido_descartado' || meta.accion === 'pedido_cancelado') {
       router.push('/mba3-consultas/cargar-plantilla')
       return
     }

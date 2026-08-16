@@ -83,7 +83,7 @@
         @click="$emit('descargar-plano-mba')"
         :disabled="loading || !pedido || descargandoPlanoMba || !puedeGenerarTxtMba3"
         class="px-4 py-2 bg-cyan-600 dark:bg-cyan-500 text-white rounded-lg hover:bg-cyan-700 dark:hover:bg-cyan-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
-        title="Generar archivo TXT MBA3 (Cliente CLI1795, moneda US). Requiere estado Confirmado por El Rayo."
+        title="Generar archivo TXT MBA3 (Cliente CLI1795, moneda US). Requiere estado Confirmado y Enviado."
       >
         <LoadingSpinner v-if="descargandoPlanoMba" layout="inline" size="md" color="current" aria-label="Generando archivo MBA3" />
         <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

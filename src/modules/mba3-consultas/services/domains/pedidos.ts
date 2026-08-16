@@ -681,8 +681,8 @@ export const pedidosService = {
   /**
    * Cancela un pedido desde la interfaz Detalle del Pedido (botón "Cancelar Pedido").
    * POST /api/pedidos/{pedido_id}/cancelar-por-el-rayo
-   * Solo válido en estado GESTIONAR PEDIDO (3). Cambia estado a CANCELADO POR EL RAYO (20).
-   * No elimina el pedido de la base de datos.
+   * Solo válido en estado CONFIRMADO POR PRODUCCION (23), y solo para odcsap.view.
+   * Cambia estado a CANCELADO POR EL RAYO (20). No elimina el pedido de la base de datos.
    *
    * @param pedidoId ID del pedido (UUID)
    */

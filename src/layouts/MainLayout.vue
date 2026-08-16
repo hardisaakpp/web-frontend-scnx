@@ -483,6 +483,7 @@ const showOdcSapVolverInMainChrome = computed(() => {
   if (n === 'mba3-consultas-cargar-plantilla-detalle') return false
   if (n === 'mba3-consultas-cargar-plantilla') return false
   if (n === 'mba3-consultas-pedidos-listado') return false
+  if (n === 'mba3-consultas-produccion-pedidos-listado') return false
   if (n === 'mba3-consultas-redistribucion') return false
   if (n === 'mba3-consultas-pedido-redistribucion') return false
   if (n === 'mba3-consultas-revisar-redistribucion') return false

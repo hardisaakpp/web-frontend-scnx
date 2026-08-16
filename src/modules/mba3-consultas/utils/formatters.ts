@@ -221,21 +221,6 @@ export interface ColumnConfig {
 }
 
 /**
- * Calcula el Margen de Rentabilidad (req. 1.5, SIS-PYTD-0002): 1 - (Costo / (PVP / 1.15)).
- * `costoMargen` es la columna "Costo" de la plantilla Excel (req. 1.4) — informativa,
- * distinta de costo_doc_sin_iva. Devuelve una fracción decimal (ej. 0.35 = 35%).
- * Devuelve null si falta el costo o si el PVP es nulo/cero (división inválida).
- */
-export function calcularMargenRentabilidad(
-  costoMargen: number | null | undefined,
-  pvp: number | null | undefined
-): number | null {
-  if (costoMargen === null || costoMargen === undefined) return null
-  if (pvp === null || pvp === undefined || pvp === 0) return null
-  return 1 - (costoMargen / (pvp / 1.15))
-}
-
-/**
  * Formatea el valor de una columna según su tipo
  */
 export function formatColumnValue(detalle: any, column: ColumnConfig, index?: number): string {
@@ -244,10 +229,11 @@ export function formatColumnValue(detalle: any, column: ColumnConfig, index?: nu
     return (index + 1).toString()
   }
 
-  // Margen de Rentabilidad: computado (no es un campo persistido), a partir de costo_margen y pvp
+  // Margen de Rentabilidad (req. 1.5): calculado en el backend, no aquí — ver
+  // calcular_margen_rentabilidad en pedido_utils.py. Evita duplicar la fórmula en dos lenguajes.
   if (column.key === 'margen') {
-    const margen = calcularMargenRentabilidad(detalle.costo_margen, detalle.pvp)
-    return margen === null ? 'N/A' : `${(margen * 100).toFixed(2)}%`
+    const margen = detalle.margen
+    return margen === null || margen === undefined ? 'N/A' : `${(margen * 100).toFixed(2)}%`
   }
 
   const value = detalle[column.key]

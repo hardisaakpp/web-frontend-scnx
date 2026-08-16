@@ -1278,7 +1278,8 @@ export const mba3ConsultasService = {
   /**
    * Cancela un pedido desde Detalle del Pedido (botón "Cancelar Pedido").
    * POST /api/pedidos/{pedido_id}/cancelar-por-el-rayo
-   * Solo válido en estado GESTIONAR PEDIDO (3). Cambia estado a CANCELADO POR EL RAYO (20).
+   * Solo válido en estado CONFIRMADO POR PRODUCCION (23), y solo para odcsap.view.
+   * Cambia estado a CANCELADO POR EL RAYO (20).
    * @param pedidoId ID del pedido (UUID)
    */
   async cancelarPedidoPorElRayo(pedidoId: string): Promise<any> {
