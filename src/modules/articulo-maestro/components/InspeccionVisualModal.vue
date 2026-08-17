@@ -41,7 +41,7 @@
                         <img 
                             v-if="imagenActivaObj?.urlFinal" 
                             :src="imagenActivaObj.urlFinal ?? undefined" 
-                            :alt="`Imagen ${posicionActiva} de ${articulo?.itemCode}`"
+                            :alt="`Posición ${posicionActiva} de ${articulo?.itemCode}`"
                             class="max-w-full max-h-full object-contain drop-shadow-xl transition-transform duration-300 group-hover:scale-[1.02]"
                         />
                         <div v-else class="flex flex-col items-center text-gray-400 dark:text-gray-600">
@@ -121,8 +121,8 @@
                                 </button>
 
                                 <a
-                                    v-if="imagenActivaObj?.urlFinal"
-                                    :href="imagenActivaObj.urlFinal"
+                                    v-if="urlActivaSegura"
+                                    :href="urlActivaSegura"
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     class="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-400 rounded-lg text-sm font-medium hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
@@ -204,6 +204,19 @@ const obtenerImagen = (pos: 1 | 2 | 3): ImagenArticuloReferencia | undefined => 
 
 const imagenActivaObj = computed(() => {
     return obtenerImagen(posicionActiva.value)
+})
+
+// Solo se permite navegar/abrir el enlace si es http(s): evita que una URL con
+// esquema no seguro (p. ej. javascript:) llegue a renderizarse como href.
+const urlActivaSegura = computed(() => {
+    const url = imagenActivaObj.value?.urlFinal
+    if (!url) return null
+    try {
+        const protocolo = new URL(url).protocol
+        return protocolo === 'http:' || protocolo === 'https:' ? url : null
+    } catch {
+        return null
+    }
 })
 
 const nombrePosicion = (pos: number) => {

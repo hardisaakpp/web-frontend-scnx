@@ -388,9 +388,9 @@
                             <label for="formPrice">PVP (Precio)</label>
                             <input id="formPrice" v-model.number="form.price" type="number" step="0.01" placeholder="0.00" min="0" />
                         </div>
-                        <div class="form-field sm:col-span-2 flex flex-col gap-2 bg-gray-50 dark:bg-gray-900 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
-                            <span id="listasPreciosAplicablesLabel" class="!text-sm !m-0 !font-medium">Listas de Precios Aplicables</span>
-                            <div class="flex items-center gap-6" role="group" aria-labelledby="listasPreciosAplicablesLabel">
+                        <fieldset class="form-field sm:col-span-2 flex flex-col gap-2 bg-gray-50 dark:bg-gray-900 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                            <legend class="!text-sm !m-0 !p-0 !font-medium">Listas de Precios Aplicables</legend>
+                            <div class="flex items-center gap-6">
                                 <div class="flex items-center gap-2">
                                     <input id="formAplicaPrecioMinorista" v-model="form.aplicaPrecioMinorista" @change="onPrecioListasChange('minorista')" type="checkbox" class="w-4 h-4 text-blue-600 rounded border-gray-300" />
                                     <label for="formAplicaPrecioMinorista" class="!text-sm !m-0">Minorista</label>
@@ -400,7 +400,7 @@
                                     <label for="formAplicaPrecioInternacional" class="!text-sm !m-0">Internacional</label>
                                 </div>
                             </div>
-                        </div>
+                        </fieldset>
                         <div class="form-field">
                             <label for="formCostoArranque">Costo de Arranque</label>
                             <input id="formCostoArranque" :value="form.uPrArq ?? ''" @input="onCostoArranqueInput($event)" @blur="onCostoArranqueBlur" type="number" step="0.01" min="0" placeholder="0.00" />
