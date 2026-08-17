@@ -150,9 +150,7 @@ import {
 } from '../services/articuloService'
 import ImportacionProgreso from './ImportacionProgreso.vue'
 
-const emit = defineEmits<{
-    (event: 'close'): void
-}>()
+const emit = defineEmits<(event: 'close') => void>()
 
 const importStore = useImportacionArticulosStore()
 

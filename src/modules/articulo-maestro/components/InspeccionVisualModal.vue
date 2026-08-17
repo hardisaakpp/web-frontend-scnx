@@ -60,9 +60,10 @@
                             :class="posicionActiva === pos ? 'border-blue-500 shadow-md ring-2 ring-blue-500/30' : 'border-transparent hover:border-blue-300 opacity-60 hover:opacity-100'"
                             :title="nombrePosicion(pos)"
                         >
-                            <img 
-                                v-if="obtenerImagen(pos)?.urlFinal" 
-                                :src="obtenerImagen(pos)?.urlFinal ?? undefined" 
+                            <img
+                                v-if="obtenerImagen(pos)?.urlFinal"
+                                :src="obtenerImagen(pos)?.urlFinal ?? undefined"
+                                :alt="`Miniatura ${nombrePosicion(pos)}`"
                                 class="w-full h-full object-cover"
                             />
                             <div v-else class="w-full h-full bg-gray-200 dark:bg-gray-700 flex flex-col items-center justify-center text-gray-400">
@@ -167,9 +168,7 @@ const props = defineProps<{
     articuloBase: Articulo | null
 }>()
 
-const emit = defineEmits<{
-    (e: 'close'): void
-}>()
+const emit = defineEmits<(e: 'close') => void>()
 
 const articulo = ref<Articulo | null>(null)
 const loading = ref(false)

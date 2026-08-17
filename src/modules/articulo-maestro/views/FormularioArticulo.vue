@@ -389,8 +389,8 @@
                             <input id="formPrice" v-model.number="form.price" type="number" step="0.01" placeholder="0.00" min="0" />
                         </div>
                         <div class="form-field sm:col-span-2 flex flex-col gap-2 bg-gray-50 dark:bg-gray-900 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
-                            <label class="!text-sm !m-0 !font-medium">Listas de Precios Aplicables</label>
-                            <div class="flex items-center gap-6">
+                            <span id="listasPreciosAplicablesLabel" class="!text-sm !m-0 !font-medium">Listas de Precios Aplicables</span>
+                            <div class="flex items-center gap-6" role="group" aria-labelledby="listasPreciosAplicablesLabel">
                                 <div class="flex items-center gap-2">
                                     <input id="formAplicaPrecioMinorista" v-model="form.aplicaPrecioMinorista" @change="onPrecioListasChange('minorista')" type="checkbox" class="w-4 h-4 text-blue-600 rounded border-gray-300" />
                                     <label for="formAplicaPrecioMinorista" class="!text-sm !m-0">Minorista</label>

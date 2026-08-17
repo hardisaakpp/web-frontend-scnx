@@ -741,7 +741,7 @@ watch(
             estado !== anterior &&
             ['COMPLETADO', 'COMPLETADO_CON_ERRORES', 'ERROR'].includes(estado)
         ) {
-            void store.fetchArticulos()
+            store.fetchArticulos()
         }
     }
 )

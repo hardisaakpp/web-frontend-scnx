@@ -118,9 +118,7 @@ const props = withDefaults(defineProps<{
     disabled: false
 })
 
-const emit = defineEmits<{
-    (event: 'update:images', value: ImagenArticuloReferencia[]): void
-}>()
+const emit = defineEmits<(event: 'update:images', value: ImagenArticuloReferencia[]) => void>()
 
 const toast = useToast()
 
@@ -254,7 +252,9 @@ async function removeImage(position: Posicion): Promise<void> {
 function onFileInputChange(position: Posicion, event: Event): void {
     const input = event.target as HTMLInputElement
     const file = input.files?.[0]
-    if (file) void handleFile(position, file)
+    if (file) {
+        handleFile(position, file)
+    }
     input.value = ''
 }
 
@@ -262,7 +262,9 @@ function onDrop(position: Posicion, event: DragEvent): void {
     dragOverPosition.value = null
     if (props.disabled) return
     const file = event.dataTransfer?.files?.[0]
-    if (file) void handleFile(position, file)
+    if (file) {
+        handleFile(position, file)
+    }
 }
 
 // Llamado por el formulario padre justo después de crear el artículo (ya con
