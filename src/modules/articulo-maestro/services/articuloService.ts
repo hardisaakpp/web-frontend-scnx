@@ -182,9 +182,29 @@ export interface PromoverAlternoResponse {
     tarea_id: number
 }
 
+// RF-004: respuesta multi-estado de DELETE /articulos/borrado-masivo.
+// Snake_case a propósito: el endpoint no usa alias_generator=to_camel (no es
+// un ArticuloResponse), así que el body llega tal cual estas claves.
+export interface ArticuloBulkDeleteError {
+    item_code: string
+    status_code: number
+    detail: string
+}
+
+export interface ArticuloBulkDeleteResponse {
+    success: boolean
+    total: number
+    success_count: number
+    error_count: number
+    eliminados: string[]
+    errores: ArticuloBulkDeleteError[]
+}
+
 export const articuloService = {
-    // Listado paginado (el backend devuelve { total, items })
-    getArticulos: async (filters: ArticuloFilters) => {
+    // Listado paginado (el backend devuelve { total, items }). Acepta un
+    // AbortSignal para que el store pueda cancelar peticiones en vuelo cuando
+    // el usuario dispara una búsqueda o paginación más reciente.
+    getArticulos: async (filters: ArticuloFilters, signal?: AbortSignal) => {
         const pageSize = filters.pageSize || 10
         const page = filters.page || 1
         const skip = (page - 1) * pageSize
@@ -197,7 +217,8 @@ export const articuloService = {
                 ...otherFilters,
                 skip,
                 limit: pageSize
-            }
+            },
+            signal
         })
 
         const { items, total } = response.data
@@ -237,9 +258,15 @@ export const articuloService = {
         return response.data
     },
 
-    // Sincronizar con SAP (sin trailing slash)
-    sincronizarConSap: async (itemCode: string) => {
-        const response = await apiMaestro.post<{ status: string, message: string }>(`/api/v1/articulos/${itemCode}/sincronizar`)
+    // Eliminar (inactivar) múltiples artículos. Respuesta multi-estado: un
+    // item_code bloqueado (ej. semáforo SAP en EN_COLA) no oculta ni detiene
+    // el resultado de los demás (ver delete_articulos_bulk en el backend).
+    eliminarArticulosBulk: async (itemCodes: string[]): Promise<ArticuloBulkDeleteResponse> => {
+        const response = await apiMaestro.request<ArticuloBulkDeleteResponse>({
+            url: '/api/v1/articulos/borrado-masivo',
+            method: 'DELETE',
+            data: { item_codes: itemCodes }
+        })
         return response.data
     },
 

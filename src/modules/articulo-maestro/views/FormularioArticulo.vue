@@ -74,8 +74,8 @@
                     <div v-if="isEdit && form.isStructuralLocked" class="m-6 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4 flex gap-3">
                         <svg class="w-6 h-6 text-amber-600 dark:text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                         <div>
-                            <h4 class="text-sm font-bold text-amber-800 dark:text-amber-300">Modificación Estructural Bloqueada</h4>
-                            <p class="text-xs text-amber-700 dark:text-amber-400 mt-1">Este artículo ya se ha sincronizado con SAP. Los campos estructurales (Jerarquía y Marca) no pueden modificarse.</p>
+                            <h4 class="text-sm font-bold text-amber-800 dark:text-amber-300">Artículo sincronizado con SAP / con historial contable</h4>
+                            <p class="text-xs text-amber-700 dark:text-amber-400 mt-1">Los parámetros estructurales se encuentran bloqueados para proteger la integridad de datos: Categoría, Línea y Gestión por Lotes ya no pueden modificarse en este artículo.</p>
                         </div>
                     </div>
 
@@ -129,6 +129,8 @@
                                 v-model="form.uIxxTalla"
                                 :options="cats.talla"
                                 placeholder="Seleccionar talla..."
+                                :disabled="isEdit"
+                                :title="isEdit ? 'La Talla es información tomada del comprador al crear el artículo y no puede modificarse después.' : ''"
                             />
                         </div>
                         <div class="form-field">
@@ -138,6 +140,8 @@
                                 v-model="form.uGen"
                                 :options="cats.genero"
                                 placeholder="Seleccionar género..."
+                                :disabled="isEdit"
+                                :title="isEdit ? 'El Género es información tomada del comprador al crear el artículo y no puede modificarse después.' : ''"
                             />
                         </div>
 
@@ -181,8 +185,8 @@
                                 placeholder="Seleccionar sección..."
                                 @change="onSeccionChange"
                                 valueKey="nombre"
-                                :disabled="form.isStructuralLocked"
-                                :title="form.isStructuralLocked ? 'El artículo posee historial en SAP y no puede modificar su estructura' : ''"
+                                :disabled="isEdit"
+                                :title="isEdit ? 'La Sección define el ItemCode del artículo y no puede modificarse después de creado.' : ''"
                             />
                         </div>
                         <div class="form-field">
@@ -399,7 +403,7 @@
                         </div>
                         <div class="form-field">
                             <label for="formCostoArranque">Costo de Arranque</label>
-                            <input id="formCostoArranque" :value="form.uPrArq ?? ''" @input="onCostoArranqueInput($event)" type="number" step="0.01" min="0" placeholder="0.00" />
+                            <input id="formCostoArranque" :value="form.uPrArq ?? ''" @input="onCostoArranqueInput($event)" @blur="onCostoArranqueBlur" type="number" step="0.01" min="0" placeholder="0.00" />
                         </div>
                         <div class="form-field">
                             <label for="selectLiquidacion">Liquidación</label>
@@ -420,7 +424,7 @@
                     <div v-show="activeTab === 'sap'" class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div class="form-field required">
                             <label for="formItemType">Tipo de Artículo (ItemType)</label>
-                            <select id="formItemType" v-model="form.itemType" required>
+                            <select id="formItemType" v-model="form.itemType" required :disabled="isEdit" :title="isEdit ? 'Es un parámetro estructural de SAP y no puede modificarse una vez creado el artículo.' : ''">
                                 <option value="I">I - Artículo de inventario</option>
                                 <option value="L">L - Mano de obra</option>
                                 <option value="T">T - Viaje</option>
@@ -428,7 +432,7 @@
                         </div>
                         <div class="form-field required">
                             <label for="formItemsGroupCode">Grupo de Artículos (ItemsGroupCode)</label>
-                            <input id="formItemsGroupCode" v-model.number="form.itemsGroupCode" type="number" required placeholder="100" />
+                            <input id="formItemsGroupCode" v-model.number="form.itemsGroupCode" type="number" required placeholder="100" :disabled="isEdit" :title="isEdit ? 'Es un parámetro estructural de SAP y no puede modificarse una vez creado el artículo.' : ''" />
                         </div>
                         <div class="form-field">
                             <label for="formCostAccounting">Sistema de Evaluación</label>
@@ -447,21 +451,21 @@
                         </div>
                         <div class="form-field">
                             <label for="formInventoryItem">Artículo de Inventario</label>
-                            <select id="formInventoryItem" v-model="form.inventoryItem">
+                            <select id="formInventoryItem" v-model="form.inventoryItem" :disabled="isEdit" :title="isEdit ? 'Es un parámetro estructural de SAP y no puede modificarse una vez creado el artículo.' : ''">
                                 <option value="Y">Y - Sí</option>
                                 <option value="N">N - No</option>
                             </select>
                         </div>
                         <div class="form-field">
                             <label for="formSalesItem">Artículo de Venta</label>
-                            <select id="formSalesItem" v-model="form.salesItem">
+                            <select id="formSalesItem" v-model="form.salesItem" :disabled="isEdit" :title="isEdit ? 'Es un parámetro estructural de SAP y no puede modificarse una vez creado el artículo.' : ''">
                                 <option value="Y">Y - Sí</option>
                                 <option value="N">N - No</option>
                             </select>
                         </div>
                         <div class="form-field">
                             <label for="formPurchaseItem">Artículo de Compra</label>
-                            <select id="formPurchaseItem" v-model="form.purchaseItem">
+                            <select id="formPurchaseItem" v-model="form.purchaseItem" :disabled="isEdit" :title="isEdit ? 'Es un parámetro estructural de SAP y no puede modificarse una vez creado el artículo.' : ''">
                                 <option value="Y">Y - Sí</option>
                                 <option value="N">N - No</option>
                             </select>
@@ -866,6 +870,13 @@ function onCostoArranqueInput(event: Event) {
     form.value.uPrArq = Number.isNaN(parsed) ? null : Math.round(parsed * 100) / 100
 }
 
+// Red de seguridad al perder el foco: re-redondea por si el navegador dejó
+// pasar un valor con más de 2 decimales (autocompletado, pegado, spinners).
+function onCostoArranqueBlur(): void {
+    if (form.value.uPrArq == null) return
+    form.value.uPrArq = Math.round(form.value.uPrArq * 100) / 100
+}
+
 // ─── Formulario ──────────────────────────────────────────────────────────────
 const form = ref({
     itemCode: '',
@@ -984,6 +995,28 @@ const submitError = ref('')
 const submitSuccess = ref('')
 const gestorImagenesRef = ref<InstanceType<typeof GestorImagenes> | null>(null)
 
+// ─── Dirty Checking (edición) ──────────────────────────────────────────────
+// Copia inmutable de `form` tomada justo después de que cargarDatosEdicion
+// termina de poblar el formulario y las cascadas de catálogo. handleSubmit
+// compara contra esta copia para enviar en el PATCH únicamente las
+// propiedades que realmente cambiaron.
+const originalSnapshot = ref<typeof form.value | null>(null)
+
+// Campos estructurales de SAP (CAMPOS_ESTRUCTURALES_BLOQUEADOS en el
+// backend): están bloqueados de por vida, no solo mientras el artículo esté
+// sincronizado. El backend rechaza el PATCH completo con 422 si CUALQUIERA
+// de estas claves llega en el body, sin importar si el valor es igual al
+// actual, así que se excluyen siempre en edición, no solo cuando cambian.
+const STRUCTURAL_LOCKED_KEYS = new Set([
+    'itemCode', 'codigoAlterno', 'uMarca', 'uIxxMarca',
+    'itemsGroupCode', 'itemType', 'purchaseItem', 'salesItem', 'inventoryItem',
+    'uGen', 'uIxxTalla', 'uNv1'
+])
+
+// Campos que no existen en ArticuloUpdate (o se gestionan por endpoints
+// dedicados): incluirlos en el PATCH también dispara un 422 por extra="forbid".
+const READONLY_KEYS = new Set(['imagenes', 'isStructuralLocked', 'controlSap', 'activo', 'id'])
+
 // ─── RF-002: Promoción de Código Alterno ──────────────────────────────────────
 const promoviendo = ref(false)
 const puedePromoverAlterno = computed(() =>
@@ -1076,6 +1109,11 @@ async function cargarDatosEdicion(itemCode: string) {
         // tocar Marca/Talla/etc. Si no coincide (fue editado a mano), el
         // watcher ya no lo va a pisar.
         ultimoItemNameSugerido.value = calcularItemNameSugerido()
+
+        // Snapshot para dirty checking: se toma al final, con el formulario
+        // ya asentado (incluyendo la sugerencia de ItemName), para que no
+        // se considere "cambiado" algo que el propio watcher acabó de fijar.
+        originalSnapshot.value = JSON.parse(JSON.stringify(form.value))
     } catch {
         loadError.value = `No se pudo cargar el artículo "${itemCode}". Verifica que el código es correcto.`
     } finally {
@@ -1111,9 +1149,6 @@ async function handleSubmit() {
     submitError.value = ''
     submitSuccess.value = ''
 
-    // Construir el payload omitiendo nulos y strings vacíos opcionales
-    const payload: Record<string, unknown> = {}
-    
     // Lista de campos que sí deben ser enviados como numéricos
     const numericFields = new Set([
         'uCodColor', 'uCodColSecu', 'leadTime', 'minOrderQuantity',
@@ -1122,44 +1157,66 @@ async function handleSubmit() {
         'purchaseItemsPerUnit', 'salesItemsPerUnit'
     ])
 
-    // Campos estructurales e inmutables de SAP bloqueados por el backend en PATCH
-    const structuralFields = new Set([
-        'itemCode', 'codigoAlterno', 'uMarca', 'uIxxMarca',
-        'inventoryItem', 'itemType', 'itemsGroupCode', 
-        'purchaseItem', 'salesItem', 'uGen', 'uIxxTalla'
-    ])
-
-    Object.entries(form.value).forEach(([key, val]) => {
-        // No reenviar campos de configuración estructural y nativos si estamos editando,
-        // esto previene que el backend rechace la petición con un HTTP 422
-        if (isEdit.value && structuralFields.has(key)) return
-        
-        // manageBatchNumbers queda bloqueado por el backend en PATCH cuando
-        // el artículo ya tiene historial en SAP (ver _ensure_manage_batch_numbers_editable);
-        // Sin embargo ese se detecta via "isStructuralLocked", así que lo evitamos si aplica.
-        if (isEdit.value && key === 'manageBatchNumbers' && form.value.isStructuralLocked) return
-
-        // Las imágenes se gestionan exclusivamente por sus endpoints dedicados
-        if (key === 'imagenes') return
-
-        if (val === '' || val == null) return
-
+    function coerce(key: string, val: unknown): unknown {
         // Pydantic strictness: forzar a string los campos que backend espera como texto
         // pero que Catálogos/jerarquías pudieron asignar como número.
         if (typeof val === 'number' && !numericFields.has(key)) {
-            payload[key] = String(val)
-        } else {
-            payload[key] = val
+            return String(val)
         }
-    })
+        return val
+    }
+
+    // Creación: se sigue enviando el formulario completo (menos vacíos/nulos
+    // opcionales), ya que ArticuloCreate exige varios campos obligatorios.
+    function buildCreatePayload(): Record<string, unknown> {
+        const payload: Record<string, unknown> = {}
+        Object.entries(form.value).forEach(([key, val]) => {
+            if (READONLY_KEYS.has(key)) return
+            if (val === '' || val == null) return
+            payload[key] = coerce(key, val)
+        })
+        return payload
+    }
+
+    // Edición: Dirty Checking real contra originalSnapshot. Solo viajan las
+    // propiedades que cambiaron respecto a lo cargado desde el backend, y
+    // nunca las estructurales (bloqueadas de por vida, sin importar si el
+    // valor "cambió" o no: su sola presencia en el body dispara un 422).
+    // Un valor vacío/null intencional se envía como null, nunca como 0/N/false.
+    function buildPatchPayload(): Record<string, unknown> {
+        const payload: Record<string, unknown> = {}
+        const original = originalSnapshot.value
+        if (!original) return payload
+
+        Object.entries(form.value).forEach(([key, rawVal]) => {
+            if (STRUCTURAL_LOCKED_KEYS.has(key) || READONLY_KEYS.has(key)) return
+            // manageBatchNumbers queda bloqueado por el backend en PATCH cuando
+            // el artículo ya tiene historial en SAP (ver
+            // _ensure_manage_batch_numbers_editable); se aproxima con
+            // isStructuralLocked, ya que la confirmación real requiere una
+            // consulta en vivo a SAP que el frontend no puede anticipar.
+            if (key === 'manageBatchNumbers' && form.value.isStructuralLocked) return
+
+            const val = rawVal === '' ? null : rawVal
+            const originalRaw = (original as Record<string, unknown>)[key]
+            const originalVal = originalRaw === '' ? null : originalRaw
+
+            if (val === originalVal) return // sin cambios reales: no reenviar
+
+            payload[key] = val === null ? null : coerce(key, val)
+        })
+        return payload
+    }
 
     try {
         if (isEdit.value) {
             const itemCode = route.params.itemCode as string
+            const payload = buildPatchPayload()
             const article = await articuloService.updateArticulo(itemCode, payload)
             form.value.imagenes = article.imagenes ?? []
             submitSuccess.value = `Artículo ${itemCode} actualizado. Sincronización con SAP iniciada en segundo plano.`
         } else {
+            const payload = buildCreatePayload()
             const article = await articuloService.createArticulo(payload)
             form.value.imagenes = article.imagenes ?? []
             // Las imágenes elegidas antes de crear el artículo quedaron en

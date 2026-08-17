@@ -52,8 +52,8 @@
 
                     <!-- Miniaturas Inferiores -->
                     <div class="p-3 bg-white/50 dark:bg-gray-800/50 backdrop-blur-sm border-t border-gray-200 dark:border-gray-700 flex justify-center gap-3">
-                        <button 
-                            v-for="pos in [1, 2, 3]" 
+                        <button
+                            v-for="pos in ([1, 2, 3] as const)"
                             :key="pos"
                             @click="posicionActiva = pos as 1 | 2 | 3"
                             class="relative w-16 h-16 rounded-lg overflow-hidden border-2 transition-all"
