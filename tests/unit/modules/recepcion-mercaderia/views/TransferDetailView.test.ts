@@ -396,6 +396,7 @@ describe('TransferDetailView', () => {
     expect(table.findAll('th').map((th) => th.text())).toEqual([
       'Código de barras',
       'Producto',
+      'Cantidad',
       'Fecha / Hora',
       'Acciones',
     ])
@@ -404,8 +405,76 @@ describe('TransferDetailView', () => {
     const cells = row.findAll('td')
     expect(cells[0].text()).toBe('999888777')
     expect(cells[1].text()).toBe('UWM-2478.M- BOXER')
-    expect(cells[2].text()).not.toBe('')
-    expect(cells[3].text()).toContain('Eliminar')
+    expect(cells[2].text()).toBe('1')
+    expect(cells[3].text()).not.toBe('')
+    expect(cells[4].text()).toContain('Eliminar')
+  })
+
+  it('groups repeated scans of the same barcode into one row with a Cantidad counter', async () => {
+    mockAuth(['recepcion.diferencias.gestionar'])
+    const transfer = buildTransfer({ lines: [buildLine({ barcode: '7791234' })] })
+    const differences = [
+      buildDifference({ differenceId: 1, barcode: '999888777', scannedAtUtc: '2026-01-02T15:00:00Z' }),
+      buildDifference({ differenceId: 2, barcode: '999888777', scannedAtUtc: '2026-01-02T15:30:00Z' }),
+      buildDifference({ differenceId: 3, barcode: '111', scannedAtUtc: '2026-01-02T16:00:00Z' }),
+    ]
+    vi.mocked(recepcionApi.getTransfer).mockResolvedValue(mockGetTransfer(transfer, differences))
+
+    const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+
+    const rows = wrapper.find('[data-testid="differences-table"]').findAll('tbody tr')
+    expect(rows).toHaveLength(2)
+    expect(rows[0].findAll('td')[2].text()).toBe('2')
+    expect(rows[1].findAll('td')[2].text()).toBe('1')
+  })
+
+  it('deletes every unit of the group when confirming Eliminar on a grouped difference row', async () => {
+    mockAuth(['recepcion.diferencias.gestionar'])
+    const transfer = buildTransfer({ lines: [buildLine({ barcode: '7791234' })] })
+    const differences = [
+      buildDifference({ differenceId: 1, barcode: '999888777' }),
+      buildDifference({ differenceId: 2, barcode: '999888777' }),
+    ]
+    vi.mocked(recepcionApi.getTransfer).mockResolvedValue(mockGetTransfer(transfer, differences))
+    vi.mocked(recepcionApi.deleteDifference).mockResolvedValue(undefined)
+
+    const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+
+    await wrapper.findAll('button').find((b) => b.text().includes('Eliminar'))!.trigger('click')
+    await flushPromises()
+
+    expect(recepcionApi.deleteDifference).toHaveBeenCalledTimes(2)
+    expect(recepcionApi.deleteDifference).toHaveBeenCalledWith(1)
+    expect(recepcionApi.deleteDifference).toHaveBeenCalledWith(2)
+    expect(wrapper.text()).not.toContain('999888777')
+  })
+
+  it('stops the group delete and surfaces the error when one unit fails, instead of silently clearing it on the next unit', async () => {
+    mockAuth(['recepcion.diferencias.gestionar'])
+    const transfer = buildTransfer({ lines: [buildLine({ barcode: '7791234' })] })
+    const differences = [
+      buildDifference({ differenceId: 1, barcode: '999888777' }),
+      buildDifference({ differenceId: 2, barcode: '999888777' }),
+    ]
+    vi.mocked(recepcionApi.getTransfer).mockResolvedValue(mockGetTransfer(transfer, differences))
+    vi.mocked(recepcionApi.deleteDifference).mockRejectedValueOnce(new Error('network blip')).mockResolvedValueOnce(undefined)
+
+    const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+
+    await wrapper.findAll('button').find((b) => b.text().includes('Eliminar'))!.trigger('click')
+    await flushPromises()
+
+    // Stops after the first (failed) unit — the second deleteDifference call, which would reset
+    // actionError back to null and mask the failure, must never run.
+    expect(recepcionApi.deleteDifference).toHaveBeenCalledTimes(1)
+    expect(new DOMWrapper(document.body).find('[data-testid="error-dialog"]').exists()).toBe(true)
+    // The undeleted unit keeps the group visible with its count reduced by zero (still 2), not gone.
+    expect(wrapper.find('[data-testid="differences-table"]').text()).toContain('999888777')
+
+    wrapper.unmount()
   })
 
   it('treats a naive scannedAtUtc (no trailing Z — the confirmed EF Core DateTimeKind.Unspecified bug) as UTC, not local time', async () => {
@@ -419,12 +488,12 @@ describe('TransferDetailView', () => {
     vi.mocked(recepcionApi.getTransfer).mockResolvedValueOnce(mockGetTransfer(transfer, [withZ]))
     const wrapperWithZ = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
     await flushPromises()
-    const withZText = wrapperWithZ.find('[data-testid="differences-table"]').findAll('tbody tr')[0].findAll('td')[2].text()
+    const withZText = wrapperWithZ.find('[data-testid="differences-table"]').findAll('tbody tr')[0].findAll('td')[3].text()
 
     vi.mocked(recepcionApi.getTransfer).mockResolvedValueOnce(mockGetTransfer(transfer, [naive]))
     const wrapperNaive = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
     await flushPromises()
-    const naiveText = wrapperNaive.find('[data-testid="differences-table"]').findAll('tbody tr')[0].findAll('td')[2].text()
+    const naiveText = wrapperNaive.find('[data-testid="differences-table"]').findAll('tbody tr')[0].findAll('td')[3].text()
 
     expect(naiveText).toBe(withZText)
   })

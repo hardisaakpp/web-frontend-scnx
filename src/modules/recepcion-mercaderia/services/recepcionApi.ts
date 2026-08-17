@@ -145,7 +145,7 @@ const recepcionApi = {
   },
 
   // Real body: { sapTransferRequestNumber, warehouseCode } — there is no transferId to send,
-  // the pending line has none. Response is `{ id }` (the newly materialized transfer's id).
+  // the pending line has none. Response is `{ id }` (the newly received transfer's id).
   materializePendingTransfer: async (sapTransferRequestNumber: string, warehouseCode: string): Promise<number> => {
     const response = await api.post<{ id: number }>(`${BASE}/pending-transfers/materialize`, {
       sapTransferRequestNumber,
