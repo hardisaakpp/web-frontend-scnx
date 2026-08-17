@@ -285,9 +285,7 @@
                       'px-4 py-4 text-sm',
                       column.align === 'right' ? 'text-right whitespace-nowrap' : column.align === 'center' ? 'text-center whitespace-nowrap' : '',
                       // ⭐ Resaltado persistente para columnas modificadas (no aplicar a columna numero)
-                      isColumnaModificada(detalle.pedido_detalle_id, column.key) && column.key !== 'numero'
-                        ? 'bg-amber-50 dark:bg-amber-900/20 border-l-2 border-amber-500 dark:border-amber-400' 
-                        : '',
+                      claseResaltadoModificado(detalle.pedido_detalle_id, column.key),
                       column.key === 'numero' ? 'font-medium text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/50' :
                       column.key === 'codigo_interno' ? 'font-medium text-gray-900 dark:text-white whitespace-nowrap' :
                       column.key === 'total' ? (puedeEditarCostoTotalComentario ? 'font-medium text-gray-900 dark:text-white cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors' : 'font-medium text-gray-900 dark:text-white') :
@@ -310,7 +308,7 @@
                         :step="editingCell.fieldType === 'total' ? '0.5' : '0.01'"
                         :inputmode="editingCell.fieldType === 'total' ? 'numeric' : 'decimal'"
                         min="0"
-                        @blur="guardarEdicion"
+                        @blur="manejarBlurEdicion"
                         @keydown="manejarTeclasEdicion"
                         @click.stop
                         :title="editingCell.fieldType === 'total' ? 'Solo múltiplos de 0,5. Escriba números; use flechas para 0,5, 1,5…' : undefined"
@@ -320,7 +318,7 @@
                         v-else
                         :data-editing-cell="detalle.pedido_detalle_id"
                         v-model="editingCell.value"
-                        @blur="guardarEdicion"
+                        @blur="manejarBlurEdicion"
                         @keydown="manejarTeclasEdicion"
                         @click.stop
                         rows="2"
@@ -505,6 +503,9 @@ const showConfirmacionProduccionModal = ref(false)
 
 // ⭐ Set para rastrear columnas modificadas (formato: "detalleId:columnKey")
 const columnasModificadas = ref<Set<string>>(new Set())
+// Rol responsable de la última modificación de cada columna ('PRODUCCION_ELRAYO' | 'ODCSAP' | null),
+// misma clave "detalleId:columnKey". Determina el color de resaltado (morado/ámbar).
+const rolesModificacion = ref<Map<string, string | null>>(new Map())
 
 // Gestión de columnas visibles en la tabla
 const showColumnSelector = ref(false)
@@ -567,11 +568,12 @@ function cargarColumnasModificadasDesdeStorage() {
 
 function limpiarColumnasModificadasEnStorage() {
   if (!numeroPedido.value) return
-  
+
   try {
     const storageKey = getStorageKey()
     sessionStorage.removeItem(storageKey)
     columnasModificadas.value.clear()
+    rolesModificacion.value.clear()
   } catch (e) {
     console.warn('Error al limpiar columnas modificadas en sessionStorage:', e)
   }
@@ -694,12 +696,14 @@ const pedidoDetalle = usePedidoDetalle({
   pedido,
   numeroPedido,
   columnasModificadas,
+  rolesModificacion,
   limpiarColumnasModificadasEnStorage: () => {
     if (!numeroPedido.value) return
     try {
       const storageKey = `pedido_columnas_modificadas_${numeroPedido.value}`
       sessionStorage.removeItem(storageKey)
       columnasModificadas.value.clear()
+      rolesModificacion.value.clear()
     } catch (e) {
       console.warn('Error al limpiar columnas modificadas en sessionStorage:', e)
     }
@@ -995,10 +999,31 @@ async function aplicarCorreccionesYContinuar(correcciones: CorreccionesPlantilla
 // - setLimiteSugerencias
 // - inicializarLimiteSugerencias
 
-const columnManagement = useColumnManagement(pedido, numeroPedido, columnasModificadas)
+const columnManagement = useColumnManagement(
+  pedido,
+  numeroPedido,
+  columnasModificadas,
+  rolesModificacion,
+  () => orderedVisibleColumns.value.map(column => column.key)
+)
 
 // Extraer funciones del composable para uso directo
-const { editingCell, iniciarEdicion, cancelarEdicion, manejarTeclasEdicion, isColumnaModificada, getColumnaModificadaKey } = columnManagement
+const { editingCell, iniciarEdicion, cancelarEdicion, manejarTeclasEdicion, manejarBlurEdicion, isColumnaModificada, getColumnaModificadaKey, getRolModificador } = columnManagement
+
+// Color de resaltado de celda modificada en TOTAL/COMENTARIO: naranja si la última edición la
+// hizo produccion-elrayo.view, ámbar si la hizo odcsap.view (su color de marca, igual que la
+// tarjeta "Listado de Pedidos" en DashboardView.vue). Naranja es de la misma familia cálida que
+// ámbar pero claramente distinguible al lado del otro. Depende de quién editó cada celda
+// (persistido en backend), no de quién esté viendo la pantalla ahora — así el color puesto por el
+// primer editor sobrevive el avance de estado hasta que el otro rol la vuelva a editar.
+function claseResaltadoModificado(detalleId: string, columnKey: string): string {
+  if (columnKey === 'numero' || !isColumnaModificada(detalleId, columnKey)) return ''
+  const esColumnaDeElRayo = columnKey === 'total' || columnKey === 'comentario'
+  if (esColumnaDeElRayo && getRolModificador(detalleId, columnKey) === 'PRODUCCION_ELRAYO') {
+    return 'bg-orange-50 dark:bg-orange-900/20 border-l-2 border-orange-500 dark:border-orange-400'
+  }
+  return 'bg-amber-50 dark:bg-amber-900/20 border-l-2 border-amber-500 dark:border-amber-400'
+}
 
 // Wrapper para guardarEdicion que incluye guardar en storage (fallback)
 // ⚠️ NOTA: El backend se actualiza automáticamente en useColumnManagement

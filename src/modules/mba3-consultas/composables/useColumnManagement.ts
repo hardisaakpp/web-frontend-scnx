@@ -15,14 +15,28 @@ export interface EditingCell {
   fieldType: 'costo' | 'total' | 'comentario'
 }
 
+/** Mapea la key de columna a su fieldType de edición (columnas editables inline). */
+const FIELD_TYPE_POR_COLUMNA: Record<string, EditingCell['fieldType']> = {
+  costo_doc_sin_iva: 'costo',
+  total: 'total',
+  comentario: 'comentario'
+}
+
 export function useColumnManagement(
   pedido: Ref<PedidoCompleto | null>,
   numeroPedido: Ref<string>,
-  columnasModificadas?: Ref<Set<string>>
+  columnasModificadas?: Ref<Set<string>>,
+  rolesModificacion?: Ref<Map<string, string | null>>,
+  getOrderedColumnKeys?: () => string[]
 ) {
   const toast = useToast()
   const editingCell = ref<EditingCell | null>(null)
   let editingInputElement: HTMLInputElement | null = null
+  // Al navegar con Tab, cerrar la celda actual desmonta su <input> y el navegador dispara
+  // un blur nativo sobre él (que también llama a guardarEdicion). Para entonces editingCell
+  // ya apunta a la celda nueva recién abierta, así que ese blur tardío la cerraría de inmediato.
+  // Este flag suprime guardarEdicion() mientras dura esa transición.
+  let avanzandoConTab = false
 
   /**
    * Crea la clave para identificar una columna modificada
@@ -40,40 +54,53 @@ export function useColumnManagement(
   }
 
   /**
+   * Rol responsable de la última modificación de una columna ('PRODUCCION_ELRAYO' | 'ODCSAP' | null).
+   */
+  function getRolModificador(detalleId: string, columnKey: string): string | null {
+    if (!rolesModificacion) return null
+    return rolesModificacion.value.get(getColumnaModificadaKey(detalleId, columnKey)) ?? null
+  }
+
+  /**
+   * Rol responsable de una edición hecha AHORA, según el estado del pedido: GESTIONAR_PEDIDO
+   * es editable en la práctica solo por produccion-elrayo.view y CONFIRMADO_POR_PRODUCCION solo
+   * por odcsap.view (mismo criterio que puedeEditarCostoTotalComentario en PedidoDetalleView.vue).
+   */
+  const rolActualPorEstado = computed<string | null>(() => {
+    const cabecera = pedido.value?.cabecera
+    if (!cabecera) return null
+    const estadoId = cabecera.estado_id != null ? Number(cabecera.estado_id) : null
+    const estado = String(cabecera.estado ?? '').trim().toUpperCase()
+    if (estadoId === 3 || estado === 'GESTIONAR_PEDIDO' || estado === 'GESTIONAR PEDIDO') return 'PRODUCCION_ELRAYO'
+    if (estadoId === 23) return 'ODCSAP'
+    return null
+  })
+
+  /**
    * Marca una columna como modificada
    */
   function marcarColumnaModificada(detalleId: string, columnKey: string) {
     if (columnasModificadas) {
       columnasModificadas.value.add(getColumnaModificadaKey(detalleId, columnKey))
     }
+    if (rolesModificacion) {
+      rolesModificacion.value.set(getColumnaModificadaKey(detalleId, columnKey), rolActualPorEstado.value)
+    }
   }
 
   /**
-   * Guarda una modificación en el backend.
+   * Guarda una modificación en el backend (solo la celda recién editada; el
+   * backend deriva y persiste el rol responsable según el estado del pedido).
    * El backend espera numero_pedido en la URL, no pedido_id (UUID).
    */
   async function guardarModificacionEnBackend(detalleId: string, columnKey: string) {
     const numeroParaApi = pedido.value?.cabecera?.numero_pedido ?? numeroPedido.value
     if (!numeroParaApi) return
-    
+
     try {
-      // Obtener todas las modificaciones actuales
-      const modificacionesActuales: Array<{ pedido_detalle_id: string; columna_key: string }> = []
-      
-      if (columnasModificadas) {
-        columnasModificadas.value.forEach(key => {
-          const [detId, colKey] = key.split(':')
-          modificacionesActuales.push({
-            pedido_detalle_id: detId,
-            columna_key: colKey
-          })
-        })
-      }
-      
-      // Guardar todas las modificaciones en el backend (usar numero_pedido, no UUID)
       await mba3ConsultasService.guardarModificacionesColumnas(
         numeroParaApi,
-        modificacionesActuales
+        [{ pedido_detalle_id: detalleId, columna_key: columnKey }]
       )
     } catch (error: any) {
       // No mostrar error al usuario, solo loguear
@@ -351,9 +378,70 @@ export function useColumnManagement(
     editingCell.value = null
   }
 
+  /** Columna correspondiente a cada fieldType (inverso de FIELD_TYPE_POR_COLUMNA). */
+  const COLUMNA_POR_FIELD_TYPE: Record<EditingCell['fieldType'], string> = {
+    costo: 'costo_doc_sin_iva',
+    total: 'total',
+    comentario: 'comentario'
+  }
+
+  /**
+   * Al presionar Tab editando TOTAL o COMENTARIO: guarda la celda actual y abre la edición
+   * de la siguiente fila en la misma columna. En la última fila, salta a la primera fila de
+   * la siguiente columna editable (según el orden visual actual de columnas).
+   */
+  function avanzarConTab(fieldType: 'total' | 'comentario') {
+    if (!editingCell.value || !pedido.value) return
+
+    const detalles = pedido.value.detalles
+    const currentIndex = detalles.findIndex(d => d.pedido_detalle_id === editingCell.value!.detalleId)
+
+    avanzandoConTab = true
+    guardarEdicion()
+
+    if (currentIndex === -1) {
+      avanzandoConTab = false
+      return
+    }
+
+    const siguienteDetalle = detalles[currentIndex + 1]
+    if (siguienteDetalle) {
+      iniciarEdicion(siguienteDetalle, fieldType)
+      nextTick(() => { avanzandoConTab = false })
+      return
+    }
+
+    // Última fila: saltar a la siguiente columna editable
+    const ordenColumnas = (getOrderedColumnKeys ? getOrderedColumnKeys() : Object.keys(FIELD_TYPE_POR_COLUMNA))
+      .filter(key => key in FIELD_TYPE_POR_COLUMNA)
+    const idxActual = ordenColumnas.indexOf(COLUMNA_POR_FIELD_TYPE[fieldType])
+    if (idxActual === -1 || ordenColumnas.length < 2) {
+      avanzandoConTab = false
+      return
+    }
+
+    const siguienteColumna = ordenColumnas[(idxActual + 1) % ordenColumnas.length]
+    const primerDetalle = detalles[0]
+    if (primerDetalle) {
+      iniciarEdicion(primerDetalle, FIELD_TYPE_POR_COLUMNA[siguienteColumna])
+    }
+    nextTick(() => { avanzandoConTab = false })
+  }
+
+  /**
+   * Wrapper de guardarEdicion para el evento @blur de los inputs de edición.
+   * Ignora el blur espurio que dispara el navegador al desmontar el input viejo
+   * durante una navegación con Tab (ver avanzandoConTab).
+   */
+  function manejarBlurEdicion() {
+    if (avanzandoConTab) return
+    guardarEdicion()
+  }
+
   /**
    * Maneja las teclas durante la edición (Enter para guardar, Escape para cancelar).
    * Para TOTAL: solo permite dígitos (no punto ni coma); valores con decimales se hacen con las flechas del input.
+   * Tab en TOTAL/COMENTARIO navega verticalmente dentro de la columna (ver avanzarConTab).
    */
   function manejarTeclasEdicion(event: KeyboardEvent) {
     if (event.key === 'Enter') {
@@ -362,9 +450,12 @@ export function useColumnManagement(
     } else if (event.key === 'Escape') {
       event.preventDefault()
       cancelarEdicion()
+    } else if (event.key === 'Tab' && (editingCell.value?.fieldType === 'total' || editingCell.value?.fieldType === 'comentario')) {
+      event.preventDefault()
+      avanzarConTab(editingCell.value.fieldType)
     } else if (editingCell.value?.fieldType === 'total') {
       // Solo permitir dígitos 0-9 y teclas de control (no punto, coma, e, -, +)
-      const allowedKeys = ['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', 'Home', 'End']
+      const allowedKeys = ['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Home', 'End']
       if (allowedKeys.includes(event.key)) return
       if (/^[0-9]$/.test(event.key)) return
       event.preventDefault()
@@ -377,7 +468,9 @@ export function useColumnManagement(
     guardarEdicion,
     cancelarEdicion,
     manejarTeclasEdicion,
+    manejarBlurEdicion,
     isColumnaModificada,
-    getColumnaModificadaKey
+    getColumnaModificadaKey,
+    getRolModificador
   }
 }
