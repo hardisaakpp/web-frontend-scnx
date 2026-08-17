@@ -173,12 +173,12 @@ describe('usePendingStore', () => {
     })
   })
 
-  describe('materialize', () => {
+  describe('receive', () => {
     it('does NOT call the API when status is degraded', async () => {
       featureReadiness.pendingTransfersReady = false
       const store = usePendingStore()
 
-      await store.materialize('SAP-1', 'T01')
+      await store.receive('SAP-1', 'T01')
 
       expect(recepcionApi.materializePendingTransfer).not.toHaveBeenCalled()
     })
@@ -196,7 +196,7 @@ describe('usePendingStore', () => {
         pageSize: 20,
       })
 
-      await store.materialize('SAP-1', 'T01')
+      await store.receive('SAP-1', 'T01')
 
       expect(recepcionApi.materializePendingTransfer).toHaveBeenCalledWith('SAP-1', 'T01')
       // Re-fetches the CURRENT page (2), not just splicing the local array — a transfer can
@@ -207,35 +207,35 @@ describe('usePendingStore', () => {
       expect(store.totalCount).toBe(21)
     })
 
-    it('steps back one page when materializing empties the current (non-first) page', async () => {
+    it('steps back one page when receiving empties the current (non-first) page', async () => {
       featureReadiness.pendingTransfersReady = true
       const store = usePendingStore()
       store.page = 2
       vi.mocked(recepcionApi.materializePendingTransfer).mockResolvedValue(42)
       vi.mocked(recepcionApi.getPendingTransfers)
-        // Every row on page 2 belonged to the materialized transfer — the refetch comes back empty.
+        // Every row on page 2 belonged to the received transfer — the refetch comes back empty.
         .mockResolvedValueOnce({ items: [], totalCount: 20, pageNumber: 2, pageSize: 20 })
         .mockResolvedValueOnce({ items: [buildLine({ sapTransferRequestNumber: 'SAP-9' })], totalCount: 20, pageNumber: 1, pageSize: 20 })
 
-      await store.materialize('SAP-1', 'T01')
+      await store.receive('SAP-1', 'T01')
 
       expect(store.page).toBe(1)
       expect(store.transfers.map((t) => t.sapTransferRequestNumber)).toEqual(['SAP-9'])
       expect(recepcionApi.getPendingTransfers).toHaveBeenCalledTimes(2)
     })
 
-    it('sets status "error" when materialize fails', async () => {
+    it('sets status "error" when receive fails', async () => {
       featureReadiness.pendingTransfersReady = true
       const store = usePendingStore()
       vi.mocked(recepcionApi.materializePendingTransfer).mockRejectedValue(new Error('sap down'))
 
-      await store.materialize('SAP-1', 'T01')
+      await store.receive('SAP-1', 'T01')
 
       expect(store.status).toBe('error')
-      expect(store.error).toBe('No se pudo materializar la transferencia.')
+      expect(store.error).toBe('No se pudo recibir la transferencia.')
     })
 
-    it('sets isSubmitting true while materialize is in flight and false after it resolves', async () => {
+    it('sets isSubmitting true while receive is in flight and false after it resolves', async () => {
       featureReadiness.pendingTransfersReady = true
       const store = usePendingStore()
       store.transfers = [buildLine()]
@@ -248,21 +248,21 @@ describe('usePendingStore', () => {
         })
       )
 
-      const materializePromise = store.materialize('SAP-1', 'T01')
+      const receivePromise = store.receive('SAP-1', 'T01')
       expect(store.isSubmitting).toBe(true)
 
       resolveMaterialize(42)
-      await materializePromise
+      await receivePromise
 
       expect(store.isSubmitting).toBe(false)
     })
 
-    it('sets isSubmitting back to false when materialize fails', async () => {
+    it('sets isSubmitting back to false when receive fails', async () => {
       featureReadiness.pendingTransfersReady = true
       const store = usePendingStore()
       vi.mocked(recepcionApi.materializePendingTransfer).mockRejectedValue(new Error('sap down'))
 
-      await store.materialize('SAP-1', 'T01')
+      await store.receive('SAP-1', 'T01')
 
       expect(store.isSubmitting).toBe(false)
     })

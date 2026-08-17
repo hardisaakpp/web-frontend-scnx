@@ -1,6 +1,12 @@
 <script setup lang="ts">
+import { useId } from 'vue'
+
 const props = defineProps<{ page: number; totalPages: number }>()
 const emit = defineEmits<(e: 'go', page: number) => void>()
+
+// Unique per instance — a static id would break the label association if this component is ever
+// rendered more than once on the same page (e.g. two lists in a combined view or a modal).
+const inputId = useId()
 
 function onPageInput(event: Event): void {
   const input = event.target as HTMLInputElement
@@ -13,7 +19,9 @@ function onPageInput(event: Event): void {
 
 <template>
   <div class="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300 font-medium">
+    <label :for="inputId" class="sr-only">Ir a la página</label>
     <input
+      :id="inputId"
       data-testid="pagination-page-input"
       type="text"
       inputmode="numeric"

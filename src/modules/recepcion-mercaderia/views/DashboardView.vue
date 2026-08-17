@@ -27,7 +27,7 @@ const authStore = useAuthStore()
           </div>
           <div class="flex-1 min-w-0">
             <div class="font-medium text-gray-900 dark:text-white text-sm">Transferencias Pendientes</div>
-            <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Materialización de traslados desde SAP</div>
+            <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Recepción de traslados desde SAP</div>
           </div>
         </div>
       </router-link>
@@ -63,7 +63,7 @@ const authStore = useAuthStore()
           </div>
           <div class="flex-1 min-w-0">
             <div class="font-medium text-gray-900 dark:text-white text-sm">Historial</div>
-            <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Transferencias materializadas de mi almacén</div>
+            <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Transferencias recibidas de mi almacén</div>
           </div>
         </div>
       </router-link>

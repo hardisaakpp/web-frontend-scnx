@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { usePendingStore } from '../stores/pendingStore'
 import { ExclamationTriangleIcon, ArrowLeftIcon } from '@heroicons/vue/24/outline'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import PageJumpInput from '../components/PageJumpInput.vue'
 
 const store = usePendingStore()
+const router = useRouter()
 
 // resetAndFetch (not fetchPending) — the store is a Pinia singleton that outlives this view, so
 // a leftover search/page from a previous visit must not silently re-apply on remount.
@@ -13,25 +15,28 @@ onMounted(() => {
   store.resetAndFetch()
 })
 
-// Materialize is a real, irreversible-from-the-UI mutating action (creates a ReceptionTransfer,
+// Receiving is a real, irreversible-from-the-UI mutating action (creates a ReceptionTransfer,
 // consumes the pending SAP request) — legacy (recL.php) required a confirm() before the POST for
 // the same reason. Route the click through a dialog instead of firing the mutation directly.
-const materializeTarget = ref<{ sapTransferRequestNumber: string; warehouseCode: string; documentNumber: string } | null>(null)
+const receiveTarget = ref<{ sapTransferRequestNumber: string; warehouseCode: string; documentNumber: string } | null>(null)
 
-const handleMaterialize = (sapTransferRequestNumber: string, warehouseCode: string, documentNumber: string) => {
+const handleReceive = (sapTransferRequestNumber: string, warehouseCode: string, documentNumber: string) => {
   if (store.status === 'degraded') return
-  materializeTarget.value = { sapTransferRequestNumber, warehouseCode, documentNumber }
+  receiveTarget.value = { sapTransferRequestNumber, warehouseCode, documentNumber }
 }
 
-function confirmMaterialize(): void {
-  if (!materializeTarget.value) return
-  const { sapTransferRequestNumber, warehouseCode } = materializeTarget.value
-  materializeTarget.value = null
-  store.materialize(sapTransferRequestNumber, warehouseCode)
+async function confirmReceive(): Promise<void> {
+  if (!receiveTarget.value) return
+  const { sapTransferRequestNumber, warehouseCode } = receiveTarget.value
+  receiveTarget.value = null
+  const transferId = await store.receive(sapTransferRequestNumber, warehouseCode)
+  if (transferId !== undefined) {
+    router.push({ name: 'recepcion-detalle', params: { id: transferId } })
+  }
 }
 
-function cancelMaterialize(): void {
-  materializeTarget.value = null
+function cancelReceive(): void {
+  receiveTarget.value = null
 }
 
 // Real server-side pagination — same pattern as InProgressView/HistoryView.
@@ -81,7 +86,7 @@ function applySearch(): void {
         </RouterLink>
         <div>
           <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Transferencias Pendientes</h1>
-          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Materialización de traslados pendientes desde SAP.</p>
+          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Recepción de traslados pendientes desde SAP.</p>
         </div>
       </div>
 
@@ -106,7 +111,9 @@ function applySearch(): void {
             Total encontrados: <span class="font-bold text-gray-900 dark:text-white">{{ store.totalCount }}</span>
           </div>
           <div class="flex items-center gap-2">
+            <label for="pending-search-input" class="sr-only">Buscar transferencias pendientes</label>
             <input
+              id="pending-search-input"
               data-testid="pending-search-input"
               type="text"
               placeholder="Buscar por documento, artículo o descripción"
@@ -165,10 +172,11 @@ function applySearch(): void {
                 <td class="px-4 py-3 text-center text-sm font-semibold text-gray-900 dark:text-white">{{ t.openQuantity }}</td>
                 <td class="px-4 py-3 text-right">
                   <button
+                    type="button"
                     data-testid="materialize-btn"
                     class="px-4 py-2 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                     :disabled="store.isSubmitting"
-                    @click="handleMaterialize(t.sapTransferRequestNumber, t.destinationWarehouseCode, t.sapTransferRequestNumber)"
+                    @click="handleReceive(t.sapTransferRequestNumber, t.destinationWarehouseCode, t.sapTransferRequestNumber)"
                   >
                     Recibir
                   </button>
@@ -183,7 +191,9 @@ function applySearch(): void {
             <span class="text-sm text-gray-700 dark:text-gray-300">
               Mostrando <span class="font-medium">{{ pageStart }}</span> a <span class="font-medium">{{ pageEnd }}</span> de <span class="font-medium">{{ store.totalCount }}</span>
             </span>
+            <label for="pending-page-size" class="sr-only">Filas por página</label>
             <select
+              id="pending-page-size"
               data-testid="pagination-page-size"
               :value="store.pageSize"
               class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white outline-none transition-all cursor-pointer"
@@ -221,12 +231,12 @@ function applySearch(): void {
     </div>
 
     <ConfirmDialog
-      :open="materializeTarget !== null"
+      :open="receiveTarget !== null"
       title="Recibir transferencia"
-      :message="materializeTarget ? `¿Querés proceder a recibir la transferencia número ${materializeTarget.documentNumber}?` : ''"
+      :message="receiveTarget ? `¿Querés proceder a recibir la transferencia número ${receiveTarget.documentNumber}?` : ''"
       confirm-label="Recibir"
-      @confirm="confirmMaterialize"
-      @cancel="cancelMaterialize"
+      @confirm="confirmReceive"
+      @cancel="cancelReceive"
     />
   </div>
 </template>

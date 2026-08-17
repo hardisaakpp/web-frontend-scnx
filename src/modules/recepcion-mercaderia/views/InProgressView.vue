@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { usePickingStore } from '../stores/pickingStore'
 import { ArrowLeftIcon } from '@heroicons/vue/24/outline'
-import type { ReceptionTransferStatus } from '../types'
+import { statusMeta } from '../utils/statusMeta'
 import PageJumpInput from '../components/PageJumpInput.vue'
 
 const store = usePickingStore()
@@ -37,16 +37,6 @@ function changePageSize(newSize: number): void {
   store.setPageSize(newSize)
 }
 
-const STATUS_META: Record<ReceptionTransferStatus, { label: string; classes: string }> = {
-  pending: { label: 'Pendiente', classes: 'bg-amber-100 text-amber-700 border-amber-200' },
-  'in-progress': { label: 'En curso', classes: 'bg-blue-100 text-blue-700 border-blue-200' },
-  confirmed: { label: 'Confirmada', classes: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
-  error: { label: 'Error', classes: 'bg-red-100 text-red-700 border-red-200' },
-}
-
-function statusMeta(status: ReceptionTransferStatus) {
-  return STATUS_META[status] ?? { label: status, classes: 'bg-gray-100 text-gray-700 border-gray-200' }
-}
 </script>
 
 <template>
@@ -72,7 +62,9 @@ function statusMeta(status: ReceptionTransferStatus) {
           <div class="text-sm text-gray-600 dark:text-gray-300 font-medium">
             Total encontrados: <span class="font-bold text-gray-900 dark:text-white">{{ total }}</span>
           </div>
+          <label for="in-progress-search-input" class="sr-only">Buscar transferencias en curso</label>
           <input
+            id="in-progress-search-input"
             data-testid="search-input"
             v-model="search"
             type="text"
@@ -133,7 +125,9 @@ function statusMeta(status: ReceptionTransferStatus) {
             <span class="text-sm text-gray-700 dark:text-gray-300">
               Mostrando <span class="font-medium">{{ pageStart }}</span> a <span class="font-medium">{{ pageEnd }}</span> de <span class="font-medium">{{ total }}</span>
             </span>
+            <label for="in-progress-page-size" class="sr-only">Filas por página</label>
             <select
+              id="in-progress-page-size"
               data-testid="pagination-page-size"
               :value="store.pageSize"
               class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white outline-none transition-all cursor-pointer"

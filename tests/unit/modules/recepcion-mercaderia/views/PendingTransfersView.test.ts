@@ -19,6 +19,16 @@ vi.mock('@/stores/auth', () => ({
   useAuthStore: vi.fn(),
 }))
 
+const routerPush = vi.hoisted(() => vi.fn())
+
+vi.mock('vue-router', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('vue-router')>()
+  return {
+    ...actual,
+    useRouter: () => ({ push: routerPush }),
+  }
+})
+
 function buildLine(overrides: Partial<PendingTransferLine> = {}): PendingTransferLine {
   return {
     sapTransferRequestNumber: 'SAP-1',
@@ -45,6 +55,7 @@ describe('PendingTransfersView', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
+    routerPush.mockClear()
     vi.mocked(useAuthStore).mockReturnValue({
       userWarehouseAccesses: [{ codAlmacen: 'T01' }],
     } as unknown as ReturnType<typeof useAuthStore>)
@@ -101,6 +112,38 @@ describe('PendingTransfersView', () => {
 
     expect(new DOMWrapper(document.body).find('[data-testid="confirm-dialog"]').exists()).toBe(false)
     expect(recepcionApi.materializePendingTransfer).not.toHaveBeenCalled()
+  })
+
+  it('confirming materialize navigates to the picking detail of the newly received transfer', async () => {
+    featureReadiness.pendingTransfersReady = true
+    vi.mocked(recepcionApi.getPendingTransfers).mockResolvedValue(paged([buildLine()]))
+    vi.mocked(recepcionApi.materializePendingTransfer).mockResolvedValue(42)
+
+    const wrapper = mount(PendingTransfersView)
+    await flushPromises()
+
+    await wrapper.find('[data-testid="materialize-btn"]').trigger('click')
+    await flushPromises()
+    await new DOMWrapper(document.body).find('[data-testid="confirm-dialog-confirm-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(routerPush).toHaveBeenCalledWith({ name: 'recepcion-detalle', params: { id: 42 } })
+  })
+
+  it('does NOT navigate when materialize fails', async () => {
+    featureReadiness.pendingTransfersReady = true
+    vi.mocked(recepcionApi.getPendingTransfers).mockResolvedValue(paged([buildLine()]))
+    vi.mocked(recepcionApi.materializePendingTransfer).mockRejectedValue(new Error('sap down'))
+
+    const wrapper = mount(PendingTransfersView)
+    await flushPromises()
+
+    await wrapper.find('[data-testid="materialize-btn"]').trigger('click')
+    await flushPromises()
+    await new DOMWrapper(document.body).find('[data-testid="confirm-dialog-confirm-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(routerPush).not.toHaveBeenCalled()
   })
 
   it('disables the materialize button while a materialize call is in flight, to prevent duplicate POSTs on double-click', async () => {
