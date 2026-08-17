@@ -123,7 +123,13 @@
           <div class="w-full">
             <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2 transition-colors duration-300">Enviando ODC a SAP</h3>
             <p class="text-sm text-gray-600 dark:text-gray-300 mb-4 transition-colors duration-300">{{ sapMessage || 'Preparando proceso...' }}</p>
-            
+            <p
+              v-if="sapAvisoEsperaLarga"
+              class="text-xs text-amber-600 dark:text-amber-400 mb-2 transition-colors duration-300"
+            >
+              {{ SAP_SLOW_SYNC_LIKELY_MESSAGE }}
+            </p>
+
             <!-- Barra de progreso -->
             <div class="w-full space-y-2">
               <div class="flex items-center justify-between text-sm">
@@ -693,7 +699,11 @@ import {
   getPendingOdcSapProcessingState,
 } from '../composables/ejecutarProcesoCompletoSap'
 import { useSapProcessProgress } from '../composables/useSapProcessProgress'
-import { isTransientClientError, SAP_MAY_STILL_PROCESSING_MESSAGE } from '../utils/httpErrors'
+import {
+  isTransientClientError,
+  SAP_MAY_STILL_PROCESSING_MESSAGE,
+  SAP_SLOW_SYNC_LIKELY_MESSAGE,
+} from '../utils/httpErrors'
 // Componentes
 import PedidoHeaderActions from '../components/PedidoHeaderActions.vue'
 import PedidoCabecera from '../components/PedidoCabecera.vue'
@@ -972,9 +982,11 @@ const {
   sapProgress,
   sapFase,
   sapMessage,
+  sapAvisoEsperaLarga,
   resetSapProgress,
   startSapProgressSimulation,
   applySapPollingUpdate,
+  marcarPosibleEsperaLarga,
   completeSapProgress,
   stopSimulation: stopSapProgressSimulation,
 } = useSapProcessProgress()
@@ -1805,6 +1817,7 @@ async function handleEnviarOdcSap() {
         odcSapProcesoEnServidor.value = false
       },
       onPollingUpdate: applySapPollingUpdate,
+      onSlowSyncLikely: marcarPosibleEsperaLarga,
     })
     completeSapProgress()
     odcSapProcesoEnServidor.value = false

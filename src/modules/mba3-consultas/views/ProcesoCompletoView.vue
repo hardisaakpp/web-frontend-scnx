@@ -428,6 +428,7 @@ const pageSizeOC = OC_LIST_PAGE_SIZE
 const totalPagesOCServer = ref(1)
 const searchProcesarOC = ref('')
 let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null
+let ocRequestController: AbortController | null = null
 
 // ⭐ NUEVO: Estados para pedidos confirmados
 const pedidosConfirmados = ref<PedidoCompleto[]>([])
@@ -723,6 +724,10 @@ async function refrescarDatosOrdenesCompra(maxRetries: number = 1, delayMs: numb
 
 /** Listado paginado en servidor (todos los estados, búsqueda opcional). */
 async function cargarOrdenesCompraPendientes() {
+  ocRequestController?.abort()
+  const controller = new AbortController()
+  ocRequestController = controller
+
   ordenesCompraStore.loading = true
   try {
     const search = searchProcesarOC.value.trim()
@@ -730,8 +735,12 @@ async function cargarOrdenesCompraPendientes() {
       undefined,
       currentPageOC.value,
       OC_LIST_PAGE_SIZE,
-      search ? { search } : undefined
+      search ? { search } : undefined,
+      controller.signal
     )
+
+    // Petición superada por una búsqueda/página más reciente: no pisar datos más nuevos con una respuesta tardía.
+    if (controller.signal.aborted) return
 
     const rows = (response.data ?? []).slice(0, OC_LIST_PAGE_SIZE)
     ordenesCompraStore.ordenesCompra = rows.map((oc) => ({ ...oc }))
@@ -753,13 +762,17 @@ async function cargarOrdenesCompraPendientes() {
 
     await nextTick()
   } catch (error: any) {
+    if (controller.signal.aborted) return
     console.error('Error al cargar órdenes de compra:', error)
     toast.error('Error al cargar órdenes', error.message || 'No se pudieron cargar las órdenes de compra')
     ordenesCompraStore.ordenesCompra = []
     ordenesCompraStore.total = 0
     totalPagesOCServer.value = 1
   } finally {
-    ordenesCompraStore.loading = false
+    // Solo esta petición sigue siendo la vigente: si ya fue reemplazada, la más nueva controla el estado de loading.
+    if (ocRequestController === controller) {
+      ordenesCompraStore.loading = false
+    }
   }
 }
 
@@ -1903,6 +1916,7 @@ onUnmounted(() => {
     clearTimeout(searchDebounceTimer)
     searchDebounceTimer = null
   }
+  ocRequestController?.abort()
   stopPolling()
   stopTimeDisplayUpdate()
 })

@@ -34,7 +34,8 @@ export const ordenesCompraService = {
     estado?: string,
     page: number = 1,
     pageSize: number = 10,
-    filters?: OrdenesCompraListFilters
+    filters?: OrdenesCompraListFilters,
+    signal?: AbortSignal
   ): Promise<OrdenCompraResponse> {
     const params: Record<string, string> = {
       page: page.toString(),
@@ -59,7 +60,7 @@ export const ordenesCompraService = {
     }
 
     const url = buildUrlWithParams('/ordenes-compra', params)
-    const response = await mba3Api.get<OrdenCompraResponse>(url)
+    const response = await mba3Api.get<OrdenCompraResponse>(url, { signal })
     return response.data
   },
 

@@ -177,9 +177,10 @@ export const mba3ConsultasService = {
     estado?: string,
     page: number = 1,
     pageSize: number = 10,
-    filters?: OrdenesCompraListFilters
+    filters?: OrdenesCompraListFilters,
+    signal?: AbortSignal
   ): Promise<OrdenCompraResponse> {
-    return ordenesCompraService.getOrdenesCompra(estado, page, pageSize, filters)
+    return ordenesCompraService.getOrdenesCompra(estado, page, pageSize, filters, signal)
   },
 
   // Eliminar órdenes de compra (una o múltiples)

@@ -386,11 +386,11 @@ export function useColumnManagement(
   }
 
   /**
-   * Al presionar Tab editando TOTAL o COMENTARIO: guarda la celda actual y abre la edición
-   * de la siguiente fila en la misma columna. En la última fila, salta a la primera fila de
-   * la siguiente columna editable (según el orden visual actual de columnas).
+   * Al presionar Tab editando COSTO, TOTAL o COMENTARIO: guarda la celda actual y abre la
+   * edición de la siguiente fila en la misma columna. En la última fila, salta a la primera
+   * fila de la siguiente columna editable (según el orden visual actual de columnas).
    */
-  function avanzarConTab(fieldType: 'total' | 'comentario') {
+  function avanzarConTab(fieldType: 'costo' | 'total' | 'comentario') {
     if (!editingCell.value || !pedido.value) return
 
     const detalles = pedido.value.detalles
@@ -441,7 +441,7 @@ export function useColumnManagement(
   /**
    * Maneja las teclas durante la edición (Enter para guardar, Escape para cancelar).
    * Para TOTAL: solo permite dígitos (no punto ni coma); valores con decimales se hacen con las flechas del input.
-   * Tab en TOTAL/COMENTARIO navega verticalmente dentro de la columna (ver avanzarConTab).
+   * Tab en COSTO/TOTAL/COMENTARIO navega verticalmente dentro de la columna (ver avanzarConTab).
    */
   function manejarTeclasEdicion(event: KeyboardEvent) {
     if (event.key === 'Enter') {
@@ -450,7 +450,7 @@ export function useColumnManagement(
     } else if (event.key === 'Escape') {
       event.preventDefault()
       cancelarEdicion()
-    } else if (event.key === 'Tab' && (editingCell.value?.fieldType === 'total' || editingCell.value?.fieldType === 'comentario')) {
+    } else if (event.key === 'Tab' && (editingCell.value?.fieldType === 'costo' || editingCell.value?.fieldType === 'total' || editingCell.value?.fieldType === 'comentario')) {
       event.preventDefault()
       avanzarConTab(editingCell.value.fieldType)
     } else if (editingCell.value?.fieldType === 'total') {

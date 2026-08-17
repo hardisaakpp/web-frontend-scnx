@@ -12,6 +12,8 @@ import { followAsyncJobSseOrPoll } from '../utils/followAsyncJobSseOrPoll'
 const POLL_MS = 2000
 const MAX_POLL_WAIT_MS = 10 * 60 * 1000 // 10 min
 const WORKER_PICKUP_TIMEOUT_MS = 60_000
+// Aviso si el POST inicial no resuelve rápido (posible fallback síncrono sin process_id/progreso incremental).
+const SLOW_SYNC_WARNING_MS = 7_000
 
 export type EjecutarProcesoCompletoSapOptions = {
   /**
@@ -23,6 +25,12 @@ export type EjecutarProcesoCompletoSapOptions = {
   onPollingUpdate?: (u: { message?: string; progress?: number }) => void
   /** Se reanuda un job guardado en sessionStorage (timeout cliente previo). */
   onResumePending?: () => void
+  /**
+   * Se dispara una única vez si, tras SLOW_SYNC_WARNING_MS desde el POST inicial, la
+   * respuesta aún no ha llegado (posible fallback síncrono sin process_id/progreso
+   * incremental). Se cancela automáticamente en cuanto el POST resuelve (accepted o error).
+   */
+  onSlowSyncLikely?: () => void
 }
 
 function isSyncImmediateResponse(accepted: unknown): boolean {
@@ -129,13 +137,15 @@ export async function ejecutarProcesoCompletoSap(
   ajustesDetalle: AjusteDetalle[],
   options: EjecutarProcesoCompletoSapOptions = {}
 ): Promise<ProcesoCompletoSAPResponse> {
-  const { onFallbackSync, onPollingUpdate, onResumePending } = options
+  const { onFallbackSync, onPollingUpdate, onResumePending, onSlowSyncLikely } = options
 
   const pending = await getPendingOdcSapProcessingState(numeroPedido)
   if (pending.processing && pending.processId) {
     onResumePending?.()
     return pollProcesoSapResultado(pending.processId, numeroPedido, onPollingUpdate, null)
   }
+
+  const slowSyncTimer = onSlowSyncLikely ? setTimeout(onSlowSyncLikely, SLOW_SYNC_WARNING_MS) : null
 
   try {
     const accepted = await mba3ConsultasService.procesoCompletoSAPAsync(numeroPedido, ajustesDetalle)
@@ -177,6 +187,8 @@ export async function ejecutarProcesoCompletoSap(
     }
 
     throw asyncErr
+  } finally {
+    if (slowSyncTimer) clearTimeout(slowSyncTimer)
   }
 }
 
