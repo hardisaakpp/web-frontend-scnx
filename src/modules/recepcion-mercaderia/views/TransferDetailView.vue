@@ -5,20 +5,10 @@ import { usePickingStore } from '../stores/pickingStore'
 import { useAuthStore } from '@/stores/auth'
 import { APP_LOCALE } from '@/plugins/locale'
 import { ExclamationTriangleIcon, PencilIcon, DocumentArrowDownIcon, TrashIcon, ArrowLeftIcon } from '@heroicons/vue/24/outline'
-import type { ReceptionLine, ReceptionTransferStatus } from '../types'
+import type { ReceptionLine } from '../types'
 import { triggerBlobDownload } from '../utils/downloadBlob'
+import { statusMeta } from '../utils/statusMeta'
 import ErrorDialog from '../components/ErrorDialog.vue'
-
-const STATUS_META: Record<ReceptionTransferStatus, { label: string; classes: string }> = {
-  pending: { label: 'Pendiente', classes: 'bg-amber-100 text-amber-700 border-amber-200' },
-  'in-progress': { label: 'En curso', classes: 'bg-blue-100 text-blue-700 border-blue-200' },
-  confirmed: { label: 'Confirmada', classes: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
-  error: { label: 'Error', classes: 'bg-red-100 text-red-700 border-red-200' },
-}
-
-function statusMeta(status: ReceptionTransferStatus) {
-  return STATUS_META[status] ?? { label: status, classes: 'bg-gray-100 text-gray-700 border-gray-200' }
-}
 
 function buildScanFeedback(result: { matchedLine: ReceptionLine | null; fillAmount: number; excess: number }): string {
   if (!result.matchedLine) {
@@ -154,7 +144,7 @@ const hasIncompleteLines = computed(() => {
 })
 
 // Confirm/scan/recordDifference failures shown as a dismissible modal instead of an inline banner
-// above the table — same request as legacy's materialize-confirmation pattern (ConfirmDialog), just
+// above the table — same request as legacy's receive-confirmation pattern (ConfirmDialog), just
 // for errors instead of a yes/no prompt. sapErrorMessage takes precedence (it's the more specific
 // "known SAP integration failure" case); actionError covers everything else (validation, SAP
 // rejection detail already translated by the backend, etc.) - never the fetch-load error, which has
@@ -180,8 +170,53 @@ async function handleConfirmPartial(): Promise<void> {
   await store.confirm({ allowPartial: true })
 }
 
-async function handleDeleteDifference(differenceId: number): Promise<void> {
-  await store.deleteDifference(differenceId)
+interface DifferenceGroup {
+  barcode: string
+  productDescription: string | null
+  count: number
+  scannedAtUtc: string
+  differenceIds: number[]
+}
+
+// Display-only grouping: the backend still persists one difference row per scanned unit (see
+// scanBarcode in pickingStore.ts) so no audit granularity is lost — this just collapses repeat
+// scans of the same barcode into one row with a count, instead of one row per unit.
+const groupedDifferences = computed<DifferenceGroup[]>(() => {
+  const groups = new Map<string, DifferenceGroup>()
+  for (const d of store.differences) {
+    const group = groups.get(d.barcode)
+    if (group) {
+      group.count += 1
+      group.differenceIds.push(d.differenceId)
+      if (d.scannedAtUtc > group.scannedAtUtc) group.scannedAtUtc = d.scannedAtUtc
+    } else {
+      groups.set(d.barcode, {
+        barcode: d.barcode,
+        productDescription: d.productDescription,
+        count: 1,
+        scannedAtUtc: d.scannedAtUtc,
+        differenceIds: [d.differenceId],
+      })
+    }
+  }
+  return Array.from(groups.values())
+})
+
+// Deletes every unit in the group — the user is discarding the whole item's differences, not one
+// unit at a time. Loops the existing single-delete action (same idiom as scanBarcode's per-unit
+// recordDifference loop above) rather than adding a new batch endpoint/store action.
+//
+// deleteDifference() resets actionError to null at the START of every call (store-wide convention
+// for mutating actions), so if unit N fails and unit N+1 then succeeds, the loop would otherwise
+// end with actionError cleared — silently hiding the failed unit's still-present difference. Stop
+// at the first failure instead (detected via the id still being in store.differences) so the error
+// from that call survives to the ErrorDialog and the remaining units aren't deleted out from under it.
+async function handleDeleteDifferenceGroup(differenceIds: number[]): Promise<void> {
+  for (const differenceId of differenceIds) {
+    await store.deleteDifference(differenceId)
+    const failed = store.differences.some((d) => d.differenceId === differenceId)
+    if (failed) return
+  }
 }
 
 // GLPI inline edit
@@ -272,13 +307,16 @@ async function handleDownloadPickingReport(): Promise<void> {
           <div class="flex items-center gap-2 bg-white dark:bg-gray-800 px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
             <span class="text-xs font-bold text-gray-400 uppercase">GLPI:</span>
             <template v-if="editingGlpi">
+              <label for="glpi-input" class="sr-only">Ticket GLPI</label>
               <input
+                id="glpi-input"
                 data-testid="glpi-input"
                 v-model="glpiInput"
                 type="text"
                 class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-2 py-1 text-sm text-gray-900 dark:text-white outline-none transition-all"
               />
               <button
+                type="button"
                 data-testid="glpi-save-btn"
                 :disabled="store.isSubmitting"
                 class="text-emerald-600 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300 text-sm font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -289,7 +327,7 @@ async function handleDownloadPickingReport(): Promise<void> {
             </template>
             <template v-else>
               <span class="text-sm font-semibold text-gray-900 dark:text-white">{{ store.currentTransfer.glpiTicket || 'Sin ticket' }}</span>
-              <button data-testid="glpi-edit-btn" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors" @click="startEditGlpi">
+              <button type="button" data-testid="glpi-edit-btn" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors" @click="startEditGlpi">
                 <PencilIcon class="w-4 h-4" />
               </button>
             </template>
@@ -355,7 +393,7 @@ async function handleDownloadPickingReport(): Promise<void> {
             >
               Agregar
             </button>
-            <p v-if="scanFeedback" data-testid="scan-feedback" class="text-[10px] text-gray-500 dark:text-gray-400">{{ scanFeedback }}</p>
+            <p v-if="scanFeedback" data-testid="scan-feedback" class="text-sm text-gray-600 dark:text-gray-300">{{ scanFeedback }}</p>
           </div>
 
           <div class="overflow-auto max-h-[28rem] rounded-lg border border-gray-200 dark:border-gray-700">
@@ -386,8 +424,7 @@ async function handleDownloadPickingReport(): Promise<void> {
                     {{ line.barcode || 'Sin código de barras' }}
                   </td>
                   <td class="px-3 py-1 max-w-xs truncate" :title="`${line.itemCode} — ${line.itemName}`">
-                    <span class="text-xs font-medium text-gray-900 dark:text-white">{{ line.itemCode }}</span>
-                    <span class="text-xs text-gray-500 dark:text-gray-400"> {{ line.itemName }}</span>
+                    <span class="text-xs font-medium text-gray-900 dark:text-gray-300">{{ line.itemCode }} - {{ line.itemName }}</span>
                   </td>
                   <td class="px-3 py-1 text-center text-sm font-semibold text-gray-900 dark:text-white">{{ line.quantity }}</td>
                   <td class="px-3 py-1 text-center text-sm">
@@ -395,7 +432,9 @@ async function handleDownloadPickingReport(): Promise<void> {
                          can't address them. Lines that DO have a barcode are read-only here; their
                          scanned total comes exclusively from handleBarcodeScan. -->
                     <div v-if="canScan && line.barcode === null" class="flex flex-col items-center gap-0.5">
+                      <label :for="`scan-quantity-input-${line.lineId}`" class="sr-only">Cantidad escaneada</label>
                       <input
+                        :id="`scan-quantity-input-${line.lineId}`"
                         :data-testid="`scan-quantity-input-${line.lineId}`"
                         v-model.number="scanQuantities[line.lineId]"
                         type="number"
@@ -452,7 +491,7 @@ async function handleDownloadPickingReport(): Promise<void> {
           </div>
         </form>
 
-        <div v-if="store.differences.length > 0" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
+        <div v-if="groupedDifferences.length > 0" class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
           <h2 class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider mb-2">Diferencias registradas</h2>
           <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
             <table data-testid="differences-table" class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -460,21 +499,24 @@ async function handleDownloadPickingReport(): Promise<void> {
                 <tr>
                   <th class="px-3 py-1.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Código de barras</th>
                   <th class="px-3 py-1.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Producto</th>
+                  <th class="px-3 py-1.5 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Cantidad</th>
                   <th class="px-3 py-1.5 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Fecha / Hora</th>
                   <th class="px-3 py-1.5 text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Acciones</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
-                <tr v-for="d in store.differences" :key="d.differenceId" class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                  <td class="px-3 py-1 text-sm font-medium text-gray-900 dark:text-white">{{ d.barcode }}</td>
-                  <td class="px-3 py-1 text-xs text-gray-600 dark:text-gray-300">{{ d.productDescription ?? '—' }}</td>
-                  <td class="px-3 py-1 text-xs text-gray-600 dark:text-gray-300">{{ formatDateTime(d.scannedAtUtc) }}</td>
+                <tr v-for="group in groupedDifferences" :key="group.barcode" class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                  <td class="px-3 py-1 text-sm font-medium text-gray-900 dark:text-white">{{ group.barcode }}</td>
+                  <td class="px-3 py-1 text-xs text-gray-600 dark:text-gray-300">{{ group.productDescription ?? '—' }}</td>
+                  <td class="px-3 py-1 text-center text-sm font-semibold text-gray-900 dark:text-white">{{ group.count }}</td>
+                  <td class="px-3 py-1 text-xs text-gray-600 dark:text-gray-300">{{ formatDateTime(group.scannedAtUtc) }}</td>
                   <td class="px-3 py-1 text-right">
                     <button
                       v-if="canManageDifferences"
+                      type="button"
                       :disabled="store.isSubmitting"
                       class="ml-auto flex items-center gap-1 text-rose-600 hover:text-rose-800 dark:text-rose-400 dark:hover:text-rose-300 font-medium transition-colors text-xs disabled:opacity-50 disabled:cursor-not-allowed"
-                      @click="handleDeleteDifference(d.differenceId)"
+                      @click="handleDeleteDifferenceGroup(group.differenceIds)"
                     >
                       <TrashIcon class="w-3.5 h-3.5" />
                       Eliminar
@@ -489,6 +531,7 @@ async function handleDownloadPickingReport(): Promise<void> {
         <div class="flex items-center gap-3">
           <button
             v-if="canConfirm"
+            type="button"
             data-testid="confirm-btn"
             :disabled="store.isSubmitting"
             class="px-4 py-2 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
@@ -498,6 +541,7 @@ async function handleDownloadPickingReport(): Promise<void> {
           </button>
           <button
             v-if="canConfirmPartial"
+            type="button"
             data-testid="confirm-partial-btn"
             :disabled="store.isSubmitting"
             class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
@@ -506,6 +550,7 @@ async function handleDownloadPickingReport(): Promise<void> {
             Confirmar parcial
           </button>
           <button
+            type="button"
             data-testid="download-report-btn"
             class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700 transition-colors shadow-sm"
             @click="handleDownloadReport"
@@ -514,6 +559,7 @@ async function handleDownloadPickingReport(): Promise<void> {
             Descargar reporte de diferencias
           </button>
           <button
+            type="button"
             data-testid="download-picking-report-btn"
             class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700 transition-colors shadow-sm"
             @click="handleDownloadPickingReport"
