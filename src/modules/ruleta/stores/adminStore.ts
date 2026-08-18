@@ -160,6 +160,7 @@ export const useAdminStore = defineStore('admin', {
     },
 
     async crearCampana(dto: CrearCampanaDTO) {
+      if (this.guardando) return
       this.guardando = true
       try {
         const nueva = await ruletaService.crearCampana(dto)
@@ -183,6 +184,7 @@ export const useAdminStore = defineStore('admin', {
     },
 
     async actualizarCampana(id: string, dto: CrearCampanaDTO) {
+      if (this.guardando) return
       this.guardando = true
       try {
         const actualizada = await ruletaService.actualizarCampana(id, dto)
@@ -197,14 +199,26 @@ export const useAdminStore = defineStore('admin', {
     },
 
     async cambiarEstado(id: string, estado: Campana['estado']) {
-      const actualizada = await ruletaService.cambiarEstadoCampana(id, estado)
-      const index = this.campanas.findIndex(c => c.id === id)
-      if (index !== -1) this.campanas[index] = actualizada
+      if (this.guardando) return
+      this.guardando = true
+      try {
+        const actualizada = await ruletaService.cambiarEstadoCampana(id, estado)
+        const index = this.campanas.findIndex(c => c.id === id)
+        if (index !== -1) this.campanas[index] = actualizada
+      } finally {
+        this.guardando = false
+      }
     },
 
     async eliminarCampana(id: string) {
-      await ruletaService.eliminarCampana(id)
-      this.campanas = this.campanas.filter(c => c.id !== id)
+      if (this.guardando) return
+      this.guardando = true
+      try {
+        await ruletaService.eliminarCampana(id)
+        this.campanas = this.campanas.filter(c => c.id !== id)
+      } finally {
+        this.guardando = false
+      }
     },
 
     // ── Tiendas (para stock por tienda) ───────────────────────────────────────
@@ -241,6 +255,7 @@ export const useAdminStore = defineStore('admin', {
     },
 
     async actualizarPremio(grupoIndex: number, premioId: string, data: Partial<PremioAdmin>, confirmarReduccionStock = false) {
+      if (this.guardando) return
       const grupo = this.grupos[grupoIndex]
       if (!grupo || !this.campanaActivaId) return
       this.guardando = true
@@ -257,6 +272,7 @@ export const useAdminStore = defineStore('admin', {
     },
 
     async agregarPremio(grupoIndex: number, data: Omit<PremioAdmin, 'id'>) {
+      if (this.guardando) return
       const grupo = this.grupos[grupoIndex]
       if (!grupo || !this.campanaActivaId) return
       this.guardando = true
@@ -271,6 +287,7 @@ export const useAdminStore = defineStore('admin', {
     },
 
     async eliminarPremio(grupoIndex: number, premioId: string) {
+      if (this.guardando) return
       const grupo = this.grupos[grupoIndex]
       if (!grupo || !this.campanaActivaId) return
       this.guardando = true
@@ -298,6 +315,7 @@ export const useAdminStore = defineStore('admin', {
     },
 
     async asignarStockTienda(premioId: string, tiendaCodigo: string, stockTotal: number) {
+      if (this.guardando) return
       if (!this.campanaActivaId) return
       this.guardando = true
       try {
@@ -308,7 +326,17 @@ export const useAdminStore = defineStore('admin', {
     },
 
     async subirImagen(archivo: File): Promise<string> {
-      return await ruletaService.subirImagenPremio(archivo)
+      // Guarda de re-entrancia: el resultado se asigna de forma síncrona a `data.imagen_url`
+      // (string, no admite undefined) en el llamador, así que aquí no se puede usar un
+      // `return` sin valor como en las demás acciones — se rechaza la llamada duplicada en
+      // vez de dejarla pasar en silencio.
+      if (this.guardando) throw new Error('Ya hay una operación en curso. Espera a que termine.')
+      this.guardando = true
+      try {
+        return await ruletaService.subirImagenPremio(archivo)
+      } finally {
+        this.guardando = false
+      }
     },
 
     recalcularEstadoGrupo(grupoIndex: number) {
@@ -392,6 +420,7 @@ export const useAdminStore = defineStore('admin', {
     },
 
     async guardarDistribucion() {
+      if (this.guardando) return
       if (!this.campanaInventarioId) return
       this.guardando = true
       this.errorInventario = null
@@ -491,7 +520,11 @@ export const useAdminStore = defineStore('admin', {
     },
 
     // ── Redención de premios ──────────────────────────────────────────────────
-    async redimirPremio(codigo: string, notas?: string): Promise<RedencionResponse> {
+    // Sin llamadores todavía en este módulo (la redención se dispara desde otra pantalla/futuro
+    // flujo) — se ensancha el tipo de retorno a `| undefined` para el caso guardado, en vez de
+    // lanzar, ya que no hay ningún consumidor existente que dependa de un valor no-undefined.
+    async redimirPremio(codigo: string, notas?: string): Promise<RedencionResponse | undefined> {
+      if (this.redimiendo) return
       this.redimiendo = true
       try {
         const redencion = await ruletaService.redimirPremio(codigo, notas)

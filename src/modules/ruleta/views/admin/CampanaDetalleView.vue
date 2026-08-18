@@ -107,7 +107,7 @@ const pausando   = ref(false)
 const errorEstado = ref('')
 
 async function activarCampana() {
-  if (!todosCompletos.value) return
+  if (activando.value || !todosCompletos.value) return
   activando.value = true
   errorEstado.value = ''
   try {
@@ -121,18 +121,26 @@ async function activarCampana() {
 }
 
 async function pausarCampana() {
+  if (pausando.value) return
   pausando.value = true
+  errorEstado.value = ''
   try {
     await store.cambiarEstado(campanaId, 'pausada')
+  } catch (e: any) {
+    errorEstado.value = e?.response?.data?.error || e?.message || 'Error al pausar la campaña.'
   } finally {
     pausando.value = false
   }
 }
 
 async function pasarBorrador() {
+  if (pausando.value) return
   pausando.value = true
+  errorEstado.value = ''
   try {
     await store.cambiarEstado(campanaId, 'borrador')
+  } catch (e: any) {
+    errorEstado.value = e?.response?.data?.error || e?.message || 'Error al mover la campaña a borrador.'
   } finally {
     pausando.value = false
   }
@@ -341,6 +349,7 @@ function cancelarReduccionStock() {
 }
 
 async function confirmarReduccionStockYGuardar() {
+  if (guardando.value) return
   const pendiente = premioParaConfirmarReduccion.value
   if (!pendiente) return
   guardando.value = true
@@ -416,6 +425,7 @@ async function persistirPremio(grupoIdx: number, data: Omit<PremioAdmin, 'id'>) 
 }
 
 async function guardarPremio() {
+  if (guardando.value) return
   errorForm.value = ''
   if (form.value.es_vacio && !form.value.nombre.trim()) form.value.nombre = '¡Sigue intentando!'
   if (!form.value.nombre.trim()) { errorForm.value = 'El nombre es requerido.'; return }
@@ -462,10 +472,10 @@ function cancelarEliminarPremio() {
 }
 
 async function ejecutarEliminarPremio() {
-  if (!premioAEliminar.value) return
+  if (eliminandoPremio.value || !premioAEliminar.value) return
   const grupoIdx = store.grupos.findIndex(g => g.grupo === grupoActivo.value)
   if (grupoIdx === -1) return
-  
+
   eliminandoPremio.value = true
   errorEliminar.value = ''
   try {
@@ -510,6 +520,7 @@ function seleccionarTienda(t: Tienda) {
 }
 
 async function asignarStock() {
+  if (asignando.value) return
   if (!tiendaSeleccionada.value || !stockCantidad.value || stockCantidad.value <= 0) return
   if (!premioRecienCreado.value) return
   errorPaso2.value = ''

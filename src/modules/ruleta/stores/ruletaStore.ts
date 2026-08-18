@@ -126,6 +126,9 @@ export const useRuletaStore = defineStore('ruleta', {
 
     // ─── Giro ────────────────────────────────────────────────────────────────
     async ejecutarGiro(cedula: string, enroladorId?: number) {
+      // Guarda síncrona: un doble clic/doble tap antes de que ':disabled' reaccione no debe
+      // disparar un segundo POST /api/giros concurrente para el mismo cliente.
+      if (this.girando) return
       if (!this.tiendaSeleccionada) return
       if (!this.campanaActivaId) {
         this.errorEnrolador = 'No hay campaña activa para jugar.'

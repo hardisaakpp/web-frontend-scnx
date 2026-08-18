@@ -68,7 +68,7 @@ function abrirEdit(p: PremioAdmin, gIdx: number) {
 function cerrarEdit() { editando.value = null }
 
 async function guardarEdit() {
-  if (!editando.value) return
+  if (!editando.value || store.guardando) return
   errorEdit.value = ''
   try {
     await store.actualizarPremio(editGrupoIdx.value, editando.value.id, editando.value)
@@ -81,6 +81,7 @@ async function guardarEdit() {
 
 // Modal añadir premio
 const mostrarAgregar = ref(false)
+const errorNuevo = ref('')
 const nuevoForm = ref<Omit<PremioAdmin, 'id'>>({
   nombre: '', descripcion: '', tipo: 'fisico',
   stock_total: null, valor_referencial: null, es_relleno: false, controla_stock_por_tienda: false
@@ -91,12 +92,19 @@ function abrirAgregar() {
     nombre: '', descripcion: '', tipo: 'fisico',
     stock_total: null, valor_referencial: null, es_relleno: false, controla_stock_por_tienda: false
   }
+  errorNuevo.value = ''
   mostrarAgregar.value = true
 }
 async function guardarNuevo() {
-  if (!nuevoForm.value.nombre.trim()) return
-  await store.agregarPremio(grupoActivo.value, nuevoForm.value)
-  mostrarAgregar.value = false
+  if (!nuevoForm.value.nombre.trim() || store.guardando) return
+  errorNuevo.value = ''
+  try {
+    await store.agregarPremio(grupoActivo.value, nuevoForm.value)
+    mostrarAgregar.value = false
+  } catch (e: any) {
+    // No cerramos el modal: el admin decide si reintenta o recarga (ver toast global).
+    errorNuevo.value = e?.response?.data?.error || 'No se pudo agregar el premio. Intenta de nuevo.'
+  }
 }
 
 const estadoBadge: Record<string, { icon: string; cls: string }> = {
@@ -395,6 +403,8 @@ const TIPO_LABELS: Record<TipoPremio, string> = {
               <input type="checkbox" v-model="nuevoForm.es_relleno" class="w-4 h-4 rounded text-indigo-600 border-gray-300 focus:ring-indigo-500"/>
               <span class="text-sm text-gray-700 dark:text-gray-300">Es premio de relleno (no consume stock)</span>
             </label>
+
+            <p v-if="errorNuevo" class="text-sm text-red-500">{{ errorNuevo }}</p>
           </div>
           <div class="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 dark:border-gray-700">
             <button @click="mostrarAgregar = false" class="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">Cancelar</button>
