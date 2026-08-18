@@ -110,6 +110,16 @@ function getSSEStreamCandidates(baseUrl: string): string[] {
  */
 export const lastNotification: Ref<SSENotification | null> = ref(null)
 
+/**
+ * Contador global (a nivel de módulo) que se incrementa cada vez que el stream SSE
+ * reconecta después de haber estado desconectado. SSE no reenvía a un cliente que
+ * reconecta tarde los eventos emitidos mientras estaba desconectado (ej. una
+ * pestaña en segundo plano cuyo timer de reconexión fue pausado por el navegador);
+ * las vistas de listado pueden hacer watch() sobre esto para refrescar sus datos
+ * igual, sin depender de haber recibido ese evento puntual.
+ */
+export const reconnectedAfterGap: Ref<number> = ref(0)
+
 /** Intervalo de reconexión en milisegundos (5 segundos) */
 const RECONNECT_INTERVAL = 5000
 
@@ -289,6 +299,7 @@ export function useNotificaciones() {
         if (disconnectWarningShown) {
           disconnectWarningShown = false
           toast.success('Notificaciones reconectadas', 'La conexión en tiempo real se restableció.')
+          reconnectedAfterGap.value++
         }
         if (import.meta.env.DEV) {
           console.log('📢 [Notificaciones] Conectado al stream SSE:', data)

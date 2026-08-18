@@ -525,7 +525,8 @@ import LoadingSpinner from '../components/LoadingSpinner.vue'
 import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
 import type { PedidosListadoResponse, PedidoResumido, PedidosListadoFiltros, PedidosListadoMetadata, PlantillasPedidosResponse, EstadoPedidoOption } from '../types'
 import { formatDate, formatDateTime } from '../utils/formatters'
-import { lastNotification } from '@/composables/useNotificaciones'
+import { lastNotification, reconnectedAfterGap } from '@/composables/useNotificaciones'
+import { useRefetchOnFocus } from '@/composables/useRefetchOnFocus'
 
 const { target: odcSapVolverTarget, title: odcSapVolverTitle } = useOdcSapVolver()
 const router = useRouter()
@@ -891,14 +892,22 @@ function abrirPedido(pedido: PedidoResumido) {
   router.push(`/mba3-consultas/cargar-plantilla/${encodeURIComponent(pedido.numero_pedido)}`)
 }
 
-// Recargar listado automáticamente cuando llega una notificación de pedido cancelado por El Rayo
+// Recargar listado automáticamente ante cualquier notificación de pedido relevante
+// (ej: EL RAYO abrió el pedido para gestionarlo, lo canceló, lo confirmó, etc.)
 watch(lastNotification, (notif) => {
   if (!notif) return
-  const accion = notif.metadata?.accion
-  if (accion === 'pedido_cancelado_por_el_rayo') {
-    cargarPedidos()
-  }
+  if (!notif.metadata?.accion) return
+  cargarPedidos()
 })
+
+// ⭐ Si el stream SSE reconectó tras una desconexión, pudimos habernos perdido una
+// notificación (ej. pestaña en segundo plano durante el evento). Refrescar igual.
+watch(reconnectedAfterGap, () => {
+  cargarPedidos()
+})
+
+// ⭐ Refrescar al recuperar foco/visibilidad (ej. otra ventana encima que se minimiza)
+useRefetchOnFocus(() => cargarPedidos())
 
 onMounted(() => {
   cargarEstados()
