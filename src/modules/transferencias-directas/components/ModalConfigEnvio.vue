@@ -48,7 +48,7 @@ const onGuardar = () => {
 }
 
 const inputClass =
-  'w-full h-[42px] px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm ' +
+  'w-full h-[42px] px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-xs ' +
   'bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none'
 </script>
 
@@ -58,9 +58,9 @@ const inputClass =
 
     <div class="relative w-full max-w-lg max-h-[85vh] flex flex-col rounded-2xl bg-white dark:bg-gray-800 shadow-2xl border border-gray-200 dark:border-gray-700">
       <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
           {{ modo === 'nuevo' ? 'Nueva configuración' : 'Editar configuración' }}
-        </h2>
+        </h3>
         <button type="button" @click="emit('cerrar')" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
           <XMarkIcon class="w-6 h-6" />
         </button>
@@ -68,7 +68,7 @@ const inputClass =
 
       <div class="overflow-y-auto p-6 space-y-5">
         <div>
-          <label for="marcasConfig"class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Marca Origen</label>
+          <label for="marcasConfig"class="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">Marca Origen</label>
           <select id="marcasConfig" v-if="modo === 'nuevo'" v-model="origenSel" :class="inputClass">
             <option value="" disabled>Seleccione una marca…</option>
             <option v-for="m in opcionesOrigen" :key="m" :value="m">{{ m }}</option>
@@ -77,25 +77,25 @@ const inputClass =
         </div>
 
         <fieldset>
-          <legend  class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Marcas Destino</legend >
+          <legend  class="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-2">Marcas Destino</legend >
           <div class="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700 p-3">
-            <label v-for="m in marcas" :key="m" :for="`marca-${m}`" class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200 cursor-pointer">
+            <label v-for="m in marcas" :key="m" :for="`marca-${m}`" class="flex items-center gap-2 text-xs text-gray-700 dark:text-gray-200 cursor-pointer">
               <input :id="`marca-${m}`" type="checkbox" :checked="estaChequeado(m)" @change="toggleDestino(m)"
                 class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600" />
               {{ m }}
             </label>
           </div>
         </fieldset>
-        <p v-if="error" class="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">{{ error }}</p>
+        <p v-if="error" class="text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">{{ error }}</p>
       </div>
 
       <div class="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700">
         <button type="button" @click="emit('cerrar')" :disabled="guardando"
-          class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-60 transition-colors">
+          class="px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-xs font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-60 transition-colors">
           Cancelar
         </button>
         <button type="button" @click="onGuardar" :disabled="guardando || !puedeGuardar"
-          class="px-6 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-sm font-medium transition-colors shadow-sm">
+          class="px-6 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white text-xs font-medium transition-colors shadow-sm">
           {{ guardando ? 'Guardando…' : 'Guardar' }}
         </button>
       </div>

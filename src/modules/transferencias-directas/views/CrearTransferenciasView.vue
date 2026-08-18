@@ -4,7 +4,9 @@ import { ArrowLeftIcon, CalendarDaysIcon } from '@heroicons/vue/24/outline'
 import { APP_LOCALE } from '@/plugins/locale'
 import FormField from '../components/FormField.vue'
 import { useAuthStore } from '@/stores/auth.js'
-import { CrearSolicitudRequest, DetalleLinea, ProductoBusqueda, SolicitudDetalle, TiendaDestino } from '../types.js'
+import { CrearSolicitudRequest, DetalleLinea, ProductoBusqueda, SolicitudDetalle, TiendaDestino, type StockFaltante } from '../types.js'
+import { parsearErrorSolicitud } from '../utils/erroresApi'
+import ErrorStockFaltante from '../components/ErrorStockFaltante.vue'
 import almacenesService from '../services/almacenesServices.js'
 import BuscadorProductos from '../components/BuscadorProductos.vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -12,6 +14,7 @@ import TablaDetalleProductos from '../components/TablaDetalleProductos.vue'
 import ResumenTransferencia from '../components/ResumenTransferencia.vue'
 import transferenciasService from '../services/transferenciasService.js'
 import CargandoSpinner from '../components/CargandoSpinner.vue'
+import ModalConfirmacion from '../components/ModalConfirmacion.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -19,6 +22,7 @@ const authStore = useAuthStore()
 const idEdicion = computed(() => (route.params.id ? Number(route.params.id) : null))
 const modoEdicion = computed(() => idEdicion.value !== null)
 const cargandoDetalle = ref(false)
+const faltantesSubmit = ref<StockFaltante[]>([])
 
 const inputClass =
   'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-xs ' +
@@ -67,11 +71,15 @@ const nombreTiendaUsuario = computed(() => {
   return t?.whsNombre ?? codigoTiendaUsuario.value
 })
 
+const whsCodeOrigen = computed(() =>
+  modoEdicion.value ? (detalle.value?.tiendaOrigenCodigo ?? '') : form.tiendaOrigenCodigo
+)
+
 const form = reactive({
   usuarioSolicitante: '',
-  tiendaOrigenCodigo: '',   // whsCode 
-  tiendaDestinoCodigo: '',  // uBogTra
-  tiendaDestinoNombre: '',  // whsNombre
+  tiendaOrigenCodigo: '',   
+  tiendaDestinoCodigo: '',  
+  tiendaDestinoNombre: '',  
   guiaEnvio: '',
   justificacion: '',
 })
@@ -94,6 +102,7 @@ const limpiar = () => {
   }
   limpiarErrores()
   errorSubmit.value = ''
+  faltantesSubmit.value = []
 }
 
 const destinoSeleccionado = ref('')
@@ -103,10 +112,39 @@ watch(destinoSeleccionado, (whsCode) => {
   form.tiendaDestinoNombre = t?.whsNombre ?? ''
 })
 
+// Cambiar la tienda origen invalida el stock visto: se pide confirmación y se
+// vacía el detalle. Si el usuario cancela, se revierte al valor anterior (la
+// bandera evita que esa reversión vuelva a disparar la confirmación).
 const origenSeleccionado = ref('')
-watch(origenSeleccionado, (whsCode) => {
+const confirmarCambioOrigen = ref(false)
+let revirtiendoOrigen = false
+
+watch(origenSeleccionado, (whsCode, anterior) => {
+  if (revirtiendoOrigen) { revirtiendoOrigen = false; return }
+
+  if (productos.value.length > 0 && anterior) {
+    origenAnterior = anterior
+    origenPendiente = whsCode
+    confirmarCambioOrigen.value = true
+    return
+  }
   form.tiendaOrigenCodigo = whsCode
 })
+
+let origenAnterior = ''
+let origenPendiente = ''
+
+const aceptarCambioOrigen = () => {
+  productos.value = []
+  form.tiendaOrigenCodigo = origenPendiente
+  confirmarCambioOrigen.value = false
+}
+
+const cancelarCambioOrigen = () => {
+  revirtiendoOrigen = true
+  origenSeleccionado.value = origenAnterior
+  confirmarCambioOrigen.value = false
+}
 
 onMounted(async () => {
   if (modoEdicion.value) {
@@ -114,7 +152,7 @@ onMounted(async () => {
     return
   }
   //crear
-  form.tiendaOrigenCodigo = codigoTiendaUsuario.value
+  if (!puedeElegirOrigen.value) form.tiendaOrigenCodigo = codigoTiendaUsuario.value
   cargandoTiendas.value = true
   errorTiendas.value = ''
   try {
@@ -133,7 +171,9 @@ onMounted(async () => {
 
 const productos = ref<DetalleLinea[]>([])
 
+
 // Regla de picking: si el itemCode ya está, SUMA; si no, crea la fila
+// El stock ya no se valida aquí: lo valida el backend al enviar a aprobación (RN-22).
 const agregarAlDetalle = (p: ProductoBusqueda, cantidad: number) => {
   const existente = productos.value.find((x) => x.itemCode === p.itemCode)
   if (existente) {
@@ -184,6 +224,7 @@ const validar = (): boolean => {
     if (!form.tiendaOrigenCodigo) errores.tiendaOrigenCodigo = 'No se pudo determinar la tienda origen.'
     if (!form.tiendaDestinoCodigo) errores.tiendaDestinoCodigo = 'Selecciona la tienda destino.'
     if (!form.usuarioSolicitante.trim()) errores.usuarioSolicitante = 'Ingresa el responsable del envío.'
+    if (!form.guiaEnvio.trim()) errores.guiaEnvio = 'Ingrese la Guía Courier'
   }
   if (productos.value.length === 0) errores.productos = 'Agrega al menos un producto.'
   const primerError = Object.keys(errores)[0]
@@ -201,6 +242,7 @@ const enviar = async (enviarAAprobacion: boolean) => {
   if (!validar()) return
   guardando.value = true
   errorSubmit.value = ''
+  faltantesSubmit.value = []
   try {
     await transferenciasService.crear(construirPayload(enviarAAprobacion))
     router.push({ name: 'transferencias-stock-historial' })
@@ -215,6 +257,8 @@ const guardarBorrador = () => enviar(false)
 const enviarAprobacion = () => enviar(true)
 
 const manejarErrorSubmit = (e: any) => {
+  const { faltantes } = parsearErrorSolicitud(e)
+  faltantesSubmit.value = faltantes ?? []
   const status = e?.response?.status
   const msg = e?.response?.data?.error ?? e?.response?.data?.mensaje
   if (status === 400) errorSubmit.value = msg ?? 'Datos inválidos. Revisa el formulario.'
@@ -226,6 +270,7 @@ const manejarErrorSubmit = (e: any) => {
 const cargarParaEditar = async (id: number) => {
   cargandoDetalle.value = true
   errorSubmit.value = ''
+  faltantesSubmit.value = []
   try {
     const d = await transferenciasService.obtenerDetalle(id)
     detalle.value = d
@@ -248,6 +293,7 @@ const guardarEdicion = async () => {
   if (!validar()) return
   guardando.value = true
   errorSubmit.value = ''
+  faltantesSubmit.value = []
   try {
     await transferenciasService.actualizar(idEdicion.value!, {
       justificacion: form.justificacion.trim() || undefined,
@@ -320,16 +366,16 @@ const guardarEdicion = async () => {
             <input v-else :id="id" type="text" :value="nombreTiendaUsuario" disabled :class="inputClass" />
           </FormField>
 
-          <FormField label="Almacén Destino" required :error="errores.tiendaDestinoCodigo" v-slot="{ id }">
+          <FormField label="Almacén Destino (Tránsito)" required :error="errores.tiendaDestinoCodigo" v-slot="{ id }">
             <input v-if="modoEdicion" :id="id" type="text" :value="detalle?.tiendaDestino ?? ''" disabled
               :class="inputClass" />
             <select v-else :id="id" v-model="destinoSeleccionado" :class="selectClass" :disabled="cargandoTiendas">
               <option value="" disabled>{{ cargandoTiendas ? 'Cargando…' : 'Seleccione una tienda…' }}</option>
-              <option v-for="t in tiendasDestino" :key="t.whsCode" :value="t.whsCode">{{ t.whsNombre }}</option>
+              <option v-for="t in tiendasDestino" :key="t.whsCode" :value="t.whsCode">{{ t.uBogTra }}</option>
             </select>
           </FormField>
 
-          <FormField label="Guía Laar Courier" help="10 caracteres alfanuméricos" v-slot="{ id }">
+          <FormField label="Guía Courier" required :error="errores.guiaEnvio"help="10 caracteres alfanuméricos" v-slot="{ id }">
             <input :id="id" v-model="form.guiaEnvio" @input="onGuiaInput" type="text" maxlength="10"
               placeholder="AB12CD34EF" :class="[inputClass, 'uppercase tracking-wider']" />
           </FormField>
@@ -353,7 +399,7 @@ const guardarEdicion = async () => {
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">
           Búsqueda de Productos
         </h3>
-        <buscador-productos @agregar="agregarAlDetalle" />
+        <buscador-productos :whs-code-origen="whsCodeOrigen" @agregar="agregarAlDetalle" />
       </div>
       <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700 ">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">
@@ -371,7 +417,9 @@ const guardarEdicion = async () => {
       </div>
       <!-- Footer -->
       <div class="px-5 py-4 space-y-3">
-        <p v-if="errorSubmit" class="text-xs text-red-600 dark:text-red-400">{{ errorSubmit }}</p>
+        <ErrorStockFaltante v-if="errorSubmit && faltantesSubmit.length > 0" :mensaje="errorSubmit"
+          :faltantes="faltantesSubmit" />
+        <p v-else-if="errorSubmit" class="text-xs text-red-600 dark:text-red-400">{{ errorSubmit }}</p>
 
         <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
@@ -402,5 +450,10 @@ const guardarEdicion = async () => {
         </div>
       </div>
     </section>
+
+    <ModalConfirmacion :abierto="confirmarCambioOrigen" titulo="Cambiar tienda origen"
+      mensaje="Los productos agregados se eliminarán, ya que el stock disponible corresponde a la tienda anterior. ¿Desea continuar?"
+      texto-confirmar="Cambiar" variante="peligro" @confirmar="aceptarCambioOrigen"
+      @cancelar="cancelarCambioOrigen" />
   </div>
 </template>

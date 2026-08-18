@@ -112,12 +112,12 @@ const guardarConfig = async ({ marcaOrigen, destinos }: { marcaOrigen: string; d
                 </router-link>
                 <div>
                     <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Configuración de Envíos</h1>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Marcas origen y sus destinos permitidos.
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Marcas origen y sus destinos permitidos.
                     </p>
                 </div>
             </div>
             <button type="button" @click="abrirNuevo"
-                class="inline-flex items-center gap-2 h-10 px-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm">
+                class="inline-flex items-center gap-2 h-10 px-4 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors shadow-sm">
                 <PlusIcon class="w-4 h-4" /> Nuevo
             </button>
         </div>
@@ -148,7 +148,7 @@ const guardarConfig = async ({ marcaOrigen, destinos }: { marcaOrigen: string; d
 
                         <tr v-for="g in agrupadas" v-else :key="g.marcaOrigen"
                             class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                            <td class="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">{{ g.marcaOrigen }}
+                            <td class="px-4 py-3 text-xs font-medium text-gray-900 dark:text-white">{{ g.marcaOrigen }}
                             </td>
                             <td class="px-4 py-3">
                                 <div class="flex flex-wrap gap-1.5">
@@ -169,7 +169,7 @@ const guardarConfig = async ({ marcaOrigen, destinos }: { marcaOrigen: string; d
                         <tr v-if="!cargando && agrupadas.length === 0">
                             <td colspan="3" class="px-4 py-12 text-center">
                                 <InboxIcon class="w-10 h-10 mx-auto text-gray-300 dark:text-gray-600 mb-2" />
-                                <p class="text-sm text-gray-400 dark:text-gray-500">No hay configuraciones registradas.
+                                <p class="text-xs text-gray-400 dark:text-gray-500">No hay configuraciones registradas.
                                 </p>
                             </td>
                         </tr>
@@ -177,7 +177,7 @@ const guardarConfig = async ({ marcaOrigen, destinos }: { marcaOrigen: string; d
                 </table>
             </div>
             <p v-if="error"
-                class="px-4 py-3 text-sm text-red-600 dark:text-red-400 border-t border-gray-200 dark:border-gray-700">
+                class="px-4 py-3 text-xs text-red-600 dark:text-red-400 border-t border-gray-200 dark:border-gray-700">
                 {{ error }}</p>
         </section>
         <ModalConfigEnvio :abierto="modalAbierto" :modo="modalModo" :marcas="marcas"

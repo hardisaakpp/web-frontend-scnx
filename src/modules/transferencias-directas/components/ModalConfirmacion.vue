@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
+import ErrorStockFaltante from './ErrorStockFaltante.vue'
+import type { StockFaltante } from '../types'
 
 const props = withDefaults(defineProps<{
     abierto: boolean
@@ -11,11 +13,13 @@ const props = withDefaults(defineProps<{
     cargando?: boolean
     variante?: 'primary' | 'peligro'
     error?: string
+    faltantes?: StockFaltante[]
 }>(), {
     textoConfirmar: 'Confirmar',
     textoCancelar: 'Cancelar',
     cargando: false,
     variante: 'primary',
+    faltantes: () => [],
 })
 
 const emit = defineEmits<{ confirmar: []; cancelar: [] }>()
@@ -29,8 +33,8 @@ const claseConfirmar = computed(() =>
     <div v-if="abierto" class="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="!cargando && emit('cancelar')"></div>
 
-        <div
-            class="relative w-full max-w-sm rounded-2xl bg-white dark:bg-gray-800 p-6 text-center shadow-2xl border border-gray-200 dark:border-gray-700">
+        <div class="relative w-full rounded-2xl bg-white dark:bg-gray-800 p-6 text-center shadow-2xl border border-gray-200 dark:border-gray-700"
+            :class="faltantes.length > 0 ? 'max-w-lg' : 'max-w-sm'">
             <div
                 class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-50 dark:bg-amber-900/30 mb-4">
                 <ExclamationTriangleIcon class="h-10 w-10 text-amber-600 dark:text-amber-400" aria-hidden="true" />
@@ -38,7 +42,11 @@ const claseConfirmar = computed(() =>
 
             <h3 class="text-xl font-bold leading-6 text-gray-900 dark:text-white mb-2">{{ titulo }}</h3>
             <p class="text-sm text-gray-500 dark:text-gray-400">{{ mensaje }}</p>
-            <p v-if="error"
+            <!-- Error con detalle de stock faltante -->
+            <ErrorStockFaltante v-if="error && faltantes.length > 0" :mensaje="error" :faltantes="faltantes"
+                class="mt-3 text-left" />
+            <!-- Error simple (comportamiento actual) -->
+            <p v-else-if="error"
                 class="mt-3 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">
                 {{ error }}
             </p>
