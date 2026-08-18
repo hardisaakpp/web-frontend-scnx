@@ -248,9 +248,10 @@ const props = defineProps<{
    */
   fechaPedidoEditable?: boolean
   /**
-   * Si true, el usuario actual tiene permiso para editar Fecha Facturación (req. 1.8:
-   * exclusiva de Producción El Rayo). Se combina con el estado del pedido: solo se
-   * habilita el input mientras el pedido está en GESTIONAR_PEDIDO (estado_id = 3).
+   * Si true, el usuario actual puede editar Fecha Facturación en el estado actual del
+   * pedido (req. 1.8: exclusiva de odcsap.view, solo en Confirmado y Enviado). El
+   * componente padre resuelve la combinación de permiso y estado; este componente solo
+   * refleja el valor recibido.
    */
   puedeEditarFechaFacturacion?: boolean
 }>()
@@ -309,15 +310,10 @@ const emit = defineEmits<{
 }>()
 
 /**
- * Fecha Facturación (req. 1.8): exclusiva de Producción El Rayo (puedeEditarFechaFacturacion),
- * y solo mientras el pedido está en GESTIONAR_PEDIDO (estado_id = 3).
+ * Fecha Facturación (req. 1.8): la combinación de permiso y estado del pedido ya la
+ * resuelve el componente padre en puedeEditarFechaFacturacion.
  */
-const fechaFacturacionEditable = computed(() => {
-  if (!props.puedeEditarFechaFacturacion) return false
-  const estadoIdRaw = props.pedido?.cabecera?.estado_id
-  const estadoId = typeof estadoIdRaw === 'string' ? parseInt(estadoIdRaw, 10) : estadoIdRaw
-  return estadoId === 3
-})
+const fechaFacturacionEditable = computed(() => !!props.puedeEditarFechaFacturacion)
 
 // Estado colapsable - por defecto encogido, a menos que se especifique defaultExpanded
 const isExpanded = ref(props.defaultExpanded ?? false)

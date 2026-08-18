@@ -116,12 +116,13 @@
         :hide-confirm-and-download="false"
         :hide-cargar-plantillas="true"
         :show-despachar-y-facturar="true"
+        :despachar-y-facturar-deshabilitado="despacharYFacturarDeshabilitadoPorFecha"
         :puede-descargar-pedido="puedeDescargarPedido"
         :puede-descargar-csv="puedeDescargarCsv"
         :puede-generar-txt-mba3="puedeGenerarTxtMba3"
         :tiene-archivo-original="false"
         :puede-confirmar-produccion="puedeConfirmarProduccion"
-        :confirmar-produccion-deshabilitado="confirmarProduccionDeshabilitadoPorFecha"
+        :confirmar-produccion-deshabilitado="confirmarProduccionDeshabilitadoPorFechaEntrega"
         :confirmando-produccion="confirmandoProduccion"
         @cargar-plantillas="goToCargarPlantillas"
         @generar-oc="handleGenerarOCDesdePedido"
@@ -165,7 +166,7 @@
           :permitir-edicion-fechas-en-gestionar="true"
           :show-inmediato-option="false"
           :fecha-pedido-editable="false"
-          :puede-editar-fecha-facturacion="authStore.canViewProduccionElRayo"
+          :puede-editar-fecha-facturacion="puedeEditarFechaFacturacion"
           @copy-to-clipboard="copyToClipboard"
           @update-fecha-pedido="handleUpdateFechaPedido"
           @update-fecha-entrega="handleUpdateFechaEntrega"
@@ -888,8 +889,24 @@ const puedeConfirmarProduccion = computed(() => {
   return estadoId === 3
 })
 
-// "Confirmar Producción" solo se activa cuando se seleccionó la Fecha Facturación
-const confirmarProduccionDeshabilitadoPorFecha = computed(() => {
+// "Confirmar Producción" requiere una fecha de entrega real. Si mabel.view eligió
+// INMEDIATO al enviar el pedido, Producción ve la fecha vacía y debe seleccionar una
+// fecha real antes de poder confirmar.
+const confirmarProduccionDeshabilitadoPorFechaEntrega = computed(() => {
+  const fechaEntrega = pedido.value?.cabecera?.fecha_entrega?.trim()?.toUpperCase()
+  return fechaEntrega === 'INMEDIATO'
+})
+
+// Fecha Facturación (req. 1.8): exclusiva de odcsap.view, solo en Confirmado y Enviado (12),
+// donde habilita "Despachar y Facturar".
+const puedeEditarFechaFacturacion = computed(() => {
+  const estadoIdRaw = pedido.value?.cabecera?.estado_id
+  const estadoId = estadoIdRaw != null ? Number(estadoIdRaw) : null
+  return authStore.canManageOrder && estadoId === 12
+})
+
+// "Despachar y Facturar" solo se activa cuando se seleccionó la Fecha Facturación
+const despacharYFacturarDeshabilitadoPorFecha = computed(() => {
   return !pedido.value?.cabecera?.fecha_facturacion
 })
 
@@ -1223,6 +1240,10 @@ async function handleConfirmar() {
   // Prevenir múltiples clics
   if (confirmando.value || !pedido.value || !numeroPedido.value) return
 
+  // Activar el spinner de inmediato al hacer clic, antes de cualquier
+  // llamada async, para que el botón dé feedback visual sin demora perceptible.
+  confirmando.value = true
+
   // Req. 1.2: si algún producto quedó con Total por debajo de lo solicitado
   // originalmente en la plantilla Excel, mostrar el modal de diferencia de
   // producción en vez de confirmar directo. Si la consulta falla, no bloquear
@@ -1232,6 +1253,7 @@ async function handleConfirmar() {
     if (diferencia.tiene_diferencia) {
       detallesDiferencia.value = diferencia.detalles
       showDiferenciaModal.value = true
+      confirmando.value = false
       return
     }
   } catch (e) {

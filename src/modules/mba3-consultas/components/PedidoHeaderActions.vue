@@ -103,17 +103,22 @@
         <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Generando orden de compra" />
         {{ generandoOC ? 'Generando...' : 'Generar Orden de Compra' }}
       </button>
-      <button
-        v-if="showDespacharYFacturar && puedeDespacharYFacturar"
-        type="button"
-        @click="$emit('update-estado', 'DESPACHAR Y FACTURAR')"
-        class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors flex items-center gap-2 text-sm font-medium"
-      >
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        Despachar y Facturar
-      </button>
+      <div v-if="showDespacharYFacturar && puedeDespacharYFacturar" class="flex flex-col items-end gap-1">
+        <button
+          type="button"
+          @click="$emit('update-estado', 'DESPACHAR Y FACTURAR')"
+          :disabled="despacharYFacturarDeshabilitado"
+          class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-medium"
+        >
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Despachar y Facturar
+        </button>
+        <p v-if="despacharYFacturarDeshabilitado" class="text-xs text-amber-600 dark:text-amber-400">
+          Seleccione la Fecha Facturación para Despachar y Facturar
+        </p>
+      </div>
       <!-- Botón Finalizar Pedido (estado DESPACHAR Y FACTURAR → FINALIZADO) -->
       <button
         v-if="showFinalizarPedido && puedeFinalizarPedido"
@@ -191,7 +196,7 @@
           {{ confirmandoProduccion ? 'Confirmando...' : 'Confirmar Producción' }}
         </button>
         <p v-if="confirmarProduccionDeshabilitado && !confirmandoProduccion" class="text-xs text-amber-600 dark:text-amber-400">
-          Seleccione la Fecha Facturación para confirmar producción
+          Seleccione una fecha de entrega para confirmar producción
         </p>
       </div>
       <slot name="toolbar-extra" />
@@ -233,6 +238,8 @@ const props = defineProps<{
   hideCargarPlantillas?: boolean
   /** Mostrar botón "Despachar y Facturar" (solo en vista detalle de pedido, no en Cargar Plantilla) */
   showDespacharYFacturar?: boolean
+  /** Deshabilita "Despachar y Facturar" hasta que se seleccione la Fecha Facturación (req. 1.8, odcsap.view) */
+  despacharYFacturarDeshabilitado?: boolean
   /** Mostrar botón "Descargar Pedido" desde estado GESTIONAR PEDIDO (estado_id >= 3) */
   puedeDescargarPedido?: boolean
   /** @deprecated Botón "Descargar Excel" retirado. Prop mantenida para compatibilidad. */
@@ -252,7 +259,7 @@ const props = defineProps<{
   puedeConfirmarProduccion?: boolean
   /** Confirmación de producción en curso (deshabilita el botón mientras se envía) */
   confirmandoProduccion?: boolean
-  /** Deshabilita "Confirmar Producción" hasta que se seleccione la Fecha Facturación */
+  /** Deshabilita "Confirmar Producción" mientras la fecha de entrega sea INMEDIATO (sin fecha real seleccionada) */
   confirmarProduccionDeshabilitado?: boolean
 }>()
 
