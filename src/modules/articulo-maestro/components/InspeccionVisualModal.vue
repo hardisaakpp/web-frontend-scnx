@@ -229,14 +229,47 @@ function close() {
     emit('close')
 }
 
-async function copiarLink() {
-    if (!imagenActivaObj.value?.urlFinal) return
+// Copia resiliente: usa Clipboard API en contextos seguros (HTTPS/localhost)
+// y cae a document.execCommand('copy') en HTTP, donde navigator.clipboard
+// no está disponible o es rechazada por el navegador.
+async function copiarAlPortapapeles(texto: string): Promise<boolean> {
+    if (!texto) return false
+
+    if (navigator.clipboard && window.isSecureContext) {
+        try {
+            await navigator.clipboard.writeText(texto)
+            return true
+        } catch {
+            // Continúa al fallback si el permiso es rechazado
+        }
+    }
+
     try {
-        await navigator.clipboard.writeText(imagenActivaObj.value.urlFinal)
+        const textArea = document.createElement('textarea')
+        textArea.value = texto
+        textArea.style.position = 'fixed'
+        textArea.style.opacity = '0'
+        textArea.style.left = '-999999px'
+        textArea.style.top = '-999999px'
+        document.body.appendChild(textArea)
+        textArea.focus()
+        textArea.select()
+        const exitoso = document.execCommand('copy')
+        document.body.removeChild(textArea)
+        return exitoso
+    } catch (err) {
+        console.error('Error al copiar al portapapeles:', err)
+        return false
+    }
+}
+
+async function copiarLink() {
+    const url = imagenActivaObj.value?.urlFinal
+    if (!url) return
+    const exitoso = await copiarAlPortapapeles(url)
+    if (exitoso) {
         copiado.value = true
         setTimeout(() => copiado.value = false, 2000)
-    } catch (err) {
-        console.error('Failed to copy', err)
     }
 }
 

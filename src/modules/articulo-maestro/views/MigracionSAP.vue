@@ -381,31 +381,52 @@
                                     <p class="text-xs font-medium text-gray-800 dark:text-gray-400 uppercase tracking-wider">Total</p>
                                 </div>
                             </div>
-                            <!-- Details Table (Si existe el campo antiguo details) -->
-                            <div v-if="(syncResult as any).details" class="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-                                <table class="w-full text-left text-sm">
-                                    <thead class="bg-gray-50 dark:bg-gray-900/50 text-xs text-gray-500 font-semibold uppercase">
-                                        <tr>
-                                            <th class="px-4 py-3">ItemCode</th>
-                                            <th class="px-4 py-3">Estado</th>
-                                            <th class="px-4 py-3">Mensaje</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
-                                        <tr v-for="d in (syncResult as any).details" :key="d.item_code">
-                                            <td class="px-4 py-3 font-mono text-gray-900 dark:text-white">{{ d.item_code }}</td>
-                                            <td class="px-4 py-3">
-                                                <span 
+                            <!-- Detalle por artículo: tarjeta con badge + mensaje de negocio limpio;
+                                 la traza técnica cruda (pymssql/SQL Server) queda reservada al
+                                 acordeón "Ver detalles técnicos" en vez de mostrarse siempre. -->
+                            <div v-if="(syncResult as any).details" class="space-y-2">
+                                <div
+                                    v-for="(d, idx) in ((syncResult as any).details as SapSyncDetalle[])"
+                                    :key="`${d.item_code}-${idx}`"
+                                    class="rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden"
+                                >
+                                    <div class="flex items-start gap-3 px-4 py-3">
+                                        <div
+                                            class="mt-0.5 shrink-0 p-1.5 rounded-full"
+                                            :class="esDetalleError(d.status) ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400' : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'"
+                                        >
+                                            <svg v-if="esDetalleError(d.status)" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"/></svg>
+                                            <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <div class="flex items-center gap-2 flex-wrap">
+                                                <span class="font-mono text-sm font-semibold text-gray-900 dark:text-white">{{ d.item_code }}</span>
+                                                <span
                                                     class="px-2 py-0.5 rounded text-[10px] font-bold uppercase"
-                                                    :class="d.status === 'Error' ? 'bg-red-100 text-red-700 dark:bg-red-900/30' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30'"
+                                                    :class="esDetalleError(d.status) ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'"
                                                 >
                                                     {{ d.status }}
                                                 </span>
-                                            </td>
-                                            <td class="px-4 py-3 text-xs text-gray-500 dark:text-gray-400 whitespace-pre-wrap">{{ d.message }}</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                                            </div>
+                                            <p class="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                                                {{ resumirDetalleSap(d).resumen }}
+                                            </p>
+
+                                            <template v-if="resumirDetalleSap(d).detalleTecnico">
+                                                <button
+                                                    @click="toggleDetalleTecnico(idx)"
+                                                    class="mt-2 text-[11px] font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline decoration-dotted"
+                                                >
+                                                    {{ detallesTecnicosAbiertos.has(idx) ? 'Ocultar detalles técnicos' : 'Ver detalles técnicos' }}
+                                                </button>
+                                                <pre
+                                                    v-if="detallesTecnicosAbiertos.has(idx)"
+                                                    class="mt-2 text-[10px] leading-relaxed text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-words"
+                                                >{{ resumirDetalleSap(d).detalleTecnico }}</pre>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </template>
 
@@ -444,9 +465,9 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { articuloService, sapService } from '../services/articuloService'
+import { articuloService, sapService, resumirDetalleSap } from '../services/articuloService'
 import type { Articulo } from '../types'
-import type { SapTask, SapSyncResponse } from '../services/articuloService'
+import type { SapTask, SapSyncResponse, SapSyncDetalle } from '../services/articuloService'
 
 // Estados
 const pendingArticulos = ref<Articulo[]>([])
@@ -470,6 +491,9 @@ const pendingBulkAction = ref<'create' | 'update' | 'delete' | null>(null)
 const bulkActionMsg = ref('')
 const actionError = ref('')
 const pullError = ref('')
+// Índices (dentro de syncResult.details) cuyo acordeón de "detalles
+// técnicos" está expandido — se reinicia en cada nuevo resultado.
+const detallesTecnicosAbiertos = ref<Set<number>>(new Set())
 
 // Computed
 const selectedCount = computed(() => selectedCodes.value.length)
@@ -568,6 +592,20 @@ function toggleSelectAll() {
     }
 }
 
+function esDetalleError(status: string): boolean {
+    return status.toUpperCase() === 'ERROR'
+}
+
+function toggleDetalleTecnico(idx: number) {
+    const abiertos = new Set(detallesTecnicosAbiertos.value)
+    if (abiertos.has(idx)) {
+        abiertos.delete(idx)
+    } else {
+        abiertos.add(idx)
+    }
+    detallesTecnicosAbiertos.value = abiertos
+}
+
 function getStatusBadgeClass(status: string) {
     switch (status) {
         case 'BORRADOR': return 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-900/50 dark:text-gray-400 dark:border-gray-700'
@@ -595,6 +633,7 @@ async function handlePullFromSap() {
         const result = await sapService.pullFromSap(codes)
         syncResult.value = result
         modalTitle.value = 'Importación desde SAP'
+        detallesTecnicosAbiertos.value = new Set()
         showResultModal.value = true
         pullCodes.value = ''
         fetchPending()
@@ -635,6 +674,7 @@ async function confirmBulkAction() {
             modalTitle.value = 'Eliminación en SAP'
         }
         syncResult.value = result
+        detallesTecnicosAbiertos.value = new Set()
         showResultModal.value = true
         startPolling()
         fetchPending()

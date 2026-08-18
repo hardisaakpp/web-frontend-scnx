@@ -104,6 +104,23 @@ apiMaestro.interceptors.response.use((response) => {
     return response
 })
 
+// Al pedir un archivo con responseType: 'blob', si el backend responde con un
+// error HTTP (404/422/500), axios entrega error.response.data como Blob en
+// lugar de JSON — el `detail` de negocio queda oculto detrás del Blob y nunca
+// llega a mostrarse. Esta función lo relee como texto para recuperarlo.
+export async function parsearErrorBlob(error: any): Promise<string> {
+    if (error?.response?.data instanceof Blob) {
+        try {
+            const text = await error.response.data.text()
+            const json = JSON.parse(text)
+            return json.detail || json.message || 'Error al procesar el archivo.'
+        } catch {
+            return 'No se pudo interpretar la respuesta del servidor.'
+        }
+    }
+    return error?.response?.data?.detail || error?.message || 'Error de conexión.'
+}
+
 export type TipoCargaMasiva = 'crear' | 'actualizar'
 export type EstadoImportacion =
     | 'ESPERANDO'
@@ -590,6 +607,19 @@ export interface SapNovedad {
     motivo: string
 }
 
+export interface SapSyncDetalle {
+    item_code: string
+    // No es un enum estricto: el backend además de 'Error' devuelve el
+    // resultado de negocio ('Creado', 'Actualizado', 'Sincronizado',
+    // 'Eliminado', 'Omitido', etc. — ver sap_sync.py/sap.py).
+    status: string
+    message: string
+    // Presente solo en errores de persistencia (IntegrityError/SQLAlchemyError)
+    // de pull-from-sap: el rastro crudo de pymssql/SQL Server, reservado para
+    // el acordeón de "detalles técnicos" — ver resumirDetalleSap más abajo.
+    detalle_tecnico?: string
+}
+
 export interface SapSyncResponse {
     success: boolean
     message: string
@@ -600,11 +630,47 @@ export interface SapSyncResponse {
     success_count?: number
     error_count?: number
     error?: number
-    details?: Array<{
-        item_code: string
-        status: 'Success' | 'Error'
-        message: string
-    }>
+    details?: SapSyncDetalle[]
+}
+
+// ─── Presentación amigable de resultados SAP ────────────────────────────────
+// Marcadores de trazas técnicas de base de datos (pymssql/SQL Server/ODBC)
+// que jamás deben mostrarse crudos en la UI, aun si llegaran a colarse en
+// `message` (por ejemplo desde una respuesta antigua sin `detalle_tecnico`).
+const _MARCADORES_TRAZA_TECNICA = [
+    'pymssql',
+    'sql server',
+    'odbc',
+    'db-lib',
+    'integrityerror',
+    'sqlalchemyerror',
+    'cannot insert the value null',
+    "b'",
+    'b"',
+]
+
+export function esTrazaTecnicaDb(texto: string): boolean {
+    const t = texto.toLowerCase()
+    return _MARCADORES_TRAZA_TECNICA.some(marca => t.includes(marca))
+}
+
+// Deriva (resumen, detalleTecnico) de un SapSyncDetalle para la tarjeta de
+// resultado: si el backend ya distinguió el error con `detalle_tecnico`, o si
+// `message` en sí es una traza técnica de BD, el usuario ve el mensaje de
+// negocio limpio y el rastro crudo queda reservado al acordeón colapsable.
+// Los mensajes de validación de negocio (el `detail` normal del backend)
+// pasan tal cual, sin filtrar.
+export function resumirDetalleSap(detalle: SapSyncDetalle): { resumen: string; detalleTecnico: string | null } {
+    if (detalle.detalle_tecnico) {
+        return { resumen: detalle.message, detalleTecnico: detalle.detalle_tecnico }
+    }
+    if (esTrazaTecnicaDb(detalle.message)) {
+        return {
+            resumen: `No se pudieron guardar los datos del artículo ${detalle.item_code}: Conflicto de integridad en la sincronización con SAP.`,
+            detalleTecnico: detalle.message,
+        }
+    }
+    return { resumen: detalle.message, detalleTecnico: null }
 }
 
 export interface SapTask {

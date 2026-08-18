@@ -441,7 +441,7 @@ import {
     ViewColumnsIcon,
     CheckIcon
 } from '@heroicons/vue/20/solid'
-import { useArticuloStore } from '../stores/articuloStore'
+import { useArticuloStore, type ReporteDiarioError } from '../stores/articuloStore'
 import { useImportacionArticulosStore } from '../stores/importacionArticulosStore'
 import { articuloService, type ArticuloBulkDeleteResponse } from '../services/articuloService'
 import type { Articulo, EstadoSincronizacion } from '../types'
@@ -866,10 +866,16 @@ async function handleDescargarReporte() {
     try {
         await store.descargarReporteDiario()
     } catch (err: unknown) {
-        // El store ya desempaqueta el error de axios y relanza el mensaje
-        // (string) directamente, ver articuloStore.descargarReporteDiario.
-        const mensaje = typeof err === 'string' ? err : extraerMensajeError(err, 'Inténtalo de nuevo.')
-        toast.error('No se pudo descargar el reporte', mensaje)
+        // El store ya desempaqueta el Blob de error (ver parsearErrorBlob en
+        // articuloService) y relanza { status, message }. Un 404 significa
+        // "no hubo artículos ese día" — no es un fallo real, así que se
+        // muestra como aviso informativo en vez de error genérico en rojo.
+        const { status, message } = err as ReporteDiarioError
+        if (status === 404) {
+            toast.info('Sin artículos para reportar', message)
+        } else {
+            toast.error('No se pudo descargar el reporte', message || 'Inténtalo de nuevo.')
+        }
     } finally {
         downloadingReport.value = false
     }
