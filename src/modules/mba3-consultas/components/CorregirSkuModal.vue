@@ -45,7 +45,7 @@
                 </div>
                 <div>
                   <span class="text-gray-500 dark:text-gray-400">Fecha:</span>
-                  <p class="font-medium text-gray-900 dark:text-gray-100">{{ formatDate(odc?.fecha_generacion) }}</p>
+                  <p class="font-medium text-gray-900 dark:text-gray-100">{{ formatDateTime(odc?.fecha_generacion) }}</p>
                 </div>
                 <div>
                   <span class="text-gray-500 dark:text-gray-400">Error:</span>
@@ -320,7 +320,7 @@
 import { ref, computed, watch } from '@vue/reactivity'
 import { onMounted } from '@vue/runtime-core'
 import { useToast } from '@/composables/useToast'
-import { APP_LOCALE } from '@/plugins/locale'
+import { formatDateTime } from '../utils/formatters'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import type { OrdenCompra, SugerenciaSkuSap, DetalleOC } from '../types'
 
@@ -537,20 +537,5 @@ function getScoreBarClass(porcentaje: number): string {
   return 'bg-red-600'
 }
 
-function formatDate(dateString?: string): string {
-  if (!dateString) return '-'
-  try {
-    const date = new Date(dateString)
-    return date.toLocaleDateString(APP_LOCALE, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  } catch {
-    return dateString
-  }
-}
 </script>
 

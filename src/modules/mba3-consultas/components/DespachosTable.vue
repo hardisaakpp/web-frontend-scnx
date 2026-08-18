@@ -137,19 +137,11 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1 transition-colors duration-300">Fecha desde</label>
-            <input
-              v-model="filtroFechaDesde"
-              type="date"
-              class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-300"
-            />
+            <AppDateInput v-model="filtroFechaDesde" />
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1 transition-colors duration-300">Fecha hasta</label>
-            <input
-              v-model="filtroFechaHasta"
-              type="date"
-              class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white transition-colors duration-300"
-            />
+            <AppDateInput v-model="filtroFechaHasta" />
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1 transition-colors duration-300">Estado</label>
@@ -520,9 +512,11 @@ import { useRouter } from 'vue-router'
 import type { Despacho, DespachoDetalle } from '../types'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import { useToast } from '@/composables/useToast'
-import { APP_LOCALE, NUMBER_LOCALE } from '@/plugins/locale'
+import { NUMBER_LOCALE } from '@/plugins/locale'
+import { formatDate } from '../utils/formatters'
 import { useTablePreferences } from '@/composables/useTablePreferences'
 import LoadingSpinner from './LoadingSpinner.vue'
+import AppDateInput from './AppDateInput.vue'
 
 const props = defineProps<{
   despachos: Despacho[]
@@ -902,20 +896,6 @@ function limpiarFiltros() {
   filtroFechaHasta.value = ''
   filtroEstado.value = ''
   showAdvancedFilters.value = false
-}
-
-function formatDate(dateString: string): string {
-  if (!dateString) return '-'
-  try {
-    const date = new Date(dateString)
-    return date.toLocaleDateString(APP_LOCALE, { 
-      year: 'numeric', 
-      month: '2-digit', 
-      day: '2-digit' 
-    })
-  } catch {
-    return dateString
-  }
 }
 
 function getEstadoClass(despacho: Despacho): string {

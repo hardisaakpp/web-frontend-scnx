@@ -128,7 +128,7 @@
 import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 
 const props = defineProps<{
-  modelValue: string | null
+  modelValue: string | null | undefined
   disabled?: boolean
 }>()
 

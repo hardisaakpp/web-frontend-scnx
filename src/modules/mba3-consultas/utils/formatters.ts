@@ -7,7 +7,7 @@ import { APP_LOCALE, NUMBER_LOCALE } from '@/plugins/locale'
 /**
  * Formatea una fecha o maneja valores especiales como "INMEDIATO"
  */
-export function formatDate(dateString: string | null): string {
+export function formatDate(dateString: string | null | undefined): string {
   if (!dateString) return 'N/A'
   
   // Manejar valores especiales que no son fechas (ej: "INMEDIATO", "INMEDIATA", etc.)
@@ -49,7 +49,7 @@ export function formatDate(dateString: string | null): string {
  * Formatea una fecha+hora (DATETIME) para mostrar fecha y hora.
  * Ideal para campos como creado_en que son timestamps del sistema.
  */
-export function formatDateTime(dateString: string | null): string {
+export function formatDateTime(dateString: string | null | undefined): string {
   if (!dateString) return 'N/A'
 
   try {

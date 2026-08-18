@@ -168,13 +168,7 @@
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
                 Fecha de Pedido
               </label>
-              <input
-                v-model="formData.cabecera.fecha_pedido"
-                type="date"
-                name="fecha_pedido"
-                autocomplete="on"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              />
+              <AppDateInput v-model="formData.cabecera.fecha_pedido" />
             </div>
 
             <div>
@@ -194,13 +188,9 @@
                     INMEDIATO
                   </label>
                 </div>
-                <input
+                <AppDateInput
                   v-if="formData.cabecera.fecha_entrega !== 'INMEDIATO'"
                   v-model="formData.cabecera.fecha_entrega"
-                  type="date"
-                  name="fecha_entrega"
-                  autocomplete="on"
-                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                 />
                 <div
                   v-else
@@ -518,6 +508,7 @@ import { useFileUpload } from '../composables/useFileUpload'
 import type { CorreccionesPlantilla } from '../composables/useFileUpload'
 import UploadErrorModal from '../components/UploadErrorModal.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
+import AppDateInput from '../components/AppDateInput.vue'
 
 const router = useRouter()
 const toast = useToast()

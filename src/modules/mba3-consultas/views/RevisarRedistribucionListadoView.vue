@@ -69,21 +69,11 @@
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fecha Desde</label>
-              <input
-                type="date"
-                v-model="filtros.fecha_desde"
-                @keyup.enter="aplicarFiltros"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 text-sm"
-              />
+              <AppDateInput v-model="filtros.fecha_desde" @keyup.enter="aplicarFiltros" />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fecha Hasta</label>
-              <input
-                type="date"
-                v-model="filtros.fecha_hasta"
-                @keyup.enter="aplicarFiltros"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 text-sm"
-              />
+              <AppDateInput v-model="filtros.fecha_hasta" @keyup.enter="aplicarFiltros" />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Proveedor</label>
@@ -338,6 +328,7 @@ import { formatDate, formatDateTime } from '../utils/formatters'
 import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
 import QuickTablePagination from '@/components/QuickTablePagination.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
+import AppDateInput from '../components/AppDateInput.vue'
 import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
 
 const router = useRouter()

@@ -407,7 +407,7 @@ import { useToast } from '@/composables/useToast'
 import { useTablePreferences } from '@/composables/useTablePreferences'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import { isTransientClientError } from '../utils/httpErrors'
-import { formatNumber, formatCurrencyWithDecimals } from '../utils/formatters'
+import { formatNumber, formatCurrencyWithDecimals, formatDate, formatDateTime } from '../utils/formatters'
 import LoadingSpinner from './LoadingSpinner.vue'
 
 const props = defineProps<{
@@ -1080,43 +1080,6 @@ function handleEliminarSeleccionadas() {
   }
   
   emit('eliminar', ordenesAEliminar)
-}
-
-function formatDate(dateString: string): string {
-  if (!dateString) return '-'
-  try {
-    const date = new Date(dateString)
-    
-    // Verificar si la fecha es válida
-    if (isNaN(date.getTime())) {
-      return dateString
-    }
-    
-    // Obtener componentes de fecha en la zona horaria local (sin hora)
-    const day = String(date.getDate()).padStart(2, '0')
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const year = date.getFullYear()
-    
-    return `${day}/${month}/${year}`
-  } catch {
-    return dateString
-  }
-}
-
-function formatDateTime(dateString: string): string {
-  if (!dateString) return '-'
-  try {
-    const date = new Date(dateString)
-    if (isNaN(date.getTime())) return dateString
-    const day = String(date.getDate()).padStart(2, '0')
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const year = date.getFullYear()
-    const hours = String(date.getHours()).padStart(2, '0')
-    const minutes = String(date.getMinutes()).padStart(2, '0')
-    return `${day}/${month}/${year} ${hours}:${minutes}`
-  } catch {
-    return dateString
-  }
 }
 
 function getTimeAgo(dateString: string): string {
