@@ -151,16 +151,6 @@
             <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Cargando plantilla Excel" />
             {{ uploading ? 'Cargando...' : 'Cargar Plantillas Excel' }}
           </button>
-          <!-- Toggle Auto-Refresh -->
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              v-model="autoRefreshEnabled"
-              @change="toggleAutoRefresh"
-              class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 dark:focus:ring-indigo-400 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-            />
-            <span class="text-sm text-gray-700 dark:text-gray-300">Auto-actualizar</span>
-          </label>
           <button
             @click="cargarPedidos"
             class="px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
@@ -237,21 +227,11 @@
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fecha Desde</label>
-              <input
-                type="date"
-                v-model="filtros.fecha_desde"
-                @keyup.enter="aplicarFiltros"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 text-sm"
-              />
+              <AppDateInput v-model="filtros.fecha_desde" @keyup.enter="aplicarFiltros" />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fecha Hasta</label>
-              <input
-                type="date"
-                v-model="filtros.fecha_hasta"
-                @keyup.enter="aplicarFiltros"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 text-sm"
-              />
+              <AppDateInput v-model="filtros.fecha_hasta" @keyup.enter="aplicarFiltros" />
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Proveedor</label>
@@ -538,6 +518,7 @@ import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import { useFileUpload } from '../composables/useFileUpload'
 import type { CorreccionesPlantilla } from '../composables/useFileUpload'
 import UploadErrorModal from '../components/UploadErrorModal.vue'
+import AppDateInput from '../components/AppDateInput.vue'
 import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
 import QuickTablePagination from '@/components/QuickTablePagination.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
@@ -678,10 +659,6 @@ const filtros = ref<PedidosListadoFiltros>({
   limit: PAGE_SIZE,
   offset: 0
 })
-
-const autoRefreshEnabled = ref(false)
-const POLLING_INTERVAL = 60000
-let pollingIntervalId: ReturnType<typeof setInterval> | null = null
 
 function getEstadoLabel(estado: string): string {
   const labels: Record<string, string> = {
@@ -914,25 +891,6 @@ function abrirPedido(pedido: PedidoResumido) {
   router.push(`/mba3-consultas/cargar-plantilla/${encodeURIComponent(pedido.numero_pedido)}`)
 }
 
-function startPolling() {
-  stopPolling()
-  pollingIntervalId = setInterval(() => {
-    if (!loading.value) cargarPedidos()
-  }, POLLING_INTERVAL)
-}
-
-function stopPolling() {
-  if (pollingIntervalId) {
-    clearInterval(pollingIntervalId)
-    pollingIntervalId = null
-  }
-}
-
-function toggleAutoRefresh() {
-  if (autoRefreshEnabled.value) startPolling()
-  else stopPolling()
-}
-
 // Recargar listado automáticamente cuando llega una notificación de pedido cancelado por El Rayo
 watch(lastNotification, (notif) => {
   if (!notif) return
@@ -948,7 +906,6 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  stopPolling()
   // Limpiar timeout de búsqueda por número de pedido
   if (debounceTimeout) {
     clearTimeout(debounceTimeout)

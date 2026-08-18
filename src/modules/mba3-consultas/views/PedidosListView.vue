@@ -39,16 +39,6 @@
           </div>
         </div>
         <div class="flex w-full flex-wrap items-center justify-end gap-3">
-          <!-- Toggle Auto-Refresh -->
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              v-model="autoRefreshEnabled"
-              @change="toggleAutoRefresh"
-              class="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 dark:focus:ring-indigo-400 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-            />
-            <span class="text-sm text-gray-700 dark:text-gray-300">Auto-actualizar</span>
-          </label>
           <button
             @click="cargarPedidos"
             class="px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
@@ -133,12 +123,7 @@
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Fecha Desde
             </label>
-            <input
-              type="date"
-              v-model="filtros.fecha_desde"
-              @keyup.enter="aplicarFiltros"
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 text-sm"
-            />
+            <AppDateInput v-model="filtros.fecha_desde" @keyup.enter="aplicarFiltros" />
           </div>
 
           <!-- Filtro de Fecha Hasta -->
@@ -146,12 +131,7 @@
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Fecha Hasta
             </label>
-            <input
-              type="date"
-              v-model="filtros.fecha_hasta"
-              @keyup.enter="aplicarFiltros"
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 text-sm"
-            />
+            <AppDateInput v-model="filtros.fecha_hasta" @keyup.enter="aplicarFiltros" />
           </div>
 
           <!-- Filtro de Proveedor -->
@@ -470,7 +450,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from '@vue/reactivity'
-import { onMounted, onUnmounted } from '@vue/runtime-core'
+import { onMounted } from '@vue/runtime-core'
 import { useRouter, useRoute } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { lastNotification } from '@/composables/useNotificaciones'
@@ -480,6 +460,7 @@ import { formatDate, formatDateTime } from '../utils/formatters'
 import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
 import QuickTablePagination from '@/components/QuickTablePagination.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
+import AppDateInput from '../components/AppDateInput.vue'
 import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
 
 const router = useRouter()
@@ -551,11 +532,6 @@ const filtros = ref<PedidosListadoFiltros>({
   limit: PAGE_SIZE,
   offset: 0
 })
-
-// Polling automático
-const autoRefreshEnabled = ref(false)
-const POLLING_INTERVAL = 60000 // 60 segundos
-let pollingIntervalId: ReturnType<typeof setInterval> | null = null
 
 // Función para obtener la etiqueta del estado (alineada con formatEstadoPedido de formatters)
 function getEstadoLabel(estado: string): string {
@@ -848,31 +824,6 @@ async function verDetalle(pedidoId: string) {
   }
 }
 
-// Polling automático
-function startPolling() {
-  stopPolling()
-  pollingIntervalId = setInterval(() => {
-    if (!loading.value) {
-      cargarPedidos()
-    }
-  }, POLLING_INTERVAL)
-}
-
-function stopPolling() {
-  if (pollingIntervalId) {
-    clearInterval(pollingIntervalId)
-    pollingIntervalId = null
-  }
-}
-
-function toggleAutoRefresh() {
-  if (autoRefreshEnabled.value) {
-    startPolling()
-  } else {
-    stopPolling()
-  }
-}
-
 // Cargar datos al montar
 onMounted(() => {
   cargarEstados()
@@ -909,10 +860,5 @@ watch(lastNotification, (notification) => {
     console.log('🔄 [PedidosListView] Notificación SSE recibida, recargando lista...', accion)
   }
   cargarPedidos()
-})
-
-// Limpiar polling al desmontar
-onUnmounted(() => {
-  stopPolling()
 })
 </script>
