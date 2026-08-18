@@ -237,7 +237,7 @@ const props = defineProps<{
   puedeDescargarPedido?: boolean
   /** @deprecated Botón "Descargar Excel" retirado. Prop mantenida para compatibilidad. */
   puedeDescargarCsv?: boolean
-  /** Habilita "Generar TXT MBA3" solo cuando la OC está en estado Confirmado por El Rayo (flag puede_generar_txt_mba3 del backend) */
+  /** Habilita "Generar TXT MBA3" solo cuando la OC está en estado Confirmado y Enviado (flag puede_generar_txt_mba3 del backend, con respaldo local si no viene) */
   puedeGenerarTxtMba3?: boolean
   /** Indica si existe el archivo Excel original en storage (MinIO/S3) para mostrar botón de descarga */
   tieneArchivoOriginal?: boolean

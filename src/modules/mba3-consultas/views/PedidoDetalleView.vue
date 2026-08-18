@@ -393,6 +393,30 @@
             {{ cancelandoPorElRayo ? 'Cancelando...' : 'Cancelar Pedido' }}
           </button>
         </div>
+
+        <!-- Botón Cancelar Pedido Pospuesto (req. 1.2) - Estado PRODUCCION POSPUESTA, solo mabel.view -->
+        <div
+          v-if="puedeCancelarPedidoPospuesto"
+          class="mt-6 pb-6 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 pt-6"
+        >
+          <div class="text-sm text-gray-600 dark:text-gray-400 max-w-2xl">
+            <p class="font-medium">⚠️ Cancelar pedido con la diferencia</p>
+            <p class="text-xs mt-1">Este pedido fue generado con la diferencia no producida y está pospuesto a la espera de que El Rayo lo retome. Cancélelo únicamente si prefieren gestionar esa diferencia por su cuenta.</p>
+          </div>
+          <button
+            type="button"
+            @click="handleCancelarPedidoPospuesto"
+            :disabled="cancelandoPedidoPospuesto"
+            class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-red-600 dark:bg-red-500 rounded-lg shadow-sm hover:bg-red-700 dark:hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+            title="Cancelar este pedido"
+          >
+            <svg v-if="!cancelandoPedidoPospuesto" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+            </svg>
+            <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Cancelando pedido" />
+            {{ cancelandoPedidoPospuesto ? 'Cancelando...' : 'Cancelar Pedido' }}
+          </button>
+        </div>
       </div>
     </div>
 
@@ -422,6 +446,17 @@
       @close="handleCerrarModalConfirmacionProduccion"
     />
 
+    <!-- Modal de diferencia de producción (req. 1.2): al hacer clic en "Confirmar" con
+         algún producto por debajo de la cantidad solicitada original -->
+    <DiferenciaProduccionModal
+      :is-open="showDiferenciaModal"
+      :detalles="detallesDiferencia"
+      :procesando="procesandoDiferencia"
+      @cancelar="handleCancelarDiferencia"
+      @diferencia-no-entregada="handleDiferenciaNoEntregada"
+      @confirmar-con-diferencia="handleConfirmarConDiferencia"
+    />
+
   </div>
 </template>
 
@@ -434,7 +469,7 @@ import { useToast } from '@/composables/useToast'
 import { lastNotification } from '@/composables/useNotificaciones'
 import { useTablePreferences } from '@/composables/useTablePreferences'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
-import type { PedidoCompleto, ReporteDiferenciasResponse, UploadPlantillaResponse, InfoArchivoPlantillaResponse } from '../types'
+import type { PedidoCompleto, ReporteDiferenciasResponse, UploadPlantillaResponse, InfoArchivoPlantillaResponse, DetalleDiferenciaProduccion } from '../types'
 // Utilidades extraídas
 import {
   formatDate,
@@ -476,6 +511,7 @@ import PedidoCabecera from '../components/PedidoCabecera.vue'
 import RedistribucionTiendas from '../components/RedistribucionTiendas.vue'
 import UploadErrorModal from '../components/UploadErrorModal.vue'
 import SimpleConfirmModal from '../components/SimpleConfirmModal.vue'
+import DiferenciaProduccionModal from '../components/DiferenciaProduccionModal.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 
 // Constantes de configuración
@@ -501,6 +537,13 @@ const showConfirmacionModal = ref(false)
 // modal de "Confirmar", al cerrar este redirige al listado de pedidos de Producción.
 const showConfirmacionProduccionModal = ref(false)
 
+// Modal de diferencia de producción (req. 1.2): se muestra al hacer clic en
+// "Confirmar" cuando algún producto tiene Total por debajo de lo solicitado
+// originalmente en la plantilla Excel.
+const showDiferenciaModal = ref(false)
+const detallesDiferencia = ref<DetalleDiferenciaProduccion[]>([])
+const procesandoDiferencia = ref(false)
+
 // ⭐ Set para rastrear columnas modificadas (formato: "detalleId:columnKey")
 const columnasModificadas = ref<Set<string>>(new Set())
 // Rol responsable de la última modificación de cada columna ('PRODUCCION_ELRAYO' | 'ODCSAP' | null),
@@ -512,6 +555,7 @@ const showColumnSelector = ref(false)
 const confirmando = ref(false)
 const confirmandoProduccion = ref(false)
 const cancelandoPorElRayo = ref(false)
+const cancelandoPedidoPospuesto = ref(false)
 const descargandoPedido = ref(false)
 const descargandoCsv = ref(false)
 const descargandoExcelOriginal = ref(false)
@@ -888,6 +932,18 @@ const puedeCancelarPorElRayo = computed(() => {
   return estadoId === 23
 })
 
+// Req. 1.2: Mabel Trading puede cancelar un pedido "hijo" en Producción Pospuesta (22)
+// si prefiere gestionar la diferencia por su cuenta en vez de esperar a que El Rayo lo
+// retome. Usa el mismo endpoint/flag que el resto del ciclo temprano del pedido
+// (puede_cancelar_pedido, ver enrich_pedido_with_ui_flags).
+const puedeCancelarPedidoPospuesto = computed(() => {
+  if (!authStore.canViewMabel) return false
+  const cabecera = pedido.value?.cabecera
+  if (!cabecera) return false
+  const estadoId = cabecera.estado_id != null ? Number(cabecera.estado_id) : null
+  return estadoId === 22 && pedido.value?.puede_cancelar_pedido === true
+})
+
 // Permitir descargar CSV solo en estado CONFIRMADO (estado_id = 4)
 const puedeDescargarCsv = computed(() => {
   const cabecera = pedido.value?.cabecera
@@ -898,7 +954,13 @@ const puedeDescargarCsv = computed(() => {
 
 // Permitir generar TXT MBA3 solo en estado CONFIRMADO Y ENVIADO (estado_id = 12),
 // ya que la columna Orden Compra Cliente del TXT depende del DocNum de la OC en SAP.
+// Usa el flag del backend (única fuente de verdad, ver enrich_pedido_with_ui_flags);
+// si no viene en la respuesta (pedido de un endpoint que aún no lo agrega), calcula
+// localmente como respaldo.
 const puedeGenerarTxtMba3 = computed(() => {
+  if (pedido.value?.puede_generar_txt_mba3 !== undefined) {
+    return pedido.value.puede_generar_txt_mba3
+  }
   const cabecera = pedido.value?.cabecera
   if (!cabecera) return false
   const estadoId = cabecera.estado_id != null ? Number(cabecera.estado_id) : null
@@ -1161,16 +1223,39 @@ async function handleConfirmar() {
   // Prevenir múltiples clics
   if (confirmando.value || !pedido.value || !numeroPedido.value) return
 
+  // Req. 1.2: si algún producto quedó con Total por debajo de lo solicitado
+  // originalmente en la plantilla Excel, mostrar el modal de diferencia de
+  // producción en vez de confirmar directo. Si la consulta falla, no bloquear
+  // el flujo normal (misma tolerancia que otras notificaciones best-effort).
+  try {
+    const diferencia = await mba3ConsultasService.obtenerDiferenciaProduccion(numeroPedido.value)
+    if (diferencia.tiene_diferencia) {
+      detallesDiferencia.value = diferencia.detalles
+      showDiferenciaModal.value = true
+      return
+    }
+  } catch (e) {
+    console.error('Error al consultar diferencia de producción:', e)
+  }
+
+  await ejecutarConfirmacion()
+}
+
+async function ejecutarConfirmacion(diferenciaReconocida = false) {
+  if (!pedido.value || !numeroPedido.value) return
   const pedidoId = pedido.value.cabecera?.pedido_id
 
   // Un solo flujo: POST crear-respuesta-desde-pedido (crea respuesta, guarda modificaciones,
   // registra confirmación de EL RAYO y envía email). Válido tanto desde GESTIONAR PEDIDO
   // como desde otros estados; el backend aplica la transición y el correo según corresponda.
+  // Req. 1.2 (endurecimiento): el backend ahora repite la verificación de diferencia por su
+  // cuenta y rechaza (400) si hay diferencia sin reconocer -- diferenciaReconocida=true es lo
+  // que le dice "el usuario ya vio el modal y decidió confirmar sin generar pedido hijo".
   confirmando.value = true
   toast.info('Guardando cambios...', 'Guardando los cambios realizados en la tabla')
 
   try {
-    await mba3ConsultasService.crearRespuestaProveedorDesdePedido(numeroPedido.value, pedidoId)
+    await mba3ConsultasService.crearRespuestaProveedorDesdePedido(numeroPedido.value, pedidoId, diferenciaReconocida)
 
     // Actualizar pedido en memoria para deshabilitar el botón y la edición de costo/total/comentario (docs/FRONTEND.md §2, §0.5.8.2)
     if (pedido.value?.cabecera) {
@@ -1197,6 +1282,42 @@ async function handleConfirmar() {
       toast.error('Error al guardar', e.message || 'No se pudieron guardar los cambios')
       confirmando.value = false
     }
+  }
+}
+
+function handleCancelarDiferencia() {
+  showDiferenciaModal.value = false
+}
+
+async function handleDiferenciaNoEntregada() {
+  // Opción 1 del modal: continúa el flujo de confirmación existente, reconociendo la
+  // diferencia explícitamente (el usuario ya la vio en el modal y decidió no generar
+  // pedido hijo) para que el backend no la rechace.
+  showDiferenciaModal.value = false
+  await ejecutarConfirmacion(true)
+}
+
+async function handleConfirmarConDiferencia(nuevaFechaEntrega: string) {
+  if (!numeroPedido.value || procesandoDiferencia.value) return
+  procesandoDiferencia.value = true
+
+  try {
+    await mba3ConsultasService.confirmarConDiferencia(numeroPedido.value, nuevaFechaEntrega)
+
+    showDiferenciaModal.value = false
+    if (pedido.value?.cabecera) {
+      pedido.value.cabecera.estado = 'CONFIRMADO'
+      pedido.value.cabecera.estado_id = 4
+    }
+    cancelarEdicion()
+    await loadPedido()
+    toast.success('Pedido confirmado', 'Se confirmó el pedido y se generó el pedido con la diferencia (Producción Pospuesta).')
+    showConfirmacionModal.value = true
+  } catch (e: any) {
+    console.error('Error al confirmar con diferencia:', e)
+    toast.error('Error al confirmar', e.message || 'No se pudo confirmar el pedido con la diferencia')
+  } finally {
+    procesandoDiferencia.value = false
   }
 }
 
@@ -1502,6 +1623,44 @@ async function handleCancelarPorElRayo() {
     }
   } finally {
     cancelandoPorElRayo.value = false
+  }
+}
+
+// Req. 1.2: cancelar un pedido "hijo" en Producción Pospuesta (Mabel Trading prefiere
+// gestionar la diferencia por su cuenta en vez de esperar a que El Rayo lo retome).
+async function handleCancelarPedidoPospuesto() {
+  if (!pedido.value?.cabecera?.pedido_id) {
+    toast.error('Error', 'No hay pedido para cancelar')
+    return
+  }
+  if (cancelandoPedidoPospuesto.value) return
+
+  const pedidoId = pedido.value.cabecera.pedido_id
+  const numeroPedidoDisplay = pedido.value.cabecera.numero_pedido
+
+  const confirmado = window.confirm(
+    `¿Estás seguro de que deseas cancelar este pedido?\n\n` +
+    `Pedido: ${numeroPedidoDisplay}\n` +
+    `El pedido cambiará a estado "Cancelado".`
+  )
+  if (!confirmado) return
+
+  cancelandoPedidoPospuesto.value = true
+  toast.info('Cancelando pedido...', 'Por favor espera')
+
+  try {
+    await mba3ConsultasService.cancelarPedido(pedidoId)
+    toast.success('Pedido cancelado', 'El pedido ha sido cancelado exitosamente')
+    if (pedido.value?.cabecera) {
+      pedido.value.cabecera.estado = 'CANCELADO'
+      pedido.value.cabecera.estado_id = 19
+    }
+  } catch (e: any) {
+    console.error('Error al cancelar pedido pospuesto:', e)
+    const message = e.response?.data?.detail?.message || e.response?.data?.message || e.message
+    toast.error('Error al cancelar', message || 'No se pudo cancelar el pedido')
+  } finally {
+    cancelandoPedidoPospuesto.value = false
   }
 }
 

@@ -51,7 +51,9 @@ import type {
   ProcesoCompletoSAPAsyncResponse,
   ProcesoCompletoSAPResultadoPolling,
   EstadosPedidoResponse,
-  SapInfoProductosResponse
+  SapInfoProductosResponse,
+  DiferenciaProduccionResponse,
+  ConfirmarConDiferenciaResponse
 } from '../../types'
 
 export const pedidosService = {
@@ -712,6 +714,48 @@ export const pedidosService = {
   },
 
   /**
+   * Req. 1.2 (pedidos parciales): consulta si algún producto del pedido tiene un Total
+   * actual por debajo de la cantidad solicitada originalmente en la plantilla Excel.
+   * Se llama justo al hacer clic en "Confirmar", antes de decidir si mostrar el modal
+   * de diferencia de producción.
+   *
+   * @param numeroPedido Número o UUID de pedido
+   */
+  async obtenerDiferenciaProduccion(numeroPedido: string): Promise<DiferenciaProduccionResponse> {
+    try {
+      const response = await mba3Api.get<DiferenciaProduccionResponse>(
+        `/api/pedidos/${encodeURIComponent(numeroPedido)}/diferencia-produccion`
+      )
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [obtenerDiferenciaProduccion] Error:', error)
+      throw createEnrichedError(error, 'Error desconocido al consultar diferencia de producción')
+    }
+  },
+
+  /**
+   * Req. 1.2 (pedidos parciales): opción "Confirmar pedido, generar nuevo pedido con la
+   * diferencia" del modal de diferencia de producción. Confirma el pedido (mismo flujo
+   * que crearRespuestaProveedorDesdePedido) y crea un pedido hijo con la diferencia, en
+   * estado PRODUCCION POSPUESTA.
+   *
+   * @param numeroPedido Número o UUID de pedido
+   * @param nuevaFechaEntrega Fecha de entrega para el pedido hijo generado
+   */
+  async confirmarConDiferencia(numeroPedido: string, nuevaFechaEntrega: string): Promise<ConfirmarConDiferenciaResponse> {
+    try {
+      const response = await mba3Api.post<ConfirmarConDiferenciaResponse>(
+        `/api/pedidos/${encodeURIComponent(numeroPedido)}/confirmar-con-diferencia`,
+        { nueva_fecha_entrega: nuevaFechaEntrega }
+      )
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [confirmarConDiferencia] Error:', error)
+      throw createEnrichedError(error, 'Error desconocido al confirmar pedido con diferencia')
+    }
+  },
+
+  /**
    * Descarga un pedido en formato Excel con estructura de "Descargar Pedido"
    * GET /api/pedidos/{pedido_id}/descargar-pedido
    * Válido desde estado GESTIONAR PEDIDO (3) en adelante.
@@ -824,6 +868,26 @@ export const pedidosService = {
     } catch (error: any) {
       console.error('❌ [exportarTrasladosExcel] Error:', error)
       throw createEnrichedError(error, 'Error al exportar traslados a Excel')
+    }
+  },
+
+  /**
+   * Exporta el Análisis de Margen de Rentabilidad por producto (req. 1.4/1.5)
+   * GET /api/pedidos/{numeroPedido}/margen/exportar-excel
+   *
+   * @param numeroPedido Número o UUID del pedido
+   * @returns Blob del archivo Excel
+   */
+  async exportarAnalisisMargen(numeroPedido: string): Promise<Blob> {
+    try {
+      const response = await mba3Api.get<Blob>(
+        `/api/pedidos/${encodeURIComponent(numeroPedido)}/margen/exportar-excel`,
+        { responseType: 'blob' }
+      )
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [exportarAnalisisMargen] Error:', error)
+      throw createEnrichedError(error, 'Error al exportar el análisis de margen')
     }
   },
 

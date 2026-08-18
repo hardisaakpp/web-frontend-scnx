@@ -18,7 +18,7 @@ import type {
 } from '../types'
 import type { OrdenCompraResponse, OrdenCompraLogResponse, RemisionResponse } from '../types'
 import type { HealthResponse, ProcesoResponse } from '../types'
-import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, SkuHomologacionCreateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstado, ProcesoEstadoResponse, SugerenciaProducto, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuRequest, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, UploadPlantillaAsyncAcceptedResponse, PlantillaProcesoEstado, PedidoCompleto, CargarRespuestaProveedorResponse, RespuestaProveedorResponse, ProcesarConfirmacionResponse, ReporteDiferenciasResponse, IntegracionSAPResponse, ActualizarCostoPedidoResponse, AjusteDetalle, ResumenConfirmacion, GuardarModificacionesColumnasRequest, GuardarModificacionesColumnasResponse, ObtenerModificacionesColumnasResponse, ProcesamientoSAPResponse, PedidosListadoResponse, CrearOCDesdePedidoResponse, CrearPedidoRequest, CrearPedidoResponse, ModificarPedidoCabeceraRequest, ModificarPedidoCabeceraResponse, TienePedidosResponse, InfoArchivoPlantillaResponse, BuscarPlantillasResponse, PlantillasPedidosResponse, ProcesoCompletoSAPResponse, ProcesoCompletoSAPAsyncResponse, ProcesoCompletoSAPResultadoPolling, IntegracionSAPPorOCResponse, EstadosPedidoResponse } from '../types'
+import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, SkuHomologacionCreateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstado, ProcesoEstadoResponse, SugerenciaProducto, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuRequest, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, UploadPlantillaAsyncAcceptedResponse, PlantillaProcesoEstado, PedidoCompleto, CargarRespuestaProveedorResponse, RespuestaProveedorResponse, ProcesarConfirmacionResponse, ReporteDiferenciasResponse, IntegracionSAPResponse, ActualizarCostoPedidoResponse, AjusteDetalle, ResumenConfirmacion, GuardarModificacionesColumnasRequest, GuardarModificacionesColumnasResponse, ObtenerModificacionesColumnasResponse, ProcesamientoSAPResponse, PedidosListadoResponse, CrearOCDesdePedidoResponse, CrearPedidoRequest, CrearPedidoResponse, ModificarPedidoCabeceraRequest, ModificarPedidoCabeceraResponse, TienePedidosResponse, InfoArchivoPlantillaResponse, BuscarPlantillasResponse, PlantillasPedidosResponse, ProcesoCompletoSAPResponse, ProcesoCompletoSAPAsyncResponse, ProcesoCompletoSAPResultadoPolling, IntegracionSAPPorOCResponse, EstadosPedidoResponse, DiferenciaProduccionResponse, ConfirmarConDiferenciaResponse } from '../types'
 
 // ⭐ REEXPORTAR CONFIGURACIÓN Y UTILIDADES REFACTORIZADAS
 export { mba3Api, API_BASE_URL } from './config/axiosConfig'
@@ -1029,15 +1029,18 @@ export const mba3ConsultasService = {
    * Requiere permiso: mba3-consultas.proceso.execute
    * @param numeroPedido Número de pedido (ej: "P-12.48 - 12 - 2025")
    * @param pedidoId Opcional: ID del pedido (si se proporciona, se usa en lugar de numeroPedido)
+   * @param diferenciaReconocida Req. 1.2 (endurecimiento): true si el usuario ya vio el modal
+   *   de diferencia de producción y decidió confirmar sin generar pedido hijo. El backend
+   *   rechaza (400) la confirmación si detecta diferencia y este flag no viene en true.
    */
-  async crearRespuestaProveedorDesdePedido(numeroPedido: string, pedidoId?: string): Promise<CargarRespuestaProveedorResponse> {
+  async crearRespuestaProveedorDesdePedido(numeroPedido: string, pedidoId?: string, diferenciaReconocida?: boolean): Promise<CargarRespuestaProveedorResponse> {
     try {
       // Usar pedido_id si está disponible, sino usar numero_pedido
       const identifier = pedidoId || encodeURIComponent(numeroPedido)
       // El backend usa /crear-respuesta-desde-pedido según la implementación
       const response = await mba3Api.post<CargarRespuestaProveedorResponse>(
         `/api/pedidos/${identifier}/crear-respuesta-desde-pedido`,
-        {}
+        diferenciaReconocida ? { diferencia_reconocida: true } : {}
       )
       return response.data
     } catch (error: any) {
@@ -1056,14 +1059,22 @@ export const mba3ConsultasService = {
       let message = error.message || 'Error desconocido al crear respuesta del proveedor'
 
       if (error.response?.data) {
-        if (error.response.data.detail) {
-          message = error.response.data.detail
+        const detail = error.response.data.detail
+        if (detail && typeof detail === 'object') {
+          // Req. 1.2 (endurecimiento): 'diferencia_produccion_no_reconocida' llega como
+          // objeto estructurado ({error, message, detalles}), no como string.
+          message = detail.message || message
+        } else if (detail) {
+          message = detail
         } else if (error.response.data.message) {
           message = error.response.data.message
         }
       }
 
-      throw new Error(message)
+      const enrichedError = new Error(message)
+        ; (enrichedError as any).response = error.response
+        ; (enrichedError as any).errorCode = error.response?.data?.detail?.error
+      throw enrichedError
     }
   },
 
@@ -1292,6 +1303,17 @@ export const mba3ConsultasService = {
   },
 
   /**
+   * Req. 1.2 (pedidos parciales): ver domains/pedidos.ts.
+   */
+  async obtenerDiferenciaProduccion(numeroPedido: string): Promise<DiferenciaProduccionResponse> {
+    return pedidosService.obtenerDiferenciaProduccion(numeroPedido)
+  },
+
+  async confirmarConDiferencia(numeroPedido: string, nuevaFechaEntrega: string): Promise<ConfirmarConDiferenciaResponse> {
+    return pedidosService.confirmarConDiferencia(numeroPedido, nuevaFechaEntrega)
+  },
+
+  /**
    * Descarga un pedido como Excel con estructura de "Descargar Pedido"
    * GET /api/pedidos/{pedido_id}/descargar-pedido
    * Válido desde estado GESTIONAR PEDIDO (3) en adelante.
@@ -1345,6 +1367,16 @@ export const mba3ConsultasService = {
    */
   async exportarTrasladosExcel(pedidoId: string, version?: number): Promise<Blob> {
     return pedidosService.exportarTrasladosExcel(pedidoId, version)
+  },
+
+  /**
+   * Exporta el Análisis de Margen de Rentabilidad por producto (req. 1.4/1.5)
+   * GET /api/pedidos/{numeroPedido}/margen/exportar-excel
+   * @param numeroPedido Número o UUID del pedido
+   * @returns Blob del archivo Excel
+   */
+  async exportarAnalisisMargen(numeroPedido: string): Promise<Blob> {
+    return pedidosService.exportarAnalisisMargen(numeroPedido)
   },
 
   /**

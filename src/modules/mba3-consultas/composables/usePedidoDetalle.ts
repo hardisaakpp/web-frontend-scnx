@@ -17,6 +17,7 @@ export function usePedidoDetalle(options: {
   /** Obsoleto en vista detalle de pedido. Si no se pasa, se usa false. */
   esModoMabelTrading?: Ref<boolean>
   columnasModificadas?: Ref<Set<string>>
+  rolesModificacion?: Ref<Map<string, string | null>>
   limpiarColumnasModificadasEnStorage?: () => void
   cargarColumnasModificadasDesdeStorage?: () => void
   /** Sincrono o async; si es async se espera antes de continuar (p. ej. cargarYInicializarRedistribucion). */
@@ -79,6 +80,9 @@ export function usePedidoDetalle(options: {
         if (options.columnasModificadas) {
           options.columnasModificadas.value.clear()
         }
+        if (options.rolesModificacion) {
+          options.rolesModificacion.value.clear()
+        }
       }
       
       options.pedido.value = await mba3ConsultasService.getPedido(options.numeroPedido.value, true)
@@ -135,11 +139,13 @@ export function usePedidoDetalle(options: {
       if (response.modificaciones && response.modificaciones.length > 0) {
         // Limpiar modificaciones actuales antes de cargar desde backend
         options.columnasModificadas.value.clear()
-        
+        options.rolesModificacion?.value.clear()
+
         // Cargar modificaciones desde el backend
         response.modificaciones.forEach(mod => {
           const key = `${mod.pedido_detalle_id}:${mod.columna_key}`
           options.columnasModificadas!.value.add(key)
+          options.rolesModificacion?.value.set(key, mod.rol_modificador ?? null)
           if (import.meta.env.DEV) console.log(`  ✓ Agregada modificación: ${key}`)
         })
         

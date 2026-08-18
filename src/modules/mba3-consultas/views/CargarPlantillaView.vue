@@ -291,6 +291,18 @@
         <template v-if="pedido && !loading" #toolbar-extra>
           <button
             type="button"
+            @click="handleDescargarMargenExcel"
+            :disabled="descargandoMargen"
+            class="shrink-0 px-4 py-2 bg-emerald-700 dark:bg-emerald-600 text-white rounded-lg hover:bg-emerald-800 dark:hover:bg-emerald-700 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            title="Descargar el análisis completo del Margen de Rentabilidad por producto"
+          >
+            <svg v-if="!descargandoMargen" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            {{ descargandoMargen ? 'Descargando...' : 'Descargar Análisis de Margen' }}
+          </button>
+          <button
+            type="button"
             @click="handleDescartar"
             :disabled="descartando || !(pedido?.puede_descartar ?? false)"
             class="shrink-0 px-4 py-2 border border-red-300 dark:border-red-600 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
@@ -778,6 +790,9 @@ const pedido = ref<PedidoCompleto | null>(null)
 // ⭐ HU-08: Estado del modal de exportación MBA
 // ⭐ HU-08: Descarga directa del archivo plano MBA (un clic, sin modal)
 const descargandoPlanoMba = ref(false)
+
+// Req. 1.4/1.5: descarga del Análisis de Margen de Rentabilidad
+const descargandoMargen = ref(false)
 
 // ⭐ Set para rastrear columnas modificadas (formato: "detalleId:columnKey")
 const columnasModificadas = ref<Set<string>>(new Set())
@@ -1604,19 +1619,24 @@ async function handleUpdateEstado(estado: string | null) {
   }
 }
 
+// Pese al nombre del botón/función, esto NO es una confirmación real del pedido (req.
+// 1.2/1.8): es el paso "Fase 3" de Mabel Trading -- guarda cambios y crea la respuesta del
+// proveedor, y de ahí redirige a Redistribución (Fase 4), que es donde ocurre la
+// confirmación real del flujo de El Rayo. En este punto nadie ha editado "Total" todavía,
+// así que el chequeo de diferencia de producción (ver PedidoDetalleView.vue) no aplica
+// aquí y no se le agregó el modal correspondiente -- confirmado con el usuario 2026-08-17,
+// ver docs/requeriments/PYTD002_ODC-MABEL-RAYO_SEGUIMIENTO.md punto 1.2.
 async function handleConfirmar() {
   // Prevenir múltiples clics
   if (confirmando.value || !pedido.value || !numeroPedido.value) return
-  
+
   // Establecer estado de confirmación
   confirmando.value = true
-  
+
   // Mostrar indicador de carga
   toast.info('Guardando cambios...', 'Guardando los cambios realizados en la tabla')
-  
+
   try {
-    // ⭐ FASE 3: Solo guardar cambios y crear respuesta_proveedor
-    // NO procesar confirmación - eso lo hace MABEL TRADING en Fase 4
     // Usar pedido_id si está disponible (más eficiente), sino usar numero_pedido
     const pedidoId = pedido.value?.cabecera?.pedido_id
     await mba3ConsultasService.crearRespuestaProveedorDesdePedido(numeroPedido.value, pedidoId)
@@ -1678,6 +1698,34 @@ async function handleDescargarPlanoMba() {
     toast.error('Error al descargar', e.message || 'No se pudo descargar el archivo')
   } finally {
     descargandoPlanoMba.value = false
+  }
+}
+
+// Req. 1.4/1.5: descarga del Análisis de Margen de Rentabilidad (botón en pantalla de carga)
+async function handleDescargarMargenExcel() {
+  if (!pedido.value || !numeroPedido.value) {
+    toast.error('Error', 'No hay pedido seleccionado')
+    return
+  }
+  if (descargandoMargen.value) return
+  descargandoMargen.value = true
+  try {
+    const blob = await mba3ConsultasService.exportarAnalisisMargen(numeroPedido.value)
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    const nombreArchivo = `analisis_margen_${numeroPedido.value.replace(/[^a-zA-Z0-9.-]/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`
+    a.download = nombreArchivo
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    toast.success('Descarga completada', 'El análisis de margen se ha descargado correctamente')
+  } catch (e: any) {
+    console.error('Error al descargar análisis de margen:', e)
+    toast.error('Error al descargar', e.message || 'No se pudo descargar el análisis de margen')
+  } finally {
+    descargandoMargen.value = false
   }
 }
 

@@ -1029,6 +1029,8 @@ export interface PedidoCompleto {
   puede_confirmar_redistribucion?: boolean
   /** true si se puede finalizar el pedido (solo cuando estado_id === 17 = DESPACHAR Y FACTURAR). Backend: GET /api/pedidos/{id} y GET /api/plantillas/{numero_pedido} */
   puede_finalizar?: boolean
+  /** true si se puede generar el TXT MBA3 (estado_id === 12 = CONFIRMADO Y ENVIADO; el DocNum de SAP que exige la columna 12 del TXT recién existe ahí). Backend: GET /api/pedidos/{id} */
+  puede_generar_txt_mba3?: boolean
   /**
    * true si el usuario puede reintentar el proceso completo (envío ODC a SAP), p. ej. estado 21 o 10 con ODC reintentable.
    * Backend: enrich tras GET plantillas/pedido y respuestas que devuelven pedido completo.
@@ -1187,6 +1189,36 @@ export interface ProcesarConfirmacionResponse {
   ajustes_detalle: AjusteDetalle[]
 }
 
+// ========== Req. 1.2: Gestión de pedidos parciales (diferencia de producción) ==========
+
+/** Línea de detalle cuyo Total actual quedó por debajo de la cantidad solicitada original. */
+export interface DetalleDiferenciaProduccion {
+  pedido_detalle_id: string
+  codigo_interno: string | null
+  descripcion_sap: string | null
+  cantidad_solicitada_original: number
+  total_actual: number
+  diferencia: number
+}
+
+export interface DiferenciaProduccionResponse {
+  tiene_diferencia: boolean
+  detalles: DetalleDiferenciaProduccion[]
+}
+
+export interface PedidoHijoDiferencia {
+  pedido_id: string
+  numero_pedido: string
+  pedido_padre_id: string
+  detalles_insertados: number
+}
+
+export interface ConfirmarConDiferenciaResponse {
+  status: 'success'
+  confirmacion: CargarRespuestaProveedorResponse
+  pedido_hijo: PedidoHijoDiferencia
+}
+
 // ========== Proceso Completo SAP (Redistribución + ODC + Envío SAP) ==========
 
 /**
@@ -1326,6 +1358,9 @@ export interface ColumnaModificada {
   columna_key: string
   modificado_por?: string
   fecha_modificacion?: string
+  /** Rol responsable de la última modificación (derivado por el backend del estado del
+   *  pedido al guardar, no del permiso del usuario): 'PRODUCCION_ELRAYO' u 'ODCSAP'. */
+  rol_modificador?: 'PRODUCCION_ELRAYO' | 'ODCSAP' | null
 }
 
 export interface GuardarModificacionesColumnasRequest {
