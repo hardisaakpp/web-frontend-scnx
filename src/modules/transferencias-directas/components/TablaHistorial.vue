@@ -1,19 +1,36 @@
 <script setup lang="ts">
-import { EyeIcon, PencilSquareIcon, InboxIcon, CheckBadgeIcon, PaperAirplaneIcon } from '@heroicons/vue/24/outline'
+import { EyeIcon, PencilSquareIcon, InboxIcon, CheckBadgeIcon, PaperAirplaneIcon, ClipboardDocumentCheckIcon, ChevronUpIcon, ChevronDownIcon, ChevronUpDownIcon } from '@heroicons/vue/24/outline'
 import { APP_LOCALE } from '@/plugins/locale'
 
 import type { SolicitudResumen } from '../types'
 import EstadosPlantilla from './EstadosPlantilla.vue';
 import CargandoSpinner from './CargandoSpinner.vue';
+import { computed } from 'vue';
+import { useAuthStore } from '@/stores/auth';
 
-defineProps<{ solicitudes: SolicitudResumen[]; cargando: boolean }>()
+const authStore = useAuthStore()
+const props = defineProps<{
+    solicitudes: SolicitudResumen[]
+    cargando: boolean
+    ordenarPor?: string
+    direccion?: 'asc' | 'desc'
+}>()
 const emit = defineEmits<{
     ver: [id: number]
     editar: [id: number]
     'enviar-aprobacion': [id: number]
     'crear-definitiva': [id: number]
     'ver-errores': [id: number]
+    ordenar: [campo: string]
 }>()
+
+const thClass =
+    'sticky top-0 z-10 bg-gray-50 dark:bg-gray-900/50 px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400'
+const thOrdenableClass = `${thClass} cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors`
+
+/** Indica si la columna es la activa del ordenamiento y en qué sentido. */
+const esOrdenActivo = (campo: string) => props.ordenarPor === campo
+const esAscendente = (campo: string) => esOrdenActivo(campo) && props.direccion === 'asc'
 
 const formatFecha = (iso: string) =>
     iso
@@ -23,7 +40,7 @@ const formatFecha = (iso: string) =>
         })
         : ''
 const mostrarGuia = (g: string | null) => (g && g.trim() ? g : '—')
-
+const puedeAprobar = computed(() => authStore.hasPermission('transferenciadirecta.aprobar'))
 
 </script>
 
@@ -32,42 +49,56 @@ const mostrarGuia = (g: string | null) => (g && g.trim() ? g : '—')
         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead>
                 <tr>
-                    <th
-                        class="sticky top-0 z-10 bg-gray-50 dark:bg-gray-900/50 px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 ">
-                        ID</th>
-                    <th
-                        class="sticky top-0 z-10 bg-gray-50 dark:bg-gray-900/50 px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 ">
-                        Tienda Origen</th>
-                    <th
-                        class="sticky top-0 z-10 bg-gray-50 dark:bg-gray-900/50 px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 ">
-                        Tienda Destino</th>
-                    <th
-                        class="sticky top-0 z-10 bg-gray-50 dark:bg-gray-900/50 px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 ">
-                        Fecha Creación</th>
-                    
-                    <th
-                        class="sticky top-0 z-10 bg-gray-50 dark:bg-gray-900/50 px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 ">
-                        Estado</th>
-                    <th
-                        class="sticky top-0 z-10 bg-gray-50 dark:bg-gray-900/50 px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 ">
-                        Cantidad de Productos</th>
-                    <th
-                        class="sticky top-0 z-10 bg-gray-50 dark:bg-gray-900/50 px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">
-                        Guía Laar</th>
-                    <th
-                        class="sticky top-0 z-10 bg-gray-50 dark:bg-gray-900/50 px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 ">
-                        Responsable del Envió</th>
-                    <th
-                        class="sticky top-0 z-10 bg-gray-50 dark:bg-gray-900/50 px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 ">
-                        Observaciones</th>
-                    <th
-                        class="sticky top-0 z-10 bg-gray-50 dark:bg-gray-900/50 px-4 py-3 text-right text-xs font-semibold text-gray-500 dark:text-gray-400">
-                        Acciones</th>
+                    <th :class="thOrdenableClass" @click="emit('ordenar', 'id')">
+                        <span class="inline-flex items-center gap-1">
+                            ID
+                            <ChevronUpIcon v-if="esAscendente('id')" class="w-3 h-3" />
+                            <ChevronDownIcon v-else-if="esOrdenActivo('id')" class="w-3 h-3" />
+                            <ChevronUpDownIcon v-else class="w-3 h-3 opacity-40" />
+                        </span>
+                    </th>
+                    <th :class="thOrdenableClass" @click="emit('ordenar', 'tiendaOrigen')">
+                        <span class="inline-flex items-center gap-1">
+                            Tienda Origen
+                            <ChevronUpIcon v-if="esAscendente('tiendaOrigen')" class="w-3 h-3" />
+                            <ChevronDownIcon v-else-if="esOrdenActivo('tiendaOrigen')" class="w-3 h-3" />
+                            <ChevronUpDownIcon v-else class="w-3 h-3 opacity-40" />
+                        </span>
+                    </th>
+                    <th :class="thOrdenableClass" @click="emit('ordenar', 'tiendaDestino')">
+                        <span class="inline-flex items-center gap-1">
+                            Tienda Destino(Tránsito)
+                            <ChevronUpIcon v-if="esAscendente('tiendaDestino')" class="w-3 h-3" />
+                            <ChevronDownIcon v-else-if="esOrdenActivo('tiendaDestino')" class="w-3 h-3" />
+                            <ChevronUpDownIcon v-else class="w-3 h-3 opacity-40" />
+                        </span>
+                    </th>
+                    <th :class="thOrdenableClass" @click="emit('ordenar', 'fechaSolicitud')">
+                        <span class="inline-flex items-center gap-1">
+                            Fecha Creación
+                            <ChevronUpIcon v-if="esAscendente('fechaSolicitud')" class="w-3 h-3" />
+                            <ChevronDownIcon v-else-if="esOrdenActivo('fechaSolicitud')" class="w-3 h-3" />
+                            <ChevronUpDownIcon v-else class="w-3 h-3 opacity-40" />
+                        </span>
+                    </th>
+                    <th :class="thOrdenableClass" @click="emit('ordenar', 'estado')">
+                        <span class="inline-flex items-center gap-1">
+                            Estado
+                            <ChevronUpIcon v-if="esAscendente('estado')" class="w-3 h-3" />
+                            <ChevronDownIcon v-else-if="esOrdenActivo('estado')" class="w-3 h-3" />
+                            <ChevronUpDownIcon v-else class="w-3 h-3 opacity-40" />
+                        </span>
+                    </th>
+                    <th :class="thClass">Cantidad de Productos</th>
+                    <th :class="thClass">Guía Courier</th>
+                    <th :class="thClass">Responsable del Envió</th>
+                    <th :class="thClass">Observaciones</th>
+                    <th :class="[thClass, 'text-right']">Acciones</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
                 <tr v-if="cargando">
-                    <td colspan="9" class="px-4 py-6">
+                    <td colspan="10" class="px-4 py-6">
                         <CargandoSpinner mensaje="Cargando solicitudes…" />
                     </td>
                 </tr>
@@ -81,7 +112,7 @@ const mostrarGuia = (g: string | null) => (g && g.trim() ? g : '—')
                     </td>
 
                     <td class="px-4 py-3 text-xs text-gray-600 dark:text-gray-300">{{ s.tiendaOrigen }}</td>
-                    <td class="px-4 py-3 text-xs text-gray-600 dark:text-gray-300">{{ s.tiendaDestino }}</td>
+                    <td class="px-4 py-3 text-xs text-gray-600 dark:text-gray-300">{{ s.tiendaDestinoCodigo }}</td>
                     <td class="px-4 py-3 text-xs text-gray-600 dark:text-gray-300 whitespace-nowrap">{{
                         formatFecha(s.fechaSolicitud) }}</td>
                     <td class="px-4 py-3">
@@ -100,9 +131,11 @@ const mostrarGuia = (g: string | null) => (g && g.trim() ? g : '—')
                     <td class="px-4 py-3">
                         <div class="flex items-center justify-end gap-1">
                             <!-- Ver (siempre) -->
-                            <button type="button" @click="emit('ver', s.id)" title="Ver detalle"
+                             <button type="button" @click="emit('ver', s.id)"
+                                :title="puedeAprobar && s.estado === 'PendienteAprobacion' ? 'Revisar y aprobar' : 'Ver detalle'"
                                 class="p-2 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20 rounded-lg transition-colors">
-                                <EyeIcon class="w-5 h-5" />
+                                <ClipboardDocumentCheckIcon v-if="puedeAprobar && s.estado === 'PendienteAprobacion'" class="w-5 h-5" />
+                                <EyeIcon v-else class="w-5 h-5" />
                             </button>
 
                             <!-- Borrador: Editar + Enviar a aprobación -->
@@ -129,7 +162,7 @@ const mostrarGuia = (g: string | null) => (g && g.trim() ? g : '—')
 
                 </tr>
                 <tr v-if="!cargando && solicitudes.length === 0">
-                    <td colspan="9" class="px-4 py-16 text-center">
+                    <td colspan="10" class="px-4 py-16 text-center">
                         <InboxIcon class="w-10 h-10 mx-auto text-gray-300 dark:text-gray-600 mb-2" />
                         <p class="text-sm text-gray-400 dark:text-gray-500">No hay solicitudes para mostrar.</p>
                     </td>
