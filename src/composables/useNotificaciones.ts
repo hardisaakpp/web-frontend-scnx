@@ -113,8 +113,12 @@ export const lastNotification: Ref<SSENotification | null> = ref(null)
 /** Intervalo de reconexión en milisegundos (5 segundos) */
 const RECONNECT_INTERVAL = 5000
 
-/** Máximo número de intentos de reconexión consecutivos */
-const MAX_RECONNECT_ATTEMPTS = 10
+/** Techo del backoff: nunca esperar más de 30s entre reintentos. No hay límite de
+ * intentos -- un backend caído (ej. reinicio del contenedor en desarrollo) no debe
+ * dejar al cliente sin reconectar nunca más; antes de este cambio, tras 10 intentos
+ * (~4.5 min acumulados) el composable se rendía para siempre y solo un F5 manual
+ * volvía a conectar. */
+const RECONNECT_MAX_DELAY_MS = 30000
 
 export function useNotificaciones() {
   const toast = useToast()
@@ -137,6 +141,10 @@ export function useNotificaciones() {
 
   /** Flag para indicar que se cerró intencionalmente */
   let intentionalClose = false
+
+  /** true mientras se está reintentando tras una desconexión no intencional -- evita
+   * repetir el toast de aviso en cada intento y dispara el de "reconectado" una sola vez */
+  let disconnectWarningShown = false
 
   /**
    * Inicia la conexión SSE con el backend.
@@ -278,6 +286,10 @@ export function useNotificaciones() {
     switch (eventType) {
       case 'connected':
         isConnected.value = true
+        if (disconnectWarningShown) {
+          disconnectWarningShown = false
+          toast.success('Notificaciones reconectadas', 'La conexión en tiempo real se restableció.')
+        }
         if (import.meta.env.DEV) {
           console.log('📢 [Notificaciones] Conectado al stream SSE:', data)
         }
@@ -352,26 +364,27 @@ export function useNotificaciones() {
   }
 
   /**
-   * Programa una reconexión automática con backoff exponencial limitado.
+   * Programa una reconexión automática con backoff exponencial hasta un techo, sin
+   * límite de intentos: mientras no se haya cerrado intencionalmente (logout), sigue
+   * reintentando para siempre cada RECONNECT_MAX_DELAY_MS como máximo.
    */
   function scheduleReconnect() {
     if (intentionalClose) return
 
-    if (reconnectAttempts.value >= MAX_RECONNECT_ATTEMPTS) {
-      if (import.meta.env.DEV) {
-        console.warn(
-          `📢 [Notificaciones] Máximo de ${MAX_RECONNECT_ATTEMPTS} intentos de reconexión alcanzado`
-        )
-      }
-      return
+    if (!disconnectWarningShown) {
+      disconnectWarningShown = true
+      toast.warning(
+        'Notificaciones desconectadas',
+        'Se perdió la conexión en tiempo real. Reintentando automáticamente...'
+      )
     }
 
     reconnectAttempts.value++
-    const delay = Math.min(RECONNECT_INTERVAL * reconnectAttempts.value, 30000) // Max 30s
+    const delay = Math.min(RECONNECT_INTERVAL * reconnectAttempts.value, RECONNECT_MAX_DELAY_MS)
 
     if (import.meta.env.DEV) {
       console.log(
-        `📢 [Notificaciones] Reconectando en ${delay / 1000}s (intento ${reconnectAttempts.value}/${MAX_RECONNECT_ATTEMPTS})`
+        `📢 [Notificaciones] Reconectando en ${delay / 1000}s (intento ${reconnectAttempts.value})`
       )
     }
 
@@ -416,9 +429,37 @@ export function useNotificaciones() {
     }
   }
 
+  /**
+   * Fuerza una reconexión inmediata (saltándose el timer de backoff) si no estamos
+   * conectados. Los navegadores throttlean los setTimeout de pestañas en segundo plano
+   * (a veces varios minutos) -- sin esto, una laptop que se durmió o una pestaña
+   * minimizada puede tardar mucho más que el backoff normal en reconectar, aun con
+   * reintentos infinitos.
+   */
+  function reconnectAhoraSiNecesario() {
+    if (intentionalClose || isConnected.value) return
+
+    if (reconnectTimer) {
+      clearTimeout(reconnectTimer)
+      reconnectTimer = null
+    }
+    void connect()
+  }
+
+  function handleVisibilityChange() {
+    if (document.visibilityState === 'visible') {
+      reconnectAhoraSiNecesario()
+    }
+  }
+
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+  window.addEventListener('focus', reconnectAhoraSiNecesario)
+
   // Cleanup al desmontar el componente
   onUnmounted(() => {
     disconnect()
+    document.removeEventListener('visibilitychange', handleVisibilityChange)
+    window.removeEventListener('focus', reconnectAhoraSiNecesario)
   })
 
   return {
