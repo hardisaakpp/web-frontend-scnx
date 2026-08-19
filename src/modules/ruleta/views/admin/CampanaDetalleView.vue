@@ -131,7 +131,16 @@ const confirmarActivarSinStock = ref(false)
 watch(stockTotalEnCero, (enCero) => { if (!enCero) confirmarActivarSinStock.value = false })
 
 async function activarCampana() {
-  if (activando.value || !todosCompletos.value) return
+  if (activando.value) return
+  if (!todosCompletos.value) {
+    // Antes: `return` silencioso — el botón parecía no responder (Ghost Click). Ahora se explica
+    // exactamente por qué está bloqueado, con el verbo correcto según si es primera activación o reanudación.
+    toast.warning(
+      campanaPausada.value ? 'No se puede reanudar la campaña' : 'No se puede activar la campaña',
+      'Existen grupos de clientes incompletos o falta el premio de consolación universal.'
+    )
+    return
+  }
   if (stockTotalEnCero.value && !confirmarActivarSinStock.value) {
     confirmarActivarSinStock.value = true
     return
@@ -771,11 +780,16 @@ function ocultarDropdown() {
 
           <!-- Campaña PAUSADA → Reanudar / Finalizar -->
           <template v-else-if="campanaPausada">
+            <div v-if="!todosCompletos" class="text-right">
+              <span class="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                {{ gruposOk }} de {{ gruposRequeridos.length }} grupos completos
+              </span>
+            </div>
             <div class="flex items-center gap-2">
               <button
                 type="button"
                 @click="abrirConfirmFinalizar"
-                :disabled="activando || finalizando"
+                :disabled="activando || finalizando || store.guardando"
                 class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-red-200 dark:border-red-800
                        text-sm font-medium text-red-600 dark:text-red-400
                        hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors
@@ -785,19 +799,28 @@ function ocultarDropdown() {
               <button
                 type="button"
                 @click="activarCampana"
-                :disabled="activando || finalizando"
+                :disabled="activando || finalizando || store.guardando"
+                :title="!todosCompletos ? 'Existen grupos de clientes incompletos o falta el premio de consolación universal.' : undefined"
                 class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all
-                       bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-500/30
-                       focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800
-                       disabled:opacity-60 disabled:cursor-not-allowed">
+                       focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800
+                       disabled:opacity-60 disabled:cursor-not-allowed"
+                :class="!todosCompletos
+                  ? 'bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-400 focus:ring-amber-500'
+                  : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-500/30 focus:ring-emerald-500'">
                 <svg v-if="activando" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                 </svg>
-                {{ activando ? 'Reanudando…' : 'Reanudar campaña' }}
+                <svg v-else-if="!todosCompletos" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+                </svg>
+                {{ activando ? 'Reanudando…' : !todosCompletos ? 'Faltan datos para reanudar' : 'Reanudar campaña' }}
               </button>
             </div>
             <p v-if="errorEstado" class="text-xs text-red-600 dark:text-red-400 text-right max-w-xs">{{ errorEstado }}</p>
+            <p v-else-if="!todosCompletos" class="text-xs text-amber-600 dark:text-amber-400 text-right max-w-xs">
+              Completa los grupos de clientes o añade el premio de consolación universal para poder reanudar.
+            </p>
             <p v-else class="text-xs text-gray-400 dark:text-gray-500 text-right">
               La campaña está pausada: nadie puede girar hasta que la reanudes.
             </p>
