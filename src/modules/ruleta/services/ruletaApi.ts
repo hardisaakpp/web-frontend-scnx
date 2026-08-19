@@ -4,7 +4,7 @@ import type {
   Ruleta, RuletaFilters, RuletaPagination,
   Tienda, SegmentoRuleta, IdentificacionCliente, ResultadoGiro,
   MetricasSupervisor, EnroladorMetrica,
-  Campana, CampanaBackendResponse, CampanaDisponibleBackendResponse, DisponibilidadCampana, CrearCampanaDTO, GrupoProbabilidad, PremioAdmin,
+  Campana, CampanaBackendResponse, CampanaDisponibleBackendResponse, DisponibilidadCampana, CrearCampanaDTO, DuplicarCampanaDTO, GrupoProbabilidad, PremioAdmin,
   TiendaInventario, InventarioPremio,
   MetricasGlobal, EfectividadTienda, SegmentacionGrupo, ConversionSemanal,
   EstadoCampana, EstadoGrupo, SegmentoCliente, TipoPremio,
@@ -366,6 +366,16 @@ export const ruletaService = {
 
   async eliminarCampana(id: string): Promise<void> {
     await campanaApi.delete(`/api/Campanas/${id}`)
+  },
+
+  async duplicarCampana(id: string, dto: DuplicarCampanaDTO): Promise<Campana> {
+    const payload = {
+      nuevoNombre: dto.nombre,
+      nuevaFechaInicio: dto.fecha_inicio,
+      nuevaFechaFin: dto.fecha_fin
+    }
+    const response = await campanaApi.post<CampanaBackendResponse>(`/api/Campanas/${id}/duplicar`, payload)
+    return mapCampana(response.data)
   },
 
   async getProbabilidadesEnVivo(campanaId: string, tiendaCodigo: string): Promise<ProbabilidadGrupo[]> {

@@ -60,7 +60,11 @@ export interface IdentificacionCliente {
 }
 
 // ─── Admin: Campañas ──────────────────────────────────────────────────────────
-export type EstadoCampana = 'activa' | 'programada' | 'finalizada' | 'borrador' | 'pausada'
+// Estado persistido de la campaña (máquina de estados estricta e inmutable, Fase 1):
+// Borrador → Activa ↔ Pausada → Finalizada (candado permanente, nunca regresa).
+// "programada" NO es un estado persistido — es un derivado de estado_operativo
+// (Activa con fecha_inicio futura), por eso vive solo en EstadoOperativoCampana.
+export type EstadoCampana = 'borrador' | 'activa' | 'pausada' | 'finalizada'
 export type EstadoOperativoCampana = 'borrador' | 'programada' | 'disponible' | 'pausada' | 'vencida' | 'finalizada'
 
 export interface Campana {
@@ -116,6 +120,15 @@ export interface CrearCampanaDTO {
   requiere_validacion_onecard: boolean
   hora_feliz_inicio?: string | null
   hora_feliz_fin?: string | null
+}
+
+// Duplicación limpia (deep clone) de una campaña: solo pide lo que no puede heredarse
+// automáticamente del origen (nombre y vigencia) — el resto de parámetros, premios y tiendas
+// se copian tal cual en el backend, con el stock reseteado a 0 y sin arrastrar historial.
+export interface DuplicarCampanaDTO {
+  nombre: string
+  fecha_inicio: string
+  fecha_fin: string
 }
 
 export interface CampanaDisponibleBackendResponse {

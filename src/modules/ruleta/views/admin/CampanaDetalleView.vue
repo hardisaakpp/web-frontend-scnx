@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useToast } from '@/composables/useToast'
 import { useAdminStore } from '../../stores/adminStore'
-import type { SegmentoCliente, TipoPremio, CrearPremioDTO, PremioAdmin, Tienda } from '../../types'
+import { extraerMensajeError } from '../../services/utils/errorHandler'
+import DuplicarCampanaModal from '../../components/admin/DuplicarCampanaModal.vue'
+import type { SegmentoCliente, TipoPremio, CrearPremioDTO, PremioAdmin, Tienda, Campana } from '../../types'
 
 const store  = useAdminStore()
 const route  = useRoute()
 const router = useRouter()
+const toast  = useToast()
 
 const campanaId = route.params.campanaId as string
 
@@ -51,6 +55,9 @@ watch(selectedTiendaInfo, async () => {
 const campana = computed(() => store.campanas.find(c => c.id === campanaId))
 
 const hoy = new Date().toISOString().slice(0, 10)
+// Puramente visual: solo alimenta el badge de estado. Nunca debe usarse para decidir qué
+// botones de acción mostrar — para eso, usar el estado PERSISTIDO (campanaActiva/campanaPausada
+// más abajo), que no varía según fecha_inicio.
 const estadoEfectivo = computed(() => {
   if (!campana.value) return 'borrador'
   if (campana.value.estado === 'activa' && campana.value.fecha_inicio > hoy) return 'programada'
@@ -61,7 +68,7 @@ const estadoClase: Record<string, string> = {
   activa:     'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
   programada: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
   pausada:    'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
-  finalizada: 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400',
+  finalizada: 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400',
   borrador:   'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
 }
 
@@ -99,43 +106,113 @@ const currentProbability = computed(() => {
 })
 
 // ─── Estado de bloqueo de edición ────────────────────────────────────────────
-const campanaActiva = computed(() => estadoEfectivo.value === 'activa')
+// Activa: bloquea estructura (nombre, fechas, premios) — solo permite monitoreo/stock.
+// Finalizada: candado permanente, ninguna mutación (Regla de Oro).
+// IMPORTANTE: se basan en el estado PERSISTIDO (campana.estado), no en `estadoEfectivo`
+// — ese último solo deriva la etiqueta visual "Programada" y no debe alterar la botonera:
+// una campaña Activa con fecha_inicio futura sigue siendo Activa a efectos de permisos.
+const campanaActiva     = computed(() => store.esCampanaActiva(campana.value))
+const campanaPausada    = computed(() => store.esCampanaPausada(campana.value))
+const campanaBorrador   = computed(() => store.esCampanaBorrador(campana.value))
+const campanaInmutable  = computed(() => store.esCampanaInmutable(campana.value))
+// Los premios (editar/eliminar/agregar) se bloquean tanto en Activa como en Finalizada.
+const bloqueaEdicionPremios = computed(() => campanaActiva.value || campanaInmutable.value)
 
 // ─── Transiciones de estado ───────────────────────────────────────────────────
-const activando  = ref(false)
-const pausando   = ref(false)
+const activando   = ref(false)
+const pausando    = ref(false)
+const finalizando = ref(false)
 const errorEstado = ref('')
+const mostrarConfirmFinalizar = ref(false)
+
+// Advertencia preventiva: si TODOS los premios reales (no relleno) están en 0 unidades — el caso
+// típico de una campaña recién duplicada a la que aún no se le asignó inventario nuevo — activar
+// dejaría la ruleta sin nada que entregar. Un premio con stock null (ilimitado) no cuenta como
+// "en cero": esa es una configuración válida, no un olvido.
+const stockTotalEnCero = computed(() => {
+  const premiosReales = store.grupos.flatMap(g => g.premios).filter(p => !p.es_relleno)
+  return premiosReales.length > 0 && premiosReales.every(p => p.stock_total === 0)
+})
+const confirmarActivarSinStock = ref(false)
+watch(stockTotalEnCero, (enCero) => { if (!enCero) confirmarActivarSinStock.value = false })
 
 async function activarCampana() {
-  if (!todosCompletos.value) return
+  if (activando.value) return
+  if (!todosCompletos.value) {
+    // Antes: `return` silencioso — el botón parecía no responder (Ghost Click). Ahora se explica
+    // exactamente por qué está bloqueado, con el verbo correcto según si es primera activación o reanudación.
+    toast.warning(
+      campanaPausada.value ? 'No se puede reanudar la campaña' : 'No se puede activar la campaña',
+      'Existen grupos de clientes incompletos o falta el premio de consolación universal.'
+    )
+    return
+  }
+  if (stockTotalEnCero.value && !confirmarActivarSinStock.value) {
+    confirmarActivarSinStock.value = true
+    return
+  }
   activando.value = true
   errorEstado.value = ''
   try {
     await store.cambiarEstado(campanaId, 'activa')
+    toast.success(campanaPausada.value ? 'Campaña reanudada' : 'Campaña activada')
     router.push({ name: 'ruleta-admin-campanas' })
-  } catch (e: any) {
-    errorEstado.value = e?.response?.data?.error || e?.message || 'Error al activar la campaña.'
+  } catch (e) {
+    errorEstado.value = extraerMensajeError(e, 'Error al activar la campaña.')
+    toast.error('No se pudo activar la campaña', errorEstado.value)
   } finally {
     activando.value = false
+    confirmarActivarSinStock.value = false
   }
 }
 
 async function pausarCampana() {
+  if (pausando.value) return
   pausando.value = true
+  errorEstado.value = ''
   try {
     await store.cambiarEstado(campanaId, 'pausada')
+    toast.success('Campaña pausada', 'Los enroladores no podrán girar hasta que la reanudes.')
+  } catch (e) {
+    errorEstado.value = extraerMensajeError(e, 'Error al pausar la campaña.')
+    toast.error('No se pudo pausar la campaña', errorEstado.value)
   } finally {
     pausando.value = false
   }
 }
 
-async function pasarBorrador() {
-  pausando.value = true
+function abrirConfirmFinalizar() {
+  errorEstado.value = ''
+  mostrarConfirmFinalizar.value = true
+}
+
+function cancelarFinalizar() {
+  if (finalizando.value) return
+  mostrarConfirmFinalizar.value = false
+}
+
+async function finalizarCampana() {
+  if (finalizando.value) return
+  finalizando.value = true
+  errorEstado.value = ''
   try {
-    await store.cambiarEstado(campanaId, 'borrador')
+    await store.cambiarEstado(campanaId, 'finalizada')
+    mostrarConfirmFinalizar.value = false
+    toast.success('Campaña finalizada', 'Queda como registro histórico de solo lectura.')
+  } catch (e) {
+    errorEstado.value = extraerMensajeError(e, 'Error al finalizar la campaña.')
+    toast.error('No se pudo finalizar la campaña', errorEstado.value)
   } finally {
-    pausando.value = false
+    finalizando.value = false
   }
+}
+
+// ─── Duplicar campaña (deep clone limpio para una nueva temporada) ───────────
+const mostrarDuplicar = ref(false)
+
+function onCampanaDuplicada(nueva: Campana) {
+  mostrarDuplicar.value = false
+  router.push({ name: 'ruleta-admin-campana-detalle', params: { campanaId: nueva.id } })
 }
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
@@ -341,6 +418,7 @@ function cancelarReduccionStock() {
 }
 
 async function confirmarReduccionStockYGuardar() {
+  if (guardando.value) return
   const pendiente = premioParaConfirmarReduccion.value
   if (!pendiente) return
   guardando.value = true
@@ -348,9 +426,9 @@ async function confirmarReduccionStockYGuardar() {
     await store.actualizarPremio(pendiente.grupoIdx, pendiente.premioId, pendiente.data, true)
     premioParaConfirmarReduccion.value = null
     irAPaso2OCerrar({ id: pendiente.premioId, ...pendiente.data } as PremioAdmin)
-  } catch (e: any) {
+  } catch (e) {
     premioParaConfirmarReduccion.value = null
-    errorForm.value = e?.response?.data?.error ?? e?.message ?? 'Error al guardar el premio.'
+    errorForm.value = extraerMensajeError(e, 'Error al guardar el premio.')
   } finally {
     guardando.value = false
   }
@@ -410,12 +488,13 @@ async function persistirPremio(grupoIdx: number, data: Omit<PremioAdmin, 'id'>) 
       if (!nuevo) { errorForm.value = 'No se pudo guardar el premio.'; return }
       irAPaso2OCerrar(nuevo)
     }
-  } catch (e: any) {
-    errorForm.value = e?.response?.data?.error ?? e?.message ?? 'Error al guardar el premio.'
+  } catch (e) {
+    errorForm.value = extraerMensajeError(e, 'Error al guardar el premio.')
   }
 }
 
 async function guardarPremio() {
+  if (guardando.value) return
   errorForm.value = ''
   if (form.value.es_vacio && !form.value.nombre.trim()) form.value.nombre = '¡Sigue intentando!'
   if (!form.value.nombre.trim()) { errorForm.value = 'El nombre es requerido.'; return }
@@ -462,17 +541,17 @@ function cancelarEliminarPremio() {
 }
 
 async function ejecutarEliminarPremio() {
-  if (!premioAEliminar.value) return
+  if (eliminandoPremio.value || !premioAEliminar.value) return
   const grupoIdx = store.grupos.findIndex(g => g.grupo === grupoActivo.value)
   if (grupoIdx === -1) return
-  
+
   eliminandoPremio.value = true
   errorEliminar.value = ''
   try {
     await store.eliminarPremio(grupoIdx, premioAEliminar.value)
     premioAEliminar.value = null
-  } catch (e: any) {
-    errorEliminar.value = 'Error al eliminar el premio: ' + (e?.response?.data?.error ?? e?.message ?? '')
+  } catch (e) {
+    errorEliminar.value = extraerMensajeError(e, 'Error al eliminar el premio.')
   } finally {
     eliminandoPremio.value = false
   }
@@ -510,6 +589,7 @@ function seleccionarTienda(t: Tienda) {
 }
 
 async function asignarStock() {
+  if (asignando.value) return
   if (!tiendaSeleccionada.value || !stockCantidad.value || stockCantidad.value <= 0) return
   if (!premioRecienCreado.value) return
   errorPaso2.value = ''
@@ -533,8 +613,8 @@ async function asignarStock() {
     tiendaSeleccionada.value = null
     tiendaBusqueda.value     = ''
     stockCantidad.value      = null
-  } catch (e: any) {
-    errorPaso2.value = e?.response?.data?.message ?? e?.message ?? 'Error al asignar el stock. Intenta de nuevo.'
+  } catch (e) {
+    errorPaso2.value = extraerMensajeError(e, 'Error al asignar el stock. Intenta de nuevo.')
   } finally {
     asignando.value = false
   }
@@ -584,6 +664,17 @@ function ocultarDropdown() {
       </span>
     </nav>
 
+    <!-- ── Banner "Modo Reporte de Cierre" — campaña Finalizada ────────────── -->
+    <div v-if="campanaInmutable"
+         class="flex items-start gap-3 px-4 py-3.5 rounded-2xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
+      <span class="text-xl flex-shrink-0" aria-hidden="true">📜</span>
+      <p class="text-sm text-gray-600 dark:text-gray-300">
+        <span class="font-semibold text-gray-800 dark:text-gray-100">Campaña Finalizada (Modo Reporte de Cierre)</span>
+        — Esta campaña es de solo lectura y no puede modificarse. Para iniciar una nueva temporada,
+        utiliza el botón "Duplicar para Nueva Temporada".
+      </p>
+    </div>
+
     <!-- ── Header de campaña ───────────────────────────────────────────────── -->
     <div v-if="campana" class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5">
       <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -592,6 +683,7 @@ function ocultarDropdown() {
             <h2 class="text-xl font-bold text-gray-900 dark:text-white">{{ campana.nombre }}</h2>
             <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
                   :class="estadoClase[estadoEfectivo]">
+              <span v-if="estadoEfectivo === 'finalizada'" aria-hidden="true">🔒</span>
               {{ estadoEfectivo.charAt(0).toUpperCase() + estadoEfectivo.slice(1) }}
             </span>
             <span v-if="campana.requiere_validacion_onecard"
@@ -639,24 +731,39 @@ function ocultarDropdown() {
         <!-- Acciones de estado -->
         <div class="flex-shrink-0 flex flex-col items-end gap-2">
 
-          <!-- Campaña ACTIVA → Pausar / Borrador -->
-          <template v-if="campanaActiva">
+          <!-- Campaña FINALIZADA → solo lectura, sin transiciones posibles -->
+          <template v-if="campanaInmutable">
+            <p class="inline-flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 font-medium bg-gray-50 dark:bg-gray-700/50 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700">
+              🔒 Campaña finalizada: registro histórico de solo lectura. No puede reactivarse.
+            </p>
+            <button
+              type="button"
+              @click="mostrarDuplicar = true"
+              class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all
+                     bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-500/30
+                     focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800">
+              <span aria-hidden="true">🔁</span>
+              Duplicar para Nueva Temporada
+            </button>
+          </template>
+
+          <!-- Campaña ACTIVA → Pausar / Finalizar -->
+          <template v-else-if="campanaActiva">
             <div class="flex items-center gap-2">
               <button
-                @click="pasarBorrador"
-                :disabled="pausando"
-                class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600
-                       text-sm font-medium text-gray-600 dark:text-gray-300
-                       hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors
+                type="button"
+                @click="abrirConfirmFinalizar"
+                :disabled="pausando || finalizando"
+                class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-red-200 dark:border-red-800
+                       text-sm font-medium text-red-600 dark:text-red-400
+                       hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors
                        disabled:opacity-50 disabled:cursor-not-allowed">
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                </svg>
-                Borrador
+                🔒 Finalizar
               </button>
               <button
+                type="button"
                 @click="pausarCampana"
-                :disabled="pausando"
+                :disabled="pausando || finalizando"
                 class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all
                        bg-amber-500 hover:bg-amber-600 text-white shadow-md shadow-amber-400/30
                        focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800
@@ -671,12 +778,61 @@ function ocultarDropdown() {
                 {{ pausando ? 'Pausando…' : 'Pausar campaña' }}
               </button>
             </div>
-            <p class="text-xs text-gray-400 dark:text-gray-500 text-right">
+            <p v-if="errorEstado" class="text-xs text-red-600 dark:text-red-400 text-right max-w-xs">{{ errorEstado }}</p>
+            <p v-else class="text-xs text-gray-400 dark:text-gray-500 text-right">
               La campaña está en curso. Pausa para editar premios.
             </p>
           </template>
 
-          <!-- Campaña NO activa → Activar -->
+          <!-- Campaña PAUSADA → Reanudar / Finalizar -->
+          <template v-else-if="campanaPausada">
+            <div v-if="!todosCompletos" class="text-right">
+              <span class="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                {{ gruposOk }} de {{ gruposRequeridos.length }} grupos completos
+              </span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button
+                type="button"
+                @click="abrirConfirmFinalizar"
+                :disabled="activando || finalizando || store.guardando"
+                class="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-red-200 dark:border-red-800
+                       text-sm font-medium text-red-600 dark:text-red-400
+                       hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors
+                       disabled:opacity-50 disabled:cursor-not-allowed">
+                🔒 Finalizar
+              </button>
+              <button
+                type="button"
+                @click="activarCampana"
+                :disabled="activando || finalizando || store.guardando"
+                :title="!todosCompletos ? 'Existen grupos de clientes incompletos o falta el premio de consolación universal.' : undefined"
+                class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all
+                       focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800
+                       disabled:opacity-60 disabled:cursor-not-allowed"
+                :class="!todosCompletos
+                  ? 'bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 text-amber-700 dark:text-amber-400 focus:ring-amber-500'
+                  : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-500/30 focus:ring-emerald-500'">
+                <svg v-if="activando" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                </svg>
+                <svg v-else-if="!todosCompletos" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
+                </svg>
+                {{ activando ? 'Reanudando…' : !todosCompletos ? 'Faltan datos para reanudar' : 'Reanudar campaña' }}
+              </button>
+            </div>
+            <p v-if="errorEstado" class="text-xs text-red-600 dark:text-red-400 text-right max-w-xs">{{ errorEstado }}</p>
+            <p v-else-if="!todosCompletos" class="text-xs text-amber-600 dark:text-amber-400 text-right max-w-xs">
+              Completa los grupos de clientes o añade el premio de consolación universal para poder reanudar.
+            </p>
+            <p v-else class="text-xs text-gray-400 dark:text-gray-500 text-right">
+              La campaña está pausada: nadie puede girar hasta que la reanudes.
+            </p>
+          </template>
+
+          <!-- Campaña en BORRADOR → Activar -->
           <template v-else>
             <div v-if="!todosCompletos" class="text-right">
               <span class="text-xs text-amber-600 dark:text-amber-400 font-medium">
@@ -688,14 +844,21 @@ function ocultarDropdown() {
                 {{ errorEstado }}
               </span>
             </div>
+            <div v-if="confirmarActivarSinStock" class="mb-3 max-w-xs text-right">
+              <span class="inline-block text-xs text-amber-700 dark:text-amber-400 font-medium bg-amber-50 dark:bg-amber-900/20 px-3 py-1.5 rounded-lg border border-amber-200 dark:border-amber-800">
+                ⚠️ Ningún premio real tiene stock asignado. La ruleta solo entregará "Sigue participando". Haz clic de nuevo para activar de todas formas.
+              </span>
+            </div>
             <button
               @click="activarCampana"
               :disabled="!todosCompletos || activando"
               class="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all
                      focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
-              :class="todosCompletos
-                ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-500/30 focus:ring-emerald-500'
-                : 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'">
+              :class="!todosCompletos
+                ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                : confirmarActivarSinStock
+                  ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-md shadow-amber-400/30 focus:ring-amber-500'
+                  : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-500/30 focus:ring-emerald-500'">
               <svg v-if="activando" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
                 <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
@@ -703,7 +866,7 @@ function ocultarDropdown() {
               <svg v-else class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M5 3l14 9-14 9V3z"/>
               </svg>
-              {{ activando ? 'Activando…' : 'Activar campaña' }}
+              {{ activando ? 'Activando…' : confirmarActivarSinStock ? 'Sí, activar sin stock' : 'Activar campaña' }}
             </button>
             <p v-if="!todosCompletos" class="text-xs text-gray-400 dark:text-gray-500 text-right">
               Cada grupo necesita al menos una consolación y premios reales (excepto Grupos 4, 5 y 6).
@@ -838,8 +1001,11 @@ function ocultarDropdown() {
              </div>
           </div>
 
-          <!-- Aviso campaña activa -->
-          <div v-if="campanaActiva" class="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-sm text-amber-700 dark:text-amber-400">
+          <!-- Aviso campaña activa / finalizada -->
+          <div v-if="campanaInmutable" class="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-600 dark:text-red-400">
+            🔒 Campaña finalizada: los premios ya no pueden modificarse.
+          </div>
+          <div v-else-if="campanaActiva" class="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-sm text-amber-700 dark:text-amber-400">
             <svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
               <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
             </svg>
@@ -908,11 +1074,11 @@ function ocultarDropdown() {
                   <td class="px-4 py-3.5 text-right">
                     <div class="flex items-center justify-end gap-1">
                       <button
-                        :disabled="campanaActiva"
-                        :title="campanaActiva ? 'Para modificar los premios, primero debes pausar la campaña' : 'Editar'"
-                        @click="!campanaActiva && abrirModalEditar(p)"
+                        :disabled="bloqueaEdicionPremios"
+                        :title="campanaInmutable ? 'La campaña está finalizada: es de solo lectura' : campanaActiva ? 'Para modificar los premios, primero debes pausar la campaña' : 'Editar'"
+                        @click="!bloqueaEdicionPremios && abrirModalEditar(p)"
                         class="p-1.5 rounded-lg transition-colors"
-                        :class="campanaActiva
+                        :class="bloqueaEdicionPremios
                           ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
                           : 'text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -920,11 +1086,11 @@ function ocultarDropdown() {
                         </svg>
                       </button>
                       <button
-                        :disabled="campanaActiva"
-                        :title="campanaActiva ? 'Para eliminar premios, primero debes pausar la campaña' : 'Eliminar'"
-                        @click="!campanaActiva && confirmarEliminarPremio(p.id)"
+                        :disabled="bloqueaEdicionPremios"
+                        :title="campanaInmutable ? 'La campaña está finalizada: es de solo lectura' : campanaActiva ? 'Para eliminar premios, primero debes pausar la campaña' : 'Eliminar'"
+                        @click="!bloqueaEdicionPremios && confirmarEliminarPremio(p.id)"
                         class="p-1.5 rounded-lg transition-colors"
-                        :class="campanaActiva
+                        :class="bloqueaEdicionPremios
                           ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
                           : 'text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -950,11 +1116,12 @@ function ocultarDropdown() {
             </p>
             <span v-else />
             <button
-              @click="!campanaActiva && abrirModal()"
-              :disabled="campanaActiva"
-              :title="campanaActiva ? 'Para modificar los premios, primero debes pausar la campaña' : undefined"
+              type="button"
+              @click="!bloqueaEdicionPremios && abrirModal()"
+              :disabled="bloqueaEdicionPremios"
+              :title="campanaInmutable ? 'La campaña está finalizada: es de solo lectura' : campanaActiva ? 'Para modificar los premios, primero debes pausar la campaña' : undefined"
               class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-semibold transition-colors"
-              :class="campanaActiva
+              :class="bloqueaEdicionPremios
                 ? 'border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-600 bg-gray-50 dark:bg-gray-800/40 cursor-not-allowed'
                 : 'border-[#0A86C2]/40 dark:border-[#0E97D4]/40 text-[#0A86C2] dark:text-[#0E97D4] hover:bg-[#EFF8FD] dark:hover:bg-[#0574AF]/10'">
               <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
@@ -1531,6 +1698,76 @@ function ocultarDropdown() {
         </div>
       </Transition>
     </Teleport>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         MODAL CONFIRMAR FINALIZAR CAMPAÑA (irreversible)
+    ══════════════════════════════════════════════════════════════════════ -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition-opacity duration-200"
+        enter-from-class="opacity-0"
+        leave-active-class="transition-opacity duration-150"
+        leave-to-class="opacity-0"
+      >
+        <div v-if="mostrarConfirmFinalizar" class="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/50 backdrop-blur-sm" @click.self="cancelarFinalizar">
+          <Transition
+            enter-active-class="transition-all duration-200"
+            enter-from-class="opacity-0 scale-95 translate-y-2"
+            enter-to-class="opacity-100 scale-100 translate-y-0"
+            appear
+          >
+            <div class="relative bg-white dark:bg-gray-900 rounded-2xl shadow-xl w-full max-w-sm overflow-hidden flex flex-col">
+              <div class="p-6 text-center">
+                <div class="mx-auto flex items-center justify-center h-14 w-14 rounded-full bg-red-100 dark:bg-red-900/30 mb-4 text-2xl">
+                  🔒
+                </div>
+                <h3 class="text-lg font-bold text-gray-900 dark:text-white mb-2">¿Finalizar esta campaña?</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400">
+                  <span class="font-semibold text-red-600 dark:text-red-400">Esta acción es irreversible.</span>
+                  Una vez finalizada, la campaña queda bloqueada de forma permanente: no podrá volver a
+                  Activa, Pausada ni Borrador, y no será posible modificar premios, stock ni configuración.
+                </p>
+
+                <div v-if="errorEstado" class="mt-4 px-3 py-2 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800 text-xs text-red-600 dark:text-red-400 text-left">
+                  {{ errorEstado }}
+                </div>
+              </div>
+
+              <div class="bg-gray-50 dark:bg-gray-800/50 px-6 py-4 flex items-center justify-end gap-3 border-t border-gray-100 dark:border-gray-800">
+                <button
+                  type="button"
+                  @click="cancelarFinalizar"
+                  :disabled="finalizando"
+                  class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-colors disabled:opacity-50">
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  @click="finalizarCampana"
+                  :disabled="finalizando"
+                  class="inline-flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl shadow-sm transition-colors disabled:opacity-50">
+                  <svg v-if="finalizando" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                  </svg>
+                  {{ finalizando ? 'Finalizando…' : 'Sí, finalizar permanentemente' }}
+                </button>
+              </div>
+            </div>
+          </Transition>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- ── Modal Duplicar Campaña (nueva temporada) ────────────────────────── -->
+    <DuplicarCampanaModal
+      v-if="campana"
+      :open="mostrarDuplicar"
+      :campana-id="campanaId"
+      :nombre-origen="campana.nombre"
+      @close="mostrarDuplicar = false"
+      @duplicated="onCampanaDuplicada"
+    />
 
   </div>
 </template>
