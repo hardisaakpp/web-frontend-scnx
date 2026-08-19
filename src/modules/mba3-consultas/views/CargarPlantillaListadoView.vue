@@ -206,13 +206,13 @@
             </p>
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Estado</label>
               <select
                 v-model="filtros.estado"
                 @keyup.enter="aplicarFiltros"
-                @change="actualizarFiltroPendientes"
+                @change="actualizarFiltroPendientes(); aplicarFiltros()"
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 text-sm"
               >
                 <option value="">Todos los estados</option>
@@ -226,14 +226,16 @@
               </select>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fecha Desde</label>
-              <AppDateInput v-model="filtros.fecha_desde" @keyup.enter="aplicarFiltros" />
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fecha</label>
+              <AppDateFilterInput
+                v-model:tipo="filtros.tipo_fecha"
+                v-model:desde="filtros.fecha_desde"
+                v-model:hasta="filtros.fecha_hasta"
+                @change="aplicarFiltros"
+                @keyup.enter="aplicarFiltros"
+              />
             </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fecha Hasta</label>
-              <AppDateInput v-model="filtros.fecha_hasta" @keyup.enter="aplicarFiltros" />
-            </div>
-            <div>
+            <div v-if="MOSTRAR_FILTRO_PROVEEDOR_PEDIDOS">
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Proveedor</label>
               <input
                 type="text"
@@ -270,24 +272,32 @@
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Creado Por</label>
-              <input
-                type="text"
-                v-model="filtros.creado_por"
-                @keyup.enter="aplicarFiltros"
-                placeholder="Buscar por usuario creador..."
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 text-sm"
-              />
+              <div class="relative">
+                <input
+                  ref="creadoPorInputRef"
+                  type="text"
+                  v-model="busquedaCreadoPor"
+                  @input="handleBusquedaCreadoPor"
+                  @keyup.enter="buscarCreadoPorInmediato"
+                  placeholder="Buscar por usuario creador..."
+                  autocomplete="off"
+                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 text-sm"
+                />
+                <button
+                  v-if="busquedaCreadoPor"
+                  @mousedown.prevent="limpiarBusquedaCreadoPor"
+                  class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
             </div>
             <div class="flex items-end gap-2">
               <button
-                @click="aplicarFiltros"
-                class="flex-1 px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors text-sm font-medium"
-              >
-                Buscar
-              </button>
-              <button
                 @click="limpiarFiltros"
-                class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-700 dark:text-gray-300 text-sm font-medium"
+                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-700 dark:text-gray-300 text-sm font-medium"
               >
                 Limpiar
               </button>
@@ -454,12 +464,14 @@
                     {{ pedido.fecha_pedido ? formatDate(pedido.fecha_pedido) : '-' }}
                   </td>
                   <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
-                    <div class="flex items-center gap-2">
-                      <span>{{ pedido.proveedor_nombre || '-' }}</span>
-                      <span v-if="esProveedorElRayo(pedido.proveedor_nombre)" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300" title="Proveedor: El Rayo">
-                        EL RAYO
-                      </span>
-                    </div>
+                    <span
+                      v-if="esProveedorElRayo(pedido.proveedor_nombre)"
+                      class="inline-flex items-center px-1.5 py-0.5 rounded font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
+                      title="Proveedor: El Rayo"
+                    >
+                      {{ pedido.proveedor_nombre }}
+                    </span>
+                    <span v-else>{{ pedido.proveedor_nombre || '-' }}</span>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-center">
                     <div class="flex items-center justify-center gap-2">
@@ -490,8 +502,11 @@
               <QuickTablePagination
                 v-model="plantillaListCurrentPage"
                 :total-pages="plantillaListTotalPages"
+                :page-size="metadata.limit"
+                :page-size-options="PAGE_SIZE_OPTIONS"
                 :disabled="loading"
                 aria-label="Paginación de pedidos (cargar plantilla)"
+                @update:page-size="cambiarTamanoPagina"
               />
             </div>
           </div>
@@ -518,13 +533,17 @@ import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import { useFileUpload } from '../composables/useFileUpload'
 import type { CorreccionesPlantilla } from '../composables/useFileUpload'
 import UploadErrorModal from '../components/UploadErrorModal.vue'
-import AppDateInput from '../components/AppDateInput.vue'
+import AppDateFilterInput from '../components/AppDateFilterInput.vue'
 import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
 import QuickTablePagination from '@/components/QuickTablePagination.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
 import type { PedidosListadoResponse, PedidoResumido, PedidosListadoFiltros, PedidosListadoMetadata, PlantillasPedidosResponse, EstadoPedidoOption } from '../types'
 import { formatDate, formatDateTime } from '../utils/formatters'
+import { esProveedorElRayo } from '../utils/styleHelpers'
+import { MOSTRAR_FILTRO_PROVEEDOR_PEDIDOS } from '../config/featureFlags'
+import { PAGE_SIZE_OPTIONS } from '../config/pagination'
+import { useDebouncedFilterInput } from '../composables/useDebouncedFilterInput'
 import { lastNotification, reconnectedAfterGap } from '@/composables/useNotificaciones'
 import { useRefetchOnFocus } from '@/composables/useRefetchOnFocus'
 
@@ -532,48 +551,24 @@ const { target: odcSapVolverTarget, title: odcSapVolverTitle } = useOdcSapVolver
 const router = useRouter()
 const toast = useToast()
 
-// ========== Búsqueda por Número de Pedido (con debounce, filtra en vivo la Tabla de Pedidos) ==========
-const busquedaNumeroPedido = ref('')
+// ========== Búsqueda por Número de Pedido (con debounce, filtra en vivo) ==========
 const numeroPedidoInputRef = ref<HTMLInputElement | null>(null)
-let debounceTimeout: ReturnType<typeof setTimeout> | null = null
-
-const DEBOUNCE_MS = 300
-const MIN_CHARS_BUSQUEDA = 2
-
-function handleBusquedaNumeroPedido() {
-  if (debounceTimeout) {
-    clearTimeout(debounceTimeout)
-  }
-
-  // Si el texto es muy corto, volver a la tabla sin filtrar por número de
-  // pedido (si es que había una búsqueda previa).
-  if (busquedaNumeroPedido.value.length < MIN_CHARS_BUSQUEDA) {
-    if (filtros.value.numero_pedido) {
-      filtros.value.numero_pedido = ''
-      aplicarFiltros()
-    }
-    return
-  }
-
-  debounceTimeout = setTimeout(buscarNumeroPedidoInmediato, DEBOUNCE_MS)
-}
-
-function buscarNumeroPedidoInmediato() {
-  if (debounceTimeout) {
-    clearTimeout(debounceTimeout)
-    debounceTimeout = null
-  }
-  filtros.value.numero_pedido = busquedaNumeroPedido.value.trim()
-  aplicarFiltros()
-}
-
-function limpiarBusquedaNumeroPedido() {
-  busquedaNumeroPedido.value = ''
-  numeroPedidoInputRef.value?.focus()
-  if (filtros.value.numero_pedido) {
-    filtros.value.numero_pedido = ''
+const {
+  texto: busquedaNumeroPedido,
+  handleInput: handleBusquedaNumeroPedido,
+  commit: buscarNumeroPedidoInmediato,
+  clear: limpiarBusquedaNumeroPedidoTexto,
+  dispose: disposeBusquedaNumeroPedido
+} = useDebouncedFilterInput((valor) => {
+  if (filtros.value.numero_pedido !== valor) {
+    filtros.value.numero_pedido = valor
     aplicarFiltros()
   }
+})
+
+function limpiarBusquedaNumeroPedido() {
+  limpiarBusquedaNumeroPedidoTexto()
+  numeroPedidoInputRef.value?.focus()
 }
 
 // Carga de plantillas Excel (redirige a cargar-plantilla/:id tras subir). useAsyncUpload: no bloquea la app (Celery).
@@ -654,12 +649,33 @@ const filtros = ref<PedidosListadoFiltros>({
   estado: '',
   fecha_desde: '',
   fecha_hasta: '',
+  tipo_fecha: 'pedido',
   proveedor_nombre: '',
   numero_pedido: '',
   creado_por: '',
   limit: PAGE_SIZE,
   offset: 0
 })
+
+// ========== Búsqueda por Creado Por (con debounce, filtra en vivo) ==========
+const creadoPorInputRef = ref<HTMLInputElement | null>(null)
+const {
+  texto: busquedaCreadoPor,
+  handleInput: handleBusquedaCreadoPor,
+  commit: buscarCreadoPorInmediato,
+  clear: limpiarBusquedaCreadoPorTexto,
+  dispose: disposeBusquedaCreadoPor
+} = useDebouncedFilterInput((valor) => {
+  if (filtros.value.creado_por !== valor) {
+    filtros.value.creado_por = valor
+    aplicarFiltros()
+  }
+})
+
+function limpiarBusquedaCreadoPor() {
+  limpiarBusquedaCreadoPorTexto()
+  creadoPorInputRef.value?.focus()
+}
 
 function getEstadoLabel(estado: string): string {
   const labels: Record<string, string> = {
@@ -692,7 +708,9 @@ function getEstadoLabel(estado: string): string {
     'CONFIRMADO POR EL RAYO': 'Confirmado por El Rayo',
     'CONFIRMADO_POR_EL_RAYO': 'Confirmado por El Rayo',
     'CONFIRMADO POR PRODUCCION': 'Confirmado por Producción',
-    'CONFIRMADO_POR_PRODUCCION': 'Confirmado por Producción'
+    'CONFIRMADO_POR_PRODUCCION': 'Confirmado por Producción',
+    'PRODUCCION POSPUESTA': 'Producción Pospuesta',
+    'PRODUCCION_POSPUESTA': 'Producción Pospuesta'
   }
   return labels[estado] || estado
 }
@@ -731,19 +749,15 @@ function getEstadoBadgeClass(estado: string): string {
     'CONFIRMADO POR EL RAYO': `bg-violet-100 text-violet-800 ${darkClasses} dark:bg-violet-900/50 dark:text-violet-200`,
     'CONFIRMADO_POR_EL_RAYO': `bg-violet-100 text-violet-800 ${darkClasses} dark:bg-violet-900/50 dark:text-violet-200`,
     'CONFIRMADO POR PRODUCCION': `bg-yellow-100 text-yellow-800 ${darkClasses} dark:bg-yellow-900/50 dark:text-yellow-200`,
-    'CONFIRMADO_POR_PRODUCCION': `bg-yellow-100 text-yellow-800 ${darkClasses} dark:bg-yellow-900/50 dark:text-yellow-200`
+    'CONFIRMADO_POR_PRODUCCION': `bg-yellow-100 text-yellow-800 ${darkClasses} dark:bg-yellow-900/50 dark:text-yellow-200`,
+    'PRODUCCION POSPUESTA': `bg-pink-100 text-pink-800 ${darkClasses} dark:bg-pink-900/50 dark:text-pink-200`,
+    'PRODUCCION_POSPUESTA': `bg-pink-100 text-pink-800 ${darkClasses} dark:bg-pink-900/50 dark:text-pink-200`
   }
   return `${baseClasses} ${classes[estado] || `bg-gray-100 text-gray-800 ${darkClasses} dark:bg-gray-700 dark:text-gray-200`}`
 }
 
 function requiereAccion(estado: string): boolean {
   return ['PENDIENTE_CONFIRMACION_PROVEEDOR', 'RESPUESTA_PROVEEDOR_CARGADA', 'CONFIRMADO_PROVEEDOR'].includes(estado)
-}
-
-function esProveedorElRayo(proveedorNombre: string | null | undefined): boolean {
-  if (!proveedorNombre) return false
-  const nombreUpper = proveedorNombre.toUpperCase()
-  return nombreUpper.includes('EL RAYO') || nombreUpper.includes('RAYO')
 }
 
 const contadorPedidosPendientes = computed(() => {
@@ -819,10 +833,14 @@ async function cargarPedidos() {
   error.value = null
   try {
     // ⭐ Usar getPlantillasPedidos en lugar de getPedidosListado
-    // El endpoint /api/plantillas/pedidos INCLUYE pedidos BORRADOR y filtra por usuario
+    // El endpoint /api/plantillas/pedidos INCLUYE pedidos BORRADOR (no filtra por usuario)
     const response: PlantillasPedidosResponse = await mba3ConsultasService.getPlantillasPedidos({
       estado: filtros.value.estado || undefined,
       numero_pedido: filtros.value.numero_pedido || undefined,
+      creado_por: filtros.value.creado_por || undefined,
+      fecha_desde: filtros.value.fecha_desde || undefined,
+      fecha_hasta: filtros.value.fecha_hasta || undefined,
+      tipo_fecha: filtros.value.tipo_fecha,
       limit: metadata.value.limit,
       offset: metadata.value.offset,
       solo_pendientes_accion: filtroSoloPendientes.value || undefined,
@@ -868,14 +886,16 @@ function limpiarFiltros() {
     estado: '',
     fecha_desde: '',
     fecha_hasta: '',
+    tipo_fecha: 'pedido',
     proveedor_nombre: '',
     numero_pedido: '',
     creado_por: '',
     limit: PAGE_SIZE,
     offset: 0
   }
-  // Mantener en sync el input de búsqueda con debounce (Número de Pedido)
+  // Mantener en sync los inputs de búsqueda con debounce (Número de Pedido, Creado Por)
   busquedaNumeroPedido.value = ''
+  busquedaCreadoPor.value = ''
   filtroSoloPendientes.value = false
   metadata.value.offset = 0
   cargarPedidos()
@@ -884,6 +904,13 @@ function limpiarFiltros() {
 function cambiarPagina(nuevoOffset: number) {
   metadata.value.offset = nuevoOffset
   filtros.value.offset = nuevoOffset
+  cargarPedidos()
+}
+
+function cambiarTamanoPagina(nuevoLimit: number) {
+  metadata.value.limit = nuevoLimit
+  metadata.value.offset = 0
+  filtros.value.offset = 0
   cargarPedidos()
 }
 
@@ -915,9 +942,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  // Limpiar timeout de búsqueda por número de pedido
-  if (debounceTimeout) {
-    clearTimeout(debounceTimeout)
-  }
+  disposeBusquedaNumeroPedido()
+  disposeBusquedaCreadoPor()
 })
 </script>

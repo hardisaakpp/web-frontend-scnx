@@ -1579,6 +1579,7 @@ export const mba3ConsultasService = {
     estado?: string
     fecha_desde?: string
     fecha_hasta?: string
+    tipo_fecha?: import('../types').TipoFechaFiltro
     proveedor_nombre?: string
     numero_pedido?: string
     creado_por?: string
@@ -1762,16 +1763,20 @@ export const mba3ConsultasService = {
    * 
    * A diferencia de getPedidosListado (GET /api/pedidos):
    * - INCLUYE pedidos en estado BORRADOR
-   * - Filtra automáticamente por el usuario actual
-   * 
+   * - No filtra por usuario: visibles para todos con permiso mba3-consultas.facturas.view
+   *
    * GET /api/plantillas/pedidos
-   * @param filtros Filtros opcionales (estado, numero_pedido, limit, offset)
+   * @param filtros Filtros opcionales (estado, numero_pedido, creado_por, limit, offset)
    * @returns Lista de pedidos con paginación
    * @deprecated Usar pedidosService.getPlantillasPedidos() directamente
    */
   async getPlantillasPedidos(filtros?: {
     estado?: string
     numero_pedido?: string
+    creado_por?: string
+    fecha_desde?: string
+    fecha_hasta?: string
+    tipo_fecha?: import('../types').TipoFechaFiltro
     limit?: number
     offset?: number
     solo_pendientes_accion?: boolean

@@ -1005,6 +1005,9 @@ export interface PedidoDetalle {
   /** Margen de Rentabilidad (req. 1.5): calculado en el backend a partir de costo_margen
    * y pvp (ver calcular_margen_rentabilidad en pedido_utils.py). Fracción decimal (0.35 = 35%). */
   margen?: number | null
+  /** Cantidad que Mabel Trading cargó originalmente en la plantilla Excel (req. 1.2), fijada
+   * una sola vez en el INSERT. null en pedidos anteriores a la migración 641. */
+  cantidad_solicitada_original?: number | null
   tiendas: TiendaDistribucion[]
 }
 
@@ -1555,10 +1558,14 @@ export interface TienePedidosResponse {
   message: string
 }
 
+/** Columna de fecha sobre la que aplica fecha_desde/fecha_hasta (default: 'pedido') */
+export type TipoFechaFiltro = 'pedido' | 'entrega' | 'facturacion'
+
 export interface PedidosListadoFiltros {
   estado?: string
   fecha_desde?: string
   fecha_hasta?: string
+  tipo_fecha?: TipoFechaFiltro
   proveedor_nombre?: string
   numero_pedido?: string
   creado_por?: string

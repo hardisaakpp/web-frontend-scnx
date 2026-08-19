@@ -108,3 +108,12 @@ export function getPorcentajeDiferenciaClass(porcentaje: number): string {
   if (porcentaje > 0) return 'text-green-600'
   return 'text-gray-900'
 }
+
+/**
+ * Determina si un nombre de proveedor corresponde a El Rayo
+ */
+export function esProveedorElRayo(proveedorNombre: string | null | undefined): boolean {
+  if (!proveedorNombre) return false
+  const nombreUpper = proveedorNombre.toUpperCase()
+  return nombreUpper.includes('EL RAYO') || nombreUpper.includes('RAYO')
+}

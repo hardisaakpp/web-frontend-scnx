@@ -58,7 +58,7 @@
           </div>
         </div>
         <div v-show="!filtrosColapsados" class="p-6">
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Estados incluidos</label>
               <!-- Estados incluidos: flujo de redistribución en adelante (usa flag solo_redistribucion en backend) -->
@@ -68,14 +68,16 @@
               </div>
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fecha Desde</label>
-              <AppDateInput v-model="filtros.fecha_desde" @keyup.enter="aplicarFiltros" />
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fecha</label>
+              <AppDateFilterInput
+                v-model:tipo="filtros.tipo_fecha"
+                v-model:desde="filtros.fecha_desde"
+                v-model:hasta="filtros.fecha_hasta"
+                @change="aplicarFiltros"
+                @keyup.enter="aplicarFiltros"
+              />
             </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fecha Hasta</label>
-              <AppDateInput v-model="filtros.fecha_hasta" @keyup.enter="aplicarFiltros" />
-            </div>
-            <div>
+            <div v-if="MOSTRAR_FILTRO_PROVEEDOR_PEDIDOS">
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Proveedor</label>
               <input
                 type="text"
@@ -87,34 +89,56 @@
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Número de Pedido</label>
-              <input
-                type="text"
-                v-model="filtros.numero_pedido"
-                @keyup.enter="aplicarFiltros"
-                placeholder="Buscar por número de pedido..."
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 text-sm"
-              />
+              <div class="relative">
+                <input
+                  ref="numeroPedidoInputRef"
+                  type="text"
+                  v-model="busquedaNumeroPedido"
+                  @input="handleBusquedaNumeroPedido"
+                  @keyup.enter="buscarNumeroPedidoInmediato"
+                  placeholder="Buscar por número de pedido..."
+                  autocomplete="off"
+                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 text-sm"
+                />
+                <button
+                  v-if="busquedaNumeroPedido"
+                  @mousedown.prevent="limpiarBusquedaNumeroPedido"
+                  class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Creado Por</label>
-              <input
-                type="text"
-                v-model="filtros.creado_por"
-                @keyup.enter="aplicarFiltros"
-                placeholder="Buscar por usuario creador..."
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 text-sm"
-              />
+              <div class="relative">
+                <input
+                  ref="creadoPorInputRef"
+                  type="text"
+                  v-model="busquedaCreadoPor"
+                  @input="handleBusquedaCreadoPor"
+                  @keyup.enter="buscarCreadoPorInmediato"
+                  placeholder="Buscar por usuario creador..."
+                  autocomplete="off"
+                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 text-sm"
+                />
+                <button
+                  v-if="busquedaCreadoPor"
+                  @mousedown.prevent="limpiarBusquedaCreadoPor"
+                  class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
             </div>
             <div class="flex items-end gap-2">
               <button
-                @click="aplicarFiltros"
-                class="flex-1 px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors text-sm font-medium"
-              >
-                Buscar
-              </button>
-              <button
                 @click="limpiarFiltros"
-                class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-700 dark:text-gray-300 text-sm font-medium"
+                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-700 dark:text-gray-300 text-sm font-medium"
               >
                 Limpiar
               </button>
@@ -267,12 +291,14 @@
                     {{ pedido.fecha_pedido ? formatDate(pedido.fecha_pedido) : '-' }}
                   </td>
                   <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
-                    <div class="flex items-center gap-2">
-                      <span>{{ pedido.proveedor_nombre || '-' }}</span>
-                      <span v-if="esProveedorElRayo(pedido.proveedor_nombre)" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300" title="Proveedor: El Rayo">
-                        EL RAYO
-                      </span>
-                    </div>
+                    <span
+                      v-if="esProveedorElRayo(pedido.proveedor_nombre)"
+                      class="inline-flex items-center px-1.5 py-0.5 rounded font-medium bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300"
+                      title="Proveedor: El Rayo"
+                    >
+                      {{ pedido.proveedor_nombre }}
+                    </span>
+                    <span v-else>{{ pedido.proveedor_nombre || '-' }}</span>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-center">
                     <span :class="getEstadoBadgeClass(pedido.estado)">{{ getEstadoLabel(pedido.estado) }}</span>
@@ -300,8 +326,11 @@
               <QuickTablePagination
                 v-model="redistListCurrentPage"
                 :total-pages="redistListTotalPages"
+                :page-size="metadata.limit"
+                :page-size-options="PAGE_SIZE_OPTIONS"
                 :disabled="loading"
                 aria-label="Paginación de pedidos en revisión"
+                @update:page-size="cambiarTamanoPagina"
               />
             </div>
           </div>
@@ -313,7 +342,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from '@vue/reactivity'
-import { onMounted } from '@vue/runtime-core'
+import { onMounted, onUnmounted } from '@vue/runtime-core'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { lastNotification, reconnectedAfterGap } from '@/composables/useNotificaciones'
@@ -326,10 +355,14 @@ import type {
   PedidoCompleto,
 } from '../types'
 import { formatDate, formatDateTime } from '../utils/formatters'
+import { esProveedorElRayo } from '../utils/styleHelpers'
+import { MOSTRAR_FILTRO_PROVEEDOR_PEDIDOS } from '../config/featureFlags'
+import { PAGE_SIZE_OPTIONS } from '../config/pagination'
+import { useDebouncedFilterInput } from '../composables/useDebouncedFilterInput'
 import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
 import QuickTablePagination from '@/components/QuickTablePagination.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
-import AppDateInput from '../components/AppDateInput.vue'
+import AppDateFilterInput from '../components/AppDateFilterInput.vue'
 import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
 
 const router = useRouter()
@@ -376,6 +409,7 @@ const filtros = ref<PedidosListadoFiltros>({
   estado: '',
   fecha_desde: '',
   fecha_hasta: '',
+  tipo_fecha: 'pedido',
   proveedor_nombre: '',
   numero_pedido: '',
   creado_por: '',
@@ -383,6 +417,46 @@ const filtros = ref<PedidosListadoFiltros>({
   limit: PAGE_SIZE,
   offset: 0
 })
+
+// ========== Búsqueda por Número de Pedido (con debounce, filtra en vivo) ==========
+const numeroPedidoInputRef = ref<HTMLInputElement | null>(null)
+const {
+  texto: busquedaNumeroPedido,
+  handleInput: handleBusquedaNumeroPedido,
+  commit: buscarNumeroPedidoInmediato,
+  clear: limpiarBusquedaNumeroPedidoTexto,
+  dispose: disposeBusquedaNumeroPedido
+} = useDebouncedFilterInput((valor) => {
+  if (filtros.value.numero_pedido !== valor) {
+    filtros.value.numero_pedido = valor
+    aplicarFiltros()
+  }
+})
+
+function limpiarBusquedaNumeroPedido() {
+  limpiarBusquedaNumeroPedidoTexto()
+  numeroPedidoInputRef.value?.focus()
+}
+
+// ========== Búsqueda por Creado Por (con debounce, filtra en vivo) ==========
+const creadoPorInputRef = ref<HTMLInputElement | null>(null)
+const {
+  texto: busquedaCreadoPor,
+  handleInput: handleBusquedaCreadoPor,
+  commit: buscarCreadoPorInmediato,
+  clear: limpiarBusquedaCreadoPorTexto,
+  dispose: disposeBusquedaCreadoPor
+} = useDebouncedFilterInput((valor) => {
+  if (filtros.value.creado_por !== valor) {
+    filtros.value.creado_por = valor
+    aplicarFiltros()
+  }
+})
+
+function limpiarBusquedaCreadoPor() {
+  limpiarBusquedaCreadoPorTexto()
+  creadoPorInputRef.value?.focus()
+}
 
 function getEstadoLabel(estado: string): string {
   const labels: Record<string, string> = {
@@ -459,12 +533,6 @@ function getEstadoBadgeClass(estado: string): string {
   return `${baseClasses} ${classes[estado] || `bg-gray-100 text-gray-800 ${darkClasses} dark:bg-gray-700 dark:text-gray-200`}`
 }
 
-function esProveedorElRayo(proveedorNombre: string | null | undefined): boolean {
-  if (!proveedorNombre) return false
-  const nombreUpper = proveedorNombre.toUpperCase()
-  return nombreUpper.includes('EL RAYO') || nombreUpper.includes('RAYO')
-}
-
 // Función para alternar el ordenamiento de una columna
 function toggleSort(column: string) {
   if (sortColumn.value === column) {
@@ -526,6 +594,7 @@ async function cargarPedidos() {
       pageSize: metadata.value.limit,
       fecha_desde: filtros.value.fecha_desde || undefined,
       fecha_hasta: filtros.value.fecha_hasta || undefined,
+      tipo_fecha: filtros.value.tipo_fecha,
       proveedor_nombre: filtros.value.proveedor_nombre || undefined,
       numero_pedido: filtros.value.numero_pedido || undefined,
       creado_por: filtros.value.creado_por || undefined,
@@ -594,6 +663,7 @@ function limpiarFiltros() {
     estado: '',
     fecha_desde: '',
     fecha_hasta: '',
+    tipo_fecha: 'pedido',
     proveedor_nombre: '',
     numero_pedido: '',
     creado_por: '',
@@ -601,6 +671,8 @@ function limpiarFiltros() {
     limit: PAGE_SIZE,
     offset: 0
   }
+  busquedaNumeroPedido.value = ''
+  busquedaCreadoPor.value = ''
   metadata.value.offset = 0
   cargarPedidos()
 }
@@ -608,6 +680,13 @@ function limpiarFiltros() {
 function cambiarPagina(nuevoOffset: number) {
   metadata.value.offset = nuevoOffset
   filtros.value.offset = nuevoOffset
+  cargarPedidos()
+}
+
+function cambiarTamanoPagina(nuevoLimit: number) {
+  metadata.value.limit = nuevoLimit
+  metadata.value.offset = 0
+  filtros.value.offset = 0
   cargarPedidos()
 }
 
@@ -622,6 +701,11 @@ function abrirRevisar(pedido: PedidoResumido) {
 
 onMounted(() => {
   cargarPedidos()
+})
+
+onUnmounted(() => {
+  disposeBusquedaNumeroPedido()
+  disposeBusquedaCreadoPor()
 })
 
 // ⭐ Watch para recargar lista cuando llega una notificación SSE relevante

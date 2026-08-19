@@ -1,9 +1,24 @@
 <template>
   <nav
-    v-if="totalPages > 1"
-    class="flex flex-wrap items-center gap-1.5 sm:gap-2"
+    v-if="showPageSizeSelector || totalPages > 1"
+    class="flex flex-wrap items-center gap-3"
     :aria-label="ariaLabel"
   >
+    <div v-if="showPageSizeSelector" class="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+      <label :for="pageSizeSelectId" class="whitespace-nowrap">Mostrar</label>
+      <select
+        :id="pageSizeSelectId"
+        :value="pageSize"
+        :disabled="disabled"
+        class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 text-sm py-1.5 pl-2 pr-7 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        @change="onPageSizeChange"
+      >
+        <option v-for="opt in pageSizeOptions" :key="opt" :value="opt">{{ opt }}</option>
+      </select>
+      <span class="whitespace-nowrap">por página</span>
+    </div>
+
+    <div v-if="totalPages > 1" class="flex flex-wrap items-center gap-1.5 sm:gap-2">
     <button
       type="button"
       title="Primera página"
@@ -112,11 +127,12 @@
         </PopoverPanel>
       </transition>
     </Popover>
+    </div>
   </nav>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, useId, watch } from 'vue'
 import { Popover, PopoverButton, PopoverPanel } from '@headlessui/vue'
 
 const props = withDefaults(
@@ -128,6 +144,11 @@ const props = withDefaults(
     ariaLabel?: string
     /** Panel "Otra página" con input numérico. */
     showJumpLink?: boolean
+    /** Tamaño de página actual. Requiere `pageSizeOptions` para mostrar el selector "Mostrar N por página". */
+    pageSize?: number
+    /** Si se define (no vacío), muestra el selector de tamaño de página con estas opciones.
+     * Al cambiar, el consumidor debe volver a la página 1 y recargar con el nuevo límite. */
+    pageSizeOptions?: number[]
   }>(),
   {
     disabled: false,
@@ -138,7 +159,16 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   'update:modelValue': [value: number]
+  'update:pageSize': [value: number]
 }>()
+
+const pageSizeSelectId = useId()
+const showPageSizeSelector = computed(() => !!(props.pageSizeOptions && props.pageSizeOptions.length > 0))
+
+function onPageSizeChange(event: Event) {
+  const value = Number((event.target as HTMLSelectElement).value)
+  if (!Number.isNaN(value)) emit('update:pageSize', value)
+}
 
 const jumpPageDraft = ref(1)
 

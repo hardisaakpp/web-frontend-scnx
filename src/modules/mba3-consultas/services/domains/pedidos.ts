@@ -39,6 +39,7 @@ import type {
   ObtenerModificacionesColumnasResponse,
   PedidosListadoResponse,
   PedidosListadoFiltros,
+  TipoFechaFiltro,
   TienePedidosResponse,
   CrearOCDesdePedidoResponse,
   DistribucionPedidoResponse,
@@ -427,19 +428,23 @@ export const pedidosService = {
    * 
    * A diferencia de getPedidosListado (que usa GET /api/pedidos):
    * - INCLUYE pedidos en estado BORRADOR
-   * - Filtra automáticamente por el usuario actual
+   * - No filtra por usuario: visibles para todos con permiso mba3-consultas.facturas.view
    * - Diseñado específicamente para la interfaz de "Cargar Plantilla"
-   * 
+   *
    * GET /api/plantillas/pedidos
-   * 
+   *
    * Requiere permiso: mba3-consultas.facturas.view
-   * 
-   * @param filtros Filtros opcionales (estado, numero_pedido, limit, offset)
+   *
+   * @param filtros Filtros opcionales (estado, numero_pedido, creado_por, limit, offset)
    * @returns Lista de pedidos con metadata de paginación
    */
   async getPlantillasPedidos(filtros?: {
     estado?: string
     numero_pedido?: string
+    creado_por?: string
+    fecha_desde?: string
+    fecha_hasta?: string
+    tipo_fecha?: TipoFechaFiltro
     limit?: number
     offset?: number
     solo_pendientes_accion?: boolean
@@ -1412,6 +1417,7 @@ export const pedidosService = {
     estado?: string
     fecha_desde?: string
     fecha_hasta?: string
+    tipo_fecha?: TipoFechaFiltro
     proveedor_nombre?: string
     numero_pedido?: string
     creado_por?: string
