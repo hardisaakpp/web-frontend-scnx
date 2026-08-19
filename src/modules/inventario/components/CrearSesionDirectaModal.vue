@@ -361,7 +361,7 @@ const FiltroMultiselect = defineComponent({
                 class: 'absolute z-20 mt-1 w-full max-h-36 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-lg',
                 onMousedown: (e: Event) => e.preventDefault()
               },
-                filtered.value.slice(0, 50).map(o =>
+                filtered.value.map(o =>
                   h('div', {
                     key: o,
                     class: [

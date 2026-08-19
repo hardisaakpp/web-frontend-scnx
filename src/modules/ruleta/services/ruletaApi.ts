@@ -1,4 +1,5 @@
-import axios from 'axios'
+import axios, { type AxiosError } from 'axios'
+import { useToast } from '@/composables/useToast'
 import type {
   Ruleta, RuletaFilters, RuletaPagination,
   Tienda, SegmentoRuleta, IdentificacionCliente, ResultadoGiro,
@@ -9,8 +10,8 @@ import type {
   EstadoCampana, EstadoGrupo, SegmentoCliente, TipoPremio,
   PremioBackendResponse, GiroRequestDTO,
   GiroVerificacionResponse, RedencionResponse, MetricasCampana,
-  HistorialGiroItem, HistorialGirosResponse,
-  StockPremio
+  HistorialGiroItem, HistorialGirosResponse, GiroFilters, DistribucionSegmentos,
+  StockPremio, PreviewImpactoStockItem, ImpactoStock, ProbabilidadGrupo
 } from '../types'
 
 // Instancia heredada para endpoints del core API (getRuletas, etc.)
@@ -36,6 +37,28 @@ campanaApi.interceptors.request.use((config) => {
   if (token && config.headers) config.headers.Authorization = `Bearer ${token}`
   return config
 })
+
+// Conflicto de concurrencia (Lost Update): otro administrador ya guardó cambios sobre
+// el mismo registro. Se avisa aquí, en un solo lugar, para cualquier request del módulo,
+// y luego se re-lanza el error para que cada pantalla decida cómo reaccionar localmente
+// (p. ej. no cerrar un modal, mostrar un mensaje inline puntual).
+campanaApi.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError<{ code?: string; error?: string }>) => {
+    if (error.response?.status === 409 && error.response.data?.code === 'CONCURRENCY_CONFLICT') {
+      useToast().addToast({
+        type: 'warning',
+        title: 'Datos desactualizados',
+        message:
+          error.response.data?.error ||
+          'Otro usuario modificó este registro mientras lo editabas. Recarga la página para ver la versión más reciente.',
+        duration: 0,
+        action: { label: 'Recargar página', onClick: () => window.location.reload() }
+      })
+    }
+    return Promise.reject(error)
+  }
+)
 
 function mapCampana(raw: CampanaBackendResponse): Campana {
   return {
@@ -75,10 +98,11 @@ function mapPremioFromBackend(p: PremioBackendResponse): PremioAdmin {
     es_relleno: p.esVacio,
     imagen_url: p.imagenUrl ?? undefined,
     controla_stock_por_tienda: p.controlaStockPorTienda ?? false,
+    rowVersion: p.rowVersion,
   }
 }
 
-function premioToBackend(data: Partial<PremioAdmin>, segmento?: string) {
+function premioToBackend(data: Partial<PremioAdmin>, segmento?: string, confirmarReduccionStock = false) {
   let tipo = 'SinPremio'
   if (data.tipo === 'fisico') tipo = 'Fisico'
   else if (data.tipo === 'digital') tipo = 'Digital'
@@ -98,13 +122,32 @@ function premioToBackend(data: Partial<PremioAdmin>, segmento?: string) {
     segmento,
     imagenUrl,
     controlaStockPorTienda: data.controla_stock_por_tienda ?? false,
-    
+    // Token de concurrencia: solo presente al editar (viene del último GET).
+    rowVersion: data.rowVersion ?? null,
+
     // Hardcodeado: Forzamos a que sea 0 sí o sí.
-    ordenRuleta: 0 
+    ordenRuleta: 0,
+
+    // Confirmación explícita para reducir StockTotal con la campaña Activa (ver
+    // PremioService.UpdateAsync). El backend rechaza la reducción con 409 si esto es false.
+    confirmarReduccionStock
   }
 
 
   return payload
+}
+
+function toGiroParams(filters: GiroFilters): Record<string, string> {
+  const params: Record<string, string> = {}
+
+  if (filters.campanaId) params.campanaId = filters.campanaId
+  if (filters.premioNombre?.trim()) params.premioNombre = filters.premioNombre.trim()
+  if (filters.segmento) params.segmento = filters.segmento
+  if (filters.fechaInicio) params.fechaInicio = filters.fechaInicio
+  if (filters.fechaFin) params.fechaFin = filters.fechaFin
+  if (filters.estado) params.estado = filters.estado
+
+  return params
 }
 
 // ─── CRUD base (listado admin) ────────────────────────────────────────────────
@@ -315,13 +358,21 @@ export const ruletaService = {
     return mapCampana(response.data)
   },
 
-  async cambiarEstadoCampana(id: string, estado: Campana['estado']): Promise<void> {
+  async cambiarEstadoCampana(id: string, estado: Campana['estado']): Promise<Campana> {
     const nuevoEstado = estado.charAt(0).toUpperCase() + estado.slice(1)
-    await campanaApi.patch(`/api/Campanas/${id}/estado`, { nuevoEstado })
+    const response = await campanaApi.patch<CampanaBackendResponse>(`/api/Campanas/${id}/estado`, { nuevoEstado })
+    return mapCampana(response.data)
   },
 
   async eliminarCampana(id: string): Promise<void> {
     await campanaApi.delete(`/api/Campanas/${id}`)
+  },
+
+  async getProbabilidadesEnVivo(campanaId: string, tiendaCodigo: string): Promise<ProbabilidadGrupo[]> {
+    const response = await campanaApi.get<ProbabilidadGrupo[]>(`/api/Campanas/${campanaId}/probabilidades`, {
+      params: { tiendaCodigo }
+    })
+    return response.data
   },
 
   // ─── Admin: Premios y probabilidades ─────────────────────────────────────────
@@ -352,8 +403,12 @@ export const ruletaService = {
     })
   },
 
-  async actualizarPremio(campanaId: string, premioId: string, data: Partial<PremioAdmin>): Promise<void> {
-    await campanaApi.put(`/api/campanas/${campanaId}/premios/${premioId}`, premioToBackend(data))
+  async actualizarPremio(campanaId: string, premioId: string, data: Partial<PremioAdmin>, confirmarReduccionStock = false): Promise<PremioAdmin> {
+    const response = await campanaApi.put<PremioBackendResponse>(
+      `/api/campanas/${campanaId}/premios/${premioId}`,
+      premioToBackend(data, undefined, confirmarReduccionStock)
+    )
+    return mapPremioFromBackend(response.data)
   },
 
   async agregarPremio(campanaId: string, segmento: string, data: Omit<PremioAdmin, 'id'>): Promise<PremioAdmin> {
@@ -383,6 +438,22 @@ export const ruletaService = {
       null,
       { params: { tiendaCodigo, stockTotal: cantidad } }
     )
+  },
+
+  // Calcula, sin guardar nada, cuánto cambiaría el "disponible hoy" del pacing para cada
+  // cambio de stock pendiente — solo devuelve algo si la campaña está Activa y el cambio
+  // realmente altera lo que un cliente podría ganar hoy.
+  async previewImpactoStock(campanaId: string, items: PreviewImpactoStockItem[]): Promise<ImpactoStock[]> {
+    if (items.length === 0) return []
+    const response = await campanaApi.post<ImpactoStock[]>(
+      `/api/campanas/${campanaId}/premios/preview-impacto-stock`,
+      items.map(i => ({
+        premioId: i.premioId,
+        tiendaCodigo: i.tiendaCodigo,
+        nuevoStockTotal: i.nuevoStockTotal
+      }))
+    )
+    return response.data
   },
 
   // ─── Admin: Inventario ────────────────────────────────────────────────────────
@@ -534,22 +605,24 @@ export const ruletaService = {
   },
 
   // ─── Historial de giros ───────────────────────────────────────────────────────
-  async getHistorialGiros(campanaId?: string, page = 1, pageSize = 10): Promise<HistorialGirosResponse> {
-    const params: Record<string, unknown> = { page, pageSize }
-    if (campanaId) params.campanaId = campanaId
+  async getHistorialGiros(filters: GiroFilters = {}, page = 1, pageSize = 10): Promise<HistorialGirosResponse> {
+    const params: Record<string, unknown> = { ...toGiroParams(filters), page, pageSize }
     const response = await campanaApi.get<any>('/api/metricas/giros', { params })
     const d = response.data
     const items: HistorialGiroItem[] = (d.items ?? d.Items ?? []).map((item: any) => ({
       id:               item.id               ?? item.giroId            ?? '',
       fecha:            item.fecha            ?? item.fechaGiro         ?? '',
       identificacion:   item.identificacion   ?? item.clienteIdentificacion ?? '',
-      tiendaCodigo:     item.tiendaCodigo     ?? item.tienda            ?? '',
+      tiendaCodigo:     item.enroladorTienda  ?? item.tiendaCodigo      ?? item.tienda ?? '',
       enroladorNombre:  item.enroladorNombre  ?? null,
       premioNombre:     item.premioNombre     ?? '',
       premioTipo:       item.premioTipo       ?? item.tipo              ?? '',
+      segmento:         item.segmento         ?? null,
+      estado:           item.estado           ?? '',
       esGanador:        item.esGanador        ?? false,
       codigoRedencion:  item.codigoRedencion  ?? item.codigo            ?? null,
       redimido:         item.redimido         ?? item.estado === 'Redimido',
+      grupo:            item.grupo            ?? item.clienteGrupo     ?? item.segmento ?? null,
     }))
     return {
       totalRegistros: d.totalRegistros ?? 0,
@@ -559,26 +632,31 @@ export const ruletaService = {
     }
   },
 
-  async exportarGirosCsv(campanaId?: string): Promise<void> {
-    const params: Record<string, string> = {}
-    if (campanaId) params.CampanaId = campanaId
+  async getDistribucionSegmentos(filters: GiroFilters = {}): Promise<DistribucionSegmentos> {
+    const response = await campanaApi.get<DistribucionSegmentos>('/api/metricas/giros/distribucion-segmentos', {
+      params: toGiroParams(filters)
+    })
+    return response.data
+  },
+
+  async exportarGirosCsv(filters: GiroFilters = {}): Promise<void> {
+    const params = toGiroParams(filters)
     const response = await campanaApi.get('/api/metricas/giros/exportar', { params, responseType: 'blob' })
     const blobUrl = URL.createObjectURL(new Blob([response.data as BlobPart], { type: 'text/csv' }))
     const a = document.createElement('a')
     a.href = blobUrl
-    a.download = campanaId ? `giros-${campanaId}.csv` : 'giros.csv'
+    a.download = filters.campanaId ? `giros-${filters.campanaId}.csv` : 'giros.csv'
     a.click()
     URL.revokeObjectURL(blobUrl)
   },
 
-  async exportarGirosExcel(campanaId?: string): Promise<void> {
-    const params: Record<string, string> = {}
-    if (campanaId) params.CampanaId = campanaId
+  async exportarGirosExcel(filters: GiroFilters = {}): Promise<void> {
+    const params = toGiroParams(filters)
     const response = await campanaApi.get('/api/metricas/giros/exportar/excel', { params, responseType: 'blob' })
     const blobUrl = URL.createObjectURL(new Blob([response.data as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
     const a = document.createElement('a')
     a.href = blobUrl
-    a.download = campanaId ? `giros-${campanaId}.xlsx` : 'giros.xlsx'
+    a.download = filters.campanaId ? `giros-${filters.campanaId}.xlsx` : 'giros.xlsx'
     a.click()
     URL.revokeObjectURL(blobUrl)
   },

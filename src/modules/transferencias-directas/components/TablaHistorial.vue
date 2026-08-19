@@ -32,13 +32,16 @@ const thOrdenableClass = `${thClass} cursor-pointer select-none hover:bg-gray-10
 const esOrdenActivo = (campo: string) => props.ordenarPor === campo
 const esAscendente = (campo: string) => esOrdenActivo(campo) && props.direccion === 'asc'
 
-const formatFecha = (iso: string) =>
-    iso
-        ? new Date(iso).toLocaleString(APP_LOCALE, {
-            dateStyle: 'short',
-            timeStyle: 'short',
-        })
-        : ''
+
+function formatFecha(iso: string) {
+  if (!iso) return '—'
+  try {
+    return new Date(iso).toLocaleString(APP_LOCALE, {
+      day: '2-digit', month: '2-digit', year: '2-digit',
+      hour: '2-digit', minute: '2-digit', hour12: false,
+    })
+  } catch { return iso }
+}
 const mostrarGuia = (g: string | null) => (g && g.trim() ? g : '—')
 const puedeAprobar = computed(() => authStore.hasPermission('transferenciadirecta.aprobar'))
 

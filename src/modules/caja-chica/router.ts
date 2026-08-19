@@ -28,7 +28,8 @@ const routes: RouteRecordRaw[] = [
         'cajachica.empresas.view',
         'cajachica.grupos-almacenes.view',
         'cajachica.usuarios-almacenes.view',
-        'cajachica.adjuntos.view'
+        'cajachica.adjuntos.view',
+        'cajachica.tiposiva.admin'
       ]
     },
   },
@@ -158,33 +159,23 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
-    path: '/caja-chica/almacenes',
-    name: 'caja-chica-almacenes',
-    component: () => import('./views/AlmacenesView.vue'),
-    meta: { 
-      requiresAuth: true,
-      title: 'Almacenes',
-      permissions: ['cajachica.almacenes.view']
-    },
-  },
-  {
-    path: '/caja-chica/asignacion-almacenes',
-    name: 'caja-chica-asignacion-almacenes',
-    component: () => import('./views/AsignacionAlmacenesUsuariosView.vue'),
-    meta: { 
-      requiresAuth: true,
-      title: 'Asignacion de almacenes',
-      permissions: ['cajachica.almacenes.view']
-    },
-  },
-  {
     path: '/caja-chica/formas-pago',
     name: 'caja-chica-formas-pago',
     component: () => import('./views/FormasPagoView.vue'),
-    meta: { 
+    meta: {
       requiresAuth: true,
       title: 'Formas de Pago',
       permissions: ['cajachica.formaspago.view']
+    },
+  },
+  {
+    path: '/caja-chica/tipos-iva',
+    name: 'caja-chica-tipos-iva',
+    component: () => import('./views/TiposIvaView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Tipos de IVA',
+      permissions: ['cajachica.tiposiva.admin']
     },
   },
 ]

@@ -8,7 +8,22 @@
       </div>
 
       <!-- Formulario (solo para crear) -->
-      <div class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-5">
+      <div class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+        <button
+          type="button"
+          class="w-full flex items-center justify-between px-5 py-4 text-left"
+          @click="showCreateForm = !showCreateForm"
+        >
+          <span class="text-sm font-semibold text-gray-900 dark:text-white">Nuevo grupo</span>
+          <svg
+            class="w-4 h-4 text-slate-400 transition-transform shrink-0"
+            :class="{ 'rotate-180': showCreateForm }"
+            viewBox="0 0 20 20" fill="currentColor"
+          >
+            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+          </svg>
+        </button>
+        <div v-if="showCreateForm" class="px-5 pb-5 border-t border-gray-200 dark:border-gray-700 pt-4">
         <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div>
             <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Nombre del grupo</label>
@@ -187,6 +202,7 @@
             Agregar grupo
           </button>
           <span v-if="formError" class="text-sm text-red-600 dark:text-red-400">{{ formError }}</span>
+        </div>
         </div>
       </div>
 
@@ -422,7 +438,6 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { APP_LOCALE } from '@/plugins/locale'
 import api from '@/services/api'
-import { cajaChicaApi } from '@/lib/http'
 import { randomUUID } from '@/utils/uuid'
 import VolverButton from '@/components/VolverButton.vue'
 
@@ -444,6 +459,7 @@ interface AlmacenItem {
 }
 
 // Create form state
+const showCreateForm = ref(false)
 const groupName = ref('')
 const groupDescription = ref('')
 const formError = ref('')
@@ -526,12 +542,15 @@ const addGroup = async () => {
       modificadoPor: data?.modificadoPor ?? null
     })
     resetForm()
+    showCreateForm.value = false
   } catch (err: any) {
     formError.value = err?.response?.data?.message || err?.response?.data || 'No se pudo guardar el grupo.'
   }
 }
 
 const removeGroup = async (id: string) => {
+  const grupo = grupos.value.find(g => g.id === id)
+  if (!confirm(`¿Está seguro de eliminar el grupo "${grupo?.grupo ?? ''}"?\n\nEsta acción no se puede deshacer.`)) return
   try {
     await api.delete(`/WarehouseGroups/${id}`)
     grupos.value = grupos.value.filter(g => g.id !== id)
@@ -706,9 +725,8 @@ const loadAlmacenes = async () => {
   almacenesLoading.value = true
   almacenesError.value = ''
   try {
-    const response = await cajaChicaApi.get('/Almacenes', { headers: { Accept: 'text/plain' }, responseType: 'text' })
-    let payload = response.data as any
-    if (typeof payload === 'string') { try { payload = JSON.parse(payload) } catch { payload = [] } }
+    const response = await api.get('/UsuariosAlmacenes/almacenes')
+    const payload = response.data as any
     const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
     almacenes.value = items
       .map((item: any) => ({ codAlmacen: String(item.codAlmacen ?? item.CodAlmacen ?? '').trim(), nombre: String(item.nombre ?? item.Nombre ?? '').trim() }))
