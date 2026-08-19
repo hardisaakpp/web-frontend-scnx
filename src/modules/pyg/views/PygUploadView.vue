@@ -451,6 +451,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { APP_LOCALE } from '@/plugins/locale'
 import { lastNotification } from '@/composables/useNotificaciones'
 import { useModuleNotifications } from '@/composables/useModuleNotifications'
 import { useAuthStore } from '@/stores/auth'
@@ -546,7 +547,7 @@ const periodValidationUntilLabel = computed(() => {
   if (!raw) return ''
   const d = new Date(raw)
   if (Number.isNaN(d.getTime())) return raw
-  return d.toLocaleString('es-EC', { dateStyle: 'short', timeStyle: 'short' })
+  return d.toLocaleString(APP_LOCALE, { dateStyle: 'short', timeStyle: 'short' })
 })
 
 function selectedRowsTotalPages(key: UploadSheetKey): number {
@@ -641,7 +642,7 @@ function formatAuditDate(value: string | undefined): string {
   if (!s) return '—'
   const d = new Date(s)
   if (Number.isNaN(d.getTime())) return s
-  return d.toLocaleString('es-EC', { dateStyle: 'short', timeStyle: 'short' })
+  return d.toLocaleString(APP_LOCALE, { dateStyle: 'short', timeStyle: 'short' })
 }
 
 function getApiErrorMessage(error: unknown, fallback: string): string {

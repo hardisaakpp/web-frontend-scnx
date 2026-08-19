@@ -382,6 +382,7 @@
 
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { APP_LOCALE } from '@/plugins/locale'
 import { useAuthStore } from '@/stores/auth'
 import {
   checkStoreEmployeesHealth,
@@ -494,7 +495,7 @@ function formatAuditDate(value: string | undefined): string {
   if (!s) return '—'
   const d = new Date(s)
   if (Number.isNaN(d.getTime())) return s
-  return d.toLocaleString('es-EC', { dateStyle: 'short', timeStyle: 'short' })
+  return d.toLocaleString(APP_LOCALE, { dateStyle: 'short', timeStyle: 'short' })
 }
 
 function resetForm() {

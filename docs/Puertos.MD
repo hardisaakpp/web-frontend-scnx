@@ -6,4 +6,5 @@ ODC                     -
 MINIO                   -   
 ARTICULO MAESTRO        -   8004
 CONCILIACION BANCARIA   -   8005 
+RECEPCION MERCADERIA    -   8007 (docker) / 8007 (dotnet run local)
 

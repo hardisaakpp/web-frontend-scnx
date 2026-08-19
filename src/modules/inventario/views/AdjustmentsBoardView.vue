@@ -141,10 +141,11 @@ import {
   scnexusInventoryApi
 } from '../services/scnexusInventoryApi'
 import { useInventarioModulePermissions } from '../composables/useInventarioModulePermissions'
+import { NUMBER_LOCALE } from '@/plugins/locale'
 
 const { canEditarAjuste, canRevisarAjuste, canIntegrarSap } = useInventarioModulePermissions()
 
-const numberFmt = new Intl.NumberFormat('es-DO', { maximumFractionDigits: 2 })
+const numberFmt = new Intl.NumberFormat(NUMBER_LOCALE, { maximumFractionDigits: 2 })
 
 const adjustments = ref<AdjustmentSummaryDto[]>([])
 const current = ref<AdjustmentDetailDto | null>(null)

@@ -175,3 +175,10 @@ export const reposicionesApi = createModuleApi(
   ENV.REPOSICIONES_URL,
   { auditHeaders: true },
 )
+
+/** Trasnferencias Directas */
+
+export const transferenciasDirectasApi = createModuleApi(
+  ENV.TRANSFERENCIAS_DIRECTAS_URL,
+  { auditHeaders: true },
+)

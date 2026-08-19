@@ -190,9 +190,10 @@ import {
   type WarehouseDto,
   scnexusInventoryApi
 } from '../services/scnexusInventoryApi'
+import { NUMBER_LOCALE } from '@/plugins/locale'
 
 const router = useRouter()
-const numberFmt = new Intl.NumberFormat('es-DO', { maximumFractionDigits: 2 })
+const numberFmt = new Intl.NumberFormat(NUMBER_LOCALE, { maximumFractionDigits: 2 })
 
 const warehouses = ref<WarehouseDto[]>([])
 const stockRows = ref<ItemStockDto[]>([])
