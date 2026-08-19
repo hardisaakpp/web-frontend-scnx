@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { usePickingStore } from '../stores/pickingStore'
 import { useAuthStore } from '@/stores/auth'
 import { APP_LOCALE } from '@/plugins/locale'
@@ -40,6 +40,7 @@ function formatDateTime(dateStr: string): string {
 }
 
 const route = useRoute()
+const router = useRouter()
 const store = usePickingStore()
 const authStore = useAuthStore()
 
@@ -60,6 +61,19 @@ onMounted(() => {
 watch(transferId, (id) => {
   store.fetchTransfer(id)
 })
+
+// A confirmed transfer belongs in Historial, not this picking detail — covers both the normal
+// confirm() success path and confirm()'s own refetch-after-error recovery (a request that failed
+// client-side while the backend confirmation actually went through), so either way the user gets
+// moved out instead of staying on a page for a transfer that's no longer pending confirmation.
+watch(
+  () => store.currentTransfer?.status,
+  (transferStatus) => {
+    if (transferStatus === 'confirmed') {
+      router.push({ name: 'recepcion-historial' })
+    }
+  }
+)
 
 // Scan: real backend model is "pick an existing line, enter its (absolute) scanned total" —
 // not a free-typed item code. scanQuantities holds one editable draft per line, seeded from the

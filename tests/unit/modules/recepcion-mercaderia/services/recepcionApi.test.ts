@@ -211,17 +211,16 @@ describe('recepcionApi', () => {
     })
   })
 
-  it('confirm sends { allowPartial: false } by default and maps the response', async () => {
-    vi.mocked(api.post).mockResolvedValue({ data: wireTransfer({ isConfirmed: true }) })
+  it('confirm sends { allowPartial: false } by default and does not attempt to map the response (real shape on success is ConfirmReceptionTransferResult { success, sapDocEntry, sapDocNum, message }, not a transfer — verified with backend)', async () => {
+    vi.mocked(api.post).mockResolvedValue({ data: { success: true, sapDocEntry: 123, sapDocNum: 456, message: null } })
 
-    const result = await recepcionApi.confirm(7)
+    await expect(recepcionApi.confirm(7)).resolves.toBeUndefined()
 
     expect(api.post).toHaveBeenCalledWith('recepcion-api/reception/transfers/7/confirm', { allowPartial: false })
-    expect(result.status).toBe('confirmed')
   })
 
   it('confirm forwards allowPartial:true for ConfirmPartial (real field name, not "partial")', async () => {
-    vi.mocked(api.post).mockResolvedValue({ data: wireTransfer() })
+    vi.mocked(api.post).mockResolvedValue({ data: { success: true, sapDocEntry: 123, sapDocNum: 456, message: null } })
 
     await recepcionApi.confirm(7, { allowPartial: true })
 
