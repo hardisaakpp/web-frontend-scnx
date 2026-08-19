@@ -55,6 +55,9 @@ watch(selectedTiendaInfo, async () => {
 const campana = computed(() => store.campanas.find(c => c.id === campanaId))
 
 const hoy = new Date().toISOString().slice(0, 10)
+// Puramente visual: solo alimenta el badge de estado. Nunca debe usarse para decidir qué
+// botones de acción mostrar — para eso, usar el estado PERSISTIDO (campanaActiva/campanaPausada
+// más abajo), que no varía según fecha_inicio.
 const estadoEfectivo = computed(() => {
   if (!campana.value) return 'borrador'
   if (campana.value.estado === 'activa' && campana.value.fecha_inicio > hoy) return 'programada'
@@ -105,8 +108,11 @@ const currentProbability = computed(() => {
 // ─── Estado de bloqueo de edición ────────────────────────────────────────────
 // Activa: bloquea estructura (nombre, fechas, premios) — solo permite monitoreo/stock.
 // Finalizada: candado permanente, ninguna mutación (Regla de Oro).
-const campanaActiva     = computed(() => estadoEfectivo.value === 'activa')
-const campanaPausada    = computed(() => estadoEfectivo.value === 'pausada')
+// IMPORTANTE: se basan en el estado PERSISTIDO (campana.estado), no en `estadoEfectivo`
+// — ese último solo deriva la etiqueta visual "Programada" y no debe alterar la botonera:
+// una campaña Activa con fecha_inicio futura sigue siendo Activa a efectos de permisos.
+const campanaActiva     = computed(() => store.esCampanaActiva(campana.value))
+const campanaPausada    = computed(() => store.esCampanaPausada(campana.value))
 const campanaBorrador   = computed(() => store.esCampanaBorrador(campana.value))
 const campanaInmutable  = computed(() => store.esCampanaInmutable(campana.value))
 // Los premios (editar/eliminar/agregar) se bloquean tanto en Activa como en Finalizada.

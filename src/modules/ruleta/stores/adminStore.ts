@@ -152,6 +152,9 @@ export const useAdminStore = defineStore('admin', {
     esCampanaActiva: () => (campana: Campana | null | undefined): boolean =>
       campana?.estado === 'activa',
 
+    esCampanaPausada: () => (campana: Campana | null | undefined): boolean =>
+      campana?.estado === 'pausada',
+
     esCampanaBorrador: () => (campana: Campana | null | undefined): boolean =>
       campana?.estado === 'borrador'
   },
