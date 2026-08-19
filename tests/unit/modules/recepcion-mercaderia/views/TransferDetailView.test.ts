@@ -28,6 +28,7 @@ vi.mock('@/stores/auth', () => ({
 // be mutated from tests to simulate Vue Router reusing the component instance across navigations
 // that only change `:id` on the same matched route record.
 const routeParamsHolder = vi.hoisted(() => ({ current: { id: '7' } as { id: string } }))
+const routerPushMock = vi.hoisted(() => vi.fn())
 
 vi.mock('vue-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('vue-router')>()
@@ -36,6 +37,7 @@ vi.mock('vue-router', async (importOriginal) => {
   return {
     ...actual,
     useRoute: () => ({ params: routeParamsHolder.current }),
+    useRouter: () => ({ push: routerPushMock }),
   }
 })
 
@@ -265,7 +267,7 @@ describe('TransferDetailView', () => {
     // Complete line (scanned === quantity) — the forced-recount gate only fires on incomplete
     // lines, and this test is about the payload shape, not that gate (covered separately below).
     vi.mocked(recepcionApi.getTransfer).mockResolvedValue(mockGetTransfer(buildTransfer({ lines: [buildLine({ scanned: 10, quantity: 10 })] })))
-    vi.mocked(recepcionApi.confirm).mockResolvedValue(buildTransfer({ status: 'confirmed' }))
+    vi.mocked(recepcionApi.confirm).mockResolvedValue(undefined)
 
     const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
     await flushPromises()
@@ -295,7 +297,7 @@ describe('TransferDetailView', () => {
   it('allows the second partial-confirm attempt through, matching legacy behavior of trusting the recount flag rather than re-verifying the scan', async () => {
     mockAuth(['recepcion.reception.confirm.partial'])
     vi.mocked(recepcionApi.getTransfer).mockResolvedValue(mockGetTransfer(buildTransfer()))
-    vi.mocked(recepcionApi.confirm).mockResolvedValue(buildTransfer({ status: 'confirmed' }))
+    vi.mocked(recepcionApi.confirm).mockResolvedValue(undefined)
 
     const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
     await flushPromises()
@@ -313,7 +315,7 @@ describe('TransferDetailView', () => {
   it('does not gate the partial confirm when there are no incomplete lines', async () => {
     mockAuth(['recepcion.reception.confirm.partial'])
     vi.mocked(recepcionApi.getTransfer).mockResolvedValue(mockGetTransfer(buildTransfer({ lines: [buildLine({ scanned: 10, quantity: 10 })] })))
-    vi.mocked(recepcionApi.confirm).mockResolvedValue(buildTransfer({ status: 'confirmed' }))
+    vi.mocked(recepcionApi.confirm).mockResolvedValue(undefined)
 
     const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
     await flushPromises()
@@ -327,7 +329,7 @@ describe('TransferDetailView', () => {
   it('disables the confirm button while a confirm call is in flight, to prevent duplicate POSTs on double-click', async () => {
     mockAuth(['recepcion.reception.confirm'])
     vi.mocked(recepcionApi.getTransfer).mockResolvedValue(mockGetTransfer(buildTransfer()))
-    let resolveConfirm!: (v: ReceptionTransfer) => void
+    let resolveConfirm!: (v: void) => void
     vi.mocked(recepcionApi.confirm).mockReturnValue(
       new Promise((resolve) => {
         resolveConfirm = resolve
@@ -342,10 +344,83 @@ describe('TransferDetailView', () => {
 
     expect(wrapper.find('[data-testid="confirm-btn"]').attributes('disabled')).toBeDefined()
 
-    resolveConfirm(buildTransfer({ status: 'confirmed' }))
+    resolveConfirm(undefined)
     await flushPromises()
 
     expect(recepcionApi.confirm).toHaveBeenCalledTimes(1)
+  })
+
+  it('redirects to Historial once confirm succeeds, since a confirmed transfer no longer belongs on this picking detail', async () => {
+    mockAuth(['recepcion.reception.confirm'])
+    vi.mocked(recepcionApi.getTransfer)
+      .mockResolvedValueOnce(mockGetTransfer(buildTransfer()))
+      .mockResolvedValueOnce(mockGetTransfer(buildTransfer({ status: 'confirmed' })))
+    vi.mocked(recepcionApi.confirm).mockResolvedValue(undefined)
+
+    const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="confirm-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(routerPushMock).toHaveBeenCalledWith({ name: 'recepcion-historial' })
+  })
+
+  it('recovers from a confirm request that failed client-side (e.g. timeout) but actually went through on the backend: no error shown, redirects to Historial', async () => {
+    mockAuth(['recepcion.reception.confirm'])
+    vi.mocked(recepcionApi.getTransfer)
+      .mockResolvedValueOnce(mockGetTransfer(buildTransfer()))
+      .mockResolvedValueOnce(mockGetTransfer(buildTransfer({ status: 'confirmed' })))
+    vi.mocked(recepcionApi.confirm).mockRejectedValue(new Error('timeout of 30000ms exceeded'))
+
+    const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="confirm-btn"]').trigger('click')
+    await flushPromises()
+
+    const body = new DOMWrapper(document.body)
+    expect(body.find('[data-testid="error-dialog"]').exists()).toBe(false)
+    expect(routerPushMock).toHaveBeenCalledWith({ name: 'recepcion-historial' })
+  })
+
+  it('recovers from a 400 "already confirmed" (duplicate click/tab racing automatic reconciliation): no error shown, redirects to Historial', async () => {
+    mockAuth(['recepcion.reception.confirm'])
+    vi.mocked(recepcionApi.getTransfer)
+      .mockResolvedValueOnce(mockGetTransfer(buildTransfer()))
+      .mockResolvedValueOnce(mockGetTransfer(buildTransfer({ status: 'confirmed' })))
+    vi.mocked(recepcionApi.confirm).mockRejectedValue({
+      response: { status: 400, data: { error: 'Reception transfer 7 is already confirmed.' } },
+    })
+
+    const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="confirm-btn"]').trigger('click')
+    await flushPromises()
+
+    const body = new DOMWrapper(document.body)
+    expect(body.find('[data-testid="error-dialog"]').exists()).toBe(false)
+    expect(routerPushMock).toHaveBeenCalledWith({ name: 'recepcion-historial' })
+  })
+
+  it('shows the confirm error when a refetch after a failed confirm confirms it really did not go through', async () => {
+    mockAuth(['recepcion.reception.confirm'])
+    vi.mocked(recepcionApi.getTransfer).mockResolvedValue(mockGetTransfer(buildTransfer()))
+    vi.mocked(recepcionApi.confirm).mockRejectedValue(new Error('network error'))
+
+    const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="confirm-btn"]').trigger('click')
+    await flushPromises()
+
+    const body = new DOMWrapper(document.body)
+    expect(body.find('[data-testid="error-dialog"]').exists()).toBe(true)
+    expect(body.text()).toContain('No se pudo confirmar la transferencia.')
+    expect(routerPushMock).not.toHaveBeenCalled()
+
+    wrapper.unmount()
   })
 
   it('hides the confirm button when the user lacks the confirm permission', async () => {

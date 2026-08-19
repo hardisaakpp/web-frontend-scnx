@@ -211,13 +211,36 @@ export const usePickingStore = defineStore('recepcionPicking', () => {
     sapErrorMessage.value = null
     isSubmitting.value = true
     try {
-      const result = await recepcionApi.confirm(transferId, body)
+      // confirm's own response carries no usable transfer data (see recepcionApi.confirm) — the
+      // canonical post-confirm state comes from re-fetching, same as scan()/recordDifference().
+      await recepcionApi.confirm(transferId, body)
       if (activeTransferId.value !== transferId) return
-      currentTransfer.value = result
+      const result = await recepcionApi.getTransfer(transferId)
+      if (activeTransferId.value !== transferId) return
+      currentTransfer.value = result.transfer
+      differences.value = result.differences
       status.value = 'ready'
     } catch (err) {
       if (activeTransferId.value !== transferId) return
       console.error('confirm failed', err)
+
+      // A request failure here (timeout, dropped connection) doesn't mean the backend didn't
+      // finish the confirmation — re-check the real state before reporting an error, otherwise a
+      // confirm that actually succeeded server-side gets shown to the user as failed.
+      try {
+        const refetched = await recepcionApi.getTransfer(transferId)
+        if (activeTransferId.value !== transferId) return
+        if (refetched.transfer.status === 'confirmed') {
+          currentTransfer.value = refetched.transfer
+          differences.value = refetched.differences
+          status.value = 'ready'
+          return
+        }
+      } catch (refetchErr) {
+        if (activeTransferId.value !== transferId) return
+        console.error('confirm refetch failed', refetchErr)
+      }
+
       status.value = 'error'
       if (isSapFiveHundred(err)) {
         sapErrorMessage.value = SAP_ERROR_MESSAGE
