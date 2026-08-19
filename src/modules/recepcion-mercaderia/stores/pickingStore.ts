@@ -197,6 +197,26 @@ export const usePickingStore = defineStore('recepcionPicking', () => {
   }
 
   /**
+   * A confirm request can fail client-side (timeout, dropped connection) or with a 400 "already
+   * confirmed" (duplicate click/tab racing automatic reconciliation) while the backend
+   * confirmation actually went through — re-check the real state before confirm() reports an
+   * error, otherwise an operation that actually succeeded gets shown to the user as failed.
+   * Returns the refetched state when it's really confirmed, or null when it isn't (a genuine
+   * failure, left for the caller to report as such).
+   */
+  async function recoverIfAlreadyConfirmed(
+    transferId: number
+  ): Promise<{ transfer: ReceptionTransfer; differences: Difference[] } | null> {
+    try {
+      const refetched = await recepcionApi.getTransfer(transferId)
+      return refetched.transfer.status === 'confirmed' ? refetched : null
+    } catch (refetchErr) {
+      console.error('confirm refetch failed', refetchErr)
+      return null
+    }
+  }
+
+  /**
    * Full confirm and ConfirmPartial share one endpoint distinguished by { partial } (per design's
    * resolved decision — backend exposes a single confirm route). A 500 from the SAP step is a
    * known, non-crashing failure — scans already persisted, transfer stays in its pre-confirm state
@@ -224,21 +244,13 @@ export const usePickingStore = defineStore('recepcionPicking', () => {
       if (activeTransferId.value !== transferId) return
       console.error('confirm failed', err)
 
-      // A request failure here (timeout, dropped connection) doesn't mean the backend didn't
-      // finish the confirmation — re-check the real state before reporting an error, otherwise a
-      // confirm that actually succeeded server-side gets shown to the user as failed.
-      try {
-        const refetched = await recepcionApi.getTransfer(transferId)
-        if (activeTransferId.value !== transferId) return
-        if (refetched.transfer.status === 'confirmed') {
-          currentTransfer.value = refetched.transfer
-          differences.value = refetched.differences
-          status.value = 'ready'
-          return
-        }
-      } catch (refetchErr) {
-        if (activeTransferId.value !== transferId) return
-        console.error('confirm refetch failed', refetchErr)
+      const recovered = await recoverIfAlreadyConfirmed(transferId)
+      if (activeTransferId.value !== transferId) return
+      if (recovered) {
+        currentTransfer.value = recovered.transfer
+        differences.value = recovered.differences
+        status.value = 'ready'
+        return
       }
 
       status.value = 'error'
