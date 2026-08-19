@@ -91,7 +91,11 @@ const confirmError = ref('')
 const idAEliminar = ref<number | null>(null)
 
 const pedirEliminar = (id: number) => { idAEliminar.value = id; confirmError.value = ''; confirmAbierto.value = true }
-const cancelarEliminar = () => { if (confirmCargando.value) return; confirmAbierto.value = false; idAEliminar.value = null }
+const cancelarEliminar = () => {
+  if (confirmCargando.value) return
+  confirmAbierto.value = false
+  idAEliminar.value = null
+}
 
 const confirmarEliminar = async () => {
   if (idAEliminar.value == null) return

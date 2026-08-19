@@ -4,7 +4,6 @@ import { ArrowLeftIcon } from '@heroicons/vue/24/outline'
 import transferenciasService from '../services/transferenciasService'
 import TablaHistorial from '../components/TablaHistorial.vue'
 import DetalleSolicitudModal from '../components/DetalleSolicitudModal.vue'
-import CargandoSpinner from '../components/CargandoSpinner.vue'
 import type { SolicitudResumen, SolicitudDetalle, StockFaltante } from '../types'
 import { parsearErrorSolicitud } from '../utils/erroresApi'
 
