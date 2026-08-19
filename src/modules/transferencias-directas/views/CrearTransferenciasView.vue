@@ -33,9 +33,12 @@ const inputClass =
 const selectClass = inputClass
 const textareaClass = `${inputClass} resize-none`
 
+// Guía Laar: solo alfanuméricos en mayúsculas (el largo exacto se valida al enviar)
 const onGuiaInput = (e: Event) => {
   const target = e.target as HTMLInputElement
-  form.guiaEnvio = target.value.toUpperCase()
+  const limpio = target.value.toUpperCase().replace(/[^A-Z0-9]/g, '')
+  form.guiaEnvio = limpio
+  target.value = limpio // refleja el filtrado en el input
 }
 
 const onResponsableInput = (e: Event) => {
@@ -224,8 +227,15 @@ const validar = (): boolean => {
     if (!form.tiendaOrigenCodigo) errores.tiendaOrigenCodigo = 'No se pudo determinar la tienda origen.'
     if (!form.tiendaDestinoCodigo) errores.tiendaDestinoCodigo = 'Selecciona la tienda destino.'
     if (!form.usuarioSolicitante.trim()) errores.usuarioSolicitante = 'Ingresa el responsable del envío.'
-    if (!form.guiaEnvio.trim()) errores.guiaEnvio = 'Ingrese la Guía Courier'
   }
+
+  // La guía es editable en ambos modos: debe ser exactamente 10 alfanuméricos.
+  const guia = form.guiaEnvio.trim()
+  if (!guia) errores.guiaEnvio = 'Ingrese la Guía Courier'
+  else if (!/^[A-Z0-9]{10}$/.test(guia)) {
+    errores.guiaEnvio = 'La guía debe tener exactamente 10 caracteres alfanuméricos.'
+  }
+
   if (productos.value.length === 0) errores.productos = 'Agrega al menos un producto.'
   const primerError = Object.keys(errores)[0]
   if (primerError) {
@@ -375,7 +385,8 @@ const guardarEdicion = async () => {
             </select>
           </FormField>
 
-          <FormField label="Guía Courier" required :error="errores.guiaEnvio"help="10 caracteres alfanuméricos" v-slot="{ id }">
+          <FormField label="Guía Courier" required :error="errores.guiaEnvio"
+            help="Exactamente 10 caracteres alfanuméricos" v-slot="{ id }">
             <input :id="id" v-model="form.guiaEnvio" @input="onGuiaInput" type="text" maxlength="10"
               placeholder="AB12CD34EF" :class="[inputClass, 'uppercase tracking-wider']" />
           </FormField>
