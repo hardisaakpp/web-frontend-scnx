@@ -470,7 +470,7 @@ import { useToast } from '@/composables/useToast'
 import { lastNotification } from '@/composables/useNotificaciones'
 import { useTablePreferences } from '@/composables/useTablePreferences'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
-import type { PedidoCompleto, ReporteDiferenciasResponse, UploadPlantillaResponse, InfoArchivoPlantillaResponse, DetalleDiferenciaProduccion } from '../types'
+import type { PedidoCompleto, ReporteDiferenciasResponse, UploadPlantillaResponse, InfoArchivoPlantillaResponse, DetalleDiferenciaProduccion, HijoDiferenciaPayload } from '../types'
 // Utilidades extraídas
 import {
   formatDate,
@@ -1319,12 +1319,12 @@ async function handleDiferenciaNoEntregada() {
   await ejecutarConfirmacion(true)
 }
 
-async function handleConfirmarConDiferencia(nuevaFechaEntrega: string) {
+async function handleConfirmarConDiferencia(hijos: HijoDiferenciaPayload[]) {
   if (!numeroPedido.value || procesandoDiferencia.value) return
   procesandoDiferencia.value = true
 
   try {
-    await mba3ConsultasService.confirmarConDiferencia(numeroPedido.value, nuevaFechaEntrega)
+    const resultado = await mba3ConsultasService.confirmarConDiferencia(numeroPedido.value, hijos)
 
     showDiferenciaModal.value = false
     if (pedido.value?.cabecera) {
@@ -1333,7 +1333,11 @@ async function handleConfirmarConDiferencia(nuevaFechaEntrega: string) {
     }
     cancelarEdicion()
     await loadPedido()
-    toast.success('Pedido confirmado', 'Se confirmó el pedido y se generó el pedido con la diferencia (Producción Pospuesta).')
+    const cantidadHijos = resultado.pedidos_hijos.length
+    toast.success(
+      'Pedido confirmado',
+      `Se confirmó el pedido y se generaron ${cantidadHijos} pedido${cantidadHijos === 1 ? '' : 's'} con la diferencia (Producción Pospuesta).`
+    )
     showConfirmacionModal.value = true
   } catch (e: any) {
     console.error('Error al confirmar con diferencia:', e)

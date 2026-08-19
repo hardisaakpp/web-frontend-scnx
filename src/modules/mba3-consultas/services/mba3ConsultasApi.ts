@@ -18,7 +18,7 @@ import type {
 } from '../types'
 import type { OrdenCompraResponse, OrdenCompraLogResponse, RemisionResponse } from '../types'
 import type { HealthResponse, ProcesoResponse } from '../types'
-import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, SkuHomologacionCreateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstado, ProcesoEstadoResponse, SugerenciaProducto, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuRequest, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, UploadPlantillaAsyncAcceptedResponse, PlantillaProcesoEstado, PedidoCompleto, CargarRespuestaProveedorResponse, RespuestaProveedorResponse, ProcesarConfirmacionResponse, ReporteDiferenciasResponse, IntegracionSAPResponse, ActualizarCostoPedidoResponse, AjusteDetalle, ResumenConfirmacion, GuardarModificacionesColumnasRequest, GuardarModificacionesColumnasResponse, ObtenerModificacionesColumnasResponse, ProcesamientoSAPResponse, PedidosListadoResponse, CrearOCDesdePedidoResponse, CrearPedidoRequest, CrearPedidoResponse, ModificarPedidoCabeceraRequest, ModificarPedidoCabeceraResponse, TienePedidosResponse, InfoArchivoPlantillaResponse, BuscarPlantillasResponse, PlantillasPedidosResponse, ProcesoCompletoSAPResponse, ProcesoCompletoSAPAsyncResponse, ProcesoCompletoSAPResultadoPolling, IntegracionSAPPorOCResponse, EstadosPedidoResponse, DiferenciaProduccionResponse, ConfirmarConDiferenciaResponse } from '../types'
+import type { SkuHomologacionResponse, SkuHomologacionUpdateRequest, SkuHomologacionCreateRequest, CruceProductosResponse, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstado, ProcesoEstadoResponse, SugerenciaProducto, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuRequest, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, UploadPlantillaAsyncAcceptedResponse, PlantillaProcesoEstado, PedidoCompleto, CargarRespuestaProveedorResponse, RespuestaProveedorResponse, ProcesarConfirmacionResponse, ReporteDiferenciasResponse, IntegracionSAPResponse, ActualizarCostoPedidoResponse, AjusteDetalle, ResumenConfirmacion, GuardarModificacionesColumnasRequest, GuardarModificacionesColumnasResponse, ObtenerModificacionesColumnasResponse, ProcesamientoSAPResponse, PedidosListadoResponse, CrearOCDesdePedidoResponse, CrearPedidoRequest, CrearPedidoResponse, ModificarPedidoCabeceraRequest, ModificarPedidoCabeceraResponse, TienePedidosResponse, InfoArchivoPlantillaResponse, BuscarPlantillasResponse, PlantillasPedidosResponse, ProcesoCompletoSAPResponse, ProcesoCompletoSAPAsyncResponse, ProcesoCompletoSAPResultadoPolling, IntegracionSAPPorOCResponse, EstadosPedidoResponse, DiferenciaProduccionResponse, ConfirmarConDiferenciaResponse, HijoDiferenciaPayload } from '../types'
 
 // ⭐ REEXPORTAR CONFIGURACIÓN Y UTILIDADES REFACTORIZADAS
 export { mba3Api, API_BASE_URL } from './config/axiosConfig'
@@ -873,8 +873,6 @@ export const mba3ConsultasService = {
       modo_tiendas?: 'validar_estricto' | 'crear_si_no_existe' | 'sincronizar_maestro'
       confirmar_sincronizacion?: boolean
       correcciones_codigos?: Record<string, string>
-      // ⭐ NUEVO: Correcciones de Pack/PVP (RN-02) — form-field hermano de correcciones_codigos
-      correcciones_pack_pvp?: Record<string, { pack?: string; pvp?: number }>
     },
     onProgress?: (progress: number, fase: 'upload' | 'processing') => void
   ): Promise<UploadPlantillaAsyncAcceptedResponse> {
@@ -1309,8 +1307,8 @@ export const mba3ConsultasService = {
     return pedidosService.obtenerDiferenciaProduccion(numeroPedido)
   },
 
-  async confirmarConDiferencia(numeroPedido: string, nuevaFechaEntrega: string): Promise<ConfirmarConDiferenciaResponse> {
-    return pedidosService.confirmarConDiferencia(numeroPedido, nuevaFechaEntrega)
+  async confirmarConDiferencia(numeroPedido: string, hijos: HijoDiferenciaPayload[]): Promise<ConfirmarConDiferenciaResponse> {
+    return pedidosService.confirmarConDiferencia(numeroPedido, hijos)
   },
 
   /**

@@ -1213,10 +1213,22 @@ export interface PedidoHijoDiferencia {
   detalles_insertados: number
 }
 
+/** Cantidad de una línea de la diferencia asignada a un pedido hijo específico. */
+export interface DetalleAsignadoHijo {
+  pedido_detalle_id: string
+  cantidad: number
+}
+
+/** Un pedido hijo a generar: su fecha de entrega y la porción de cada línea asignada. */
+export interface HijoDiferenciaPayload {
+  fecha_entrega: string
+  detalles: DetalleAsignadoHijo[]
+}
+
 export interface ConfirmarConDiferenciaResponse {
   status: 'success'
   confirmacion: CargarRespuestaProveedorResponse
-  pedido_hijo: PedidoHijoDiferencia
+  pedidos_hijos: PedidoHijoDiferencia[]
 }
 
 // ========== Proceso Completo SAP (Redistribución + ODC + Envío SAP) ==========
