@@ -208,10 +208,14 @@ export interface InventarioPremio {
   premio_id: string
   nombre: string
   tipo: string
+  // Techo real e inmutable de bodega (Premio.StockTotalBodega crudo) — NO la suma de lo ya
+  // repartido entre tiendas. Ver PremioBackendResponse.stockTotalBodega.
   stock_total: number
   por_tienda: Record<number, number>
   total_asignado: number
   restante_bodega: number
+  // Token de concurrencia optimista del premio, para reenviarlo en setDistribucionTienda.
+  row_version?: string
 }
 
 // ─── Admin: Dashboard Global ──────────────────────────────────────────────────
@@ -302,6 +306,10 @@ export interface PremioBackendResponse {
   tipo: string
   segmento: string | null
   stockTotal: number | null
+  // Techo real e inmutable de bodega. Cuando controlaStockPorTienda=true, `stockTotal` arriba es
+  // la SUMA de lo ya repartido entre tiendas (no un límite) — este campo es el que hay que usar
+  // para validar contra el límite real. Ver PremioDto.StockTotalBodega en el backend.
+  stockTotalBodega?: number | null
   stockDisponible?: number | null
   valorReferencial: number | null
   esVacio: boolean
@@ -310,6 +318,10 @@ export interface PremioBackendResponse {
   controlaStockPorTienda?: boolean
   inventariosTienda?: InventarioTiendaBackend[]
   rowVersion?: string
+  // Orden visual del segmento en la ruleta. El backend siempre lo envía (int no-anulable);
+  // nunca reenviar `0` a secas al editar sin intención real de mover el premio — ver
+  // premioToBackend en ruletaApi.ts.
+  ordenRuleta?: number
 }
 
 export interface StockPremio {
@@ -326,6 +338,12 @@ export interface PreviewImpactoStockItem {
   premioId: string
   tiendaCodigo: string
   nuevoStockTotal: number
+}
+
+// Una fila tienda→stock dentro de una distribución completa (guardado atómico por premio).
+export interface DistribucionTiendaItem {
+  tiendaCodigo: string
+  stockTotal: number
 }
 
 export interface ImpactoStock {
