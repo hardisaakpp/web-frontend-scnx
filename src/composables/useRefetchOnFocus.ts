@@ -26,12 +26,24 @@ export function useRefetchOnFocus(callback: () => void, options: UseRefetchOnFoc
   // Arranca en "ahora": si la pestaña recupera foco casi inmediatamente después de
   // montar la vista, los datos ya están frescos y no hace falta repetir la carga.
   let lastRun = Date.now()
+  let pendingTimeoutId: ReturnType<typeof setTimeout> | null = null
 
   function trigger() {
     const now = Date.now()
     if (now - lastRun < cooldownMs) return
     lastRun = now
-    callback()
+    // Diferir al siguiente macrotask (no llamar callback() directo desde el handler):
+    // si la ventana recupera el foco por el mismo clic con el que el usuario ya está
+    // seleccionando algo (ej. una fila del listado), el evento "focus" se dispara DENTRO
+    // de esa misma secuencia (mousedown → focus → mouseup → click). Si el refetch pone
+    // loading=true de inmediato, el v-if/v-else de la vista desmonta la tabla a mitad
+    // del gesto y el clic se pierde. setTimeout(…, 0) garantiza que el clic completo ya
+    // se despachó antes de tocar loading; si el usuario efectivamente navega, el
+    // composable se desmonta y el timeout se cancela abajo, sin recarga de sobra.
+    pendingTimeoutId = setTimeout(() => {
+      pendingTimeoutId = null
+      callback()
+    }, 0)
   }
 
   function handleVisibilityChange() {
@@ -52,5 +64,8 @@ export function useRefetchOnFocus(callback: () => void, options: UseRefetchOnFoc
   onUnmounted(() => {
     document.removeEventListener('visibilitychange', handleVisibilityChange)
     window.removeEventListener('focus', handleFocus)
+    if (pendingTimeoutId !== null) {
+      clearTimeout(pendingTimeoutId)
+    }
   })
 }
