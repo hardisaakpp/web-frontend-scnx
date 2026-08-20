@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { useAdminStore } from '../../stores/adminStore'
@@ -66,17 +66,33 @@ const campanasFiltradas = computed(() => {
 const menuAbierto   = ref<string | null>(null)
 const menuStyle     = ref({ top: '0px', right: '0px' })
 const menuCampana   = computed(() => store.campanas.find(c => c.id === menuAbierto.value) ?? null)
+const menuRef       = ref<HTMLElement | null>(null)
 
-function abrirMenu(e: MouseEvent, id: string) {
+async function abrirMenu(e: MouseEvent, id: string) {
   e.stopPropagation()
   if (menuAbierto.value === id) { menuAbierto.value = null; return }
   const btn  = e.currentTarget as HTMLElement
   const rect = btn.getBoundingClientRect()
-  menuStyle.value = {
-    top:   `${rect.bottom + globalThis.scrollY + 6}px`,
-    right: `${globalThis.innerWidth - rect.right}px`,
-  }
+  const right = `${globalThis.innerWidth - rect.right}px`
+
+  // Posición provisional hacia abajo del botón. La altura real del menú varía según cuántas
+  // acciones aplican al estado de esa campaña (Activar/Pausar/Finalizar son condicionales), así
+  // que no se puede calcular de antemano si cabe — se mide después de montarlo.
+  menuStyle.value = { top: `${rect.bottom + globalThis.scrollY + 6}px`, right }
   menuAbierto.value = id
+
+  await nextTick()
+  const menuAltura = menuRef.value?.getBoundingClientRect().height ?? 0
+  if (!menuAltura) return
+
+  const espacioAbajo = globalThis.innerHeight - rect.bottom
+  const espacioArriba = rect.top
+  // Si no cabe hacia abajo (fila cerca del final de la ventana) pero sí hacia arriba, se abre
+  // hacia arriba en vez de quedar cortado por el borde de la ventana. Si tampoco cabe hacia
+  // arriba (ventana muy baja), se deja hacia abajo — es el menor de dos desbordes posibles.
+  if (espacioAbajo < menuAltura + 12 && espacioArriba > menuAltura + 12) {
+    menuStyle.value = { top: `${rect.top + globalThis.scrollY - menuAltura - 6}px`, right }
+  }
 }
 function cerrarMenu() { menuAbierto.value = null }
 
@@ -564,6 +580,7 @@ const SEGMENTO_LABELS: Record<SegmentoCliente, string> = {
       >
         <div
           v-if="menuAbierto && menuCampana"
+          ref="menuRef"
           class="fixed z-50 w-52 bg-white dark:bg-gray-800 rounded-xl shadow-xl
                  border border-gray-100 dark:border-gray-700 py-1 origin-top-right"
           :style="menuStyle"

@@ -282,9 +282,20 @@ function abrirModal() {
 
 function cerrarModal() {
   revocarPreview()
+  // El paso 2 (repartir stock por tienda, ver asignarStock) guarda cada asignación contra el
+  // backend y refleja el cambio en store.inventario (para InventarioView), pero nunca toca
+  // store.grupos — el array que alimenta esta misma tabla y el aviso "sin stock"
+  // (stockTotalEnCero). Sin este refetch al cerrar, la tabla se queda mostrando el stock
+  // previo hasta que el usuario recarga la página a mano.
+  const necesitaResincronizarGrupos = modalStep.value === 'paso2'
   modalStep.value = 'cerrado'
   premioRecienCreado.value = null
   premioEditando.value = null
+  if (necesitaResincronizarGrupos) {
+    store.cargarPremiosCampana(campanaId).catch(e =>
+      console.error('Error al resincronizar premios tras repartir stock:', e)
+    )
+  }
 }
 
 function abrirModalEditar(premio: PremioAdmin) {
@@ -395,6 +406,10 @@ function buildPremioData(): Omit<PremioAdmin, 'id'> {
     es_relleno:                esVacio,
     controla_stock_por_tienda: !esVacio && form.value.controla_stock_por_tienda,
     imagen_url:                imagenPreview.value ?? form.value.imagen_url ?? undefined,
+    // Preserva el orden visual en la ruleta: no hay ningún control en este formulario para
+    // cambiarlo, así que al editar se reenvía el valor que ya tenía el premio (nunca 0 a
+    // secas) — al crear, queda `undefined` y el backend asigna el siguiente índice disponible.
+    orden_ruleta:              premioEditando.value?.orden_ruleta,
   }
 }
 

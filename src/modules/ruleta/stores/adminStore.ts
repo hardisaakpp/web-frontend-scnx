@@ -6,7 +6,7 @@ import type {
   TiendaInventario, InventarioPremio, Tienda,
   MetricasGlobal, EfectividadTienda, SegmentacionGrupo, ConversionSemanal,
   MetricasCampana, EnroladorMetrica, StockPremio, HistorialGiroItem, GiroFilters,
-  RedencionResponse, PreviewImpactoStockItem, ImpactoStock, ProbabilidadGrupo
+  RedencionResponse, PreviewImpactoStockItem, ImpactoStock, ProbabilidadGrupo, DistribucionTiendaItem
 } from '../types'
 
 interface AdminState {
@@ -127,16 +127,29 @@ export const useAdminStore = defineStore('admin', {
       return item?.por_tienda[tiendaId] ?? 0
     },
 
-    // Total asignado por premio (con ediciones pendientes)
+    // Total asignado por premio (con ediciones pendientes). Debe iterar sobre la UNIÓN de las
+    // tiendas que ya tenían fila de inventario y las que se están editando ahora mismo: si solo
+    // se recorren las primeras, una celda recién editada en una tienda que nunca tuvo stock para
+    // este premio queda fuera de la suma y el total mostrado (y el guard de "excede el stock")
+    // puede quedar por debajo del real, dejando pasar un guardado que sí excede el límite.
     totalAsignadoConEdits: (state) => (premioId: string): number => {
       const item = state.inventario.find(i => i.premio_id === premioId)
       if (!item) return 0
+
+      const tiendaIds = new Set(Object.keys(item.por_tienda).map(Number))
+      for (const key of Object.keys(state.inventarioEditado)) {
+        const underscoreIdx = key.lastIndexOf('_')
+        if (key.slice(0, underscoreIdx) === premioId) {
+          tiendaIds.add(Number(key.slice(underscoreIdx + 1)))
+        }
+      }
+
       let total = 0
-      for (const tiendaId of Object.keys(item.por_tienda)) {
+      for (const tiendaId of tiendaIds) {
         const key = `${premioId}_${tiendaId}`
         total += key in state.inventarioEditado
           ? state.inventarioEditado[key]
-          : item.por_tienda[Number(tiendaId)]
+          : (item.por_tienda[tiendaId] ?? 0)
       }
       return total
     },
@@ -448,39 +461,65 @@ export const useAdminStore = defineStore('admin', {
       }
     },
 
+    // Agrupa las celdas editadas por premio y guarda cada premio con UNA sola llamada atómica
+    // (todo-o-nada) en vez de una petición HTTP por celda. El diseño anterior disparaba N
+    // peticiones en paralelo por premio editado; cada una validaba "suma de las otras tiendas +
+    // esta" contra una lectura fresca por request, así que varias podían pasar la validación
+    // cada una contra una foto pre-edición de las demás y comitear todas, sumando por encima del
+    // stock total. Además, tras el guardado se hace SIEMPRE un refetch real desde el backend en
+    // vez de un merge óptimista local — la UI nunca debe mostrar como "guardado" algo que no se
+    // pudo confirmar en la base de datos (si el guardado falla, el refetch trae la verdad de la
+    // BD y solo se reponen en pantalla las celdas del/los premio(s) que fallaron, para que el
+    // usuario no pierda lo que estaba corrigiendo).
     async guardarDistribucion() {
       if (this.guardando) return
       if (!this.campanaInventarioId) return
       this.guardando = true
       this.errorInventario = null
       const campanaId = this.campanaInventarioId
-      try {
-        const calls = Object.entries(this.inventarioEditado).map(([key, stockTotal]) => {
+
+      const porPremio = new Map<string, DistribucionTiendaItem[]>()
+      for (const [key, stockTotal] of Object.entries(this.inventarioEditado)) {
+        const underscoreIdx = key.lastIndexOf('_')
+        const premioId = key.slice(0, underscoreIdx)
+        const tiendaId = Number(key.slice(underscoreIdx + 1))
+        const tienda = this.tiendasInventario.find(t => t.id === tiendaId)
+        if (!tienda) continue
+        const items = porPremio.get(premioId) ?? []
+        items.push({ tiendaCodigo: tienda.codigo, stockTotal })
+        porPremio.set(premioId, items)
+      }
+
+      const premioIds = Array.from(porPremio.keys())
+      const resultados = await Promise.allSettled(
+        premioIds.map(premioId => {
+          const rowVersion = this.inventario.find(i => i.premio_id === premioId)?.row_version
+          return ruletaService.setDistribucionTienda(campanaId, premioId, porPremio.get(premioId)!, rowVersion)
+        })
+      )
+
+      const premiosConError = new Map<string, unknown>()
+      resultados.forEach((r, i) => {
+        if (r.status === 'rejected') premiosConError.set(premioIds[i], r.reason)
+      })
+
+      const edicionesPendientes = { ...this.inventarioEditado }
+      await this.cargarInventario(campanaId)
+
+      if (premiosConError.size > 0) {
+        for (const [key, valor] of Object.entries(edicionesPendientes)) {
           const underscoreIdx = key.lastIndexOf('_')
           const premioId = key.slice(0, underscoreIdx)
-          const tiendaId = Number(key.slice(underscoreIdx + 1))
-          const tienda = this.tiendasInventario.find(t => t.id === tiendaId)
-          if (!tienda) return Promise.resolve()
-          return ruletaService.asignarStockTienda(campanaId, premioId, tienda.codigo, stockTotal)
-        })
-        await Promise.all(calls)
-        // Confirmar los edits como persistidos
-        for (const item of this.inventario) {
-          for (const tienda of this.tiendasInventario) {
-            const key = `${item.premio_id}_${tienda.id}`
-            if (key in this.inventarioEditado) {
-              item.por_tienda[tienda.id] = this.inventarioEditado[key]
-            }
-          }
-          item.total_asignado = Object.values(item.por_tienda).reduce((a, b) => a + b, 0)
-          item.restante_bodega = item.stock_total - item.total_asignado
+          if (premiosConError.has(premioId)) this.inventarioEditado[key] = valor
         }
-        this.inventarioEditado = {}
-      } catch (e) {
-        this.errorInventario = extraerMensajeError(e, 'Error al guardar la distribución de inventario.')
-      } finally {
-        this.guardando = false
+        const [primerError] = premiosConError.values()
+        this.errorInventario = extraerMensajeError(
+          primerError,
+          `No se pudo guardar la distribución de ${premiosConError.size} premio(s). Revisa los valores e intenta de nuevo.`
+        )
       }
+
+      this.guardando = false
     },
 
     // ── Métricas por campaña (real) ───────────────────────────────────────────
