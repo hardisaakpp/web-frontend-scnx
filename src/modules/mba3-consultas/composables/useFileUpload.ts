@@ -74,9 +74,6 @@ function applyPlantillaProcessingUpdate(estado: PlantillaProcesoEstado, refs: {
 
 /** Prefijo para guardar correcciones a resaltar por pedido (origen de verdad tras redirect en flujo async) */
 export const RESALTADO_CODIGOS_STORAGE_PREFIX = 'resaltado_codigos_'
-/** Prefijos para resaltar códigos con Pack/PVP corregido usando el valor de SAP (RN-02) */
-export const RESALTADO_PACK_STORAGE_PREFIX = 'resaltado_pack_'
-export const RESALTADO_PVP_STORAGE_PREFIX = 'resaltado_pvp_'
 
 function saveCorreccionesParaResaltado(numeroPedido: string, response: UploadPlantillaResponse | PlantillaProcesoEstado | undefined): void {
   if (!numeroPedido) return
@@ -88,32 +85,6 @@ function saveCorreccionesParaResaltado(numeroPedido: string, response: UploadPla
     sessionStorage.setItem(RESALTADO_CODIGOS_STORAGE_PREFIX + numeroPedido, JSON.stringify(list))
   } catch (e) {
     if (import.meta.env.DEV) console.warn('[useFileUpload] No se pudo guardar correcciones en sessionStorage:', e)
-  }
-}
-
-/**
- * Persiste en sessionStorage los códigos cuyo Pack y/o PVP se corrigió usando el valor de SAP (RN-02),
- * para que la vista de destino pueda resaltar esas celdas — igual que se hace con código arriba.
- * Centralizado aquí (en vez de en cada vista que llama reintentarConCorrecciones) para que funcione
- * sin importar desde qué vista se inició la carga (listado o detalle de pedido).
- */
-function saveCorreccionesPackPvpParaResaltado(
-  numeroPedido: string,
-  correccionesPackPvp: Record<string, { pack?: string; pvp?: number }> | undefined,
-  validacionPackPvp: UploadErrorInfo['validacion_pack_pvp'] | undefined
-): void {
-  if (!numeroPedido || !correccionesPackPvp) return
-  const codigosPackSap = (validacionPackPvp?.pack_mismatches ?? [])
-    .filter((m) => correccionesPackPvp[m.codigo]?.pack === m.pack_sap)
-    .map((m) => String(m.codigo).trim())
-  const codigosPvpSap = (validacionPackPvp?.pvp_mismatches ?? [])
-    .filter((m) => correccionesPackPvp[m.codigo]?.pvp === m.pvp_sap)
-    .map((m) => String(m.codigo).trim())
-  try {
-    sessionStorage.setItem(RESALTADO_PACK_STORAGE_PREFIX + numeroPedido, JSON.stringify(codigosPackSap))
-    sessionStorage.setItem(RESALTADO_PVP_STORAGE_PREFIX + numeroPedido, JSON.stringify(codigosPvpSap))
-  } catch (e) {
-    if (import.meta.env.DEV) console.warn('[useFileUpload] No se pudo guardar resaltado Pack/PVP en sessionStorage:', e)
   }
 }
 
@@ -171,12 +142,11 @@ export interface UploadErrorInfo {
 
 /**
  * Correcciones que el usuario puede aplicar desde UploadErrorModal en un solo reintento.
- * La validación de código y de pack/pvp contra SAP es combinada en el backend (no secuencial):
- * un código inválido puede reportarse junto con discrepancias de pack/pvp en la misma respuesta.
+ * Solo cubre código de producto: las discrepancias de Pack/PVP contra SAP (RN-02) son siempre
+ * bloqueantes y se corrigen fuera del sistema (Excel o SAP), no hay corrección aplicable aquí.
  */
 export interface CorreccionesPlantilla {
   correccionesCodigos?: Record<string, string>
-  correccionesPackPvp?: Record<string, { pack?: string; pvp?: number }>
 }
 
 export function useFileUpload(options: {
@@ -1302,10 +1272,9 @@ export function useFileUpload(options: {
   }
   
   /**
-   * ⭐ Reintenta la carga del archivo con correcciones aplicadas (en segundo plano, async).
-   * Unifica los 3 escenarios de validación contra SAP (código, pack, pvp): el llamador solo
-   * llena las claves que correspondan al tipo de discrepancia que el backend reportó — ambas
-   * pueden viajar en un mismo reintento si algún día el backend las reporta combinadas.
+   * ⭐ Reintenta la carga del archivo con correcciones de código de producto aplicadas (en
+   * segundo plano, async). Las discrepancias de Pack/PVP (RN-02) son siempre bloqueantes y no
+   * tienen corrección aplicable aquí — se corrigen fuera del sistema y se vuelve a subir el Excel.
    * Usa upload-async + polling igual que la primera subida.
    */
   async function reintentarConCorrecciones(
@@ -1319,29 +1288,12 @@ export function useFileUpload(options: {
     // Acumular con lo ya corregido en rondas anteriores de esta misma sesión (ver comentario en la
     // declaración de correccionesAcumuladas): el backend es stateless y solo aplica lo que llega en
     // esta petición, así que hay que reenviar la unión completa, no solo lo nuevo de esta ronda.
-    // correccionesPackPvp necesita un merge por código (no un reemplazo del objeto completo): un mismo
-    // código puede recibir su corrección de Pack en una ronda y la de PVP recién en la siguiente
-    // (el PVP no se puede validar hasta que el código ya esté corregido), y no hay que perder ninguna.
-    const codigosPackPvp = new Set([
-      ...Object.keys(correccionesAcumuladas.value.correccionesPackPvp ?? {}),
-      ...Object.keys(correcciones.correccionesPackPvp ?? {})
-    ])
-    const correccionesPackPvpMergeadas: Record<string, { pack?: string; pvp?: number }> = {}
-    for (const codigo of codigosPackPvp) {
-      correccionesPackPvpMergeadas[codigo] = {
-        ...correccionesAcumuladas.value.correccionesPackPvp?.[codigo],
-        ...correcciones.correccionesPackPvp?.[codigo]
-      }
-    }
-
     correccionesAcumuladas.value = {
-      correccionesCodigos: { ...correccionesAcumuladas.value.correccionesCodigos, ...correcciones.correccionesCodigos },
-      correccionesPackPvp: correccionesPackPvpMergeadas
+      correccionesCodigos: { ...correccionesAcumuladas.value.correccionesCodigos, ...correcciones.correccionesCodigos }
     }
 
     const tieneCodigos = !!correccionesAcumuladas.value.correccionesCodigos && Object.keys(correccionesAcumuladas.value.correccionesCodigos).length > 0
-    const tienePackPvp = !!correccionesAcumuladas.value.correccionesPackPvp && Object.keys(correccionesAcumuladas.value.correccionesPackPvp).length > 0
-    if (!tieneCodigos && !tienePackPvp) {
+    if (!tieneCodigos) {
       throw new Error('No se proporcionaron correcciones')
     }
 
@@ -1367,10 +1319,7 @@ export function useFileUpload(options: {
         // ⭐ Subir con correcciones en segundo plano (upload-async + Celery)
         const accepted = await mba3ConsultasService.uploadPlantillaAsync(
           file,
-          {
-            ...(tieneCodigos ? { correcciones_codigos: correccionesAcumuladas.value.correccionesCodigos } : {}),
-            ...(tienePackPvp ? { correcciones_pack_pvp: correccionesAcumuladas.value.correccionesPackPvp } : {})
-          },
+          { correcciones_codigos: correccionesAcumuladas.value.correccionesCodigos },
           handleProgress
         )
         // Backend puede devolver 200 con resultado completo (fallback sync: process_id null, async false) — no hacer polling
@@ -1399,8 +1348,6 @@ export function useFileUpload(options: {
       }
 
       archivoOriginal.value = null
-      // Capturar antes de resetear: todavía se necesita para el resaltado más abajo.
-      const correccionesPackPvpDeLaSesion = correccionesAcumuladas.value.correccionesPackPvp
       // Sesión de correcciones cerrada con éxito: no debe arrastrarse al siguiente archivo que se suba.
       correccionesAcumuladas.value = {}
 
@@ -1426,7 +1373,6 @@ export function useFileUpload(options: {
       // Guardar correcciones en sessionStorage antes de redirect para que la vista muestre el resaltado (flujo async)
       if (numeroPedido) {
         saveCorreccionesParaResaltado(numeroPedido, response)
-        saveCorreccionesPackPvpParaResaltado(numeroPedido, correccionesPackPvpDeLaSesion, uploadErrorInfo.value?.validacion_pack_pvp)
       }
 
       if (numeroPedido && options?.onUploadSuccess) {
