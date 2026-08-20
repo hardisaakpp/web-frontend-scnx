@@ -310,11 +310,29 @@
             {{ descartando ? 'Descartando...' : 'Descartar' }}
           </button>
           <button
+            v-if="puedeRechazarProduccionPospuesta"
+            type="button"
+            @click="handleRechazarProduccionPospuesta"
+            :disabled="cancelandoPedidoPospuesto"
+            class="shrink-0 px-4 py-2 border border-red-300 dark:border-red-600 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {{ cancelandoPedidoPospuesto ? 'Rechazando...' : 'Rechazar' }}
+          </button>
+          <button
+            v-if="puedeAceptarProduccionPospuesta"
+            type="button"
+            @click="handleAceptarProduccionPospuesta"
+            :disabled="aceptandoProduccionPospuesta"
+            class="shrink-0 px-4 py-2 bg-emerald-600 dark:bg-emerald-500 text-white rounded-lg hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {{ aceptandoProduccionPospuesta ? 'Aceptando...' : 'Aceptar' }}
+          </button>
+          <button
             v-if="esPedidoBorrador"
             type="button"
             @click="handleEnviar"
             :disabled="enviando"
-            class="shrink-0 px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            class="shrink-0 px-4 py-2 bg-green-600 dark:bg-green-500 text-white rounded-lg hover:bg-green-700 dark:hover:bg-green-600 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {{ enviando ? 'Enviando...' : 'Enviar' }}
           </button>
@@ -559,12 +577,6 @@
                       column.key === 'codigo_interno' && detalle.codigo_interno != null && isCodigoCorregidoHighlight(detalle.codigo_interno)
                         ? 'bg-emerald-50 dark:bg-emerald-900/25 border-l-2 border-emerald-500 dark:border-emerald-400'
                         : '',
-                      column.key === 'pack' && detalle.codigo_interno != null && isPackCorregidoHighlight(detalle.codigo_interno)
-                        ? 'bg-emerald-50 dark:bg-emerald-900/25 border-l-2 border-emerald-500 dark:border-emerald-400'
-                        : '',
-                      column.key === 'pvp' && detalle.codigo_interno != null && isPvpCorregidoHighlight(detalle.codigo_interno)
-                        ? 'bg-emerald-50 dark:bg-emerald-900/25 border-l-2 border-emerald-500 dark:border-emerald-400'
-                        : '',
                       column.key === 'numero' ? 'font-medium text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/50' :
                       column.key === 'codigo_interno' ? 'font-medium text-gray-900 dark:text-white whitespace-nowrap' :
                       column.key === 'total' ? 'font-medium text-gray-900 dark:text-white' :
@@ -667,6 +679,7 @@ import { ref, computed, watch, type Ref } from '@vue/reactivity'
 import { onMounted, onActivated, onUnmounted, nextTick, Teleport } from '@vue/runtime-core'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
+import { useAuthStore } from '@/stores/auth'
 import { lastNotification } from '@/composables/useNotificaciones'
 import { useTablePreferences } from '@/composables/useTablePreferences'
 import { mba3ConsultasService, extractErrorMessage } from '../services/mba3ConsultasApi'
@@ -701,7 +714,7 @@ import {
   type DistribucionTiendaEditada
 } from '../utils/redistribucionHelpers'
 // Composables
-import { useFileUpload, RESALTADO_CODIGOS_STORAGE_PREFIX, RESALTADO_PACK_STORAGE_PREFIX, RESALTADO_PVP_STORAGE_PREFIX } from '../composables/useFileUpload'
+import { useFileUpload, RESALTADO_CODIGOS_STORAGE_PREFIX } from '../composables/useFileUpload'
 import type { CorreccionesPlantilla } from '../composables/useFileUpload'
 import { useColumnManagement } from '../composables/useColumnManagement'
 import { usePedidoDetalle } from '../composables/usePedidoDetalle'
@@ -732,6 +745,7 @@ const COPY_FEEDBACK_DURATION_MS = 2000
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
+const authStore = useAuthStore()
 
 // ⭐ Función para manejar el click en "Crear Pedido Manual"
 function handleCrearPedido() {
@@ -873,10 +887,19 @@ const availableColumns: ColumnConfig[] = [
   { key: 'pack', label: 'Pack', visible: false, align: 'left', format: 'text' },
   { key: 'costo_doc_sin_iva', label: 'Costo Unit.', visible: true, align: 'right', format: 'currency' },
   { key: 'descuento_1', label: 'Descuento', visible: false, align: 'right', format: 'number' },
-  { key: 'pvp', label: 'PVP', visible: false, align: 'right', format: 'currency' },
+  // Solo mabel.view: PVP (precio de venta al público) queda fuera del selector de
+  // columnas para odcsap.view y produccion-elrayo.view (ver ocultar_pvp_si_no_mabel).
+  ...(authStore.canViewMabel
+    ? [{ key: 'pvp', label: 'PVP', visible: false, align: 'right' as const, format: 'currency' as const }]
+    : []),
   { key: 'costo_margen', label: 'Costo', visible: true, align: 'right', format: 'currency' },
   { key: 'margen', label: 'Margen', visible: true, align: 'right', format: 'percent' },
   { key: 'subtotal', label: 'Subtotal', visible: false, align: 'right', format: 'number' },
+  // Solo mabel.view: cantidad que Mabel Trading cargó originalmente en la plantilla Excel,
+  // inmutable desde el INSERT (ver cantidad_solicitada_original en PedidoDetalleRepository.insert).
+  ...(authStore.canViewMabel
+    ? [{ key: 'cantidad_solicitada_original', label: 'Solicitado Mabel', visible: true, align: 'right', format: 'number' } as ColumnConfig]
+    : []),
   { key: 'total', label: 'Total', visible: true, align: 'right', format: 'number' },
   { key: 'comentario', label: 'Comentario', visible: true, align: 'left', format: 'text' }
 ]
@@ -983,6 +1006,19 @@ const finalizando = ref(false)
 // ⭐ Botón "Finalizar Pedido" en PedidoHeaderActions (usa flag puede_finalizar del backend)
 const finalizandoPedido = ref(false)
 const puedeFinalizarPedido = computed(() => pedido.value?.puede_finalizar === true)
+
+// Req. 1.2: botones "Rechazar" / "Aceptar" sobre un pedido "hijo" en Producción Pospuesta
+// (estado_id 22), exclusivos de mabel.view. Mismo par que en PedidoDetalleView.vue.
+const cancelandoPedidoPospuesto = ref(false)
+const aceptandoProduccionPospuesta = ref(false)
+const puedeRechazarProduccionPospuesta = computed(() => {
+  if (!authStore.canViewMabel) return false
+  return pedido.value?.cabecera?.estado_id === 22 && pedido.value?.puede_cancelar_pedido === true
+})
+const puedeAceptarProduccionPospuesta = computed(() => {
+  if (!authStore.canViewMabel) return false
+  return pedido.value?.cabecera?.estado_id === 22 && pedido.value?.puede_aceptar_produccion_pospuesta === true
+})
 
 // ⭐ Botón "Enviar ODC a SAP" (proceso completo: redistribución + ODC + SAP)
 const enviandoOdcSap = ref(false)
@@ -1168,6 +1204,65 @@ async function handleFinalizado() {
     }
   } finally {
     finalizando.value = false
+  }
+}
+
+// Req. 1.2: rechazar un pedido "hijo" en Producción Pospuesta. Reutiliza el mismo
+// endpoint /cancelar; el backend distingue el destino (RECHAZADO en vez de
+// CANCELADO) según el estado de origen -- ver pedidos_cancelar_endpoints.py.
+async function handleRechazarProduccionPospuesta() {
+  const pedidoId = pedido.value?.cabecera?.pedido_id
+  if (!pedidoId) return
+  const confirmado = window.confirm(
+    `¿Estás seguro de que deseas rechazar este pedido?\n\n` +
+    `Pedido: ${pedido.value?.cabecera?.numero_pedido}\n` +
+    `El pedido cambiará a estado "Rechazado".`
+  )
+  if (!confirmado) return
+
+  cancelandoPedidoPospuesto.value = true
+  toast.info('Rechazando pedido...', 'Por favor espera')
+  try {
+    await mba3ConsultasService.cancelarPedido(pedidoId)
+    toast.success('Pedido rechazado', 'El pedido ha sido rechazado exitosamente')
+    if (pedido.value?.cabecera) {
+      pedido.value.cabecera.estado = 'RECHAZADO'
+      pedido.value.cabecera.estado_id = 24
+    }
+  } catch (e: any) {
+    const msg = extractErrorMessage(e)
+    toast.error('Error al rechazar', msg || 'No se pudo rechazar el pedido')
+  } finally {
+    cancelandoPedidoPospuesto.value = false
+  }
+}
+
+// Req. 1.2: aceptar la diferencia pospuesta, enviándola directo a la cola de
+// redistribución (LISTO PARA REDISTRIBUCION, 25).
+async function handleAceptarProduccionPospuesta() {
+  const pedidoId = pedido.value?.cabecera?.pedido_id
+  if (!pedidoId) return
+  const confirmado = window.confirm(
+    `¿Estás seguro de que deseas aceptar este pedido?\n\n` +
+    `Pedido: ${pedido.value?.cabecera?.numero_pedido}\n` +
+    `El pedido pasará a "Listo para Redistribución".`
+  )
+  if (!confirmado) return
+
+  aceptandoProduccionPospuesta.value = true
+  toast.info('Aceptando pedido...', 'Por favor espera')
+  try {
+    await mba3ConsultasService.aceptarProduccionPospuesta(pedidoId)
+    toast.success('Pedido aceptado', 'El pedido está listo para redistribución')
+    if (pedido.value?.cabecera) {
+      pedido.value.cabecera.estado = 'LISTO PARA REDISTRIBUCION'
+      pedido.value.cabecera.estado_id = 25
+    }
+  } catch (e: any) {
+    const msg = extractErrorMessage(e)
+    toast.error('Error al aceptar', msg || 'No se pudo aceptar el pedido')
+  } finally {
+    aceptandoProduccionPospuesta.value = false
   }
 }
 
@@ -1370,43 +1465,6 @@ function isCodigoCorregidoHighlight(codigo: string | null | undefined): boolean 
   return codigosCorregidosHighlight.value.has(String(codigo).trim())
 }
 
-// Códigos cuyo Pack y/o PVP se corrigió usando el valor de SAP (RN-02), para resaltar la celda en la tabla.
-// A diferencia de código (sugerencia del backend), acá el usuario elige "usar SAP" o "usar Excel" por cada
-// discrepancia; solo se resalta cuando eligió SAP, ya que por definición un "mismatch" implica que difiere del Excel.
-const packsCorregidosHighlight = ref<Set<string>>(new Set())
-const pvpsCorregidosHighlight = ref<Set<string>>(new Set())
-
-function syncPackPvpResaltadoDesdeStorage(): void {
-  const num = numeroPedido.value
-  if (!num) {
-    packsCorregidosHighlight.value = new Set()
-    pvpsCorregidosHighlight.value = new Set()
-    return
-  }
-  try {
-    const rawPack = sessionStorage.getItem(RESALTADO_PACK_STORAGE_PREFIX + num)
-    packsCorregidosHighlight.value = new Set(rawPack ? JSON.parse(rawPack) : [])
-  } catch {
-    packsCorregidosHighlight.value = new Set()
-  }
-  try {
-    const rawPvp = sessionStorage.getItem(RESALTADO_PVP_STORAGE_PREFIX + num)
-    pvpsCorregidosHighlight.value = new Set(rawPvp ? JSON.parse(rawPvp) : [])
-  } catch {
-    pvpsCorregidosHighlight.value = new Set()
-  }
-}
-
-function isPackCorregidoHighlight(codigo: string | null | undefined): boolean {
-  if (codigo == null) return false
-  return packsCorregidosHighlight.value.has(String(codigo).trim())
-}
-
-function isPvpCorregidoHighlight(codigo: string | null | undefined): boolean {
-  if (codigo == null) return false
-  return pvpsCorregidosHighlight.value.has(String(codigo).trim())
-}
-
 // Inicializar composable de carga de archivos
 const fileUploadComposable = useFileUpload({
   pedido,
@@ -1492,16 +1550,7 @@ async function aplicarCorreccionesYContinuar(correcciones: CorreccionesPlantilla
     // Ocultar modal temporalmente mientras se procesa
     showErrorModal.value = false
 
-    // Llamar a la función de reintento con correcciones (persiste el resaltado de Pack/PVP en
-    // sessionStorage de forma centralizada, sin importar desde qué vista se inició la carga)
     await reintentarConCorrecciones(archivo, correcciones)
-
-    // Si hubo redirect por cambio de pedido, el watch(numeroPedido) ya sincronizó los refs desde
-    // sessionStorage; si no hubo redirect (mismo pedido), ese watch no se dispara, así que
-    // sincronizamos aquí para reflejar el resaltado sin esperar a un cambio de ruta.
-    if (correcciones.correccionesPackPvp) {
-      syncPackPvpResaltadoDesdeStorage()
-    }
   } catch (error: any) {
     console.error('❌ Error al aplicar correcciones:', error)
     // Mostrar modal de nuevo con el nuevo error si existe
@@ -1916,7 +1965,6 @@ onMounted(() => {
   
   // Sincronizar códigos a resaltar desde sessionStorage (flujo async: correcciones guardadas antes del redirect)
   syncCodigosResaltadoDesdeStorage()
-  syncPackPvpResaltadoDesdeStorage()
 
   // ⭐ Las columnas modificadas se cargan automáticamente en loadPedido()
   // Agregar listener para cerrar dropdown al hacer click fuera
@@ -1945,7 +1993,6 @@ watch(
   async (newNumeroPedido, oldNumeroPedido) => {
     // Sincronizar Set de códigos a resaltar desde sessionStorage (origen de verdad tras flujo async)
     syncCodigosResaltadoDesdeStorage()
-    syncPackPvpResaltadoDesdeStorage()
     // Solo recargar si el número de pedido realmente cambió y no es la carga inicial
     if (newNumeroPedido && newNumeroPedido !== oldNumeroPedido) {
       if (import.meta.env.DEV) console.log(`🔄 [PedidoDetalleView] Cambio de pedido detectado: ${oldNumeroPedido || '(ninguno)'} → ${newNumeroPedido}`)

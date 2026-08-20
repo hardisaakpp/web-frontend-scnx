@@ -977,6 +977,9 @@ export interface PedidoCabecera {
   /** Fecha Facturación (req. 1.8): en blanco por defecto, exclusiva de Producción El Rayo,
    * editable solo mientras el pedido está en Gestionar Pedido (estado_id = 3). */
   fecha_facturacion?: string | null
+  /** Req. 1.2: UUID del pedido "padre" si este es un pedido "hijo" generado con la
+   * diferencia no producida (null/undefined en un pedido padre normal). */
+  pedido_padre_id?: string | null
 }
 
 export interface TiendaDistribucion {
@@ -1026,8 +1029,10 @@ export interface PedidoCompleto {
   respuesta_proveedor?: RespuestaProveedor  // Incluido si incluir_respuesta=true
   /** true si el pedido está en BORRADOR o NUEVO PEDIDO; false en el resto (p. ej. GESTIONAR PEDIDO). Backend: GET plantillas/ultimo, GET plantillas/{id}, POST .../gestionar */
   puede_descartar?: boolean
-  /** true si se puede cancelar (Redistribución); false desde estado Confirmado redistribución (estado_id ≥ 10). Backend: GET /api/pedidos/{id} */
+  /** true si se puede cancelar (Redistribución), o "Rechazar" si estado_id === 22 = PRODUCCION POSPUESTA; false desde estado Confirmado redistribución (estado_id ≥ 10). Backend: GET /api/pedidos/{id} */
   puede_cancelar_pedido?: boolean
+  /** true si se puede "Aceptar" la diferencia pospuesta (solo estado_id === 22 = PRODUCCION POSPUESTA), pasando a LISTO PARA REDISTRIBUCION (25). Backend: GET /api/pedidos/{id} */
+  puede_aceptar_produccion_pospuesta?: boolean
   /** true si se puede confirmar redistribución (estados 4-REDISTRIBUCION, 5-RESPUESTA_PROVEEDOR_CARGADA, 6-CONFIRMADO_PROVEEDOR, 8-EN_AJUSTE_MABEL, 9-REDISTRIBUIDO); false para CANCELADO y otros estados */
   puede_confirmar_redistribucion?: boolean
   /** true si se puede finalizar el pedido (solo cuando estado_id === 17 = DESPACHAR Y FACTURAR). Backend: GET /api/pedidos/{id} y GET /api/plantillas/{numero_pedido} */
@@ -1150,6 +1155,13 @@ export interface ProductoDistribucionResponse {
   cantidad_confirmada_total: number
   cantidad_asignada_total: number
   distribuciones: DistribucionTiendaItemResponse[]
+}
+
+/** Item del catálogo maestro de tiendas (GET /api/pedidos/tiendas/buscar). */
+export interface TiendaCatalogoItem {
+  tienda_id: string
+  codigo: string
+  nombre: string | null
 }
 
 export interface DistribucionPedidoResponse {

@@ -108,7 +108,7 @@
           type="button"
           @click="$emit('update-estado', 'DESPACHAR Y FACTURAR')"
           :disabled="despacharYFacturarDeshabilitado"
-          class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-medium"
+          class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-medium"
         >
           <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -125,7 +125,7 @@
         type="button"
         @click="$emit('finalizar-pedido')"
         :disabled="finalizandoPedido"
-        class="px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-medium"
+        class="px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-medium"
         title="Marcar el pedido como Finalizado"
       >
         <svg v-if="!finalizandoPedido" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -138,9 +138,9 @@
         v-if="puedeDescargarPedido"
         type="button"
         @click="$emit('descargar-pedido')"
-        :disabled="loading || descargandoPedido"
+        :disabled="loading || descargandoPedido || esPedidoHijo"
         class="px-4 py-2 bg-teal-600 dark:bg-teal-500 text-white rounded-lg hover:bg-teal-700 dark:hover:bg-teal-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-medium"
-        title="Descargar pedido en formato Excel"
+        :title="esPedidoHijo ? 'Este pedido hijo no tiene un archivo Excel original propio' : 'Descargar pedido en formato Excel'"
       >
         <svg v-if="!descargandoPedido" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -296,4 +296,10 @@ const puedeDespacharYFacturar = computed(() => {
   if (e.replace(/\s+/g, '_').replace(/\s*Y\s*/gi, '_') === 'CONFIRMADO_ENVIADO') return true
   return false
 })
+
+// Req. 1.2: un pedido "hijo" (generado con la diferencia no producida, ver
+// confirmar-con-diferencia) no tiene un archivo Excel original propio subido por
+// el usuario -- deshabilita "Descargar Pedido Original" solo para estos, no para
+// el pedido "padre".
+const esPedidoHijo = computed(() => !!props.pedido?.cabecera?.pedido_padre_id)
 </script>

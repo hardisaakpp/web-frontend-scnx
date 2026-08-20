@@ -458,13 +458,15 @@ const confirmarDeshabilitadoPorEstado = computed(() =>
   pedido.value?.puede_confirmar_redistribucion === false
 )
 
-// ⭐ Deshabilitar "Guardar Borrador" si el estado NO es CONFIRMADO POR EL RAYO (estado_id = 4)
-// Solo se puede guardar borrador cuando el pedido está en estado CONFIRMADO POR EL RAYO.
+// ⭐ Deshabilitar "Guardar Borrador" si el estado NO permite trabajar la redistribución.
+// Habilitado en estado 4 (CONFIRMADO POR EL RAYO) y en estado 25 (LISTO PARA
+// REDISTRIBUCION: pedido "hijo" aceptado por el botón "Aceptar", que entra directo a la
+// cola de redistribución sin pasar por "Confirmado por El Rayo" -- ver
+// ESTADOS_PUEDE_ACEPTAR_PRODUCCION_POSPUESTA en el backend).
 // Una vez que se confirma la redistribución (estado 10) o se envía a SAP (estado 12), el botón se deshabilita.
 const guardarBorradorDeshabilitadoPorEstado = computed(() => {
   const estadoId = pedido.value?.cabecera?.estado_id
-  // Solo habilitado en estado 4 (CONFIRMADO POR EL RAYO)
-  return estadoId !== 4
+  return estadoId !== 4 && estadoId !== 25
 })
 
 // El botón/bandeja de reintento se habilita/deshabilita usando SOLO el flag backend.

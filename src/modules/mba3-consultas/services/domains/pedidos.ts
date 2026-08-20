@@ -55,7 +55,8 @@ import type {
   SapInfoProductosResponse,
   DiferenciaProduccionResponse,
   ConfirmarConDiferenciaResponse,
-  HijoDiferenciaPayload
+  HijoDiferenciaPayload,
+  TiendaCatalogoItem
 } from '../../types'
 
 export const pedidosService = {
@@ -914,6 +915,27 @@ export const pedidosService = {
   },
 
   /**
+   * Botón "Aceptar" sobre un pedido "hijo" en PRODUCCION POSPUESTA (estado_id = 22):
+   * acepta la diferencia pospuesta y la envía directo a la cola de redistribución,
+   * cambiando su estado a LISTO PARA REDISTRIBUCION (estado_id = 25).
+   * POST /api/pedidos/{pedido_id}/aceptar-produccion-pospuesta
+   *
+   * @param pedidoId ID del pedido (UUID)
+   * @returns El pedido actualizado con estado LISTO PARA REDISTRIBUCION
+   */
+  async aceptarProduccionPospuesta(pedidoId: string): Promise<PedidoCompleto> {
+    try {
+      const response = await mba3Api.post<PedidoCompleto>(
+        `/api/pedidos/${encodeURIComponent(pedidoId)}/aceptar-produccion-pospuesta`
+      )
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [aceptarProduccionPospuesta] Error:', error)
+      throw createEnrichedError(error, 'Error al aceptar el pedido')
+    }
+  },
+
+  /**
    * Envía un pedido en BORRADOR a EL RAYO.
    * POST /api/pedidos/{pedido_id}/enviar (sin body; usuario del JWT).
    * Respuesta 200: { status, message, pedido_id, numero_pedido, estado_id, estado_nombre }.
@@ -1283,6 +1305,29 @@ export const pedidosService = {
     } catch (error: any) {
       console.error('❌ [getDistribucion] Error:', error)
       throw createEnrichedError(error, 'Error al obtener distribución del pedido')
+    }
+  },
+
+  /**
+   * Busca tiendas activas del catálogo maestro por nombre o código (búsqueda parcial).
+   * GET /api/pedidos/tiendas/buscar. Usado por el buscador de "agregar tienda" en la
+   * redistribución de pedidos hijo.
+   *
+   * @param query Texto a buscar en código o nombre
+   * @param limit Máximo de resultados (por defecto 20)
+   */
+  async buscarTiendas(query: string, limit = 20): Promise<TiendaCatalogoItem[]> {
+    try {
+      const params = new URLSearchParams()
+      if (query) params.set('q', query)
+      params.set('limit', String(limit))
+      const response = await mba3Api.get<TiendaCatalogoItem[]>(
+        `/api/pedidos/tiendas/buscar?${params.toString()}`
+      )
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [buscarTiendas] Error:', error)
+      throw createEnrichedError(error, 'Error al buscar tiendas')
     }
   },
 

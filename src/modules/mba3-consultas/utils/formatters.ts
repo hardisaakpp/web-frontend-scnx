@@ -162,7 +162,10 @@ export function formatEstadoPedido(estado: string | undefined): string {
     'CONFIRMADO_PROVEEDOR': 'Confirmado por Proveedor',
     'CONFIRMADO': 'Confirmado',
     'CONFIRMADO REDISTRIBUCION': 'Confirmado redistribución',
+    'REDISTRIBUIDO': 'Redistribuido',
     'PEDIDO_CONFIRMADO': 'Pedido Confirmado',
+    'PENDIENTE_LOGISTICA': 'Pendiente Logística',
+    'ERROR_DATOS_MAESTROS': 'Error Datos Maestros',
     'PROCESADO_SAP': 'Procesado SAP',
     'CONFIRMADO_ENVIADO': 'Confirmado y Enviado',
     'CONFIRMADO Y ENVIADO': 'Confirmado y Enviado',
@@ -182,7 +185,12 @@ export function formatEstadoPedido(estado: string | undefined): string {
     'CONFIRMADO POR PRODUCCION': 'Confirmado por Producción',
     'CONFIRMADO_POR_PRODUCCION': 'Confirmado por Producción',
     'ERROR ENVIO SAP REINTENTO': 'Error envío SAP (reintentar)',
-    'ERROR_ENVIO_SAP_REINTENTO': 'Error envío SAP (reintentar)'
+    'ERROR_ENVIO_SAP_REINTENTO': 'Error envío SAP (reintentar)',
+    'PRODUCCION POSPUESTA': 'Producción Pospuesta',
+    'PRODUCCION_POSPUESTA': 'Producción Pospuesta',
+    'RECHAZADO': 'Rechazado',
+    'LISTO PARA REDISTRIBUCION': 'Listo para Redistribución',
+    'LISTO_PARA_REDISTRIBUCION': 'Listo para Redistribución'
   }
   return estados[estado] || estado
 }

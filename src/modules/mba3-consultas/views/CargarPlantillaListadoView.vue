@@ -690,7 +690,10 @@ function getEstadoLabel(estado: string): string {
     'CONFIRMADO_PROVEEDOR': 'Confirmado Proveedor',
     'CONFIRMADO': 'Confirmado',
     'CONFIRMADO REDISTRIBUCION': 'Confirmado redistribución',
+    'REDISTRIBUIDO': 'Redistribuido',
     'PEDIDO_CONFIRMADO': 'Pedido Confirmado',
+    'PENDIENTE_LOGISTICA': 'Pendiente Logística',
+    'ERROR_DATOS_MAESTROS': 'Error Datos Maestros',
     'PROCESADO_SAP': 'Procesado SAP',
     'ORDEN_COMPRA_CREADA': 'OC Creada',
     'ENVIADA_SAP': 'Enviada SAP',
@@ -710,7 +713,10 @@ function getEstadoLabel(estado: string): string {
     'CONFIRMADO POR PRODUCCION': 'Confirmado por Producción',
     'CONFIRMADO_POR_PRODUCCION': 'Confirmado por Producción',
     'PRODUCCION POSPUESTA': 'Producción Pospuesta',
-    'PRODUCCION_POSPUESTA': 'Producción Pospuesta'
+    'PRODUCCION_POSPUESTA': 'Producción Pospuesta',
+    'RECHAZADO': 'Rechazado',
+    'LISTO PARA REDISTRIBUCION': 'Listo para Redistribución',
+    'LISTO_PARA_REDISTRIBUCION': 'Listo para Redistribución'
   }
   return labels[estado] || estado
 }
@@ -718,19 +724,26 @@ function getEstadoLabel(estado: string): string {
 function getEstadoBadgeClass(estado: string): string {
   const baseClasses = 'px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors duration-300'
   const darkClasses = 'dark:bg-opacity-30'
+  // Paleta por rol (permiso que produce el estado, ver docs/requeriments/PYTD002_ODC-MABEL-RAYO_SEGUIMIENTO.md):
+  // mabel.view = verde/esmeralda/teal/lima (BORRADOR → ... → FINALIZADO); produccion-elrayo.view =
+  // ámbar (calza el botón "Confirmar Producción", bg-amber-600); odcsap.view = púrpura (calza el
+  // botón "Confirmar", bg-purple-600); Cancelado/Rechazado = rojo/rosa, cruza roles.
   const classes: Record<string, string> = {
-    'BORRADOR': `bg-slate-100 text-slate-800 ${darkClasses} dark:bg-slate-700 dark:text-slate-200`,
-    'NUEVO PEDIDO': `bg-sky-100 text-sky-800 ${darkClasses} dark:bg-sky-900/50 dark:text-sky-200`,
-    'NUEVO_PEDIDO': `bg-sky-100 text-sky-800 ${darkClasses} dark:bg-sky-900/50 dark:text-sky-200`,
+    'BORRADOR': `bg-emerald-50 text-emerald-700 ${darkClasses} dark:bg-emerald-950/40 dark:text-emerald-300`,
+    'NUEVO PEDIDO': `bg-green-100 text-green-800 ${darkClasses} dark:bg-green-900/50 dark:text-green-200`,
+    'NUEVO_PEDIDO': `bg-green-100 text-green-800 ${darkClasses} dark:bg-green-900/50 dark:text-green-200`,
     'GESTIONAR PEDIDO': `bg-amber-100 text-amber-800 ${darkClasses} dark:bg-amber-900/50 dark:text-amber-200`,
     'GESTIONAR_PEDIDO': `bg-amber-100 text-amber-800 ${darkClasses} dark:bg-amber-900/50 dark:text-amber-200`,
-    'REDISTRIBUCION': `bg-violet-100 text-violet-800 ${darkClasses} dark:bg-violet-900/50 dark:text-violet-200`,
+    'REDISTRIBUCION': `bg-purple-100 text-purple-800 ${darkClasses} dark:bg-purple-900/50 dark:text-purple-200`,
     'PENDIENTE_CONFIRMACION_PROVEEDOR': `bg-yellow-100 text-yellow-800 ${darkClasses} dark:bg-yellow-900/50 dark:text-yellow-200`,
     'RESPUESTA_PROVEEDOR_CARGADA': `bg-blue-100 text-blue-800 ${darkClasses} dark:bg-blue-900/50 dark:text-blue-200`,
     'CONFIRMADO_PROVEEDOR': `bg-green-100 text-green-800 ${darkClasses} dark:bg-green-900/50 dark:text-green-200`,
     'CONFIRMADO': `bg-green-100 text-green-800 ${darkClasses} dark:bg-green-900/50 dark:text-green-200`,
     'CONFIRMADO REDISTRIBUCION': `bg-teal-100 text-teal-800 ${darkClasses} dark:bg-teal-900/50 dark:text-teal-200`,
-    'PEDIDO_CONFIRMADO': `bg-cyan-100 text-cyan-800 ${darkClasses} dark:bg-cyan-900/50 dark:text-cyan-200`,
+    'REDISTRIBUIDO': `bg-teal-100 text-teal-800 ${darkClasses} dark:bg-teal-900/50 dark:text-teal-200`,
+    'PEDIDO_CONFIRMADO': `bg-teal-200 text-teal-900 ${darkClasses} dark:bg-teal-900/60 dark:text-teal-100`,
+    'PENDIENTE_LOGISTICA': `bg-lime-100 text-lime-800 ${darkClasses} dark:bg-lime-900/50 dark:text-lime-200`,
+    'ERROR_DATOS_MAESTROS': `bg-lime-200 text-lime-900 ${darkClasses} dark:bg-lime-900/60 dark:text-lime-100`,
     'PROCESADO_SAP': `bg-indigo-100 text-indigo-800 ${darkClasses} dark:bg-indigo-900/50 dark:text-indigo-200`,
     'ORDEN_COMPRA_CREADA': `bg-fuchsia-100 text-fuchsia-800 ${darkClasses} dark:bg-fuchsia-900/50 dark:text-fuchsia-200`,
     'ENVIADA_SAP': `bg-purple-100 text-purple-800 ${darkClasses} dark:bg-purple-900/50 dark:text-purple-200`,
@@ -739,19 +752,22 @@ function getEstadoBadgeClass(estado: string): string {
     'CONFIRMADO_Y_ENVIADO': `bg-emerald-100 text-emerald-800 ${darkClasses} dark:bg-emerald-900/50 dark:text-emerald-200`,
     'Confirmado y Enviado': `bg-emerald-100 text-emerald-800 ${darkClasses} dark:bg-emerald-900/50 dark:text-emerald-200`,
     'ENVIADA': `bg-emerald-100 text-emerald-800 ${darkClasses} dark:bg-emerald-900/50 dark:text-emerald-200`,
-    'DESPACHAR Y FACTURAR': `bg-orange-100 text-orange-800 ${darkClasses} dark:bg-orange-900/50 dark:text-orange-200`,
-    'DESPACHAR_Y_FACTURAR': `bg-orange-100 text-orange-800 ${darkClasses} dark:bg-orange-900/50 dark:text-orange-200`,
-    'FINALIZADO': `bg-lime-100 text-lime-800 ${darkClasses} dark:bg-lime-900/50 dark:text-lime-200`,
+    'DESPACHAR Y FACTURAR': `bg-green-200 text-green-900 ${darkClasses} dark:bg-green-900/60 dark:text-green-100`,
+    'DESPACHAR_Y_FACTURAR': `bg-green-200 text-green-900 ${darkClasses} dark:bg-green-900/60 dark:text-green-100`,
+    'FINALIZADO': `bg-green-300 text-green-900 ${darkClasses} dark:bg-green-900/70 dark:text-green-100`,
     'CERRADO': `bg-stone-100 text-stone-700 ${darkClasses} dark:bg-stone-600 dark:text-stone-200`,
     'CANCELADO': `bg-rose-100 text-rose-800 ${darkClasses} dark:bg-rose-900/50 dark:text-rose-200`,
-    'CANCELADO POR EL RAYO': `bg-red-100 text-red-800 ${darkClasses} dark:bg-red-900/50 dark:text-red-200`,
-    'CANCELADO_POR_EL_RAYO': `bg-red-100 text-red-800 ${darkClasses} dark:bg-red-900/50 dark:text-red-200`,
-    'CONFIRMADO POR EL RAYO': `bg-violet-100 text-violet-800 ${darkClasses} dark:bg-violet-900/50 dark:text-violet-200`,
-    'CONFIRMADO_POR_EL_RAYO': `bg-violet-100 text-violet-800 ${darkClasses} dark:bg-violet-900/50 dark:text-violet-200`,
-    'CONFIRMADO POR PRODUCCION': `bg-yellow-100 text-yellow-800 ${darkClasses} dark:bg-yellow-900/50 dark:text-yellow-200`,
-    'CONFIRMADO_POR_PRODUCCION': `bg-yellow-100 text-yellow-800 ${darkClasses} dark:bg-yellow-900/50 dark:text-yellow-200`,
-    'PRODUCCION POSPUESTA': `bg-pink-100 text-pink-800 ${darkClasses} dark:bg-pink-900/50 dark:text-pink-200`,
-    'PRODUCCION_POSPUESTA': `bg-pink-100 text-pink-800 ${darkClasses} dark:bg-pink-900/50 dark:text-pink-200`
+    'CANCELADO POR EL RAYO': `bg-red-200 text-red-900 ${darkClasses} dark:bg-red-900/70 dark:text-red-100`,
+    'CANCELADO_POR_EL_RAYO': `bg-red-200 text-red-900 ${darkClasses} dark:bg-red-900/70 dark:text-red-100`,
+    'CONFIRMADO POR EL RAYO': `bg-purple-100 text-purple-800 ${darkClasses} dark:bg-purple-900/50 dark:text-purple-200`,
+    'CONFIRMADO_POR_EL_RAYO': `bg-purple-100 text-purple-800 ${darkClasses} dark:bg-purple-900/50 dark:text-purple-200`,
+    'CONFIRMADO POR PRODUCCION': `bg-amber-300 text-amber-900 ${darkClasses} dark:bg-amber-900/70 dark:text-amber-100`,
+    'CONFIRMADO_POR_PRODUCCION': `bg-amber-300 text-amber-900 ${darkClasses} dark:bg-amber-900/70 dark:text-amber-100`,
+    'PRODUCCION POSPUESTA': `bg-purple-200 text-purple-900 ${darkClasses} dark:bg-purple-900/60 dark:text-purple-100`,
+    'PRODUCCION_POSPUESTA': `bg-purple-200 text-purple-900 ${darkClasses} dark:bg-purple-900/60 dark:text-purple-100`,
+    'RECHAZADO': `bg-red-100 text-red-800 ${darkClasses} dark:bg-red-900/50 dark:text-red-200`,
+    'LISTO PARA REDISTRIBUCION': `bg-emerald-200 text-emerald-900 ${darkClasses} dark:bg-emerald-900/60 dark:text-emerald-100`,
+    'LISTO_PARA_REDISTRIBUCION': `bg-emerald-200 text-emerald-900 ${darkClasses} dark:bg-emerald-900/60 dark:text-emerald-100`
   }
   return `${baseClasses} ${classes[estado] || `bg-gray-100 text-gray-800 ${darkClasses} dark:bg-gray-700 dark:text-gray-200`}`
 }

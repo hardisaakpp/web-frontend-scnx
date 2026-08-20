@@ -395,28 +395,45 @@
           </button>
         </div>
 
-        <!-- Botón Cancelar Pedido Pospuesto (req. 1.2) - Estado PRODUCCION POSPUESTA, solo mabel.view -->
+        <!-- Botones Rechazar / Aceptar (req. 1.2) - Estado PRODUCCION POSPUESTA, solo mabel.view -->
         <div
-          v-if="puedeCancelarPedidoPospuesto"
+          v-if="puedeCancelarPedidoPospuesto || puedeAceptarProduccionPospuesta"
           class="mt-6 pb-6 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 pt-6"
         >
           <div class="text-sm text-gray-600 dark:text-gray-400 max-w-2xl">
-            <p class="font-medium">⚠️ Cancelar pedido con la diferencia</p>
-            <p class="text-xs mt-1">Este pedido fue generado con la diferencia no producida y está pospuesto a la espera de que El Rayo lo retome. Cancélelo únicamente si prefieren gestionar esa diferencia por su cuenta.</p>
+            <p class="font-medium">⚠️ Diferencia pospuesta</p>
+            <p class="text-xs mt-1">Este pedido fue generado con la diferencia no producida y está pospuesto a la espera de una decisión. Rechácelo si prefieren gestionar esa diferencia por su cuenta, o acéptelo para enviarlo directo a redistribución.</p>
           </div>
-          <button
-            type="button"
-            @click="handleCancelarPedidoPospuesto"
-            :disabled="cancelandoPedidoPospuesto"
-            class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-red-600 dark:bg-red-500 rounded-lg shadow-sm hover:bg-red-700 dark:hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-            title="Cancelar este pedido"
-          >
-            <svg v-if="!cancelandoPedidoPospuesto" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-            </svg>
-            <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Cancelando pedido" />
-            {{ cancelandoPedidoPospuesto ? 'Cancelando...' : 'Cancelar Pedido' }}
-          </button>
+          <div class="flex items-center gap-3 flex-shrink-0">
+            <button
+              v-if="puedeCancelarPedidoPospuesto"
+              type="button"
+              @click="handleCancelarPedidoPospuesto"
+              :disabled="cancelandoPedidoPospuesto"
+              class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-red-600 dark:bg-red-500 rounded-lg shadow-sm hover:bg-red-700 dark:hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Rechazar este pedido"
+            >
+              <svg v-if="!cancelandoPedidoPospuesto" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+              </svg>
+              <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Rechazando pedido" />
+              {{ cancelandoPedidoPospuesto ? 'Rechazando...' : 'Rechazar' }}
+            </button>
+            <button
+              v-if="puedeAceptarProduccionPospuesta"
+              type="button"
+              @click="handleAceptarProduccionPospuesta"
+              :disabled="aceptandoProduccionPospuesta"
+              class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-emerald-600 dark:bg-emerald-500 rounded-lg shadow-sm hover:bg-emerald-700 dark:hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Aceptar la diferencia y enviarla a redistribución"
+            >
+              <svg v-if="!aceptandoProduccionPospuesta" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              </svg>
+              <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Aceptando pedido" />
+              {{ aceptandoProduccionPospuesta ? 'Aceptando...' : 'Aceptar' }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -557,6 +574,7 @@ const confirmando = ref(false)
 const confirmandoProduccion = ref(false)
 const cancelandoPorElRayo = ref(false)
 const cancelandoPedidoPospuesto = ref(false)
+const aceptandoProduccionPospuesta = ref(false)
 const descargandoPedido = ref(false)
 const descargandoCsv = ref(false)
 const descargandoExcelOriginal = ref(false)
@@ -638,7 +656,11 @@ const availableColumns: ColumnConfig[] = [
     ? []
     : [{ key: 'costo_doc_sin_iva', label: 'Costo Unit.', visible: true, align: 'right' as const, format: 'currency' as const }]),
   { key: 'descuento_1', label: 'Descuento', visible: false, align: 'right', format: 'number' },
-  { key: 'pvp', label: 'PVP', visible: false, align: 'right', format: 'currency' },
+  // Solo mabel.view: PVP (precio de venta al público) queda fuera del selector de
+  // columnas para odcsap.view y produccion-elrayo.view (ver ocultar_pvp_si_no_mabel).
+  ...(authStore.canViewMabel
+    ? [{ key: 'pvp', label: 'PVP', visible: false, align: 'right' as const, format: 'currency' as const }]
+    : []),
   { key: 'subtotal', label: 'Subtotal', visible: false, align: 'right', format: 'number' },
   { key: 'total', label: 'Total', visible: true, align: 'right', format: 'number' },
   { key: 'comentario', label: 'Comentario', visible: true, align: 'left', format: 'text' }
@@ -959,6 +981,17 @@ const puedeCancelarPedidoPospuesto = computed(() => {
   if (!cabecera) return false
   const estadoId = cabecera.estado_id != null ? Number(cabecera.estado_id) : null
   return estadoId === 22 && pedido.value?.puede_cancelar_pedido === true
+})
+
+// Req. 1.2: Mabel Trading acepta la diferencia pospuesta y la envía directo a la
+// cola de redistribución (estado LISTO PARA REDISTRIBUCION, 25), sin pasar de
+// nuevo por "Confirmado por El Rayo". Exclusivo de mabel.view.
+const puedeAceptarProduccionPospuesta = computed(() => {
+  if (!authStore.canViewMabel) return false
+  const cabecera = pedido.value?.cabecera
+  if (!cabecera) return false
+  const estadoId = cabecera.estado_id != null ? Number(cabecera.estado_id) : null
+  return estadoId === 22 && pedido.value?.puede_aceptar_produccion_pospuesta === true
 })
 
 // Permitir descargar CSV solo en estado CONFIRMADO (estado_id = 4)
@@ -1652,11 +1685,13 @@ async function handleCancelarPorElRayo() {
   }
 }
 
-// Req. 1.2: cancelar un pedido "hijo" en Producción Pospuesta (Mabel Trading prefiere
+// Req. 1.2: rechazar un pedido "hijo" en Producción Pospuesta (Mabel Trading prefiere
 // gestionar la diferencia por su cuenta en vez de esperar a que El Rayo lo retome).
+// Reutiliza el mismo endpoint /cancelar; el backend distingue el destino (RECHAZADO
+// en vez de CANCELADO) según el estado de origen -- ver pedidos_cancelar_endpoints.py.
 async function handleCancelarPedidoPospuesto() {
   if (!pedido.value?.cabecera?.pedido_id) {
-    toast.error('Error', 'No hay pedido para cancelar')
+    toast.error('Error', 'No hay pedido para rechazar')
     return
   }
   if (cancelandoPedidoPospuesto.value) return
@@ -1665,28 +1700,66 @@ async function handleCancelarPedidoPospuesto() {
   const numeroPedidoDisplay = pedido.value.cabecera.numero_pedido
 
   const confirmado = window.confirm(
-    `¿Estás seguro de que deseas cancelar este pedido?\n\n` +
+    `¿Estás seguro de que deseas rechazar este pedido?\n\n` +
     `Pedido: ${numeroPedidoDisplay}\n` +
-    `El pedido cambiará a estado "Cancelado".`
+    `El pedido cambiará a estado "Rechazado".`
   )
   if (!confirmado) return
 
   cancelandoPedidoPospuesto.value = true
-  toast.info('Cancelando pedido...', 'Por favor espera')
+  toast.info('Rechazando pedido...', 'Por favor espera')
 
   try {
     await mba3ConsultasService.cancelarPedido(pedidoId)
-    toast.success('Pedido cancelado', 'El pedido ha sido cancelado exitosamente')
+    toast.success('Pedido rechazado', 'El pedido ha sido rechazado exitosamente')
     if (pedido.value?.cabecera) {
-      pedido.value.cabecera.estado = 'CANCELADO'
-      pedido.value.cabecera.estado_id = 19
+      pedido.value.cabecera.estado = 'RECHAZADO'
+      pedido.value.cabecera.estado_id = 24
     }
   } catch (e: any) {
-    console.error('Error al cancelar pedido pospuesto:', e)
+    console.error('Error al rechazar pedido pospuesto:', e)
     const message = e.response?.data?.detail?.message || e.response?.data?.message || e.message
-    toast.error('Error al cancelar', message || 'No se pudo cancelar el pedido')
+    toast.error('Error al rechazar', message || 'No se pudo rechazar el pedido')
   } finally {
     cancelandoPedidoPospuesto.value = false
+  }
+}
+
+// Req. 1.2: aceptar la diferencia pospuesta de un pedido "hijo" en Producción Pospuesta,
+// enviándola directo a la cola de redistribución (LISTO PARA REDISTRIBUCION, 25).
+async function handleAceptarProduccionPospuesta() {
+  if (!pedido.value?.cabecera?.pedido_id) {
+    toast.error('Error', 'No hay pedido para aceptar')
+    return
+  }
+  if (aceptandoProduccionPospuesta.value) return
+
+  const pedidoId = pedido.value.cabecera.pedido_id
+  const numeroPedidoDisplay = pedido.value.cabecera.numero_pedido
+
+  const confirmado = window.confirm(
+    `¿Estás seguro de que deseas aceptar este pedido?\n\n` +
+    `Pedido: ${numeroPedidoDisplay}\n` +
+    `El pedido pasará a "Listo para Redistribución".`
+  )
+  if (!confirmado) return
+
+  aceptandoProduccionPospuesta.value = true
+  toast.info('Aceptando pedido...', 'Por favor espera')
+
+  try {
+    await mba3ConsultasService.aceptarProduccionPospuesta(pedidoId)
+    toast.success('Pedido aceptado', 'El pedido está listo para redistribución')
+    if (pedido.value?.cabecera) {
+      pedido.value.cabecera.estado = 'LISTO PARA REDISTRIBUCION'
+      pedido.value.cabecera.estado_id = 25
+    }
+  } catch (e: any) {
+    console.error('Error al aceptar produccion pospuesta:', e)
+    const message = e.response?.data?.detail?.message || e.response?.data?.message || e.message
+    toast.error('Error al aceptar', message || 'No se pudo aceptar el pedido')
+  } finally {
+    aceptandoProduccionPospuesta.value = false
   }
 }
 

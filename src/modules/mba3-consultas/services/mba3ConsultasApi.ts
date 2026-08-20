@@ -1386,6 +1386,15 @@ export const mba3ConsultasService = {
   },
 
   /**
+   * Botón "Aceptar" sobre un pedido "hijo" en PRODUCCION POSPUESTA: pasa a LISTO PARA
+   * REDISTRIBUCION. POST /api/pedidos/{pedido_id}/aceptar-produccion-pospuesta.
+   * @param pedidoId ID del pedido (UUID)
+   */
+  async aceptarProduccionPospuesta(pedidoId: string): Promise<PedidoCompleto> {
+    return pedidosService.aceptarProduccionPospuesta(pedidoId)
+  },
+
+  /**
    * Envía un pedido en BORRADOR a EL RAYO. POST /api/pedidos/{pedido_id}/enviar.
    * @param pedidoId ID del pedido (UUID)
    */
