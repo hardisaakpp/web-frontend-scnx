@@ -620,6 +620,34 @@ export function useRedistribucion(options: {
     }
   }
 
+  /**
+   * Agrega una tienda del catálogo maestro a TODOS los productos de la redistribución
+   * (cantidad 0), para que aparezca como columna nueva en la matriz. Usado por el botón
+   * "+" de "Vista Excel - Redistribución" en pedidos hijo (redistribución hacia tiendas
+   * que no venían en el Excel original del pedido).
+   */
+  function agregarTiendaATodosLosProductos(codigo: string, nombre: string) {
+    let agregada = false
+    productosRedistribucion.value.forEach(producto => {
+      const yaExiste = producto.distribucion_tiendas.some(t => t.tienda_codigo === codigo)
+      if (yaExiste) return
+      producto.distribucion_tiendas.push({
+        tienda_codigo: codigo,
+        tienda_nombre: nombre,
+        cantidad_original: 0,
+        cantidad_asignada: 0,
+        diferencia: 0,
+        es_bodega: false
+      })
+      agregada = true
+    })
+    if (agregada) {
+      recalcularDiferencias()
+    } else {
+      toast.warning('Tienda ya agregada', `La tienda ${codigo} ya está en la redistribución`)
+    }
+  }
+
   /** Redondea a 4 decimales (alineado con backend) */
   function round4(x: number): number {
     return Math.round(x * 1e4) / 1e4
@@ -897,6 +925,7 @@ export function useRedistribucion(options: {
     actualizarTiendasDesdeReporte,
     toggleExpandirProducto,
     actualizarCantidadTienda,
+    agregarTiendaATodosLosProductos,
     distribuirProporcionalmente,
     copiarDistribucionOriginal,
     resetearDistribucion,

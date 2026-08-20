@@ -282,6 +282,7 @@
         @toggle-expandir-producto="toggleExpandirProducto"
         @actualizar-cantidad-tienda="actualizarCantidadTienda"
         @validar-y-corregir-cantidad="validarYCorregirCantidad"
+        @agregar-tienda="agregarTienda"
         @distribuir-proporcionalmente="distribuirProporcionalmente"
         @copiar-distribucion-original="copiarDistribucionOriginal"
         @resetear-distribucion="resetearDistribucion"
@@ -484,6 +485,10 @@ function actualizarCantidadTienda(codigoProducto: string, tiendaCodigo: string, 
 
 function validarYCorregirCantidad(producto: ProductoRedistribucion, tienda: DistribucionTiendaEditada) {
   redistribucion.validarYCorregirCantidad(producto, tienda)
+}
+
+function agregarTienda(tienda: { codigo: string; nombre: string }) {
+  redistribucion.agregarTiendaATodosLosProductos(tienda.codigo, tienda.nombre)
 }
 
 function distribuirProporcionalmente(codigoProducto: string) {

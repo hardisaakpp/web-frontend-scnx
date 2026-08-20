@@ -230,6 +230,7 @@
           :pedido="pedidoValue"
           @actualizar-cantidad-tienda="handleActualizarCantidadTienda"
           @validar-y-corregir-cantidad="handleValidarYCorregirCantidad"
+          @agregar-tienda="handleAgregarTienda"
         />
         
         <!-- Vista Compacta (tabla original) -->
@@ -668,6 +669,7 @@ interface Emits {
   (e: 'toggle-expandir-producto', codigoProducto: string): void
   (e: 'actualizar-cantidad-tienda', codigoProducto: string, tiendaCodigo: string, event: Event): void
   (e: 'validar-y-corregir-cantidad', producto: ProductoRedistribucion, tienda: DistribucionTiendaEditada, event?: Event): void
+  (e: 'agregar-tienda', tienda: { codigo: string; nombre: string }): void
   (e: 'distribuir-proporcionalmente', codigoProducto: string): void
   (e: 'copiar-distribucion-original', codigoProducto: string): void
   (e: 'resetear-distribucion', codigoProducto: string): void
@@ -982,6 +984,10 @@ function handleValidarYCorregirCantidad(producto: ProductoRedistribucion, tienda
 
 function validarYCorregirCantidad(producto: ProductoRedistribucion, tienda: DistribucionTiendaEditada) {
   emit('validar-y-corregir-cantidad', producto, tienda)
+}
+
+function handleAgregarTienda(tienda: { codigo: string; nombre: string }) {
+  emit('agregar-tienda', tienda)
 }
 
 const TOLERANCIA_SUMA = 1e-6

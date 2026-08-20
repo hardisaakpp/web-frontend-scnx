@@ -3,7 +3,24 @@
     <!-- Header con selector de columnas (px-6 alineado con la barra de totales del padre) -->
     <div class="flex items-center justify-between mb-0 px-6 pt-4 pb-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
       <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300">Vista Excel - Redistribución</h3>
-      <div class="relative">
+      <div class="flex items-center gap-2">
+        <!-- Agregar tienda: solo en pedidos hijo (redistribución hacia tiendas fuera del Excel original) -->
+        <div v-if="esPedidoHijo && !soloLectura" class="relative">
+          <button
+            v-if="!mostrarBuscadorTienda"
+            type="button"
+            @click="mostrarBuscadorTienda = true"
+            class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-1.5 text-gray-700 dark:text-gray-300"
+            title="Agregar tienda a la redistribución"
+          >
+            <PlusIcon class="w-4 h-4" aria-hidden="true" />
+            Tienda
+          </button>
+          <div v-else class="absolute right-0 top-0 z-40" @keydown.escape="mostrarBuscadorTienda = false">
+            <TiendaSearchCombobox :excluir-codigos="tiendasUnicas.map(t => t.codigo)" @select="onAgregarTienda" />
+          </div>
+        </div>
+        <div class="relative">
         <button
           @click="showColumnSelector = !showColumnSelector"
           class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-2 text-gray-700 dark:text-gray-300"
@@ -52,9 +69,10 @@
             </label>
           </div>
         </div>
+        </div>
       </div>
     </div>
-    
+
     <!-- Mensaje de error global: va ANTES del scroller a propósito (no después). El cromo
          por ENCIMA del scroller se cancela algebraicamente en la fórmula de max-height (ver
          comentario en <style scoped>), así que aquí su alto variable (1 línea por producto
@@ -348,7 +366,9 @@ import type { ProductoRedistribucion, DistribucionTiendaEditada } from '../utils
 import { formatNumberWithDecimals, formatCurrencyWithDecimals, type ColumnConfig } from '../utils/formatters'
 import { getDiferenciaClass } from '../utils/styleHelpers'
 import { useTablePreferences } from '@/composables/useTablePreferences'
+import { PlusIcon } from '@heroicons/vue/20/solid'
 import LoadingSpinner from './LoadingSpinner.vue'
+import TiendaSearchCombobox from './TiendaSearchCombobox.vue'
 
 interface Props {
   productos: Ref<ProductoRedistribucion[]>
@@ -364,6 +384,7 @@ interface Props {
 interface Emits {
   (e: 'actualizar-cantidad-tienda', codigoProducto: string, tiendaCodigo: string, event: Event): void
   (e: 'validar-y-corregir-cantidad', producto: ProductoRedistribucion, tienda: DistribucionTiendaEditada, event?: Event): void
+  (e: 'agregar-tienda', tienda: { codigo: string; nombre: string }): void
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -376,6 +397,15 @@ const emit = defineEmits<Emits>()
 
 // Computed para obtener productos como array (ya que viene como Ref)
 const productosArray = computed(() => props.productos.value || [])
+
+// Agregar tienda (solo pedidos hijo): botón + buscador en el header de la matriz
+const esPedidoHijo = computed(() => !!props.pedido?.cabecera?.pedido_padre_id)
+const mostrarBuscadorTienda = ref(false)
+
+function onAgregarTienda(tienda: { codigo: string; nombre: string }) {
+  emit('agregar-tienda', tienda)
+  mostrarBuscadorTienda.value = false
+}
 
 /** Para cantidades decimales: considerar "completo" cuando la diferencia es redondeo (tolerancia 1e-6) */
 function cercaDeCeroDiferencia(val: number): boolean {
