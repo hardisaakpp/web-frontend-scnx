@@ -139,6 +139,12 @@
         <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Forma de Pago</label>
         <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ pedido.cabecera.forma_pago || 'N/A' }}</p>
       </div>
+      <div v-if="origenTrasladoTexto">
+        <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Origen Traslado</label>
+        <p class="mt-1 text-sm text-gray-900 dark:text-white" :title="esOrigenTrasladoMixto ? 'Pedido mezcla tiendas de más de una marca: se generará una ODC por bodega' : undefined">
+          {{ origenTrasladoTexto }}
+        </p>
+      </div>
       <div v-if="pedido.cabecera.mensaje">
         <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Mensaje</label>
         <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ pedido.cabecera.mensaje }}</p>
@@ -314,6 +320,19 @@ const emit = defineEmits<{
  * resuelve el componente padre en puedeEditarFechaFacturacion.
  */
 const fechaFacturacionEditable = computed(() => !!props.puedeEditarFechaFacturacion)
+
+/**
+ * Bodega(s)/CD detectadas a partir de las tiendas del pedido (origen_traslado_detectado).
+ * Si aún no hay detección disponible (p. ej. tiendas sin marca sincronizada todavía),
+ * se muestra el valor legado origen_traslado como respaldo.
+ */
+const origenTrasladoTexto = computed(() => {
+  const detectado = props.pedido?.cabecera?.origen_traslado_detectado
+  if (detectado && detectado.length > 0) return detectado.join(', ')
+  return props.pedido?.cabecera?.origen_traslado || ''
+})
+
+const esOrigenTrasladoMixto = computed(() => (props.pedido?.cabecera?.origen_traslado_detectado?.length ?? 0) > 1)
 
 // Estado colapsable - por defecto encogido, a menos que se especifique defaultExpanded
 const isExpanded = ref(props.defaultExpanded ?? false)

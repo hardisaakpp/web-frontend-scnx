@@ -980,6 +980,11 @@ export interface PedidoCabecera {
   /** Req. 1.2: UUID del pedido "padre" si este es un pedido "hijo" generado con la
    * diferencia no producida (null/undefined en un pedido padre normal). */
   pedido_padre_id?: string | null
+  /** Bodega(s)/CD detectadas a partir de las tiendas del pedido (ROLAND→RL-CD,
+   * REGIONS→RG-CD, DESCUENTON→OUT-CD). Calculado, no persistido; distinto del
+   * campo `origen_traslado` (valor único escrito a mano en el Excel). Puede traer
+   * más de un código cuando el pedido mezcla tiendas de ambas marcas. */
+  origen_traslado_detectado?: string[]
 }
 
 export interface TiendaDistribucion {
