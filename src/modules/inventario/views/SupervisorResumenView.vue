@@ -143,6 +143,26 @@
         </div>
       </div>
 
+      <!-- Valorizado Mabeltrading -->
+      <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 mb-6">
+        <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-4">Valorizado Mabeltrading (a costo)</h2>
+        <div class="grid grid-cols-2 gap-3 text-center">
+          <div class="rounded-lg bg-blue-50 dark:bg-blue-900/20 p-3">
+            <div class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ fmtCurrency(summary.totalValorizedCost) }}</div>
+            <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Total inventario</div>
+          </div>
+          <div class="rounded-lg bg-green-50 dark:bg-green-900/20 p-3">
+            <div class="text-2xl font-bold text-green-600 dark:text-green-400">{{ fmtCurrency(summary.auditedValorizedCost) }}</div>
+            <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Cuánto se auditó</div>
+          </div>
+        </div>
+        <p class="mt-3 text-xs text-gray-400 dark:text-gray-500">
+          Total = todo el inventario del almacén, a costo, sin filtrar. Auditado = el stock del alcance filtrado de esta toma
+          (lo que el plan/sesión decidió inventariar) — no depende de cuánto se ha contado, por eso casi siempre es menor al total.
+          Artículos sin costo registrado en sc_maestros valorizan en $0.
+        </p>
+      </div>
+
       <!-- Users -->
       <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 mb-6 overflow-hidden">
         <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700">
@@ -159,6 +179,7 @@
             <thead class="bg-gray-50 dark:bg-gray-900/40">
               <tr>
                 <th class="th">Usuario</th>
+                <th class="th">Ubicación</th>
                 <th class="th text-right">Entradas</th>
                 <th class="th text-right">Artículos únicos</th>
                 <th class="th">Último registro</th>
@@ -167,6 +188,7 @@
             <tbody class="divide-y divide-gray-50 dark:divide-gray-700/50">
               <tr v-for="u in summary.userStats" :key="u.userId" class="hover:bg-gray-50 dark:hover:bg-gray-700/20">
                 <td class="td font-medium">{{ userLabel(u.userId) }}</td>
+                <td class="td text-xs text-gray-500 dark:text-gray-400">{{ u.location ?? '—' }}</td>
                 <td class="td text-right">
                   <span class="inline-flex items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2.5 py-0.5 text-xs font-semibold">
                     {{ u.countEntries }}
@@ -277,6 +299,12 @@
         </p>
       </div>
     </template>
+
+    <RecountAssignmentModal
+      :is-open="mostrarReparto"
+      :session-id="sessionId"
+      @close="mostrarReparto = false"
+    />
   </div>
 </template>
 
@@ -291,6 +319,7 @@ import {
 } from '@heroicons/vue/24/outline'
 import { inventarioSesionesService } from '../services/inventarioSesionesApi'
 import { resolveUserNames } from '@/utils/resolveUserNames'
+import RecountAssignmentModal from '../components/RecountAssignmentModal.vue'
 import type { SupervisorSummaryDto, InventorySessionStatus } from '../types'
 
 const router = useRouter()
@@ -312,11 +341,17 @@ function fmtUnits(n: number): string {
   return Number.isInteger(n) ? String(n) : n.toFixed(2)
 }
 
+const currencyFormatter = new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' })
+function fmtCurrency(n: number): string {
+  return currencyFormatter.format(n ?? 0)
+}
+
 const confirmarCierre = ref(false)
 const notaCierre = ref('')
 const cerrando = ref(false)
 const errorCierre = ref<string | null>(null)
 const resultadoCierre = ref<string | null>(null)
+const mostrarReparto = ref(false)
 
 const sincronizando = ref(false)
 const errorSincronizacion = ref<string | null>(null)
@@ -431,6 +466,9 @@ async function cerrarSesion() {
     const result = await inventarioSesionesService.closeSession(sessionId, notaCierre.value || null)
     resultadoCierre.value = result.status
     confirmarCierre.value = false
+    if (result.status === 'Recount') {
+      mostrarReparto.value = true
+    }
     await cargar()
   } catch (e: any) {
     errorCierre.value = e.message ?? 'Error al cerrar la sesión.'

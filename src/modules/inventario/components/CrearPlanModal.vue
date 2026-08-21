@@ -68,7 +68,7 @@
                 </div>
 
                 <div class="flex justify-end gap-3 pt-2 border-t border-gray-100 dark:border-gray-700">
-                  <button type="button" class="btn-secondary" @click="cerrar">Cancelar</button>
+                  <button type="button" class="btn-secondary" @click="cancelar">Cancelar</button>
                   <button type="submit" class="btn-primary" :disabled="guardando || bodegasSeleccionadas.length === 0">
                     {{ guardando ? 'Creando...' : `Crear ${bodegasSeleccionadas.length > 1 ? bodegasSeleccionadas.length + ' planes' : 'plan'}` }}
                   </button>
@@ -126,7 +126,9 @@ const error = ref<string | null>(null)
 watch(() => props.isOpen, async (open) => {
   if (!open) return
   error.value = null
-  resetForm()
+  // Don't reset the form here — if the user closes by clicking outside or hits Escape while
+  // filling it out, reopening should keep what they had. It only clears on explicit Cancelar
+  // or after a successful save (see cancelar()/guardar()).
   if (bodegas.value.length === 0) {
     loadingBodegas.value = true
     try { bodegas.value = await inventarioPlanesService.getWarehouses() }
@@ -148,6 +150,11 @@ function resetForm() {
 }
 
 function cerrar() {
+  emit('close')
+}
+
+function cancelar() {
+  resetForm()
   emit('close')
 }
 
@@ -189,6 +196,7 @@ async function guardar() {
     error.value = `Errores: ${errores.join('; ')}`
   }
   if (creados > 0) {
+    resetForm()
     emit('creado', creados)
   }
 }

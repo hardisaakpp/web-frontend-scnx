@@ -249,6 +249,7 @@ export interface InventorySessionPickerDto {
   userId: string
   assignedByUserId: string
   assignedAt: string
+  location?: string | null
 }
 
 export interface InventorySessionListItemDto {
@@ -263,6 +264,7 @@ export interface InventorySessionListItemDto {
   closedAt?: string | null
   description?: string | null
   plannedCloseDate?: string | null
+  referenceCode?: string | null
 }
 
 export interface MyCountHistoryLineDto {
@@ -368,6 +370,7 @@ export interface SessionUserStatDto {
   countEntries: number
   uniqueItemsCounted: number
   lastCountedAt: string
+  location?: string | null
 }
 
 export interface SessionDetailLineDto {
@@ -440,4 +443,8 @@ export interface SupervisorSummaryDto {
   balancedUnits: number
   differenceUnits: number
   newUnits: number
+  /** Valorizado Mabeltrading — Total: stock del sistema a costo. */
+  totalValorizedCost: number
+  /** Valorizado Mabeltrading — Cuánto se auditó: lo contado a costo. */
+  auditedValorizedCost: number
 }

@@ -111,7 +111,7 @@
                   <th class="th cursor-pointer select-none" @click="toggleSort('nivel1')">Nivel 1{{ sortIndicator('nivel1') }}</th>
                   <th class="th cursor-pointer select-none" @click="toggleSort('nivel2')">Nivel 2{{ sortIndicator('nivel2') }}</th>
                   <th class="th cursor-pointer select-none" @click="toggleSort('nivel3')">Nivel 3{{ sortIndicator('nivel3') }}</th>
-                  <th class="th cursor-pointer select-none" @click="toggleSort('familia')">Familia{{ sortIndicator('familia') }}</th>
+                  <th class="th cursor-pointer select-none" @click="toggleSort('familia')">Género{{ sortIndicator('familia') }}</th>
                   <th class="th cursor-pointer select-none" @click="toggleSort('barcode')">Cód. Barras{{ sortIndicator('barcode') }}</th>
                   <th class="th cursor-pointer select-none" @click="toggleSort('itemCode')">Item Code{{ sortIndicator('itemCode') }}</th>
                   <th class="th cursor-pointer select-none" @click="toggleSort('description')">Descripción{{ sortIndicator('description') }}</th>
@@ -282,7 +282,8 @@ import { ChevronLeftIcon, ArrowPathIcon, ArrowDownTrayIcon, ShoppingCartIcon, Sh
 import { inventarioSesionesService } from '../services/inventarioSesionesApi'
 import { useInventarioModulePermissions } from '../composables/useInventarioModulePermissions'
 import { resolveUserNames } from '@/utils/resolveUserNames'
-import type { SessionDetailLineDto, SessionDetailStatsDto, SessionScansByUserDto } from '../types'
+import { downloadExcel, type ExcelColumn } from '@/utils/exportExcel'
+import type { SessionDetailLineDto, SessionDetailStatsDto, SessionScansByUserDto, UserScanSummaryDto, UserScanDetailEntryDto } from '../types'
 
 const router = useRouter()
 const route = useRoute()
@@ -429,32 +430,41 @@ function diffClass(diff: number): string {
   return diff > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'
 }
 
-function toCSV(headers: string[], rows: string[][]): string {
-  const escape = (v: string) => `"${v.replace(/"/g, '""')}"`
-  return '﻿' + [headers, ...rows].map(r => r.map(escape).join(',')).join('\r\n')
-}
+const LINE_COLUMNS: ExcelColumn<SessionDetailLineDto>[] = [
+  { header: 'Nivel1', key: r => r.nivel1 ?? '' },
+  { header: 'Nivel2', key: r => r.nivel2 ?? '' },
+  { header: 'Nivel3', key: r => r.nivel3 ?? '' },
+  { header: 'Género', key: r => r.familia ?? '' },
+  { header: 'CodigoBarras', key: r => r.barcode ?? '', text: true },
+  { header: 'ItemCode', key: 'itemCode', text: true },
+  { header: 'Descripcion', key: r => r.description ?? '' },
+  { header: 'Stock', key: 'systemQuantity' },
+  { header: 'Scan', key: 'countedQuantity' },
+  { header: 'Diferencia', key: 'difference' },
+  { header: 'Estado', key: 'status' },
+]
 
-function downloadCSV(filename: string, csv: string) {
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url; a.download = filename; a.click()
-  URL.revokeObjectURL(url)
-}
+const SCAN_SUMMARY_COLUMNS: ExcelColumn<UserScanSummaryDto>[] = [
+  { header: 'Usuario', key: u => userLabel(u.userId) },
+  { header: 'TotalScans', key: 'totalScans' },
+  { header: 'ArticulosUnicos', key: 'uniqueItems' },
+  { header: 'PrimerScan', key: u => fmtDt(u.firstScan) },
+  { header: 'UltimoScan', key: u => fmtDt(u.lastScan) },
+]
 
-function linesToCSVRows(rows: SessionDetailLineDto[]) {
-  return rows.map(r => [
-    r.nivel1 ?? '', r.nivel2 ?? '', r.nivel3 ?? '', r.familia ?? '',
-    r.barcode ?? '', r.itemCode, r.description ?? '',
-    String(r.systemQuantity), String(r.countedQuantity), String(r.difference), r.status
-  ])
-}
-
-const LINE_HEADERS = ['Nivel1', 'Nivel2', 'Nivel3', 'Familia', 'CodigoBarras', 'ItemCode', 'Descripcion', 'Stock', 'Scan', 'Diferencia', 'Estado']
+const SCAN_DETAIL_COLUMNS: ExcelColumn<UserScanDetailEntryDto>[] = [
+  { header: 'FechaScan', key: d => fmtDt(d.scannedAt) },
+  { header: 'Usuario', key: d => userLabel(d.userId) },
+  { header: 'CodigoBarras', key: d => d.barcode ?? '', text: true },
+  { header: 'ItemCode', key: 'itemCode', text: true },
+  { header: 'Descripcion', key: d => d.description ?? '' },
+  { header: 'Cantidad', key: 'quantity' },
+  { header: 'Grupo', key: d => d.nivel3 ?? '' },
+  { header: 'Ronda', key: 'round' },
+]
 
 function descargarFiltrado() {
-  const csv = toCSV(LINE_HEADERS, linesToCSVRows(sortedLines.value))
-  downloadCSV(`toma_${sessionId.slice(0, 8)}_${activeLabelShort.value.toLowerCase()}.csv`, csv)
+  downloadExcel(`toma_${sessionId.slice(0, 8)}_${activeLabelShort.value.toLowerCase()}.xlsx`, LINE_COLUMNS, sortedLines.value)
 }
 
 async function descargarConsolidado() {
@@ -462,8 +472,7 @@ async function descargarConsolidado() {
   error.value = null
   try {
     const allLines = await inventarioSesionesService.getDetailLines(sessionId)
-    const csv = toCSV(LINE_HEADERS, linesToCSVRows(allLines))
-    downloadCSV(`toma_${sessionId.slice(0, 8)}_consolidado.csv`, csv)
+    downloadExcel(`toma_${sessionId.slice(0, 8)}_consolidado.xlsx`, LINE_COLUMNS, allLines)
   } catch (e: any) {
     error.value = e.message ?? 'Error al descargar consolidado.'
   } finally {
@@ -474,17 +483,9 @@ async function descargarConsolidado() {
 function descargarScans() {
   if (!scansData.value) return
   if (scanTab.value === 'summary') {
-    const csv = toCSV(
-      ['Usuario', 'TotalScans', 'ArticulosUnicos', 'PrimerScan', 'UltimoScan'],
-      scansData.value.summary.map(u => [userLabel(u.userId), String(u.totalScans), String(u.uniqueItems), fmtDt(u.firstScan), fmtDt(u.lastScan)])
-    )
-    downloadCSV(`toma_${sessionId.slice(0, 8)}_scans_resumen.csv`, csv)
+    downloadExcel(`toma_${sessionId.slice(0, 8)}_scans_resumen.xlsx`, SCAN_SUMMARY_COLUMNS, scansData.value.summary)
   } else {
-    const csv = toCSV(
-      ['FechaScan', 'Usuario', 'CodigoBarras', 'ItemCode', 'Descripcion', 'Cantidad', 'Grupo', 'Ronda'],
-      filteredScanDetail.value.map(d => [fmtDt(d.scannedAt), userLabel(d.userId), d.barcode ?? '', d.itemCode, d.description ?? '', String(d.quantity), d.nivel3 ?? '', String(d.round)])
-    )
-    downloadCSV(`toma_${sessionId.slice(0, 8)}_scans_detalle.csv`, csv)
+    downloadExcel(`toma_${sessionId.slice(0, 8)}_scans_detalle.xlsx`, SCAN_DETAIL_COLUMNS, filteredScanDetail.value)
   }
 }
 

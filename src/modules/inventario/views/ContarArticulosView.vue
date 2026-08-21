@@ -69,10 +69,13 @@
               <th class="th cursor-pointer select-none" @click="toggleSort('barcode')">Cód. Barras{{ sortIndicator('barcode') }}</th>
               <th class="th cursor-pointer select-none" @click="toggleSort('itemDescription')">Nombre{{ sortIndicator('itemDescription') }}</th>
               <th class="th cursor-pointer select-none" @click="toggleSort('level2')">Nivel 2{{ sortIndicator('level2') }}</th>
+              <th v-if="isRecount" class="th">Asignado a</th>
+              <th v-if="isRecount" class="th text-right cursor-pointer select-none" @click="toggleSort('initialTotalCounted')">Total Conteo{{ sortIndicator('initialTotalCounted') }}</th>
               <th class="th text-right cursor-pointer select-none" @click="toggleSort('scannedQuantity')">Escaneados{{ sortIndicator('scannedQuantity') }}</th>
-              <th class="th text-right w-36 cursor-pointer select-none" @click="toggleSort('manualQuantity')">Cant. Manual{{ sortIndicator('manualQuantity') }}</th>
-              <th class="th text-right font-semibold cursor-pointer select-none" @click="toggleSort('total')">Total{{ sortIndicator('total') }}</th>
-              <th v-if="!isTienda || sessionInfo?.status === 'Recount'" class="th text-right cursor-pointer select-none" @click="toggleSort('systemQuantity')">Stock SAP{{ sortIndicator('systemQuantity') }}</th>
+              <th class="th text-right w-36 cursor-pointer select-none" @click="toggleSort('manualQuantity')">{{ isRecount ? 'Reconteo' : 'Cant. Manual' }}{{ sortIndicator('manualQuantity') }}</th>
+              <th class="th text-right font-semibold cursor-pointer select-none" @click="toggleSort('total')">{{ isRecount ? 'Total Reconteo' : 'Total' }}{{ sortIndicator('total') }}</th>
+              <th v-if="!isTienda || isRecount" class="th text-right cursor-pointer select-none" @click="toggleSort('systemQuantity')">Stock SAP{{ sortIndicator('systemQuantity') }}</th>
+              <th v-if="isRecount" class="th text-right cursor-pointer select-none" @click="toggleSort('difference')">Diferencia{{ sortIndicator('difference') }}</th>
               <th class="th w-28">Estado</th>
             </tr>
           </thead>
@@ -90,6 +93,8 @@
               <td class="td text-xs text-gray-500 font-mono">{{ line.barcode ?? '—' }}</td>
               <td class="td text-sm">{{ line.itemDescription ?? '—' }}</td>
               <td class="td text-xs text-gray-500">{{ line.level2 ?? '—' }}</td>
+              <td v-if="isRecount" class="td text-xs text-gray-500">{{ line.assignedUserId ? userLabel(line.assignedUserId) : '—' }}</td>
+              <td v-if="isRecount" class="td text-right text-sm text-gray-500">{{ line.initialTotalCounted }}</td>
               <td class="td text-right">
                 <span v-if="line.scannedQuantity > 0" class="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-semibold">
                   {{ line.scannedQuantity }}
@@ -115,7 +120,12 @@
                   {{ computedTotal(line) }}
                 </span>
               </td>
-              <td v-if="!isTienda || sessionInfo?.status === 'Recount'" class="td text-right text-sm text-gray-500">{{ line.systemQuantity }}</td>
+              <td v-if="!isTienda || isRecount" class="td text-right text-sm text-gray-500">{{ line.systemQuantity }}</td>
+              <td v-if="isRecount" class="td text-right font-semibold">
+                <span :class="differenceClass(line.difference)">
+                  {{ line.difference === 0 ? '—' : (line.difference > 0 ? '+' : '') + line.difference }}
+                </span>
+              </td>
               <td class="td">
                 <span v-if="line.isSubmitted" class="badge badge-green">Confirmado</span>
                 <span v-else-if="computedTotal(line) > 0" class="badge badge-blue">Con conteo</span>
@@ -139,6 +149,7 @@ import {
 import { inventarioSesionesService } from '../services/inventarioSesionesApi'
 import type { ArticleCountLineDto } from '../services/inventarioSesionesApi'
 import { useWarehouseAccessType } from '../composables/useWarehouseAccessType'
+import { resolveUserNames } from '@/utils/resolveUserNames'
 
 const router = useRouter()
 const route = useRoute()
@@ -152,6 +163,17 @@ const error = ref<string | null>(null)
 const actionMsg = ref<string | null>(null)
 const actionMsgError = ref(false)
 const sessionInfo = ref<{ warehouseCode: string; status: string } | null>(null)
+const isRecount = computed(() => sessionInfo.value?.status === 'Recount')
+const userNames = ref<Record<string, string>>({})
+
+function userLabel(userId: string): string {
+  return userNames.value[userId] || userId
+}
+
+function differenceClass(diff: number) {
+  if (diff === 0) return 'text-gray-400 dark:text-gray-600'
+  return diff > 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400'
+}
 
 const manualInputs = reactive<Record<string, number>>({})
 const pendingManual = ref(new Set<string>())
@@ -184,13 +206,14 @@ const filteredLines = computed(() => {
     result = result.filter(l =>
       l.itemCode.toLowerCase().includes(q) ||
       (l.itemDescription ?? '').toLowerCase().includes(q) ||
-      (l.barcode ?? '').toLowerCase().includes(q)
+      (l.barcode ?? '').toLowerCase().includes(q) ||
+      (l.assignedUserId ? userLabel(l.assignedUserId).toLowerCase().includes(q) : false)
     )
   }
   return result
 })
 
-type SortKey = 'itemCode' | 'barcode' | 'itemDescription' | 'level2' | 'scannedQuantity' | 'manualQuantity' | 'total' | 'systemQuantity'
+type SortKey = 'itemCode' | 'barcode' | 'itemDescription' | 'level2' | 'scannedQuantity' | 'manualQuantity' | 'total' | 'systemQuantity' | 'initialTotalCounted' | 'difference'
 
 const sortKey = ref<SortKey>('itemCode')
 const sortDir = ref<'asc' | 'desc'>('asc')
@@ -215,6 +238,8 @@ function sortValue(line: ArticleCountLineDto, key: SortKey): string | number {
     case 'total': return computedTotal(line)
     case 'scannedQuantity': return line.scannedQuantity
     case 'systemQuantity': return line.systemQuantity
+    case 'initialTotalCounted': return line.initialTotalCounted
+    case 'difference': return line.difference
     case 'barcode': return line.barcode ?? ''
     case 'itemDescription': return line.itemDescription ?? ''
     case 'level2': return line.level2 ?? ''
@@ -303,6 +328,11 @@ async function cargar() {
         const summary = await inventarioSesionesService.getSupervisorSummary(sessionId)
         sessionInfo.value = { warehouseCode: summary.warehouseCode, status: summary.status }
       } catch { /* non-critical */ }
+
+      const assignedIds = [...new Set(data.map(l => l.assignedUserId).filter(Boolean) as string[])]
+      if (assignedIds.length > 0) {
+        userNames.value = await resolveUserNames(assignedIds)
+      }
     }
     // Clear pending manual edits on reload
     pendingManual.value.clear()

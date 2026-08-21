@@ -39,6 +39,7 @@
               <th class="th">Bodega</th>
               <th class="th">Estado</th>
               <th class="th text-right">Líneas</th>
+              <th class="th text-right">Valorizado</th>
               <th class="th text-right">Acciones</th>
             </tr>
           </thead>
@@ -49,12 +50,13 @@
               <td class="td">{{ item.warehouseCode }}</td>
               <td class="td">{{ item.status }}</td>
               <td class="td text-right">{{ item.totalLines }} / {{ item.differenceLines }}</td>
+              <td class="td text-right">{{ fmtCurrency(item.totalValorizedAmount) }} <span class="text-xs text-gray-400">({{ valuationLabel(item.valuationMode) }})</span></td>
               <td class="td text-right">
                 <button class="link" type="button" @click="openAdjustment(item.adjustmentId)">Detalle</button>
               </td>
             </tr>
             <tr v-if="adjustments.length === 0">
-              <td class="td text-center" colspan="6">Sin ajustes.</td>
+              <td class="td text-center" colspan="7">Sin ajustes.</td>
             </tr>
           </tbody>
         </table>
@@ -80,11 +82,38 @@
         </div>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-3">
         <div class="card-mini"><span class="muted">SessionId</span><strong class="font-mono text-xs">{{ current.sessionId }}</strong></div>
         <div class="card-mini"><span class="muted">Bodega</span><strong>{{ current.warehouseCode }}</strong></div>
         <div class="card-mini"><span class="muted">Estado</span><strong>{{ current.status }}</strong></div>
         <div class="card-mini"><span class="muted">Líneas</span><strong>{{ current.lines.length }}</strong></div>
+        <div class="card-mini"><span class="muted">Valorizado ({{ valuationLabel(current.valuationMode) }})</span><strong>{{ fmtCurrency(current.totalValorizedAmount) }}</strong></div>
+      </div>
+
+      <!-- Valorización: cómo se cobra el ajuste en el reporte final -->
+      <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/40 p-4">
+        <h3 class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3">Valorización del reporte final</h3>
+        <div class="flex flex-wrap items-end gap-3">
+          <label class="block">
+            <span class="label">Modo</span>
+            <select v-model="valuationForm.mode" class="input" :disabled="!canEditarAjuste || isValuationLocked">
+              <option value="Cost">Costo</option>
+              <option value="Pvp">PVP</option>
+              <option value="PvpWithDiscount">PVP menos descuento</option>
+            </select>
+          </label>
+          <label v-if="valuationForm.mode === 'PvpWithDiscount'" class="block">
+            <span class="label">Descuento %</span>
+            <input v-model.number="valuationForm.discountPercentage" class="input" type="number" min="0" max="100" step="0.01" :disabled="!canEditarAjuste || isValuationLocked" />
+          </label>
+          <button
+            class="btn-secondary"
+            type="button"
+            :disabled="!canEditarAjuste || isValuationLocked || savingValuation"
+            @click="saveValuation"
+          >{{ savingValuation ? 'Guardando...' : 'Guardar valorización' }}</button>
+          <span v-if="isValuationLocked" class="text-xs text-gray-400">Ya no se puede cambiar: el informe final ya fue generado.</span>
+        </div>
       </div>
 
       <div class="overflow-x-auto max-h-[380px]">
@@ -94,6 +123,9 @@
               <th class="th">Item</th>
               <th class="th text-right">Raw Diff</th>
               <th class="th text-right">Adjusted Diff</th>
+              <th class="th text-right">Costo</th>
+              <th class="th text-right">PVP</th>
+              <th class="th text-right">Valorizado</th>
               <th class="th">Notas</th>
               <th class="th text-right">Acción</th>
             </tr>
@@ -114,6 +146,9 @@
                   :disabled="!canEditarAjuste || current.status !== 'Draft'"
                 />
               </td>
+              <td class="td text-right text-xs text-gray-500 dark:text-gray-400">{{ line.unitCost != null ? fmtCurrency(line.unitCost) : '—' }}</td>
+              <td class="td text-right text-xs text-gray-500 dark:text-gray-400">{{ line.unitPvp != null ? fmtCurrency(line.unitPvp) : '—' }}</td>
+              <td class="td text-right font-medium">{{ line.valorizedAmount != null ? fmtCurrency(line.valorizedAmount) : '—' }}</td>
               <td class="td">
                 <input
                   v-model="lineEdit[line.lineId].auditorNotes"
@@ -134,7 +169,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import {
   type AdjustmentDetailDto,
   type AdjustmentSummaryDto,
@@ -145,6 +180,8 @@ import { useInventarioModulePermissions } from '../composables/useInventarioModu
 const { canEditarAjuste, canRevisarAjuste, canIntegrarSap } = useInventarioModulePermissions()
 
 const numberFmt = new Intl.NumberFormat('es-DO', { maximumFractionDigits: 2 })
+const currencyFmt = new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' })
+const VALUATION_LABELS: Record<string, string> = { Cost: 'Costo', Pvp: 'PVP', PvpWithDiscount: 'PVP - desc.' }
 
 const adjustments = ref<AdjustmentSummaryDto[]>([])
 const current = ref<AdjustmentDetailDto | null>(null)
@@ -154,16 +191,34 @@ const success = ref<string | null>(null)
 const creating = ref(false)
 const savingLine = ref(false)
 const downloadingReport = ref(false)
+const savingValuation = ref(false)
 
 const createForm = reactive({
   sessionId: '',
   notes: ''
 })
 
+const valuationForm = reactive<{ mode: 'Cost' | 'Pvp' | 'PvpWithDiscount'; discountPercentage: number }>({
+  mode: 'Cost',
+  discountPercentage: 0
+})
+
+// El informe final es inmutable una vez generado (Approve lo dispara) — el backend rechaza el
+// cambio de valorización a partir de ahí, así que el selector se bloquea igual en la UI.
+const isValuationLocked = computed(() => !current.value || ['Approved', 'SentToSap'].includes(String(current.value.status)))
+
 const lineEdit = reactive<Record<string, { adjustedDifference: number; auditorNotes: string }>>({})
 
 function fmt(value: number) {
   return numberFmt.format(value || 0)
+}
+
+function fmtCurrency(value: number) {
+  return currencyFmt.format(value || 0)
+}
+
+function valuationLabel(mode: string | number) {
+  return VALUATION_LABELS[String(mode)] ?? String(mode)
 }
 
 function hydrateLineEdit(detail: AdjustmentDetailDto) {
@@ -173,6 +228,8 @@ function hydrateLineEdit(detail: AdjustmentDetailDto) {
       auditorNotes: line.auditorNotes || ''
     }
   }
+  valuationForm.mode = (String(detail.valuationMode) as typeof valuationForm.mode) || 'Cost'
+  valuationForm.discountPercentage = detail.discountPercentage ?? 0
 }
 
 async function loadAdjustments() {
@@ -230,6 +287,27 @@ async function saveLine(lineId: string) {
     error.value = err instanceof Error ? err.message : 'No se pudo guardar la línea.'
   } finally {
     savingLine.value = false
+  }
+}
+
+async function saveValuation() {
+  if (!current.value) return
+  savingValuation.value = true
+  error.value = null
+  success.value = null
+  try {
+    current.value = await scnexusInventoryApi.setAdjustmentValuation(
+      current.value.adjustmentId,
+      valuationForm.mode,
+      valuationForm.mode === 'PvpWithDiscount' ? valuationForm.discountPercentage : null
+    )
+    hydrateLineEdit(current.value)
+    success.value = 'Valorización actualizada.'
+    await loadAdjustments()
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'No se pudo guardar la valorización.'
+  } finally {
+    savingValuation.value = false
   }
 }
 

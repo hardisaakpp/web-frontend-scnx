@@ -13,6 +13,8 @@ export interface ItemStockDto {
   level1?: string | null
   level2?: string | null
   level3?: string | null
+  cost?: number | null
+  pvp?: number | null
 }
 
 export interface InventoryPlanFilterDto {
@@ -96,6 +98,8 @@ export interface SessionResultLineDto {
   balanceStatus: 'Balanced' | 'Difference' | number
 }
 
+export type AdjustmentValuationMode = 'Cost' | 'Pvp' | 'PvpWithDiscount' | number
+
 export interface AdjustmentSummaryDto {
   adjustmentId: string
   sessionId: string
@@ -106,6 +110,8 @@ export interface AdjustmentSummaryDto {
   totalLines: number
   differenceLines: number
   sapDocumentNumber?: string | null
+  valuationMode: AdjustmentValuationMode
+  totalValorizedAmount: number
 }
 
 export interface AdjustmentLineDto {
@@ -121,6 +127,9 @@ export interface AdjustmentLineDto {
   lineType: string | number
   equivalenceGroupId?: string | null
   auditorNotes?: string | null
+  unitCost?: number | null
+  unitPvp?: number | null
+  valorizedAmount?: number | null
 }
 
 export interface AdjustmentDetailDto {
@@ -136,6 +145,9 @@ export interface AdjustmentDetailDto {
   approvedByUserId?: string | null
   sapDocumentNumber?: string | null
   sapSentAt?: string | null
+  valuationMode: AdjustmentValuationMode
+  discountPercentage?: number | null
+  totalValorizedAmount: number
   lines: AdjustmentLineDto[]
 }
 
@@ -232,6 +244,14 @@ export const scnexusInventoryApi = {
   async updateAdjustmentLine(adjustmentId: string, lineId: string, payload: { adjustedDifference?: number | null; equivalenceGroupId?: string | null; auditorNotes?: string | null }): Promise<AdjustmentLineDto> {
     const { data } = await api.patch(`/api/inventory-adjustments/${adjustmentId}/lines/${lineId}`, payload)
     return normalizeObject<AdjustmentLineDto>(data)
+  },
+
+  async setAdjustmentValuation(adjustmentId: string, mode: 'Cost' | 'Pvp' | 'PvpWithDiscount', discountPercentage?: number | null): Promise<AdjustmentDetailDto> {
+    const { data } = await api.patch(`/api/inventory-adjustments/${adjustmentId}/valuation`, {
+      mode,
+      discountPercentage: mode === 'PvpWithDiscount' ? discountPercentage ?? 0 : null
+    })
+    return normalizeObject<AdjustmentDetailDto>(data)
   },
 
   async submitAdjustment(adjustmentId: string): Promise<AdjustmentDetailDto> {

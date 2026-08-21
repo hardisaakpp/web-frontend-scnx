@@ -80,12 +80,45 @@
         </div>
       </div>
     </div>
+
+    <!-- Prompt de ubicación al iniciar picking -->
+    <TransitionRoot :show="!!sesionParaIniciar" as="template">
+      <Dialog as="div" class="relative z-50" @close="cancelarInicio">
+        <TransitionChild enter="ease-out duration-200" enter-from="opacity-0" enter-to="opacity-100" leave="ease-in duration-150" leave-from="opacity-100" leave-to="opacity-0">
+          <div class="fixed inset-0 bg-black bg-opacity-40" />
+        </TransitionChild>
+        <div class="fixed inset-0 flex items-center justify-center p-4">
+          <TransitionChild enter="ease-out duration-200" enter-from="opacity-0 scale-95" enter-to="opacity-100 scale-100" leave="ease-in duration-150" leave-from="opacity-100 scale-100" leave-to="opacity-0 scale-95">
+            <DialogPanel class="w-full max-w-sm rounded-xl bg-white dark:bg-gray-800 p-6 shadow-xl">
+              <DialogTitle class="text-base font-semibold text-gray-900 dark:text-white mb-1">Iniciar picking</DialogTitle>
+              <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Ubicación (opcional, máx. 10 caracteres) para que el supervisor sepa dónde estás contando.</p>
+              <input
+                v-model="ubicacionInput"
+                type="text"
+                class="input uppercase"
+                maxlength="10"
+                placeholder="Ej: PASILLO3"
+                @input="ubicacionInput = ubicacionInput.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()"
+                @keydown.enter.prevent="confirmarInicio"
+              />
+              <div class="flex justify-end gap-3 mt-5">
+                <button type="button" class="btn-secondary" :disabled="guardandoUbicacion" @click="cancelarInicio">Cancelar</button>
+                <button type="button" class="btn-primary" :disabled="guardandoUbicacion" @click="confirmarInicio">
+                  {{ guardandoUbicacion ? 'Iniciando...' : 'Continuar' }}
+                </button>
+              </div>
+            </DialogPanel>
+          </TransitionChild>
+        </div>
+      </Dialog>
+    </TransitionRoot>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { Dialog, DialogPanel, DialogTitle, TransitionRoot, TransitionChild } from '@headlessui/vue'
 import { ArrowPathIcon, ArchiveBoxXMarkIcon } from '@heroicons/vue/24/outline'
 import { inventarioSesionesService } from '../services/inventarioSesionesApi'
 import type { InventorySessionListItemDto, InventorySessionStatus } from '../types'
@@ -95,6 +128,9 @@ const router = useRouter()
 const sesiones = ref<InventorySessionListItemDto[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
+const sesionParaIniciar = ref<string | null>(null)
+const ubicacionInput = ref('')
+const guardandoUbicacion = ref(false)
 
 const { isTiendaAssignedTo } = useWarehouseAccessType()
 
@@ -136,7 +172,30 @@ async function cargar() {
 }
 
 function iniciarPicking(sessionId: string) {
-  router.push({ name: 'inventario-picking', params: { sessionId } })
+  ubicacionInput.value = ''
+  sesionParaIniciar.value = sessionId
+}
+
+function cancelarInicio() {
+  if (guardandoUbicacion.value) return
+  sesionParaIniciar.value = null
+}
+
+async function confirmarInicio() {
+  const sessionId = sesionParaIniciar.value
+  if (!sessionId) return
+  guardandoUbicacion.value = true
+  try {
+    if (ubicacionInput.value.trim()) {
+      await inventarioSesionesService.setMyPickingLocation(sessionId, ubicacionInput.value.trim())
+    }
+  } catch {
+    // No bloquear el inicio de picking por un error al guardar la ubicación.
+  } finally {
+    guardandoUbicacion.value = false
+    sesionParaIniciar.value = null
+    router.push({ name: 'inventario-picking', params: { sessionId } })
+  }
 }
 
 function irAContarArticulos(sessionId: string) {
@@ -158,4 +217,5 @@ onMounted(cargar)
 .badge-amber { @apply bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300; }
 .badge-gray { @apply bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400; }
 .alert-error { @apply rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-3 py-2 text-sm text-red-700 dark:text-red-300; }
+.input { @apply block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500; }
 </style>
