@@ -1297,8 +1297,14 @@ export interface ProcesoCompletoSAPResponse {
     oc_id: string
     detalles_insertados: number
   }
-  /** Resultado del envío a SAP (Paso 3) */
+  /** Resultado del envío a SAP de la primera ODC (Paso 3) */
   envio_sap?: ProcesoCompletoSAPDetalleODC
+  /**
+   * Resultado del envío a SAP de TODAS las ODC del pedido. La mayoría de los pedidos
+   * generan 1 sola (mismo contenido que envio_sap); un pedido que mezcla tiendas de
+   * más de una marca (ROLAND + REGIONS en el mismo Excel) genera 2.
+   */
+  envios_sap?: ProcesoCompletoSAPDetalleODC[]
   /** Solicitudes de Transferencia (ITR) creadas; puede venir en raíz o en envio_sap */
   solicitudes_transferencia?: SolicitudesTransferencia
   /** Resumen de cantidades */
