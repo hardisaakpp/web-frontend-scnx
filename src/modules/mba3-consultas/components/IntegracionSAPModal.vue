@@ -203,8 +203,10 @@
                 <div class="flex justify-end sm:ml-auto">
                   <button
                     type="button"
+                    :disabled="props.retryLoading"
+                    :title="props.retryLoading ? 'Espera a que termine el reintento en curso' : undefined"
                     @click="handleClose"
-                    class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors text-sm font-medium"
+                    class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg transition-colors text-sm font-medium"
                   >
                     Cerrar
                   </button>
@@ -304,6 +306,11 @@ const filasItr = computed(() => {
 })
 
 function handleClose() {
+  // Con un reintento en curso, el polling sigue corriendo en el componente padre
+  // aunque el modal se oculte (no se cancela solo por ocultar el Dialog) -- así que
+  // no se permite cerrar por click afuera / Escape mientras retryLoading es true,
+  // para no dar la impresión de que el proceso se detuvo.
+  if (props.retryLoading) return
   emit('close')
 }
 </script>
