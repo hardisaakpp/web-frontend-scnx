@@ -126,12 +126,27 @@ export const mba3ConsultasService = {
   },
 
   // Integrar SAP (una o múltiples ODCs)
-  // referenciaDespacho: string | string[] | undefined - Si se proporciona, integra solo esas ODCs
+  // ocId: string | string[] | undefined - Si se proporciona, identifica sin ambigüedad la(s) ODC(s)
+  //   a enviar (preferido sobre referenciaDespacho: un pedido mixto ROLAND/REGIONS genera 2 ODC
+  //   que comparten la misma referencia_despacho -- ver find_by_referencia_despacho en backend,
+  //   que resuelve una sola fila arbitraria por esa referencia sin filtrar por oc_id/estado).
+  // referenciaDespacho: string | string[] | undefined - Fallback cuando no se conoce el oc_id exacto
   // almacenDestino: string | undefined - Código del almacén destino (ej: RL, OUT, LP)
-  async integrarSAP(referenciaDespacho?: string | string[], almacenDestino?: string): Promise<IntegracionSAPResponse> {
+  async integrarSAP(
+    referenciaDespacho?: string | string[],
+    almacenDestino?: string,
+    ocId?: string | string[]
+  ): Promise<IntegracionSAPResponse> {
     const params = new URLSearchParams()
 
-    if (referenciaDespacho) {
+    if (ocId) {
+      // Identificador sin ambigüedad: preferido siempre que esté disponible.
+      if (Array.isArray(ocId)) {
+        ocId.forEach(id => params.append('oc_id', id))
+      } else {
+        params.append('oc_id', ocId)
+      }
+    } else if (referenciaDespacho) {
       // Si es un array, enviar múltiples referencias
       if (Array.isArray(referenciaDespacho)) {
         referenciaDespacho.forEach(ref => params.append('referencia_despacho', ref))
@@ -149,10 +164,11 @@ export const mba3ConsultasService = {
     const queryString = params.toString()
     const url = queryString ? `/integrar-sap?${queryString}` : '/integrar-sap'
 
-    const finalTimeout = calculateIntegrarSapTimeoutMs(referenciaDespacho)
-    const numOrdenes = Array.isArray(referenciaDespacho)
-      ? referenciaDespacho.length
-      : referenciaDespacho
+    const idParaTimeout = ocId ?? referenciaDespacho
+    const finalTimeout = calculateIntegrarSapTimeoutMs(idParaTimeout)
+    const numOrdenes = Array.isArray(idParaTimeout)
+      ? idParaTimeout.length
+      : idParaTimeout
         ? 1
         : 0
 

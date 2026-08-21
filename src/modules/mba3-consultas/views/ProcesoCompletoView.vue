@@ -1344,7 +1344,11 @@ async function handleStReintentado(payload: { oc: OrdenCompra; result: any }) {
 }
 
 // Funciones de integración individuales
-async function handleIntegrarOC(referenciaDespacho: string, almacenDestinoParam?: string) {
+// ocId identifica sin ambigüedad la ODC a reintentar: un pedido mixto ROLAND/REGIONS genera
+// 2 ODC que comparten la misma referenciaDespacho (número de pedido), así que reintentar solo
+// por referencia podía resolver a la ODC equivocada en backend (find_by_referencia_despacho
+// no filtra por oc_id/estado). Ver OrdenCompraTable.vue::handleIntegrar.
+async function handleIntegrarOC(ocId: string, referenciaDespacho: string, almacenDestinoParam?: string) {
   // Verificar que no esté ya ejecutándose
   if (procesoStore.loading || ordenesCompraStore.loading) {
     return
@@ -1367,7 +1371,8 @@ async function handleIntegrarOC(referenciaDespacho: string, almacenDestinoParam?
     
     // ✅ ESPERAR LA RESPUESTA COMPLETA del endpoint (esto toma ~5 segundos)
     // Usar almacén destino del parámetro si se proporciona, sino undefined
-    const response = await mba3ConsultasService.integrarSAP(referenciaDespacho, almacenDestinoParam)
+    // Enviar por ocId (sin ambigüedad) en vez de referenciaDespacho -- ver comentario en la firma.
+    const response = await mba3ConsultasService.integrarSAP(referenciaDespacho, almacenDestinoParam, ocId)
     
     // Completar el progreso
     procesoStore.progress = 100
@@ -1407,15 +1412,17 @@ async function handleIntegrarOC(referenciaDespacho: string, almacenDestinoParam?
       const detalle = detalles[0]
       const success = detalle.success === true
       
-      // Buscar y actualizar la orden en el array local
+      // Buscar y actualizar la orden en el array local.
+      // Por oc_id (sin ambigüedad): con 2 ODC del mismo pedido mixto compartiendo
+      // referencia_despacho, buscar por referencia podía actualizar la fila equivocada.
       const ordenIndex = ordenesCompraStore.ordenesCompra.findIndex(
-        (oc: any) => oc.referencia_despacho === referenciaDespacho
+        (oc: any) => oc.oc_id === ocId
       )
-      
+
       if (ordenIndex !== -1) {
         // Crear un nuevo objeto para asegurar reactividad de Vue
         const ordenActualizada = { ...ordenesCompraStore.ordenesCompra[ordenIndex] }
-        
+
         if (success) {
           ordenActualizada.estado = 'ENVIADA'
           ordenActualizada.numero_oc_sap = detalle.numero_oc_sap ?? detalle.doc_num?.toString() ?? null

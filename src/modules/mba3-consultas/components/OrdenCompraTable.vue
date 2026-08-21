@@ -423,7 +423,9 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  integrar: [referenciaDespacho: string, almacenDestino?: string]
+  // ocId identifica sin ambigüedad la ODC a reintentar (un pedido mixto ROLAND/REGIONS
+  // genera 2 ODC que comparten la misma referenciaDespacho -- ver mba3ConsultasApi.integrarSAP).
+  integrar: [ocId: string, referenciaDespacho: string, almacenDestino?: string]
   integrarMultiples: [referenciasDespacho: string[]]
   eliminar: [ocIds: string[]]
   'filtered-count-changed': [count: number]
@@ -907,7 +909,7 @@ async function handleIntegrar(referenciaDespacho: string, ocId: string) {
   try {
     sendingOcId.value = ocId
     // Pasar el almacén destino seleccionado (opcional, si existe)
-    emit('integrar', referenciaDespacho, almacen || undefined)
+    emit('integrar', ocId, referenciaDespacho, almacen || undefined)
     // El estado se limpiará cuando el componente padre termine la operación
     // Pero como no podemos saber cuándo termina directamente, lo hacemos después de un pequeño delay
     // El componente padre debería manejar la actualización del estado
