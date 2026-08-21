@@ -39,7 +39,7 @@ if [ -f "$TEMPLATE" ]; then
     CONCILIACION_UPSTREAM=${UPSTREAM_CONCILIACION:-${CONCILIACION_UPSTREAM:-http://host.docker.internal:8005}}
     MAESTRO_UPSTREAM=${UPSTREAM_MAESTRO:-${MAESTRO_UPSTREAM:-http://host.docker.internal:8004}}
     REPOSICION_UPSTREAM=${UPSTREAM_REPOSICION:-${REPOSICION_UPSTREAM:-http://host.docker.internal:8006}}
-    SLAYER_UPSTREAM=${UPSTREAM_SLAYER:-${SLAYER_UPSTREAM:-http://192.168.2.153:8093}}
+    SLAYER_UPSTREAM=${UPSTREAM_SLAYER:-${SLAYER_UPSTREAM:-http://210.17.1.59:8011}}
     CAMPANAS_UPSTREAM=${UPSTREAM_CAMPANAS:-${CAMPANAS_UPSTREAM:-http://host.docker.internal:5006}}
 
     # SMART MAPPING: If any upstream points to localhost/127.0.0.1, 
@@ -68,7 +68,7 @@ if [ -f "$TEMPLATE" ]; then
         -e "s|__MAESTRO_UPSTREAM__|${MAESTRO_UPSTREAM}|g" \
         -e "s|__REPOSICION_UPSTREAM__|${REPOSICION_UPSTREAM}|g" \
         -e "s|__SLAYER_UPSTREAM__|${SLAYER_UPSTREAM}|g" \
-        -e "s|__CAMPANAS_UPSTREAM__ CAMPANAS_UPSTREAM}|g" \
+        -e "s|__CAMPANAS_UPSTREAM__|${CAMPANAS_UPSTREAM}|g" \
         "$TEMPLATE" > "$OUTPUT"
     
     echo "Nginx config generated in $OUTPUT"
