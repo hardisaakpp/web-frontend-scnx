@@ -596,8 +596,15 @@
                 <div v-if="submitError" class="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-400">
                     {{ submitError }}
                 </div>
-                <div v-if="submitSuccess" class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400">
-                    {{ submitSuccess }}
+                <div v-if="submitSuccess" class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-800 dark:bg-emerald-900/20 dark:text-emerald-400">
+                    <span>{{ submitSuccess }}</span>
+                    <router-link
+                        v-if="puedeVerMonitoreoSap"
+                        :to="monitoreoSapLink"
+                        class="shrink-0 font-semibold underline hover:text-emerald-800 dark:hover:text-emerald-300"
+                    >
+                        Ver monitoreo de SAP →
+                    </router-link>
                 </div>
 
                 <!-- Botones de acción -->
@@ -664,6 +671,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import { articuloService, catalogoService } from '../services/articuloService'
 import type {
     CatalogoItem,
@@ -677,6 +685,18 @@ import { useKeyboardShortcuts } from '../composables/useKeyboardShortcuts'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
+
+const puedeVerMonitoreoSap = computed(() =>
+    authStore.isAdmin || authStore.hasPermission('articulomaestro.migracion')
+)
+// Código del artículo recién creado/editado/promovido, para que el enlace al
+// monitoreo de SAP abra ya filtrado por ese ItemCode en vez de la lista completa.
+const ultimoItemCodeSap = ref('')
+const monitoreoSapLink = computed(() => ({
+    path: '/articulo-maestro/migracion',
+    query: ultimoItemCodeSap.value ? { codigo: ultimoItemCodeSap.value } : {},
+}))
 
 const isEdit = computed(() => !!route.params.itemCode)
 const tabs = [
@@ -1038,6 +1058,7 @@ async function handlePromoverAlterno(): Promise<void> {
     try {
         const resultado = await articuloService.promoverCodigoAlterno(itemCodeActual)
         submitSuccess.value = resultado.message
+        ultimoItemCodeSap.value = resultado.item_code_nuevo
         await router.replace(`/articulo-maestro/editar/${resultado.item_code_nuevo}`)
         await cargarDatosEdicion(resultado.item_code_nuevo)
     } catch (err: unknown) {
@@ -1215,6 +1236,7 @@ async function handleSubmit() {
             const article = await articuloService.updateArticulo(itemCode, payload)
             form.value.imagenes = article.imagenes ?? []
             submitSuccess.value = `Artículo ${itemCode} actualizado. Sincronización con SAP iniciada en segundo plano.`
+            ultimoItemCodeSap.value = itemCode
         } else {
             const payload = buildCreatePayload()
             const article = await articuloService.createArticulo(payload)
@@ -1224,6 +1246,7 @@ async function handleSubmit() {
             // existe, se suben.
             await gestorImagenesRef.value?.flushPendingUploads(article.itemCode)
             submitSuccess.value = `Artículo ${article.itemCode} creado. Sincronización con SAP iniciada en segundo plano.`
+            ultimoItemCodeSap.value = article.itemCode
             await router.replace(`/articulo-maestro/editar/${article.itemCode}`)
         }
     } catch (err: unknown) {

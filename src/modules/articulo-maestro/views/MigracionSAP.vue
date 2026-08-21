@@ -465,15 +465,21 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { articuloService, sapService, resumirDetalleSap } from '../services/articuloService'
 import type { Articulo } from '../types'
 import type { SapTask, SapSyncResponse, SapSyncDetalle } from '../services/articuloService'
+
+const route = useRoute()
 
 // Estados
 const pendingArticulos = ref<Articulo[]>([])
 const loadingPending = ref(false)
 const selectedCodes = ref<string[]>([])
-const searchCode = ref('')
+// Prellenado desde FormularioArticulo: el enlace "Ver monitoreo de SAP" tras
+// crear/editar un artículo llega con ?codigo=<ItemCode> para abrir esta
+// pantalla ya filtrada al artículo recién guardado.
+const searchCode = ref((route.query.codigo as string) || '')
 const pullCodes = ref('')
 const processingPull = ref(false)
 const processingAction = ref(false)
