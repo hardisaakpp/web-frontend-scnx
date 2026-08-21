@@ -111,15 +111,6 @@
                             </h4>
                             
                             <div class="space-y-2">
-                                <button
-                                    @click="copiarLink"
-                                    :disabled="!imagenActivaObj?.urlFinal"
-                                    class="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed group"
-                                >
-                                    <svg class="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/></svg>
-                                    {{ copiado ? '¡Enlace copiado!' : 'Copiar URL' }}
-                                </button>
-
                                 <a
                                     v-if="urlActivaSegura"
                                     :href="urlActivaSegura"
@@ -173,15 +164,13 @@ const emit = defineEmits<(e: 'close') => void>()
 const articulo = ref<Articulo | null>(null)
 const loading = ref(false)
 const posicionActiva = ref<1 | 2 | 3>(1)
-const copiado = ref(false)
 const descargando = ref(false)
 
 // Fetch full details whenever the modal opens
 watch(() => props.isOpen, async (val) => {
     if (val && props.articuloBase) {
         posicionActiva.value = 1
-        copiado.value = false
-        articulo.value = props.articuloBase 
+        articulo.value = props.articuloBase
         
         // Petición al backend rápido para traer datos actualizados incluidos imágenes
         loading.value = true
@@ -227,50 +216,6 @@ const nombrePosicion = (pos: number) => {
 
 function close() {
     emit('close')
-}
-
-// Copia resiliente: usa Clipboard API en contextos seguros (HTTPS/localhost)
-// y cae a document.execCommand('copy') en HTTP, donde navigator.clipboard
-// no está disponible o es rechazada por el navegador.
-async function copiarAlPortapapeles(texto: string): Promise<boolean> {
-    if (!texto) return false
-
-    if (navigator.clipboard && window.isSecureContext) {
-        try {
-            await navigator.clipboard.writeText(texto)
-            return true
-        } catch {
-            // Continúa al fallback si el permiso es rechazado
-        }
-    }
-
-    try {
-        const textArea = document.createElement('textarea')
-        textArea.value = texto
-        textArea.style.position = 'fixed'
-        textArea.style.opacity = '0'
-        textArea.style.left = '-999999px'
-        textArea.style.top = '-999999px'
-        document.body.appendChild(textArea)
-        textArea.focus()
-        textArea.select()
-        const exitoso = document.execCommand('copy')
-        document.body.removeChild(textArea)
-        return exitoso
-    } catch (err) {
-        console.error('Error al copiar al portapapeles:', err)
-        return false
-    }
-}
-
-async function copiarLink() {
-    const url = imagenActivaObj.value?.urlFinal
-    if (!url) return
-    const exitoso = await copiarAlPortapapeles(url)
-    if (exitoso) {
-        copiado.value = true
-        setTimeout(() => copiado.value = false, 2000)
-    }
 }
 
 async function descargarImagen() {
