@@ -25,7 +25,10 @@ export function getEstadoBadgeClass(estado: string): string {
  * "Confirmar Producción", bg-amber-600); odcsap.view = púrpura (calza el botón
  * "Confirmar", bg-purple-600 — incluye PRODUCCION_POSPUESTA, generado por la opción
  * "Confirmar pedido, generar nuevo pedido con la diferencia" del mismo botón, ver
- * POST /confirmar-con-diferencia); Cancelado/Rechazado = rojo/rosa, cruza roles.
+ * POST /confirmar-con-diferencia); Cancelado/Rechazado = rojo/rosa, cruza roles;
+ * estados ERROR_* = escala 'vermilion' (rojo/naranja, ver tailwind.config.js), para
+ * alertar sin confundirse con Cancelado/Rechazado (rojo puro) ni con éxito/pendiente
+ * (verde/lima/ámbar).
  * Debe mantenerse en sync con getEstadoBadgeClass en PedidosListView.vue y
  * CargarPlantillaListadoView.vue (mismos estados, misma paleta).
  */
@@ -46,7 +49,7 @@ export function getEstadoPedidoBadgeClass(estado: string | undefined): string {
     'REDISTRIBUIDO': `bg-teal-100 text-teal-800 ${badgeDark} dark:bg-teal-900/50 dark:text-teal-200`,
     'PEDIDO_CONFIRMADO': `bg-teal-200 text-teal-900 ${badgeDark} dark:bg-teal-900/60 dark:text-teal-100`,
     'PENDIENTE_LOGISTICA': `bg-lime-100 text-lime-800 ${badgeDark} dark:bg-lime-900/50 dark:text-lime-200`,
-    'ERROR_DATOS_MAESTROS': `bg-lime-200 text-lime-900 ${badgeDark} dark:bg-lime-900/60 dark:text-lime-100`,
+    'ERROR_DATOS_MAESTROS': `bg-vermilion-100 text-vermilion-800 ${badgeDark} dark:bg-vermilion-900/50 dark:text-vermilion-200`,
     'PROCESADO_SAP': `bg-indigo-100 text-indigo-800 ${badgeDark} dark:bg-indigo-900/50 dark:text-indigo-200`,
     'CONFIRMADO_ENVIADO': `bg-emerald-100 text-emerald-800 ${badgeDark} dark:bg-emerald-900/50 dark:text-emerald-200`,
     'CONFIRMADO Y ENVIADO': `bg-emerald-100 text-emerald-800 ${badgeDark} dark:bg-emerald-900/50 dark:text-emerald-200`,
@@ -66,8 +69,8 @@ export function getEstadoPedidoBadgeClass(estado: string | undefined): string {
     'CONFIRMADO_POR_EL_RAYO': `bg-purple-100 text-purple-800 ${badgeDark} dark:bg-purple-900/50 dark:text-purple-200`,
     'CONFIRMADO POR PRODUCCION': `bg-amber-300 text-amber-900 ${badgeDark} dark:bg-amber-900/70 dark:text-amber-100`,
     'CONFIRMADO_POR_PRODUCCION': `bg-amber-300 text-amber-900 ${badgeDark} dark:bg-amber-900/70 dark:text-amber-100`,
-    'ERROR ENVIO SAP REINTENTO': `bg-amber-100 text-amber-900 ${badgeDark} dark:bg-amber-900/40 dark:text-amber-100`,
-    'ERROR_ENVIO_SAP_REINTENTO': `bg-amber-100 text-amber-900 ${badgeDark} dark:bg-amber-900/40 dark:text-amber-100`,
+    'ERROR ENVIO SAP REINTENTO': `bg-vermilion-100 text-vermilion-800 ${badgeDark} dark:bg-vermilion-900/50 dark:text-vermilion-200`,
+    'ERROR_ENVIO_SAP_REINTENTO': `bg-vermilion-100 text-vermilion-800 ${badgeDark} dark:bg-vermilion-900/50 dark:text-vermilion-200`,
     'PRODUCCION POSPUESTA': `bg-purple-200 text-purple-900 ${badgeDark} dark:bg-purple-900/60 dark:text-purple-100`,
     'PRODUCCION_POSPUESTA': `bg-purple-200 text-purple-900 ${badgeDark} dark:bg-purple-900/60 dark:text-purple-100`,
     'RECHAZADO': `bg-red-100 text-red-800 ${badgeDark} dark:bg-red-900/50 dark:text-red-200`,
