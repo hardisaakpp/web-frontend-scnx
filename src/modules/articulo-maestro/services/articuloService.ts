@@ -1,5 +1,10 @@
 import { maestroHttp as apiMaestro } from '@/lib/http'
-import type { Articulo, ArticuloFilters } from '../types'
+import type {
+    Articulo,
+    ArticuloFilters,
+    ImagenArticuloReferencia
+} from '../types'
+export type { ImagenArticuloReferencia } from '../types'
 
 // ─── Normalización de respuestas ─────────────────────────────────────────────
 // Esta función mapea el objeto de respuesta a las claves camelCase que espera el front.
@@ -11,7 +16,6 @@ function normalizeObject(obj: any): any {
 
     // Mapeo manual de campos críticos conocidos por ser inconsistentes
     const criticalMappings: Record<string, string[]> = {
-        uPrArq: ['U_PR_ARQ', 'u_pr_arq', 'u_Pr_Arq', 'UPrArq'],
         uGen: ['U_GEN', 'u_gen', 'u_Gen'],
         uCodColor: ['U_COD_COLOR', 'u_cod_color'],
         uCodColSecu: ['U_COD_COL_SECU', 'u_cod_col_secu'],
@@ -39,6 +43,27 @@ function normalizeObject(obj: any): any {
         uCanalVenta: ['U_CANAL_VENTA', 'u_canal_venta'],
         uRegion: ['U_REGION', 'u_region'],
         uLiq: ['U_LIQ', 'u_liq'],
+        codigoAlterno: ['CODIGO_ALTERNO', 'codigo_alterno', 'CodigoAlterno'],
+        tieneCodigoProveedor: ['HAS_SUPPLIER_BARCODE', 'has_supplier_barcode', 'TieneCodigoProveedor'],
+        estadoProducto: ['PRODUCT_STATUS', 'product_status', 'EstadoProducto'],
+        aplicaEcommerce: ['ECOMMERCE_APPLICABLE', 'ecommerce_applicable', 'AplicaEcommerce'],
+        aplicaPrecioMinorista: ['APLICA_PRECIO_MINORISTA', 'aplica_precio_minorista', 'AplicaPrecioMinorista'],
+        aplicaPrecioInternacional: ['APLICA_PRECIO_INTERNACIONAL', 'aplica_precio_internacional', 'AplicaPrecioInternacional'],
+        manageBatchNumbers: [
+            'MAN_BTCH_NUM',
+            'man_btch_num',
+            'ManBtchNum',
+            'ManageBatchNumbers'
+        ],
+        isStructuralLocked: ['IS_STRUCTURAL_LOCKED', 'is_structural_locked'],
+        uPrArq: [
+            'U_PR_ARQ',
+            'u_pr_arq',
+            'u_Pr_Arq',
+            'UPrArq',
+            'CostoArranque',
+            'costoArranque'
+        ]
     }
 
     Object.entries(criticalMappings).forEach(([camelKey, variations]) => {
@@ -79,11 +104,124 @@ apiMaestro.interceptors.response.use((response) => {
     return response
 })
 
+// Al pedir un archivo con responseType: 'blob', si el backend responde con un
+// error HTTP (404/422/500), axios entrega error.response.data como Blob en
+// lugar de JSON — el `detail` de negocio queda oculto detrás del Blob y nunca
+// llega a mostrarse. Esta función lo relee como texto para recuperarlo.
+export async function parsearErrorBlob(error: any): Promise<string> {
+    if (error?.response?.data instanceof Blob) {
+        try {
+            const text = await error.response.data.text()
+            const json = JSON.parse(text)
+            return json.detail || json.message || 'Error al procesar el archivo.'
+        } catch {
+            return 'No se pudo interpretar la respuesta del servidor.'
+        }
+    }
+    return error?.response?.data?.detail || error?.message || 'Error de conexión.'
+}
 
+export type TipoCargaMasiva = 'crear' | 'actualizar'
+export type EstadoImportacion =
+    | 'ESPERANDO'
+    | 'PROCESANDO'
+    | 'COMPLETADO'
+    | 'COMPLETADO_CON_ERRORES'
+    | 'ERROR'
+
+export interface ImportacionFila {
+    id: number
+    numeroFila: number
+    itemCode?: string | null
+    estado: 'PENDIENTE' | 'PROCESANDO' | 'COMPLETADO' | 'ERROR'
+    campoError?: string | null
+    valorRecibido?: string | null
+    codigoError?: string | null
+    mensaje?: string | null
+}
+
+export interface ImportacionGrupo {
+    id: number
+    grupoProducto: string
+    codigoBase?: string | null
+    estado: 'PENDIENTE' | 'PROCESANDO' | 'COMPLETADO' | 'ERROR'
+    mensajeError?: string | null
+    intentos: number
+    filas: ImportacionFila[]
+    imagenes: ImagenArticuloReferencia[]
+}
+
+export interface ImportacionAceptada {
+    jobId: number
+    estado: EstadoImportacion
+    totalFilas: number
+    totalGrupos: number
+}
+
+export interface ImportacionTrabajo {
+    id: number
+    nombreArchivo: string
+    hashArchivo: string
+    tipo: 'CREAR' | 'ACTUALIZAR'
+    usuario: string
+    estado: EstadoImportacion
+    totalGrupos: number
+    gruposProcesados: number
+    totalFilas: number
+    filasCorrectas: number
+    filasError: number
+    fechaInicio?: string | null
+    fechaFin?: string | null
+    grupos: ImportacionGrupo[]
+}
+
+export interface ImportacionError {
+    tipo: 'FILA' | 'IMAGEN'
+    grupoProducto: string
+    numeroFila?: number | null
+    itemCode?: string | null
+    codigoBase?: string | null
+    posicion?: number | null
+    campoError?: string | null
+    valorRecibido?: string | null
+    codigoError?: string | null
+    mensaje: string
+}
+
+// RF-002: respuesta de POST /articulos/{item_code}/promover-alterno.
+// Snake_case a propósito: replica ArticuloPromoverAlternoResponse del backend
+// (mismo criterio que SapSyncTareaResponse/SapTask, sin alias camelCase).
+export interface PromoverAlternoResponse {
+    success: boolean
+    message: string
+    item_code_anterior: string
+    item_code_nuevo: string
+    tarea_id: number
+}
+
+// RF-004: respuesta multi-estado de DELETE /articulos/borrado-masivo.
+// Snake_case a propósito: el endpoint no usa alias_generator=to_camel (no es
+// un ArticuloResponse), así que el body llega tal cual estas claves.
+export interface ArticuloBulkDeleteError {
+    item_code: string
+    status_code: number
+    detail: string
+}
+
+export interface ArticuloBulkDeleteResponse {
+    success: boolean
+    total: number
+    success_count: number
+    error_count: number
+    eliminados: string[]
+    errores: ArticuloBulkDeleteError[]
+}
 
 export const articuloService = {
-    // Listado paginado (el backend devuelve { total, items })
-    getArticulos: async (filters: ArticuloFilters) => {
+    // Listado paginado (el backend devuelve { total, items }). Acepta un
+    // AbortSignal para que el store pueda cancelar peticiones en vuelo cuando
+    // el usuario dispara una búsqueda o paginación más reciente.
+    getArticulos: async (filters: ArticuloFilters, signal?: AbortSignal) => {
         const pageSize = filters.pageSize || 10
         const page = filters.page || 1
         const skip = (page - 1) * pageSize
@@ -96,7 +234,8 @@ export const articuloService = {
                 ...otherFilters,
                 skip,
                 limit: pageSize
-            }
+            },
+            signal
         })
 
         const { items, total } = response.data
@@ -136,9 +275,23 @@ export const articuloService = {
         return response.data
     },
 
-    // Sincronizar con SAP (sin trailing slash)
-    sincronizarConSap: async (itemCode: string) => {
-        const response = await apiMaestro.post<{ status: string, message: string }>(`/api/v1/articulos/${itemCode}/sincronizar`)
+    // Eliminar (inactivar) múltiples artículos. Respuesta multi-estado: un
+    // item_code bloqueado (ej. semáforo SAP en EN_COLA) no oculta ni detiene
+    // el resultado de los demás (ver delete_articulos_bulk en el backend).
+    eliminarArticulosBulk: async (itemCodes: string[]): Promise<ArticuloBulkDeleteResponse> => {
+        const response = await apiMaestro.request<ArticuloBulkDeleteResponse>({
+            url: '/api/v1/articulos/borrado-masivo',
+            method: 'DELETE',
+            data: { item_codes: itemCodes }
+        })
+        return response.data
+    },
+
+    // RF-002: Promover el Código Alterno del artículo a su ItemCode principal
+    promoverCodigoAlterno: async (itemCode: string): Promise<PromoverAlternoResponse> => {
+        const response = await apiMaestro.post<PromoverAlternoResponse>(
+            `/api/v1/articulos/${itemCode}/promover-alterno`
+        )
         return response.data
     },
 
@@ -154,8 +307,9 @@ export const articuloService = {
     },
 
     // Descargar plantilla Excel para carga masiva
-    downloadTemplate: async () => {
+    downloadTemplate: async (tipo: TipoCargaMasiva) => {
         const response = await apiMaestro.get('/api/v1/articulos/template/download', {
+            params: { tipo },
             responseType: 'blob',
             headers: {
                 'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, */*'
@@ -169,79 +323,153 @@ export const articuloService = {
 
         const url = globalThis.URL.createObjectURL(blob)
         const link = document.createElement('a')
+        const contentDisposition = response.headers['content-disposition']
+        const filenameMatch = contentDisposition?.match(/filename="?([^";]+)"?/)
+        const filename = filenameMatch?.[1] ?? `plantilla_articulos_${tipo}.xlsx`
         link.href = url
-        link.setAttribute('download', 'plantilla_articulos.xlsx')
+        link.setAttribute('download', filename)
         document.body.appendChild(link)
         link.click()
         link.remove()
         globalThis.URL.revokeObjectURL(url)
     },
 
-    // Carga masiva de artículos desde archivo Excel
-    // El backend responde con éxito (200) o con error de validación (422)
-    // En ambos casos normalizamos la respuesta para la vista.
-    cargaMasiva: async (file: File): Promise<CargaMasivaResponse> => {
+    crearImportacion: async (
+        file: File,
+        tipo: TipoCargaMasiva,
+        zipImagenes?: File | null
+    ): Promise<ImportacionAceptada> => {
         const formData = new FormData()
         formData.append('file', file)
-        try {
-            const response = await apiMaestro.post<CargaMasivaResponse>('/api/v1/articulos/carga-masiva', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            })
-            return response.data
-        } catch (err: unknown) {
-            const axiosErr = err as { response?: { status?: number, data?: any } }
-            const data = axiosErr?.response?.data
-
-            // FastAPI puede envolver la respuesta en { detail: { mensaje, errores } }
-            // o el backend puede retornarla directamente como { mensaje, errores }
-            const errorPayload = data?.errores ? data : data?.detail
-
-            // Si el backend respondió con la estructura de validación "all-or-nothing"
-            if (Array.isArray(errorPayload?.errores)) {
-                return {
-                    success: false,
-                    mensaje: errorPayload.mensaje || 'Errores de validación en el archivo.',
-                    total: errorPayload.errores.length,
-                    success_count: 0,
-                    error_count: errorPayload.errores.length,
-                    errores: errorPayload.errores
-                }
-            }
-
-            // Otro tipo de error (red, servidor, etc.)
-            throw err
+        if (zipImagenes) {
+            formData.append('zip_imagenes', zipImagenes)
         }
-    }
-}
+        const response = await apiMaestro.post<ImportacionAceptada>(
+            '/api/v1/articulos/importaciones',
+            formData,
+            {
+                params: { tipo },
+                headers: { 'Content-Type': 'multipart/form-data' }
+            }
+        )
+        return response.data
+    },
 
-// ─── Tipos de Carga Masiva ──────────────────────────────────────────────────
+    getImportacion: async (jobId: number): Promise<ImportacionTrabajo> => {
+        const response = await apiMaestro.get<ImportacionTrabajo>(
+            `/api/v1/articulos/importaciones/${jobId}`
+        )
+        return response.data
+    },
 
-export interface CargaMasivaErrorItem {
-    fila: number
-    item_code: string
-    error: string
-}
+    getErroresImportacion: async (
+        jobId: number
+    ): Promise<ImportacionError[]> => {
+        const response = await apiMaestro.get<{ items: ImportacionError[] }>(
+            `/api/v1/articulos/importaciones/${jobId}/errores`
+        )
+        return response.data.items
+    },
 
-export interface CargaMasivaErrorResponse {
-    mensaje: string
-    errores: CargaMasivaErrorItem[]
-}
+    reintentarImportacion: async (
+        jobId: number
+    ): Promise<ImportacionAceptada> => {
+        const response = await apiMaestro.post<ImportacionAceptada>(
+            `/api/v1/articulos/importaciones/${jobId}/reintentar`
+        )
+        return response.data
+    },
 
-export interface CargaMasivaResult {
-    item_code: string
-    success: boolean
-    message: string | null
-    id: number | null
-}
+    descargarErroresImportacion: async (jobId: number): Promise<void> => {
+        const response = await apiMaestro.get(
+            `/api/v1/articulos/importaciones/${jobId}/errores.xlsx`,
+            { responseType: 'blob' }
+        )
+        const blob = new Blob([response.data as BlobPart], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        })
+        const url = globalThis.URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `errores_importacion_${jobId}.xlsx`
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+        globalThis.URL.revokeObjectURL(url)
+    },
 
-export interface CargaMasivaResponse {
-    success?: boolean
-    mensaje?: string
-    total: number
-    success_count: number
-    error_count: number
-    results?: CargaMasivaResult[]
-    errores?: CargaMasivaErrorItem[]
+    // Copia corregible: mismas columnas de la plantilla original + columna
+    // final "Mensaje de Error", solo con las filas que fallaron. Pensada
+    // para corregir directamente sobre este archivo y volver a subirlo.
+    descargarErroresPlantillaImportacion: async (jobId: number): Promise<void> => {
+        const response = await apiMaestro.get(
+            `/api/v1/articulos/importaciones/${jobId}/errores-plantilla.xlsx`,
+            { responseType: 'blob' }
+        )
+        const blob = new Blob([response.data as BlobPart], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        })
+        const url = globalThis.URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `correcciones_importacion_${jobId}.xlsx`
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+        globalThis.URL.revokeObjectURL(url)
+    },
+
+    // Subir (o reemplazar) la imagen de una posición (1=Principal, 2/3=Secundarias).
+    // Subida síncrona a MinIO: la respuesta ya trae la urlFinal pública.
+    subirImagenArticulo: async (
+        itemCode: string,
+        posicion: 1 | 2 | 3,
+        archivo: File
+    ): Promise<ImagenArticuloReferencia> => {
+        const formData = new FormData()
+        formData.append('archivo', archivo)
+        const response = await apiMaestro.post<ImagenArticuloReferencia>(
+            `/api/v1/articulos/${itemCode}/imagenes/${posicion}`,
+            formData,
+            { headers: { 'Content-Type': 'multipart/form-data' } }
+        )
+        return response.data
+    },
+
+    // Eliminar la imagen de una posición.
+    eliminarImagenArticulo: async (
+        itemCode: string,
+        posicion: 1 | 2 | 3
+    ): Promise<void> => {
+        await apiMaestro.delete(
+            `/api/v1/articulos/${itemCode}/imagenes/${posicion}`
+        )
+    },
+
+    // Descargar reporte diario de artículos
+    descargarReporteDiario: async (fecha?: string) => {
+        const response = await apiMaestro.get('/api/v1/articulos/reporte-diario', {
+            params: fecha ? { fecha } : {},
+            responseType: 'blob',
+            headers: {
+                'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, */*'
+            }
+        })
+
+        const blob = new Blob([response.data as BlobPart], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        })
+
+        const url = globalThis.URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.setAttribute('download', `reporte_diario_${fecha ?? new Date().toISOString().split('T')[0]}.xlsx`)
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+        globalThis.URL.revokeObjectURL(url)
+    },
+
 }
 
 // ─── Servicio de Catálogos ───────────────────────────────────────────────────
@@ -379,6 +607,19 @@ export interface SapNovedad {
     motivo: string
 }
 
+export interface SapSyncDetalle {
+    item_code: string
+    // No es un enum estricto: el backend además de 'Error' devuelve el
+    // resultado de negocio ('Creado', 'Actualizado', 'Sincronizado',
+    // 'Eliminado', 'Omitido', etc. — ver sap_sync.py/sap.py).
+    status: string
+    message: string
+    // Presente solo en errores de persistencia (IntegrityError/SQLAlchemyError)
+    // de pull-from-sap: el rastro crudo de pymssql/SQL Server, reservado para
+    // el acordeón de "detalles técnicos" — ver resumirDetalleSap más abajo.
+    detalle_tecnico?: string
+}
+
 export interface SapSyncResponse {
     success: boolean
     message: string
@@ -389,11 +630,47 @@ export interface SapSyncResponse {
     success_count?: number
     error_count?: number
     error?: number
-    details?: Array<{
-        item_code: string
-        status: 'Success' | 'Error'
-        message: string
-    }>
+    details?: SapSyncDetalle[]
+}
+
+// ─── Presentación amigable de resultados SAP ────────────────────────────────
+// Marcadores de trazas técnicas de base de datos (pymssql/SQL Server/ODBC)
+// que jamás deben mostrarse crudos en la UI, aun si llegaran a colarse en
+// `message` (por ejemplo desde una respuesta antigua sin `detalle_tecnico`).
+const _MARCADORES_TRAZA_TECNICA = [
+    'pymssql',
+    'sql server',
+    'odbc',
+    'db-lib',
+    'integrityerror',
+    'sqlalchemyerror',
+    'cannot insert the value null',
+    "b'",
+    'b"',
+]
+
+export function esTrazaTecnicaDb(texto: string): boolean {
+    const t = texto.toLowerCase()
+    return _MARCADORES_TRAZA_TECNICA.some(marca => t.includes(marca))
+}
+
+// Deriva (resumen, detalleTecnico) de un SapSyncDetalle para la tarjeta de
+// resultado: si el backend ya distinguió el error con `detalle_tecnico`, o si
+// `message` en sí es una traza técnica de BD, el usuario ve el mensaje de
+// negocio limpio y el rastro crudo queda reservado al acordeón colapsable.
+// Los mensajes de validación de negocio (el `detail` normal del backend)
+// pasan tal cual, sin filtrar.
+export function resumirDetalleSap(detalle: SapSyncDetalle): { resumen: string; detalleTecnico: string | null } {
+    if (detalle.detalle_tecnico) {
+        return { resumen: detalle.message, detalleTecnico: detalle.detalle_tecnico }
+    }
+    if (esTrazaTecnicaDb(detalle.message)) {
+        return {
+            resumen: `No se pudieron guardar los datos del artículo ${detalle.item_code}: Conflicto de integridad en la sincronización con SAP.`,
+            detalleTecnico: detalle.message,
+        }
+    }
+    return { resumen: detalle.message, detalleTecnico: null }
 }
 
 export interface SapTask {
@@ -458,6 +735,12 @@ export const sapService = {
     getTaskById: async (id: number): Promise<SapTask> => {
         const response = await apiMaestro.get<SapTask>(`/api/v1/sap/tasks/${id}`)
         return response.data
+    },
+
+    // Obtener catálogo de listas de precios
+    getPriceLists: async (): Promise<Array<{ id: number; name: string; nombre: string }>> => {
+        const response = await apiMaestro.get<Array<{ id: number; name: string }>>('/api/v1/sap/price-lists')
+        return response.data.map(list => ({ ...list, nombre: list.name }))
     }
 }
 

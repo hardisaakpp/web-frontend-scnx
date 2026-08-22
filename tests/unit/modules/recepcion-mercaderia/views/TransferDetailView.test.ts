@@ -28,6 +28,7 @@ vi.mock('@/stores/auth', () => ({
 // be mutated from tests to simulate Vue Router reusing the component instance across navigations
 // that only change `:id` on the same matched route record.
 const routeParamsHolder = vi.hoisted(() => ({ current: { id: '7' } as { id: string } }))
+const routerPushMock = vi.hoisted(() => vi.fn())
 
 vi.mock('vue-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('vue-router')>()
@@ -36,6 +37,7 @@ vi.mock('vue-router', async (importOriginal) => {
   return {
     ...actual,
     useRoute: () => ({ params: routeParamsHolder.current }),
+    useRouter: () => ({ push: routerPushMock }),
   }
 })
 
@@ -265,7 +267,7 @@ describe('TransferDetailView', () => {
     // Complete line (scanned === quantity) — the forced-recount gate only fires on incomplete
     // lines, and this test is about the payload shape, not that gate (covered separately below).
     vi.mocked(recepcionApi.getTransfer).mockResolvedValue(mockGetTransfer(buildTransfer({ lines: [buildLine({ scanned: 10, quantity: 10 })] })))
-    vi.mocked(recepcionApi.confirm).mockResolvedValue(buildTransfer({ status: 'confirmed' }))
+    vi.mocked(recepcionApi.confirm).mockResolvedValue(undefined)
 
     const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
     await flushPromises()
@@ -295,7 +297,7 @@ describe('TransferDetailView', () => {
   it('allows the second partial-confirm attempt through, matching legacy behavior of trusting the recount flag rather than re-verifying the scan', async () => {
     mockAuth(['recepcion.reception.confirm.partial'])
     vi.mocked(recepcionApi.getTransfer).mockResolvedValue(mockGetTransfer(buildTransfer()))
-    vi.mocked(recepcionApi.confirm).mockResolvedValue(buildTransfer({ status: 'confirmed' }))
+    vi.mocked(recepcionApi.confirm).mockResolvedValue(undefined)
 
     const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
     await flushPromises()
@@ -313,7 +315,7 @@ describe('TransferDetailView', () => {
   it('does not gate the partial confirm when there are no incomplete lines', async () => {
     mockAuth(['recepcion.reception.confirm.partial'])
     vi.mocked(recepcionApi.getTransfer).mockResolvedValue(mockGetTransfer(buildTransfer({ lines: [buildLine({ scanned: 10, quantity: 10 })] })))
-    vi.mocked(recepcionApi.confirm).mockResolvedValue(buildTransfer({ status: 'confirmed' }))
+    vi.mocked(recepcionApi.confirm).mockResolvedValue(undefined)
 
     const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
     await flushPromises()
@@ -327,7 +329,7 @@ describe('TransferDetailView', () => {
   it('disables the confirm button while a confirm call is in flight, to prevent duplicate POSTs on double-click', async () => {
     mockAuth(['recepcion.reception.confirm'])
     vi.mocked(recepcionApi.getTransfer).mockResolvedValue(mockGetTransfer(buildTransfer()))
-    let resolveConfirm!: (v: ReceptionTransfer) => void
+    let resolveConfirm!: (v: void) => void
     vi.mocked(recepcionApi.confirm).mockReturnValue(
       new Promise((resolve) => {
         resolveConfirm = resolve
@@ -342,10 +344,83 @@ describe('TransferDetailView', () => {
 
     expect(wrapper.find('[data-testid="confirm-btn"]').attributes('disabled')).toBeDefined()
 
-    resolveConfirm(buildTransfer({ status: 'confirmed' }))
+    resolveConfirm(undefined)
     await flushPromises()
 
     expect(recepcionApi.confirm).toHaveBeenCalledTimes(1)
+  })
+
+  it('redirects to Historial once confirm succeeds, since a confirmed transfer no longer belongs on this picking detail', async () => {
+    mockAuth(['recepcion.reception.confirm'])
+    vi.mocked(recepcionApi.getTransfer)
+      .mockResolvedValueOnce(mockGetTransfer(buildTransfer()))
+      .mockResolvedValueOnce(mockGetTransfer(buildTransfer({ status: 'confirmed' })))
+    vi.mocked(recepcionApi.confirm).mockResolvedValue(undefined)
+
+    const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="confirm-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(routerPushMock).toHaveBeenCalledWith({ name: 'recepcion-historial' })
+  })
+
+  it('recovers from a confirm request that failed client-side (e.g. timeout) but actually went through on the backend: no error shown, redirects to Historial', async () => {
+    mockAuth(['recepcion.reception.confirm'])
+    vi.mocked(recepcionApi.getTransfer)
+      .mockResolvedValueOnce(mockGetTransfer(buildTransfer()))
+      .mockResolvedValueOnce(mockGetTransfer(buildTransfer({ status: 'confirmed' })))
+    vi.mocked(recepcionApi.confirm).mockRejectedValue(new Error('timeout of 30000ms exceeded'))
+
+    const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="confirm-btn"]').trigger('click')
+    await flushPromises()
+
+    const body = new DOMWrapper(document.body)
+    expect(body.find('[data-testid="error-dialog"]').exists()).toBe(false)
+    expect(routerPushMock).toHaveBeenCalledWith({ name: 'recepcion-historial' })
+  })
+
+  it('recovers from a 400 "already confirmed" (duplicate click/tab racing automatic reconciliation): no error shown, redirects to Historial', async () => {
+    mockAuth(['recepcion.reception.confirm'])
+    vi.mocked(recepcionApi.getTransfer)
+      .mockResolvedValueOnce(mockGetTransfer(buildTransfer()))
+      .mockResolvedValueOnce(mockGetTransfer(buildTransfer({ status: 'confirmed' })))
+    vi.mocked(recepcionApi.confirm).mockRejectedValue({
+      response: { status: 400, data: { error: 'Reception transfer 7 is already confirmed.' } },
+    })
+
+    const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="confirm-btn"]').trigger('click')
+    await flushPromises()
+
+    const body = new DOMWrapper(document.body)
+    expect(body.find('[data-testid="error-dialog"]').exists()).toBe(false)
+    expect(routerPushMock).toHaveBeenCalledWith({ name: 'recepcion-historial' })
+  })
+
+  it('shows the confirm error when a refetch after a failed confirm confirms it really did not go through', async () => {
+    mockAuth(['recepcion.reception.confirm'])
+    vi.mocked(recepcionApi.getTransfer).mockResolvedValue(mockGetTransfer(buildTransfer()))
+    vi.mocked(recepcionApi.confirm).mockRejectedValue(new Error('network error'))
+
+    const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="confirm-btn"]').trigger('click')
+    await flushPromises()
+
+    const body = new DOMWrapper(document.body)
+    expect(body.find('[data-testid="error-dialog"]').exists()).toBe(true)
+    expect(body.text()).toContain('No se pudo confirmar la transferencia.')
+    expect(routerPushMock).not.toHaveBeenCalled()
+
+    wrapper.unmount()
   })
 
   it('hides the confirm button when the user lacks the confirm permission', async () => {
@@ -396,6 +471,7 @@ describe('TransferDetailView', () => {
     expect(table.findAll('th').map((th) => th.text())).toEqual([
       'Código de barras',
       'Producto',
+      'Cantidad',
       'Fecha / Hora',
       'Acciones',
     ])
@@ -404,8 +480,97 @@ describe('TransferDetailView', () => {
     const cells = row.findAll('td')
     expect(cells[0].text()).toBe('999888777')
     expect(cells[1].text()).toBe('UWM-2478.M- BOXER')
-    expect(cells[2].text()).not.toBe('')
-    expect(cells[3].text()).toContain('Eliminar')
+    expect(cells[2].text()).toBe('1')
+    expect(cells[3].text()).not.toBe('')
+    expect(cells[4].text()).toContain('Eliminar')
+  })
+
+  it('groups repeated scans of the same barcode into one row with a Cantidad counter', async () => {
+    mockAuth(['recepcion.diferencias.gestionar'])
+    const transfer = buildTransfer({ lines: [buildLine({ barcode: '7791234' })] })
+    const differences = [
+      buildDifference({ differenceId: 1, barcode: '999888777', scannedAtUtc: '2026-01-02T15:00:00Z' }),
+      buildDifference({ differenceId: 2, barcode: '999888777', scannedAtUtc: '2026-01-02T15:30:00Z' }),
+      buildDifference({ differenceId: 3, barcode: '111', scannedAtUtc: '2026-01-02T16:00:00Z' }),
+    ]
+    vi.mocked(recepcionApi.getTransfer).mockResolvedValue(mockGetTransfer(transfer, differences))
+
+    const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+
+    const rows = wrapper.find('[data-testid="differences-table"]').findAll('tbody tr')
+    expect(rows).toHaveLength(2)
+    expect(rows[0].findAll('td')[2].text()).toBe('2')
+    expect(rows[1].findAll('td')[2].text()).toBe('1')
+  })
+
+  it('deletes every unit of the group when confirming Eliminar on a grouped difference row', async () => {
+    mockAuth(['recepcion.diferencias.gestionar'])
+    const transfer = buildTransfer({ lines: [buildLine({ barcode: '7791234' })] })
+    const differences = [
+      buildDifference({ differenceId: 1, barcode: '999888777' }),
+      buildDifference({ differenceId: 2, barcode: '999888777' }),
+    ]
+    vi.mocked(recepcionApi.getTransfer).mockResolvedValue(mockGetTransfer(transfer, differences))
+    vi.mocked(recepcionApi.deleteDifference).mockResolvedValue(undefined)
+
+    const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+
+    await wrapper.findAll('button').find((b) => b.text().includes('Eliminar'))!.trigger('click')
+    await flushPromises()
+
+    expect(recepcionApi.deleteDifference).toHaveBeenCalledTimes(2)
+    expect(recepcionApi.deleteDifference).toHaveBeenCalledWith(1)
+    expect(recepcionApi.deleteDifference).toHaveBeenCalledWith(2)
+    expect(wrapper.text()).not.toContain('999888777')
+  })
+
+  it('stops the group delete and surfaces the error when one unit fails, instead of silently clearing it on the next unit', async () => {
+    mockAuth(['recepcion.diferencias.gestionar'])
+    const transfer = buildTransfer({ lines: [buildLine({ barcode: '7791234' })] })
+    const differences = [
+      buildDifference({ differenceId: 1, barcode: '999888777' }),
+      buildDifference({ differenceId: 2, barcode: '999888777' }),
+    ]
+    vi.mocked(recepcionApi.getTransfer).mockResolvedValue(mockGetTransfer(transfer, differences))
+    vi.mocked(recepcionApi.deleteDifference).mockRejectedValueOnce(new Error('network blip')).mockResolvedValueOnce(undefined)
+
+    const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+
+    await wrapper.findAll('button').find((b) => b.text().includes('Eliminar'))!.trigger('click')
+    await flushPromises()
+
+    // Stops after the first (failed) unit — the second deleteDifference call, which would reset
+    // actionError back to null and mask the failure, must never run.
+    expect(recepcionApi.deleteDifference).toHaveBeenCalledTimes(1)
+    expect(new DOMWrapper(document.body).find('[data-testid="error-dialog"]').exists()).toBe(true)
+    // The undeleted unit keeps the group visible with its count reduced by zero (still 2), not gone.
+    expect(wrapper.find('[data-testid="differences-table"]').text()).toContain('999888777')
+
+    wrapper.unmount()
+  })
+
+  it('treats a naive scannedAtUtc (no trailing Z — the confirmed EF Core DateTimeKind.Unspecified bug) as UTC, not local time', async () => {
+    mockAuth(['recepcion.picking.scan'])
+    const transfer = buildTransfer({ lines: [buildLine()] })
+    // Same instant, one with the zone marker the backend SHOULD send and one "naive" like the
+    // real backend currently sends — both must render identically once parsed defensively.
+    const withZ = buildDifference({ differenceId: 1, barcode: '111', scannedAtUtc: '2026-01-02T15:30:00Z' })
+    const naive = buildDifference({ differenceId: 2, barcode: '222', scannedAtUtc: '2026-01-02T15:30:00' })
+
+    vi.mocked(recepcionApi.getTransfer).mockResolvedValueOnce(mockGetTransfer(transfer, [withZ]))
+    const wrapperWithZ = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+    const withZText = wrapperWithZ.find('[data-testid="differences-table"]').findAll('tbody tr')[0].findAll('td')[3].text()
+
+    vi.mocked(recepcionApi.getTransfer).mockResolvedValueOnce(mockGetTransfer(transfer, [naive]))
+    const wrapperNaive = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+    const naiveText = wrapperNaive.find('[data-testid="differences-table"]').findAll('tbody tr')[0].findAll('td')[3].text()
+
+    expect(naiveText).toBe(withZText)
   })
 
   it('shows a placeholder in the Producto column when the backend could not identify the product', async () => {

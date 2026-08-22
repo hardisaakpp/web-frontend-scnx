@@ -7,6 +7,7 @@ import type {
   CatalogoFilters, 
   ListasFiltros,
   Almacen,
+  ConfigurarAlmacenRequest,
   CarritoResponse,
   HistorialCabecera,
   HistorialDetalleItem,
@@ -17,15 +18,20 @@ import type {
   StatusResponse
 } from '../types'
 
+interface AlmacenListResponse {
+  items: Almacen[];
+  cdCodesInvalidos?: { codigo: string; razon: string }[];
+}
+
 interface ReporteGeneralParams {
-  cdCode?: string;
+  whsCode?: string;
   desde?: string;
   hasta?: string;
 }
 
 function buildReporteGeneralQuery(params?: ReporteGeneralParams): string {
   const qs = new URLSearchParams()
-  if (params?.cdCode) qs.append('cdCode', params.cdCode)
+  if (params?.whsCode) qs.append('whsCode', params.whsCode)
   if (params?.desde) qs.append('desde', params.desde)
   if (params?.hasta) qs.append('hasta', params.hasta)
   const query = qs.toString()
@@ -47,10 +53,31 @@ const reposicionApi = {
     return response.data
   },
 
-  getAlmacenes: async () => {
+  getAlmacenes: async (cdCode?: string | string[]) => {
     const url = 'Almacen'
-    console.log("🚀 [ReposicionAPI] getAlmacenes:", url)
-    const response = await reposicionesApi.get<Almacen[]>(url)
+    let codes: string[] = []
+    if (cdCode) {
+      codes = (Array.isArray(cdCode) ? cdCode : [cdCode]).filter(Boolean)
+    }
+    const params = new URLSearchParams()
+    codes.forEach(c => params.append('cdCode', c))
+    console.log("🚀 [ReposicionAPI] getAlmacenes:", url, codes)
+    const response = await reposicionesApi.get<AlmacenListResponse>(url, { params })
+    return response.data.items
+  },
+
+  syncAlmacenes: async () => {
+    const response = await reposicionesApi.post('Almacen/sync')
+    return response.data
+  },
+
+  configurarAlmacen: async (id: number, request: ConfigurarAlmacenRequest) => {
+    const response = await reposicionesApi.put(`Almacen/${id}`, request)
+    return response.data
+  },
+
+  deleteAlmacen: async (id: number) => {
+    const response = await reposicionesApi.delete(`Almacen/${id}`)
     return response.data
   },
 

@@ -120,6 +120,17 @@ export const usePickingStore = defineStore('recepcionPicking', () => {
     fetchInProgress()
   }
 
+  /**
+   * The store is a Pinia singleton and outlives InProgressView — without this, leaving the view
+   * on e.g. page 6 and coming back would silently re-fetch page 6 again instead of starting
+   * fresh, even though nothing on screen suggests the list remembers where you left it. Views
+   * should call this instead of fetchInProgress() directly in onMounted.
+   */
+  function resetInProgressAndFetch(): void {
+    page.value = 1
+    fetchInProgress()
+  }
+
   async function fetchTransfer(transferId: number): Promise<void> {
     // Mark this transfer as the active one BEFORE the request goes out, so a concurrent,
     // slower-resolving fetch for a previous/different transferId can detect it is stale once it
@@ -186,6 +197,26 @@ export const usePickingStore = defineStore('recepcionPicking', () => {
   }
 
   /**
+   * A confirm request can fail client-side (timeout, dropped connection) or with a 400 "already
+   * confirmed" (duplicate click/tab racing automatic reconciliation) while the backend
+   * confirmation actually went through — re-check the real state before confirm() reports an
+   * error, otherwise an operation that actually succeeded gets shown to the user as failed.
+   * Returns the refetched state when it's really confirmed, or null when it isn't (a genuine
+   * failure, left for the caller to report as such).
+   */
+  async function recoverIfAlreadyConfirmed(
+    transferId: number
+  ): Promise<{ transfer: ReceptionTransfer; differences: Difference[] } | null> {
+    try {
+      const refetched = await recepcionApi.getTransfer(transferId)
+      return refetched.transfer.status === 'confirmed' ? refetched : null
+    } catch (refetchErr) {
+      console.error('confirm refetch failed', refetchErr)
+      return null
+    }
+  }
+
+  /**
    * Full confirm and ConfirmPartial share one endpoint distinguished by { partial } (per design's
    * resolved decision — backend exposes a single confirm route). A 500 from the SAP step is a
    * known, non-crashing failure — scans already persisted, transfer stays in its pre-confirm state
@@ -200,13 +231,28 @@ export const usePickingStore = defineStore('recepcionPicking', () => {
     sapErrorMessage.value = null
     isSubmitting.value = true
     try {
-      const result = await recepcionApi.confirm(transferId, body)
+      // confirm's own response carries no usable transfer data (see recepcionApi.confirm) — the
+      // canonical post-confirm state comes from re-fetching, same as scan()/recordDifference().
+      await recepcionApi.confirm(transferId, body)
       if (activeTransferId.value !== transferId) return
-      currentTransfer.value = result
+      const result = await recepcionApi.getTransfer(transferId)
+      if (activeTransferId.value !== transferId) return
+      currentTransfer.value = result.transfer
+      differences.value = result.differences
       status.value = 'ready'
     } catch (err) {
       if (activeTransferId.value !== transferId) return
       console.error('confirm failed', err)
+
+      const recovered = await recoverIfAlreadyConfirmed(transferId)
+      if (activeTransferId.value !== transferId) return
+      if (recovered) {
+        currentTransfer.value = recovered.transfer
+        differences.value = recovered.differences
+        status.value = 'ready'
+        return
+      }
+
       status.value = 'error'
       if (isSapFiveHundred(err)) {
         sapErrorMessage.value = SAP_ERROR_MESSAGE
@@ -388,6 +434,7 @@ export const usePickingStore = defineStore('recepcionPicking', () => {
     hasRecounted,
     lineDiferencia,
     fetchInProgress,
+    resetInProgressAndFetch,
     setPage,
     setPageSize,
     fetchTransfer,

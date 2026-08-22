@@ -5,10 +5,11 @@ export type EstadoTransferencia =
   | 'CreandoTransferencia'
   | 'TransferenciaCreada'
   | 'EnviadoASap'
-  | 'PendienteAprobacionSap'
+  | 'PendienteAprobacion'
   | 'Aprobado'
   | 'Rechazado'
   | 'ErrorEnvioSap'
+  | 'PendienteEnvioSap'
 
 //Estados transitorios (spinner / auto-refrescar).
 export const ESTADOS_TRANSITORIOS: EstadoTransferencia[] = ['Procesando', 'CreandoTransferencia']
@@ -53,6 +54,7 @@ export interface ListarSolicitudesQuery {
   pagina: number
   tamanoPagina: number
   estado?: EstadoTransferencia
+  excluirEstados?: EstadoTransferencia[]
   fechaDesde?: string
   fechaHasta?: string
   ordenarPor?: string
@@ -71,8 +73,9 @@ export interface SolicitudResumen {
   tiendaDestinoCodigo: string
   tiendaDestino: string         
   estado: EstadoTransferencia
-  guiaEnvio: string | null      
+  guiaEnvio: string | null
   cantidadProductos: number
+  aprobadoPor: string | null
 }
 
 // crear transferencia definitiva
@@ -113,6 +116,7 @@ export interface BuscarProductosQuery {
   itemCode?: string
   codeBars?: string
   itemName?: string
+  whsCode?: string
 }
 
 export interface ProductoBusqueda {
@@ -147,9 +151,12 @@ export interface SolicitudDetalle {
   tiendaDestino: string
   estado: EstadoTransferencia
   guiaEnvio: string | null
-  comentarioSap: string | null
   sapDraftDocEntry: number | null
   sapTransferDocNum: number | null
+  // Resolución del aprobador (el comentario aplica tanto a aprobación como a rechazo)
+  aprobadoPor: string | null
+  fechaAprobacion: string | null
+  comentarioAprobador: string | null
   productos: DetalleLinea[]
 }
 
@@ -163,10 +170,9 @@ export const ESTADO_LABELS: Record<string, string> = {
   Borrador: 'Borrador',
   Procesando: 'Procesando',
   CreandoTransferencia: 'Creando Transferencia',
-  TransferenciaCreada: 'Transferencia Creada',
-  EnviadoASap: 'Enviado a SAP',
-  PendienteAprobacionSap: 'Pendiente Aprobación',
-  Aprobado: 'Aprobado',
+  TransferenciaCreada: 'Transferencia Creada',  
+  PendienteAprobacion: 'Pendiente Aprobación',
+  PendienteEnvioSap: 'Pendiente Envio Sap',
   Rechazado: 'Rechazado',
   ErrorEnvioSap: 'Error Envío SAP',
 }
@@ -175,6 +181,7 @@ export const etiquetaEstado = (estado: string): string => ESTADO_LABELS[estado] 
 
 export interface FiltrosExportar {
   estado?: string
+  excluirEstados?: string[]
   fechaDesde?: string
   fechaHasta?: string
   tiendaOrigen?: string
@@ -201,4 +208,49 @@ export interface ErrorSap {
   fecha: string
 }
 
+// ─── Error 400 por stock insuficiente (RN-22) ────────────────────────────────
+// Lo devuelven enviar-aprobacion y aprobar cuando el stock no alcanza.
+
+export interface StockFaltante {
+  itemCode: string
+  solicitado: number
+  disponible: number
+}
+
+export interface ErrorStockInsuficiente {
+  error: string
+  faltantes: StockFaltante[]
+}
+
+export interface MatrizAprobacion{
+  id:number
+  marcaOrigen: string
+  marcaDestino: string
+  whsCodeDestino: string|null
+  requiereAprobacion: boolean
+  rolAprobador: string|null
+  activo:boolean
+}
+
+export interface ReglaAprobacionRequest{
+  marcaOrigen: string
+  marcaDestino: string
+  whsCodeDestino: string|null
+  requiereAprobacion: boolean
+  rolAprobador?: string|null
+  activo: boolean
+}
+export const MARCA_TODAS='*'
+
+export interface AprobarSolicitudRequest{
+  observacion?: string
+}
+
+export interface RechazarSolicitudRequest{
+  motivoRechazo: string
+}
+
+export interface ContadorPendientesResponse{
+  total:number
+}
 

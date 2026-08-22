@@ -123,6 +123,18 @@ describe('usePickingStore', () => {
       expect(store.page).toBe(1)
       expect(store.pageSize).toBe(50)
     })
+
+    it('resetInProgressAndFetch clears a leftover page from a previous visit before refetching', async () => {
+      vi.mocked(recepcionApi.getInProgressTransfers).mockResolvedValue(pagedTransfers([buildTransfer()], { totalCount: 45 }))
+      const store = usePickingStore()
+      // Simulate state left behind by a prior visit to InProgressView: page 6.
+      store.page = 6
+
+      store.resetInProgressAndFetch()
+      await vi.waitFor(() => expect(recepcionApi.getInProgressTransfers).toHaveBeenCalledWith({ pageNumber: 1, pageSize: 20 }))
+
+      expect(store.page).toBe(1)
+    })
   })
 
   describe('fetchTransfer (detail)', () => {
@@ -252,7 +264,7 @@ describe('usePickingStore', () => {
       const store = usePickingStore()
       await store.fetchTransfer(7)
 
-      let resolveConfirm!: (v: ReceptionTransfer) => void
+      let resolveConfirm!: (v: void) => void
       vi.mocked(recepcionApi.confirm).mockReturnValue(
         new Promise((resolve) => {
           resolveConfirm = resolve
@@ -264,7 +276,7 @@ describe('usePickingStore', () => {
       vi.mocked(recepcionApi.getTransfer).mockResolvedValueOnce(mockGetTransfer(transferB))
       await store.fetchTransfer(8)
 
-      resolveConfirm({ ...transferA, status: 'confirmed' })
+      resolveConfirm(undefined)
       await confirmPromise
 
       expect(store.currentTransfer).toEqual(transferB)
@@ -617,13 +629,14 @@ describe('usePickingStore', () => {
   })
 
   describe('confirm', () => {
-    it('calls POST confirm with allowPartial:false by default (full confirm)', async () => {
+    it('calls POST confirm with allowPartial:false by default (full confirm), then re-fetches for the canonical state', async () => {
       const transfer = buildTransfer()
-      vi.mocked(recepcionApi.getTransfer).mockResolvedValue(mockGetTransfer(transfer))
+      vi.mocked(recepcionApi.getTransfer).mockResolvedValueOnce(mockGetTransfer(transfer))
       const store = usePickingStore()
       await store.fetchTransfer(7)
 
-      vi.mocked(recepcionApi.confirm).mockResolvedValue({ ...transfer, status: 'confirmed' })
+      vi.mocked(recepcionApi.confirm).mockResolvedValue(undefined)
+      vi.mocked(recepcionApi.getTransfer).mockResolvedValueOnce(mockGetTransfer({ ...transfer, status: 'confirmed' }))
 
       await store.confirm()
 
@@ -634,11 +647,12 @@ describe('usePickingStore', () => {
 
     it('calls POST confirm with allowPartial:true for a partial confirm', async () => {
       const transfer = buildTransfer()
-      vi.mocked(recepcionApi.getTransfer).mockResolvedValue(mockGetTransfer(transfer))
+      vi.mocked(recepcionApi.getTransfer).mockResolvedValueOnce(mockGetTransfer(transfer))
       const store = usePickingStore()
       await store.fetchTransfer(7)
 
-      vi.mocked(recepcionApi.confirm).mockResolvedValue({ ...transfer, status: 'confirmed' })
+      vi.mocked(recepcionApi.confirm).mockResolvedValue(undefined)
+      vi.mocked(recepcionApi.getTransfer).mockResolvedValueOnce(mockGetTransfer({ ...transfer, status: 'confirmed' }))
 
       await store.confirm({ allowPartial: true })
 
@@ -712,13 +726,49 @@ describe('usePickingStore', () => {
       expect(store.actionError).toBe('Target item number does not match base item number.  [StockTransferLines.ItemCode][line: 0]')
     })
 
+    it('recovers without showing an error when confirm 400s with "already confirmed" (duplicate click/tab racing automatic reconciliation) and a refetch confirms it', async () => {
+      const transfer = buildTransfer()
+      vi.mocked(recepcionApi.getTransfer)
+        .mockResolvedValueOnce(mockGetTransfer(transfer))
+        .mockResolvedValueOnce(mockGetTransfer({ ...transfer, status: 'confirmed' }))
+      const store = usePickingStore()
+      await store.fetchTransfer(7)
+
+      vi.mocked(recepcionApi.confirm).mockRejectedValue({
+        response: { status: 400, data: { error: "Reception transfer 7 is already confirmed." } },
+      })
+
+      await store.confirm()
+
+      expect(store.actionError).toBeNull()
+      expect(store.sapErrorMessage).toBeNull()
+      expect(store.currentTransfer?.status).toBe('confirmed')
+      expect(store.status).toBe('ready')
+    })
+
+    it('recovers without showing an error when confirm fails client-side (no response, e.g. a timeout) but a refetch shows it already confirmed', async () => {
+      const transfer = buildTransfer()
+      vi.mocked(recepcionApi.getTransfer)
+        .mockResolvedValueOnce(mockGetTransfer(transfer))
+        .mockResolvedValueOnce(mockGetTransfer({ ...transfer, status: 'confirmed' }))
+      const store = usePickingStore()
+      await store.fetchTransfer(7)
+
+      vi.mocked(recepcionApi.confirm).mockRejectedValue(new Error('timeout of 30000ms exceeded'))
+
+      await store.confirm()
+
+      expect(store.actionError).toBeNull()
+      expect(store.currentTransfer?.status).toBe('confirmed')
+    })
+
     it('sets isSubmitting true while confirm is in flight and false after it resolves', async () => {
       const transfer = buildTransfer()
       vi.mocked(recepcionApi.getTransfer).mockResolvedValue(mockGetTransfer(transfer))
       const store = usePickingStore()
       await store.fetchTransfer(7)
 
-      let resolveConfirm!: (v: ReceptionTransfer) => void
+      let resolveConfirm!: (v: void) => void
       vi.mocked(recepcionApi.confirm).mockReturnValue(
         new Promise((resolve) => {
           resolveConfirm = resolve
@@ -728,7 +778,7 @@ describe('usePickingStore', () => {
       const confirmPromise = store.confirm()
       expect(store.isSubmitting).toBe(true)
 
-      resolveConfirm({ ...transfer, status: 'confirmed' })
+      resolveConfirm(undefined)
       await confirmPromise
 
       expect(store.isSubmitting).toBe(false)

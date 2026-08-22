@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import { CalendarIcon, DocumentArrowDownIcon, PencilIcon, ArrowLeftIcon } from '@heroicons/vue/24/outline'
 import type { HistoryRow } from '../types'
 import { triggerBlobDownload } from '../utils/downloadBlob'
+import PageJumpInput from '../components/PageJumpInput.vue'
 
 const store = useHistoryStore()
 const authStore = useAuthStore()
@@ -197,7 +198,7 @@ async function handleExportCsv(): Promise<void> {
             </span>
           </div>
           <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            {{ mode === 'all' ? 'Transferencias materializadas en todos los almacenes.' : 'Transferencias materializadas en tu almacén.' }}
+            {{ mode === 'all' ? 'Transferencias recibidas en todos los almacenes.' : 'Transferencias recibidas en tu almacén.' }}
           </p>
           </div>
         </div>
@@ -280,6 +281,7 @@ async function handleExportCsv(): Promise<void> {
               Buscar
             </button>
             <button
+              type="button"
               data-testid="export-csv-btn"
               class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800 transition-colors shadow-sm"
               @click="handleExportCsv"
@@ -360,13 +362,16 @@ async function handleExportCsv(): Promise<void> {
                 <td class="px-4 py-3 text-sm">
                   <div class="flex items-center gap-2">
                     <template v-if="editingGlpiId === row.transferId">
+                      <label :for="`glpi-input-${row.transferId}`" class="sr-only">Ticket GLPI</label>
                       <input
+                        :id="`glpi-input-${row.transferId}`"
                         :data-testid="`glpi-input-${row.transferId}`"
                         v-model="glpiInput"
                         type="text"
                         class="w-24 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-2 py-1 text-sm text-gray-900 dark:text-white outline-none transition-all"
                       />
                       <button
+                        type="button"
                         :data-testid="`glpi-save-btn-${row.transferId}`"
                         :disabled="activeIsSubmitting"
                         class="text-emerald-600 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300 font-medium transition-colors text-xs disabled:opacity-50 disabled:cursor-not-allowed"
@@ -378,6 +383,7 @@ async function handleExportCsv(): Promise<void> {
                     <template v-else>
                       <span class="text-gray-600 dark:text-gray-300">{{ row.glpiTicket || 'Sin ticket' }}</span>
                       <button
+                        type="button"
                         :data-testid="`glpi-edit-btn-${row.transferId}`"
                         class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition-colors"
                         @click="startEditGlpi(row.transferId, row.glpiTicket)"
@@ -389,6 +395,7 @@ async function handleExportCsv(): Promise<void> {
                 </td>
                 <td class="px-4 py-3 text-sm text-right">
                   <button
+                    type="button"
                     :data-testid="`export-differences-btn-${row.transferId}`"
                     class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors text-xs"
                     @click="handleExportRowDifferences(row.transferId)"
@@ -406,7 +413,9 @@ async function handleExportCsv(): Promise<void> {
             <span class="text-sm text-gray-700 dark:text-gray-300">
               Mostrando <span class="font-medium">{{ pageStart }}</span> a <span class="font-medium">{{ pageEnd }}</span> de <span class="font-medium">{{ total }}</span>
             </span>
+            <label for="history-page-size" class="sr-only">Filas por página</label>
             <select
+              id="history-page-size"
               data-testid="pagination-page-size"
               :value="pageSize"
               class="rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white outline-none transition-all cursor-pointer"
@@ -427,9 +436,7 @@ async function handleExportCsv(): Promise<void> {
             >
               Anterior
             </button>
-            <div class="text-xs text-gray-600 dark:text-gray-300 font-medium bg-gray-50 dark:bg-gray-900 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700">
-              {{ page }} / {{ totalPages }}
-            </div>
+            <PageJumpInput :page="page" :total-pages="totalPages" @go="goToPage" />
             <button
               type="button"
               data-testid="pagination-next"

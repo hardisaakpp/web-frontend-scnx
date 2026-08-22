@@ -416,6 +416,7 @@ interface LiquidacionDetalleItem {
   concepto: string
   ruc: string
   nombreProveedor: string
+  numeroComprobante: string
   total: number
   subtotalConIva: number
   subtotalSinIva: number
@@ -633,6 +634,7 @@ const normalizeDetalle = (item: any): LiquidacionDetalleItem => ({
   concepto: normalizeString(item.concepto ?? item.Concepto ?? ''),
   ruc: normalizeString(item.ruc ?? item.Ruc ?? ''),
   nombreProveedor: normalizeString(item.nombreProveedor ?? item.NombreProveedor ?? ''),
+  numeroComprobante: normalizeString(item.numeroComprobante ?? item.NumeroComprobante ?? ''),
   total: Number(item.total ?? item.Total ?? 0),
   subtotalConIva: Number(item.subtotal_Con_Iva ?? item.Subtotal_Con_Iva ?? item.subtotalConIva ?? 0),
   subtotalSinIva: Number(item.subtotal_Sin_Iva ?? item.Subtotal_Sin_Iva ?? item.subtotalSinIva ?? 0),
@@ -1483,6 +1485,9 @@ const loadHistorial = async () => {
       idGasto: normalizeString(item.idGasto ?? item.IdGasto ?? ''),
       nombreGasto: normalizeString(item.nombreGasto ?? item.NombreGasto ?? ''),
       concepto: normalizeString(item.concepto ?? item.Concepto ?? ''),
+      ruc: normalizeString(item.ruc ?? item.Ruc ?? ''),
+      nombreProveedor: normalizeString(item.nombreProveedor ?? item.NombreProveedor ?? ''),
+      numeroComprobante: normalizeString(item.numeroComprobante ?? item.NumeroComprobante ?? ''),
       total: Number(item.total ?? item.Total ?? 0),
       subtotalConIva: Number(item.subtotalConIva ?? item.SubtotalConIva ?? item.subtotal_Con_Iva ?? 0),
       subtotalSinIva: Number(item.subtotalSinIva ?? item.SubtotalSinIva ?? item.subtotal_Sin_Iva ?? 0),
@@ -1654,15 +1659,173 @@ const closeDetalle = () => {
 const formatAmount = (value: number) => value.toFixed(2)
 const formatDate = (value: string) => (value ? value.substring(0, 10) : '')
 
-const downloadLiquidacionPdf = (idLiquidacion: number) => {
-  const esc = (s: string | number | undefined | null) =>
-    String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  const fmt = (v: string | undefined | null) => (v ? String(v).substring(0, 10) : '-')
-  const fmtAmt = (v: number | undefined | null) => {
-    const n = Number(v ?? 0)
-    return Number.isNaN(n) ? '0.00' : n.toFixed(2)
-  }
+const escHtml = (s: string | number | undefined | null) =>
+  String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+const fmtDateOrDash = (v: string | undefined | null) => (v ? String(v).substring(0, 10) : '-')
+const fmtAmtOrZero = (v: number | undefined | null) => {
+  const n = Number(v ?? 0)
+  return Number.isNaN(n) ? '0.00' : n.toFixed(2)
+}
 
+const LIQUIDACION_PDF_CSS = `
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Helvetica Neue',Arial,sans-serif;font-size:11px;color:#1a1a1a;background:#fff;padding:24px}
+  .header-doc{border-bottom:3px solid #7c3aed;padding-bottom:12px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:flex-end}
+  .header-doc .title-block .label{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#7c3aed;font-weight:600}
+  .header-doc .title-block h1{font-size:20px;font-weight:800;color:#1e1b4b;line-height:1.1}
+  .header-doc .meta-right{text-align:right;font-size:10px;color:#6b7280;line-height:1.6}
+  .section{border:1px solid #e5e7eb;border-radius:6px;margin-bottom:20px;overflow:hidden}
+  .section-head{background:#7c3aed;color:#fff;padding:9px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;display:flex;justify-content:space-between;align-items:center}
+  .section-head.green{background:#065f46}
+  .section-head.blue{background:#1e3a5f}
+  .section-head .badge{background:rgba(255,255,255,.2);border-radius:3px;padding:2px 7px;font-size:9px;font-weight:700;letter-spacing:.4px}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr)}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr)}
+  .grid2{display:grid;grid-template-columns:repeat(2,1fr)}
+  .meta-cell{padding:9px 14px;border-right:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb}
+  .meta-cell:last-child{border-right:none}
+  .meta-label{font-size:8.5px;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:2px}
+  .meta-value{font-size:11px;font-weight:600;color:#111}
+  .meta-value.small{font-size:10px;font-weight:400}
+  .integ-bar{background:#f0fdf4;border-bottom:1px solid #bbf7d0;padding:7px 14px;font-size:10px;color:#065f46;display:flex;align-items:center;gap:8px}
+  .integ-bar.error{background:#fef2f2;border-bottom-color:#fecaca;color:#dc2626}
+  .integ-bar.pending{background:#fffbeb;border-bottom-color:#fde68a;color:#92400e}
+  .integ-dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}
+  table{width:100%;border-collapse:collapse}
+  th{background:#f3f4f6;text-align:left;padding:6px 10px;font-size:8.5px;text-transform:uppercase;letter-spacing:.4px;color:#6b7280;border-bottom:1px solid #e5e7eb}
+  td{padding:5px 10px;border-bottom:1px solid #f3f4f6;vertical-align:top;font-size:10px;color:#374151}
+  tr:last-child td{border-bottom:none}
+  .amount{text-align:right;font-variant-numeric:tabular-nums;font-family:'Courier New',monospace;font-size:10px}
+  .aprobado{color:#059669;font-weight:600}
+  .rechazado{color:#dc2626;font-weight:600}
+  .footer-totals{background:#f9fafb;padding:10px 14px;display:flex;justify-content:flex-end;gap:28px;border-top:2px solid #e5e7eb}
+  .total-item{text-align:right}
+  .total-label{font-size:9px;text-transform:uppercase;color:#6b7280;letter-spacing:.4px}
+  .total-value{font-size:13px;font-weight:700;color:#111}
+  .total-value.primary{color:#7c3aed}
+  .stats-row{display:flex;gap:20px;font-size:10px;color:rgba(255,255,255,.85)}
+  .stats-row span strong{font-weight:700;color:#fff}
+  @media print{body{padding:8mm}@page{size:A4;margin:10mm}}
+`
+
+const buildIntegBarHtml = (integ: IntegracionEstadoItem | undefined, intMessage: { texto: string } | undefined) => {
+  const integEstado = String(integ?.estado || 'PENDIENTE').toUpperCase()
+  let integBarClass = 'pending'
+  if (integEstado === 'INTEGRADO') integBarClass = ''
+  else if (integEstado === 'ERROR') integBarClass = 'error'
+  const integRef = integ?.docNum
+    ? `DocNum: ${escHtml(integ.docNum)}`
+    : integ?.docEntry
+      ? `DocEntry: ${escHtml(integ.docEntry)}`
+      : ''
+  const integMsgText = intMessage?.texto || integ?.mensaje || ''
+  return `
+    <div class="integ-bar ${integBarClass}">
+      <span class="integ-dot"></span>
+      <strong>Integración SAP: ${escHtml(integEstado)}</strong>
+      ${integRef ? `&nbsp;&middot;&nbsp;${escHtml(integRef)}` : ''}
+      ${integMsgText ? `&nbsp;&middot;&nbsp;${escHtml(integMsgText)}` : ''}
+    </div>`
+}
+
+const buildCabeceraHtml = (
+  idLiquidacion: number,
+  liq: LiquidacionItem | undefined,
+  integBarHtml: string,
+  totalSolicitado: number,
+  totalAprobado: number,
+  detallesCount: number
+) => `
+    <div class="section">
+      <div class="section-head blue"><span>Cabecera de la liquidación</span><span class="badge">#${escHtml(idLiquidacion)}</span></div>
+      ${integBarHtml}
+      <div class="grid4">
+        <div class="meta-cell"><div class="meta-label">Almacén / Tienda</div><div class="meta-value">${escHtml(liq?.codAlmacen || '-')}</div></div>
+        <div class="meta-cell"><div class="meta-label">Custodio</div><div class="meta-value">${escHtml(liq?.nombreCustodio || '-')}</div></div>
+        <div class="meta-cell"><div class="meta-label">Cédula custodio</div><div class="meta-value">${escHtml(liq?.cedulaCustodio || '-')}</div></div>
+        <div class="meta-cell"><div class="meta-label">Fecha creación</div><div class="meta-value">${fmtDateOrDash(liq?.fechaCreacion)}</div></div>
+      </div>
+      <div class="grid4">
+        <div class="meta-cell"><div class="meta-label">Estado liquidación</div><div class="meta-value">${escHtml(liq?.estado || '-')}</div></div>
+        <div class="meta-cell"><div class="meta-label">Total solicitado</div><div class="meta-value">$${fmtAmtOrZero(totalSolicitado)}</div></div>
+        <div class="meta-cell"><div class="meta-label">Total aprobado</div><div class="meta-value primary" style="color:#7c3aed">$${fmtAmtOrZero(totalAprobado)}</div></div>
+        <div class="meta-cell"><div class="meta-label"># detalles</div><div class="meta-value">${detallesCount}</div></div>
+      </div>
+    </div>`
+
+const buildDetalleRow = (d: LiquidacionDetalleItem, adjCount: number) => {
+  const iva = d.total - d.subtotalConIva - d.subtotalSinIva
+  return `<tr>
+      <td>${escHtml(d.idGasto || '-')}</td>
+      <td>${escHtml(d.nombreGasto)}</td>
+      <td>${escHtml(d.concepto)}</td>
+      <td>${escHtml(d.nombreProveedor || '-')}</td>
+      <td>${escHtml(d.ruc || '-')}</td>
+      <td>${escHtml(d.numeroComprobante || '-')}</td>
+      <td class="amount">${fmtAmtOrZero(d.subtotalConIva)}</td>
+      <td class="amount">${fmtAmtOrZero(d.subtotalSinIva)}</td>
+      <td class="amount">${fmtAmtOrZero(iva < 0 ? 0 : iva)}</td>
+      <td class="amount">${fmtAmtOrZero(d.total)}</td>
+      <td style="text-align:right">${adjCount}</td>
+    </tr>`
+}
+
+const buildDetalleHtml = (
+  detalles: LiquidacionDetalleItem[],
+  adjuntosByDetalleMap: Record<number, number>,
+  totalSolicitado: number
+) => {
+  const detallesRows = detalles.map(d => buildDetalleRow(d, adjuntosByDetalleMap[d.idDetalle] ?? 0)).join('')
+  return `
+    <div class="section">
+      <div class="section-head green"><span>Detalle de gastos</span><span class="stats-row"><span>Items: <strong>${detalles.length}</strong></span><span>Total: <strong>$${fmtAmtOrZero(totalSolicitado)}</strong></span></span></div>
+      <table><thead><tr>
+        <th>Cód. Gasto</th><th>Gasto</th><th>Concepto</th><th>Proveedor</th><th>RUC</th><th>N° Comprobante</th>
+        <th>Base Gravada</th><th>Base 0%</th><th>IVA</th><th>Total</th><th>Adj.</th>
+      </tr></thead><tbody>${detallesRows || '<tr><td colspan="11" style="color:#9ca3af;font-style:italic;padding:10px">Sin detalles.</td></tr>'}</tbody></table>
+      <div class="footer-totals">
+        <div class="total-item"><div class="total-label">Total solicitado</div><div class="total-value">$${fmtAmtOrZero(totalSolicitado)}</div></div>
+      </div>
+    </div>`
+}
+
+const buildAprobacionRow = (h: HistorialItem, aprobadorNombre: string) => {
+  const estadoClass = h.estado.toUpperCase() === 'RECHAZADO' ? 'rechazado' : 'aprobado'
+  return `<tr>
+      <td>${escHtml(h.idAprobacion)}</td>
+      <td>${escHtml(aprobadorNombre)}</td>
+      <td>${escHtml(h.nombreGasto)}</td>
+      <td>${escHtml(h.concepto)}</td>
+      <td class="amount">${fmtAmtOrZero(h.total)}</td>
+      <td class="amount">${fmtAmtOrZero(h.montoAprobado)}</td>
+      <td class="${estadoClass}">${escHtml(h.estado)}</td>
+      <td>${escHtml(h.observacion || '-')}</td>
+      <td>${fmtDateOrDash(h.fechaAprobacion)}</td>
+    </tr>`
+}
+
+const buildAprobHtml = (
+  aprobaciones: HistorialItem[],
+  aprobadorNombreDe: (h: HistorialItem) => string,
+  totalAprobado: number
+) => {
+  const aprobCount = aprobaciones.filter(h => h.estado.toUpperCase() === 'APROBADO').length
+  const rechazCount = aprobaciones.filter(h => h.estado.toUpperCase() === 'RECHAZADO').length
+  const aprobRows = aprobaciones.map(h => buildAprobacionRow(h, aprobadorNombreDe(h))).join('')
+  return `
+    <div class="section">
+      <div class="section-head"><span>Aprobaciones / Rechazos contabilidad</span><span class="stats-row"><span>Aprobados: <strong>${aprobCount}</strong></span><span>Rechazados: <strong>${rechazCount}</strong></span><span>Total aprobado: <strong>$${fmtAmtOrZero(totalAprobado)}</strong></span></span></div>
+      <table><thead><tr>
+        <th>Aprob.</th><th>Aprobado por</th><th>Gasto</th><th>Concepto</th>
+        <th>Total</th><th>Monto aprobado</th><th>Estado</th><th>Comentario</th><th>Fecha</th>
+      </tr></thead><tbody>${aprobRows || '<tr><td colspan="9" style="color:#9ca3af;font-style:italic;padding:10px">Sin aprobaciones.</td></tr>'}</tbody></table>
+      <div class="footer-totals">
+        <div class="total-item"><div class="total-label">Total aprobado contabilidad</div><div class="total-value primary">$${fmtAmtOrZero(totalAprobado)}</div></div>
+      </div>
+    </div>`
+}
+
+const downloadLiquidacionPdf = (idLiquidacion: number) => {
   const liq = liquidacionesMap.value[idLiquidacion]
   const detalles = detallesByLiquidacion.value[idLiquidacion] || []
   const aprobaciones = historial.value.filter(h => h.idLiquidacion === idLiquidacion)
@@ -1671,152 +1834,22 @@ const downloadLiquidacionPdf = (idLiquidacion: number) => {
 
   const totalSolicitado = detalles.reduce((a, d) => a + d.total, 0)
   const totalAprobado = aprobaciones.reduce((a, h) => a + h.montoAprobado, 0)
-  const aprobCount = aprobaciones.filter(h => h.estado.toUpperCase() === 'APROBADO').length
-  const rechazCount = aprobaciones.filter(h => h.estado.toUpperCase() === 'RECHAZADO').length
 
-  const CSS = `
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Helvetica Neue',Arial,sans-serif;font-size:11px;color:#1a1a1a;background:#fff;padding:24px}
-    .header-doc{border-bottom:3px solid #7c3aed;padding-bottom:12px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:flex-end}
-    .header-doc .title-block .label{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#7c3aed;font-weight:600}
-    .header-doc .title-block h1{font-size:20px;font-weight:800;color:#1e1b4b;line-height:1.1}
-    .header-doc .meta-right{text-align:right;font-size:10px;color:#6b7280;line-height:1.6}
-    .section{border:1px solid #e5e7eb;border-radius:6px;margin-bottom:20px;overflow:hidden}
-    .section-head{background:#7c3aed;color:#fff;padding:9px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;display:flex;justify-content:space-between;align-items:center}
-    .section-head.green{background:#065f46}
-    .section-head.blue{background:#1e3a5f}
-    .section-head .badge{background:rgba(255,255,255,.2);border-radius:3px;padding:2px 7px;font-size:9px;font-weight:700;letter-spacing:.4px}
-    .grid4{display:grid;grid-template-columns:repeat(4,1fr)}
-    .grid3{display:grid;grid-template-columns:repeat(3,1fr)}
-    .grid2{display:grid;grid-template-columns:repeat(2,1fr)}
-    .meta-cell{padding:9px 14px;border-right:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb}
-    .meta-cell:last-child{border-right:none}
-    .meta-label{font-size:8.5px;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:2px}
-    .meta-value{font-size:11px;font-weight:600;color:#111}
-    .meta-value.small{font-size:10px;font-weight:400}
-    .integ-bar{background:#f0fdf4;border-bottom:1px solid #bbf7d0;padding:7px 14px;font-size:10px;color:#065f46;display:flex;align-items:center;gap:8px}
-    .integ-bar.error{background:#fef2f2;border-bottom-color:#fecaca;color:#dc2626}
-    .integ-bar.pending{background:#fffbeb;border-bottom-color:#fde68a;color:#92400e}
-    .integ-dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}
-    table{width:100%;border-collapse:collapse}
-    th{background:#f3f4f6;text-align:left;padding:6px 10px;font-size:8.5px;text-transform:uppercase;letter-spacing:.4px;color:#6b7280;border-bottom:1px solid #e5e7eb}
-    td{padding:5px 10px;border-bottom:1px solid #f3f4f6;vertical-align:top;font-size:10px;color:#374151}
-    tr:last-child td{border-bottom:none}
-    .amount{text-align:right;font-variant-numeric:tabular-nums;font-family:'Courier New',monospace;font-size:10px}
-    .aprobado{color:#059669;font-weight:600}
-    .rechazado{color:#dc2626;font-weight:600}
-    .footer-totals{background:#f9fafb;padding:10px 14px;display:flex;justify-content:flex-end;gap:28px;border-top:2px solid #e5e7eb}
-    .total-item{text-align:right}
-    .total-label{font-size:9px;text-transform:uppercase;color:#6b7280;letter-spacing:.4px}
-    .total-value{font-size:13px;font-weight:700;color:#111}
-    .total-value.primary{color:#7c3aed}
-    .stats-row{display:flex;gap:20px;font-size:10px;color:rgba(255,255,255,.85)}
-    .stats-row span strong{font-weight:700;color:#fff}
-    @media print{body{padding:8mm}@page{size:A4;margin:10mm}}
-  `
+  const integBarHtml = buildIntegBarHtml(integ, intMessage)
+  const cabeceraHtml = buildCabeceraHtml(idLiquidacion, liq, integBarHtml, totalSolicitado, totalAprobado, detalles.length)
+  const detalleHtml = buildDetalleHtml(detalles, adjuntosByDetalle.value, totalSolicitado)
+  const aprobHtml = buildAprobHtml(aprobaciones, getAprobadorNombre, totalAprobado)
 
-  // --- INTEGRACION BAR ---
-  const integEstado = String(integ?.estado || 'PENDIENTE').toUpperCase()
-  let integBarClass = 'pending'
-  if (integEstado === 'INTEGRADO') integBarClass = ''
-  else if (integEstado === 'ERROR') integBarClass = 'error'
-  const integRef = integ?.docNum ? `DocNum: ${esc(integ.docNum)}` : integ?.docEntry ? `DocEntry: ${esc(integ.docEntry)}` : ''
-  const integMsgText = intMessage?.texto || integ?.mensaje || ''
-  const integBarHtml = `
-    <div class="integ-bar ${integBarClass}">
-      <span class="integ-dot"></span>
-      <strong>Integración SAP: ${esc(integEstado)}</strong>
-      ${integRef ? `&nbsp;&middot;&nbsp;${esc(integRef)}` : ''}
-      ${integMsgText ? `&nbsp;&middot;&nbsp;${esc(integMsgText)}` : ''}
-    </div>`
-
-  // --- CABECERA ---
-  const cabeceraHtml = `
-    <div class="section">
-      <div class="section-head blue"><span>Cabecera de la liquidación</span><span class="badge">#${esc(idLiquidacion)}</span></div>
-      ${integBarHtml}
-      <div class="grid4">
-        <div class="meta-cell"><div class="meta-label">Almacén / Tienda</div><div class="meta-value">${esc(liq?.codAlmacen || '-')}</div></div>
-        <div class="meta-cell"><div class="meta-label">Custodio</div><div class="meta-value">${esc(liq?.nombreCustodio || '-')}</div></div>
-        <div class="meta-cell"><div class="meta-label">Cédula custodio</div><div class="meta-value">${esc(liq?.cedulaCustodio || '-')}</div></div>
-        <div class="meta-cell"><div class="meta-label">Fecha creación</div><div class="meta-value">${fmt(liq?.fechaCreacion)}</div></div>
-      </div>
-      <div class="grid4">
-        <div class="meta-cell"><div class="meta-label">Estado liquidación</div><div class="meta-value">${esc(liq?.estado || '-')}</div></div>
-        <div class="meta-cell"><div class="meta-label">Total solicitado</div><div class="meta-value">$${fmtAmt(totalSolicitado)}</div></div>
-        <div class="meta-cell"><div class="meta-label">Total aprobado</div><div class="meta-value primary" style="color:#7c3aed">$${fmtAmt(totalAprobado)}</div></div>
-        <div class="meta-cell"><div class="meta-label"># detalles</div><div class="meta-value">${detalles.length}</div></div>
-      </div>
-    </div>`
-
-  // --- DETALLES ---
-  let detallesRows = ''
-  detalles.forEach(d => {
-    const iva = d.total - d.subtotalConIva - d.subtotalSinIva
-    const adjCount = adjuntosByDetalle.value[d.idDetalle] ?? 0
-    detallesRows += `<tr>
-      <td>${esc(d.idGasto || '-')}</td>
-      <td>${esc(d.nombreGasto)}</td>
-      <td>${esc(d.concepto)}</td>
-      <td>${esc(d.nombreProveedor || '-')}</td>
-      <td>${esc(d.ruc || '-')}</td>
-      <td class="amount">${fmtAmt(d.subtotalConIva)}</td>
-      <td class="amount">${fmtAmt(d.subtotalSinIva)}</td>
-      <td class="amount">${fmtAmt(iva < 0 ? 0 : iva)}</td>
-      <td class="amount">${fmtAmt(d.total)}</td>
-      <td style="text-align:right">${adjCount}</td>
-    </tr>`
-  })
-  const detalleHtml = `
-    <div class="section">
-      <div class="section-head green"><span>Detalle de gastos</span><span class="stats-row"><span>Items: <strong>${detalles.length}</strong></span><span>Total: <strong>$${fmtAmt(totalSolicitado)}</strong></span></span></div>
-      <table><thead><tr>
-        <th>Cód. Gasto</th><th>Gasto</th><th>Concepto</th><th>Proveedor</th><th>RUC</th>
-        <th>Base Gravada</th><th>Base 0%</th><th>IVA</th><th>Total</th><th>Adj.</th>
-      </tr></thead><tbody>${detallesRows || '<tr><td colspan="10" style="color:#9ca3af;font-style:italic;padding:10px">Sin detalles.</td></tr>'}</tbody></table>
-      <div class="footer-totals">
-        <div class="total-item"><div class="total-label">Total solicitado</div><div class="total-value">$${fmtAmt(totalSolicitado)}</div></div>
-      </div>
-    </div>`
-
-  // --- APROBACIONES ---
-  let aprobRows = ''
-  aprobaciones.forEach(h => {
-    const estadoClass = h.estado.toUpperCase() === 'RECHAZADO' ? 'rechazado' : 'aprobado'
-    aprobRows += `<tr>
-      <td>${esc(h.idAprobacion)}</td>
-      <td>${esc(getAprobadorNombre(h))}</td>
-      <td>${esc(h.nombreGasto)}</td>
-      <td>${esc(h.concepto)}</td>
-      <td class="amount">${fmtAmt(h.total)}</td>
-      <td class="amount">${fmtAmt(h.montoAprobado)}</td>
-      <td class="${estadoClass}">${esc(h.estado)}</td>
-      <td>${esc(h.observacion || '-')}</td>
-      <td>${fmt(h.fechaAprobacion)}</td>
-    </tr>`
-  })
-  const aprobHtml = `
-    <div class="section">
-      <div class="section-head"><span>Aprobaciones / Rechazos contabilidad</span><span class="stats-row"><span>Aprobados: <strong>${aprobCount}</strong></span><span>Rechazados: <strong>${rechazCount}</strong></span><span>Total aprobado: <strong>$${fmtAmt(totalAprobado)}</strong></span></span></div>
-      <table><thead><tr>
-        <th>Aprob.</th><th>Aprobado por</th><th>Gasto</th><th>Concepto</th>
-        <th>Total</th><th>Monto aprobado</th><th>Estado</th><th>Comentario</th><th>Fecha</th>
-      </tr></thead><tbody>${aprobRows || '<tr><td colspan="9" style="color:#9ca3af;font-style:italic;padding:10px">Sin aprobaciones.</td></tr>'}</tbody></table>
-      <div class="footer-totals">
-        <div class="total-item"><div class="total-label">Total aprobado contabilidad</div><div class="total-value primary">$${fmtAmt(totalAprobado)}</div></div>
-      </div>
-    </div>`
-
-  const generado = new Date().toLocaleString(APP_LOCALE)
-  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Liquidacion #${idLiquidacion}</title><style>${CSS}</style></head><body>
+  const generado = new Date().toLocaleString('es-ES')
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Liquidacion #${idLiquidacion}</title><style>${LIQUIDACION_PDF_CSS}</style></head><body>
     <div class="header-doc">
       <div class="title-block">
         <div class="label">Historial Contabilidad</div>
-        <h1>Liquidación #${esc(idLiquidacion)}</h1>
+        <h1>Liquidación #${escHtml(idLiquidacion)}</h1>
       </div>
       <div class="meta-right">
-        Tienda: <strong>${esc(liq?.codAlmacen || '-')}</strong><br>
-        Custodio: <strong>${esc(liq?.nombreCustodio || '-')}</strong><br>
+        Tienda: <strong>${escHtml(liq?.codAlmacen || '-')}</strong><br>
+        Custodio: <strong>${escHtml(liq?.nombreCustodio || '-')}</strong><br>
         Generado: ${generado}
       </div>
     </div>

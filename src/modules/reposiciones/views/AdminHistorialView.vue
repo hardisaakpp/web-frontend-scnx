@@ -18,6 +18,12 @@ import {
   TableCellsIcon
 } from '@heroicons/vue/24/outline'
 import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue'
+import { useAuthStore } from '@/stores/auth'
+import { useNegocioScope } from '../composables/useNegocioScope'
+
+const authStore = useAuthStore()
+const isAdmin = computed(() => authStore.hasPermission('reposiciones.administrador'))
+const { misCdCodes, miCdCode } = useNegocioScope()
 
 const store = useReposicionStore()
 const historial = ref<HistorialCabecera[]>([])
@@ -41,10 +47,14 @@ const kpis = computed(() => [
   { name: 'Pendientes', value: historial.value.filter(h => !h.integrado).length, icon: ClockIcon, color: 'text-amber-600', bg: 'bg-amber-50' },
 ])
 
+// Admin ve todo si no elige una bodega puntual; un usuario "negocio" que no
+// elige nada queda acotado a su propio Centro de Distribución (nunca al global).
+const whsCodeEfectivo = computed(() => whsFilter.value || (!isAdmin.value ? miCdCode.value : undefined))
+
 const fetchHistorial = async () => {
   loading.value = true
   try {
-    historial.value = await reposicionApi.getHistorial(whsFilter.value || undefined, fechaDesde.value, fechaHasta.value)
+    historial.value = await reposicionApi.getHistorial(whsCodeEfectivo.value, fechaDesde.value, fechaHasta.value)
   } catch (err) {
     console.error('Error al cargar historial admin', err)
   } finally {
@@ -53,9 +63,8 @@ const fetchHistorial = async () => {
 }
 
 onMounted(async () => {
-  // Para Admin, cargamos todos los almacenes disponibles en la base de datos
   try {
-    almacenesTodos.value = await reposicionApi.getAlmacenes()
+    almacenesTodos.value = await reposicionApi.getAlmacenes(isAdmin.value ? undefined : misCdCodes.value)
   } catch (err) {
     console.error('Error al cargar almacenes para admin', err)
   }
@@ -91,9 +100,11 @@ const openDetail = async (id: number) => {
 
 const downloadPdf = (id: number) => window.open(reposicionApi.getPdfUrl(id), '_blank')
 
-// cdCode se omite a propósito: el reporte general incluye todos los Centros de
-// Distribución. whsFilter filtra por tienda (destino), no aplica aquí.
+// whsCode acepta tanto un CD como una tienda puntual (el backend resuelve cuál
+// es), igual que en GET /api/Historial: reutilizamos el mismo whsCodeEfectivo
+// que ya filtra la tabla en pantalla para acotar también el reporte general.
 const reporteGeneralParams = () => ({
+  whsCode: whsCodeEfectivo.value,
   desde: fechaDesde.value,
   hasta: fechaHasta.value
 })
@@ -123,10 +134,10 @@ const viewSolicitudes = async (whsCode: string, fecha: string) => {
         </router-link>
         <div>
           <div class="flex items-center gap-2">
-            <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Panel de Control Global</h1>
+            <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Panel administrativo</h1>
             <span class="bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-blue-200 uppercase tracking-wider">Administrador</span>
           </div>
-          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Supervisión general de reposiciones en todas las bodegas.</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Administración general de reposiciones en todas las bodegas.</p>
         </div>
       </div>
 
@@ -135,7 +146,7 @@ const viewSolicitudes = async (whsCode: string, fecha: string) => {
         <div class="flex items-center px-4 py-2 border-r border-gray-100 dark:border-gray-700 gap-2">
           <BuildingOfficeIcon class="w-4 h-4 text-gray-400 dark:text-gray-500" />
           <select v-model="whsFilter" class="border-none focus:ring-0 p-0 text-sm font-bold text-gray-700 dark:text-white bg-transparent min-w-[120px] cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-            <option value="" class="bg-white dark:bg-gray-800">Todas las bodegas</option>
+            <option value="" class="bg-white dark:bg-gray-800">{{ isAdmin ? 'Todas las bodegas' : 'Todas mis bodegas' }}</option>
             <option v-for="alm in almacenesTodos" :key="alm.code" :value="alm.code" class="bg-white dark:bg-gray-800">
               {{ formatAlmacen(alm) }}
             </option>

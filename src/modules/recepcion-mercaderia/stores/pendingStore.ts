@@ -5,18 +5,18 @@ import { featureReadiness } from '../config/featureReadiness'
 import type { FlowStatus, PendingTransferLine } from '../types'
 
 /**
- * Pending-transfers list + materialize. Live against api-middleware-sap today
+ * Pending-transfers list + receive. Live against api-middleware-sap today
  * (featureReadiness.pendingTransfersReady: true — confirmed working, see featureReadiness.ts).
  * The 'degraded' status/guard clauses below are a kill switch, not dead code: flipping that flag
- * back to false starts the flow 'degraded' and makes fetchPending/materialize no-op instead of
+ * back to false starts the flow 'degraded' and makes fetchPending/receive no-op instead of
  * issuing a live call (see design.md "Error / Degraded-State Handling").
  */
 export const usePendingStore = defineStore('recepcionPending', () => {
   const status = ref<FlowStatus>(featureReadiness.pendingTransfersReady ? 'ready' : 'degraded')
   const transfers = ref<PendingTransferLine[]>([])
   const error = ref<string | null>(null)
-  // In-flight flag for materialize, so the view can disable the button and avoid duplicate
-  // materialize POSTs from fast double-clicks.
+  // In-flight flag for receive, so the view can disable the button and avoid duplicate
+  // receive POSTs from fast double-clicks.
   const isSubmitting = ref(false)
   // Real server-side pagination (verified ListPendingTransferRequestsQuery: pageNumber/pageSize,
   // same PagedResponse envelope/clamping as in-progress/history).
@@ -65,19 +65,45 @@ export const usePendingStore = defineStore('recepcionPending', () => {
   }
 
   /**
-   * Pending lines have no numeric id — keyed by (sapTransferRequestNumber, itemCode). Materialize
+   * The store outlives the view (Pinia singleton), so a leftover search/page from a previous
+   * visit would otherwise silently apply again on the next mount — e.g. a search for a
+   * nonexistent code, or a page far into the list, both surviving a trip to another route and
+   * back even though the visible input/page control look reset. Views should call this instead
+   * of fetchPending() directly in onMounted.
+   */
+  function resetAndFetch(): void {
+    page.value = 1
+    searchQuery.value = ''
+    fetchPending()
+  }
+
+  /**
+   * Pending lines have no numeric id — keyed by (sapTransferRequestNumber, itemCode). Receive
    * needs the SAP request number + the destination warehouse to materialize into.
    */
-  async function materialize(sapTransferRequestNumber: string, warehouseCode: string): Promise<void> {
-    if (status.value === 'degraded') return
+  async function receive(sapTransferRequestNumber: string, warehouseCode: string): Promise<number | undefined> {
+    if (status.value === 'degraded') return undefined
 
     isSubmitting.value = true
     try {
-      await recepcionApi.materializePendingTransfer(sapTransferRequestNumber, warehouseCode)
-      transfers.value = transfers.value.filter((t) => t.sapTransferRequestNumber !== sapTransferRequestNumber)
+      const transferId = await recepcionApi.materializePendingTransfer(sapTransferRequestNumber, warehouseCode)
+      // Re-fetch the current page from the server instead of splicing the local array: a
+      // transfer can have several item lines, each its own row, so removing them client-side
+      // left totalCount stale and, if every row on the current page belonged to that transfer,
+      // the page rendered empty instead of being replenished from the server's real next batch.
+      await fetchPending()
+      // The page just received could have been the last one and is now empty (e.g. every
+      // row on it belonged to this transfer) — step back instead of stranding the user on a
+      // blank page while real data still exists earlier in the list.
+      if (transfers.value.length === 0 && page.value > 1) {
+        page.value -= 1
+        await fetchPending()
+      }
+      return transferId
     } catch {
-      error.value = 'No se pudo materializar la transferencia.'
+      error.value = 'No se pudo recibir la transferencia.'
       status.value = 'error'
+      return undefined
     } finally {
       isSubmitting.value = false
     }
@@ -93,9 +119,10 @@ export const usePendingStore = defineStore('recepcionPending', () => {
     totalCount,
     searchQuery,
     fetchPending,
+    resetAndFetch,
     setPage,
     setPageSize,
     setSearchQuery,
-    materialize,
+    receive,
   }
 })

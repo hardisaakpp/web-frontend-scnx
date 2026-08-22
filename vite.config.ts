@@ -63,7 +63,6 @@ export default defineConfig(async ({ mode }): Promise<UserConfig> => {
   console.log(`\x1b[35m[proxy]\x1b[0m Recepción Mercadería → ${recepcionProxyTarget}`)
 
   const ruletaProxyTarget = upstreamUrl(env, 'RULETA')
-  const demandaOtbProxyTarget = upstreamUrl(env, 'DEMANDA_OTB')
   const pygProxyPrefix =
     'UPSTREAM_PYG_PREFIX' in env
       ? env.UPSTREAM_PYG_PREFIX
@@ -359,63 +358,6 @@ export default defineConfig(async ({ mode }): Promise<UserConfig> => {
           secure: false,
 
           rewrite: (path) => path.replace(/^\/ruleta-api/, '')
-
-        },
-
-        // Dashboards externos embebidos (iframe). Las rutas exactas del selector y de cada
-        // dashboard ('/demanda-otb', '/demanda-otb/roland', '/demanda-otb/descuenton') las
-        // sirve el SPA; el resto de subrutas (dashboard_roland, dashboard_descuenton, assets,
-        // API propia del dashboard) van al backend real.
-        '/demanda-otb': {
-
-          target: demandaOtbProxyTarget,
-
-          changeOrigin: true,
-
-          secure: false,
-
-          bypass: (req) => {
-
-            const spaPaths = [
-              '/demanda-otb',
-              '/demanda-otb/',
-              '/demanda-otb/roland',
-              '/demanda-otb/roland/',
-              '/demanda-otb/descuenton',
-              '/demanda-otb/descuenton/'
-            ]
-
-            if (req.url !== undefined && spaPaths.includes(req.url)) {
-
-              return '/index.html'
-
-            }
-
-          }
-
-        },
-
-        // El dashboard de Demanda OTB referencia este asset con ruta absoluta ('/static/vendor/plotly.min.js')
-        // en vez de relativa a '/demanda-otb/'. Se proxea aparte al mismo backend hasta que se corrija ahí.
-        '/static': {
-
-          target: demandaOtbProxyTarget,
-
-          changeOrigin: true,
-
-          secure: false
-
-        },
-
-        // El chatbot mIA del dashboard llama a '/mia/chat', '/mia/avatar', '/mia/feedback' con
-        // ruta absoluta en vez de relativa a '/demanda-otb/'. Mismo caso que '/static' de arriba.
-        '/mia': {
-
-          target: demandaOtbProxyTarget,
-
-          changeOrigin: true,
-
-          secure: false
 
         }
 

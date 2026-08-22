@@ -145,7 +145,7 @@ const recepcionApi = {
   },
 
   // Real body: { sapTransferRequestNumber, warehouseCode } — there is no transferId to send,
-  // the pending line has none. Response is `{ id }` (the newly materialized transfer's id).
+  // the pending line has none. Response is `{ id }` (the newly received transfer's id).
   materializePendingTransfer: async (sapTransferRequestNumber: string, warehouseCode: string): Promise<number> => {
     const response = await api.post<{ id: number }>(`${BASE}/pending-transfers/materialize`, {
       sapTransferRequestNumber,
@@ -190,11 +190,14 @@ const recepcionApi = {
     })
   },
 
-  confirm: async (transferId: number, body: ConfirmTransferRequest = {}): Promise<ReceptionTransfer> => {
-    const response = await api.post<WireReceptionTransfer>(`${BASE}/transfers/${transferId}/confirm`, {
+  // Success response is ConfirmReceptionTransferResult's own shape { success, sapDocEntry,
+  // sapDocNum, message } — verified with backend — not a WireReceptionTransfer, so there is
+  // nothing here worth mapping. The caller re-fetches the transfer afterward for the canonical
+  // post-confirm state, same 204-then-refetch pattern as scan() above.
+  confirm: async (transferId: number, body: ConfirmTransferRequest = {}): Promise<void> => {
+    await api.post(`${BASE}/transfers/${transferId}/confirm`, {
       allowPartial: body.allowPartial ?? false,
     })
-    return mapTransfer(response.data)
   },
 
   updateGlpiTicket: async (transferId: number, body: GlpiTicketRequest): Promise<ReceptionTransfer> => {

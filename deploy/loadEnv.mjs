@@ -33,8 +33,6 @@ export const LOCAL_UPSTREAM_DEFAULTS = {
   UPSTREAM_RULETA: 'http://localhost:5062',
   UPSTREAM_TRANSACCIONES: 'http://127.0.0.1:8080',
   UPSTREAM_TRANSFERENCIAS_DIRECTAS: 'http://localhost:5046',
-  // IP fija de red interna: no hay instancia local separada para desarrollo.
-  UPSTREAM_DEMANDA_OTB: 'http://210.17.1.96:8001',
 }
 
 /** Nombres legacy (vite / docker antiguos) → UPSTREAM_* */
@@ -186,7 +184,6 @@ export const DOCKER_UPSTREAM_DEFAULTS = {
   UPSTREAM_REPOSICION: 'http://host.docker.internal:8006',
   UPSTREAM_RECEPCION: 'http://host.docker.internal:8007',
   UPSTREAM_TRANSACCIONES: 'http://host.docker.internal:8080',
-  UPSTREAM_DEMANDA_OTB: 'http://210.17.1.96:8001',
 }
 
 export function upstreamUrl(env, key, { docker = false } = {}) {
