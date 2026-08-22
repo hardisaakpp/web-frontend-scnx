@@ -65,7 +65,11 @@ const estadoGrupoIcon: Record<string, { cls: string; dot: string; label: string 
 const estadoGrupoActual = computed(() => grupo.value?.estado ?? 'incompleto')
 
 // ─── Estado de bloqueo de edición ────────────────────────────────────────────
-const campanaActiva = computed(() => estadoEfectivo.value === 'activa')
+// Usa el estado crudo del backend, no estadoEfectivo: este último degrada 'activa' a
+// 'programada' cuando fecha_inicio es futura (solo pensado para el badge visual), lo que hacía
+// que campanaActiva fuera false y la botonera mostrara "Activar campaña" sobre una campaña que
+// ya está activa en BD, permitiendo un intento de reactivación indebido.
+const campanaActiva = computed(() => campana.value?.estado === 'activa')
 
 // ─── Transiciones de estado ───────────────────────────────────────────────────
 const activando  = ref(false)
