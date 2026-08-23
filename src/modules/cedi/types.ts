@@ -128,6 +128,182 @@ export interface LineActionRequest {
   motivo?: string | null
 }
 
+// ── Distribución / Crossdocking (P-008 a P-011) ──────────────────────────────────────────
+
+export type TransferenciaEstado = 'Abierta' | 'Parcial' | 'Cerrada'
+export type TipoGrupo = 'Reposicion' | 'Crossdocking'
+export type GrupoEstado = 'Nuevo' | 'Recolectando' | 'Empaquetando' | 'Despachado'
+export type GrupoPrioridad = 'Normal' | 'Urgente'
+
+/** Espejo de Services/Distribucion/Dtos/DistribucionDtos.cs → SolicitudTransferenciaFilterDto */
+export interface SolicitudTransferenciaFilterDto {
+  numDoc?: string
+  estado?: TransferenciaEstado
+  almacenOrigen?: string
+  tiendaDestino?: string
+  /** true = solo las que todavía no entraron a ningún grupo y siguen abiertas. */
+  soloDisponibles?: boolean
+}
+
+export interface SolicitudTransferenciaDto {
+  id: string
+  numDoc: string
+  comentarios: string | null
+  almacenOrigen: string
+  tiendaDestino: string
+  fechaCreacion: string
+  estado: TransferenciaEstado
+  cantidadSolicitada: number
+  cantidadTransferida: number
+  cantidadLineas: number
+  disponible: boolean
+  grupoId: string | null
+}
+
+export interface SolicitudTransferenciaLineaDto {
+  id: string
+  itemCode: string
+  codigoBarras: string | null
+  descripcion: string
+  cantidadPedida: number
+  cantidadPendiente: number
+  umd: string
+}
+
+export interface SolicitudTransferenciaDetailDto extends SolicitudTransferenciaDto {
+  lineas: SolicitudTransferenciaLineaDto[]
+}
+
+export interface SyncSotResult {
+  paginasConsultadas: number
+  solicitudesVistas: number
+  solicitudesNuevas: number
+  solicitudesActualizadas: number
+  filasDescartadas: number
+}
+
+// ── Grupo (P-008 — "Crear Grupo") ────────────────────────────────────────────────────────
+
+export interface CrearGrupoRequest {
+  nombre: string
+  almacen: string
+  tipo: TipoGrupo
+  prioridad: GrupoPrioridad
+  solicitudIds: string[]
+}
+
+export interface GrupoDto {
+  id: string
+  nombre: string
+  almacen: string
+  tipo: TipoGrupo
+  estado: GrupoEstado
+  prioridad: GrupoPrioridad
+  operadorAsignado: string | null
+  fechaCreacion: string
+  cantidadArticulos: number
+  cantidadSolicitudes: number
+}
+
+export interface GrupoSolicitudDto {
+  transferenciaSolicitudId: string
+  numDoc: string
+  tiendaDestino: string
+  cantidad: number
+}
+
+export interface GrupoDetailDto extends GrupoDto {
+  solicitudes: GrupoSolicitudDto[]
+}
+
+export interface CrearGrupoResultDto {
+  grupo: GrupoDetailDto
+  solicitudesNoBloqueadasEnSap: string[]
+}
+
+// ── Picking por Artículos / por Documento (P-009 / P-010) ───────────────────────────────
+
+export interface ArticuloTransversalDto {
+  itemCode: string
+  descripcion: string
+  codigoBarras: string | null
+  umd: string
+  cantidadTotal: number
+  cantidadEscaneada: number
+  cantidadTiendas: number
+  estado: LineaPickingEstado
+}
+
+export interface PickingSessionDto {
+  id: string
+  grupoId: string
+  grupoNombre: string
+  estado: SesionEstado
+  fechaInicio: string
+  fechaCierre: string | null
+  cantidadEscaneadaTotal: number
+  articulos: ArticuloTransversalDto[]
+}
+
+export interface DistribucionScanBatchItemDto {
+  itemCode: string
+  cantidad: number
+}
+
+export interface DistribucionScanItemOutcome {
+  itemCode: string
+  cantidad: number
+  motivo: string | null
+}
+
+export interface DistribucionScanBatchResultDto {
+  aceptados: DistribucionScanItemOutcome[]
+  rechazados: DistribucionScanItemOutcome[]
+  sesion: PickingSessionDto
+}
+
+export interface PickingLineDetailDto {
+  id: string
+  itemCode: string
+  descripcion: string
+  codigoBarras: string | null
+  umd: string
+  cantidadSolicitada: number
+  cantidadEscaneada: number
+  estado: LineaPickingEstado
+}
+
+export interface SolicitudPickingDetailDto {
+  transferenciaSolicitudId: string
+  numDoc: string
+  tiendaDestino: string
+  cantidadTotal: number
+  cantidadEscaneada: number
+  lineas: PickingLineDetailDto[]
+}
+
+export interface CompletarSolicitudRequest {
+  motivo?: string | null
+}
+
+// ── Integración a SAP (P-011 — StockTransfer) ────────────────────────────────────────────
+
+export interface SolicitudIntegracionDto {
+  transferenciaSolicitudId: string
+  numDoc: string
+  tiendaDestino: string
+  integradaSap: boolean
+  stockTransferDocEntry: number | null
+  stockTransferDocNum: number | null
+  ultimoErrorIntegracion: string | null
+}
+
+export interface IntegrarStockTransferResultDto {
+  grupoId: string
+  grupoEstado: GrupoEstado
+  solicitudes: SolicitudIntegracionDto[]
+}
+
 export interface CompleteAllRequest {
   motivo?: string | null
 }

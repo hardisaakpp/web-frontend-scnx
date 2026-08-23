@@ -46,6 +46,48 @@ const routes: RouteRecordRaw[] = [
       permissions: ['cedi.odc.picking'],
     },
   },
+
+  // ── Distribución / Crossdocking (P-008 a P-011) ──────────────────────────────────────
+  {
+    path: '/cedi/distribucion',
+    name: 'cedi-sot-list',
+    component: () => import('./views/SotListView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Distribución — Solicitudes de Transferencia',
+      permissions: ['cedi.sot.view'],
+    },
+  },
+  {
+    path: '/cedi/distribucion/grupos',
+    name: 'cedi-grupo-list',
+    component: () => import('./views/GrupoListView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Grupos de Distribución',
+      permissions: ['cedi.grupo.view'],
+    },
+  },
+  {
+    path: '/cedi/distribucion/grupos/:id',
+    name: 'cedi-grupo-detail',
+    component: () => import('./views/GrupoDetailView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Detalle de Grupo',
+      permissions: ['cedi.grupo.view'],
+    },
+  },
+  {
+    path: '/cedi/distribucion/grupos/:id/picking/:sessionId',
+    name: 'cedi-grupo-picking-work',
+    component: () => import('./views/GrupoPickingWorkView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Picking de Distribución',
+      permissions: ['cedi.grupo.picking'],
+    },
+  },
 ]
 
 export default routes

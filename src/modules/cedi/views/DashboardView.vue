@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
-import { ArchiveBoxIcon, ChevronRightIcon, SignalIcon, SignalSlashIcon, TruckIcon } from '@heroicons/vue/24/outline'
+import { ArchiveBoxIcon, ChevronRightIcon, RectangleStackIcon, SignalIcon, SignalSlashIcon, TruckIcon } from '@heroicons/vue/24/outline'
 import { useCediStore } from '../stores/cediStore'
 import { useToast } from '@/composables/useToast'
 
@@ -72,10 +72,26 @@ onMounted(async () => {
         </div>
         <ChevronRightIcon class="w-5 h-5 text-gray-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
       </router-link>
+
+      <router-link
+        to="/cedi/distribucion"
+        class="group flex items-center justify-between bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm hover:border-blue-500 hover:shadow-md transition-all"
+      >
+        <div class="flex items-center gap-3">
+          <div class="p-2.5 rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">
+            <RectangleStackIcon class="w-6 h-6" />
+          </div>
+          <div>
+            <p class="font-semibold text-gray-900 dark:text-white">Distribución / Crossdocking</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400">Solicitudes de transferencia, grupos y picking</p>
+          </div>
+        </div>
+        <ChevronRightIcon class="w-5 h-5 text-gray-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
+      </router-link>
     </div>
 
     <p class="mt-8 text-sm text-gray-400 dark:text-gray-500">
-      Próximos pasos: Distribución, Reubicación.
+      Próximos pasos: Reubicación.
     </p>
   </div>
 </template>
