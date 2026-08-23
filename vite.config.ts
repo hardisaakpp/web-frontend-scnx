@@ -59,6 +59,7 @@ export default defineConfig(async ({ mode }): Promise<UserConfig> => {
   console.log(`\x1b[35m[proxy]\x1b[0m Reposiciones → ${reposicionProxyTarget}`)
 
   const ruletaProxyTarget = upstreamUrl(env, 'RULETA')
+  const cediProxyTarget = upstreamUrl(env, 'CEDI')
   const pygProxyPrefix =
     'UPSTREAM_PYG_PREFIX' in env
       ? env.UPSTREAM_PYG_PREFIX
@@ -340,6 +341,20 @@ export default defineConfig(async ({ mode }): Promise<UserConfig> => {
           secure: false,
 
           rewrite: (path) => path.replace(/^\/ruleta-api/, '')
+
+        },
+
+        '/cedi-api': {
+
+          target: cediProxyTarget,
+
+          changeOrigin: true,
+
+          secure: false,
+
+          // El backend de CEDI (SCNexus.Cedi.API) usa el mismo patrón de rutas
+          // "api/[controller]" que el Core, por eso se reescribe a /api (igual que caja-chica).
+          rewrite: (path: string) => path.replace(/^\/cedi-api/, '/api')
 
         }
 
