@@ -95,6 +95,12 @@ export interface OdcPickingSessionDto {
   fechaCierre: string | null
   bloqueadaEnSap: boolean
   cantidadEscaneada: number
+  /** P-007: true una vez que se creó el GoodsReceipt en SAP para esta sesión. */
+  integradaSap: boolean
+  goodsReceiptDocEntry: number | null
+  goodsReceiptDocNum: number | null
+  /** Último error al intentar integrar a SAP (se limpia en el próximo intento exitoso). */
+  ultimoErrorIntegracion: string | null
   lineas: OdcPickingLineDto[]
 }
 

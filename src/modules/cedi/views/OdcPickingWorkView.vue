@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { Dialog, DialogPanel, DialogTitle, TransitionChild, TransitionRoot } from '@headlessui/vue'
 import {
   ArrowLeftIcon, CheckBadgeIcon, CheckCircleIcon, CloudArrowUpIcon,
-  ExclamationTriangleIcon, QrCodeIcon, TrashIcon,
+  ExclamationTriangleIcon, LockClosedIcon, QrCodeIcon, TrashIcon,
 } from '@heroicons/vue/24/outline'
 import { useOdcPickingStore } from '../stores/odcPickingStore'
 import { useAuthStore } from '@/stores/auth'
@@ -13,8 +13,8 @@ import ConfirmActionModal from '../components/ConfirmActionModal.vue'
 import type { OdcPickingLineDto } from '../types'
 
 // P-006 — odcPickingWork.php del legacy: escanear rápido, acumular local, sincronizar cada
-// 5s. "Cerrar picking" / integración GoodsReceipt quedan para el próximo paso (no es parte
-// de este prompt) — acá solo se escanea y se guarda.
+// 5s. P-007 agrega "Cerrar picking" (local) e "Integrar a SAP" (crea el GoodsReceipt
+// vinculado a la ODC de origen — ver abajo).
 
 const route = useRoute()
 const router = useRouter()
@@ -79,7 +79,8 @@ async function onScan() {
 }
 
 // ── Acciones de supervisor: resetear un ítem / marcar completo (por ítem o toda la sesión) ──
-type AccionSupervisor = { tipo: 'reset' | 'completar' | 'completarTodo'; itemCode?: string; descripcion?: string }
+// + cierre e integración a SAP (P-007) — comparten el mismo modal de confirmación.
+type AccionSupervisor = { tipo: 'reset' | 'completar' | 'completarTodo' | 'cerrar' | 'integrar'; itemCode?: string; descripcion?: string }
 
 const accionActiva = ref<AccionSupervisor | null>(null)
 const motivoInput = ref('')
@@ -113,6 +114,22 @@ const modalConfig = computed(() => {
         delaySeconds: 0,
         accent: 'amber' as const,
       }
+    case 'cerrar':
+      return {
+        title: 'Cerrar picking',
+        message: 'Se cierra la sesión con lo escaneado hasta ahora (admite quedar incompleta). Después de cerrar ya no se puede seguir escaneando en esta sesión.',
+        confirmLabel: 'Sí, cerrar picking',
+        delaySeconds: 0,
+        accent: 'amber' as const,
+      }
+    case 'integrar':
+      return {
+        title: 'Integrar a SAP',
+        message: 'Se va a crear un GoodsReceipt REAL en SAP con lo escaneado, vinculado a esta ODC. Esto reduce el pendiente de la orden de compra en SAP — no es reversible desde acá.',
+        confirmLabel: 'Sí, integrar a SAP',
+        delaySeconds: 5,
+        accent: 'red' as const,
+      }
   }
 })
 
@@ -128,6 +145,16 @@ function abrirCompletarLinea(linea: OdcPickingLineDto) {
 
 function abrirCompletarTodo() {
   accionActiva.value = { tipo: 'completarTodo' }
+  motivoInput.value = ''
+}
+
+function abrirCerrar() {
+  accionActiva.value = { tipo: 'cerrar' }
+  motivoInput.value = ''
+}
+
+function abrirIntegrar() {
+  accionActiva.value = { tipo: 'integrar' }
   motivoInput.value = ''
 }
 
@@ -147,9 +174,15 @@ async function confirmarAccion() {
     } else if (accionActiva.value.tipo === 'completar') {
       await store.markLineComplete(accionActiva.value.itemCode!, motivo)
       toast.success('Marcado completo', `"${accionActiva.value.itemCode}" quedó completo.`)
-    } else {
+    } else if (accionActiva.value.tipo === 'completarTodo') {
       await store.markAllComplete(motivo)
       toast.success('Todo marcado completo')
+    } else if (accionActiva.value.tipo === 'cerrar') {
+      await store.closeSession()
+      toast.success('Picking cerrado', 'Ya se puede integrar a SAP.')
+    } else {
+      await store.integrateGoodsReceipt()
+      toast.success('Integrado a SAP', `GoodsReceipt DocNum ${store.session?.goodsReceiptDocNum}.`)
     }
     cerrarModalAccion()
   } catch (e: any) {
@@ -198,7 +231,7 @@ onBeforeUnmount(() => {
           </button>
         </div>
 
-        <form class="flex flex-wrap gap-3" @submit.prevent="onScan">
+        <form v-if="store.session.estado === 'Abierta'" class="flex flex-wrap gap-3" @submit.prevent="onScan">
           <input
             ref="itemCodeRef"
             v-model="itemCodeInput"
@@ -221,6 +254,9 @@ onBeforeUnmount(() => {
             Escanear
           </button>
         </form>
+        <p v-else class="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+          <LockClosedIcon class="w-4 h-4" /> Sesión cerrada — ya no se puede escanear acá.
+        </p>
       </div>
 
       <!-- Estado de sincronización: cuánto hay en cola local y cuándo se mandó lo último -->
@@ -298,9 +334,62 @@ onBeforeUnmount(() => {
         </ul>
       </div>
 
-      <p class="mt-6 text-xs text-gray-400 dark:text-gray-500">
-        El cierre del picking y el envío del GoodsReceipt a SAP se hacen en un paso posterior — acá solo se escanea y se guarda.
-      </p>
+      <!-- P-007: cierre e integración a SAP -->
+      <div class="mt-6 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm">
+        <template v-if="store.session.integradaSap">
+          <div class="flex items-start gap-3">
+            <CheckCircleIcon class="w-6 h-6 text-emerald-500 shrink-0" />
+            <div>
+              <p class="font-semibold text-gray-900 dark:text-white">Integrado a SAP</p>
+              <p class="text-sm text-gray-500 dark:text-gray-400">
+                GoodsReceipt DocNum <span class="font-mono">{{ store.session.goodsReceiptDocNum }}</span>
+                (DocEntry {{ store.session.goodsReceiptDocEntry }}). El pendiente de la ODC en SAP ya se redujo.
+              </p>
+            </div>
+          </div>
+        </template>
+
+        <template v-else-if="store.session.estado === 'Abierta'">
+          <div class="flex items-center justify-between gap-3">
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+              Cuando termines de escanear (aunque quede incompleto), cerrá el picking para poder integrarlo a SAP.
+            </p>
+            <button
+              type="button"
+              class="shrink-0 inline-flex items-center gap-1.5 px-4 py-2.5 text-sm rounded-lg bg-gray-800 hover:bg-gray-900 dark:bg-gray-700 dark:hover:bg-gray-600 text-white font-semibold disabled:opacity-50"
+              :disabled="store.session.cantidadEscaneada <= 0"
+              @click="abrirCerrar"
+            >
+              <LockClosedIcon class="w-4 h-4" /> Cerrar picking
+            </button>
+          </div>
+        </template>
+
+        <template v-else>
+          <div class="flex items-start gap-3 mb-3" v-if="store.session.ultimoErrorIntegracion">
+            <ExclamationTriangleIcon class="w-6 h-6 text-red-500 shrink-0" />
+            <div>
+              <p class="font-semibold text-gray-900 dark:text-white">Falló el último intento de integración</p>
+              <p class="text-sm text-red-600 dark:text-red-400">{{ store.session.ultimoErrorIntegracion }}</p>
+            </div>
+          </div>
+          <div class="flex items-center justify-between gap-3">
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+              Picking cerrado ({{ store.session.cantidadEscaneada }} unidad(es) escaneada(s)). Falta integrarlo a SAP.
+            </p>
+            <button
+              v-if="puedeSupervisar"
+              type="button"
+              class="shrink-0 inline-flex items-center gap-1.5 px-4 py-2.5 text-sm rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold disabled:opacity-50"
+              :disabled="store.integrating"
+              @click="abrirIntegrar"
+            >
+              <CheckBadgeIcon class="w-4 h-4" /> {{ store.session.ultimoErrorIntegracion ? 'Reintentar integración' : 'Integrar a SAP' }}
+            </button>
+            <p v-else class="shrink-0 text-xs text-gray-400 dark:text-gray-500">Requiere permiso de supervisor</p>
+          </div>
+        </template>
+      </div>
     </template>
   </div>
 
@@ -377,7 +466,10 @@ onBeforeUnmount(() => {
     @cancel="cerrarModalAccion"
     @confirm="confirmarAccion"
   >
-    <label class="block mt-4 text-sm font-medium text-gray-600 dark:text-gray-400">
+    <label
+      v-if="accionActiva && !['cerrar', 'integrar'].includes(accionActiva.tipo)"
+      class="block mt-4 text-sm font-medium text-gray-600 dark:text-gray-400"
+    >
       Motivo <span class="font-normal text-gray-400">(opcional, queda guardado)</span>
       <textarea
         v-model="motivoInput"

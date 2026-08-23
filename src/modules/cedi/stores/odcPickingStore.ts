@@ -37,6 +37,10 @@ export const useOdcPickingStore = defineStore('cediOdcPicking', () => {
   const syncing = ref(false)
   const lastResult = ref<{ aceptados: ScanItemOutcome[]; rechazados: ScanItemOutcome[] } | null>(null)
 
+  // P-007: cierre e integración a SAP.
+  const closing = ref(false)
+  const integrating = ref(false)
+
   /**
    * Rechazos SIN reconocer todavía — el modal en la vista se muestra mientras esto tenga
    * algo, y solo se vacía cuando el operador aprieta "Aceptar" (acknowledgeRejections). Se
@@ -179,10 +183,51 @@ export const useOdcPickingStore = defineStore('cediOdcPicking', () => {
     pendingRejections.value = []
   }
 
+  /**
+   * "Cerrar picking" — antes de cerrar hay que mandar lo que quede en cola: cerrar con
+   * escaneos sin sincronizar dejaría afuera unidades que el operador cree que ya guardó.
+   */
+  async function closeSession() {
+    if (!session.value) return
+    closing.value = true
+    error.value = null
+    try {
+      await syncNow()
+      session.value = await odcApi.closeSession(session.value.id)
+    } catch (e: any) {
+      error.value = e?.response?.data?.message ?? 'No se pudo cerrar el picking'
+      throw e
+    } finally {
+      closing.value = false
+    }
+  }
+
+  /**
+   * "Integrar a SAP" — crea el GoodsReceipt. Requiere cedi.odc.picking.supervisor (la vista
+   * ya oculta el botón sin ese permiso; acá no se revalida). Es seguro reintentar: si ya
+   * falló una vez, el backend guarda el motivo en `ultimoErrorIntegracion` y permite
+   * reintentar sin duplicar el documento en SAP.
+   */
+  async function integrateGoodsReceipt() {
+    if (!session.value) return
+    integrating.value = true
+    error.value = null
+    try {
+      session.value = await odcApi.integrateGoodsReceipt(session.value.id)
+    } catch (e: any) {
+      error.value = e?.response?.data?.message ?? 'No se pudo integrar a SAP'
+      throw e
+    } finally {
+      integrating.value = false
+    }
+  }
+
   return {
     session, loadingSession, error,
     pendingQueue, cantidadEnCola, syncing, lastResult, pendingRejections,
+    closing, integrating,
     loadSession, addScan, syncNow, startAutoSync, stopAutoSync, flushAndStop, pendienteDeLinea,
     acknowledgeRejections, resetLine, markLineComplete, markAllComplete,
+    closeSession, integrateGoodsReceipt,
   }
 })

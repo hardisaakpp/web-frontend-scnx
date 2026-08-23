@@ -73,6 +73,18 @@ const odcApi = {
     const response = await cediApi.post<OdcPickingSessionDto>(`odc-picking-sessions/${sessionId}/complete-all`, request)
     return response.data
   },
+
+  /** "Cerrar picking" — 100% local, admite cierre parcial. Exige ≥1 escaneo guardado. */
+  closeSession: async (sessionId: string) => {
+    const response = await cediApi.post<OdcPickingSessionDto>(`odc-picking-sessions/${sessionId}/close`)
+    return response.data
+  },
+
+  /** "Integrar a SAP" — crea el GoodsReceipt con lo escaneado. Requiere cedi.odc.picking.supervisor. */
+  integrateGoodsReceipt: async (sessionId: string) => {
+    const response = await cediApi.post<OdcPickingSessionDto>(`odc-picking-sessions/${sessionId}/integrate-sap`)
+    return response.data
+  },
 }
 
 export default odcApi
