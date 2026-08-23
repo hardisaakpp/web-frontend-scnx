@@ -31,7 +31,12 @@ onMounted(() => store.fetchGrupos())
       <ArrowLeftIcon class="w-4 h-4" /> Volver a solicitudes
     </button>
 
-    <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-1">Grupos de Distribución</h1>
+    <div class="flex items-center justify-between mb-1">
+      <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Grupos de Distribución</h1>
+      <router-link to="/cedi/distribucion/kanban" class="text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium">
+        Ver como tablero
+      </router-link>
+    </div>
     <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Listas de picking/crossdocking creadas a partir de solicitudes de transferencia.</p>
 
     <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm">

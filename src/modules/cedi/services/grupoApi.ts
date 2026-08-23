@@ -37,6 +37,12 @@ const grupoApi = {
     const response = await cediApi.post<IntegrarStockTransferResultDto>(`grupos/${grupoId}/integrate-sap`)
     return response.data
   },
+
+  /** Cierra la sesión de picking ABIERTA del grupo (resuelve el sessionId internamente) — para el Kanban (P-016). */
+  closePicking: async (grupoId: string) => {
+    const response = await cediApi.post<PickingSessionDto>(`grupos/${grupoId}/close-picking`)
+    return response.data
+  },
 }
 
 export default grupoApi

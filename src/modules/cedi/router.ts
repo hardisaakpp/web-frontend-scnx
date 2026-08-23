@@ -89,6 +89,18 @@ const routes: RouteRecordRaw[] = [
     },
   },
 
+  // ── Control Operativo (P-016 en adelante) ────────────────────────────────────────────
+  {
+    path: '/cedi/distribucion/kanban',
+    name: 'cedi-grupo-kanban',
+    component: () => import('./views/GrupoKanbanView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Tablero de Grupos',
+      permissions: ['cedi.grupo.view'],
+    },
+  },
+
   // ── Reubicación (P-012 en adelante) ──────────────────────────────────────────────────
   {
     path: '/cedi/reubicacion/stock',

@@ -16,6 +16,7 @@ export const useGrupoStore = defineStore('cediGrupo', () => {
 
   const creating = ref(false)
   const starting = ref(false)
+  const closingPicking = ref(false)
   const integrating = ref(false)
   const lastIntegracion = ref<IntegrarStockTransferResultDto | null>(null)
 
@@ -78,6 +79,20 @@ export const useGrupoStore = defineStore('cediGrupo', () => {
     }
   }
 
+  /** Cierra la sesión de picking abierta del grupo (resuelve el sessionId internamente) — para el Kanban (P-016). */
+  async function closePicking(grupoId: string) {
+    closingPicking.value = true
+    error.value = null
+    try {
+      await grupoApi.closePicking(grupoId)
+    } catch (e: any) {
+      error.value = e?.response?.data?.message ?? 'No se pudo cerrar el picking'
+      throw e
+    } finally {
+      closingPicking.value = false
+    }
+  }
+
   async function integrarStockTransfer(grupoId: string) {
     integrating.value = true
     error.value = null
@@ -96,7 +111,7 @@ export const useGrupoStore = defineStore('cediGrupo', () => {
   return {
     items, totalCount, page, pageSize, loading, error,
     current, loadingCurrent,
-    creating, starting, integrating, lastIntegracion,
-    fetchGrupos, setPage, fetchGrupo, crearGrupo, startPickingSession, integrarStockTransfer,
+    creating, starting, closingPicking, integrating, lastIntegracion,
+    fetchGrupos, setPage, fetchGrupo, crearGrupo, startPickingSession, closePicking, integrarStockTransfer,
   }
 })
