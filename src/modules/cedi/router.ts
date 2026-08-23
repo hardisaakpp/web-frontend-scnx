@@ -101,6 +101,17 @@ const routes: RouteRecordRaw[] = [
     },
   },
 
+  {
+    path: '/cedi/distribucion/grupos/:grupoId/solicitudes/:solicitudId/contenedores',
+    name: 'cedi-contenedores-solicitud',
+    component: () => import('./views/ContenedoresSolicitudView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Contenedores Virtuales',
+      permissions: ['cedi.grupo.view'],
+    },
+  },
+
   // ── Reubicación (P-012 en adelante) ──────────────────────────────────────────────────
   {
     path: '/cedi/reubicacion/stock',

@@ -326,6 +326,50 @@ export interface ConsultaStockDto {
   almacenes: StockAlmacenDto[]
 }
 
+// ── Contenedores Virtuales — Control Operativo (P-017) ───────────────────────────────────
+
+export type ContenedorEstado = 'Abierto' | 'Cerrado'
+
+export interface ContenedorLineaDto {
+  id: string
+  itemCode: string
+  cantidad: number
+}
+
+export interface ContenedorDto {
+  id: string
+  grupoId: string
+  transferenciaSolicitudId: string
+  numDoc: string
+  codigo: string
+  estado: ContenedorEstado
+  fechaCreacion: string
+  fechaCierre: string | null
+  cantidadTotal: number
+  lineas: ContenedorLineaDto[]
+}
+
+export interface EmpacarItemRequest {
+  itemCode: string
+  cantidad: number
+}
+
+export interface TrazabilidadItemDto {
+  itemCode: string
+  descripcion: string
+  cantidadPedida: number
+  cantidadEscaneada: number
+  cantidadEmpacada: number
+  pendienteDeEmpaque: number
+}
+
+export interface TrazabilidadSolicitudDto {
+  transferenciaSolicitudId: string
+  numDoc: string
+  items: TrazabilidadItemDto[]
+  contenedores: ContenedorDto[]
+}
+
 export interface CompleteAllRequest {
   motivo?: string | null
 }

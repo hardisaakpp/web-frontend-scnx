@@ -144,6 +144,7 @@ onMounted(() => store.fetchGrupo(id.value))
               <th class="px-4 py-3">N° Documento</th>
               <th class="px-4 py-3">Tienda destino</th>
               <th class="px-4 py-3">Cantidad</th>
+              <th v-if="store.current.estado !== 'Nuevo'" class="px-4 py-3"></th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
@@ -151,6 +152,14 @@ onMounted(() => store.fetchGrupo(id.value))
               <td class="px-4 py-3 font-medium text-gray-900 dark:text-white">{{ s.numDoc }}</td>
               <td class="px-4 py-3 text-gray-700 dark:text-gray-300">{{ s.tiendaDestino }}</td>
               <td class="px-4 py-3 text-gray-500 dark:text-gray-400">{{ s.cantidad }}</td>
+              <td v-if="store.current.estado !== 'Nuevo'" class="px-4 py-3 text-right">
+                <router-link
+                  :to="`/cedi/distribucion/grupos/${store.current.id}/solicitudes/${s.transferenciaSolicitudId}/contenedores`"
+                  class="text-blue-600 dark:text-blue-400 hover:underline font-medium"
+                >
+                  Empaque
+                </router-link>
+              </td>
             </tr>
           </tbody>
         </table>
