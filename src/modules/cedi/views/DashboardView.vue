@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
-import { ArchiveBoxIcon, ChevronRightIcon, RectangleStackIcon, SignalIcon, SignalSlashIcon, TruckIcon } from '@heroicons/vue/24/outline'
+import {
+  ArchiveBoxIcon, ChevronRightIcon, MagnifyingGlassIcon, RectangleStackIcon, SignalIcon, SignalSlashIcon, TruckIcon,
+} from '@heroicons/vue/24/outline'
 import { useCediStore } from '../stores/cediStore'
 import { useToast } from '@/composables/useToast'
 
@@ -88,10 +90,26 @@ onMounted(async () => {
         </div>
         <ChevronRightIcon class="w-5 h-5 text-gray-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
       </router-link>
+
+      <router-link
+        to="/cedi/reubicacion/stock"
+        class="group flex items-center justify-between bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm hover:border-blue-500 hover:shadow-md transition-all"
+      >
+        <div class="flex items-center gap-3">
+          <div class="p-2.5 rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400">
+            <MagnifyingGlassIcon class="w-6 h-6" />
+          </div>
+          <div>
+            <p class="font-semibold text-gray-900 dark:text-white">Consulta de Stock</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400">Por código de artículo o de barras, con detalle por almacén</p>
+          </div>
+        </div>
+        <ChevronRightIcon class="w-5 h-5 text-gray-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
+      </router-link>
     </div>
 
     <p class="mt-8 text-sm text-gray-400 dark:text-gray-500">
-      Próximos pasos: Reubicación.
+      Próximos pasos: Reubicación masiva/completa/manual (P-013 a P-015).
     </p>
   </div>
 </template>

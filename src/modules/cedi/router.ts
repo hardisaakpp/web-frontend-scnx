@@ -88,6 +88,18 @@ const routes: RouteRecordRaw[] = [
       permissions: ['cedi.grupo.picking'],
     },
   },
+
+  // ── Reubicación (P-012 en adelante) ──────────────────────────────────────────────────
+  {
+    path: '/cedi/reubicacion/stock',
+    name: 'cedi-consulta-stock',
+    component: () => import('./views/ConsultaStockView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Consulta de Stock',
+      permissions: ['cedi.stock.view'],
+    },
+  },
 ]
 
 export default routes

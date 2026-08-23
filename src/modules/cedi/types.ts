@@ -304,6 +304,28 @@ export interface IntegrarStockTransferResultDto {
   solicitudes: SolicitudIntegracionDto[]
 }
 
+// ── Reubicación — Consulta Stock (P-012) ─────────────────────────────────────────────────
+
+export interface ItemBusquedaDto {
+  itemCode: string
+  descripcion: string
+  codigoBarras: string | null
+  umd: string | null
+}
+
+export interface StockAlmacenDto {
+  almacen: string
+  enStock: number
+  comprometido: number
+  bloqueado: boolean
+}
+
+export interface ConsultaStockDto {
+  itemCode: string
+  umd: string | null
+  almacenes: StockAlmacenDto[]
+}
+
 export interface CompleteAllRequest {
   motivo?: string | null
 }
