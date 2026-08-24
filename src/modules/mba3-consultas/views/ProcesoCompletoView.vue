@@ -313,7 +313,7 @@ const showIntegracionSAPRetryCta = computed(() => {
 
 function aplicarRespuestaProcesoCompletoSAPAlModal(response: ProcesoCompletoSAPResponse) {
   const envio = response.envio_sap
-  const errorMsg = response.error ?? response.message ?? null
+  const errorMsg = response.error_detalle ?? response.message ?? null
   const solicitudes =
     response.solicitudes_transferencia ?? envio?.solicitudes_transferencia ?? null
 
@@ -344,7 +344,7 @@ function aplicarRespuestaProcesoCompletoSAPAlModal(response: ProcesoCompletoSAPR
       ? response.status
       : envio?.doc_num != null
         ? 'success'
-        : response.error
+        : response.error_detalle
           ? 'partial'
           : 'error'
 

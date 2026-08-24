@@ -554,7 +554,7 @@ function getSolicitudesTransferencia(response: ProcesoCompletoSAPResponse): Soli
 async function applySAPResponse(response: ProcesoCompletoSAPResponse) {
   const innerStatus = (response as any).status === 'success' || (response as any).status === 'partial' || (response as any).status === 'error'
     ? (response as any).status
-    : (response.envio_sap?.doc_num != null ? 'success' : response.error ? 'partial' : 'error')
+    : (response.envio_sap?.doc_num != null ? 'success' : response.error_detalle ? 'partial' : 'error')
 
   const solicitudesTransferencia = getSolicitudesTransferencia(response)
 
@@ -599,9 +599,13 @@ async function applySAPResponse(response: ProcesoCompletoSAPResponse) {
         pedido.value.cabecera.estado = 'CONFIRMADO REDISTRIBUCION'
       }
     }
-    const errorMsg = response.error ?? 'Error desconocido'
+    const errorMsg = response.error_detalle ?? 'Error desconocido'
     const retryFlag = response.envio_sap?.retry_recommended ?? null
     procesoStore.setSAPResultadoPendiente({
+      // Prioriza el error de ESTA ODC (envio_sap.error) sobre el resumen del pedido
+      // completo (errorMsg / error_detalle), que en un pedido mixto concatena el
+      // error de las 2 ODC ("RG-CD: ...; RL-CD: ...") -- el mensaje de la ODC puntual
+      // es más preciso para esta sección del modal.
       detalle: response.envio_sap ? {
         success: !!response.envio_sap.doc_num,
         oc_id: response.envio_sap.oc_id ?? '',
@@ -609,9 +613,9 @@ async function applySAPResponse(response: ProcesoCompletoSAPResponse) {
         doc_entry: response.envio_sap.doc_entry,
         numero_oc_sap: (response.envio_sap as any).numero_oc_sap ?? null,
         message: null,
-        error: errorMsg,
-        error_message: errorMsg,
-        error_code: null,
+        error: response.envio_sap.error ?? errorMsg,
+        error_message: response.envio_sap.error ?? errorMsg,
+        error_code: response.envio_sap.error_code ?? null,
         error_source: null,
         retry_recommended: retryFlag
       } as IntegracionSAPDetalle : {

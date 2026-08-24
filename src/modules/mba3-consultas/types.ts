@@ -1263,6 +1263,7 @@ export interface ProcesoCompletoSAPDetalleODC {
   doc_entry: number | null
   numero_oc_sap?: string | null  // Num ODC (orden_compra_cabecera.numero_oc_sap)
   error: string | null
+  error_code?: string | null
   message?: string | null
   solicitudes_transferencia?: SolicitudesTransferencia | null
   /** True si el fallo fue probablemente transitorio (conexión/SL); el cliente puede ofrecer reintento manual. */
@@ -1311,8 +1312,10 @@ export interface ProcesoCompletoSAPResponse {
   resumen?: ResumenConfirmacion
   /** Si hubo error parcial, indica en qué paso falló */
   paso_fallido?: 'redistribucion' | 'generar_odc' | 'enviar_sap'
-  /** Mensaje de error si falló algún paso */
-  error?: string
+  /** Mensaje de error si falló algún paso. Nombre real del campo en el backend
+   * (ProcesoCompletoSAPResponse.error_detalle) -- OJO: no confundir con
+   * envio_sap.error (error de una ODC puntual). */
+  error_detalle?: string
 }
 
 /**

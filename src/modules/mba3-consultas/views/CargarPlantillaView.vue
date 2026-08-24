@@ -1820,7 +1820,7 @@ async function confirmarRedistribucion() {
 async function applySAPResponseCargarPlantilla(response: import('@/modules/mba3-consultas/types').ProcesoCompletoSAPResponse) {
   const innerStatus = (response as any).status === 'success' || (response as any).status === 'partial' || (response as any).status === 'error'
     ? (response as any).status
-    : (response.envio_sap?.doc_num != null ? 'success' : response.error ? 'partial' : 'error')
+    : (response.envio_sap?.doc_num != null ? 'success' : response.error_detalle ? 'partial' : 'error')
 
   if (innerStatus === 'success') {
     mostrarBannerReintentoConexionSap.value = false
@@ -1841,7 +1841,7 @@ async function applySAPResponseCargarPlantilla(response: import('@/modules/mba3-
     const env = response.envio_sap
     toast.warning(
       `Error en paso: ${response.paso_fallido ?? 'desconocido'}`,
-      response.error || response.message || 'El proceso no se completó totalmente'
+      response.error_detalle || response.message || 'El proceso no se completó totalmente'
     )
     if (response.redistribucion) toast.info('Redistribución confirmada', `Versión: ${response.redistribucion.version_confirmada}`)
     if (response.odc_generada) toast.info('ODC generada', `ID: ${response.odc_generada.oc_id}`)
