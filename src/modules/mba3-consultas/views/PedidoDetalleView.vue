@@ -1123,18 +1123,18 @@ const columnManagement = useColumnManagement(
 const { editingCell, iniciarEdicion, cancelarEdicion, manejarTeclasEdicion, manejarBlurEdicion, isColumnaModificada, getColumnaModificadaKey, getRolModificador } = columnManagement
 
 // Color de resaltado de celda modificada en TOTAL/COMENTARIO: naranja si la última edición la
-// hizo produccion-elrayo.view, ámbar si la hizo odcsap.view (su color de marca, igual que la
-// tarjeta "Listado de Pedidos" en DashboardView.vue). Naranja es de la misma familia cálida que
-// ámbar pero claramente distinguible al lado del otro. Depende de quién editó cada celda
-// (persistido en backend), no de quién esté viendo la pantalla ahora — así el color puesto por el
-// primer editor sobrevive el avance de estado hasta que el otro rol la vuelva a editar.
+// hizo produccion-elrayo.view, púrpura si la hizo odcsap.view (su color de marca, igual que la
+// tarjeta "Listado de Pedidos" y el botón "Confirmar"/"Despachar y Facturar" en DashboardView.vue
+// / PedidoHeaderActions.vue). Depende de quién editó cada celda (persistido en backend), no de
+// quién esté viendo la pantalla ahora — así el color puesto por el primer editor sobrevive el
+// avance de estado hasta que el otro rol la vuelva a editar.
 function claseResaltadoModificado(detalleId: string, columnKey: string): string {
   if (columnKey === 'numero' || !isColumnaModificada(detalleId, columnKey)) return ''
   const esColumnaDeElRayo = columnKey === 'total' || columnKey === 'comentario'
   if (esColumnaDeElRayo && getRolModificador(detalleId, columnKey) === 'PRODUCCION_ELRAYO') {
     return 'bg-orange-50 dark:bg-orange-900/20 border-l-2 border-orange-500 dark:border-orange-400'
   }
-  return 'bg-amber-50 dark:bg-amber-900/20 border-l-2 border-amber-500 dark:border-amber-400'
+  return 'bg-purple-50 dark:bg-purple-900/20 border-l-2 border-purple-500 dark:border-purple-400'
 }
 
 // Wrapper para guardarEdicion que incluye guardar en storage (fallback)

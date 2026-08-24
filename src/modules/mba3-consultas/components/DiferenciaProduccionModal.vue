@@ -25,8 +25,8 @@
             <DialogPanel class="w-full max-w-3xl transform overflow-hidden rounded-xl bg-white dark:bg-gray-800 p-6 shadow-xl transition-all">
               <div class="flex flex-col gap-4">
                 <div class="flex items-start gap-3">
-                  <div class="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
-                    <svg class="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div class="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0">
+                    <svg class="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
                   </div>
@@ -56,7 +56,7 @@
                         <td class="px-3 py-2 text-gray-900 dark:text-gray-100">{{ d.codigo_interno || 'N/A' }}</td>
                         <td class="px-3 py-2 text-right text-gray-700 dark:text-gray-300">{{ d.cantidad_solicitada_original }}</td>
                         <td class="px-3 py-2 text-right text-gray-700 dark:text-gray-300">{{ d.total_actual }}</td>
-                        <td class="px-3 py-2 text-right font-medium text-amber-600 dark:text-amber-400">{{ d.diferencia }}</td>
+                        <td class="px-3 py-2 text-right font-medium text-purple-600 dark:text-purple-400">{{ d.diferencia }}</td>
                         <td
                           class="px-3 py-2 text-right font-medium"
                           :class="lineaValida(d) ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'"
@@ -73,7 +73,7 @@
                     type="button"
                     :disabled="procesando"
                     @click="handleDiferenciaNoEntregada"
-                    class="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="w-full px-4 py-2.5 border border-purple-300 dark:border-purple-700 text-purple-700 dark:text-purple-300 rounded-lg hover:bg-purple-50 dark:hover:bg-purple-900/30 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Diferencia no será entregada
                   </button>
@@ -89,13 +89,13 @@
                         type="number"
                         min="1"
                         :disabled="procesando"
-                        class="w-20 px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                        class="w-20 px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
                       />
                       <button
                         type="button"
                         :disabled="procesando"
                         @click="repartirEquitativamente"
-                        class="ml-auto text-sm text-amber-700 dark:text-amber-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
+                        class="ml-auto text-sm text-purple-700 dark:text-purple-400 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Repartir equitativamente
                       </button>
@@ -119,7 +119,7 @@
                           v-model="hijo.fecha_entrega"
                           type="date"
                           :disabled="procesando"
-                          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
                         />
 
                         <table class="w-full text-sm mt-1">
@@ -139,7 +139,7 @@
                                   min="0"
                                   step="1"
                                   :disabled="procesando"
-                                  class="w-24 px-2 py-1 text-right border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-amber-500"
+                                  class="w-24 px-2 py-1 text-right border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-purple-500"
                                 />
                               </td>
                             </tr>
@@ -156,7 +156,7 @@
                       type="button"
                       :disabled="procesando || !todoValido"
                       @click="handleConfirmarConDiferencia"
-                      class="w-full px-4 py-2.5 bg-amber-600 dark:bg-amber-500 text-white rounded-lg hover:bg-amber-700 dark:hover:bg-amber-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      class="w-full px-4 py-2.5 bg-purple-600 dark:bg-purple-500 text-white rounded-lg hover:bg-purple-700 dark:hover:bg-purple-600 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
                       <svg v-if="procesando" class="animate-spin w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />

@@ -21,16 +21,18 @@ export function getEstadoBadgeClass(estado: string): string {
  *
  * Paleta por rol (permiso que produce el estado, ver docs/requeriments/
  * PYTD002_ODC-MABEL-RAYO_SEGUIMIENTO.md): mabel.view = verde/esmeralda/teal/lima
- * (BORRADOR → ... → FINALIZADO); produccion-elrayo.view = ámbar (calza el botón
- * "Confirmar Producción", bg-amber-600); odcsap.view = púrpura (calza el botón
- * "Confirmar", bg-purple-600 — incluye PRODUCCION_POSPUESTA, generado por la opción
- * "Confirmar pedido, generar nuevo pedido con la diferencia" del mismo botón, ver
- * POST /confirmar-con-diferencia); Cancelado/Rechazado = rojo/rosa, cruza roles;
+ * (BORRADOR → ... → CONFIRMADO_ENVIADO); produccion-elrayo.view = ámbar (calza el
+ * botón "Confirmar Producción", bg-amber-600); odcsap.view = púrpura (calza los
+ * botones "Confirmar" y "Despachar y Facturar", bg-purple-600 — incluye
+ * PRODUCCION_POSPUESTA, generado por la opción "Confirmar pedido, generar nuevo
+ * pedido con la diferencia" del mismo botón "Confirmar", ver POST
+ * /confirmar-con-diferencia); Cancelado/Rechazado = rojo/rosa, cruza roles;
  * estados ERROR_* = escala 'vermilion' (rojo/naranja, ver tailwind.config.js), para
  * alertar sin confundirse con Cancelado/Rechazado (rojo puro) ni con éxito/pendiente
  * (verde/lima/ámbar).
- * Debe mantenerse en sync con getEstadoBadgeClass en PedidosListView.vue y
- * CargarPlantillaListadoView.vue (mismos estados, misma paleta).
+ * Debe mantenerse en sync con getEstadoBadgeClass en PedidosListView.vue,
+ * CargarPlantillaListadoView.vue, RedistribucionListadoView.vue y
+ * RevisarRedistribucionListadoView.vue (mismos estados, misma paleta).
  */
 export function getEstadoPedidoBadgeClass(estado: string | undefined): string {
   if (!estado) return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
@@ -56,8 +58,8 @@ export function getEstadoPedidoBadgeClass(estado: string | undefined): string {
     'CONFIRMADO_Y_ENVIADO': `bg-emerald-100 text-emerald-800 ${badgeDark} dark:bg-emerald-900/50 dark:text-emerald-200`,
     'Confirmado y Enviado': `bg-emerald-100 text-emerald-800 ${badgeDark} dark:bg-emerald-900/50 dark:text-emerald-200`,
     'ENVIADA': `bg-emerald-100 text-emerald-800 ${badgeDark} dark:bg-emerald-900/50 dark:text-emerald-200`,
-    'DESPACHAR Y FACTURAR': `bg-green-200 text-green-900 ${badgeDark} dark:bg-green-900/60 dark:text-green-100`,
-    'DESPACHAR_Y_FACTURAR': `bg-green-200 text-green-900 ${badgeDark} dark:bg-green-900/60 dark:text-green-100`,
+    'DESPACHAR Y FACTURAR': `bg-purple-200 text-purple-900 ${badgeDark} dark:bg-purple-900/60 dark:text-purple-100`,
+    'DESPACHAR_Y_FACTURAR': `bg-purple-200 text-purple-900 ${badgeDark} dark:bg-purple-900/60 dark:text-purple-100`,
     'FINALIZADO': `bg-green-300 text-green-900 ${badgeDark} dark:bg-green-900/70 dark:text-green-100`,
     'ORDEN_COMPRA_CREADA': `bg-fuchsia-100 text-fuchsia-800 ${badgeDark} dark:bg-fuchsia-900/50 dark:text-fuchsia-200`,
     'ENVIADA_SAP': `bg-purple-100 text-purple-800 ${badgeDark} dark:bg-purple-900/50 dark:text-purple-200`,
@@ -74,8 +76,13 @@ export function getEstadoPedidoBadgeClass(estado: string | undefined): string {
     'PRODUCCION POSPUESTA': `bg-purple-200 text-purple-900 ${badgeDark} dark:bg-purple-900/60 dark:text-purple-100`,
     'PRODUCCION_POSPUESTA': `bg-purple-200 text-purple-900 ${badgeDark} dark:bg-purple-900/60 dark:text-purple-100`,
     'RECHAZADO': `bg-red-100 text-red-800 ${badgeDark} dark:bg-red-900/50 dark:text-red-200`,
-    'LISTO PARA REDISTRIBUCION': `bg-emerald-200 text-emerald-900 ${badgeDark} dark:bg-emerald-900/60 dark:text-emerald-100`,
-    'LISTO_PARA_REDISTRIBUCION': `bg-emerald-200 text-emerald-900 ${badgeDark} dark:bg-emerald-900/60 dark:text-emerald-100`
+    // Excepción deliberada: no es un estado producido por odcsap.view, pero en el
+    // listado de pedidos para redistribución conviven con 'CONFIRMADO_POR_EL_RAYO'
+    // (también púrpura). Compartir la familia de color deja ambos a simple vista
+    // como los pedidos listos para avanzar, para que el usuario sepa con confianza
+    // cuáles puede seleccionar y enviar a SAP.
+    'LISTO PARA REDISTRIBUCION': `bg-purple-200 text-purple-900 ${badgeDark} dark:bg-purple-900/60 dark:text-purple-100`,
+    'LISTO_PARA_REDISTRIBUCION': `bg-purple-200 text-purple-900 ${badgeDark} dark:bg-purple-900/60 dark:text-purple-100`
   }
   return classes[estado] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
 }

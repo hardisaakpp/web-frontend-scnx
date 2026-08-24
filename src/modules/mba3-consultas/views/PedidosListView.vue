@@ -685,8 +685,8 @@ function getEstadoBadgeClass(estado: string): string {
     'CONFIRMADO_Y_ENVIADO': `bg-emerald-100 text-emerald-800 ${darkClasses} dark:bg-emerald-900/50 dark:text-emerald-200`,
     'Confirmado y Enviado': `bg-emerald-100 text-emerald-800 ${darkClasses} dark:bg-emerald-900/50 dark:text-emerald-200`,
     'ENVIADA': `bg-emerald-100 text-emerald-800 ${darkClasses} dark:bg-emerald-900/50 dark:text-emerald-200`,
-    'DESPACHAR Y FACTURAR': `bg-green-200 text-green-900 ${darkClasses} dark:bg-green-900/60 dark:text-green-100`,
-    'DESPACHAR_Y_FACTURAR': `bg-green-200 text-green-900 ${darkClasses} dark:bg-green-900/60 dark:text-green-100`,
+    'DESPACHAR Y FACTURAR': `bg-purple-200 text-purple-900 ${darkClasses} dark:bg-purple-900/60 dark:text-purple-100`,
+    'DESPACHAR_Y_FACTURAR': `bg-purple-200 text-purple-900 ${darkClasses} dark:bg-purple-900/60 dark:text-purple-100`,
     'FINALIZADO': `bg-green-300 text-green-900 ${darkClasses} dark:bg-green-900/70 dark:text-green-100`,
     'CERRADO': `bg-stone-100 text-stone-700 ${darkClasses} dark:bg-stone-600 dark:text-stone-200`,
     'CANCELADO': `bg-rose-100 text-rose-800 ${darkClasses} dark:bg-rose-900/50 dark:text-rose-200`,
@@ -701,8 +701,8 @@ function getEstadoBadgeClass(estado: string): string {
     'PRODUCCION POSPUESTA': `bg-purple-200 text-purple-900 ${darkClasses} dark:bg-purple-900/60 dark:text-purple-100`,
     'PRODUCCION_POSPUESTA': `bg-purple-200 text-purple-900 ${darkClasses} dark:bg-purple-900/60 dark:text-purple-100`,
     'RECHAZADO': `bg-red-100 text-red-800 ${darkClasses} dark:bg-red-900/50 dark:text-red-200`,
-    'LISTO PARA REDISTRIBUCION': `bg-emerald-200 text-emerald-900 ${darkClasses} dark:bg-emerald-900/60 dark:text-emerald-100`,
-    'LISTO_PARA_REDISTRIBUCION': `bg-emerald-200 text-emerald-900 ${darkClasses} dark:bg-emerald-900/60 dark:text-emerald-100`
+    'LISTO PARA REDISTRIBUCION': `bg-purple-200 text-purple-900 ${darkClasses} dark:bg-purple-900/60 dark:text-purple-100`,
+    'LISTO_PARA_REDISTRIBUCION': `bg-purple-200 text-purple-900 ${darkClasses} dark:bg-purple-900/60 dark:text-purple-100`
   }
 
   return `${baseClasses} ${classes[estado] || `bg-gray-100 text-gray-800 ${darkClasses} dark:bg-gray-700 dark:text-gray-200`}`
