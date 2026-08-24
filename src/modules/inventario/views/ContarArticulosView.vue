@@ -136,6 +136,51 @@
         </table>
       </div>
     </div>
+
+    <!-- Cerrar toma / reconteo -->
+    <div v-if="sessionInfo" class="mt-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+      <div v-if="sessionInfo.status === 'Closed'" class="text-sm font-medium text-green-600 dark:text-green-400">
+        ✓ Toma cerrada — snapshot inmutable generado. Ya no se pueden registrar más conteos.
+      </div>
+      <template v-else>
+        <h2 class="text-sm font-semibold text-gray-900 dark:text-white mb-1">{{ isRecount ? 'Cerrar Reconteo' : 'Cerrar Toma' }}</h2>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          <template v-if="isRecount">
+            Esta toma está en <strong>Reconteo</strong>. Al cerrarla se generará el snapshot inmutable y quedará definitivamente <strong>Cerrada</strong>, independientemente de las diferencias.
+          </template>
+          <template v-else>
+            Si todos los artículos cuadran, la toma pasará a <strong>Cerrada</strong>. Si hay diferencias, pasará a estado <strong>Reconteo</strong> para una segunda vuelta.
+          </template>
+        </p>
+
+        <div v-if="!confirmandoCierre" class="flex items-center gap-3">
+          <button type="button" class="btn-danger" @click="confirmandoCierre = true">
+            {{ isRecount ? 'Cerrar Reconteo' : 'Cerrar Toma' }}
+          </button>
+        </div>
+
+        <div v-else class="space-y-3">
+          <div class="flex items-start gap-2 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-3 py-2">
+            <span class="text-amber-600 dark:text-amber-400 text-base leading-none mt-0.5">⚠</span>
+            <p class="text-sm font-medium text-amber-700 dark:text-amber-400">
+              Esta acción es irreversible: se generará el snapshot inmutable y no se puede deshacer.
+            </p>
+          </div>
+          <label class="block">
+            <span class="block text-xs font-medium text-gray-500 mb-1">Descripción de cierre (opcional)</span>
+            <textarea v-model="closeNote" class="text-input w-full min-h-[60px]" placeholder="Observaciones de cierre..." />
+          </label>
+          <div class="flex items-center gap-3">
+            <button type="button" class="btn-danger" :disabled="closingSession" @click="cerrarToma">
+              {{ closingSession ? 'Cerrando...' : 'Confirmar cierre' }}
+            </button>
+            <button type="button" class="btn-secondary" :disabled="closingSession" @click="confirmandoCierre = false">
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </template>
+    </div>
   </div>
 </template>
 
@@ -165,6 +210,10 @@ const actionMsgError = ref(false)
 const sessionInfo = ref<{ warehouseCode: string; status: string } | null>(null)
 const isRecount = computed(() => sessionInfo.value?.status === 'Recount')
 const userNames = ref<Record<string, string>>({})
+
+const closeNote = ref('')
+const closingSession = ref(false)
+const confirmandoCierre = ref(false)
 
 function userLabel(userId: string): string {
   return userNames.value[userId] || userId
@@ -286,17 +335,22 @@ function onManualInput(itemCode: string, event: Event) {
 function onManualBlur(itemCode: string) {
   if (!pendingManual.value.has(itemCode)) return
 
-  // Only send if the value actually changed from what's currently shown on screen
-  // (the last value loaded/saved for this line). Otherwise two devices on the same
-  // user/session can "resend" a stale unchanged number on blur and wipe out a more
-  // recent update from the other device.
   const line = lines.value.find(l => l.itemCode === itemCode)
-  const currentValue = manualInputs[itemCode] ?? 0
-  const originalValue = line?.manualQuantity ?? 0
-  if (currentValue === originalValue) {
-    pendingManual.value.delete(itemCode)
-    delete manualInputs[itemCode]
-    return
+
+  // Si el ítem NUNCA tuvo una entrada esta ronda, cualquier valor escrito hay que enviarlo —
+  // incluso "0" es información nueva (un "reconté, no hay nada" deliberado), no un no-op.
+  // Sin este chequeo, escribir "0" en un ítem sin conteo previo se ve idéntico a "no toqué nada"
+  // (manualQuantity también es 0 por default) y nunca se envía — el reconteo a cero se pierde
+  // en silencio. Solo cuando SÍ hay una entrada previa comparamos valor, para evitar que dos
+  // dispositivos reenvíen un número viejo sin cambios y pisen una actualización más reciente.
+  if (line?.hasCurrentRoundEntry) {
+    const currentValue = manualInputs[itemCode] ?? 0
+    const originalValue = line.manualQuantity ?? 0
+    if (currentValue === originalValue) {
+      pendingManual.value.delete(itemCode)
+      delete manualInputs[itemCode]
+      return
+    }
   }
 
   guardarLinea(itemCode)
@@ -363,6 +417,26 @@ async function guardarLinea(itemCode: string) {
   }
 }
 
+async function cerrarToma() {
+  closingSession.value = true
+  error.value = null
+  try {
+    const result = await inventarioSesionesService.closeSession(sessionId, closeNote.value || null)
+    closeNote.value = ''
+    confirmandoCierre.value = false
+    showMsg(
+      result.status === 'Recount'
+        ? 'Se encontraron diferencias — la toma pasó a Reconteo.'
+        : 'Toma cerrada. Snapshot inmutable generado.'
+    )
+    await cargar()
+  } catch (e: any) {
+    showMsg(e.message ?? 'No se pudo cerrar la toma.', true)
+  } finally {
+    closingSession.value = false
+  }
+}
+
 onMounted(cargar)
 </script>
 
@@ -370,6 +444,7 @@ onMounted(cargar)
 .th { @apply px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400; }
 .td { @apply px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300; }
 .btn-secondary { @apply inline-flex items-center rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-60 disabled:cursor-not-allowed; }
+.btn-danger { @apply inline-flex items-center rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed; }
 .badge { @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium; }
 .badge-green { @apply bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300; }
 .badge-blue { @apply bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300; }

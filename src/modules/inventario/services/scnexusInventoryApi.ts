@@ -217,7 +217,14 @@ export const scnexusInventoryApi = {
   },
 
   async closeSession(sessionId: string, note?: string): Promise<InventorySessionStatusDto> {
-    const { data } = await api.post(`/api/inventory-sessions/${sessionId}/close`, { note: note || null })
+    // Cerrar dispara un sync de stock contra SAP (sp_sync_stock_sap_warehouse/items) que puede
+    // tardar más que el timeout default (30s) en bodegas grandes — sin esto, el front corta la
+    // conexión, el backend cancela el SP a mitad de camino, y el próximo intento repite todo desde cero.
+    const { data } = await api.post(
+      `/api/inventory-sessions/${sessionId}/close`,
+      { note: note || null },
+      { timeout: 180_000 }
+    )
     return normalizeObject<InventorySessionStatusDto>(data)
   },
 

@@ -32,8 +32,11 @@
                     </div>
                   </div>
                   <div>
-                    <label for="plannedCloseDate" class="label">Fecha cierre estimada</label>
-                    <input id="plannedCloseDate" v-model="form.plannedCloseDate" type="date" class="input" />
+                    <label for="plannedCloseDate" class="label">Fecha cierre estimada <span class="text-red-500">*</span></label>
+                    <input id="plannedCloseDate" v-model="form.plannedCloseDate" type="date" class="input" required :min="fechaHoyIso" />
+                    <p class="mt-1 text-xs text-gray-400">
+                      Obligatoria — si la toma no se cierra antes de esta fecha, se bloqueará automáticamente como no realizada.
+                    </p>
                   </div>
                 </div>
 
@@ -147,6 +150,7 @@ const error = ref<string | null>(null)
 const fechaHoy = computed(() => new Date().toLocaleDateString('es', {
   weekday: 'long', day: '2-digit', month: 'long', year: 'numeric'
 }))
+const fechaHoyIso = computed(() => new Date().toISOString().slice(0, 10))
 
 watch(() => props.isOpen, async (open) => {
   if (!open) return
@@ -189,6 +193,10 @@ function buildSesionFilter(key: FiltroKey): string[] | undefined {
 
 async function guardar() {
   if (bodegasSeleccionadas.value.length === 0) return
+  if (!form.value.plannedCloseDate) {
+    error.value = 'La fecha de cierre estimada es obligatoria.'
+    return
+  }
   guardando.value = true
   error.value = null
 
@@ -200,7 +208,7 @@ async function guardar() {
       const result = await inventarioSesionesService.createSesion(
         warehouseCode,
         form.value.description || null,
-        form.value.plannedCloseDate || null,
+        form.value.plannedCloseDate,
         {
           uNv1Values: buildSesionFilter('uNv1'),
           uNv2Values: buildSesionFilter('uNv2'),

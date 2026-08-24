@@ -30,10 +30,26 @@
         <button class="btn-secondary" type="button" @click="loadAdjustments">Refrescar</button>
       </div>
 
+      <div class="mt-4 flex flex-wrap items-end gap-3">
+        <label class="block">
+          <span class="label">Desde</span>
+          <input v-model="dateFrom" class="input" type="date" />
+        </label>
+        <label class="block">
+          <span class="label">Hasta</span>
+          <input v-model="dateTo" class="input" type="date" />
+        </label>
+        <button class="btn-secondary" type="button" @click="resetDateFilter">Últimos 15 días</button>
+        <span class="text-xs text-gray-400">
+          Mostrando {{ filteredAdjustments.length }} de {{ adjustments.length }} ajustes
+        </span>
+      </div>
+
       <div class="mt-4 overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead class="bg-gray-50 dark:bg-gray-900/60">
             <tr>
+              <th class="th">Fecha</th>
               <th class="th">AdjustmentId</th>
               <th class="th">SessionId</th>
               <th class="th">Bodega</th>
@@ -44,7 +60,8 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-            <tr v-for="item in adjustments" :key="item.adjustmentId">
+            <tr v-for="item in filteredAdjustments" :key="item.adjustmentId">
+              <td class="td whitespace-nowrap">{{ fmtDate(item.createdAt) }}</td>
               <td class="td font-mono text-xs">{{ item.adjustmentId }}</td>
               <td class="td font-mono text-xs">{{ item.sessionId }}</td>
               <td class="td">{{ item.warehouseCode }}</td>
@@ -55,8 +72,10 @@
                 <button class="link" type="button" @click="openAdjustment(item.adjustmentId)">Detalle</button>
               </td>
             </tr>
-            <tr v-if="adjustments.length === 0">
-              <td class="td text-center" colspan="7">Sin ajustes.</td>
+            <tr v-if="filteredAdjustments.length === 0">
+              <td class="td text-center" colspan="8">
+                {{ adjustments.length === 0 ? 'Sin ajustes.' : 'Sin ajustes en el rango de fechas seleccionado.' }}
+              </td>
             </tr>
           </tbody>
         </table>
@@ -116,6 +135,23 @@
         </div>
       </div>
 
+      <!-- Las líneas solo se pueden ajustar en Draft: Submit (→InReview) y Approve las congelan
+           para que el informe final no cambie después de aprobado. -->
+      <div v-if="current.status !== 'Draft'" class="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 text-sm text-amber-800 dark:text-amber-300">
+        Este ajuste está en estado <strong>{{ current.status }}</strong> — las diferencias ya no se pueden editar.
+        Solo se puede ajustar el valor mientras el ajuste está en <strong>Draft</strong> (antes de enviarlo a revisión y de aprobarlo).
+      </div>
+
+      <div class="flex items-center justify-between gap-3">
+        <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+          <input v-model="showOnlyDifferences" type="checkbox" class="rounded border-gray-300 dark:border-gray-600" />
+          Ver solo diferencias
+        </label>
+        <span v-if="showOnlyDifferences && hiddenBalancedCount > 0" class="text-xs text-gray-400">
+          {{ hiddenBalancedCount }} línea(s) balanceada(s) ocultas (no suman al valorizado)
+        </span>
+      </div>
+
       <div class="overflow-x-auto max-h-[380px]">
         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead class="bg-gray-50 dark:bg-gray-900/60 sticky top-0">
@@ -131,7 +167,7 @@
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-            <tr v-for="line in current.lines" :key="line.lineId">
+            <tr v-for="line in visibleLines" :key="line.lineId">
               <td class="td">
                 <div class="font-medium">{{ line.itemCode }}</div>
                 <div class="text-xs text-gray-500 dark:text-gray-400">{{ line.itemDescription || '-' }}</div>
@@ -161,6 +197,9 @@
                 <button class="link" type="button" :disabled="!canEditarAjuste || current.status !== 'Draft' || savingLine" @click="saveLine(line.lineId)">Guardar</button>
               </td>
             </tr>
+            <tr v-if="visibleLines.length === 0">
+              <td class="td text-center" colspan="8">Sin líneas con diferencias.</td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -181,7 +220,34 @@ const { canEditarAjuste, canRevisarAjuste, canIntegrarSap } = useInventarioModul
 
 const numberFmt = new Intl.NumberFormat('es-DO', { maximumFractionDigits: 2 })
 const currencyFmt = new Intl.NumberFormat('es-EC', { style: 'currency', currency: 'USD' })
+const dateFmt = new Intl.DateTimeFormat('es-EC', { dateStyle: 'short', timeStyle: 'short' })
 const VALUATION_LABELS: Record<string, string> = { Cost: 'Costo', Pvp: 'PVP', PvpWithDiscount: 'PVP - desc.' }
+
+const DEFAULT_RANGE_DAYS = 15
+
+function toDateInputValue(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function defaultDateFrom(): string {
+  const date = new Date()
+  date.setDate(date.getDate() - DEFAULT_RANGE_DAYS)
+  return toDateInputValue(date)
+}
+
+// El listado va a crecer indefinidamente (un ajuste por sesión cerrada) — se filtra por fecha de
+// creación en el cliente para no tener que scrollear años de historial; por defecto los últimos
+// 15 días, ajustable a cualquier rango.
+const dateFrom = ref(defaultDateFrom())
+const dateTo = ref(toDateInputValue(new Date()))
+
+function resetDateFilter() {
+  dateFrom.value = defaultDateFrom()
+  dateTo.value = toDateInputValue(new Date())
+}
 
 const adjustments = ref<AdjustmentSummaryDto[]>([])
 const current = ref<AdjustmentDetailDto | null>(null)
@@ -209,6 +275,22 @@ const isValuationLocked = computed(() => !current.value || ['Approved', 'SentToS
 
 const lineEdit = reactive<Record<string, { adjustedDifference: number; auditorNotes: string }>>({})
 
+// "Balanced" = línea sin diferencia (adjustedDifference 0), no aporta al Valorizado (el backend
+// la excluye de la hoja de diferencias del informe final). El toggle solo oculta esas líneas de
+// la tabla; el total ya viene sumado desde el backend y no cambia con el filtro.
+const showOnlyDifferences = ref(true)
+
+const visibleLines = computed(() => {
+  if (!current.value) return []
+  if (!showOnlyDifferences.value) return current.value.lines
+  return current.value.lines.filter((line) => String(line.lineType) !== 'Balanced')
+})
+
+const hiddenBalancedCount = computed(() => {
+  if (!current.value) return 0
+  return current.value.lines.filter((line) => String(line.lineType) === 'Balanced').length
+})
+
 function fmt(value: number) {
   return numberFmt.format(value || 0)
 }
@@ -220,6 +302,26 @@ function fmtCurrency(value: number) {
 function valuationLabel(mode: string | number) {
   return VALUATION_LABELS[String(mode)] ?? String(mode)
 }
+
+function fmtDate(value: string) {
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? '—' : dateFmt.format(date)
+}
+
+const filteredAdjustments = computed(() => {
+  // dateTo se interpreta como "hasta el final de ese día" para que incluya ajustes creados
+  // en cualquier hora de la fecha límite, no solo hasta medianoche.
+  const from = dateFrom.value ? new Date(`${dateFrom.value}T00:00:00`) : null
+  const to = dateTo.value ? new Date(`${dateTo.value}T23:59:59.999`) : null
+
+  return adjustments.value.filter((item) => {
+    const createdAt = new Date(item.createdAt)
+    if (Number.isNaN(createdAt.getTime())) return true
+    if (from && createdAt < from) return false
+    if (to && createdAt > to) return false
+    return true
+  })
+})
 
 function hydrateLineEdit(detail: AdjustmentDetailDto) {
   for (const line of detail.lines) {

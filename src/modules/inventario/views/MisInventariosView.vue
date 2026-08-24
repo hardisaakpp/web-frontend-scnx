@@ -135,14 +135,15 @@ const guardandoUbicacion = ref(false)
 const { isTiendaAssignedTo } = useWarehouseAccessType()
 
 function statusLabel(status: InventorySessionStatus): string {
-  return { Open: 'Abierta', Recount: 'Reconteo', Closed: 'Cerrada' }[status] ?? status
+  return { Open: 'Abierta', Recount: 'Reconteo', Closed: 'Cerrada', Expired: 'No realizado' }[status] ?? status
 }
 
 function badgeClass(status: InventorySessionStatus): string {
   return {
     Open: 'badge-blue',
     Recount: 'badge-amber',
-    Closed: 'badge-gray'
+    Closed: 'badge-gray',
+    Expired: 'badge-red'
   }[status] ?? 'badge-gray'
 }
 
@@ -216,6 +217,7 @@ onMounted(cargar)
 .badge-blue { @apply bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300; }
 .badge-amber { @apply bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300; }
 .badge-gray { @apply bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400; }
+.badge-red { @apply bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300; }
 .alert-error { @apply rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-3 py-2 text-sm text-red-700 dark:text-red-300; }
 .input { @apply block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500; }
 </style>

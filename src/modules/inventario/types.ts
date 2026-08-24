@@ -241,7 +241,7 @@ export interface WarehouseSimpleDto {
   name: string
 }
 
-export type InventorySessionStatus = 'Open' | 'Recount' | 'Closed'
+export type InventorySessionStatus = 'Open' | 'Recount' | 'Closed' | 'Expired'
 
 export interface InventorySessionPickerDto {
   id: string
@@ -397,6 +397,7 @@ export interface SessionDetailStatsDto {
 
 export interface UserScanSummaryDto {
   userId: string
+  userName?: string | null
   totalScans: number
   uniqueItems: number
   firstScan: string
@@ -407,6 +408,7 @@ export interface UserScanDetailEntryDto {
   countId: string
   scannedAt: string
   userId: string
+  userName?: string | null
   barcode?: string | null
   itemCode: string
   description?: string | null

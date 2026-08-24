@@ -48,8 +48,8 @@ export const inventarioSesionesService = {
 
   async createSesion(
     warehouseCode: string,
-    description?: string | null,
-    plannedCloseDate?: string | null,
+    description: string | null,
+    plannedCloseDate: string,
     filters?: {
       uNv1Values?: string[]
       uNv2Values?: string[]
@@ -64,7 +64,7 @@ export const inventarioSesionesService = {
     const response = await invPlanesApi.post<{ sessionId: string }>('/api/inventory-sessions', {
       warehouseCode,
       description: description ?? null,
-      plannedCloseDate: plannedCloseDate ?? null,
+      plannedCloseDate,
       referenceCode: referenceCode || null,
       uNv1Values: filters?.uNv1Values?.length ? filters.uNv1Values : null,
       uNv2Values: filters?.uNv2Values?.length ? filters.uNv2Values : null,
@@ -131,7 +131,14 @@ export const inventarioSesionesService = {
   },
 
   async closeSession(sessionId: string, note?: string | null): Promise<InventorySessionStatusDto> {
-    const response = await invPlanesApi.post<InventorySessionStatusDto>(`/api/inventory-sessions/${sessionId}/close`, { note: note ?? null })
+    // Cerrar dispara un sync de stock contra SAP (sp_sync_stock_sap_warehouse/items) que puede
+    // tardar más que el timeout default (30s) en bodegas grandes — sin esto, el front corta la
+    // conexión, el backend cancela el SP a mitad de camino, y el próximo intento repite todo desde cero.
+    const response = await invPlanesApi.post<InventorySessionStatusDto>(
+      `/api/inventory-sessions/${sessionId}/close`,
+      { note: note ?? null },
+      { timeout: 180_000 }
+    )
     return response.data
   },
 
@@ -199,6 +206,8 @@ export interface ArticleCountLineDto {
   initialTotalCounted: number
   difference: number
   assignedUserId: string | null
+  /** true = ya hay una fila de conteo (scan o manual, cualquier cantidad incl. 0) para la ronda vigente. */
+  hasCurrentRoundEntry: boolean
 }
 
 export interface RecountAssignmentItemDto {
