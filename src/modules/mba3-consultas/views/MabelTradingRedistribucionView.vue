@@ -550,6 +550,35 @@ function getSolicitudesTransferencia(response: ProcesoCompletoSAPResponse): Soli
   return null
 }
 
+/**
+ * ODC adicionales del pedido (todas menos la primera, ya cubierta por envio_sap/detalle
+ * principal). Un pedido mixto (tiendas de más de una marca en el mismo Excel) genera 2
+ * ODC -- una por bodega -- que se envían ambas a SAP; sin esto el modal en /proceso solo
+ * mostraba la primera aunque ambas se hubieran enviado.
+ */
+function getDetallesAdicionales(
+  response: ProcesoCompletoSAPResponse
+): { detalle: IntegracionSAPDetalle; solicitudesTransferencia: SolicitudesTransferencia | null }[] {
+  const envios = response.envios_sap
+  if (!envios || envios.length <= 1) return []
+  return envios.slice(1).map((envio) => ({
+    detalle: {
+      success: envio.success,
+      oc_id: envio.oc_id ?? '',
+      doc_num: envio.doc_num,
+      doc_entry: envio.doc_entry,
+      numero_oc_sap: envio.numero_oc_sap ?? null,
+      message: envio.message ?? null,
+      error: envio.error ?? null,
+      error_message: envio.error ?? null,
+      error_code: envio.error_code ?? null,
+      error_source: null,
+      retry_recommended: envio.retry_recommended ?? null
+    } as IntegracionSAPDetalle,
+    solicitudesTransferencia: envio.solicitudes_transferencia ?? null
+  }))
+}
+
 /** Aplica el resultado del proceso SAP (compartido entre flujo async y fallback sync). */
 async function applySAPResponse(response: ProcesoCompletoSAPResponse) {
   const innerStatus = (response as any).status === 'success' || (response as any).status === 'partial' || (response as any).status === 'error'
@@ -584,6 +613,7 @@ async function applySAPResponse(response: ProcesoCompletoSAPResponse) {
         retry_recommended: response.envio_sap.retry_recommended ?? null
       } as IntegracionSAPDetalle : null,
       solicitudesTransferencia: solicitudesTransferencia || null,
+      detallesAdicionales: getDetallesAdicionales(response),
       estadoGeneral: 'success',
       numeroPedido: numeroPedido.value,
       ajustesDetalle: buildAjustesDetalleParaProcesoCompletoSAP()
@@ -631,6 +661,7 @@ async function applySAPResponse(response: ProcesoCompletoSAPResponse) {
         retry_recommended: retryFlag
       } as IntegracionSAPDetalle,
       solicitudesTransferencia: solicitudesTransferencia || null,
+      detallesAdicionales: getDetallesAdicionales(response),
       estadoGeneral: 'partial',
       numeroPedido: numeroPedido.value,
       ajustesDetalle: buildAjustesDetalleParaProcesoCompletoSAP()

@@ -257,6 +257,7 @@
       :is-open="showIntegracionSAPModal"
       :detalle="integracionSAPDetalle"
       :solicitudes-transferencia="integracionSAPSolicitudes"
+      :detalles-adicionales="integracionSAPDetallesAdicionales"
       :estado-general="integracionSAPEstado"
       :show-retry-sap-cta="showIntegracionSAPRetryCta"
       :retry-loading="sapRetryLoading"
@@ -300,6 +301,8 @@ const showIntegracionSAPModal = ref(false)
 const integracionSAPDetalle = ref<IntegracionSAPDetalle | null>(null)
 const integracionSAPSolicitudes = ref<SolicitudesTransferencia | null>(null)
 const integracionSAPEstado = ref<'success' | 'partial' | 'error'>('success')
+/** ODC adicionales de un pedido mixto (2 ODC del mismo pedido); ver IntegracionSAPModal.vue. */
+const integracionSAPDetallesAdicionales = ref<{ detalle: IntegracionSAPDetalle; solicitudesTransferencia: SolicitudesTransferencia | null }[]>([])
 
 /** Payload para re-ejecutar POST proceso-completo-sap tras fallo transitorio (retry_recommended). */
 const sapRetryContext = ref<{ numeroPedido: string; ajustesDetalle: AjusteDetalle[] } | null>(null)
@@ -311,11 +314,41 @@ const showIntegracionSAPRetryCta = computed(() => {
   return !!(d && d.retry_recommended === true && !d.success)
 })
 
+/**
+ * ODC adicionales del pedido (todas menos la primera, ya cubierta por envio_sap). Un
+ * pedido mixto (tiendas de más de una marca en el mismo Excel) genera 2 ODC -- una por
+ * bodega -- que se envían ambas a SAP; sin esto el modal solo mostraba la primera.
+ */
+function getDetallesAdicionalesDesdeRespuesta(
+  response: ProcesoCompletoSAPResponse
+): { detalle: IntegracionSAPDetalle; solicitudesTransferencia: SolicitudesTransferencia | null }[] {
+  const envios = response.envios_sap
+  if (!envios || envios.length <= 1) return []
+  return envios.slice(1).map((envio) => ({
+    detalle: {
+      success: envio.success,
+      oc_id: envio.oc_id ?? '',
+      doc_num: envio.doc_num ?? null,
+      doc_entry: envio.doc_entry ?? null,
+      numero_oc_sap: envio.numero_oc_sap ?? null,
+      message: envio.message ?? null,
+      error: envio.error ?? null,
+      error_message: envio.error ?? null,
+      error_code: envio.error_code ?? null,
+      error_source: null,
+      retry_recommended: envio.retry_recommended ?? null
+    } as IntegracionSAPDetalle,
+    solicitudesTransferencia: envio.solicitudes_transferencia ?? null
+  }))
+}
+
 function aplicarRespuestaProcesoCompletoSAPAlModal(response: ProcesoCompletoSAPResponse) {
   const envio = response.envio_sap
   const errorMsg = response.error_detalle ?? response.message ?? null
   const solicitudes =
     response.solicitudes_transferencia ?? envio?.solicitudes_transferencia ?? null
+
+  integracionSAPDetallesAdicionales.value = getDetallesAdicionalesDesdeRespuesta(response)
 
   if (envio) {
     integracionSAPDetalle.value = {
@@ -1284,6 +1317,7 @@ async function handleVerDetalleSAP(oc: OrdenCompra) {
     integracionSAPDetalle.value = detalle
     integracionSAPSolicitudes.value =
       response.solicitudes_transferencia ?? envio.solicitudes_transferencia ?? null
+    integracionSAPDetallesAdicionales.value = []
     integracionSAPEstado.value = envio.success ? 'success' : 'error'
     showIntegracionSAPModal.value = true
     return
@@ -1316,6 +1350,7 @@ async function handleVerDetalleSAP(oc: OrdenCompra) {
 
   integracionSAPDetalle.value = detalle
   integracionSAPSolicitudes.value = null
+  integracionSAPDetallesAdicionales.value = []
   integracionSAPEstado.value = 'success'
   showIntegracionSAPModal.value = true
 }
@@ -1505,6 +1540,7 @@ async function handleIntegrarOC(ocId: string, referenciaDespacho: string, almace
     if (detalles.length > 0) {
       const detalle = detalles[0]
       integracionSAPDetalle.value = detalle
+      integracionSAPDetallesAdicionales.value = []
       // Leer ITR: puede venir en detalle, en metadata o en la raíz de la respuesta (según backend)
       integracionSAPSolicitudes.value =
         detalle.solicitudes_transferencia ??
@@ -1939,6 +1975,7 @@ onMounted(async () => {
     const resultado = procesoStore.sapResultadoPendiente
     integracionSAPDetalle.value = resultado.detalle
     integracionSAPSolicitudes.value = resultado.solicitudesTransferencia
+    integracionSAPDetallesAdicionales.value = resultado.detallesAdicionales ?? []
     integracionSAPEstado.value = resultado.estadoGeneral
     if (resultado.ajustesDetalle?.length) {
       sapRetryContext.value = {
