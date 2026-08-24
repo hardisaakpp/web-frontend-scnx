@@ -3,7 +3,7 @@ import { ActualizarSolicitudRequest, AprobarSolicitudRequest, ConfiguracionEnvio
 import { nombreArchivoDesdeHeader } from "../utils/descargas"
 
 
-function construirParams(valores: Record<string, string | number | string[] | undefined>): URLSearchParams {
+function construirParams(valores: Record<string, string | number | boolean | string[] | undefined>): URLSearchParams {
   const params = new URLSearchParams()
   for (const [clave, valor] of Object.entries(valores)) {
     if (valor === undefined || valor === '') continue
@@ -25,6 +25,7 @@ const transferenciasService = {
       fechaHasta: query.fechaHasta,
       tiendaOrigen: query.tiendaOrigen,
       tiendaDestino: query.tiendaDestino,
+      docNum: query.docNum,
       ordenarPor: query.ordenarPor,
       direccion: query.direccion,
     })
@@ -65,6 +66,14 @@ const transferenciasService = {
     )
     return data
   },
+
+  /** Reintento manual de envío a SAP (solo si la fila trae puedeReenviarSap). */
+  reenviarSap: async (id: number): Promise<{ estado: EstadoTransferencia }> => {
+    const { data } = await transferenciasDirectasApi.post<{ estado: EstadoTransferencia }>(
+      `solicitudes-transferencia/${id}/reenviar-sap`
+    )
+    return data
+  },
   // POST {id}/crear-definitiva → genera la transferencia en SAP (solo Aprobado)
   crearDefinitiva: async (id: number, guiaEnvio?: string | null): Promise<CrearDefinitivaResponse> => {
     const body: CrearDefinitivaRequest = {}
@@ -83,6 +92,8 @@ const transferenciasService = {
       fechaHasta: filtros.fechaHasta,
       tiendaOrigen: filtros.tiendaOrigen,
       tiendaDestino: filtros.tiendaDestino,
+      docNum: filtros.docNum,
+      detallado: filtros.detallado,
     })
 
     const resp = await transferenciasDirectasApi.get('solicitudes-transferencia/exportar', {
