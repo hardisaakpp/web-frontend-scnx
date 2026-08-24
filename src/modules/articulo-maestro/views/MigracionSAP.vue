@@ -272,17 +272,17 @@
                                         </div>
                                     </td>
                                     <td class="px-6 py-4">
-                                        <span
+                                        <button
+                                            type="button"
                                             class="px-2.5 py-0.5 rounded-full text-xs font-medium border cursor-default"
                                             :class="getStatusBadgeClass(art.controlSap?.estado ?? 'BORRADOR')"
-                                            tabindex="0"
                                             @mouseenter="showTooltip($event, art.itemCode)"
                                             @mouseleave="hideTooltip"
                                             @focus="showTooltip($event, art.itemCode)"
                                             @blur="hideTooltip"
                                         >
                                             {{ art.controlSap?.estado ?? 'BORRADOR' }}
-                                        </span>
+                                        </button>
                                     </td>
                                     <td class="px-6 py-4 max-w-xs">
                                         <div class="flex items-start gap-1.5">

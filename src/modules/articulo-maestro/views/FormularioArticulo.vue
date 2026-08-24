@@ -702,7 +702,7 @@ import type {
     CatalogoItem,
     JerarquiaItem
 } from '../services/articuloService'
-import type { ImagenArticuloReferencia } from '../types'
+import type { Articulo, ImagenArticuloReferencia } from '../types'
 import SearchableSelect from '../components/SearchableSelect.vue'
 import GestorImagenes from '../components/GestorImagenes.vue'
 import KeyboardHelpModal from '../components/KeyboardHelpModal.vue'
@@ -1130,37 +1130,63 @@ const handleKeydown = (e: KeyboardEvent) => {
     }
 }
 
+function aplicarDatosArticuloAlForm(articulo: Articulo) {
+    Object.keys(form.value).forEach(key => {
+        const k = key as keyof typeof form.value
+        if (articulo && key in articulo) {
+            const val = (articulo as unknown as Record<string, unknown>)[key]
+            if (val != null) {
+                (form.value as Record<string, unknown>)[k] = val
+            }
+        }
+    })
+}
+
+async function cargarCascadasCatalogoParaEdicion() {
+    if (form.value.uNv1) {
+        cats.value.categorias = await catalogoService.getCategorias(form.value.uNv1).catch(() => [])
+    }
+    if (form.value.uNv2) {
+        cats.value.lineas = await catalogoService.getLineas(form.value.uNv2).catch(() => [])
+    }
+}
+
+// Busca, entre las líneas de atributo ya cargadas, cuál es la dueña del
+// uAtrMed guardado (el backend no indica a qué línea pertenece un atributo,
+// así que hay que probar una por una contra el catálogo de cada línea).
+async function restaurarLineaAtributoSeleccionada() {
+    if (!form.value.uAtrMed || cats.value.lineasAtributo.length === 0) return
+    for (const lineaItem of cats.value.lineasAtributo) {
+        try {
+            const attrs = await catalogoService.getAtributos(lineaItem.nombre)
+            if (attrs.some(a => a.nombre === form.value.uAtrMed)) {
+                selectedLineaAtributo.value = lineaItem.nombre
+                cats.value.atributos = attrs
+                break
+            }
+        } catch { /* continuar buscando */ }
+    }
+}
+
+function resolverMensajeErrorCarga(err: unknown, itemCode: string): string {
+    const axiosErr = err as { response?: { data?: { detail?: string | { msg: string }[] } } }
+    const detail = axiosErr?.response?.data?.detail
+    if (Array.isArray(detail)) {
+        return detail.map(d => d.msg).join('. ')
+    }
+    if (typeof detail === 'string') {
+        return detail
+    }
+    return `No se pudo cargar el artículo "${itemCode}". Verifica que el código es correcto.`
+}
+
 async function cargarDatosEdicion(itemCode: string) {
     loadingData.value = true
     try {
         const articulo = await articuloService.getArticuloByCode(itemCode)
-        Object.keys(form.value).forEach(key => {
-            const k = key as keyof typeof form.value
-            if (articulo && key in articulo) {
-                const val = (articulo as unknown as Record<string, unknown>)[key]
-                if (val != null) {
-                    (form.value as Record<string, unknown>)[k] = val
-                }
-            }
-        })
-        if (form.value.uNv1) {
-            cats.value.categorias = await catalogoService.getCategorias(form.value.uNv1).catch(() => [])
-        }
-        if (form.value.uNv2) {
-            cats.value.lineas = await catalogoService.getLineas(form.value.uNv2).catch(() => [])
-        }
-        if (form.value.uAtrMed && cats.value.lineasAtributo.length > 0) {
-            for (const lineaItem of cats.value.lineasAtributo) {
-                try {
-                    const attrs = await catalogoService.getAtributos(lineaItem.nombre)
-                    if (attrs.some(a => a.nombre === form.value.uAtrMed)) {
-                        selectedLineaAtributo.value = lineaItem.nombre
-                        cats.value.atributos = attrs
-                        break
-                    }
-                } catch { /* continuar buscando */ }
-            }
-        }
+        aplicarDatosArticuloAlForm(articulo)
+        await cargarCascadasCatalogoParaEdicion()
+        await restaurarLineaAtributoSeleccionada()
         // RF-003: recién con las cascadas de catálogo ya cargadas podemos
         // calcular la sugerencia "real" y usarla como base de comparación;
         // si el ItemName guardado coincide, seguirá auto-actualizándose al
@@ -1171,21 +1197,12 @@ async function cargarDatosEdicion(itemCode: string) {
         // Snapshot para dirty checking: se toma al final, con el formulario
         // ya asentado (incluyendo la sugerencia de ItemName), para que no
         // se considere "cambiado" algo que el propio watcher acabó de fijar.
-        // Se usa stringify/parse en lugar de structuredClone para desvincular 
+        // Se usa stringify/parse en lugar de structuredClone para desvincular
         // limpiamente el proxy reactivo de Vue (previene DataCloneError).
         originalSnapshot.value = JSON.parse(JSON.stringify(form.value))
     } catch (err: unknown) {
         console.error(`[FormularioArticulo] Error al cargar ${itemCode}:`, err)
-        const axiosErr = err as { response?: { data?: { detail?: string | { msg: string }[] } } }
-        const detail = axiosErr?.response?.data?.detail
-        
-        if (Array.isArray(detail)) {
-            loadError.value = detail.map(d => d.msg).join('. ')
-        } else if (typeof detail === 'string') {
-            loadError.value = detail
-        } else {
-            loadError.value = `No se pudo cargar el artículo "${itemCode}". Verifica que el código es correcto.`
-        }
+        loadError.value = resolverMensajeErrorCarga(err, itemCode)
     } finally {
         loadingData.value = false
     }
