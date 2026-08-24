@@ -142,8 +142,9 @@
                     </div>
                   </div>
 
-                  <!-- Tabla: solo tienda_codigo y doc_num; se muestra cuando hay más de 1 ITR -->
-                  <div v-else-if="filasItr.length > 1" class="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                  <!-- Tabla: solo tienda_codigo y doc_num; se muestra siempre que haya al menos 1 ITR
+                       (antes exigía > 1, así que con exactamente 1 ITR nunca se mostraba su DocNum). -->
+                  <div v-else-if="filasItr.length >= 1" class="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
                     <div class="overflow-x-auto max-h-64 overflow-y-auto">
                       <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
                         <thead class="bg-gray-100 dark:bg-gray-800/80 sticky top-0">
