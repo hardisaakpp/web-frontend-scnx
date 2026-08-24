@@ -195,6 +195,12 @@ const agregarAlDetalle = (p: ProductoBusqueda, cantidad: number) => {
 const eliminarDelDetalle = (itemCode: string) => {
   productos.value = productos.value.filter((p) => p.itemCode !== itemCode)
 }
+
+// Ajuste de cantidad desde el stepper de la tabla de detalle
+const cambiarCantidadDetalle = (itemCode: string, cantidad: number) => {
+  const linea = productos.value.find((p) => p.itemCode === itemCode)
+  if (linea) linea.cantidadSolicitada = cantidad
+}
 const rutaVolver = computed(() => (modoEdicion.value ? '/transferencias-stock/historial' : '/transferencias-stock'))
 
 const cancelar = () => {
@@ -418,7 +424,8 @@ const guardarEdicion = async () => {
         </h3>
         <div class="flex flex-col lg:flex-row gap-4">
           <div class="flex-1 min-w-0">
-            <TablaDetalleProductos :productos="productos" @eliminar="eliminarDelDetalle" />
+            <TablaDetalleProductos :productos="productos" @eliminar="eliminarDelDetalle"
+              @cambiar-cantidad="cambiarCantidadDetalle" />
           </div>
           <div class="lg:w-64 shrink-0">
             <ResumenTransferencia :productos="productos" />
