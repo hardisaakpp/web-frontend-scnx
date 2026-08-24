@@ -4,11 +4,12 @@ import { useRoute, useRouter } from 'vue-router'
 import { usePickingStore } from '../stores/pickingStore'
 import { useAuthStore } from '@/stores/auth'
 import { APP_LOCALE } from '@/plugins/locale'
-import { ExclamationTriangleIcon, PencilIcon, DocumentArrowDownIcon, TrashIcon, ArrowLeftIcon } from '@heroicons/vue/24/outline'
+import { PencilIcon, DocumentArrowDownIcon, TrashIcon, ArrowLeftIcon } from '@heroicons/vue/24/outline'
 import type { ReceptionLine } from '../types'
 import { triggerBlobDownload } from '../utils/downloadBlob'
 import { statusMeta } from '../utils/statusMeta'
 import ErrorDialog from '../components/ErrorDialog.vue'
+import ConfirmDialog from '../components/ConfirmDialog.vue'
 
 function buildScanFeedback(result: { matchedLine: ReceptionLine | null; fillAmount: number; excess: number }): string {
   if (!result.matchedLine) {
@@ -152,11 +153,6 @@ async function handleConfirm(): Promise<void> {
   await store.confirm({})
 }
 
-const hasIncompleteLines = computed(() => {
-  if (!store.currentTransfer) return false
-  return store.currentTransfer.lines.some((l) => l.scanned < l.quantity)
-})
-
 // Confirm/scan/recordDifference failures shown as a dismissible modal instead of an inline banner
 // above the table — same request as legacy's receive-confirmation pattern (ConfirmDialog), just
 // for errors instead of a yes/no prompt. sapErrorMessage takes precedence (it's the more specific
@@ -167,9 +163,12 @@ const pickingErrorMessage = computed(() => store.sapErrorMessage ?? store.action
 
 // Forced-recount gate (parity with legacy recP.php's crearTransferencia()): the first "Confirmar
 // parcial" attempt on a transfer with any line still short of its requested quantity blocks,
-// resets that line's scan input to 0, and forces the user to recount/re-scan before a second
-// attempt is allowed through. The second attempt proceeds regardless of whether the user actually
+// resets that line's scan input to 0, and opens a modal so the user can either go back and
+// re-scan or confirm the partial reception right from there. A second attempt — from the modal or
+// from the "Confirmar parcial" button itself — proceeds regardless of whether the user actually
 // re-scanned anything — that's the legacy behavior being replicated, not a shortcut taken here.
+const showRecountDialog = ref(false)
+
 async function handleConfirmPartial(): Promise<void> {
   if (!store.currentTransfer) return
   const incompleteLines = store.currentTransfer.lines.filter((l) => l.scanned < l.quantity)
@@ -179,8 +178,14 @@ async function handleConfirmPartial(): Promise<void> {
     for (const line of incompleteLines) {
       scanQuantities.value[line.lineId] = 0
     }
+    showRecountDialog.value = true
     return
   }
+  await store.confirm({ allowPartial: true })
+}
+
+async function confirmPartialFromRecountDialog(): Promise<void> {
+  showRecountDialog.value = false
   await store.confirm({ allowPartial: true })
 }
 
@@ -348,17 +353,18 @@ async function handleDownloadPickingReport(): Promise<void> {
           </div>
         </div>
 
-        <!-- Forced-recount notice: shown after a blocked partial-confirm attempt, until the
-             incomplete lines are re-scanned and confirmed again. -->
-        <div
-          v-if="store.hasRecounted && hasIncompleteLines"
-          data-testid="recount-warning"
-          role="alert"
-          class="py-4 text-sm text-amber-700 dark:text-amber-500 bg-amber-50 dark:bg-amber-900/10 rounded-lg px-4 border border-amber-200 dark:border-amber-900/30 flex items-start gap-3"
-        >
-          <ExclamationTriangleIcon class="w-6 h-6 text-amber-500 shrink-0" />
-          <p>Es necesario recontar los ítems con diferencias para proceder con la confirmación parcial. Volvé a escanear las líneas marcadas y confirmá nuevamente.</p>
-        </div>
+        <!-- Forced-recount dialog: opened after a blocked partial-confirm attempt. Lets the user
+             either close it to re-scan the marked lines, or confirm the partial reception directly
+             from here. -->
+        <ConfirmDialog
+          :open="showRecountDialog"
+          title="Confirmación parcial"
+          message="Es necesario volver a contar los ítems con diferencias antes de confirmar parcialmente. Vuelva a escanear las líneas marcadas o confirme la recepción directamente desde aquí."
+          confirm-label="Confirmar parcial"
+          cancel-label="Volver a escanear"
+          @confirm="confirmPartialFromRecountDialog"
+          @cancel="showRecountDialog = false"
+        />
 
         <!-- Lines table: real backend model is "pick an existing line, submit its new absolute
              scanned total" (ScanLineRequest/ApplyScan) — no free-typed item code. When the user
@@ -382,7 +388,7 @@ async function handleDownloadPickingReport(): Promise<void> {
                 v-model="scanBarcodeInput"
                 type="text"
                 autofocus
-                placeholder="Escaneá o ingresá el código"
+                placeholder="Escanee o ingrese el código"
                 class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-1.5 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                 @keyup.enter.prevent="handleBarcodeScan"
               />
