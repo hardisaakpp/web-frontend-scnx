@@ -118,7 +118,8 @@ const rechazar = async (motivoRechazo: string) => {
 
     <section class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
       <TablaHistorial :solicitudes="solicitudes" :cargando="cargando" @ver="verDetalle"
-        @editar="() => {}" @enviar-aprobacion="() => {}" @crear-definitiva="() => {}" @ver-errores="() => {}" />
+        @editar="() => {}" @enviar-aprobacion="() => {}" @crear-definitiva="() => {}" @ver-errores="() => {}"
+        @reenviar-sap="() => {}" />
 
       <p v-if="error" class="px-4 py-3 text-sm text-red-600 dark:text-red-400 border-t border-gray-200 dark:border-gray-700">{{ error }}</p>
 

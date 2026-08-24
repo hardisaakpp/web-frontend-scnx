@@ -1,9 +1,22 @@
 <script setup lang="ts">
-import { TrashIcon, InboxIcon } from '@heroicons/vue/24/outline'
+import { TrashIcon, InboxIcon, MinusIcon, PlusIcon } from '@heroicons/vue/24/outline'
 import type { DetalleLinea } from '../types'
 
 defineProps<{ productos: DetalleLinea[] }>()
-const emit = defineEmits<{ eliminar: [itemCode: string] }>()
+const emit = defineEmits<{
+    eliminar: [itemCode: string]
+    'cambiar-cantidad': [itemCode: string, cantidad: number]
+}>()
+
+/**
+ * Ajusta la cantidad de una línea. El mínimo es 1: para quitar el producto se
+ * usa el botón eliminar.
+ */
+const ajustar = (p: DetalleLinea, delta: number) => {
+    const nueva = p.cantidadSolicitada + delta
+    if (nueva < 1) return
+    emit('cambiar-cantidad', p.itemCode, nueva)
+}
 </script>
 
 <template>
@@ -36,8 +49,26 @@ const emit = defineEmits<{ eliminar: [itemCode: string] }>()
                         <td class="px-4 py-3 text-xs text-gray-600 dark:text-gray-300">{{ p.itemCode }}</td>
                         <td class="px-4 py-3 text-xs text-gray-600 dark:text-gray-300">{{ p.itemName }}</td>
                         <td class="px-4 py-3 text-xs text-gray-600 dark:text-gray-300">{{ p.codeBars }}</td>
-                        <td class="px-4 py-3 text-xs text-center font-medium text-gray-900 dark:text-white">{{
-                            p.cantidadSolicitada }}</td>
+                        <td class="px-4 py-3">
+                            <div class="flex justify-center">
+                                <div
+                                    class="inline-flex items-stretch h-[30px] rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden">
+                                    <button type="button" @click="ajustar(p, -1)"
+                                        :disabled="p.cantidadSolicitada <= 1" title="Quitar una unidad"
+                                        class="h-full px-2 flex items-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 border-r border-gray-300 dark:border-gray-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+                                        <MinusIcon class="w-3.5 h-3.5" />
+                                    </button>
+                                    <span
+                                        class="h-full w-12 flex items-center justify-center text-xs font-medium text-gray-900 dark:text-white bg-white dark:bg-gray-700">
+                                        {{ p.cantidadSolicitada }}
+                                    </span>
+                                    <button type="button" @click="ajustar(p, 1)" title="Agregar una unidad"
+                                        class="h-full px-2 flex items-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 border-l border-gray-300 dark:border-gray-600 transition-colors">
+                                        <PlusIcon class="w-3.5 h-3.5" />
+                                    </button>
+                                </div>
+                            </div>
+                        </td>
                         <td class="px-4 py-3 text-right">
                             <button type="button" @click="emit('eliminar', p.itemCode)" title="Eliminar"
                                 class="text-rose-600 hover:text-rose-800 dark:text-rose-400 dark:hover:text-rose-300 transition-colors">

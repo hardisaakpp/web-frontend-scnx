@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { EyeIcon, PencilSquareIcon, InboxIcon, CheckBadgeIcon, PaperAirplaneIcon, ClipboardDocumentCheckIcon, ChevronUpIcon, ChevronDownIcon, ChevronUpDownIcon } from '@heroicons/vue/24/outline'
+import { EyeIcon, PencilSquareIcon, InboxIcon, CheckBadgeIcon, PaperAirplaneIcon, ClipboardDocumentCheckIcon, ChevronUpIcon, ChevronDownIcon, ChevronUpDownIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
 import { APP_LOCALE } from '@/plugins/locale'
 
 import type { SolicitudResumen } from '../types'
@@ -21,6 +21,7 @@ const emit = defineEmits<{
     'enviar-aprobacion': [id: number]
     'crear-definitiva': [id: number]
     'ver-errores': [id: number]
+    'reenviar-sap': [id: number]
     ordenar: [campo: string]
 }>()
 
@@ -44,6 +45,7 @@ function formatFecha(iso: string) {
 }
 const mostrarGuia = (g: string | null) => (g && g.trim() ? g : '—')
 const puedeAprobar = computed(() => authStore.hasPermission('transferenciadirecta.aprobar'))
+const puedeSolicitar = computed(() => authStore.hasPermission('transferenciadirecta.solicitar'))
 
 </script>
 
@@ -92,16 +94,17 @@ const puedeAprobar = computed(() => authStore.hasPermission('transferenciadirect
                             <ChevronUpDownIcon v-else class="w-3 h-3 opacity-40" />
                         </span>
                     </th>
+                    
                     <th :class="thClass">Cantidad de Productos</th>
                     <th :class="thClass">Guía Courier</th>
-                    <th :class="thClass">Responsable del Envió</th>
+                    <th :class="thClass">DocNum SAP</th>
                     <th :class="thClass">Observaciones</th>
                     <th :class="[thClass, 'text-right']">Acciones</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
                 <tr v-if="cargando">
-                    <td colspan="10" class="px-4 py-6">
+                    <td colspan="11" class="px-4 py-6">
                         <CargandoSpinner mensaje="Cargando solicitudes…" />
                     </td>
                 </tr>
@@ -125,11 +128,15 @@ const puedeAprobar = computed(() => authStore.hasPermission('transferenciadirect
                             <EstadosPlantilla :estado="s.estado" />
                         </button>
                         <EstadosPlantilla v-else :estado="s.estado" />
-                    </td>
+                    </td>                    
                     <td class="px-4 py-3 text-xs text-center text-gray-600 dark:text-gray-300">{{ s.cantidadProductos }}
                     </td>
                     <td class="px-4 py-3 text-xs text-gray-600 dark:text-gray-300">{{ mostrarGuia(s.guiaEnvio) }}</td>
-                    <td class="px-4 py-3 text-xs text-gray-600 dark:text-gray-300">{{ s.usuarioSolicitante }}</td>
+                    <td class="px-4 py-3 text-xs text-gray-600 dark:text-gray-300">
+                        <span v-if="s.sapTransferDocNum" class="font-medium text-gray-900 dark:text-white">{{
+                            s.sapTransferDocNum }}</span>
+                        <span v-else></span>
+                    </td>
                     <td class="px-4 py-3 text-xs  text-gray-600 dark:text-gray-300">{{ s.justificacion }}</td>
                     <td class="px-4 py-3">
                         <div class="flex items-center justify-end gap-1">
@@ -160,12 +167,19 @@ const puedeAprobar = computed(() => authStore.hasPermission('transferenciadirect
                                 class="p-2 text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/20 rounded-lg transition-colors">
                                 <CheckBadgeIcon class="w-5 h-5" />
                             </button>
+
+                            <!-- Reintento manual de envío a SAP: el backend decide si está habilitado -->
+                            <button v-if="puedeSolicitar && s.puedeReenviarSap" type="button"
+                                @click="emit('reenviar-sap', s.id)" title="Reintentar envío a SAP"
+                                class="p-2 text-orange-600 hover:bg-orange-50 dark:text-orange-400 dark:hover:bg-orange-900/20 rounded-lg transition-colors">
+                                <ArrowPathIcon class="w-5 h-5" />
+                            </button>
                         </div>
                     </td>
 
                 </tr>
                 <tr v-if="!cargando && solicitudes.length === 0">
-                    <td colspan="10" class="px-4 py-16 text-center">
+                    <td colspan="11" class="px-4 py-16 text-center">
                         <InboxIcon class="w-10 h-10 mx-auto text-gray-300 dark:text-gray-600 mb-2" />
                         <p class="text-sm text-gray-400 dark:text-gray-500">No hay solicitudes para mostrar.</p>
                     </td>

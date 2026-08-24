@@ -145,12 +145,12 @@ const claseTituloResolucion = computed(() =>
             <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-2">Información SAP</h3>
             <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div v-if="detalle.sapTransferDocNum">
-                <dt class="text-xs text-gray-500 dark:text-gray-400">Doc. Transferencia</dt>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">DocNum</dt>
                 <dd class="text-gray-900 dark:text-white">{{ detalle.sapTransferDocNum }}</dd>
               </div>
-              <div v-else-if="detalle.sapDraftDocEntry">
-                <dt class="text-xs text-gray-500 dark:text-gray-400">Doc. Borrador</dt>
-                <dd class="text-gray-900 dark:text-white">{{ detalle.sapDraftDocEntry }}</dd>
+              <div v-if="detalle.fechaEnvioSap">
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Fecha de Envio a Sap</dt>
+                <dd class="text-gray-900 dark:text-white">{{ formatFechaHora(detalle.fechaEnvioSap) }}</dd>
               </div>
             </dl>
           </div>
