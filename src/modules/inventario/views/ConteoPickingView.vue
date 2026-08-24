@@ -357,11 +357,11 @@ function onOnline() { online.value = true }
 function onOffline() { online.value = false }
 
 function statusLabel(status: InventorySessionStatus): string {
-  return { Open: 'Abierta', Recount: 'Reconteo', Closed: 'Cerrada' }[status] ?? status
+  return { Open: 'Abierta', Recount: 'Reconteo', Closed: 'Cerrada', Expired: 'No realizado' }[status] ?? status
 }
 
 function badgeClass(status: InventorySessionStatus): string {
-  return { Open: 'badge-blue', Recount: 'badge-amber', Closed: 'badge-gray' }[status] ?? 'badge-gray'
+  return { Open: 'badge-blue', Recount: 'badge-amber', Closed: 'badge-gray', Expired: 'badge-red' }[status] ?? 'badge-gray'
 }
 
 function volver() {

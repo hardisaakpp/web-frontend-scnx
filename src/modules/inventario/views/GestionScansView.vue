@@ -51,7 +51,7 @@
                 :class="['hover:bg-gray-50 dark:hover:bg-gray-700/20 cursor-pointer', userFilter === u.userId ? 'bg-blue-50/60 dark:bg-blue-900/10' : '']"
                 @click="userFilter = userFilter === u.userId ? '' : u.userId"
               >
-                <td class="td font-mono font-semibold">{{ u.userId }}</td>
+                <td class="td font-semibold">{{ userLabel(u.userId) }}</td>
                 <td class="td text-right">
                   <span class="inline-flex items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2.5 py-0.5 text-xs font-bold">{{ u.totalScans.toLocaleString() }}</span>
                 </td>
@@ -101,7 +101,7 @@
                 :class="{ 'opacity-40 line-through': eliminados.has(d.countId) }"
               >
                 <td class="td text-xs whitespace-nowrap text-gray-500 dark:text-gray-400">{{ fmtDt(d.scannedAt) }}</td>
-                <td class="td font-mono text-xs font-semibold">{{ d.userId }}</td>
+                <td class="td text-xs font-semibold">{{ userLabel(d.userId) }}</td>
                 <td class="td font-mono text-xs">{{ d.barcode ?? '—' }}</td>
                 <td class="td font-mono text-xs font-semibold">{{ d.itemCode }}</td>
                 <td class="td text-xs max-w-xs truncate">{{ d.description ?? '—' }}</td>
@@ -148,7 +148,7 @@
               <DialogTitle class="text-base font-semibold text-gray-900 dark:text-white mb-2">Eliminar escaneo</DialogTitle>
               <p class="text-sm text-gray-600 dark:text-gray-400 mb-6">
                 ¿Eliminar el escaneo de <strong>{{ porEliminar?.itemCode }}</strong> registrado por
-                <strong>{{ porEliminar?.userId }}</strong>? Esta acción no se puede deshacer.
+                <strong>{{ porEliminar ? userLabel(porEliminar.userId) : '' }}</strong>? Esta acción no se puede deshacer.
               </p>
               <div class="flex justify-end gap-3">
                 <button type="button" class="btn-secondary" @click="porEliminar = null">Cancelar</button>
@@ -170,6 +170,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { Dialog, DialogPanel, DialogTitle, TransitionRoot, TransitionChild } from '@headlessui/vue'
 import { ChevronLeftIcon, ArrowPathIcon } from '@heroicons/vue/24/outline'
 import { inventarioSesionesService } from '../services/inventarioSesionesApi'
+import { resolveUserNames } from '@/utils/resolveUserNames'
 import type { SessionScansByUserDto, UserScanDetailEntryDto } from '../types'
 
 const router = useRouter()
@@ -180,6 +181,11 @@ const scansData = ref<SessionScansByUserDto | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
 const exito = ref<string | null>(null)
+const userNames = ref<Record<string, string>>({})
+
+function userLabel(userId: string): string {
+  return userNames.value[userId] || userId
+}
 
 const userFilter = ref('')
 const search = ref('')
@@ -197,6 +203,13 @@ async function cargar() {
   error.value = null
   try {
     scansData.value = await inventarioSesionesService.getScansByUser(sessionId)
+    if (scansData.value) {
+      const ids = [
+        ...scansData.value.summary.map(u => u.userId),
+        ...scansData.value.detail.map(d => d.userId),
+      ]
+      userNames.value = await resolveUserNames(ids)
+    }
   } catch (e: any) {
     error.value = e.message ?? 'Error al cargar los scans de la sesión.'
   } finally {
@@ -211,6 +224,7 @@ const filteredDetail = computed(() => {
     if (userFilter.value && !d.userId.toLowerCase().includes(userFilter.value.toLowerCase())) return false
     if (!q) return true
     return d.userId.toLowerCase().includes(q) ||
+      userLabel(d.userId).toLowerCase().includes(q) ||
       d.itemCode.toLowerCase().includes(q) ||
       (d.barcode ?? '').toLowerCase().includes(q) ||
       (d.description ?? '').toLowerCase().includes(q)
@@ -234,7 +248,7 @@ async function eliminar() {
   try {
     await inventarioSesionesService.deleteCount(sessionId, entry.countId)
     eliminados.value.add(entry.countId)
-    exito.value = `Escaneo de ${entry.itemCode} (usuario ${entry.userId}) eliminado.`
+    exito.value = `Escaneo de ${entry.itemCode} (usuario ${userLabel(entry.userId)}) eliminado.`
     porEliminar.value = null
   } catch (e: any) {
     error.value = e.message ?? 'Error al eliminar el escaneo.'

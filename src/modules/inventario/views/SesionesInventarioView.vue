@@ -106,6 +106,11 @@
               <td class="td">
                 <span v-if="s.description" class="text-sm">{{ s.description }}</span>
                 <span v-else class="text-xs text-gray-400 dark:text-gray-600 italic">—</span>
+                <div v-if="s.referenceCode" class="mt-0.5">
+                  <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono font-semibold bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                    {{ s.referenceCode }}
+                  </span>
+                </div>
               </td>
               <td class="td whitespace-nowrap">
                 <span :class="['badge', badgeClass(s.status)]">{{ statusLabel(s.status) }}</span>
@@ -175,6 +180,13 @@
       @close="sesionPickers = null"
     />
 
+    <RecountAssignmentModal
+      :is-open="!!sesionParaReparto"
+      :session-id="sesionParaReparto"
+      @close="sesionParaReparto = null"
+      @confirmed="onRepartoConfirmado"
+    />
+
     <!-- Menú flotante de acciones (Teleport + overlay) -->
     <Teleport to="body">
       <div v-if="menuAbierto" class="fixed inset-0 z-40" @click="cerrarMenu" />
@@ -229,16 +241,6 @@
               type="button"
               class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200
                      hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
-              @click="copiarLink(menuSesion.sessionId)"
-            >
-              <ClipboardDocumentCheckIcon v-if="linkCopiado === menuSesion.sessionId" class="w-4 h-4 flex-shrink-0 text-green-500" />
-              <LinkIcon v-else class="w-4 h-4 flex-shrink-0 text-gray-400" />
-              {{ linkCopiado === menuSesion.sessionId ? 'Link copiado' : 'Copiar link de picking' }}
-            </button>
-            <button
-              type="button"
-              class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200
-                     hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
               @click="abrirPickers(menuSesion); cerrarMenu()"
             >
               <UsersIcon class="w-4 h-4 flex-shrink-0 text-gray-400" />
@@ -257,6 +259,16 @@
               Cerrar toma
             </button>
           </template>
+          <button
+            v-if="menuSesion.status === 'Open'"
+            type="button"
+            class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 dark:text-red-400
+                   hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-left"
+            @click="confirmandoEliminacion = menuSesion.sessionId; cerrarMenu()"
+          >
+            <TrashIcon class="w-4 h-4 flex-shrink-0" />
+            Eliminar toma
+          </button>
         </div>
       </Transition>
     </Teleport>
@@ -310,6 +322,56 @@
         </div>
       </Transition>
     </Teleport>
+
+    <!-- Modal de confirmación: eliminar toma -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition-opacity duration-200"
+        enter-from-class="opacity-0"
+        leave-active-class="transition-opacity duration-150"
+        leave-to-class="opacity-0"
+      >
+        <div
+          v-if="confirmandoEliminacion"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+          @click.self="eliminando !== confirmandoEliminacion && (confirmandoEliminacion = null)"
+        >
+          <div class="w-full max-w-sm bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-6 ring-1 ring-black/5">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="flex-shrink-0 w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                <ExclamationTriangleIcon class="w-5 h-5 text-red-600 dark:text-red-400" />
+              </div>
+              <div>
+                <h3 class="text-base font-bold text-gray-900 dark:text-white">Eliminar toma</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Se eliminará junto con todos sus conteos. No se puede deshacer.</p>
+              </div>
+            </div>
+            <p v-if="sesionAConfirmarEliminacion" class="text-sm text-gray-600 dark:text-gray-300 mb-6">
+              ¿Confirmas eliminar la toma de
+              <span class="font-semibold text-gray-900 dark:text-white">{{ sesionAConfirmarEliminacion.warehouseName }}</span>?
+            </p>
+            <div class="flex justify-end gap-3">
+              <button
+                type="button"
+                class="btn-secondary"
+                :disabled="eliminando === confirmandoEliminacion"
+                @click="confirmandoEliminacion = null"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                class="btn-danger"
+                :disabled="eliminando === confirmandoEliminacion"
+                @click="eliminarTomaFisica(confirmandoEliminacion)"
+              >
+                {{ eliminando === confirmandoEliminacion ? 'Eliminando...' : 'Eliminar toma' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -320,7 +382,6 @@ import {
   ArrowPathIcon,
   PlusIcon,
   UsersIcon,
-  LinkIcon,
   ClipboardDocumentCheckIcon,
   ClipboardIcon,
   EllipsisVerticalIcon,
@@ -329,11 +390,13 @@ import {
   ClipboardDocumentListIcon,
   XCircleIcon,
   ExclamationTriangleIcon,
+  TrashIcon,
 } from '@heroicons/vue/24/outline'
 import { inventarioSesionesService } from '../services/inventarioSesionesApi'
 import type { InventorySessionListItemDto, InventorySessionStatus } from '../types'
 import CrearSesionDirectaModal from '../components/CrearSesionDirectaModal.vue'
 import PickerManagementModal from '../components/PickerManagementModal.vue'
+import RecountAssignmentModal from '../components/RecountAssignmentModal.vue'
 import { useInventarioModulePermissions } from '../composables/useInventarioModulePermissions'
 
 const { canGenerar } = useInventarioModulePermissions()
@@ -344,17 +407,20 @@ const error = ref<string | null>(null)
 const exito = ref<string | null>(null)
 const mostrarModal = ref(false)
 const sesionPickers = ref<InventorySessionListItemDto | null>(null)
-const linkCopiado = ref<string | null>(null)
+const sesionParaReparto = ref<string | null>(null)
 const copiado = ref<string | null>(null)
 const filtroEstado = ref<InventorySessionStatus | null>(null)
 const confirmandoCierre = ref<string | null>(null)
 const cerrando = ref<string | null>(null)
+const confirmandoEliminacion = ref<string | null>(null)
+const eliminando = ref<string | null>(null)
 
 const menuAbierto = ref<string | null>(null)
 const menuStyle = ref({ top: '0px', right: '0px' })
 const menuRef = ref<HTMLElement | null>(null)
 const menuSesion = computed(() => sesionesFiltradas.value.find(s => s.sessionId === menuAbierto.value) ?? null)
 const sesionAConfirmarCierre = computed(() => sesiones.value.find(s => s.sessionId === confirmandoCierre.value) ?? null)
+const sesionAConfirmarEliminacion = computed(() => sesiones.value.find(s => s.sessionId === confirmandoEliminacion.value) ?? null)
 
 async function abrirMenu(e: MouseEvent, id: string) {
   e.stopPropagation()
@@ -443,14 +509,15 @@ function contarPorEstado(estado: InventorySessionStatus | null): number {
 }
 
 function statusLabel(status: InventorySessionStatus): string {
-  return { Open: 'Abierta', Recount: 'Reconteo', Closed: 'Cerrada' }[status] ?? status
+  return { Open: 'Abierta', Recount: 'Reconteo', Closed: 'Cerrada', Expired: 'No realizado' }[status] ?? status
 }
 
 function badgeClass(status: InventorySessionStatus): string {
   return {
     Open: 'badge-blue',
     Recount: 'badge-amber',
-    Closed: 'badge-gray'
+    Closed: 'badge-gray',
+    Expired: 'badge-red'
   }[status] ?? 'badge-gray'
 }
 
@@ -493,9 +560,14 @@ async function cerrarTomaFisica(sessionId: string) {
   cerrando.value = sessionId
   error.value = null
   try {
-    await inventarioSesionesService.closeSession(sessionId, null)
+    const result = await inventarioSesionesService.closeSession(sessionId, null)
     confirmandoCierre.value = null
-    exito.value = 'Toma física cerrada. El snapshot inmutable fue generado.'
+    if (result.status === 'Recount') {
+      exito.value = 'Se encontraron diferencias — la toma pasó a Reconteo.'
+      sesionParaReparto.value = sessionId
+    } else {
+      exito.value = 'Toma física cerrada. El snapshot inmutable fue generado.'
+    }
     setTimeout(() => { exito.value = null }, 4000)
     await cargar()
   } catch (e: any) {
@@ -505,12 +577,25 @@ async function cerrarTomaFisica(sessionId: string) {
   }
 }
 
-function copiarLink(sessionId: string) {
-  const url = `${window.location.origin}/inventario/sesiones/${sessionId}`
-  navigator.clipboard.writeText(url).then(() => {
-    linkCopiado.value = sessionId
-    setTimeout(() => { linkCopiado.value = null }, 2000)
-  })
+function onRepartoConfirmado() {
+  exito.value = 'Reparto de reconteo confirmado.'
+  setTimeout(() => { exito.value = null }, 4000)
+}
+
+async function eliminarTomaFisica(sessionId: string) {
+  eliminando.value = sessionId
+  error.value = null
+  try {
+    await inventarioSesionesService.deleteSesion(sessionId)
+    confirmandoEliminacion.value = null
+    exito.value = 'Toma eliminada correctamente.'
+    setTimeout(() => { exito.value = null }, 4000)
+    await cargar()
+  } catch (e: any) {
+    error.value = e.message ?? 'Error al eliminar la toma.'
+  } finally {
+    eliminando.value = null
+  }
 }
 
 function copiarTexto(text: string, key: string) {
@@ -524,11 +609,11 @@ function abrirPickers(s: InventorySessionListItemDto) {
   sesionPickers.value = s
 }
 
-function onSesionCreada(sessionId: string) {
+function onSesionCreada() {
   mostrarModal.value = false
   exito.value = 'Sesión creada correctamente.'
+  setTimeout(() => { exito.value = null }, 4000)
   cargar()
-  router.push({ name: 'inventario-sesion-detalle', params: { sessionId } })
 }
 
 onMounted(cargar)
@@ -544,6 +629,7 @@ onMounted(cargar)
 .badge-blue { @apply bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300; }
 .badge-amber { @apply bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300; }
 .badge-gray { @apply bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400; }
+.badge-red { @apply bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300; }
 .alert-error { @apply rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-3 py-2 text-sm text-red-700 dark:text-red-300; }
 .alert-success { @apply rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 px-3 py-2 text-sm text-green-700 dark:text-green-300; }
 .date-input { @apply rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 text-xs text-gray-700 dark:text-gray-200 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500; }

@@ -42,10 +42,12 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://127.0.0.1:8011/api/v1/liquidaciones)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://127.0.0.1:3001/slayer-api/v1/liquidaciones -X POST -H \"Content-Type: application/json\" -d '{}')",
       "Bash(grep -n \"ExecuteWithRetryOn401Async\\(.*companyDb\\\\|ExecuteWithRetryOn401Async\\($\" -r /home/xavier/repos/api-middleware-sap/src/Middleware.Infrastructure/Sap/SapGateway.cs)",
-      "Bash(awk '/ExecuteWithRetryOn401Async\\\\\\(/{print NR\": \"$0}' /home/xavier/repos/api-middleware-sap/src/Middleware.Infrastructure/Sap/SapGateway.cs)"
+      "Bash(awk '/ExecuteWithRetryOn401Async\\\\\\(/{print NR\": \"$0}' /home/xavier/repos/api-middleware-sap/src/Middleware.Infrastructure/Sap/SapGateway.cs)",
+      "Bash(sed -n '1,60' /home/xavier/repos/web-scnexus/src/router/index.ts)"
     ],
     "additionalDirectories": [
-      "/home/xavier/repos/api-middleware-sap/src/Middleware.Application/UseCases/StockTransfer"
+      "/home/xavier/repos/api-middleware-sap/src/Middleware.Application/UseCases/StockTransfer",
+      "/home/xavier/repos/web-scnexus/src/router"
     ]
   }
 }
