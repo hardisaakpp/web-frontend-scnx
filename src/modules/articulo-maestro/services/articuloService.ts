@@ -19,6 +19,7 @@ function normalizeObject(obj: any): any {
         uGen: ['U_GEN', 'u_gen', 'u_Gen'],
         uCodColor: ['U_COD_COLOR', 'u_cod_color'],
         uCodColSecu: ['U_COD_COL_SECU', 'u_cod_col_secu'],
+        uColorSecu: ['U_COLOR_SECU', 'u_color_secu'],
         uIxxColores: ['U_IXX_COLORES', 'u_ixx_colores'],
         uIxxMaterial: ['U_IXX_MATERIAL', 'u_ixx_material'],
         uIxxComposicion: ['U_IXX_COMPOSICION', 'u_ixx_composicion'],
@@ -671,6 +672,109 @@ export function resumirDetalleSap(detalle: SapSyncDetalle): { resumen: string; d
         }
     }
     return { resumen: detalle.message, detalleTecnico: null }
+}
+
+// ─── Diagnóstico de sincronización por artículo (panel de Monitoreo SAP) ───
+// A diferencia de resumirDetalleSap (resultado puntual de una acción masiva),
+// esto traduce el estado persistido en controlSap de un artículo individual
+// —tal como quedó tras el último intento del worker— a un mensaje de negocio
+// y, si está en ERROR, a una sugerencia de acción.
+//
+// La traducción real (por código de SAP, ver app.core.sap_error_catalog)
+// vive en el BACKEND — controlSap.mensaje_sap_amigable/accion_sugerida ya
+// vienen calculados en la respuesta de GET /articulos. El usuario de
+// negocio no tiene acceso a SAP: mostrarle el texto crudo de mensaje_sap
+// (a veces en inglés, ej. "Property 'X' of 'Item' is invalid") no le dice
+// qué hacer, y un heurístico de palabras clave en español en el FRONTEND
+// nunca lo hubiera reconocido — por eso la heurística de abajo
+// (accionSugeridaError) queda solo como red de seguridad para el caso
+// (esperablemente raro) de que el backend aún no calcule esos campos
+// (versión anterior desplegada, skew durante un rollout).
+export type DiagnosticoTipo = 'success' | 'info' | 'warning' | 'error' | 'neutral'
+
+export interface DiagnosticoSap {
+    tipo: DiagnosticoTipo
+    mensaje: string
+    accion?: string
+    detalleTecnico?: string | null
+}
+
+const _PATRONES_ACCION_ERROR_SAP: Array<{ test: (m: string) => boolean; accion: string }> = [
+    {
+        // Ver _MSG_VINCULACION_CON_HISTORIAL en app/services/sap_sync.py
+        test: m => m.includes('ya existe') && /historial|movimiento|orden|entrada|solicitud/.test(m),
+        accion: 'Verifique en SAP si el artículo debe vincularse manualmente, o ajuste el ItemCode y los campos estructurales en SCNexus para que coincidan con el artículo ya existente en SAP.'
+    },
+    {
+        test: m => m.includes('ya existe') || m.includes('ya se encuentra registrado') || m.includes('duplicad'),
+        accion: 'Edite el artículo, asigne un valor distinto en el campo señalado por SAP (por ejemplo, el código de barras) y presione "Reintentar Fallidos".'
+    },
+    {
+        test: m => /no v[aá]lido|no es v[aá]lido|no reconocido/.test(m),
+        accion: 'Corrija el valor señalado según las opciones permitidas del catálogo, guarde el artículo y presione "Reintentar Fallidos".'
+    },
+    {
+        test: m => /conexi[oó]n|tiempo de espera|no disponible/.test(m),
+        accion: 'Es un problema temporal de comunicación con SAP. Espere unos minutos y presione "Reintentar Fallidos".'
+    },
+]
+const _ACCION_ERROR_GENERICA = 'Revise el mensaje de SAP, corrija el dato indicado en el artículo y presione "Reintentar Fallidos".'
+
+export function accionSugeridaError(mensaje: string): string {
+    const m = mensaje.toLowerCase()
+    return _PATRONES_ACCION_ERROR_SAP.find(p => p.test(m))?.accion ?? _ACCION_ERROR_GENERICA
+}
+
+const _MENSAJE_POR_ESTADO_SIN_ERROR: Record<string, string> = {
+    BORRADOR: 'Aún no se ha enviado a SAP.',
+    PENDIENTE: 'Guardado localmente; en espera de encolarse para SAP.',
+    EN_COLA: 'Enviándose a SAP en este momento...',
+    SINCRONIZADO: 'Sincronizado correctamente.',
+}
+
+const _TIPO_POR_ESTADO_SIN_ERROR: Record<string, DiagnosticoTipo> = {
+    BORRADOR: 'neutral',
+    PENDIENTE: 'warning',
+    EN_COLA: 'info',
+    SINCRONIZADO: 'success',
+}
+
+export function diagnosticoDeArticulo(articulo: Articulo): DiagnosticoSap {
+    const estado = articulo.controlSap?.estado ?? 'BORRADOR'
+
+    if (estado !== 'ERROR') {
+        return {
+            tipo: _TIPO_POR_ESTADO_SIN_ERROR[estado] ?? 'neutral',
+            mensaje: _MENSAJE_POR_ESTADO_SIN_ERROR[estado] ?? 'Sin información adicional.',
+        }
+    }
+
+    const mensajeCrudo = articulo.controlSap?.mensaje_sap ?? null
+    // El backend ya tradujo mensaje_sap (por código de SAP, ver
+    // app.core.sap_error_catalog) — se usa tal cual. Solo si faltara
+    // (backend desactualizado) se cae al heurístico local + al mensaje
+    // crudo, en vez de mostrar un espacio vacío.
+    const mensajeAmigable =
+        articulo.controlSap?.mensaje_sap_amigable
+        || mensajeCrudo
+        || 'SAP rechazó la sincronización de este artículo.'
+    const accion = articulo.controlSap?.accion_sugerida || accionSugeridaError(mensajeAmigable)
+
+    return {
+        // Un timeout de SAP (todavía no confirmó, no lo rechazó) no es el
+        // mismo tipo de problema que un rechazo real de negocio: se marca
+        // como 'warning' (ámbar) en vez de 'error' (rojo) para que un
+        // vistazo a la tabla no lo confunda con "hay un dato mal puesto".
+        // El estado local sigue siendo ERROR (eso no cambia) — solo el
+        // tono del diagnóstico es distinto.
+        tipo: articulo.controlSap?.es_timeout_sap ? 'warning' : 'error',
+        mensaje: mensajeAmigable,
+        accion,
+        // El mensaje crudo (con el código de SAP entre corchetes) queda
+        // como "información técnica" solo cuando aporta algo distinto del
+        // mensaje ya traducido — evita un acordeón vacío o redundante.
+        detalleTecnico: mensajeCrudo && mensajeCrudo !== mensajeAmigable ? mensajeCrudo : null,
+    }
 }
 
 export interface SapTask {

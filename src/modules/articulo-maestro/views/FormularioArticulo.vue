@@ -436,7 +436,12 @@
                         </div>
                         <div class="form-field">
                             <label for="formCostAccounting">Sistema de Evaluación</label>
-                            <select id="formCostAccounting" v-model="form.costAccountingMethod">
+                            <select
+                                id="formCostAccounting"
+                                v-model="form.costAccountingMethod"
+                                :disabled="isEdit"
+                                :title="isEdit ? 'SAP rechaza este dato si difiere de lo ya existente en una actualización; solo puede definirse al crear el artículo.' : ''"
+                            >
                                 <option value="A">A - Promedio</option>
                                 <option value="S">S - Estándar</option>
                                 <option value="F">F - FIFO</option>
@@ -444,7 +449,12 @@
                         </div>
                         <div class="form-field">
                             <label for="formGlMethod">GL Method</label>
-                            <select id="formGlMethod" v-model="form.glMethod">
+                            <select
+                                id="formGlMethod"
+                                v-model="form.glMethod"
+                                :disabled="isEdit"
+                                :title="isEdit ? 'SAP rechaza este dato si difiere de lo ya existente en una actualización; solo puede definirse al crear el artículo.' : ''"
+                            >
                                 <option value="C">C - Clase de Artículo</option>
                                 <option value="W">W - Almacén</option>
                             </select>
@@ -479,14 +489,24 @@
                         </div>
                         <div class="form-field">
                             <label for="formVatLiable">IVA (VATLiable)</label>
-                            <select id="formVatLiable" v-model="form.vatLiable">
+                            <select
+                                id="formVatLiable"
+                                v-model="form.vatLiable"
+                                :disabled="isEdit"
+                                :title="isEdit ? 'SAP rechaza este dato si difiere de lo ya existente en una actualización; solo puede definirse al crear el artículo.' : ''"
+                            >
                                 <option value="Y">Y - Sí</option>
                                 <option value="N">N - No</option>
                             </select>
                         </div>
                         <div class="form-field">
                             <label for="formWtLiable">Retención (WTLiable)</label>
-                            <select id="formWtLiable" v-model="form.wtLiable">
+                            <select
+                                id="formWtLiable"
+                                v-model="form.wtLiable"
+                                :disabled="isEdit"
+                                :title="isEdit ? 'SAP rechaza este dato si difiere de lo ya existente en una actualización; solo puede definirse al crear el artículo.' : ''"
+                            >
                                 <option value="Y">Y - Sí</option>
                                 <option value="N">N - No</option>
                             </select>
@@ -508,7 +528,12 @@
                         </div>
                         <div class="form-field">
                             <label for="formPlanningSystem">Sistema de Planificación</label>
-                            <select id="formPlanningSystem" v-model="form.planningSystem">
+                            <select
+                                id="formPlanningSystem"
+                                v-model="form.planningSystem"
+                                :disabled="isEdit"
+                                :title="isEdit ? 'SAP rechaza este dato si difiere de lo ya existente en una actualización; solo puede definirse al crear el artículo.' : ''"
+                            >
                                 <option value="M">M - MRP</option>
                                 <option value="N">N - Ninguno</option>
                             </select>
@@ -713,13 +738,21 @@ const activeTab = ref('general')
 const showValidationErrors = ref(false)
 const showValidationModal = ref(false)
 
+// uIxxMarca/itemType/itemsGroupCode son estructurales (ver
+// STRUCTURAL_LOCKED_KEYS/CAMPOS_ESTRUCTURALES_BLOQUEADOS): en edición ya
+// vienen cargados desde el backend y están deshabilitados en pantalla, así
+// que exigirlos aquí solo podía disparar un modal de "campo requerido" al
+// guardar deltas puramente comerciales sobre un artículo que en realidad
+// ya los tiene válidos.
 const tabsWithErrors = computed(() => {
     const errorTabs = new Set<string>()
     if (!form.value.itemName) errorTabs.add('general')
     if (form.value.tieneCodigoProveedor && !form.value.barCode) errorTabs.add('general')
-    if (!form.value.uIxxMarca) errorTabs.add('cat')
-    if (!form.value.itemType) errorTabs.add('sap')
-    if (form.value.itemsGroupCode == null) errorTabs.add('sap')
+    if (!isEdit.value) {
+        if (!form.value.uIxxMarca) errorTabs.add('cat')
+        if (!form.value.itemType) errorTabs.add('sap')
+        if (form.value.itemsGroupCode == null) errorTabs.add('sap')
+    }
     return errorTabs
 })
 
@@ -729,18 +762,22 @@ const validationErrorsList = computed(() => {
     if (form.value.tieneCodigoProveedor && !form.value.barCode) {
         errors.push('Código de Barras (Tab General)')
     }
-    if (!form.value.uIxxMarca) errors.push('Negocio (Tab Categorización)')
-    if (!form.value.itemType) errors.push('Tipo de Artículo (Tab Config. SAP)')
-    if (form.value.itemsGroupCode == null) errors.push('Grupo de Artículos (Tab Config. SAP)')
+    if (!isEdit.value) {
+        if (!form.value.uIxxMarca) errors.push('Negocio (Tab Categorización)')
+        if (!form.value.itemType) errors.push('Tipo de Artículo (Tab Config. SAP)')
+        if (form.value.itemsGroupCode == null) errors.push('Grupo de Artículos (Tab Config. SAP)')
+    }
     return errors
 })
 
 function getFirstErrorTab() {
     if (!form.value.itemName) return 'general'
     if (form.value.tieneCodigoProveedor && !form.value.barCode) return 'general'
-    if (!form.value.uIxxMarca) return 'cat'
-    if (!form.value.itemType) return 'sap'
-    if (form.value.itemsGroupCode == null) return 'sap'
+    if (!isEdit.value) {
+        if (!form.value.uIxxMarca) return 'cat'
+        if (!form.value.itemType) return 'sap'
+        if (form.value.itemsGroupCode == null) return 'sap'
+    }
     return null
 }
 
@@ -1134,7 +1171,7 @@ async function cargarDatosEdicion(itemCode: string) {
         // Snapshot para dirty checking: se toma al final, con el formulario
         // ya asentado (incluyendo la sugerencia de ItemName), para que no
         // se considere "cambiado" algo que el propio watcher acabó de fijar.
-        originalSnapshot.value = JSON.parse(JSON.stringify(form.value))
+        originalSnapshot.value = structuredClone(form.value)
     } catch {
         loadError.value = `No se pudo cargar el artículo "${itemCode}". Verifica que el código es correcto.`
     } finally {

@@ -242,7 +242,7 @@
                                         <span
                                             class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
                                             :class="estadoBadge(articulo).classes"
-                                            :title="articulo.controlSap?.estado === 'ERROR' ? (articulo.controlSap?.mensaje_sap ?? 'Error de sincronización con SAP.') : ''"
+                                            :title="articulo.controlSap?.estado === 'ERROR' ? (articulo.controlSap?.mensaje_sap_amigable || articulo.controlSap?.mensaje_sap || 'Error de sincronización con SAP.') : ''"
                                         >
                                             <svg v-if="estadoBadge(articulo).spin" class="h-3 w-3 animate-spin" fill="none" viewBox="0 0 24 24">
                                                 <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
