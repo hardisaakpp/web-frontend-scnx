@@ -1171,9 +1171,21 @@ async function cargarDatosEdicion(itemCode: string) {
         // Snapshot para dirty checking: se toma al final, con el formulario
         // ya asentado (incluyendo la sugerencia de ItemName), para que no
         // se considere "cambiado" algo que el propio watcher acabó de fijar.
-        originalSnapshot.value = structuredClone(form.value)
-    } catch {
-        loadError.value = `No se pudo cargar el artículo "${itemCode}". Verifica que el código es correcto.`
+        // Se usa stringify/parse en lugar de structuredClone para desvincular 
+        // limpiamente el proxy reactivo de Vue (previene DataCloneError).
+        originalSnapshot.value = JSON.parse(JSON.stringify(form.value))
+    } catch (err: unknown) {
+        console.error(`[FormularioArticulo] Error al cargar ${itemCode}:`, err)
+        const axiosErr = err as { response?: { data?: { detail?: string | { msg: string }[] } } }
+        const detail = axiosErr?.response?.data?.detail
+        
+        if (Array.isArray(detail)) {
+            loadError.value = detail.map(d => d.msg).join('. ')
+        } else if (typeof detail === 'string') {
+            loadError.value = detail
+        } else {
+            loadError.value = `No se pudo cargar el artículo "${itemCode}". Verifica que el código es correcto.`
+        }
     } finally {
         loadingData.value = false
     }
