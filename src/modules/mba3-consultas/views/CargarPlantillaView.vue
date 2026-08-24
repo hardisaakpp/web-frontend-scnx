@@ -302,6 +302,7 @@
             {{ descargandoMargen ? 'Descargando...' : 'Descargar Análisis de Margen' }}
           </button>
           <button
+            v-if="!puedeRechazarProduccionPospuesta"
             type="button"
             @click="handleDescartar"
             :disabled="descartando || !(pedido?.puede_descartar ?? false)"
