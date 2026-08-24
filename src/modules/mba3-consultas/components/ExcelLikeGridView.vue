@@ -232,7 +232,7 @@
               :class="[
                 'sticky z-[5] px-3 py-3 text-sm font-semibold text-right whitespace-nowrap',
                 tieneTotalConfirmadoModificado(producto)
-                  ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-200 frozen-divider-modified'
+                  ? 'bg-amber-100 dark:bg-amber-800 text-amber-900 dark:text-amber-200 frozen-divider-modified'
                   : 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 frozen-divider'
               ]"
             >
@@ -245,7 +245,7 @@
               :class="[
                 'sticky z-[5] px-3 py-3 text-sm font-medium text-right whitespace-nowrap',
                 tienePrecioModificado(producto)
-                  ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-200 frozen-edge-modified'
+                  ? 'bg-amber-100 dark:bg-amber-800 text-amber-900 dark:text-amber-200 frozen-edge-modified'
                   : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white frozen-edge'
               ]"
             >
