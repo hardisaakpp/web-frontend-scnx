@@ -40,21 +40,17 @@ function todayLocalDateString(): string {
   return `${y}-${m}-${d}`
 }
 
-// "Mis almacenes" mode: a single "Fecha de picking" field — internally becomes a
-// one-day range (from = to = that day) through the SAME setDateRange/toLocalDateBound
-// path already used and tested for the range fields. No store change needed.
-// Defaults to today so the view opens already scoped to "today's picking", matching
-// the reference UI — applied on mount below, not just a placeholder value.
-const pickingDateInput = ref(todayLocalDateString())
-
-// "Consolidado" mode: real Desde/Hasta range + N° transferencia (transfer# overrides
-// the range entirely — see historyStore's buildFilterParams). Both default to today.
+// Both modes filter by a real Desde/Hasta range — the backend's getHistory (own warehouse) and
+// getAllHistory (consolidado) accept the same dateFrom/dateTo params, so one shared pair of
+// inputs covers both; only the endpoint each mode hits differs (see activeScope below). "Mis
+// almacenes" additionally skips N° transferencia/export, which stay consolidado-only. Both
+// default to today so the view opens already scoped to "today's picking", matching the reference
+// UI — applied on mount below, not just a placeholder value.
 const dateFromInput = ref(todayLocalDateString())
 const dateToInput = ref(todayLocalDateString())
 
 function applyOwnFilters(): void {
-  const day = pickingDateInput.value || null
-  store.setDateRange(day, day)
+  store.setDateRange(dateFromInput.value || null, dateToInput.value || null)
 }
 
 function applyAllFilters(): void {
@@ -204,16 +200,30 @@ async function handleExportCsv(): Promise<void> {
         </div>
       </div>
 
-      <!-- Filters: fixed per role — single picking-date for a store user, range + transfer# for admin/supervisor -->
+      <!-- Filters: fixed per role — Desde/Hasta range for both, admin/supervisor additionally gets N° transferencia + export -->
       <div v-if="mode === 'own'" class="flex flex-wrap items-end gap-3">
           <div>
-            <label for="picking-date-input" class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Fecha de picking</label>
+            <label for="date-from-input" class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Desde</label>
             <div class="flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 transition-shadow focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
-              <CalendarIcon class="w-4 h-4 text-gray-400" />
+              <CalendarIcon class="w-4 h-4 text-gray-400 dark:text-gray-500" />
               <input
-                id="picking-date-input"
-                data-testid="picking-date-input"
-                v-model="pickingDateInput"
+                id="date-from-input"
+                data-testid="date-from-input"
+                v-model="dateFromInput"
+                type="date"
+                class="border-none outline-none focus:ring-0 focus:outline-none p-0 text-sm bg-transparent text-gray-900 dark:text-white"
+                @change="applyOwnFilters"
+              />
+            </div>
+          </div>
+          <div>
+            <label for="date-to-input" class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Hasta</label>
+            <div class="flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 transition-shadow focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
+              <CalendarIcon class="w-4 h-4 text-gray-400 dark:text-gray-500" />
+              <input
+                id="date-to-input"
+                data-testid="date-to-input"
+                v-model="dateToInput"
                 type="date"
                 class="border-none outline-none focus:ring-0 focus:outline-none p-0 text-sm bg-transparent text-gray-900 dark:text-white"
                 @change="applyOwnFilters"
@@ -235,7 +245,7 @@ async function handleExportCsv(): Promise<void> {
             <div>
               <label for="date-from-input" class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Desde</label>
               <div class="flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 transition-shadow focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
-                <CalendarIcon class="w-4 h-4 text-gray-400" />
+                <CalendarIcon class="w-4 h-4 text-gray-400 dark:text-gray-500" />
                 <input
                   id="date-from-input"
                   data-testid="date-from-input"
@@ -249,7 +259,7 @@ async function handleExportCsv(): Promise<void> {
             <div>
               <label for="date-to-input" class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Hasta</label>
               <div class="flex items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 transition-shadow focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500">
-                <CalendarIcon class="w-4 h-4 text-gray-400" />
+                <CalendarIcon class="w-4 h-4 text-gray-400 dark:text-gray-500" />
                 <input
                   id="date-to-input"
                   data-testid="date-to-input"
@@ -340,7 +350,7 @@ async function handleExportCsv(): Promise<void> {
                   <svg class="w-12 h-12 mx-auto mb-3 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
                   </svg>
-                  <p class="text-base font-medium">{{ mode === 'own' ? 'No hay datos para la fecha seleccionada.' : 'No hay datos para el rango seleccionado.' }}</p>
+                  <p class="text-base font-medium">No hay datos para el rango seleccionado.</p>
                 </td>
               </tr>
               <tr v-else v-for="row in pagedRows" :key="row.transferId" class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group">

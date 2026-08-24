@@ -671,7 +671,7 @@ describe('usePickingStore', () => {
 
       expect(store.status).toBe('error')
       expect(store.sapErrorMessage).toBe(
-        'No se pudo integrar la transferencia a SAP. Los escaneos se guardaron; reintentá cuando el servicio esté disponible.'
+        'No se pudo integrar la transferencia a SAP. Los escaneos se guardaron; vuelva a intentarlo cuando el servicio esté disponible.'
       )
       expect(store.currentTransfer?.status).toBe('in-progress')
     })

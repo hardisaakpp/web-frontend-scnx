@@ -94,7 +94,7 @@ function applySearch(): void {
            to false (currently true, so this branch doesn't render today) — see pendingStore.ts. -->
       <template v-if="store.status === 'degraded'">
         <div class="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30 rounded-xl p-6 flex items-start gap-4">
-          <ExclamationTriangleIcon class="w-8 h-8 text-amber-500 shrink-0" />
+          <ExclamationTriangleIcon class="w-8 h-8 text-amber-500 dark:text-amber-400 shrink-0" />
           <div>
             <h2 class="text-lg font-bold text-amber-800 dark:text-amber-400">Próximamente</h2>
             <p class="text-sm text-amber-700 dark:text-amber-500 mt-1">
@@ -233,7 +233,7 @@ function applySearch(): void {
     <ConfirmDialog
       :open="receiveTarget !== null"
       title="Recibir transferencia"
-      :message="receiveTarget ? `¿Querés proceder a recibir la transferencia número ${receiveTarget.documentNumber}?` : ''"
+      :message="receiveTarget ? `¿Desea proceder a recibir la transferencia número ${receiveTarget.documentNumber}?` : ''"
       confirm-label="Recibir"
       @confirm="confirmReceive"
       @cancel="cancelReceive"
