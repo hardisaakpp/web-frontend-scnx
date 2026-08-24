@@ -61,6 +61,7 @@ export interface ListarSolicitudesQuery {
   direccion?: 'asc' | 'desc'
   tiendaOrigen?: string
   tiendaDestino?: string
+  docNum?: number
 }
 
 export interface SolicitudResumen {
@@ -76,6 +77,11 @@ export interface SolicitudResumen {
   guiaEnvio: string | null
   cantidadProductos: number
   aprobadoPor: string | null
+  // Documento de transferencia en SAP (null hasta que se crea)
+  sapTransferDocEntry: number | null
+  sapTransferDocNum: number | null
+  /** El backend decide si el reenvío manual está habilitado (depende de horario). */
+  puedeReenviarSap: boolean
 }
 
 // crear transferencia definitiva
@@ -157,6 +163,8 @@ export interface SolicitudDetalle {
   aprobadoPor: string | null
   fechaAprobacion: string | null
   comentarioAprobador: string | null
+  fechaEnvioSap: string | null
+  fechaUltimaSincronizacion: string | null
   productos: DetalleLinea[]
 }
 
@@ -186,6 +194,9 @@ export interface FiltrosExportar {
   fechaHasta?: string
   tiendaOrigen?: string
   tiendaDestino?: string
+  docNum?: number
+  /** false = una fila por solicitud · true = una fila por unidad de producto */
+  detallado?: boolean
 }
 
 export interface ConfiguracionEnvio {

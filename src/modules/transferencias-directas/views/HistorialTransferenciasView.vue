@@ -13,7 +13,7 @@
  * ya que sus reglas de negocio y permisos son diferentes.
  */
 import { reactive, ref, computed, onMounted } from 'vue'
-import { ArrowDownTrayIcon, ArrowLeftIcon, MagnifyingGlassIcon, FunnelIcon } from '@heroicons/vue/24/outline'
+import { ArrowDownTrayIcon, ArrowLeftIcon, MagnifyingGlassIcon, FunnelIcon, ChevronDownIcon } from '@heroicons/vue/24/outline'
 import { useAuthStore } from '@/stores/auth'
 
 import transferenciasService from '../services/transferenciasService'
@@ -90,6 +90,13 @@ const filtros = reactive({
   fechaHasta: '',
   tiendaOrigen: '',
   tiendaDestino: '',
+  docNum: '' as string,
+})
+
+/** El backend espera docNum numérico; el input es texto para poder quedar vacío. */
+const docNumFiltro = computed(() => {
+  const n = Number(filtros.docNum)
+  return filtros.docNum.trim() && !Number.isNaN(n) ? n : undefined
 })
 
 const solicitudes = ref<SolicitudResumen[]>([])
@@ -107,7 +114,8 @@ const totalRegistros = ref(0)
 
 const confirmAbierto = ref(false)
 const confirmCargando = ref(false)
-const accionPendiente = ref<'enviar' | 'definitiva' | null>(null)
+type AccionConfirmable = 'enviar' | 'definitiva' | 'reenviar'
+const accionPendiente = ref<AccionConfirmable | null>(null)
 const idPendiente = ref<number | null>(null)
 const confirmError = ref('')
 
@@ -118,20 +126,37 @@ const cargandoErrores = ref(false)
 
 const exportando = ref(false)
 
-const confirmTitulo = computed(() =>
-  accionPendiente.value === 'enviar' ? 'Enviar a aprobación' : 'Crear transferencia definitiva'
+// Textos del modal por acción (un mapa evita ternarios anidados al sumar acciones)
+const TEXTOS_CONFIRMACION: Record<AccionConfirmable, { titulo: string; mensaje: string; ok: string }> = {
+  enviar: {
+    titulo: 'Enviar a aprobación',
+    mensaje: 'Una vez enviada, la solicitud no podrá modificarse. ¿Desea continuar?',
+    ok: 'Enviar',
+  },
+  definitiva: {
+    titulo: 'Crear transferencia definitiva',
+    mensaje: 'Se generará la transferencia en SAP y no podrá revertirse desde aquí. ¿Desea continuar?',
+    ok: 'Crear',
+  },
+  reenviar: {
+    titulo: 'Reintentar envío a SAP',
+    mensaje: 'La solicitud se volverá a encolar para enviarse a SAP. ¿Desea continuar?',
+    ok: 'Reintentar',
+  },
+}
+
+const textosConfirmacion = computed(() =>
+  accionPendiente.value ? TEXTOS_CONFIRMACION[accionPendiente.value] : null
 )
-const confirmMensaje = computed(() =>
-  accionPendiente.value === 'enviar'
-    ? 'Una vez enviada, la solicitud no podrá modificarse. ¿Desea continuar?'
-    : 'Se generará la transferencia en SAP y no podrá revertirse desde aquí. ¿Desea continuar?'
-)
-const confirmTextoOk = computed(() => (accionPendiente.value === 'enviar' ? 'Enviar' : 'Crear'))
+const confirmTitulo = computed(() => textosConfirmacion.value?.titulo ?? '')
+const confirmMensaje = computed(() => textosConfirmacion.value?.mensaje ?? '')
+const confirmTextoOk = computed(() => textosConfirmacion.value?.ok ?? 'Confirmar')
 const confirmFaltantes = ref<StockFaltante[]>([])
 
 // Abren el modal
 const pedirEnviarAprobacion = (id: number) => { accionPendiente.value = 'enviar'; idPendiente.value = id; confirmAbierto.value = true }
 const pedirCrearDefinitiva = (id: number) => { accionPendiente.value = 'definitiva'; idPendiente.value = id; confirmAbierto.value = true }
+const pedirReenviarSap = (id: number) => { accionPendiente.value = 'reenviar'; idPendiente.value = id; confirmAbierto.value = true }
 const cancelarConfirm = () => {
   if (confirmCargando.value) return
   confirmAbierto.value = false
@@ -171,6 +196,7 @@ const cargar = async () => {
       fechaHasta: filtros.fechaHasta || undefined,
       tiendaOrigen: filtros.tiendaOrigen || undefined,
       tiendaDestino: filtros.tiendaDestino || undefined,
+      docNum: docNumFiltro.value,
       ordenarPor: ordenarPor.value,
       direccion: direccion.value,
     })
@@ -201,6 +227,7 @@ const limpiarFiltros = () => {
   filtros.fechaHasta = ''
   filtros.tiendaOrigen = ''
   filtros.tiendaDestino = ''
+  filtros.docNum = ''
   buscar()
 }
 const irAPagina = (p: number) => {
@@ -257,6 +284,7 @@ const ejecutarConfirmacion = async () => {
   confirmFaltantes.value = []
   try {
     if (accion === 'enviar') await transferenciasService.enviarAprobacion(id)
+    else if (accion === 'reenviar') await transferenciasService.reenviarSap(id)
     else {
       const guiaEnvio = solicitudes.value.find((s) => s.id === id)?.guiaEnvio
       await transferenciasService.crearDefinitiva(id, guiaEnvio)
@@ -270,12 +298,21 @@ const ejecutarConfirmacion = async () => {
     const { faltantes } = parsearErrorSolicitud(e)
     confirmError.value = mensajeError(e, accion)
     confirmFaltantes.value = faltantes ?? []
+    // 409/404: otro usuario ya actuó (o se eliminó) → refrescar para ver el estado real
+    const st = e?.response?.status
+    if (st === 409 || st === 404) await cargar()
   } finally {
     confirmCargando.value = false
   }
 }
 
-const mensajeError = (e: any, accion: 'enviar' | 'definitiva'): string => {
+const MENSAJES_FALLBACK: Record<AccionConfirmable, string> = {
+  enviar: 'No se pudo enviar a aprobación.',
+  definitiva: 'No se pudo crear la transferencia.',
+  reenviar: 'No se pudo reintentar el envío a SAP.',
+}
+
+const mensajeError = (e: any, accion: AccionConfirmable): string => {
   const st = e?.response?.status
   const msg = e?.response?.data?.error ?? e?.response?.data?.mensaje
   if (st === 400) return msg ?? 'La solicitud no tiene productos o es inválida.'
@@ -283,10 +320,15 @@ const mensajeError = (e: any, accion: 'enviar' | 'definitiva'): string => {
   if (st === 422) return msg ?? 'No se pudo crear la transferencia. Intenta nuevamente.'
   if (st === 503) return msg ?? 'SAP no está disponible. Intenta más tarde.'
   if (st === 404) return 'La solicitud no existe.'
-  return accion === 'enviar' ? 'No se pudo enviar a aprobación.' : 'No se pudo crear la transferencia.'
+  return MENSAJES_FALLBACK[accion]
 }
 
-const exportarReporteXls = async () => {
+// Menú del botón dividido de exportación
+const menuExportar = ref(false)
+
+/** detallado=false → una fila por solicitud · true → una fila por unidad. */
+const exportarReporteXls = async (detallado = false) => {
+  menuExportar.value = false
   exportando.value = true
   error.value = ''
   try {
@@ -297,6 +339,8 @@ const exportarReporteXls = async () => {
       fechaHasta: filtros.fechaHasta || undefined,
       tiendaOrigen: filtros.tiendaOrigen || undefined,   // whsCode
       tiendaDestino: filtros.tiendaDestino || undefined,  // uBogTra
+      docNum: docNumFiltro.value,
+      detallado,
     })
     descargarBlob(blob, filename)
   } catch (e: any) {
@@ -384,6 +428,12 @@ const cerrarErrores = () => { erroresAbierto.value = false }
             <option v-for="e in ESTADOS" :key="e" :value="e">{{ etiquetaEstado(e) }}</option>
           </select>
         </div>
+        <div>
+          <label for="docNum" :class="miniLabel">DocNum SAP</label>
+          <input id="docNum" v-model="filtros.docNum" type="text" inputmode="numeric" placeholder="Ej. 12345"
+            :class="inputClass" @keyup.enter="buscar" />
+        </div>
+
         <div class="flex items-center gap-3 ">
           <button type="button" @click="buscar"
             class="inline-flex items-center gap-2 h-[35px] px-4 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors shadow-xs">
@@ -401,18 +451,48 @@ const cerrarErrores = () => { erroresAbierto.value = false }
       class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
       <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
         <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Historial</h2>
-        <button type="button" @click="exportarReporteXls" :disabled="exportando || totalRegistros === 0" class="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-lg
-         bg-emerald-600 hover:bg-emerald-700
-         text-white font-bold text-xs
-         shadow-sm transition-all
-         disabled:opacity-60 disabled:cursor-not-allowed">
-          <ArrowDownTrayIcon class="w-4 h-4" />
-          {{ exportando ? 'Generando…' : 'Descargar Excel' }}
-        </button>
+        <!-- Botón dividido: la acción común (resumen) es 1 clic; el detalle está en el menú -->
+        <div class="relative flex">
+          <button type="button" @click="exportarReporteXls(false)" :disabled="exportando || totalRegistros === 0" class="inline-flex items-center justify-center gap-2 h-10 pl-4 pr-3 rounded-l-lg
+             bg-emerald-600 hover:bg-emerald-700
+             text-white font-bold text-xs
+             shadow-sm transition-all
+             disabled:opacity-60 disabled:cursor-not-allowed">
+            <ArrowDownTrayIcon class="w-4 h-4" />
+            {{ exportando ? 'Generando…' : 'Descargar Excel' }}
+          </button>
+          <button type="button" @click="menuExportar = !menuExportar" :disabled="exportando || totalRegistros === 0"
+            title="Más opciones de exportación" class="inline-flex items-center justify-center h-10 px-2 rounded-r-lg
+             bg-emerald-600 hover:bg-emerald-700 border-l border-emerald-500
+             text-white shadow-sm transition-all
+             disabled:opacity-60 disabled:cursor-not-allowed">
+            <ChevronDownIcon class="w-4 h-4" />
+          </button>
+
+          <!-- Capa invisible: un clic fuera cierra el menú -->
+          <div v-if="menuExportar" class="fixed inset-0 z-10" @click="menuExportar = false"></div>
+
+          <!-- Menú de formatos -->
+          <div v-if="menuExportar"
+            class="absolute right-0 top-11 z-20 w-64 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg overflow-hidden">
+            <button type="button" @click="exportarReporteXls(false)"
+              class="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+              <span class="block text-xs font-medium text-gray-900 dark:text-white">Resumen por solicitud</span>
+              <span class="block text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">Una fila por transferencia</span>
+            </button>
+            <button type="button" @click="exportarReporteXls(true)"
+              class="w-full px-4 py-3 text-left border-t border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+              <span class="block text-xs font-medium text-gray-900 dark:text-white">Detalle por unidad</span>
+              <span class="block text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">Una fila por cada unidad de
+                producto</span>
+            </button>
+          </div>
+        </div>
       </div>
       <TablaHistorial :solicitudes="solicitudes" :cargando="cargando" :ordenar-por="ordenarPor" :direccion="direccion"
         @ver="verDetalle" @editar="editar" @enviar-aprobacion="pedirEnviarAprobacion"
-        @crear-definitiva="pedirCrearDefinitiva" @ver-errores="verErrores" @ordenar="ordenarPorColumna" />
+        @crear-definitiva="pedirCrearDefinitiva" @ver-errores="verErrores" @reenviar-sap="pedirReenviarSap"
+        @ordenar="ordenarPorColumna" />
       <ErroresSapModal :abierto="erroresAbierto" :errores="erroresLista" :cargando="cargandoErrores"
         @cerrar="cerrarErrores" />
 
