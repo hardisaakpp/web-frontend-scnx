@@ -136,7 +136,7 @@ describe('HistoryView', () => {
     expect(wrapper.text()).toContain('DOC-2')
   })
 
-  it('applies the single picking-date filter as a real server-side GET (from = to = that day), in the warehouse-scoped view', async () => {
+  it('applies the Desde/Hasta range as a real server-side GET, in the warehouse-scoped view', async () => {
     mockAuth({ canViewAll: false })
     vi.mocked(recepcionApi.getHistory)
       .mockResolvedValueOnce(paged([buildRow()]))
@@ -145,15 +145,15 @@ describe('HistoryView', () => {
     const wrapper = mount(HistoryView)
     await flushPromises()
 
-    expect(wrapper.find('[data-testid="date-from-input"]').exists()).toBe(false)
-    expect(wrapper.find('[data-testid="date-to-input"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="transfer-number-input"]').exists()).toBe(false)
+    expect(wrapper.find('[data-testid="export-csv-btn"]').exists()).toBe(false)
 
-    await wrapper.find('[data-testid="picking-date-input"]').setValue('2026-02-10')
+    await wrapper.find('[data-testid="date-from-input"]').setValue('2026-02-01')
     await flushPromises()
 
     expect(recepcionApi.getHistory).toHaveBeenCalledTimes(2)
     expect(recepcionApi.getHistory).toHaveBeenLastCalledWith(
-      { fromUtc: expect.stringContaining('2026-02-10'), toUtc: expect.stringContaining('2026-02-1') },
+      { fromUtc: expect.stringContaining('2026-02-01'), toUtc: expect.any(String) },
       { pageNumber: 1, pageSize: 20 }
     )
     expect(wrapper.text()).not.toContain('DOC-1')

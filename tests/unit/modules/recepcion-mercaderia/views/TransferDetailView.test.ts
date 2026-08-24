@@ -245,7 +245,7 @@ describe('TransferDetailView', () => {
     const body = new DOMWrapper(document.body)
     expect(body.find('[data-testid="error-dialog"]').exists()).toBe(true)
     expect(body.text()).toContain(
-      'No se pudo integrar la transferencia a SAP. Los escaneos se guardaron; reintentá cuando el servicio esté disponible.'
+      'No se pudo integrar la transferencia a SAP. Los escaneos se guardaron; vuelva a intentarlo cuando el servicio esté disponible.'
     )
 
     // Still on the detail view (no crash, no navigation away) and retryable.
@@ -278,7 +278,7 @@ describe('TransferDetailView', () => {
     expect(recepcionApi.confirm).toHaveBeenCalledWith(7, { allowPartial: true })
   })
 
-  it('blocks the first partial-confirm attempt on an incomplete transfer, resets the incomplete line inputs to 0, and shows a recount warning', async () => {
+  it('blocks the first partial-confirm attempt on an incomplete transfer, resets the incomplete line inputs to 0, and opens the recount dialog', async () => {
     mockAuth(['recepcion.picking.scan', 'recepcion.reception.confirm.partial'])
     // Default buildLine() is incomplete: scanned(4) < quantity(10).
     vi.mocked(recepcionApi.getTransfer).mockResolvedValue(mockGetTransfer(buildTransfer()))
@@ -290,8 +290,12 @@ describe('TransferDetailView', () => {
     await flushPromises()
 
     expect(recepcionApi.confirm).not.toHaveBeenCalled()
-    expect(wrapper.find('[data-testid="recount-warning"]').exists()).toBe(true)
+    const dialog = new DOMWrapper(document.body).find('[data-testid="confirm-dialog"]')
+    expect(dialog.exists()).toBe(true)
+    expect(dialog.text()).not.toMatch(/volvé|confirmá/i)
     expect((wrapper.find('[data-testid="scan-quantity-input-1"]').element as HTMLInputElement).value).toBe('0')
+
+    wrapper.unmount()
   })
 
   it('allows the second partial-confirm attempt through, matching legacy behavior of trusting the recount flag rather than re-verifying the scan', async () => {
@@ -310,6 +314,48 @@ describe('TransferDetailView', () => {
     await flushPromises()
 
     expect(recepcionApi.confirm).toHaveBeenCalledWith(7, { allowPartial: true })
+  })
+
+  it('confirms the partial reception directly from the recount dialog without needing a second click on the outer button', async () => {
+    mockAuth(['recepcion.picking.scan', 'recepcion.reception.confirm.partial'])
+    vi.mocked(recepcionApi.getTransfer).mockResolvedValue(mockGetTransfer(buildTransfer()))
+    vi.mocked(recepcionApi.confirm).mockResolvedValue(undefined)
+
+    const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="confirm-partial-btn"]').trigger('click')
+    await flushPromises()
+    expect(recepcionApi.confirm).not.toHaveBeenCalled()
+
+    const body = new DOMWrapper(document.body)
+    await body.find('[data-testid="confirm-dialog-confirm-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(recepcionApi.confirm).toHaveBeenCalledWith(7, { allowPartial: true })
+    expect(body.find('[data-testid="confirm-dialog"]').exists()).toBe(false)
+
+    wrapper.unmount()
+  })
+
+  it('closes the recount dialog without confirming when cancelled', async () => {
+    mockAuth(['recepcion.picking.scan', 'recepcion.reception.confirm.partial'])
+    vi.mocked(recepcionApi.getTransfer).mockResolvedValue(mockGetTransfer(buildTransfer()))
+
+    const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+
+    await wrapper.find('[data-testid="confirm-partial-btn"]').trigger('click')
+    await flushPromises()
+
+    const body = new DOMWrapper(document.body)
+    await body.find('[data-testid="confirm-dialog-cancel-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(recepcionApi.confirm).not.toHaveBeenCalled()
+    expect(body.find('[data-testid="confirm-dialog"]').exists()).toBe(false)
+
+    wrapper.unmount()
   })
 
   it('does not gate the partial confirm when there are no incomplete lines', async () => {

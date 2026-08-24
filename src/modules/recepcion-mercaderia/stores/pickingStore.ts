@@ -12,7 +12,7 @@ import type {
 } from '../types'
 
 const SAP_ERROR_MESSAGE =
-  'No se pudo integrar la transferencia a SAP. Los escaneos se guardaron; reintentá cuando el servicio esté disponible.'
+  'No se pudo integrar la transferencia a SAP. Los escaneos se guardaron; vuelva a intentarlo cuando el servicio esté disponible.'
 
 /**
  * KNOWN LIMITATION: this treats ANY HTTP 500 from confirm() as the benign "SAP integration not
