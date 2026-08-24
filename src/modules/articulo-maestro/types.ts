@@ -143,6 +143,18 @@ export interface ArticuloControlSap {
     intentos: number
     usuario_sincroniza: string | null
     fecha_ultimo_intento: string | null
+    // Traducción de negocio de mensaje_sap (ver app.core.sap_error_catalog
+    // en el backend): solo presente cuando estado === 'ERROR'. El usuario
+    // de negocio no tiene acceso a SAP, así que mensaje_sap por sí solo
+    // (a veces texto crudo del Service Layer, incluso en inglés) no le
+    // dice qué hacer — mensaje_sap_amigable/accion_sugerida sí.
+    mensaje_sap_amigable?: string | null
+    accion_sugerida?: string | null
+    // true cuando estado === 'ERROR' pero NO fue un rechazo de negocio de
+    // SAP, sino que la operación no confirmó a tiempo (SAP tardó en
+    // responder). Distingue "no hay nada que corregir, solo espera" de "hay
+    // un dato que corregir" — ver app.core.sap_error_catalog.es_timeout.
+    es_timeout_sap?: boolean
 }
 
 export interface ArticuloFilters {

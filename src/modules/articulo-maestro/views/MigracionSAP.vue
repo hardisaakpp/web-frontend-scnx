@@ -220,9 +220,10 @@
                                         />
                                     </th>
                                     <th class="px-6 py-3">ItemCode</th>
-                                    <th class="px-6 py-3">Nombre</th>
-                                    <th class="px-6 py-3">Estado Local</th>
-                                    <th class="px-6 py-3">Origen</th>
+                                    <th class="px-6 py-3">Producto</th>
+                                    <th class="px-6 py-3">Estado</th>
+                                    <th class="px-6 py-3">Diagnóstico / Respuesta SAP</th>
+                                    <th class="px-6 py-3 text-right">Acción</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100 dark:divide-gray-800 text-sm">
@@ -232,12 +233,13 @@
                                         <td class="px-6 py-4"><div class="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
                                         <td class="px-6 py-4"><div class="h-4 w-40 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
                                         <td class="px-6 py-4"><div class="h-6 w-20 bg-gray-200 dark:bg-gray-700 rounded-full"></div></td>
-                                        <td class="px-6 py-4"><div class="h-4 w-16 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
+                                        <td class="px-6 py-4"><div class="h-4 w-48 bg-gray-200 dark:bg-gray-700 rounded"></div></td>
+                                        <td class="px-6 py-4"><div class="h-6 w-12 bg-gray-200 dark:bg-gray-700 rounded ml-auto"></div></td>
                                     </tr>
                                 </template>
-                                
+
                                 <tr v-else-if="pendingArticulos.length === 0">
-                                    <td colspan="5" class="px-6 py-12 text-center">
+                                    <td colspan="6" class="px-6 py-12 text-center">
                                         <div class="flex flex-col items-center justify-center text-gray-500 dark:text-gray-400">
                                             <svg class="w-12 h-12 mb-3 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                                             <p class="text-base font-medium">Sin excepciones</p>
@@ -246,8 +248,8 @@
                                     </td>
                                 </tr>
 
-                                <tr 
-                                    v-for="art in filteredArticulos" 
+                                <tr
+                                    v-for="{ articulo: art, diagnostico: diag } in filteredArticulosConDiagnostico"
                                     :key="art.itemCode"
                                     class="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
                                     :class="selectedCodes.includes(art.itemCode) ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''"
@@ -270,15 +272,34 @@
                                         </div>
                                     </td>
                                     <td class="px-6 py-4">
-                                        <span 
-                                            class="px-2.5 py-0.5 rounded-full text-xs font-medium border"
+                                        <button
+                                            type="button"
+                                            class="px-2.5 py-0.5 rounded-full text-xs font-medium border cursor-default"
                                             :class="getStatusBadgeClass(art.controlSap?.estado ?? 'BORRADOR')"
+                                            @mouseenter="showTooltip($event, art.itemCode)"
+                                            @mouseleave="hideTooltip"
+                                            @focus="showTooltip($event, art.itemCode)"
+                                            @blur="hideTooltip"
                                         >
                                             {{ art.controlSap?.estado ?? 'BORRADOR' }}
-                                        </span>
+                                        </button>
                                     </td>
-                                    <td class="px-6 py-4 text-xs text-gray-500 uppercase">
-                                        {{ art.uOrigen ?? '-' }}
+                                    <td class="px-6 py-4 max-w-xs">
+                                        <div class="flex items-start gap-1.5">
+                                            <span v-if="diag.tipo === 'error' || diag.tipo === 'warning'" class="shrink-0" aria-hidden="true">{{ diagnosticoIcono(diag.tipo) }}</span>
+                                            <span class="truncate text-xs" :class="diagnosticoTextClass(diag.tipo)" :title="diag.mensaje">
+                                                {{ diag.mensaje }}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 text-right">
+                                        <button
+                                            type="button"
+                                            @click="abrirDetalle(art)"
+                                            class="px-3 py-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 transition-colors"
+                                        >
+                                            Ver
+                                        </button>
                                     </td>
                                 </tr>
                             </tbody>
@@ -287,6 +308,134 @@
                 </div>
             </div>
         </div>
+
+        <!-- Tooltip flotante: diagnóstico rápido al pasar el mouse/foco sobre el badge de Estado -->
+        <Teleport to="body">
+            <div
+                v-if="tooltipArticulo && tooltipDiagnostico"
+                class="fixed z-[70] w-72 rounded-lg border shadow-lg px-3 py-2.5 text-xs pointer-events-none"
+                :class="diagnosticoBoxClass(tooltipDiagnostico.tipo)"
+                :style="{ top: tooltipPos.top + 'px', left: tooltipPos.left + 'px' }"
+            >
+                <p class="font-semibold">
+                    <span v-if="tooltipDiagnostico.tipo === 'error' || tooltipDiagnostico.tipo === 'warning'" aria-hidden="true">{{ diagnosticoIcono(tooltipDiagnostico.tipo) }} </span>{{ tooltipDiagnostico.mensaje }}
+                </p>
+                <p v-if="tooltipDiagnostico.accion" class="mt-1.5 opacity-90">
+                    <strong>Acción:</strong> {{ tooltipDiagnostico.accion }}
+                </p>
+            </div>
+        </Teleport>
+
+        <!-- Modal de Detalle de Sincronización (Nivel 3): causa + pasos de resolución -->
+        <Teleport to="body">
+            <div v-if="detalleArticulo" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="cerrarDetalle"></div>
+                <div class="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 w-full max-w-2xl flex flex-col max-h-[90vh]">
+                    <!-- Header -->
+                    <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                        <h2 class="text-lg font-bold text-gray-900 dark:text-white">
+                            Detalle de Sincronización — <span class="font-mono">{{ detalleArticulo.itemCode }}</span>
+                        </h2>
+                        <button
+                            type="button"
+                            @click="cerrarDetalle"
+                            aria-label="Cerrar"
+                            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+                        >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+
+                    <!-- Body -->
+                    <div v-if="detalleDiagnostico" class="overflow-y-auto p-6 space-y-6">
+                        <!-- Información del producto -->
+                        <section>
+                            <h3 class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                                <span aria-hidden="true">📦</span> Información del Producto
+                            </h3>
+                            <dl class="mt-3 grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <dt class="text-xs text-gray-500 dark:text-gray-400">Código Interno</dt>
+                                    <dd class="font-mono font-semibold text-gray-900 dark:text-white">{{ detalleArticulo.itemCode }}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-xs text-gray-500 dark:text-gray-400">Marca</dt>
+                                    <dd class="text-gray-900 dark:text-white">{{ detalleArticulo.uMarca || '-' }}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-xs text-gray-500 dark:text-gray-400">Producto</dt>
+                                    <dd class="text-gray-900 dark:text-white">{{ detalleArticulo.itemName || '-' }}</dd>
+                                </div>
+                                <div>
+                                    <dt class="text-xs text-gray-500 dark:text-gray-400">PVP</dt>
+                                    <dd class="text-gray-900 dark:text-white">$ {{ (detalleArticulo.price ?? 0).toFixed(2) }}</dd>
+                                </div>
+                            </dl>
+                        </section>
+
+                        <!-- Diagnóstico de integración -->
+                        <section>
+                            <h3 class="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                                <span aria-hidden="true">🚦</span> Diagnóstico de Integración
+                            </h3>
+                            <div class="mt-3 rounded-xl border p-4" :class="diagnosticoBoxClass(detalleDiagnostico.tipo)">
+                                <div class="flex items-center justify-between gap-3 flex-wrap">
+                                    <span class="text-sm font-bold">
+                                        <span aria-hidden="true">{{ diagnosticoIcono(detalleDiagnostico.tipo) }}</span>
+                                        ESTADO: {{ estadoLabel(detalleArticulo) }}
+                                    </span>
+                                    <span v-if="detalleArticulo.controlSap?.fecha_ultimo_intento" class="text-xs opacity-75">
+                                        Fecha: {{ formatDate(detalleArticulo.controlSap.fecha_ultimo_intento) }}
+                                    </span>
+                                </div>
+
+                                <p class="mt-3 text-sm">
+                                    <strong>¿Qué ocurrió?</strong><br>
+                                    {{ detalleDiagnostico.mensaje }}
+                                </p>
+
+                                <p v-if="detalleDiagnostico.accion" class="mt-3 text-sm">
+                                    <strong>¿Cómo solucionarlo?</strong><br>
+                                    {{ detalleDiagnostico.accion }}
+                                </p>
+                            </div>
+
+                            <template v-if="detalleDiagnostico.detalleTecnico">
+                                <button
+                                    type="button"
+                                    @click="detalleTecnicoAbierto = !detalleTecnicoAbierto"
+                                    class="mt-3 text-xs font-medium text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline decoration-dotted"
+                                >
+                                    {{ detalleTecnicoAbierto ? 'Ocultar' : 'Ver' }} información técnica de soporte (solo TI)
+                                </button>
+                                <pre
+                                    v-if="detalleTecnicoAbierto"
+                                    class="mt-2 text-[10px] leading-relaxed text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap break-words"
+                                >{{ detalleDiagnostico.detalleTecnico }}</pre>
+                            </template>
+                        </section>
+                    </div>
+
+                    <!-- Footer -->
+                    <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-end gap-3">
+                        <router-link
+                            v-if="detalleArticulo.controlSap?.estado === 'ERROR'"
+                            :to="`/articulo-maestro/editar/${detalleArticulo.itemCode}`"
+                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm"
+                        >
+                            ✏️ Editar Artículo
+                        </router-link>
+                        <button
+                            type="button"
+                            @click="cerrarDetalle"
+                            class="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                        >
+                            Cerrar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Teleport>
 
         <!-- Modal de Resultados de Sincronización -->
         <Teleport to="body">
@@ -466,9 +615,9 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { articuloService, sapService, resumirDetalleSap } from '../services/articuloService'
+import { articuloService, sapService, resumirDetalleSap, diagnosticoDeArticulo } from '../services/articuloService'
 import type { Articulo } from '../types'
-import type { SapTask, SapSyncResponse, SapSyncDetalle } from '../services/articuloService'
+import type { SapTask, SapSyncResponse, SapSyncDetalle, DiagnosticoTipo } from '../services/articuloService'
 
 const route = useRoute()
 
@@ -501,10 +650,104 @@ const pullError = ref('')
 // técnicos" está expandido — se reinicia en cada nuevo resultado.
 const detallesTecnicosAbiertos = ref<Set<number>>(new Set())
 
+// --- Diagnóstico por artículo: tooltip (Nivel 2) y modal de detalle (Nivel 3) ---
+// Tooltip flotante: se teletransporta a <body> y se posiciona con `fixed`
+// (no `absolute` dentro de la tabla) para no quedar recortado por el
+// contenedor con overflow-x-auto de la tabla al pasar el mouse cerca de los
+// bordes de la fila.
+const tooltipItemCode = ref<string | null>(null)
+const tooltipPos = ref({ top: 0, left: 0 })
+
+const tooltipArticulo = computed(() =>
+    pendingArticulos.value.find(a => a.itemCode === tooltipItemCode.value) ?? null
+)
+const tooltipDiagnostico = computed(() =>
+    tooltipArticulo.value ? diagnosticoDeArticulo(tooltipArticulo.value) : null
+)
+
+function showTooltip(event: MouseEvent | FocusEvent, itemCode: string) {
+    const target = event.currentTarget as HTMLElement
+    const rect = target.getBoundingClientRect()
+    const anchoTooltip = 288 // w-72
+    tooltipPos.value = {
+        top: rect.bottom + 8,
+        left: Math.min(rect.left, globalThis.innerWidth - anchoTooltip - 16),
+    }
+    tooltipItemCode.value = itemCode
+}
+
+function hideTooltip() {
+    tooltipItemCode.value = null
+}
+
+// Modal de Detalle de Sincronización (Nivel 3)
+const detalleArticulo = ref<Articulo | null>(null)
+const detalleTecnicoAbierto = ref(false)
+const detalleDiagnostico = computed(() =>
+    detalleArticulo.value ? diagnosticoDeArticulo(detalleArticulo.value) : null
+)
+
+function abrirDetalle(articulo: Articulo) {
+    detalleTecnicoAbierto.value = false
+    detalleArticulo.value = articulo
+}
+
+function cerrarDetalle() {
+    detalleArticulo.value = null
+}
+
+function estadoLabel(articulo: Articulo): string {
+    // El estado local (controlSap.estado) sigue siendo ERROR tanto para un
+    // rechazo real de SAP como para un timeout de confirmación — la
+    // etiqueta del diagnóstico distingue ambos casos para no mostrar
+    // "ESTADO: ERROR" dentro de una caja ámbar de "SAP está tardando".
+    if (articulo.controlSap?.estado === 'ERROR' && articulo.controlSap?.es_timeout_sap) {
+        return 'ESPERANDO CONFIRMACIÓN DE SAP'
+    }
+    return articulo.controlSap?.estado ?? 'BORRADOR'
+}
+
+function diagnosticoIcono(tipo: DiagnosticoTipo): string {
+    switch (tipo) {
+        case 'success': return '✅'
+        case 'error': return '❌'
+        case 'warning': return '🟠'
+        case 'info': return '🔵'
+        default: return '⚪'
+    }
+}
+
+// Clases de texto/caja compartidas entre la celda de la tabla, el tooltip y
+// el modal, para que los 3 niveles de detalle luzcan visualmente coherentes.
+function diagnosticoTextClass(tipo: DiagnosticoTipo): string {
+    switch (tipo) {
+        case 'success': return 'text-emerald-700 dark:text-emerald-400'
+        case 'error': return 'text-red-700 dark:text-red-400 font-medium'
+        case 'warning': return 'text-amber-700 dark:text-amber-400'
+        case 'info': return 'text-blue-700 dark:text-blue-400'
+        default: return 'text-gray-500 dark:text-gray-400'
+    }
+}
+
+function diagnosticoBoxClass(tipo: DiagnosticoTipo): string {
+    switch (tipo) {
+        case 'success': return 'bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-900/20 dark:border-emerald-800 dark:text-emerald-300'
+        case 'error': return 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300'
+        case 'warning': return 'bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-300'
+        case 'info': return 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300'
+        default: return 'bg-gray-50 border-gray-200 text-gray-700 dark:bg-gray-900/40 dark:border-gray-700 dark:text-gray-300'
+    }
+}
+
+function formatDate(date: string | null | undefined): string {
+    if (!date) return '-'
+    return new Date(date).toLocaleString()
+}
+
 // Computed
 const selectedCount = computed(() => selectedCodes.value.length)
-const allSelected = computed(() => 
-    pendingArticulos.value.length > 0 && 
+const allSelected = computed(() =>
+    pendingArticulos.value.length > 0 &&
     selectedCodes.value.length === pendingArticulos.value.length
 )
 
@@ -517,6 +760,15 @@ const filteredArticulos = computed(() => {
         return code.includes(q) || name.includes(q)
     })
 })
+
+// Diagnóstico calculado una sola vez por artículo visible (no en cada
+// acceso desde el template) para la columna "Diagnóstico / Respuesta SAP".
+const filteredArticulosConDiagnostico = computed(() =>
+    filteredArticulos.value.map(articulo => ({
+        articulo,
+        diagnostico: diagnosticoDeArticulo(articulo),
+    }))
+)
 
 // Cargar pendientes y tareas al montar
 onMounted(() => {
