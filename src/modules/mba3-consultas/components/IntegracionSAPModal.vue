@@ -104,6 +104,20 @@
                       </div>
                     </div>
 
+                    <div v-else-if="bloque.detalle.queued" class="space-y-2">
+                      <div class="flex items-center gap-2 text-sm">
+                        <svg class="w-5 h-5 text-amber-600 dark:text-amber-400 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span class="font-medium text-amber-900 dark:text-amber-200">
+                          SAP está procesando esta OC
+                        </span>
+                      </div>
+                      <div class="text-sm text-amber-800 dark:text-amber-300 ml-7">
+                        SAP está momentáneamente saturado; esta OC quedó en cola y se confirmará automáticamente en unos minutos, sin que tengas que hacer nada.
+                      </div>
+                    </div>
+
                     <div v-else class="space-y-2">
                       <div class="flex items-center gap-2 text-sm">
                         <svg class="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">

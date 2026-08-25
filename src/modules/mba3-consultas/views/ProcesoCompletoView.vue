@@ -311,7 +311,7 @@ const sapRetryLoading = ref(false)
 const showIntegracionSAPRetryCta = computed(() => {
   if (!sapRetryContext.value) return false
   const d = integracionSAPDetalle.value
-  return !!(d && d.retry_recommended === true && !d.success)
+  return !!(d && d.retry_recommended === true && !d.success && !d.queued)
 })
 
 /**
@@ -336,7 +336,8 @@ function getDetallesAdicionalesDesdeRespuesta(
       error_message: envio.error ?? null,
       error_code: envio.error_code ?? null,
       error_source: null,
-      retry_recommended: envio.retry_recommended ?? null
+      retry_recommended: envio.retry_recommended ?? null,
+      queued: envio.queued ?? null
     } as IntegracionSAPDetalle,
     solicitudesTransferencia: envio.solicitudes_transferencia ?? null
   }))
@@ -366,6 +367,7 @@ function aplicarRespuestaProcesoCompletoSAPAlModal(response: ProcesoCompletoSAPR
       sap_response: null,
       sap_error_details: null,
       retry_recommended: envio.retry_recommended ?? null,
+      queued: envio.queued ?? null,
       proveedor: integracionSAPDetalle.value?.proveedor
     }
   }

@@ -211,6 +211,9 @@ export interface IntegracionSAPDetalle {
   error_source: string | null       // ⭐ NUEVO - "SAP" | "BACKEND" | "SAP_CONNECTION"
   /** True si el fallo fue probablemente transitorio (conexión/SL); el usuario puede reintentar envío. */
   retry_recommended?: boolean | null
+  /** True si el middleware encoló la creación de la ODC (HTTP 202, SAP saturado): no es
+   * un error, SAP la sigue procesando en segundo plano y se confirmará sola. */
+  queued?: boolean | null
   solicitudes_transferencia?: SolicitudesTransferencia | null  // ⭐ NUEVO - Solicitudes de Transferencia creadas automáticamente
   sap_response?: Record<string, any> | null  // Respuesta completa de SAP
   sap_error_details?: Record<string, any> | null  // Detalles completos del error
@@ -1268,6 +1271,9 @@ export interface ProcesoCompletoSAPDetalleODC {
   solicitudes_transferencia?: SolicitudesTransferencia | null
   /** True si el fallo fue probablemente transitorio (conexión/SL); el cliente puede ofrecer reintento manual. */
   retry_recommended?: boolean | null
+  /** True si el middleware encoló la creación de la ODC (HTTP 202, SAP saturado): no es
+   * un error, SAP la sigue procesando en segundo plano y se confirmará sola. */
+  queued?: boolean | null
 }
 
 /**
