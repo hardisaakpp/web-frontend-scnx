@@ -98,6 +98,57 @@ describe('recepcionApi', () => {
     })
   })
 
+  it('getTransitTransfers sends pageNumber/pageSize/search and unwraps the PagedResponse envelope (separate endpoint from getPendingTransfers)', async () => {
+    const line = {
+      sapTransferRequestNumber: 'SAP-900',
+      transitWarehouseCode: 'TRL-QSN',
+      quantity: 12,
+      sapDocumentDate: '2026-08-01',
+    }
+    vi.mocked(api.get).mockResolvedValue({
+      data: { items: [line], totalCount: 1, pageNumber: 1, pageSize: 20 },
+    })
+
+    const result = await recepcionApi.getTransitTransfers({ pageNumber: 1, pageSize: 20, search: 'SAP-900' })
+
+    expect(api.get).toHaveBeenCalledWith('recepcion-api/reception/pending-transfers/transit', {
+      params: { pageNumber: 1, pageSize: 20, search: 'SAP-900' },
+    })
+    expect(result).toEqual({ items: [line], totalCount: 1, pageNumber: 1, pageSize: 20 })
+  })
+
+  it('getTransitTransfers omits the search param when not provided (no empty ?search= on the wire)', async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: { items: [], totalCount: 0, pageNumber: 1, pageSize: 20 } })
+
+    await recepcionApi.getTransitTransfers({ pageNumber: 1, pageSize: 20 })
+
+    expect(api.get).toHaveBeenCalledWith('recepcion-api/reception/pending-transfers/transit', {
+      params: { pageNumber: 1, pageSize: 20, search: undefined },
+    })
+  })
+
+  it('getTransitTransfers defaults to pageNumber=1/pageSize=20 when called with no params', async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: { items: [], totalCount: 0, pageNumber: 1, pageSize: 20 } })
+
+    await recepcionApi.getTransitTransfers()
+
+    expect(api.get).toHaveBeenCalledWith('recepcion-api/reception/pending-transfers/transit', {
+      params: { pageNumber: 1, pageSize: 20 },
+    })
+  })
+
+  it('downloadTransitReport requests a blob response for GET .../pending-transfers/transit/report (unpaginated)', async () => {
+    const blob = new Blob(['xlsx'])
+    vi.mocked(api.get).mockResolvedValue({ data: blob })
+
+    const result = await recepcionApi.downloadTransitReport()
+
+    expect(api.get).toHaveBeenCalledWith('recepcion-api/reception/pending-transfers/transit/report', {
+      responseType: 'blob',
+    })
+    expect(result).toBe(blob)
+  })
+
   it('materializePendingTransfer POSTs { sapTransferRequestNumber, warehouseCode } (no transferId exists pre-materialization)', async () => {
     vi.mocked(api.post).mockResolvedValue({ data: { id: 42 } })
 

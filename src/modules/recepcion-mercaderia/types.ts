@@ -23,6 +23,18 @@ export interface PendingTransferLine {
   sapDocumentDate: string
 }
 
+/**
+ * GET /pending-transfers/transit item — one row per SAP transfer request routed through a
+ * transit warehouse (bodega transitoria), quantity already summed across its lines server-side.
+ * No wire-name mapping needed: the backend contract already uses these exact field names.
+ */
+export interface TransitPendingTransfer {
+  sapTransferRequestNumber: string
+  transitWarehouseCode: string
+  quantity: number
+  sapDocumentDate: string
+}
+
 export interface ReceptionLine {
   lineId: number
   itemCode: string

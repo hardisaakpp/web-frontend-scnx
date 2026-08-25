@@ -34,6 +34,11 @@ const routes: RouteRecordRaw[] = [
     icon: 'InboxIcon',
     permissions: ['recepcion.reception.view'],
   }),
+  route('/recepcion-mercaderia/transitorias', 'recepcion-transitorias', () => import('./views/TransitTransfersView.vue'), {
+    title: 'Transferencias en Tránsito',
+    icon: 'ArrowsRightLeftIcon',
+    permissions: ['recepcion.reception.transit.view'],
+  }),
   route('/recepcion-mercaderia/en-curso', 'recepcion-en-curso', () => import('./views/InProgressView.vue'), {
     title: 'Transferencias en Curso',
     icon: 'ArrowPathIcon',

@@ -51,6 +51,24 @@ const authStore = useAuthStore()
       </router-link>
 
       <router-link
+        v-if="authStore.isAdmin || authStore.hasPermission('recepcion.reception.transit.view')"
+        to="/recepcion-mercaderia/transitorias"
+        class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left block"
+      >
+        <div class="flex items-start gap-3">
+          <div class="w-8 h-8 rounded bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0">
+            <svg class="h-5 w-5 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4M16 17H4m0 0l4 4m-4-4l4-4" />
+            </svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="font-medium text-gray-900 dark:text-white text-sm">Transferencias en Tránsito</div>
+            <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Pendientes de SAP con destino a bodega transitoria</div>
+          </div>
+        </div>
+      </router-link>
+
+      <router-link
         v-if="authStore.isAdmin || authStore.hasPermission('recepcion.history.view') || authStore.hasPermission('recepcion.history.viewall')"
         to="/recepcion-mercaderia/historial"
         class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left block"

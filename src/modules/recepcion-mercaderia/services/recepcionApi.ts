@@ -1,6 +1,7 @@
 import api from '@/services/api'
 import type {
   PendingTransferLine,
+  TransitPendingTransfer,
   ReceptionTransfer,
   ReceptionLine,
   HistoryRow,
@@ -140,6 +141,32 @@ const recepcionApi = {
         pageSize: params.pageSize ?? 20,
         search: params.search ?? undefined,
       },
+    })
+    return response.data
+  },
+
+  // Transit-warehouse report — separate endpoint from getPendingTransfers above (branch
+  // fix/pending-transfers-transit-warehouse-filter): one row per SAP transfer request routed
+  // through a transit warehouse, quantity already summed server-side. Same PagedResponse
+  // envelope/pagination as the other list endpoints. `search` (added later on the same branch)
+  // filters by sapTransferRequestNumber or transitWarehouseCode, same behavior as
+  // getPendingTransfers' own search param.
+  getTransitTransfers: async (params: PageParams = {}): Promise<PagedResponse<TransitPendingTransfer>> => {
+    const response = await api.get<PagedResponse<TransitPendingTransfer>>(`${BASE}/pending-transfers/transit`, {
+      params: {
+        pageNumber: params.pageNumber ?? 1,
+        pageSize: params.pageSize ?? 20,
+        search: params.search ?? undefined,
+      },
+    })
+    return response.data
+  },
+
+  // Unpaginated xlsx export (2 sheets: "Documentos" summary + "Detalle" per-item) of the full
+  // transit-warehouse list — same permission and blob-download pattern as the other 3 reports.
+  downloadTransitReport: async (): Promise<Blob> => {
+    const response = await api.get<Blob>(`${BASE}/pending-transfers/transit/report`, {
+      responseType: 'blob',
     })
     return response.data
   },

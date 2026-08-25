@@ -17,11 +17,13 @@ recepcion-mercaderia/
 │   └── recepcionApi.ts        # Único punto de mapeo wire-shape backend -> tipos del módulo
 ├── stores/                    # Pinia, uno por área funcional (no hay un store único)
 │   ├── pendingStore.ts        # Pendientes + materializar
+│   ├── transitStore.ts        # Reporte de transferencias en tránsito (solo lectura)
 │   ├── pickingStore.ts        # En curso, detalle, scan, confirm, diferencias, GLPI, reportes
 │   └── historyStore.ts        # Historial (propio + "todos los almacenes")
 ├── views/
 │   ├── DashboardView.vue
 │   ├── PendingTransfersView.vue
+│   ├── TransitTransfersView.vue # Reporte de tránsito (N.° transferencia, destino transitoria, cantidad, fecha)
 │   ├── InProgressView.vue
 │   ├── TransferDetailView.vue # Picking + confirm + diferencias (vista más grande del módulo)
 │   └── HistoryView.vue
@@ -39,6 +41,7 @@ recepcion-mercaderia/
 | `/recepcion-mercaderia/pendientes` | `PendingTransfersView` | `recepcion.reception.view` |
 | `/recepcion-mercaderia/en-curso` | `InProgressView` | `recepcion.reception.view` |
 | `/recepcion-mercaderia/en-curso/:id` | `TransferDetailView` | `recepcion.reception.view` |
+| `/recepcion-mercaderia/transitorias` | `TransitTransfersView` | `recepcion.reception.transit.view` |
 | `/recepcion-mercaderia/historial` | `HistoryView` | `recepcion.history.view` |
 
 `recepcion.history.viewall` no gatea una ruta aparte — habilita en `HistoryView.vue` el toggle "Todos los almacenes" (`GET /history/all` en vez de `GET /history`). Los permisos de acción dentro del detalle (`recepcion.picking.scan`, `recepcion.reception.confirm`, `recepcion.reception.confirm.partial`, `recepcion.diferencias.gestionar`) también se chequean en el componente, no a nivel de ruta — ver `router.ts` para el razonamiento (evita el patrón `beforeEnter` por ruta que sí usa `reposiciones`, considerado redundante).
@@ -63,6 +66,7 @@ Todos bajo el prefijo `recepcion.` (cualquier permiso con ese prefijo, o rol `Ad
 | `recepcion.reception.confirm` | Botón "Confirmar" |
 | `recepcion.reception.confirm.partial` | Botón "Confirmar parcial" |
 | `recepcion.diferencias.gestionar` | Eliminar una diferencia registrada |
+| `recepcion.reception.transit.view` | Ver el reporte de Transferencias en Tránsito (`GET /pending-transfers/transit`) y exportarlo a xlsx (`GET /pending-transfers/transit/report`, validado también server-side — 403 sin el permiso) |
 
 Como en todo el repo: estos strings deben existir en SCNexus Core y estar asignados a roles — el frontend no los crea (ver `docs/SISTEMA_PERMISOS.md`).
 
