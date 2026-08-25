@@ -75,7 +75,7 @@
                         <svg class="w-6 h-6 text-amber-600 dark:text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
                         <div>
                             <h4 class="text-sm font-bold text-amber-800 dark:text-amber-300">Artículo sincronizado con SAP / con historial contable</h4>
-                            <p class="text-xs text-amber-700 dark:text-amber-400 mt-1">Los parámetros estructurales se encuentran bloqueados para proteger la integridad de datos: Categoría, Línea y Gestión por Lotes ya no pueden modificarse en este artículo.</p>
+                            <p class="text-xs text-amber-700 dark:text-amber-400 mt-1">Los parámetros estructurales se encuentran bloqueados para proteger la integridad de datos: Categoría, Línea, Atributo Único y Gestión por Lotes ya no pueden modificarse en este artículo.</p>
                         </div>
                     </div>
 
@@ -84,7 +84,7 @@
                         <div class="form-field">
                             <label for="formItemCode">Código Interno (ItemCode)</label>
                             <input id="formItemCode" :value="form.itemCode" type="text" disabled placeholder="[Generación Automática en Backend]" />
-                            <span v-if="!isEdit" class="help">Se genera automáticamente al crear.</span>
+                            <span class="help">{{ isEdit ? LOCK_REASON.identidadItemCode : 'Se genera automáticamente al crear.' }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formItemName">Descripción Factura (ItemName)</label>
@@ -93,13 +93,15 @@
                         </div>
 
                         <!-- Nuevos campos SIS-CCPYTD-00014 -->
-                        <div class="form-field sm:col-span-2 flex flex-row items-center gap-3 bg-gray-50 dark:bg-gray-900 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
-                            <input id="formTieneCodigoProveedor" v-model="form.tieneCodigoProveedor" type="checkbox" class="w-5 h-5 text-blue-600 rounded border-gray-300" />
+                        <div class="form-field sm:col-span-2 flex flex-row flex-wrap items-center gap-3 bg-gray-50 dark:bg-gray-900 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+                            <input id="formTieneCodigoProveedor" v-model="form.tieneCodigoProveedor" type="checkbox" class="w-5 h-5 text-blue-600 rounded border-gray-300" :disabled="isEdit" :title="isEdit ? LOCK_REASON.barCodeSellado : ''" />
                             <label for="formTieneCodigoProveedor" class="!text-sm !m-0 !font-medium">¿El producto posee código de barras del proveedor?</label>
+                            <span v-if="isEdit" class="help w-full text-amber-600 dark:text-amber-400">{{ LOCK_REASON.barCodeSellado }}</span>
                         </div>
                         <div class="form-field" :class="{ required: form.tieneCodigoProveedor }">
                             <label for="formBarCode">Código de Barras</label>
-                            <input id="formBarCode" v-model.trim="form.barCode" type="text" maxlength="15" :required="form.tieneCodigoProveedor" :placeholder="form.tieneCodigoProveedor ? 'EAN / UPC' : '[Asignación Automática desde Bolsa]'" :disabled="!form.tieneCodigoProveedor" />
+                            <input id="formBarCode" v-model.trim="form.barCode" type="text" maxlength="15" :required="form.tieneCodigoProveedor" :placeholder="form.tieneCodigoProveedor ? 'EAN / UPC' : '[Asignación Automática desde Bolsa]'" :disabled="isEdit || !form.tieneCodigoProveedor" :title="isEdit ? LOCK_REASON.barCodeSellado : ''" />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.barCodeSellado }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formCodigoAlterno">Código Alterno</label>
@@ -120,7 +122,8 @@
                         </div>
                         <div class="form-field">
                             <label for="formSkuSinTalla">Referencia / SKU sin talla</label>
-                            <input id="formSkuSinTalla" v-model="form.uSxxSkuSinTalla" type="text" placeholder="Código padre / referencia" />
+                            <input id="formSkuSinTalla" v-model="form.uSxxSkuSinTalla" type="text" placeholder="Código padre / referencia" :disabled="isEdit" :title="isEdit ? LOCK_REASON.skuSelladoAlCrear : ''" />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.skuSelladoAlCrear }}</span>
                         </div>
                         <div class="form-field">
                             <label for="selectTalla">Talla</label>
@@ -130,8 +133,9 @@
                                 :options="cats.talla"
                                 placeholder="Seleccionar talla..."
                                 :disabled="isEdit"
-                                :title="isEdit ? 'La Talla es información tomada del comprador al crear el artículo y no puede modificarse después.' : ''"
+                                :title="isEdit ? LOCK_REASON.tallaInmutable : ''"
                             />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.tallaInmutable }}</span>
                         </div>
                         <div class="form-field">
                             <label for="selectGenero">Género</label>
@@ -141,8 +145,9 @@
                                 :options="cats.genero"
                                 placeholder="Seleccionar género..."
                                 :disabled="isEdit"
-                                :title="isEdit ? 'El Género es información tomada del comprador al crear el artículo y no puede modificarse después.' : ''"
+                                :title="isEdit ? LOCK_REASON.generoInmutable : ''"
                             />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.generoInmutable }}</span>
                         </div>
 
                         <div class="form-field sm:col-span-2">
@@ -166,13 +171,15 @@
                                 placeholder="Seleccionar negocio..."
                                 required
                                 :disabled="isEdit"
-                                :title="isEdit ? 'Marca/Negocio definen el ItemCode y no pueden modificarse después de creado el artículo.' : ''"
+                                :title="isEdit ? LOCK_REASON.marcaNegocioInmutable : ''"
                             />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.marcaNegocioInmutable }}</span>
                         </div>
 
                         <div class="form-field required">
                             <label for="formMarca">Marca</label>
-                            <input id="formMarca" v-model="form.uMarca" type="text" placeholder="Ej: ROLLY" required :disabled="isEdit" :title="isEdit ? 'Marca/Negocio definen el ItemCode y no pueden modificarse después de creado el artículo.' : ''" />
+                            <input id="formMarca" v-model="form.uMarca" type="text" placeholder="Ej: ROLLY" required :disabled="isEdit" :title="isEdit ? LOCK_REASON.marcaNegocioInmutable : ''" />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.marcaNegocioInmutable }}</span>
                         </div>
 
                         <!-- Jerarquía en cascada: Sección → Categoría → Línea -->
@@ -186,8 +193,9 @@
                                 @change="onSeccionChange"
                                 valueKey="nombre"
                                 :disabled="isEdit"
-                                :title="isEdit ? 'La Sección define el ItemCode del artículo y no puede modificarse después de creado.' : ''"
+                                :title="isEdit ? LOCK_REASON.seccionInmutable : ''"
                             />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.seccionInmutable }}</span>
                         </div>
                         <div class="form-field">
                             <label for="selectCategoria">Categoría (U_NV2)</label>
@@ -197,10 +205,11 @@
                                 :options="cats.categorias"
                                 placeholder="Seleccionar categoría..."
                                 :disabled="!form.uNv1 || form.isStructuralLocked"
-                                :title="form.isStructuralLocked ? 'El artículo posee historial en SAP y no puede modificar su estructura' : ''"
+                                :title="form.isStructuralLocked ? LOCK_REASON.historialSap : ''"
                                 @change="onCategoriaChange"
                                 valueKey="nombre"
                             />
+                            <span v-if="form.isStructuralLocked" class="help text-amber-600 dark:text-amber-400">{{ LOCK_REASON.historialSap }}</span>
                         </div>
                         <div class="form-field">
                             <label for="selectLinea">Línea (U_NV3)</label>
@@ -210,9 +219,10 @@
                                 :options="cats.lineas"
                                 placeholder="Seleccionar línea..."
                                 :disabled="!form.uNv2 || form.isStructuralLocked"
-                                :title="form.isStructuralLocked ? 'El artículo posee historial en SAP y no puede modificar su estructura' : ''"
+                                :title="form.isStructuralLocked ? LOCK_REASON.historialSap : ''"
                                 valueKey="nombre"
                             />
+                            <span v-if="form.isStructuralLocked" class="help text-amber-600 dark:text-amber-400">{{ LOCK_REASON.historialSap }}</span>
                         </div>
 
                         <div class="form-field">
@@ -265,7 +275,10 @@
                                 placeholder="Seleccionar color..."
                                 @change="onColorPrimarioChangeManual"
                                 valueKey="codigo"
+                                :disabled="isEdit"
+                                :title="isEdit ? LOCK_REASON.colorSellado : ''"
                             />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.colorSellado }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formCodColorDisplay">Cód. Color Primario</label>
@@ -281,7 +294,10 @@
                                 placeholder="Seleccionar color..."
                                 @change="onColorSecundarioChangeManual"
                                 valueKey="codigo"
+                                :disabled="isEdit"
+                                :title="isEdit ? LOCK_REASON.colorSellado : ''"
                             />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.colorSellado }}</span>
                         </div>
 
                         <div class="form-field">
@@ -291,14 +307,18 @@
                         </div>
                         <div class="form-field">
                             <label for="formMaterial">Material</label>
-                            <input id="formMaterial" v-model="form.uIxxMaterial" type="text" placeholder="Tela, Cuero, Sintético..." />
+                            <input id="formMaterial" v-model="form.uIxxMaterial" type="text" placeholder="Tela, Cuero, Sintético..." :disabled="isEdit" :title="isEdit ? LOCK_REASON.materialSellado : ''" />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.materialSellado }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formComposicion">Composición</label>
-                            <input id="formComposicion" v-model="form.uIxxComposicion" type="text" placeholder="80% Algodón 20% Poliéster" />
+                            <input id="formComposicion" v-model="form.uIxxComposicion" type="text" placeholder="80% Algodón 20% Poliéster" :disabled="isEdit" :title="isEdit ? LOCK_REASON.materialSellado : ''" />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.materialSellado }}</span>
                         </div>
 
-                        <!-- Cascada: Línea de Atributo → Atributo Único -->
+                        <!-- Cascada: Línea de Atributo → Atributo Único. El disabled de la
+                             línea sigue al de su Atributo Único (mismo criterio: historial SAP),
+                             para no dejar seleccionable un padre cuyo hijo ya está bloqueado. -->
                         <div class="form-field">
                             <label for="selectLineaAtributo">Línea de Atributo</label>
                             <SearchableSelect
@@ -308,7 +328,10 @@
                                 placeholder="Seleccionar línea..."
                                 @change="onLineaAtributoChange"
                                 valueKey="nombre"
+                                :disabled="form.isStructuralLocked"
+                                :title="form.isStructuralLocked ? LOCK_REASON.historialSap : ''"
                             />
+                            <span v-if="form.isStructuralLocked" class="help text-amber-600 dark:text-amber-400">{{ LOCK_REASON.historialSap }}</span>
                         </div>
                         <div class="form-field">
                             <label for="selectAtributo">Atributo Único Textil/Calzado</label>
@@ -318,9 +341,10 @@
                                 :options="cats.atributos"
                                 placeholder="Seleccionar atributo..."
                                 :disabled="!selectedLineaAtributo || form.isStructuralLocked"
-                                :title="form.isStructuralLocked ? 'El artículo posee historial en SAP y no puede modificar su estructura' : ''"
+                                :title="form.isStructuralLocked ? LOCK_REASON.historialSap : ''"
                                 valueKey="nombre"
                             />
+                            <span v-if="form.isStructuralLocked" class="help text-amber-600 dark:text-amber-400">{{ LOCK_REASON.historialSap }}</span>
                         </div>
 
                         <div class="form-field">
@@ -333,7 +357,8 @@
                     <div v-show="activeTab === 'log'" class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div class="form-field">
                             <label for="formCodPvr">Código Proveedor</label>
-                            <input id="formCodPvr" v-model="form.uCodPvr" type="text" placeholder="Código del proveedor" />
+                            <input id="formCodPvr" v-model="form.uCodPvr" type="text" placeholder="Código del proveedor" :disabled="isEdit" :title="isEdit ? LOCK_REASON.procedenciaSellada : ''" />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.procedenciaSellada }}</span>
                         </div>
                         <div class="form-field">
                             <label for="selectOrigen">Origen de Compra</label>
@@ -342,7 +367,10 @@
                                 v-model="form.uOrigen"
                                 :options="cats.origen"
                                 placeholder="Seleccionar origen..."
+                                :disabled="isEdit"
+                                :title="isEdit ? LOCK_REASON.procedenciaSellada : ''"
                             />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.procedenciaSellada }}</span>
                         </div>
                         <div class="form-field">
                             <label for="selectPais">País de Origen</label>
@@ -351,7 +379,10 @@
                                 v-model="form.uPOri"
                                 :options="cats.pais"
                                 placeholder="Seleccionar país..."
+                                :disabled="isEdit"
+                                :title="isEdit ? LOCK_REASON.procedenciaSellada : ''"
                             />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.procedenciaSellada }}</span>
                         </div>
 
                         <div class="form-field">
@@ -424,15 +455,17 @@
                     <div v-show="activeTab === 'sap'" class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div class="form-field required">
                             <label for="formItemType">Tipo de Artículo (ItemType)</label>
-                            <select id="formItemType" v-model="form.itemType" required :disabled="isEdit" :title="isEdit ? 'Es un parámetro estructural de SAP y no puede modificarse una vez creado el artículo.' : ''">
+                            <select id="formItemType" v-model="form.itemType" required :disabled="isEdit" :title="isEdit ? LOCK_REASON.estructuralSap : ''">
                                 <option value="I">I - Artículo de inventario</option>
                                 <option value="L">L - Mano de obra</option>
                                 <option value="T">T - Viaje</option>
                             </select>
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.estructuralSap }}</span>
                         </div>
                         <div class="form-field required">
                             <label for="formItemsGroupCode">Grupo de Artículos (ItemsGroupCode)</label>
-                            <input id="formItemsGroupCode" v-model.number="form.itemsGroupCode" type="number" required placeholder="100" :disabled="isEdit" :title="isEdit ? 'Es un parámetro estructural de SAP y no puede modificarse una vez creado el artículo.' : ''" />
+                            <input id="formItemsGroupCode" v-model.number="form.itemsGroupCode" type="number" required placeholder="100" :disabled="isEdit" :title="isEdit ? LOCK_REASON.estructuralSap : ''" />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.estructuralSap }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formCostAccounting">Sistema de Evaluación</label>
@@ -440,12 +473,13 @@
                                 id="formCostAccounting"
                                 v-model="form.costAccountingMethod"
                                 :disabled="isEdit"
-                                :title="isEdit ? 'SAP rechaza este dato si difiere de lo ya existente en una actualización; solo puede definirse al crear el artículo.' : ''"
+                                :title="isEdit ? LOCK_REASON.sapRechazaCambio : ''"
                             >
                                 <option value="A">A - Promedio</option>
                                 <option value="S">S - Estándar</option>
                                 <option value="F">F - FIFO</option>
                             </select>
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.sapRechazaCambio }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formGlMethod">GL Method</label>
@@ -453,39 +487,44 @@
                                 id="formGlMethod"
                                 v-model="form.glMethod"
                                 :disabled="isEdit"
-                                :title="isEdit ? 'SAP rechaza este dato si difiere de lo ya existente en una actualización; solo puede definirse al crear el artículo.' : ''"
+                                :title="isEdit ? LOCK_REASON.sapRechazaCambio : ''"
                             >
                                 <option value="C">C - Clase de Artículo</option>
                                 <option value="W">W - Almacén</option>
                             </select>
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.sapRechazaCambio }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formInventoryItem">Artículo de Inventario</label>
-                            <select id="formInventoryItem" v-model="form.inventoryItem" :disabled="isEdit" :title="isEdit ? 'Es un parámetro estructural de SAP y no puede modificarse una vez creado el artículo.' : ''">
+                            <select id="formInventoryItem" v-model="form.inventoryItem" :disabled="isEdit" :title="isEdit ? LOCK_REASON.estructuralSap : ''">
                                 <option value="Y">Y - Sí</option>
                                 <option value="N">N - No</option>
                             </select>
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.estructuralSap }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formSalesItem">Artículo de Venta</label>
-                            <select id="formSalesItem" v-model="form.salesItem" :disabled="isEdit" :title="isEdit ? 'Es un parámetro estructural de SAP y no puede modificarse una vez creado el artículo.' : ''">
+                            <select id="formSalesItem" v-model="form.salesItem" :disabled="isEdit" :title="isEdit ? LOCK_REASON.estructuralSap : ''">
                                 <option value="Y">Y - Sí</option>
                                 <option value="N">N - No</option>
                             </select>
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.estructuralSap }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formPurchaseItem">Artículo de Compra</label>
-                            <select id="formPurchaseItem" v-model="form.purchaseItem" :disabled="isEdit" :title="isEdit ? 'Es un parámetro estructural de SAP y no puede modificarse una vez creado el artículo.' : ''">
+                            <select id="formPurchaseItem" v-model="form.purchaseItem" :disabled="isEdit" :title="isEdit ? LOCK_REASON.estructuralSap : ''">
                                 <option value="Y">Y - Sí</option>
                                 <option value="N">N - No</option>
                             </select>
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.estructuralSap }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formManageStock">Gestión por Almacén</label>
-                            <select id="formManageStock" v-model="form.manageStockByWarehouse">
+                            <select id="formManageStock" v-model="form.manageStockByWarehouse" :disabled="isEdit" :title="isEdit ? LOCK_REASON.parametroSapSellado : ''">
                                 <option value="Y">Y - Sí</option>
                                 <option value="N">N - No</option>
                             </select>
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.parametroSapSellado }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formVatLiable">IVA (VATLiable)</label>
@@ -493,11 +532,12 @@
                                 id="formVatLiable"
                                 v-model="form.vatLiable"
                                 :disabled="isEdit"
-                                :title="isEdit ? 'SAP rechaza este dato si difiere de lo ya existente en una actualización; solo puede definirse al crear el artículo.' : ''"
+                                :title="isEdit ? LOCK_REASON.sapRechazaCambio : ''"
                             >
                                 <option value="Y">Y - Sí</option>
                                 <option value="N">N - No</option>
                             </select>
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.sapRechazaCambio }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formWtLiable">Retención (WTLiable)</label>
@@ -505,26 +545,30 @@
                                 id="formWtLiable"
                                 v-model="form.wtLiable"
                                 :disabled="isEdit"
-                                :title="isEdit ? 'SAP rechaza este dato si difiere de lo ya existente en una actualización; solo puede definirse al crear el artículo.' : ''"
+                                :title="isEdit ? LOCK_REASON.sapRechazaCambio : ''"
                             >
                                 <option value="Y">Y - Sí</option>
                                 <option value="N">N - No</option>
                             </select>
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.sapRechazaCambio }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formIndirectTax">Impuesto Indirecto</label>
-                            <select id="formIndirectTax" v-model="form.indirectTax">
+                            <select id="formIndirectTax" v-model="form.indirectTax" :disabled="isEdit" :title="isEdit ? LOCK_REASON.parametroSapSellado : ''">
                                 <option value="Y">Y - Sí</option>
                                 <option value="N">N - No</option>
                             </select>
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.parametroSapSellado }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formArTaxCode">Código Impuesto AR</label>
-                            <input id="formArTaxCode" v-model="form.arTaxCode" type="text" placeholder="IVA, IVAI..." />
+                            <input id="formArTaxCode" v-model="form.arTaxCode" type="text" placeholder="IVA, IVAI..." :disabled="isEdit" :title="isEdit ? LOCK_REASON.parametroSapSellado : ''" />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.parametroSapSellado }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formApTaxCode">Código Impuesto AP</label>
-                            <input id="formApTaxCode" v-model="form.apTaxCode" type="text" placeholder="IVA, IVAI..." />
+                            <input id="formApTaxCode" v-model="form.apTaxCode" type="text" placeholder="IVA, IVAI..." :disabled="isEdit" :title="isEdit ? LOCK_REASON.parametroSapSellado : ''" />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.parametroSapSellado }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formPlanningSystem">Sistema de Planificación</label>
@@ -532,38 +576,45 @@
                                 id="formPlanningSystem"
                                 v-model="form.planningSystem"
                                 :disabled="isEdit"
-                                :title="isEdit ? 'SAP rechaza este dato si difiere de lo ya existente en una actualización; solo puede definirse al crear el artículo.' : ''"
+                                :title="isEdit ? LOCK_REASON.sapRechazaCambio : ''"
                             >
                                 <option value="M">M - MRP</option>
                                 <option value="N">N - Ninguno</option>
                             </select>
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.sapRechazaCambio }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formProcurementMethod">Método de Abastecimiento</label>
-                            <select id="formProcurementMethod" v-model="form.procurementMethod">
+                            <select id="formProcurementMethod" v-model="form.procurementMethod" :disabled="isEdit" :title="isEdit ? LOCK_REASON.parametroSapSellado : ''">
                                 <option value="B">B - Compra</option>
                                 <option value="M">M - Fabricación</option>
                             </select>
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.parametroSapSellado }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formInventoryUom">Unidad de Medida Inventario</label>
-                            <input id="formInventoryUom" v-model="form.inventoryUom" type="text" placeholder="PAR, UND..." />
+                            <input id="formInventoryUom" v-model="form.inventoryUom" type="text" placeholder="PAR, UND..." :disabled="isEdit" :title="isEdit ? LOCK_REASON.parametroSapSellado : ''" />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.parametroSapSellado }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formPurchaseUnit">Unidad de Compra</label>
-                            <input id="formPurchaseUnit" v-model="form.purchaseUnit" type="text" placeholder="PAR, UND..." />
+                            <input id="formPurchaseUnit" v-model="form.purchaseUnit" type="text" placeholder="PAR, UND..." :disabled="isEdit" :title="isEdit ? LOCK_REASON.parametroSapSellado : ''" />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.parametroSapSellado }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formPurchaseItemsPerUnit">Unidades por Compra</label>
-                            <input id="formPurchaseItemsPerUnit" v-model.number="form.purchaseItemsPerUnit" type="number" placeholder="1" min="0" />
+                            <input id="formPurchaseItemsPerUnit" v-model.number="form.purchaseItemsPerUnit" type="number" placeholder="1" min="0" :disabled="isEdit" :title="isEdit ? LOCK_REASON.parametroSapSellado : ''" />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.parametroSapSellado }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formSalesUnit">Unidad de Venta</label>
-                            <input id="formSalesUnit" v-model="form.salesUnit" type="text" placeholder="PAR, UND..." />
+                            <input id="formSalesUnit" v-model="form.salesUnit" type="text" placeholder="PAR, UND..." :disabled="isEdit" :title="isEdit ? LOCK_REASON.parametroSapSellado : ''" />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.parametroSapSellado }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formSalesItemsPerUnit">Unidades por Venta</label>
-                            <input id="formSalesItemsPerUnit" v-model.number="form.salesItemsPerUnit" type="number" placeholder="1" min="0" />
+                            <input id="formSalesItemsPerUnit" v-model.number="form.salesItemsPerUnit" type="number" placeholder="1" min="0" :disabled="isEdit" :title="isEdit ? LOCK_REASON.parametroSapSellado : ''" />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.parametroSapSellado }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formManageBatch">Gestión por Lotes (ManBtchNum)</label>
@@ -571,13 +622,13 @@
                                 id="formManageBatch"
                                 v-model="form.manageBatchNumbers"
                                 :disabled="isEdit && form.isStructuralLocked"
-                                :title="isEdit && form.isStructuralLocked ? 'Este artículo posee historial en SAP y su gestión por lotes ya no puede modificarse.' : ''"
+                                :title="isEdit && form.isStructuralLocked ? LOCK_REASON.historialSapLotes : ''"
                             >
                                 <option value="N">N - No</option>
                                 <option value="Y">Y - Sí</option>
                             </select>
                             <span v-if="isEdit && form.isStructuralLocked" class="help text-amber-600 dark:text-amber-400">
-                                Este artículo posee historial en SAP y su gestión por lotes ya no puede modificarse.
+                                {{ LOCK_REASON.historialSapLotes }}
                             </span>
                         </div>
                         <div class="form-field">
@@ -593,15 +644,18 @@
                         </div>
                         <div class="form-field">
                             <label for="formManufacturer">Fabricante (FirmCode)</label>
-                            <input id="formManufacturer" v-model.number="form.manufacturer" type="number" placeholder="0" />
+                            <input id="formManufacturer" v-model.number="form.manufacturer" type="number" placeholder="0" :disabled="isEdit" :title="isEdit ? LOCK_REASON.parametroSapSellado : ''" />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.parametroSapSellado }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formShipType">Tipo de Envío</label>
-                            <input id="formShipType" v-model.number="form.shipType" type="number" placeholder="0" />
+                            <input id="formShipType" v-model.number="form.shipType" type="number" placeholder="0" :disabled="isEdit" :title="isEdit ? LOCK_REASON.parametroSapSellado : ''" />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.parametroSapSellado }}</span>
                         </div>
                         <div class="form-field">
                             <label for="formTipoBien">Tipo de Bien</label>
-                            <input id="formTipoBien" v-model="form.uTipoBien" type="text" placeholder="Tipo de bien" />
+                            <input id="formTipoBien" v-model="form.uTipoBien" type="text" placeholder="Tipo de bien" :disabled="isEdit" :title="isEdit ? LOCK_REASON.parametroSapSellado : ''" />
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.parametroSapSellado }}</span>
                         </div>
                     </div>
 
@@ -1073,6 +1127,29 @@ const STRUCTURAL_LOCKED_KEYS = new Set([
 // Campos que no existen en ArticuloUpdate (o se gestionan por endpoints
 // dedicados): incluirlos en el PATCH también dispara un 422 por extra="forbid".
 const READONLY_KEYS = new Set(['imagenes', 'isStructuralLocked', 'controlSap', 'activo', 'id'])
+
+// ─── Muro de Contención: mensajes de bloqueo de campos ────────────────────
+// Un artículo ya creado, sincronizado con SAP o con historial transaccional
+// restringe la edición de ciertos campos. Se centralizan aquí las razones
+// (en vez de repetir el texto en cada :title/<span>) para que el mensaje
+// mostrado al usuario sea consistente y se pueda ajustar en un solo lugar.
+const LOCK_REASON = {
+    identidadItemCode: 'Este valor compone el ItemCode del artículo y no puede modificarse después de creado.',
+    estructuralSap: 'Es un parámetro estructural de SAP y no puede modificarse una vez creado el artículo.',
+    sapRechazaCambio: 'SAP rechaza este dato si difiere de lo ya existente en una actualización; solo puede definirse al crear el artículo.',
+    historialSap: 'El artículo posee historial en SAP y no puede modificar su estructura.',
+    historialSapLotes: 'Este artículo posee historial en SAP y su gestión por lotes ya no puede modificarse.',
+    marcaNegocioInmutable: 'Marca/Negocio definen el ItemCode y no pueden modificarse después de creado el artículo.',
+    seccionInmutable: 'La Sección define el ItemCode del artículo y no puede modificarse después de creado.',
+    tallaInmutable: 'La Talla es información tomada del comprador al crear el artículo y no puede modificarse después.',
+    generoInmutable: 'El Género es información tomada del comprador al crear el artículo y no puede modificarse después.',
+    skuSelladoAlCrear: 'Es la referencia base del artículo (SKU sin talla) y no puede modificarse después de creado.',
+    barCodeSellado: 'El código de barras del proveedor se definió al crear el artículo y queda sellado.',
+    colorSellado: 'El color es un atributo de ficha técnica definido al crear el artículo y no puede modificarse después.',
+    materialSellado: 'Es un dato de catalogación técnica definido al crear el artículo y no puede modificarse después.',
+    procedenciaSellada: 'Es un dato de procedencia fijado al crear el artículo y no puede modificarse después.',
+    parametroSapSellado: 'Es un parámetro contable/de inventario de SAP fijado al crear el artículo; su edición podría generar inconsistencias en el ERP.',
+} as const
 
 // ─── RF-002: Promoción de Código Alterno ──────────────────────────────────────
 const promoviendo = ref(false)
