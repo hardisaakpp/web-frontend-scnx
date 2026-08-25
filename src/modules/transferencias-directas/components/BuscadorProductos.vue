@@ -2,7 +2,7 @@
 import { ref, computed, watch, nextTick, onUnmounted } from 'vue'
 import { QrCodeIcon, MagnifyingGlassIcon, MinusIcon, PlusIcon } from '@heroicons/vue/24/outline'
 import productosService from '../services/productosService'
-import type { ProductoBusqueda, BuscarProductosQuery, TipoBusquedaProducto } from '../types'
+import { CANTIDAD_MAX, type ProductoBusqueda, type BuscarProductosQuery, type TipoBusquedaProducto } from '../types'
 
 const props = defineProps<{
     whsCodeOrigen?: string
@@ -29,6 +29,7 @@ const mensaje = ref('')
 const esError = ref(false)
 
 const inputRef = ref<HTMLInputElement | null>(null)
+const cantidadRef = ref<HTMLInputElement | null>(null)
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 let ignorarWatch = false // evita re-buscar cuando llenamos el input al seleccionar
 
@@ -216,8 +217,12 @@ const onAgregarClick = () => {
  * picking): lo valida el backend al enviar a aprobación.
  */
 const agregarProducto = (p: ProductoBusqueda): boolean => {
-    emit('agregar', p, cantidad.value)
+    // Blindaje: si el campo quedó vacío o con un valor inválido (y no se disparó
+    // el blur porque se pulsó Agregar directo), se cae a 1 en vez de emitir basura.
+    const unidades = Number.isInteger(cantidad.value) && cantidad.value >= 1 ? cantidad.value : 1
+    emit('agregar', p, unidades)
     cantidad.value = 1
+    repintarCantidad() // el DOM pudo quedar vacío si no hubo blur
     return true
 }
 
@@ -249,8 +254,49 @@ watch(() => props.whsCodeOrigen, () => { invalidarCache(); limpiarBusqueda() })
 const onFocusOut = () => { setTimeout(() => { resultados.value = [] }, 150) }
 
 
-const incrementar = () => { cantidad.value++ }
-const decrementar = () => { if (cantidad.value > 1) cantidad.value-- }
+/** Sincroniza el DOM con el estado (el input usa :value, no v-model). */
+const repintarCantidad = () => {
+    if (cantidadRef.value) cantidadRef.value.value = String(cantidad.value)
+}
+
+const incrementar = () => {
+    // Si el campo quedó vacío, se parte de 1 en lugar de arrastrar un valor inválido
+    if (!Number.isInteger(cantidad.value) || cantidad.value < 1) cantidad.value = 1
+    else if (cantidad.value < CANTIDAD_MAX) cantidad.value++
+    repintarCantidad()
+}
+
+const decrementar = () => {
+    if (!Number.isInteger(cantidad.value) || cantidad.value < 1) cantidad.value = 1
+    else if (cantidad.value > 1) cantidad.value--
+    repintarCantidad()
+}
+
+/** Impide teclear lo que no sea un dígito (bloquea -, +, ., e y letras). */
+const soloDigitos = (e: KeyboardEvent) => {
+    if (e.ctrlKey || e.metaKey || e.key.length > 1) return // permite Ctrl+V, Backspace, flechas…
+    if (!/\d/.test(e.key)) e.preventDefault()
+}
+
+/** Solo aplica valores válidos; el campo puede quedar vacío mientras se escribe. */
+const onCantidadInput = (e: Event) => {
+    const target = e.target as HTMLInputElement
+    const valor = Number(target.value)
+    if (!Number.isInteger(valor) || valor < 1) return
+    if (valor > CANTIDAD_MAX) {
+        // Se recorta al tope y se repinta para que el usuario vea el límite aplicado
+        cantidad.value = CANTIDAD_MAX
+        target.value = String(CANTIDAD_MAX)
+        return
+    }
+    cantidad.value = valor
+}
+
+/** Al salir del campo se repinta con el valor vigente (corrige vacíos o 0). */
+const onCantidadBlur = (e: Event) => {
+    const target = e.target as HTMLInputElement
+    target.value = String(cantidad.value)
+}
 
 // Al desmontar: cortar la petición en vuelo y el debounce pendiente.
 onUnmounted(() => {
@@ -305,7 +351,8 @@ onUnmounted(() => {
                         class="h-full px-2.5 flex items-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 border-r border-gray-300 dark:border-gray-600 transition-colors">
                         <MinusIcon class="w-4 h-4" />
                     </button>
-                    <input id="cantidad" v-model.number="cantidad" type="number" min="1"
+                    <input id="cantidad" ref="cantidadRef" :value="cantidad" type="number" min="1" :max="CANTIDAD_MAX"
+                        @keydown="soloDigitos" @input="onCantidadInput" @blur="onCantidadBlur"
                         class="qty-input h-full w-14 text-center text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-white outline-none" />
                     <button type="button" @click="incrementar"
                         class="h-full px-2.5 flex items-center text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 border-l border-gray-300 dark:border-gray-600 transition-colors">
