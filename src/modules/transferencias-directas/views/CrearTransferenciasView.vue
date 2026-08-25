@@ -4,7 +4,7 @@ import { ArrowLeftIcon, CalendarDaysIcon } from '@heroicons/vue/24/outline'
 import { APP_LOCALE } from '@/plugins/locale'
 import FormField from '../components/FormField.vue'
 import { useAuthStore } from '@/stores/auth.js'
-import { CrearSolicitudRequest, DetalleLinea, ProductoBusqueda, SolicitudDetalle, TiendaDestino, type StockFaltante } from '../types.js'
+import { CANTIDAD_MAX, CrearSolicitudRequest, DetalleLinea, ProductoBusqueda, SolicitudDetalle, TiendaDestino, type StockFaltante } from '../types.js'
 import { parsearErrorSolicitud } from '../utils/erroresApi'
 import ErrorStockFaltante from '../components/ErrorStockFaltante.vue'
 import almacenesService from '../services/almacenesServices.js'
@@ -180,7 +180,8 @@ const productos = ref<DetalleLinea[]>([])
 const agregarAlDetalle = (p: ProductoBusqueda, cantidad: number) => {
   const existente = productos.value.find((x) => x.itemCode === p.itemCode)
   if (existente) {
-    existente.cantidadSolicitada += cantidad
+    // Al consolidar tampoco se supera el tope por producto
+    existente.cantidadSolicitada = Math.min(existente.cantidadSolicitada + cantidad, CANTIDAD_MAX)
   } else {
     productos.value.push({
       itemCode: p.itemCode,

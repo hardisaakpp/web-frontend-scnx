@@ -137,6 +137,9 @@ export interface ProductoBusqueda {
 //Tipo de búsqueda que elige el usuario en el buscador de productos. */
 export type TipoBusquedaProducto = 'itemCode' | 'codeBars' | 'itemName'
 
+/** Cantidad máxima por producto en una transferencia. */
+export const CANTIDAD_MAX = 99999
+
 // Línea del detalle de la solicitud (productos)
 export interface DetalleLinea {
   itemCode: string
