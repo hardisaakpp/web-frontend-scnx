@@ -11,15 +11,32 @@
 
       <form v-if="canEditarAjuste" class="mt-4 grid grid-cols-1 md:grid-cols-4 gap-3" @submit.prevent="createAdjustment">
         <label class="block md:col-span-2">
-          <span class="label">SessionId cerrado</span>
-          <input v-model="createForm.sessionId" class="input font-mono text-xs" required />
+          <span class="label">Toma cerrada pendiente de ajuste</span>
+          <select v-model="createForm.sessionId" class="input" required :disabled="loadingSesiones">
+            <option value="" disabled>{{ loadingSesiones ? 'Cargando tomas cerradas...' : 'Selecciona una toma...' }}</option>
+            <option v-for="s in sesionesPendientes" :key="s.sessionId" :value="s.sessionId">
+              {{ s.warehouseCode }} — {{ s.description || 'Sin descripción' }} ({{ fmtDate(s.closedAt) }}) — {{ s.sessionId.slice(0, 8) }}…
+            </option>
+          </select>
+          <p v-if="!loadingSesiones && sesionesPendientes.length === 0" class="mt-1 text-xs text-gray-400">
+            No hay tomas cerradas pendientes de ajuste o descarte.
+          </p>
         </label>
         <label class="block md:col-span-2">
           <span class="label">Notas</span>
           <input v-model="createForm.notes" class="input" placeholder="Ajuste inicial auditoría" />
         </label>
-        <div class="md:col-span-4">
-          <button class="btn-primary" type="submit" :disabled="creating">{{ creating ? 'Creando...' : 'Crear Ajuste' }}</button>
+        <div class="md:col-span-4 flex flex-wrap items-center gap-3">
+          <button class="btn-primary" type="submit" :disabled="creating || !createForm.sessionId">{{ creating ? 'Creando...' : 'Crear Ajuste' }}</button>
+          <button
+            class="btn-secondary"
+            type="button"
+            :disabled="discarding || !createForm.sessionId"
+            @click="discardAdjustment"
+          >{{ discarding ? 'Descartando...' : 'Descartar (sin ajuste)' }}</button>
+          <span class="text-xs text-gray-400">
+            Descartar no genera ningún cobro — solo marca la toma seleccionada como revisada, sin diferencias que ajustar. La toma se queda cerrada tal cual está.
+          </span>
         </div>
       </form>
     </section>
@@ -40,8 +57,9 @@
           <input v-model="dateTo" class="input" type="date" />
         </label>
         <button class="btn-secondary" type="button" @click="resetDateFilter">Últimos 15 días</button>
+        <input v-model="adjustmentSearch" type="search" placeholder="Buscar bodega, id..." class="search-input w-56" />
         <span class="text-xs text-gray-400">
-          Mostrando {{ filteredAdjustments.length }} de {{ adjustments.length }} ajustes
+          Mostrando {{ sortedAdjustments.length }} de {{ adjustments.length }} ajustes
         </span>
       </div>
 
@@ -49,31 +67,29 @@
         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead class="bg-gray-50 dark:bg-gray-900/60">
             <tr>
-              <th class="th">Fecha</th>
-              <th class="th">AdjustmentId</th>
-              <th class="th">SessionId</th>
-              <th class="th">Bodega</th>
-              <th class="th">Estado</th>
-              <th class="th text-right">Líneas</th>
-              <th class="th text-right">Valorizado</th>
+              <th class="th cursor-pointer select-none" @click="toggleAdjustmentSort('createdAt')">Fecha{{ adjustmentSortIndicator('createdAt') }}</th>
+              <th class="th cursor-pointer select-none" @click="toggleAdjustmentSort('warehouseCode')">Bodega{{ adjustmentSortIndicator('warehouseCode') }}</th>
+              <th class="th cursor-pointer select-none" @click="toggleAdjustmentSort('status')">Estado{{ adjustmentSortIndicator('status') }}</th>
+              <th class="th text-right cursor-pointer select-none" @click="toggleAdjustmentSort('totalLines')">Líneas{{ adjustmentSortIndicator('totalLines') }}</th>
+              <th class="th text-right cursor-pointer select-none" @click="toggleAdjustmentSort('totalValorizedAmount')">Valorizado{{ adjustmentSortIndicator('totalValorizedAmount') }}</th>
+              <th class="th">Nota</th>
               <th class="th text-right">Acciones</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-            <tr v-for="item in filteredAdjustments" :key="item.adjustmentId">
+            <tr v-for="item in sortedAdjustments" :key="item.adjustmentId">
               <td class="td whitespace-nowrap">{{ fmtDate(item.createdAt) }}</td>
-              <td class="td font-mono text-xs">{{ item.adjustmentId }}</td>
-              <td class="td font-mono text-xs">{{ item.sessionId }}</td>
               <td class="td">{{ item.warehouseCode }}</td>
               <td class="td">{{ item.status }}</td>
               <td class="td text-right">{{ item.totalLines }} / {{ item.differenceLines }}</td>
               <td class="td text-right">{{ fmtCurrency(item.totalValorizedAmount) }} <span class="text-xs text-gray-400">({{ valuationLabel(item.valuationMode) }})</span></td>
+              <td class="td text-gray-500 dark:text-gray-400">{{ item.notes || '—' }}</td>
               <td class="td text-right">
                 <button class="link" type="button" @click="openAdjustment(item.adjustmentId)">Detalle</button>
               </td>
             </tr>
-            <tr v-if="filteredAdjustments.length === 0">
-              <td class="td text-center" colspan="8">
+            <tr v-if="sortedAdjustments.length === 0">
+              <td class="td text-center" colspan="7">
                 {{ adjustments.length === 0 ? 'Sin ajustes.' : 'Sin ajustes en el rango de fechas seleccionado.' }}
               </td>
             </tr>
@@ -178,7 +194,8 @@
                   v-model.number="lineEdit[line.lineId].adjustedDifference"
                   class="input text-right"
                   type="number"
-                  step="0.0001"
+                  step="1"
+                  inputmode="numeric"
                   :disabled="!canEditarAjuste || current.status !== 'Draft'"
                 />
               </td>
@@ -214,6 +231,8 @@ import {
   type AdjustmentSummaryDto,
   scnexusInventoryApi
 } from '../services/scnexusInventoryApi'
+import { inventarioSesionesService } from '../services/inventarioSesionesApi'
+import type { InventorySessionListItemDto } from '../types'
 import { useInventarioModulePermissions } from '../composables/useInventarioModulePermissions'
 
 const { canEditarAjuste, canRevisarAjuste, canIntegrarSap } = useInventarioModulePermissions()
@@ -255,9 +274,34 @@ const error = ref<string | null>(null)
 const success = ref<string | null>(null)
 
 const creating = ref(false)
+const discarding = ref(false)
 const savingLine = ref(false)
 const downloadingReport = ref(false)
 const savingValuation = ref(false)
+
+// Tomas cerradas para el selector de "Crear Ajuste" — evita tener que copiar/pegar el sessionId a
+// mano. Solo se ofrecen las que aún no tienen ningún ajuste (de cualquier estado) ni fueron
+// descartadas — las demás ya están "resueltas" de una forma u otra.
+const sesiones = ref<InventorySessionListItemDto[]>([])
+const loadingSesiones = ref(false)
+
+const sesionesPendientes = computed(() =>
+  sesiones.value
+    .filter(s => s.status === 'Closed' && !s.adjustmentId && !s.adjustmentDiscarded)
+    .sort((a, b) => new Date(b.closedAt ?? 0).getTime() - new Date(a.closedAt ?? 0).getTime())
+)
+
+async function cargarSesiones() {
+  loadingSesiones.value = true
+  try {
+    sesiones.value = await inventarioSesionesService.getSesiones()
+  } catch {
+    // No bloquear la pantalla si esto falla — el campo simplemente queda vacío y sigue
+    // funcionando el resto de la bandeja (listado/detalle de ajustes ya creados).
+  } finally {
+    loadingSesiones.value = false
+  }
+}
 
 const createForm = reactive({
   sessionId: '',
@@ -303,7 +347,8 @@ function valuationLabel(mode: string | number) {
   return VALUATION_LABELS[String(mode)] ?? String(mode)
 }
 
-function fmtDate(value: string) {
+function fmtDate(value?: string | null) {
+  if (!value) return '—'
   const date = new Date(value)
   return Number.isNaN(date.getTime()) ? '—' : dateFmt.format(date)
 }
@@ -320,6 +365,54 @@ const filteredAdjustments = computed(() => {
     if (from && createdAt < from) return false
     if (to && createdAt > to) return false
     return true
+  })
+})
+
+const adjustmentSearch = ref('')
+
+type AdjustmentSortKey = 'createdAt' | 'warehouseCode' | 'status' | 'totalLines' | 'totalValorizedAmount'
+const adjustmentSortKey = ref<AdjustmentSortKey>('createdAt')
+const adjustmentSortDir = ref<'asc' | 'desc'>('desc')
+
+function toggleAdjustmentSort(key: AdjustmentSortKey) {
+  if (adjustmentSortKey.value === key) {
+    adjustmentSortDir.value = adjustmentSortDir.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    adjustmentSortKey.value = key
+    adjustmentSortDir.value = 'asc'
+  }
+}
+
+function adjustmentSortIndicator(key: AdjustmentSortKey) {
+  if (adjustmentSortKey.value !== key) return ''
+  return adjustmentSortDir.value === 'asc' ? ' ▲' : ' ▼'
+}
+
+const sortedAdjustments = computed(() => {
+  const q = adjustmentSearch.value.trim().toLowerCase()
+  let result = filteredAdjustments.value
+  if (q) {
+    result = result.filter((item) =>
+      item.warehouseCode.toLowerCase().includes(q) ||
+      item.adjustmentId.toLowerCase().includes(q) ||
+      item.sessionId.toLowerCase().includes(q) ||
+      String(item.status).toLowerCase().includes(q) ||
+      (item.notes ?? '').toLowerCase().includes(q)
+    )
+  }
+
+  const dir = adjustmentSortDir.value === 'asc' ? 1 : -1
+  const key = adjustmentSortKey.value
+  return [...result].sort((a, b) => {
+    if (key === 'createdAt') {
+      return (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) * dir
+    }
+    const av = a[key]
+    const bv = b[key]
+    if (typeof av === 'string' || typeof bv === 'string') {
+      return String(av).localeCompare(String(bv)) * dir
+    }
+    return ((av as number) - (bv as number)) * dir
   })
 })
 
@@ -352,11 +445,35 @@ async function createAdjustment() {
     current.value = detail
     hydrateLineEdit(detail)
     success.value = `Ajuste creado: ${detail.adjustmentId}`
-    await loadAdjustments()
+    createForm.sessionId = ''
+    createForm.notes = ''
+    await Promise.all([loadAdjustments(), cargarSesiones()])
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'No se pudo crear ajuste.'
   } finally {
     creating.value = false
+  }
+}
+
+async function discardAdjustment() {
+  if (!createForm.sessionId) return
+  const sesion = sesionesPendientes.value.find(s => s.sessionId === createForm.sessionId)
+  const label = sesion ? `${sesion.warehouseCode} — ${sesion.description || 'sin descripción'}` : createForm.sessionId
+  if (!window.confirm(`¿Confirmas descartar el ajuste de "${label}"? No se generará ningún cobro, solo se marcará como revisada sin diferencias que ajustar.`)) {
+    return
+  }
+  discarding.value = true
+  error.value = null
+  success.value = null
+  try {
+    await scnexusInventoryApi.discardAdjustment(createForm.sessionId)
+    success.value = 'Toma marcada como revisada, sin ajuste.'
+    createForm.sessionId = ''
+    await cargarSesiones()
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'No se pudo descartar el ajuste.'
+  } finally {
+    discarding.value = false
   }
 }
 
@@ -373,11 +490,15 @@ async function openAdjustment(adjustmentId: string) {
 
 async function saveLine(lineId: string) {
   if (!current.value) return
+  const edited = lineEdit[lineId]
+  if (!Number.isInteger(edited.adjustedDifference)) {
+    error.value = 'El ajuste debe ser un número entero (sin decimales).'
+    return
+  }
   savingLine.value = true
   error.value = null
   success.value = null
   try {
-    const edited = lineEdit[lineId]
     await scnexusInventoryApi.updateAdjustmentLine(current.value.adjustmentId, lineId, {
       adjustedDifference: edited.adjustedDifference,
       auditorNotes: edited.auditorNotes || null,
@@ -465,6 +586,7 @@ async function descargarInforme() {
 }
 
 loadAdjustments()
+cargarSesiones()
 </script>
 
 <style scoped>
@@ -473,6 +595,9 @@ loadAdjustments()
 }
 .input {
   @apply mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100;
+}
+.search-input {
+  @apply rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500;
 }
 .btn-primary {
   @apply inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50;

@@ -50,8 +50,22 @@
               autocomplete="off"
               @keydown.enter.prevent="onScanEnter"
             />
+            <button
+              type="button"
+              class="btn-secondary flex-shrink-0 px-3"
+              title="Escanear con cámara"
+              @click="mostrarEscaner = true"
+            >
+              <CameraIcon class="w-4 h-4" />
+            </button>
           </div>
         </div>
+
+        <ScannerPanel
+          :visible="mostrarEscaner"
+          @detected="onCodigoEscaneado"
+          @close="mostrarEscaner = false"
+        />
 
         <!-- Manual itemcode -->
         <div class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
@@ -206,9 +220,10 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ChevronLeftIcon, ChevronDownIcon } from '@heroicons/vue/24/outline'
+import { ChevronLeftIcon, ChevronDownIcon, CameraIcon } from '@heroicons/vue/24/outline'
 import { inventarioSesionesService } from '../services/inventarioSesionesApi'
 import type { InventorySessionStatus } from '../types'
+import ScannerPanel from '../components/ScannerPanel.vue'
 
 interface ColaItem {
   id: string
@@ -261,6 +276,7 @@ const errorCarga = ref<string | null>(null)
 const online = ref(navigator.onLine)
 
 const scanCode = ref('')
+const mostrarEscaner = ref(false)
 const cantidadScan = ref(1)
 const manualItemCode = ref('')
 const cantidadManual = ref(1)
@@ -454,6 +470,13 @@ function onScanEnter() {
   if (!code) return
   agregarACola(code, cantidadScan.value, 'Scan', code)
   scanCode.value = ''
+  cantidadScan.value = 1
+  nextTick(() => barcodeInputRef.value?.focus())
+}
+
+function onCodigoEscaneado(code: string) {
+  mostrarEscaner.value = false
+  agregarACola(code, cantidadScan.value, 'Scan', code)
   cantidadScan.value = 1
   nextTick(() => barcodeInputRef.value?.focus())
 }

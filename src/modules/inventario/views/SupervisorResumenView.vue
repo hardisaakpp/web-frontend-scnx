@@ -24,7 +24,7 @@
           type="button"
           class="btn-secondary"
           :disabled="descargando"
-          @click="descargarCSV"
+          @click="descargarExcel"
         >
           <ArrowDownTrayIcon class="w-4 h-4 mr-1" />
           {{ descargando ? 'Descargando...' : 'Descargar' }}
@@ -42,8 +42,28 @@
       <div class="mb-6 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 flex flex-wrap items-center gap-4">
         <span :class="['badge text-sm px-3 py-1', badgeClass(summary.status)]">{{ statusLabel(summary.status) }}</span>
         <span v-if="summary.description" class="text-sm text-gray-700 dark:text-gray-300">{{ summary.description }}</span>
+        <span v-if="summary.referenceCode" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono font-semibold bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+          {{ summary.referenceCode }}
+        </span>
         <span class="text-xs text-gray-500 dark:text-gray-400">Apertura: {{ formatDateTime(summary.openedAt) }}</span>
         <span v-if="summary.closedAt" class="text-xs text-gray-500 dark:text-gray-400">Cierre: {{ formatDateTime(summary.closedAt) }}</span>
+        <span class="text-xs text-gray-500 dark:text-gray-400">
+          Plan: <span class="font-mono">{{ summary.planId ? summary.planId.slice(0, 8) + '…' : 'Directa' }}</span>
+        </span>
+        <span class="text-xs text-gray-500 dark:text-gray-400 inline-flex items-center gap-1">
+          ID: <span class="font-mono">{{ summary.sessionId.slice(0, 8) }}…</span>
+          <button
+            type="button"
+            class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+            title="Copiar ID completo"
+            @click="copiarSessionId"
+          >
+            <ClipboardDocumentIcon class="w-3.5 h-3.5" />
+          </button>
+        </span>
+        <span class="text-xs text-gray-500 dark:text-gray-400">
+          Creado por: {{ summary.createdByUserName || summary.createdByUserId }}
+        </span>
       </div>
 
       <!-- View mode toggle: por artículos (SKUs) vs por unidades (cantidades) -->
@@ -311,18 +331,22 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import * as XLSX from 'xlsx'
 import {
   ChevronLeftIcon,
   ArrowPathIcon,
   ArrowDownTrayIcon,
-  LockClosedIcon
+  LockClosedIcon,
+  ClipboardDocumentIcon
 } from '@heroicons/vue/24/outline'
 import { inventarioSesionesService } from '../services/inventarioSesionesApi'
 import { resolveUserNames } from '@/utils/resolveUserNames'
+import { useToast } from '@/composables/useToast'
 import RecountAssignmentModal from '../components/RecountAssignmentModal.vue'
-import type { SupervisorSummaryDto, InventorySessionStatus } from '../types'
+import type { SupervisorSummaryDto, InventorySessionStatus, InventorySessionLineStatusDto } from '../types'
 
 const router = useRouter()
+const toast = useToast()
 const route = useRoute()
 const sessionId = route.params.sessionId as string
 
@@ -409,31 +433,80 @@ async function cargar() {
   }
 }
 
-async function descargarCSV() {
-  descargando.value = true
+async function copiarSessionId() {
+  if (!summary.value) return
   try {
+    await navigator.clipboard.writeText(summary.value.sessionId)
+    toast.success('Copiado', `ID ${summary.value.sessionId} copiado al portapapeles`, 2000)
+  } catch {
+    toast.error('No se pudo copiar', 'El navegador bloqueó el acceso al portapapeles.', 3000)
+  }
+}
+
+function estadoLinea(line: InventorySessionLineStatusDto): string {
+  if (line.balanceStatus === 'Balanced') return 'Cuadrado'
+  if (line.systemQuantity === 0) return 'Nuevo'
+  return 'Diferencia'
+}
+
+async function descargarExcel() {
+  if (!summary.value) return
+  descargando.value = true
+  error.value = null
+  try {
+    // getSessionStatus ya viene acotado al alcance de la toma (mismos filtros con los que se
+    // generó) — antes traía el catálogo completo del almacén sin filtrar.
     const status = await inventarioSesionesService.getSessionStatus(sessionId)
-    const rows: string[] = [
-      'Código,Descripción,Stock Sistema,Contado,Diferencia,Estado'
+    const s = summary.value
+
+    const workbook = XLSX.utils.book_new()
+
+    // Hoja 1: lo mismo que se ve en esta página.
+    const resumenRows: (string | number)[][] = [
+      ['Bodega', `${s.warehouseName} (${s.warehouseCode})`],
+      ['Estado', statusLabel(s.status)],
+      ['Descripción', s.description || ''],
+      ['Referencia', s.referenceCode || ''],
+      ['Plan', s.planId || 'Directa'],
+      ['ID sesión', s.sessionId],
+      ['Creado por', s.createdByUserName || s.createdByUserId],
+      ['Apertura', formatDateTime(s.openedAt)],
+      ['Cierre', s.closedAt ? formatDateTime(s.closedAt) : '—'],
+      [],
+      ['PROGRESO DE CONTEO', '', 'Items', 'Unidades'],
+      ['Total', '', s.totalSystemItems, s.totalSystemUnits],
+      ['Contados', '', s.countedItems, s.countedUnits],
+      ['Faltan', '', s.pendingItems, s.pendingUnits],
+      [],
+      ['ESTADO DE CUADRE', '', 'Items', 'Unidades'],
+      ['Cuadraron', '', s.balancedItems, s.balancedUnits],
+      ['Descuadraron', '', s.differenceItems, s.differenceUnits],
+      ['Items nuevos', '', s.newItems, s.newUnits],
+      [],
+      ['VALORIZADO MABELTRADING (a costo)'],
+      ['Total inventario', fmtCurrency(s.totalValorizedCost)],
+      ['Cuánto se auditó', fmtCurrency(s.auditedValorizedCost)],
+      [],
+      ['CONTEO POR USUARIO'],
+      ['Usuario', 'Ubicación', 'Entradas', 'Artículos únicos', 'Último registro'],
+      ...s.userStats.map(u => [userLabel(u.userId), u.location || '—', u.countEntries, u.uniqueItemsCounted, formatDateTime(u.lastCountedAt)])
     ]
-    for (const line of status.lines) {
-      const desc = (line.itemDescription ?? '').replace(/"/g, '""')
-      let estado = 'Diferencia'
-      if (line.balanceStatus === 'Balanced') {
-        estado = 'Cuadrado'
-      } else if (line.systemQuantity === 0) {
-        estado = 'Nuevo'
-      }
-      rows.push(`${line.itemCode},"${desc}",${line.systemQuantity},${line.countedQuantity},${line.difference},${estado}`)
-    }
-    const csv = rows.join('\r\n')
-    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `inventario_${summary.value?.warehouseCode ?? sessionId.slice(0, 8)}_${new Date().toISOString().slice(0, 10)}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(resumenRows), 'Resumen')
+
+    // Hoja 2: detalle por ítem, acotado a la toma.
+    const detalleHeader = ['Código', 'Descripción', 'SAP', 'Conteo', 'Reconteo', 'Diferencia final', 'Estado']
+    const detalleRows = status.lines.map(line => [
+      line.itemCode,
+      line.itemDescription || '',
+      line.systemQuantity,
+      line.initialCountedQuantity,
+      line.recountedQuantity,
+      line.difference,
+      estadoLinea(line)
+    ])
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([detalleHeader, ...detalleRows]), 'Detalle')
+
+    XLSX.writeFile(workbook, `inventario_${s.warehouseCode}_${new Date().toISOString().slice(0, 10)}.xlsx`)
   } catch (e: any) {
     error.value = e.message ?? 'Error al descargar el detalle.'
   } finally {

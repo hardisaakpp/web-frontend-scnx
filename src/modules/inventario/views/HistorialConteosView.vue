@@ -46,6 +46,20 @@
             <div class="flex items-center gap-2 flex-wrap">
               <span :class="['badge', badgeClass(s.status)]">{{ statusLabel(s.status) }}</span>
               <span class="font-mono text-xs text-gray-500 dark:text-gray-400">{{ s.warehouseCode }}</span>
+              <span
+                v-if="s.status === 'Closed' && s.hasApprovedAdjustment"
+                class="inline-flex items-center gap-1 text-emerald-500"
+                title="Cerrado con informe de ajuste aprobado"
+              >
+                <CheckBadgeIcon class="w-4 h-4" />
+              </span>
+              <span
+                v-else-if="s.status === 'Closed' && s.adjustmentDiscarded"
+                class="inline-flex items-center gap-1 text-gray-400"
+                title="Cerrado — revisado sin ajuste"
+              >
+                <CheckBadgeIcon class="w-4 h-4" />
+              </span>
             </div>
             <h2 class="mt-2 text-base font-semibold text-gray-900 dark:text-white">{{ s.warehouseName }}</h2>
             <p v-if="s.description" class="mt-0.5 text-sm text-gray-600 dark:text-gray-400">{{ s.description }}</p>
@@ -55,6 +69,14 @@
             </div>
           </div>
           <div class="flex flex-col gap-2 flex-shrink-0">
+            <button
+              v-if="s.hasApprovedAdjustment"
+              type="button"
+              class="btn-secondary"
+              @click="verAjuste(s)"
+            >
+              Ver ajuste final
+            </button>
             <button type="button" class="btn-secondary" :disabled="accionEnCurso === s.sessionId" @click="imprimir(s)">
               {{ accionEnCurso === s.sessionId ? 'Generando...' : 'Imprimir' }}
             </button>
@@ -145,6 +167,7 @@ import { ref, nextTick, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import * as XLSX from 'xlsx'
 import { ArrowPathIcon, ArchiveBoxXMarkIcon } from '@heroicons/vue/24/outline'
+import { CheckBadgeIcon } from '@heroicons/vue/24/solid'
 import { inventarioSesionesService } from '../services/inventarioSesionesApi'
 import type { MyCountHistorySessionDto, InventorySessionStatus, UserScanSummaryDto } from '../types'
 
@@ -200,6 +223,10 @@ function formatDate(value?: string | null): string {
   const d = new Date(value)
   return d.toLocaleDateString('es', { day: '2-digit', month: '2-digit', year: '2-digit' })
     + ' ' + d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })
+}
+
+function verAjuste(session: MyCountHistorySessionDto) {
+  router.push({ name: 'inventario-ajuste-final-tienda', params: { sessionId: session.sessionId } })
 }
 
 async function cargar() {
