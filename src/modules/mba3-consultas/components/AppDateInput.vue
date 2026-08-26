@@ -31,10 +31,12 @@
       </svg>
     </button>
 
+    <Teleport to="body">
     <div
       v-if="showCalendar"
-      class="absolute z-20 mt-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-lg p-2"
-      style="width: 17rem;"
+      ref="calendarRef"
+      class="fixed z-[100] rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-lg p-2"
+      :style="{ width: '17rem', ...calendarPosition }"
       @mousedown.prevent
     >
       <div class="flex items-center justify-between px-1 py-1">
@@ -105,6 +107,7 @@
         </button>
       </div>
     </div>
+    </Teleport>
   </div>
 </template>
 
@@ -124,6 +127,14 @@
  * v-model expone y recibe siempre 'YYYY-MM-DD' (o '' si no hay fecha), igual que
  * el input nativo, para no tener que tocar el resto del código que ya trabaja con
  * ese formato.
+ *
+ * El calendario desplegable se renderiza con <Teleport to="body"> y position:fixed
+ * calculado desde el input (calendarPosition/updateCalendarPosition), en vez de
+ * position:absolute anidado en el propio componente: así no lo recorta ni lo empuja
+ * fuera de vista un contenedor ancestro con overflow-y-auto (ej. el cuerpo scrolleable
+ * de un modal) -- el caso real que motivó esto fue DiferenciaProduccionModal.vue,
+ * donde el calendario quedaba por debajo del área visible y había que hacer scroll
+ * dentro del modal para verlo completo.
  */
 import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 
@@ -140,8 +151,32 @@ const emit = defineEmits<{
 const WEEK_DAYS = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do']
 
 const rootRef = ref<HTMLElement | null>(null)
+const calendarRef = ref<HTMLElement | null>(null)
 const showCalendar = ref(false)
 const textValue = ref('')
+const calendarPosition = ref<Record<string, string>>({})
+
+// Alto estimado del calendario (header + 6 filas de días + footer): no se mide el
+// DOM real porque hay que decidir arriba/abajo ANTES del primer paint para evitar
+// un salto visual al abrir.
+const CALENDAR_HEIGHT_ESTIMATE = 320
+const VIEWPORT_MARGIN = 8
+
+function updateCalendarPosition() {
+  const anchor = rootRef.value
+  if (!anchor) return
+  const rect = anchor.getBoundingClientRect()
+  const gap = 4
+  const cabeHaciaAbajo = window.innerHeight - rect.bottom - gap >= CALENDAR_HEIGHT_ESTIMATE
+  const left = Math.min(rect.left, window.innerWidth - 17 * 16 - VIEWPORT_MARGIN)
+  calendarPosition.value = cabeHaciaAbajo
+    ? { left: `${Math.max(left, VIEWPORT_MARGIN)}px`, top: `${rect.bottom + gap}px` }
+    : { left: `${Math.max(left, VIEWPORT_MARGIN)}px`, bottom: `${window.innerHeight - rect.top + gap}px` }
+}
+
+function handleReposition() {
+  if (showCalendar.value) updateCalendarPosition()
+}
 
 const now = new Date()
 const viewYear = ref(now.getFullYear())
@@ -364,21 +399,40 @@ function clear() {
   showCalendar.value = false
 }
 
-function handleDocumentClick(event: MouseEvent) {
-  if (rootRef.value && !rootRef.value.contains(event.target as Node)) {
+function handleDocumentMousedown(event: MouseEvent) {
+  const target = event.target as Node
+  // El calendario vive en <Teleport to="body">, fuera del árbol DOM de rootRef --
+  // hay que comprobar ambos para no cerrarlo al hacer clic dentro de él mismo.
+  const dentroDelInput = rootRef.value?.contains(target) ?? false
+  const dentroDelCalendario = calendarRef.value?.contains(target) ?? false
+  if (!dentroDelInput && !dentroDelCalendario) {
     showCalendar.value = false
   }
 }
 
 watch(showCalendar, (open) => {
   if (open) {
-    nextTick(() => document.addEventListener('click', handleDocumentClick))
+    updateCalendarPosition()
+    // mousedown en fase de captura (no click en fase de burbuja): el Dialog de
+    // @headlessui/vue que envuelve este componente en varios modales instala su
+    // propio detector de "clic afuera" en mousedown/pointerdown con captura, que
+    // corre antes y puede re-enfocar/interceptar la interacción -- si nuestro
+    // cierre corriera después, en click y en burbuja, el calendario podía quedar
+    // abierto pese a haber hecho clic afuera. Con captura+mousedown cerramos antes
+    // de que eso ocurra.
+    nextTick(() => document.addEventListener('mousedown', handleDocumentMousedown, true))
+    window.addEventListener('scroll', handleReposition, true)
+    window.addEventListener('resize', handleReposition)
   } else {
-    document.removeEventListener('click', handleDocumentClick)
+    document.removeEventListener('mousedown', handleDocumentMousedown, true)
+    window.removeEventListener('scroll', handleReposition, true)
+    window.removeEventListener('resize', handleReposition)
   }
 })
 
 onBeforeUnmount(() => {
-  document.removeEventListener('click', handleDocumentClick)
+  document.removeEventListener('mousedown', handleDocumentMousedown, true)
+  window.removeEventListener('scroll', handleReposition, true)
+  window.removeEventListener('resize', handleReposition)
 })
 </script>
