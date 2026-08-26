@@ -544,6 +544,7 @@ import { esProveedorElRayo } from '../utils/styleHelpers'
 import { MOSTRAR_FILTRO_PROVEEDOR_PEDIDOS } from '../config/featureFlags'
 import { PAGE_SIZE_OPTIONS } from '../config/pagination'
 import { useDebouncedFilterInput } from '../composables/useDebouncedFilterInput'
+import { usePageSizePreference } from '../composables/usePageSizePreference'
 import { lastNotification, reconnectedAfterGap } from '@/composables/useNotificaciones'
 import { useRefetchOnFocus } from '@/composables/useRefetchOnFocus'
 
@@ -612,9 +613,10 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 const estadosDisponibles = ref<EstadoPedidoOption[]>([])
 const PAGE_SIZE = 10
+const { pageSize: pageSizeGuardado, guardar: guardarPageSize } = usePageSizePreference('cargar-plantilla-listado', PAGE_SIZE)
 const metadata = ref<PedidosListadoMetadata>({
   total: 0,
-  limit: PAGE_SIZE,
+  limit: pageSizeGuardado.value,
   offset: 0,
   has_more: false
 })
@@ -928,6 +930,7 @@ function cambiarPagina(nuevoOffset: number) {
 }
 
 function cambiarTamanoPagina(nuevoLimit: number) {
+  guardarPageSize(nuevoLimit)
   metadata.value.limit = nuevoLimit
   metadata.value.offset = 0
   filtros.value.offset = 0
