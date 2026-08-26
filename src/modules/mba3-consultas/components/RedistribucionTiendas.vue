@@ -27,7 +27,9 @@
                 Matriz
               </span>
             </button>
+            <!-- Vista Compacta: oculta salvo para funcionalidades-admin.view -->
             <button
+              v-if="authStore.canViewFuncionalidadesAdmin"
               @click="modoVista = 'compacta'"
               :class="[
                 'px-3 py-1.5 text-sm font-medium rounded transition-colors',
@@ -631,6 +633,7 @@
 <script setup lang="ts">
 import { computed, ref, watch, type Ref } from '@vue/reactivity'
 import { nextTick, onMounted, onUnmounted } from '@vue/runtime-core'
+import { useAuthStore } from '@/stores/auth'
 import type { PedidoCompleto, PedidoDetalle } from '../types'
 import type { ProductoRedistribucion, DistribucionTiendaEditada } from '../utils/redistribucionHelpers'
 import { formatNumber, formatNumberWithDecimals, formatCurrency, type ColumnConfig } from '../utils/formatters'
@@ -680,6 +683,8 @@ interface Emits {
 
 const props = withDefaults(defineProps<Props>(), { confirmarDeshabilitadoPorEstado: false, guardarBorradorDeshabilitadoPorEstado: false, soloLectura: false })
 const emit = defineEmits<Emits>()
+
+const authStore = useAuthStore()
 
 // Estado para el modo de vista
 const modoVista = ref<'compacta' | 'excel'>('excel')
