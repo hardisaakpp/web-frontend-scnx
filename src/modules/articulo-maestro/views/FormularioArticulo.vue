@@ -122,8 +122,8 @@
                         </div>
                         <div class="form-field">
                             <label for="formSkuSinTalla">Referencia / SKU sin talla</label>
-                            <input id="formSkuSinTalla" v-model="form.uSxxSkuSinTalla" type="text" placeholder="Código padre / referencia" :disabled="isEdit" :title="isEdit ? LOCK_REASON.skuSelladoAlCrear : ''" />
-                            <span v-if="isEdit" class="help">{{ LOCK_REASON.skuSelladoAlCrear }}</span>
+                            <input id="formSkuSinTalla" :value="form.uSxxSkuSinTalla" type="text" disabled placeholder="[Generación Automática en Backend]" :title="LOCK_REASON.skuSelladoAlCrear" />
+                            <span class="help">{{ isEdit ? LOCK_REASON.skuSelladoAlCrear : 'Se genera automáticamente al crear (ItemCode sin el sufijo de talla).' }}</span>
                         </div>
                         <div class="form-field">
                             <label for="selectTalla">Talla</label>
@@ -132,6 +132,7 @@
                                 v-model="form.uIxxTalla"
                                 :options="cats.talla"
                                 placeholder="Seleccionar talla..."
+                                valueKey="nombre"
                                 :disabled="isEdit"
                                 :title="isEdit ? LOCK_REASON.tallaInmutable : ''"
                             />
@@ -144,6 +145,7 @@
                                 v-model="form.uGen"
                                 :options="cats.genero"
                                 placeholder="Seleccionar género..."
+                                valueKey="nombre"
                                 :disabled="isEdit"
                                 :title="isEdit ? LOCK_REASON.generoInmutable : ''"
                             />
@@ -169,6 +171,7 @@
                                 v-model="form.uIxxMarca"
                                 :options="cats.negocio"
                                 placeholder="Seleccionar negocio..."
+                                valueKey="nombre"
                                 required
                                 :disabled="isEdit"
                                 :title="isEdit ? LOCK_REASON.marcaNegocioInmutable : ''"
@@ -232,6 +235,7 @@
                                 v-model="form.uNomColeccion"
                                 :options="cats.coleccion"
                                 placeholder="Seleccionar colección..."
+                                valueKey="nombre"
                             />
                         </div>
                         <div class="form-field">
@@ -241,6 +245,7 @@
                                 v-model="form.uReposicion"
                                 :options="cats.permanencia"
                                 placeholder="Seleccionar estatus..."
+                                valueKey="nombre"
                             />
                         </div>
                         <div class="form-field">
@@ -250,6 +255,7 @@
                                 v-model="form.uCanalVenta"
                                 :options="cats.canal"
                                 placeholder="Seleccionar canal..."
+                                valueKey="nombre"
                             />
                         </div>
                         <div class="form-field">
@@ -259,6 +265,7 @@
                                 v-model="form.uRegion"
                                 :options="cats.region"
                                 placeholder="Seleccionar región..."
+                                valueKey="nombre"
                             />
                         </div>
 
@@ -367,6 +374,7 @@
                                 v-model="form.uOrigen"
                                 :options="cats.origen"
                                 placeholder="Seleccionar origen..."
+                                valueKey="nombre"
                                 :disabled="isEdit"
                                 :title="isEdit ? LOCK_REASON.procedenciaSellada : ''"
                             />
@@ -379,6 +387,7 @@
                                 v-model="form.uPOri"
                                 :options="cats.pais"
                                 placeholder="Seleccionar país..."
+                                valueKey="nombre"
                                 :disabled="isEdit"
                                 :title="isEdit ? LOCK_REASON.procedenciaSellada : ''"
                             />
@@ -400,6 +409,7 @@
                                 v-model="form.uTipAbs"
                                 :options="cats.envio"
                                 placeholder="Seleccionar tipo..."
+                                valueKey="nombre"
                             />
                         </div>
 
@@ -443,6 +453,7 @@
                                 v-model="form.uLiq"
                                 :options="cats.liquidacion"
                                 placeholder="Seleccionar..."
+                                valueKey="nombre"
                             />
                         </div>
                         <div class="form-field sm:col-span-2 flex flex-row items-center gap-3 bg-gray-50 dark:bg-gray-900 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
@@ -751,6 +762,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useToast } from '@/composables/useToast'
 import { articuloService, catalogoService } from '../services/articuloService'
 import type {
     CatalogoItem,
@@ -765,6 +777,7 @@ import { useKeyboardShortcuts } from '../composables/useKeyboardShortcuts'
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const toast = useToast()
 
 const puedeVerMonitoreoSap = computed(() =>
     authStore.isAdmin || authStore.hasPermission('articulomaestro.migracion')
@@ -776,6 +789,21 @@ const monitoreoSapLink = computed(() => ({
     path: '/articulo-maestro/migracion',
     query: ultimoItemCodeSap.value ? { codigo: ultimoItemCodeSap.value } : {},
 }))
+
+// Mismo destino que "Ver monitoreo de SAP →" del banner in-place (edición
+// sin redirect), pero como acción de toast: los flujos que sí redirigen
+// (creación, promover alterno) no pueden depender del ref reactivo
+// ultimoItemCodeSap/monitoreoSapLink porque el router.replace remonta el
+// componente (:key="route.path" en MainLayout) y ese ref local se pierde
+// antes de que el usuario llegue a hacer clic. Se captura itemCode por
+// valor, no por referencia reactiva.
+function accionMonitoreoSap(itemCode: string) {
+    if (!puedeVerMonitoreoSap.value) return undefined
+    return {
+        label: 'Ver monitoreo de SAP →',
+        onClick: () => router.push({ path: '/articulo-maestro/migracion', query: { codigo: itemCode } })
+    }
+}
 
 const isEdit = computed(() => !!route.params.itemCode)
 const tabs = [
@@ -1171,7 +1199,15 @@ async function handlePromoverAlterno(): Promise<void> {
     submitSuccess.value = ''
     try {
         const resultado = await articuloService.promoverCodigoAlterno(itemCodeActual)
-        submitSuccess.value = resultado.message
+        // Mismo motivo que en la creación: este router.replace cambia de
+        // itemCode y remonta el componente (:key="route.path" en MainLayout),
+        // así que el banner local no sobreviviría — se usa el toast global.
+        toast.addToast({
+            type: 'success',
+            title: 'Código alterno promovido',
+            message: resultado.message,
+            action: accionMonitoreoSap(resultado.item_code_nuevo)
+        })
         ultimoItemCodeSap.value = resultado.item_code_nuevo
         await router.replace(`/articulo-maestro/editar/${resultado.item_code_nuevo}`)
         await cargarDatosEdicion(resultado.item_code_nuevo)
@@ -1388,7 +1424,17 @@ async function handleSubmit() {
             // espera (GestorImagenes no tenía ItemCode todavía); ahora que ya
             // existe, se suben.
             await gestorImagenesRef.value?.flushPendingUploads(article.itemCode)
-            submitSuccess.value = `Artículo ${article.itemCode} creado. Sincronización con SAP iniciada en segundo plano.`
+            // El banner local (submitSuccess) no sobrevive al router.replace: el
+            // <component :key="route.path"> de MainLayout remonta este componente
+            // al cambiar de /nuevo a /editar/:itemCode, destruyendo sus refs antes
+            // de que el mensaje llegue a pintarse. El toast global sí sobrevive,
+            // porque vive fuera del árbol remontado (ver ToastContainer/useToast).
+            toast.addToast({
+                type: 'success',
+                title: 'Artículo creado',
+                message: `Artículo ${article.itemCode} creado. Sincronización con SAP iniciada en segundo plano.`,
+                action: accionMonitoreoSap(article.itemCode)
+            })
             ultimoItemCodeSap.value = article.itemCode
             await router.replace(`/articulo-maestro/editar/${article.itemCode}`)
         }
