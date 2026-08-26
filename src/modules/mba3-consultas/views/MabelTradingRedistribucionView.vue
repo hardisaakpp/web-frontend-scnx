@@ -277,6 +277,7 @@
         :confirmar-deshabilitado-por-estado="confirmarDeshabilitadoPorEstado"
         :guardar-borrador-deshabilitado-por-estado="guardarBorradorDeshabilitadoPorEstado"
         :columnas-modificadas="columnasModificadas as unknown as Ref<Set<string>>"
+        :roles-modificacion="rolesModificacion as unknown as Ref<Map<string, string | null>>"
         :show-enviar-odc-sap="showEnviarOdcSap"
         :enviando-odc-sap="enviandoOdcSap"
         @toggle-expandir-producto="toggleExpandirProducto"
@@ -372,6 +373,9 @@ async function refreshPendingOdcSapState() {
 
 // ⭐ Set para rastrear columnas modificadas (para resaltado en redistribución)
 const columnasModificadas: Ref<Set<string>> = ref<Set<string>>(new Set())
+// ⭐ Rol (ODCSAP/PRODUCCION_ELRAYO) de quien hizo cada modificación, para pintar el
+// resaltado heredado con el mismo color de marca que Cargar Plantilla / Detalle del Pedido.
+const rolesModificacion: Ref<Map<string, string | null>> = ref(new Map())
 
 const numeroPedido = computed(() => {
   const id = route.params.id as string
@@ -408,6 +412,7 @@ const pedidoDetalle = usePedidoDetalle({
   numeroPedido,
   esModoMabelTrading,
   columnasModificadas,
+  rolesModificacion,
   reporteDiferencias: ref(null),
   limpiarColumnasModificadasEnStorage: () => {
     if (!numeroPedido.value) return
@@ -415,6 +420,7 @@ const pedidoDetalle = usePedidoDetalle({
       const storageKey = `pedido_columnas_modificadas_${numeroPedido.value}`
       sessionStorage.removeItem(storageKey)
       columnasModificadas.value.clear()
+      rolesModificacion.value.clear()
     } catch (e) {
       console.warn('Error al limpiar columnas modificadas en sessionStorage:', e)
     }

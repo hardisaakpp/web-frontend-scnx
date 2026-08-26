@@ -229,6 +229,7 @@
           :solo-lectura="soloLectura"
           :decimal-places="decimalPlaces"
           :columnas-modificadas="columnasModificadas"
+          :roles-modificacion="rolesModificacion"
           :pedido="pedidoValue"
           @actualizar-cantidad-tienda="handleActualizarCantidadTienda"
           @validar-y-corregir-cantidad="handleValidarYCorregirCantidad"
@@ -264,18 +265,19 @@
           <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
             <template v-for="producto in productosArray" :key="producto.codigo_producto">
               <!-- Fila Principal del Producto -->
-              <!-- Fila Principal: Resalta primero modificaciones (ámbar), luego diferencia (verde/rojo) -->
-              <!-- ⭐ IMPORTANTE: El resaltado ámbar debe aparecer inmediatamente si el producto tiene modificaciones del flujo anterior (EL RAYO) -->
-              <tr 
+              <!-- Fila Principal: Resalta primero modificaciones heredadas del flujo anterior
+                   (púrpura ODCSAP / ámbar EL RAYO), luego diferencia (verde/rojo) -->
+              <!-- ⭐ IMPORTANTE: el resaltado debe aparecer inmediatamente si el producto tiene modificaciones del flujo anterior -->
+              <tr
                 :class="[
                   'transition-colors',
                   producto.error ? 'bg-gray-100 dark:bg-gray-700/30' :
-                  // ⭐ PRIORIDAD 1: Resaltar productos con modificaciones del flujo anterior (EL RAYO)
+                  // ⭐ PRIORIDAD 1: Resaltar productos con modificaciones del flujo anterior
                   // Esto debe aparecer inmediatamente al cargar la página, no solo después de distribuir
-                  tieneModificaciones(producto) ? 'bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 dark:border-amber-400' :
+                  claseResaltadoFila(producto, 'base') ??
                   // ⭐ PRIORIDAD 2: Resaltar según el estado de la distribución (rojo si diferencia !== 0)
-                  cercaDeCero(producto.diferencia) ? 'bg-green-50 dark:bg-green-900/30' :
-                  'bg-red-50 dark:bg-red-900/30'
+                  (cercaDeCero(producto.diferencia) ? 'bg-green-50 dark:bg-green-900/30' :
+                  'bg-red-50 dark:bg-red-900/30')
                 ]"
               >
                 <td
@@ -293,9 +295,9 @@
                     column.key === 'estado' ? 'whitespace-nowrap text-center' :
                     column.key === 'acciones' ? 'whitespace-nowrap text-center' :
                     '',
-                    column.key === 'expand' ? 'sticky left-0 z-10 border-r border-gray-200 dark:border-gray-700 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[4px_0_6px_-2px_rgba(0,0,0,0.2)] ' + (producto.error ? 'bg-gray-100 dark:bg-gray-700/30' : tieneModificaciones(producto) ? 'bg-amber-50 dark:bg-amber-900/20' : cercaDeCero(producto.diferencia) ? 'bg-green-50 dark:bg-green-900/30' : 'bg-red-50 dark:bg-red-900/30') : '',
-                    column.key === 'codigo' ? 'sticky left-8 z-10 min-w-[120px] border-r border-gray-200 dark:border-gray-700 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[4px_0_6px_-2px_rgba(0,0,0,0.2)] ' + (producto.error ? 'bg-gray-100 dark:bg-gray-700/30' : tieneModificaciones(producto) ? 'bg-amber-50 dark:bg-amber-900/20' : cercaDeCero(producto.diferencia) ? 'bg-green-50 dark:bg-green-900/30' : 'bg-red-50 dark:bg-red-900/30') : '',
-                    column.key === 'diferencia' ? 'sticky right-0 z-[5] min-w-[120px] border-l border-gray-200 dark:border-gray-700 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.2)] ' + (producto.error ? 'bg-gray-100 dark:bg-gray-700' : tieneModificaciones(producto) ? 'bg-amber-50 dark:bg-amber-900/80' : cercaDeCero(producto.diferencia) ? 'bg-green-50 dark:bg-green-900/80' : 'bg-red-50 dark:bg-red-900/80') : ''
+                    column.key === 'expand' ? 'sticky left-0 z-10 border-r border-gray-200 dark:border-gray-700 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[4px_0_6px_-2px_rgba(0,0,0,0.2)] ' + (producto.error ? 'bg-gray-100 dark:bg-gray-700/30' : claseResaltadoFila(producto, 'sticky20') ?? (cercaDeCero(producto.diferencia) ? 'bg-green-50 dark:bg-green-900/30' : 'bg-red-50 dark:bg-red-900/30')) : '',
+                    column.key === 'codigo' ? 'sticky left-8 z-10 min-w-[120px] border-r border-gray-200 dark:border-gray-700 shadow-[4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[4px_0_6px_-2px_rgba(0,0,0,0.2)] ' + (producto.error ? 'bg-gray-100 dark:bg-gray-700/30' : claseResaltadoFila(producto, 'sticky20') ?? (cercaDeCero(producto.diferencia) ? 'bg-green-50 dark:bg-green-900/30' : 'bg-red-50 dark:bg-red-900/30')) : '',
+                    column.key === 'diferencia' ? 'sticky right-0 z-[5] min-w-[120px] border-l border-gray-200 dark:border-gray-700 shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.06)] dark:shadow-[-4px_0_6px_-2px_rgba(0,0,0,0.2)] ' + (producto.error ? 'bg-gray-100 dark:bg-gray-700' : claseResaltadoFila(producto, 'sticky80') ?? (cercaDeCero(producto.diferencia) ? 'bg-green-50 dark:bg-green-900/80' : 'bg-red-50 dark:bg-red-900/80')) : ''
                   ]"
                 >
                   <!-- Columna Expand -->
@@ -662,6 +664,10 @@ interface Props {
   /** Si true, el botón "Guardar Borrador" va deshabilitado (solo se permite en estado CONFIRMADO POR EL RAYO = 4) */
   guardarBorradorDeshabilitadoPorEstado?: boolean
   columnasModificadas?: Ref<Set<string>>
+  /** Rol (ODCSAP/PRODUCCION_ELRAYO) de quien hizo cada modificación en columnasModificadas,
+   * para pintar el resaltado heredado con el mismo color de marca que Cargar Plantilla /
+   * Detalle del Pedido (púrpura ODCSAP, ámbar PRODUCCION_ELRAYO). */
+  rolesModificacion?: Ref<Map<string, string | null>>
   /** Si true, muestra el botón "Enviar ODC a SAP" (proceso completo) */
   showEnviarOdcSap?: boolean
   /** Boolean que indica si está enviando a SAP */
@@ -881,71 +887,81 @@ const tituloBotonEnviarOdcSap = computed(() => {
   return 'Enviar ODC a SAP'
 })
 
+/** Color de resaltado heredado: 'purpura' si algún campo modificado lo tocó ODCSAP en
+ * último lugar, 'ambar' si fue PRODUCCION_ELRAYO (o no hay rol disponible), null si no hay
+ * modificación. Mismo criterio de color que Cargar Plantilla / Detalle del Pedido. */
+type ColorResaltadoFila = 'purpura' | 'ambar' | null
+
 /**
- * ⭐ Computed que mapea cada producto a si tiene modificaciones
+ * ⭐ Computed que mapea cada producto a su color de resaltado heredado
  * Esto asegura reactividad completa y que el resaltado se aplique inmediatamente
- * 
- * IMPORTANTE: Accede directamente a props.columnasModificadas?.value para que Vue rastree la dependencia
+ *
+ * IMPORTANTE: Accede directamente a props.columnasModificadas?.value/props.rolesModificacion?.value
+ * para que Vue rastree la dependencia
  */
 const productosConModificaciones = computed(() => {
-  const map = new Map<string, boolean>()
-  
+  const map = new Map<string, ColorResaltadoFila>()
+
   // ⭐ Acceder directamente a las props para que Vue rastree las dependencias
   // Esto asegura que el computed se recalcule cuando cambien las columnas modificadas
   const columnasModificadasValue = props.columnasModificadas?.value
+  const rolesModificacionValue = props.rolesModificacion?.value
   const pedidoDetalles = props.pedido?.detalles
-  
+
   if (!columnasModificadasValue || !pedidoDetalles || productosArray.value.length === 0) {
     return map
   }
-  
+
   productosArray.value.forEach((producto: ProductoRedistribucion) => {
-    // ⭐ PRIORIDAD 1: Usar campos del backend si están disponibles
-    if (producto.costo_modificado_manual === true || producto.total_modificado_manual === true) {
-      map.set(producto.codigo_producto, true)
-      return
-    }
-    
-    // ⭐ PRIORIDAD 2: Verificar columnasModificadas (heredar del flujo anterior - EL RAYO)
-    // Esta es la fuente principal para heredar el resaltado del flujo anterior
+    // ⭐ PRIORIDAD 1: columnasModificadas/rolesModificacion (heredar el color de quien
+    // editó por última vez -- misma fuente de verdad que Cargar Plantilla/Detalle del
+    // Pedido). Cada edición de COSTO/TOTAL guarda AMBAS cosas a la vez: el flag plano
+    // costo_modificado_manual/total_modificado_manual en pedido_detalle (sin rol) y el
+    // registro con rol_modificador en pedido_detalle_modificacion_columna -- por eso hay
+    // que consultar esta fuente primero, para no perder el rol cuando sí está disponible.
     const detallePedido = pedidoDetalles.find(
       (d: PedidoDetalle) => d.codigo_interno === producto.codigo_producto
     )
-    
-    if (!detallePedido?.pedido_detalle_id) {
-      map.set(producto.codigo_producto, false)
-      return
+
+    let color: ColorResaltadoFila = null
+    if (detallePedido?.pedido_detalle_id) {
+      // ⭐ Solo verificar columnas COSTO UNIT y TOTAL (no comentario)
+      // Estas son las columnas que se resaltan en la interfaz de EL RAYO/ODCSAP
+      const columnasParaResaltar = ['costo_doc_sin_iva', 'total']
+      for (const columnaKey of columnasParaResaltar) {
+        const key = `${detallePedido.pedido_detalle_id}:${columnaKey}`
+        if (!columnasModificadasValue.has(key)) continue
+        color = rolesModificacionValue?.get(key) === 'ODCSAP' ? 'purpura' : 'ambar'
+        if (color === 'purpura') break
+      }
     }
-    
-    // ⭐ Solo verificar columnas COSTO UNIT y TOTAL (no comentario)
-    // Estas son las columnas que se resaltan en color ámbar en la interfaz de EL RAYO
-    const columnasParaResaltar = ['costo_doc_sin_iva', 'total']
-    
-    const tieneMod = columnasParaResaltar.some(columnaKey => {
-      const key = `${detallePedido.pedido_detalle_id}:${columnaKey}`
-      const existe = columnasModificadasValue.has(key)
-      return existe
-    })
-    
-    map.set(producto.codigo_producto, tieneMod)
+
+    // ⭐ PRIORIDAD 2 (fallback): flag legacy sin rol -- solo aplica si la PRIORIDAD 1 no
+    // encontró nada (p. ej. edición previa a que existiera el tracking granular, o ajuste
+    // manual del comprador en la respuesta del proveedor).
+    if (!color && (producto.costo_modificado_manual === true || producto.total_modificado_manual === true)) {
+      color = 'ambar'
+    }
+
+    map.set(producto.codigo_producto, color)
   })
-  
+
   // Log para depuración (solo en desarrollo)
   if (import.meta.env.DEV) {
-    const productosConMod = Array.from(map.entries()).filter(([_, tieneMod]) => tieneMod)
+    const productosConMod = Array.from(map.entries()).filter(([_, color]) => color !== null)
     if (productosConMod.length > 0) {
-      if (import.meta.env.DEV) console.log(`🎨 [RedistribucionTiendas] ${productosConMod.length} productos con modificaciones heredadas:`, productosConMod.map(([codigo]) => codigo))
+      if (import.meta.env.DEV) console.log(`🎨 [RedistribucionTiendas] ${productosConMod.length} productos con modificaciones heredadas:`, productosConMod)
     }
   }
-  
+
   return map
 })
 
 // ⭐ Watch para forzar reactividad cuando cambien las columnas modificadas
 // Esto asegura que el resaltado se actualice inmediatamente cuando se carguen las columnas
 watch(
-  () => props.columnasModificadas?.value,
-  (newValue) => {
+  [() => props.columnasModificadas?.value, () => props.rolesModificacion?.value],
+  ([newValue]) => {
     if (newValue) {
       if (import.meta.env.DEV) console.log(`🔄 [RedistribucionTiendas] Columnas modificadas actualizadas: ${newValue.size} modificaciones`)
       // Acceder al computed para forzar su recálculo
@@ -955,14 +971,27 @@ watch(
   { deep: true, immediate: true }
 )
 
+const CLASES_RESALTADO_FILA: Record<'purpura' | 'ambar', Record<'base' | 'sticky20' | 'sticky80', string>> = {
+  ambar: {
+    base: 'bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 dark:border-amber-400',
+    sticky20: 'bg-amber-50 dark:bg-amber-900/20',
+    sticky80: 'bg-amber-50 dark:bg-amber-900/80'
+  },
+  purpura: {
+    base: 'bg-purple-50 dark:bg-purple-900/20 border-l-4 border-purple-500 dark:border-purple-400',
+    sticky20: 'bg-purple-50 dark:bg-purple-900/20',
+    sticky80: 'bg-purple-50 dark:bg-purple-900/80'
+  }
+}
+
 /**
- * Verifica si un producto tiene modificaciones en COSTO UNIT o TOTAL (columnas modificadas por EL RAYO)
+ * Clase de resaltado heredado (púrpura ODCSAP / ámbar EL RAYO) para un producto, o null si
+ * no tiene modificaciones (el caller debe caer al color de diferencia verde/rojo).
  * ⭐ MEJORADO: Ahora usa el computed reactivo para asegurar que el resaltado se aplique inmediatamente
  */
-function tieneModificaciones(producto: ProductoRedistribucion): boolean {
-  // Usar el computed reactivo que ya tiene toda la lógica
-  // Esto asegura que el resaltado se aplique inmediatamente al cargar la página
-  return productosConModificaciones.value.get(producto.codigo_producto) || false
+function claseResaltadoFila(producto: ProductoRedistribucion, variante: 'base' | 'sticky20' | 'sticky80'): string | null {
+  const color = productosConModificaciones.value.get(producto.codigo_producto)
+  return color ? CLASES_RESALTADO_FILA[color][variante] : null
 }
 
 // Funciones que emiten eventos

@@ -225,28 +225,32 @@
                 {{ producto.descripcion }}
               </div>
             </td>
-            <!-- Total Confirmado: resaltar en ámbar si fue modificado en el flujo de EL RAYO -->
+            <!-- Total Confirmado: resaltar según quién lo modificó (púrpura ODCSAP / ámbar EL RAYO) -->
             <td
               v-if="isColumnVisible('total_confirmado')"
               :style="stickyLeftStyle('total_confirmado')"
               :class="[
                 'sticky z-[5] px-3 py-3 text-sm font-semibold text-right whitespace-nowrap',
-                tieneTotalConfirmadoModificado(producto)
-                  ? 'bg-amber-100 dark:bg-amber-800 text-amber-900 dark:text-amber-200 frozen-divider-modified'
-                  : 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 frozen-divider'
+                colorTotalConfirmadoModificado(producto) === 'purpura'
+                  ? 'bg-purple-100 dark:bg-purple-800 text-purple-900 dark:text-purple-200 frozen-divider-modified-purpura'
+                  : colorTotalConfirmadoModificado(producto) === 'ambar'
+                    ? 'bg-amber-100 dark:bg-amber-800 text-amber-900 dark:text-amber-200 frozen-divider-modified'
+                    : 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 frozen-divider'
               ]"
             >
               {{ formatNumberWithDecimals(producto.cantidad_confirmada, decimalPlaces) }}
             </td>
-            <!-- Precio: resaltar en ámbar si fue modificado en el flujo de EL RAYO -->
+            <!-- Precio: resaltar según quién lo modificó (púrpura ODCSAP / ámbar EL RAYO) -->
             <td
               v-if="isColumnVisible('costo_unitario')"
               :style="stickyLeftStyle('costo_unitario')"
               :class="[
                 'sticky z-[5] px-3 py-3 text-sm font-medium text-right whitespace-nowrap',
-                tienePrecioModificado(producto)
-                  ? 'bg-amber-100 dark:bg-amber-800 text-amber-900 dark:text-amber-200 frozen-edge-modified'
-                  : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white frozen-edge'
+                colorPrecioModificado(producto) === 'purpura'
+                  ? 'bg-purple-100 dark:bg-purple-800 text-purple-900 dark:text-purple-200 frozen-edge-modified-purpura'
+                  : colorPrecioModificado(producto) === 'ambar'
+                    ? 'bg-amber-100 dark:bg-amber-800 text-amber-900 dark:text-amber-200 frozen-edge-modified'
+                    : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white frozen-edge'
               ]"
             >
               {{ producto.costo_unitario != null ? formatCurrencyWithDecimals(producto.costo_unitario, 4) : '-' }}
@@ -378,6 +382,10 @@ interface Props {
   /** Número de decimales a mostrar en cantidades (0 o 1). Por defecto 1. No aplica a la columna Precio (siempre formato moneda). */
   decimalPlaces?: number
   columnasModificadas?: Ref<Set<string>>
+  /** Rol (ODCSAP/PRODUCCION_ELRAYO) de quien hizo cada modificación en columnasModificadas,
+   * para pintar el resaltado heredado con el mismo color de marca que Cargar Plantilla /
+   * Detalle del Pedido (púrpura ODCSAP, ámbar PRODUCCION_ELRAYO). */
+  rolesModificacion?: Ref<Map<string, string | null>>
   pedido?: any
 }
 
@@ -648,60 +656,61 @@ function tieneModificaciones(producto: ProductoRedistribucion): boolean {
   return productosConModificaciones.value.get(producto.codigo_producto) || false
 }
 
-/**
- * Verifica si un producto tiene modificaciones en costo unitario (columna "Precio")
- * ⭐ MEJORADO: Usa el computed reactivo para asegurar que el resaltado se aplique siempre
- * 
- * Mapping: costo_doc_sin_iva (EL RAYO) → costo_unitario / "Precio" (Redistribución)
- */
-function tienePrecioModificado(producto: ProductoRedistribucion): boolean {
-  // ⭐ PRIORIDAD 1: Usar campo del backend si está disponible
-  if (producto.costo_modificado_manual === true) {
-    return true
-  }
-  
-  // ⭐ PRIORIDAD 2: Usar el computed reactivo para verificar columnasModificadas
+/** Color de resaltado heredado para una columna: 'purpura' si el último editor fue
+ * ODCSAP, 'ambar' si fue PRODUCCION_ELRAYO (o no hay rol disponible), null si la columna
+ * no fue modificada. Mismo criterio de color que Cargar Plantilla / Detalle del Pedido. */
+type ColorResaltadoColumna = 'purpura' | 'ambar' | null
+
+/** Busca si `columnaKey` fue modificada para `producto` y devuelve su color de resaltado. */
+function colorResaltadoColumna(producto: ProductoRedistribucion, columnaKey: string): ColorResaltadoColumna {
   const columnasModificadasValue = props.columnasModificadas?.value
-  if (!columnasModificadasValue || !props.pedido?.detalles) return false
-  
-  // Buscar el detalle del pedido que corresponde a este producto
+  if (!columnasModificadasValue || !props.pedido?.detalles) return null
+
   const detallePedido = props.pedido.detalles.find(
     (d: any) => d.codigo_interno === producto.codigo_producto
   )
-  
-  if (!detallePedido?.pedido_detalle_id) return false
-  
-  // Verificar si hay una modificación para costo_doc_sin_iva
-  const key = `${detallePedido.pedido_detalle_id}:costo_doc_sin_iva`
-  return columnasModificadasValue.has(key)
+  if (!detallePedido?.pedido_detalle_id) return null
+
+  const key = `${detallePedido.pedido_detalle_id}:${columnaKey}`
+  if (!columnasModificadasValue.has(key)) return null
+
+  return props.rolesModificacion?.value.get(key) === 'ODCSAP' ? 'purpura' : 'ambar'
 }
 
 /**
- * Verifica si un producto tiene modificaciones en total (columna "Total Confirmado")
- * ⭐ NUEVO: Resaltado específico para la columna Total Confirmado
- * 
- * Mapping: total (EL RAYO) → total_confirmado / "Total Confirmado" (Redistribución)
+ * Color de resaltado en costo unitario (columna "Precio")
+ * ⭐ MEJORADO: Usa el computed reactivo para asegurar que el resaltado se aplique siempre
+ *
+ * Mapping: costo_doc_sin_iva → costo_unitario / "Precio" (Redistribución)
  */
-function tieneTotalConfirmadoModificado(producto: ProductoRedistribucion): boolean {
-  // ⭐ PRIORIDAD 1: Usar campo del backend si está disponible
-  if (producto.total_modificado_manual === true) {
-    return true
-  }
-  
-  // ⭐ PRIORIDAD 2: Usar el computed reactivo para verificar columnasModificadas
-  const columnasModificadasValue = props.columnasModificadas?.value
-  if (!columnasModificadasValue || !props.pedido?.detalles) return false
-  
-  // Buscar el detalle del pedido que corresponde a este producto
-  const detallePedido = props.pedido.detalles.find(
-    (d: any) => d.codigo_interno === producto.codigo_producto
-  )
-  
-  if (!detallePedido?.pedido_detalle_id) return false
-  
-  // Verificar si hay una modificación para total
-  const key = `${detallePedido.pedido_detalle_id}:total`
-  return columnasModificadasValue.has(key)
+function colorPrecioModificado(producto: ProductoRedistribucion): ColorResaltadoColumna {
+  // ⭐ PRIORIDAD 1: columnasModificadas/rolesModificacion (heredado del flujo anterior, con
+  // rol). Cada edición de costo guarda a la vez el flag plano costo_modificado_manual (sin
+  // rol) y el registro con rol_modificador -- hay que consultar esta fuente primero.
+  const color = colorResaltadoColumna(producto, 'costo_doc_sin_iva')
+  if (color) return color
+
+  // ⭐ PRIORIDAD 2 (fallback): flag legacy sin rol (edición previa al tracking granular, o
+  // ajuste manual del comprador en la respuesta del proveedor)
+  return producto.costo_modificado_manual === true ? 'ambar' : null
+}
+
+/**
+ * Color de resaltado en total (columna "Total Confirmado")
+ *
+ * Mapping: total → total_confirmado / "Total Confirmado" (Redistribución)
+ */
+function colorTotalConfirmadoModificado(producto: ProductoRedistribucion): ColorResaltadoColumna {
+  // ⭐ PRIORIDAD 1: columnasModificadas/rolesModificacion (heredado del flujo anterior, con
+  // rol). Cada edición de total guarda a la vez el flag plano total_modificado_manual (sin
+  // rol) y el registro con rol_modificador -- hay que consultar esta fuente primero.
+  const colorGranular = colorResaltadoColumna(producto, 'total')
+  if (colorGranular) return colorGranular
+
+  // ⭐ PRIORIDAD 2 (fallback): flag legacy sin rol (edición previa al tracking granular, o
+  // ajuste manual del comprador en la respuesta del proveedor)
+  if (producto.total_modificado_manual === true) return 'ambar'
+  return null
 }
 
 // ⭐ Obtener todas las tiendas/bodegas únicas de todos los productos
@@ -1006,13 +1015,15 @@ thead th.frozen-divider-thick {
   box-shadow: inset 2px 0 0 0 #475569, 0 2px 6px -2px rgba(0, 0, 0, 0.3); /* gray-600 */
 }
 
-/* Acento de "modificado por EL RAYO" en celdas congeladas (Total Confirmado / Precio).
+/* Acento de "modificado por EL RAYO/ODCSAP" en celdas congeladas (Total Confirmado / Precio).
    Antes era border-l-2 border-amber-500 (un border-left real) además del border-r/frozen-edge
    del lado derecho — mismo bug: sobre celdas sticky con border-collapse:collapse, el
    border-left tampoco se pintaba de forma fiable (se veía bien en reposo y desaparecía
    al hacer scroll horizontal). Sustituido por box-shadow combinando AMBOS lados en una
    sola declaración, ya que box-shadow es una única propiedad y no se puede alternar por
-   clase sin pisar el valor existente. */
+   clase sin pisar el valor existente. Variante -purpura: mismo acento cuando el último
+   editor fue ODCSAP en vez de PRODUCCION_ELRAYO (mismo color de marca que Cargar Plantilla /
+   Detalle del Pedido). */
 .frozen-divider-modified {
   box-shadow: inset 2px 0 0 0 #f59e0b, inset -1px 0 0 0 #e2e8f0; /* amber-500 izq, gray-200 der */
 }
@@ -1021,12 +1032,28 @@ thead th.frozen-divider-thick {
   box-shadow: inset 2px 0 0 0 #fbbf24, inset -1px 0 0 0 #334155; /* amber-400 izq, gray-700 der */
 }
 
+.frozen-divider-modified-purpura {
+  box-shadow: inset 2px 0 0 0 #a855f7, inset -1px 0 0 0 #e2e8f0; /* purple-500 izq, gray-200 der */
+}
+
+.dark .frozen-divider-modified-purpura {
+  box-shadow: inset 2px 0 0 0 #c084fc, inset -1px 0 0 0 #334155; /* purple-400 izq, gray-700 der */
+}
+
 .frozen-edge-modified {
   box-shadow: inset 2px 0 0 0 #f59e0b, 4px 0 6px -2px rgba(0, 0, 0, 0.06);
 }
 
 .dark .frozen-edge-modified {
   box-shadow: inset 2px 0 0 0 #fbbf24, 4px 0 6px -2px rgba(0, 0, 0, 0.2);
+}
+
+.frozen-edge-modified-purpura {
+  box-shadow: inset 2px 0 0 0 #a855f7, 4px 0 6px -2px rgba(0, 0, 0, 0.06);
+}
+
+.dark .frozen-edge-modified-purpura {
+  box-shadow: inset 2px 0 0 0 #c084fc, 4px 0 6px -2px rgba(0, 0, 0, 0.2);
 }
 
 /* Asegurar que las columnas fijas tengan fondo completamente opaco */
