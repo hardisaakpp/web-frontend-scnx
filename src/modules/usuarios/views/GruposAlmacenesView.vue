@@ -436,6 +436,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { APP_LOCALE } from '@/plugins/locale'
 import api from '@/services/api'
 import { randomUUID } from '@/utils/uuid'
 import VolverButton from '@/components/VolverButton.vue'
@@ -763,7 +764,7 @@ const loadGrupos = async () => {
 const formatDate = (value: string | null): string => {
   if (!value) return '-'
   const d = new Date(value)
-  return isNaN(d.getTime()) ? '-' : d.toLocaleString('es-PA', { dateStyle: 'short', timeStyle: 'short' })
+  return isNaN(d.getTime()) ? '-' : d.toLocaleString(APP_LOCALE, { dateStyle: 'short', timeStyle: 'short' })
 }
 
 onMounted(() => {

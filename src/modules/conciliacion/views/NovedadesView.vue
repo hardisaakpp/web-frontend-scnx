@@ -8,7 +8,7 @@
            <div class="flex items-center gap-2 mb-1">
             <router-link to="/conciliacion" class="text-sm text-gray-500 dark:text-gray-400 hover:text-blue-600 transition-colors font-medium">Conciliación</router-link>
             <span class="text-gray-400">/</span>
-            <span class="text-sm text-gray-700 dark:text-gray-300 font-medium font-medium">Novedades</span>
+            <span class="text-sm text-gray-700 dark:text-gray-300 font-medium">Novedades</span>
           </div>
           <h1 class="text-2xl font-semibold text-gray-900 dark:text-white uppercase tracking-tight">Sugerencias de Conciliación</h1>
         </div>
@@ -130,7 +130,7 @@
            <span v-if="bolsa.length" class="bg-blue-600 px-2 py-0.5 rounded text-[9px] shadow-sm">{{ bolsa.length }}</span>
         </div>
         <div class="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
-           <div v-if="!bolsa.length" class="py-20 text-center text-xs text-gray-400 italic font-medium font-medium">No hay lotes preparados</div>
+           <div v-if="!bolsa.length" class="py-20 text-center text-xs text-gray-400 italic font-medium">No hay lotes preparados</div>
            <div v-for="(g, idx) in bolsa" :key="idx" class="p-3 bg-gray-50 dark:bg-gray-700/30 rounded-lg border border-gray-200 dark:border-gray-600 relative group shadow-sm transition-all hover:border-blue-300">
               <button @click="quitarDeBolsa(idx)" class="absolute top-2.5 right-2.5 text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" stroke-width="2.5"/></svg>
@@ -169,6 +169,7 @@
 import { ref, reactive, onMounted, watch } from 'vue'
 import { useConciliacionStore } from '../stores/conciliacionStore'
 import { useToast } from '@/composables/useToast'
+import { NUMBER_LOCALE } from '@/plugins/locale'
 
 const store = useConciliacionStore()
 const toast = useToast()
@@ -253,7 +254,7 @@ async function ejecutarBolsa() {
   }
   procesando.value = false; if (bolsa.value.every(g => g.status === 'success')) { toast.success('Conciliaciones guardadas'); buscar() }
 }
-const formatMonto = (m: number) => m.toLocaleString('en-US', { minimumFractionDigits: 2 })
+const formatMonto = (m: number) => m.toLocaleString(NUMBER_LOCALE, { minimumFractionDigits: 2 })
 </script>
 
 <style scoped>

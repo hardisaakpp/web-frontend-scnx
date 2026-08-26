@@ -1,16 +1,17 @@
-import axios from 'axios'
+import axios, { type AxiosError } from 'axios'
+import { useToast } from '@/composables/useToast'
 import type {
   Ruleta, RuletaFilters, RuletaPagination,
   Tienda, SegmentoRuleta, IdentificacionCliente, ResultadoGiro,
   MetricasSupervisor, EnroladorMetrica,
-  Campana, CampanaBackendResponse, CrearCampanaDTO, GrupoProbabilidad, PremioAdmin,
+  Campana, CampanaBackendResponse, CampanaDisponibleBackendResponse, DisponibilidadCampana, CrearCampanaDTO, DuplicarCampanaDTO, GrupoProbabilidad, PremioAdmin,
   TiendaInventario, InventarioPremio,
   MetricasGlobal, EfectividadTienda, SegmentacionGrupo, ConversionSemanal,
   EstadoCampana, EstadoGrupo, SegmentoCliente, TipoPremio,
   PremioBackendResponse, GiroRequestDTO,
   GiroVerificacionResponse, RedencionResponse, MetricasCampana,
-  HistorialGiroItem, HistorialGirosResponse,
-  StockPremio
+  HistorialGiroItem, HistorialGirosResponse, GiroFilters, DistribucionSegmentos,
+  StockPremio, PreviewImpactoStockItem, ImpactoStock, ProbabilidadGrupo, DistribucionTiendaItem
 } from '../types'
 
 // Instancia heredada para endpoints del core API (getRuletas, etc.)
@@ -37,6 +38,28 @@ campanaApi.interceptors.request.use((config) => {
   return config
 })
 
+// Conflicto de concurrencia (Lost Update): otro administrador ya guardó cambios sobre
+// el mismo registro. Se avisa aquí, en un solo lugar, para cualquier request del módulo,
+// y luego se re-lanza el error para que cada pantalla decida cómo reaccionar localmente
+// (p. ej. no cerrar un modal, mostrar un mensaje inline puntual).
+campanaApi.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError<{ code?: string; error?: string }>) => {
+    if (error.response?.status === 409 && error.response.data?.code === 'CONCURRENCY_CONFLICT') {
+      useToast().addToast({
+        type: 'warning',
+        title: 'Datos desactualizados',
+        message:
+          error.response.data?.error ||
+          'Otro usuario modificó este registro mientras lo editabas. Recarga la página para ver la versión más reciente.',
+        duration: 0,
+        action: { label: 'Recargar página', onClick: () => window.location.reload() }
+      })
+    }
+    return Promise.reject(error)
+  }
+)
+
 function mapCampana(raw: CampanaBackendResponse): Campana {
   return {
     id: raw.id,
@@ -47,7 +70,11 @@ function mapCampana(raw: CampanaBackendResponse): Campana {
     cooldown_dias: raw.diasEntreGiros,
     max_giros: raw.maxGirosPorCliente,
     segmentos_permitidos: (raw.segmentosPermitidos as SegmentoCliente[]) ?? [],
-    estado: raw.estado.toLowerCase() as EstadoCampana,
+    estado: (raw.estado ?? 'borrador').toLowerCase() as EstadoCampana,
+    estado_operativo: (raw.estadoOperativo ?? 'borrador').toLowerCase() as Campana['estado_operativo'],
+    esta_vigente: raw.estaVigente,
+    disponible_para_giro: raw.disponibleParaGiro,
+    motivo_no_disponible: raw.motivoNoDisponible,
     requiere_validacion_onecard: raw.requiereValidacionOneCard ?? false,
     tiene_premios: Array.isArray(raw.premios) && raw.premios.length > 0,
     hora_feliz_inicio: raw.horaFelizInicio ?? null,
@@ -71,10 +98,12 @@ function mapPremioFromBackend(p: PremioBackendResponse): PremioAdmin {
     es_relleno: p.esVacio,
     imagen_url: p.imagenUrl ?? undefined,
     controla_stock_por_tienda: p.controlaStockPorTienda ?? false,
+    orden_ruleta: p.ordenRuleta,
+    rowVersion: p.rowVersion,
   }
 }
 
-function premioToBackend(data: Partial<PremioAdmin>, segmento?: string) {
+function premioToBackend(data: Partial<PremioAdmin>, segmento?: string, confirmarReduccionStock = false) {
   let tipo = 'SinPremio'
   if (data.tipo === 'fisico') tipo = 'Fisico'
   else if (data.tipo === 'digital') tipo = 'Digital'
@@ -94,13 +123,36 @@ function premioToBackend(data: Partial<PremioAdmin>, segmento?: string) {
     segmento,
     imagenUrl,
     controlaStockPorTienda: data.controla_stock_por_tienda ?? false,
-    
-    // Hardcodeado: Forzamos a que sea 0 sí o sí.
-    ordenRuleta: 0 
+    // Token de concurrencia: solo presente al editar (viene del último GET).
+    rowVersion: data.rowVersion ?? null,
+
+    // Orden visual en la ruleta. `undefined` cuando no hay uno que preservar (premio nuevo, o
+    // ningún llamador lo trae) — se omite del JSON y el backend decide: conserva el actual en
+    // una edición, o asigna el siguiente índice disponible en una creación. Nunca se fuerza a 0:
+    // eso sobrescribía el orden real de cualquier premio en cada edición (nombre, imagen, stock…)
+    // porque 0 es un valor válido de `int?`, no "sin especificar".
+    ordenRuleta: data.orden_ruleta ?? undefined,
+
+    // Confirmación explícita para reducir StockTotal con la campaña Activa (ver
+    // PremioService.UpdateAsync). El backend rechaza la reducción con 409 si esto es false.
+    confirmarReduccionStock
   }
 
 
   return payload
+}
+
+function toGiroParams(filters: GiroFilters): Record<string, string> {
+  const params: Record<string, string> = {}
+
+  if (filters.campanaId) params.campanaId = filters.campanaId
+  if (filters.premioNombre?.trim()) params.premioNombre = filters.premioNombre.trim()
+  if (filters.segmento) params.segmento = filters.segmento
+  if (filters.fechaInicio) params.fechaInicio = filters.fechaInicio
+  if (filters.fechaFin) params.fechaFin = filters.fechaFin
+  if (filters.estado) params.estado = filters.estado
+
+  return params
 }
 
 // ─── CRUD base (listado admin) ────────────────────────────────────────────────
@@ -173,9 +225,20 @@ export const ruletaService = {
 
   // ─── Obtener Campaña Activa ──────────────────────────────────────────────────
   async getCampanaActiva(): Promise<Campana | null> {
-    const response = await campanaApi.get<CampanaBackendResponse[]>('/api/Campanas')
-    const activa = response.data.find(c => c.estado === 'Activa' || c.estado.toLowerCase() === 'activa')
-    return activa ? mapCampana(activa) : null
+    const disponibilidad = await this.getDisponibilidadCampana()
+    return disponibilidad.disponible && disponibilidad.campana
+      ? disponibilidad.campana
+      : null
+  },
+
+  async getDisponibilidadCampana(): Promise<DisponibilidadCampana> {
+    const response = await campanaApi.get<CampanaDisponibleBackendResponse>('/api/Campanas/disponible-para-giro')
+    return {
+      disponible: response.data.disponible,
+      estado_operativo: response.data.estadoOperativo,
+      motivo: response.data.motivo,
+      campana: response.data.campana ? mapCampana(response.data.campana) : null
+    }
   },
 
   // ─── Segmentos campaña activa ──────────────────────────────────────────────
@@ -269,8 +332,8 @@ export const ruletaService = {
     const payload = {
       nombre: dto.nombre,
       descripcion: dto.descripcion ?? null,
-      fechaInicio: dto.fecha_inicio + 'T00:00:00',
-      fechaFin: dto.fecha_fin + 'T00:00:00',
+      fechaInicio: dto.fecha_inicio,
+      fechaFin: dto.fecha_fin,
       diasEntreGiros: dto.cooldown_dias,
       maxGirosPorCliente: dto.max_giros,
       segmentosPermitidos: dto.segmentos_permitidos.length > 0 ? dto.segmentos_permitidos : null,
@@ -287,8 +350,8 @@ export const ruletaService = {
     const payload = {
       nombre: dto.nombre,
       descripcion: dto.descripcion ?? null,
-      fechaInicio: dto.fecha_inicio + 'T00:00:00',
-      fechaFin: dto.fecha_fin + 'T00:00:00',
+      fechaInicio: dto.fecha_inicio,
+      fechaFin: dto.fecha_fin,
       diasEntreGiros: dto.cooldown_dias,
       maxGirosPorCliente: dto.max_giros,
       segmentosPermitidos: dto.segmentos_permitidos.length > 0 ? dto.segmentos_permitidos : null,
@@ -300,13 +363,31 @@ export const ruletaService = {
     return mapCampana(response.data)
   },
 
-  async cambiarEstadoCampana(id: string, estado: Campana['estado']): Promise<void> {
+  async cambiarEstadoCampana(id: string, estado: Campana['estado']): Promise<Campana> {
     const nuevoEstado = estado.charAt(0).toUpperCase() + estado.slice(1)
-    await campanaApi.patch(`/api/Campanas/${id}/estado`, { nuevoEstado })
+    const response = await campanaApi.patch<CampanaBackendResponse>(`/api/Campanas/${id}/estado`, { nuevoEstado })
+    return mapCampana(response.data)
   },
 
   async eliminarCampana(id: string): Promise<void> {
     await campanaApi.delete(`/api/Campanas/${id}`)
+  },
+
+  async duplicarCampana(id: string, dto: DuplicarCampanaDTO): Promise<Campana> {
+    const payload = {
+      nuevoNombre: dto.nombre,
+      nuevaFechaInicio: dto.fecha_inicio,
+      nuevaFechaFin: dto.fecha_fin
+    }
+    const response = await campanaApi.post<CampanaBackendResponse>(`/api/Campanas/${id}/duplicar`, payload)
+    return mapCampana(response.data)
+  },
+
+  async getProbabilidadesEnVivo(campanaId: string, tiendaCodigo: string): Promise<ProbabilidadGrupo[]> {
+    const response = await campanaApi.get<ProbabilidadGrupo[]>(`/api/Campanas/${campanaId}/probabilidades`, {
+      params: { tiendaCodigo }
+    })
+    return response.data
   },
 
   // ─── Admin: Premios y probabilidades ─────────────────────────────────────────
@@ -327,7 +408,7 @@ export const ruletaService = {
       const premios = byGroup.get(g)!
       const tieneReal = premios.some(p => !p.es_relleno)
       const tieneConsolacion = premios.some(p => p.es_relleno)
-      const permiteSoloConsolacion = g === 'GRUPO_5' || g === 'GRUPO_6'
+      const permiteSoloConsolacion = g === 'GRUPO_4' || g === 'GRUPO_5' || g === 'GRUPO_6'
       
       let estado: EstadoGrupo = 'incompleto'
       if ((tieneReal && tieneConsolacion) || (permiteSoloConsolacion && tieneConsolacion)) estado = 'completo'
@@ -337,8 +418,12 @@ export const ruletaService = {
     })
   },
 
-  async actualizarPremio(campanaId: string, premioId: string, data: Partial<PremioAdmin>): Promise<void> {
-    await campanaApi.put(`/api/campanas/${campanaId}/premios/${premioId}`, premioToBackend(data))
+  async actualizarPremio(campanaId: string, premioId: string, data: Partial<PremioAdmin>, confirmarReduccionStock = false): Promise<PremioAdmin> {
+    const response = await campanaApi.put<PremioBackendResponse>(
+      `/api/campanas/${campanaId}/premios/${premioId}`,
+      premioToBackend(data, undefined, confirmarReduccionStock)
+    )
+    return mapPremioFromBackend(response.data)
   },
 
   async agregarPremio(campanaId: string, segmento: string, data: Omit<PremioAdmin, 'id'>): Promise<PremioAdmin> {
@@ -362,12 +447,47 @@ export const ruletaService = {
     return response.data.url
   },
 
+  // Asignación puntual de UNA tienda (ej. asistente de creación de premio, un solo POST). No usar
+  // para guardar varias celdas a la vez del mismo premio — usar setDistribucionTienda, que es
+  // atómico. Ver adminStore.guardarDistribucion.
   async asignarStockTienda(campanaId: string, premioId: string, tiendaCodigo: string, cantidad: number): Promise<void> {
     await campanaApi.post(
       `/api/campanas/${campanaId}/premios/${premioId}/stock-tienda`,
       null,
       { params: { tiendaCodigo, stockTotal: cantidad } }
     )
+  },
+
+  // Guarda, en una sola operación atómica, la distribución completa de stock por tienda editada
+  // para un premio — o se guarda todo, o el backend rechaza y no cambia nada. Reemplaza el envío
+  // de N peticiones en paralelo (una por celda), que dejaba una ventana de carrera capaz de
+  // exceder el stock total del premio.
+  async setDistribucionTienda(
+    campanaId: string,
+    premioId: string,
+    distribucion: DistribucionTiendaItem[],
+    rowVersion?: string
+  ): Promise<void> {
+    await campanaApi.post(
+      `/api/campanas/${campanaId}/premios/${premioId}/distribucion-tienda`,
+      { rowVersion, distribucion }
+    )
+  },
+
+  // Calcula, sin guardar nada, cuánto cambiaría el "disponible hoy" del pacing para cada
+  // cambio de stock pendiente — solo devuelve algo si la campaña está Activa y el cambio
+  // realmente altera lo que un cliente podría ganar hoy.
+  async previewImpactoStock(campanaId: string, items: PreviewImpactoStockItem[]): Promise<ImpactoStock[]> {
+    if (items.length === 0) return []
+    const response = await campanaApi.post<ImpactoStock[]>(
+      `/api/campanas/${campanaId}/premios/preview-impacto-stock`,
+      items.map(i => ({
+        premioId: i.premioId,
+        tiendaCodigo: i.tiendaCodigo,
+        nuevoStockTotal: i.nuevoStockTotal
+      }))
+    )
+    return response.data
   },
 
   // ─── Admin: Inventario ────────────────────────────────────────────────────────
@@ -381,7 +501,11 @@ export const ruletaService = {
   async getInventarioCampana(campanaId: string, tiendas: TiendaInventario[] = []): Promise<InventarioPremio[]> {
     const response = await campanaApi.get<PremioBackendResponse[]>(`/api/campanas/${campanaId}/premios`)
     return response.data
-      .filter(p => !p.esVacio && p.controlaStockPorTienda && (p.stockTotal ?? 0) > 0)
+      // stockTotalBodega es el techo real e inmutable de bodega. Antes se filtraba/mostraba con
+      // `stockTotal`, que para premios con control por tienda es la SUMA de lo ya repartido (no
+      // un límite) — con eso, un premio recién creado sin nada repartido aún (suma = 0) quedaba
+      // oculto de esta pantalla aunque sí tuviera stock real en bodega para distribuir.
+      .filter(p => !p.esVacio && p.controlaStockPorTienda && (p.stockTotalBodega ?? p.stockTotal ?? 0) > 0)
       .map(p => {
         const por_tienda: Record<number, number> = {}
         if (p.inventariosTienda) {
@@ -392,17 +516,19 @@ export const ruletaService = {
             }
           }
         }
-        
+
         const total_asignado = Object.values(por_tienda).reduce((a, b) => a + b, 0)
-        
+        const stockTotalReal = p.stockTotalBodega ?? p.stockTotal ?? 0
+
         return {
           premio_id: p.id,
           nombre: p.nombre,
           tipo: p.tipo,
-          stock_total: p.stockTotal ?? 0,
+          stock_total: stockTotalReal,
           por_tienda,
           total_asignado,
-          restante_bodega: (p.stockTotal ?? 0) - total_asignado,
+          restante_bodega: stockTotalReal - total_asignado,
+          row_version: p.rowVersion,
         }
       })
   },
@@ -519,22 +645,24 @@ export const ruletaService = {
   },
 
   // ─── Historial de giros ───────────────────────────────────────────────────────
-  async getHistorialGiros(campanaId?: string, page = 1, pageSize = 10): Promise<HistorialGirosResponse> {
-    const params: Record<string, unknown> = { page, pageSize }
-    if (campanaId) params.campanaId = campanaId
+  async getHistorialGiros(filters: GiroFilters = {}, page = 1, pageSize = 10): Promise<HistorialGirosResponse> {
+    const params: Record<string, unknown> = { ...toGiroParams(filters), page, pageSize }
     const response = await campanaApi.get<any>('/api/metricas/giros', { params })
     const d = response.data
     const items: HistorialGiroItem[] = (d.items ?? d.Items ?? []).map((item: any) => ({
       id:               item.id               ?? item.giroId            ?? '',
       fecha:            item.fecha            ?? item.fechaGiro         ?? '',
       identificacion:   item.identificacion   ?? item.clienteIdentificacion ?? '',
-      tiendaCodigo:     item.tiendaCodigo     ?? item.tienda            ?? '',
+      tiendaCodigo:     item.enroladorTienda  ?? item.tiendaCodigo      ?? item.tienda ?? '',
       enroladorNombre:  item.enroladorNombre  ?? null,
       premioNombre:     item.premioNombre     ?? '',
       premioTipo:       item.premioTipo       ?? item.tipo              ?? '',
+      segmento:         item.segmento         ?? null,
+      estado:           item.estado           ?? '',
       esGanador:        item.esGanador        ?? false,
       codigoRedencion:  item.codigoRedencion  ?? item.codigo            ?? null,
       redimido:         item.redimido         ?? item.estado === 'Redimido',
+      grupo:            item.grupo            ?? item.clienteGrupo     ?? item.segmento ?? null,
     }))
     return {
       totalRegistros: d.totalRegistros ?? 0,
@@ -544,26 +672,31 @@ export const ruletaService = {
     }
   },
 
-  async exportarGirosCsv(campanaId?: string): Promise<void> {
-    const params: Record<string, string> = {}
-    if (campanaId) params.CampanaId = campanaId
+  async getDistribucionSegmentos(filters: GiroFilters = {}): Promise<DistribucionSegmentos> {
+    const response = await campanaApi.get<DistribucionSegmentos>('/api/metricas/giros/distribucion-segmentos', {
+      params: toGiroParams(filters)
+    })
+    return response.data
+  },
+
+  async exportarGirosCsv(filters: GiroFilters = {}): Promise<void> {
+    const params = toGiroParams(filters)
     const response = await campanaApi.get('/api/metricas/giros/exportar', { params, responseType: 'blob' })
     const blobUrl = URL.createObjectURL(new Blob([response.data as BlobPart], { type: 'text/csv' }))
     const a = document.createElement('a')
     a.href = blobUrl
-    a.download = campanaId ? `giros-${campanaId}.csv` : 'giros.csv'
+    a.download = filters.campanaId ? `giros-${filters.campanaId}.csv` : 'giros.csv'
     a.click()
     URL.revokeObjectURL(blobUrl)
   },
 
-  async exportarGirosExcel(campanaId?: string): Promise<void> {
-    const params: Record<string, string> = {}
-    if (campanaId) params.CampanaId = campanaId
+  async exportarGirosExcel(filters: GiroFilters = {}): Promise<void> {
+    const params = toGiroParams(filters)
     const response = await campanaApi.get('/api/metricas/giros/exportar/excel', { params, responseType: 'blob' })
     const blobUrl = URL.createObjectURL(new Blob([response.data as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }))
     const a = document.createElement('a')
     a.href = blobUrl
-    a.download = campanaId ? `giros-${campanaId}.xlsx` : 'giros.xlsx'
+    a.download = filters.campanaId ? `giros-${filters.campanaId}.xlsx` : 'giros.xlsx'
     a.click()
     URL.revokeObjectURL(blobUrl)
   },

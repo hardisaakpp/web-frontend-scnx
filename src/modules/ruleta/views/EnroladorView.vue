@@ -433,4 +433,13 @@ function onCerrarPremio() {
   0% { opacity: 0.4; transform: translate(-50%, -50%) scale(1); }
   100% { opacity: 0.8; transform: translate(-50%, -50%) scale(1.05); }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-blob,
+  .animate-pulse-slow {
+    animation: none !important;
+    filter: none !important;
+    opacity: 0.2;
+  }
+}
 </style>

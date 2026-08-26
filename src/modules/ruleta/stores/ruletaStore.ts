@@ -108,13 +108,14 @@ export const useRuletaStore = defineStore('ruleta', {
     async cargarSegmentos() {
       this.errorEnrolador = null
       try {
-        const campana = await ruletaService.getCampanaActiva()
-        if (!campana) {
+        const disponibilidad = await ruletaService.getDisponibilidadCampana()
+        if (!disponibilidad.disponible || !disponibilidad.campana) {
           this.campanaActivaId = null
           this.segmentos = []
-          this.errorEnrolador = 'No hay ninguna campaña activa en este momento.'
+          this.errorEnrolador = disponibilidad.motivo ?? 'No hay ninguna campaña disponible en este momento.'
           return
         }
+        const campana = disponibilidad.campana
         this.campanaActivaId = campana.id
         this.segmentos = await ruletaService.getSegmentosCampanaActiva(campana.id)
       } catch (err: any) {
@@ -125,6 +126,9 @@ export const useRuletaStore = defineStore('ruleta', {
 
     // ─── Giro ────────────────────────────────────────────────────────────────
     async ejecutarGiro(cedula: string, enroladorId?: number) {
+      // Guarda síncrona: un doble clic/doble tap antes de que ':disabled' reaccione no debe
+      // disparar un segundo POST /api/giros concurrente para el mismo cliente.
+      if (this.girando) return
       if (!this.tiendaSeleccionada) return
       if (!this.campanaActivaId) {
         this.errorEnrolador = 'No hay campaña activa para jugar.'

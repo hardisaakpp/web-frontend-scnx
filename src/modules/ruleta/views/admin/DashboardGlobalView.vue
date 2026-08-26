@@ -1,28 +1,107 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount, watch } from 'vue'
+import { APP_LOCALE } from '@/plugins/locale'
 import { useAdminStore } from '../../stores/adminStore'
 import { ruletaService } from '../../services/ruletaApi'
 import VolverButton from '@/components/VolverButton.vue'
+import type { EstadoPremioFiltro, GiroFilters, SegmentoCliente } from '../../types'
 
 const store = useAdminStore()
 const TODOS = 'todos'
 const campanaSeleccionadaId = ref<string>(TODOS)
 const esTodos = computed(() => campanaSeleccionadaId.value === TODOS)
 
+// ── Filtros del Historial de Giros ─────────────────────────────────────────────
+const SEGMENTOS: SegmentoCliente[] = [
+  'GRUPO_1', 'GRUPO_2', 'GRUPO_3', 'GRUPO_4', 'GRUPO_5', 'GRUPO_6'
+]
+
+const filtros = reactive({
+  premioNombre: '',
+  segmento: '' as SegmentoCliente | '',
+  estado: '' as EstadoPremioFiltro | '',
+  fechaInicio: '',
+  fechaFin: ''
+})
+
+const filtrosAplicados = ref<Omit<GiroFilters, 'campanaId'>>({})
+
+const fechaInvalida = computed(() =>
+  Boolean(filtros.fechaInicio && filtros.fechaFin && filtros.fechaInicio > filtros.fechaFin)
+)
+
+const cantidadFiltrosActivos = computed(() => [
+  filtrosAplicados.value.premioNombre,
+  filtrosAplicados.value.segmento,
+  filtrosAplicados.value.estado,
+  filtrosAplicados.value.fechaInicio,
+  filtrosAplicados.value.fechaFin
+].filter(Boolean).length)
+
+function etiquetaSegmento(segmento: string): string {
+  return segmento.replace('_', ' ')
+}
+
+function construirFiltrosHistorial(): Omit<GiroFilters, 'campanaId'> {
+  return {
+    premioNombre: filtros.premioNombre.trim() || undefined,
+    segmento: filtros.segmento || undefined,
+    estado: filtros.estado || undefined,
+    fechaInicio: filtros.fechaInicio || undefined,
+    fechaFin: filtros.fechaFin || undefined
+  }
+}
+
+function idCampanaActual() {
+  return esTodos.value ? undefined : campanaSeleccionadaId.value
+}
+
+// Auto-aplicar: los select/fechas disparan de inmediato (@change); el texto
+// usa debounce para no lanzar una petición por cada tecla mientras se escribe.
+const DEBOUNCE_MS = 450
+let debounceTimer: ReturnType<typeof setTimeout> | undefined
+
+async function aplicarFiltros() {
+  clearTimeout(debounceTimer)
+  if (fechaInvalida.value) return
+  filtrosAplicados.value = construirFiltrosHistorial()
+  await store.cargarHistorialDashboard(idCampanaActual(), 1, filtrosAplicados.value)
+}
+
+watch(() => filtros.premioNombre, () => {
+  clearTimeout(debounceTimer)
+  debounceTimer = setTimeout(aplicarFiltros, DEBOUNCE_MS)
+})
+
+onBeforeUnmount(() => clearTimeout(debounceTimer))
+
+async function limpiarFiltros() {
+  filtros.premioNombre = ''
+  filtros.segmento = ''
+  filtros.estado = ''
+  filtros.fechaInicio = ''
+  filtros.fechaFin = ''
+  await aplicarFiltros()
+  // Vaciar premioNombre también dispara el watcher de debounce; se cancela
+  // para no lanzar una segunda petición redundante ~450ms después.
+  clearTimeout(debounceTimer)
+}
+
 async function cargarDashboard(id: string) {
+  const campanaId = id === TODOS ? undefined : id
   if (id === TODOS) {
     store.metricasCampana = null
     store.stockDashboard   = []
     await Promise.all([
       store.cargarEnroladoresDashboard(),
-      store.cargarHistorialDashboard(),
+      store.cargarHistorialDashboard(campanaId, 1, filtrosAplicados.value),
     ])
   } else {
     await Promise.all([
       store.cargarMetricasCampana(id),
       store.cargarEnroladoresDashboard(id),
       store.cargarStockDashboard(id),
-      store.cargarHistorialDashboard(id),
+      store.cargarHistorialDashboard(campanaId, 1, filtrosAplicados.value),
     ])
   }
 }
@@ -46,6 +125,12 @@ async function onRefresh() {
 
 // ── Enroladores bar chart ──────────────────────────────────────────────────────
 const maxGiros = computed(() => Math.max(...store.enroladores.map(e => e.giros), 1))
+const animatedBars = ref(false)
+
+watch(() => store.enroladores, () => {
+  animatedBars.value = false
+  setTimeout(() => { animatedBars.value = true }, 50)
+}, { immediate: true, deep: true })
 
 // ── Historial: paginación ─────────────────────────────────────────────────────
 const paginasVisibles = computed(() => {
@@ -57,15 +142,28 @@ const paginasVisibles = computed(() => {
 })
 
 async function irPagina(page: number) {
-  const id = esTodos.value ? undefined : campanaSeleccionadaId.value
-  await store.cargarHistorialDashboard(id, page)
+  await store.cargarHistorialDashboard(idCampanaActual(), page, filtrosAplicados.value)
 }
 
 // ── Exportar ──────────────────────────────────────────────────────────────────
 async function exportar(tipo: 'csv' | 'excel') {
-  const id = esTodos.value ? undefined : campanaSeleccionadaId.value
-  if (tipo === 'excel') await ruletaService.exportarGirosExcel(id)
-  else await ruletaService.exportarGirosCsv(id)
+  const filtrosExport: GiroFilters = { campanaId: idCampanaActual(), ...filtrosAplicados.value }
+  if (tipo === 'excel') await ruletaService.exportarGirosExcel(filtrosExport)
+  else await ruletaService.exportarGirosCsv(filtrosExport)
+}
+
+// ── Helpers estéticos ─────────────────────────────────────────────────────────
+function getGrupoCls(grupo: string | undefined | null) {
+  if (!grupo) return ''
+  switch (grupo.toUpperCase()) {
+    case 'GRUPO_1': return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+    case 'GRUPO_2': return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+    case 'GRUPO_3': return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+    case 'GRUPO_4': return 'bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/30 dark:text-fuchsia-400'
+    case 'GRUPO_5': return 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400'
+    case 'GRUPO_6': return 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400'
+    default: return 'bg-gray-100 text-gray-700 dark:bg-gray-700/50 dark:text-gray-300'
+  }
 }
 
 // ── Helpers stock ─────────────────────────────────────────────────────────────
@@ -82,7 +180,7 @@ function stockNumCls(disponible: number, total: number) {
 function fmtFecha(iso: string) {
   if (!iso) return '—'
   try {
-    return new Date(iso).toLocaleString('es-EC', {
+    return new Date(iso).toLocaleString(APP_LOCALE, {
       day: '2-digit', month: '2-digit', year: '2-digit',
       hour: '2-digit', minute: '2-digit', hour12: false,
     })
@@ -140,35 +238,35 @@ function fmtFecha(iso: string) {
 
       <div v-else-if="store.metricasCampana" class="grid grid-cols-2 lg:grid-cols-5 gap-4">
 
-        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 dark:hover:border-indigo-500/50">
           <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Total giros</p>
           <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
             {{ store.metricasCampana.totalGiros.toLocaleString() }}
           </p>
         </div>
 
-        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 dark:hover:border-indigo-500/50">
           <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Ganadores</p>
           <p class="mt-2 text-3xl font-bold text-emerald-600 dark:text-emerald-400">
             {{ store.metricasCampana.totalGanadores.toLocaleString() }}
           </p>
         </div>
 
-        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 dark:hover:border-indigo-500/50">
           <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Tasa ganadores</p>
           <p class="mt-2 text-3xl font-bold text-indigo-600 dark:text-indigo-400">
             {{ store.metricasCampana.porcentajeGanadores.toFixed(1) }}%
           </p>
         </div>
 
-        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 dark:hover:border-indigo-500/50">
           <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Premios entregados</p>
           <p class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
             {{ store.metricasCampana.premiosEntregados.toLocaleString() }}
           </p>
         </div>
 
-        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm">
+        <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 dark:hover:border-indigo-500/50">
           <p class="text-xs font-medium text-gray-500 dark:text-gray-400">Stock restante</p>
           <p class="mt-2 text-3xl font-bold"
              :class="store.metricasCampana.stockRestanteGlobal < 10
@@ -210,8 +308,8 @@ function fmtFecha(iso: string) {
                       :title="e.nombre">{{ e.nombre }}</span>
                 <div class="flex-1 flex items-center gap-2">
                   <div class="flex-1 h-5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                    <div class="h-full bg-indigo-500 dark:bg-indigo-400 rounded-full transition-all duration-700"
-                         :style="{ width: `${(e.giros / maxGiros) * 100}%` }"/>
+                    <div class="h-full bg-gradient-to-r from-indigo-500 to-purple-500 dark:from-indigo-600 dark:to-purple-600 rounded-full transition-all duration-1000 ease-out"
+                         :style="{ width: animatedBars ? `${(e.giros / maxGiros) * 100}%` : '0%' }"/>
                   </div>
                   <span class="text-sm font-bold text-gray-800 dark:text-gray-200 w-8 text-right">{{ e.giros }}</span>
                 </div>
@@ -291,13 +389,98 @@ function fmtFecha(iso: string) {
 
     </div>
 
+      <!-- ── Filtros del Historial de Giros ─────────────────────────────────── -->
+      <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm p-5">
+        <div class="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Filtros del historial</h3>
+            <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Se aplican automáticamente a la tabla y a la exportación.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <output v-if="store.loadingHistorial" aria-live="polite"
+                  class="inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 dark:text-indigo-400">
+              <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+              </svg>
+              Buscando…
+            </output>
+            <span v-if="cantidadFiltrosActivos" class="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+              {{ cantidadFiltrosActivos }} activos
+            </span>
+          </div>
+        </div>
+
+        <form class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5" @submit.prevent="aplicarFiltros">
+          <div class="xl:col-span-2">
+            <label for="dash-premio-nombre" class="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-300">Nombre del premio</label>
+            <input
+              id="dash-premio-nombre"
+              v-model="filtros.premioNombre"
+              type="search"
+              maxlength="150"
+              autocomplete="off"
+              placeholder="Ej. Smartwatch"
+              class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 placeholder:text-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+            >
+          </div>
+
+          <div>
+            <label for="dash-segmento" class="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-300">Grupo</label>
+            <select id="dash-segmento" v-model="filtros.segmento" @change="aplicarFiltros" class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-600 dark:bg-gray-900 dark:text-white">
+              <option value="">Todos los grupos</option>
+              <option v-for="s in SEGMENTOS" :key="s" :value="s">{{ etiquetaSegmento(s) }}</option>
+            </select>
+          </div>
+
+          <div>
+            <label for="dash-estado" class="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-300">Estado del premio</label>
+            <select id="dash-estado" v-model="filtros.estado" @change="aplicarFiltros" class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-600 dark:bg-gray-900 dark:text-white">
+              <option value="">Todos los resultados</option>
+              <option value="Ganador">Ganó premio</option>
+              <option value="SinPremio">Sigue intentando</option>
+              <option value="Redimido">Redimido</option>
+            </select>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 xl:col-span-1">
+            <div>
+              <label for="dash-fecha-inicio" class="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-300">Desde</label>
+              <input id="dash-fecha-inicio" v-model="filtros.fechaInicio" type="date" :max="filtros.fechaFin || undefined" @change="aplicarFiltros" class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-600 dark:bg-gray-900 dark:text-white">
+            </div>
+            <div>
+              <label for="dash-fecha-fin" class="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-300">Hasta</label>
+              <input id="dash-fecha-fin" v-model="filtros.fechaFin" type="date" :min="filtros.fechaInicio || undefined" @change="aplicarFiltros" class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-600 dark:bg-gray-900 dark:text-white">
+            </div>
+          </div>
+
+          <p v-if="fechaInvalida" class="text-xs text-red-600 md:col-span-2 xl:col-span-5" role="alert">
+            La fecha inicial no puede ser posterior a la fecha final.
+          </p>
+
+          <div class="flex flex-wrap items-center gap-2 md:col-span-2 xl:col-span-5">
+            <button type="submit" :disabled="store.loadingHistorial || fechaInvalida" title="Aplica de inmediato, sin esperar la búsqueda automática" class="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus:ring-offset-gray-800">
+              Aplicar ahora
+            </button>
+            <button type="button" :disabled="store.loadingHistorial || cantidadFiltrosActivos === 0" class="rounded-xl px-4 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-300 dark:hover:bg-gray-700" @click="limpiarFiltros">
+              Limpiar
+            </button>
+          </div>
+        </form>
+      </div>
+
       <!-- ── Historial de Giros ────────────────────────────────────────────── -->
       <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 shadow-sm overflow-hidden">
 
         <!-- Header historial -->
         <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-4 border-b border-gray-100 dark:border-gray-700">
           <div class="flex items-center gap-3">
-            <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Historial de Giros</h3>
+            <div class="flex items-center gap-2" title="Actualización en tiempo real">
+              <span class="relative flex h-2.5 w-2.5">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+              </span>
+              <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Historial de Giros</h3>
+            </div>
             <span v-if="store.historialTotalRegistros > 0"
                   class="text-xs text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-full">
               {{ store.historialTotalRegistros.toLocaleString() }} registros
@@ -339,6 +522,7 @@ function fmtFecha(iso: string) {
               <tr>
                 <th class="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Fecha</th>
                 <th class="px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Cédula</th>
+                <th class="px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider hidden sm:table-cell">Grupo</th>
                 <th class="px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider hidden md:table-cell">Enrolador</th>
                 <th class="px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Premio</th>
                 <th class="px-3 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">¿Ganó?</th>
@@ -353,6 +537,14 @@ function fmtFecha(iso: string) {
                 </td>
                 <td class="px-3 py-3 font-mono text-xs text-gray-700 dark:text-gray-200">
                   {{ g.identificacion || '—' }}
+                </td>
+                <td class="px-3 py-3 hidden sm:table-cell">
+                  <span v-if="g.grupo"
+                        class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider"
+                        :class="getGrupoCls(g.grupo)">
+                    {{ etiquetaSegmento(g.grupo) }}
+                  </span>
+                  <span v-else class="text-xs text-gray-400 dark:text-gray-500">—</span>
                 </td>
                 <td class="px-3 py-3 text-xs text-gray-600 dark:text-gray-300 hidden md:table-cell">
                   {{ g.enroladorNombre || '—' }}
@@ -446,21 +638,6 @@ function fmtFecha(iso: string) {
           </div>
         </div>
 
-      </div>
-
-      <!-- ── Próximamente ──────────────────────────────────────────────────── -->
-      <div class="rounded-2xl border border-dashed border-gray-200 dark:border-gray-700
-                  bg-gray-50 dark:bg-gray-800/40 px-6 py-8 text-center">
-        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold mb-3
-                     bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400">
-          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
-          Próximamente
-        </span>
-        <p class="text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">
-          Segmentación de participantes, conversión semanal y efectividad por tienda estarán disponibles en próximas fases de integración.
-        </p>
       </div>
 
   </div>

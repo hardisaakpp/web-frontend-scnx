@@ -174,6 +174,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from '@vue/reactivity'
+import { NUMBER_LOCALE } from '@/plugins/locale'
 import type { OrdenCompraLog } from '../types'
 import { isSapError, getSapErrorMessage } from '../composables/useSapErrorMessages'
 import { useTablePreferences } from '@/composables/useTablePreferences'
@@ -490,7 +491,7 @@ function formatLogValue(log: OrdenCompraLog, columnKey: string): string {
     }
     
     // Otros números con formato estándar
-    return value.toLocaleString('es-ES')
+    return value.toLocaleString(NUMBER_LOCALE)
   }
   
   // Si es un booleano, mostrar texto
