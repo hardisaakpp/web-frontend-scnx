@@ -346,7 +346,7 @@ import { onMounted, onUnmounted } from '@vue/runtime-core'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { lastNotification, reconnectedAfterGap } from '@/composables/useNotificaciones'
-import { useRefetchOnFocus } from '@/composables/useRefetchOnFocus'
+import { useRefetchOnFocus, deferirRefrescoSinPerderClic } from '@/composables/useRefetchOnFocus'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import type {
   PedidoResumido,
@@ -743,13 +743,16 @@ watch(lastNotification, (notification) => {
   if (import.meta.env.DEV) {
     console.log('🔄 [RevisarRedistribucionListadoView] Notificación SSE recibida, recargando lista...', notification.metadata?.accion)
   }
-  cargarPedidos()
+  deferirRefrescoSinPerderClic(() => cargarPedidos())
 })
 
 // ⭐ Si el stream SSE reconectó tras una desconexión, pudimos habernos perdido una
 // notificación (ej. pestaña en segundo plano durante el evento). Refrescar igual.
+// La reconexión SSE se dispara junto con el foco/visibilidad de la pestaña, así que
+// puede coincidir con el mismo clic con el que el usuario reingresa a un pedido --
+// diferir evita que haga falta un doble clic (ver deferirRefrescoSinPerderClic).
 watch(reconnectedAfterGap, () => {
-  cargarPedidos()
+  deferirRefrescoSinPerderClic(() => cargarPedidos())
 })
 
 // ⭐ Refrescar al recuperar foco/visibilidad (ej. otra ventana encima que se minimiza)

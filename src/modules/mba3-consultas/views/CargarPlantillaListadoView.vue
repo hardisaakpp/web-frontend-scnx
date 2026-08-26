@@ -546,7 +546,7 @@ import { PAGE_SIZE_OPTIONS } from '../config/pagination'
 import { useDebouncedFilterInput } from '../composables/useDebouncedFilterInput'
 import { usePageSizePreference } from '../composables/usePageSizePreference'
 import { lastNotification, reconnectedAfterGap } from '@/composables/useNotificaciones'
-import { useRefetchOnFocus } from '@/composables/useRefetchOnFocus'
+import { useRefetchOnFocus, deferirRefrescoSinPerderClic } from '@/composables/useRefetchOnFocus'
 
 const { target: odcSapVolverTarget, title: odcSapVolverTitle } = useOdcSapVolver()
 const router = useRouter()
@@ -947,13 +947,16 @@ function abrirPedido(pedido: PedidoResumido) {
 watch(lastNotification, (notif) => {
   if (!notif) return
   if (!notif.metadata?.accion) return
-  cargarPedidos()
+  deferirRefrescoSinPerderClic(() => cargarPedidos())
 })
 
 // ⭐ Si el stream SSE reconectó tras una desconexión, pudimos habernos perdido una
 // notificación (ej. pestaña en segundo plano durante el evento). Refrescar igual.
+// La reconexión SSE se dispara junto con el foco/visibilidad de la pestaña, así que
+// puede coincidir con el mismo clic con el que el usuario reingresa a un pedido --
+// diferir evita que haga falta un doble clic (ver deferirRefrescoSinPerderClic).
 watch(reconnectedAfterGap, () => {
-  cargarPedidos()
+  deferirRefrescoSinPerderClic(() => cargarPedidos())
 })
 
 // ⭐ Refrescar al recuperar foco/visibilidad (ej. otra ventana encima que se minimiza)

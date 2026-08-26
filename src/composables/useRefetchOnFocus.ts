@@ -20,6 +20,19 @@ export interface UseRefetchOnFocusOptions {
   cooldownMs?: number
 }
 
+/**
+ * Difiere `callback` al siguiente macrotask en vez de llamarlo directo desde el handler
+ * del evento (foco, visibilitychange, reconexión SSE, etc). Si ese evento ocurre DENTRO
+ * del mismo gesto de clic con el que el usuario ya está seleccionando algo (ej. una fila
+ * de un listado) -- caso típico: mousedown → focus → mouseup → click -- llamar callback()
+ * de inmediato pondría loading=true y el v-if/v-else de la vista desmontaría la fila a
+ * mitad del gesto, perdiendo el clic (hay que hacer doble clic para que "pegue"). Con
+ * setTimeout(…, 0) el clic completo ya se despachó antes de tocar el estado.
+ */
+export function deferirRefrescoSinPerderClic(callback: () => void): ReturnType<typeof setTimeout> {
+  return setTimeout(callback, 0)
+}
+
 export function useRefetchOnFocus(callback: () => void, options: UseRefetchOnFocusOptions = {}) {
   const cooldownMs = options.cooldownMs ?? DEFAULT_COOLDOWN_MS
 
@@ -32,18 +45,10 @@ export function useRefetchOnFocus(callback: () => void, options: UseRefetchOnFoc
     const now = Date.now()
     if (now - lastRun < cooldownMs) return
     lastRun = now
-    // Diferir al siguiente macrotask (no llamar callback() directo desde el handler):
-    // si la ventana recupera el foco por el mismo clic con el que el usuario ya está
-    // seleccionando algo (ej. una fila del listado), el evento "focus" se dispara DENTRO
-    // de esa misma secuencia (mousedown → focus → mouseup → click). Si el refetch pone
-    // loading=true de inmediato, el v-if/v-else de la vista desmonta la tabla a mitad
-    // del gesto y el clic se pierde. setTimeout(…, 0) garantiza que el clic completo ya
-    // se despachó antes de tocar loading; si el usuario efectivamente navega, el
-    // composable se desmonta y el timeout se cancela abajo, sin recarga de sobra.
-    pendingTimeoutId = setTimeout(() => {
+    pendingTimeoutId = deferirRefrescoSinPerderClic(() => {
       pendingTimeoutId = null
       callback()
-    }, 0)
+    })
   }
 
   function handleVisibilityChange() {
