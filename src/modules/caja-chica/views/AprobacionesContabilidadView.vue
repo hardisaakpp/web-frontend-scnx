@@ -536,7 +536,7 @@ import api from '@/services/api'
 import { useColumnDragReorder } from '@/composables/useColumnDragReorder'
 import { useAdjuntosByDetalle } from '@/composables/useAdjuntosByDetalle'
 import { useRouter } from 'vue-router'
-import { resolveUserNames } from '../utils/resolveUserNames'
+import { resolveUserNames } from '@/utils/resolveUserNames'
 import { normalizeString, getCurrentUserId, normalizeDetalle, normalizeAprobacion } from '../utils/normalizeAprobaciones'
 import type {
   ColumnConfig,

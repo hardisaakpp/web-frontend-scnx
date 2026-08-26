@@ -13,6 +13,8 @@ export interface ItemStockDto {
   level1?: string | null
   level2?: string | null
   level3?: string | null
+  cost?: number | null
+  pvp?: number | null
 }
 
 export interface InventoryPlanFilterDto {
@@ -96,6 +98,8 @@ export interface SessionResultLineDto {
   balanceStatus: 'Balanced' | 'Difference' | number
 }
 
+export type AdjustmentValuationMode = 'Cost' | 'Pvp' | 'PvpWithDiscount' | number
+
 export interface AdjustmentSummaryDto {
   adjustmentId: string
   sessionId: string
@@ -106,6 +110,9 @@ export interface AdjustmentSummaryDto {
   totalLines: number
   differenceLines: number
   sapDocumentNumber?: string | null
+  valuationMode: AdjustmentValuationMode
+  totalValorizedAmount: number
+  notes?: string | null
 }
 
 export interface AdjustmentLineDto {
@@ -121,6 +128,9 @@ export interface AdjustmentLineDto {
   lineType: string | number
   equivalenceGroupId?: string | null
   auditorNotes?: string | null
+  unitCost?: number | null
+  unitPvp?: number | null
+  valorizedAmount?: number | null
 }
 
 export interface AdjustmentDetailDto {
@@ -136,6 +146,9 @@ export interface AdjustmentDetailDto {
   approvedByUserId?: string | null
   sapDocumentNumber?: string | null
   sapSentAt?: string | null
+  valuationMode: AdjustmentValuationMode
+  discountPercentage?: number | null
+  totalValorizedAmount: number
   lines: AdjustmentLineDto[]
 }
 
@@ -205,7 +218,14 @@ export const scnexusInventoryApi = {
   },
 
   async closeSession(sessionId: string, note?: string): Promise<InventorySessionStatusDto> {
-    const { data } = await api.post(`/api/inventory-sessions/${sessionId}/close`, { note: note || null })
+    // Cerrar dispara un sync de stock contra SAP (sp_sync_stock_sap_warehouse/items) que puede
+    // tardar más que el timeout default (30s) en bodegas grandes — sin esto, el front corta la
+    // conexión, el backend cancela el SP a mitad de camino, y el próximo intento repite todo desde cero.
+    const { data } = await api.post(
+      `/api/inventory-sessions/${sessionId}/close`,
+      { note: note || null },
+      { timeout: 180_000 }
+    )
     return normalizeObject<InventorySessionStatusDto>(data)
   },
 
@@ -224,14 +244,33 @@ export const scnexusInventoryApi = {
     return normalizeObject<AdjustmentDetailDto>(data)
   },
 
+  /** Vista final para tienda: solo responde si el ajuste ya está Approved/SentToSap. */
+  async getAdjustmentBySession(sessionId: string): Promise<AdjustmentDetailDto> {
+    const { data } = await api.get(`/api/inventory-adjustments/by-session/${sessionId}`)
+    return normalizeObject<AdjustmentDetailDto>(data)
+  },
+
   async createAdjustment(sessionId: string, notes?: string): Promise<AdjustmentDetailDto> {
     const { data } = await api.post('/api/inventory-adjustments', { sessionId, notes: notes || null })
     return normalizeObject<AdjustmentDetailDto>(data)
   },
 
+  /** Marca una sesión cerrada como "no necesita ajuste" — sin cobro, solo resuelve la revisión. */
+  async discardAdjustment(sessionId: string): Promise<void> {
+    await api.post(`/api/inventory-adjustments/discard/${sessionId}`)
+  },
+
   async updateAdjustmentLine(adjustmentId: string, lineId: string, payload: { adjustedDifference?: number | null; equivalenceGroupId?: string | null; auditorNotes?: string | null }): Promise<AdjustmentLineDto> {
     const { data } = await api.patch(`/api/inventory-adjustments/${adjustmentId}/lines/${lineId}`, payload)
     return normalizeObject<AdjustmentLineDto>(data)
+  },
+
+  async setAdjustmentValuation(adjustmentId: string, mode: 'Cost' | 'Pvp' | 'PvpWithDiscount', discountPercentage?: number | null): Promise<AdjustmentDetailDto> {
+    const { data } = await api.patch(`/api/inventory-adjustments/${adjustmentId}/valuation`, {
+      mode,
+      discountPercentage: mode === 'PvpWithDiscount' ? discountPercentage ?? 0 : null
+    })
+    return normalizeObject<AdjustmentDetailDto>(data)
   },
 
   async submitAdjustment(adjustmentId: string): Promise<AdjustmentDetailDto> {
