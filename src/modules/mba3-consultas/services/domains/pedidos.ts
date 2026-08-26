@@ -489,12 +489,16 @@ export const pedidosService = {
    * 
    * @param numeroPedido Número de pedido
    * @param formato 'csv' o 'txt'
+   * @param codigoBodega Código de bodega (ej. "RL-CD", "RG-CD") cuando el pedido tiene
+   *   más de una ODC (una por bodega) -- limita la exportación a esa ODC. Omitir en
+   *   pedidos con una sola ODC.
    * @returns Blob del archivo plano
    */
-  async exportarPedidoPlanoMba(numeroPedido: string, formato: 'csv' | 'txt' = 'csv'): Promise<Blob> {
+  async exportarPedidoPlanoMba(numeroPedido: string, formato: 'csv' | 'txt' = 'csv', codigoBodega?: string): Promise<Blob> {
     try {
+      const bodegaParam = codigoBodega ? `&codigo_bodega=${encodeURIComponent(codigoBodega)}` : ''
       const response = await mba3Api.get<Blob>(
-        `/api/pedidos/${encodeURIComponent(numeroPedido)}/exportar-plano-mba?formato=${formato}`,
+        `/api/pedidos/${encodeURIComponent(numeroPedido)}/exportar-plano-mba?formato=${formato}${bodegaParam}`,
         { responseType: 'blob' }
       )
       return response.data

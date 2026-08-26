@@ -78,19 +78,39 @@
         <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Cargando plantillas Excel" />
         {{ uploading ? 'Cargando...' : 'Cargar Plantillas Excel' }}
       </button>
-      <button
-        v-if="!esModoMabelTrading && !hideConfirmAndDownload"
-        @click="$emit('descargar-plano-mba')"
-        :disabled="loading || !pedido || descargandoPlanoMba || !puedeGenerarTxtMba3"
-        class="px-4 py-2 bg-cyan-600 dark:bg-cyan-500 text-white rounded-lg hover:bg-cyan-700 dark:hover:bg-cyan-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
-        title="Generar archivo TXT MBA3 (Cliente CLI1795, moneda US). Requiere estado Confirmado y Enviado."
-      >
-        <LoadingSpinner v-if="descargandoPlanoMba" layout="inline" size="md" color="current" aria-label="Generando archivo MBA3" />
-        <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-        {{ descargandoPlanoMba ? 'Descargando...' : 'Generar TXT MBA3' }}
-      </button>
+      <template v-if="!esModoMabelTrading && !hideConfirmAndDownload">
+        <!-- Pedido con una sola ODC (caso normal): un solo botón, sin distinguir bodega -->
+        <button
+          v-if="ordenesCompraParaTxt.length <= 1"
+          @click="$emit('descargar-plano-mba')"
+          :disabled="loading || !pedido || descargandoPlanoMba || !puedeGenerarTxtMba3"
+          class="px-4 py-2 bg-cyan-600 dark:bg-cyan-500 text-white rounded-lg hover:bg-cyan-700 dark:hover:bg-cyan-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+          title="Generar archivo TXT MBA3 (Cliente CLI1795, moneda US). Requiere estado Confirmado y Enviado."
+        >
+          <LoadingSpinner v-if="descargandoPlanoMba" layout="inline" size="md" color="current" aria-label="Generando archivo MBA3" />
+          <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          {{ descargandoPlanoMba ? 'Descargando...' : 'Generar TXT MBA3' }}
+        </button>
+        <!-- Pedido con más de una ODC (mezcla tiendas de más de una bodega/CD): un botón por ODC -->
+        <template v-else>
+          <button
+            v-for="oc in ordenesCompraParaTxt"
+            :key="oc.codigo_bodega"
+            @click="$emit('descargar-plano-mba', oc.codigo_bodega ?? undefined)"
+            :disabled="loading || !pedido || descargandoPlanoMba || !puedeGenerarTxtMba3"
+            class="px-4 py-2 bg-cyan-600 dark:bg-cyan-500 text-white rounded-lg hover:bg-cyan-700 dark:hover:bg-cyan-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+            :title="`Generar archivo TXT MBA3 de la ODC ${oc.codigo_bodega} (DocNum ${oc.numero_oc_sap ?? 'pendiente'}). Requiere estado Confirmado y Enviado.`"
+          >
+            <LoadingSpinner v-if="descargandoPlanoMbaBodega === oc.codigo_bodega" layout="inline" size="md" color="current" aria-label="Generando archivo MBA3" />
+            <svg v-else class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            {{ descargandoPlanoMbaBodega === oc.codigo_bodega ? 'Descargando...' : `Generar TXT MBA3 (${oc.codigo_bodega})` }}
+          </button>
+        </template>
+      </template>
       <button
         v-if="canGenerarOC"
         @click="$emit('generar-oc')"
@@ -223,6 +243,10 @@ const props = defineProps<{
   descargandoPedido?: boolean
   /** Descarga en curso del archivo plano MBA (un clic, sin modal) */
   descargandoPlanoMba?: boolean
+  /** codigo_bodega del botón que disparó la descarga en curso (pedidos con más de una
+   * ODC) -- para mostrar el spinner solo en ese botón. undefined en el caso de una
+   * sola ODC (single button) o cuando no hay descarga en curso. */
+  descargandoPlanoMbaBodega?: string
   descargandoCsv?: boolean
   descargandoExcelOriginal?: boolean
   finalizandoPedido?: boolean
@@ -270,7 +294,8 @@ const emit = defineEmits<{
   'confirmar-produccion': []
   'go-to-pedido': []
   'search-blur': []
-  'descargar-plano-mba': []
+  /** codigoBodega presente solo cuando el pedido tiene más de una ODC (una por bodega/CD) */
+  'descargar-plano-mba': [codigoBodega?: string]
   'descargar-pedido': []
   'crear-pedido': []
   'update-estado': [estado: string]
@@ -302,4 +327,12 @@ const puedeDespacharYFacturar = computed(() => {
 // el usuario -- deshabilita "Descargar Pedido Original" solo para estos, no para
 // el pedido "padre".
 const esPedidoHijo = computed(() => !!props.pedido?.cabecera?.pedido_padre_id)
+
+// Botones "Generar TXT MBA3": uno por ODC cuando el pedido mezcla tiendas de más de
+// una bodega/CD (ver origen_traslado_detectado / PedidoOCService). Se ignoran las ODC
+// sin codigo_bodega (datos anteriores a la Fase 2 de PYTD002) para no mostrar un botón
+// sin forma de distinguir a qué bodega corresponde.
+const ordenesCompraParaTxt = computed(() =>
+  (props.pedido?.cabecera?.ordenes_compra ?? []).filter((oc: { codigo_bodega: string | null }) => !!oc.codigo_bodega)
+)
 </script>

@@ -988,6 +988,15 @@ export interface PedidoCabecera {
    * campo `origen_traslado` (valor único escrito a mano en el Excel). Puede traer
    * más de un código cuando el pedido mezcla tiendas de ambas marcas. */
   origen_traslado_detectado?: string[]
+  /** ODC(s) del pedido (disponible cuando estado_id = 12 CONFIRMADO_ENVIADO). Trae más
+   * de un elemento cuando el pedido mezcla tiendas de más de una bodega/CD (ver
+   * origen_traslado_detectado) -- el frontend usa esto para mostrar un botón
+   * "Generar TXT MBA3" por ODC en vez de uno solo. */
+  ordenes_compra?: Array<{
+    codigo_bodega: string | null
+    numero_oc_sap: string | null
+    estado: string | null
+  }>
 }
 
 export interface TiendaDistribucion {

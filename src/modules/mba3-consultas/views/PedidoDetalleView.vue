@@ -106,6 +106,7 @@
         :confirmando="confirmando"
         :descargando-pedido="descargandoPedido"
         :descargando-plano-mba="descargandoPlanoMba"
+        :descargando-plano-mba-bodega="descargandoPlanoMbaBodega"
         :descargando-csv="descargandoCsv"
         :descargando-excel-original="descargandoExcelOriginal"
         :can-generar-o-c="canGenerarOC"
@@ -547,6 +548,9 @@ const pedido = ref<PedidoCompleto | null>(null)
 
 // ⭐ HU-08: Descarga directa del archivo plano MBA (sin modal)
 const descargandoPlanoMba = ref(false)
+// Bodega del botón que disparó la descarga en curso (pedidos con más de una ODC) --
+// permite mostrar el spinner solo en ese botón, no en todos (ver PedidoHeaderActions.vue)
+const descargandoPlanoMbaBodega = ref<string | undefined>(undefined)
 
 // Modal de confirmación tras "Confirmar" (pedido confirmado)
 const showConfirmacionModal = ref(false)
@@ -1122,15 +1126,15 @@ const columnManagement = useColumnManagement(
 // Extraer funciones del composable para uso directo
 const { editingCell, iniciarEdicion, cancelarEdicion, manejarTeclasEdicion, manejarBlurEdicion, isColumnaModificada, getColumnaModificadaKey, getRolModificador } = columnManagement
 
-// Color de resaltado de celda modificada en TOTAL/COMENTARIO: naranja si la última edición la
-// hizo produccion-elrayo.view, púrpura si la hizo odcsap.view (su color de marca, igual que la
-// tarjeta "Listado de Pedidos" y el botón "Confirmar"/"Despachar y Facturar" en DashboardView.vue
-// / PedidoHeaderActions.vue). Depende de quién editó cada celda (persistido en backend), no de
-// quién esté viendo la pantalla ahora — así el color puesto por el primer editor sobrevive el
-// avance de estado hasta que el otro rol la vuelva a editar.
+// Color de resaltado de celda modificada en COSTO UNIT./TOTAL/COMENTARIO: naranja si la última
+// edición la hizo produccion-elrayo.view, púrpura si la hizo odcsap.view (su color de marca,
+// igual que la tarjeta "Listado de Pedidos" y el botón "Confirmar"/"Despachar y Facturar" en
+// DashboardView.vue / PedidoHeaderActions.vue). Depende de quién editó cada celda (persistido en
+// backend), no de quién esté viendo la pantalla ahora — así el color puesto por el primer editor
+// sobrevive el avance de estado hasta que el otro rol la vuelva a editar.
 function claseResaltadoModificado(detalleId: string, columnKey: string): string {
   if (columnKey === 'numero' || !isColumnaModificada(detalleId, columnKey)) return ''
-  const esColumnaDeElRayo = columnKey === 'total' || columnKey === 'comentario'
+  const esColumnaDeElRayo = columnKey === 'costo_doc_sin_iva' || columnKey === 'total' || columnKey === 'comentario'
   if (esColumnaDeElRayo && getRolModificador(detalleId, columnKey) === 'PRODUCCION_ELRAYO') {
     return 'bg-orange-50 dark:bg-orange-900/20 border-l-2 border-orange-500 dark:border-orange-400'
   }
@@ -1764,19 +1768,23 @@ async function handleAceptarProduccionPospuesta() {
 }
 
 // ⭐ HU-08: Descarga directa del archivo plano MBA (un clic, sin modal)
-async function handleDescargarPlanoMba() {
+// codigoBodega viene del botón correspondiente cuando el pedido tiene más de una ODC
+// (una por bodega/CD, ver PedidoHeaderActions.vue -> ordenesCompraParaTxt).
+async function handleDescargarPlanoMba(codigoBodega?: string) {
   if (!pedido.value || !numeroPedido.value) {
     toast.error('Error', 'No hay pedido seleccionado')
     return
   }
   if (descargandoPlanoMba.value) return
   descargandoPlanoMba.value = true
+  descargandoPlanoMbaBodega.value = codigoBodega
   try {
-    const blob = await mba3ConsultasService.exportarPedidoPlanoMba(numeroPedido.value, 'txt')
+    const blob = await mba3ConsultasService.exportarPedidoPlanoMba(numeroPedido.value, 'txt', codigoBodega)
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    const nombreArchivo = `pedido_mba_${numeroPedido.value.replace(/[^a-zA-Z0-9.-]/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`
+    const sufijoBodega = codigoBodega ? `_${codigoBodega}` : ''
+    const nombreArchivo = `pedido_mba_${numeroPedido.value.replace(/[^a-zA-Z0-9.-]/g, '_')}${sufijoBodega}_${new Date().toISOString().split('T')[0]}.txt`
     a.download = nombreArchivo
     document.body.appendChild(a)
     a.click()
@@ -1788,6 +1796,7 @@ async function handleDescargarPlanoMba() {
     toast.error('Error al descargar', e.message || 'No se pudo descargar el archivo')
   } finally {
     descargandoPlanoMba.value = false
+    descargandoPlanoMbaBodega.value = undefined
   }
 }
 

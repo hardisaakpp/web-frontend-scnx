@@ -952,8 +952,8 @@ export const mba3ConsultasService = {
    * @returns Blob del archivo plano
    * @deprecated Usar pedidosService.exportarPedidoPlanoMba() directamente
    */
-  async exportarPedidoPlanoMba(numeroPedido: string, formato: 'csv' | 'txt' = 'csv'): Promise<Blob> {
-    return pedidosService.exportarPedidoPlanoMba(numeroPedido, formato)
+  async exportarPedidoPlanoMba(numeroPedido: string, formato: 'csv' | 'txt' = 'csv', codigoBodega?: string): Promise<Blob> {
+    return pedidosService.exportarPedidoPlanoMba(numeroPedido, formato, codigoBodega)
   },
 
   /**

@@ -270,6 +270,7 @@
         :generando-o-c="generandoOC"
         :confirmando="confirmando"
         :descargando-plano-mba="descargandoPlanoMba"
+        :descargando-plano-mba-bodega="descargandoPlanoMbaBodega"
         :can-generar-o-c="canGenerarOC"
         :es-modo-mabel-trading="esModoMabelTrading"
         :pedido="pedido"
@@ -572,9 +573,7 @@
                     :class="[
                       'px-4 py-4 text-sm',
                       column.align === 'right' ? 'text-right whitespace-nowrap' : column.align === 'center' ? 'text-center whitespace-nowrap' : '',
-                      isColumnaModificada(detalle.pedido_detalle_id, column.key) && column.key !== 'numero'
-                        ? 'bg-amber-50 dark:bg-amber-900/20 border-l-2 border-amber-500 dark:border-amber-400'
-                        : '',
+                      claseResaltadoModificado(detalle.pedido_detalle_id, column.key),
                       column.key === 'codigo_interno' && detalle.codigo_interno != null && isCodigoCorregidoHighlight(detalle.codigo_interno)
                         ? 'bg-emerald-50 dark:bg-emerald-900/25 border-l-2 border-emerald-500 dark:border-emerald-400'
                         : '',
@@ -805,12 +804,19 @@ const pedido = ref<PedidoCompleto | null>(null)
 // ⭐ HU-08: Estado del modal de exportación MBA
 // ⭐ HU-08: Descarga directa del archivo plano MBA (un clic, sin modal)
 const descargandoPlanoMba = ref(false)
+// Bodega del botón que disparó la descarga en curso (pedidos con más de una ODC) --
+// permite mostrar el spinner solo en ese botón, no en todos (ver PedidoHeaderActions.vue)
+const descargandoPlanoMbaBodega = ref<string | undefined>(undefined)
 
 // Req. 1.4/1.5: descarga del Análisis de Margen de Rentabilidad
 const descargandoMargen = ref(false)
 
 // ⭐ Set para rastrear columnas modificadas (formato: "detalleId:columnKey")
 const columnasModificadas = ref<Set<string>>(new Set())
+
+// Rol responsable de la última modificación de cada columna ('PRODUCCION_ELRAYO' | 'ODCSAP' | null),
+// misma clave "detalleId:columnKey". Determina el color de resaltado de COSTO UNIT. (púrpura/ámbar).
+const rolesModificacion = ref<Map<string, string | null>>(new Map())
 
 // Gestión de columnas visibles en la tabla
 const showColumnSelector = ref(false)
@@ -1131,12 +1137,14 @@ const pedidoDetalle = usePedidoDetalle({
   numeroPedido,
   esModoMabelTrading,
   columnasModificadas,
+  rolesModificacion,
   limpiarColumnasModificadasEnStorage: () => {
     if (!numeroPedido.value) return
     try {
       const storageKey = `pedido_columnas_modificadas_${numeroPedido.value}`
       sessionStorage.removeItem(storageKey)
       columnasModificadas.value.clear()
+      rolesModificacion.value.clear()
     } catch (e) {
       console.warn('Error al limpiar columnas modificadas en sessionStorage:', e)
     }
@@ -1574,10 +1582,22 @@ async function aplicarCorreccionesYContinuar(correcciones: CorreccionesPlantilla
 // - setLimiteSugerencias
 // - inicializarLimiteSugerencias
 
-const columnManagement = useColumnManagement(pedido, numeroPedido, columnasModificadas)
+const columnManagement = useColumnManagement(pedido, numeroPedido, columnasModificadas, rolesModificacion)
 
 // Extraer funciones del composable para uso directo
-const { editingCell, iniciarEdicion, cancelarEdicion, manejarTeclasEdicion, isColumnaModificada, getColumnaModificadaKey } = columnManagement
+const { editingCell, iniciarEdicion, cancelarEdicion, manejarTeclasEdicion, isColumnaModificada, getColumnaModificadaKey, getRolModificador } = columnManagement
+
+// Color de resaltado de celda modificada en COSTO UNIT./TOTAL/COMENTARIO: púrpura si la
+// última edición (propia o heredada del padre en un pedido hijo) la hizo odcsap.view, ámbar
+// si la hizo produccion-elrayo.view. Depende de quién editó cada celda (persistido en
+// backend), igual que en PedidoDetalleView.vue.
+function claseResaltadoModificado(detalleId: string, columnKey: string): string {
+  if (columnKey === 'numero' || !isColumnaModificada(detalleId, columnKey)) return ''
+  if (getRolModificador(detalleId, columnKey) === 'ODCSAP') {
+    return 'bg-purple-50 dark:bg-purple-900/20 border-l-2 border-purple-500 dark:border-purple-400'
+  }
+  return 'bg-amber-50 dark:bg-amber-900/20 border-l-2 border-amber-500 dark:border-amber-400'
+}
 
 // Wrapper para guardarEdicion que incluye guardar en storage (fallback)
 // ⚠️ NOTA: El backend se actualiza automáticamente en useColumnManagement
@@ -1724,19 +1744,23 @@ async function handleConfirmar() {
 }
 
 // ⭐ HU-08: Descarga directa del archivo plano MBA (un clic, sin modal)
-async function handleDescargarPlanoMba() {
+// codigoBodega viene del botón correspondiente cuando el pedido tiene más de una ODC
+// (una por bodega/CD, ver PedidoHeaderActions.vue -> ordenesCompraParaTxt).
+async function handleDescargarPlanoMba(codigoBodega?: string) {
   if (!pedido.value || !numeroPedido.value) {
     toast.error('Error', 'No hay pedido seleccionado')
     return
   }
   if (descargandoPlanoMba.value) return
   descargandoPlanoMba.value = true
+  descargandoPlanoMbaBodega.value = codigoBodega
   try {
-    const blob = await mba3ConsultasService.exportarPedidoPlanoMba(numeroPedido.value, 'txt')
+    const blob = await mba3ConsultasService.exportarPedidoPlanoMba(numeroPedido.value, 'txt', codigoBodega)
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    const nombreArchivo = `pedido_mba_${numeroPedido.value.replace(/[^a-zA-Z0-9.-]/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`
+    const sufijoBodega = codigoBodega ? `_${codigoBodega}` : ''
+    const nombreArchivo = `pedido_mba_${numeroPedido.value.replace(/[^a-zA-Z0-9.-]/g, '_')}${sufijoBodega}_${new Date().toISOString().split('T')[0]}.txt`
     a.download = nombreArchivo
     document.body.appendChild(a)
     a.click()
@@ -1748,6 +1772,7 @@ async function handleDescargarPlanoMba() {
     toast.error('Error al descargar', e.message || 'No se pudo descargar el archivo')
   } finally {
     descargandoPlanoMba.value = false
+    descargandoPlanoMbaBodega.value = undefined
   }
 }
 
