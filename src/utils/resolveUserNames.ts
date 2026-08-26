@@ -7,6 +7,13 @@ let loadUsersPromise: Promise<Record<string, string>> | null = null
 
 const normalizeString = (value: unknown) => String(value ?? '').trim()
 
+function extractItems(payload: unknown): unknown[] {
+  if (Array.isArray(payload)) return payload
+  const data = (payload as { data?: unknown[] })?.data
+  if (Array.isArray(data)) return data
+  return []
+}
+
 const userDisplayName = (user: UserRecord): string => {
   const id = normalizeString(user.id ?? user.Id ?? user.idUsuario ?? user.IdUsuario)
   const userName = normalizeString(user.userName ?? user.UsuarioNombre ?? user.username)
@@ -20,11 +27,7 @@ async function fetchUsersFromApi(): Promise<Record<string, string>> {
   try {
     const response = await api.get('/Users')
     const payload = response.data as unknown
-    const items = Array.isArray(payload)
-      ? payload
-      : Array.isArray((payload as { data?: unknown[] })?.data)
-        ? (payload as { data: unknown[] }).data
-        : []
+    const items = extractItems(payload)
     const map: Record<string, string> = {}
     for (const item of items) {
       const user = item as UserRecord

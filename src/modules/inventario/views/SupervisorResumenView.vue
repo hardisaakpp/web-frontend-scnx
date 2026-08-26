@@ -392,12 +392,30 @@ const progressPct = computed(() => {
   return Math.round((counted / total) * 100)
 })
 
-const totalDisplay = computed(() => !summary.value ? 0 : viewMode.value === 'items' ? summary.value.totalSystemItems : summary.value.totalSystemUnits)
-const countedDisplay = computed(() => !summary.value ? 0 : viewMode.value === 'items' ? summary.value.countedItems : summary.value.countedUnits)
-const pendingDisplay = computed(() => !summary.value ? 0 : viewMode.value === 'items' ? summary.value.pendingItems : summary.value.pendingUnits)
-const balancedDisplay = computed(() => !summary.value ? 0 : viewMode.value === 'items' ? summary.value.balancedItems : summary.value.balancedUnits)
-const differenceDisplay = computed(() => !summary.value ? 0 : viewMode.value === 'items' ? summary.value.differenceItems : summary.value.differenceUnits)
-const newDisplay = computed(() => !summary.value ? 0 : viewMode.value === 'items' ? summary.value.newItems : summary.value.newUnits)
+const totalDisplay = computed(() => {
+  if (!summary.value) return 0
+  return viewMode.value === 'items' ? summary.value.totalSystemItems : summary.value.totalSystemUnits
+})
+const countedDisplay = computed(() => {
+  if (!summary.value) return 0
+  return viewMode.value === 'items' ? summary.value.countedItems : summary.value.countedUnits
+})
+const pendingDisplay = computed(() => {
+  if (!summary.value) return 0
+  return viewMode.value === 'items' ? summary.value.pendingItems : summary.value.pendingUnits
+})
+const balancedDisplay = computed(() => {
+  if (!summary.value) return 0
+  return viewMode.value === 'items' ? summary.value.balancedItems : summary.value.balancedUnits
+})
+const differenceDisplay = computed(() => {
+  if (!summary.value) return 0
+  return viewMode.value === 'items' ? summary.value.differenceItems : summary.value.differenceUnits
+})
+const newDisplay = computed(() => {
+  if (!summary.value) return 0
+  return viewMode.value === 'items' ? summary.value.newItems : summary.value.newUnits
+})
 
 function statusLabel(status: InventorySessionStatus): string {
   return { Open: 'Abierta', Recount: 'Reconteo', Closed: 'Cerrada', Expired: 'No realizado' }[status] ?? status
