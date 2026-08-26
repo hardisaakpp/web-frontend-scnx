@@ -54,3 +54,8 @@ Thumbs.db
 # Playwright output (generado localmente, no subir al repo)
 test-results/
 playwright-report/
+
+# Se descartan/regeneran al publicar — no versionar (causaban conflictos de merge sin
+# aportar nada, la versión real la pone el pipeline de deploy).
+deploy/docker-entrypoint.sh
+deploy/scripts/docker-entrypoint.sh
