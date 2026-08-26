@@ -305,6 +305,21 @@ const recepcionApi = {
     })
     return response.data
   },
+
+  // Own-warehouse export — separate endpoint from exportAllHistoryCsv above, gated by nothing
+  // beyond being logged in (no recepcion.history.viewall needed): the backend scopes the file to
+  // whatever warehouses/warehouse-group the caller already has in Core, same as getHistory.
+  exportHistoryCsv: async (filters: HistoryFilters = {}) => {
+    const response = await api.get<Blob>(`${BASE}/history/export`, {
+      params: {
+        dateFrom: filters.fromUtc ?? undefined,
+        dateTo: filters.toUtc ?? undefined,
+        transferNumber: filters.transferNumber ?? undefined,
+      },
+      responseType: 'blob',
+    })
+    return response.data
+  },
 }
 
 export default recepcionApi

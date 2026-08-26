@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { usePickingStore } from '../stores/pickingStore'
+import { useInProgressStore } from '../stores/inProgressStore'
 import { ArrowLeftIcon } from '@heroicons/vue/24/outline'
 import { statusMeta } from '../utils/statusMeta'
 import PageJumpInput from '../components/PageJumpInput.vue'
 
-const store = usePickingStore()
+const store = useInProgressStore()
 const search = ref('')
 
 // resetInProgressAndFetch (not fetchInProgress) — the store is a Pinia singleton that outlives

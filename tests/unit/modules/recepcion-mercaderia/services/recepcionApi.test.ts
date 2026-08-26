@@ -408,4 +408,17 @@ describe('recepcionApi', () => {
     })
     expect(result).toBe(blob)
   })
+
+  it('exportHistoryCsv requests a blob response for GET .../history/export (own-scope, separate endpoint — no viewall required)', async () => {
+    const blob = new Blob(['csv'])
+    vi.mocked(api.get).mockResolvedValue({ data: blob })
+
+    const result = await recepcionApi.exportHistoryCsv({ transferNumber: '100' })
+
+    expect(api.get).toHaveBeenCalledWith('recepcion-api/reception/history/export', {
+      params: { dateFrom: undefined, dateTo: undefined, transferNumber: '100' },
+      responseType: 'blob',
+    })
+    expect(result).toBe(blob)
+  })
 })

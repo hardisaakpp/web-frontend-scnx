@@ -21,6 +21,10 @@ describe('recepcionRoutes', () => {
     expect(findRoute('recepcion-detalle').meta?.permissions).toEqual(['recepcion.reception.view'])
   })
 
+  it('gates the transit-transfers report route behind recepcion.reception.transit.view', () => {
+    expect(findRoute('recepcion-transitorias').meta?.permissions).toEqual(['recepcion.reception.transit.view'])
+  })
+
   it('gates the store history route behind recepcion.history.view', () => {
     expect(findRoute('recepcion-historial').meta?.permissions).toEqual(['recepcion.history.view'])
   })

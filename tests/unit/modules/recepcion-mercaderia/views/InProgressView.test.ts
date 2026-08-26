@@ -2,20 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import InProgressView from '@/modules/recepcion-mercaderia/views/InProgressView.vue'
-import { usePickingStore } from '@/modules/recepcion-mercaderia/stores/pickingStore'
+import { useInProgressStore } from '@/modules/recepcion-mercaderia/stores/inProgressStore'
 import recepcionApi from '@/modules/recepcion-mercaderia/services/recepcionApi'
 import type { PagedResponse, ReceptionTransfer } from '@/modules/recepcion-mercaderia/types'
 
 vi.mock('@/modules/recepcion-mercaderia/services/recepcionApi', () => ({
   default: {
     getInProgressTransfers: vi.fn(),
-    getTransfer: vi.fn(),
-    scan: vi.fn(),
-    confirm: vi.fn(),
-    updateGlpiTicket: vi.fn(),
-    recordDifference: vi.fn(),
-    deleteDifference: vi.fn(),
-    downloadDifferencesReport: vi.fn(),
   },
 }))
 
@@ -127,7 +120,7 @@ describe('InProgressView', () => {
       vi.mocked(recepcionApi.getInProgressTransfers).mockResolvedValue(paged([buildTransfer()], { totalCount: 45 }))
       // The store is a Pinia singleton — simulate what a prior visit left behind (page 6)
       // before this view mounts again.
-      const store = usePickingStore()
+      const store = useInProgressStore()
       store.page = 6
 
       mount(InProgressView, { global: { stubs: { RouterLink: true } } })

@@ -2,11 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { usePickingStore } from '@/modules/recepcion-mercaderia/stores/pickingStore'
 import recepcionApi from '@/modules/recepcion-mercaderia/services/recepcionApi'
-import type { ReceptionTransfer, Difference, PagedResponse } from '@/modules/recepcion-mercaderia/types'
+import type { ReceptionTransfer, Difference } from '@/modules/recepcion-mercaderia/types'
 
 vi.mock('@/modules/recepcion-mercaderia/services/recepcionApi', () => ({
   default: {
-    getInProgressTransfers: vi.fn(),
     getTransfer: vi.fn(),
     scan: vi.fn(),
     confirm: vi.fn(),
@@ -48,10 +47,6 @@ function buildDifference(overrides: Partial<Difference> = {}): Difference {
   }
 }
 
-function pagedTransfers(items: ReceptionTransfer[], overrides: Partial<PagedResponse<ReceptionTransfer>> = {}): PagedResponse<ReceptionTransfer> {
-  return { items, totalCount: items.length, pageNumber: 1, pageSize: 20, ...overrides }
-}
-
 // GET /transfers/{id} really returns { transfer, differences } (recepcionApi.getTransfer's real
 // return shape) — this wraps a bare ReceptionTransfer fixture the same way for every mock call
 // site below, defaulting to no persisted differences unless a test needs otherwise.
@@ -63,78 +58,6 @@ describe('usePickingStore', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
-  })
-
-  describe('fetchInProgress', () => {
-    it('fetches a page and populates transfers + totalCount', async () => {
-      const mockTransfers = [buildTransfer(), buildTransfer({ transferId: 8, documentNumber: 'DOC-8' })]
-      vi.mocked(recepcionApi.getInProgressTransfers).mockResolvedValue(pagedTransfers(mockTransfers, { totalCount: 45 }))
-      const store = usePickingStore()
-
-      await store.fetchInProgress()
-
-      expect(recepcionApi.getInProgressTransfers).toHaveBeenCalledWith({ pageNumber: 1, pageSize: 20 })
-      expect(store.transfers).toEqual(mockTransfers)
-      expect(store.totalCount).toBe(45)
-      expect(store.status).toBe('ready')
-    })
-
-    it('sets status "error" when the API call fails', async () => {
-      vi.mocked(recepcionApi.getInProgressTransfers).mockRejectedValue(new Error('down'))
-      const store = usePickingStore()
-
-      await store.fetchInProgress()
-
-      expect(store.status).toBe('error')
-      expect(store.transfers).toEqual([])
-    })
-
-    it('surfaces the backend\'s own error message when the API responds with one', async () => {
-      vi.mocked(recepcionApi.getInProgressTransfers).mockRejectedValue({
-        response: { status: 403, data: { error: "User 'u1' does not have access to warehouse 'T01'." } },
-      })
-      const store = usePickingStore()
-
-      await store.fetchInProgress()
-
-      expect(store.fetchError).toBe("User 'u1' does not have access to warehouse 'T01'.")
-    })
-
-    it('setPage re-fetches with the new page number', async () => {
-      vi.mocked(recepcionApi.getInProgressTransfers).mockResolvedValue(pagedTransfers([buildTransfer()], { totalCount: 45, pageNumber: 2 }))
-      const store = usePickingStore()
-
-      store.setPage(2)
-      await vi.waitFor(() => expect(recepcionApi.getInProgressTransfers).toHaveBeenCalledWith({ pageNumber: 2, pageSize: 20 }))
-
-      expect(store.page).toBe(2)
-    })
-
-    it('setPageSize resets to page 1 and re-fetches with the new size', async () => {
-      vi.mocked(recepcionApi.getInProgressTransfers).mockResolvedValue(pagedTransfers([buildTransfer()], { totalCount: 45 }))
-      const store = usePickingStore()
-      store.setPage(3)
-      vi.clearAllMocks()
-      vi.mocked(recepcionApi.getInProgressTransfers).mockResolvedValue(pagedTransfers([buildTransfer()]))
-
-      store.setPageSize(50)
-      await vi.waitFor(() => expect(recepcionApi.getInProgressTransfers).toHaveBeenCalledWith({ pageNumber: 1, pageSize: 50 }))
-
-      expect(store.page).toBe(1)
-      expect(store.pageSize).toBe(50)
-    })
-
-    it('resetInProgressAndFetch clears a leftover page from a previous visit before refetching', async () => {
-      vi.mocked(recepcionApi.getInProgressTransfers).mockResolvedValue(pagedTransfers([buildTransfer()], { totalCount: 45 }))
-      const store = usePickingStore()
-      // Simulate state left behind by a prior visit to InProgressView: page 6.
-      store.page = 6
-
-      store.resetInProgressAndFetch()
-      await vi.waitFor(() => expect(recepcionApi.getInProgressTransfers).toHaveBeenCalledWith({ pageNumber: 1, pageSize: 20 }))
-
-      expect(store.page).toBe(1)
-    })
   })
 
   describe('fetchTransfer (detail)', () => {
