@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <div class="w-full px-4 sm:px-6 lg:px-8 py-6">
     <div class="mb-6 flex items-start justify-between gap-4">
       <div>
         <p class="text-sm font-medium text-blue-600 dark:text-blue-400">Inventario</p>
@@ -70,6 +70,17 @@
           ✕
         </button>
       </div>
+
+      <!-- Separador vertical -->
+      <div class="hidden sm:block h-6 w-px bg-gray-300 dark:bg-gray-600"></div>
+
+      <!-- Búsqueda -->
+      <input
+        v-model="busqueda"
+        type="search"
+        placeholder="Buscar bodega, descripción, referencia..."
+        class="search-input w-64"
+      />
     </div>
 
     <div v-if="error" class="mb-4 alert-error">{{ error }}</div>
@@ -86,19 +97,20 @@
         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
           <thead class="bg-gray-50 dark:bg-gray-900/60">
             <tr>
-              <th class="th">Bodega</th>
-              <th class="th">Descripción</th>
-              <th class="th">Estado</th>
-              <th class="th">Plan</th>
-              <th class="th">ID</th>
-              <th class="th">Creado por</th>
-              <th class="th">Apertura</th>
-              <th class="th">Cierre</th>
+              <th class="th cursor-pointer select-none" @click="toggleSort('warehouseCode')">Bodega{{ sortIndicator('warehouseCode') }}</th>
+              <th class="th cursor-pointer select-none" @click="toggleSort('description')">Descripción{{ sortIndicator('description') }}</th>
+              <th class="th cursor-pointer select-none" @click="toggleSort('status')">Estado{{ sortIndicator('status') }}</th>
+              <th class="th text-right cursor-pointer select-none" @click="toggleSort('totalItems')">Listado (items / cant.){{ sortIndicator('totalItems') }}</th>
+              <th
+                class="th cursor-pointer select-none"
+                title="Fechas definidas al crear la toma o el plan — no las reales de ejecución (ver Resumen)"
+                @click="toggleSort('definedOpenDate')"
+              >Fecha definida (apertura → cierre){{ sortIndicator('definedOpenDate') }}</th>
               <th class="th text-right">Acciones</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-            <tr v-for="s in sesionesFiltradas" :key="s.sessionId" class="hover:bg-gray-50 dark:hover:bg-gray-700/30">
+            <tr v-for="s in sesionesPaginadas" :key="s.sessionId" class="hover:bg-gray-50 dark:hover:bg-gray-700/30">
               <td class="td">
                 <div class="font-mono text-xs text-gray-500 dark:text-gray-400">{{ s.warehouseCode }}</div>
                 <div class="text-sm font-medium text-gray-900 dark:text-white">{{ s.warehouseName }}</div>
@@ -114,41 +126,26 @@
               </td>
               <td class="td whitespace-nowrap">
                 <span :class="['badge', badgeClass(s.status)]">{{ statusLabel(s.status) }}</span>
-              </td>
-              <td class="td whitespace-nowrap">
-                <button
-                  v-if="s.planId"
-                  type="button"
-                  class="inline-flex items-center gap-1 font-mono text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
-                  :title="s.planId"
-                  @click="copiarTexto(s.planId, 'plan-' + s.sessionId)"
+                <span
+                  v-if="s.status === 'Closed' && s.hasApprovedAdjustment"
+                  class="inline-flex items-center ml-1 text-emerald-500"
+                  title="Cerrado con informe de ajuste aprobado"
                 >
-                  {{ s.planId.slice(0, 8) }}…
-                  <ClipboardDocumentCheckIcon v-if="copiado === 'plan-' + s.sessionId" class="w-3 h-3 text-green-500 flex-shrink-0" />
-                  <ClipboardIcon v-else class="w-3 h-3 flex-shrink-0 opacity-50" />
-                </button>
-                <span v-else class="text-xs text-gray-400 dark:text-gray-600 italic">Directa</span>
-              </td>
-              <td class="td whitespace-nowrap">
-                <button
-                  type="button"
-                  class="inline-flex items-center gap-1 font-mono text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
-                  :title="s.sessionId"
-                  @click="copiarTexto(s.sessionId, 'id-' + s.sessionId)"
+                  <CheckBadgeIcon class="w-4 h-4" />
+                </span>
+                <span
+                  v-else-if="s.status === 'Closed' && s.adjustmentDiscarded"
+                  class="inline-flex items-center ml-1 text-gray-400"
+                  title="Cerrado — revisado sin ajuste"
                 >
-                  {{ s.sessionId.slice(0, 8) }}…
-                  <ClipboardDocumentCheckIcon v-if="copiado === 'id-' + s.sessionId" class="w-3 h-3 text-green-500 flex-shrink-0" />
-                  <ClipboardIcon v-else class="w-3 h-3 flex-shrink-0 opacity-50" />
-                </button>
+                  <CheckBadgeIcon class="w-4 h-4" />
+                </span>
               </td>
-              <td class="td whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">
-                {{ s.createdByUserName || s.createdByUserId }}
+              <td class="td text-right whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
+                {{ s.totalItems }} <span class="text-gray-400 dark:text-gray-500">items</span> / {{ fmtCantidad(s.totalQuantity) }}
               </td>
               <td class="td whitespace-nowrap text-xs text-gray-500 dark:text-gray-400">
-                {{ formatDateTime(s.openedAt) }}
-              </td>
-              <td class="td whitespace-nowrap text-xs text-gray-500 dark:text-gray-400">
-                {{ s.closedAt ? formatDateTime(s.closedAt) : '—' }}
+                {{ formatDate(s.definedOpenDate) }} <span class="text-gray-300 dark:text-gray-600">→</span> {{ s.definedCloseDate ? formatDate(s.definedCloseDate) : '—' }}
               </td>
               <td class="td text-right whitespace-nowrap">
                 <button
@@ -165,6 +162,19 @@
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- Paginación -->
+      <div v-if="sesionesFiltradas.length > 0" class="flex items-center justify-between gap-3 px-4 py-3 border-t border-gray-200 dark:border-gray-700 text-sm text-gray-600 dark:text-gray-400">
+        <span>
+          Mostrando {{ (paginaActual - 1) * porPagina + 1 }}–{{ Math.min(paginaActual * porPagina, sesionesFiltradas.length) }}
+          de {{ sesionesFiltradas.length }}
+        </span>
+        <div class="flex items-center gap-2">
+          <button type="button" class="btn-secondary px-2 py-1" :disabled="paginaActual === 1" @click="paginaActual--">‹</button>
+          <span>{{ paginaActual }} / {{ totalPaginas }}</span>
+          <button type="button" class="btn-secondary px-2 py-1" :disabled="paginaActual === totalPaginas" @click="paginaActual++">›</button>
+        </div>
       </div>
     </div>
 
@@ -376,14 +386,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   ArrowPathIcon,
   PlusIcon,
   UsersIcon,
-  ClipboardDocumentCheckIcon,
-  ClipboardIcon,
   EllipsisVerticalIcon,
   EyeIcon,
   ChartBarIcon,
@@ -392,6 +400,7 @@ import {
   ExclamationTriangleIcon,
   TrashIcon,
 } from '@heroicons/vue/24/outline'
+import { CheckBadgeIcon } from '@heroicons/vue/24/solid'
 import { inventarioSesionesService } from '../services/inventarioSesionesApi'
 import type { InventorySessionListItemDto, InventorySessionStatus } from '../types'
 import CrearSesionDirectaModal from '../components/CrearSesionDirectaModal.vue'
@@ -408,7 +417,6 @@ const exito = ref<string | null>(null)
 const mostrarModal = ref(false)
 const sesionPickers = ref<InventorySessionListItemDto | null>(null)
 const sesionParaReparto = ref<string | null>(null)
-const copiado = ref<string | null>(null)
 const filtroEstado = ref<InventorySessionStatus | null>(null)
 const confirmandoCierre = ref<string | null>(null)
 const cerrando = ref<string | null>(null)
@@ -469,6 +477,32 @@ const FILTROS_ESTADO = [
   { label: 'Cerradas', value: 'Closed' as InventorySessionStatus },
 ]
 
+const busqueda = ref('')
+
+type SesionSortKey = 'warehouseCode' | 'description' | 'status' | 'totalItems' | 'definedOpenDate'
+const sortKey = ref<SesionSortKey>('definedOpenDate')
+const sortDir = ref<'asc' | 'desc'>('desc')
+
+function toggleSort(key: SesionSortKey) {
+  if (sortKey.value === key) {
+    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortKey.value = key
+    sortDir.value = 'asc'
+  }
+}
+
+function sortIndicator(key: SesionSortKey) {
+  if (sortKey.value !== key) return ''
+  return sortDir.value === 'asc' ? ' ▲' : ' ▼'
+}
+
+function sortValue(s: InventorySessionListItemDto, key: SesionSortKey): string | number {
+  if (key === 'definedOpenDate') return new Date(s.definedOpenDate).getTime()
+  if (key === 'description') return s.description ?? ''
+  return s[key]
+}
+
 const sesionesFiltradas = computed(() => {
   let result = sesiones.value
 
@@ -486,8 +520,38 @@ const sesionesFiltradas = computed(() => {
     result = result.filter(s => new Date(s.openedAt) <= hasta)
   }
 
-  return result
+  const q = busqueda.value.trim().toLowerCase()
+  if (q) {
+    result = result.filter(s =>
+      s.warehouseCode.toLowerCase().includes(q) ||
+      s.warehouseName.toLowerCase().includes(q) ||
+      (s.description ?? '').toLowerCase().includes(q) ||
+      (s.referenceCode ?? '').toLowerCase().includes(q)
+    )
+  }
+
+  const dir = sortDir.value === 'asc' ? 1 : -1
+  const key = sortKey.value
+  return [...result].sort((a, b) => {
+    const av = sortValue(a, key)
+    const bv = sortValue(b, key)
+    if (typeof av === 'string' || typeof bv === 'string') {
+      return String(av).localeCompare(String(bv)) * dir
+    }
+    return ((av as number) - (bv as number)) * dir
+  })
 })
+
+const porPagina = 10
+const paginaActual = ref(1)
+const totalPaginas = computed(() => Math.max(1, Math.ceil(sesionesFiltradas.value.length / porPagina)))
+const sesionesPaginadas = computed(() => {
+  const inicio = (paginaActual.value - 1) * porPagina
+  return sesionesFiltradas.value.slice(inicio, inicio + porPagina)
+})
+
+// Cualquier cambio de filtro/orden vuelve a la página 1 — evita quedar parado en una página vacía.
+watch([filtroEstado, fechaDesde, fechaHasta, busqueda, sortKey, sortDir], () => { paginaActual.value = 1 })
 
 // Conteo aplica solo filtro de fecha (no el de estado) para que los chips siempre sean precisos
 const sesionesEnFecha = computed(() => {
@@ -521,11 +585,17 @@ function badgeClass(status: InventorySessionStatus): string {
   }[status] ?? 'badge-gray'
 }
 
-function formatDateTime(value?: string | null): string {
+// Fechas DEFINIDAS (plan/toma), sin hora — a diferencia de las reales de ejecución que se ven en
+// el Resumen de Supervisor, estas son fechas puras sin componente de tiempo significativo.
+function formatDate(value?: string | null): string {
   if (!value) return '—'
   const d = new Date(value)
   return d.toLocaleDateString('es', { day: '2-digit', month: '2-digit', year: '2-digit' })
-    + ' ' + d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })
+}
+
+const cantidadFmt = new Intl.NumberFormat('es-DO', { maximumFractionDigits: 2 })
+function fmtCantidad(value: number): string {
+  return cantidadFmt.format(value || 0)
 }
 
 async function cargar() {
@@ -598,13 +668,6 @@ async function eliminarTomaFisica(sessionId: string) {
   }
 }
 
-function copiarTexto(text: string, key: string) {
-  navigator.clipboard.writeText(text).then(() => {
-    copiado.value = key
-    setTimeout(() => { copiado.value = null }, 2000)
-  })
-}
-
 function abrirPickers(s: InventorySessionListItemDto) {
   sesionPickers.value = s
 }
@@ -633,4 +696,5 @@ onMounted(cargar)
 .alert-error { @apply rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-3 py-2 text-sm text-red-700 dark:text-red-300; }
 .alert-success { @apply rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 px-3 py-2 text-sm text-green-700 dark:text-green-300; }
 .date-input { @apply rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 text-xs text-gray-700 dark:text-gray-200 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500; }
+.search-input { @apply rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500; }
 </style>

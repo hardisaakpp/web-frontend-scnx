@@ -107,6 +107,17 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/inventario/mis-inventarios/ajuste/:sessionId',
+    name: 'inventario-ajuste-final-tienda',
+    component: () => import('./views/AjusteFinalTiendaView.vue'),
+    meta: {
+      // Autoservicio: el backend valida acceso por bodega (CanAccessWarehouse) y que el ajuste
+      // ya esté Approved/SentToSap — sin permiso RBAC adicional aquí.
+      requiresAuth: true,
+      title: 'Ajuste Final'
+    }
+  },
+  {
     path: '/inventario/sesiones/:sessionId/picking',
     name: 'inventario-picking',
     component: () => import('./views/ConteoPickingView.vue'),

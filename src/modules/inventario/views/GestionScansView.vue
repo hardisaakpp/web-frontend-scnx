@@ -83,13 +83,13 @@
           <table class="min-w-full divide-y divide-gray-100 dark:divide-gray-700 text-sm">
             <thead class="bg-gray-50 dark:bg-gray-900/50 sticky top-0">
               <tr>
-                <th class="th">Fecha/Hora</th>
-                <th class="th">Usuario</th>
-                <th class="th">Cód. Barras</th>
-                <th class="th">Item Code</th>
-                <th class="th">Descripción</th>
-                <th class="th text-right">Cantidad</th>
-                <th class="th text-right">Ronda</th>
+                <th class="th cursor-pointer select-none" @click="toggleSort('scannedAt')">Fecha/Hora{{ sortIndicator('scannedAt') }}</th>
+                <th class="th cursor-pointer select-none" @click="toggleSort('userId')">Usuario{{ sortIndicator('userId') }}</th>
+                <th class="th cursor-pointer select-none" @click="toggleSort('barcode')">Cód. Barras{{ sortIndicator('barcode') }}</th>
+                <th class="th cursor-pointer select-none" @click="toggleSort('itemCode')">Item Code{{ sortIndicator('itemCode') }}</th>
+                <th class="th cursor-pointer select-none" @click="toggleSort('description')">Descripción{{ sortIndicator('description') }}</th>
+                <th class="th text-right cursor-pointer select-none" @click="toggleSort('quantity')">Cantidad{{ sortIndicator('quantity') }}</th>
+                <th class="th text-right cursor-pointer select-none" @click="toggleSort('round')">Ronda{{ sortIndicator('round') }}</th>
                 <th class="th text-right">Acciones</th>
               </tr>
             </thead>
@@ -196,7 +196,25 @@ const eliminando = ref<string | null>(null)
 const eliminados = ref<Set<string>>(new Set())
 const porEliminar = ref<UserScanDetailEntryDto | null>(null)
 
-watch([userFilter, search], () => { page.value = 0 })
+type ScanSortKey = 'scannedAt' | 'userId' | 'barcode' | 'itemCode' | 'description' | 'quantity' | 'round'
+const sortKey = ref<ScanSortKey>('scannedAt')
+const sortDir = ref<'asc' | 'desc'>('asc')
+
+function toggleSort(key: ScanSortKey) {
+  if (sortKey.value === key) {
+    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortKey.value = key
+    sortDir.value = 'asc'
+  }
+}
+
+function sortIndicator(key: ScanSortKey) {
+  if (sortKey.value !== key) return ''
+  return sortDir.value === 'asc' ? ' ▲' : ' ▼'
+}
+
+watch([userFilter, search, sortKey, sortDir], () => { page.value = 0 })
 
 async function cargar() {
   loading.value = true
@@ -231,9 +249,22 @@ const filteredDetail = computed(() => {
   })
 })
 
+const sortedDetail = computed(() => {
+  const dir = sortDir.value === 'asc' ? 1 : -1
+  const key = sortKey.value
+  return [...filteredDetail.value].sort((a, b) => {
+    const av = a[key] ?? (typeof a[key] === 'number' ? 0 : '')
+    const bv = b[key] ?? (typeof b[key] === 'number' ? 0 : '')
+    if (typeof av === 'string' || typeof bv === 'string') {
+      return String(av).localeCompare(String(bv)) * dir
+    }
+    return ((av as number) - (bv as number)) * dir
+  })
+})
+
 const totalPages = computed(() => Math.max(1, Math.ceil(filteredDetail.value.length / pageSize)))
 const pageStart = computed(() => page.value * pageSize)
-const pagedDetail = computed(() => filteredDetail.value.slice(pageStart.value, pageStart.value + pageSize))
+const pagedDetail = computed(() => sortedDetail.value.slice(pageStart.value, pageStart.value + pageSize))
 
 function confirmarEliminar(entry: UserScanDetailEntryDto) {
   exito.value = null

@@ -43,24 +43,30 @@
       </section>
 
       <section class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-        <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700">
+        <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700 flex flex-wrap items-center justify-between gap-3">
           <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Artículos</h2>
+          <input
+            v-model="search"
+            type="search"
+            placeholder="Buscar código, artículo..."
+            class="search-input w-56"
+          />
         </div>
         <div class="overflow-x-auto">
           <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead class="bg-gray-50 dark:bg-gray-900/60">
               <tr>
-                <th class="th">Código</th>
-                <th class="th">Artículo</th>
-                <th class="th">SAP</th>
-                <th class="th">Físico</th>
-                <th class="th">Reconteo</th>
-                <th class="th">Diferencia</th>
+                <th class="th cursor-pointer select-none" @click="toggleSort('item_code')">Código{{ sortIndicator('item_code') }}</th>
+                <th class="th cursor-pointer select-none" @click="toggleSort('item_name')">Artículo{{ sortIndicator('item_name') }}</th>
+                <th class="th cursor-pointer select-none" @click="toggleSort('stock_sap')">SAP{{ sortIndicator('stock_sap') }}</th>
+                <th class="th cursor-pointer select-none" @click="toggleSort('stock_physical')">Físico{{ sortIndicator('stock_physical') }}</th>
+                <th class="th cursor-pointer select-none" @click="toggleSort('recount')">Reconteo{{ sortIndicator('recount') }}</th>
+                <th class="th cursor-pointer select-none" @click="toggleSort('difference')">Diferencia{{ sortIndicator('difference') }}</th>
                 <th class="th">Conteo</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-              <tr v-for="item in detail.items" :key="item.id">
+              <tr v-for="item in sortedItems" :key="item.id">
                 <td class="td">
                   <div class="font-medium text-gray-900 dark:text-white">{{ item.item_code }}</div>
                   <div class="text-xs text-gray-500 dark:text-gray-400">{{ item.barcode || '-' }}</div>
@@ -110,6 +116,50 @@ const route = useRoute()
 const detail = ref<InventoryDetailDto | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
+
+const search = ref('')
+
+type InventoryItemSortKey = 'item_code' | 'item_name' | 'stock_sap' | 'stock_physical' | 'recount' | 'difference'
+const sortKey = ref<InventoryItemSortKey>('item_code')
+const sortDir = ref<'asc' | 'desc'>('asc')
+
+function toggleSort(key: InventoryItemSortKey) {
+  if (sortKey.value === key) {
+    sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc'
+  } else {
+    sortKey.value = key
+    sortDir.value = 'asc'
+  }
+}
+
+function sortIndicator(key: InventoryItemSortKey) {
+  if (sortKey.value !== key) return ''
+  return sortDir.value === 'asc' ? ' ▲' : ' ▼'
+}
+
+const filteredItems = computed(() => {
+  const items = detail.value?.items ?? []
+  const q = search.value.trim().toLowerCase()
+  if (!q) return items
+  return items.filter(item =>
+    item.item_code.toLowerCase().includes(q) ||
+    (item.item_name ?? '').toLowerCase().includes(q) ||
+    (item.barcode ?? '').toLowerCase().includes(q)
+  )
+})
+
+const sortedItems = computed(() => {
+  const dir = sortDir.value === 'asc' ? 1 : -1
+  const key = sortKey.value
+  return [...filteredItems.value].sort((a, b) => {
+    const av = a[key] ?? (typeof a[key] === 'number' ? 0 : '')
+    const bv = b[key] ?? (typeof b[key] === 'number' ? 0 : '')
+    if (typeof av === 'string' || typeof bv === 'string') {
+      return String(av).localeCompare(String(bv)) * dir
+    }
+    return ((av as number) - (bv as number)) * dir
+  })
+})
 
 const warehouseLabel = computed(() => {
   const header = detail.value?.header
@@ -210,4 +260,5 @@ onMounted(load)
 .td {
   @apply px-4 py-3 text-sm text-gray-700 dark:text-gray-300 align-top;
 }
+.search-input { @apply rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500; }
 </style>
