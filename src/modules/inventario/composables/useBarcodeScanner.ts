@@ -58,7 +58,7 @@ export function useBarcodeScanner(cooldownMs: number = 1500) {
     }
 
     stop()
-    const deviceId = cameraId || selectedCameraId.value || undefined
+    const deviceId = cameraId ?? selectedCameraId.value ?? undefined
 
     try {
       isRunning.value = true
