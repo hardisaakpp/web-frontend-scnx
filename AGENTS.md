@@ -52,3 +52,12 @@ La app es en español y el formato de fechas/números **NO debe depender del nav
   (router con `meta.permissions`, servicio API, store opcional, vistas con validación de
   permisos, entrada en el menú de `src/layouts/MainLayout.vue`).
 - Aplicar **siempre** las convenciones de locale y permisos de arriba.
+
+### 5. Reutilización de componentes / eliminar duplicación
+
+- Antes de copiar-pegar un patrón de UI o lógica a un segundo archivo, o al encontrar
+  código ya duplicado en 2+ archivos: seguir el proceso obligatorio de
+  [`docs/FUNCIONALIDADES_ESTANDARIZADAS.md` §8](docs/FUNCIONALIDADES_ESTANDARIZADAS.md#8-reutilización-de-componentes-y-eliminación-segura-de-duplicación)
+  (leer el código real de todos los consumidores, no promediar variantes con
+  comportamiento distinto, nunca mezclar presentación con lógica de datos/permisos, rama
+  dedicada, verificar tipos antes y después, revisar cada diff a mano).

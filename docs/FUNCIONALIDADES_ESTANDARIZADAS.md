@@ -145,7 +145,58 @@ Para cada nueva funcionalidad estándar, definir explícitamente:
 
 ---
 
-## 8) Convenciones de mantenimiento
+## 8) Reutilización de componentes y eliminación segura de duplicación
+
+Aplica cuando el mismo patrón de UI o lógica (markup + handlers + validaciones) aparece
+copiado en 2 o más archivos. Caso de referencia: dedup del selector de columnas, el
+drag&drop de columnas y los listados de pedidos del módulo mba3-consultas (ver commits
+`refactor(mba3-consultas): deduplicar...` en `feature/odc-segunda-fase-front-refactor`).
+
+### 8.1 Cómo diseñar la pieza compartida
+
+- Leer el código **real** de TODOS los consumidores antes de diseñar — no asumir que "se
+  ven parecidos" implica que son iguales.
+- Si hay variantes con comportamiento observable distinto (no solo de estilo), **no
+  promediarlas ni forzar una sola implementación**: exponer opciones/parámetros que
+  reproduzcan cada variante exactamente. Ejemplo real: `composables/useColumnDragAndDrop.ts`
+  cubre 2 variantes (con/sin columnas fijas) vía opciones, sin "corregir" ninguna.
+- Antes de crear algo nuevo, revisar si ya existe una pieza compartida a medio aplicar
+  (ej. una función en `utils/` que algún comentario dice "debe mantenerse en sync" con
+  copias locales) y reconciliar con ella en vez de crear una tercera copia.
+
+### 8.2 Límite estricto: presentación vs. datos/permisos
+
+- Una pieza compartida de presentación (traducir un estado a texto/color, ordenar/paginar
+  filas ya recibidas, markup de un selector/dropdown) **nunca** debe decidir qué datos
+  pedir, qué endpoint llamar, ni aplicar lógica de permisos/negocio.
+- Esa lógica (qué pedidos/estados puede ver cada rol, qué parámetros mandar al backend,
+  `route.name`, `meta.permissions`) se queda en cada consumidor. Compartir la capa visual
+  no implica fusionar la capa de acceso a datos.
+
+### 8.3 No arreglar de paso
+
+Un refactor de deduplicación no es el lugar para "corregir" inconsistencias que se
+descubran en el camino (un color que no es el esperado, una validación que falta en un
+archivo y sobra en otro). Documentarlo y preguntar antes de aplicar cualquier cambio de
+comportamiento observable — aunque parezca una mejora.
+
+### 8.4 Proceso obligatorio
+
+1. Rama dedicada, separada de cualquier feature en curso (evita mezclar historial de
+   negocio con refactor puro; permite revertir el refactor sin arrastrar fixes de negocio).
+2. Diseñar y crear la(s) pieza(s) compartida(s) primero, sin tocar consumidores.
+3. `npx vue-tsc --noEmit` limpio sobre la pieza nueva antes de migrar ningún consumidor.
+4. Migrar cada consumidor preservando su comportamiento exacto, incluida cualquier
+   asimetría real entre ellos (no forzar un comportamiento nuevo en un consumidor que no
+   lo tenía).
+5. Revisar el diff de cada archivo migrado a mano — no basta con que compile. Buscar
+   específicamente cambios de color, posición, texto o comportamiento no solicitados.
+6. `npx vue-tsc --noEmit` limpio sobre todo el proyecto al final.
+7. Un bloque de refactor cohesivo por commit.
+
+---
+
+## 9) Convenciones de mantenimiento
 
 - Cualquier nuevo patrón transversal debe agregarse aquí primero.
 - Si una guía específica cambia (SSE, mutaciones, módulos), actualizar enlaces y resumen de este documento.
