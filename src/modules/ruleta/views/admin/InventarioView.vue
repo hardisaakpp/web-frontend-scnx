@@ -8,6 +8,12 @@ const store = useAdminStore()
 
 const campanaSeleccionadaId = ref<string | null>(null)
 
+// La campaña Finalizada es un registro histórico de solo lectura (Regla de Oro): la matriz de
+// stock por tienda no debe poder editarse ni por accidente, aunque el usuario todavía tenga la
+// pestaña abierta desde antes de que la campaña finalizara.
+const campanaSeleccionada = computed(() => store.campanas.find(c => c.id === campanaSeleccionadaId.value))
+const campanaInmutable = computed(() => store.esCampanaInmutable(campanaSeleccionada.value))
+
 onMounted(async () => {
   await store.cargarCampanas()
   if (store.campanaInventarioId) {
@@ -33,8 +39,33 @@ const stockAsignado = computed(() =>
 const stockDisponible = computed(() => stockTotal.value - stockAsignado.value)
 
 function onCeldaChange(premioId: string, tiendaId: number, event: Event) {
-  const val = parseInt((event.target as HTMLInputElement).value) || 0
+  if (campanaInmutable.value) return
+  const val = Number.parseInt((event.target as HTMLInputElement).value) || 0
   store.setCelda(premioId, tiendaId, val)
+}
+
+// Indicador visual por celda: gris neutro cuando no hay nada asignado, verde/azul sutil cuando
+// sí hay stock repartido a esa tienda — así se distingue de un vistazo "sin asignar" de
+// "asignado" sin tener que leer el número. filaExcedida() sigue teniendo prioridad (error real).
+function claseCelda(item: { premio_id: string; stock_total: number }, tiendaId: number): string {
+  const base = 'w-16 text-center px-2 py-1.5 rounded-lg border text-sm focus:outline-none transition-colors'
+
+  if (filaExcedida(item))
+    return `${base} border-red-400 bg-red-50 dark:bg-red-900/20 dark:border-red-500 text-red-700 dark:text-red-300 focus:border-red-500`
+
+  if (campanaInmutable.value)
+    return `${base} border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed`
+
+  const valor = store.valorCelda(item.premio_id, tiendaId)
+  if (valor > 0)
+    return `${base} border-emerald-300 dark:border-emerald-700 bg-emerald-50/60 dark:bg-emerald-900/10 text-emerald-800 dark:text-emerald-300 focus:border-emerald-500`
+
+  return `${base} border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/60 text-gray-500 dark:text-gray-400 focus:border-indigo-500`
+}
+
+function tituloCelda(premioId: string, tiendaId: number): string {
+  const valor = store.valorCelda(premioId, tiendaId)
+  return valor > 0 ? `Asignado: ${valor} unid.` : 'Sin stock asignado'
 }
 
 function totalPorTienda(tiendaId: number): number {
@@ -122,6 +153,11 @@ async function confirmarGuardadoConImpacto() {
 
     <template v-else-if="store.inventario.length > 0">
 
+      <!-- Aviso: campaña finalizada, matriz de solo lectura -->
+      <div v-if="campanaInmutable" class="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-600 dark:text-red-400">
+        🔒 Campaña finalizada: el inventario es de solo lectura y no puede modificarse.
+      </div>
+
       <!-- KPI Cards -->
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div class="bg-gray-50 dark:bg-gray-700/50 rounded-2xl border border-gray-100 dark:border-gray-700 p-5 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/10 hover:border-indigo-300 dark:hover:border-indigo-500/50">
@@ -141,6 +177,17 @@ async function confirmarGuardadoConImpacto() {
             {{ stockDisponible.toLocaleString() }}
             <span :class="stockDisponible < 0 ? 'text-base font-normal text-red-400' : 'text-base font-normal text-emerald-400'">unidades</span>
           </p>
+          <span v-if="stockDisponible === 0"
+                class="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400">
+            ✅ Todo asignado
+          </span>
+          <span v-else
+                class="inline-flex items-center gap-1 mt-2 px-2 py-0.5 rounded-full text-xs font-semibold"
+                :class="stockDisponible < 0
+                  ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                  : 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'">
+            ⚠️ {{ stockDisponible < 0 ? 'Excede el stock en bodega' : 'Unidades pendientes de asignar' }}
+          </span>
         </div>
       </div>
 
@@ -173,9 +220,9 @@ async function confirmarGuardadoConImpacto() {
                     type="number" min="0"
                     :value="store.valorCelda(item.premio_id, t.id)"
                     @change="onCeldaChange(item.premio_id, t.id, $event)"
-                    :class="filaExcedida(item)
-                      ? 'w-16 text-center px-2 py-1.5 rounded-lg border text-sm focus:outline-none transition-colors border-red-400 bg-red-50 dark:bg-red-900/20 dark:border-red-500 text-red-700 dark:text-red-300 focus:border-red-500'
-                      : 'w-16 text-center px-2 py-1.5 rounded-lg border text-sm focus:outline-none transition-colors border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-200 focus:border-indigo-500'"
+                    :disabled="campanaInmutable"
+                    :title="campanaInmutable ? 'Campaña finalizada: solo lectura' : tituloCelda(item.premio_id, t.id)"
+                    :class="claseCelda(item, t.id)"
                   />
                 </td>
                 <td class="px-3 py-3.5 text-right font-medium text-gray-700 dark:text-gray-200">
@@ -230,7 +277,7 @@ async function confirmarGuardadoConImpacto() {
             {{ store.errorInventario }}
           </p>
         </div>
-        <div class="flex gap-3 flex-shrink-0">
+        <div v-if="!campanaInmutable" class="flex gap-3 flex-shrink-0">
           <button
             type="button"
             @click="store.restablecerInventario()"
@@ -243,6 +290,10 @@ async function confirmarGuardadoConImpacto() {
             @click="onGuardarClick"
             :disabled="!store.hayEdicionesPendientes || store.verificandoImpactoStock || store.guardando || hayFilaExcedida"
             class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold shadow-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+            <svg v-if="store.guardando || store.verificandoImpactoStock" class="inline w-4 h-4 mr-1.5 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            </svg>
             {{ store.verificandoImpactoStock ? 'Verificando…' : store.guardando ? 'Guardando…' : 'Guardar distribución' }}
           </button>
         </div>
