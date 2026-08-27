@@ -152,7 +152,37 @@ copiado en 2 o más archivos. Caso de referencia: dedup del selector de columnas
 drag&drop de columnas y los listados de pedidos del módulo mba3-consultas (ver commits
 `refactor(mba3-consultas): deduplicar...` en `feature/odc-segunda-fase-front-refactor`).
 
-### 8.1 Cómo diseñar la pieza compartida
+### 8.1 Cuándo compartir y cuándo no
+
+No toda similitud justifica una pieza compartida. La pregunta que decide no es "¿se ve
+parecido?" sino **¿es el mismo concepto que debe cambiar junto, o es una coincidencia que
+hoy se comporta igual?**
+
+- **Compartir** cuando es la misma regla/concepto (validación, cálculo, regla de negocio,
+  mapeo de estado). El riesgo de NO compartir en estos casos es la deriva silenciosa: una
+  corrección se aplica en una copia y no en las demás sin que nadie lo note. Ejemplo real
+  ya presente en el código: `DespachosTable.vue` reimplementó `formatCurrency`/`formatNumber`
+  en vez de usar `utils/formatters.ts`, y ya difiere en cómo muestra valores nulos.
+- **Duplicar a propósito** cuando la similitud es coincidencia, no una regla compartida:
+  dos piezas que hoy se ven o comportan igual pero representan conceptos independientes
+  que pueden divergir por razones de negocio legítimas. Forzar la reutilización ahí crea
+  un acoplamiento falso (Sandi Metz: *"duplication is far cheaper than the wrong
+  abstraction"* — una abstracción incorrecta cuesta más de deshacer que la duplicación que
+  evitó). Caso real de este proyecto: el color y la posición del botón "Columnas" en
+  `RemisionesTable.vue`/`DespachosTable.vue`/`HistorialOrdenesTable.vue` es una decisión de
+  diseño propia de cada pantalla, no una regla — se compartió la lógica (validación,
+  estado, click-outside, que sí es la misma regla en las 3) pero se dejó el markup/color
+  local a propósito.
+- **Señales adicionales para no apurar la abstracción:**
+  - "Regla de tres": duplicado 2 veces puede ser coincidencia; duplicado 3+ veces ya es un
+    patrón real que vale la pena nombrar.
+  - Si compartir algo pequeño exige una interfaz con muchas opciones para cubrir todos los
+    casos, evaluar si el costo de esa interfaz (legibilidad, indirección) supera el ahorro
+    real de líneas.
+  - Si dos piezas van a divergir pronto por una razón de negocio ya conocida, compartir
+    hoy solo obliga a desarmarlo después.
+
+### 8.2 Cómo diseñar la pieza compartida
 
 - Leer el código **real** de TODOS los consumidores antes de diseñar — no asumir que "se
   ven parecidos" implica que son iguales.
@@ -164,7 +194,7 @@ drag&drop de columnas y los listados de pedidos del módulo mba3-consultas (ver 
   (ej. una función en `utils/` que algún comentario dice "debe mantenerse en sync" con
   copias locales) y reconciliar con ella en vez de crear una tercera copia.
 
-### 8.2 Límite estricto: presentación vs. datos/permisos
+### 8.3 Límite estricto: presentación vs. datos/permisos
 
 - Una pieza compartida de presentación (traducir un estado a texto/color, ordenar/paginar
   filas ya recibidas, markup de un selector/dropdown) **nunca** debe decidir qué datos
@@ -173,14 +203,14 @@ drag&drop de columnas y los listados de pedidos del módulo mba3-consultas (ver 
   `route.name`, `meta.permissions`) se queda en cada consumidor. Compartir la capa visual
   no implica fusionar la capa de acceso a datos.
 
-### 8.3 No arreglar de paso
+### 8.4 No arreglar de paso
 
 Un refactor de deduplicación no es el lugar para "corregir" inconsistencias que se
 descubran en el camino (un color que no es el esperado, una validación que falta en un
 archivo y sobra en otro). Documentarlo y preguntar antes de aplicar cualquier cambio de
 comportamiento observable — aunque parezca una mejora.
 
-### 8.4 Proceso obligatorio
+### 8.5 Proceso obligatorio
 
 1. Rama dedicada, separada de cualquier feature en curso (evita mezclar historial de
    negocio con refactor puro; permite revertir el refactor sin arrastrar fixes de negocio).
