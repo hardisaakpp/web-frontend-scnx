@@ -155,6 +155,7 @@ function toGiroParams(filters: GiroFilters): Record<string, string> {
   if (filters.fechaInicio) params.fechaInicio = filters.fechaInicio
   if (filters.fechaFin) params.fechaFin = filters.fechaFin
   if (filters.estado) params.estado = filters.estado
+  if (filters.tienda) params.tienda = filters.tienda
 
   return params
 }
