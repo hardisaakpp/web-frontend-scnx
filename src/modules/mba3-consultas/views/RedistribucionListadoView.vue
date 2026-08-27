@@ -50,144 +50,29 @@
       </div>
 
       <!-- Filtros -->
-      <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
-        <div
-          @click="filtrosColapsados = !filtrosColapsados"
-          class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-        >
-          <div class="flex items-center justify-between">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Filtros de Búsqueda</h2>
-            <svg
-              :class="['w-5 h-5 text-gray-500 dark:text-gray-400 transition-transform duration-200', filtrosColapsados ? '' : 'rotate-180']"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-            </svg>
-          </div>
-        </div>
-        <div v-show="!filtrosColapsados" class="p-6">
-          <div class="mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
-            <div class="flex items-center gap-3">
-              <label class="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  v-model="filtroSoloPendientes"
-                  @change="aplicarFiltroPendientes"
-                  class="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500 dark:focus:ring-orange-400 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                />
-                <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Solo pedidos que requieren acción
-                </span>
-              </label>
-              <span v-if="filtroSoloPendientes" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300">
-                {{ contadorPedidosPendientes }} encontrados
-              </span>
-            </div>
-            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-6">
-              Muestra solo pedidos en estados: Pendiente Confirmación, Respuesta Cargada, Confirmado Proveedor
-            </p>
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Estado</label>
-              <select
-                v-model="filtros.estado"
-                @keyup.enter="aplicarFiltros"
-                @change="actualizarFiltroPendientes(); aplicarFiltros()"
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 text-sm"
-              >
-                <option value="">Todos los estados</option>
-                <option
-                  v-for="estado in estadosDisponibles"
-                  :key="estado.id"
-                  :value="estado.nombre"
-                >
-                  {{ getEstadoLabel(estado.nombre) }}
-                </option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Fecha</label>
-              <AppDateFilterInput
-                v-model:tipo="filtros.tipo_fecha"
-                v-model:desde="filtros.fecha_desde"
-                v-model:hasta="filtros.fecha_hasta"
-                @change="aplicarFiltros"
-                @keyup.enter="aplicarFiltros"
-              />
-            </div>
-            <div v-if="MOSTRAR_FILTRO_PROVEEDOR_PEDIDOS">
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Proveedor</label>
-              <input
-                type="text"
-                v-model="filtros.proveedor_nombre"
-                @keyup.enter="aplicarFiltros"
-                placeholder="Buscar por nombre de proveedor..."
-                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 text-sm"
-              />
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Número de Pedido</label>
-              <div class="relative">
-                <input
-                  ref="numeroPedidoInputRef"
-                  type="text"
-                  v-model="busquedaNumeroPedido"
-                  @input="handleBusquedaNumeroPedido"
-                  @keyup.enter="buscarNumeroPedidoInmediato"
-                  placeholder="Buscar por número de pedido..."
-                  autocomplete="off"
-                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 text-sm"
-                />
-                <button
-                  v-if="busquedaNumeroPedido"
-                  @mousedown.prevent="limpiarBusquedaNumeroPedido"
-                  class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                >
-                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Creado Por</label>
-              <div class="relative">
-                <input
-                  ref="creadoPorInputRef"
-                  type="text"
-                  v-model="busquedaCreadoPor"
-                  @input="handleBusquedaCreadoPor"
-                  @keyup.enter="buscarCreadoPorInmediato"
-                  placeholder="Buscar por usuario creador..."
-                  autocomplete="off"
-                  class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 text-sm"
-                />
-                <button
-                  v-if="busquedaCreadoPor"
-                  @mousedown.prevent="limpiarBusquedaCreadoPor"
-                  class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                >
-                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-            <div class="flex items-end gap-2">
-              <button
-                @click="limpiarFiltros"
-                class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-700 dark:text-gray-300 text-sm font-medium"
-              >
-                Limpiar
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <PedidosListFiltrosBar
+        v-model:estado="filtros.estado"
+        v-model:tipoFecha="filtros.tipo_fecha"
+        v-model:fechaDesde="filtros.fecha_desde"
+        v-model:fechaHasta="filtros.fecha_hasta"
+        v-model:proveedorNombre="filtros.proveedor_nombre"
+        v-model:filtroSoloPendientes="filtroSoloPendientes"
+        v-model:numeroPedidoTexto="busquedaNumeroPedido"
+        v-model:creadoPorTexto="busquedaCreadoPor"
+        :estados-disponibles="estadosDisponibles"
+        :show-quick-filter="true"
+        :contador-pedidos-pendientes="contadorPedidosPendientes"
+        @aplicar="aplicarFiltros"
+        @limpiar="limpiarFiltros"
+        @estado-change="actualizarFiltroPendientes"
+        @toggle-filtro-pendientes="aplicarFiltroPendientes"
+        @numero-pedido-input="handleBusquedaNumeroPedido"
+        @numero-pedido-commit="buscarNumeroPedidoInmediato"
+        @numero-pedido-clear="limpiarBusquedaNumeroPedidoTexto"
+        @creado-por-input="handleBusquedaCreadoPor"
+        @creado-por-commit="buscarCreadoPorInmediato"
+        @creado-por-clear="limpiarBusquedaCreadoPorTexto"
+      />
 
       <!-- Tabla de Pedidos -->
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
@@ -258,82 +143,19 @@
               </p>
             </div>
             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead class="bg-gray-50 dark:bg-gray-900">
-                <tr>
-                  <th class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-12">#</th>
-                  <th @click="toggleSort('numero_pedido')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                    <div class="flex items-center gap-1">Número de Pedido
-                      <span class="inline-flex flex-col leading-none text-gray-400 dark:text-gray-500">
-                        <svg :class="['w-3 h-3 -mb-0.5', sortColumn === 'numero_pedido' && sortDirection === 'asc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg>
-                        <svg :class="['w-3 h-3 -mt-0.5', sortColumn === 'numero_pedido' && sortDirection === 'desc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
-                      </span>
-                    </div>
-                  </th>
-                  <th @click="toggleSort('fecha_pedido')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                    <div class="flex items-center gap-1">Fecha
-                      <span class="inline-flex flex-col leading-none text-gray-400 dark:text-gray-500">
-                        <svg :class="['w-3 h-3 -mb-0.5', sortColumn === 'fecha_pedido' && sortDirection === 'asc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg>
-                        <svg :class="['w-3 h-3 -mt-0.5', sortColumn === 'fecha_pedido' && sortDirection === 'desc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
-                      </span>
-                    </div>
-                  </th>
-                  <th @click="toggleSort('proveedor_nombre')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                    <div class="flex items-center gap-1">Proveedor
-                      <span class="inline-flex flex-col leading-none text-gray-400 dark:text-gray-500">
-                        <svg :class="['w-3 h-3 -mb-0.5', sortColumn === 'proveedor_nombre' && sortDirection === 'asc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg>
-                        <svg :class="['w-3 h-3 -mt-0.5', sortColumn === 'proveedor_nombre' && sortDirection === 'desc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
-                      </span>
-                    </div>
-                  </th>
-                  <th @click="toggleSort('estado')" class="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                    <div class="flex items-center justify-center gap-1">Estado
-                      <span class="inline-flex flex-col leading-none text-gray-400 dark:text-gray-500">
-                        <svg :class="['w-3 h-3 -mb-0.5', sortColumn === 'estado' && sortDirection === 'asc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg>
-                        <svg :class="['w-3 h-3 -mt-0.5', sortColumn === 'estado' && sortDirection === 'desc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
-                      </span>
-                    </div>
-                  </th>
-                  <th @click="toggleSort('comprador_nombre')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                    <div class="flex items-center gap-1">Comprador
-                      <span class="inline-flex flex-col leading-none text-gray-400 dark:text-gray-500">
-                        <svg :class="['w-3 h-3 -mb-0.5', sortColumn === 'comprador_nombre' && sortDirection === 'asc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg>
-                        <svg :class="['w-3 h-3 -mt-0.5', sortColumn === 'comprador_nombre' && sortDirection === 'desc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
-                      </span>
-                    </div>
-                  </th>
-                  <th @click="toggleSort('creado_en')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                    <div class="flex items-center gap-1">Fecha Creación
-                      <span class="inline-flex flex-col leading-none text-gray-400 dark:text-gray-500">
-                        <svg :class="['w-3 h-3 -mb-0.5', sortColumn === 'creado_en' && sortDirection === 'asc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg>
-                        <svg :class="['w-3 h-3 -mt-0.5', sortColumn === 'creado_en' && sortDirection === 'desc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
-                      </span>
-                    </div>
-                  </th>
-                  <th @click="toggleSort('modificado_fecha')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                    <div class="flex items-center gap-1">Fecha Modificación
-                      <span class="inline-flex flex-col leading-none text-gray-400 dark:text-gray-500">
-                        <svg :class="['w-3 h-3 -mb-0.5', sortColumn === 'modificado_fecha' && sortDirection === 'asc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg>
-                        <svg :class="['w-3 h-3 -mt-0.5', sortColumn === 'modificado_fecha' && sortDirection === 'desc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
-                      </span>
-                    </div>
-                  </th>
-                  <th @click="toggleSort('modificado_por')" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                    <div class="flex items-center gap-1">Modificado Por
-                      <span class="inline-flex flex-col leading-none text-gray-400 dark:text-gray-500">
-                        <svg :class="['w-3 h-3 -mb-0.5', sortColumn === 'modificado_por' && sortDirection === 'asc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14l5-5 5 5z"/></svg>
-                        <svg :class="['w-3 h-3 -mt-0.5', sortColumn === 'modificado_por' && sortDirection === 'desc' ? 'text-indigo-600 dark:text-indigo-400' : '']" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
-                      </span>
-                    </div>
-                  </th>
-                </tr>
-              </thead>
+              <SortableTableHead
+                :columns="columnasTabla"
+                :sort-column="sortColumn"
+                :sort-direction="sortDirection"
+                @toggle-sort="toggleSort"
+              />
               <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 <tr
                   v-for="(pedido, index) in sortedPedidos"
                   :key="pedido.pedido_id"
                   :class="[
                     'hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer',
-                    requiereAccion(pedido.estado) ? 'bg-orange-50/30 dark:bg-orange-900/10 border-l-4 border-orange-500 dark:border-orange-400' : ''
+                    requiereAccionPedido(pedido.estado) ? 'bg-orange-50/30 dark:bg-orange-900/10 border-l-4 border-orange-500 dark:border-orange-400' : ''
                   ]"
                   @click="abrirRedistribucion(pedido)"
                 >
@@ -358,8 +180,8 @@
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-center">
                     <div class="flex items-center justify-center gap-2">
-                      <span :class="getEstadoBadgeClass(pedido.estado)">{{ getEstadoLabel(pedido.estado) }}</span>
-                      <span v-if="requiereAccion(pedido.estado)" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300" title="Requiere acción">!</span>
+                      <span :class="getEstadoPedidoBadgeClassFull(pedido.estado)">{{ getEstadoPedidoLabel(pedido.estado) }}</span>
+                      <span v-if="requiereAccionPedido(pedido.estado)" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300" title="Requiere acción">!</span>
                     </div>
                   </td>
                   <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{{ pedido.comprador_nombre || '-' }}</td>
@@ -400,24 +222,26 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from '@vue/reactivity'
+import { ref, computed } from '@vue/reactivity'
 import { onMounted, onUnmounted } from '@vue/runtime-core'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
-import { lastNotification, reconnectedAfterGap } from '@/composables/useNotificaciones'
-import { useRefetchOnFocus, deferirRefrescoSinPerderClic } from '@/composables/useRefetchOnFocus'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import type { PedidosListadoResponse, PedidoResumido, PedidosListadoFiltros, PedidosListadoMetadata, EstadoPedidoOption } from '../types'
 import { formatDate, formatDateTime } from '../utils/formatters'
 import { esProveedorElRayo } from '../utils/styleHelpers'
-import { MOSTRAR_FILTRO_PROVEEDOR_PEDIDOS } from '../config/featureFlags'
 import { PAGE_SIZE_OPTIONS } from '../config/pagination'
 import { useDebouncedFilterInput } from '../composables/useDebouncedFilterInput'
 import { usePageSizePreference } from '../composables/usePageSizePreference'
+import { getEstadoPedidoLabel, getEstadoPedidoBadgeClassFull, requiereAccionPedido } from '../utils/estadoPedido'
+import { useSortableList, type SortableColumnDef } from '../composables/useSortableList'
+import { useOffsetPagination } from '../composables/useOffsetPagination'
+import { useListadoAutoRefresh } from '../composables/useListadoAutoRefresh'
 import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
 import QuickTablePagination from '@/components/QuickTablePagination.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
-import AppDateFilterInput from '../components/AppDateFilterInput.vue'
+import SortableTableHead from '../components/SortableTableHead.vue'
+import PedidosListFiltrosBar from '../components/PedidosListFiltrosBar.vue'
 import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
 
 const router = useRouter()
@@ -437,31 +261,8 @@ const metadata = ref<PedidosListadoMetadata>({
   has_more: false
 })
 
-const redistribucionListTotalPages = computed(() =>
-  metadata.value.total > 0 ? Math.max(1, Math.ceil(metadata.value.total / metadata.value.limit)) : 1
-)
-
-const redistribucionListCurrentPage = computed({
-  get() {
-    if (metadata.value.limit <= 0) return 1
-    return Math.floor(metadata.value.offset / metadata.value.limit) + 1
-  },
-  set(p: number) {
-    const limit = metadata.value.limit
-    const max = redistribucionListTotalPages.value
-    const n = Math.min(max, Math.max(1, Math.round(p)))
-    cambiarPagina((n - 1) * limit)
-  }
-})
-
-const filtrosColapsados = ref(true)
 const pedidosColapsados = ref(false)
 const filtroSoloPendientes = ref(false)
-
-// Ordenamiento de columnas
-type SortDirection = 'asc' | 'desc' | null
-const sortColumn = ref<string | null>(null)
-const sortDirection = ref<SortDirection>(null)
 
 const filtros = ref<PedidosListadoFiltros>({
   estado: '',
@@ -476,7 +277,6 @@ const filtros = ref<PedidosListadoFiltros>({
 })
 
 // ========== Búsqueda por Número de Pedido (con debounce, filtra en vivo) ==========
-const numeroPedidoInputRef = ref<HTMLInputElement | null>(null)
 const {
   texto: busquedaNumeroPedido,
   handleInput: handleBusquedaNumeroPedido,
@@ -490,13 +290,7 @@ const {
   }
 })
 
-function limpiarBusquedaNumeroPedido() {
-  limpiarBusquedaNumeroPedidoTexto()
-  numeroPedidoInputRef.value?.focus()
-}
-
 // ========== Búsqueda por Creado Por (con debounce, filtra en vivo) ==========
-const creadoPorInputRef = ref<HTMLInputElement | null>(null)
 const {
   texto: busquedaCreadoPor,
   handleInput: handleBusquedaCreadoPor,
@@ -510,172 +304,25 @@ const {
   }
 })
 
-function limpiarBusquedaCreadoPor() {
-  limpiarBusquedaCreadoPorTexto()
-  creadoPorInputRef.value?.focus()
-}
+const contadorPedidosPendientes = computed(() =>
+  pedidos.value.filter(p => requiereAccionPedido(p.estado)).length
+)
 
-function getEstadoLabel(estado: string): string {
-  const labels: Record<string, string> = {
-    'BORRADOR': 'Borrador',
-    'NUEVO PEDIDO': 'Nuevo Pedido',
-    'NUEVO_PEDIDO': 'Nuevo Pedido',
-    'GESTIONAR PEDIDO': 'Gestionar Pedido',
-    'GESTIONAR_PEDIDO': 'Gestionar Pedido',
-    'REDISTRIBUCION': 'Redistribución',
-    'PENDIENTE_CONFIRMACION_PROVEEDOR': 'Pendiente Confirmación',
-    'RESPUESTA_PROVEEDOR_CARGADA': 'Respuesta Cargada',
-    'CONFIRMADO_PROVEEDOR': 'Confirmado Proveedor',
-    'CONFIRMADO': 'Confirmado',
-    'CONFIRMADO REDISTRIBUCION': 'Confirmado redistribución',
-    'REDISTRIBUIDO': 'Redistribuido',
-    'PEDIDO_CONFIRMADO': 'Pedido Confirmado',
-    'PENDIENTE_LOGISTICA': 'Pendiente Logística',
-    'ERROR_DATOS_MAESTROS': 'Error Datos Maestros',
-    'PROCESADO_SAP': 'Procesado SAP',
-    'ORDEN_COMPRA_CREADA': 'OC Creada',
-    'ENVIADA_SAP': 'Enviada SAP',
-    'CONFIRMADO_ENVIADO': 'Confirmado y Enviado',
-    'CONFIRMADO Y ENVIADO': 'Confirmado y Enviado',
-    'CONFIRMADO_Y_ENVIADO': 'Confirmado y Enviado',
-    'ENVIADA': 'Confirmado y Enviado',
-    'DESPACHAR Y FACTURAR': 'Despachar y Facturar',
-    'DESPACHAR_Y_FACTURAR': 'Despachar y Facturar',
-    'FINALIZADO': 'Finalizado',
-    'CERRADO': 'Cerrado',
-    'CANCELADO': 'Cancelado',
-    'CANCELADO POR EL RAYO': 'Cancelado por El Rayo',
-    'CANCELADO_POR_EL_RAYO': 'Cancelado por El Rayo',
-    'CONFIRMADO POR EL RAYO': 'Confirmado por El Rayo',
-    'CONFIRMADO_POR_EL_RAYO': 'Confirmado por El Rayo',
-    'CONFIRMADO POR PRODUCCION': 'Confirmado por Producción',
-    'CONFIRMADO_POR_PRODUCCION': 'Confirmado por Producción',
-    'ERROR ENVIO SAP REINTENTO': 'Error envío SAP (reintentar)',
-    'ERROR_ENVIO_SAP_REINTENTO': 'Error envío SAP (reintentar)',
-    'PRODUCCION POSPUESTA': 'Producción Pospuesta',
-    'PRODUCCION_POSPUESTA': 'Producción Pospuesta',
-    'RECHAZADO': 'Rechazado',
-    'LISTO PARA REDISTRIBUCION': 'Listo para Redistribución',
-    'LISTO_PARA_REDISTRIBUCION': 'Listo para Redistribución'
-  }
-  return labels[estado] || estado
-}
+// Columnas de la tabla (ordenables vía SortableTableHead)
+const columnasTabla: SortableColumnDef[] = [
+  { key: 'numero_pedido', label: 'Número de Pedido' },
+  { key: 'fecha_pedido', label: 'Fecha' },
+  { key: 'proveedor_nombre', label: 'Proveedor' },
+  { key: 'estado', label: 'Estado', align: 'center' },
+  { key: 'comprador_nombre', label: 'Comprador' },
+  { key: 'creado_en', label: 'Fecha Creación' },
+  { key: 'modificado_fecha', label: 'Fecha Modificación' },
+  { key: 'modificado_por', label: 'Modificado Por' }
+]
 
-function getEstadoBadgeClass(estado: string): string {
-  const baseClasses = 'px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors duration-300'
-  const darkClasses = 'dark:bg-opacity-30'
-  // Paleta por rol (permiso que produce el estado, ver docs/requeriments/PYTD002_ODC-MABEL-RAYO_SEGUIMIENTO.md):
-  // mabel.view = verde/esmeralda/teal/lima; produccion-elrayo.view = ámbar (botón "Confirmar
-  // Producción", bg-amber-600); odcsap.view = púrpura (botón "Confirmar", bg-purple-600);
-  // Cancelado/Rechazado = rojo/rosa, cruza roles. Debe mantenerse en sync con
-  // getEstadoPedidoBadgeClass en utils/styleHelpers.ts y con los demás listados de pedidos.
-  const classes: Record<string, string> = {
-    'BORRADOR': `bg-emerald-50 text-emerald-700 ${darkClasses} dark:bg-emerald-950/40 dark:text-emerald-300`,
-    'NUEVO PEDIDO': `bg-green-100 text-green-800 ${darkClasses} dark:bg-green-900/50 dark:text-green-200`,
-    'NUEVO_PEDIDO': `bg-green-100 text-green-800 ${darkClasses} dark:bg-green-900/50 dark:text-green-200`,
-    'GESTIONAR PEDIDO': `bg-amber-100 text-amber-800 ${darkClasses} dark:bg-amber-900/50 dark:text-amber-200`,
-    'GESTIONAR_PEDIDO': `bg-amber-100 text-amber-800 ${darkClasses} dark:bg-amber-900/50 dark:text-amber-200`,
-    'REDISTRIBUCION': `bg-purple-100 text-purple-800 ${darkClasses} dark:bg-purple-900/50 dark:text-purple-200`,
-    'PENDIENTE_CONFIRMACION_PROVEEDOR': `bg-yellow-100 text-yellow-800 ${darkClasses} dark:bg-yellow-900/50 dark:text-yellow-200`,
-    'RESPUESTA_PROVEEDOR_CARGADA': `bg-blue-100 text-blue-800 ${darkClasses} dark:bg-blue-900/50 dark:text-blue-200`,
-    'CONFIRMADO_PROVEEDOR': `bg-green-100 text-green-800 ${darkClasses} dark:bg-green-900/50 dark:text-green-200`,
-    'CONFIRMADO': `bg-green-100 text-green-800 ${darkClasses} dark:bg-green-900/50 dark:text-green-200`,
-    'CONFIRMADO REDISTRIBUCION': `bg-teal-100 text-teal-800 ${darkClasses} dark:bg-teal-900/50 dark:text-teal-200`,
-    'REDISTRIBUIDO': `bg-teal-100 text-teal-800 ${darkClasses} dark:bg-teal-900/50 dark:text-teal-200`,
-    'PEDIDO_CONFIRMADO': `bg-teal-200 text-teal-900 ${darkClasses} dark:bg-teal-900/60 dark:text-teal-100`,
-    'PENDIENTE_LOGISTICA': `bg-lime-100 text-lime-800 ${darkClasses} dark:bg-lime-900/50 dark:text-lime-200`,
-    'ERROR_DATOS_MAESTROS': `bg-vermilion-100 text-vermilion-800 ${darkClasses} dark:bg-vermilion-900/50 dark:text-vermilion-200`,
-    'PROCESADO_SAP': `bg-indigo-100 text-indigo-800 ${darkClasses} dark:bg-indigo-900/50 dark:text-indigo-200`,
-    'ORDEN_COMPRA_CREADA': `bg-fuchsia-100 text-fuchsia-800 ${darkClasses} dark:bg-fuchsia-900/50 dark:text-fuchsia-200`,
-    'ENVIADA_SAP': `bg-purple-100 text-purple-800 ${darkClasses} dark:bg-purple-900/50 dark:text-purple-200`,
-    'CONFIRMADO_ENVIADO': `bg-emerald-100 text-emerald-800 ${darkClasses} dark:bg-emerald-900/50 dark:text-emerald-200`,
-    'CONFIRMADO Y ENVIADO': `bg-emerald-100 text-emerald-800 ${darkClasses} dark:bg-emerald-900/50 dark:text-emerald-200`,
-    'CONFIRMADO_Y_ENVIADO': `bg-emerald-100 text-emerald-800 ${darkClasses} dark:bg-emerald-900/50 dark:text-emerald-200`,
-    'Confirmado y Enviado': `bg-emerald-100 text-emerald-800 ${darkClasses} dark:bg-emerald-900/50 dark:text-emerald-200`,
-    'ENVIADA': `bg-emerald-100 text-emerald-800 ${darkClasses} dark:bg-emerald-900/50 dark:text-emerald-200`,
-    'DESPACHAR Y FACTURAR': `bg-purple-200 text-purple-900 ${darkClasses} dark:bg-purple-900/60 dark:text-purple-100`,
-    'DESPACHAR_Y_FACTURAR': `bg-purple-200 text-purple-900 ${darkClasses} dark:bg-purple-900/60 dark:text-purple-100`,
-    'FINALIZADO': `bg-green-300 text-green-900 ${darkClasses} dark:bg-green-900/70 dark:text-green-100`,
-    'CERRADO': `bg-stone-100 text-stone-700 ${darkClasses} dark:bg-stone-600 dark:text-stone-200`,
-    'CANCELADO': `bg-rose-100 text-rose-800 ${darkClasses} dark:bg-rose-900/50 dark:text-rose-200`,
-    'CANCELADO POR EL RAYO': `bg-red-200 text-red-900 ${darkClasses} dark:bg-red-900/70 dark:text-red-100`,
-    'CANCELADO_POR_EL_RAYO': `bg-red-200 text-red-900 ${darkClasses} dark:bg-red-900/70 dark:text-red-100`,
-    'CONFIRMADO POR EL RAYO': `bg-purple-100 text-purple-800 ${darkClasses} dark:bg-purple-900/50 dark:text-purple-200`,
-    'CONFIRMADO_POR_EL_RAYO': `bg-purple-100 text-purple-800 ${darkClasses} dark:bg-purple-900/50 dark:text-purple-200`,
-    'CONFIRMADO POR PRODUCCION': `bg-amber-300 text-amber-900 ${darkClasses} dark:bg-amber-900/70 dark:text-amber-100`,
-    'CONFIRMADO_POR_PRODUCCION': `bg-amber-300 text-amber-900 ${darkClasses} dark:bg-amber-900/70 dark:text-amber-100`,
-    'ERROR ENVIO SAP REINTENTO': `bg-vermilion-100 text-vermilion-800 ${darkClasses} dark:bg-vermilion-900/50 dark:text-vermilion-200`,
-    'ERROR_ENVIO_SAP_REINTENTO': `bg-vermilion-100 text-vermilion-800 ${darkClasses} dark:bg-vermilion-900/50 dark:text-vermilion-200`,
-    'PRODUCCION POSPUESTA': `bg-purple-200 text-purple-900 ${darkClasses} dark:bg-purple-900/60 dark:text-purple-100`,
-    'PRODUCCION_POSPUESTA': `bg-purple-200 text-purple-900 ${darkClasses} dark:bg-purple-900/60 dark:text-purple-100`,
-    'RECHAZADO': `bg-red-100 text-red-800 ${darkClasses} dark:bg-red-900/50 dark:text-red-200`,
-    'LISTO PARA REDISTRIBUCION': `bg-purple-200 text-purple-900 ${darkClasses} dark:bg-purple-900/60 dark:text-purple-100`,
-    'LISTO_PARA_REDISTRIBUCION': `bg-purple-200 text-purple-900 ${darkClasses} dark:bg-purple-900/60 dark:text-purple-100`
-  }
-  return `${baseClasses} ${classes[estado] || `bg-gray-100 text-gray-800 ${darkClasses} dark:bg-gray-700 dark:text-gray-200`}`
-}
-
-function requiereAccion(estado: string): boolean {
-  return ['PENDIENTE_CONFIRMACION_PROVEEDOR', 'RESPUESTA_PROVEEDOR_CARGADA', 'CONFIRMADO_PROVEEDOR'].includes(estado)
-}
-
-const contadorPedidosPendientes = computed(() => {
-  if (filtroSoloPendientes.value) {
-    return pedidos.value.filter(p => requiereAccion(p.estado)).length
-  }
-  return pedidos.value.filter(p => requiereAccion(p.estado)).length
-})
-
-// Función para alternar el ordenamiento de una columna
-function toggleSort(column: string) {
-  if (sortColumn.value === column) {
-    if (sortDirection.value === 'asc') {
-      sortDirection.value = 'desc'
-    } else if (sortDirection.value === 'desc') {
-      sortColumn.value = null
-      sortDirection.value = null
-    }
-  } else {
-    sortColumn.value = column
-    sortDirection.value = 'asc'
-  }
-}
-
-// Columnas de tipo fecha para ordenar correctamente
-const dateColumns = ['fecha_pedido', 'creado_en', 'modificado_fecha']
-
-// Pedidos ordenados (computed)
-const sortedPedidos = computed(() => {
-  const lista = pedidos.value
-
-  if (!sortColumn.value || !sortDirection.value) {
-    return lista
-  }
-
-  const col = sortColumn.value
-  const dir = sortDirection.value
-  const isDate = dateColumns.includes(col)
-
-  return [...lista].sort((a: any, b: any) => {
-    let valA = a[col]
-    let valB = b[col]
-
-    if (valA == null && valB == null) return 0
-    if (valA == null) return dir === 'asc' ? 1 : -1
-    if (valB == null) return dir === 'asc' ? -1 : 1
-
-    if (isDate) {
-      const dateA = new Date(valA).getTime()
-      const dateB = new Date(valB).getTime()
-      return dir === 'asc' ? dateA - dateB : dateB - dateA
-    }
-
-    const strA = String(valA).toLowerCase()
-    const strB = String(valB).toLowerCase()
-    if (strA < strB) return dir === 'asc' ? -1 : 1
-    if (strA > strB) return dir === 'asc' ? 1 : -1
-    return 0
-  })
+const { sortColumn, sortDirection, toggleSort, sortedItems: sortedPedidos } = useSortableList<PedidoResumido>({
+  items: pedidos,
+  dateColumns: ['fecha_pedido', 'creado_en', 'modificado_fecha']
 })
 
 async function cargarEstados() {
@@ -709,6 +356,16 @@ async function cargarPedidos() {
   }
 }
 
+const {
+  totalPages: redistribucionListTotalPages,
+  currentPage: redistribucionListCurrentPage,
+  setPageSize: cambiarTamanoPagina,
+  resetToFirstPage
+} = useOffsetPagination(metadata, cargarPedidos, {
+  onOffsetChange: (offset) => { filtros.value.offset = offset },
+  onPageSizeChange: guardarPageSize
+})
+
 function aplicarFiltroPendientes() {
   if (filtroSoloPendientes.value) {
     const estadoAnterior = filtros.value.estado
@@ -729,9 +386,7 @@ function actualizarFiltroPendientes() {
 }
 
 function aplicarFiltros() {
-  metadata.value.offset = 0
-  filtros.value.offset = 0
-  cargarPedidos()
+  resetToFirstPage()
 }
 
 function limpiarFiltros() {
@@ -749,22 +404,7 @@ function limpiarFiltros() {
   busquedaNumeroPedido.value = ''
   busquedaCreadoPor.value = ''
   filtroSoloPendientes.value = false
-  metadata.value.offset = 0
-  cargarPedidos()
-}
-
-function cambiarPagina(nuevoOffset: number) {
-  metadata.value.offset = nuevoOffset
-  filtros.value.offset = nuevoOffset
-  cargarPedidos()
-}
-
-function cambiarTamanoPagina(nuevoLimit: number) {
-  guardarPageSize(nuevoLimit)
-  metadata.value.limit = nuevoLimit
-  metadata.value.offset = 0
-  filtros.value.offset = 0
-  cargarPedidos()
+  resetToFirstPage()
 }
 
 /** Navega a la vista de Redistribución del pedido seleccionado */
@@ -785,23 +425,7 @@ onUnmounted(() => {
   disposeBusquedaCreadoPor()
 })
 
-// ⭐ Watch para recargar lista cuando llega una notificación SSE relevante
-// (ej: pedido confirmado para redistribución por EL RAYO)
-watch(lastNotification, (notification) => {
-  if (!notification) return
-  if (!notification.metadata?.accion) return
-  deferirRefrescoSinPerderClic(() => cargarPedidos())
-})
-
-// ⭐ Si el stream SSE reconectó tras una desconexión, pudimos habernos perdido una
-// notificación (ej. pestaña en segundo plano durante el evento). Refrescar igual.
-// La reconexión SSE se dispara junto con el foco/visibilidad de la pestaña, así que
-// puede coincidir con el mismo clic con el que el usuario reingresa a un pedido --
-// diferir evita que haga falta un doble clic (ver deferirRefrescoSinPerderClic).
-watch(reconnectedAfterGap, () => {
-  deferirRefrescoSinPerderClic(() => cargarPedidos())
-})
-
-// ⭐ Refrescar al recuperar foco/visibilidad (ej. otra ventana encima que se minimiza)
-useRefetchOnFocus(() => cargarPedidos())
+// ⭐ Refresco automático del listado (notificación SSE con metadata.accion, reconexión SSE
+// tras una desconexión, y foco/visibilidad de la pestaña) -- ver useListadoAutoRefresh.ts
+useListadoAutoRefresh(cargarPedidos)
 </script>
