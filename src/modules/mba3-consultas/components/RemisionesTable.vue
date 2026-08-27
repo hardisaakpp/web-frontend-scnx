@@ -55,9 +55,10 @@
             </svg>
             Filtros
           </button>
-          
+
           <button
-            @click="showColumnSelector = !showColumnSelector"
+            @click="columnVisibility.toggleOpen"
+            :data-column-selector-id="columnVisibility.selectorId"
             class="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-sm font-medium flex items-center gap-2 relative dark:text-gray-200"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -71,21 +72,21 @@
           </button>
         </div>
       </div>
-      
+
       <!-- Selector de Columnas -->
-      <div v-if="showColumnSelector" class="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+      <div v-if="columnVisibility.isOpen.value" :data-column-selector-id="columnVisibility.selectorId" class="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
         <div class="flex items-center justify-between mb-3">
           <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Seleccionar Columnas</h3>
           <div class="flex items-center gap-2">
             <button
-              @click="selectAllColumns"
+              @click="selectAllTableColumns(availableColumns.map(c => c.key))"
               class="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
             >
               Mostrar todas
             </button>
             <span class="text-gray-300 dark:text-gray-600">|</span>
             <button
-              @click="resetColumns"
+              @click="resetTablePreferences"
               class="text-xs text-gray-600 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-200 font-medium"
             >
               Restaurar predeterminadas
@@ -100,15 +101,15 @@
           >
             <input
               type="checkbox"
-              v-model="visibleColumns"
-              :value="column.key"
+              :checked="visibleColumns.includes(column.key)"
+              @change="columnVisibility.toggleColumnVisibility(column.key)"
               class="w-4 h-4 text-blue-600 border-gray-300 dark:border-gray-700 rounded focus:ring-blue-500 dark:bg-gray-900"
             />
             <span class="text-sm text-gray-700 dark:text-gray-200">{{ column.label }}</span>
           </label>
         </div>
       </div>
-      
+
       <!-- Filtros avanzados -->
       <div v-if="showAdvancedFilters" class="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -277,6 +278,7 @@
 import { ref, computed, watch } from '@vue/reactivity'
 import type { Remision } from '../types'
 import { useTablePreferences } from '@/composables/useTablePreferences'
+import { useColumnVisibilityToggle } from '../composables/useColumnVisibilityToggle'
 import { formatDate } from '../utils/formatters'
 import AppDateInput from './AppDateInput.vue'
 
@@ -298,7 +300,6 @@ const filtroFechaDesde = ref('')
 const filtroFechaHasta = ref('')
 const filtroEmpresa = ref('')
 const showAdvancedFilters = ref(false)
-const showColumnSelector = ref(false)
 
 // Columnas disponibles
 const availableColumns = [
@@ -349,7 +350,13 @@ watch(visibleColumns, () => {
   }
 }, { deep: true })
 
-// Computed para contar columnas visibles
+// Selector de columnas (composable compartido)
+const columnVisibility = useColumnVisibilityToggle({
+  columns: availableColumns,
+  visibleColumns,
+  enforceMinVisible: false
+})
+
 const visibleColumnsCount = computed(() => visibleColumns.value.length)
 
 // Funciones de utilidad
@@ -360,16 +367,6 @@ function getColumnLabel(key: string): string {
 
 function isColumnSortable(key: string): boolean {
   return !['anulada', 'factura_impresa', 'remision_facturada', 'confirmado', 'obj_datos_factura'].includes(key)
-}
-
-function selectAllColumns() {
-  const allKeys = availableColumns.map(col => col.key)
-  visibleColumns.value = [...allKeys]
-  columnOrder.value = [...allKeys]
-}
-
-function resetColumns() {
-  resetTablePreferences()
 }
 
 // Funciones para drag and drop

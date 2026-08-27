@@ -79,9 +79,10 @@
             </svg>
             Filtros
           </button>
-          
+
           <button
-            @click="showColumnSelector = !showColumnSelector"
+            @click="columnVisibility.toggleOpen"
+            :data-column-selector-id="columnVisibility.selectorId"
             class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium flex items-center gap-2 relative bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -94,21 +95,21 @@
           </button>
         </div>
       </div>
-      
+
       <!-- Selector de Columnas -->
-      <div v-if="showColumnSelector" class="mt-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600 transition-colors duration-300">
+      <div v-if="columnVisibility.isOpen.value" :data-column-selector-id="columnVisibility.selectorId" class="mt-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600 transition-colors duration-300">
         <div class="flex items-center justify-between mb-3">
           <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 transition-colors duration-300">Seleccionar Columnas</h3>
           <div class="flex items-center gap-2">
             <button
-              @click="selectAllColumns"
+              @click="selectAllTableColumns(availableColumns.map(c => c.key))"
               class="text-xs text-violet-600 hover:text-violet-700 font-medium"
             >
               Mostrar todas
             </button>
             <span class="text-gray-300">|</span>
             <button
-              @click="resetColumns"
+              @click="resetTablePreferences"
               class="text-xs text-gray-600 hover:text-gray-700 font-medium"
             >
               Restaurar predeterminadas
@@ -123,15 +124,15 @@
           >
             <input
               type="checkbox"
-              v-model="visibleColumns"
-              :value="column.key"
+              :checked="visibleColumns.includes(column.key)"
+              @change="columnVisibility.toggleColumnVisibility(column.key)"
               class="w-4 h-4 text-violet-600 border-gray-300 dark:border-gray-600 rounded focus:ring-violet-500"
             />
             <span class="text-sm text-gray-700 dark:text-gray-200 transition-colors duration-300">{{ column.label }}</span>
           </label>
         </div>
       </div>
-      
+
       <!-- Filtros avanzados -->
       <div v-if="showAdvancedFilters" class="mt-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600 transition-colors duration-300">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -515,6 +516,7 @@ import { useToast } from '@/composables/useToast'
 import { NUMBER_LOCALE } from '@/plugins/locale'
 import { formatDate } from '../utils/formatters'
 import { useTablePreferences } from '@/composables/useTablePreferences'
+import { useColumnVisibilityToggle } from '../composables/useColumnVisibilityToggle'
 import LoadingSpinner from './LoadingSpinner.vue'
 import AppDateInput from './AppDateInput.vue'
 
@@ -549,7 +551,6 @@ const filtroFechaDesde = ref('')
 const filtroFechaHasta = ref('')
 const filtroEstado = ref('')
 const showAdvancedFilters = ref(false)
-const showColumnSelector = ref(false)
 
 // Estado de selección
 const selectedDespachos = ref<string[]>([])
@@ -607,6 +608,14 @@ const {
   defaultColumnOrder,
   enableFilters: false,
   enablePageSize: false
+})
+
+// Selector de columnas (composable compartido) - variante "panel": sin concepto de columna fija
+// y sin validación de mínimo visible (preserva el comportamiento actual de esta tabla)
+const columnVisibility = useColumnVisibilityToggle({
+  columns: availableColumns,
+  visibleColumns,
+  enforceMinVisible: false
 })
 
 // Filtrar columnas que ya no existen en availableColumns (limpiar preferencias obsoletas)
@@ -692,16 +701,6 @@ function getColumnLabel(key: string): string {
 function isColumnSortable(key: string): boolean {
   // Columnas no ordenables
   return !['estado', 'orden_compra_cliente'].includes(key)
-}
-
-function selectAllColumns() {
-  const allKeys = availableColumns.map(col => col.key)
-  visibleColumns.value = [...allKeys]
-  columnOrder.value = [...allKeys]
-}
-
-function resetColumns() {
-  resetTablePreferences()
 }
 
 // Funciones para drag and drop

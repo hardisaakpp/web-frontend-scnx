@@ -210,56 +210,14 @@
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6">
           <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Productos del Pedido</h2>
-            <div class="relative">
-              <button
-                @click="showColumnSelector = !showColumnSelector"
-                class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-2 text-gray-700 dark:text-gray-300"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-                </svg>
-                Columnas
-              </button>
-              
-              <!-- Dropdown de selección de columnas -->
-              <div
-                v-if="showColumnSelector"
-                @click.stop
-                class="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 p-3"
-              >
-                <div class="flex items-center justify-between mb-2 px-2">
-                  <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Seleccionar columnas</div>
-                  <div v-if="isSyncing" class="flex items-center gap-1">
-                    <LoadingSpinner layout="inline" size="xs" aria-label="Guardando preferencias" />
-                    <span class="text-xs text-indigo-600 dark:text-indigo-400">Guardando...</span>
-                  </div>
-                </div>
-                <div class="space-y-1 max-h-80 overflow-y-auto">
-                  <label
-                    v-for="column in availableColumnsWithVisibility"
-                    :key="column.key"
-                    :class="[
-                      'flex items-center gap-2 px-2 py-2 rounded transition-colors',
-                      column.fixed 
-                        ? 'cursor-not-allowed opacity-60 bg-gray-50 dark:bg-gray-900' 
-                        : 'hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer'
-                    ]"
-                  >
-                    <input
-                      type="checkbox"
-                      :checked="column.visible"
-                      :disabled="column.fixed"
-                      @change="!column.fixed && toggleColumnVisibility(column.key)"
-                      class="w-4 h-4 text-indigo-600 border-gray-300 dark:border-gray-600 rounded focus:ring-indigo-500 dark:focus:ring-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed"
-                    />
-                    <span class="text-sm text-gray-700 dark:text-gray-300">
-                      {{ column.label }}
-                      <span v-if="column.fixed" class="text-xs text-gray-500 dark:text-gray-500 ml-1">(fija)</span>
-                    </span>
-                  </label>
-                </div>
-              </div>
-            </div>
+            <ColumnSelectorDropdown
+              :columns="availableColumnsWithVisibility"
+              :is-open="columnVisibility.isOpen.value"
+              :selector-id="columnVisibility.selectorId"
+              :is-syncing="isSyncing"
+              @toggle-open="columnVisibility.toggleOpen"
+              @toggle-column="columnVisibility.toggleColumnVisibility"
+            />
           </div>
           <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -452,7 +410,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, type Ref } from '@vue/reactivity'
-import { onMounted, onActivated, onUnmounted, nextTick, Teleport } from '@vue/runtime-core'
+import { onMounted, onActivated, nextTick, Teleport } from '@vue/runtime-core'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
@@ -496,6 +454,7 @@ import { useColumnManagement } from '../composables/useColumnManagement'
 import { usePedidoDetalle } from '../composables/usePedidoDetalle'
 import { useRedistribucion } from '../composables/useRedistribucion'
 import { useProduccionPospuestaActions } from '../composables/useProduccionPospuestaActions'
+import { useColumnVisibilityToggle } from '../composables/useColumnVisibilityToggle'
 // Componentes
 import PedidoHeaderActions from '../components/PedidoHeaderActions.vue'
 import ProduccionPospuestaActions from '../components/ProduccionPospuestaActions.vue'
@@ -505,6 +464,7 @@ import UploadErrorModal from '../components/UploadErrorModal.vue'
 import SimpleConfirmModal from '../components/SimpleConfirmModal.vue'
 import DiferenciaProduccionModal from '../components/DiferenciaProduccionModal.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
+import ColumnSelectorDropdown from '../components/ColumnSelectorDropdown.vue'
 
 // Constantes de configuración
 const SCROLL_DELAY_MS = 100
@@ -556,7 +516,6 @@ const columnasModificadas = ref<Set<string>>(new Set())
 const rolesModificacion = ref<Map<string, string | null>>(new Map())
 
 // Gestión de columnas visibles en la tabla
-const showColumnSelector = ref(false)
 const confirmando = ref(false)
 const confirmandoProduccion = ref(false)
 const cancelandoPorElRayo = ref(false)
@@ -670,6 +629,14 @@ const {
   defaultColumnOrder,
   enableFilters: false,
   enablePageSize: false
+})
+
+// Selector de columnas (dropdown): estado abierto/cerrado, click-outside y toggle de
+// visibilidad compartidos vía useColumnVisibilityToggle (ver ColumnSelectorDropdown.vue)
+const columnVisibility = useColumnVisibilityToggle({
+  columns: availableColumns,
+  visibleColumns,
+  persist: savePreferences
 })
 
 // ⭐ NUEVO: Computed para obtener objetos ColumnConfig ordenados
@@ -1723,9 +1690,6 @@ onMounted(() => {
   // ⭐ Las columnas modificadas se cargan automáticamente en loadPedido()
   // Autofocus opcional: descomentar si quieres que el input tenga foco al cargar
   // pedidoInputRef.value?.focus()
-  
-  // Agregar listener para cerrar dropdown al hacer click fuera
-  document.addEventListener('click', handleClickOutsideColumnSelector)
 })
 
 // ⭐ Si el componente está en un keep-alive, también cargar al activarse
@@ -1812,25 +1776,9 @@ watch(lastNotification, async (notification) => {
   }
 })
 
-// Cleanup: eliminar listener del dropdown cuando el componente se destruye
-// El composable useFileUpload maneja el cleanup del fileInput
-onUnmounted(() => {
-  // Remover listener del dropdown
-  document.removeEventListener('click', handleClickOutsideColumnSelector)
-})
-
-function handleClickOutsideColumnSelector(event: MouseEvent) {
-  if (!showColumnSelector.value) return
-  
-  const target = event.target as HTMLElement
-  // Si el click es dentro del dropdown o del botón, no hacer nada
-  if (target.closest('.relative')) {
-    return
-  }
-  
-  // Cerrar el dropdown
-  showColumnSelector.value = false
-}
+// Cleanup del listener del dropdown de columnas: lo maneja useColumnVisibilityToggle
+// (registra/remueve su propio listener de click-outside internamente).
+// El composable useFileUpload maneja el cleanup del fileInput.
 
 function handleDragStart(event: DragEvent, columnKey: string) {
   const column = availableColumns.find(col => col.key === columnKey)
@@ -1943,40 +1891,6 @@ function handleDrop(event: DragEvent, targetColumnKey: string) {
 function handleDragEnd() {
   draggedColumnKey.value = null
   dragOverColumnKey.value = null
-}
-
-// ⭐ NUEVO: Función para toggle de visibilidad de columnas
-function toggleColumnVisibility(columnKey: string) {
-  // No permitir ocultar columnas fijas
-  const column = availableColumns.find(col => col.key === columnKey)
-  if (column?.fixed) {
-    return
-  }
-  
-  const currentVisible = [...visibleColumns.value]
-  const index = currentVisible.indexOf(columnKey)
-  
-  // Validación: Asegurar que hay al menos una columna visible (excluyendo fijas)
-  const visibleNonFixed = currentVisible.filter(key => {
-    const col = availableColumns.find(c => c.key === key)
-    return !col?.fixed
-  })
-  
-  if (index > -1 && visibleNonFixed.length === 1) {
-    console.warn('⚠️ Debe haber al menos una columna visible. Operación cancelada.')
-    return
-  }
-  
-  if (index > -1) {
-    // Ocultar columna
-    currentVisible.splice(index, 1)
-  } else {
-    // Mostrar columna
-    currentVisible.push(columnKey)
-  }
-  
-  visibleColumns.value = currentVisible
-  savePreferences()
 }
 
 // Funciones de edición ahora están en el composable useColumnManagement

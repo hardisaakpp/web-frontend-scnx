@@ -41,7 +41,8 @@
           </div>
           
           <button
-            @click="showColumnSelector = !showColumnSelector"
+            @click="columnVisibility.toggleOpen"
+            :data-column-selector-id="columnVisibility.selectorId"
             class="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium flex items-center gap-2 relative text-gray-900 dark:text-gray-200 bg-white dark:bg-gray-800"
           >
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -57,19 +58,19 @@
       </div>
       
       <!-- Selector de Columnas -->
-      <div v-if="showColumnSelector" class="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+      <div v-if="columnVisibility.isOpen.value" :data-column-selector-id="columnVisibility.selectorId" class="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
         <div class="flex items-center justify-between mb-3">
           <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300">Seleccionar Columnas</h3>
           <div class="flex items-center gap-2">
             <button
-              @click="selectAllColumns"
+              @click="selectAllTableColumns(allAvailableColumns.map(col => col.key))"
               class="text-xs text-blue-600 hover:text-blue-700 font-medium"
             >
               Mostrar todas
             </button>
             <span class="text-gray-300 dark:text-gray-600">|</span>
             <button
-              @click="resetColumns"
+              @click="resetTablePreferences"
               class="text-xs text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 font-medium"
             >
               Restaurar predeterminadas
@@ -84,8 +85,8 @@
           >
             <input
               type="checkbox"
-              v-model="visibleColumns"
-              :value="column.key"
+              :checked="visibleColumns.includes(column.key)"
+              @change="columnVisibility.toggleColumnVisibility(column.key)"
               class="w-4 h-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500"
             />
             <span class="text-sm text-gray-700 dark:text-gray-300">{{ column.label }}</span>
@@ -179,6 +180,7 @@ import { formatDate } from '../utils/formatters'
 import type { OrdenCompraLog } from '../types'
 import { isSapError, getSapErrorMessage } from '../composables/useSapErrorMessages'
 import { useTablePreferences } from '@/composables/useTablePreferences'
+import { useColumnVisibilityToggle } from '../composables/useColumnVisibilityToggle'
 import LoadingSpinner from './LoadingSpinner.vue'
 
 const props = defineProps<{
@@ -188,7 +190,6 @@ const props = defineProps<{
 }>()
 
 const searchQuery = ref('')
-const showColumnSelector = ref(false)
 
 // Ordenamiento
 const sortField = ref<string | null>(null)
@@ -299,6 +300,14 @@ watch(allAvailableColumns, (newColumns: { key: string; label: string; default: b
   columnOrder.value = [...currentOrder, ...missingInOrder]
 }, { deep: true })
 
+// Selector de columnas: estado abierto/cerrado, click-outside y toggle de visibilidad
+// (lógica compartida vía composable; sin mínimo obligatorio de columnas visibles, igual que hoy)
+const columnVisibility = useColumnVisibilityToggle({
+  columns: allAvailableColumns,
+  visibleColumns,
+  enforceMinVisible: false
+})
+
 // Computed para contar columnas visibles
 const visibleColumnsCount = computed(() => visibleColumns.value.length)
 
@@ -318,17 +327,6 @@ const visibleLogColumns = computed(() => {
 const logColumns = computed(() => {
   return allAvailableColumns.value
 })
-
-// Funciones de utilidad para manejo de columnas
-function selectAllColumns() {
-  const allKeys = allAvailableColumns.value.map((col: { key: string }) => col.key)
-  visibleColumns.value = [...allKeys]
-  columnOrder.value = [...allKeys]
-}
-
-function resetColumns() {
-  resetTablePreferences()
-}
 
 // Funciones para drag and drop
 const draggedColumn = ref<string | null>(null)

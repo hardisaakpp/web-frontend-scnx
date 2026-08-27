@@ -9,60 +9,17 @@
         </div>
       </div>
       
-      <!-- Acciones (Columnas) -->
-      <div class="mt-4 flex flex-col md:flex-row gap-3">
-        <div class="flex items-center gap-2">
-          <button
-            @click="showColumnSelector = !showColumnSelector"
-            class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium flex items-center gap-2 relative bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            Columnas
-            <span v-if="visibleColumnsCount < availableColumns.length" class="ml-1 px-1.5 py-0.5 text-xs bg-emerald-100 text-emerald-700 rounded-full">
-              {{ visibleColumnsCount }}
-            </span>
-          </button>
-        </div>
-      </div>
-      
       <!-- Selector de Columnas -->
-      <div v-if="showColumnSelector" class="mt-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600 transition-colors duration-300">
-        <div class="flex items-center justify-between mb-3">
-          <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 transition-colors duration-300">Seleccionar Columnas</h3>
-          <div class="flex items-center gap-2">
-            <button
-              @click="selectAllColumns"
-              class="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
-            >
-              Mostrar todas
-            </button>
-            <span class="text-gray-300">|</span>
-            <button
-              @click="resetColumns"
-              class="text-xs text-gray-600 hover:text-gray-700 font-medium"
-            >
-              Restaurar predeterminadas
-            </button>
-          </div>
-        </div>
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-          <label
-            v-for="column in availableColumns"
-            :key="column.key"
-            class="flex items-center gap-2 p-2 rounded-lg hover:bg-white dark:hover:bg-gray-600 transition-colors cursor-pointer"
-          >
-            <input
-              type="checkbox"
-              v-model="visibleColumns"
-              :value="column.key"
-              class="w-4 h-4 text-emerald-600 border-gray-300 dark:border-gray-600 rounded focus:ring-emerald-500"
-            />
-            <span class="text-sm text-gray-700 dark:text-gray-200 transition-colors duration-300">{{ column.label }}</span>
-          </label>
-        </div>
+      <div class="mt-4">
+        <ColumnSelectorPanel
+          :columns="columnsWithVisibility"
+          :is-open="columnVisibility.isOpen.value"
+          :selector-id="columnVisibility.selectorId"
+          @toggle-open="columnVisibility.toggleOpen"
+          @toggle-column="columnVisibility.toggleColumnVisibility"
+          @select-all="() => selectAllTableColumns(availableColumns.map(c => c.key))"
+          @reset="resetTablePreferences"
+        />
       </div>
     </div>
 
@@ -405,10 +362,13 @@ import { useRouter } from 'vue-router'
 import type { OrdenCompra, DetalleOC } from '../types'
 import { useToast } from '@/composables/useToast'
 import { useTablePreferences } from '@/composables/useTablePreferences'
+import { useColumnVisibilityToggle } from '../composables/useColumnVisibilityToggle'
+import type { ColumnVisibilityOption } from '../composables/useColumnVisibilityToggle'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import { isTransientClientError } from '../utils/httpErrors'
 import { formatNumber, formatCurrencyWithDecimals, formatDate, formatDateTime } from '../utils/formatters'
 import LoadingSpinner from './LoadingSpinner.vue'
+import ColumnSelectorPanel from './ColumnSelectorPanel.vue'
 
 const props = defineProps<{
   ordenesCompra: OrdenCompra[]
@@ -472,7 +432,6 @@ const loadingDetalles = ref<Record<string, boolean>>({})
 const filtroFechaDesde = ref('')
 const filtroFechaHasta = ref('')
 const filtroNumeroOC = ref('')
-const showColumnSelector = ref(false)
 
 // Columnas disponibles. Por defecto: #, DETALLES, NÚMERO PEDIDO, FECHA CREACIÓN, ESTADO, NÚMERO ODC SAP, RESPUESTA SAP, ACCIONES
 const availableColumns = [
@@ -505,6 +464,18 @@ const {
   enableFilters: false,
   enablePageSize: false
 })
+
+// Selector de columnas (composable compartido). enforceMinVisible: false preserva el
+// comportamiento actual de esta tabla, que no valida un mínimo de columnas visibles.
+const columnVisibility = useColumnVisibilityToggle({
+  columns: availableColumns,
+  visibleColumns,
+  enforceMinVisible: false
+})
+
+const columnsWithVisibility = computed<ColumnVisibilityOption[]>(() =>
+  availableColumns.map(c => ({ key: c.key, label: c.label, visible: visibleColumns.value.includes(c.key) }))
+)
 
 // Watch para limpiar la selección de ODCs que ya no son seleccionables (no pendientes)
 watch(() => props.ordenesCompra, (newOrdenes) => {
@@ -585,16 +556,6 @@ function shouldShowRetryStAction(oc: OrdenCompra): boolean {
   if (typeof oc.mostrar_reintentar_st === 'boolean') return oc.mostrar_reintentar_st
   const estado = (oc.estado || '').toUpperCase()
   return estado === 'ENVIADA' && (oc.st_pendientes_reintento ?? 0) > 0
-}
-
-function selectAllColumns() {
-  const allKeys = availableColumns.map(col => col.key)
-  visibleColumns.value = [...allKeys]
-  columnOrder.value = [...allKeys]
-}
-
-function resetColumns() {
-  resetTablePreferences()
 }
 
 // Funciones para drag and drop
