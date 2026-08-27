@@ -311,24 +311,14 @@
           >
             {{ descartando ? 'Descartando...' : 'Descartar' }}
           </button>
-          <button
-            v-if="puedeRechazarProduccionPospuesta"
-            type="button"
-            @click="handleRechazarProduccionPospuesta"
-            :disabled="cancelandoPedidoPospuesto"
-            class="shrink-0 px-4 py-2 border border-red-300 dark:border-red-600 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {{ cancelandoPedidoPospuesto ? 'Rechazando...' : 'Rechazar' }}
-          </button>
-          <button
-            v-if="puedeAceptarProduccionPospuesta"
-            type="button"
-            @click="handleAceptarProduccionPospuesta"
-            :disabled="aceptandoProduccionPospuesta"
-            class="shrink-0 px-4 py-2 bg-emerald-600 dark:bg-emerald-500 text-white rounded-lg hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {{ aceptandoProduccionPospuesta ? 'Aceptando...' : 'Aceptar' }}
-          </button>
+          <ProduccionPospuestaActions
+            :puede-rechazar="puedeRechazarProduccionPospuesta"
+            :puede-aceptar="puedeAceptarProduccionPospuesta"
+            :rechazando="cancelandoPedidoPospuesto"
+            :aceptando="aceptandoProduccionPospuesta"
+            @rechazar="handleRechazarProduccionPospuesta"
+            @aceptar="handleAceptarProduccionPospuesta"
+          />
           <button
             v-if="esPedidoBorrador"
             type="button"
@@ -724,6 +714,7 @@ import {
   getPendingOdcSapProcessingState,
 } from '../composables/ejecutarProcesoCompletoSap'
 import { useSapProcessProgress } from '../composables/useSapProcessProgress'
+import { useProduccionPospuestaActions } from '../composables/useProduccionPospuestaActions'
 import {
   isTransientClientError,
   SAP_MAY_STILL_PROCESSING_MESSAGE,
@@ -731,6 +722,7 @@ import {
 } from '../utils/httpErrors'
 // Componentes
 import PedidoHeaderActions from '../components/PedidoHeaderActions.vue'
+import ProduccionPospuestaActions from '../components/ProduccionPospuestaActions.vue'
 import PedidoCabecera from '../components/PedidoCabecera.vue'
 import RedistribucionTiendas from '../components/RedistribucionTiendas.vue'
 import UploadErrorModal from '../components/UploadErrorModal.vue'
@@ -800,6 +792,16 @@ async function handleDescartar() {
 }
 
 const pedido = ref<PedidoCompleto | null>(null)
+
+// Req. 1.2: par "Rechazar" / "Aceptar" en Producción Pospuesta (compartido con PedidoDetalleView.vue)
+const {
+  puedeRechazar: puedeRechazarProduccionPospuesta,
+  puedeAceptar: puedeAceptarProduccionPospuesta,
+  rechazando: cancelandoPedidoPospuesto,
+  aceptando: aceptandoProduccionPospuesta,
+  handleRechazar: handleRechazarProduccionPospuesta,
+  handleAceptar: handleAceptarProduccionPospuesta,
+} = useProduccionPospuestaActions(pedido)
 
 // ⭐ HU-08: Estado del modal de exportación MBA
 // ⭐ HU-08: Descarga directa del archivo plano MBA (un clic, sin modal)
@@ -1014,19 +1016,6 @@ const finalizando = ref(false)
 const finalizandoPedido = ref(false)
 const puedeFinalizarPedido = computed(() => pedido.value?.puede_finalizar === true)
 
-// Req. 1.2: botones "Rechazar" / "Aceptar" sobre un pedido "hijo" en Producción Pospuesta
-// (estado_id 22), exclusivos de mabel.view. Mismo par que en PedidoDetalleView.vue.
-const cancelandoPedidoPospuesto = ref(false)
-const aceptandoProduccionPospuesta = ref(false)
-const puedeRechazarProduccionPospuesta = computed(() => {
-  if (!authStore.canViewMabel) return false
-  return pedido.value?.cabecera?.estado_id === 22 && pedido.value?.puede_cancelar_pedido === true
-})
-const puedeAceptarProduccionPospuesta = computed(() => {
-  if (!authStore.canViewMabel) return false
-  return pedido.value?.cabecera?.estado_id === 22 && pedido.value?.puede_aceptar_produccion_pospuesta === true
-})
-
 // ⭐ Botón "Enviar ODC a SAP" (proceso completo: redistribución + ODC + SAP)
 const enviandoOdcSap = ref(false)
 /** La visibilidad depende de la vista; la habilitación del reintento depende del flag backend. */
@@ -1213,65 +1202,6 @@ async function handleFinalizado() {
     }
   } finally {
     finalizando.value = false
-  }
-}
-
-// Req. 1.2: rechazar un pedido "hijo" en Producción Pospuesta. Reutiliza el mismo
-// endpoint /cancelar; el backend distingue el destino (RECHAZADO en vez de
-// CANCELADO) según el estado de origen -- ver pedidos_cancelar_endpoints.py.
-async function handleRechazarProduccionPospuesta() {
-  const pedidoId = pedido.value?.cabecera?.pedido_id
-  if (!pedidoId) return
-  const confirmado = window.confirm(
-    `¿Estás seguro de que deseas rechazar este pedido?\n\n` +
-    `Pedido: ${pedido.value?.cabecera?.numero_pedido}\n` +
-    `El pedido cambiará a estado "Rechazado".`
-  )
-  if (!confirmado) return
-
-  cancelandoPedidoPospuesto.value = true
-  toast.info('Rechazando pedido...', 'Por favor espera')
-  try {
-    await mba3ConsultasService.cancelarPedido(pedidoId)
-    toast.success('Pedido rechazado', 'El pedido ha sido rechazado exitosamente')
-    if (pedido.value?.cabecera) {
-      pedido.value.cabecera.estado = 'RECHAZADO'
-      pedido.value.cabecera.estado_id = 24
-    }
-  } catch (e: any) {
-    const msg = extractErrorMessage(e)
-    toast.error('Error al rechazar', msg || 'No se pudo rechazar el pedido')
-  } finally {
-    cancelandoPedidoPospuesto.value = false
-  }
-}
-
-// Req. 1.2: aceptar la diferencia pospuesta, enviándola directo a la cola de
-// redistribución (LISTO PARA REDISTRIBUCION, 25).
-async function handleAceptarProduccionPospuesta() {
-  const pedidoId = pedido.value?.cabecera?.pedido_id
-  if (!pedidoId) return
-  const confirmado = window.confirm(
-    `¿Estás seguro de que deseas aceptar este pedido?\n\n` +
-    `Pedido: ${pedido.value?.cabecera?.numero_pedido}\n` +
-    `El pedido pasará a "Listo para Redistribución".`
-  )
-  if (!confirmado) return
-
-  aceptandoProduccionPospuesta.value = true
-  toast.info('Aceptando pedido...', 'Por favor espera')
-  try {
-    await mba3ConsultasService.aceptarProduccionPospuesta(pedidoId)
-    toast.success('Pedido aceptado', 'El pedido está listo para redistribución')
-    if (pedido.value?.cabecera) {
-      pedido.value.cabecera.estado = 'LISTO PARA REDISTRIBUCION'
-      pedido.value.cabecera.estado_id = 25
-    }
-  } catch (e: any) {
-    const msg = extractErrorMessage(e)
-    toast.error('Error al aceptar', msg || 'No se pudo aceptar el pedido')
-  } finally {
-    aceptandoProduccionPospuesta.value = false
   }
 }
 
