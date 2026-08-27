@@ -291,12 +291,14 @@ const manejarErrorSubmit = (e: any) => {
   // procesado. Se evita el mensaje de "intenta de nuevo" para no inducir un reintento.
   if (e?.code === 'ECONNABORTED') {
     errorSubmit.value =
-      'La solicitud está tardando más de lo esperado. Es posible que se haya creado correctamente: revisa el Historial antes de volver a enviarla.'
+      'La solicitud está tardando más de lo esperado. Revisa el Historial: si no aparece, guárdala como Borrador y envíala a aprobación más tarde.'
     return
   }
   if (status === 400) errorSubmit.value = msg ?? 'Datos inválidos. Revisa el formulario.'
   else if (status === 404) errorSubmit.value = 'No se encontró el recurso.'
   else if (status === 409) errorSubmit.value = msg ?? 'La solicitud ya no está en Borrador.'
+  // 503: SAP no respondió. El backend manda un mensaje explicativo; se muestra tal cual.
+  else if (status === 503) errorSubmit.value = msg ?? 'SAP no está disponible en este momento. Intenta más tarde.'
   else errorSubmit.value = 'Ocurrió un error al guardar. Intenta de nuevo.'
 }
 
@@ -490,5 +492,19 @@ const guardarEdicion = async () => {
       mensaje="Los productos agregados se eliminarán, ya que el stock disponible corresponde a la tienda anterior. ¿Desea continuar?"
       texto-confirmar="Cambiar" variante="peligro" @confirmar="aceptarCambioOrigen"
       @cancelar="cancelarCambioOrigen" />
+
+    <!-- Bloquea toda la pantalla mientras se guarda: la validación con SAP tarda y
+         sin esto el usuario puede seguir editando el detalle que ya se envió. -->
+    <div v-if="guardando" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+      <div
+        class="relative w-full max-w-sm rounded-2xl bg-white dark:bg-gray-800 p-6 text-center shadow-2xl border border-gray-200 dark:border-gray-700">
+        <div class="mx-auto animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mb-4"></div>
+        <p class="text-sm font-semibold text-gray-900 dark:text-white">Validando stock con SAP…</p>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          Esto puede tardar unos segundos. Por favor, no cierres esta ventana.
+        </p>
+      </div>
+    </div>
   </div>
 </template>
