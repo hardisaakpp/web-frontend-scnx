@@ -22,13 +22,42 @@ const crearRuta = ({ path, name, component, title, permissions, icon }: RutaModu
 })
 
 const routes: RouteRecordRaw[] = [
+  // Dashboard principal: agrupa las tres áreas del módulo
   crearRuta({
     path: '/transferencias-stock',
     name: 'transferencias-stock-dashboard',
-    component: () => import('./views/DashboardView.vue'),
+    component: () => import('./views/DashboardPrincipalView.vue'),
     title: 'Transferencia de Stock',
-    icon: 'TruckIcon',
-    permissions: ['transferenciadirecta.view'],
+    icon: 'Forklift',
+    permissions: [
+      'transferenciadirecta.mod_transferencias',
+      'transferenciadirecta.mod_transitorias',
+      'transferenciadirecta.mod_administracion',
+    ],
+  }),
+  // Submenú: transferencias (envíos)
+  crearRuta({
+    path: '/transferencias-stock/transferencias',
+    name: 'transferencias-stock-transferencias',
+    component: () => import('./views/DashboardView.vue'),
+    title: 'Transferencias',
+    permissions: ['transferenciadirecta.mod_transferencias'],
+  }),
+  // Submenú: gestión de transitorias (recepciones)
+  crearRuta({
+    path: '/transferencias-stock/transitorias',
+    name: 'transferencias-stock-transitorias',
+    component: () => import('./views/TransitoriasDashboardView.vue'),
+    title: 'Gestión de Transitorias',
+    permissions: ['transferenciadirecta.mod_transitorias'],
+  }),
+  // Submenú: configuración
+  crearRuta({
+    path: '/transferencias-stock/configuracion',
+    name: 'transferencias-stock-configuracion',
+    component: () => import('./views/ConfiguracionDashboardView.vue'),
+    title: 'Configuración',
+    permissions: ['transferenciadirecta.mod_administracion'],
   }),
   crearRuta({
     path: '/transferencias-stock/crearsolicitud',

@@ -106,7 +106,7 @@ const rechazar = async (motivoRechazo: string) => {
 <template>
   <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
     <div class="flex items-center gap-4">
-      <router-link to="/transferencias-stock"
+      <router-link to="/transferencias-stock/transferencias"
         class="p-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 bg-white dark:bg-gray-900 shadow-sm transition-colors">
         <ArrowLeftIcon class="w-5 h-5" />
       </router-link>
