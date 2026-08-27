@@ -364,6 +364,7 @@ import { useToast } from '@/composables/useToast'
 import { useTablePreferences } from '@/composables/useTablePreferences'
 import { useColumnVisibilityToggle } from '../composables/useColumnVisibilityToggle'
 import type { ColumnVisibilityOption } from '../composables/useColumnVisibilityToggle'
+import { useColumnDragAndDrop } from '../composables/useColumnDragAndDrop'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import { isTransientClientError } from '../utils/httpErrors'
 import { formatNumber, formatCurrencyWithDecimals, formatDate, formatDateTime } from '../utils/formatters'
@@ -558,60 +559,17 @@ function shouldShowRetryStAction(oc: OrdenCompra): boolean {
   return estado === 'ENVIADA' && (oc.st_pendientes_reintento ?? 0) > 0
 }
 
-// Funciones para drag and drop
-const draggedColumn = ref<string | null>(null)
-const dragOverColumn = ref<string | null>(null)
-
-function handleDragStart(event: DragEvent, columnKey: string) {
-  draggedColumn.value = columnKey
-  if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = 'move'
-    event.dataTransfer.setData('text/plain', columnKey)
-  }
-}
-
-function handleDragOver(event: DragEvent, columnKey: string) {
-  event.preventDefault()
-  if (event.dataTransfer) {
-    event.dataTransfer.dropEffect = 'move'
-  }
-  dragOverColumn.value = columnKey
-}
-
-function handleDragLeave() {
-  dragOverColumn.value = null
-}
-
-function handleDrop(event: DragEvent, targetColumnKey: string) {
-  event.preventDefault()
-  
-  if (!draggedColumn.value || draggedColumn.value === targetColumnKey) {
-    draggedColumn.value = null
-    dragOverColumn.value = null
-    return
-  }
-  
-  // Reordenar columnas
-  const currentOrder = [...columnOrder.value]
-  const draggedIndex = currentOrder.indexOf(draggedColumn.value)
-  const targetIndex = currentOrder.indexOf(targetColumnKey)
-  
-  if (draggedIndex !== -1 && targetIndex !== -1) {
-    // Remover la columna arrastrada
-    currentOrder.splice(draggedIndex, 1)
-    // Insertar en la nueva posición
-    currentOrder.splice(targetIndex, 0, draggedColumn.value)
-    columnOrder.value = currentOrder
-  }
-  
-  draggedColumn.value = null
-  dragOverColumn.value = null
-}
-
-function handleDragEnd() {
-  draggedColumn.value = null
-  dragOverColumn.value = null
-}
+// Drag and drop de columnas (composable compartido, variante simple: sin columnas fijas,
+// sin persist explícito porque el watcher interno de useTablePreferences ya persiste columnOrder)
+const {
+  draggedColumn,
+  dragOverColumn,
+  handleDragStart,
+  handleDragOver,
+  handleDragLeave,
+  handleDrop,
+  handleDragEnd
+} = useColumnDragAndDrop({ columnOrder })
 
 // Ordenamiento
 const sortField = ref<string | null>(null)

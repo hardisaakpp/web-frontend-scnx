@@ -455,6 +455,7 @@ import { usePedidoDetalle } from '../composables/usePedidoDetalle'
 import { useRedistribucion } from '../composables/useRedistribucion'
 import { useProduccionPospuestaActions } from '../composables/useProduccionPospuestaActions'
 import { useColumnVisibilityToggle } from '../composables/useColumnVisibilityToggle'
+import { useColumnDragAndDrop } from '../composables/useColumnDragAndDrop'
 // Componentes
 import PedidoHeaderActions from '../components/PedidoHeaderActions.vue'
 import ProduccionPospuestaActions from '../components/ProduccionPospuestaActions.vue'
@@ -524,8 +525,6 @@ const descargandoCsv = ref(false)
 const descargandoExcelOriginal = ref(false)
 const tieneArchivoOriginal = ref(false)
 const infoArchivoOriginal = ref<InfoArchivoPlantillaResponse | null>(null)
-const draggedColumnKey = ref<string | null>(null)
-const dragOverColumnKey = ref<string | null>(null)
 
 // La interfaz EditingCell ahora está importada desde composables/useColumnManagement
 
@@ -636,6 +635,39 @@ const {
 const columnVisibility = useColumnVisibilityToggle({
   columns: availableColumns,
   visibleColumns,
+  persist: savePreferences
+})
+
+// Drag & drop de columnas (reordenar el <th>): variante "con columnas fijas" del composable
+// compartido useColumnDragAndDrop (ver JSDoc del composable) -- columnas `fixed` no se pueden
+// arrastrar ni recibir el drop, columnOrder incluye columnas ocultas (se valida contra el
+// subconjunto visible orderedVisibleColumnKeys), el índice de inserción tras el drop se ajusta
+// para que la columna arrastrada termine en la posición exacta del target, se fuerza que
+// 'numero' quede siempre primero tras reordenar, y se evita el parpadeo visual en dragover/dragleave.
+function pinNumeroFirst(order: string[]) {
+  const numeroIndex = order.indexOf('numero')
+  if (numeroIndex > 0) {
+    order.splice(numeroIndex, 1)
+    order.unshift('numero')
+  }
+  return order
+}
+
+const {
+  draggedColumn: draggedColumnKey,
+  dragOverColumn: dragOverColumnKey,
+  handleDragStart,
+  handleDragOver,
+  handleDragLeave,
+  handleDrop,
+  handleDragEnd
+} = useColumnDragAndDrop({
+  columnOrder,
+  visibleOrder: orderedVisibleColumnKeys,
+  isColumnFixed: (key) => availableColumns.find(col => col.key === key)?.fixed ?? false,
+  adjustTargetIndexAfterRemoval: true,
+  postReorder: pinNumeroFirst,
+  avoidHoverFlicker: true,
   persist: savePreferences
 })
 
@@ -1780,119 +1812,7 @@ watch(lastNotification, async (notification) => {
 // (registra/remueve su propio listener de click-outside internamente).
 // El composable useFileUpload maneja el cleanup del fileInput.
 
-function handleDragStart(event: DragEvent, columnKey: string) {
-  const column = availableColumns.find(col => col.key === columnKey)
-  if (column?.fixed) {
-    return
-  }
-  
-  draggedColumnKey.value = columnKey
-  if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = 'move'
-    event.dataTransfer.setData('text/plain', columnKey)
-  }
-}
-
-function handleDragOver(event: DragEvent, columnKey: string) {
-  event.preventDefault()
-  if (event.dataTransfer) {
-    event.dataTransfer.dropEffect = 'move'
-  }
-  
-  if (draggedColumnKey.value !== null && draggedColumnKey.value !== columnKey) {
-    dragOverColumnKey.value = columnKey
-  }
-  else {
-    dragOverColumnKey.value = null
-  }
-}
-
-function handleDragLeave() {
-  // No limpiar dragOverColumnKey aquí porque puede causar parpadeo
-  // Se limpiará en handleDrop o handleDragEnd
-}
-
-// ⭐ ACTUALIZAR: handleDrop para usar columnKey en lugar de índices
-function handleDrop(event: DragEvent, targetColumnKey: string) {
-  event.preventDefault()
-  
-  if (!draggedColumnKey.value || draggedColumnKey.value === targetColumnKey) {
-    draggedColumnKey.value = null
-    dragOverColumnKey.value = null
-    return
-  }
-  
-  // No permitir arrastrar columnas fijas
-  const draggedColumn = availableColumns.find(col => col.key === draggedColumnKey.value)
-  if (draggedColumn?.fixed) {
-    draggedColumnKey.value = null
-    dragOverColumnKey.value = null
-    return
-  }
-  
-  // No permitir colocar columnas antes de columnas fijas
-  const targetColumn = availableColumns.find(col => col.key === targetColumnKey)
-  if (targetColumn?.fixed) {
-    draggedColumnKey.value = null
-    dragOverColumnKey.value = null
-    return
-  }
-  
-  // Reordenar usando el composable
-  // Preservar el orden completo (incluyendo columnas no visibles)
-  const fullOrder = [...columnOrder.value]
-  const visibleOrder = [...orderedVisibleColumnKeys.value]
-  
-  const draggedIndex = visibleOrder.indexOf(draggedColumnKey.value)
-  const targetIndex = visibleOrder.indexOf(targetColumnKey)
-  
-  if (draggedIndex === -1 || targetIndex === -1) {
-    draggedColumnKey.value = null
-    dragOverColumnKey.value = null
-    return
-  }
-  
-  // Obtener índices en el orden completo
-  const draggedIndexInFull = fullOrder.indexOf(draggedColumnKey.value)
-  const targetIndexInFull = fullOrder.indexOf(targetColumnKey)
-  
-  if (draggedIndexInFull === -1 || targetIndexInFull === -1) {
-    draggedColumnKey.value = null
-    dragOverColumnKey.value = null
-    return
-  }
-  
-  // Remover columna arrastrada del orden completo
-  fullOrder.splice(draggedIndexInFull, 1)
-  
-  // Insertar en nueva posición en el orden completo
-  // Si el índice objetivo es mayor que el arrastrado, ajustar porque ya removimos un elemento
-  const adjustedTargetIndex = targetIndexInFull > draggedIndexInFull ? targetIndexInFull - 1 : targetIndexInFull
-  fullOrder.splice(adjustedTargetIndex, 0, draggedColumnKey.value)
-  
-  // Asegurar que 'numero' esté al inicio
-  const numeroIndex = fullOrder.indexOf('numero')
-  if (numeroIndex > 0) {
-    fullOrder.splice(numeroIndex, 1)
-    fullOrder.unshift('numero')
-  }
-  
-  // Actualizar el orden usando el composable
-  columnOrder.value = fullOrder
-  
-  // Guardar preferencias
-  savePreferences()
-  
-  // Limpiar estados
-  draggedColumnKey.value = null
-  dragOverColumnKey.value = null
-}
-
-function handleDragEnd() {
-  draggedColumnKey.value = null
-  dragOverColumnKey.value = null
-}
-
+// Funciones de drag & drop de columnas ahora están en el composable useColumnDragAndDrop
 // Funciones de edición ahora están en el composable useColumnManagement
 </script>
 
