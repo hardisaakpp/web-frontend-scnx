@@ -205,7 +205,7 @@
       <div v-if="puedeConfirmarProduccion" class="flex flex-col items-end gap-1">
         <button
           @click="$emit('confirmar-produccion')"
-          :disabled="loading || !pedido || confirmandoProduccion || confirmarProduccionDeshabilitado"
+          :disabled="loading || !pedido || confirmandoProduccion"
           class="px-4 py-2 bg-amber-600 dark:bg-amber-500 text-white rounded-lg hover:bg-amber-700 dark:hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-medium"
           title="Confirma el pedido desde Producción y notifica a Administración El Rayo"
         >
@@ -215,9 +215,6 @@
           <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Confirmando producción" />
           {{ confirmandoProduccion ? 'Confirmando...' : 'Confirmar Producción' }}
         </button>
-        <p v-if="confirmarProduccionDeshabilitado && !confirmandoProduccion" class="text-xs text-amber-600 dark:text-amber-400">
-          Seleccione una fecha de entrega para confirmar producción
-        </p>
       </div>
       <slot name="toolbar-extra" />
     </div>
@@ -283,8 +280,6 @@ const props = defineProps<{
   puedeConfirmarProduccion?: boolean
   /** Confirmación de producción en curso (deshabilita el botón mientras se envía) */
   confirmandoProduccion?: boolean
-  /** Deshabilita "Confirmar Producción" mientras la fecha de entrega sea INMEDIATO (sin fecha real seleccionada) */
-  confirmarProduccionDeshabilitado?: boolean
 }>()
 
 const emit = defineEmits<{

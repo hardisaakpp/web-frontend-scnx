@@ -123,7 +123,6 @@
         :puede-generar-txt-mba3="puedeGenerarTxtMba3"
         :tiene-archivo-original="false"
         :puede-confirmar-produccion="puedeConfirmarProduccion"
-        :confirmar-produccion-deshabilitado="confirmarProduccionDeshabilitadoPorFechaEntrega"
         :confirmando-produccion="confirmandoProduccion"
         @cargar-plantillas="goToCargarPlantillas"
         @generar-oc="handleGenerarOCDesdePedido"
@@ -913,14 +912,6 @@ const puedeConfirmarProduccion = computed(() => {
   const estadoIdRaw = pedido.value?.cabecera?.estado_id
   const estadoId = estadoIdRaw != null ? Number(estadoIdRaw) : null
   return estadoId === 3
-})
-
-// "Confirmar Producción" requiere una fecha de entrega real. Si mabel.view eligió
-// INMEDIATO al enviar el pedido, Producción ve la fecha vacía y debe seleccionar una
-// fecha real antes de poder confirmar.
-const confirmarProduccionDeshabilitadoPorFechaEntrega = computed(() => {
-  const fechaEntrega = pedido.value?.cabecera?.fecha_entrega?.trim()?.toUpperCase()
-  return fechaEntrega === 'INMEDIATO'
 })
 
 // Fecha Facturación (req. 1.8): exclusiva de odcsap.view, solo en Confirmado y Enviado (12),
