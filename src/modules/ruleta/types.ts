@@ -432,6 +432,7 @@ export interface GiroFilters {
   fechaInicio?: string
   fechaFin?: string
   estado?: EstadoPremioFiltro
+  tienda?: string
 }
 
 export interface DistribucionSegmentos {

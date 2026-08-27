@@ -20,6 +20,7 @@ const filtros = reactive({
   premioNombre: '',
   segmento: '' as SegmentoCliente | '',
   estado: '' as EstadoPremioFiltro | '',
+  tienda: '',
   fechaInicio: '',
   fechaFin: ''
 })
@@ -34,6 +35,7 @@ const cantidadFiltrosActivos = computed(() => [
   filtrosAplicados.value.premioNombre,
   filtrosAplicados.value.segmento,
   filtrosAplicados.value.estado,
+  filtrosAplicados.value.tienda,
   filtrosAplicados.value.fechaInicio,
   filtrosAplicados.value.fechaFin
 ].filter(Boolean).length)
@@ -47,6 +49,7 @@ function construirFiltrosHistorial(): Omit<GiroFilters, 'campanaId'> {
     premioNombre: filtros.premioNombre.trim() || undefined,
     segmento: filtros.segmento || undefined,
     estado: filtros.estado || undefined,
+    tienda: filtros.tienda || undefined,
     fechaInicio: filtros.fechaInicio || undefined,
     fechaFin: filtros.fechaFin || undefined
   }
@@ -79,6 +82,7 @@ async function limpiarFiltros() {
   filtros.premioNombre = ''
   filtros.segmento = ''
   filtros.estado = ''
+  filtros.tienda = ''
   filtros.fechaInicio = ''
   filtros.fechaFin = ''
   await aplicarFiltros()
@@ -107,7 +111,7 @@ async function cargarDashboard(id: string) {
 }
 
 onMounted(async () => {
-  await store.cargarCampanas()
+  await Promise.all([store.cargarCampanas(), store.cargarTiendas()])
   campanaSeleccionadaId.value = TODOS
   await cargarDashboard(TODOS)
 })
@@ -410,7 +414,7 @@ function fmtFecha(iso: string) {
           </div>
         </div>
 
-        <form class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5" @submit.prevent="aplicarFiltros">
+        <form class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6" @submit.prevent="aplicarFiltros">
           <div class="xl:col-span-2">
             <label for="dash-premio-nombre" class="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-300">Nombre del premio</label>
             <input
@@ -442,6 +446,14 @@ function fmtFecha(iso: string) {
             </select>
           </div>
 
+          <div>
+            <label for="dash-tienda" class="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-300">Tienda</label>
+            <select id="dash-tienda" v-model="filtros.tienda" @change="aplicarFiltros" :disabled="store.loadingTiendas" class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-600 dark:bg-gray-900 dark:text-white disabled:opacity-60">
+              <option value="">Todas las tiendas</option>
+              <option v-for="t in store.tiendas" :key="t.id" :value="t.codigo">{{ t.nombre }}</option>
+            </select>
+          </div>
+
           <div class="grid grid-cols-2 gap-2 xl:col-span-1">
             <div>
               <label for="dash-fecha-inicio" class="mb-1.5 block text-xs font-medium text-gray-600 dark:text-gray-300">Desde</label>
@@ -453,11 +465,11 @@ function fmtFecha(iso: string) {
             </div>
           </div>
 
-          <p v-if="fechaInvalida" class="text-xs text-red-600 md:col-span-2 xl:col-span-5" role="alert">
+          <p v-if="fechaInvalida" class="text-xs text-red-600 md:col-span-2 xl:col-span-6" role="alert">
             La fecha inicial no puede ser posterior a la fecha final.
           </p>
 
-          <div class="flex flex-wrap items-center gap-2 md:col-span-2 xl:col-span-5">
+          <div class="flex flex-wrap items-center gap-2 md:col-span-2 xl:col-span-6">
             <button type="submit" :disabled="store.loadingHistorial || fechaInvalida" title="Aplica de inmediato, sin esperar la búsqueda automática" class="inline-flex items-center justify-center rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus:ring-offset-gray-800">
               Aplicar ahora
             </button>
@@ -524,6 +536,7 @@ function fmtFecha(iso: string) {
                 <th class="px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Cédula</th>
                 <th class="px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider hidden sm:table-cell">Grupo</th>
                 <th class="px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider hidden md:table-cell">Enrolador</th>
+                <th class="px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider hidden md:table-cell">Tienda</th>
                 <th class="px-3 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">Premio</th>
                 <th class="px-3 py-3 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider">¿Ganó?</th>
                 <th class="px-3 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider hidden sm:table-cell">Código</th>
@@ -548,6 +561,9 @@ function fmtFecha(iso: string) {
                 </td>
                 <td class="px-3 py-3 text-xs text-gray-600 dark:text-gray-300 hidden md:table-cell">
                   {{ g.enroladorNombre || '—' }}
+                </td>
+                <td class="px-3 py-3 text-xs text-gray-600 dark:text-gray-300 hidden md:table-cell">
+                  {{ g.tiendaCodigo || '—' }}
                 </td>
                 <td class="px-3 py-3 text-xs text-gray-700 dark:text-gray-200">
                   {{ g.premioNombre || '—' }}

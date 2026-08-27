@@ -5,10 +5,26 @@ import type {
   Tienda, SegmentoRuleta, IdentificacionCliente, ResultadoGiro
 } from '../types'
 
+// El ERP guarda la sesión completa como JSON en 'user' (no un string plano en 'userName').
+// Sin este parseo, localStorage.getItem('userName') siempre da null y todos los operadores caen
+// en el mismo sufijo genérico 'u', compartiendo la tienda seleccionada en equipos compartidos y
+// descontando inventario cruzado entre sucursales.
+function obtenerIdentificadorUsuario(): string {
+  try {
+    const raw = localStorage.getItem('user')
+    if (!raw) return 'u'
+    const parsed = JSON.parse(raw) as { username?: string; userName?: string; id?: string | number } | null
+    const identificador = parsed?.username ?? parsed?.userName ?? parsed?.id
+    return identificador != null ? String(identificador) : 'u'
+  } catch {
+    return 'u'
+  }
+}
+
 // Clave de localStorage para persistir tienda seleccionada en el día
 const TIENDA_KEY = () => {
   const hoy = new Date().toISOString().slice(0, 10)
-  const user = localStorage.getItem('userName') ?? 'u'
+  const user = obtenerIdentificadorUsuario()
   return `ruleta.tienda.${hoy}.${user}`
 }
 

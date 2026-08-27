@@ -27,8 +27,12 @@ api.interceptors.request.use((config) => {
 })
 
 // ─── Cliente HTTP para el backend de Ruleta (localhost:5062 en dev) ───────────
+// timeout explícito: ante microcortes o latencia alta en el WiFi de tienda, sin esto la promesa
+// de un giro queda pendiente indefinidamente, el bloque finally nunca corre y la ruleta se
+// congela con girando = true hasta recargar la página.
 const campanaApi = axios.create({
   baseURL: import.meta.env.VITE_RULETA_API_URL || '/ruleta-api',
+  timeout: 10000,
   headers: { 'Content-Type': 'application/json' }
 })
 
@@ -151,6 +155,7 @@ function toGiroParams(filters: GiroFilters): Record<string, string> {
   if (filters.fechaInicio) params.fechaInicio = filters.fechaInicio
   if (filters.fechaFin) params.fechaFin = filters.fechaFin
   if (filters.estado) params.estado = filters.estado
+  if (filters.tienda) params.tienda = filters.tienda
 
   return params
 }
