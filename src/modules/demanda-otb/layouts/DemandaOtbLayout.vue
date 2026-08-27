@@ -2,12 +2,10 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { ArrowLeftIcon } from '@heroicons/vue/24/outline'
-import { NEGOCIOS_OTB } from '../negocios'
 
 const route = useRoute()
 
 const negocioId = computed(() => route.params.negocio as string)
-const negocio = computed(() => NEGOCIOS_OTB.find(n => n.id === negocioId.value) ?? null)
 
 const TABS = [
   { name: 'demanda-otb-catalogo', label: 'Catálogo' },
@@ -25,7 +23,7 @@ const TABS = [
       </router-link>
       <div>
         <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">
-          Demanda OTB — {{ negocio?.nombre ?? negocioId }}
+          Demanda OTB — {{ negocioId }}
         </h1>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Proyección de demanda y OTB por negocio.</p>
       </div>

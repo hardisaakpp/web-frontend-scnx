@@ -1,8 +1,3 @@
-export interface NegocioOtb {
-  id: string
-  nombre: string
-}
-
 export interface DemandaSeriePunto {
   mes: string // YYYY-MM
   historia: number | null
@@ -11,18 +6,19 @@ export interface DemandaSeriePunto {
   min80: number | null
 }
 
-export interface DemandaArticuloProyeccion {
+/** GET /catalogo/{negocio}/sku/{sku} — mismo shape que SkuDetailDto del backend. */
+export interface SkuDetail {
+  negocio: string
   codigo: string
-  descripcion: string
-  genero: string
-  categoria: string
-  confianza: 'ALTA' | 'MEDIA' | 'BAJA'
+  nombre: string
+  nivel1: string | null
+  nivel2: string | null
+  nivel3: string | null
+  categoria: string | null
+  confianza: string | null
   stockInicial: number
-  proximoMesUnidades: number
-  proximoMesEtiqueta: string
-  rango80Min: number
-  rango80Max: number
-  semaforoOtb: string
-  decision: string
+  semaforo: string | null
+  decisionOtb: string | null
+  sugerenciaCompra: number | null
   serie: DemandaSeriePunto[]
 }

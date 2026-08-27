@@ -175,3 +175,8 @@ export const reposicionesApi = createModuleApi(
   ENV.REPOSICIONES_URL,
   { auditHeaders: true },
 )
+
+/** Demanda OTB */
+export const demandaOtbHttp = createModuleApi(
+  ENV.DEMANDA_OTB_URL,
+)
