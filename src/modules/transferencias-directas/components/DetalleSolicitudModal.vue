@@ -158,7 +158,7 @@ const claseTituloResolucion = computed(() =>
           <div>
             <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-2">Productos</h3>
             <div class="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-              <div class="overflow-x-auto overflow-y-auto max-h-[40vh]">
+              <div class="overflow-x-auto overflow-y-auto max-h-[30vh]">
                 <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                   <thead>
                     <tr>
@@ -178,10 +178,10 @@ const claseTituloResolucion = computed(() =>
                   </thead>
                   <tbody class="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
                     <tr v-for="p in detalle.productos" :key="p.itemCode">
-                      <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">{{ p.itemCode }}</td>
-                      <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">{{ p.itemName }}</td>
-                      <td class="px-4 py-2 text-sm text-gray-600 dark:text-gray-300">{{ p.codeBars }}</td>
-                      <td class="px-4 py-2 text-sm text-center text-gray-600 dark:text-gray-300">{{ p.cantidadSolicitada
+                      <td class="px-4 py-2 text-xs text-gray-600 dark:text-gray-300">{{ p.itemCode }}</td>
+                      <td class="px-4 py-2 text-xs text-gray-600 dark:text-gray-300">{{ p.itemName }}</td>
+                      <td class="px-4 py-2 text-xs text-gray-600 dark:text-gray-300">{{ p.codeBars }}</td>
+                      <td class="px-4 py-2 text-xs text-center text-gray-600 dark:text-gray-300">{{ p.cantidadSolicitada
                         }}</td>
                     </tr>
                     <tr v-if="detalle.productos.length === 0">

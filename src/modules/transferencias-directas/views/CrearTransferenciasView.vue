@@ -6,6 +6,7 @@ import FormField from '../components/FormField.vue'
 import { useAuthStore } from '@/stores/auth.js'
 import { CANTIDAD_MAX, CrearSolicitudRequest, DetalleLinea, ProductoBusqueda, SolicitudDetalle, TiendaDestino, type StockFaltante } from '../types.js'
 import { parsearErrorSolicitud } from '../utils/erroresApi'
+import { randomUUID } from '@/utils/uuid'
 import ErrorStockFaltante from '../components/ErrorStockFaltante.vue'
 import almacenesService from '../services/almacenesServices.js'
 import BuscadorProductos from '../components/BuscadorProductos.vue'
@@ -69,6 +70,10 @@ const errorTiendas = ref('')
 const guardando = ref(false)
 const errorSubmit = ref('')
 
+// Clave de idempotencia: se genera UNA vez al abrir el formulario. Si el usuario
+// reintenta (por timeout o error), viaja la misma y el backend no duplica.
+const idempotencyKey = ref(randomUUID())
+
 const nombreTiendaUsuario = computed(() => {
   const t = tiendasOrigen.value.find((x) => x.whsCode === codigoTiendaUsuario.value)
   return t?.whsNombre ?? codigoTiendaUsuario.value
@@ -106,6 +111,7 @@ const limpiar = () => {
   limpiarErrores()
   errorSubmit.value = ''
   faltantesSubmit.value = []
+  idempotencyKey.value = randomUUID() // formulario nuevo ⇒ clave nueva
 }
 
 const destinoSeleccionado = ref('')
@@ -217,6 +223,7 @@ const construirPayload = (enviarAAprobacion: boolean): CrearSolicitudRequest => 
   justificacion: form.justificacion.trim() || '',
   guiaEnvio: form.guiaEnvio.trim().toUpperCase() || '',
   enviarAAprobacion,
+  idempotencyKey: idempotencyKey.value,
   detalles: productos.value.map((p) => ({
     itemCode: p.itemCode,
     codeBars: p.codeBars,
@@ -257,16 +264,18 @@ const validar = (): boolean => {
 
 const enviar = async (enviarAAprobacion: boolean) => {
   if (!validar()) return
+  if (guardando.value) return // evita un segundo envío mientras el primero está en curso
   guardando.value = true
   errorSubmit.value = ''
   faltantesSubmit.value = []
   try {
     await transferenciasService.crear(construirPayload(enviarAAprobacion))
+    // No se reactiva el botón: la vista se desmonta al navegar. Reactivarlo aquí
+    // dejaba una ventana en la que se podía volver a enviar (causó una duplicación).
     router.push({ name: 'transferencias-stock-historial' })
   } catch (e: any) {
     manejarErrorSubmit(e)
-  } finally {
-    guardando.value = false
+    guardando.value = false // solo se reactiva si hubo error y el usuario debe corregir
   }
 }
 
@@ -278,6 +287,13 @@ const manejarErrorSubmit = (e: any) => {
   faltantesSubmit.value = faltantes ?? []
   const status = e?.response?.status
   const msg = e?.response?.data?.error ?? e?.response?.data?.mensaje
+  // Timeout: la petición se cortó sin respuesta, pero el backend pudo haberla
+  // procesado. Se evita el mensaje de "intenta de nuevo" para no inducir un reintento.
+  if (e?.code === 'ECONNABORTED') {
+    errorSubmit.value =
+      'La solicitud está tardando más de lo esperado. Es posible que se haya creado correctamente: revisa el Historial antes de volver a enviarla.'
+    return
+  }
   if (status === 400) errorSubmit.value = msg ?? 'Datos inválidos. Revisa el formulario.'
   else if (status === 404) errorSubmit.value = 'No se encontró el recurso.'
   else if (status === 409) errorSubmit.value = msg ?? 'La solicitud ya no está en Borrador.'
