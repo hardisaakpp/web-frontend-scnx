@@ -6,6 +6,13 @@ Registro cronológico de cambios realizados al módulo `src/modules/inventario` 
 
 ---
 
+## 2026-08-28 (2) — Historial de Planes ejecutados
+
+- **Nueva vista `HistorialPlanesView.vue`** (`/inventario/planes/historial`): "Planes Pendientes" filtra a `status=Planned` y los ejecutados desaparecían de esa lista sin forma de consultarlos — el plan en sí **no se borra** al ejecutarse (solo pasa a `Executed`, ver backend), así que no hacía falta ninguna tabla de auditoría nueva, solo exponer el filtro correcto.
+- Filtro "Desde" con default de **últimos 15 días** (mismo estándar que "Historial de Mis Conteos"), búsqueda + orden por columna (mismo patrón que "Planes Pendientes"), nombre de quién ejecutó resuelto vía `resolveUserNames`, link directo a la sesión de inventario que generó cada plan.
+- Botón "Ver historial" agregado en `PlanesInventarioView.vue`. `inventarioPlanesService.getPlanes()` acepta `since` opcional.
+- Estado: **commiteado** en `fix/inventarios-lilipink` (`9a1c3ed`), aún sin pushear. Ver `api-inventario/docs/CHANGELOG_INVENTARIO.md` (2026-08-28, "GetAllAsync de planes acepta filtro 'since'") para el backend.
+
 ## 2026-08-28 — Nombre en vez de GUID, "No realizado" visible al usuario, texto (tuya)/(tuyos)
 
 - **`MisInventariosView.vue`**: "Generada por" mostraba el GUID crudo (`s.createdByUserId`) en vez del nombre — el backend ya manda `createdByUserName` en el DTO (no hacía falta resolver por endpoint de usuarios, como sí necesita caja-chica). Ahora usa `s.createdByUserName || s.createdByUserId`.
