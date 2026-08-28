@@ -80,7 +80,7 @@
                 <router-link
                   v-if="plan.inventorySessionId"
                   class="link"
-                  :to="{ name: 'inventario-sesion-detalle', params: { sessionId: plan.inventorySessionId } }"
+                  :to="{ name: 'inventario-supervisor-resumen', params: { sessionId: plan.inventorySessionId } }"
                 >
                   Ver sesión
                 </router-link>
