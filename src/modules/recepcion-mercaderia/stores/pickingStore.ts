@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import recepcionApi from '../services/recepcionApi'
+import { backendErrorMessage } from '../utils/apiErrorMapper'
 import type {
   ConfirmTransferRequest,
   Difference,
@@ -32,39 +33,18 @@ function isSapFiveHundred(err: unknown): boolean {
 }
 
 /**
- * Two distinct backend error shapes reach here: ReceptionExceptionHandler.cs's generic unhandled-
- * exception replies { error: message } (real/actionable for 400/403/404; always the same
- * non-actionable "An unexpected error occurred." for a 500, so that case falls back below instead
- * of parroting the generic English string). But confirm() specifically can also return 422 with
- * ConfirmReceptionTransferResult's own shape { success, sapDocEntry, sapDocNum, message } — e.g.
- * the real SAP/middleware rejection detail (ConfirmReceptionTransferCommand ->
- * MiddlewareSapHttpClient's StockTransferResult.Message). Check both field names, error takes
- * precedence since the exception-handler shape is more common across this store's other actions.
- */
-function backendErrorMessage(err: unknown, fallback: string): string {
-  const response = (err as { response?: { status?: number; data?: { error?: unknown; message?: unknown } } })?.response
-  if (response?.status === 500) return fallback
-  const message = response?.data?.error ?? response?.data?.message
-  return typeof message === 'string' && message.trim() !== '' ? message : fallback
-}
-
-/**
- * In-progress list, transfer detail/scan/confirm/differences/GLPI/report. confirm()'s SAP step
- * goes through api-middleware-sap's /stock-transfers/based-on-document — see confirm() below.
+ * Transfer detail: scan/confirm/differences/GLPI/report. confirm()'s SAP step goes through
+ * api-middleware-sap's /stock-transfers/based-on-document — see confirm() below. The "En Curso"
+ * list (fetch/paginate) used to live here too; it's now inProgressStore.ts — a distinct concern
+ * consumed only by InProgressView.vue, split out per the module's SOLID/SRP audit.
  */
 export const usePickingStore = defineStore('recepcionPicking', () => {
-  const transfers = ref<ReceptionTransfer[]>([])
-  // Real server-side pagination (verified InProgressTransfersController: pageNumber/pageSize
-  // only, NO filter query params — the view's search box can only filter the loaded page).
-  const page = ref(1)
-  const pageSize = ref(20)
-  const totalCount = ref(0)
   const currentTransfer = ref<ReceptionTransfer | null>(null)
   const status = ref<FlowStatus>('ready')
-  // Split by concern: fetchError covers the two read/load actions (fetchInProgress, fetchTransfer)
-  // and gates the inline "couldn't load" banner; actionError covers the 7 mutating actions taken on
-  // an already-loaded transfer and feeds the ErrorDialog modal alongside sapErrorMessage. Kept apart
-  // so a fetch failure can never accidentally pop the action-error modal (or vice versa).
+  // Split by concern: fetchError covers fetchTransfer and gates the inline "couldn't load" banner;
+  // actionError covers the 7 mutating actions taken on an already-loaded transfer and feeds the
+  // ErrorDialog modal alongside sapErrorMessage. Kept apart so a fetch failure can never
+  // accidentally pop the action-error modal (or vice versa).
   const fetchError = ref<string | null>(null)
   const actionError = ref<string | null>(null)
   const sapErrorMessage = ref<string | null>(null)
@@ -92,43 +72,6 @@ export const usePickingStore = defineStore('recepcionPicking', () => {
   /** Cantidad/Escaneados/Diferencia are computed client-side, never trusted from the API. */
   function lineDiferencia(line: ReceptionLine): number {
     return line.quantity - line.scanned
-  }
-
-  async function fetchInProgress(): Promise<void> {
-    status.value = 'loading'
-    fetchError.value = null
-    try {
-      const result = await recepcionApi.getInProgressTransfers({ pageNumber: page.value, pageSize: pageSize.value })
-      transfers.value = result.items
-      totalCount.value = result.totalCount
-      status.value = 'ready'
-    } catch (err) {
-      console.error('fetchInProgress failed', err)
-      fetchError.value = backendErrorMessage(err, 'No se pudo cargar la lista de transferencias en curso.')
-      status.value = 'error'
-    }
-  }
-
-  function setPage(newPage: number): void {
-    page.value = newPage
-    fetchInProgress()
-  }
-
-  function setPageSize(newSize: number): void {
-    pageSize.value = newSize
-    page.value = 1
-    fetchInProgress()
-  }
-
-  /**
-   * The store is a Pinia singleton and outlives InProgressView — without this, leaving the view
-   * on e.g. page 6 and coming back would silently re-fetch page 6 again instead of starting
-   * fresh, even though nothing on screen suggests the list remembers where you left it. Views
-   * should call this instead of fetchInProgress() directly in onMounted.
-   */
-  function resetInProgressAndFetch(): void {
-    page.value = 1
-    fetchInProgress()
   }
 
   async function fetchTransfer(transferId: number): Promise<void> {
@@ -420,10 +363,6 @@ export const usePickingStore = defineStore('recepcionPicking', () => {
   }
 
   return {
-    transfers,
-    page,
-    pageSize,
-    totalCount,
     currentTransfer,
     status,
     fetchError,
@@ -433,10 +372,6 @@ export const usePickingStore = defineStore('recepcionPicking', () => {
     isSubmitting,
     hasRecounted,
     lineDiferencia,
-    fetchInProgress,
-    resetInProgressAndFetch,
-    setPage,
-    setPageSize,
     fetchTransfer,
     scan,
     confirm,

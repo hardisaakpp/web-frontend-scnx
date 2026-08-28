@@ -76,6 +76,7 @@ const activeScope = computed(() =>
         setTransferNumberQuery: store.setAllTransferNumberQuery,
         updateGlpiTicket: store.updateGlpiTicketAdmin,
         downloadDifferencesReport: store.downloadDifferencesReportAdmin,
+        exportCsv: store.exportAllHistoryCsv,
         applyFilters: applyAllFilters,
       }
     : {
@@ -91,6 +92,7 @@ const activeScope = computed(() =>
         setTransferNumberQuery: store.setTransferNumberQuery,
         updateGlpiTicket: store.updateGlpiTicket,
         downloadDifferencesReport: store.downloadDifferencesReport,
+        exportCsv: store.exportHistoryCsv,
         applyFilters: applyOwnFilters,
       }
 )
@@ -164,7 +166,7 @@ async function saveGlpi(transferId: number): Promise<void> {
 // through the shared axios instance and its interceptors, and the browser download is
 // triggered from the resulting Blob.
 async function handleExportCsv(): Promise<void> {
-  const blob = await store.exportAllHistoryCsv()
+  const blob = await activeScope.value.exportCsv()
   if (!blob) return
   triggerBlobDownload(blob, 'historial-recepcion.xlsx')
 }
@@ -237,6 +239,15 @@ async function handleExportCsv(): Promise<void> {
             @click="applyOwnFilters"
           >
             Buscar
+          </button>
+          <button
+            type="button"
+            data-testid="export-csv-btn"
+            class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800 transition-colors shadow-sm"
+            @click="handleExportCsv"
+          >
+            <DocumentArrowDownIcon class="w-4 h-4" />
+            Exportar Excel
           </button>
         </div>
 

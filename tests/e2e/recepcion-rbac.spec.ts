@@ -24,7 +24,7 @@ const adminRows: MockHistoryRow[] = [
 ]
 
 test.describe('Recepción — RBAC historial admin (history.viewall)', () => {
-  test('usuario sin history.viewall ve la vista de su propio almacén, sin N° transferencia ni export', async ({ page }) => {
+  test('usuario sin history.viewall ve la vista de su propio almacén, con export propio (GET history/export, sin permiso especial) pero sin N° transferencia consolidado', async ({ page }) => {
     await installRecepcionAuth(page, { roles: ['User'], permissions: ['recepcion.history.view'] })
     await installHistoryMocks(page, { rows: [], allRows: adminRows })
 
@@ -34,7 +34,7 @@ test.describe('Recepción — RBAC historial admin (history.viewall)', () => {
     await expect(page.getByTestId('date-from-input')).toBeVisible()
     await expect(page.getByTestId('date-to-input')).toBeVisible()
     await expect(page.getByTestId('transfer-number-input')).toHaveCount(0)
-    await expect(page.getByTestId('export-csv-btn')).toHaveCount(0)
+    await expect(page.getByTestId('export-csv-btn')).toBeVisible()
   })
 
   test('el bookmark viejo /historial/admin redirige a /historial y el usuario con history.viewall accede al historial global directamente', async ({ page }) => {

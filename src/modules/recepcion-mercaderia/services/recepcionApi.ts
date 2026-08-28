@@ -1,6 +1,7 @@
 import api from '@/services/api'
 import type {
   PendingTransferLine,
+  TransitPendingTransfer,
   ReceptionTransfer,
   ReceptionLine,
   HistoryRow,
@@ -96,6 +97,7 @@ function mapTransfer(t: WireReceptionTransfer): ReceptionTransfer {
     documentNumber: t.sapTransferRequestNumber,
     originWarehouseCode: t.originWarehouseCode,
     destinationWarehouseCode: t.destinationWarehouseCode,
+    transitWarehouseCode: t.transitWarehouseCode,
     // No explicit status field on the wire — derived. 'error' is only ever set locally by the
     // store (e.g. SAP-confirm failure), never returned by a successful response.
     status: t.isConfirmed ? 'confirmed' : 'in-progress',
@@ -140,6 +142,32 @@ const recepcionApi = {
         pageSize: params.pageSize ?? 20,
         search: params.search ?? undefined,
       },
+    })
+    return response.data
+  },
+
+  // Transit-warehouse report — separate endpoint from getPendingTransfers above (branch
+  // fix/pending-transfers-transit-warehouse-filter): one row per SAP transfer request routed
+  // through a transit warehouse, quantity already summed server-side. Same PagedResponse
+  // envelope/pagination as the other list endpoints. `search` (added later on the same branch)
+  // filters by sapTransferRequestNumber or transitWarehouseCode, same behavior as
+  // getPendingTransfers' own search param.
+  getTransitTransfers: async (params: PageParams = {}): Promise<PagedResponse<TransitPendingTransfer>> => {
+    const response = await api.get<PagedResponse<TransitPendingTransfer>>(`${BASE}/pending-transfers/transit`, {
+      params: {
+        pageNumber: params.pageNumber ?? 1,
+        pageSize: params.pageSize ?? 20,
+        search: params.search ?? undefined,
+      },
+    })
+    return response.data
+  },
+
+  // Unpaginated xlsx export (2 sheets: "Documentos" summary + "Detalle" per-item) of the full
+  // transit-warehouse list — same permission and blob-download pattern as the other 3 reports.
+  downloadTransitReport: async (): Promise<Blob> => {
+    const response = await api.get<Blob>(`${BASE}/pending-transfers/transit/report`, {
+      responseType: 'blob',
     })
     return response.data
   },
@@ -269,6 +297,21 @@ const recepcionApi = {
 
   exportAllHistoryCsv: async (filters: HistoryFilters = {}) => {
     const response = await api.get<Blob>(`${BASE}/history/all/export`, {
+      params: {
+        dateFrom: filters.fromUtc ?? undefined,
+        dateTo: filters.toUtc ?? undefined,
+        transferNumber: filters.transferNumber ?? undefined,
+      },
+      responseType: 'blob',
+    })
+    return response.data
+  },
+
+  // Own-warehouse export — separate endpoint from exportAllHistoryCsv above, gated by nothing
+  // beyond being logged in (no recepcion.history.viewall needed): the backend scopes the file to
+  // whatever warehouses/warehouse-group the caller already has in Core, same as getHistory.
+  exportHistoryCsv: async (filters: HistoryFilters = {}) => {
+    const response = await api.get<Blob>(`${BASE}/history/export`, {
       params: {
         dateFrom: filters.fromUtc ?? undefined,
         dateTo: filters.toUtc ?? undefined,

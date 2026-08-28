@@ -317,7 +317,7 @@ async function handleDownloadPickingReport(): Promise<void> {
                 </span>
               </div>
               <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                Basado en transferencia {{ store.currentTransfer.documentNumber }}. {{ store.currentTransfer.originWarehouseCode }} a {{ store.currentTransfer.destinationWarehouseCode }}
+                Basado en transferencia {{ store.currentTransfer.documentNumber }}. {{ store.currentTransfer.transitWarehouseCode ?? store.currentTransfer.originWarehouseCode }} a {{ store.currentTransfer.destinationWarehouseCode }}
               </p>
             </div>
           </div>

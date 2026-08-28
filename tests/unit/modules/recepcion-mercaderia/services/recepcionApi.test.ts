@@ -98,6 +98,57 @@ describe('recepcionApi', () => {
     })
   })
 
+  it('getTransitTransfers sends pageNumber/pageSize/search and unwraps the PagedResponse envelope (separate endpoint from getPendingTransfers)', async () => {
+    const line = {
+      sapTransferRequestNumber: 'SAP-900',
+      transitWarehouseCode: 'TRL-QSN',
+      quantity: 12,
+      sapDocumentDate: '2026-08-01',
+    }
+    vi.mocked(api.get).mockResolvedValue({
+      data: { items: [line], totalCount: 1, pageNumber: 1, pageSize: 20 },
+    })
+
+    const result = await recepcionApi.getTransitTransfers({ pageNumber: 1, pageSize: 20, search: 'SAP-900' })
+
+    expect(api.get).toHaveBeenCalledWith('recepcion-api/reception/pending-transfers/transit', {
+      params: { pageNumber: 1, pageSize: 20, search: 'SAP-900' },
+    })
+    expect(result).toEqual({ items: [line], totalCount: 1, pageNumber: 1, pageSize: 20 })
+  })
+
+  it('getTransitTransfers omits the search param when not provided (no empty ?search= on the wire)', async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: { items: [], totalCount: 0, pageNumber: 1, pageSize: 20 } })
+
+    await recepcionApi.getTransitTransfers({ pageNumber: 1, pageSize: 20 })
+
+    expect(api.get).toHaveBeenCalledWith('recepcion-api/reception/pending-transfers/transit', {
+      params: { pageNumber: 1, pageSize: 20, search: undefined },
+    })
+  })
+
+  it('getTransitTransfers defaults to pageNumber=1/pageSize=20 when called with no params', async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: { items: [], totalCount: 0, pageNumber: 1, pageSize: 20 } })
+
+    await recepcionApi.getTransitTransfers()
+
+    expect(api.get).toHaveBeenCalledWith('recepcion-api/reception/pending-transfers/transit', {
+      params: { pageNumber: 1, pageSize: 20 },
+    })
+  })
+
+  it('downloadTransitReport requests a blob response for GET .../pending-transfers/transit/report (unpaginated)', async () => {
+    const blob = new Blob(['xlsx'])
+    vi.mocked(api.get).mockResolvedValue({ data: blob })
+
+    const result = await recepcionApi.downloadTransitReport()
+
+    expect(api.get).toHaveBeenCalledWith('recepcion-api/reception/pending-transfers/transit/report', {
+      responseType: 'blob',
+    })
+    expect(result).toBe(blob)
+  })
+
   it('materializePendingTransfer POSTs { sapTransferRequestNumber, warehouseCode } (no transferId exists pre-materialization)', async () => {
     vi.mocked(api.post).mockResolvedValue({ data: { id: 42 } })
 
@@ -147,6 +198,26 @@ describe('recepcionApi', () => {
     expect(result.transfer.transferId).toBe(7)
     expect(result.transfer.lines[0]).toMatchObject({ lineId: 1, itemCode: 'A1', quantity: 10, scanned: 3 })
     expect(result.differences).toEqual([])
+  })
+
+  it('getTransfer maps transitWarehouseCode onto the transfer (used by the detail subtitle: transitoria -> destino real)', async () => {
+    vi.mocked(api.get).mockResolvedValue({
+      data: { transfer: wireTransfer({ transitWarehouseCode: 'TRL-QSS2' }), differences: [] },
+    })
+
+    const result = await recepcionApi.getTransfer(7)
+
+    expect(result.transfer.transitWarehouseCode).toBe('TRL-QSS2')
+  })
+
+  it('getTransfer maps a null transitWarehouseCode as null (most transfers have no transit stop)', async () => {
+    vi.mocked(api.get).mockResolvedValue({
+      data: { transfer: wireTransfer({ transitWarehouseCode: null }), differences: [] },
+    })
+
+    const result = await recepcionApi.getTransfer(7)
+
+    expect(result.transfer.transitWarehouseCode).toBeNull()
   })
 
   it('getTransfer maps the real differences array (id/receptionTransferId -> differenceId/transferId), not just the transfer', async () => {
@@ -353,6 +424,19 @@ describe('recepcionApi', () => {
 
     expect(api.get).toHaveBeenCalledWith('recepcion-api/reception/history/all/export', {
       params: { dateFrom: '2026-01-01', dateTo: '2026-01-31', transferNumber: undefined },
+      responseType: 'blob',
+    })
+    expect(result).toBe(blob)
+  })
+
+  it('exportHistoryCsv requests a blob response for GET .../history/export (own-scope, separate endpoint — no viewall required)', async () => {
+    const blob = new Blob(['csv'])
+    vi.mocked(api.get).mockResolvedValue({ data: blob })
+
+    const result = await recepcionApi.exportHistoryCsv({ transferNumber: '100' })
+
+    expect(api.get).toHaveBeenCalledWith('recepcion-api/reception/history/export', {
+      params: { dateFrom: undefined, dateTo: undefined, transferNumber: '100' },
       responseType: 'blob',
     })
     expect(result).toBe(blob)

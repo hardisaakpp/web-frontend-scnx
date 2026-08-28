@@ -191,6 +191,22 @@ export const useHistoryStore = defineStore('recepcionHistory', () => {
     }
   }
 
+  /**
+   * Own-scope export (GET history/export) — no recepcion.history.viewall required, the backend
+   * scopes the file to the caller's own warehouses same as GET history. Separate from
+   * exportAllHistoryCsv above for the same reason it stays outside {@link createHistoryScope}:
+   * there is no store-scoped equivalent to generalize against.
+   */
+  async function exportHistoryCsv(): Promise<Blob | null> {
+    own.error.value = null
+    try {
+      return await recepcionApi.exportHistoryCsv(buildFilterParams(own.dateFrom.value, own.dateTo.value, own.transferNumberQuery.value))
+    } catch {
+      own.error.value = 'No se pudo exportar el archivo Excel.'
+      return null
+    }
+  }
+
   return {
     rows: own.rows,
     status: own.status,
@@ -210,6 +226,7 @@ export const useHistoryStore = defineStore('recepcionHistory', () => {
     setPageSize: own.setPageSize,
     updateGlpiTicket: own.updateGlpiTicket,
     updateGlpiTicketAdmin: all.updateGlpiTicket,
+    exportHistoryCsv,
     allRows: all.rows,
     allStatus: all.status,
     allError: all.error,
