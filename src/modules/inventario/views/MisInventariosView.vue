@@ -55,8 +55,8 @@
 
             <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
               <span>Apertura: {{ formatDate(s.openedAt) }}</span>
-              <span v-if="s.plannedCloseDate">Cierre estimado: {{ formatDateOnly(s.plannedCloseDate) }}</span>
-              <span>Generada por: {{ s.createdByUserId }}</span>
+              <span v-if="s.plannedCloseDate">Hasta el {{ formatDateOnly(s.plannedCloseDate) }}</span>
+              <span>Generada por: {{ s.createdByUserName || s.createdByUserId }}</span>
             </div>
           </div>
 
@@ -157,7 +157,9 @@ function formatDate(value?: string | null): string {
 
 function formatDateOnly(value?: string | null): string {
   if (!value) return '—'
-  const d = new Date(value + 'T00:00:00')
+  // El backend puede mandar solo fecha ('2026-08-26') o fecha-hora ('2026-08-26T00:00:00');
+  // concatenar 'T00:00:00' a la segunda producía Invalid Date.
+  const d = new Date(value.slice(0, 10) + 'T00:00:00')
   return d.toLocaleDateString(APP_LOCALE, { day: '2-digit', month: '2-digit', year: '2-digit' })
 }
 

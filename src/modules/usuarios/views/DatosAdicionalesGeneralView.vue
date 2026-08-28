@@ -263,9 +263,12 @@
                           <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
                         </svg>
                       </button>
+                      <!-- position:fixed para escapar del overflow-x-auto de la tabla y el
+                           overflow-hidden de la card, que recortaban el panel dentro del div. -->
                       <ul
                         v-if="showEditGrupoDropdown && grupos.length > 0"
-                        class="absolute z-50 mt-1 max-h-48 w-full min-w-[180px] overflow-auto rounded-lg border border-slate-200 bg-white py-1 text-xs shadow-lg dark:border-slate-700 dark:bg-slate-900"
+                        :style="editGrupoDropdownStyle"
+                        class="fixed z-50 max-h-48 min-w-[180px] overflow-auto rounded-lg border border-slate-200 bg-white py-1 text-xs shadow-lg dark:border-slate-700 dark:bg-slate-900"
                       >
                         <li
                           v-for="g in grupos"
@@ -435,6 +438,9 @@ const grupoDropdownRef = ref<HTMLElement | null>(null)
 // Grupo de almacenes dropdown state (edit row)
 const showEditGrupoDropdown = ref(false)
 const editGrupoDropdownRef = ref<HTMLElement | null>(null)
+// El panel se pinta con position:fixed (ver template) — coordenadas calculadas al abrirlo
+// desde el botón, porque la tabla (overflow-x-auto) y la card (overflow-hidden) lo recortaban.
+const editGrupoDropdownStyle = ref<Record<string, string>>({})
 
 const editGrupoLabel = computed(() =>
   editGrupos.value
@@ -442,7 +448,18 @@ const editGrupoLabel = computed(() =>
     .join(', ')
 )
 
-const toggleEditGrupoDropdown = () => { showEditGrupoDropdown.value = !showEditGrupoDropdown.value }
+const toggleEditGrupoDropdown = () => {
+  showEditGrupoDropdown.value = !showEditGrupoDropdown.value
+  if (showEditGrupoDropdown.value && editGrupoDropdownRef.value) {
+    const el = Array.isArray(editGrupoDropdownRef.value) ? editGrupoDropdownRef.value[0] : editGrupoDropdownRef.value
+    const rect = (el as HTMLElement).getBoundingClientRect()
+    editGrupoDropdownStyle.value = {
+      top: `${rect.bottom + 4}px`,
+      left: `${rect.left}px`,
+      width: `${Math.max(rect.width, 180)}px`
+    }
+  }
+}
 
 const toggleEditGrupo = (id: string) => {
   const idx = editGrupos.value.indexOf(id)
