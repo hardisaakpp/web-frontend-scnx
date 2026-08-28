@@ -87,8 +87,8 @@
         </div>
 
         <div class="mt-4 flex items-center gap-3">
-          <span class="stat"><strong>{{ s.totalQuantity }}</strong> cantidad total (tuya)</span>
-          <span class="stat"><strong>{{ s.skuCount }}</strong> SKUs (tuyos)</span>
+          <span class="stat"><strong>{{ s.totalQuantity }}</strong> cantidad total</span>
+          <span class="stat"><strong>{{ s.skuCount }}</strong> SKUs</span>
         </div>
         <p class="mt-1 text-xs text-gray-400">
           Imprimir / Descargar Excel incluyen el conteo total de la toma (todos los usuarios), no solo el tuyo.
