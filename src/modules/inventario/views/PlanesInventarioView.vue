@@ -17,6 +17,9 @@
           <MagnifyingGlassIcon class="w-4 h-4 mr-1" />
           Consultar Stock
         </router-link>
+        <router-link to="/inventario/planes/historial" class="btn-secondary">
+          Ver historial
+        </router-link>
         <button type="button" class="btn-primary" @click="mostrarModal = true">
           <PlusIcon class="w-4 h-4 mr-1" />
           Nuevo plan
