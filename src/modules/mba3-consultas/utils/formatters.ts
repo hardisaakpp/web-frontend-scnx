@@ -2,6 +2,8 @@
  * Utilidades de formateo para el módulo MBA3 Consultas
  */
 
+import { APP_LOCALE, NUMBER_LOCALE } from '@/plugins/locale'
+
 /**
  * Formatea una fecha o maneja valores especiales como "INMEDIATO"
  */
@@ -31,7 +33,7 @@ export function formatDate(dateString: string | null): string {
     // Es una fecha válida, formatearla (timeZone: 'UTC' evita desfase de -1 día
     // porque new Date("2026-02-09") se parsea como medianoche UTC y sin esto
     // toLocaleDateString lo convierte a hora local restando horas)
-    return date.toLocaleDateString('es-ES', {
+    return date.toLocaleDateString(APP_LOCALE, {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -57,7 +59,7 @@ export function formatDateTime(dateString: string | null): string {
       return dateString.trim()
     }
 
-    return date.toLocaleString('es-ES', {
+    return date.toLocaleString(APP_LOCALE, {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -78,7 +80,7 @@ export function formatNumber(value: number | null | undefined): string {
   if (value === null || value === undefined) return 'N/A'
   // El valor 0 es válido y debe mostrarse como "0"
   const hasDecimals = value % 1 !== 0
-  return new Intl.NumberFormat('es-ES', {
+  return new Intl.NumberFormat(NUMBER_LOCALE, {
     minimumFractionDigits: hasDecimals ? 1 : 0,
     maximumFractionDigits: 4
   }).format(value)
@@ -91,7 +93,7 @@ export function formatNumber(value: number | null | undefined): string {
 export function formatNumberWithDecimals(value: number | null | undefined, decimals: number): string {
   if (value === null || value === undefined) return 'N/A'
   const d = Math.max(0, Math.min(4, Math.round(decimals)))
-  return new Intl.NumberFormat('es-ES', {
+  return new Intl.NumberFormat(NUMBER_LOCALE, {
     minimumFractionDigits: d,
     maximumFractionDigits: d
   }).format(value)
@@ -104,7 +106,7 @@ export function formatCurrency(value: number | null | undefined): string {
   // Distinguir explícitamente entre 0 y null/undefined
   if (value === null || value === undefined) return 'N/A'
   // El valor 0 es válido y debe mostrarse como "$0.00"
-  return new Intl.NumberFormat('es-ES', {
+  return new Intl.NumberFormat(NUMBER_LOCALE, {
     style: 'currency',
     currency: 'USD'
   }).format(value)
@@ -117,7 +119,7 @@ export function formatCurrency(value: number | null | undefined): string {
 export function formatCurrencyWithDecimals(value: number | null | undefined, maxFractionDigits: number = 4): string {
   if (value === null || value === undefined) return 'N/A'
   const digits = Math.max(0, Math.min(4, Math.round(maxFractionDigits)))
-  return new Intl.NumberFormat('es-ES', {
+  return new Intl.NumberFormat(NUMBER_LOCALE, {
     style: 'currency',
     currency: 'USD',
     minimumFractionDigits: 0,

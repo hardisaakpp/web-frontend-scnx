@@ -33,7 +33,7 @@ function getCurrentUserName(): string {
 // ─── Opciones de la fábrica ──────────────────────────────────────────────────
 
 export interface ModuleApiOptions {
-  /** Timeout en milisegundos (default: 30_000) */
+  /** Timeout en milisegundos (default: 60_000) */
   timeout?: number
   /** Agregar X-Correlation-Id por request */
   correlationId?: boolean
@@ -51,7 +51,7 @@ export interface ModuleApiOptions {
 export function createModuleApi(baseURL: string, opts: ModuleApiOptions = {}): ReturnType<typeof axios.create> {
   const instance = axios.create({
     baseURL,
-    timeout: opts.timeout ?? 30_000,
+    timeout: opts.timeout ?? 60_000,
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
@@ -173,5 +173,12 @@ export const preferencesHttp = createModuleApi(
 /** Reposiciones */
 export const reposicionesApi = createModuleApi(
   ENV.REPOSICIONES_URL,
+  { auditHeaders: true },
+)
+
+/** Trasnferencias Directas */
+
+export const transferenciasDirectasApi = createModuleApi(
+  ENV.TRANSFERENCIAS_DIRECTAS_URL,
   { auditHeaders: true },
 )

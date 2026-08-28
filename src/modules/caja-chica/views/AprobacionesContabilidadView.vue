@@ -528,6 +528,7 @@
 </template>
 
 <script setup lang="ts">
+import { APP_LOCALE } from '@/plugins/locale'
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { cajaChicaApi } from '@/lib/http'
 import api from '@/services/api'
@@ -1256,7 +1257,7 @@ const downloadPdf = () => {
   const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Aprobaciones Contabilidad</title><style>${CSS}</style></head><body>
     <div style="margin-bottom:16px;border-bottom:2px solid #7c3aed;padding-bottom:8px;display:flex;justify-content:space-between;align-items:flex-end">
       <div><div style="font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#6b7280">Reporte</div><div style="font-size:16px;font-weight:700;color:#7c3aed">Aprobaciones Contabilidad</div></div>
-      <div style="text-align:right;font-size:10px;color:#6b7280">Generado: ${new Date().toLocaleString('es-ES')}<br>${groups.length} liquidación(es) pendientes</div>
+      <div style="text-align:right;font-size:10px;color:#6b7280">Generado: ${new Date().toLocaleString(APP_LOCALE)}<br>${groups.length} liquidación(es) pendientes</div>
     </div>
     ${sectionsHtml}
   </body></html>`

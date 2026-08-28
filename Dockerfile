@@ -24,10 +24,8 @@ FROM nginx:stable-bookworm AS runtime
 LABEL maintainer="Jose"
 LABEL description="Runtime image for SCNexus Frontend"
 
-# Entrypoint: sustituye UPSTREAM_* en el template y arranca nginx.
+# Entrypoint: nginx official image (1.19+) already uses envsubst for /etc/nginx/templates/*.template
 # Los upstreams llegan como variables de entorno desde docker compose (active.env).
-COPY deploy/scripts/docker-entrypoint.sh /docker-entrypoint.sh
-RUN chmod +x /docker-entrypoint.sh
 
 # Template nginx: los placeholders ${UPSTREAM_*} se resuelven en runtime.
 COPY deploy/nginx/scnexus-docker.conf.template /etc/nginx/templates/default.conf.template
@@ -35,7 +33,7 @@ COPY deploy/nginx/scnexus-docker.conf.template /etc/nginx/templates/default.conf
 COPY --from=build /app/dist /usr/share/nginx/html
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-    CMD wget -qO- http://localhost/ || exit 1
+    CMD curl -f http://localhost/ || exit 1
 
 EXPOSE 80
-ENTRYPOINT ["/docker-entrypoint.sh"]
+# Omitimos ENTRYPOINT manual para usar el predeterminado de nginx que procesará el template

@@ -162,6 +162,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { resolveUserNames } from '@/utils/resolveUserNames'
 import { cajaChicaApi } from '@/lib/http'
+import { APP_LOCALE } from '@/plugins/locale'
 
 
 const authStore = useAuthStore()
@@ -529,7 +530,7 @@ const downloadLiquidacionPdf = async (idLiquidacion: number) => {
   const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Liquidación #${item.idLiquidacion}</title><style>${CSS}</style></head><body>
     <div style="margin-bottom:16px;border-bottom:2px solid #065f46;padding-bottom:8px;display:flex;justify-content:space-between;align-items:flex-end">
       <div><div style="font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#6b7280">Reporte</div><div style="font-size:16px;font-weight:700;color:#065f46">Liquidación Aprobada</div></div>
-      <div style="text-align:right;font-size:10px;color:#6b7280">Generado: ${new Date().toLocaleString('es-ES')}</div>
+      <div style="text-align:right;font-size:10px;color:#6b7280">Generado: ${new Date().toLocaleString(APP_LOCALE)}</div>
     </div>
     <div class="liquidacion">
       <div class="cabecera">
@@ -679,7 +680,7 @@ const downloadPdf = async () => {
   const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Liquidaciones Aprobadas</title><style>${CSS}</style></head><body>
     <div style="margin-bottom:16px;border-bottom:2px solid #065f46;padding-bottom:8px;display:flex;justify-content:space-between;align-items:flex-end">
       <div><div style="font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#6b7280">Reporte</div><div style="font-size:16px;font-weight:700;color:#065f46">Liquidaciones Aprobadas</div></div>
-      <div style="text-align:right;font-size:10px;color:#6b7280">Generado: ${new Date().toLocaleString('es-ES')}<br>${items.length} liquidación(es)</div>
+      <div style="text-align:right;font-size:10px;color:#6b7280">Generado: ${new Date().toLocaleString(APP_LOCALE)}<br>${items.length} liquidación(es)</div>
     </div>
     ${sectionsHtml}
   </body></html>`

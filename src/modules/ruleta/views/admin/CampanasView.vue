@@ -1,17 +1,24 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
+import { useToast } from '@/composables/useToast'
 import { useAdminStore } from '../../stores/adminStore'
-import type { CrearCampanaDTO, EstadoCampana, SegmentoCliente, Campana } from '../../types'
+import { extraerMensajeError } from '../../services/utils/errorHandler'
+import type { CrearCampanaDTO, EstadoCampana, EstadoOperativoCampana, SegmentoCliente, Campana } from '../../types'
 import VolverButton from '@/components/VolverButton.vue'
+import DuplicarCampanaModal from '../../components/admin/DuplicarCampanaModal.vue'
 
 const store  = useAdminStore()
 const router = useRouter()
+const toast  = useToast()
 onMounted(() => store.cargarCampanas())
 
 // ─── Tipos de vista ──────────────────────────────────────────────────────────
-type EstadoVista  = EstadoCampana | 'vencida'
-type FiltroEstado = EstadoVista   | 'todos'
+// estadoEfectivo() colapsa 'disponible' (operativo) a 'activa' (persistido) y deja pasar el
+// resto de estado_operativo tal cual — por eso EstadoVista se deriva de EstadoOperativoCampana,
+// no de EstadoCampana (que ya no incluye 'programada', un estado puramente derivado).
+type EstadoVista  = Exclude<EstadoOperativoCampana, 'disponible'> | 'activa'
+type FiltroEstado = EstadoVista | 'todos'
 
 // ─── "Programada" es estado lógico del frontend: activa pero aún no iniciada
 function estadoEfectivo(c: Campana): EstadoVista {
@@ -19,12 +26,12 @@ function estadoEfectivo(c: Campana): EstadoVista {
 }
 
 // ─── Config visual por estado ────────────────────────────────────────────────
-const estadoConfig: Record<EstadoVista, { label: string; cls: string; dot: string }> = {
+const estadoConfig: Record<EstadoVista, { label: string; cls: string; dot: string; icon?: string }> = {
   activa:     { label: 'Activa',     cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400', dot: 'bg-emerald-500' },
   programada: { label: 'Programada', cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',             dot: 'bg-blue-500'   },
   vencida:    { label: 'Vencida',    cls: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',                dot: 'bg-red-500'    },
   pausada:    { label: 'Pausada',    cls: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',     dot: 'bg-orange-500' },
-  finalizada: { label: 'Finalizada', cls: 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400',               dot: 'bg-gray-400'   },
+  finalizada: { label: 'Finalizada', cls: 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400',                 dot: 'bg-red-400', icon: '🔒' },
   borrador:   { label: 'Borrador',   cls: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',    dot: 'bg-yellow-500' },
 }
 
@@ -59,17 +66,33 @@ const campanasFiltradas = computed(() => {
 const menuAbierto   = ref<string | null>(null)
 const menuStyle     = ref({ top: '0px', right: '0px' })
 const menuCampana   = computed(() => store.campanas.find(c => c.id === menuAbierto.value) ?? null)
+const menuRef       = ref<HTMLElement | null>(null)
 
-function abrirMenu(e: MouseEvent, id: string) {
+async function abrirMenu(e: MouseEvent, id: string) {
   e.stopPropagation()
   if (menuAbierto.value === id) { menuAbierto.value = null; return }
   const btn  = e.currentTarget as HTMLElement
   const rect = btn.getBoundingClientRect()
-  menuStyle.value = {
-    top:   `${rect.bottom + globalThis.scrollY + 6}px`,
-    right: `${globalThis.innerWidth - rect.right}px`,
-  }
+  const right = `${globalThis.innerWidth - rect.right}px`
+
+  // Posición provisional hacia abajo del botón. La altura real del menú varía según cuántas
+  // acciones aplican al estado de esa campaña (Activar/Pausar/Finalizar son condicionales), así
+  // que no se puede calcular de antemano si cabe — se mide después de montarlo.
+  menuStyle.value = { top: `${rect.bottom + globalThis.scrollY + 6}px`, right }
   menuAbierto.value = id
+
+  await nextTick()
+  const menuAltura = menuRef.value?.getBoundingClientRect().height ?? 0
+  if (!menuAltura) return
+
+  const espacioAbajo = globalThis.innerHeight - rect.bottom
+  const espacioArriba = rect.top
+  // Si no cabe hacia abajo (fila cerca del final de la ventana) pero sí hacia arriba, se abre
+  // hacia arriba en vez de quedar cortado por el borde de la ventana. Si tampoco cabe hacia
+  // arriba (ventana muy baja), se deja hacia abajo — es el menor de dos desbordes posibles.
+  if (espacioAbajo < menuAltura + 12 && espacioArriba > menuAltura + 12) {
+    menuStyle.value = { top: `${rect.top + globalThis.scrollY - menuAltura - 6}px`, right }
+  }
 }
 function cerrarMenu() { menuAbierto.value = null }
 
@@ -80,11 +103,20 @@ function accionConfigurar() {
   router.push({ name: 'ruleta-admin-campana-detalle', params: { campanaId: id } })
 }
 
+const ESTADO_ACCION_LABEL: Record<EstadoCampana, string> = {
+  borrador: 'movida a Borrador', activa: 'activada', pausada: 'pausada', finalizada: 'finalizada'
+}
+
 async function accionCambiarEstado(estado: EstadoCampana) {
   if (!menuCampana.value) return
   const id = menuCampana.value.id
   cerrarMenu()
-  await store.cambiarEstado(id, estado)
+  try {
+    await store.cambiarEstado(id, estado)
+    toast.success(`Campaña ${ESTADO_ACCION_LABEL[estado]}`)
+  } catch (e) {
+    toast.error('No se pudo cambiar el estado de la campaña', extraerMensajeError(e))
+  }
 }
 
 // ─── Confirmación de eliminación ─────────────────────────────────────────────
@@ -104,12 +136,59 @@ async function ejecutarEliminar() {
   errorEliminar.value = ''
   try {
     await store.eliminarCampana(confirmDelete.value.id)
+    toast.success('Campaña eliminada')
     confirmDelete.value = null
-  } catch (e: any) {
-    errorEliminar.value = e?.response?.data?.error ?? e?.message ?? 'Error al eliminar la campaña.'
+  } catch (e) {
+    errorEliminar.value = extraerMensajeError(e, 'Error al eliminar la campaña.')
   } finally {
     eliminando.value = false
   }
+}
+
+// ─── Confirmación de finalización (irreversible) ─────────────────────────────
+const confirmFinalizar = ref<{ id: string; nombre: string } | null>(null)
+const finalizando      = ref(false)
+const errorFinalizar   = ref('')
+
+function pedirConfirmFinalizar(c: Campana) {
+  cerrarMenu()
+  confirmFinalizar.value = { id: c.id, nombre: c.nombre }
+  errorFinalizar.value = ''
+}
+
+async function ejecutarFinalizar() {
+  if (!confirmFinalizar.value) return
+  finalizando.value = true
+  errorFinalizar.value = ''
+  try {
+    await store.cambiarEstado(confirmFinalizar.value.id, 'finalizada')
+    toast.success('Campaña finalizada', 'Queda como registro histórico de solo lectura.')
+    confirmFinalizar.value = null
+  } catch (e) {
+    errorFinalizar.value = extraerMensajeError(e, 'Error al finalizar la campaña.')
+  } finally {
+    finalizando.value = false
+  }
+}
+
+// ─── Duplicar campaña (deep clone limpio) ────────────────────────────────────
+const mostrarDuplicar   = ref(false)
+const campanaADuplicar  = ref<{ id: string; nombre: string } | null>(null)
+
+function pedirDuplicar(c: Campana) {
+  cerrarMenu()
+  campanaADuplicar.value = { id: c.id, nombre: c.nombre }
+  mostrarDuplicar.value = true
+}
+
+function cerrarDuplicar() {
+  mostrarDuplicar.value = false
+  campanaADuplicar.value = null
+}
+
+function onCampanaDuplicada(nueva: Campana) {
+  cerrarDuplicar()
+  router.push({ name: 'ruleta-admin-campana-detalle', params: { campanaId: nueva.id } })
 }
 
 // ─── Modal Nueva Campaña ─────────────────────────────────────────────────────
@@ -130,6 +209,13 @@ const form = ref<CrearCampanaDTO>({
 })
 
 const campanaEditando = ref<Campana | null>(null)
+
+// Defensa exhaustiva: el menú de tres puntos ya oculta "Editar configuración" para campañas
+// Finalizada (nunca se debería llegar aquí con una), pero si de todos modos ocurriera, el
+// <fieldset disabled> deshabilita en bloque todos los inputs/selects/toggles/botones del
+// formulario — nombre, fechas, cooldown, máx. giros, audiencia y hora feliz — sin tener que
+// tocar campo por campo.
+const soloLecturaModal = computed(() => campanaEditando.value?.estado === 'finalizada')
 
 function resetForm() {
   form.value = {
@@ -453,7 +539,8 @@ const SEGMENTO_LABELS: Record<SegmentoCliente, string> = {
                 class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
                 :class="estadoConfig[estadoEfectivo(c)].cls"
               >
-                <span class="w-1.5 h-1.5 rounded-full flex-shrink-0" :class="estadoConfig[estadoEfectivo(c)].dot" />
+                <span v-if="estadoConfig[estadoEfectivo(c)].icon" aria-hidden="true">{{ estadoConfig[estadoEfectivo(c)].icon }}</span>
+                <span v-else class="w-1.5 h-1.5 rounded-full flex-shrink-0" :class="estadoConfig[estadoEfectivo(c)].dot" />
                 {{ estadoConfig[estadoEfectivo(c)].label }}
               </span>
             </td>
@@ -493,6 +580,7 @@ const SEGMENTO_LABELS: Record<SegmentoCliente, string> = {
       >
         <div
           v-if="menuAbierto && menuCampana"
+          ref="menuRef"
           class="fixed z-50 w-52 bg-white dark:bg-gray-800 rounded-xl shadow-xl
                  border border-gray-100 dark:border-gray-700 py-1 origin-top-right"
           :style="menuStyle"
@@ -508,6 +596,18 @@ const SEGMENTO_LABELS: Record<SegmentoCliente, string> = {
               <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
             </svg>
             Configurar premios
+          </button>
+
+          <!-- Duplicar: disponible en cualquier estado, especialmente útil en Finalizada -->
+          <button
+            @click="pedirDuplicar(menuCampana)"
+            class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-200
+                   hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
+          >
+            <svg class="w-4 h-4 text-indigo-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V5a2 2 0 012-2h9a2 2 0 012 2v9a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v9a2 2 0 002 2h9a2 2 0 002-2v-2M8 7h8v8"/>
+            </svg>
+            Duplicar campaña
           </button>
 
           <div class="border-t border-gray-100 dark:border-gray-700 my-1" />
@@ -568,10 +668,22 @@ const SEGMENTO_LABELS: Record<SegmentoCliente, string> = {
             Pausar campaña
           </button>
 
-          <div class="border-t border-gray-100 dark:border-gray-700 my-1" />
-
-          <!-- Eliminar -->
+          <!-- Finalizar (irreversible) -->
           <button
+            v-if="menuCampana.estado === 'activa' || menuCampana.estado === 'pausada'"
+            @click="pedirConfirmFinalizar(menuCampana)"
+            class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 dark:text-red-400
+                   hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-left"
+          >
+            <span class="w-4 h-4 flex-shrink-0 flex items-center justify-center" aria-hidden="true">🔒</span>
+            Finalizar campaña
+          </button>
+
+          <div v-if="menuCampana.estado !== 'activa' && menuCampana.estado !== 'finalizada'" class="border-t border-gray-100 dark:border-gray-700 my-1" />
+
+          <!-- Eliminar: no disponible mientras está Activa ni una vez Finalizada -->
+          <button
+            v-if="menuCampana.estado !== 'activa' && menuCampana.estado !== 'finalizada'"
             @click="pedirConfirmDelete(menuCampana)"
             class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 dark:text-red-400
                    hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-left"
@@ -641,6 +753,60 @@ const SEGMENTO_LABELS: Record<SegmentoCliente, string> = {
       </Transition>
     </Teleport>
 
+    <!-- ── Modal Confirmar Finalización (irreversible) ────────────────────── -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition-opacity duration-200"
+        enter-from-class="opacity-0"
+        leave-active-class="transition-opacity duration-150"
+        leave-to-class="opacity-0"
+      >
+        <div v-if="confirmFinalizar"
+             class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+             @click.self="!finalizando && (confirmFinalizar = null)">
+          <div class="w-full max-w-sm bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-6 ring-1 ring-black/5">
+            <div class="flex items-center gap-3 mb-4">
+              <div class="flex-shrink-0 w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center text-lg">
+                🔒
+              </div>
+              <div>
+                <h3 class="text-base font-bold text-gray-900 dark:text-white">Finalizar campaña</h3>
+                <p class="text-sm text-red-600 dark:text-red-400 font-medium mt-0.5">Esta acción es irreversible.</p>
+              </div>
+            </div>
+            <p class="text-sm text-gray-600 dark:text-gray-300 mb-5">
+              «{{ confirmFinalizar.nombre }}» quedará bloqueada de forma permanente: no podrá volver a
+              Activa, Pausada ni Borrador, y no será posible modificar premios, stock ni configuración.
+            </p>
+            <p v-if="errorFinalizar" class="mb-4 flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-red-50 dark:bg-red-900/20 text-sm text-red-600 dark:text-red-400">
+              <svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+              </svg>
+              {{ errorFinalizar }}
+            </p>
+            <div class="flex gap-3">
+              <button type="button" @click="confirmFinalizar = null" :disabled="finalizando"
+                class="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700
+                       text-sm font-medium text-gray-600 dark:text-gray-300
+                       hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors disabled:opacity-50">
+                Cancelar
+              </button>
+              <button type="button" @click="ejecutarFinalizar" :disabled="finalizando"
+                class="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl
+                       bg-red-600 hover:bg-red-700 text-white text-sm font-semibold
+                       transition-colors disabled:opacity-60">
+                <svg v-if="finalizando" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                </svg>
+                {{ finalizando ? 'Finalizando…' : 'Sí, finalizar permanentemente' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
     <!-- ── Modal Nueva Campaña ─────────────────────────────────────────────── -->
     <Teleport to="body">
       <Transition
@@ -686,8 +852,13 @@ const SEGMENTO_LABELS: Record<SegmentoCliente, string> = {
                 </button>
               </div>
 
+              <!-- Aviso de solo lectura (defensa exhaustiva, no debería alcanzarse en flujo normal) -->
+              <div v-if="soloLecturaModal" class="mx-6 mt-4 flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-600 dark:text-red-400">
+                🔒 Campaña finalizada: solo lectura.
+              </div>
+
               <!-- Body modal -->
-              <div class="px-6 py-5 space-y-6 max-h-[68vh] overflow-y-auto">
+              <fieldset :disabled="soloLecturaModal" class="px-6 py-5 space-y-6 max-h-[68vh] overflow-y-auto">
 
                 <!-- Datos generales -->
                 <div class="space-y-4">
@@ -955,7 +1126,7 @@ const SEGMENTO_LABELS: Record<SegmentoCliente, string> = {
                   </svg>
                   {{ errorModal }}
                 </p>
-              </div>
+              </fieldset>
 
               <!-- Footer modal -->
               <div class="flex items-center justify-between gap-3 px-6 py-4 border-t border-gray-100 dark:border-gray-800
@@ -970,7 +1141,7 @@ const SEGMENTO_LABELS: Record<SegmentoCliente, string> = {
                            hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                     Cancelar
                   </button>
-                  <button @click="guardar" :disabled="store.guardando || !!fechaFinError"
+                  <button v-if="!soloLecturaModal" @click="guardar" :disabled="store.guardando || !!fechaFinError"
                     class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold
                            transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900
                            disabled:opacity-50 disabled:cursor-not-allowed"
@@ -992,6 +1163,15 @@ const SEGMENTO_LABELS: Record<SegmentoCliente, string> = {
         </div>
       </Transition>
     </Teleport>
+
+    <!-- ── Modal Duplicar Campaña ──────────────────────────────────────────── -->
+    <DuplicarCampanaModal
+      :open="mostrarDuplicar"
+      :campana-id="campanaADuplicar?.id ?? ''"
+      :nombre-origen="campanaADuplicar?.nombre ?? ''"
+      @close="cerrarDuplicar"
+      @duplicated="onCampanaDuplicada"
+    />
 
   </div>
 </template>

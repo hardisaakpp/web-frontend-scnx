@@ -113,6 +113,7 @@ import { XMarkIcon, CalendarIcon } from '@heroicons/vue/24/outline'
 import { inventarioSesionesService } from '../services/inventarioSesionesApi'
 import { inventarioPlanesService } from '../services/inventarioPlanesApi'
 import type { PlanFilterCatalogDto, WarehouseSimpleDto } from '../types'
+import { APP_LOCALE } from '@/plugins/locale'
 
 const props = defineProps<{ isOpen: boolean }>()
 const emit = defineEmits<{
@@ -147,7 +148,7 @@ const loadingCatalogo = ref(false)
 const guardando = ref(false)
 const error = ref<string | null>(null)
 
-const fechaHoy = computed(() => new Date().toLocaleDateString('es', {
+const fechaHoy = computed(() => new Date().toLocaleDateString(APP_LOCALE, {
   weekday: 'long', day: '2-digit', month: 'long', year: 'numeric'
 }))
 const fechaHoyIso = computed(() => new Date().toISOString().slice(0, 10))

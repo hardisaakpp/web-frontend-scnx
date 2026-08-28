@@ -193,6 +193,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from '@vue/reactivity'
+import { NUMBER_LOCALE } from '@/plugins/locale'
 import { Dialog, DialogPanel, DialogTitle, TransitionRoot, TransitionChild } from '@headlessui/vue'
 import type { SkuHomologacion, SkuHomologacionUpdateRequest } from '../types'
 
@@ -277,7 +278,7 @@ function limpiarCamposSAP() {
 
 function formatCurrency(value: number | null | undefined): string {
   if (value === null || value === undefined) return '-'
-  return new Intl.NumberFormat('es-PE', {
+  return new Intl.NumberFormat(NUMBER_LOCALE, {
     style: 'currency',
     currency: 'PEN',
   }).format(value)

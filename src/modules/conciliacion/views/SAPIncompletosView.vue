@@ -202,6 +202,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useConciliacionStore } from '../stores/conciliacionStore'
 import { useToast } from '@/composables/useToast'
+import { APP_LOCALE, NUMBER_LOCALE } from '@/plugins/locale'
 
 const store = useConciliacionStore()
 const toast = useToast()
@@ -243,8 +244,8 @@ const filteredData = computed(() => {
 function formatDate(dateStr: string): string {
   if (!dateStr) return '—'
   try {
-    return new Date(dateStr).toLocaleDateString('es-EC', { 
-      day: '2-digit', 
+    return new Date(dateStr).toLocaleDateString(APP_LOCALE, {
+      day: '2-digit',
       month: 'short', 
       year: 'numeric' 
     })
@@ -255,7 +256,7 @@ function formatDate(dateStr: string): string {
 
 function formatMonto(monto: number | undefined | null): string {
   if (monto === undefined || monto === null) return '0.00'
-  return monto.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return monto.toLocaleString(NUMBER_LOCALE, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 </script>
 

@@ -320,6 +320,7 @@
 import { ref, computed, watch } from '@vue/reactivity'
 import { onMounted } from '@vue/runtime-core'
 import { useToast } from '@/composables/useToast'
+import { APP_LOCALE } from '@/plugins/locale'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import type { OrdenCompra, SugerenciaSkuSap, DetalleOC } from '../types'
 
@@ -540,7 +541,7 @@ function formatDate(dateString?: string): string {
   if (!dateString) return '-'
   try {
     const date = new Date(dateString)
-    return date.toLocaleDateString('es-ES', {
+    return date.toLocaleDateString(APP_LOCALE, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
