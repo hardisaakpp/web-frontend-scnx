@@ -108,6 +108,31 @@ describe('TransferDetailView', () => {
     expect(wrapper.text()).toContain('6')
   })
 
+  it('shows transitoria -> destino real in the subtitle when the transfer has a transit warehouse', async () => {
+    mockAuth(['recepcion.picking.scan'])
+    vi.mocked(recepcionApi.getTransfer).mockResolvedValue(
+      mockGetTransfer(buildTransfer({ transitWarehouseCode: 'TRL-QSS2', destinationWarehouseCode: 'RL-QSS2' }))
+    )
+
+    const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('TRL-QSS2 a RL-QSS2')
+    expect(wrapper.text()).not.toContain('CD01 a RL-QSS2')
+  })
+
+  it('falls back to origen -> destino real in the subtitle when the transfer has no transit warehouse', async () => {
+    mockAuth(['recepcion.picking.scan'])
+    vi.mocked(recepcionApi.getTransfer).mockResolvedValue(
+      mockGetTransfer(buildTransfer({ transitWarehouseCode: null, originWarehouseCode: 'CD01', destinationWarehouseCode: 'T01' }))
+    )
+
+    const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('CD01 a T01')
+  })
+
   it('shows each line\'s barcode next to the item, with a placeholder when the backend has not populated it', async () => {
     mockAuth(['recepcion.picking.scan'])
     vi.mocked(recepcionApi.getTransfer).mockResolvedValue(

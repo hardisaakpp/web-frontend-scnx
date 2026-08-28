@@ -318,6 +318,22 @@ export async function installHistoryMocks(page: Page, options: HistoryMockOption
       return
     }
 
+    // Own-scope export (branch fix/pending-transfers-transit-warehouse-filter) — no viewall
+    // required, scoped to the caller's own warehouses same as GET history.
+    if (method === 'GET' && path.endsWith('/history/export')) {
+      exportCalls += 1
+      if (options.exportBehavior === 'error') {
+        await route.fulfill({ status: 500, contentType: 'application/json', body: '{}' })
+        return
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        body: exportBody,
+      })
+      return
+    }
+
     if (method === 'GET' && path.endsWith('/history/all')) {
       allHistoryCalls += 1
       const params = new URL(request.url()).searchParams
@@ -449,6 +465,72 @@ export async function installPendingMocks(page: Page, options: PendingMockOption
   })
 
   return { getPendingCalls: () => pendingCalls, getMaterializeCalls: () => materializeCalls }
+}
+
+export interface MockTransitLine {
+  sapTransferRequestNumber: string
+  transitWarehouseCode: string
+  quantity: number
+  sapDocumentDate: string
+}
+
+export interface TransitMockOptions {
+  lines: MockTransitLine[]
+  reportBody?: string
+}
+
+export interface TransitMockHandle {
+  getTransitCalls: () => number
+  getReportCalls: () => number
+}
+
+/**
+ * Mocks api-recepcion-mercaderia's transit-warehouse report endpoints (branch
+ * fix/pending-transfers-transit-warehouse-filter): GET /pending-transfers/transit (paginated,
+ * with the same `search` param behavior as GET /pending-transfers) and the unpaginated
+ * GET /pending-transfers/transit/report xlsx export.
+ */
+export async function installTransitMocks(page: Page, options: TransitMockOptions): Promise<TransitMockHandle> {
+  let transitCalls = 0
+  let reportCalls = 0
+  const reportBody = options.reportBody ?? 'sapTransferRequestNumber,transitWarehouseCode,quantity,sapDocumentDate\n'
+
+  await page.route('**/api/recepcion-api/reception/**', async (route: Route) => {
+    const request = route.request()
+    const method = request.method()
+    const path = new URL(request.url()).pathname
+
+    if (method === 'GET' && path.endsWith('/pending-transfers/transit/report')) {
+      reportCalls += 1
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        body: reportBody,
+      })
+      return
+    }
+
+    if (method === 'GET' && path.endsWith('/pending-transfers/transit')) {
+      transitCalls += 1
+      const search = (new URL(request.url()).searchParams.get('search') ?? '').toLowerCase()
+      const items = options.lines.filter(
+        (l) =>
+          !search ||
+          l.sapTransferRequestNumber.toLowerCase().includes(search) ||
+          l.transitWarehouseCode.toLowerCase().includes(search)
+      )
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ items, totalCount: items.length, pageNumber: 1, pageSize: 20 }),
+      })
+      return
+    }
+
+    await route.fulfill({ status: 404, contentType: 'application/json', body: '{}' })
+  })
+
+  return { getTransitCalls: () => transitCalls, getReportCalls: () => reportCalls }
 }
 
 /** Fails loudly on ANY call to api-recepcion-mercaderia — used to prove a flow makes zero live calls (e.g. degraded pending-transfers). */

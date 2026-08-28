@@ -23,6 +23,18 @@ export interface PendingTransferLine {
   sapDocumentDate: string
 }
 
+/**
+ * GET /pending-transfers/transit item — one row per SAP transfer request routed through a
+ * transit warehouse (bodega transitoria), quantity already summed across its lines server-side.
+ * No wire-name mapping needed: the backend contract already uses these exact field names.
+ */
+export interface TransitPendingTransfer {
+  sapTransferRequestNumber: string
+  transitWarehouseCode: string
+  quantity: number
+  sapDocumentDate: string
+}
+
 export interface ReceptionLine {
   lineId: number
   itemCode: string
@@ -39,6 +51,13 @@ export interface ReceptionTransfer {
   documentNumber: string
   originWarehouseCode: string
   destinationWarehouseCode: string
+  /**
+   * Real backend field (ReceptionTransferResponse.TransitWarehouseCode, nullable) — the "bodega
+   * transitoria" for this transfer, when one exists. The detail subtitle shows transitoria -> real
+   * destination when set, falling back to origen -> real destination otherwise (same fallback
+   * direction as HistoryRow's own transitWarehouseCode, used by the Historial "Movimiento" column).
+   */
+  transitWarehouseCode?: string | null
   status: ReceptionTransferStatus
   glpiTicket?: string | null
   responsibleName?: string | null

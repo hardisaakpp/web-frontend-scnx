@@ -11,6 +11,7 @@ vi.mock('@/modules/recepcion-mercaderia/services/recepcionApi', () => ({
     getHistory: vi.fn(),
     getAllHistory: vi.fn(),
     exportAllHistoryCsv: vi.fn(),
+    exportHistoryCsv: vi.fn(),
     updateGlpiTicket: vi.fn(),
     downloadDifferencesReport: vi.fn(),
   },
@@ -80,7 +81,9 @@ describe('HistoryView', () => {
     expect(recepcionApi.getAllHistory).not.toHaveBeenCalled()
     expect(wrapper.text()).toContain('DOC-1')
     expect(wrapper.find('h1').text()).toBe('Historial de Recepciones')
-    expect(wrapper.find('[data-testid="export-csv-btn"]').exists()).toBe(false)
+    // GET history/export requires no permission beyond being logged in — the backend scopes the
+    // file to the caller's own warehouses, same as GET history — so this button is not admin-only.
+    expect(wrapper.find('[data-testid="export-csv-btn"]').exists()).toBe(true)
   })
 
   it('shows the consolidated view directly (no toggle) for a user with recepcion.history.viewall, fetching via getAllHistory only', async () => {
@@ -145,8 +148,8 @@ describe('HistoryView', () => {
     const wrapper = mount(HistoryView)
     await flushPromises()
 
+    // N° transferencia stays consolidated-only — the own-scope endpoint has no such filter.
     expect(wrapper.find('[data-testid="transfer-number-input"]').exists()).toBe(false)
-    expect(wrapper.find('[data-testid="export-csv-btn"]').exists()).toBe(false)
 
     await wrapper.find('[data-testid="date-from-input"]').setValue('2026-02-01')
     await flushPromises()
@@ -218,7 +221,7 @@ describe('HistoryView', () => {
     await flushPromises()
   })
 
-  it('exports history via an axios blob request only reachable from the consolidated view', async () => {
+  it('exports history via an axios blob request, in the consolidated view', async () => {
     mockAuth({ canViewAll: true })
     vi.mocked(recepcionApi.getAllHistory).mockResolvedValue(paged([buildRow()]))
     const blob = new Blob(['xlsx content'], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
@@ -234,6 +237,37 @@ describe('HistoryView', () => {
     await flushPromises()
 
     expect(recepcionApi.exportAllHistoryCsv).toHaveBeenCalledTimes(1)
+    expect(recepcionApi.exportHistoryCsv).not.toHaveBeenCalled()
+  })
+
+  it('exports history via GET history/export (no recepcion.history.viewall required), in the warehouse-scoped view', async () => {
+    mockAuth({ canViewAll: false })
+    vi.mocked(recepcionApi.getHistory).mockResolvedValue(paged([buildRow()]))
+    const blob = new Blob(['xlsx content'], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    vi.mocked(recepcionApi.exportHistoryCsv).mockResolvedValue(blob)
+
+    const wrapper = mount(HistoryView)
+    await flushPromises()
+
+    await wrapper.find('[data-testid="export-csv-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(recepcionApi.exportHistoryCsv).toHaveBeenCalledTimes(1)
+    expect(recepcionApi.exportAllHistoryCsv).not.toHaveBeenCalled()
+  })
+
+  it('surfaces an own-scope export error in the UI instead of presenting a fake/empty download', async () => {
+    mockAuth({ canViewAll: false })
+    vi.mocked(recepcionApi.getHistory).mockResolvedValue(paged([buildRow()]))
+    vi.mocked(recepcionApi.exportHistoryCsv).mockRejectedValue(new Error('down'))
+
+    const wrapper = mount(HistoryView)
+    await flushPromises()
+
+    await wrapper.find('[data-testid="export-csv-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('No se pudo exportar el archivo Excel.')
   })
 
   it('shows Id, Nueva Transferencia (sapStockTransferDocNum), and Sobrantes (differencesCount) columns, matching the legacy view', async () => {
