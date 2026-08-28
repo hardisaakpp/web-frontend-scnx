@@ -610,10 +610,6 @@ async function cargar() {
   }
 }
 
-function irASesion(sessionId: string) {
-  router.push({ name: 'inventario-sesion-detalle', params: { sessionId } })
-}
-
 function irAResumenSupervisor(sessionId: string) {
   router.push({ name: 'inventario-supervisor-resumen', params: { sessionId } })
 }

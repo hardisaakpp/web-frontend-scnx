@@ -13,7 +13,7 @@
           <ArrowPathIcon class="w-4 h-4 mr-1" :class="{ 'animate-spin': loading }" />
           Actualizar
         </button>
-        <router-link to="/inventario/planificaciones" class="btn-secondary">
+        <router-link to="/inventario/consultar-stock" class="btn-secondary">
           <MagnifyingGlassIcon class="w-4 h-4 mr-1" />
           Consultar Stock
         </router-link>

@@ -88,13 +88,13 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
-    path: '/inventario/sesiones/:sessionId',
-    name: 'inventario-sesion-detalle',
-    component: () => import('./views/SessionCenterView.vue'),
+    path: '/inventario/consultar-stock',
+    name: 'inventario-consultar-stock',
+    component: () => import('./views/ConsultarStockView.vue'),
     meta: {
       requiresAuth: true,
-      title: 'Toma Física - Detalle',
-      permissions: INVENTARIO_ESTADO_SESION
+      title: 'Consultar Stock',
+      permissions: INVENTARIO_PLANIFICAR
     }
   },
   {
