@@ -6,6 +6,13 @@ Registro cronológico de cambios realizados al módulo `src/modules/inventario` 
 
 ---
 
+## 2026-08-28 — Nombre en vez de GUID, "No realizado" visible al usuario, texto (tuya)/(tuyos)
+
+- **`MisInventariosView.vue`**: "Generada por" mostraba el GUID crudo (`s.createdByUserId`) en vez del nombre — el backend ya manda `createdByUserName` en el DTO (no hacía falta resolver por endpoint de usuarios, como sí necesita caja-chica). Ahora usa `s.createdByUserName || s.createdByUserId`.
+- **`HistorialConteosView.vue`**: se quita el calificador `(tuya)/(tuyos)` de "cantidad total" y "SKUs" — quedan los dos nombres solos, sin aclaración redundante (la nota de que Excel/Imprimir traen el total de *todos* los usuarios se deja igual, no fue lo que se pidió simplificar).
+- Fix relacionado de fondo (100% backend, ver `api-inventario/docs/CHANGELOG_INVENTARIO.md` 2026-08-28): las tomas "No realizado" (Expired) ahora aparecen en "Historial de Mis Conteos" del propio usuario asignado, no solo en la vista de admin — no requirió cambios en este repo, el frontend ya consume `GetMyCountHistoryAsync` tal cual.
+- Estado: **commiteado** en rama `fix/inventarios-lilipink` (commit `31cfe62`), aún sin pushear.
+
 ## 2026-08-25 — Selector de toma + descartar ajuste + copiar ID en Resumen
 
 - **`AdjustmentsBoardView.vue`**: el formulario "Crear Ajuste" ya no pide pegar el `sessionId` a mano — ahora es un `<select>` con las tomas cerradas que todavía no tienen ajuste ni fueron descartadas (`sesionesPendientes`, calculado sobre `inventarioSesionesService.getSesiones()`). Nuevo botón "Descartar (sin ajuste)" junto a "Crear Ajuste" — llama a `discardAdjustment` (ver backend), sin cobro, la toma se queda cerrada tal cual está; confirma con un diálogo simple antes de ejecutar.
