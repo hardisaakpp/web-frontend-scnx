@@ -1466,9 +1466,11 @@ const loadHistorial = async () => {
       return
     }
 
+    // No se envía idUsuario: una vez aprobada/rechazada, cualquier usuario con acceso a esta
+    // pantalla debe ver e integrar el historial completo, sin importar quién quedó asignado
+    // como aprobador de contabilidad (nivel 2).
     const response = await cajaChicaApi.get('/Aprobaciones/historial-contabilidad', {
       params: {
-        idUsuario: userId,
         fechaDesde: fechaDesde.value,
         fechaHasta: fechaHasta.value,
         soloPendientes: activeTab.value === 'APROBADAS' && filtroIntegracion.value === 'PENDIENTES',
