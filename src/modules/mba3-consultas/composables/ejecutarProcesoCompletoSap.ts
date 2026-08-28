@@ -38,12 +38,43 @@ function isSyncImmediateResponse(accepted: unknown): boolean {
   return a.fallback === 'sync' || a.async === false || a.process_id == null
 }
 
+/**
+ * True si algún envío de ODC del resultado todavía tiene Solicitudes de
+ * Transferencia sin confirmar (ver StockTransferService._enviar_itrs_a_sap,
+ * estado 'pendiente_confirmacion' -- SAP no confirmó ni rechazó a tiempo, así
+ * que el backend puede corregir el resultado más tarde vía reconciliación).
+ *
+ * Acepta las 2 formas en que puede llegar el mismo resultado: el payload SSE
+ * lo anida bajo `resultado` (ver _construir_payload_stream), mientras que
+ * GET /proceso-sap/resultado lo devuelve aplanado en la raíz (ver
+ * _procesar_estado_completado) -- mismo `isProcessing` para ambos casos.
+ */
+export function tieneSolicitudesTransferenciaSinConfirmar(data: Record<string, unknown>): boolean {
+  const resultado = (data.resultado as Record<string, unknown> | undefined) ?? data
+  const envioUnico = resultado.envio_sap as Record<string, unknown> | undefined
+  const envios =
+    (resultado.envios_sap as Array<Record<string, unknown>> | undefined) ??
+    (envioUnico ? [envioUnico] : [])
+  return envios.some((envio) => {
+    const st = envio?.solicitudes_transferencia as Record<string, unknown> | undefined
+    const pendientes = st?.transferencias_pendientes_confirmacion
+    return typeof pendientes === 'number' && pendientes > 0
+  })
+}
+
 function isProcesoSapTerminalSuccess(data: Record<string, unknown>): boolean {
-  return (
+  const esExitoso =
     data.status === 'success' ||
     data.status === 'partial' ||
     data.status === 'completed'
-  )
+  if (!esExitoso) return false
+  // Si el proceso ya terminó pero SAP todavía no confirmó (ni rechazó) alguna
+  // Solicitud de Transferencia, seguimos escuchando/consultando un rato más
+  // en vez de cerrar de inmediato -- el backend puede corregir el resultado
+  // tarde (ver StockTransferService._corregir_snapshot_proceso_original) y
+  // el propio backend cierra el SSE si pasa demasiado tiempo sin resolverse
+  // (ver _event_stream_proceso_sap), así que esto no cuelga indefinidamente.
+  return !tieneSolicitudesTransferenciaSinConfirmar(data)
 }
 
 async function pollProcesoSapResultado(

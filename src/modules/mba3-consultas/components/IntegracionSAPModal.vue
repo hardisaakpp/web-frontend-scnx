@@ -152,7 +152,11 @@
                     <div class="mb-4 p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
                       <div class="flex items-center gap-2 text-sm">
                         <span
-                          :class="bloque.erroresTransferencia === 0 ? 'text-green-600 dark:text-green-400' : 'text-yellow-600 dark:text-yellow-400'"
+                          :class="{
+                            'text-green-600 dark:text-green-400': bloque.estadoTransferencias === 'exitoso',
+                            'text-yellow-600 dark:text-yellow-400': bloque.estadoTransferencias === 'parcial',
+                            'text-red-600 dark:text-red-400': bloque.estadoTransferencias === 'sin_exito'
+                          }"
                           class="font-medium"
                         >
                           {{ bloque.resumenSolicitudesTexto }}
@@ -324,15 +328,32 @@ function construirBloque(detalle: IntegracionSAPDetalle, solicitudesTransferenci
 
   // El backend no siempre informa transferencias_errores (queda undefined); se asume 0 en ese caso
   const erroresTransferencia = solicitudesTransferencia?.transferencias_errores ?? 0
+  const creadasTransferencia = solicitudesTransferencia?.transferencias_creadas ?? 0
+  const totalTransferencia = solicitudesTransferencia?.total_tiendas ?? 0
+
+  // Estado real de las Solicitudes de Transferencia para esta ODC: no basta con
+  // "erroresTransferencia === 0" -- un resultado sin confirmar (0 creadas, 0
+  // errores, total > 0, ej. el backend se rindió antes de que SAP respondiera)
+  // no es un éxito, aunque técnicamente no tenga errores contados.
+  let estadoTransferencias: 'exitoso' | 'parcial' | 'sin_exito' = 'sin_exito'
+  if (solicitudesTransferencia) {
+    if (creadasTransferencia > 0 && creadasTransferencia === totalTransferencia) {
+      estadoTransferencias = 'exitoso'
+    } else if (creadasTransferencia > 0) {
+      estadoTransferencias = 'parcial'
+    }
+  }
 
   let resumenSolicitudesTexto = ''
   if (solicitudesTransferencia) {
-    if (erroresTransferencia === 0) {
-      resumenSolicitudesTexto = `✅ ${solicitudesTransferencia.transferencias_creadas} de ${solicitudesTransferencia.total_tiendas} creadas exitosamente`
-    } else if (import.meta.env.PROD) {
-      resumenSolicitudesTexto = `✅ ${solicitudesTransferencia.transferencias_creadas} de ${solicitudesTransferencia.total_tiendas} creadas`
+    if (estadoTransferencias === 'exitoso') {
+      resumenSolicitudesTexto = `✅ ${creadasTransferencia} de ${totalTransferencia} creadas exitosamente`
+    } else if (estadoTransferencias === 'parcial') {
+      resumenSolicitudesTexto = import.meta.env.PROD
+        ? `⚠️ ${creadasTransferencia} de ${totalTransferencia} creadas`
+        : `⚠️ ${creadasTransferencia} exitosas, ${erroresTransferencia} con errores`
     } else {
-      resumenSolicitudesTexto = `⚠️ ${solicitudesTransferencia.transferencias_creadas} exitosas, ${erroresTransferencia} con errores`
+      resumenSolicitudesTexto = `❌ 0 de ${totalTransferencia} creadas`
     }
   }
 
@@ -343,6 +364,7 @@ function construirBloque(detalle: IntegracionSAPDetalle, solicitudesTransferenci
     numeroOdcMostrado,
     mensajeExito,
     erroresTransferencia,
+    estadoTransferencias,
     resumenSolicitudesTexto
   }
 }
