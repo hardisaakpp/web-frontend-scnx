@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <div class="w-full px-4 sm:px-6 lg:px-8 py-6">
     <div class="mb-6 flex items-start justify-between gap-4">
       <div>
         <p class="text-sm font-medium text-blue-600 dark:text-blue-400">Caja Chica</p>
@@ -17,6 +17,11 @@
     <div v-if="error" class="mb-4 alert-error">{{ error }}</div>
 
     <div class="mb-4 flex items-center gap-3 flex-wrap">
+      <label class="text-sm text-gray-600 dark:text-gray-400" for="lg-desde">Desde</label>
+      <input id="lg-desde" v-model="fechaDesde" type="date" class="date-input" />
+      <label class="text-sm text-gray-600 dark:text-gray-400" for="lg-hasta">Hasta</label>
+      <input id="lg-hasta" v-model="fechaHasta" type="date" class="date-input" />
+      <span class="text-xs text-gray-400">Por defecto, últimos 15 días.</span>
       <input
         v-model="search"
         type="search"
@@ -172,6 +177,15 @@ const search = ref('')
 const fEstado = ref('')
 const fIntegracion = ref('')
 const verEliminadas = ref(true)
+
+function defaultDesde(): string {
+  const d = new Date()
+  d.setDate(d.getDate() - 15)
+  return d.toISOString().slice(0, 10)
+}
+
+const fechaDesde = ref(defaultDesde())
+const fechaHasta = ref(new Date().toISOString().slice(0, 10))
 const nombreById = ref<Record<string, string>>({})
 
 const expanded = ref<Record<number, boolean>>({})
@@ -211,10 +225,19 @@ const estadosDisponibles = computed(() =>
   [...new Set(filas.value.map(f => (f.eliminada ? 'ELIMINADA' : f.estado)).filter(Boolean))].sort((a, b) => a.localeCompare(b))
 )
 
+// Fecha de referencia para el filtro Desde/Hasta: la de creación; en eliminadas sin
+// snapshot legible (fechaCreacion nula) se usa la fecha de eliminación para no ocultarlas.
+function fechaFiltro(f: FilaListado): string {
+  return (f.fechaCreacion || f.fechaEliminacion || '').slice(0, 10)
+}
+
 const filasFiltradas = computed(() => {
   const q = search.value.trim().toLowerCase()
   return filas.value.filter(f => {
     if (f.eliminada && !verEliminadas.value) return false
+    const fecha = fechaFiltro(f)
+    if (fechaDesde.value && fecha && fecha < fechaDesde.value) return false
+    if (fechaHasta.value && fecha && fecha > fechaHasta.value) return false
     const estadoVisible = f.eliminada ? 'ELIMINADA' : f.estado
     if (fEstado.value && estadoVisible !== fEstado.value) return false
     if (fIntegracion.value && !f.eliminada) {
@@ -383,5 +406,6 @@ onMounted(cargar)
 .badge-red { @apply bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300; }
 .badge-gray { @apply bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400; }
 .select-input { @apply rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1.5 text-sm text-gray-700 dark:text-gray-200 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500; }
+.date-input { @apply rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 py-1 text-sm text-gray-700 dark:text-gray-200 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500; }
 .search-input { @apply rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500; }
 </style>
