@@ -55,7 +55,7 @@
 
             <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
               <span>Apertura: {{ formatDate(s.openedAt) }}</span>
-              <span v-if="s.plannedCloseDate">Fecha de cierre: se realizará hasta el {{ formatDateOnly(s.plannedCloseDate) }}</span>
+              <span v-if="s.plannedCloseDate">Hasta el {{ formatDateOnly(s.plannedCloseDate) }}</span>
               <span>Generada por: {{ s.createdByUserName || s.createdByUserId }}</span>
             </div>
           </div>
