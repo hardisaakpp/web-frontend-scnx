@@ -48,6 +48,16 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/inventario/planes/historial',
+    name: 'inventario-planes-historial',
+    component: () => import('./views/HistorialPlanesView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Historial de Planes',
+      permissions: INVENTARIO_PLANIFICAR
+    }
+  },
+  {
     path: '/inventario/planificaciones',
     name: 'inventario-planificaciones',
     component: () => import('./views/PlanningWorkbenchView.vue'),
