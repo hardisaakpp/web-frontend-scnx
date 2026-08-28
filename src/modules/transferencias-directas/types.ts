@@ -43,6 +43,11 @@ export interface CrearSolicitudRequest {
   justificacion?: string
   guiaEnvio?: string
   enviarAAprobacion: boolean
+  /**
+   * UUID generado al abrir el formulario. Si el usuario reintenta tras un timeout,
+   * viaja la misma clave y el backend devuelve la solicitud ya creada en vez de duplicar.
+   */
+  idempotencyKey: string
   detalles: DetalleSolicitudRequest[]
 }
 
@@ -184,6 +189,7 @@ export const ESTADO_LABELS: Record<string, string> = {
   TransferenciaCreada: 'Transferencia Creada',  
   PendienteAprobacion: 'Pendiente Aprobación',
   PendienteEnvioSap: 'Pendiente Envio Sap',
+  EnviadoASap: 'Enviado a SAP',
   Rechazado: 'Rechazado',
   ErrorEnvioSap: 'Error Envío SAP',
 }
