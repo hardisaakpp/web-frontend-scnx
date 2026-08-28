@@ -97,6 +97,7 @@ function mapTransfer(t: WireReceptionTransfer): ReceptionTransfer {
     documentNumber: t.sapTransferRequestNumber,
     originWarehouseCode: t.originWarehouseCode,
     destinationWarehouseCode: t.destinationWarehouseCode,
+    transitWarehouseCode: t.transitWarehouseCode,
     // No explicit status field on the wire — derived. 'error' is only ever set locally by the
     // store (e.g. SAP-confirm failure), never returned by a successful response.
     status: t.isConfirmed ? 'confirmed' : 'in-progress',

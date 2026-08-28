@@ -51,6 +51,13 @@ export interface ReceptionTransfer {
   documentNumber: string
   originWarehouseCode: string
   destinationWarehouseCode: string
+  /**
+   * Real backend field (ReceptionTransferResponse.TransitWarehouseCode, nullable) — the "bodega
+   * transitoria" for this transfer, when one exists. The detail subtitle shows transitoria -> real
+   * destination when set, falling back to origen -> real destination otherwise (same fallback
+   * direction as HistoryRow's own transitWarehouseCode, used by the Historial "Movimiento" column).
+   */
+  transitWarehouseCode?: string | null
   status: ReceptionTransferStatus
   glpiTicket?: string | null
   responsibleName?: string | null

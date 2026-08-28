@@ -200,6 +200,26 @@ describe('recepcionApi', () => {
     expect(result.differences).toEqual([])
   })
 
+  it('getTransfer maps transitWarehouseCode onto the transfer (used by the detail subtitle: transitoria -> destino real)', async () => {
+    vi.mocked(api.get).mockResolvedValue({
+      data: { transfer: wireTransfer({ transitWarehouseCode: 'TRL-QSS2' }), differences: [] },
+    })
+
+    const result = await recepcionApi.getTransfer(7)
+
+    expect(result.transfer.transitWarehouseCode).toBe('TRL-QSS2')
+  })
+
+  it('getTransfer maps a null transitWarehouseCode as null (most transfers have no transit stop)', async () => {
+    vi.mocked(api.get).mockResolvedValue({
+      data: { transfer: wireTransfer({ transitWarehouseCode: null }), differences: [] },
+    })
+
+    const result = await recepcionApi.getTransfer(7)
+
+    expect(result.transfer.transitWarehouseCode).toBeNull()
+  })
+
   it('getTransfer maps the real differences array (id/receptionTransferId -> differenceId/transferId), not just the transfer', async () => {
     vi.mocked(api.get).mockResolvedValue({
       data: {
