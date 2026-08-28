@@ -19,8 +19,11 @@
           <option v-for="w in bodegas" :key="w.code" :value="w.code">{{ w.code }} — {{ w.name }}</option>
         </select>
       </div>
-      <button type="button" class="btn-primary" :disabled="!bodega || loading" @click="consultar">
+      <button type="button" class="btn-primary" :disabled="!bodega || loading || sincronizando" @click="consultar">
         {{ loading ? 'Consultando...' : 'Consultar' }}
+      </button>
+      <button type="button" class="btn-secondary" :disabled="!bodega || loading || sincronizando" @click="actualizarStock">
+        {{ sincronizando ? 'Actualizando...' : 'Actualizar stock' }}
       </button>
     </div>
 
@@ -102,6 +105,7 @@ const bodega = ref('')
 const filas = ref<ItemStockDto[]>([])
 const lastSync = ref<string | null>(null)
 const loading = ref(false)
+const sincronizando = ref(false)
 const consultado = ref(false)
 const error = ref<string | null>(null)
 
@@ -185,6 +189,22 @@ async function consultar() {
     error.value = e.message ?? 'Error al consultar el stock.'
   } finally {
     loading.value = false
+  }
+}
+
+// Ejecuta el SP de sincronización SAP → sc_maestros (sp_sync_stock_sap_warehouse) para la
+// bodega elegida y reconsulta stock + fecha, así el usuario ve el dato recién actualizado.
+async function actualizarStock() {
+  if (!bodega.value) return
+  sincronizando.value = true
+  error.value = null
+  try {
+    await inventarioSesionesService.syncWarehouseStock(bodega.value)
+    await consultar()
+  } catch (e: any) {
+    error.value = e.message ?? 'Error al actualizar el stock.'
+  } finally {
+    sincronizando.value = false
   }
 }
 
