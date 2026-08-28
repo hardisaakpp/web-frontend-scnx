@@ -1,10 +1,20 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useAdminStore } from '../../stores/adminStore'
+import { useToast } from '@/composables/useToast'
+import { extraerMensajeError } from '../../services/utils/errorHandler'
 import type { PremioAdmin, TipoPremio } from '../../types'
 import VolverButton from '@/components/VolverButton.vue'
 
 const store = useAdminStore()
+const toast = useToast()
+
+// Esta pantalla siempre trabaja sobre la ÚNICA campaña Activa (ver ruletaService.getCampanaActiva,
+// que solo devuelve una campaña cuando está disponible-para-giro). Por eso, mientras haya premios
+// cargados, la campaña está garantizada Activa: la estructura del premio (nombre, tipo, etc.) queda
+// bloqueada — solo se permite ajustar el stock. Para editar la estructura hay que pausarla primero
+// desde el Detalle de Campaña.
+const campanaEsActiva = computed(() => store.campanaActivaId !== null)
 let probInterval: ReturnType<typeof setInterval> | null = null
 
 onMounted(async () => {
@@ -68,19 +78,21 @@ function abrirEdit(p: PremioAdmin, gIdx: number) {
 function cerrarEdit() { editando.value = null }
 
 async function guardarEdit() {
-  if (!editando.value) return
+  if (!editando.value || store.guardando) return
   errorEdit.value = ''
   try {
     await store.actualizarPremio(editGrupoIdx.value, editando.value.id, editando.value)
+    toast.success('Premio actualizado')
     cerrarEdit()
-  } catch (e: any) {
+  } catch (e) {
     // No cerramos el modal: el admin decide si reintenta o recarga (ver toast global).
-    errorEdit.value = e?.response?.data?.error || 'No se pudo guardar el premio. Intenta de nuevo.'
+    errorEdit.value = extraerMensajeError(e, 'No se pudo guardar el premio. Intenta de nuevo.')
   }
 }
 
 // Modal añadir premio
 const mostrarAgregar = ref(false)
+const errorNuevo = ref('')
 const nuevoForm = ref<Omit<PremioAdmin, 'id'>>({
   nombre: '', descripcion: '', tipo: 'fisico',
   stock_total: null, valor_referencial: null, es_relleno: false, controla_stock_por_tienda: false
@@ -91,12 +103,20 @@ function abrirAgregar() {
     nombre: '', descripcion: '', tipo: 'fisico',
     stock_total: null, valor_referencial: null, es_relleno: false, controla_stock_por_tienda: false
   }
+  errorNuevo.value = ''
   mostrarAgregar.value = true
 }
 async function guardarNuevo() {
-  if (!nuevoForm.value.nombre.trim()) return
-  await store.agregarPremio(grupoActivo.value, nuevoForm.value)
-  mostrarAgregar.value = false
+  if (!nuevoForm.value.nombre.trim() || store.guardando) return
+  errorNuevo.value = ''
+  try {
+    await store.agregarPremio(grupoActivo.value, nuevoForm.value)
+    toast.success('Premio agregado')
+    mostrarAgregar.value = false
+  } catch (e) {
+    // No cerramos el modal: el admin decide si reintenta o recarga (ver toast global).
+    errorNuevo.value = extraerMensajeError(e, 'No se pudo agregar el premio. Intenta de nuevo.')
+  }
 }
 
 const estadoBadge: Record<string, { icon: string; cls: string }> = {
@@ -274,10 +294,25 @@ const TIPO_LABELS: Record<TipoPremio, string> = {
             </tbody>
           </table>
 
+          <!-- Aviso: campaña Activa bloquea agregar/estructura de premios -->
+          <div v-if="campanaEsActiva" class="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-sm text-amber-700 dark:text-amber-400">
+            <svg class="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+            </svg>
+            Campaña Activa: solo se puede ajustar stock. Para agregar premios o cambiar su nombre/tipo, pausa la campaña desde el Detalle de Campaña.
+          </div>
+
           <!-- Añadir premio -->
           <div class="flex justify-end">
-            <button @click="abrirAgregar"
-              class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-indigo-200 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400 text-sm font-medium hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors">
+            <button
+              type="button"
+              @click="!campanaEsActiva && abrirAgregar()"
+              :disabled="campanaEsActiva"
+              :title="campanaEsActiva ? 'Pausa la campaña para agregar premios' : undefined"
+              class="inline-flex items-center gap-2 px-4 py-2 rounded-xl border text-sm font-medium transition-colors"
+              :class="campanaEsActiva
+                ? 'border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-600 bg-gray-50 dark:bg-gray-800/40 cursor-not-allowed'
+                : 'border-indigo-200 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20'">
               <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
               </svg>
@@ -306,7 +341,12 @@ const TIPO_LABELS: Record<TipoPremio, string> = {
             <div>
               <label for="edit-nombre" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Nombre</label>
               <input id="edit-nombre" v-model="editando.nombre" type="text"
-                class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors"/>
+                :disabled="campanaEsActiva"
+                :title="campanaEsActiva ? 'Pausa la campaña para renombrar el premio' : undefined"
+                class="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"/>
+              <p v-if="campanaEsActiva" class="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                Solo se puede ajustar el stock mientras la campaña está Activa.
+              </p>
             </div>
             <div>
               <label for="edit-stock" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">Stock total</label>
@@ -395,6 +435,8 @@ const TIPO_LABELS: Record<TipoPremio, string> = {
               <input type="checkbox" v-model="nuevoForm.es_relleno" class="w-4 h-4 rounded text-indigo-600 border-gray-300 focus:ring-indigo-500"/>
               <span class="text-sm text-gray-700 dark:text-gray-300">Es premio de relleno (no consume stock)</span>
             </label>
+
+            <p v-if="errorNuevo" class="text-sm text-red-500">{{ errorNuevo }}</p>
           </div>
           <div class="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 dark:border-gray-700">
             <button @click="mostrarAgregar = false" class="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-600 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">Cancelar</button>

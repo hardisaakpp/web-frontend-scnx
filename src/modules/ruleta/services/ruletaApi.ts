@@ -4,14 +4,14 @@ import type {
   Ruleta, RuletaFilters, RuletaPagination,
   Tienda, SegmentoRuleta, IdentificacionCliente, ResultadoGiro,
   MetricasSupervisor, EnroladorMetrica,
-  Campana, CampanaBackendResponse, CampanaDisponibleBackendResponse, DisponibilidadCampana, CrearCampanaDTO, GrupoProbabilidad, PremioAdmin,
+  Campana, CampanaBackendResponse, CampanaDisponibleBackendResponse, DisponibilidadCampana, CrearCampanaDTO, DuplicarCampanaDTO, GrupoProbabilidad, PremioAdmin,
   TiendaInventario, InventarioPremio,
   MetricasGlobal, EfectividadTienda, SegmentacionGrupo, ConversionSemanal,
   EstadoCampana, EstadoGrupo, SegmentoCliente, TipoPremio,
   PremioBackendResponse, GiroRequestDTO,
   GiroVerificacionResponse, RedencionResponse, MetricasCampana,
   HistorialGiroItem, HistorialGirosResponse, GiroFilters, DistribucionSegmentos,
-  StockPremio, PreviewImpactoStockItem, ImpactoStock, ProbabilidadGrupo
+  StockPremio, PreviewImpactoStockItem, ImpactoStock, ProbabilidadGrupo, DistribucionTiendaItem
 } from '../types'
 
 // Instancia heredada para endpoints del core API (getRuletas, etc.)
@@ -27,8 +27,12 @@ api.interceptors.request.use((config) => {
 })
 
 // ─── Cliente HTTP para el backend de Ruleta (localhost:5062 en dev) ───────────
+// timeout explícito: ante microcortes o latencia alta en el WiFi de tienda, sin esto la promesa
+// de un giro queda pendiente indefinidamente, el bloque finally nunca corre y la ruleta se
+// congela con girando = true hasta recargar la página.
 const campanaApi = axios.create({
   baseURL: import.meta.env.VITE_RULETA_API_URL || '/ruleta-api',
+  timeout: 10000,
   headers: { 'Content-Type': 'application/json' }
 })
 
@@ -98,6 +102,7 @@ function mapPremioFromBackend(p: PremioBackendResponse): PremioAdmin {
     es_relleno: p.esVacio,
     imagen_url: p.imagenUrl ?? undefined,
     controla_stock_por_tienda: p.controlaStockPorTienda ?? false,
+    orden_ruleta: p.ordenRuleta,
     rowVersion: p.rowVersion,
   }
 }
@@ -125,8 +130,12 @@ function premioToBackend(data: Partial<PremioAdmin>, segmento?: string, confirma
     // Token de concurrencia: solo presente al editar (viene del último GET).
     rowVersion: data.rowVersion ?? null,
 
-    // Hardcodeado: Forzamos a que sea 0 sí o sí.
-    ordenRuleta: 0,
+    // Orden visual en la ruleta. `undefined` cuando no hay uno que preservar (premio nuevo, o
+    // ningún llamador lo trae) — se omite del JSON y el backend decide: conserva el actual en
+    // una edición, o asigna el siguiente índice disponible en una creación. Nunca se fuerza a 0:
+    // eso sobrescribía el orden real de cualquier premio en cada edición (nombre, imagen, stock…)
+    // porque 0 es un valor válido de `int?`, no "sin especificar".
+    ordenRuleta: data.orden_ruleta ?? undefined,
 
     // Confirmación explícita para reducir StockTotal con la campaña Activa (ver
     // PremioService.UpdateAsync). El backend rechaza la reducción con 409 si esto es false.
@@ -146,6 +155,7 @@ function toGiroParams(filters: GiroFilters): Record<string, string> {
   if (filters.fechaInicio) params.fechaInicio = filters.fechaInicio
   if (filters.fechaFin) params.fechaFin = filters.fechaFin
   if (filters.estado) params.estado = filters.estado
+  if (filters.tienda) params.tienda = filters.tienda
 
   return params
 }
@@ -368,6 +378,16 @@ export const ruletaService = {
     await campanaApi.delete(`/api/Campanas/${id}`)
   },
 
+  async duplicarCampana(id: string, dto: DuplicarCampanaDTO): Promise<Campana> {
+    const payload = {
+      nuevoNombre: dto.nombre,
+      nuevaFechaInicio: dto.fecha_inicio,
+      nuevaFechaFin: dto.fecha_fin
+    }
+    const response = await campanaApi.post<CampanaBackendResponse>(`/api/Campanas/${id}/duplicar`, payload)
+    return mapCampana(response.data)
+  },
+
   async getProbabilidadesEnVivo(campanaId: string, tiendaCodigo: string): Promise<ProbabilidadGrupo[]> {
     const response = await campanaApi.get<ProbabilidadGrupo[]>(`/api/Campanas/${campanaId}/probabilidades`, {
       params: { tiendaCodigo }
@@ -432,11 +452,30 @@ export const ruletaService = {
     return response.data.url
   },
 
+  // Asignación puntual de UNA tienda (ej. asistente de creación de premio, un solo POST). No usar
+  // para guardar varias celdas a la vez del mismo premio — usar setDistribucionTienda, que es
+  // atómico. Ver adminStore.guardarDistribucion.
   async asignarStockTienda(campanaId: string, premioId: string, tiendaCodigo: string, cantidad: number): Promise<void> {
     await campanaApi.post(
       `/api/campanas/${campanaId}/premios/${premioId}/stock-tienda`,
       null,
       { params: { tiendaCodigo, stockTotal: cantidad } }
+    )
+  },
+
+  // Guarda, en una sola operación atómica, la distribución completa de stock por tienda editada
+  // para un premio — o se guarda todo, o el backend rechaza y no cambia nada. Reemplaza el envío
+  // de N peticiones en paralelo (una por celda), que dejaba una ventana de carrera capaz de
+  // exceder el stock total del premio.
+  async setDistribucionTienda(
+    campanaId: string,
+    premioId: string,
+    distribucion: DistribucionTiendaItem[],
+    rowVersion?: string
+  ): Promise<void> {
+    await campanaApi.post(
+      `/api/campanas/${campanaId}/premios/${premioId}/distribucion-tienda`,
+      { rowVersion, distribucion }
     )
   },
 
@@ -467,7 +506,11 @@ export const ruletaService = {
   async getInventarioCampana(campanaId: string, tiendas: TiendaInventario[] = []): Promise<InventarioPremio[]> {
     const response = await campanaApi.get<PremioBackendResponse[]>(`/api/campanas/${campanaId}/premios`)
     return response.data
-      .filter(p => !p.esVacio && p.controlaStockPorTienda && (p.stockTotal ?? 0) > 0)
+      // stockTotalBodega es el techo real e inmutable de bodega. Antes se filtraba/mostraba con
+      // `stockTotal`, que para premios con control por tienda es la SUMA de lo ya repartido (no
+      // un límite) — con eso, un premio recién creado sin nada repartido aún (suma = 0) quedaba
+      // oculto de esta pantalla aunque sí tuviera stock real en bodega para distribuir.
+      .filter(p => !p.esVacio && p.controlaStockPorTienda && (p.stockTotalBodega ?? p.stockTotal ?? 0) > 0)
       .map(p => {
         const por_tienda: Record<number, number> = {}
         if (p.inventariosTienda) {
@@ -478,17 +521,19 @@ export const ruletaService = {
             }
           }
         }
-        
+
         const total_asignado = Object.values(por_tienda).reduce((a, b) => a + b, 0)
-        
+        const stockTotalReal = p.stockTotalBodega ?? p.stockTotal ?? 0
+
         return {
           premio_id: p.id,
           nombre: p.nombre,
           tipo: p.tipo,
-          stock_total: p.stockTotal ?? 0,
+          stock_total: stockTotalReal,
           por_tienda,
           total_asignado,
-          restante_bodega: (p.stockTotal ?? 0) - total_asignado,
+          restante_bodega: stockTotalReal - total_asignado,
+          row_version: p.rowVersion,
         }
       })
   },
