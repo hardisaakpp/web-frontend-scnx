@@ -237,28 +237,39 @@ function fechaFiltro(f: FilaListado): string {
   return (f.fechaCreacion || f.fechaEliminacion || '').slice(0, 10)
 }
 
+function pasaFiltroFecha(f: FilaListado): boolean {
+  const fecha = fechaFiltro(f)
+  if (!fecha) return true
+  if (fechaDesde.value && fecha < fechaDesde.value) return false
+  return !(fechaHasta.value && fecha > fechaHasta.value)
+}
+
+function pasaFiltroEstado(f: FilaListado): boolean {
+  if (!fEstado.value) return true
+  return (f.eliminada ? 'ELIMINADA' : f.estado) === fEstado.value
+}
+
+function pasaFiltroIntegracion(f: FilaListado): boolean {
+  if (!fIntegracion.value) return true
+  if (f.eliminada) return false
+  const integrada = (f.estadoIntegracion || 'PENDIENTE').toUpperCase() === 'INTEGRADO'
+  return fIntegracion.value === 'INTEGRADO' ? integrada : !integrada
+}
+
+function pasaBusqueda(f: FilaListado, q: string): boolean {
+  if (!q) return true
+  return [String(f.idLiquidacion), f.numeroLiquidacion, f.codAlmacen, f.almacenNombre, f.nombreCustodio]
+    .some(v => (v ?? '').toLowerCase().includes(q))
+}
+
 const filasFiltradas = computed(() => {
   const q = search.value.trim().toLowerCase()
-  return filas.value.filter(f => {
-    if (f.eliminada && !verEliminadas.value) return false
-    const fecha = fechaFiltro(f)
-    if (fechaDesde.value && fecha && fecha < fechaDesde.value) return false
-    if (fechaHasta.value && fecha && fecha > fechaHasta.value) return false
-    const estadoVisible = f.eliminada ? 'ELIMINADA' : f.estado
-    if (fEstado.value && estadoVisible !== fEstado.value) return false
-    if (fIntegracion.value && !f.eliminada) {
-      const integ = (f.estadoIntegracion || 'PENDIENTE').toUpperCase()
-      if (fIntegracion.value === 'INTEGRADO' && integ !== 'INTEGRADO') return false
-      if (fIntegracion.value === 'PENDIENTE' && integ === 'INTEGRADO') return false
-    }
-    if (fIntegracion.value && f.eliminada) return false
-    if (!q) return true
-    return String(f.idLiquidacion).includes(q)
-      || (f.numeroLiquidacion ?? '').toLowerCase().includes(q)
-      || (f.codAlmacen ?? '').toLowerCase().includes(q)
-      || (f.almacenNombre ?? '').toLowerCase().includes(q)
-      || (f.nombreCustodio ?? '').toLowerCase().includes(q)
-  })
+  return filas.value.filter(f =>
+    (verEliminadas.value || !f.eliminada)
+    && pasaFiltroFecha(f)
+    && pasaFiltroEstado(f)
+    && pasaFiltroIntegracion(f)
+    && pasaBusqueda(f, q))
 })
 
 const filasOrdenadas = computed(() => {
@@ -356,6 +367,69 @@ function descargarExcel() {
   XLSX.writeFile(workbook, `liquidaciones_${fechaDesde.value || 'inicio'}_${fechaHasta.value || 'hoy'}.xlsx`)
 }
 
+// El API puede devolver claves en camelCase o PascalCase según el serializador —
+// raw() prueba ambas, strOrNull() además normaliza cadenas vacías a null.
+const raw = (l: any, k: string) => l[k] ?? l[k.charAt(0).toUpperCase() + k.slice(1)]
+const strOrNull = (l: any, k: string) => str(raw(l, k)) || null
+
+function mapActiva(l: any): FilaListado {
+  return {
+    idLiquidacion: Number(raw(l, 'idLiquidacion') ?? 0),
+    numeroLiquidacion: strOrNull(l, 'numeroLiquidacion'),
+    codAlmacen: strOrNull(l, 'codAlmacen'),
+    almacenNombre: strOrNull(l, 'almacenNombre'),
+    nombreCustodio: strOrNull(l, 'nombreCustodio'),
+    estado: str(raw(l, 'estado')),
+    fechaCreacion: strOrNull(l, 'fechaCreacion'),
+    fueDevuelta: Boolean(raw(l, 'fueDevuelta') ?? false),
+    estadoIntegracion: strOrNull(l, 'estadoIntegracion'),
+    docNum: strOrNull(l, 'docNum'),
+    valorTotal: Number(raw(l, 'valorTotal') ?? 0),
+    supervisor: normalizeAprobadores(raw(l, 'supervisor')),
+    contador: normalizeAprobadores(raw(l, 'contador')),
+    eliminada: false
+  }
+}
+
+function mapEliminada(l: any): FilaListado {
+  return {
+    idLiquidacion: Number(raw(l, 'idLiquidacion') ?? 0),
+    numeroLiquidacion: strOrNull(l, 'numeroLiquidacion'),
+    codAlmacen: strOrNull(l, 'codAlmacen'),
+    almacenNombre: null,
+    nombreCustodio: strOrNull(l, 'nombreCustodio'),
+    estado: str(raw(l, 'estadoAlEliminar')),
+    fechaCreacion: strOrNull(l, 'fechaCreacion'),
+    fueDevuelta: false,
+    estadoIntegracion: null,
+    docNum: null,
+    valorTotal: 0,
+    supervisor: [],
+    contador: [],
+    eliminada: true,
+    eliminadaPor: strOrNull(l, 'eliminadaPor'),
+    fechaEliminacion: strOrNull(l, 'fechaEliminacion')
+  }
+}
+
+const asLista = (data: unknown): any[] => (Array.isArray(data) ? data : [])
+
+// Resuelve nombres de aprobadores/eliminadores que el API devolvió solo como id.
+async function resolverNombres() {
+  const idsSinNombre = new Set<string>()
+  for (const f of filas.value) {
+    for (const a of [...f.supervisor, ...f.contador]) {
+      if (a.idUsuario && !a.nombreUsuario) idsSinNombre.add(a.idUsuario)
+    }
+    if (f.eliminadaPor && f.eliminadaPor !== 'system') idsSinNombre.add(f.eliminadaPor)
+  }
+  if (!idsSinNombre.size) return
+  nombreById.value = await resolveUserNames([...idsSinNombre])
+  for (const f of filas.value) {
+    if (f.eliminadaPor && nombreById.value[f.eliminadaPor]) f.eliminadaPor = nombreById.value[f.eliminadaPor]
+  }
+}
+
 async function cargar() {
   loading.value = true
   error.value = null
@@ -365,57 +439,12 @@ async function cargar() {
       cajaChicaApi.get('/Liquidaciones/eliminadas').catch(() => ({ data: [] }))
     ])
 
-    const activas: FilaListado[] = (Array.isArray(adminResp.data) ? adminResp.data : []).map((l: any) => ({
-      idLiquidacion: Number(l.idLiquidacion ?? l.IdLiquidacion ?? 0),
-      numeroLiquidacion: str(l.numeroLiquidacion ?? l.NumeroLiquidacion) || null,
-      codAlmacen: str(l.codAlmacen ?? l.CodAlmacen) || null,
-      almacenNombre: str(l.almacenNombre ?? l.AlmacenNombre) || null,
-      nombreCustodio: str(l.nombreCustodio ?? l.NombreCustodio) || null,
-      estado: str(l.estado ?? l.Estado),
-      fechaCreacion: str(l.fechaCreacion ?? l.FechaCreacion) || null,
-      fueDevuelta: Boolean(l.fueDevuelta ?? l.FueDevuelta ?? false),
-      estadoIntegracion: str(l.estadoIntegracion ?? l.EstadoIntegracion) || null,
-      docNum: str(l.docNum ?? l.DocNum) || null,
-      valorTotal: Number(l.valorTotal ?? l.ValorTotal ?? 0),
-      supervisor: normalizeAprobadores(l.supervisor ?? l.Supervisor),
-      contador: normalizeAprobadores(l.contador ?? l.Contador),
-      eliminada: false
-    }))
+    filas.value = [
+      ...asLista(adminResp.data).map(mapActiva),
+      ...asLista(elimResp.data).map(mapEliminada)
+    ]
 
-    const eliminadas: FilaListado[] = (Array.isArray(elimResp.data) ? elimResp.data : []).map((l: any) => ({
-      idLiquidacion: Number(l.idLiquidacion ?? l.IdLiquidacion ?? 0),
-      numeroLiquidacion: str(l.numeroLiquidacion ?? l.NumeroLiquidacion) || null,
-      codAlmacen: str(l.codAlmacen ?? l.CodAlmacen) || null,
-      almacenNombre: null,
-      nombreCustodio: str(l.nombreCustodio ?? l.NombreCustodio) || null,
-      estado: str(l.estadoAlEliminar ?? l.EstadoAlEliminar),
-      fechaCreacion: str(l.fechaCreacion ?? l.FechaCreacion) || null,
-      fueDevuelta: false,
-      estadoIntegracion: null,
-      docNum: null,
-      valorTotal: 0,
-      supervisor: [],
-      contador: [],
-      eliminada: true,
-      eliminadaPor: str(l.eliminadaPor ?? l.EliminadaPor) || null,
-      fechaEliminacion: str(l.fechaEliminacion ?? l.FechaEliminacion) || null
-    }))
-
-    filas.value = [...activas, ...eliminadas]
-
-    const idsSinNombre = new Set<string>()
-    for (const f of filas.value) {
-      for (const a of [...f.supervisor, ...f.contador]) {
-        if (a.idUsuario && !a.nombreUsuario) idsSinNombre.add(a.idUsuario)
-      }
-      if (f.eliminadaPor && f.eliminadaPor !== 'system') idsSinNombre.add(f.eliminadaPor)
-    }
-    if (idsSinNombre.size) {
-      nombreById.value = await resolveUserNames([...idsSinNombre])
-      for (const f of filas.value) {
-        if (f.eliminadaPor && nombreById.value[f.eliminadaPor]) f.eliminadaPor = nombreById.value[f.eliminadaPor]
-      }
-    }
+    await resolverNombres()
   } catch (e: any) {
     error.value = e.message ?? 'No se pudo cargar el listado de liquidaciones.'
   } finally {
