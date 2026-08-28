@@ -25,6 +25,9 @@
       <button type="button" class="btn-secondary" :disabled="!bodega || loading || sincronizando" @click="actualizarStock">
         {{ sincronizando ? 'Actualizando...' : 'Actualizar stock' }}
       </button>
+      <button type="button" class="btn-secondary" :disabled="!consultado || filasFiltradas.length === 0 || loading" @click="descargarExcel">
+        Descargar Excel
+      </button>
     </div>
 
     <div v-if="error" class="mb-4 alert-error">{{ error }}</div>
@@ -96,6 +99,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import * as XLSX from 'xlsx'
 import { inventarioSesionesService } from '../services/inventarioSesionesApi'
 import { scnexusInventoryApi, type ItemStockDto } from '../services/scnexusInventoryApi'
 import type { WarehouseSimpleDto } from '../types'
@@ -206,6 +210,30 @@ async function actualizarStock() {
   } finally {
     sincronizando.value = false
   }
+}
+
+// Descarga lo que se ve en pantalla (respeta búsqueda y filtros de Level 1/2/3),
+// con una fila final de total.
+function descargarExcel() {
+  const header = ['Ítem', 'Descripción', 'Level 1', 'Level 2', 'Level 3', 'Stock']
+  const rows = filasOrdenadas.value.map(r => [
+    r.itemCode,
+    r.itemDescription || '',
+    r.level1 || '',
+    r.level2 || '',
+    r.level3 || '',
+    r.systemQuantity
+  ])
+  rows.push(['', '', '', '', 'Total', stockFiltrado.value])
+
+  const sheet = XLSX.utils.aoa_to_sheet([
+    [`Stock ${bodega.value}`, '', '', '', 'Actualizado:', lastSync.value ? formatDateTime(lastSync.value) : 'sin registro'],
+    header,
+    ...rows
+  ])
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, sheet, 'Stock')
+  XLSX.writeFile(workbook, `stock_${bodega.value}_${new Date().toISOString().slice(0, 10)}.xlsx`)
 }
 
 onMounted(async () => {
