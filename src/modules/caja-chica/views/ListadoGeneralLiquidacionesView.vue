@@ -8,10 +8,15 @@
           Todas las liquidaciones con su estado actual, aprobadores e integración SAP — incluidas rechazadas y eliminadas.
         </p>
       </div>
-      <button type="button" class="btn-secondary flex-shrink-0" :disabled="loading" @click="cargar">
-        <ArrowPathIcon class="w-4 h-4 mr-1" :class="{ 'animate-spin': loading }" />
-        Actualizar
-      </button>
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <button type="button" class="btn-secondary" :disabled="loading || filasFiltradas.length === 0" @click="descargarExcel">
+          Descargar Excel
+        </button>
+        <button type="button" class="btn-secondary" :disabled="loading" @click="cargar">
+          <ArrowPathIcon class="w-4 h-4 mr-1" :class="{ 'animate-spin': loading }" />
+          Actualizar
+        </button>
+      </div>
     </div>
 
     <div v-if="error" class="mb-4 alert-error">{{ error }}</div>
@@ -133,6 +138,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import * as XLSX from 'xlsx'
 import { ArrowPathIcon } from '@heroicons/vue/24/outline'
 import { cajaChicaApi } from '../services/cajaChicaApi'
 import { resolveUserNames } from '@/utils/resolveUserNames'
@@ -321,6 +327,33 @@ async function toggleHistorial(idLiquidacion: number) {
   } finally {
     historialLoading.value[idLiquidacion] = false
   }
+}
+
+// Exporta lo visible en pantalla (respeta fechas, búsqueda y filtros), en el mismo orden.
+function descargarExcel() {
+  const header = ['#', 'Número', 'Almacén', 'Nombre almacén', 'Custodio', 'Valor', 'Creada',
+    'Estado', 'Devuelta', 'Supervisor', 'Contador', 'Integración', 'DocNum', 'Eliminada por', 'Fecha eliminación']
+  const rows = filasOrdenadas.value.map(f => [
+    f.idLiquidacion,
+    f.numeroLiquidacion || '',
+    f.codAlmacen || '',
+    f.almacenNombre || '',
+    f.nombreCustodio || '',
+    f.eliminada ? '' : f.valorTotal,
+    formatDate(f.fechaCreacion),
+    f.eliminada ? 'ELIMINADA' : f.estado,
+    f.fueDevuelta ? 'Sí' : '',
+    aprobadorResumen(f.supervisor).replace('—', ''),
+    aprobadorResumen(f.contador).replace('—', ''),
+    f.eliminada ? '' : (f.estadoIntegracion || 'PENDIENTE'),
+    f.docNum || '',
+    f.eliminadaPor || '',
+    f.eliminada ? formatDateTime(f.fechaEliminacion) : ''
+  ])
+
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([header, ...rows]), 'Liquidaciones')
+  XLSX.writeFile(workbook, `liquidaciones_${fechaDesde.value || 'inicio'}_${fechaHasta.value || 'hoy'}.xlsx`)
 }
 
 async function cargar() {
