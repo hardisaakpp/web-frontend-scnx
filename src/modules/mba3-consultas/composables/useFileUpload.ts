@@ -818,6 +818,12 @@ export function useFileUpload(options: {
       // que tiene un significado distinto (código de producto inexistente vs. valor Pack/PVP incorrecto).
       errorTitle = 'Discrepancias de Pack/PVP'
       // errorMessage ya contiene el mensaje del backend (asignado al inicio de la función)
+    } else if (errorCode === 'COSTO_UNITARIO_EXCEL_INCONSISTENTE') {
+      // ⭐ NUEVO: la columna "Costo Unitario" de la plantilla no coincide con el valor que el
+      // backend calcula a partir de "Costo sin IVA" y el Pack (fórmula de esa celda mal aplicada,
+      // ej. referencia a la fila incorrecta). errorMessage ya trae el detalle por producto
+      // (asignado al inicio de la función); solo se personaliza el título.
+      errorTitle = 'Discrepancias de Costo Unitario'
     } else if (isSAPError) {
       // ✅ Determinar si es producto, tienda o bodega
       const totalErrores = productosNoEncontradosSAP.length + tiendasNoEncontradasSAP.length + bodegasNoEncontradasSAP.length
