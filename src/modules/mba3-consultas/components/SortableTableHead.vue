@@ -3,6 +3,7 @@
     <tr>
       <th
         v-if="showIndexColumn"
+        scope="col"
         class="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-12"
       >
         {{ indexLabel }}
@@ -10,6 +11,7 @@
       <th
         v-for="column in columns"
         :key="column.key"
+        scope="col"
         @click="emit('toggle-sort', column.key)"
         :class="[
           'px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors',
