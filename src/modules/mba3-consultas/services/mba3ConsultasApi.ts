@@ -160,11 +160,14 @@ export const mba3ConsultasService = {
 
     const idParaTimeout = ocId ?? referenciaDespacho
     const finalTimeout = calculateIntegrarSapTimeoutMs(idParaTimeout)
-    const numOrdenes = Array.isArray(idParaTimeout)
-      ? idParaTimeout.length
-      : idParaTimeout
-        ? 1
-        : 0
+    let numOrdenes: number
+    if (Array.isArray(idParaTimeout)) {
+      numOrdenes = idParaTimeout.length
+    } else if (idParaTimeout) {
+      numOrdenes = 1
+    } else {
+      numOrdenes = 0
+    }
 
     console.debug(`⏱️ [integrarSAP] Timeout calculado: ${finalTimeout / 1000}s para ${numOrdenes} ODC(s)`)
 
