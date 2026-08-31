@@ -3,7 +3,8 @@
 import { computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import CardDashboard from '../components/CardDashboard.vue'
-import { ArrowLeftIcon, Cog6ToothIcon } from '@heroicons/vue/24/outline'
+import BotonAtrasModulo from '../components/BotonAtrasModulo.vue'
+import { Cog6ToothIcon } from '@heroicons/vue/24/outline'
 
 const authStore = useAuthStore()
 
@@ -15,10 +16,7 @@ const puedeMatrizAprobacion = computed(() => authStore.hasPermission('transferen
     <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div class="space-y-6">
             <div class="flex items-center gap-4">
-                <router-link to="/transferencias-stock"
-                    class="p-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 bg-white dark:bg-gray-900 shadow-sm transition-colors">
-                    <ArrowLeftIcon class="w-5 h-5" />
-                </router-link>
+                <BotonAtrasModulo />
                 <div>
                     <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">Configuración</h1>
                     <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">

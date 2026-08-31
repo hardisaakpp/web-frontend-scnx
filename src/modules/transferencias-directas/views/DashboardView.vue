@@ -2,7 +2,8 @@
 import { useAuthStore } from '@/stores/auth';
 import { computed, onMounted, ref } from 'vue';
 import CardDashboard from '../components/CardDashboard.vue';
-import { ArrowLeftIcon, ClipboardDocumentCheckIcon, ClockIcon, TruckIcon } from '@heroicons/vue/24/outline';
+import BotonAtrasModulo from '../components/BotonAtrasModulo.vue';
+import { ClipboardDocumentCheckIcon, ClockIcon, TruckIcon } from '@heroicons/vue/24/outline';
 import transferenciasService from '../services/transferenciasService.js';
 const authStore = useAuthStore()
 const puedeCrear = computed(() => authStore.hasPermission('transferenciadirecta.solicitar'))
@@ -28,10 +29,7 @@ onMounted(async () => {
         <div class="space-y-6">
             <!--Cabecera-->
             <div class="flex items-center gap-4">
-                <router-link to="/transferencias-stock"
-                    class="p-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 bg-white dark:bg-gray-900 shadow-sm transition-colors">
-                    <ArrowLeftIcon class="w-5 h-5" />
-                </router-link>
+                <BotonAtrasModulo />
                 <div>
                     <h1 class="text-2xl font-semibold text-gray-900 dark:text-white">
                         Transferencias

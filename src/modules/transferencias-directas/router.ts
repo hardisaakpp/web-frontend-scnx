@@ -94,13 +94,22 @@ const routes: RouteRecordRaw[] = [
     title: 'Matriz de Aprobación',
     permissions: ['transferenciadirecta.matriz_aprobacion'],
   }),
-    crearRuta({
+  crearRuta({
     path: '/transferencias-stock/bandeja-aprobacion',
     name: 'transferencias-stock-bandeja-aprobacion',
     component: () => import('./views/BandejaAprobacionView.vue'),
     title: 'Bandeja de Aprobación',
     permissions: ['transferenciadirecta.aprobar'],
   }),
+  // Historial de transitorias (dentro del submenú de transitorias)
+  crearRuta({
+    path: '/transferencias-stock/transitorias/historial',
+    name: 'transitorias-historial',
+    component: () => import('./views/HistorialTransitoriasView.vue'),
+    title: 'Historial de Transitorias',
+    permissions: ['transferenciadirecta.transitorias'],
+  }),
+
 
 ]
 
