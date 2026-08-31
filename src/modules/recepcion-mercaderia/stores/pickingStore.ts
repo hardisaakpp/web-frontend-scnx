@@ -174,8 +174,10 @@ export const usePickingStore = defineStore('recepcionPicking', () => {
     sapErrorMessage.value = null
     isSubmitting.value = true
     try {
-      // confirm's own response carries no usable transfer data (see recepcionApi.confirm) — the
-      // canonical post-confirm state comes from re-fetching, same as scan()/recordDifference().
+      // A 200 response here can still carry success:false with reason 'Queued'/'StillPending'
+      // (SAP confirm was queued, not an error) — not surfaced as a failure. The canonical
+      // post-confirm state, including whether a SAP job is still pending, comes from re-fetching
+      // (currentTransfer.pendingSapJobQueuedAtUtc), same as scan()/recordDifference().
       await recepcionApi.confirm(transferId, body)
       if (activeTransferId.value !== transferId) return
       const result = await recepcionApi.getTransfer(transferId)

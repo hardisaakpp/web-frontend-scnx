@@ -315,6 +315,16 @@ async function handleDownloadPickingReport(): Promise<void> {
                 <span :class="[statusMeta(store.currentTransfer.status).classes, 'inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wider']">
                   {{ statusMeta(store.currentTransfer.status).label }}
                 </span>
+                <!-- SAP confirm queued, not resolved inline yet — transient (a background job
+                     retries every 5 min), not an error. Driven by pendingSapJobQueuedAtUtc from the
+                     transfer itself (not the one-off confirm response) so it survives a reload. -->
+                <span
+                  v-if="store.currentTransfer.pendingSapJobQueuedAtUtc"
+                  data-testid="pending-sap-job-badge"
+                  class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border uppercase tracking-wider bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800"
+                >
+                  Procesando en SAP
+                </span>
               </div>
               <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
                 Basado en transferencia {{ store.currentTransfer.documentNumber }}. {{ store.currentTransfer.transitWarehouseCode ?? store.currentTransfer.originWarehouseCode }} a {{ store.currentTransfer.destinationWarehouseCode }}

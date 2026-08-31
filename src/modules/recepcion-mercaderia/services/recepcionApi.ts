@@ -8,6 +8,7 @@ import type {
   Difference,
   SaveScanProgressRequest,
   ConfirmTransferRequest,
+  ConfirmTransferResponse,
   GlpiTicketRequest,
   RecordDifferenceRequest,
   HistoryFilters,
@@ -56,6 +57,9 @@ interface WireReceptionTransfer {
   createdByUserName: string
   lines: WireReceptionTransferLine[]
   differencesCount: number
+  // Set when a confirm's SAP call was queued instead of resolved inline; null when nothing is
+  // pending. See ReceptionTransfer.pendingSapJobQueuedAtUtc.
+  pendingSapJobQueuedAtUtc: string | null
 }
 
 interface WireDifference {
@@ -110,6 +114,7 @@ function mapTransfer(t: WireReceptionTransfer): ReceptionTransfer {
     sapStockTransferDocEntry: t.sapStockTransferDocEntry,
     sapStockTransferDocNum: t.sapStockTransferDocNum,
     differencesCount: t.differencesCount,
+    pendingSapJobQueuedAtUtc: t.pendingSapJobQueuedAtUtc,
   }
 }
 
@@ -218,14 +223,16 @@ const recepcionApi = {
     })
   },
 
-  // Success response is ConfirmReceptionTransferResult's own shape { success, sapDocEntry,
-  // sapDocNum, message } — verified with backend — not a WireReceptionTransfer, so there is
-  // nothing here worth mapping. The caller re-fetches the transfer afterward for the canonical
-  // post-confirm state, same 204-then-refetch pattern as scan() above.
-  confirm: async (transferId: number, body: ConfirmTransferRequest = {}): Promise<void> => {
-    await api.post(`${BASE}/transfers/${transferId}/confirm`, {
+  // Response is ConfirmReceptionTransferResult's own shape { success, sapDocEntry, sapDocNum,
+  // message, reason? } — not a WireReceptionTransfer, so no mapping needed beyond passing it
+  // through. The caller still re-fetches the transfer afterward for the canonical post-confirm
+  // state (same 204-then-refetch pattern as scan() above) — pendingSapJobQueuedAtUtc on that
+  // refetched transfer, not this response, is the durable signal for a queued SAP job.
+  confirm: async (transferId: number, body: ConfirmTransferRequest = {}): Promise<ConfirmTransferResponse> => {
+    const response = await api.post<ConfirmTransferResponse>(`${BASE}/transfers/${transferId}/confirm`, {
       allowPartial: body.allowPartial ?? false,
     })
+    return response.data
   },
 
   updateGlpiTicket: async (transferId: number, body: GlpiTicketRequest): Promise<ReceptionTransfer> => {
