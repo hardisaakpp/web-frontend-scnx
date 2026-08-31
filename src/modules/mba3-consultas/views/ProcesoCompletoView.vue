@@ -399,7 +399,7 @@ function construirDetalleSAPSinEnvio(
 function calcularInnerStatusProcesoCompleto(
   response: ProcesoCompletoSAPResponse,
   envio: ProcesoCompletoSAPDetalleODC | undefined
-): 'success' | 'partial' | 'error' {
+): EstadoIntegracionSAP {
   if (response.status === 'success' || response.status === 'partial' || response.status === 'error') {
     return response.status
   }
@@ -1612,7 +1612,7 @@ async function actualizarOrdenLocalTrasIntegracion(ocId: string, referenciaDespa
   }
 
   await nextTick()
-  void ordenesCompraStore.fetchEstadisticas()
+  ordenesCompraStore.fetchEstadisticas()
 }
 
 function logSiFaltaSolicitudesTransferencia(detalle: any, response: any): void {
