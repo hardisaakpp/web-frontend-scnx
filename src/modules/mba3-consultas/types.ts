@@ -130,7 +130,7 @@ export interface OrdenCompra {
   pedido_id: string | null    // ⭐ NUEVO - ID del pedido relacionado
   proveedor: string
   fecha_generacion: string
-  estado: 'PENDIENTE' | 'ENVIADA' | 'ERROR'
+  estado: 'PENDIENTE' | 'ENVIANDO' | 'ENVIADA' | 'ERROR'
   numero_oc_sap: string | null
   doc_entry: number | null    // ⭐ DocEntry de SAP (importante para trazabilidad)
   doc_num?: number | null     // ⭐ DocNum de SAP (número de documento en SAP)

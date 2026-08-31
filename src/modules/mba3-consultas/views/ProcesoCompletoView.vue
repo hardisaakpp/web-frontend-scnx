@@ -286,6 +286,7 @@ import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
 import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
 import QuickTablePagination from '@/components/QuickTablePagination.vue'
 import { ejecutarProcesoCompletoSap } from '../composables/ejecutarProcesoCompletoSap'
+import { useListadoAutoRefresh } from '../composables/useListadoAutoRefresh'
 import { isTransientClientError, SAP_MAY_STILL_PROCESSING_MESSAGE } from '../utils/httpErrors'
 import { isProcesoTransientError } from '../utils/procesoAsyncHelpers'
 
@@ -2102,6 +2103,12 @@ watch(() => route.query, async (newQuery) => {
   }
   await nextTick()
 }, { immediate: true })
+
+// Auto-refresh del listado de ODC (SSE relevante, reconexión SSE, foco/visibilidad) -- pieza
+// compartida, mismo patrón que PedidosListView/RedistribucionListadoView. Antes esta vista no
+// tenía ninguna suscripción SSE: ni el toast de "ODC enviada a SAP" (que el backend ya publica
+// desde /integrar-sap) ni el estado ENVIANDO llegaban aquí sin recargar la página a mano.
+useListadoAutoRefresh(cargarOrdenesCompraPendientes, { debugLabel: 'ProcesoCompletoView' })
 
 function getStepStatus(step: string): 'pending' | 'active' | 'completed' | 'error' | 'retry' {
   if (!procesoStore.currentStep && !procesoStore.resultados) return 'pending'

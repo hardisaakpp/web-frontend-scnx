@@ -233,8 +233,16 @@
             </template>
             <td v-if="!props.readOnly" class="px-6 py-4 whitespace-nowrap text-sm">
               <div class="flex items-center gap-2 flex-wrap">
+                <span
+                  v-if="oc.estado === 'ENVIANDO'"
+                  class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-800 dark:text-blue-200 bg-blue-50 dark:bg-blue-900/30 rounded-lg"
+                  title="Envío a SAP en curso"
+                >
+                  <LoadingSpinner layout="inline" size="sm" color="current" aria-label="Enviando a SAP" />
+                  Enviando...
+                </span>
                 <button
-                  v-if="shouldShowRetryAction(oc)"
+                  v-else-if="shouldShowRetryAction(oc)"
                   @click="handleIntegrar(oc.referencia_despacho, oc.oc_id)"
                   class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-900/30 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   :disabled="sendingOcId === oc.oc_id || props.loading"
@@ -487,12 +495,16 @@ watch(() => props.ordenesCompra, (newOrdenes) => {
   })
   
   // IMPORTANTE: Limpiar sendingOcId si la orden cambió de estado
-  // Esto fuerza que el botón se actualice visualmente cuando el estado cambia de PENDIENTE a ENVIADA/ERROR
+  // Esto fuerza que el botón se actualice visualmente cuando el estado cambia de PENDIENTE a ENVIADA/ERROR.
+  // ENVIANDO se excluye a propósito: con useListadoAutoRefresh (recuperar foco de pestaña) el
+  // listado puede refrescarse mientras esta misma pestaña sigue esperando su propia llamada a
+  // integrarSAP -- sin este exclude, el botón de la fila que YA se está enviando se reactivaría
+  // prematuramente en cuanto el backend reporte ENVIANDO (que no es 'PENDIENTE').
   if (sendingOcId.value) {
     const ordenEnviada = newOrdenes.find((o: OrdenCompra) => o.oc_id === sendingOcId.value)
-    
-    if (ordenEnviada && ordenEnviada.estado !== 'PENDIENTE') {
-      // La orden ya no está pendiente, limpiar el estado de envío para que el botón desaparezca
+
+    if (ordenEnviada && ordenEnviada.estado !== 'PENDIENTE' && ordenEnviada.estado !== 'ENVIANDO') {
+      // La orden ya no está pendiente ni enviándose, limpiar el estado de envío para que el botón desaparezca
       if (import.meta.env.DEV) console.log(`[OrdenCompraTable] ✅ Botón deshabilitado: ${sendingOcId.value} cambió a ${ordenEnviada.estado}`)
       sendingOcId.value = null
     }
@@ -539,12 +551,16 @@ function isColumnSortable(key: string): boolean {
 function shouldShowRetryAction(oc: OrdenCompra): boolean {
   if (typeof oc.mostrar_reintentar === 'boolean') return oc.mostrar_reintentar
   const estado = (oc.estado || '').toUpperCase()
+  // ENVIANDO queda excluido (no es PENDIENTE ni ERROR): reintentar durante un envío en
+  // curso sería un doble envío engañoso, ver la rama v-else-if="oc.estado === 'ENVIANDO'"
+  // en el template, que toma prioridad sobre este botón.
   return estado === 'PENDIENTE' || estado === 'ERROR'
 }
 
 function shouldShowPdfAction(oc: OrdenCompra): boolean {
   if (typeof oc.mostrar_descargar_pdf === 'boolean') return oc.mostrar_descargar_pdf
-  return !shouldShowRetryAction(oc)
+  const estado = (oc.estado || '').toUpperCase()
+  return estado !== 'ENVIANDO' && !shouldShowRetryAction(oc)
 }
 
 /**
@@ -1105,6 +1121,7 @@ function getRowWarningClass(oc: OrdenCompra): string {
 function getEstadoClass(estado: string): string {
   const classes: Record<string, string> = {
     'PENDIENTE': 'px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200 transition-colors duration-300',
+    'ENVIANDO': 'px-2 py-1 text-xs font-medium rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 transition-colors duration-300',
     'ENVIADA': 'px-2 py-1 text-xs font-medium rounded-full bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200 transition-colors duration-300',
     'ERROR': 'px-2 py-1 text-xs font-medium rounded-full bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200 transition-colors duration-300',
   }
@@ -1114,6 +1131,9 @@ function getEstadoClass(estado: string): string {
 function getEstadoTooltip(oc: OrdenCompra): string {
   if (oc.estado === 'PENDIENTE') {
     return 'Lista para enviar a SAP'
+  }
+  if (oc.estado === 'ENVIANDO') {
+    return 'Enviando a SAP ahora mismo...'
   }
   if (oc.estado === 'ENVIADA') {
     return 'Enviada exitosamente a SAP'
