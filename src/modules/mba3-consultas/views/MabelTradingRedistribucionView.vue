@@ -585,109 +585,133 @@ function getDetallesAdicionales(
   }))
 }
 
+/** Determina el estado interno del resultado SAP a partir de la respuesta del backend. */
+function determineInnerStatus(response: ProcesoCompletoSAPResponse): 'success' | 'partial' | 'error' {
+  if ((response as any).status === 'success' || (response as any).status === 'partial' || (response as any).status === 'error') {
+    return (response as any).status
+  } else if (response.envio_sap?.doc_num != null) {
+    return 'success'
+  } else if (response.error_detalle) {
+    return 'partial'
+  } else {
+    return 'error'
+  }
+}
+
+/** Rama de applySAPResponse para innerStatus === 'success'. */
+async function handleSAPResponseSuccess(
+  response: ProcesoCompletoSAPResponse,
+  solicitudesTransferencia: SolicitudesTransferencia | null
+) {
+  try {
+    await loadPedido()
+  } catch (e) {
+    console.warn('[applySAPResponse] loadPedido tras éxito SAP:', e)
+    const cabecera = pedido.value?.cabecera
+    if (cabecera) {
+      cabecera.estado_id = 12
+      cabecera.estado = 'CONFIRMADO_ENVIADO'
+    }
+  }
+  procesoStore.setSAPResultadoPendiente({
+    detalle: response.envio_sap ? {
+      success: true,
+      oc_id: response.envio_sap.oc_id ?? '',
+      doc_num: response.envio_sap.doc_num,
+      doc_entry: response.envio_sap.doc_entry,
+      numero_oc_sap: (response.envio_sap as any).numero_oc_sap ?? null,
+      message: response.message,
+      error: null,
+      error_message: null,
+      error_code: null,
+      error_source: null,
+      retry_recommended: response.envio_sap.retry_recommended ?? null
+    } as IntegracionSAPDetalle : null,
+    solicitudesTransferencia: solicitudesTransferencia || null,
+    detallesAdicionales: getDetallesAdicionales(response),
+    estadoGeneral: 'success',
+    numeroPedido: numeroPedido.value,
+    ajustesDetalle: buildAjustesDetalleParaProcesoCompletoSAP()
+  })
+  router.push({ name: 'mba3-consultas-proceso' })
+}
+
+/** Rama de applySAPResponse para innerStatus === 'partial'. */
+async function handleSAPResponsePartial(
+  response: ProcesoCompletoSAPResponse,
+  solicitudesTransferencia: SolicitudesTransferencia | null
+) {
+  try {
+    await loadPedido()
+  } catch (e) {
+    console.warn('[applySAPResponse] loadPedido tras partial SAP:', e)
+    if (response.redistribucion && pedido.value?.cabecera) {
+      pedido.value.cabecera.estado_id = 10
+      pedido.value.cabecera.estado = 'CONFIRMADO REDISTRIBUCION'
+    }
+  }
+  const errorMsg = response.error_detalle ?? 'Error desconocido'
+  const retryFlag = response.envio_sap?.retry_recommended ?? null
+  procesoStore.setSAPResultadoPendiente({
+    // Prioriza el error de ESTA ODC (envio_sap.error) sobre el resumen del pedido
+    // completo (errorMsg / error_detalle), que en un pedido mixto concatena el
+    // error de las 2 ODC ("RG-CD: ...; RL-CD: ...") -- el mensaje de la ODC puntual
+    // es más preciso para esta sección del modal.
+    detalle: response.envio_sap ? {
+      success: !!response.envio_sap.doc_num,
+      oc_id: response.envio_sap.oc_id ?? '',
+      doc_num: response.envio_sap.doc_num,
+      doc_entry: response.envio_sap.doc_entry,
+      numero_oc_sap: (response.envio_sap as any).numero_oc_sap ?? null,
+      message: null,
+      error: response.envio_sap.error ?? errorMsg,
+      error_message: response.envio_sap.error ?? errorMsg,
+      error_code: response.envio_sap.error_code ?? null,
+      error_source: null,
+      retry_recommended: retryFlag
+    } as IntegracionSAPDetalle : {
+      success: false,
+      oc_id: '',
+      doc_num: null,
+      doc_entry: null,
+      message: null,
+      error: errorMsg,
+      error_message: errorMsg,
+      error_code: null,
+      error_source: null,
+      retry_recommended: retryFlag
+    } as IntegracionSAPDetalle,
+    solicitudesTransferencia: solicitudesTransferencia || null,
+    detallesAdicionales: getDetallesAdicionales(response),
+    estadoGeneral: 'partial',
+    numeroPedido: numeroPedido.value,
+    ajustesDetalle: buildAjustesDetalleParaProcesoCompletoSAP()
+  })
+  router.push({ name: 'mba3-consultas-proceso' })
+}
+
+/** Rama de applySAPResponse para innerStatus === 'error'. */
+async function handleSAPResponseError(response: ProcesoCompletoSAPResponse) {
+  toast.error('Error en proceso SAP', response.message || 'Ocurrió un error inesperado')
+  // Refresco adicional para sincronizar el flag backend.
+  try {
+    await loadPedido()
+  } catch (e) {
+    console.warn('[applySAPResponse] loadPedido tras error SAP:', e)
+  }
+}
+
 /** Aplica el resultado del proceso SAP (compartido entre flujo async y fallback sync). */
 async function applySAPResponse(response: ProcesoCompletoSAPResponse) {
-  let innerStatus: 'success' | 'partial' | 'error'
-  if ((response as any).status === 'success' || (response as any).status === 'partial' || (response as any).status === 'error') {
-    innerStatus = (response as any).status
-  } else if (response.envio_sap?.doc_num != null) {
-    innerStatus = 'success'
-  } else if (response.error_detalle) {
-    innerStatus = 'partial'
-  } else {
-    innerStatus = 'error'
-  }
-
+  const innerStatus = determineInnerStatus(response)
   const solicitudesTransferencia = getSolicitudesTransferencia(response)
 
   if (innerStatus === 'success') {
-    try {
-      await loadPedido()
-    } catch (e) {
-      console.warn('[applySAPResponse] loadPedido tras éxito SAP:', e)
-      const cabecera = pedido.value?.cabecera
-      if (cabecera) {
-        cabecera.estado_id = 12
-        cabecera.estado = 'CONFIRMADO_ENVIADO'
-      }
-    }
-    procesoStore.setSAPResultadoPendiente({
-      detalle: response.envio_sap ? {
-        success: true,
-        oc_id: response.envio_sap.oc_id ?? '',
-        doc_num: response.envio_sap.doc_num,
-        doc_entry: response.envio_sap.doc_entry,
-        numero_oc_sap: (response.envio_sap as any).numero_oc_sap ?? null,
-        message: response.message,
-        error: null,
-        error_message: null,
-        error_code: null,
-        error_source: null,
-        retry_recommended: response.envio_sap.retry_recommended ?? null
-      } as IntegracionSAPDetalle : null,
-      solicitudesTransferencia: solicitudesTransferencia || null,
-      detallesAdicionales: getDetallesAdicionales(response),
-      estadoGeneral: 'success',
-      numeroPedido: numeroPedido.value,
-      ajustesDetalle: buildAjustesDetalleParaProcesoCompletoSAP()
-    })
-    router.push({ name: 'mba3-consultas-proceso' })
+    await handleSAPResponseSuccess(response, solicitudesTransferencia)
   } else if (innerStatus === 'partial') {
-    try {
-      await loadPedido()
-    } catch (e) {
-      console.warn('[applySAPResponse] loadPedido tras partial SAP:', e)
-      if (response.redistribucion && pedido.value?.cabecera) {
-        pedido.value.cabecera.estado_id = 10
-        pedido.value.cabecera.estado = 'CONFIRMADO REDISTRIBUCION'
-      }
-    }
-    const errorMsg = response.error_detalle ?? 'Error desconocido'
-    const retryFlag = response.envio_sap?.retry_recommended ?? null
-    procesoStore.setSAPResultadoPendiente({
-      // Prioriza el error de ESTA ODC (envio_sap.error) sobre el resumen del pedido
-      // completo (errorMsg / error_detalle), que en un pedido mixto concatena el
-      // error de las 2 ODC ("RG-CD: ...; RL-CD: ...") -- el mensaje de la ODC puntual
-      // es más preciso para esta sección del modal.
-      detalle: response.envio_sap ? {
-        success: !!response.envio_sap.doc_num,
-        oc_id: response.envio_sap.oc_id ?? '',
-        doc_num: response.envio_sap.doc_num,
-        doc_entry: response.envio_sap.doc_entry,
-        numero_oc_sap: (response.envio_sap as any).numero_oc_sap ?? null,
-        message: null,
-        error: response.envio_sap.error ?? errorMsg,
-        error_message: response.envio_sap.error ?? errorMsg,
-        error_code: response.envio_sap.error_code ?? null,
-        error_source: null,
-        retry_recommended: retryFlag
-      } as IntegracionSAPDetalle : {
-        success: false,
-        oc_id: '',
-        doc_num: null,
-        doc_entry: null,
-        message: null,
-        error: errorMsg,
-        error_message: errorMsg,
-        error_code: null,
-        error_source: null,
-        retry_recommended: retryFlag
-      } as IntegracionSAPDetalle,
-      solicitudesTransferencia: solicitudesTransferencia || null,
-      detallesAdicionales: getDetallesAdicionales(response),
-      estadoGeneral: 'partial',
-      numeroPedido: numeroPedido.value,
-      ajustesDetalle: buildAjustesDetalleParaProcesoCompletoSAP()
-    })
-    router.push({ name: 'mba3-consultas-proceso' })
+    await handleSAPResponsePartial(response, solicitudesTransferencia)
   } else {
-    toast.error('Error en proceso SAP', response.message || 'Ocurrió un error inesperado')
-    // Refresco adicional para sincronizar el flag backend.
-    try {
-      await loadPedido()
-    } catch (e) {
-      console.warn('[applySAPResponse] loadPedido tras error SAP:', e)
-    }
+    await handleSAPResponseError(response)
   }
 }
 
