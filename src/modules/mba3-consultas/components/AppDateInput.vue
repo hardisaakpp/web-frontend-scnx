@@ -138,6 +138,7 @@
  * dentro del modal para verlo completo.
  */
 import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
+import { pad2, isoToDisplay, displayToIso, useCalendarViewState } from '../composables/useIsoDateInput'
 
 const props = defineProps<{
   modelValue: string | null | undefined
@@ -180,43 +181,7 @@ function handleReposition() {
   if (showCalendar.value) updateCalendarPosition()
 }
 
-const now = new Date()
-const viewYear = ref(now.getFullYear())
-const viewMonth = ref(now.getMonth())
-
-function pad2(n: number): string {
-  return String(n).padStart(2, '0')
-}
-
-function isoToDisplay(iso: string): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '')
-  if (!m) return ''
-  return `${m[3]}/${m[2]}/${m[1]}`
-}
-
-function displayToIso(display: string): string | null {
-  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(display.trim())
-  if (!m) return null
-  const day = Number(m[1])
-  const month = Number(m[2])
-  const year = Number(m[3])
-  if (month < 1 || month > 12) return null
-  const daysInMonth = new Date(year, month, 0).getDate()
-  if (day < 1 || day > daysInMonth) return null
-  return `${String(year).padStart(4, '0')}-${pad2(month)}-${pad2(day)}`
-}
-
-function syncViewToValue(iso: string) {
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '')
-  if (m) {
-    viewYear.value = Number(m[1])
-    viewMonth.value = Number(m[2]) - 1
-  } else {
-    const today = new Date()
-    viewYear.value = today.getFullYear()
-    viewMonth.value = today.getMonth()
-  }
-}
+const { viewYear, viewMonth, syncViewToValue } = useCalendarViewState()
 
 watch(
   () => props.modelValue,

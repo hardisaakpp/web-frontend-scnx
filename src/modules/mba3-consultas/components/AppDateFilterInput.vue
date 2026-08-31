@@ -145,6 +145,7 @@
  */
 import { ref, computed, watch, nextTick, onBeforeUnmount, useId } from 'vue'
 import type { TipoFechaFiltro } from '../types'
+import { pad2, isoToDisplay, displayToIso, useCalendarViewState } from '../composables/useIsoDateInput'
 
 const props = defineProps<{
   disabled?: boolean
@@ -183,9 +184,7 @@ const textHasta = ref('')
 // true mientras se espera el clic que define "Hasta" (ya hay un "Desde" elegido en el calendario)
 const seleccionandoHasta = ref(false)
 
-const now = new Date()
-const viewYear = ref(now.getFullYear())
-const viewMonth = ref(now.getMonth())
+const { viewYear, viewMonth, syncViewToValue } = useCalendarViewState()
 
 const tipoLabelActual = computed(() => TIPO_LABELS[tipo.value ?? 'pedido'])
 const tieneFiltro = computed(() => !!desde.value || !!hasta.value)
@@ -198,40 +197,6 @@ const resumen = computed(() => {
   if (d) return `${tipoLabelActual.value}: desde ${d}`
   return `${tipoLabelActual.value}: hasta ${h}`
 })
-
-function pad2(n: number): string {
-  return String(n).padStart(2, '0')
-}
-
-function isoToDisplay(iso: string): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '')
-  if (!m) return ''
-  return `${m[3]}/${m[2]}/${m[1]}`
-}
-
-function displayToIso(display: string): string | null {
-  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(display.trim())
-  if (!m) return null
-  const day = Number(m[1])
-  const month = Number(m[2])
-  const year = Number(m[3])
-  if (month < 1 || month > 12) return null
-  const daysInMonth = new Date(year, month, 0).getDate()
-  if (day < 1 || day > daysInMonth) return null
-  return `${String(year).padStart(4, '0')}-${pad2(month)}-${pad2(day)}`
-}
-
-function syncViewToValue(iso: string) {
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '')
-  if (m) {
-    viewYear.value = Number(m[1])
-    viewMonth.value = Number(m[2]) - 1
-  } else {
-    const today = new Date()
-    viewYear.value = today.getFullYear()
-    viewMonth.value = today.getMonth()
-  }
-}
 
 watch(desde, (value) => { textDesde.value = isoToDisplay(value ?? '') }, { immediate: true })
 watch(hasta, (value) => { textHasta.value = isoToDisplay(value ?? '') }, { immediate: true })
