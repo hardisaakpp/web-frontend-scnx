@@ -1540,6 +1540,12 @@ export interface SolicitudesTransferencia {
   total_tiendas: number
   transferencias_creadas: number
   transferencias_errores: number
+  /** Tiendas cuyo ITR quedó "pendiente_confirmacion" (SAP devolvió 202/job encolado, o se
+   * agotaron los reintentos sin un rechazo definitivo) -- no son error ni éxito confirmado
+   * todavía. Sin este campo, creadas + errores puede sumar menos que total_tiendas sin que
+   * el modal explique por qué (ver bug detectado 2026-08-31: "4 exitosas, 0 con errores"
+   * con una 5ta tienda invisible que el badge "Reintentar ST" de la tabla sí mostraba). */
+  transferencias_pendientes_confirmacion?: number
   resultados: SolicitudTransferenciaResultado[]
   /** Lista para el modal: una entrada por ITR con DocNum y tienda (rellenado por backend) */
   itrs_por_tienda?: ItrPorTienda[]

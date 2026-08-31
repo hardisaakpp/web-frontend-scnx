@@ -365,18 +365,26 @@ function calcularResumenSolicitudesTexto(
   estadoTransferencias: 'exitoso' | 'parcial' | 'sin_exito',
   creadasTransferencia: number,
   totalTransferencia: number,
-  erroresTransferencia: number
+  erroresTransferencia: number,
+  pendientesTransferencia: number
 ): string {
   if (!solicitudesTransferencia) return ''
+  // Sin este sufijo, una tienda "pendiente_confirmacion" (SAP devolvió 202/job encolado,
+  // o se agotaron los reintentos sin un rechazo definitivo -- no es error confirmado)
+  // queda invisible: ni contada como exitosa ni como error, aunque el badge "Reintentar
+  // ST" de la tabla sí la muestre como pendiente (detectado 2026-08-31).
+  const sufijoPendientes = pendientesTransferencia > 0
+    ? ` (${pendientesTransferencia} pendiente${pendientesTransferencia === 1 ? '' : 's'} de confirmación)`
+    : ''
   if (estadoTransferencias === 'exitoso') {
     return `✅ ${creadasTransferencia} de ${totalTransferencia} creadas exitosamente`
   }
   if (estadoTransferencias === 'parcial') {
     return import.meta.env.PROD
-      ? `⚠️ ${creadasTransferencia} de ${totalTransferencia} creadas`
-      : `⚠️ ${creadasTransferencia} exitosas, ${erroresTransferencia} con errores`
+      ? `⚠️ ${creadasTransferencia} de ${totalTransferencia} creadas${sufijoPendientes}`
+      : `⚠️ ${creadasTransferencia} exitosas, ${erroresTransferencia} con errores${sufijoPendientes}`
   }
-  return `❌ 0 de ${totalTransferencia} creadas`
+  return `❌ 0 de ${totalTransferencia} creadas${sufijoPendientes}`
 }
 
 // Agrupa todos los valores derivados de una ODC (Num ODC mostrado, mensaje de éxito,
@@ -393,6 +401,7 @@ function construirBloque(detalle: IntegracionSAPDetalle, solicitudesTransferenci
   const erroresTransferencia = solicitudesTransferencia?.transferencias_errores ?? 0
   const creadasTransferencia = solicitudesTransferencia?.transferencias_creadas ?? 0
   const totalTransferencia = solicitudesTransferencia?.total_tiendas ?? 0
+  const pendientesTransferencia = solicitudesTransferencia?.transferencias_pendientes_confirmacion ?? 0
 
   const estadoTransferencias = calcularEstadoTransferencias(solicitudesTransferencia, creadasTransferencia, totalTransferencia)
   const resumenSolicitudesTexto = calcularResumenSolicitudesTexto(
@@ -400,7 +409,8 @@ function construirBloque(detalle: IntegracionSAPDetalle, solicitudesTransferenci
     estadoTransferencias,
     creadasTransferencia,
     totalTransferencia,
-    erroresTransferencia
+    erroresTransferencia,
+    pendientesTransferencia
   )
 
   return {
