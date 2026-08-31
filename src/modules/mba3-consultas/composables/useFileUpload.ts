@@ -149,6 +149,668 @@ export interface CorreccionesPlantilla {
   correccionesCodigos?: Record<string, string>
 }
 
+/**
+ * Procesa el error de carga y prepara la información para el modal
+ */
+export function processUploadError(e: any, fileName: string): UploadErrorInfo {
+  let errorTitle = 'Error al cargar plantilla'
+  // Obtener mensaje de error de múltiples fuentes posibles
+  let errorMessage = e.message || 
+                    e.response?.data?.error || 
+                    e.response?.data?.message || 
+                    e.response?.data?.detail ||
+                    'Error desconocido al subir plantilla'
+  const errorErrors: Array<string | { tipo?: string; campo?: string; mensaje: string; producto?: string }> = []
+  let productosNoEncontradosSAP: string[] = []
+  let tiendasNoEncontradasSAP: string[] = []
+  let bodegasNoEncontradasSAP: string[] = []
+
+  // Construir string de mensaje completo para búsqueda de patrones
+  // Combinar todos los posibles mensajes en un solo string para buscar patrones
+  // Eliminar duplicados usando Set
+  const mensajesUnicos = new Set([
+    e.message,
+    e.response?.data?.error,
+    e.response?.data?.message,
+    e.response?.data?.detail,
+    e.response?.data?.data?.error,
+    e.response?.data?.data?.message
+  ].filter(Boolean))
+  const errorMessageStr = Array.from(mensajesUnicos).join(' ') || ''
+  
+  if (import.meta.env.DEV) console.log('🔍 [useFileUpload] Mensaje completo para búsqueda:', errorMessageStr)
+  
+  // ✅ NUEVO: Extraer códigos del formato estructurado del backend
+  // Formato: "❌ Códigos NO ENCONTRADOS en SAP (N):\n   • CODIGO1\n   • CODIGO2\n..."
+  const codigosNoEncontradosMatch = errorMessageStr.match(/❌ Códigos (?:de )?(PRODUCTO|TIENDA|BODEGA|NO ENCONTRADOS)[\s\S]*?\((?:[^)]+)\):\s*\n((?:\s*•\s*[^\n]+\n?)+)/gi)
+  if (codigosNoEncontradosMatch) {
+    for (const section of codigosNoEncontradosMatch) {
+      // Extraer tipo (PRODUCTO, TIENDA, BODEGA)
+      const tipoMatch = section.match(/Códigos (?:de )?(PRODUCTO|TIENDA|BODEGA|NO ENCONTRADOS)/i)
+      const tipo = tipoMatch ? tipoMatch[1] : 'NO ENCONTRADOS'
+      
+      // Extraer códigos (líneas que empiezan con "   •")
+      const codigosMatch = section.match(/\s*•\s*([^\n]+)/g)
+      if (codigosMatch) {
+        const codigos = codigosMatch.map(line => line.replace(/^\s*•\s*/, '').trim()).filter(c => c)
+        
+        if (tipo.includes('PRODUCTO')) {
+          productosNoEncontradosSAP.push(...codigos)
+        } else if (tipo.includes('TIENDA')) {
+          tiendasNoEncontradasSAP.push(...codigos)
+        } else if (tipo.includes('BODEGA')) {
+          bodegasNoEncontradasSAP.push(...codigos)
+        } else {
+          // Si no especifica tipo, asumir que pueden ser tiendas/bodegas (formato genérico)
+          tiendasNoEncontradasSAP.push(...codigos)
+        }
+      }
+    }
+  }
+  
+  // ✅ También extraer códigos del formato antiguo (compatibilidad)
+  // Patrón para: "❌ Validación SAP productos falló: Productos no encontrados (N): CODIGO1, CODIGO2"
+  // También puede venir en múltiples líneas o como parte de un mensaje más largo
+  const validacionSapPatterns = [
+    // Patrón específico para el formato exacto del backend
+    /❌\s*Validación\s+SAP\s+productos?\s+falló:\s*Productos?\s+no\s+encontrados?\s*\([^)]*\):\s*([A-Za-z0-9,.\s-]+)/i,
+    /Validación\s+SAP\s+productos?\s+falló:\s*Productos?\s+no\s+encontrados?\s*\([^)]*\):\s*([A-Za-z0-9,.\s-]+)/i,
+    // Patrón más flexible que busca "Productos no encontrados (N):" seguido de códigos
+    /Productos?\s+no\s+encontrados?\s*\([^)]*\):\s*([A-Za-z0-9,.\s-]+)/i,
+    // Patrón alternativo sin paréntesis
+    /Productos?\s+no\s+encontrados?\s+en\s+SAP[^:]*:\s*([A-Za-z0-9,.\s-]+)/i
+  ]
+  
+  for (const pattern of validacionSapPatterns) {
+    const match = errorMessageStr.match(pattern)
+    if (match && match[1]) {
+      const codigos = match[1].split(',').map(c => c.trim()).filter(c => c && c.length > 0 && !c.match(/^\d+$/))
+      if (codigos.length > 0) {
+        productosNoEncontradosSAP.push(...codigos)
+        break // Solo usar el primer patrón que coincida
+      }
+    }
+  }
+  
+  // Si aún no se encontraron códigos, buscar en todo el mensaje cualquier patrón de códigos después de ":"
+  if (productosNoEncontradosSAP.length === 0 && errorMessageStr.includes(':')) {
+    // Buscar la última parte después de ":" que contenga códigos separados por comas
+    const partes = errorMessageStr.split(':')
+    if (partes.length > 1) {
+      const ultimaParte = partes[partes.length - 1].trim()
+      // Verificar si la última parte parece contener códigos (tiene comas o múltiples palabras)
+      if (ultimaParte.includes(',') || ultimaParte.split(/\s+/).length > 1) {
+        const posiblesCodigos = ultimaParte.split(',').map(c => c.trim()).filter(c => {
+          // Filtrar solo códigos que parezcan válidos (no solo números, no vacíos)
+          return c && c.length > 0 && !c.match(/^\d+$/) && c.match(/[A-Za-z0-9.-]+/)
+        })
+        if (posiblesCodigos.length > 0) {
+          productosNoEncontradosSAP.push(...posiblesCodigos)
+          if (import.meta.env.DEV) console.log('✅ [useFileUpload] Códigos extraídos de la última parte del mensaje:', posiblesCodigos)
+        }
+      }
+    }
+  }
+  
+  const sapErrorPatterns = [
+    /Productos no encontrados en SAP:\s*([A-Za-z0-9,.\s-]+)/i,
+    /no válidos en SAP[^:]*:\s*([A-Za-z0-9,.\s-]+)/i,
+    /No se encontró información en SAP para SKU:\s*([A-Za-z0-9,.\s-]+)/i,
+    // Patrón adicional para formato: "Productos no encontrados (N): CODIGO1, CODIGO2"
+    /Productos?\s+no\s+encontrados?\s*\([^)]*\):\s*([A-Za-z0-9,.\s-]+)/i
+  ]
+  
+  for (const pattern of sapErrorPatterns) {
+    const match = errorMessageStr.match(pattern)
+    if (match && match[1]) {
+      const codigos = match[1].split(',').map(c => c.trim()).filter(c => c)
+      productosNoEncontradosSAP.push(...codigos)
+    }
+  }
+
+  // Intentar extraer información detallada del error response
+  if (e.response?.data) {
+    const errorData = e.response.data
+    
+    if (errorData.errores && Array.isArray(errorData.errores)) {
+      errorErrors.push(...errorData.errores)
+    }
+    
+    if (errorData.validacion) {
+      const validacion = errorData.validacion
+      
+      // ✅ Productos no encontrados
+      if (validacion.productos?.no_encontrados?.length > 0) {
+        const noEncontrados = Array.isArray(validacion.productos.no_encontrados) 
+          ? validacion.productos.no_encontrados 
+          : []
+        noEncontrados.forEach((codigo: string) => {
+          errorErrors.push({
+            tipo: 'ERROR',
+            campo: 'Producto SAP',
+            mensaje: `El código no existe en SAP`,
+            producto: codigo
+          })
+          if (!productosNoEncontradosSAP.includes(codigo)) {
+            productosNoEncontradosSAP.push(codigo)
+          }
+        })
+      }
+      
+      // ✅ Tiendas no encontradas
+      if (validacion.tiendas?.no_encontradas?.length > 0) {
+        const noEncontradas = Array.isArray(validacion.tiendas.no_encontradas)
+          ? validacion.tiendas.no_encontradas
+          : []
+        noEncontradas.forEach((codigo: string) => {
+          errorErrors.push({
+            tipo: 'ERROR',
+            campo: 'Tienda/Bodega SAP',
+            mensaje: `El código no existe en SAP OWHS`,
+            producto: codigo
+          })
+          if (!tiendasNoEncontradasSAP.includes(codigo)) {
+            tiendasNoEncontradasSAP.push(codigo)
+          }
+        })
+      }
+      
+      // ✅ Bodegas no encontradas
+      if (validacion.bodegas?.no_encontradas?.length > 0) {
+        const noEncontradas = Array.isArray(validacion.bodegas.no_encontradas)
+          ? validacion.bodegas.no_encontradas
+          : []
+        noEncontradas.forEach((codigo: string) => {
+          errorErrors.push({
+            tipo: 'ERROR',
+            campo: 'Bodega SAP',
+            mensaje: `El código no existe en SAP OWHS`,
+            producto: codigo
+          })
+          if (!bodegasNoEncontradasSAP.includes(codigo)) {
+            bodegasNoEncontradasSAP.push(codigo)
+          }
+        })
+      }
+      
+      if (validacion.cantidades && (!validacion.cantidades.valid || validacion.cantidades.errors > 0)) {
+        errorErrors.push({
+          tipo: 'ERROR',
+          campo: 'Cantidad',
+          mensaje: `Errores de validación en cantidades (${validacion.cantidades.errors} error(es), ${validacion.cantidades.warnings} advertencia(s))`,
+          producto: undefined
+        })
+      }
+    }
+    
+    // ✅ Extraer códigos desde validacion_sap estructurado
+    if (errorData.validacion_sap) {
+      const sap = errorData.validacion_sap
+      
+      // ⭐ MEJORADO: El backend ahora siempre envía arrays de códigos
+      if (Array.isArray(sap.no_encontrados)) {
+        sap.no_encontrados.forEach((codigo: string) => {
+          if (!productosNoEncontradosSAP.includes(codigo)) {
+            productosNoEncontradosSAP.push(codigo)
+          }
+        })
+      } else if (typeof sap.no_encontrados === 'number' && sap.no_encontrados > 0) {
+        // ⭐ COMPATIBILIDAD: Si el backend aún envía número (formato antiguo), buscar en otros campos
+        // Buscar en validacion.productos.no_encontrados como fallback
+        if (errorData.validacion?.productos?.no_encontrados && Array.isArray(errorData.validacion.productos.no_encontrados) && errorData.validacion.productos.no_encontrados.length > 0) {
+          errorData.validacion.productos.no_encontrados.forEach((codigo: string) => {
+            if (!productosNoEncontradosSAP.includes(codigo)) {
+              productosNoEncontradosSAP.push(codigo)
+            }
+          })
+        }
+        
+        // Si aún no tenemos códigos específicos, usar el conteo para el mensaje
+        if (productosNoEncontradosSAP.length === 0) {
+          ;(e as any).sapNoEncontradosCount = sap.no_encontrados
+        }
+      }
+      
+      // ⭐ MEJORADO: Manejar errores de SAP (ahora también es array)
+      if (Array.isArray(sap.errores) && sap.errores.length > 0) {
+        sap.errores.forEach((errorMsg: string) => {
+          errorErrors.push({
+            tipo: 'ERROR',
+            campo: 'ValidacionSAP',
+            mensaje: errorMsg,
+            producto: undefined
+          })
+        })
+      } else if (typeof sap.errores === 'number' && sap.errores > 0) {
+        // Compatibilidad con formato antiguo
+        errorErrors.push({
+          tipo: 'ERROR',
+          campo: 'ValidacionSAP',
+          mensaje: `${sap.no_encontrados?.length || sap.total_no_encontrados || 0} código(s) no encontrado(s) en SAP, ${sap.errores} error(es)`,
+          producto: undefined
+        })
+      }
+    }
+    
+    // ✅ Extraer códigos desde data estructurado (BusinessException)
+    // BusinessException puede tener la estructura: { type: 'business_exception', error: '...', data: { validacion: {...}, validacion_sap: {...} } }
+    if (import.meta.env.DEV) console.log('🔍 [useFileUpload] Verificando errorData.data:', errorData.data)
+    
+    // ⭐ NUEVO: También buscar validacion_sap en errorData.data (BusinessException)
+    if (errorData.data?.validacion_sap) {
+      const sapData = errorData.data.validacion_sap
+      if (import.meta.env.DEV) console.log('✅ [useFileUpload] Encontrada validacion_sap en errorData.data.validacion_sap:', sapData)
+      
+      // Extraer códigos no encontrados
+      if (Array.isArray(sapData.no_encontrados)) {
+        sapData.no_encontrados.forEach((codigo: string) => {
+          if (!productosNoEncontradosSAP.includes(codigo)) {
+            productosNoEncontradosSAP.push(codigo)
+          }
+        })
+      }
+    }
+    
+    if (errorData.data?.validacion) {
+      const validacion = errorData.data.validacion
+      if (import.meta.env.DEV) console.log('✅ [useFileUpload] Encontrada validacion en errorData.data.validacion:', validacion)
+      
+      // Productos
+      if (validacion.productos?.no_encontrados && Array.isArray(validacion.productos.no_encontrados)) {
+        validacion.productos.no_encontrados.forEach((codigo: string) => {
+          if (!productosNoEncontradosSAP.includes(codigo)) {
+            productosNoEncontradosSAP.push(codigo)
+          }
+        })
+      }
+      
+      // Tiendas
+      if (validacion.tiendas?.no_encontradas && Array.isArray(validacion.tiendas.no_encontradas)) {
+        validacion.tiendas.no_encontradas.forEach((codigo: string) => {
+          if (!tiendasNoEncontradasSAP.includes(codigo)) {
+            tiendasNoEncontradasSAP.push(codigo)
+          }
+        })
+      }
+      
+      // Bodegas
+      if (validacion.bodegas?.no_encontradas && Array.isArray(validacion.bodegas.no_encontradas)) {
+        validacion.bodegas.no_encontradas.forEach((codigo: string) => {
+          if (!bodegasNoEncontradasSAP.includes(codigo)) {
+            bodegasNoEncontradasSAP.push(codigo)
+          }
+        })
+      }
+    }
+  }
+
+  if ((e as any).errors && Array.isArray((e as any).errors)) {
+    errorErrors.push(...(e as any).errors)
+  }
+
+  // ⭐ Si el backend envió validacion_sap/validacion con no_encontrados, usar SOLO esos códigos
+  // (evitar falsos positivos del parsing del mensaje: "Existen códigos...", "Existen c", etc.)
+  const errorData = e.response?.data
+  const structuredNoEncontrados: string[] = [
+    ...(Array.isArray(errorData?.validacion_sap?.no_encontrados) ? errorData.validacion_sap.no_encontrados : []),
+    ...(Array.isArray(errorData?.validacion?.productos?.no_encontrados) ? errorData.validacion.productos.no_encontrados : []),
+    ...(Array.isArray(errorData?.data?.validacion_sap?.no_encontrados) ? errorData.data.validacion_sap.no_encontrados : []),
+    ...(Array.isArray(errorData?.data?.validacion?.productos?.no_encontrados) ? errorData.data.validacion.productos.no_encontrados : [])
+  ]
+  if (structuredNoEncontrados.length > 0) {
+    productosNoEncontradosSAP = [...new Set(structuredNoEncontrados)]
+    // Quitar entradas "Producto SAP" que no estén en la lista real (eran del parsing del mensaje)
+    for (let i = errorErrors.length - 1; i >= 0; i--) {
+      const err = errorErrors[i]
+      if (typeof err !== 'string' && err.campo === 'Producto SAP' && err.producto && !productosNoEncontradosSAP.includes(err.producto)) {
+        errorErrors.splice(i, 1)
+      }
+    }
+    // Asegurar una entrada por cada código real
+    const existingProductos = new Set(
+      (errorErrors.filter(er => typeof er !== 'string' && er.campo === 'Producto SAP') as Array<{ producto?: string }>).map(er => er.producto)
+    )
+    productosNoEncontradosSAP.forEach(codigo => {
+      if (!existingProductos.has(codigo)) {
+        errorErrors.push({ tipo: 'ERROR', campo: 'Producto SAP', mensaje: 'El código no existe en SAP', producto: codigo })
+      }
+    })
+  }
+
+  // Eliminar duplicados de los códigos extraídos
+  productosNoEncontradosSAP = [...new Set(productosNoEncontradosSAP)]
+  tiendasNoEncontradasSAP = [...new Set(tiendasNoEncontradasSAP)]
+  bodegasNoEncontradasSAP = [...new Set(bodegasNoEncontradasSAP)]
+
+  // ⭐ Filtrar falsos positivos: mensajes de error (formato, etc.) no son códigos de producto SAP
+  const looksLikeProductCode = (s: string): boolean => {
+    if (!s || typeof s !== 'string' || s.length > 35) return false
+    const lower = s.toLowerCase()
+    if (lower.includes('formato') || lower.includes('archivo') || lower.includes('excel') || lower.includes('estructura') || lower.includes('hoja') || lower.includes('cabecera') || lower.includes('detalle') || lower.includes('requerida')) return false
+    return /^[A-Za-z0-9.\s-]+$/.test(s.trim())
+  }
+  productosNoEncontradosSAP = productosNoEncontradosSAP.filter(looksLikeProductCode)
+  for (let i = errorErrors.length - 1; i >= 0; i--) {
+    const err = errorErrors[i]
+    if (typeof err !== 'string' && err.campo === 'Producto SAP' && err.producto && !looksLikeProductCode(err.producto)) {
+      errorErrors.splice(i, 1)
+    }
+  }
+
+  // Identificar el tipo de error
+  const isSAPError = productosNoEncontradosSAP.length > 0 || 
+                     tiendasNoEncontradasSAP.length > 0 ||
+                     bodegasNoEncontradasSAP.length > 0 ||
+                     errorMessageStr.toLowerCase().includes('sap') ||
+                     errorMessageStr.toLowerCase().includes('no válidos en sap') ||
+                     errorMessageStr.toLowerCase().includes('no se encontró')
+  
+  const isDuplicateError = (errorMessageStr.toLowerCase().includes('duplicado') ||
+                           errorMessageStr.toLowerCase().includes('ya existe en el sistema') ||
+                           errorMessageStr.toLowerCase().includes('pedido ya existe') ||
+                           errorMessageStr.toLowerCase().includes('número de pedido') && errorMessageStr.toLowerCase().includes('ya existe') ||
+                           errorMessageStr.toLowerCase().includes('numero de pedido') && errorMessageStr.toLowerCase().includes('ya existe') ||
+                           (e.response?.data?.error_tipo === 'numero_pedido_duplicado')) &&
+                           !isSAPError
+  
+  const isFormatError = errorMessageStr.toLowerCase().includes('formato') ||
+                        errorMessageStr.toLowerCase().includes('estructura')
+
+  // ⭐ NUEVO: Extraer error_code del backend para títulos específicos
+  const errorCode = e.response?.data?.error_code || 
+                    e.response?.data?.data?.error_code ||
+                    e.response?.data?.error_tipo
+
+  // ⭐ Validación de longitud: numero_pedido y mensaje permiten hasta 100 caracteres
+  const lower = errorMessageStr.toLowerCase()
+  const fromMessageStr = (
+    (lower.includes('100') && (lower.includes('caracteres') || lower.includes('carácter'))) ||
+    lower.includes('excede los 100') ||
+    lower.includes('no puede exceder 100') ||
+    lower.includes('máximo 100 caracteres') ||
+    lower.includes('máx. 100 caracteres')
+  ) && (
+    lower.includes('numero_pedido') || lower.includes('número de pedido') || lower.includes('numero de pedido') ||
+    lower.includes('mensaje') || lower.includes('campo')
+  )
+  const fromErroresArray = errorErrors.some(err => {
+    if (typeof err !== 'string' && err?.campo != null && err?.mensaje != null) {
+      const m = String(err.mensaje).toLowerCase()
+      const c = String(err.campo).toLowerCase()
+      return (m.includes('100') && (m.includes('caracteres') || m.includes('carácter'))) &&
+        (c.includes('numero_pedido') || c.includes('mensaje'))
+    }
+    return false
+  })
+  const isLongitudError = fromMessageStr || fromErroresArray
+  if (isLongitudError) {
+    const camposAfectados: string[] = []
+    if (lower.includes('numero_pedido') || lower.includes('número de pedido') || lower.includes('numero de pedido')) {
+      camposAfectados.push('Número de pedido')
+    }
+    if (lower.includes('mensaje')) {
+      camposAfectados.push('Mensaje')
+    }
+    errorErrors.forEach(err => {
+      if (typeof err !== 'string' && err?.campo != null) {
+        const c = String(err.campo).toLowerCase()
+        if (c.includes('numero_pedido') && !camposAfectados.includes('Número de pedido')) {
+          camposAfectados.push('Número de pedido')
+        }
+        if (c.includes('mensaje') && !camposAfectados.includes('Mensaje')) {
+          camposAfectados.push('Mensaje')
+        }
+      }
+    })
+    if (camposAfectados.length === 0) camposAfectados.push('Número de pedido', 'Mensaje')
+    errorTitle = 'Longitud de campo excedida'
+    errorMessage = `Los siguientes campos no pueden superar los 100 caracteres:\n\n   • ${[...new Set(camposAfectados)].join('\n   • ')}\n\nPor favor, acorte el texto en la plantilla Excel (hoja "cabecera") o en el formulario y vuelva a intentar.`
+  } else if (errorCode === 'FORMATO_EXCEL_INVALIDO') {
+    errorTitle = 'Formato Excel Inválido'
+    errorMessage = `El archivo Excel no contiene la estructura requerida.\n\nEl archivo debe tener las hojas 'cabecera' y 'detalle' con los datos del pedido.\n\n⚠️ Verifica que estés usando la plantilla oficial del sistema.`
+  } else if (errorCode === 'ARCHIVO_SIN_DATOS') {
+    errorTitle = 'Archivo Sin Datos Válidos'
+    errorMessage = `El archivo Excel está vacío o no contiene productos válidos.\n\nEl pedido debe incluir al menos un producto con su información completa.\n\n⚠️ Revisa que la hoja 'detalle' contenga productos y que tengan todos los campos requeridos.`
+  } else if (errorCode === 'FORMATO_RESPUESTA_PROVEEDOR_INVALIDO') {
+    errorTitle = 'Formato de Respuesta Proveedor Inválido'
+    errorMessage = `El archivo de respuesta del proveedor no contiene la hoja requerida.\n\nEl archivo debe incluir una hoja llamada 'RESUMEN'.\n\n⚠️ Solicita al proveedor que use el formato correcto de respuesta.`
+  } else if (errorCode === 'PACK_PVP_INVALIDOS_SAP') {
+    // ⭐ NUEVO: Discrepancias de Pack/PVP contra SAP (RN-02). Título deliberadamente sin 'SAP'/'producto'
+    // para no activar la detección genérica de isSAPError (códigos no encontrados) más abajo,
+    // que tiene un significado distinto (código de producto inexistente vs. valor Pack/PVP incorrecto).
+    errorTitle = 'Discrepancias de Pack/PVP'
+    // errorMessage ya contiene el mensaje del backend (asignado al inicio de la función)
+  } else if (errorCode === 'COSTO_UNITARIO_EXCEL_INCONSISTENTE') {
+    // ⭐ NUEVO: la columna "Costo Unitario" de la plantilla no coincide con el valor que el
+    // backend calcula a partir de "Costo sin IVA" y el Pack (fórmula de esa celda mal aplicada,
+    // ej. referencia a la fila incorrecta). errorMessage ya trae el detalle por producto
+    // (asignado al inicio de la función); solo se personaliza el título.
+    errorTitle = 'Discrepancias de Costo Unitario'
+  } else if (isSAPError) {
+    // ✅ Determinar si es producto, tienda o bodega
+    const totalErrores = productosNoEncontradosSAP.length + tiendasNoEncontradasSAP.length + bodegasNoEncontradasSAP.length
+    const tiposErrores: string[] = []
+    
+    // Agregar productos a errores detallados
+    if (productosNoEncontradosSAP.length > 0) {
+      tiposErrores.push('producto')
+      productosNoEncontradosSAP.forEach(codigo => {
+        const exists = errorErrors.some(err => 
+          (typeof err !== 'string') && err.producto === codigo
+        )
+        if (!exists) {
+          errorErrors.push({
+            tipo: 'ERROR',
+            campo: 'Producto SAP',
+            mensaje: `El código no existe en SAP`,
+            producto: codigo
+          })
+        }
+      })
+    }
+    
+    // Agregar tiendas a errores detallados
+    if (tiendasNoEncontradasSAP.length > 0) {
+      tiposErrores.push('tienda/bodega')
+      tiendasNoEncontradasSAP.forEach(codigo => {
+        const exists = errorErrors.some(err => 
+          (typeof err !== 'string') && err.producto === codigo
+        )
+        if (!exists) {
+          errorErrors.push({
+            tipo: 'ERROR',
+            campo: 'Tienda/Bodega SAP',
+            mensaje: `El código no existe en SAP OWHS`,
+            producto: codigo
+          })
+        }
+      })
+    }
+    
+    // Agregar bodegas a errores detallados
+    if (bodegasNoEncontradasSAP.length > 0) {
+      if (!tiposErrores.includes('bodega')) {
+        tiposErrores.push('bodega')
+      }
+      bodegasNoEncontradasSAP.forEach(codigo => {
+        const exists = errorErrors.some(err => 
+          (typeof err !== 'string') && err.producto === codigo
+        )
+        if (!exists) {
+          errorErrors.push({
+            tipo: 'ERROR',
+            campo: 'Bodega SAP',
+            mensaje: `El código no existe en SAP OWHS`,
+            producto: codigo
+          })
+        }
+      })
+    }
+    
+    // ✅ Título dinámico según los tipos de errores encontrados
+    if (tiposErrores.length === 1) {
+      if (tiposErrores[0] === 'producto') {
+        errorTitle = 'Códigos de producto no encontrados en SAP'
+      } else if (tiposErrores[0] === 'tienda/bodega') {
+        errorTitle = 'Códigos de tienda/bodega no encontrados en SAP'
+      } else if (tiposErrores[0] === 'bodega') {
+        errorTitle = 'Códigos de bodega no encontrados en SAP'
+      }
+    } else {
+      errorTitle = 'Códigos no válidos en SAP'
+    }
+    
+    // ✅ Construir mensaje estructurado con todos los códigos
+    // SIEMPRE construir mensaje detallado si hay códigos extraídos, sin importar el mensaje del backend
+    const sapNoEncontradosCount = (e as any).sapNoEncontradosCount || 0
+    const tieneCodigosEspecificos = totalErrores > 0
+    const tieneConteoSinCodigos = sapNoEncontradosCount > 0 && !tieneCodigosEspecificos
+    
+    if (tieneCodigosEspecificos || tieneConteoSinCodigos) {
+      if (tieneCodigosEspecificos) {
+        // Tenemos códigos específicos - mostrar lista detallada
+        errorMessage = `Existen ${totalErrores} código(s) no válidos en SAP.\n\n`
+        
+        if (productosNoEncontradosSAP.length > 0) {
+          errorMessage += `❌ Códigos de PRODUCTO no encontrados (${productosNoEncontradosSAP.length}):\n`
+          productosNoEncontradosSAP.forEach(codigo => {
+            errorMessage += `   • ${codigo}\n`
+          })
+          errorMessage += `\n`
+        }
+        
+        if (tiendasNoEncontradasSAP.length > 0) {
+          errorMessage += `❌ Códigos de TIENDA/BODEGA no encontrados (${tiendasNoEncontradasSAP.length}):\n`
+          tiendasNoEncontradasSAP.forEach(codigo => {
+            errorMessage += `   • ${codigo}\n`
+          })
+          errorMessage += `\n`
+        }
+        
+        if (bodegasNoEncontradasSAP.length > 0) {
+          errorMessage += `❌ Códigos de BODEGA no encontrados (${bodegasNoEncontradasSAP.length}):\n`
+          bodegasNoEncontradasSAP.forEach(codigo => {
+            errorMessage += `   • ${codigo}\n`
+          })
+          errorMessage += `\n`
+        }
+        
+        errorMessage += `⚠️ Por favor verifica que estos códigos estén escritos correctamente en el Excel.`
+      } else if (tieneConteoSinCodigos) {
+        // No tenemos códigos específicos pero sí el conteo - mostrar mensaje informativo
+        errorMessage = `Existen ${sapNoEncontradosCount} código(s) de producto no válidos en SAP.\n\n`
+        errorMessage += `⚠️ Los códigos específicos no están disponibles en la respuesta del servidor.\n\n`
+        errorMessage += `Por favor, revisa el archivo Excel y verifica que todos los códigos de producto estén escritos correctamente y existan en SAP.`
+      }
+      
+      if (import.meta.env.DEV) console.log('✅ [useFileUpload] Mensaje detallado construido:', errorMessage)
+    } else {
+      // Si no se pudieron extraer códigos con los patrones, intentar extraerlos del mensaje del backend directamente
+      // El mensaje del backend puede tener formato: "❌ Validación SAP productos falló: Productos no encontrados (2): R225.1012.BCO.10-12, R5082-17.1012896"
+      if (import.meta.env.DEV) console.log('⚠️ [useFileUpload] No se extrajeron códigos con patrones. Mensaje original:', errorMessageStr)
+      
+      if (errorMessageStr && errorMessageStr.includes('no encontrados') && errorMessageStr.includes(':')) {
+        // Intentar extraer la parte después de los dos puntos que contiene los códigos
+        const partes = errorMessageStr.split(':')
+        if (partes.length > 1) {
+          // Buscar la parte que contiene códigos (generalmente la última o penúltima)
+          let codigosParte = ''
+          // Revisar desde el final hacia atrás para encontrar la parte con códigos
+          for (let i = partes.length - 1; i >= 0; i--) {
+            const parte = partes[i].trim()
+            // Verificar si esta parte parece contener códigos (tiene comas o múltiples palabras/códigos)
+            if (parte && (parte.includes(',') || parte.split(/\s+/).length > 1)) {
+              const posiblesCodigos = parte.split(',').map(c => c.trim()).filter(c => {
+                return c && c.length > 0 && !c.match(/^\d+$/) && c.match(/[A-Za-z0-9.-]+/)
+              })
+              if (posiblesCodigos.length > 0) {
+                codigosParte = parte
+                productosNoEncontradosSAP.push(...posiblesCodigos)
+                break
+              }
+            }
+          }
+          
+          if (codigosParte && productosNoEncontradosSAP.length > 0) {
+            // Eliminar duplicados
+            productosNoEncontradosSAP = [...new Set(productosNoEncontradosSAP)]
+            // Reconstruir el mensaje detallado con los códigos extraídos
+            const totalErrores = productosNoEncontradosSAP.length
+            errorMessage = `Existen ${totalErrores} código(s) no válidos en SAP.\n\n❌ Códigos de PRODUCTO no encontrados (${productosNoEncontradosSAP.length}):\n${productosNoEncontradosSAP.map(c => `   • ${c}`).join('\n')}\n\n⚠️ Por favor verifica que estos códigos estén escritos correctamente en el Excel.`
+          } else {
+            // Si no se pudieron extraer códigos, usar el mensaje del backend directamente
+            errorMessage = errorMessageStr || `Uno o más códigos del archivo no fueron encontrados en SAP.\n\nVerifica que todos los códigos estén correctamente registrados en SAP.`
+          }
+        } else {
+          errorMessage = errorMessageStr || `Uno o más códigos del archivo no fueron encontrados en SAP.\n\nVerifica que todos los códigos estén correctamente registrados en SAP.`
+        }
+      } else {
+        // Si no se pudieron extraer códigos, usar el mensaje del backend directamente
+        errorMessage = errorMessageStr || `Uno o más códigos del archivo no fueron encontrados en SAP.\n\nVerifica que todos los códigos estén correctamente registrados en SAP.`
+      }
+    }
+  } else if (errorCode === 'NUMERO_PEDIDO_DUPLICADO' || isDuplicateError) {
+    errorTitle = 'Número de pedido duplicado'
+    // ⭐ MEJORADO: Primero intentar obtener el número de pedido del backend
+    let numeroPedido = e.response?.data?.numero_pedido || 
+                       e.response?.data?.data?.numero_pedido ||
+                       // Extraer del mensaje si está disponible
+                       errorMessageStr.match(/['"]([^'"]+)['"]/)?.[1] || 
+                       errorMessageStr.match(/número de pedido ['"]([^'"]+)['"]/i)?.[1] ||
+                       errorMessageStr.match(/numero de pedido ['"]([^'"]+)['"]/i)?.[1]
+    
+    if (numeroPedido) {
+      errorMessage = `El número de pedido "${numeroPedido}" ya existe en el sistema.\n\nNo es posible cargar un pedido con un número de pedido duplicado. Por favor, verifica el número de pedido e intenta con un número diferente.`
+    } else {
+      errorMessage = `El número de pedido que intentaste utilizar ya existe en el sistema.\n\nNo es posible cargar un pedido con un número de pedido duplicado. Por favor, verifica el número de pedido e intenta con un número diferente.`
+    }
+  } else if (isFormatError && !errorCode) {
+    // Solo usar detección de formato si no hay error_code específico
+    errorTitle = 'Error de formato'
+    errorMessage = `El archivo Excel no tiene el formato correcto o está incompleto.\n\nAsegúrate de usar la plantilla oficial y completar todos los campos requeridos.`
+  } else if ((e as any).isBusinessException) {
+    errorTitle = 'No se puede procesar el archivo'
+    errorMessage = errorMessageStr || 'Ocurrió un error de validación de negocio que impide procesar el archivo.'
+  }
+  
+  // ⭐ NUEVO: Extraer información de validacion_sap del backend (incluye MBA3 y sugerencias)
+  // Buscar en múltiples ubicaciones posibles (BusinessException puede tener diferentes estructuras)
+  // 1. Directamente en data.validacion_sap (formato estándar)
+  // 2. En data.data.validacion_sap (cuando viene de BusinessException con exc.data)
+  const validacionSap = e.response?.data?.validacion_sap || e.response?.data?.data?.validacion_sap
+
+  // ⭐ NUEVO: Extraer validacion_pack_pvp del backend (RN-02: discrepancias de Pack/PVP contra SAP)
+  // Misma búsqueda dual-path que validacion_sap arriba (BusinessException puede anidar un nivel más)
+  const validacionPackPvp = e.response?.data?.validacion_pack_pvp || e.response?.data?.data?.validacion_pack_pvp
+
+  // ⭐ NUEVO: Extraer numero_pedido si es un error de duplicado
+  const numeroPedidoFromBackend = (isDuplicateError || errorCode === 'NUMERO_PEDIDO_DUPLICADO') ? (
+    e.response?.data?.numero_pedido ||
+    e.response?.data?.data?.numero_pedido
+  ) : undefined
+
+  return {
+    title: errorTitle,
+    message: errorMessage,
+    fileName,
+    errors: errorErrors.length > 0 ? errorErrors : undefined,
+    // ⭐ NUEVO: Código de error específico
+    error_code: errorCode,
+    // ⭐ NUEVO: Número de pedido (si es error de duplicado)
+    numero_pedido: numeroPedidoFromBackend,
+    // ⭐ Incluir validacion_sap completa del backend
+    validacion_sap: validacionSap ? {
+      detalle_validacion: validacionSap.detalle_validacion || {}
+    } : undefined,
+    // ⭐ NUEVO: Incluir validacion_pack_pvp completa del backend (RN-02)
+    validacion_pack_pvp: validacionPackPvp ? {
+      pack_mismatches: validacionPackPvp.pack_mismatches || [],
+      pvp_mismatches: validacionPackPvp.pvp_mismatches || [],
+      mensajes: validacionPackPvp.mensajes
+    } : undefined
+  }
+}
+
 export function useFileUpload(options: {
   onUploadSuccess?: (numeroPedido: string, response?: UploadPlantillaResponse) => void | Promise<void>
   onUploadError?: (error: UploadErrorInfo) => void
@@ -387,667 +1049,6 @@ export function useFileUpload(options: {
     if (target) target.value = ''
   }
 
-  /**
-   * Procesa el error de carga y prepara la información para el modal
-   */
-  function processUploadError(e: any, fileName: string): UploadErrorInfo {
-    let errorTitle = 'Error al cargar plantilla'
-    // Obtener mensaje de error de múltiples fuentes posibles
-    let errorMessage = e.message || 
-                      e.response?.data?.error || 
-                      e.response?.data?.message || 
-                      e.response?.data?.detail ||
-                      'Error desconocido al subir plantilla'
-    const errorErrors: Array<string | { tipo?: string; campo?: string; mensaje: string; producto?: string }> = []
-    let productosNoEncontradosSAP: string[] = []
-    let tiendasNoEncontradasSAP: string[] = []
-    let bodegasNoEncontradasSAP: string[] = []
-
-    // Construir string de mensaje completo para búsqueda de patrones
-    // Combinar todos los posibles mensajes en un solo string para buscar patrones
-    // Eliminar duplicados usando Set
-    const mensajesUnicos = new Set([
-      e.message,
-      e.response?.data?.error,
-      e.response?.data?.message,
-      e.response?.data?.detail,
-      e.response?.data?.data?.error,
-      e.response?.data?.data?.message
-    ].filter(Boolean))
-    const errorMessageStr = Array.from(mensajesUnicos).join(' ') || ''
-    
-    if (import.meta.env.DEV) console.log('🔍 [useFileUpload] Mensaje completo para búsqueda:', errorMessageStr)
-    
-    // ✅ NUEVO: Extraer códigos del formato estructurado del backend
-    // Formato: "❌ Códigos NO ENCONTRADOS en SAP (N):\n   • CODIGO1\n   • CODIGO2\n..."
-    const codigosNoEncontradosMatch = errorMessageStr.match(/❌ Códigos (?:de )?(PRODUCTO|TIENDA|BODEGA|NO ENCONTRADOS)[\s\S]*?\((?:[^)]+)\):\s*\n((?:\s*•\s*[^\n]+\n?)+)/gi)
-    if (codigosNoEncontradosMatch) {
-      for (const section of codigosNoEncontradosMatch) {
-        // Extraer tipo (PRODUCTO, TIENDA, BODEGA)
-        const tipoMatch = section.match(/Códigos (?:de )?(PRODUCTO|TIENDA|BODEGA|NO ENCONTRADOS)/i)
-        const tipo = tipoMatch ? tipoMatch[1] : 'NO ENCONTRADOS'
-        
-        // Extraer códigos (líneas que empiezan con "   •")
-        const codigosMatch = section.match(/\s*•\s*([^\n]+)/g)
-        if (codigosMatch) {
-          const codigos = codigosMatch.map(line => line.replace(/^\s*•\s*/, '').trim()).filter(c => c)
-          
-          if (tipo.includes('PRODUCTO')) {
-            productosNoEncontradosSAP.push(...codigos)
-          } else if (tipo.includes('TIENDA')) {
-            tiendasNoEncontradasSAP.push(...codigos)
-          } else if (tipo.includes('BODEGA')) {
-            bodegasNoEncontradasSAP.push(...codigos)
-          } else {
-            // Si no especifica tipo, asumir que pueden ser tiendas/bodegas (formato genérico)
-            tiendasNoEncontradasSAP.push(...codigos)
-          }
-        }
-      }
-    }
-    
-    // ✅ También extraer códigos del formato antiguo (compatibilidad)
-    // Patrón para: "❌ Validación SAP productos falló: Productos no encontrados (N): CODIGO1, CODIGO2"
-    // También puede venir en múltiples líneas o como parte de un mensaje más largo
-    const validacionSapPatterns = [
-      // Patrón específico para el formato exacto del backend
-      /❌\s*Validación\s+SAP\s+productos?\s+falló:\s*Productos?\s+no\s+encontrados?\s*\([^)]*\):\s*([A-Za-z0-9,.\s-]+)/i,
-      /Validación\s+SAP\s+productos?\s+falló:\s*Productos?\s+no\s+encontrados?\s*\([^)]*\):\s*([A-Za-z0-9,.\s-]+)/i,
-      // Patrón más flexible que busca "Productos no encontrados (N):" seguido de códigos
-      /Productos?\s+no\s+encontrados?\s*\([^)]*\):\s*([A-Za-z0-9,.\s-]+)/i,
-      // Patrón alternativo sin paréntesis
-      /Productos?\s+no\s+encontrados?\s+en\s+SAP[^:]*:\s*([A-Za-z0-9,.\s-]+)/i
-    ]
-    
-    for (const pattern of validacionSapPatterns) {
-      const match = errorMessageStr.match(pattern)
-      if (match && match[1]) {
-        const codigos = match[1].split(',').map(c => c.trim()).filter(c => c && c.length > 0 && !c.match(/^\d+$/))
-        if (codigos.length > 0) {
-          productosNoEncontradosSAP.push(...codigos)
-          break // Solo usar el primer patrón que coincida
-        }
-      }
-    }
-    
-    // Si aún no se encontraron códigos, buscar en todo el mensaje cualquier patrón de códigos después de ":"
-    if (productosNoEncontradosSAP.length === 0 && errorMessageStr.includes(':')) {
-      // Buscar la última parte después de ":" que contenga códigos separados por comas
-      const partes = errorMessageStr.split(':')
-      if (partes.length > 1) {
-        const ultimaParte = partes[partes.length - 1].trim()
-        // Verificar si la última parte parece contener códigos (tiene comas o múltiples palabras)
-        if (ultimaParte.includes(',') || ultimaParte.split(/\s+/).length > 1) {
-          const posiblesCodigos = ultimaParte.split(',').map(c => c.trim()).filter(c => {
-            // Filtrar solo códigos que parezcan válidos (no solo números, no vacíos)
-            return c && c.length > 0 && !c.match(/^\d+$/) && c.match(/[A-Za-z0-9.-]+/)
-          })
-          if (posiblesCodigos.length > 0) {
-            productosNoEncontradosSAP.push(...posiblesCodigos)
-            if (import.meta.env.DEV) console.log('✅ [useFileUpload] Códigos extraídos de la última parte del mensaje:', posiblesCodigos)
-          }
-        }
-      }
-    }
-    
-    const sapErrorPatterns = [
-      /Productos no encontrados en SAP:\s*([A-Za-z0-9,.\s-]+)/i,
-      /no válidos en SAP[^:]*:\s*([A-Za-z0-9,.\s-]+)/i,
-      /No se encontró información en SAP para SKU:\s*([A-Za-z0-9,.\s-]+)/i,
-      // Patrón adicional para formato: "Productos no encontrados (N): CODIGO1, CODIGO2"
-      /Productos?\s+no\s+encontrados?\s*\([^)]*\):\s*([A-Za-z0-9,.\s-]+)/i
-    ]
-    
-    for (const pattern of sapErrorPatterns) {
-      const match = errorMessageStr.match(pattern)
-      if (match && match[1]) {
-        const codigos = match[1].split(',').map(c => c.trim()).filter(c => c)
-        productosNoEncontradosSAP.push(...codigos)
-      }
-    }
-
-    // Intentar extraer información detallada del error response
-    if (e.response?.data) {
-      const errorData = e.response.data
-      
-      if (errorData.errores && Array.isArray(errorData.errores)) {
-        errorErrors.push(...errorData.errores)
-      }
-      
-      if (errorData.validacion) {
-        const validacion = errorData.validacion
-        
-        // ✅ Productos no encontrados
-        if (validacion.productos?.no_encontrados?.length > 0) {
-          const noEncontrados = Array.isArray(validacion.productos.no_encontrados) 
-            ? validacion.productos.no_encontrados 
-            : []
-          noEncontrados.forEach((codigo: string) => {
-            errorErrors.push({
-              tipo: 'ERROR',
-              campo: 'Producto SAP',
-              mensaje: `El código no existe en SAP`,
-              producto: codigo
-            })
-            if (!productosNoEncontradosSAP.includes(codigo)) {
-              productosNoEncontradosSAP.push(codigo)
-            }
-          })
-        }
-        
-        // ✅ Tiendas no encontradas
-        if (validacion.tiendas?.no_encontradas?.length > 0) {
-          const noEncontradas = Array.isArray(validacion.tiendas.no_encontradas)
-            ? validacion.tiendas.no_encontradas
-            : []
-          noEncontradas.forEach((codigo: string) => {
-            errorErrors.push({
-              tipo: 'ERROR',
-              campo: 'Tienda/Bodega SAP',
-              mensaje: `El código no existe en SAP OWHS`,
-              producto: codigo
-            })
-            if (!tiendasNoEncontradasSAP.includes(codigo)) {
-              tiendasNoEncontradasSAP.push(codigo)
-            }
-          })
-        }
-        
-        // ✅ Bodegas no encontradas
-        if (validacion.bodegas?.no_encontradas?.length > 0) {
-          const noEncontradas = Array.isArray(validacion.bodegas.no_encontradas)
-            ? validacion.bodegas.no_encontradas
-            : []
-          noEncontradas.forEach((codigo: string) => {
-            errorErrors.push({
-              tipo: 'ERROR',
-              campo: 'Bodega SAP',
-              mensaje: `El código no existe en SAP OWHS`,
-              producto: codigo
-            })
-            if (!bodegasNoEncontradasSAP.includes(codigo)) {
-              bodegasNoEncontradasSAP.push(codigo)
-            }
-          })
-        }
-        
-        if (validacion.cantidades && (!validacion.cantidades.valid || validacion.cantidades.errors > 0)) {
-          errorErrors.push({
-            tipo: 'ERROR',
-            campo: 'Cantidad',
-            mensaje: `Errores de validación en cantidades (${validacion.cantidades.errors} error(es), ${validacion.cantidades.warnings} advertencia(s))`,
-            producto: undefined
-          })
-        }
-      }
-      
-      // ✅ Extraer códigos desde validacion_sap estructurado
-      if (errorData.validacion_sap) {
-        const sap = errorData.validacion_sap
-        
-        // ⭐ MEJORADO: El backend ahora siempre envía arrays de códigos
-        if (Array.isArray(sap.no_encontrados)) {
-          sap.no_encontrados.forEach((codigo: string) => {
-            if (!productosNoEncontradosSAP.includes(codigo)) {
-              productosNoEncontradosSAP.push(codigo)
-            }
-          })
-        } else if (typeof sap.no_encontrados === 'number' && sap.no_encontrados > 0) {
-          // ⭐ COMPATIBILIDAD: Si el backend aún envía número (formato antiguo), buscar en otros campos
-          // Buscar en validacion.productos.no_encontrados como fallback
-          if (errorData.validacion?.productos?.no_encontrados && Array.isArray(errorData.validacion.productos.no_encontrados) && errorData.validacion.productos.no_encontrados.length > 0) {
-            errorData.validacion.productos.no_encontrados.forEach((codigo: string) => {
-              if (!productosNoEncontradosSAP.includes(codigo)) {
-                productosNoEncontradosSAP.push(codigo)
-              }
-            })
-          }
-          
-          // Si aún no tenemos códigos específicos, usar el conteo para el mensaje
-          if (productosNoEncontradosSAP.length === 0) {
-            ;(e as any).sapNoEncontradosCount = sap.no_encontrados
-          }
-        }
-        
-        // ⭐ MEJORADO: Manejar errores de SAP (ahora también es array)
-        if (Array.isArray(sap.errores) && sap.errores.length > 0) {
-          sap.errores.forEach((errorMsg: string) => {
-            errorErrors.push({
-              tipo: 'ERROR',
-              campo: 'ValidacionSAP',
-              mensaje: errorMsg,
-              producto: undefined
-            })
-          })
-        } else if (typeof sap.errores === 'number' && sap.errores > 0) {
-          // Compatibilidad con formato antiguo
-          errorErrors.push({
-            tipo: 'ERROR',
-            campo: 'ValidacionSAP',
-            mensaje: `${sap.no_encontrados?.length || sap.total_no_encontrados || 0} código(s) no encontrado(s) en SAP, ${sap.errores} error(es)`,
-            producto: undefined
-          })
-        }
-      }
-      
-      // ✅ Extraer códigos desde data estructurado (BusinessException)
-      // BusinessException puede tener la estructura: { type: 'business_exception', error: '...', data: { validacion: {...}, validacion_sap: {...} } }
-      if (import.meta.env.DEV) console.log('🔍 [useFileUpload] Verificando errorData.data:', errorData.data)
-      
-      // ⭐ NUEVO: También buscar validacion_sap en errorData.data (BusinessException)
-      if (errorData.data?.validacion_sap) {
-        const sapData = errorData.data.validacion_sap
-        if (import.meta.env.DEV) console.log('✅ [useFileUpload] Encontrada validacion_sap en errorData.data.validacion_sap:', sapData)
-        
-        // Extraer códigos no encontrados
-        if (Array.isArray(sapData.no_encontrados)) {
-          sapData.no_encontrados.forEach((codigo: string) => {
-            if (!productosNoEncontradosSAP.includes(codigo)) {
-              productosNoEncontradosSAP.push(codigo)
-            }
-          })
-        }
-      }
-      
-      if (errorData.data?.validacion) {
-        const validacion = errorData.data.validacion
-        if (import.meta.env.DEV) console.log('✅ [useFileUpload] Encontrada validacion en errorData.data.validacion:', validacion)
-        
-        // Productos
-        if (validacion.productos?.no_encontrados && Array.isArray(validacion.productos.no_encontrados)) {
-          validacion.productos.no_encontrados.forEach((codigo: string) => {
-            if (!productosNoEncontradosSAP.includes(codigo)) {
-              productosNoEncontradosSAP.push(codigo)
-            }
-          })
-        }
-        
-        // Tiendas
-        if (validacion.tiendas?.no_encontradas && Array.isArray(validacion.tiendas.no_encontradas)) {
-          validacion.tiendas.no_encontradas.forEach((codigo: string) => {
-            if (!tiendasNoEncontradasSAP.includes(codigo)) {
-              tiendasNoEncontradasSAP.push(codigo)
-            }
-          })
-        }
-        
-        // Bodegas
-        if (validacion.bodegas?.no_encontradas && Array.isArray(validacion.bodegas.no_encontradas)) {
-          validacion.bodegas.no_encontradas.forEach((codigo: string) => {
-            if (!bodegasNoEncontradasSAP.includes(codigo)) {
-              bodegasNoEncontradasSAP.push(codigo)
-            }
-          })
-        }
-      }
-    }
-
-    if ((e as any).errors && Array.isArray((e as any).errors)) {
-      errorErrors.push(...(e as any).errors)
-    }
-
-    // ⭐ Si el backend envió validacion_sap/validacion con no_encontrados, usar SOLO esos códigos
-    // (evitar falsos positivos del parsing del mensaje: "Existen códigos...", "Existen c", etc.)
-    const errorData = e.response?.data
-    const structuredNoEncontrados: string[] = [
-      ...(Array.isArray(errorData?.validacion_sap?.no_encontrados) ? errorData.validacion_sap.no_encontrados : []),
-      ...(Array.isArray(errorData?.validacion?.productos?.no_encontrados) ? errorData.validacion.productos.no_encontrados : []),
-      ...(Array.isArray(errorData?.data?.validacion_sap?.no_encontrados) ? errorData.data.validacion_sap.no_encontrados : []),
-      ...(Array.isArray(errorData?.data?.validacion?.productos?.no_encontrados) ? errorData.data.validacion.productos.no_encontrados : [])
-    ]
-    if (structuredNoEncontrados.length > 0) {
-      productosNoEncontradosSAP = [...new Set(structuredNoEncontrados)]
-      // Quitar entradas "Producto SAP" que no estén en la lista real (eran del parsing del mensaje)
-      for (let i = errorErrors.length - 1; i >= 0; i--) {
-        const err = errorErrors[i]
-        if (typeof err !== 'string' && err.campo === 'Producto SAP' && err.producto && !productosNoEncontradosSAP.includes(err.producto)) {
-          errorErrors.splice(i, 1)
-        }
-      }
-      // Asegurar una entrada por cada código real
-      const existingProductos = new Set(
-        (errorErrors.filter(er => typeof er !== 'string' && er.campo === 'Producto SAP') as Array<{ producto?: string }>).map(er => er.producto)
-      )
-      productosNoEncontradosSAP.forEach(codigo => {
-        if (!existingProductos.has(codigo)) {
-          errorErrors.push({ tipo: 'ERROR', campo: 'Producto SAP', mensaje: 'El código no existe en SAP', producto: codigo })
-        }
-      })
-    }
-
-    // Eliminar duplicados de los códigos extraídos
-    productosNoEncontradosSAP = [...new Set(productosNoEncontradosSAP)]
-    tiendasNoEncontradasSAP = [...new Set(tiendasNoEncontradasSAP)]
-    bodegasNoEncontradasSAP = [...new Set(bodegasNoEncontradasSAP)]
-
-    // ⭐ Filtrar falsos positivos: mensajes de error (formato, etc.) no son códigos de producto SAP
-    const looksLikeProductCode = (s: string): boolean => {
-      if (!s || typeof s !== 'string' || s.length > 35) return false
-      const lower = s.toLowerCase()
-      if (lower.includes('formato') || lower.includes('archivo') || lower.includes('excel') || lower.includes('estructura') || lower.includes('hoja') || lower.includes('cabecera') || lower.includes('detalle') || lower.includes('requerida')) return false
-      return /^[A-Za-z0-9.\s-]+$/.test(s.trim())
-    }
-    productosNoEncontradosSAP = productosNoEncontradosSAP.filter(looksLikeProductCode)
-    for (let i = errorErrors.length - 1; i >= 0; i--) {
-      const err = errorErrors[i]
-      if (typeof err !== 'string' && err.campo === 'Producto SAP' && err.producto && !looksLikeProductCode(err.producto)) {
-        errorErrors.splice(i, 1)
-      }
-    }
-
-    // Identificar el tipo de error
-    const isSAPError = productosNoEncontradosSAP.length > 0 || 
-                       tiendasNoEncontradasSAP.length > 0 ||
-                       bodegasNoEncontradasSAP.length > 0 ||
-                       errorMessageStr.toLowerCase().includes('sap') ||
-                       errorMessageStr.toLowerCase().includes('no válidos en sap') ||
-                       errorMessageStr.toLowerCase().includes('no se encontró')
-    
-    const isDuplicateError = (errorMessageStr.toLowerCase().includes('duplicado') ||
-                             errorMessageStr.toLowerCase().includes('ya existe en el sistema') ||
-                             errorMessageStr.toLowerCase().includes('pedido ya existe') ||
-                             errorMessageStr.toLowerCase().includes('número de pedido') && errorMessageStr.toLowerCase().includes('ya existe') ||
-                             errorMessageStr.toLowerCase().includes('numero de pedido') && errorMessageStr.toLowerCase().includes('ya existe') ||
-                             (e.response?.data?.error_tipo === 'numero_pedido_duplicado')) &&
-                             !isSAPError
-    
-    const isFormatError = errorMessageStr.toLowerCase().includes('formato') ||
-                          errorMessageStr.toLowerCase().includes('estructura')
-
-    // ⭐ NUEVO: Extraer error_code del backend para títulos específicos
-    const errorCode = e.response?.data?.error_code || 
-                      e.response?.data?.data?.error_code ||
-                      e.response?.data?.error_tipo
-
-    // ⭐ Validación de longitud: numero_pedido y mensaje permiten hasta 100 caracteres
-    const lower = errorMessageStr.toLowerCase()
-    const fromMessageStr = (
-      (lower.includes('100') && (lower.includes('caracteres') || lower.includes('carácter'))) ||
-      lower.includes('excede los 100') ||
-      lower.includes('no puede exceder 100') ||
-      lower.includes('máximo 100 caracteres') ||
-      lower.includes('máx. 100 caracteres')
-    ) && (
-      lower.includes('numero_pedido') || lower.includes('número de pedido') || lower.includes('numero de pedido') ||
-      lower.includes('mensaje') || lower.includes('campo')
-    )
-    const fromErroresArray = errorErrors.some(err => {
-      if (typeof err !== 'string' && err?.campo != null && err?.mensaje != null) {
-        const m = String(err.mensaje).toLowerCase()
-        const c = String(err.campo).toLowerCase()
-        return (m.includes('100') && (m.includes('caracteres') || m.includes('carácter'))) &&
-          (c.includes('numero_pedido') || c.includes('mensaje'))
-      }
-      return false
-    })
-    const isLongitudError = fromMessageStr || fromErroresArray
-    if (isLongitudError) {
-      const camposAfectados: string[] = []
-      if (lower.includes('numero_pedido') || lower.includes('número de pedido') || lower.includes('numero de pedido')) {
-        camposAfectados.push('Número de pedido')
-      }
-      if (lower.includes('mensaje')) {
-        camposAfectados.push('Mensaje')
-      }
-      errorErrors.forEach(err => {
-        if (typeof err !== 'string' && err?.campo != null) {
-          const c = String(err.campo).toLowerCase()
-          if (c.includes('numero_pedido') && !camposAfectados.includes('Número de pedido')) {
-            camposAfectados.push('Número de pedido')
-          }
-          if (c.includes('mensaje') && !camposAfectados.includes('Mensaje')) {
-            camposAfectados.push('Mensaje')
-          }
-        }
-      })
-      if (camposAfectados.length === 0) camposAfectados.push('Número de pedido', 'Mensaje')
-      errorTitle = 'Longitud de campo excedida'
-      errorMessage = `Los siguientes campos no pueden superar los 100 caracteres:\n\n   • ${[...new Set(camposAfectados)].join('\n   • ')}\n\nPor favor, acorte el texto en la plantilla Excel (hoja "cabecera") o en el formulario y vuelva a intentar.`
-    } else if (errorCode === 'FORMATO_EXCEL_INVALIDO') {
-      errorTitle = 'Formato Excel Inválido'
-      errorMessage = `El archivo Excel no contiene la estructura requerida.\n\nEl archivo debe tener las hojas 'cabecera' y 'detalle' con los datos del pedido.\n\n⚠️ Verifica que estés usando la plantilla oficial del sistema.`
-    } else if (errorCode === 'ARCHIVO_SIN_DATOS') {
-      errorTitle = 'Archivo Sin Datos Válidos'
-      errorMessage = `El archivo Excel está vacío o no contiene productos válidos.\n\nEl pedido debe incluir al menos un producto con su información completa.\n\n⚠️ Revisa que la hoja 'detalle' contenga productos y que tengan todos los campos requeridos.`
-    } else if (errorCode === 'FORMATO_RESPUESTA_PROVEEDOR_INVALIDO') {
-      errorTitle = 'Formato de Respuesta Proveedor Inválido'
-      errorMessage = `El archivo de respuesta del proveedor no contiene la hoja requerida.\n\nEl archivo debe incluir una hoja llamada 'RESUMEN'.\n\n⚠️ Solicita al proveedor que use el formato correcto de respuesta.`
-    } else if (errorCode === 'PACK_PVP_INVALIDOS_SAP') {
-      // ⭐ NUEVO: Discrepancias de Pack/PVP contra SAP (RN-02). Título deliberadamente sin 'SAP'/'producto'
-      // para no activar la detección genérica de isSAPError (códigos no encontrados) más abajo,
-      // que tiene un significado distinto (código de producto inexistente vs. valor Pack/PVP incorrecto).
-      errorTitle = 'Discrepancias de Pack/PVP'
-      // errorMessage ya contiene el mensaje del backend (asignado al inicio de la función)
-    } else if (errorCode === 'COSTO_UNITARIO_EXCEL_INCONSISTENTE') {
-      // ⭐ NUEVO: la columna "Costo Unitario" de la plantilla no coincide con el valor que el
-      // backend calcula a partir de "Costo sin IVA" y el Pack (fórmula de esa celda mal aplicada,
-      // ej. referencia a la fila incorrecta). errorMessage ya trae el detalle por producto
-      // (asignado al inicio de la función); solo se personaliza el título.
-      errorTitle = 'Discrepancias de Costo Unitario'
-    } else if (isSAPError) {
-      // ✅ Determinar si es producto, tienda o bodega
-      const totalErrores = productosNoEncontradosSAP.length + tiendasNoEncontradasSAP.length + bodegasNoEncontradasSAP.length
-      const tiposErrores: string[] = []
-      
-      // Agregar productos a errores detallados
-      if (productosNoEncontradosSAP.length > 0) {
-        tiposErrores.push('producto')
-        productosNoEncontradosSAP.forEach(codigo => {
-          const exists = errorErrors.some(err => 
-            (typeof err !== 'string') && err.producto === codigo
-          )
-          if (!exists) {
-            errorErrors.push({
-              tipo: 'ERROR',
-              campo: 'Producto SAP',
-              mensaje: `El código no existe en SAP`,
-              producto: codigo
-            })
-          }
-        })
-      }
-      
-      // Agregar tiendas a errores detallados
-      if (tiendasNoEncontradasSAP.length > 0) {
-        tiposErrores.push('tienda/bodega')
-        tiendasNoEncontradasSAP.forEach(codigo => {
-          const exists = errorErrors.some(err => 
-            (typeof err !== 'string') && err.producto === codigo
-          )
-          if (!exists) {
-            errorErrors.push({
-              tipo: 'ERROR',
-              campo: 'Tienda/Bodega SAP',
-              mensaje: `El código no existe en SAP OWHS`,
-              producto: codigo
-            })
-          }
-        })
-      }
-      
-      // Agregar bodegas a errores detallados
-      if (bodegasNoEncontradasSAP.length > 0) {
-        if (!tiposErrores.includes('bodega')) {
-          tiposErrores.push('bodega')
-        }
-        bodegasNoEncontradasSAP.forEach(codigo => {
-          const exists = errorErrors.some(err => 
-            (typeof err !== 'string') && err.producto === codigo
-          )
-          if (!exists) {
-            errorErrors.push({
-              tipo: 'ERROR',
-              campo: 'Bodega SAP',
-              mensaje: `El código no existe en SAP OWHS`,
-              producto: codigo
-            })
-          }
-        })
-      }
-      
-      // ✅ Título dinámico según los tipos de errores encontrados
-      if (tiposErrores.length === 1) {
-        if (tiposErrores[0] === 'producto') {
-          errorTitle = 'Códigos de producto no encontrados en SAP'
-        } else if (tiposErrores[0] === 'tienda/bodega') {
-          errorTitle = 'Códigos de tienda/bodega no encontrados en SAP'
-        } else if (tiposErrores[0] === 'bodega') {
-          errorTitle = 'Códigos de bodega no encontrados en SAP'
-        }
-      } else {
-        errorTitle = 'Códigos no válidos en SAP'
-      }
-      
-      // ✅ Construir mensaje estructurado con todos los códigos
-      // SIEMPRE construir mensaje detallado si hay códigos extraídos, sin importar el mensaje del backend
-      const sapNoEncontradosCount = (e as any).sapNoEncontradosCount || 0
-      const tieneCodigosEspecificos = totalErrores > 0
-      const tieneConteoSinCodigos = sapNoEncontradosCount > 0 && !tieneCodigosEspecificos
-      
-      if (tieneCodigosEspecificos || tieneConteoSinCodigos) {
-        if (tieneCodigosEspecificos) {
-          // Tenemos códigos específicos - mostrar lista detallada
-          errorMessage = `Existen ${totalErrores} código(s) no válidos en SAP.\n\n`
-          
-          if (productosNoEncontradosSAP.length > 0) {
-            errorMessage += `❌ Códigos de PRODUCTO no encontrados (${productosNoEncontradosSAP.length}):\n`
-            productosNoEncontradosSAP.forEach(codigo => {
-              errorMessage += `   • ${codigo}\n`
-            })
-            errorMessage += `\n`
-          }
-          
-          if (tiendasNoEncontradasSAP.length > 0) {
-            errorMessage += `❌ Códigos de TIENDA/BODEGA no encontrados (${tiendasNoEncontradasSAP.length}):\n`
-            tiendasNoEncontradasSAP.forEach(codigo => {
-              errorMessage += `   • ${codigo}\n`
-            })
-            errorMessage += `\n`
-          }
-          
-          if (bodegasNoEncontradasSAP.length > 0) {
-            errorMessage += `❌ Códigos de BODEGA no encontrados (${bodegasNoEncontradasSAP.length}):\n`
-            bodegasNoEncontradasSAP.forEach(codigo => {
-              errorMessage += `   • ${codigo}\n`
-            })
-            errorMessage += `\n`
-          }
-          
-          errorMessage += `⚠️ Por favor verifica que estos códigos estén escritos correctamente en el Excel.`
-        } else if (tieneConteoSinCodigos) {
-          // No tenemos códigos específicos pero sí el conteo - mostrar mensaje informativo
-          errorMessage = `Existen ${sapNoEncontradosCount} código(s) de producto no válidos en SAP.\n\n`
-          errorMessage += `⚠️ Los códigos específicos no están disponibles en la respuesta del servidor.\n\n`
-          errorMessage += `Por favor, revisa el archivo Excel y verifica que todos los códigos de producto estén escritos correctamente y existan en SAP.`
-        }
-        
-        if (import.meta.env.DEV) console.log('✅ [useFileUpload] Mensaje detallado construido:', errorMessage)
-      } else {
-        // Si no se pudieron extraer códigos con los patrones, intentar extraerlos del mensaje del backend directamente
-        // El mensaje del backend puede tener formato: "❌ Validación SAP productos falló: Productos no encontrados (2): R225.1012.BCO.10-12, R5082-17.1012896"
-        if (import.meta.env.DEV) console.log('⚠️ [useFileUpload] No se extrajeron códigos con patrones. Mensaje original:', errorMessageStr)
-        
-        if (errorMessageStr && errorMessageStr.includes('no encontrados') && errorMessageStr.includes(':')) {
-          // Intentar extraer la parte después de los dos puntos que contiene los códigos
-          const partes = errorMessageStr.split(':')
-          if (partes.length > 1) {
-            // Buscar la parte que contiene códigos (generalmente la última o penúltima)
-            let codigosParte = ''
-            // Revisar desde el final hacia atrás para encontrar la parte con códigos
-            for (let i = partes.length - 1; i >= 0; i--) {
-              const parte = partes[i].trim()
-              // Verificar si esta parte parece contener códigos (tiene comas o múltiples palabras/códigos)
-              if (parte && (parte.includes(',') || parte.split(/\s+/).length > 1)) {
-                const posiblesCodigos = parte.split(',').map(c => c.trim()).filter(c => {
-                  return c && c.length > 0 && !c.match(/^\d+$/) && c.match(/[A-Za-z0-9.-]+/)
-                })
-                if (posiblesCodigos.length > 0) {
-                  codigosParte = parte
-                  productosNoEncontradosSAP.push(...posiblesCodigos)
-                  break
-                }
-              }
-            }
-            
-            if (codigosParte && productosNoEncontradosSAP.length > 0) {
-              // Eliminar duplicados
-              productosNoEncontradosSAP = [...new Set(productosNoEncontradosSAP)]
-              // Reconstruir el mensaje detallado con los códigos extraídos
-              const totalErrores = productosNoEncontradosSAP.length
-              errorMessage = `Existen ${totalErrores} código(s) no válidos en SAP.\n\n❌ Códigos de PRODUCTO no encontrados (${productosNoEncontradosSAP.length}):\n${productosNoEncontradosSAP.map(c => `   • ${c}`).join('\n')}\n\n⚠️ Por favor verifica que estos códigos estén escritos correctamente en el Excel.`
-            } else {
-              // Si no se pudieron extraer códigos, usar el mensaje del backend directamente
-              errorMessage = errorMessageStr || `Uno o más códigos del archivo no fueron encontrados en SAP.\n\nVerifica que todos los códigos estén correctamente registrados en SAP.`
-            }
-          } else {
-            errorMessage = errorMessageStr || `Uno o más códigos del archivo no fueron encontrados en SAP.\n\nVerifica que todos los códigos estén correctamente registrados en SAP.`
-          }
-        } else {
-          // Si no se pudieron extraer códigos, usar el mensaje del backend directamente
-          errorMessage = errorMessageStr || `Uno o más códigos del archivo no fueron encontrados en SAP.\n\nVerifica que todos los códigos estén correctamente registrados en SAP.`
-        }
-      }
-    } else if (errorCode === 'NUMERO_PEDIDO_DUPLICADO' || isDuplicateError) {
-      errorTitle = 'Número de pedido duplicado'
-      // ⭐ MEJORADO: Primero intentar obtener el número de pedido del backend
-      let numeroPedido = e.response?.data?.numero_pedido || 
-                         e.response?.data?.data?.numero_pedido ||
-                         // Extraer del mensaje si está disponible
-                         errorMessageStr.match(/['"]([^'"]+)['"]/)?.[1] || 
-                         errorMessageStr.match(/número de pedido ['"]([^'"]+)['"]/i)?.[1] ||
-                         errorMessageStr.match(/numero de pedido ['"]([^'"]+)['"]/i)?.[1]
-      
-      if (numeroPedido) {
-        errorMessage = `El número de pedido "${numeroPedido}" ya existe en el sistema.\n\nNo es posible cargar un pedido con un número de pedido duplicado. Por favor, verifica el número de pedido e intenta con un número diferente.`
-      } else {
-        errorMessage = `El número de pedido que intentaste utilizar ya existe en el sistema.\n\nNo es posible cargar un pedido con un número de pedido duplicado. Por favor, verifica el número de pedido e intenta con un número diferente.`
-      }
-    } else if (isFormatError && !errorCode) {
-      // Solo usar detección de formato si no hay error_code específico
-      errorTitle = 'Error de formato'
-      errorMessage = `El archivo Excel no tiene el formato correcto o está incompleto.\n\nAsegúrate de usar la plantilla oficial y completar todos los campos requeridos.`
-    } else if ((e as any).isBusinessException) {
-      errorTitle = 'No se puede procesar el archivo'
-      errorMessage = errorMessageStr || 'Ocurrió un error de validación de negocio que impide procesar el archivo.'
-    }
-    
-    // ⭐ NUEVO: Extraer información de validacion_sap del backend (incluye MBA3 y sugerencias)
-    // Buscar en múltiples ubicaciones posibles (BusinessException puede tener diferentes estructuras)
-    // 1. Directamente en data.validacion_sap (formato estándar)
-    // 2. En data.data.validacion_sap (cuando viene de BusinessException con exc.data)
-    const validacionSap = e.response?.data?.validacion_sap || e.response?.data?.data?.validacion_sap
-
-    // ⭐ NUEVO: Extraer validacion_pack_pvp del backend (RN-02: discrepancias de Pack/PVP contra SAP)
-    // Misma búsqueda dual-path que validacion_sap arriba (BusinessException puede anidar un nivel más)
-    const validacionPackPvp = e.response?.data?.validacion_pack_pvp || e.response?.data?.data?.validacion_pack_pvp
-
-    // ⭐ NUEVO: Extraer numero_pedido si es un error de duplicado
-    const numeroPedidoFromBackend = (isDuplicateError || errorCode === 'NUMERO_PEDIDO_DUPLICADO') ? (
-      e.response?.data?.numero_pedido ||
-      e.response?.data?.data?.numero_pedido
-    ) : undefined
-
-    return {
-      title: errorTitle,
-      message: errorMessage,
-      fileName,
-      errors: errorErrors.length > 0 ? errorErrors : undefined,
-      // ⭐ NUEVO: Código de error específico
-      error_code: errorCode,
-      // ⭐ NUEVO: Número de pedido (si es error de duplicado)
-      numero_pedido: numeroPedidoFromBackend,
-      // ⭐ Incluir validacion_sap completa del backend
-      validacion_sap: validacionSap ? {
-        detalle_validacion: validacionSap.detalle_validacion || {}
-      } : undefined,
-      // ⭐ NUEVO: Incluir validacion_pack_pvp completa del backend (RN-02)
-      validacion_pack_pvp: validacionPackPvp ? {
-        pack_mismatches: validacionPackPvp.pack_mismatches || [],
-        pvp_mismatches: validacionPackPvp.pvp_mismatches || [],
-        mensajes: validacionPackPvp.mensajes
-      } : undefined
-    }
-  }
 
   /**
    * Sube un archivo al servidor (síncrono o async según useAsyncUpload)
