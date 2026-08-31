@@ -668,6 +668,8 @@ import { useColumnManagement } from '../composables/useColumnManagement'
 import { useColumnVisibilityToggle } from '../composables/useColumnVisibilityToggle'
 import { useColumnDragAndDrop } from '../composables/useColumnDragAndDrop'
 import { usePedidoDetalle } from '../composables/usePedidoDetalle'
+import { useColumnasModificadasStorage } from '../composables/useColumnasModificadasStorage'
+import { useFechaPedidoHandlers } from '../composables/useFechaPedidoHandlers'
 import { useRedistribucion } from '../composables/useRedistribucion'
 import {
   ejecutarProcesoCompletoSap,
@@ -679,7 +681,9 @@ import {
   isTransientClientError,
   SAP_MAY_STILL_PROCESSING_MESSAGE,
   SAP_SLOW_SYNC_LIKELY_MESSAGE,
+  extraerMensajeErrorAnidado,
 } from '../utils/httpErrors'
+import { descargarBlobComoArchivo } from '../utils/downloadHelpers'
 // Componentes
 import PedidoHeaderActions from '../components/PedidoHeaderActions.vue'
 import ProduccionPospuestaActions from '../components/ProduccionPospuestaActions.vue'
@@ -785,62 +789,6 @@ const rolesModificacion = ref<Map<string, string | null>>(new Map())
 const confirmando = ref(false)
 
 // La interfaz EditingCell ahora está importada desde composables/useColumnManagement
-
-// ⭐ Funciones para persistencia en sessionStorage (fallback/migración)
-// ⚠️ NOTA: El backend es la fuente principal de verdad. sessionStorage solo se usa como fallback.
-function getStorageKey(): string {
-  return `pedido_columnas_modificadas_${numeroPedido.value}`
-}
-
-function guardarColumnasModificadasEnStorage() {
-  if (!numeroPedido.value) return
-  
-  try {
-    const storageKey = getStorageKey()
-    const columnasArray = Array.from(columnasModificadas.value)
-    sessionStorage.setItem(storageKey, JSON.stringify(columnasArray))
-  } catch (e) {
-    console.warn('Error al guardar columnas modificadas en sessionStorage (fallback):', e)
-  }
-}
-
-function cargarColumnasModificadasDesdeStorage() {
-  if (!numeroPedido.value) return
-  
-  // Solo cargar desde sessionStorage si no hay modificaciones ya cargadas desde el backend
-  // Esto permite migración gradual de datos
-  if (columnasModificadas.value.size > 0) {
-    if (import.meta.env.DEV) console.log('ℹ️ [PedidoDetalleView] Modificaciones ya cargadas desde backend, omitiendo sessionStorage')
-    return
-  }
-  
-  try {
-    const storageKey = getStorageKey()
-    const stored = sessionStorage.getItem(storageKey)
-    
-    if (stored) {
-      const columnasArray = JSON.parse(stored) as string[]
-      // Limpiar antes de cargar desde storage
-      columnasModificadas.value.clear()
-      columnasModificadas.value = new Set(columnasArray)
-      if (import.meta.env.DEV) console.log(`ℹ️ [PedidoDetalleView] Cargadas ${columnasArray.length} modificaciones desde sessionStorage (fallback)`)
-    }
-  } catch (e) {
-    console.warn('Error al cargar columnas modificadas desde sessionStorage (fallback):', e)
-  }
-}
-
-function limpiarColumnasModificadasEnStorage() {
-  if (!numeroPedido.value) return
-  
-  try {
-    const storageKey = getStorageKey()
-    sessionStorage.removeItem(storageKey)
-    columnasModificadas.value.clear()
-  } catch (e) {
-    console.warn('Error al limpiar columnas modificadas en sessionStorage:', e)
-  }
-}
 
 // ⭐ EXTENSIÓN DEL TIPO: Agregar comentario al tipo PedidoDetalle localmente
 // La interfaz ColumnConfig ahora está importada desde utils/formatters
@@ -1003,6 +951,8 @@ const numeroPedido = computed(() => {
   return id ? decodeURIComponent(id) : ''
 })
 
+const columnasModificadasStorage = useColumnasModificadasStorage(numeroPedido, columnasModificadas, rolesModificacion)
+
 /** Número de pedido para el que se muestra el botón "Finalizado" (solo Cargar plantilla, estado Despachar y Facturar). */
 const NUMERO_PEDIDO_FINALIZADO = 'P-12.01 - 12 - 2025'
 const showBotonFinalizado = computed(() =>
@@ -1096,11 +1046,7 @@ async function handleFinalizarPedido() {
     await loadPedido()
   } catch (e: any) {
     console.error('Error al finalizar pedido:', e)
-    const status = e.response?.status
-    const data = e.response?.data
-    const errorCode = data?.error
-    const detail = data?.detail
-    const msg = (typeof detail === 'object' && detail?.message) ? detail.message : (typeof detail === 'string' ? detail : null) ?? data?.message ?? e.message
+    const { status, errorCode, msg } = extraerMensajeErrorAnidado(e)
 
     if (status === 400 && (errorCode === 'estado_no_despachar_y_facturar' || msg?.includes('Despachar y Facturar'))) {
       toast.error('Estado incorrecto', 'Solo se puede finalizar un pedido cuando está en estado "Despachar y Facturar".')
@@ -1125,30 +1071,8 @@ const pedidoDetalle = usePedidoDetalle({
   esModoMabelTrading,
   columnasModificadas,
   rolesModificacion,
-  limpiarColumnasModificadasEnStorage: () => {
-    if (!numeroPedido.value) return
-    try {
-      const storageKey = `pedido_columnas_modificadas_${numeroPedido.value}`
-      sessionStorage.removeItem(storageKey)
-      columnasModificadas.value.clear()
-      rolesModificacion.value.clear()
-    } catch (e) {
-      console.warn('Error al limpiar columnas modificadas en sessionStorage:', e)
-    }
-  },
-  cargarColumnasModificadasDesdeStorage: () => {
-    if (!numeroPedido.value) return
-    try {
-      const storageKey = `pedido_columnas_modificadas_${numeroPedido.value}`
-      const stored = sessionStorage.getItem(storageKey)
-      if (stored) {
-        const columnasArray = JSON.parse(stored) as string[]
-        columnasModificadas.value = new Set(columnasArray)
-      }
-    } catch (e) {
-      console.warn('Error al cargar columnas modificadas desde sessionStorage:', e)
-    }
-  }
+  limpiarColumnasModificadasEnStorage: columnasModificadasStorage.limpiar,
+  cargarColumnasModificadasDesdeStorage: columnasModificadasStorage.cargar
 })
 
 // Inicializar composable de redistribución después de pedidoDetalle
@@ -1305,62 +1229,9 @@ async function goToPedidoWrapper() {
   pedidoIdInput.value = ''
 }
 
-// ⭐ FASE 4: Computed para resumen de redistribución
-const resumenRedistribucion = computed(() => {
-  if (redistribucion.productosRedistribucion.value.length === 0) {
-    return {
-      total_solicitado: 0,
-      total_confirmado: 0,
-      total_distribuido: 0,
-      diferencia_pendiente: 0
-    }
-  }
-  
-  const total_solicitado = redistribucion.productosRedistribucion.value.reduce((sum, p) => sum + p.cantidad_solicitada, 0)
-  const total_confirmado = redistribucion.productosRedistribucion.value.reduce((sum, p) => sum + p.cantidad_confirmada, 0)
-  const total_distribuido = redistribucion.productosRedistribucion.value.reduce((sum, p) => sum + p.cantidad_distribuida, 0)
-  const diferencia_pendiente = total_confirmado - total_distribuido
-  
-  return {
-    total_solicitado,
-    total_confirmado,
-    total_distribuido,
-    diferencia_pendiente
-  }
-})
-
-// ⭐ FASE 4: Computed para impacto económico
-const impactoEconomico = computed(() => {
-  let costo_unitario_total = 0
-  let subtotal_original = 0
-  let subtotal_ajustado = 0
-  let diferencia_economica = 0
-  
-  redistribucion.productosRedistribucion.value.forEach(producto => {
-    const costo = producto.costo_unitario || 0
-    costo_unitario_total += costo
-    subtotal_original += producto.cantidad_solicitada * costo
-    subtotal_ajustado += producto.cantidad_distribuida * costo
-  })
-  
-  diferencia_economica = subtotal_ajustado - subtotal_original
-  
-  return {
-    costo_unitario_promedio: redistribucion.productosRedistribucion.value.length > 0 
-      ? costo_unitario_total / redistribucion.productosRedistribucion.value.length 
-      : 0,
-    subtotal_original,
-    subtotal_ajustado,
-    diferencia_economica
-  }
-})
-
-// ⭐ FASE 4: Validar si se puede confirmar
-const puedeConfirmarRedistribucion = computed(() => {
-  return resumenRedistribucion.value.diferencia_pendiente === 0 &&
-         redistribucion.productosRedistribucion.value.every(p => p.diferencia === 0) &&
-         redistribucion.productosRedistribucion.value.every(p => !p.error)
-})
+// ⭐ FASE 4: resumen de redistribución / impacto económico / validación de confirmación,
+// ahora calculados dentro de useRedistribucion (dependen solo de su propio estado interno).
+const { resumenRedistribucion, impactoEconomico, puedeConfirmarRedistribucion } = redistribucion
 
 // Deshabilitar "Confirmar Redistribución" usando el flag del backend (incluye CANCELADO y estados ya confirmados)
 const confirmarRedistribucionDeshabilitadoPorEstado = computed(() =>
@@ -1532,7 +1403,7 @@ function claseResaltadoModificado(detalleId: string, columnKey: string): string 
 async function guardarEdicion() {
   await columnManagement.guardarEdicion(() => {
     // Guardar en sessionStorage como fallback (migración)
-    guardarColumnasModificadasEnStorage()
+    columnasModificadasStorage.guardar()
   })
 }
 
@@ -1542,55 +1413,7 @@ async function guardarEdicion() {
 // Funciones de gestión del pedido ahora están en el composable usePedidoDetalle
 
 // ⭐ HU-06: Funciones para actualizar cabecera del pedido
-async function handleUpdateFechaPedido(fecha: string | null) {
-  if (!pedido.value?.cabecera?.pedido_id) return
-  
-  try {
-    await mba3ConsultasService.actualizarCabeceraPedido(pedido.value.cabecera.pedido_id, {
-      fecha_pedido: fecha
-    })
-    
-    // Actualizar el valor localmente
-    if (pedido.value.cabecera) {
-      pedido.value.cabecera.fecha_pedido = fecha
-    }
-    
-    toast.success('Fecha actualizada', 'La fecha de pedido se ha actualizado correctamente')
-    
-    // Recargar el pedido para asegurar sincronización
-    await loadPedido()
-  } catch (e: any) {
-    console.error('Error al actualizar fecha de pedido:', e)
-    toast.error('Error al actualizar', e.message || 'No se pudo actualizar la fecha de pedido')
-    // Recargar para restaurar valor original
-    await loadPedido()
-  }
-}
-
-async function handleUpdateFechaEntrega(fecha: string | null) {
-  if (!pedido.value?.cabecera?.pedido_id) return
-  
-  try {
-    await mba3ConsultasService.actualizarCabeceraPedido(pedido.value.cabecera.pedido_id, {
-      fecha_entrega: fecha
-    })
-    
-    // Actualizar el valor localmente
-    if (pedido.value.cabecera) {
-      pedido.value.cabecera.fecha_entrega = fecha
-    }
-    
-    toast.success('Fecha actualizada', 'La fecha de entrega se ha actualizado correctamente')
-    
-    // Recargar el pedido para asegurar sincronización
-    await loadPedido()
-  } catch (e: any) {
-    console.error('Error al actualizar fecha de entrega:', e)
-    toast.error('Error al actualizar', e.message || 'No se pudo actualizar la fecha de entrega')
-    // Recargar para restaurar valor original
-    await loadPedido()
-  }
-}
+const { handleUpdateFechaPedido, handleUpdateFechaEntrega } = useFechaPedidoHandlers(pedido, toast, loadPedido)
 
 async function handleUpdateEstado(estado: string | null) {
   if (!pedido.value?.cabecera?.pedido_id) return
@@ -1684,16 +1507,9 @@ async function handleDescargarPlanoMba(codigoBodega?: string) {
   descargandoPlanoMbaBodega.value = codigoBodega
   try {
     const blob = await mba3ConsultasService.exportarPedidoPlanoMba(numeroPedido.value, 'txt', codigoBodega)
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
     const sufijoBodega = codigoBodega ? `_${codigoBodega}` : ''
     const nombreArchivo = `pedido_mba_${numeroPedido.value.replace(/[^a-zA-Z0-9.-]/g, '_')}${sufijoBodega}_${new Date().toISOString().split('T')[0]}.txt`
-    a.download = nombreArchivo
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    descargarBlobComoArchivo(blob, nombreArchivo)
     toast.success('Descarga completada', 'El archivo se ha descargado correctamente')
   } catch (e: any) {
     console.error('Error al descargar pedido plano:', e)
@@ -1714,15 +1530,8 @@ async function handleDescargarMargenExcel() {
   descargandoMargen.value = true
   try {
     const blob = await mba3ConsultasService.exportarAnalisisMargen(numeroPedido.value)
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
     const nombreArchivo = `analisis_margen_${numeroPedido.value.replace(/[^a-zA-Z0-9.-]/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`
-    a.download = nombreArchivo
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    descargarBlobComoArchivo(blob, nombreArchivo)
     toast.success('Descarga completada', 'El análisis de margen se ha descargado correctamente')
   } catch (e: any) {
     console.error('Error al descargar análisis de margen:', e)
@@ -1736,35 +1545,18 @@ async function handleDescargarMargenExcel() {
 
 // ⭐ REMOVIDO: Funciones de redistribución movidas al composable useRedistribucion.ts
 
-// ⭐ FASE 4: Funciones de redistribución - ahora delegadas al composable useRedistribucion
+// ⭐ FASE 4: Funciones de redistribución - delegadas directamente al composable useRedistribucion
+// (mismos nombres que antes: la plantilla las sigue usando como @evento="funcion" sin cambios).
 // Las funciones se pasan al componente RedistribucionTiendas como eventos
-function toggleExpandirProducto(codigoProducto: string) {
-  redistribucion.toggleExpandirProducto(codigoProducto)
-}
-
-function actualizarCantidadTienda(codigoProducto: string, tiendaCodigo: string, event: Event) {
-  redistribucion.actualizarCantidadTienda(codigoProducto, tiendaCodigo, event)
-}
-
-function validarYCorregirCantidad(producto: ProductoRedistribucion, tienda: DistribucionTiendaEditada) {
-  redistribucion.validarYCorregirCantidad(producto, tienda)
-}
-
-function distribuirProporcionalmente(codigoProducto: string) {
-  redistribucion.distribuirProporcionalmente(codigoProducto)
-}
-
-function copiarDistribucionOriginal(codigoProducto: string) {
-  redistribucion.copiarDistribucionOriginal(codigoProducto)
-}
-
-function resetearDistribucion(codigoProducto: string) {
-  redistribucion.resetearDistribucion(codigoProducto)
-}
-
-async function guardarBorradorRedistribucion() {
-  await redistribucion.guardarBorradorRedistribucion()
-}
+const {
+  toggleExpandirProducto,
+  actualizarCantidadTienda,
+  validarYCorregirCantidad,
+  distribuirProporcionalmente,
+  copiarDistribucionOriginal,
+  resetearDistribucion,
+  guardarBorradorRedistribucion
+} = redistribucion
 
 async function confirmarRedistribucion() {
   await redistribucion.confirmarRedistribucion(puedeConfirmarRedistribucion)

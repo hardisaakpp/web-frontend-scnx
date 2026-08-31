@@ -1,7 +1,7 @@
 /**
  * Composable para manejar la redistribución de productos a tiendas
  */
-import { ref, Ref, type ComputedRef, triggerRef } from '@vue/reactivity'
+import { ref, computed, Ref, type ComputedRef, triggerRef } from '@vue/reactivity'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
@@ -906,13 +906,73 @@ export function useRedistribucion(options: {
     }
   }
 
+  // ⭐ FASE 4: Computed para resumen de redistribución
+  const resumenRedistribucion = computed(() => {
+    if (productosRedistribucion.value.length === 0) {
+      return {
+        total_solicitado: 0,
+        total_confirmado: 0,
+        total_distribuido: 0,
+        diferencia_pendiente: 0
+      }
+    }
+
+    const total_solicitado = productosRedistribucion.value.reduce((sum, p) => sum + p.cantidad_solicitada, 0)
+    const total_confirmado = productosRedistribucion.value.reduce((sum, p) => sum + p.cantidad_confirmada, 0)
+    const total_distribuido = productosRedistribucion.value.reduce((sum, p) => sum + p.cantidad_distribuida, 0)
+    const diferencia_pendiente = total_confirmado - total_distribuido
+
+    return {
+      total_solicitado,
+      total_confirmado,
+      total_distribuido,
+      diferencia_pendiente
+    }
+  })
+
+  // ⭐ FASE 4: Computed para impacto económico
+  const impactoEconomico = computed(() => {
+    let costo_unitario_total = 0
+    let subtotal_original = 0
+    let subtotal_ajustado = 0
+    let diferencia_economica = 0
+
+    productosRedistribucion.value.forEach(producto => {
+      const costo = producto.costo_unitario || 0
+      costo_unitario_total += costo
+      subtotal_original += producto.cantidad_solicitada * costo
+      subtotal_ajustado += producto.cantidad_distribuida * costo
+    })
+
+    diferencia_economica = subtotal_ajustado - subtotal_original
+
+    return {
+      costo_unitario_promedio: productosRedistribucion.value.length > 0
+        ? costo_unitario_total / productosRedistribucion.value.length
+        : 0,
+      subtotal_original,
+      subtotal_ajustado,
+      diferencia_economica
+    }
+  })
+
+  // ⭐ FASE 4: Validar si se puede confirmar
+  const puedeConfirmarRedistribucion = computed(() => {
+    return resumenRedistribucion.value.diferencia_pendiente === 0 &&
+           productosRedistribucion.value.every(p => p.diferencia === 0) &&
+           productosRedistribucion.value.every(p => !p.error)
+  })
+
   return {
     // Estado
     productosRedistribucion,
     productosExpandidos,
     guardandoRedistribucion,
     confirmandoRedistribucion,
-    
+    resumenRedistribucion,
+    impactoEconomico,
+    puedeConfirmarRedistribucion,
+
     // Funciones
     inicializarProductosRedistribucion,
     cargarYInicializarRedistribucion,

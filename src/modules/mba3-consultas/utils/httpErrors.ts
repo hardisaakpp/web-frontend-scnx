@@ -30,3 +30,17 @@ export function isNetworkError(error: unknown): boolean {
 export function isTransientClientError(error: unknown): boolean {
   return isHttpTimeoutError(error) || isNetworkError(error)
 }
+
+/**
+ * Extrae status/errorCode/mensaje de un error HTTP cuyo `detail` puede venir como string u
+ * objeto `{ message }` (variante usada por los endpoints de transición de estado del pedido:
+ * marcarDespacharYFacturar, marcarFinalizado).
+ */
+export function extraerMensajeErrorAnidado(e: any): { status: number | undefined; errorCode: string | undefined; msg: string | undefined } {
+  const status = e.response?.status
+  const data = e.response?.data
+  const errorCode = data?.error
+  const detail = data?.detail
+  const msg = (typeof detail === 'object' && detail?.message) ? detail.message : (typeof detail === 'string' ? detail : null) ?? data?.message ?? e.message
+  return { status, errorCode, msg }
+}
