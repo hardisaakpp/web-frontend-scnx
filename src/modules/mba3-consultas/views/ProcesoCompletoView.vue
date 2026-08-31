@@ -370,6 +370,28 @@ function aplicarRespuestaProcesoCompletoSAPAlModal(response: ProcesoCompletoSAPR
       queued: envio.queued ?? null,
       proveedor: integracionSAPDetalle.value?.proveedor
     }
+  } else {
+    // Un paso previo al envío a SAP (ej. generar ODC) falló: no hay envio_sap en
+    // la respuesta. Sin esto, el detalle del intento anterior quedaba pisado en
+    // pantalla en vez de reflejar el motivo real de ESTE intento.
+    integracionSAPDetalle.value = {
+      oc_id: integracionSAPDetalle.value?.oc_id ?? '',
+      success: false,
+      doc_num: null,
+      doc_entry: null,
+      numero_oc_sap: null,
+      message: response.message ?? null,
+      error: errorMsg,
+      error_message: errorMsg,
+      error_code: null,
+      error_source: null,
+      solicitudes_transferencia: null,
+      sap_response: null,
+      sap_error_details: null,
+      retry_recommended: null,
+      queued: null,
+      proveedor: integracionSAPDetalle.value?.proveedor
+    }
   }
 
   integracionSAPSolicitudes.value = solicitudes
@@ -407,6 +429,13 @@ async function handleRetryProcesoCompletoSAP() {
       },
     })
     aplicarRespuestaProcesoCompletoSAPAlModal(response)
+    // Sincroniza la tabla/estadísticas con el resultado del reintento -- sin esto la
+    // fila del pedido se queda mostrando el estado/mensaje/hora del intento anterior
+    // hasta que el usuario recarga la página, aunque el modal sí se haya actualizado.
+    await Promise.all([
+      ordenesCompraStore.fetchEstadisticas(),
+      cargarOrdenesCompraPendientes(),
+    ]).catch((err) => console.warn('[handleRetryProcesoCompletoSAP] refresh:', err))
     if (response.envio_sap?.doc_num != null) {
       sapRetryContext.value = null
       toast.success('Envío a SAP', response.message || 'Proceso completado correctamente.')
@@ -430,6 +459,13 @@ async function handleRetryProcesoCompletoSAP() {
       err?.message ??
       'No se pudo reintentar'
     toast.error('Error al reintentar envío a SAP', msg)
+    // Un paso previo (ej. generar ODC) puede haber mutado estado en el backend
+    // antes de que el error se lanzara -- se refresca igual para no dejar la fila
+    // mostrando datos del intento anterior.
+    await Promise.all([
+      ordenesCompraStore.fetchEstadisticas(),
+      cargarOrdenesCompraPendientes(),
+    ]).catch((refreshErr) => console.warn('[handleRetryProcesoCompletoSAP] refresh:', refreshErr))
   } finally {
     sapRetryLoading.value = false
   }
