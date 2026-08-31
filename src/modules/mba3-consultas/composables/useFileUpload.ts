@@ -899,6 +899,18 @@ export function determinarToastExito(response: UploadPlantillaResponse, erroresS
   return null
 }
 
+/** Decide nivel/título/mensaje del toast tras reintentar con correcciones. null si el status no aplica ninguno de los dos. */
+export function determinarToastReintento(response: UploadPlantillaResponse, numeroPedido: string | undefined): { level: 'success' | 'warning'; title: string; message: string } | null {
+  const message = `Correcciones aplicadas exitosamente.\n\nNúmero de pedido: ${numeroPedido || 'N/A'}\nArtículos: ${response.articulos_cargados}\nDistribuciones: ${response.distribuciones_cargadas}`
+  if (response.status === 'success') {
+    return { level: 'success', title: 'Plantilla procesada con correcciones', message }
+  }
+  if (response.status === 'validation_error') {
+    return { level: 'warning', title: 'Plantilla procesada con advertencias', message }
+  }
+  return null
+}
+
 /** Solo se guarda el archivo original para reintento si el error es de códigos SAP o discrepancia Pack/PVP (RN-02). */
 export function debeGuardarArchivoParaReintento(errorInfo: UploadErrorInfo): boolean {
   const esErrorSap = !!(errorInfo.title?.includes('SAP') || errorInfo.title?.includes('producto') || errorInfo.title?.includes('no encontrados'))
@@ -1354,7 +1366,6 @@ export function useFileUpload(options: {
       }
 
       let response: UploadPlantillaResponse
-
       try {
         // ⭐ Subir con correcciones en segundo plano (upload-async + Celery)
         const accepted = await mba3ConsultasService.uploadPlantillaAsync(
@@ -1362,9 +1373,7 @@ export function useFileUpload(options: {
           { correcciones_codigos: correccionesAcumuladas.value.correccionesCodigos },
           handleProgress
         )
-        // Backend puede devolver 200 con resultado completo (fallback sync: process_id null, async false) — no hacer polling
-        const isResultadoInmediato = (accepted as any).fallback === 'sync' || accepted.async === false || accepted.process_id == null || accepted.process_id === ''
-        if (isResultadoInmediato) {
+        if (esResultadoInmediatoUpload(accepted)) {
           stopProcessingProgressSimulation(true)
           uploadProgress.value = 100
           uploadFase.value = 'complete'
@@ -1378,10 +1387,7 @@ export function useFileUpload(options: {
           )
         }
       } catch (asyncErr: any) {
-        const errorCode = asyncErr.response?.data?.error ?? asyncErr.response?.data?.detail?.error
-        const is503Unavailable = asyncErr.response?.status === 503 &&
-          (errorCode === 'storage_required' || errorCode === 'celery_unavailable')
-        if (is503Unavailable) {
+        if (esAsyncStorageUnavailable(asyncErr)) {
           if (import.meta.env.DEV) console.warn('[useFileUpload] Async no disponible (503); no se usará fallback síncrono con correcciones')
         }
         throw asyncErr
@@ -1391,8 +1397,7 @@ export function useFileUpload(options: {
       // Sesión de correcciones cerrada con éxito: no debe arrastrarse al siguiente archivo que se suba.
       correccionesAcumuladas.value = {}
 
-      const resAnyReintento = response as any
-      let numeroPedido = response.numero_pedido ?? resAnyReintento.resultado?.numero_pedido ?? resAnyReintento.result?.numero_pedido
+      let numeroPedido = extraerNumeroPedidoDeRespuesta(response)
       if (!numeroPedido && response.pedido_id && options?.pedido?.value) {
         try {
           const pedidoCompleto = await mba3ConsultasService.getPedido(response.pedido_id, false)
@@ -1402,12 +1407,9 @@ export function useFileUpload(options: {
         }
       }
 
-      const mensajeDetalle = `Correcciones aplicadas exitosamente.\n\nNúmero de pedido: ${numeroPedido || 'N/A'}\nArtículos: ${response.articulos_cargados}\nDistribuciones: ${response.distribuciones_cargadas}`
-
-      if (response.status === 'success') {
-        toast.success('Plantilla procesada con correcciones', mensajeDetalle)
-      } else if (response.status === 'validation_error') {
-        toast.warning('Plantilla procesada con advertencias', mensajeDetalle)
+      const toastReintento = determinarToastReintento(response, numeroPedido)
+      if (toastReintento) {
+        toast[toastReintento.level](toastReintento.title, toastReintento.message)
       }
 
       // Guardar correcciones en sessionStorage antes de redirect para que la vista muestre el resaltado (flujo async)
@@ -1420,23 +1422,7 @@ export function useFileUpload(options: {
         await options.onUploadSuccess(numeroPedido, response)
       }
 
-      if (numeroPedido) {
-        const currentPedidoNumero = options?.pedido?.value?.cabecera.numero_pedido
-        const pathBase = options?.redirectToCargarPlantilla ? RUTA_CARGAR_PLANTILLA_BASE : RUTA_PEDIDOS_BASE
-        if (numeroPedido !== currentPedidoNumero) {
-          // Tras aplicar correcciones: redirigir con replace (flujo Celery)
-          await router.replace(`${pathBase}/${encodeURIComponent(numeroPedido)}`)
-          await new Promise(resolve => setTimeout(resolve, 100))
-        } else {
-          if (options?.loadPedido) {
-            await options.loadPedido()
-          }
-        }
-      } else {
-        if (options?.loadPedido) {
-          await options.loadPedido()
-        }
-      }
+      await redirigirORecargarTrasCarga(numeroPedido, options, router)
     } catch (e: any) {
       stopProcessingProgressSimulation(false)
 

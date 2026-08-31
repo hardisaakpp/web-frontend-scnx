@@ -6,6 +6,7 @@ import {
   construirMensajeDetalleValidacionSap,
   filtrarErroresSAP,
   determinarToastExito,
+  determinarToastReintento,
   debeGuardarArchivoParaReintento,
   extraerCodigosDeErrorInfo,
   construirMensajeToastError,
@@ -134,6 +135,26 @@ describe('determinarToastExito', () => {
   it('otro status -> null (sin toast)', () => {
     const response = { status: 'error' } as any
     expect(determinarToastExito(response, [])).toBeNull()
+  })
+})
+
+describe('determinarToastReintento', () => {
+  it('success -> nivel success con mensaje de correcciones aplicadas', () => {
+    const response = { status: 'success', articulos_cargados: 3, distribuciones_cargadas: 1 } as any
+    const r = determinarToastReintento(response, 'PED-1')
+    expect(r?.level).toBe('success')
+    expect(r?.title).toBe('Plantilla procesada con correcciones')
+    expect(r?.message).toContain('Número de pedido: PED-1')
+  })
+  it('validation_error -> nivel warning', () => {
+    const response = { status: 'validation_error', articulos_cargados: 1, distribuciones_cargadas: 1 } as any
+    const r = determinarToastReintento(response, undefined)
+    expect(r?.level).toBe('warning')
+    expect(r?.message).toContain('Número de pedido: N/A')
+  })
+  it('otro status -> null', () => {
+    const response = { status: 'error', articulos_cargados: 1, distribuciones_cargadas: 1 } as any
+    expect(determinarToastReintento(response, 'PED-1')).toBeNull()
   })
 })
 
