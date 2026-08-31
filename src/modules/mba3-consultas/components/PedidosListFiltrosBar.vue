@@ -45,10 +45,11 @@
              sobreescribe este slot con su propio texto informativo. -->
         <slot name="estado-field">
           <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label :for="estadoSelectId" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Estado
             </label>
             <select
+              :id="estadoSelectId"
               v-model="estado"
               @keyup.enter="emit('aplicar')"
               @change="emit('estado-change'); emit('aplicar')"
@@ -68,10 +69,11 @@
 
         <!-- Fecha -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label :for="fechaFiltroId" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Fecha
           </label>
           <AppDateFilterInput
+            :id="fechaFiltroId"
             v-model:tipo="tipoFecha"
             v-model:desde="fechaDesde"
             v-model:hasta="fechaHasta"
@@ -84,10 +86,11 @@
              que usan hoy los 4 listados -- no es una decisión de esta barra, es un feature flag
              compartido) -->
         <div v-if="MOSTRAR_FILTRO_PROVEEDOR_PEDIDOS">
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label :for="proveedorInputId" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Proveedor
           </label>
           <input
+            :id="proveedorInputId"
             type="text"
             v-model="proveedorNombre"
             @keyup.enter="emit('aplicar')"
@@ -98,10 +101,11 @@
 
         <!-- Número de Pedido (filtra en vivo con debounce) -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label :for="numeroPedidoInputId" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Número de Pedido
           </label>
           <DebouncedSearchField
+            :id="numeroPedidoInputId"
             v-model="numeroPedidoTexto"
             :placeholder="numeroPedidoPlaceholder"
             @input="emit('numero-pedido-input')"
@@ -112,10 +116,11 @@
 
         <!-- Creado Por (filtra en vivo con debounce) -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label :for="creadoPorInputId" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Creado Por
           </label>
           <DebouncedSearchField
+            :id="creadoPorInputId"
             v-model="creadoPorTexto"
             :placeholder="creadoPorPlaceholder"
             @input="emit('creado-por-input')"
@@ -176,6 +181,13 @@ import { getEstadoPedidoLabel } from '../utils/estadoPedido'
 import { MOSTRAR_FILTRO_PROVEEDOR_PEDIDOS } from '../config/featureFlags'
 import type { EstadoPedidoOption, TipoFechaFiltro } from '../types'
 import { ref } from '@vue/reactivity'
+import { useId } from 'vue'
+
+const estadoSelectId = useId()
+const fechaFiltroId = useId()
+const proveedorInputId = useId()
+const numeroPedidoInputId = useId()
+const creadoPorInputId = useId()
 
 withDefaults(
   defineProps<{

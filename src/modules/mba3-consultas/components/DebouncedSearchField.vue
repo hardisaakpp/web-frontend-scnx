@@ -1,6 +1,7 @@
 <template>
   <div class="relative">
     <input
+      :id="id"
       ref="inputRef"
       type="text"
       v-model="modelValue"
@@ -56,6 +57,7 @@ const modelValue = defineModel<string>({ default: '' })
 
 defineProps<{
   placeholder?: string
+  id?: string
 }>()
 
 const emit = defineEmits<{

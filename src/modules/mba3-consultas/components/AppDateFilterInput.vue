@@ -1,6 +1,7 @@
 <template>
   <div ref="rootRef" class="relative">
     <div
+      :id="id"
       role="button"
       :tabindex="disabled ? -1 : 0"
       :aria-disabled="disabled"
@@ -149,6 +150,7 @@ import type { TipoFechaFiltro } from '../types'
 
 const props = defineProps<{
   disabled?: boolean
+  id?: string
 }>()
 
 const tipo = defineModel<TipoFechaFiltro | undefined>('tipo', { default: 'pedido' })
