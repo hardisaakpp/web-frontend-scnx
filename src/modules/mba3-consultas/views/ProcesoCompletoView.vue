@@ -396,14 +396,16 @@ function aplicarRespuestaProcesoCompletoSAPAlModal(response: ProcesoCompletoSAPR
 
   integracionSAPSolicitudes.value = solicitudes
 
-  const innerStatus =
-    response.status === 'success' || response.status === 'partial' || response.status === 'error'
-      ? response.status
-      : envio?.doc_num != null
-        ? 'success'
-        : response.error_detalle
-          ? 'partial'
-          : 'error'
+  let innerStatus: 'success' | 'partial' | 'error'
+  if (response.status === 'success' || response.status === 'partial' || response.status === 'error') {
+    innerStatus = response.status
+  } else if (envio?.doc_num != null) {
+    innerStatus = 'success'
+  } else if (response.error_detalle) {
+    innerStatus = 'partial'
+  } else {
+    innerStatus = 'error'
+  }
 
   if (innerStatus === 'success') {
     integracionSAPEstado.value =
