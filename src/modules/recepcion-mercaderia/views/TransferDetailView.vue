@@ -84,9 +84,10 @@ watch(
 // Two coexisting input paths per legacy recP.php parity:
 // - Lines WITH a barcode: driven exclusively by the barcode-scanner input below (handleBarcodeScan).
 //   Their "Escaneados" cell is a read-only display of line.scanned, not an editable draft.
-// - Lines WITHOUT a barcode (barcode === null): no scanner input can address them, so they keep
-//   the manual editable quantity input (scanQuantities) as a fallback, submitted via the
-//   "Guardar escaneo" batch button (handleScan) exactly as before.
+// - Lines WITHOUT a barcode (falsy: null or '', matching the barcode-cell display below) — no
+//   scanner input can address them, so they keep the manual editable quantity input
+//   (scanQuantities) as a fallback, submitted via the "Guardar escaneo" batch button (handleScan)
+//   exactly as before.
 const scanQuantities = ref<Record<number, number>>({})
 const scanResponsibleName = ref('')
 const scanCourierWaybill = ref('')
@@ -460,8 +461,10 @@ async function handleDownloadPickingReport(): Promise<void> {
                   <td class="px-3 py-1 text-center text-sm">
                     <!-- Manual fallback: only for lines with NO barcode — the scanner input above
                          can't address them. Lines that DO have a barcode are read-only here; their
-                         scanned total comes exclusively from handleBarcodeScan. -->
-                    <div v-if="canScan && line.barcode === null" class="flex flex-col items-center gap-0.5">
+                         scanned total comes exclusively from handleBarcodeScan. Falsy check (not
+                         `=== null`) to match the barcode-cell display just above: the backend can
+                         send either null or '' for "no barcode", and both must show the manual input. -->
+                    <div v-if="canScan && !line.barcode" class="flex flex-col items-center gap-0.5">
                       <label :for="`scan-quantity-input-${line.lineId}`" class="sr-only">Cantidad escaneada</label>
                       <input
                         :id="`scan-quantity-input-${line.lineId}`"

@@ -178,6 +178,28 @@ describe('TransferDetailView', () => {
     expect(cells[1].text()).toBe('Sin código de barras')
   })
 
+  it('shows the manual scanned-quantity input for a barcode-less line whether the backend sends null or an empty string', async () => {
+    mockAuth(['recepcion.picking.scan'])
+    vi.mocked(recepcionApi.getTransfer).mockResolvedValue(
+      mockGetTransfer(
+        buildTransfer({
+          lines: [
+            buildLine({ lineId: 1, itemCode: 'A1', barcode: null }),
+            buildLine({ lineId: 2, itemCode: 'A2', barcode: '' }),
+            buildLine({ lineId: 3, itemCode: 'A3', barcode: '7861226206064' }),
+          ],
+        })
+      )
+    )
+
+    const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="scan-quantity-input-1"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="scan-quantity-input-2"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="scan-quantity-input-3"]').exists()).toBe(false)
+  })
+
   it('re-fetches the transfer when the route id changes while the component instance is reused', async () => {
     mockAuth(['recepcion.reception.view'])
     vi.mocked(recepcionApi.getTransfer).mockResolvedValue(mockGetTransfer(buildTransfer()))
