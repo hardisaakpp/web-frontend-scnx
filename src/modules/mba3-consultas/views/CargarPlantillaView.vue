@@ -1772,9 +1772,16 @@ async function confirmarRedistribucion() {
 
 /** Aplica el resultado del proceso SAP en esta vista (modal éxito + loadPedido). */
 async function applySAPResponseCargarPlantilla(response: import('@/modules/mba3-consultas/types').ProcesoCompletoSAPResponse) {
-  const innerStatus = (response as any).status === 'success' || (response as any).status === 'partial' || (response as any).status === 'error'
-    ? (response as any).status
-    : (response.envio_sap?.doc_num != null ? 'success' : response.error_detalle ? 'partial' : 'error')
+  let innerStatus: 'success' | 'partial' | 'error'
+  if ((response as any).status === 'success' || (response as any).status === 'partial' || (response as any).status === 'error') {
+    innerStatus = (response as any).status
+  } else if (response.envio_sap?.doc_num != null) {
+    innerStatus = 'success'
+  } else if (response.error_detalle) {
+    innerStatus = 'partial'
+  } else {
+    innerStatus = 'error'
+  }
 
   if (innerStatus === 'success') {
     mostrarBannerReintentoConexionSap.value = false
