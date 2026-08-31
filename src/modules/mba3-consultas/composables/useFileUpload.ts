@@ -180,7 +180,7 @@ function clasificarCodigosPorTipo(tipo: string, codigos: string[], productos: st
 
 /** Procesa una sección "❌ Códigos ... (N):\n   • ..." y clasifica sus códigos. */
 function procesarSeccionCodigosEstructurados(section: string, productos: string[], tiendas: string[], bodegas: string[]): void {
-  const tipoMatch = section.match(/Códigos (?:de )?(PRODUCTO|TIENDA|BODEGA|NO ENCONTRADOS)/i)
+  const tipoMatch = /Códigos (?:de )?(PRODUCTO|TIENDA|BODEGA|NO ENCONTRADOS)/i.exec(section)
   const tipo = tipoMatch ? tipoMatch[1] : 'NO ENCONTRADOS'
   const codigosMatch = section.match(/\s*•\s*([^\n]+)/g)
   if (!codigosMatch) return
@@ -220,8 +220,8 @@ function extraerPrimerPatronConCodigos(errorMessageStr: string, patterns: RegExp
 function extraerTodosPatronesConCodigos(errorMessageStr: string, patterns: RegExp[]): string[] {
   const productos: string[] = []
   for (const pattern of patterns) {
-    const match = errorMessageStr.match(pattern)
-    if (match && match[1]) {
+    const match = pattern.exec(errorMessageStr)
+    if (match?.[1]) {
       productos.push(...match[1].split(',').map(c => c.trim()).filter(c => c))
     }
   }
@@ -249,10 +249,10 @@ function extraerCodigosPatronesLegacy(errorMessageStr: string, productosPrevios:
   // Patrón para: "❌ Validación SAP productos falló: Productos no encontrados (N): CODIGO1, CODIGO2"
   // Solo se usa el primer patrón de esta lista que coincida.
   const validacionSapPatterns = [
-    /❌\s*Validación\s+SAP\s+productos?\s+falló:\s*Productos?\s+no\s+encontrados?\s*\([^)]*\):\s*([A-Za-z0-9,.\s-]+)/i,
-    /Validación\s+SAP\s+productos?\s+falló:\s*Productos?\s+no\s+encontrados?\s*\([^)]*\):\s*([A-Za-z0-9,.\s-]+)/i,
-    /Productos?\s+no\s+encontrados?\s*\([^)]*\):\s*([A-Za-z0-9,.\s-]+)/i,
-    /Productos?\s+no\s+encontrados?\s+en\s+SAP[^:]*:\s*([A-Za-z0-9,.\s-]+)/i
+    /❌\s*Validación\s+SAP\s+productos?\s+falló:\s*Productos?\s+no\s+encontrados?\s*\([^)]*\):\s*([A-Z0-9,.\s-]+)/i,
+    /Validación\s+SAP\s+productos?\s+falló:\s*Productos?\s+no\s+encontrados?\s*\([^)]*\):\s*([A-Z0-9,.\s-]+)/i,
+    /Productos?\s+no\s+encontrados?\s*\([^)]*\):\s*([A-Z0-9,.\s-]+)/i,
+    /Productos?\s+no\s+encontrados?\s+en\s+SAP[^:]*:\s*([A-Z0-9,.\s-]+)/i
   ]
   const productos: string[] = [...extraerPrimerPatronConCodigos(errorMessageStr, validacionSapPatterns)]
 
@@ -263,10 +263,10 @@ function extraerCodigosPatronesLegacy(errorMessageStr: string, productosPrevios:
   }
 
   const sapErrorPatterns = [
-    /Productos no encontrados en SAP:\s*([A-Za-z0-9,.\s-]+)/i,
-    /no válidos en SAP[^:]*:\s*([A-Za-z0-9,.\s-]+)/i,
-    /No se encontró información en SAP para SKU:\s*([A-Za-z0-9,.\s-]+)/i,
-    /Productos?\s+no\s+encontrados?\s*\([^)]*\):\s*([A-Za-z0-9,.\s-]+)/i
+    /Productos no encontrados en SAP:\s*([A-Z0-9,.\s-]+)/i,
+    /no válidos en SAP[^:]*:\s*([A-Z0-9,.\s-]+)/i,
+    /No se encontró información en SAP para SKU:\s*([A-Z0-9,.\s-]+)/i,
+    /Productos?\s+no\s+encontrados?\s*\([^)]*\):\s*([A-Z0-9,.\s-]+)/i
   ]
   productos.push(...extraerTodosPatronesConCodigos(errorMessageStr, sapErrorPatterns))
 
@@ -857,10 +857,11 @@ export function extraerNumeroPedidoDeRespuesta(response: any): string | undefine
   return response.numero_pedido ?? response.resultado?.numero_pedido ?? response.result?.numero_pedido
 }
 
-/** Arma el detalle de validación SAP (códigos válidos/no encontrados/errores/advertencias) para el toast. */
 /** Cuenta un campo de validación SAP que puede venir como array (moderno) o número (legacy). */
 function contarCampoSap(items: unknown, totalFallback: number | undefined): number {
-  return Array.isArray(items) ? items.length : (totalFallback || (typeof items === 'number' ? items : 0))
+  if (Array.isArray(items)) return items.length
+  if (totalFallback != null) return totalFallback
+  return typeof items === 'number' ? items : 0
 }
 
 /** Línea "• Etiqueta (N): a, b, c y M más" (o "• Etiqueta: N" si no hay lista), vacío si count es 0. */
@@ -873,8 +874,9 @@ function formatearSeccionSap(etiqueta: string, items: unknown, count: number, ma
   return `\n  • ${etiqueta}: ${count}`
 }
 
+/** Arma el detalle de validación SAP (códigos válidos/no encontrados/errores/advertencias) para el toast. */
 export function construirMensajeDetalleValidacionSap(numeroPedido: string | undefined, response: UploadPlantillaResponse): string {
-  let mensajeDetalle = `Número de pedido: ${numeroPedido || 'N/A'}\nArtículos: ${response.articulos_cargados}\nDistribuciones: ${response.distribuciones_cargadas}`
+  let mensajeDetalle = `Número de pedido: ${numeroPedido ?? 'N/A'}\nArtículos: ${response.articulos_cargados}\nDistribuciones: ${response.distribuciones_cargadas}`
 
   const sap = response.validacion_sap
   if (!sap) return mensajeDetalle
