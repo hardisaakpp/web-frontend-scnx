@@ -306,6 +306,52 @@ function calcularFilasItr(st: SolicitudesTransferencia | null) {
     .map((r: { doc_num: number | null; tienda_codigo: string }) => ({ doc_num: r.doc_num!, tienda_codigo: r.tienda_codigo }))
 }
 
+// Mensaje de éxito: "con DocNum" solo cuando hay exactamente 1 solicitud de transferencia (ITR)
+function calcularMensajeExito(detalle: IntegracionSAPDetalle, filasItr: { doc_num: number; tienda_codigo: string }[]): string | null {
+  if (!detalle.success) return null
+  if (detalle.doc_num != null && filasItr.length === 1) {
+    return `Proceso completado exitosamente. ODC enviada a SAP con DocNum: ${detalle.doc_num}`
+  }
+  if (filasItr.length !== 1) {
+    return 'Proceso completado exitosamente.'
+  }
+  return detalle.message ?? null
+}
+
+// Estado real de las Solicitudes de Transferencia para esta ODC: no basta con
+// "erroresTransferencia === 0" -- un resultado sin confirmar (0 creadas, 0
+// errores, total > 0, ej. el backend se rindió antes de que SAP respondiera)
+// no es un éxito, aunque técnicamente no tenga errores contados.
+function calcularEstadoTransferencias(
+  solicitudesTransferencia: SolicitudesTransferencia | null,
+  creadasTransferencia: number,
+  totalTransferencia: number
+): 'exitoso' | 'parcial' | 'sin_exito' {
+  if (!solicitudesTransferencia) return 'sin_exito'
+  if (creadasTransferencia > 0 && creadasTransferencia === totalTransferencia) return 'exitoso'
+  if (creadasTransferencia > 0) return 'parcial'
+  return 'sin_exito'
+}
+
+function calcularResumenSolicitudesTexto(
+  solicitudesTransferencia: SolicitudesTransferencia | null,
+  estadoTransferencias: 'exitoso' | 'parcial' | 'sin_exito',
+  creadasTransferencia: number,
+  totalTransferencia: number,
+  erroresTransferencia: number
+): string {
+  if (!solicitudesTransferencia) return ''
+  if (estadoTransferencias === 'exitoso') {
+    return `✅ ${creadasTransferencia} de ${totalTransferencia} creadas exitosamente`
+  }
+  if (estadoTransferencias === 'parcial') {
+    return import.meta.env.PROD
+      ? `⚠️ ${creadasTransferencia} de ${totalTransferencia} creadas`
+      : `⚠️ ${creadasTransferencia} exitosas, ${erroresTransferencia} con errores`
+  }
+  return `❌ 0 de ${totalTransferencia} creadas`
+}
+
 // Agrupa todos los valores derivados de una ODC (Num ODC mostrado, mensaje de éxito,
 // filas ITR, resumen) para poder renderizar N bloques idénticos en el template.
 function construirBloque(detalle: IntegracionSAPDetalle, solicitudesTransferencia: SolicitudesTransferencia | null) {
@@ -314,48 +360,21 @@ function construirBloque(detalle: IntegracionSAPDetalle, solicitudesTransferenci
   // Num ODC: si el backend aún no informó numero_oc_sap, se muestra el DocNum de SAP en su lugar
   const numeroOdcMostrado = detalle.numero_oc_sap ?? (detalle.doc_num != null ? String(detalle.doc_num) : '—')
 
-  // Mensaje de éxito: "con DocNum" solo cuando hay exactamente 1 solicitud de transferencia (ITR)
-  let mensajeExito: string | null = null
-  if (detalle.success) {
-    if (detalle.doc_num != null && filasItr.length === 1) {
-      mensajeExito = `Proceso completado exitosamente. ODC enviada a SAP con DocNum: ${detalle.doc_num}`
-    } else if (filasItr.length !== 1) {
-      mensajeExito = 'Proceso completado exitosamente.'
-    } else {
-      mensajeExito = detalle.message ?? null
-    }
-  }
+  const mensajeExito = calcularMensajeExito(detalle, filasItr)
 
   // El backend no siempre informa transferencias_errores (queda undefined); se asume 0 en ese caso
   const erroresTransferencia = solicitudesTransferencia?.transferencias_errores ?? 0
   const creadasTransferencia = solicitudesTransferencia?.transferencias_creadas ?? 0
   const totalTransferencia = solicitudesTransferencia?.total_tiendas ?? 0
 
-  // Estado real de las Solicitudes de Transferencia para esta ODC: no basta con
-  // "erroresTransferencia === 0" -- un resultado sin confirmar (0 creadas, 0
-  // errores, total > 0, ej. el backend se rindió antes de que SAP respondiera)
-  // no es un éxito, aunque técnicamente no tenga errores contados.
-  let estadoTransferencias: 'exitoso' | 'parcial' | 'sin_exito' = 'sin_exito'
-  if (solicitudesTransferencia) {
-    if (creadasTransferencia > 0 && creadasTransferencia === totalTransferencia) {
-      estadoTransferencias = 'exitoso'
-    } else if (creadasTransferencia > 0) {
-      estadoTransferencias = 'parcial'
-    }
-  }
-
-  let resumenSolicitudesTexto = ''
-  if (solicitudesTransferencia) {
-    if (estadoTransferencias === 'exitoso') {
-      resumenSolicitudesTexto = `✅ ${creadasTransferencia} de ${totalTransferencia} creadas exitosamente`
-    } else if (estadoTransferencias === 'parcial') {
-      resumenSolicitudesTexto = import.meta.env.PROD
-        ? `⚠️ ${creadasTransferencia} de ${totalTransferencia} creadas`
-        : `⚠️ ${creadasTransferencia} exitosas, ${erroresTransferencia} con errores`
-    } else {
-      resumenSolicitudesTexto = `❌ 0 de ${totalTransferencia} creadas`
-    }
-  }
+  const estadoTransferencias = calcularEstadoTransferencias(solicitudesTransferencia, creadasTransferencia, totalTransferencia)
+  const resumenSolicitudesTexto = calcularResumenSolicitudesTexto(
+    solicitudesTransferencia,
+    estadoTransferencias,
+    creadasTransferencia,
+    totalTransferencia,
+    erroresTransferencia
+  )
 
   return {
     detalle,
