@@ -118,9 +118,10 @@
         <p v-else class="mt-1 text-sm text-gray-900 dark:text-white">{{ formatDate(pedido.cabecera.fecha_entrega) }}</p>
       </div>
       <div>
-        <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Fecha Facturación</label>
+        <label :for="fechaFacturacionEditable ? fechaFacturacionInputId : undefined" class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Fecha Facturación</label>
         <AppDateInput
           v-if="fechaFacturacionEditable"
+          :id="fechaFacturacionInputId"
           v-model="fechaFacturacionLocal"
           class="mt-1"
           @change="actualizarFechaFacturacion"
@@ -140,7 +141,7 @@
         <p class="mt-1 text-sm text-gray-900 dark:text-white">{{ pedido.cabecera.forma_pago || 'N/A' }}</p>
       </div>
       <div v-if="origenTrasladoTexto">
-        <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Origen Traslado</label>
+        <span class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Origen Traslado</span>
         <p class="mt-1 text-sm text-gray-900 dark:text-white" :title="esOrigenTrasladoMixto ? 'Pedido mezcla tiendas de más de una marca: se generará una ODC por bodega' : undefined">
           {{ origenTrasladoTexto }}
         </p>
@@ -221,6 +222,7 @@
 
 <script setup lang="ts">
 import { ref, watch, computed } from '@vue/reactivity'
+import { useId } from 'vue'
 import type { PedidoCompleto } from '../types'
 import { formatDate, formatEstadoPedido } from '../utils/formatters'
 import { getEstadoPedidoBadgeClass } from '../utils/styleHelpers'
@@ -341,6 +343,7 @@ const isExpanded = ref(props.defaultExpanded ?? false)
 const fechaPedidoLocal = ref<string>('')
 const fechaEntregaLocal = ref<string | null>(null)
 const fechaFacturacionLocal = ref<string>('')
+const fechaFacturacionInputId = useId()
 const estadoLocal = ref<string>('')
 
 // Convertir fecha a formato YYYY-MM-DD para input type="date"
