@@ -61,11 +61,10 @@
          porque un ancestro con overflow-x:auto ya es el scrollport del sticky
          (overflow-x:auto + overflow-y:visible ⇒ overflow-y computa a auto).
          Mismo patrón usado en CargarPlantillaView.vue:207 y conciliacion/ReporteMaestroView.vue. -->
-    <div
+    <section
       ref="scrollerRef"
       class="grid-scroller"
       tabindex="0"
-      role="region"
       aria-label="Matriz de redistribución por tienda"
     >
       <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -317,7 +316,7 @@
           </tr>
         </tfoot>
       </table>
-    </div>
+    </section>
   </div>
 </template>
 
