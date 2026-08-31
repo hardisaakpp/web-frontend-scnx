@@ -1,8 +1,9 @@
 <template>
   <div ref="rootRef" class="relative">
-    <button
-      type="button"
-      :disabled="disabled"
+    <div
+      role="button"
+      :tabindex="disabled ? -1 : 0"
+      :aria-disabled="disabled"
       :class="[
         'w-full flex items-center justify-between gap-2 pl-3 pr-2.5 py-2 border rounded-lg text-sm text-left',
         disabled
@@ -10,28 +11,29 @@
           : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400'
       ]"
       @click="togglePopover"
+      @keydown.enter.prevent="togglePopover"
+      @keydown.space.prevent="togglePopover"
     >
       <span class="truncate" :class="tieneFiltro ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'">
         {{ resumen }}
       </span>
       <span class="flex items-center gap-1 shrink-0 text-gray-400 dark:text-gray-500">
-        <span
+        <button
           v-if="tieneFiltro && !disabled"
-          role="button"
-          tabindex="-1"
+          type="button"
           title="Quitar filtro de fecha"
           class="hover:text-gray-600 dark:hover:text-gray-300"
-          @mousedown.prevent.stop="clearDates"
+          @click.stop="clearDates"
         >
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
-        </span>
+        </button>
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
       </span>
-    </button>
+    </div>
 
     <div
       v-if="showPopover"
