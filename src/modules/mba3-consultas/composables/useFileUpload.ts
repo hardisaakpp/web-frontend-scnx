@@ -810,6 +810,141 @@ export function processUploadError(e: any, fileName: string): UploadErrorInfo {
   }
 }
 
+/** El backend puede devolver 200 con resultado completo en vez de aceptar el job async (process_id null/vacío, o async:false). */
+export function esResultadoInmediatoUpload(accepted: any): boolean {
+  return accepted.fallback === 'sync' || accepted.async === false || accepted.process_id == null || accepted.process_id === ''
+}
+
+/** 503 de storage/Celery no disponible: no debe reintentarse con el fallback síncrono. */
+export function esAsyncStorageUnavailable(asyncErr: any): boolean {
+  const errorCode = asyncErr.response?.data?.error ?? asyncErr.response?.data?.detail?.error
+  return asyncErr.response?.status === 503 && (errorCode === 'storage_required' || errorCode === 'celery_unavailable')
+}
+
+/** numero_pedido puede venir en la raíz o anidado en resultado/result, según el backend. */
+export function extraerNumeroPedidoDeRespuesta(response: any): string | undefined {
+  return response.numero_pedido ?? response.resultado?.numero_pedido ?? response.result?.numero_pedido
+}
+
+/** Arma el detalle de validación SAP (códigos válidos/no encontrados/errores/advertencias) para el toast. */
+export function construirMensajeDetalleValidacionSap(numeroPedido: string | undefined, response: UploadPlantillaResponse): string {
+  let mensajeDetalle = `Número de pedido: ${numeroPedido || 'N/A'}\nArtículos: ${response.articulos_cargados}\nDistribuciones: ${response.distribuciones_cargadas}`
+
+  const sap = response.validacion_sap
+  if (!sap) return mensajeDetalle
+
+  mensajeDetalle += `\n\nValidación SAP:`
+  mensajeDetalle += `\n  • Códigos válidos: ${sap.validos}/${sap.total_codigos}`
+
+  const noEncontradosCount = Array.isArray(sap.no_encontrados)
+    ? sap.no_encontrados.length
+    : (sap.total_no_encontrados || (typeof sap.no_encontrados === 'number' ? sap.no_encontrados : 0))
+  if (noEncontradosCount > 0) {
+    if (Array.isArray(sap.no_encontrados) && sap.no_encontrados.length > 0) {
+      mensajeDetalle += `\n  • No encontrados en SAP (${noEncontradosCount}): ${sap.no_encontrados.slice(0, 5).join(', ')}${sap.no_encontrados.length > 5 ? ` y ${sap.no_encontrados.length - 5} más` : ''}`
+    } else {
+      mensajeDetalle += `\n  • No encontrados en SAP: ${noEncontradosCount}`
+    }
+  }
+
+  const erroresCount = Array.isArray(sap.errores)
+    ? sap.errores.length
+    : (sap.total_errores || (typeof sap.errores === 'number' ? sap.errores : 0))
+  if (erroresCount > 0) {
+    if (Array.isArray(sap.errores) && sap.errores.length > 0) {
+      mensajeDetalle += `\n  • Errores (${erroresCount}): ${sap.errores.slice(0, 3).join(', ')}${sap.errores.length > 3 ? ` y ${sap.errores.length - 3} más` : ''}`
+    } else {
+      mensajeDetalle += `\n  • Errores: ${erroresCount}`
+    }
+  }
+
+  const warningsCount = Array.isArray(sap.warnings)
+    ? sap.warnings.length
+    : (sap.total_warnings || (typeof sap.warnings === 'number' ? sap.warnings : 0))
+  if (warningsCount > 0) {
+    if (Array.isArray(sap.warnings) && sap.warnings.length > 0) {
+      mensajeDetalle += `\n  • Advertencias (${warningsCount}): ${sap.warnings.slice(0, 3).join(', ')}${sap.warnings.length > 3 ? ` y ${sap.warnings.length - 3} más` : ''}`
+    } else {
+      mensajeDetalle += `\n  • Advertencias: ${warningsCount}`
+    }
+  }
+
+  return mensajeDetalle
+}
+
+/** Errores del backend que mencionan SAP o "no existe" (para decidir el tipo de toast de éxito). */
+export function filtrarErroresSAP(response: UploadPlantillaResponse): any[] {
+  return response.errores?.filter((e: any) => {
+    if (typeof e === 'string') {
+      return e.toLowerCase().includes('sap') || e.toLowerCase().includes('no existe')
+    }
+    return e.campo === 'CodigoProducto' || (e.mensaje && (e.mensaje.toLowerCase().includes('sap') || e.mensaje.toLowerCase().includes('no existe')))
+  }) || []
+}
+
+/** Decide nivel/título del toast tras un upload exitoso o con validation_error. null si el status no aplica ninguno de los dos. */
+export function determinarToastExito(response: UploadPlantillaResponse, erroresSAP: any[]): { level: 'success' | 'warning'; title: string } | null {
+  if (response.status === 'success') {
+    if (erroresSAP.length > 0 || (response.validacion_sap && !response.validacion_sap.todos_validos)) {
+      return { level: 'warning', title: 'Plantilla procesada con advertencias SAP' }
+    }
+    return { level: 'success', title: 'Plantilla procesada exitosamente' }
+  }
+  if (response.status === 'validation_error') {
+    if (response.pedido_id) {
+      return { level: 'warning', title: 'Plantilla procesada y guardada con advertencias. Revisa el detalle si lo deseas.' }
+    }
+    return { level: 'warning', title: 'Plantilla procesada con advertencias' }
+  }
+  return null
+}
+
+/** Solo se guarda el archivo original para reintento si el error es de códigos SAP o discrepancia Pack/PVP (RN-02). */
+export function debeGuardarArchivoParaReintento(errorInfo: UploadErrorInfo): boolean {
+  const esErrorSap = !!(errorInfo.title?.includes('SAP') || errorInfo.title?.includes('producto') || errorInfo.title?.includes('no encontrados'))
+  const esErrorPackPvp = !!errorInfo.validacion_pack_pvp
+  return esErrorSap || esErrorPackPvp
+}
+
+/** Códigos de producto extraídos de errorInfo.errors, para armar el detalle del toast de error. */
+export function extraerCodigosDeErrorInfo(errorInfo: UploadErrorInfo): string[] {
+  const codigos: string[] = []
+  errorInfo.errors?.forEach(err => {
+    if (typeof err !== 'string' && err.producto) {
+      codigos.push(err.producto)
+    }
+  })
+  return codigos
+}
+
+/** Mensaje del toast de error: lista de códigos si hay, si no la primera línea del mensaje. */
+export function construirMensajeToastError(errorInfo: UploadErrorInfo, codigos: string[]): string {
+  return codigos.length > 0
+    ? `Códigos no válidos: ${codigos.slice(0, 5).join(', ')}${codigos.length > 5 ? ` y ${codigos.length - 5} más` : ''}`
+    : errorInfo.message.split('\n')[0]
+}
+
+/** Reemplaza a router.replace/loadPedido segun si el pedido cargado es el mismo que ya se estaba viendo. */
+async function redirigirORecargarTrasCarga(
+  numeroPedido: string | undefined,
+  options: { pedido?: Ref<PedidoCompleto | null>; redirectToCargarPlantilla?: boolean; loadPedido?: () => Promise<void> } | undefined,
+  router: ReturnType<typeof useRouter>
+): Promise<void> {
+  if (!numeroPedido) {
+    if (options?.loadPedido) await options.loadPedido()
+    return
+  }
+  const currentPedidoNumero = options?.pedido?.value?.cabecera.numero_pedido
+  if (numeroPedido !== currentPedidoNumero) {
+    // Si el pedido cargado es diferente al actual, redirigir con replace para no dejar listado en el historial (flujo Celery)
+    const pathBase = options?.redirectToCargarPlantilla ? RUTA_CARGAR_PLANTILLA_BASE : RUTA_PEDIDOS_BASE
+    await router.replace(`${pathBase}/${encodeURIComponent(numeroPedido)}`)
+    await new Promise(resolve => setTimeout(resolve, 100))
+    return
+  }
+  if (options?.loadPedido) await options.loadPedido()
+}
+
 export function useFileUpload(options: {
   onUploadSuccess?: (numeroPedido: string, response?: UploadPlantillaResponse) => void | Promise<void>
   onUploadError?: (error: UploadErrorInfo) => void
@@ -1049,6 +1184,50 @@ export function useFileUpload(options: {
   }
 
 
+  function handleUploadProgress(progress: number, fase: 'upload' | 'processing') {
+    if (fase === 'upload') {
+      const normalizedUploadPct = options?.useAsyncUpload
+        ? progress
+        : Math.min(100, Math.round((progress / 70) * 100))
+      uploadProgress.value = mapFileUploadProgress(normalizedUploadPct)
+      uploadFase.value = 'upload'
+      updateUploadMessage('upload', uploadProgress.value)
+      if (!options?.useAsyncUpload && progress >= 70) {
+        startProcessingProgressSimulation()
+      }
+    } else if (fase === 'processing') {
+      stopProcessingProgressSimulation(true)
+    }
+  }
+
+  /** Sube el archivo (async con polling, o su fallback inmediato) o el flujo sincrono clasico segun useAsyncUpload. */
+  async function realizarSubida(file: File): Promise<UploadPlantillaResponse> {
+    if (!options?.useAsyncUpload) {
+      return await mba3ConsultasService.uploadPlantilla(file, handleUploadProgress)
+    }
+    try {
+      const accepted = await mba3ConsultasService.uploadPlantillaAsync(file, {}, handleUploadProgress)
+      // Backend puede devolver 200 con resultado completo (fallback sync: process_id null, async false) — no hacer polling
+      if (!esResultadoInmediatoUpload(accepted)) {
+        return await waitForAsyncPlantillaResult(
+          accepted.process_id!,
+          accepted.message || 'Procesando plantilla en segundo plano...'
+        )
+      }
+      stopProcessingProgressSimulation(true)
+      uploadProgress.value = 100
+      uploadFase.value = 'complete'
+      uploadMessage.value = 'Procesamiento completado'
+      await new Promise(r => setTimeout(r, 400))
+      return normalizeValidationResponse(accepted as any) as UploadPlantillaResponse
+    } catch (asyncErr: any) {
+      if (esAsyncStorageUnavailable(asyncErr)) {
+        if (import.meta.env.DEV) console.warn('[useFileUpload] Async no disponible (503); no se usará fallback síncrono')
+      }
+      throw asyncErr
+    }
+  }
+
   /**
    * Sube un archivo al servidor (síncrono o async según useAsyncUpload)
    */
@@ -1062,55 +1241,8 @@ export function useFileUpload(options: {
     correccionesAcumuladas.value = {}
 
     try {
-      const handleProgress = (progress: number, fase: 'upload' | 'processing') => {
-        if (fase === 'upload') {
-          const normalizedUploadPct = options?.useAsyncUpload
-            ? progress
-            : Math.min(100, Math.round((progress / 70) * 100))
-          uploadProgress.value = mapFileUploadProgress(normalizedUploadPct)
-          uploadFase.value = 'upload'
-          updateUploadMessage('upload', uploadProgress.value)
-          if (!options?.useAsyncUpload && progress >= 70) {
-            startProcessingProgressSimulation()
-          }
-        } else if (fase === 'processing') {
-          stopProcessingProgressSimulation(true)
-        }
-      }
-      
-      let response: UploadPlantillaResponse
+      const response = await realizarSubida(file)
 
-      if (options?.useAsyncUpload) {
-        try {
-          const accepted = await mba3ConsultasService.uploadPlantillaAsync(file, {}, handleProgress)
-          // Backend puede devolver 200 con resultado completo (fallback sync: process_id null, async false) — no hacer polling
-          const isResultadoInmediato = (accepted as any).fallback === 'sync' || accepted.async === false || accepted.process_id == null || accepted.process_id === ''
-          if (isResultadoInmediato) {
-            stopProcessingProgressSimulation(true)
-            uploadProgress.value = 100
-            uploadFase.value = 'complete'
-            uploadMessage.value = 'Procesamiento completado'
-            await new Promise(r => setTimeout(r, 400))
-            response = normalizeValidationResponse(accepted as any) as UploadPlantillaResponse
-          } else {
-            response = await waitForAsyncPlantillaResult(
-              accepted.process_id!,
-              accepted.message || 'Procesando plantilla en segundo plano...'
-            )
-          }
-        } catch (asyncErr: any) {
-          const errorCode = asyncErr.response?.data?.error ?? asyncErr.response?.data?.detail?.error
-          const is503Unavailable = asyncErr.response?.status === 503 &&
-            (errorCode === 'storage_required' || errorCode === 'celery_unavailable')
-          if (is503Unavailable) {
-            if (import.meta.env.DEV) console.warn('[useFileUpload] Async no disponible (503); no se usará fallback síncrono')
-          }
-          throw asyncErr
-        }
-      } else {
-        response = await mba3ConsultasService.uploadPlantilla(file, handleProgress)
-      }
-      
       // Pedido guardado: success o validation_error con pedido_id (backend puede devolver 200 con advertencias)
       const pedidoGuardado = response.status === 'success' || (response.pedido_id && response.status === 'validation_error')
 
@@ -1118,11 +1250,9 @@ export function useFileUpload(options: {
       if (pedidoGuardado) {
         archivoOriginal.value = null
       }
-      
-      // Obtener numero_pedido de la respuesta (puede venir en la raíz o en resultado, según backend)
-      const resAny = response as any
-      let numeroPedido = response.numero_pedido ?? resAny.resultado?.numero_pedido ?? resAny.result?.numero_pedido
-      
+
+      let numeroPedido = extraerNumeroPedidoDeRespuesta(response)
+
       // Si no viene en la respuesta, intentar obtenerlo del pedido cargado usando pedido_id (necesario para redirigir)
       if (!numeroPedido && response.pedido_id) {
         try {
@@ -1132,77 +1262,14 @@ export function useFileUpload(options: {
           console.warn('No se pudo obtener el numero_pedido del pedido cargado:', e)
         }
       }
-      
-      // Mostrar resultado con información de validación SAP si existe
-      let mensajeDetalle = `Número de pedido: ${numeroPedido || 'N/A'}\nArtículos: ${response.articulos_cargados}\nDistribuciones: ${response.distribuciones_cargadas}`
-      
-      if (response.validacion_sap) {
-        const sap = response.validacion_sap
-        mensajeDetalle += `\n\nValidación SAP:`
-        mensajeDetalle += `\n  • Códigos válidos: ${sap.validos}/${sap.total_codigos}`
-        
-        // ⭐ MEJORADO: Manejar arrays de códigos
-        const noEncontradosCount = Array.isArray(sap.no_encontrados) 
-          ? sap.no_encontrados.length 
-          : (sap.total_no_encontrados || (typeof sap.no_encontrados === 'number' ? sap.no_encontrados : 0))
-        
-        if (noEncontradosCount > 0) {
-          if (Array.isArray(sap.no_encontrados) && sap.no_encontrados.length > 0) {
-            mensajeDetalle += `\n  • No encontrados en SAP (${noEncontradosCount}): ${sap.no_encontrados.slice(0, 5).join(', ')}${sap.no_encontrados.length > 5 ? ` y ${sap.no_encontrados.length - 5} más` : ''}`
-          } else {
-            mensajeDetalle += `\n  • No encontrados en SAP: ${noEncontradosCount}`
-          }
-        }
-        
-        const erroresCount = Array.isArray(sap.errores) 
-          ? sap.errores.length 
-          : (sap.total_errores || (typeof sap.errores === 'number' ? sap.errores : 0))
-        
-        if (erroresCount > 0) {
-          if (Array.isArray(sap.errores) && sap.errores.length > 0) {
-            mensajeDetalle += `\n  • Errores (${erroresCount}): ${sap.errores.slice(0, 3).join(', ')}${sap.errores.length > 3 ? ` y ${sap.errores.length - 3} más` : ''}`
-          } else {
-            mensajeDetalle += `\n  • Errores: ${erroresCount}`
-          }
-        }
-        
-        const warningsCount = Array.isArray(sap.warnings) 
-          ? sap.warnings.length 
-          : (sap.total_warnings || (typeof sap.warnings === 'number' ? sap.warnings : 0))
-        
-        if (warningsCount > 0) {
-          if (Array.isArray(sap.warnings) && sap.warnings.length > 0) {
-            mensajeDetalle += `\n  • Advertencias (${warningsCount}): ${sap.warnings.slice(0, 3).join(', ')}${sap.warnings.length > 3 ? ` y ${sap.warnings.length - 3} más` : ''}`
-          } else {
-            mensajeDetalle += `\n  • Advertencias: ${warningsCount}`
-          }
-        }
+
+      const mensajeDetalle = construirMensajeDetalleValidacionSap(numeroPedido, response)
+      const erroresSAP = filtrarErroresSAP(response)
+      const toastExito = determinarToastExito(response, erroresSAP)
+      if (toastExito) {
+        toast[toastExito.level](toastExito.title, mensajeDetalle)
       }
-      
-      const erroresSAP = response.errores?.filter((e: any) => {
-        if (typeof e === 'string') {
-          return e.toLowerCase().includes('sap') || e.toLowerCase().includes('no existe')
-        }
-        return e.campo === 'CodigoProducto' || (e.mensaje && (e.mensaje.toLowerCase().includes('sap') || e.mensaje.toLowerCase().includes('no existe')))
-      }) || []
-      
-      if (response.status === 'success') {
-        if (erroresSAP.length > 0 || (response.validacion_sap && !response.validacion_sap.todos_validos)) {
-          toast.warning('Plantilla procesada con advertencias SAP', mensajeDetalle)
-        } else {
-          toast.success('Plantilla procesada exitosamente', mensajeDetalle)
-        }
-      } else if (response.status === 'validation_error') {
-        if (response.pedido_id) {
-          toast.warning(
-            'Plantilla procesada y guardada con advertencias. Revisa el detalle si lo deseas.',
-            mensajeDetalle
-          )
-        } else {
-          toast.warning('Plantilla procesada con advertencias', mensajeDetalle)
-        }
-      }
-      
+
       // Guardar correcciones en sessionStorage antes de redirect para que la vista de destino pueda resaltar (flujo async)
       if (numeroPedido) {
         saveCorreccionesParaResaltado(numeroPedido, response)
@@ -1214,25 +1281,7 @@ export function useFileUpload(options: {
       }
       
       // Redirigir o recargar según corresponda
-      if (numeroPedido) {
-        const currentPedidoNumero = options?.pedido?.value?.cabecera.numero_pedido
-        const pathBase = options?.redirectToCargarPlantilla ? RUTA_CARGAR_PLANTILLA_BASE : RUTA_PEDIDOS_BASE
-        if (numeroPedido !== currentPedidoNumero) {
-          // Si el pedido cargado es diferente al actual, redirigir con replace para no dejar listado en el historial (flujo Celery)
-          await router.replace(`${pathBase}/${encodeURIComponent(numeroPedido)}`)
-          await new Promise(resolve => setTimeout(resolve, 100))
-        } else {
-          // Recargar el pedido actual si hay callback
-          if (options?.loadPedido) {
-            await options.loadPedido()
-          }
-        }
-      } else {
-        // Si no hay numeroPedido pero hay callback, intentar recargar
-        if (options?.loadPedido) {
-          await options.loadPedido()
-        }
-      }
+      await redirigirORecargarTrasCarga(numeroPedido, options, router)
     } catch (e: any) {
       // ⭐ Detener simulación de progreso en caso de error
       stopProcessingProgressSimulation(false)
@@ -1240,31 +1289,16 @@ export function useFileUpload(options: {
       const errorInfo = processUploadError(e, file.name)
       uploadErrorInfo.value = errorInfo
       showErrorModal.value = true
-      
+
       // ⭐ Guardar archivo original para posible reintento con correcciones
-      // Solo si el error es de códigos no válidos en SAP, o de discrepancias de Pack/PVP (RN-02)
-      const esErrorSap = errorInfo.title?.includes('SAP') || errorInfo.title?.includes('producto') || errorInfo.title?.includes('no encontrados')
-      const esErrorPackPvp = !!errorInfo.validacion_pack_pvp
-      if (esErrorSap || esErrorPackPvp) {
+      if (debeGuardarArchivoParaReintento(errorInfo)) {
         archivoOriginal.value = file
         if (import.meta.env.DEV) console.log('💾 [useFileUpload] Archivo original guardado para posible reintento con correcciones')
       }
-      
-      // Extraer todos los códigos para el toast
-      const todosLosCodigos: string[] = []
-      errorInfo.errors?.forEach(err => {
-        if (typeof err !== 'string' && err.producto) {
-          todosLosCodigos.push(err.producto)
-        }
-      })
-      
-      toast.error(
-        errorInfo.title || 'Error',
-        todosLosCodigos.length > 0 
-          ? `Códigos no válidos: ${todosLosCodigos.slice(0, 5).join(', ')}${todosLosCodigos.length > 5 ? ` y ${todosLosCodigos.length - 5} más` : ''}`
-          : errorInfo.message.split('\n')[0]
-      )
-      
+
+      const todosLosCodigos = extraerCodigosDeErrorInfo(errorInfo)
+      toast.error(errorInfo.title || 'Error', construirMensajeToastError(errorInfo, todosLosCodigos))
+
       if (options?.onUploadError) {
         options.onUploadError(errorInfo)
       }
