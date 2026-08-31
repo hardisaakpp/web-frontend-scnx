@@ -164,6 +164,30 @@ function construirMensajeCompletoParaBusqueda(e: any): string {
   return Array.from(mensajesUnicos).join(' ') || ''
 }
 
+/** Asigna codigos ya extraidos de una sección al array (productos/tiendas/bodegas) que corresponda según tipo. */
+function clasificarCodigosPorTipo(tipo: string, codigos: string[], productos: string[], tiendas: string[], bodegas: string[]): void {
+  if (tipo.includes('PRODUCTO')) {
+    productos.push(...codigos)
+  } else if (tipo.includes('TIENDA')) {
+    tiendas.push(...codigos)
+  } else if (tipo.includes('BODEGA')) {
+    bodegas.push(...codigos)
+  } else {
+    // Si no especifica tipo, asumir que pueden ser tiendas/bodegas (formato genérico)
+    tiendas.push(...codigos)
+  }
+}
+
+/** Procesa una sección "❌ Códigos ... (N):\n   • ..." y clasifica sus códigos. */
+function procesarSeccionCodigosEstructurados(section: string, productos: string[], tiendas: string[], bodegas: string[]): void {
+  const tipoMatch = section.match(/Códigos (?:de )?(PRODUCTO|TIENDA|BODEGA|NO ENCONTRADOS)/i)
+  const tipo = tipoMatch ? tipoMatch[1] : 'NO ENCONTRADOS'
+  const codigosMatch = section.match(/\s*•\s*([^\n]+)/g)
+  if (!codigosMatch) return
+  const codigos = codigosMatch.map(line => line.replace(/^\s*•\s*/, '').trim()).filter(c => c)
+  clasificarCodigosPorTipo(tipo, codigos, productos, tiendas, bodegas)
+}
+
 /**
  * Extrae códigos del formato estructurado del backend:
  * "❌ Códigos NO ENCONTRADOS en SAP (N):\n   • CODIGO1\n   • CODIGO2\n..."
@@ -173,67 +197,69 @@ function extraerCodigosFormatoEstructurado(errorMessageStr: string): { productos
   const tiendas: string[] = []
   const bodegas: string[] = []
   const codigosNoEncontradosMatch = errorMessageStr.match(/❌ Códigos (?:de )?(PRODUCTO|TIENDA|BODEGA|NO ENCONTRADOS)[\s\S]*?\((?:[^)]+)\):\s*\n((?:\s*•\s*[^\n]+\n?)+)/gi)
-  if (codigosNoEncontradosMatch) {
-    for (const section of codigosNoEncontradosMatch) {
-      const tipoMatch = section.match(/Códigos (?:de )?(PRODUCTO|TIENDA|BODEGA|NO ENCONTRADOS)/i)
-      const tipo = tipoMatch ? tipoMatch[1] : 'NO ENCONTRADOS'
-      const codigosMatch = section.match(/\s*•\s*([^\n]+)/g)
-      if (codigosMatch) {
-        const codigos = codigosMatch.map(line => line.replace(/^\s*•\s*/, '').trim()).filter(c => c)
-        if (tipo.includes('PRODUCTO')) {
-          productos.push(...codigos)
-        } else if (tipo.includes('TIENDA')) {
-          tiendas.push(...codigos)
-        } else if (tipo.includes('BODEGA')) {
-          bodegas.push(...codigos)
-        } else {
-          // Si no especifica tipo, asumir que pueden ser tiendas/bodegas (formato genérico)
-          tiendas.push(...codigos)
-        }
-      }
-    }
+  if (!codigosNoEncontradosMatch) return { productos, tiendas, bodegas }
+  for (const section of codigosNoEncontradosMatch) {
+    procesarSeccionCodigosEstructurados(section, productos, tiendas, bodegas)
   }
   return { productos, tiendas, bodegas }
 }
 
+/** Primer patrón (de una lista) que matchee, filtrando códigos puramente numéricos. */
+function extraerPrimerPatronConCodigos(errorMessageStr: string, patterns: RegExp[]): string[] {
+  for (const pattern of patterns) {
+    const match = errorMessageStr.match(pattern)
+    if (match && match[1]) {
+      const codigos = match[1].split(',').map(c => c.trim()).filter(c => c && c.length > 0 && !c.match(/^\d+$/))
+      if (codigos.length > 0) return codigos
+    }
+  }
+  return []
+}
+
+/** Acumula códigos de TODOS los patrones que matcheen (sin excluir puramente numéricos). */
+function extraerTodosPatronesConCodigos(errorMessageStr: string, patterns: RegExp[]): string[] {
+  const productos: string[] = []
+  for (const pattern of patterns) {
+    const match = errorMessageStr.match(pattern)
+    if (match && match[1]) {
+      productos.push(...match[1].split(',').map(c => c.trim()).filter(c => c))
+    }
+  }
+  return productos
+}
+
+/** Fallback: si aún no hay códigos, busca en la última parte del mensaje tras ":". */
+function extraerCodigosDespuesDeDosPuntos(errorMessageStr: string): string[] {
+  if (!errorMessageStr.includes(':')) return []
+  const partes = errorMessageStr.split(':')
+  if (partes.length <= 1) return []
+  const ultimaParte = partes[partes.length - 1].trim()
+  if (!(ultimaParte.includes(',') || ultimaParte.split(/\s+/).length > 1)) return []
+  const posiblesCodigos = ultimaParte.split(',').map(c => c.trim()).filter(c => {
+    return c && c.length > 0 && !c.match(/^\d+$/) && c.match(/[A-Za-z0-9.-]+/)
+  })
+  if (posiblesCodigos.length > 0 && import.meta.env.DEV) {
+    console.log('✅ [useFileUpload] Códigos extraídos de la última parte del mensaje:', posiblesCodigos)
+  }
+  return posiblesCodigos
+}
+
 /** Extrae códigos de producto del formato antiguo (regex sobre el mensaje, sin datos estructurados). */
 function extraerCodigosPatronesLegacy(errorMessageStr: string, productosPrevios: string[]): string[] {
-  const productos: string[] = []
-
   // Patrón para: "❌ Validación SAP productos falló: Productos no encontrados (N): CODIGO1, CODIGO2"
+  // Solo se usa el primer patrón de esta lista que coincida.
   const validacionSapPatterns = [
     /❌\s*Validación\s+SAP\s+productos?\s+falló:\s*Productos?\s+no\s+encontrados?\s*\([^)]*\):\s*([A-Za-z0-9,.\s-]+)/i,
     /Validación\s+SAP\s+productos?\s+falló:\s*Productos?\s+no\s+encontrados?\s*\([^)]*\):\s*([A-Za-z0-9,.\s-]+)/i,
     /Productos?\s+no\s+encontrados?\s*\([^)]*\):\s*([A-Za-z0-9,.\s-]+)/i,
     /Productos?\s+no\s+encontrados?\s+en\s+SAP[^:]*:\s*([A-Za-z0-9,.\s-]+)/i
   ]
-  for (const pattern of validacionSapPatterns) {
-    const match = errorMessageStr.match(pattern)
-    if (match && match[1]) {
-      const codigos = match[1].split(',').map(c => c.trim()).filter(c => c && c.length > 0 && !c.match(/^\d+$/))
-      if (codigos.length > 0) {
-        productos.push(...codigos)
-        break // Solo usar el primer patrón que coincida
-      }
-    }
-  }
+  const productos: string[] = [...extraerPrimerPatronConCodigos(errorMessageStr, validacionSapPatterns)]
 
   // Si aún no se encontraron códigos (contando también lo que ya se había encontrado antes, ej.
   // formato estructurado), buscar en todo el mensaje cualquier patrón de códigos después de ":"
-  if (productosPrevios.length + productos.length === 0 && errorMessageStr.includes(':')) {
-    const partes = errorMessageStr.split(':')
-    if (partes.length > 1) {
-      const ultimaParte = partes[partes.length - 1].trim()
-      if (ultimaParte.includes(',') || ultimaParte.split(/\s+/).length > 1) {
-        const posiblesCodigos = ultimaParte.split(',').map(c => c.trim()).filter(c => {
-          return c && c.length > 0 && !c.match(/^\d+$/) && c.match(/[A-Za-z0-9.-]+/)
-        })
-        if (posiblesCodigos.length > 0) {
-          productos.push(...posiblesCodigos)
-          if (import.meta.env.DEV) console.log('✅ [useFileUpload] Códigos extraídos de la última parte del mensaje:', posiblesCodigos)
-        }
-      }
-    }
+  if (productosPrevios.length + productos.length === 0) {
+    productos.push(...extraerCodigosDespuesDeDosPuntos(errorMessageStr))
   }
 
   const sapErrorPatterns = [
@@ -242,13 +268,7 @@ function extraerCodigosPatronesLegacy(errorMessageStr: string, productosPrevios:
     /No se encontró información en SAP para SKU:\s*([A-Za-z0-9,.\s-]+)/i,
     /Productos?\s+no\s+encontrados?\s*\([^)]*\):\s*([A-Za-z0-9,.\s-]+)/i
   ]
-  for (const pattern of sapErrorPatterns) {
-    const match = errorMessageStr.match(pattern)
-    if (match && match[1]) {
-      const codigos = match[1].split(',').map(c => c.trim()).filter(c => c)
-      productos.push(...codigos)
-    }
-  }
+  productos.push(...extraerTodosPatronesConCodigos(errorMessageStr, sapErrorPatterns))
 
   return productos
 }
@@ -344,6 +364,34 @@ function extraerDesdeValidacionSap(errorData: any, e: any, errorErrors: ErrorEnt
   return productos
 }
 
+function agregarSinDuplicados(target: string[], codigo: string): void {
+  if (!target.includes(codigo)) target.push(codigo)
+}
+
+function extraerSapDataAnidado(errorData: any, productos: string[]): void {
+  if (!errorData.data?.validacion_sap) return
+  const sapData = errorData.data.validacion_sap
+  if (import.meta.env.DEV) console.log('✅ [useFileUpload] Encontrada validacion_sap en errorData.data.validacion_sap:', sapData)
+  if (Array.isArray(sapData.no_encontrados)) {
+    sapData.no_encontrados.forEach((codigo: string) => agregarSinDuplicados(productos, codigo))
+  }
+}
+
+function extraerValidacionAnidada(errorData: any, productos: string[], tiendas: string[], bodegas: string[]): void {
+  if (!errorData.data?.validacion) return
+  const validacion = errorData.data.validacion
+  if (import.meta.env.DEV) console.log('✅ [useFileUpload] Encontrada validacion en errorData.data.validacion:', validacion)
+  if (validacion.productos?.no_encontrados && Array.isArray(validacion.productos.no_encontrados)) {
+    validacion.productos.no_encontrados.forEach((codigo: string) => agregarSinDuplicados(productos, codigo))
+  }
+  if (validacion.tiendas?.no_encontradas && Array.isArray(validacion.tiendas.no_encontradas)) {
+    validacion.tiendas.no_encontradas.forEach((codigo: string) => agregarSinDuplicados(tiendas, codigo))
+  }
+  if (validacion.bodegas?.no_encontradas && Array.isArray(validacion.bodegas.no_encontradas)) {
+    validacion.bodegas.no_encontradas.forEach((codigo: string) => agregarSinDuplicados(bodegas, codigo))
+  }
+}
+
 /** errorData.data.{validacion_sap,validacion} -> variante anidada usada por BusinessException. */
 function extraerDesdeDataAnidado(errorData: any): CodigosPorTipo {
   const productos: string[] = []
@@ -352,36 +400,8 @@ function extraerDesdeDataAnidado(errorData: any): CodigosPorTipo {
 
   if (import.meta.env.DEV) console.log('🔍 [useFileUpload] Verificando errorData.data:', errorData.data)
 
-  if (errorData.data?.validacion_sap) {
-    const sapData = errorData.data.validacion_sap
-    if (import.meta.env.DEV) console.log('✅ [useFileUpload] Encontrada validacion_sap en errorData.data.validacion_sap:', sapData)
-    if (Array.isArray(sapData.no_encontrados)) {
-      sapData.no_encontrados.forEach((codigo: string) => {
-        if (!productos.includes(codigo)) productos.push(codigo)
-      })
-    }
-  }
-
-  if (errorData.data?.validacion) {
-    const validacion = errorData.data.validacion
-    if (import.meta.env.DEV) console.log('✅ [useFileUpload] Encontrada validacion en errorData.data.validacion:', validacion)
-
-    if (validacion.productos?.no_encontrados && Array.isArray(validacion.productos.no_encontrados)) {
-      validacion.productos.no_encontrados.forEach((codigo: string) => {
-        if (!productos.includes(codigo)) productos.push(codigo)
-      })
-    }
-    if (validacion.tiendas?.no_encontradas && Array.isArray(validacion.tiendas.no_encontradas)) {
-      validacion.tiendas.no_encontradas.forEach((codigo: string) => {
-        if (!tiendas.includes(codigo)) tiendas.push(codigo)
-      })
-    }
-    if (validacion.bodegas?.no_encontradas && Array.isArray(validacion.bodegas.no_encontradas)) {
-      validacion.bodegas.no_encontradas.forEach((codigo: string) => {
-        if (!bodegas.includes(codigo)) bodegas.push(codigo)
-      })
-    }
-  }
+  extraerSapDataAnidado(errorData, productos)
+  extraerValidacionAnidada(errorData, productos, tiendas, bodegas)
 
   return { productos, tiendas, bodegas }
 }
