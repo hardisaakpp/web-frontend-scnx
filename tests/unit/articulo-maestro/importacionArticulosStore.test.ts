@@ -6,6 +6,7 @@ import { useImportacionArticulosStore } from '@/modules/articulo-maestro/stores/
 vi.mock('@/modules/articulo-maestro/services/articuloService', () => ({
     articuloService: {
         crearImportacion: vi.fn(),
+        verificarImportacion: vi.fn(),
         getImportacion: vi.fn(),
         getErroresImportacion: vi.fn(),
         descargarErroresImportacion: vi.fn(),
@@ -99,5 +100,71 @@ describe('importacionArticulosStore', () => {
 
         expect(store.jobId).toBeNull()
         expect(localStorage.removeItem).toHaveBeenCalled()
+    })
+
+    describe('verificar (pre-vuelo)', () => {
+        it('marca el estado como VALIDO cuando el lote no tiene errores', async () => {
+            vi.mocked(articuloService.verificarImportacion).mockResolvedValue({
+                totalFilas: 5,
+                filasValidas: 5,
+                filasConError: 0,
+                esLoteValido: true,
+                errores: [],
+                resumenMarcas: { MARCA1: 5 },
+                resumenNiveles: { SECCION1: 5 }
+            })
+            const store = useImportacionArticulosStore()
+
+            await store.verificar(new File(['xlsx'], 'articulos.xlsx'), 'crear')
+
+            expect(store.estadoSimulacion).toBe('VALIDO')
+            expect(store.archivoVerificado).toBe(true)
+        })
+
+        it('marca el estado como CON_ERRORES y bloquea archivoVerificado', async () => {
+            vi.mocked(articuloService.verificarImportacion).mockResolvedValue({
+                totalFilas: 20,
+                filasValidas: 3,
+                filasConError: 17,
+                esLoteValido: false,
+                errores: [
+                    {
+                        tipo: 'FILA',
+                        grupoProducto: 'G1',
+                        numeroFila: 2,
+                        mensaje: 'Campo obligatorio faltante'
+                    }
+                ],
+                resumenMarcas: {},
+                resumenNiveles: {}
+            })
+            const store = useImportacionArticulosStore()
+
+            await store.verificar(new File(['xlsx'], 'articulos.xlsx'), 'crear')
+
+            expect(store.estadoSimulacion).toBe('CON_ERRORES')
+            expect(store.archivoVerificado).toBe(false)
+            expect(store.resumenSimulacion?.errores).toHaveLength(1)
+        })
+
+        it('vuelve a IDLE y descarta el resumen al llamar resetVerificacion', async () => {
+            vi.mocked(articuloService.verificarImportacion).mockResolvedValue({
+                totalFilas: 1,
+                filasValidas: 1,
+                filasConError: 0,
+                esLoteValido: true,
+                errores: [],
+                resumenMarcas: {},
+                resumenNiveles: {}
+            })
+            const store = useImportacionArticulosStore()
+            await store.verificar(new File(['xlsx'], 'articulos.xlsx'), 'crear')
+            expect(store.estadoSimulacion).toBe('VALIDO')
+
+            store.resetVerificacion()
+
+            expect(store.estadoSimulacion).toBe('IDLE')
+            expect(store.resumenSimulacion).toBeNull()
+        })
     })
 })

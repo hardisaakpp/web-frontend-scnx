@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import {
     articuloService,
+    type DryRunSummary,
     type ImportacionError,
     type ImportacionTrabajo,
     type TipoCargaMasiva
@@ -22,6 +23,9 @@ interface ImportacionState {
     downloading: boolean
     error: string | null
     pollTimer: ReturnType<typeof setInterval> | null
+    verificando: boolean
+    resumenSimulacion: DryRunSummary | null
+    errorSimulacion: string | null
 }
 
 function readPersistedJobId(): number | null {
@@ -54,7 +58,10 @@ export const useImportacionArticulosStore = defineStore(
             loading: false,
             downloading: false,
             error: null,
-            pollTimer: null
+            pollTimer: null,
+            verificando: false,
+            resumenSimulacion: null,
+            errorSimulacion: null
         }),
 
         getters: {
@@ -62,6 +69,16 @@ export const useImportacionArticulosStore = defineStore(
                 !!state.trabajo && TERMINAL_STATES.has(state.trabajo.estado),
             isActive(): boolean {
                 return this.jobId !== null && !this.isTerminal
+            },
+            // Estado del semáforo de pre-vuelo. Derivado, no un campo aparte,
+            // para que nunca pueda desincronizarse de `verificando`/`resumenSimulacion`.
+            estadoSimulacion(): 'IDLE' | 'SIMULANDO' | 'VALIDO' | 'CON_ERRORES' {
+                if (this.verificando) return 'SIMULANDO'
+                if (!this.resumenSimulacion) return 'IDLE'
+                return this.resumenSimulacion.esLoteValido ? 'VALIDO' : 'CON_ERRORES'
+            },
+            archivoVerificado(): boolean {
+                return this.resumenSimulacion?.esLoteValido ?? false
             },
             progress: (state): number => {
                 if (!state.trabajo?.totalGrupos) return 0
@@ -96,6 +113,33 @@ export const useImportacionArticulosStore = defineStore(
         },
 
         actions: {
+            async verificar(
+                file: File,
+                tipo: TipoCargaMasiva,
+                zipImagenes?: File | null
+            ): Promise<void> {
+                this.verificando = true
+                this.errorSimulacion = null
+                try {
+                    this.resumenSimulacion = await articuloService.verificarImportacion(
+                        file,
+                        tipo,
+                        zipImagenes
+                    )
+                } catch (error: unknown) {
+                    this.resumenSimulacion = null
+                    this.errorSimulacion = getErrorMessage(error)
+                    throw error
+                } finally {
+                    this.verificando = false
+                }
+            },
+
+            resetVerificacion(): void {
+                this.resumenSimulacion = null
+                this.errorSimulacion = null
+            },
+
             async iniciar(
                 file: File,
                 tipo: TipoCargaMasiva,
@@ -211,6 +255,8 @@ export const useImportacionArticulosStore = defineStore(
                 this.trabajo = null
                 this.errores = []
                 this.error = null
+                this.resumenSimulacion = null
+                this.errorSimulacion = null
                 globalThis.localStorage?.removeItem(STORAGE_KEY)
             }
         }
