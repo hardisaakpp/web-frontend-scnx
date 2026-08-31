@@ -1,21 +1,15 @@
 <template>
   <Teleport to="body">
-  <div
-    v-if="modelValue"
-    class="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4"
-    @click.self="solicitarCierre"
-  >
-    <div
+    <dialog
       ref="modalRef"
-      role="dialog"
-      aria-modal="true"
+      v-if="modelValue"
       aria-labelledby="upload-error-modal-title"
-      tabindex="-1"
-      @keydown.tab="atraparFoco"
-      @keydown.esc="solicitarCierre"
+      class="upload-error-modal-dialog p-0 m-auto border-0"
+      @cancel.prevent="solicitarCierre"
+      @click="onBackdropClick"
       :class="[
         'relative bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden flex flex-col transition-all duration-300 focus:outline-none',
-        isModalMaximized ? 'w-full h-full max-w-none max-h-none m-0 rounded-none' : `${anchoModal} w-full max-h-[90vh]`
+        isModalMaximized ? 'w-full h-full max-w-none max-h-none rounded-none' : `${anchoModal} w-full max-h-[90vh]`
       ]"
     >
       <!-- Confirmación antes de descartar correcciones ya seleccionadas (cierre accidental) -->
@@ -822,8 +816,7 @@
           </button>
         </div>
       </div>
-    </div>
-  </div>
+    </dialog>
   </Teleport>
 </template>
 
@@ -862,7 +855,7 @@ const emit = defineEmits<{
 
 // Estado interno del modal
 const isModalMaximized = ref(false)
-const modalRef = ref<HTMLElement | null>(null)
+const modalRef = ref<HTMLDialogElement | null>(null)
 const mostrarConfirmacionDescarte = ref(false)
 
 // ⭐ Funcionalidad de sugerencias SAP
@@ -1021,6 +1014,7 @@ const shouldHideGenericMessage = computed(() => {
  * Cierra el modal
  */
 function closeModal(): void {
+  modalRef.value?.close()
   emit('update:modelValue', false)
   limpiarSugerencias()
   mostrarConfirmacionDescarte.value = false
@@ -1054,22 +1048,12 @@ function cancelarDescarte(): void {
 }
 
 /**
- * Mantiene el foco del teclado dentro del modal (accesibilidad: Tab/Shift+Tab no debe escapar al fondo).
+ * Clic en el <dialog> mismo (no en su contenido) equivale a clic en el backdrop nativo:
+ * el navegador despacha el click con target=dialog cuando cae fuera de la tarjeta visible.
  */
-function atraparFoco(evento: KeyboardEvent): void {
-  if (!modalRef.value) return
-  const focosDisponibles = modalRef.value.querySelectorAll<HTMLElement>(
-    'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
-  )
-  if (focosDisponibles.length === 0) return
-  const primero = focosDisponibles[0]
-  const ultimo = focosDisponibles[focosDisponibles.length - 1]
-  if (evento.shiftKey && document.activeElement === primero) {
-    evento.preventDefault()
-    ultimo.focus()
-  } else if (!evento.shiftKey && document.activeElement === ultimo) {
-    evento.preventDefault()
-    primero.focus()
+function onBackdropClick(evento: MouseEvent): void {
+  if (evento.target === modalRef.value) {
+    solicitarCierre()
   }
 }
 
@@ -1449,8 +1433,9 @@ watch(
     if (isVisible) {
       // Esperar a que el DOM se actualice y el modal esté completamente renderizado
       await nextTick()
-      // Foco inicial en el modal (accesibilidad: lector de pantalla anuncia el diálogo, Escape/Tab funcionan de inmediato)
-      modalRef.value?.focus()
+      // showModal(): foco inicial + focus-trap + backdrop nativos (accesibilidad: lector de
+      // pantalla anuncia el diálogo, Escape/Tab funcionan de inmediato)
+      modalRef.value?.showModal()
       // Pequeño delay adicional para asegurar que el modal esté completamente visible
       await new Promise(resolve => setTimeout(resolve, 100))
 
@@ -1510,3 +1495,15 @@ onUnmounted(() => {
   limpiarSugerencias()
 })
 </script>
+
+<style>
+/* ::backdrop del <dialog> nativo: no se puede scopear (pseudo-elemento fuera del arbol normal),
+   por eso el nombre de clase bien especifico y el estilo sin "scoped". Reemplaza al overlay
+   manual bg-black/50 dark:bg-black/70 que envolvia el modal antes de la migracion a <dialog>. */
+.upload-error-modal-dialog::backdrop {
+  background-color: rgb(0 0 0 / 0.5);
+}
+.dark .upload-error-modal-dialog::backdrop {
+  background-color: rgb(0 0 0 / 0.7);
+}
+</style>
