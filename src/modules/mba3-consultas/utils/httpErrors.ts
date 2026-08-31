@@ -41,6 +41,7 @@ export function extraerMensajeErrorAnidado(e: any): { status: number | undefined
   const data = e.response?.data
   const errorCode = data?.error
   const detail = data?.detail
-  const msg = (typeof detail === 'object' && detail?.message) ? detail.message : (typeof detail === 'string' ? detail : null) ?? data?.message ?? e.message
+  const detailString = typeof detail === 'string' ? detail : null
+  const msg = (typeof detail === 'object' && detail?.message) ? detail.message : detailString ?? data?.message ?? e.message
   return { status, errorCode, msg }
 }
