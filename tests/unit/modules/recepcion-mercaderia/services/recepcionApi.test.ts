@@ -34,6 +34,7 @@ function wireTransfer(overrides: Record<string, unknown> = {}) {
     createdByUserName: 'user',
     lines: [{ id: 1, sapItemCode: 'A1', description: 'Item A', barcode: null, requestedQuantity: 10, scannedQuantity: 3 }],
     differencesCount: 0,
+    pendingSapJobQueuedAtUtc: null,
     ...overrides,
   }
 }
@@ -200,6 +201,16 @@ describe('recepcionApi', () => {
     expect(result.differences).toEqual([])
   })
 
+  it('getTransfer maps pendingSapJobQueuedAtUtc onto the transfer (survives a reload while a SAP confirm job is queued)', async () => {
+    vi.mocked(api.get).mockResolvedValue({
+      data: { transfer: wireTransfer({ pendingSapJobQueuedAtUtc: '2026-08-31T12:00:00Z' }), differences: [] },
+    })
+
+    const result = await recepcionApi.getTransfer(7)
+
+    expect(result.transfer.pendingSapJobQueuedAtUtc).toBe('2026-08-31T12:00:00Z')
+  })
+
   it('getTransfer maps transitWarehouseCode onto the transfer (used by the detail subtitle: transitoria -> destino real)', async () => {
     vi.mocked(api.get).mockResolvedValue({
       data: { transfer: wireTransfer({ transitWarehouseCode: 'TRL-QSS2' }), differences: [] },
@@ -282,11 +293,12 @@ describe('recepcionApi', () => {
     })
   })
 
-  it('confirm sends { allowPartial: false } by default and does not attempt to map the response (real shape on success is ConfirmReceptionTransferResult { success, sapDocEntry, sapDocNum, message }, not a transfer — verified with backend)', async () => {
+  it('confirm sends { allowPartial: false } by default and passes the response through unmapped (real shape is ConfirmReceptionTransferResult { success, sapDocEntry, sapDocNum, message }, not a transfer — verified with backend)', async () => {
     vi.mocked(api.post).mockResolvedValue({ data: { success: true, sapDocEntry: 123, sapDocNum: 456, message: null } })
 
-    await expect(recepcionApi.confirm(7)).resolves.toBeUndefined()
+    const result = await recepcionApi.confirm(7)
 
+    expect(result).toEqual({ success: true, sapDocEntry: 123, sapDocNum: 456, message: null })
     expect(api.post).toHaveBeenCalledWith('recepcion-api/reception/transfers/7/confirm', { allowPartial: false })
   })
 
@@ -296,6 +308,17 @@ describe('recepcionApi', () => {
     await recepcionApi.confirm(7, { allowPartial: true })
 
     expect(api.post).toHaveBeenCalledWith('recepcion-api/reception/transfers/7/confirm', { allowPartial: true })
+  })
+
+  it('confirm passes through the queued-job reason ("Queued"/"StillPending") when SAP confirmation was not resolved inline', async () => {
+    vi.mocked(api.post).mockResolvedValue({
+      data: { success: false, sapDocEntry: null, sapDocNum: null, message: 'La confirmación quedó en proceso.', reason: 'Queued' },
+    })
+
+    const result = await recepcionApi.confirm(7)
+
+    expect(result.reason).toBe('Queued')
+    expect(result.success).toBe(false)
   })
 
   it('updateGlpiTicket PUTs { ticketNumber } (real wire key, not glpiTicket) and re-fetches the transfer', async () => {

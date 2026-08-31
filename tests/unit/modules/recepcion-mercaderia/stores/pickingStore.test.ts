@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { usePickingStore } from '@/modules/recepcion-mercaderia/stores/pickingStore'
 import recepcionApi from '@/modules/recepcion-mercaderia/services/recepcionApi'
-import type { ReceptionTransfer, Difference } from '@/modules/recepcion-mercaderia/types'
+import type { ReceptionTransfer, Difference, ConfirmTransferResponse } from '@/modules/recepcion-mercaderia/types'
 
 vi.mock('@/modules/recepcion-mercaderia/services/recepcionApi', () => ({
   default: {
@@ -52,6 +52,10 @@ function buildDifference(overrides: Partial<Difference> = {}): Difference {
 // site below, defaulting to no persisted differences unless a test needs otherwise.
 function mockGetTransfer(transfer: ReceptionTransfer, differences: Difference[] = []) {
   return { transfer, differences }
+}
+
+function buildConfirmResponse(overrides: Partial<ConfirmTransferResponse> = {}): ConfirmTransferResponse {
+  return { success: true, sapDocEntry: 123, sapDocNum: 456, message: 'ok', ...overrides }
 }
 
 describe('usePickingStore', () => {
@@ -187,7 +191,7 @@ describe('usePickingStore', () => {
       const store = usePickingStore()
       await store.fetchTransfer(7)
 
-      let resolveConfirm!: (v: void) => void
+      let resolveConfirm!: (v: ConfirmTransferResponse) => void
       vi.mocked(recepcionApi.confirm).mockReturnValue(
         new Promise((resolve) => {
           resolveConfirm = resolve
@@ -199,7 +203,7 @@ describe('usePickingStore', () => {
       vi.mocked(recepcionApi.getTransfer).mockResolvedValueOnce(mockGetTransfer(transferB))
       await store.fetchTransfer(8)
 
-      resolveConfirm(undefined)
+      resolveConfirm(buildConfirmResponse())
       await confirmPromise
 
       expect(store.currentTransfer).toEqual(transferB)
@@ -558,7 +562,7 @@ describe('usePickingStore', () => {
       const store = usePickingStore()
       await store.fetchTransfer(7)
 
-      vi.mocked(recepcionApi.confirm).mockResolvedValue(undefined)
+      vi.mocked(recepcionApi.confirm).mockResolvedValue(buildConfirmResponse())
       vi.mocked(recepcionApi.getTransfer).mockResolvedValueOnce(mockGetTransfer({ ...transfer, status: 'confirmed' }))
 
       await store.confirm()
@@ -574,12 +578,33 @@ describe('usePickingStore', () => {
       const store = usePickingStore()
       await store.fetchTransfer(7)
 
-      vi.mocked(recepcionApi.confirm).mockResolvedValue(undefined)
+      vi.mocked(recepcionApi.confirm).mockResolvedValue(buildConfirmResponse())
       vi.mocked(recepcionApi.getTransfer).mockResolvedValueOnce(mockGetTransfer({ ...transfer, status: 'confirmed' }))
 
       await store.confirm({ allowPartial: true })
 
       expect(recepcionApi.confirm).toHaveBeenCalledWith(7, { allowPartial: true })
+    })
+
+    it('shows no error and picks up pendingSapJobQueuedAtUtc from the refetch when confirm responds success:false with reason "Queued" (SAP job queued, not a failure)', async () => {
+      const transfer = buildTransfer()
+      vi.mocked(recepcionApi.getTransfer).mockResolvedValueOnce(mockGetTransfer(transfer))
+      const store = usePickingStore()
+      await store.fetchTransfer(7)
+
+      vi.mocked(recepcionApi.confirm).mockResolvedValue(
+        buildConfirmResponse({ success: false, sapDocEntry: null, sapDocNum: null, message: 'La confirmación quedó en proceso.', reason: 'Queued' })
+      )
+      vi.mocked(recepcionApi.getTransfer).mockResolvedValueOnce(
+        mockGetTransfer({ ...transfer, pendingSapJobQueuedAtUtc: '2026-08-31T12:00:00Z' })
+      )
+
+      await store.confirm()
+
+      expect(store.actionError).toBeNull()
+      expect(store.sapErrorMessage).toBeNull()
+      expect(store.status).toBe('ready')
+      expect(store.currentTransfer?.pendingSapJobQueuedAtUtc).toBe('2026-08-31T12:00:00Z')
     })
 
     it('sets status "error" + sapErrorMessage on a SAP 500 failure, keeping the transfer retryable', async () => {
@@ -691,7 +716,7 @@ describe('usePickingStore', () => {
       const store = usePickingStore()
       await store.fetchTransfer(7)
 
-      let resolveConfirm!: (v: void) => void
+      let resolveConfirm!: (v: ConfirmTransferResponse) => void
       vi.mocked(recepcionApi.confirm).mockReturnValue(
         new Promise((resolve) => {
           resolveConfirm = resolve
@@ -701,7 +726,7 @@ describe('usePickingStore', () => {
       const confirmPromise = store.confirm()
       expect(store.isSubmitting).toBe(true)
 
-      resolveConfirm(undefined)
+      resolveConfirm(buildConfirmResponse())
       await confirmPromise
 
       expect(store.isSubmitting).toBe(false)
