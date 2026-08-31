@@ -348,7 +348,7 @@ watch(
   () => props.visible,
   (open) => {
     if (open) {
-      void nextTick(() => {
+      nextTick(() => {
         modalRef.value?.showModal()
       })
     } else {
