@@ -56,8 +56,11 @@ export interface UseColumnVisibilityToggleOptions {
   /**
    * Función para persistir el cambio (p. ej. `savePreferences` de useTablePreferences).
    * Opcional: si el consumidor ya persiste visibleColumns vía su propio watcher, puede omitirse.
+   * Se invoca sin esperar su resultado (fire-and-forget) -- por eso admite `Promise<void>`
+   * además de `void`, para no forzar un `void` incorrecto sobre funciones async como
+   * `savePreferences` (que ya maneja sus propios errores internamente).
    */
-  persist?: () => void
+  persist?: () => void | Promise<void>
   /**
    * Si es false, desactiva la validación "al menos una columna visible" (por defecto true).
    * La variante "panel" (OrdenCompraTable y hermanas) no la aplica hoy — pásalo en false ahí
