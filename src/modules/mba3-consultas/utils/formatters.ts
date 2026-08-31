@@ -228,41 +228,14 @@ export interface ColumnConfig {
   fixed?: boolean // Si es true, la columna no puede ser ocultada ni arrastrada
 }
 
-/**
- * Formatea el valor de una columna según su tipo
- */
-export function formatColumnValue(detalle: any, column: ColumnConfig, index?: number): string {
-  // La columna 'numero' se maneja especialmente con el índice
-  if (column.key === 'numero' && index !== undefined) {
-    return (index + 1).toString()
-  }
+// Margen de Rentabilidad (req. 1.5): calculado en el backend, no aquí — ver
+// calcular_margen_rentabilidad en pedido_utils.py. Evita duplicar la fórmula en dos lenguajes.
+function formatMargenColumnValue(detalle: any): string {
+  const margen = detalle.margen
+  return margen === null || margen === undefined ? 'N/A' : `${(margen * 100).toFixed(2)}%`
+}
 
-  // Margen de Rentabilidad (req. 1.5): calculado en el backend, no aquí — ver
-  // calcular_margen_rentabilidad en pedido_utils.py. Evita duplicar la fórmula en dos lenguajes.
-  if (column.key === 'margen') {
-    const margen = detalle.margen
-    return margen === null || margen === undefined ? 'N/A' : `${(margen * 100).toFixed(2)}%`
-  }
-
-  const value = detalle[column.key]
-
-  // Manejar valores null/undefined (pero NO 0)
-  // El valor 0 es válido y debe mostrarse formateado
-  if (value === null || value === undefined) {
-    // Para columnas de costo y total, también mostrar 0 si están explícitamente en 0
-    if (column.key === 'costo_doc_sin_iva' || column.key === 'total' || column.format === 'currency' || column.format === 'number') {
-      return 'N/A'
-    }
-    return 'N/A'
-  }
-
-  // Formatear descuentos como porcentaje
-  if (column.key === 'descuento_1' || column.key.includes('descuento')) {
-    return formatPorcentaje(value)
-  }
-
-  // Formatear según el tipo
-  // Nota: El valor 0 pasará por aquí y se formateará correctamente
+function formatColumnValueByFormat(column: ColumnConfig, value: any): string {
   switch (column.format) {
     case 'currency':
       // Columna COSTO UNIT. (costo_doc_sin_iva) y COSTO (costo_margen): hasta 4 decimales
@@ -278,6 +251,37 @@ export function formatColumnValue(detalle: any, column: ColumnConfig, index?: nu
     default:
       return value.toString()
   }
+}
+
+/**
+ * Formatea el valor de una columna según su tipo
+ */
+export function formatColumnValue(detalle: any, column: ColumnConfig, index?: number): string {
+  // La columna 'numero' se maneja especialmente con el índice
+  if (column.key === 'numero' && index !== undefined) {
+    return (index + 1).toString()
+  }
+
+  if (column.key === 'margen') {
+    return formatMargenColumnValue(detalle)
+  }
+
+  const value = detalle[column.key]
+
+  // Manejar valores null/undefined (pero NO 0)
+  // El valor 0 es válido y debe mostrarse formateado
+  if (value === null || value === undefined) {
+    return 'N/A'
+  }
+
+  // Formatear descuentos como porcentaje
+  if (column.key === 'descuento_1' || column.key.includes('descuento')) {
+    return formatPorcentaje(value)
+  }
+
+  // Formatear según el tipo
+  // Nota: El valor 0 pasará por aquí y se formateará correctamente
+  return formatColumnValueByFormat(column, value)
 }
 
 /**
