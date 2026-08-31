@@ -1,7 +1,7 @@
 import type { Ref } from 'vue'
 import type { useToast } from '@/composables/useToast'
 import type { PedidoCompleto } from '../types'
-import { mba3ConsultasService } from '../services/mba3ConsultasApi'
+import { pedidosService } from '../services/domains/pedidos'
 
 /** Handlers de actualización de fecha_pedido/fecha_entrega desde la cabecera del pedido (HU-06). */
 export function useFechaPedidoHandlers(
@@ -13,7 +13,7 @@ export function useFechaPedidoHandlers(
     if (!pedido.value?.cabecera?.pedido_id) return
 
     try {
-      await mba3ConsultasService.actualizarCabeceraPedido(pedido.value.cabecera.pedido_id, {
+      await pedidosService.actualizarCabeceraPedido(pedido.value.cabecera.pedido_id, {
         fecha_pedido: fecha
       })
 
@@ -38,7 +38,7 @@ export function useFechaPedidoHandlers(
     if (!pedido.value?.cabecera?.pedido_id) return
 
     try {
-      await mba3ConsultasService.actualizarCabeceraPedido(pedido.value.cabecera.pedido_id, {
+      await pedidosService.actualizarCabeceraPedido(pedido.value.cabecera.pedido_id, {
         fecha_entrega: fecha
       })
 

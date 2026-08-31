@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ref } from 'vue'
 import { useFechaPedidoHandlers } from '@/modules/mba3-consultas/composables/useFechaPedidoHandlers'
-import { mba3ConsultasService } from '@/modules/mba3-consultas/services/mba3ConsultasApi'
+import { pedidosService } from '@/modules/mba3-consultas/services/domains/pedidos'
 
-vi.mock('@/modules/mba3-consultas/services/mba3ConsultasApi', () => ({
-  mba3ConsultasService: {
+vi.mock('@/modules/mba3-consultas/services/domains/pedidos', () => ({
+  pedidosService: {
     actualizarCabeceraPedido: vi.fn()
   }
 }))
@@ -22,12 +22,12 @@ describe('useFechaPedidoHandlers', () => {
     const pedido = ref({ cabecera: { pedido_id: 'p1', fecha_pedido: '2026-01-01' } } as any)
     const toast = crearToastMock()
     const loadPedido = vi.fn().mockResolvedValue(undefined)
-    vi.mocked(mba3ConsultasService.actualizarCabeceraPedido).mockResolvedValue({} as any)
+    vi.mocked(pedidosService.actualizarCabeceraPedido).mockResolvedValue({} as any)
 
     const { handleUpdateFechaPedido } = useFechaPedidoHandlers(pedido, toast, loadPedido)
     await handleUpdateFechaPedido('2026-02-01')
 
-    expect(mba3ConsultasService.actualizarCabeceraPedido).toHaveBeenCalledWith('p1', { fecha_pedido: '2026-02-01' })
+    expect(pedidosService.actualizarCabeceraPedido).toHaveBeenCalledWith('p1', { fecha_pedido: '2026-02-01' })
     expect(pedido.value.cabecera.fecha_pedido).toBe('2026-02-01')
     expect(toast.success).toHaveBeenCalledWith('Fecha actualizada', 'La fecha de pedido se ha actualizado correctamente')
     expect(loadPedido).toHaveBeenCalledTimes(1)
@@ -41,7 +41,7 @@ describe('useFechaPedidoHandlers', () => {
     const { handleUpdateFechaPedido } = useFechaPedidoHandlers(pedido, toast, loadPedido)
     await handleUpdateFechaPedido('2026-02-01')
 
-    expect(mba3ConsultasService.actualizarCabeceraPedido).not.toHaveBeenCalled()
+    expect(pedidosService.actualizarCabeceraPedido).not.toHaveBeenCalled()
     expect(loadPedido).not.toHaveBeenCalled()
   })
 
@@ -49,7 +49,7 @@ describe('useFechaPedidoHandlers', () => {
     const pedido = ref({ cabecera: { pedido_id: 'p1', fecha_pedido: '2026-01-01' } } as any)
     const toast = crearToastMock()
     const loadPedido = vi.fn().mockResolvedValue(undefined)
-    vi.mocked(mba3ConsultasService.actualizarCabeceraPedido).mockRejectedValue(new Error('boom'))
+    vi.mocked(pedidosService.actualizarCabeceraPedido).mockRejectedValue(new Error('boom'))
 
     const { handleUpdateFechaPedido } = useFechaPedidoHandlers(pedido, toast, loadPedido)
     await handleUpdateFechaPedido('2026-02-01')
@@ -62,12 +62,12 @@ describe('useFechaPedidoHandlers', () => {
     const pedido = ref({ cabecera: { pedido_id: 'p1', fecha_entrega: null } } as any)
     const toast = crearToastMock()
     const loadPedido = vi.fn().mockResolvedValue(undefined)
-    vi.mocked(mba3ConsultasService.actualizarCabeceraPedido).mockResolvedValue({} as any)
+    vi.mocked(pedidosService.actualizarCabeceraPedido).mockResolvedValue({} as any)
 
     const { handleUpdateFechaEntrega } = useFechaPedidoHandlers(pedido, toast, loadPedido)
     await handleUpdateFechaEntrega('2026-03-01')
 
-    expect(mba3ConsultasService.actualizarCabeceraPedido).toHaveBeenCalledWith('p1', { fecha_entrega: '2026-03-01' })
+    expect(pedidosService.actualizarCabeceraPedido).toHaveBeenCalledWith('p1', { fecha_entrega: '2026-03-01' })
     expect(pedido.value.cabecera.fecha_entrega).toBe('2026-03-01')
     expect(toast.success).toHaveBeenCalledWith('Fecha actualizada', 'La fecha de entrega se ha actualizado correctamente')
   })
