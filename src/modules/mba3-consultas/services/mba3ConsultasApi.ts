@@ -1357,18 +1357,6 @@ export const mba3ConsultasService = {
   },
 
   /**
-   * Descarga la distribución por tiendas en formato Excel
-   * GET /api/pedidos/{pedido_id}/distribucion/descargar-excel
-   * Genera archivo Excel con distribución confirmada (3 hojas).
-   * @param pedidoId ID del pedido (UUID)
-   * @param version Versión específica (opcional)
-   * @returns Blob del archivo Excel
-   */
-  async descargarDistribucionExcel(pedidoId: string, version?: number): Promise<Blob> {
-    return pedidosService.descargarDistribucionExcel(pedidoId, version)
-  },
-
-  /**
    * Exporta las Solicitudes de Traslado del pedido en formato Excel
    * GET /api/pedidos/{pedido_id}/traslados/exportar-excel
    * @param pedidoId ID del pedido (UUID)
