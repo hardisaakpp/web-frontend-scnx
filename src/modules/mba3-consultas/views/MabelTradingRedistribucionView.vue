@@ -59,7 +59,13 @@
             <div class="w-full">
               <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-2 transition-colors duration-300">Enviando ODC a SAP</h3>
               <p class="text-sm text-gray-600 dark:text-gray-300 mb-4 transition-colors duration-300">{{ sapMessage || 'Preparando proceso...' }}</p>
-              
+              <p
+                v-if="sapAvisoEsperaLarga"
+                class="text-xs text-amber-600 dark:text-amber-400 mb-2 transition-colors duration-300"
+              >
+                {{ SAP_SLOW_SYNC_LIKELY_MESSAGE }}
+              </p>
+
               <!-- Barra de progreso -->
               <div class="w-full space-y-2">
                 <div class="flex items-center justify-between text-sm">
@@ -126,12 +132,28 @@
       <!-- Header (misma estructura que listados MBA3: fila título + fila de acciones) -->
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6">
         <div class="space-y-4">
-          <OdcSapVolverButton
-            v-if="odcSapVolverTarget"
-            :to="odcSapVolverTarget"
-            :title="odcSapVolverTitle"
-            class="shrink-0 self-start"
-          />
+          <div v-if="odcSapVolverTarget || !soloLectura" class="flex items-center flex-wrap gap-4">
+            <OdcSapVolverButton
+              v-if="odcSapVolverTarget"
+              :to="odcSapVolverTarget"
+              :title="odcSapVolverTitle"
+              class="shrink-0"
+            />
+            <div v-if="!soloLectura" class="relative shrink-0 ml-auto">
+              <input
+                v-model="pedidoIdInput"
+                @keyup.enter="goToPedido"
+                type="text"
+                placeholder="Buscar por N° de pedido"
+                class="w-64 pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-purple-500 focus:border-purple-500"
+              />
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg class="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+            </div>
+          </div>
           <div class="flex items-center justify-between flex-wrap gap-4">
             <div>
               <h1 class="text-2xl font-bold text-gray-900 dark:text-white">
@@ -151,49 +173,49 @@
                 </button>
               </p>
             </div>
-            <div v-if="!soloLectura" class="relative shrink-0">
-              <input
-                v-model="pedidoIdInput"
-                @keyup.enter="goToPedido"
-                type="text"
-                placeholder="Buscar por N° de pedido"
-                class="w-64 pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm transition-colors bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-purple-500 focus:border-purple-500"
-              />
-              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg class="h-5 w-5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            <div class="flex flex-wrap items-center justify-end gap-3 shrink-0">
+              <button
+                v-if="pedido && tieneDistribucionConfirmada && pedidoConfirmadoYEnviado"
+                type="button"
+                @click="handleDescargarDistribucionExcel"
+                :disabled="descargandoRedistribucion"
+                class="shrink-0 inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-green-600 dark:bg-green-500 rounded-lg shadow-sm hover:bg-green-700 dark:hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Descargar distribución por tiendas en formato Excel"
+              >
+                <svg v-if="!descargandoRedistribucion" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-              </div>
+                <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Descargando redistribución" />
+                {{ descargandoRedistribucion ? 'Descargando...' : 'Descargar Redistribución' }}
+              </button>
+              <button
+                v-if="pedido && tieneDistribucionConfirmada && pedidoConfirmadoYEnviado"
+                type="button"
+                @click="handleExportarTrasladosExcel"
+                :disabled="exportandoTraslados"
+                class="shrink-0 inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-teal-600 dark:bg-teal-500 rounded-lg shadow-sm hover:bg-teal-700 dark:hover:bg-teal-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Exportar solicitudes de traslado a Excel"
+              >
+                <svg v-if="!exportandoTraslados" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                </svg>
+                <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Exportando traslados" />
+                {{ exportandoTraslados ? 'Exportando...' : 'Exportar a Excel' }}
+              </button>
+              <button
+                v-if="!soloLectura && pedido"
+                type="button"
+                @click="handleCancelar"
+                :disabled="cancelando || (pedido != null && pedido.puede_cancelar_pedido === false)"
+                class="shrink-0 px-4 py-2 border border-red-300 dark:border-red-600 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                <svg v-if="!cancelando" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Cancelando pedido" />
+                {{ cancelando ? 'Cancelando...' : 'Cancelar Pedido' }}
+              </button>
             </div>
-          </div>
-          <div class="flex w-full flex-wrap items-center justify-end gap-3">
-            <button
-              v-if="soloLectura && pedido && tieneDistribucionConfirmada"
-              type="button"
-              @click="handleDescargarDistribucionExcel"
-              :disabled="descargandoRedistribucion"
-              class="shrink-0 inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-green-600 dark:bg-green-500 rounded-lg shadow-sm hover:bg-green-700 dark:hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              title="Descargar distribución por tiendas en formato Excel"
-            >
-              <svg v-if="!descargandoRedistribucion" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Descargando redistribución" />
-              {{ descargandoRedistribucion ? 'Descargando...' : 'Descargar Redistribución' }}
-            </button>
-            <button
-              v-if="!soloLectura && pedido"
-              type="button"
-              @click="handleCancelar"
-              :disabled="cancelando || (pedido != null && pedido.puede_cancelar_pedido === false)"
-              class="shrink-0 px-4 py-2 border border-red-300 dark:border-red-600 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              <svg v-if="!cancelando" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Cancelando pedido" />
-              {{ cancelando ? 'Cancelando...' : 'Cancelar Pedido' }}
-            </button>
           </div>
         </div>
       </div>
@@ -255,11 +277,13 @@
         :confirmar-deshabilitado-por-estado="confirmarDeshabilitadoPorEstado"
         :guardar-borrador-deshabilitado-por-estado="guardarBorradorDeshabilitadoPorEstado"
         :columnas-modificadas="columnasModificadas as unknown as Ref<Set<string>>"
+        :roles-modificacion="rolesModificacion as unknown as Ref<Map<string, string | null>>"
         :show-enviar-odc-sap="showEnviarOdcSap"
         :enviando-odc-sap="enviandoOdcSap"
         @toggle-expandir-producto="toggleExpandirProducto"
         @actualizar-cantidad-tienda="actualizarCantidadTienda"
         @validar-y-corregir-cantidad="validarYCorregirCantidad"
+        @agregar-tienda="agregarTienda"
         @distribuir-proporcionalmente="distribuirProporcionalmente"
         @copiar-distribucion-original="copiarDistribucionOriginal"
         @resetear-distribucion="resetearDistribucion"
@@ -305,7 +329,11 @@ import {
   getPendingOdcSapProcessingState,
 } from '../composables/ejecutarProcesoCompletoSap'
 import { useSapProcessProgress } from '../composables/useSapProcessProgress'
-import { isTransientClientError, SAP_MAY_STILL_PROCESSING_MESSAGE } from '../utils/httpErrors'
+import {
+  isTransientClientError,
+  SAP_MAY_STILL_PROCESSING_MESSAGE,
+  SAP_SLOW_SYNC_LIKELY_MESSAGE,
+} from '../utils/httpErrors'
 
 const route = useRoute()
 const router = useRouter()
@@ -316,6 +344,7 @@ const procesoStore = useProcesoStore()
 const pedido = ref<PedidoCompleto | null>(null)
 const pedidoIdInput = ref('')
 const descargandoRedistribucion = ref(false)
+const exportandoTraslados = ref(false)
 const enviandoOdcSap = ref(false)
 
 const odcSapProcesoEnServidor = ref(false)
@@ -324,9 +353,11 @@ const {
   sapProgress,
   sapFase,
   sapMessage,
+  sapAvisoEsperaLarga,
   resetSapProgress,
   startSapProgressSimulation,
   applySapPollingUpdate,
+  marcarPosibleEsperaLarga,
   completeSapProgress,
   stopSimulation: stopSapProgressSimulation,
 } = useSapProcessProgress()
@@ -342,6 +373,9 @@ async function refreshPendingOdcSapState() {
 
 // ⭐ Set para rastrear columnas modificadas (para resaltado en redistribución)
 const columnasModificadas: Ref<Set<string>> = ref<Set<string>>(new Set())
+// ⭐ Rol (ODCSAP/PRODUCCION_ELRAYO) de quien hizo cada modificación, para pintar el
+// resaltado heredado con el mismo color de marca que Cargar Plantilla / Detalle del Pedido.
+const rolesModificacion: Ref<Map<string, string | null>> = ref(new Map())
 
 const numeroPedido = computed(() => {
   const id = route.params.id as string
@@ -378,6 +412,7 @@ const pedidoDetalle = usePedidoDetalle({
   numeroPedido,
   esModoMabelTrading,
   columnasModificadas,
+  rolesModificacion,
   reporteDiferencias: ref(null),
   limpiarColumnasModificadasEnStorage: () => {
     if (!numeroPedido.value) return
@@ -385,6 +420,7 @@ const pedidoDetalle = usePedidoDetalle({
       const storageKey = `pedido_columnas_modificadas_${numeroPedido.value}`
       sessionStorage.removeItem(storageKey)
       columnasModificadas.value.clear()
+      rolesModificacion.value.clear()
     } catch (e) {
       console.warn('Error al limpiar columnas modificadas en sessionStorage:', e)
     }
@@ -429,13 +465,15 @@ const confirmarDeshabilitadoPorEstado = computed(() =>
   pedido.value?.puede_confirmar_redistribucion === false
 )
 
-// ⭐ Deshabilitar "Guardar Borrador" si el estado NO es CONFIRMADO POR EL RAYO (estado_id = 4)
-// Solo se puede guardar borrador cuando el pedido está en estado CONFIRMADO POR EL RAYO.
+// ⭐ Deshabilitar "Guardar Borrador" si el estado NO permite trabajar la redistribución.
+// Habilitado en estado 4 (CONFIRMADO POR EL RAYO) y en estado 25 (LISTO PARA
+// REDISTRIBUCION: pedido "hijo" aceptado por el botón "Aceptar", que entra directo a la
+// cola de redistribución sin pasar por "Confirmado por El Rayo" -- ver
+// ESTADOS_PUEDE_ACEPTAR_PRODUCCION_POSPUESTA en el backend).
 // Una vez que se confirma la redistribución (estado 10) o se envía a SAP (estado 12), el botón se deshabilita.
 const guardarBorradorDeshabilitadoPorEstado = computed(() => {
   const estadoId = pedido.value?.cabecera?.estado_id
-  // Solo habilitado en estado 4 (CONFIRMADO POR EL RAYO)
-  return estadoId !== 4
+  return estadoId !== 4 && estadoId !== 25
 })
 
 // El botón/bandeja de reintento se habilita/deshabilita usando SOLO el flag backend.
@@ -453,6 +491,10 @@ function actualizarCantidadTienda(codigoProducto: string, tiendaCodigo: string, 
 
 function validarYCorregirCantidad(producto: ProductoRedistribucion, tienda: DistribucionTiendaEditada) {
   redistribucion.validarYCorregirCantidad(producto, tienda)
+}
+
+function agregarTienda(tienda: { codigo: string; nombre: string }) {
+  redistribucion.agregarTiendaATodosLosProductos(tienda.codigo, tienda.nombre)
 }
 
 function distribuirProporcionalmente(codigoProducto: string) {
@@ -514,96 +556,162 @@ function getSolicitudesTransferencia(response: ProcesoCompletoSAPResponse): Soli
   return null
 }
 
+/**
+ * ODC adicionales del pedido (todas menos la primera, ya cubierta por envio_sap/detalle
+ * principal). Un pedido mixto (tiendas de más de una marca en el mismo Excel) genera 2
+ * ODC -- una por bodega -- que se envían ambas a SAP; sin esto el modal en /proceso solo
+ * mostraba la primera aunque ambas se hubieran enviado.
+ */
+function getDetallesAdicionales(
+  response: ProcesoCompletoSAPResponse
+): { detalle: IntegracionSAPDetalle; solicitudesTransferencia: SolicitudesTransferencia | null }[] {
+  const envios = response.envios_sap
+  if (!envios || envios.length <= 1) return []
+  return envios.slice(1).map((envio) => ({
+    detalle: {
+      success: envio.success,
+      oc_id: envio.oc_id ?? '',
+      doc_num: envio.doc_num,
+      doc_entry: envio.doc_entry,
+      numero_oc_sap: envio.numero_oc_sap ?? null,
+      message: envio.message ?? null,
+      error: envio.error ?? null,
+      error_message: envio.error ?? null,
+      error_code: envio.error_code ?? null,
+      error_source: null,
+      retry_recommended: envio.retry_recommended ?? null
+    } as IntegracionSAPDetalle,
+    solicitudesTransferencia: envio.solicitudes_transferencia ?? null
+  }))
+}
+
+/** Determina el estado interno del resultado SAP a partir de la respuesta del backend. */
+function determineInnerStatus(response: ProcesoCompletoSAPResponse): 'success' | 'partial' | 'error' {
+  if ((response as any).status === 'success' || (response as any).status === 'partial' || (response as any).status === 'error') {
+    return (response as any).status
+  } else if (response.envio_sap?.doc_num != null) {
+    return 'success'
+  } else if (response.error_detalle) {
+    return 'partial'
+  } else {
+    return 'error'
+  }
+}
+
+/** Rama de applySAPResponse para innerStatus === 'success'. */
+async function handleSAPResponseSuccess(
+  response: ProcesoCompletoSAPResponse,
+  solicitudesTransferencia: SolicitudesTransferencia | null
+) {
+  try {
+    await loadPedido()
+  } catch (e) {
+    console.warn('[applySAPResponse] loadPedido tras éxito SAP:', e)
+    const cabecera = pedido.value?.cabecera
+    if (cabecera) {
+      cabecera.estado_id = 12
+      cabecera.estado = 'CONFIRMADO_ENVIADO'
+    }
+  }
+  procesoStore.setSAPResultadoPendiente({
+    detalle: response.envio_sap ? {
+      success: true,
+      oc_id: response.envio_sap.oc_id ?? '',
+      doc_num: response.envio_sap.doc_num,
+      doc_entry: response.envio_sap.doc_entry,
+      numero_oc_sap: (response.envio_sap as any).numero_oc_sap ?? null,
+      message: response.message,
+      error: null,
+      error_message: null,
+      error_code: null,
+      error_source: null,
+      retry_recommended: response.envio_sap.retry_recommended ?? null
+    } as IntegracionSAPDetalle : null,
+    solicitudesTransferencia: solicitudesTransferencia || null,
+    detallesAdicionales: getDetallesAdicionales(response),
+    estadoGeneral: 'success',
+    numeroPedido: numeroPedido.value,
+    ajustesDetalle: buildAjustesDetalleParaProcesoCompletoSAP()
+  })
+  router.push({ name: 'mba3-consultas-proceso' })
+}
+
+/** Rama de applySAPResponse para innerStatus === 'partial'. */
+async function handleSAPResponsePartial(
+  response: ProcesoCompletoSAPResponse,
+  solicitudesTransferencia: SolicitudesTransferencia | null
+) {
+  try {
+    await loadPedido()
+  } catch (e) {
+    console.warn('[applySAPResponse] loadPedido tras partial SAP:', e)
+    if (response.redistribucion && pedido.value?.cabecera) {
+      pedido.value.cabecera.estado_id = 10
+      pedido.value.cabecera.estado = 'CONFIRMADO REDISTRIBUCION'
+    }
+  }
+  const errorMsg = response.error_detalle ?? 'Error desconocido'
+  const retryFlag = response.envio_sap?.retry_recommended ?? null
+  procesoStore.setSAPResultadoPendiente({
+    // Prioriza el error de ESTA ODC (envio_sap.error) sobre el resumen del pedido
+    // completo (errorMsg / error_detalle), que en un pedido mixto concatena el
+    // error de las 2 ODC ("RG-CD: ...; RL-CD: ...") -- el mensaje de la ODC puntual
+    // es más preciso para esta sección del modal.
+    detalle: response.envio_sap ? {
+      success: !!response.envio_sap.doc_num,
+      oc_id: response.envio_sap.oc_id ?? '',
+      doc_num: response.envio_sap.doc_num,
+      doc_entry: response.envio_sap.doc_entry,
+      numero_oc_sap: (response.envio_sap as any).numero_oc_sap ?? null,
+      message: null,
+      error: response.envio_sap.error ?? errorMsg,
+      error_message: response.envio_sap.error ?? errorMsg,
+      error_code: response.envio_sap.error_code ?? null,
+      error_source: null,
+      retry_recommended: retryFlag
+    } as IntegracionSAPDetalle : {
+      success: false,
+      oc_id: '',
+      doc_num: null,
+      doc_entry: null,
+      message: null,
+      error: errorMsg,
+      error_message: errorMsg,
+      error_code: null,
+      error_source: null,
+      retry_recommended: retryFlag
+    } as IntegracionSAPDetalle,
+    solicitudesTransferencia: solicitudesTransferencia || null,
+    detallesAdicionales: getDetallesAdicionales(response),
+    estadoGeneral: 'partial',
+    numeroPedido: numeroPedido.value,
+    ajustesDetalle: buildAjustesDetalleParaProcesoCompletoSAP()
+  })
+  router.push({ name: 'mba3-consultas-proceso' })
+}
+
+/** Rama de applySAPResponse para innerStatus === 'error'. */
+async function handleSAPResponseError(response: ProcesoCompletoSAPResponse) {
+  toast.error('Error en proceso SAP', response.message || 'Ocurrió un error inesperado')
+  // Refresco adicional para sincronizar el flag backend.
+  try {
+    await loadPedido()
+  } catch (e) {
+    console.warn('[applySAPResponse] loadPedido tras error SAP:', e)
+  }
+}
+
 /** Aplica el resultado del proceso SAP (compartido entre flujo async y fallback sync). */
 async function applySAPResponse(response: ProcesoCompletoSAPResponse) {
-  const innerStatus = (response as any).status === 'success' || (response as any).status === 'partial' || (response as any).status === 'error'
-    ? (response as any).status
-    : (response.envio_sap?.doc_num != null ? 'success' : response.error ? 'partial' : 'error')
-
+  const innerStatus = determineInnerStatus(response)
   const solicitudesTransferencia = getSolicitudesTransferencia(response)
 
   if (innerStatus === 'success') {
-    try {
-      await loadPedido()
-    } catch (e) {
-      console.warn('[applySAPResponse] loadPedido tras éxito SAP:', e)
-      const cabecera = pedido.value?.cabecera
-      if (cabecera) {
-        cabecera.estado_id = 12
-        cabecera.estado = 'CONFIRMADO_ENVIADO'
-      }
-    }
-    procesoStore.setSAPResultadoPendiente({
-      detalle: response.envio_sap ? {
-        success: true,
-        oc_id: response.envio_sap.oc_id ?? '',
-        doc_num: response.envio_sap.doc_num,
-        doc_entry: response.envio_sap.doc_entry,
-        numero_oc_sap: (response.envio_sap as any).numero_oc_sap ?? null,
-        message: response.message,
-        error: null,
-        error_message: null,
-        error_code: null,
-        error_source: null,
-        retry_recommended: response.envio_sap.retry_recommended ?? null
-      } as IntegracionSAPDetalle : null,
-      solicitudesTransferencia: solicitudesTransferencia || null,
-      estadoGeneral: 'success',
-      numeroPedido: numeroPedido.value,
-      ajustesDetalle: buildAjustesDetalleParaProcesoCompletoSAP()
-    })
-    router.push({ name: 'mba3-consultas-proceso' })
+    await handleSAPResponseSuccess(response, solicitudesTransferencia)
   } else if (innerStatus === 'partial') {
-    try {
-      await loadPedido()
-    } catch (e) {
-      console.warn('[applySAPResponse] loadPedido tras partial SAP:', e)
-      if (response.redistribucion && pedido.value?.cabecera) {
-        pedido.value.cabecera.estado_id = 10
-        pedido.value.cabecera.estado = 'CONFIRMADO REDISTRIBUCION'
-      }
-    }
-    const errorMsg = response.error ?? 'Error desconocido'
-    const retryFlag = response.envio_sap?.retry_recommended ?? null
-    procesoStore.setSAPResultadoPendiente({
-      detalle: response.envio_sap ? {
-        success: !!response.envio_sap.doc_num,
-        oc_id: response.envio_sap.oc_id ?? '',
-        doc_num: response.envio_sap.doc_num,
-        doc_entry: response.envio_sap.doc_entry,
-        numero_oc_sap: (response.envio_sap as any).numero_oc_sap ?? null,
-        message: null,
-        error: errorMsg,
-        error_message: errorMsg,
-        error_code: null,
-        error_source: null,
-        retry_recommended: retryFlag
-      } as IntegracionSAPDetalle : {
-        success: false,
-        oc_id: '',
-        doc_num: null,
-        doc_entry: null,
-        message: null,
-        error: errorMsg,
-        error_message: errorMsg,
-        error_code: null,
-        error_source: null,
-        retry_recommended: retryFlag
-      } as IntegracionSAPDetalle,
-      solicitudesTransferencia: solicitudesTransferencia || null,
-      estadoGeneral: 'partial',
-      numeroPedido: numeroPedido.value,
-      ajustesDetalle: buildAjustesDetalleParaProcesoCompletoSAP()
-    })
-    router.push({ name: 'mba3-consultas-proceso' })
+    await handleSAPResponsePartial(response, solicitudesTransferencia)
   } else {
-    toast.error('Error en proceso SAP', response.message || 'Ocurrió un error inesperado')
-    // Refresco adicional para sincronizar el flag backend.
-    try {
-      await loadPedido()
-    } catch (e) {
-      console.warn('[applySAPResponse] loadPedido tras error SAP:', e)
-    }
+    await handleSAPResponseError(response)
   }
 }
 
@@ -666,6 +774,7 @@ async function handleEnviarOdcSap() {
         odcSapProcesoEnServidor.value = false
       },
       onPollingUpdate: applySapPollingUpdate,
+      onSlowSyncLikely: marcarPosibleEsperaLarga,
     })
     completeSapProgress()
     odcSapProcesoEnServidor.value = false
@@ -701,6 +810,13 @@ const tieneDistribucionConfirmada = computed(() => {
   if (!pedido.value) return false
   // Verificar si hay productos de redistribución cargados
   return redistribucion.productosRedistribucion.value.length > 0
+})
+
+// Descarga/exportación a Excel solo aplica desde CONFIRMADO_ENVIADO (estado_id 12) en adelante:
+// antes de enviar la OC a SAP no existen Solicitudes de Traslado (ITR) que exportar
+const pedidoConfirmadoYEnviado = computed(() => {
+  const estadoId = pedido.value?.cabecera?.estado_id
+  return estadoId != null && estadoId >= 12
 })
 
 // Descargar distribución en formato Excel
@@ -747,6 +863,65 @@ async function handleDescargarDistribucionExcel() {
     }
   } finally {
     descargandoRedistribucion.value = false
+  }
+}
+
+// Exportar Solicitudes de Traslado en formato Excel (req. 1.9)
+async function handleExportarTrasladosExcel() {
+  const pedidoId = pedido.value?.cabecera?.pedido_id
+  if (!pedidoId) {
+    toast.error('Error', 'No hay pedido para exportar')
+    return
+  }
+
+  if (exportandoTraslados.value) return
+
+  exportandoTraslados.value = true
+  toast.info('Generando archivo Excel...', 'Por favor espera')
+
+  try {
+    const blob = await mba3ConsultasService.exportarTrasladosExcel(pedidoId)
+
+    // Crear nombre de archivo con timestamp
+    const numeroPedidoDisplay = pedido.value?.cabecera?.numero_pedido ?? 'pedido'
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+    const nombreArchivo = `traslados_${numeroPedidoDisplay.replace(/[^a-zA-Z0-9.-]/g, '_')}_${timestamp}.xlsx`
+
+    // Crear URL del blob y descargar
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = nombreArchivo
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+
+    toast.success('Exportación completada', 'El archivo de solicitudes de traslado se ha descargado correctamente')
+  } catch (e: any) {
+    console.error('Error al exportar traslados a Excel:', e)
+
+    if (e.response?.status === 404) {
+      toast.error('Sin traslados', 'Este pedido no tiene distribución confirmada para exportar')
+    } else {
+      // Con responseType: 'blob' el cuerpo del error llega como Blob, no como JSON:
+      // extractErrorMessage no puede leerlo. El envelope real de error es
+      // {"error": {"error": "...", "message": "..."}, "type": "http_exception"}
+      // (ver src/middleware/exception_handlers.py del backend), así que se lee
+      // error.message y no error directamente.
+      let message: string | null = null
+      if (e.response?.data instanceof Blob) {
+        try {
+          const json = JSON.parse(await e.response.data.text())
+          message = json?.error?.message ?? null
+        } catch {
+          message = null
+        }
+      }
+      toast.error('Error al exportar', message || 'Ocurrió un error al exportar las solicitudes de traslado')
+    }
+  } finally {
+    exportandoTraslados.value = false
   }
 }
 

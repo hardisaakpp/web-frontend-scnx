@@ -107,7 +107,7 @@
                 <div class="text-sm text-gray-900 dark:text-gray-100">{{ odc.proveedor || '-' }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <div class="text-sm text-gray-900 dark:text-gray-100">{{ formatDate(odc.fecha_generacion) }}</div>
+                <div class="text-sm text-gray-900 dark:text-gray-100">{{ formatDateTime(odc.fecha_generacion) }}</div>
               </td>
               <td class="px-6 py-4">
                 <div class="text-sm text-gray-900 dark:text-gray-100 max-w-md truncate" :title="odc.error_message || 'Sin mensaje de error'">
@@ -174,7 +174,7 @@ import { onMounted } from '@vue/runtime-core'
 import { useOrdenesCompraStore } from '../stores/ordenesCompraStore'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import { useToast } from '@/composables/useToast'
-import { APP_LOCALE } from '@/plugins/locale'
+import { formatDateTime } from '../utils/formatters'
 import SkeletonTable from '../components/SkeletonTable.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import QuickTablePagination from '@/components/QuickTablePagination.vue'
@@ -252,22 +252,6 @@ async function refreshODCErrores() {
   toast.success('Lista actualizada', 'Las ODC con errores se han actualizado correctamente')
 }
 
-// Función para formatear fecha
-function formatDate(dateString?: string): string {
-  if (!dateString) return '-'
-  try {
-    const date = new Date(dateString)
-    return date.toLocaleDateString(APP_LOCALE, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  } catch {
-    return dateString
-  }
-}
 
 // Función para abrir modal de corrección
 function abrirModalCorregirSKU(odc: OrdenCompra) {

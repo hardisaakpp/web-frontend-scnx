@@ -30,7 +30,7 @@
       </div>
 
       <!-- Buscador -->
-      <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 transition-colors duration-300 bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
+      <div class="px-6 py-4 transition-colors duration-300 bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
         <input
           id="search-procesamiento-sap"
           v-model.trim="searchTerm"

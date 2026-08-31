@@ -45,6 +45,25 @@
           </div>
         </button>
 
+        <!-- Producción El Rayo: solo capability can_view_produccion_elrayo (produccion-elrayo.view, req. 1.8). -->
+        <button
+          v-if="authStore.canViewProduccionElRayo"
+          @click="$router.push('/mba3-consultas/produccion/pedidos')"
+          class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left"
+        >
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-gray-900 dark:text-white text-sm">Producción El Rayo</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">EL RAYO - Ver pedidos</div>
+            </div>
+          </div>
+        </button>
+
         <!-- Listado de Pedidos: solo capability can_view_order_list (odcsap.view). Ver docs/FRONTEND.md § 0.5.7.2 -->
         <button
           v-if="authStore.canViewOrderList"
@@ -52,8 +71,8 @@
           class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left"
         >
           <div class="flex items-start gap-3">
-            <div class="w-8 h-8 rounded bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
-              <svg class="w-4 h-4 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="w-8 h-8 rounded bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </div>
@@ -90,8 +109,8 @@
           class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left"
         >
           <div class="flex items-start gap-3">
-            <div class="w-8 h-8 rounded bg-sky-50 dark:bg-sky-900/30 flex items-center justify-center flex-shrink-0">
-              <svg class="w-4 h-4 text-sky-600 dark:text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="w-8 h-8 rounded bg-violet-50 dark:bg-violet-900/30 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-violet-600 dark:text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
             </div>
@@ -110,15 +129,15 @@
           class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <div class="flex items-start gap-3">
-            <div class="w-8 h-8 rounded bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center flex-shrink-0">
-              <svg class="w-4 h-4 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="w-8 h-8 rounded bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
               </svg>
             </div>
             <div class="flex-1 min-w-0">
               <div class="font-medium text-gray-900 dark:text-white text-sm">ODC a SAP</div>
               <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Generar ODC y enviar a SAP</div>
-              <div v-if="loadingDespachos" class="text-xs text-indigo-600 dark:text-indigo-400 mt-2 flex items-center gap-1">
+              <div v-if="loadingDespachos" class="text-xs text-blue-600 dark:text-blue-400 mt-2 flex items-center gap-1">
                 <LoadingSpinner layout="inline" size="xs" aria-label="Cargando despachos" />
                 Cargando...
               </div>
@@ -127,7 +146,8 @@
         </button>
 
         <!-- Contenedor colapsable: Órdenes de Compra, ODC con Errores, Reporte de Diferencias -->
-        <div class="xl:col-span-full lg:col-span-3 md:col-span-2 col-span-1">
+        <!-- Único requisito de acceso: permiso funcionalidades-admin.view (reemplaza los permisos internos de cada botón) -->
+        <div v-if="authStore.canViewFuncionalidadesAdmin" class="xl:col-span-full lg:col-span-3 md:col-span-2 col-span-1">
           <div class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 overflow-hidden transition-colors duration-300">
             <button
               type="button"
@@ -210,9 +230,8 @@
                     </div>
                   </button>
 
-                  <!-- Listado Pedidos Originales: capability can_view_plantillas_originales (mabel.view o admin) o odcsap.view (EL RAYO) -->
+                  <!-- Listado Pedidos Originales: acceso ya controlado por funcionalidades-admin.view en el contenedor -->
                   <button
-                    v-if="authStore.canViewPlantillasOriginales || authStore.canViewOrderList"
                     @click="showListadoPedidosOriginalesModal = true"
                     class="bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-600 p-4 hover:border-gray-300 dark:hover:border-gray-500 hover:shadow-sm transition-all text-left"
                   >
@@ -229,9 +248,8 @@
                     </div>
                   </button>
 
-                  <!-- Procesamiento SAP: capability mabel_view (mabel.view). Navega a lista de pedidos. -->
+                  <!-- Procesamiento SAP: acceso ya controlado por funcionalidades-admin.view en el contenedor. Navega a lista de pedidos. -->
                   <button
-                    v-if="authStore.canViewMabel"
                     @click="$router.push('/mba3-consultas/procesamiento-sap')"
                     class="bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-600 p-4 hover:border-gray-300 dark:hover:border-gray-500 hover:shadow-sm transition-all text-left"
                   >
@@ -248,9 +266,8 @@
                     </div>
                   </button>
 
-                  <!-- Homologaciones: capability mabel_view (mabel.view) o odcsap.view (EL RAYO). Ambos usuarios. -->
+                  <!-- Homologaciones: acceso ya controlado por funcionalidades-admin.view en el contenedor -->
                   <button
-                    v-if="authStore.canViewMabel || authStore.canViewOrderList"
                     @click="$router.push('/mba3-consultas/homologaciones')"
                     class="bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-600 p-4 hover:border-gray-300 dark:hover:border-gray-500 hover:shadow-sm transition-all text-left"
                   >
@@ -263,6 +280,25 @@
                       <div class="flex-1 min-w-0">
                         <div class="font-medium text-gray-900 dark:text-white text-sm">Homologaciones</div>
                         <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">SKUs no coincidentes</div>
+                      </div>
+                    </div>
+                  </button>
+
+                  <!-- Destinatarios de Notificaciones: solo rol Admin -->
+                  <button
+                    v-if="authStore.hasRole('Admin')"
+                    @click="$router.push('/mba3-consultas/admin/destinatarios')"
+                    class="bg-gray-50 dark:bg-gray-700/50 rounded border border-gray-200 dark:border-gray-600 p-4 hover:border-gray-300 dark:hover:border-gray-500 hover:shadow-sm transition-all text-left"
+                  >
+                    <div class="flex items-start gap-3">
+                      <div class="w-8 h-8 rounded bg-teal-50 dark:bg-teal-900/30 flex items-center justify-center flex-shrink-0">
+                        <svg class="w-4 h-4 text-teal-600 dark:text-teal-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <div class="font-medium text-gray-900 dark:text-white text-sm">Destinatarios de Notificaciones</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Administrar correos por tipo</div>
                       </div>
                     </div>
                   </button>

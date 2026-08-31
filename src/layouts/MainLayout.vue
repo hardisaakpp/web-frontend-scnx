@@ -402,7 +402,10 @@
       </header>
 
       <!-- Page Content -->
-      <main class="p-4 md:p-6 lg:p-8 min-h-[calc(100vh-4rem)]">
+      <main
+        class="min-h-[calc(100vh-4rem)]"
+        :class="route.meta?.fullBleed ? '' : 'p-2 md:p-3 lg:p-4'"
+      >
         <div
           v-if="showOdcSapVolverInMainChrome && odcSapVolverTarget"
           class="flex justify-end mb-4 -mt-1"
@@ -483,10 +486,13 @@ const showOdcSapVolverInMainChrome = computed(() => {
   if (n === 'mba3-consultas-cargar-plantilla-detalle') return false
   if (n === 'mba3-consultas-cargar-plantilla') return false
   if (n === 'mba3-consultas-pedidos-listado') return false
+  if (n === 'mba3-consultas-produccion-pedidos-listado') return false
   if (n === 'mba3-consultas-redistribucion') return false
   if (n === 'mba3-consultas-pedido-redistribucion') return false
   if (n === 'mba3-consultas-revisar-redistribucion') return false
   if (n === 'mba3-consultas-proceso') return false
+  if (n === 'mba3-consultas-admin-destinatarios') return false
+  if (n === 'mba3-consultas-admin-catalogo-correos') return false
   return true
 })
 
@@ -708,7 +714,8 @@ const canAccessGestionOdcSap = computed(() => {
     authStore.canViewOdcSap ||
     authStore.canManageOrder ||
     authStore.canViewOrderList ||
-    authStore.canViewMabel
+    authStore.canViewMabel ||
+    authStore.canViewProduccionElRayo
   ) {
     return true
   }
@@ -720,6 +727,7 @@ const canAccessGestionOdcSap = computed(() => {
       normalized === 'odc.view' ||
       normalized === 'odcsap.view' ||
       normalized === 'mabel.view' ||
+      normalized === 'produccion-elrayo.view' ||
       normalized.startsWith('odc.') ||
       normalized.startsWith('odcsap.') ||
       normalized.startsWith('mabel.')
