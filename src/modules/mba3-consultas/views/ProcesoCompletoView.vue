@@ -1416,6 +1416,134 @@ async function handleVerDetalleSAP(oc: OrdenCompra) {
   showIntegracionSAPModal.value = true
 }
 
+/** "e1; e2; e3" -> ["e1","e2","e3"], recortado y sin vacíos. Usado tanto para errores del backend al integrar como para el catch general. */
+function parsearErroresSeparadosPorPuntoYComa(mensaje: string): string[] {
+  return mensaje.split(';').map(e => e.trim()).filter(e => e.length > 0)
+}
+
+/** Título del error según error_source del backend (BACKEND/SAP_CONNECTION/SAP/otro). Mismo mapeo usado en 2 lugares de handleIntegrarOC. */
+function tituloPorOrigenErrorIntegracion(errorSource: string | undefined | null): string {
+  if (errorSource === 'BACKEND') return 'Error de validación'
+  if (errorSource === 'SAP_CONNECTION') return 'Error de conexión con SAP'
+  if (errorSource === 'SAP') return 'Error de SAP'
+  return 'Error al integrar'
+}
+
+/**
+ * Normaliza la respuesta de integrarSAP a la forma { detalles: [...] } esperada por el resto de
+ * handleIntegrarOC. El backend puede devolver ya "detalles" en metadata, o un formato alternativo
+ * { resultado, oc_id, oc_doc_num } que hay que traducir a la misma forma.
+ */
+function normalizarDetallesIntegracion(response: any): any[] {
+  const metadata = response?.metadata || {}
+  const detalles = metadata.detalles || []
+  if (detalles.length > 0 || !response?.resultado || typeof response.resultado !== 'object' || !response.oc_id) {
+    return detalles
+  }
+
+  const res = response.resultado as { success?: boolean; resultados?: Array<{ doc_entry?: number; doc_num?: number }> }
+  const firstResult = res.resultados?.[0]
+  const envioSap = response.envio_sap ?? response
+  return [{
+    oc_id: response.oc_id as string,
+    success: res.success === true,
+    doc_entry: firstResult?.doc_entry ?? envioSap.doc_entry ?? null,
+    doc_num: firstResult?.doc_num ?? envioSap.doc_num ?? response.oc_doc_num ?? null,
+    numero_oc_sap: envioSap.numero_oc_sap ?? response.numero_oc_sap ?? null,
+    message: 'Enviada exitosamente',
+    error: null,
+    error_message: null,
+    error_code: null,
+    error_source: null,
+    solicitudes_transferencia: {
+      success: res.success === true,
+      pedido_id: response.pedido_id ?? '',
+      total_tiendas: (res as any).total_tiendas ?? (res.resultados?.length ?? 0),
+      transferencias_creadas: (res as any).transferencias_creadas ?? 0,
+      transferencias_errores: (res as any).transferencias_errores ?? 0,
+      resultados: (res as any).resultados ?? []
+    }
+  }]
+}
+
+/** Rama de éxito: campos nuevos de la orden + mensaje del toast ("DocEntry: X, Num ODC: Y"). */
+function construirActualizacionOrdenExito(ordenActual: OrdenCompra, detalle: any): { orden: OrdenCompra; toastMessage: string } {
+  const orden = { ...ordenActual }
+  orden.estado = 'ENVIADA'
+  orden.numero_oc_sap = detalle.numero_oc_sap ?? detalle.doc_num?.toString() ?? null
+  orden.doc_entry = detalle.doc_entry || null
+  orden.doc_num = detalle.doc_num ?? null
+  orden.fecha_procesado = new Date().toISOString()
+  orden.respuesta_sap = detalle.message || 'Enviada exitosamente'
+
+  const numOdc = detalle.numero_oc_sap ?? (detalle.doc_num != null ? String(detalle.doc_num) : null)
+  const toastMessage = detalle.doc_entry
+    ? `DocEntry: ${detalle.doc_entry}${numOdc != null ? `, Num ODC: ${numOdc}` : ''}`
+    : (numOdc != null ? `Num ODC: ${numOdc}` : 'N/A')
+  return { orden, toastMessage }
+}
+
+/** Rama de error: campos nuevos de la orden + título/mensaje del toast (con "+N más" si hay varios errores). */
+function construirActualizacionOrdenError(ordenActual: OrdenCompra, detalle: any): { orden: OrdenCompra; toastTitle: string; toastMessage: string; erroresAdicionales: string[] } {
+  const orden = { ...ordenActual }
+  orden.estado = 'ERROR'
+  const errorMsg = detalle.error_message || detalle.error || 'Error desconocido'
+  orden.error_message = errorMsg
+  orden.error_source = detalle.error_source || 'BACKEND'
+  orden.error_code = detalle.error_code || null
+  orden.fecha_procesado = new Date().toISOString()
+  orden.respuesta_sap = errorMsg
+
+  const errores = typeof errorMsg === 'string' && errorMsg.includes(';')
+    ? parsearErroresSeparadosPorPuntoYComa(errorMsg)
+    : [errorMsg]
+  const toastTitle = tituloPorOrigenErrorIntegracion(detalle.error_source)
+  const toastMessage = errores.length > 1
+    ? `${errores[0]} (+${errores.length - 1} error(es) más. Ver consola)`
+    : errores[0]
+  return { orden, toastTitle, toastMessage, erroresAdicionales: errores.length > 1 ? errores : [] }
+}
+
+/** Estado general del modal de integración: partial si hay ITR pendientes, error si falló, si no success. */
+function determinarEstadoIntegracion(status: string | undefined, detalleSuccess: boolean, solicitudes: SolicitudesTransferencia | null): 'partial' | 'error' | 'success' {
+  if (status === 'partial' || (detalleSuccess && solicitudes && solicitudes.transferencias_errores > 0)) {
+    return 'partial'
+  }
+  if (status === 'error' || !detalleSuccess) {
+    return 'error'
+  }
+  return 'success'
+}
+
+/** Interpreta un error de integrarSAP (fuera del caso "timeout transitorio", manejado aparte). */
+function interpretarErrorIntegracion(error: any): { title: string; message: string; erroresAdicionales: string[] } {
+  let errorTitle = 'Error al integrar'
+  let errorMessage = error.message || 'No se pudo enviar la orden a SAP'
+  let erroresAdicionales: string[] = []
+
+  if (error.response?.data) {
+    const errorData = error.response.data
+    if (errorData.error) {
+      errorMessage = errorData.error
+      const errores = parsearErroresSeparadosPorPuntoYComa(errorMessage)
+      if (errores.length > 1) {
+        errorMessage = errores[0]
+        erroresAdicionales = errores.slice(1)
+      }
+    } else if (errorData.detail) {
+      errorMessage = typeof errorData.detail === 'string' ? errorData.detail : JSON.stringify(errorData.detail)
+    } else if (errorData.message) {
+      errorMessage = errorData.message
+    }
+
+    if (errorData.error_source) {
+      errorTitle = tituloPorOrigenErrorIntegracion(errorData.error_source)
+    }
+  }
+
+  return { title: errorTitle, message: errorMessage, erroresAdicionales }
+}
+
 /**
  * El usuario reintentó las ITR/ST de una OC ya enviada (no reenvía la ODC).
  * Además de refrescar estadísticas y la lista de OCs, invalidamos el detalle de
@@ -1474,40 +1602,12 @@ async function handleIntegrarOC(ocId: string, referenciaDespacho: string, almace
     procesoStore.progress = 100
     
     // ✅ ACTUALIZAR ESTADO LOCAL INMEDIATAMENTE basándose en la respuesta
-    const metadata = response?.metadata || {}
-    let detalles = metadata.detalles || []
-    // Normalizar formato alternativo del backend: { resultado, oc_id, oc_doc_num } → detalle + solicitudes
-    if (detalles.length === 0 && response?.resultado && typeof response.resultado === 'object' && response.oc_id) {
-      const res = response.resultado as { success?: boolean; resultados?: Array<{ doc_entry?: number; doc_num?: number }> }
-      const firstResult = res.resultados?.[0]
-      const resp = response as any
-      const envioSap = resp.envio_sap ?? resp
-      detalles = [{
-        oc_id: response.oc_id as string,
-        success: res.success === true,
-        doc_entry: firstResult?.doc_entry ?? envioSap.doc_entry ?? null,
-        doc_num: firstResult?.doc_num ?? envioSap.doc_num ?? resp.oc_doc_num ?? null,
-        numero_oc_sap: envioSap.numero_oc_sap ?? resp.numero_oc_sap ?? null,
-        message: 'Enviada exitosamente',
-        error: null,
-        error_message: null,
-        error_code: null,
-        error_source: null,
-        solicitudes_transferencia: {
-          success: res.success === true,
-          pedido_id: (response as any).pedido_id ?? '',
-          total_tiendas: (res as any).total_tiendas ?? (res.resultados?.length ?? 0),
-          transferencias_creadas: (res as any).transferencias_creadas ?? 0,
-          transferencias_errores: (res as any).transferencias_errores ?? 0,
-          resultados: (res as any).resultados ?? []
-        }
-      }]
-    }
+    const detalles = normalizarDetallesIntegracion(response)
 
     if (detalles.length > 0) {
       const detalle = detalles[0]
       const success = detalle.success === true
-      
+
       // Buscar y actualizar la orden en el array local.
       // Por oc_id (sin ambigüedad): con 2 ODC del mismo pedido mixto compartiendo
       // referencia_despacho, buscar por referencia podía actualizar la fila equivocada.
@@ -1516,72 +1616,34 @@ async function handleIntegrarOC(ocId: string, referenciaDespacho: string, almace
       )
 
       if (ordenIndex !== -1) {
-        // Crear un nuevo objeto para asegurar reactividad de Vue
-        const ordenActualizada = { ...ordenesCompraStore.ordenesCompra[ordenIndex] }
+        const ordenActual = ordenesCompraStore.ordenesCompra[ordenIndex]
 
         if (success) {
-          ordenActualizada.estado = 'ENVIADA'
-          ordenActualizada.numero_oc_sap = detalle.numero_oc_sap ?? detalle.doc_num?.toString() ?? null
-          ordenActualizada.doc_entry = detalle.doc_entry || null
-          ordenActualizada.doc_num = detalle.doc_num ?? null
-          ordenActualizada.fecha_procesado = new Date().toISOString()
-          ordenActualizada.respuesta_sap = detalle.message || 'Enviada exitosamente'
-          
-          const numOdc = detalle.numero_oc_sap ?? (detalle.doc_num != null ? String(detalle.doc_num) : null)
-          const docInfo = detalle.doc_entry
-            ? `DocEntry: ${detalle.doc_entry}${numOdc != null ? `, Num ODC: ${numOdc}` : ''}`
-            : (numOdc != null ? `Num ODC: ${numOdc}` : 'N/A')
-          toast.success('Orden enviada', docInfo)
+          const { orden: ordenActualizada, toastMessage } = construirActualizacionOrdenExito(ordenActual, detalle)
+          ordenesCompraStore.ordenesCompra[ordenIndex] = ordenActualizada
+          ordenesCompraStore.ordenesCompra = [...ordenesCompraStore.ordenesCompra]
+          toast.success('Orden enviada', toastMessage)
+          if (import.meta.env.DEV) {
+            console.log(`[handleIntegrarOC] ✅ Estado actualizado localmente: ${referenciaDespacho} → ${ordenActualizada.estado}`)
+          }
         } else {
-          ordenActualizada.estado = 'ERROR'
-          // Usar error_message si existe, sino error
-          const errorMsg = detalle.error_message || detalle.error || 'Error desconocido'
-          ordenActualizada.error_message = errorMsg
-          ordenActualizada.error_source = detalle.error_source || 'BACKEND'
-          ordenActualizada.error_code = detalle.error_code || null
-          ordenActualizada.fecha_procesado = new Date().toISOString()
-          ordenActualizada.respuesta_sap = errorMsg
-          
-          // Parsear errores múltiples si están separados por ';'
-          const errores = typeof errorMsg === 'string' && errorMsg.includes(';')
-            ? errorMsg.split(';').map(e => e.trim()).filter(e => e.length > 0)
-            : [errorMsg]
-          
-          // Determinar título según el origen del error
-          const errorTitle = detalle.error_source === 'BACKEND' 
-            ? 'Error de validación'
-            : detalle.error_source === 'SAP_CONNECTION'
-            ? 'Error de conexión con SAP'
-            : detalle.error_source === 'SAP'
-            ? 'Error de SAP'
-            : 'Error al integrar'
-          
-          // Mostrar primer error en toast, resto en consola
-          if (errores.length > 1) {
-            console.warn(`[handleIntegrarOC] Múltiples errores para ${referenciaDespacho}:`, errores)
-            toast.error(errorTitle, `${errores[0]} (+${errores.length - 1} error(es) más. Ver consola)`)
-          } else {
-            toast.error(errorTitle, errores[0])
+          const { orden: ordenActualizada, toastTitle, toastMessage, erroresAdicionales } = construirActualizacionOrdenError(ordenActual, detalle)
+          ordenesCompraStore.ordenesCompra[ordenIndex] = ordenActualizada
+          ordenesCompraStore.ordenesCompra = [...ordenesCompraStore.ordenesCompra]
+          if (erroresAdicionales.length > 0) {
+            console.warn(`[handleIntegrarOC] Múltiples errores para ${referenciaDespacho}:`, erroresAdicionales)
+          }
+          toast.error(toastTitle, toastMessage)
+          if (import.meta.env.DEV) {
+            console.log(`[handleIntegrarOC] ✅ Estado actualizado localmente: ${referenciaDespacho} → ${ordenActualizada.estado}`)
           }
         }
-        
-        // Reemplazar la orden en el array (Vue detectará el cambio)
-        ordenesCompraStore.ordenesCompra[ordenIndex] = ordenActualizada
-        
-        // Crear un nuevo array para forzar reactividad
-        ordenesCompraStore.ordenesCompra = [...ordenesCompraStore.ordenesCompra]
-        
+
         await nextTick()
         void ordenesCompraStore.fetchEstadisticas()
-
-        if (import.meta.env.DEV) {
-          console.log(
-            `[handleIntegrarOC] ✅ Estado actualizado localmente: ${referenciaDespacho} → ${ordenActualizada.estado}`
-          )
-        }
       }
     }
-    
+
     // Delay para que el usuario vea el cambio en la UI antes de cerrar el overlay
     await new Promise(resolve => setTimeout(resolve, 500))
     
@@ -1620,14 +1682,8 @@ async function handleIntegrarOC(ocId: string, referenciaDespacho: string, almace
 
       // Determinar estado general
       const status = response?.status || (detalle.success ? 'success' : 'error')
-      if (status === 'partial' || (detalle.success && integracionSAPSolicitudes.value && integracionSAPSolicitudes.value.transferencias_errores > 0)) {
-        integracionSAPEstado.value = 'partial'
-      } else if (status === 'error' || !detalle.success) {
-        integracionSAPEstado.value = 'error'
-      } else {
-        integracionSAPEstado.value = 'success'
-      }
-      
+      integracionSAPEstado.value = determinarEstadoIntegracion(status, detalle.success, integracionSAPSolicitudes.value)
+
       // Mostrar modal después de un pequeño delay para que el overlay se cierre primero
       await new Promise(resolve => setTimeout(resolve, 300))
       showIntegracionSAPModal.value = true
@@ -1659,56 +1715,20 @@ async function handleIntegrarOC(ocId: string, referenciaDespacho: string, almace
       return
     }
     
-    // Mejorar manejo de errores con mensajes más descriptivos
-    let errorTitle = 'Error al integrar'
-    let errorMessage = error.message || 'No se pudo enviar la orden a SAP'
-    
-    // Parsear errores del backend con estructura mejorada
-    if (error.response?.data) {
-      const errorData = error.response.data
-      
-      // Si tiene campo error (string con validaciones - puede tener múltiples errores separados por ';')
-      if (errorData.error) {
-        errorMessage = errorData.error
-        // Parsear errores múltiples si están separados por ';'
-        const errores = errorMessage.split(';').map((e: string) => e.trim()).filter((e: string) => e.length > 0)
-        if (errores.length > 1) {
-          // Si hay múltiples errores, mostrar el primero en el toast y los demás en consola
-          errorMessage = errores[0]
-          console.warn('Errores adicionales:', errores.slice(1))
-          // Mostrar todos los errores en un mensaje expandido
-          toast.error(errorTitle, `${errores[0]} (+${errores.length - 1} error(es) más. Ver consola)`)
-          return // Salir temprano para no mostrar el toast genérico
-        }
-      } 
-      // Si tiene campo detail (FastAPI)
-      else if (errorData.detail) {
-        errorMessage = typeof errorData.detail === 'string' 
-          ? errorData.detail 
-          : JSON.stringify(errorData.detail)
-      }
-      // Si tiene campo message
-      else if (errorData.message) {
-        errorMessage = errorData.message
-      }
-      
-      // Determinar título según el origen del error
-      if (errorData.error_source) {
-        errorTitle = errorData.error_source === 'BACKEND'
-          ? 'Error de validación'
-          : errorData.error_source === 'SAP_CONNECTION'
-          ? 'Error de conexión con SAP'
-          : errorData.error_source === 'SAP'
-          ? 'Error de SAP'
-          : 'Error al integrar'
-      }
+    const { title: errorTitle, message: errorMessage, erroresAdicionales } = interpretarErrorIntegracion(error)
+
+    if (erroresAdicionales.length > 0) {
+      // Si hay múltiples errores, mostrar el primero en el toast y los demás en consola
+      console.warn('Errores adicionales:', erroresAdicionales)
+      toast.error(errorTitle, `${errorMessage} (+${erroresAdicionales.length} error(es) más. Ver consola)`)
+      return // Salir temprano para no mostrar el toast genérico
     }
-    
+
     // Solo mostrar toast si no se mostró antes (por errores múltiples)
     if (!errorMessage.includes('(+')) {
       toast.error(errorTitle, errorMessage)
     }
-    
+
     // En caso de error, SÍ limpiar el estado de envío para que el usuario pueda reintentar
     if (ordenCompraTableRef.value?.clearSendingState) {
       ordenCompraTableRef.value.clearSendingState()
