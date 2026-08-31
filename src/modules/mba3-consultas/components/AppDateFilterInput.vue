@@ -1,39 +1,37 @@
 <template>
   <div ref="rootRef" class="relative">
     <div
-      :id="id"
-      role="button"
-      :tabindex="disabled ? -1 : 0"
-      :aria-disabled="disabled"
+      class="w-full flex items-center gap-1 pl-3 pr-2.5 py-2 border rounded-lg text-sm"
       :class="[
-        'w-full flex items-center justify-between gap-2 pl-3 pr-2.5 py-2 border rounded-lg text-sm text-left',
         disabled
-          ? 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed'
-          : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400'
+          ? 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 cursor-not-allowed'
+          : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600/50 focus-within:ring-2 focus-within:ring-indigo-500 dark:focus-within:ring-indigo-400'
       ]"
-      @click="togglePopover"
-      @keydown.enter.prevent="togglePopover"
-      @keydown.space.prevent="togglePopover"
     >
-      <span class="truncate" :class="tieneFiltro ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'">
+      <button
+        type="button"
+        :id="id"
+        :disabled="disabled"
+        class="flex-1 min-w-0 text-left truncate focus:outline-none"
+        :class="tieneFiltro ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'"
+        @click="togglePopover"
+      >
         {{ resumen }}
-      </span>
-      <span class="flex items-center gap-1 shrink-0 text-gray-400 dark:text-gray-500">
-        <button
-          v-if="tieneFiltro && !disabled"
-          type="button"
-          title="Quitar filtro de fecha"
-          class="hover:text-gray-600 dark:hover:text-gray-300"
-          @click.stop="clearDates"
-        >
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+      </button>
+      <button
+        v-if="tieneFiltro && !disabled"
+        type="button"
+        title="Quitar filtro de fecha"
+        class="shrink-0 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none"
+        @click.stop="clearDates"
+      >
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
         </svg>
-      </span>
+      </button>
+      <svg class="w-4 h-4 shrink-0 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+      </svg>
     </div>
 
     <div
