@@ -283,7 +283,7 @@ import SkeletonTable from '../components/SkeletonTable.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import IntegracionSAPModal from '../components/IntegracionSAPModal.vue'
 import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
-import type { AjusteDetalle, IntegracionSAPDetalle, ProcesoCompletoSAPResponse, SolicitudesTransferencia } from '../types'
+import type { AjusteDetalle, IntegracionSAPDetalle, ProcesoCompletoSAPDetalleODC, ProcesoCompletoSAPResponse, SolicitudesTransferencia } from '../types'
 import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
 import QuickTablePagination from '@/components/QuickTablePagination.vue'
 import { ejecutarProcesoCompletoSap } from '../composables/ejecutarProcesoCompletoSap'
@@ -343,6 +343,81 @@ function getDetallesAdicionalesDesdeRespuesta(
   }))
 }
 
+function construirDetalleSAPDesdeEnvio(
+  envio: ProcesoCompletoSAPDetalleODC,
+  response: ProcesoCompletoSAPResponse,
+  errorMsg: string | null
+): IntegracionSAPDetalle {
+  return {
+    oc_id: envio.oc_id ?? '',
+    success: !!envio.doc_num,
+    doc_num: envio.doc_num ?? null,
+    doc_entry: envio.doc_entry ?? null,
+    numero_oc_sap: (envio as { numero_oc_sap?: string | null }).numero_oc_sap ?? null,
+    message: envio.message ?? response.message ?? null,
+    error: envio.error ?? errorMsg,
+    error_message: envio.error ?? errorMsg,
+    error_code: (envio as { error_code?: string | null }).error_code ?? null,
+    error_source: (envio as { error_source?: string | null }).error_source ?? null,
+    solicitudes_transferencia: envio.solicitudes_transferencia ?? null,
+    sap_response: null,
+    sap_error_details: null,
+    retry_recommended: envio.retry_recommended ?? null,
+    queued: envio.queued ?? null,
+    proveedor: integracionSAPDetalle.value?.proveedor
+  }
+}
+
+// Un paso previo al envío a SAP (ej. generar ODC) falló: no hay envio_sap en
+// la respuesta. Sin esto, el detalle del intento anterior quedaba pisado en
+// pantalla en vez de reflejar el motivo real de ESTE intento.
+function construirDetalleSAPSinEnvio(
+  response: ProcesoCompletoSAPResponse,
+  errorMsg: string | null
+): IntegracionSAPDetalle {
+  return {
+    oc_id: integracionSAPDetalle.value?.oc_id ?? '',
+    success: false,
+    doc_num: null,
+    doc_entry: null,
+    numero_oc_sap: null,
+    message: response.message ?? null,
+    error: errorMsg,
+    error_message: errorMsg,
+    error_code: null,
+    error_source: null,
+    solicitudes_transferencia: null,
+    sap_response: null,
+    sap_error_details: null,
+    retry_recommended: null,
+    queued: null,
+    proveedor: integracionSAPDetalle.value?.proveedor
+  }
+}
+
+function calcularInnerStatusProcesoCompleto(
+  response: ProcesoCompletoSAPResponse,
+  envio: ProcesoCompletoSAPDetalleODC | undefined
+): 'success' | 'partial' | 'error' {
+  if (response.status === 'success' || response.status === 'partial' || response.status === 'error') {
+    return response.status
+  }
+  if (envio?.doc_num != null) return 'success'
+  if (response.error_detalle) return 'partial'
+  return 'error'
+}
+
+function calcularEstadoIntegracionSAP(
+  innerStatus: 'success' | 'partial' | 'error',
+  solicitudes: SolicitudesTransferencia | null
+): 'success' | 'partial' | 'error' {
+  if (innerStatus === 'success') {
+    return solicitudes && solicitudes.transferencias_errores > 0 ? 'partial' : 'success'
+  }
+  if (innerStatus === 'partial') return 'partial'
+  return 'error'
+}
+
 function aplicarRespuestaProcesoCompletoSAPAlModal(response: ProcesoCompletoSAPResponse) {
   const envio = response.envio_sap
   const errorMsg = response.error_detalle ?? response.message ?? null
@@ -352,69 +427,15 @@ function aplicarRespuestaProcesoCompletoSAPAlModal(response: ProcesoCompletoSAPR
   integracionSAPDetallesAdicionales.value = getDetallesAdicionalesDesdeRespuesta(response)
 
   if (envio) {
-    integracionSAPDetalle.value = {
-      oc_id: envio.oc_id ?? '',
-      success: !!envio.doc_num,
-      doc_num: envio.doc_num ?? null,
-      doc_entry: envio.doc_entry ?? null,
-      numero_oc_sap: (envio as { numero_oc_sap?: string | null }).numero_oc_sap ?? null,
-      message: envio.message ?? response.message ?? null,
-      error: envio.error ?? errorMsg,
-      error_message: envio.error ?? errorMsg,
-      error_code: (envio as { error_code?: string | null }).error_code ?? null,
-      error_source: (envio as { error_source?: string | null }).error_source ?? null,
-      solicitudes_transferencia: envio.solicitudes_transferencia ?? null,
-      sap_response: null,
-      sap_error_details: null,
-      retry_recommended: envio.retry_recommended ?? null,
-      queued: envio.queued ?? null,
-      proveedor: integracionSAPDetalle.value?.proveedor
-    }
+    integracionSAPDetalle.value = construirDetalleSAPDesdeEnvio(envio, response, errorMsg)
   } else {
-    // Un paso previo al envío a SAP (ej. generar ODC) falló: no hay envio_sap en
-    // la respuesta. Sin esto, el detalle del intento anterior quedaba pisado en
-    // pantalla en vez de reflejar el motivo real de ESTE intento.
-    integracionSAPDetalle.value = {
-      oc_id: integracionSAPDetalle.value?.oc_id ?? '',
-      success: false,
-      doc_num: null,
-      doc_entry: null,
-      numero_oc_sap: null,
-      message: response.message ?? null,
-      error: errorMsg,
-      error_message: errorMsg,
-      error_code: null,
-      error_source: null,
-      solicitudes_transferencia: null,
-      sap_response: null,
-      sap_error_details: null,
-      retry_recommended: null,
-      queued: null,
-      proveedor: integracionSAPDetalle.value?.proveedor
-    }
+    integracionSAPDetalle.value = construirDetalleSAPSinEnvio(response, errorMsg)
   }
 
   integracionSAPSolicitudes.value = solicitudes
 
-  let innerStatus: 'success' | 'partial' | 'error'
-  if (response.status === 'success' || response.status === 'partial' || response.status === 'error') {
-    innerStatus = response.status
-  } else if (envio?.doc_num != null) {
-    innerStatus = 'success'
-  } else if (response.error_detalle) {
-    innerStatus = 'partial'
-  } else {
-    innerStatus = 'error'
-  }
-
-  if (innerStatus === 'success') {
-    integracionSAPEstado.value =
-      solicitudes && solicitudes.transferencias_errores > 0 ? 'partial' : 'success'
-  } else if (innerStatus === 'partial') {
-    integracionSAPEstado.value = 'partial'
-  } else {
-    integracionSAPEstado.value = 'error'
-  }
+  const innerStatus = calcularInnerStatusProcesoCompleto(response, envio)
+  integracionSAPEstado.value = calcularEstadoIntegracionSAP(innerStatus, solicitudes)
 }
 
 async function handleRetryProcesoCompletoSAP() {
