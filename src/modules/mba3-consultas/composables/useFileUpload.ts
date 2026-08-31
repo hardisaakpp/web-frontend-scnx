@@ -905,7 +905,7 @@ export function determinarToastExito(response: UploadPlantillaResponse, erroresS
 
 /** Decide nivel/título/mensaje del toast tras reintentar con correcciones. null si el status no aplica ninguno de los dos. */
 export function determinarToastReintento(response: UploadPlantillaResponse, numeroPedido: string | undefined): { level: 'success' | 'warning'; title: string; message: string } | null {
-  const message = `Correcciones aplicadas exitosamente.\n\nNúmero de pedido: ${numeroPedido || 'N/A'}\nArtículos: ${response.articulos_cargados}\nDistribuciones: ${response.distribuciones_cargadas}`
+  const message = `Correcciones aplicadas exitosamente.\n\nNúmero de pedido: ${numeroPedido ?? 'N/A'}\nArtículos: ${response.articulos_cargados}\nDistribuciones: ${response.distribuciones_cargadas}`
   if (response.status === 'success') {
     return { level: 'success', title: 'Plantilla procesada con correcciones', message }
   }
@@ -1051,7 +1051,7 @@ export function useFileUpload(options: {
       },
       getTerminalError: (result) => {
         if (result.status === 'error' && 'error' in result) {
-          const err: any = new Error(result.error || result.message)
+          const err: any = new Error(result.error ?? result.message)
           err.response = { data: result }
           return err
         }
@@ -1180,7 +1180,7 @@ export function useFileUpload(options: {
     // Validar archivo
     const validation = validateFile(file)
     if (!validation.valid) {
-      toast.error('Error de validación', validation.error || 'Archivo no válido')
+      toast.error('Error de validación', validation.error ?? 'Archivo no válido')
       // Limpiar input
       if (target) target.value = ''
       return
@@ -1228,7 +1228,7 @@ export function useFileUpload(options: {
       if (!esResultadoInmediatoUpload(accepted)) {
         return await waitForAsyncPlantillaResult(
           accepted.process_id!,
-          accepted.message || 'Procesando plantilla en segundo plano...'
+          accepted.message ?? 'Procesando plantilla en segundo plano...'
         )
       }
       stopProcessingProgressSimulation(true)
@@ -1274,7 +1274,7 @@ export function useFileUpload(options: {
       if (!numeroPedido && response.pedido_id) {
         try {
           const pedidoCompleto = await pedidosService.getPedido(response.pedido_id, false)
-          numeroPedido = pedidoCompleto.cabecera.numero_pedido || undefined
+          numeroPedido = pedidoCompleto.cabecera.numero_pedido ?? undefined
         } catch (e) {
           console.warn('No se pudo obtener el numero_pedido del pedido cargado:', e)
         }
@@ -1314,7 +1314,7 @@ export function useFileUpload(options: {
       }
 
       const todosLosCodigos = extraerCodigosDeErrorInfo(errorInfo)
-      toast.error(errorInfo.title || 'Error', construirMensajeToastError(errorInfo, todosLosCodigos))
+      toast.error(errorInfo.title ?? 'Error', construirMensajeToastError(errorInfo, todosLosCodigos))
 
       if (options?.onUploadError) {
         options.onUploadError(errorInfo)
@@ -1406,7 +1406,7 @@ export function useFileUpload(options: {
       if (!numeroPedido && response.pedido_id && options?.pedido?.value) {
         try {
           const pedidoCompleto = await pedidosService.getPedido(response.pedido_id, false)
-          numeroPedido = pedidoCompleto.cabecera.numero_pedido || undefined
+          numeroPedido = pedidoCompleto.cabecera.numero_pedido ?? undefined
         } catch (e) {
           console.warn('No se pudo obtener el numero_pedido del pedido cargado:', e)
         }
