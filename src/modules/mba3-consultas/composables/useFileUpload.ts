@@ -1266,6 +1266,40 @@ export function useFileUpload(options: {
   /**
    * Sube un archivo al servidor (síncrono o async según useAsyncUpload)
    */
+  /** Fallback cuando la respuesta de subida no trae numero_pedido: lo busca vía el pedido_id. */
+  async function obtenerNumeroPedidoPorId(pedidoId: string): Promise<string | undefined> {
+    try {
+      const pedidoCompleto = await pedidosService.getPedido(pedidoId, false)
+      return pedidoCompleto.cabecera.numero_pedido ?? undefined
+    } catch (e) {
+      console.warn('No se pudo obtener el numero_pedido del pedido cargado:', e)
+      return undefined
+    }
+  }
+
+  /** Toast + resaltado + callback + redirect tras una subida (inicial) exitosa o con advertencias. */
+  async function manejarExitoUpload(response: UploadPlantillaResponse, numeroPedido: string | undefined): Promise<void> {
+    const mensajeDetalle = construirMensajeDetalleValidacionSap(numeroPedido, response)
+    const erroresSAP = filtrarErroresSAP(response)
+    const toastExito = determinarToastExito(response, erroresSAP)
+    if (toastExito) {
+      toast[toastExito.level](toastExito.title, mensajeDetalle)
+    }
+
+    // Guardar correcciones en sessionStorage antes de redirect para que la vista de destino pueda resaltar (flujo async)
+    if (numeroPedido) {
+      saveCorreccionesParaResaltado(numeroPedido, response)
+    }
+
+    // Llamar callback de éxito si existe
+    if (numeroPedido && options?.onUploadSuccess) {
+      await options.onUploadSuccess(numeroPedido, response)
+    }
+
+    // Redirigir o recargar según corresponda
+    await redirigirORecargarTrasCarga(numeroPedido, options, router)
+  }
+
   async function uploadFile(file: File) {
     uploading.value = true
     resetProgress()
@@ -1290,33 +1324,10 @@ export function useFileUpload(options: {
 
       // Si no viene en la respuesta, intentar obtenerlo del pedido cargado usando pedido_id (necesario para redirigir)
       if (!numeroPedido && response.pedido_id) {
-        try {
-          const pedidoCompleto = await pedidosService.getPedido(response.pedido_id, false)
-          numeroPedido = pedidoCompleto.cabecera.numero_pedido ?? undefined
-        } catch (e) {
-          console.warn('No se pudo obtener el numero_pedido del pedido cargado:', e)
-        }
+        numeroPedido = await obtenerNumeroPedidoPorId(response.pedido_id)
       }
 
-      const mensajeDetalle = construirMensajeDetalleValidacionSap(numeroPedido, response)
-      const erroresSAP = filtrarErroresSAP(response)
-      const toastExito = determinarToastExito(response, erroresSAP)
-      if (toastExito) {
-        toast[toastExito.level](toastExito.title, mensajeDetalle)
-      }
-
-      // Guardar correcciones en sessionStorage antes de redirect para que la vista de destino pueda resaltar (flujo async)
-      if (numeroPedido) {
-        saveCorreccionesParaResaltado(numeroPedido, response)
-      }
-      
-      // Llamar callback de éxito si existe
-      if (numeroPedido && options?.onUploadSuccess) {
-        await options.onUploadSuccess(numeroPedido, response)
-      }
-      
-      // Redirigir o recargar según corresponda
-      await redirigirORecargarTrasCarga(numeroPedido, options, router)
+      await manejarExitoUpload(response, numeroPedido)
     } catch (e: any) {
       // ⭐ Detener simulación de progreso en caso de error
       stopProcessingProgressSimulation(false)
@@ -1352,6 +1363,80 @@ export function useFileUpload(options: {
    * tienen corrección aplicable aquí — se corrigen fuera del sistema y se vuelve a subir el Excel.
    * Usa upload-async + polling igual que la primera subida.
    */
+  function handleCorreccionesProgress(progress: number, fase: 'upload' | 'processing') {
+    if (fase === 'upload') {
+      uploadProgress.value = mapFileUploadProgress(progress)
+      uploadFase.value = 'upload'
+      updateUploadMessage('upload', uploadProgress.value)
+    } else if (fase === 'processing') {
+      stopProcessingProgressSimulation(true)
+    }
+  }
+
+  /** Sube el archivo con las correcciones acumuladas (upload-async + polling), con su propio fallback 503. */
+  async function subirConCorreccionesAsync(file: File): Promise<UploadPlantillaResponse> {
+    try {
+      // ⭐ Subir con correcciones en segundo plano (upload-async + Celery)
+      const accepted = await pedidosService.uploadPlantillaAsync(
+        file,
+        { correcciones_codigos: correccionesAcumuladas.value.correccionesCodigos },
+        handleCorreccionesProgress
+      )
+      if (esResultadoInmediatoUpload(accepted)) {
+        stopProcessingProgressSimulation(true)
+        uploadProgress.value = 100
+        uploadFase.value = 'complete'
+        uploadMessage.value = 'Procesamiento completado'
+        await new Promise(r => setTimeout(r, 400))
+        return normalizeValidationResponse(accepted as any) as UploadPlantillaResponse
+      }
+      return await waitForAsyncPlantillaResult(
+        accepted.process_id!,
+        accepted.message ?? 'Aplicando correcciones en segundo plano...'
+      )
+    } catch (asyncErr: any) {
+      if (esAsyncStorageUnavailable(asyncErr)) {
+        if (import.meta.env.DEV) console.warn('[useFileUpload] Async no disponible (503); no se usará fallback síncrono con correcciones')
+      }
+      throw asyncErr
+    }
+  }
+
+  /** Toast + resaltado + callback + redirect tras un reintento con correcciones exitoso o con advertencias. */
+  async function manejarExitoReintento(response: UploadPlantillaResponse, numeroPedido: string | undefined): Promise<void> {
+    const toastReintento = determinarToastReintento(response, numeroPedido)
+    if (toastReintento) {
+      toast[toastReintento.level](toastReintento.title, toastReintento.message)
+    }
+
+    // Guardar correcciones en sessionStorage antes de redirect para que la vista muestre el resaltado (flujo async)
+    if (numeroPedido) {
+      saveCorreccionesParaResaltado(numeroPedido, response)
+    }
+
+    if (numeroPedido && options?.onUploadSuccess) {
+      if (import.meta.env.DEV) console.log('[useFileUpload] reintentarConCorrecciones éxito, response:', { hasCorrecciones: !!(response as any).correcciones_aplicadas?.length, keys: Object.keys(response || {}) })
+      await options.onUploadSuccess(numeroPedido, response)
+    }
+
+    await redirigirORecargarTrasCarga(numeroPedido, options, router)
+  }
+
+  function manejarErrorReintento(e: any, file: File): void {
+    const errorInfo = processUploadError(e, file.name)
+    uploadErrorInfo.value = errorInfo
+    showErrorModal.value = true
+
+    toast.error(
+      'Error al aplicar correcciones',
+      errorInfo.message.split('\n')[0] || 'No se pudo procesar el archivo con las correcciones aplicadas'
+    )
+
+    if (options?.onUploadError) {
+      options.onUploadError(errorInfo)
+    }
+  }
+
   async function reintentarConCorrecciones(
     file: File,
     correcciones: CorreccionesPlantilla
@@ -1378,43 +1463,7 @@ export function useFileUpload(options: {
     uploadMessage.value = 'Preparando archivo con correcciones...'
 
     try {
-      const handleProgress = (progress: number, fase: 'upload' | 'processing') => {
-        if (fase === 'upload') {
-          uploadProgress.value = mapFileUploadProgress(progress)
-          uploadFase.value = 'upload'
-          updateUploadMessage('upload', uploadProgress.value)
-        } else if (fase === 'processing') {
-          stopProcessingProgressSimulation(true)
-        }
-      }
-
-      let response: UploadPlantillaResponse
-      try {
-        // ⭐ Subir con correcciones en segundo plano (upload-async + Celery)
-        const accepted = await pedidosService.uploadPlantillaAsync(
-          file,
-          { correcciones_codigos: correccionesAcumuladas.value.correccionesCodigos },
-          handleProgress
-        )
-        if (esResultadoInmediatoUpload(accepted)) {
-          stopProcessingProgressSimulation(true)
-          uploadProgress.value = 100
-          uploadFase.value = 'complete'
-          uploadMessage.value = 'Procesamiento completado'
-          await new Promise(r => setTimeout(r, 400))
-          response = normalizeValidationResponse(accepted as any) as UploadPlantillaResponse
-        } else {
-          response = await waitForAsyncPlantillaResult(
-            accepted.process_id!,
-            accepted.message || 'Aplicando correcciones en segundo plano...'
-          )
-        }
-      } catch (asyncErr: any) {
-        if (esAsyncStorageUnavailable(asyncErr)) {
-          if (import.meta.env.DEV) console.warn('[useFileUpload] Async no disponible (503); no se usará fallback síncrono con correcciones')
-        }
-        throw asyncErr
-      }
+      const response = await subirConCorreccionesAsync(file)
 
       archivoOriginal.value = null
       // Sesión de correcciones cerrada con éxito: no debe arrastrarse al siguiente archivo que se suba.
@@ -1422,46 +1471,13 @@ export function useFileUpload(options: {
 
       let numeroPedido = extraerNumeroPedidoDeRespuesta(response)
       if (!numeroPedido && response.pedido_id && options?.pedido?.value) {
-        try {
-          const pedidoCompleto = await pedidosService.getPedido(response.pedido_id, false)
-          numeroPedido = pedidoCompleto.cabecera.numero_pedido ?? undefined
-        } catch (e) {
-          console.warn('No se pudo obtener el numero_pedido del pedido cargado:', e)
-        }
+        numeroPedido = await obtenerNumeroPedidoPorId(response.pedido_id)
       }
 
-      const toastReintento = determinarToastReintento(response, numeroPedido)
-      if (toastReintento) {
-        toast[toastReintento.level](toastReintento.title, toastReintento.message)
-      }
-
-      // Guardar correcciones en sessionStorage antes de redirect para que la vista muestre el resaltado (flujo async)
-      if (numeroPedido) {
-        saveCorreccionesParaResaltado(numeroPedido, response)
-      }
-
-      if (numeroPedido && options?.onUploadSuccess) {
-        if (import.meta.env.DEV) console.log('[useFileUpload] reintentarConCorrecciones éxito, response:', { hasCorrecciones: !!(response as any).correcciones_aplicadas?.length, keys: Object.keys(response || {}) })
-        await options.onUploadSuccess(numeroPedido, response)
-      }
-
-      await redirigirORecargarTrasCarga(numeroPedido, options, router)
+      await manejarExitoReintento(response, numeroPedido)
     } catch (e: any) {
       stopProcessingProgressSimulation(false)
-
-      const errorInfo = processUploadError(e, file.name)
-      uploadErrorInfo.value = errorInfo
-      showErrorModal.value = true
-
-      toast.error(
-        'Error al aplicar correcciones',
-        errorInfo.message.split('\n')[0] || 'No se pudo procesar el archivo con las correcciones aplicadas'
-      )
-
-      if (options?.onUploadError) {
-        options.onUploadError(errorInfo)
-      }
-
+      manejarErrorReintento(e, file)
       throw e
     } finally {
       uploading.value = false
