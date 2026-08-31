@@ -227,6 +227,28 @@ watch(() => props.isOpen, (open) => {
   if (!open) resetear()
 })
 
+function agregarHijosHasta(cantidad: number) {
+  while (hijos.value.length < cantidad) {
+    hijos.value.push({ fecha_entrega: '', cantidades: cantidadesVacias() })
+  }
+}
+
+function fusionarCantidades(destino: HijoForm, removido: HijoForm) {
+  for (const id of Object.keys(removido.cantidades)) {
+    destino.cantidades[id] = (Number(destino.cantidades[id]) || 0) + (Number(removido.cantidades[id]) || 0)
+  }
+}
+
+function removerHijosHasta(cantidad: number) {
+  while (hijos.value.length > cantidad) {
+    const removido = hijos.value.pop()
+    const destino = hijos.value[hijos.value.length - 1]
+    if (removido && destino) {
+      fusionarCantidades(destino, removido)
+    }
+  }
+}
+
 // Al subir N, los hijos nuevos arrancan en 0 (lo que ya tenían los demás no se toca,
 // así que la suma total sigue cuadrando). Al bajar N, lo asignado al hijo removido se
 // reabsorbe en el hijo anterior por el mismo motivo: cambiar N nunca debe romper el
@@ -239,19 +261,9 @@ watch(numHijos, (valor) => {
   }
   if (cantidad === hijos.value.length) return
   if (cantidad > hijos.value.length) {
-    while (hijos.value.length < cantidad) {
-      hijos.value.push({ fecha_entrega: '', cantidades: cantidadesVacias() })
-    }
+    agregarHijosHasta(cantidad)
   } else {
-    while (hijos.value.length > cantidad) {
-      const removido = hijos.value.pop()
-      const destino = hijos.value[hijos.value.length - 1]
-      if (removido && destino) {
-        for (const id of Object.keys(removido.cantidades)) {
-          destino.cantidades[id] = (Number(destino.cantidades[id]) || 0) + (Number(removido.cantidades[id]) || 0)
-        }
-      }
-    }
+    removerHijosHasta(cantidad)
   }
 })
 
