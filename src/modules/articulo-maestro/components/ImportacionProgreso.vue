@@ -46,7 +46,9 @@
                         {{ store.errores.length }} error(es) disponibles
                     </p>
                     <p class="text-xs text-red-600 dark:text-red-400">
-                        Descarga solo las filas con error, corrige los valores marcados y vuelve a cargarlas.
+                        Descarga la plantilla con las filas observadas. Los motivos de error están señalados como
+                        notas en las celdas correspondientes. Corrige los datos en este mismo archivo y súbelo
+                        directamente.
                     </p>
                 </div>
                 <div class="flex shrink-0 flex-col items-end gap-1">

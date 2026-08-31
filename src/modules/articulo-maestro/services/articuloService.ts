@@ -189,6 +189,20 @@ export interface ImportacionError {
     mensaje: string
 }
 
+// Resultado del pre-vuelo (simulación) de una importación masiva: nada se
+// persiste en el backend para producir esta respuesta, así que no trae
+// jobId. Reutiliza ImportacionError (misma forma que el backend expone en
+// DryRunSummary.errores) en vez de un tipo de error paralelo.
+export interface DryRunSummary {
+    totalFilas: number
+    filasValidas: number
+    filasConError: number
+    esLoteValido: boolean
+    errores: ImportacionError[]
+    resumenMarcas: Record<string, number>
+    resumenNiveles: Record<string, number>
+}
+
 // RF-002: respuesta de POST /articulos/{item_code}/promover-alterno.
 // Snake_case a propósito: replica ArticuloPromoverAlternoResponse del backend
 // (mismo criterio que SapSyncTareaResponse/SapTask, sin alias camelCase).
@@ -347,6 +361,30 @@ export const articuloService = {
         }
         const response = await apiMaestro.post<ImportacionAceptada>(
             '/api/v1/articulos/importaciones',
+            formData,
+            {
+                params: { tipo },
+                headers: { 'Content-Type': 'multipart/form-data' }
+            }
+        )
+        return response.data
+    },
+
+    // Pre-vuelo: valida el Excel (y el ZIP de fotos, si viene) sin persistir
+    // nada en el backend. Misma forma de parámetros que crearImportacion
+    // para que el store pueda llamar a ambas de la misma manera.
+    verificarImportacion: async (
+        file: File,
+        tipo: TipoCargaMasiva,
+        zipImagenes?: File | null
+    ): Promise<DryRunSummary> => {
+        const formData = new FormData()
+        formData.append('file', file)
+        if (zipImagenes) {
+            formData.append('zip_imagenes', zipImagenes)
+        }
+        const response = await apiMaestro.post<DryRunSummary>(
+            '/api/v1/articulos/importaciones/verificar',
             formData,
             {
                 params: { tipo },

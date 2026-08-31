@@ -100,6 +100,61 @@
                         </div>
                     </div>
 
+                    <!-- Panel de Diagnóstico (pre-vuelo) -->
+                    <div v-if="!importStore.trabajo && importStore.estadoSimulacion !== 'IDLE'">
+                        <div
+                            v-if="importStore.estadoSimulacion === 'SIMULANDO'"
+                            class="flex items-center gap-3 rounded-lg bg-gray-50 dark:bg-gray-700/40 border border-gray-200 dark:border-gray-700 px-4 py-3 text-sm text-gray-600 dark:text-gray-300"
+                        >
+                            <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                            </svg>
+                            Verificando archivo...
+                        </div>
+
+                        <div
+                            v-else-if="importStore.estadoSimulacion === 'VALIDO'"
+                            class="rounded-lg bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 px-4 py-3 text-sm text-emerald-800 dark:text-emerald-300"
+                        >
+                            Lote listo: {{ importStore.resumenSimulacion?.totalFilas }} artículos verificados sin errores.
+                        </div>
+
+                        <div v-else-if="importStore.estadoSimulacion === 'CON_ERRORES'" class="space-y-2">
+                            <div class="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-400 flex items-center justify-between gap-3">
+                                <span>
+                                    {{ importStore.resumenSimulacion?.filasConError }} de
+                                    {{ importStore.resumenSimulacion?.totalFilas }} filas contienen errores que impiden la carga.
+                                </span>
+                                <button
+                                    type="button"
+                                    @click="handleDescargarReportePreliminar"
+                                    class="text-xs font-medium text-red-700 dark:text-red-400 underline whitespace-nowrap"
+                                >
+                                    Descargar reporte
+                                </button>
+                            </div>
+                            <div class="max-h-40 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-700">
+                                <table class="w-full text-xs text-left">
+                                    <thead class="bg-gray-50 dark:bg-gray-700/40 text-gray-500 dark:text-gray-400 sticky top-0">
+                                        <tr>
+                                            <th class="px-3 py-1.5 font-medium">Fila</th>
+                                            <th class="px-3 py-1.5 font-medium">Campo</th>
+                                            <th class="px-3 py-1.5 font-medium">Motivo</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                                        <tr v-for="(err, index) in importStore.resumenSimulacion?.errores ?? []" :key="index">
+                                            <td class="px-3 py-1.5 text-gray-700 dark:text-gray-300">{{ err.numeroFila ?? '—' }}</td>
+                                            <td class="px-3 py-1.5 text-gray-700 dark:text-gray-300">{{ err.campoError ?? '—' }}</td>
+                                            <td class="px-3 py-1.5 text-gray-700 dark:text-gray-300">{{ err.mensaje }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
                     <ImportacionProgreso v-if="importStore.trabajo" />
 
                     <!-- Error general (red, servidor, etc.) -->
@@ -124,16 +179,28 @@
                         {{ importStore.trabajo ? 'Cerrar' : 'Cancelar' }}
                     </button>
                     <button
-                        v-if="!importStore.trabajo"
+                        v-if="!importStore.trabajo && !importStore.archivoVerificado"
+                        @click="handleVerificar"
+                        :disabled="!selectedFile || importStore.estadoSimulacion === 'SIMULANDO'"
+                        class="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-60 transition-colors flex items-center gap-2"
+                    >
+                        <svg v-if="importStore.estadoSimulacion === 'SIMULANDO'" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        </svg>
+                        {{ importStore.estadoSimulacion === 'SIMULANDO' ? 'Verificando...' : 'Verificar Archivo' }}
+                    </button>
+                    <button
+                        v-if="!importStore.trabajo && importStore.archivoVerificado"
                         @click="handleUpload"
-                        :disabled="!selectedFile || uploading"
+                        :disabled="uploading"
                         class="px-5 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 disabled:opacity-60 transition-colors flex items-center gap-2"
                     >
                         <svg v-if="uploading" class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
                         </svg>
-                        {{ uploading ? 'Procesando...' : 'Subir y Procesar' }}
+                        {{ uploading ? 'Procesando...' : `Importar Definitivo (${importStore.resumenSimulacion?.totalFilas ?? 0} Artículos)` }}
                     </button>
                 </div>
             </div>
@@ -184,6 +251,7 @@ function resetZip(): void {
     if (zipInputRef.value) {
         zipInputRef.value.value = ''
     }
+    importStore.resetVerificacion()
 }
 
 function selectZipFile(file: File): void {
@@ -194,6 +262,7 @@ function selectZipFile(file: File): void {
     }
     selectedZip.value = file
     cargaError.value = ''
+    importStore.resetVerificacion()
 }
 
 function onZipSelect(event: Event): void {
@@ -226,6 +295,7 @@ function selectExcelFile(file: File): void {
 
     selectedFile.value = file
     cargaError.value = ''
+    importStore.resetVerificacion()
 }
 
 function onFileSelect(event: Event): void {
@@ -253,6 +323,54 @@ async function handleDownloadTemplate(): Promise<void> {
     } finally {
         downloadingTemplate.value = false
     }
+}
+
+async function handleVerificar(): Promise<void> {
+    if (!selectedFile.value) return
+    cargaError.value = ''
+    try {
+        await importStore.verificar(
+            selectedFile.value,
+            tipoCarga.value,
+            tipoCarga.value === 'crear' ? selectedZip.value : null
+        )
+    } catch (err: unknown) {
+        const axiosErr = err as { response?: { data?: { detail?: string } } }
+        cargaError.value = axiosErr?.response?.data?.detail || 'No se pudo verificar el archivo. Verifica el formato e inténtalo de nuevo.'
+    }
+}
+
+// No existe un jobId en el pre-vuelo (nada se persistió en el backend), así
+// que a diferencia de descargarErroresImportacion/descargarErroresPlantilla
+// (que piden el reporte a un job real) este CSV se arma en el propio
+// navegador a partir de resumenSimulacion.errores.
+function handleDescargarReportePreliminar(): void {
+    // Mismo vocabulario de columnas que la hoja Detalle_Errores del backend
+    // (ver reporte_errores_importacion.py) por consistencia entre ambas
+    // superficies de error. A diferencia de esa hoja, este CSV sigue siendo
+    // solo un log: el pre-vuelo no recibe los datos originales de cada fila,
+    // así que no hay un archivo "Articulos" reimportable que generar aquí.
+    const errores = importStore.resumenSimulacion?.errores ?? []
+    const encabezado = ['Fila', 'Campo', 'Valor Recibido', 'Motivo del Error']
+    const filas = errores.map(err => [
+        err.numeroFila ?? '',
+        err.campoError ?? '',
+        err.valorRecibido ?? '',
+        err.mensaje
+    ])
+    const csv = [encabezado, ...filas]
+        .map(fila => fila.map(valor => `"${String(valor).replace(/"/g, '""')}"`).join(','))
+        .join('\n')
+
+    const blob = new Blob([`﻿${csv}`], { type: 'text/csv;charset=utf-8;' })
+    const url = globalThis.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'reporte_preliminar_importacion.csv'
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    globalThis.URL.revokeObjectURL(url)
 }
 
 async function handleUpload(): Promise<void> {

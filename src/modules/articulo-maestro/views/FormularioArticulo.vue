@@ -427,7 +427,7 @@
                         </div>
                         <div class="form-field">
                             <label for="formPrice">PVP (Precio)</label>
-                            <input id="formPrice" v-model.number="form.price" type="number" step="0.01" placeholder="0.00" min="0" />
+                            <input id="formPrice" :value="form.price ?? ''" @input="onPvpInput($event)" @blur="onPvpBlur" type="number" step="0.01" placeholder="0.00" min="0" />
                         </div>
                         <fieldset class="form-field sm:col-span-2 flex flex-col gap-2 bg-gray-50 dark:bg-gray-900 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
                             <legend class="!text-sm !m-0 !p-0 !font-medium">Listas de Precios Aplicables</legend>
@@ -486,9 +486,9 @@
                                 :disabled="isEdit"
                                 :title="isEdit ? LOCK_REASON.sapRechazaCambio : ''"
                             >
-                                <option value="A">A - Promedio</option>
-                                <option value="S">S - Estándar</option>
-                                <option value="F">F - FIFO</option>
+                                <option v-for="opt in OPCIONES_COST_ACCOUNTING" :key="opt.value" :value="opt.value" :title="opt.description">
+                                    {{ opt.label }}
+                                </option>
                             </select>
                             <span v-if="isEdit" class="help">{{ LOCK_REASON.sapRechazaCambio }}</span>
                         </div>
@@ -759,7 +759,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
@@ -773,6 +773,7 @@ import SearchableSelect from '../components/SearchableSelect.vue'
 import GestorImagenes from '../components/GestorImagenes.vue'
 import KeyboardHelpModal from '../components/KeyboardHelpModal.vue'
 import { useKeyboardShortcuts } from '../composables/useKeyboardShortcuts'
+import { OPCIONES_COST_ACCOUNTING, DEFAULT_COST_ACCOUNTING } from '../constants/costAccounting'
 
 const route = useRoute()
 const router = useRouter()
@@ -1016,6 +1017,30 @@ function onCostoArranqueBlur(): void {
     form.value.uPrArq = Math.round(form.value.uPrArq * 100) / 100
 }
 
+// PVP homologado con Costo de Arranque: mismo truncado a 2 decimales.
+function onPvpInput(event: Event) {
+    const input = event.target as HTMLInputElement
+    const raw = input.value
+
+    if (raw === '' || raw === '-') {
+        form.value.price = null
+        return
+    }
+
+    const truncado = raw.match(/^-?\d*(?:\.\d{0,2})?/)?.[0] ?? raw
+    if (truncado !== raw) {
+        input.value = truncado
+    }
+
+    const parsed = Number(truncado)
+    form.value.price = Number.isNaN(parsed) ? null : Math.round(parsed * 100) / 100
+}
+
+function onPvpBlur(): void {
+    if (form.value.price == null) return
+    form.value.price = Math.round(form.value.price * 100) / 100
+}
+
 // ─── Formulario ──────────────────────────────────────────────────────────────
 const form = ref({
     itemCode: '',
@@ -1225,24 +1250,6 @@ function onImagesUpdate(images: ImagenArticuloReferencia[]): void {
 }
 
 // En edición: cargar los datos del artículo desde la API y pre-poblar la jerarquía de catálogos
-// Shortcuts
-const handleKeydown = (e: KeyboardEvent) => {
-    // Ctrl + S: Guardar
-    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault()
-        handleSubmit()
-    }
-    // Escape: Cancelar
-    if (e.key === 'Escape') {
-        router.push('/articulo-maestro/lista')
-    }
-    // Ctrl + 1..5: Cambiar pestañas
-    if (e.ctrlKey && e.key >= '1' && e.key <= '5') {
-        e.preventDefault()
-        activeTab.value = tabs[Number.parseInt(e.key, 10) - 1].id
-    }
-}
-
 function aplicarDatosArticuloAlForm(articulo: Articulo) {
     Object.keys(form.value).forEach(key => {
         const k = key as keyof typeof form.value
@@ -1253,6 +1260,16 @@ function aplicarDatosArticuloAlForm(articulo: Articulo) {
             }
         }
     })
+    // Fallback seguro: costAccountingMethod puede llegar con un valor legacy
+    // (ej. 'B' en un artículo sin gestión de lotes, o null) que ya no es una
+    // opción visible del selector. Sin este resguardo, el <select> se
+    // renderiza en blanco porque ningún <option> coincide con el v-model.
+    const esValorValido = OPCIONES_COST_ACCOUNTING.some(
+        opt => opt.value === form.value.costAccountingMethod
+    )
+    if (!esValorValido) {
+        form.value.costAccountingMethod = DEFAULT_COST_ACCOUNTING
+    }
 }
 
 async function cargarCascadasCatalogoParaEdicion() {
@@ -1322,15 +1339,23 @@ async function cargarDatosEdicion(itemCode: string) {
 }
 
 onMounted(async () => {
-    globalThis.addEventListener('keydown', handleKeydown)
     await cargarCatalogos()
     if (isEdit.value) {
         await cargarDatosEdicion(route.params.itemCode as string)
     }
 })
 
-// Guardar formulario
+// Guardar formulario. Único punto de captura de Ctrl+S (FE-CONCURRENCY,
+// ver useKeyboardShortcuts(shortcuts) más abajo): antes coexistía un
+// segundo listener manual (`handleKeydown` vía
+// globalThis.addEventListener) que llamaba a esta misma función sin
+// ningún resguardo de concurrencia, disparando dos POST /articulos en
+// paralelo por cada Ctrl+S. El guardia de abajo (`submitting.value`)
+// ahora vive DENTRO de handleSubmit, así que protege sin importar cuántos
+// puntos de disparo existan (teclado, botón, o uno nuevo a futuro).
 async function handleSubmit() {
+    if (submitting.value) return
+
     const firstErrorTab = getFirstErrorTab()
     if (firstErrorTab) {
         showValidationErrors.value = true
@@ -1453,15 +1478,16 @@ async function handleSubmit() {
     }
 }
 
-onUnmounted(() => {
-    globalThis.removeEventListener('keydown', handleKeydown)
-})
 const showKeyboardHelp = ref(false)
 const shortcuts = {
     'Ctrl+S': {
         description: 'Guardar artículo',
         action: () => {
-            if (!submitting.value && !loadingData.value && !loadError.value) {
+            // El resguardo de re-entrancia (submitting.value) ahora vive
+            // dentro de handleSubmit; aquí solo se filtran los estados en
+            // los que no tiene sentido intentar guardar (carga en curso o
+            // fallida).
+            if (!loadingData.value && !loadError.value) {
                 handleSubmit()
             }
         }

@@ -290,7 +290,7 @@
                                 <!-- SECCION -->
                                 <div>
                                     <label for="jerarquiaSeccion" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sección (Nivel 1)</label>
-                                    <select id="jerarquiaSeccion" v-if="!jerarquiaIsNuevaSeccion" v-model="jerarquiaForm.seccion" @change="onFormSeccionChange" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white">
+                                    <select id="jerarquiaSeccion" v-if="!jerarquiaIsNuevaSeccion" v-model="jerarquiaForm.seccion" @change="onManualSeccionChange" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white">
                                         <option value="">-- Seleccionar Sección --</option>
                                         <option v-for="s in formSeccionesDisponibles" :key="s.nombre" :value="s.nombre">{{ s.nombre }}</option>
                                         <option value="__nuevo__" class="font-bold text-indigo-600">+ Crear nueva sección</option>
@@ -376,8 +376,11 @@
 <script setup lang="ts">
 import { ref, onMounted, reactive, watch } from 'vue'
 import { Dialog, DialogPanel, TransitionRoot } from '@headlessui/vue'
+import { useToast } from '@/composables/useToast'
 import { catalogoService } from '../services/articuloService'
 import type { CatalogoItem, JerarquiaItem } from '../services/articuloService'
+
+const toast = useToast()
 
 const tabs = [
     { id: 'generales', label: 'Listas Generales' },
@@ -554,7 +557,21 @@ async function toggleCategoria(seccionNombre: string, categoria: JerarquiaItem) 
     }
 }
 
-async function onFormSeccionChange() {
+// Carga las categorías disponibles para una sección dada, SIN tocar el
+// valor seleccionado de categoría (FE-CATALOGS): se reutiliza tanto desde
+// el cambio MANUAL de sección (que sí debe resetear la categoría, ver
+// onManualSeccionChange) como desde la carga de datos al editar una
+// jerarquía existente (openModalJerarquia), que NO debe resetearla.
+async function cargarCategoriasDeSeccion(seccion: string) {
+    formCategoriasDisponibles.value = seccion
+        ? await catalogoService.getCategorias(seccion)
+        : []
+}
+
+// Manejador del @change MANUAL del selector de Sección: el usuario cambió
+// de sección a propósito, así que la categoría previamente elegida ya no
+// corresponde a la nueva sección -- aquí sí corresponde resetearla.
+async function onManualSeccionChange() {
     if (jerarquiaForm.value.seccion === '__nuevo__') {
         jerarquiaIsNuevaSeccion.value = true
         jerarquiaForm.value.seccion = ''
@@ -562,13 +579,8 @@ async function onFormSeccionChange() {
         formCategoriasDisponibles.value = []
         return
     }
-    // Fetch categories for this section for the form
     jerarquiaForm.value.categoria = ''
-    if (jerarquiaForm.value.seccion) {
-        formCategoriasDisponibles.value = await catalogoService.getCategorias(jerarquiaForm.value.seccion)
-    } else {
-        formCategoriasDisponibles.value = []
-    }
+    await cargarCategoriasDeSeccion(jerarquiaForm.value.seccion)
 }
 
 watch(() => jerarquiaForm.value.categoria, (val) => {
@@ -600,8 +612,11 @@ function openModalJerarquia(itemToEdit?: { seccion: string, categoria: string, l
         }
         jerarquiaIsNuevaSeccion.value = false
         jerarquiaIsNuevaCategoria.value = false
-        // Trigger fetch form cats
-        onFormSeccionChange()
+        // Carga Sección Segura (FE-CATALOGS): solo pobla el <select> de
+        // categorías para esta sección -- la categoría original ya quedó
+        // asignada arriba (jerarquiaForm.value = {...}) y NO debe pisarse,
+        // a diferencia de onManualSeccionChange (cambio real del usuario).
+        cargarCategoriasDeSeccion(itemToEdit.seccion)
     } else {
         jerarquiaEditId.value = null
         jerarquiaForm.value = { seccion: '', categoria: '', linea: '' }
@@ -613,13 +628,23 @@ function openModalJerarquia(itemToEdit?: { seccion: string, categoria: string, l
 }
 
 async function submitJerarquiaForm() {
+    // Validación Preventiva (FE-CATALOGS): Sección/Categoría no tienen
+    // `required` en el <select> (a diferencia de Línea), así que sin este
+    // chequeo una categoría vaciada por error (ver el bug de
+    // openModalJerarquia/onManualSeccionChange más arriba) se guardaría
+    // silenciosamente, truncando la jerarquía en el catálogo.
+    const { seccion, categoria, linea } = jerarquiaForm.value
+    if (!seccion.trim() || !categoria.trim() || !linea.trim()) {
+        toast.warning(
+            'Jerarquía incompleta',
+            'Sección, Categoría y Línea son obligatorias. Completa los tres campos antes de guardar.'
+        )
+        return
+    }
+
     isSubmitting.value = true
     try {
-        const payload = {
-            seccion: jerarquiaForm.value.seccion,
-            categoria: jerarquiaForm.value.categoria,
-            linea: jerarquiaForm.value.linea
-        }
+        const payload = { seccion, categoria, linea }
         if (jerarquiaEditId.value) {
             await catalogoService.updateJerarquia(jerarquiaEditId.value, payload)
         } else {
