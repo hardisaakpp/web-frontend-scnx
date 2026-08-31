@@ -365,7 +365,7 @@ import type { PedidoResumido, PedidosListadoFiltros, PedidosListadoMetadata, Pla
 import { formatDate, formatDateTime } from '../utils/formatters'
 import { esProveedorElRayo } from '../utils/styleHelpers'
 import { PAGE_SIZE_OPTIONS } from '../config/pagination'
-import { useDebouncedFilterInput } from '../composables/useDebouncedFilterInput'
+import { useFiltroTextoConDebounce } from '../composables/useFiltroTextoConDebounce'
 import { usePageSizePreference } from '../composables/usePageSizePreference'
 import { getEstadoPedidoLabel, getEstadoPedidoBadgeClassFull, ESTADOS_QUE_REQUIEREN_ACCION, requiereAccionPedido } from '../utils/estadoPedido'
 import { useSortableList, type SortableColumnDef } from '../composables/useSortableList'
@@ -375,20 +375,6 @@ import { useListadoAutoRefresh } from '../composables/useListadoAutoRefresh'
 const { target: odcSapVolverTarget, title: odcSapVolverTitle } = useOdcSapVolver()
 const router = useRouter()
 const toast = useToast()
-
-// ========== Búsqueda por Número de Pedido (con debounce, filtra en vivo) ==========
-const {
-  texto: busquedaNumeroPedido,
-  handleInput: handleBusquedaNumeroPedido,
-  commit: buscarNumeroPedidoInmediato,
-  clear: limpiarBusquedaNumeroPedidoTexto,
-  dispose: disposeBusquedaNumeroPedido
-} = useDebouncedFilterInput((valor) => {
-  if (filtros.value.numero_pedido !== valor) {
-    filtros.value.numero_pedido = valor
-    aplicarFiltros()
-  }
-})
 
 // Carga de plantillas Excel (redirige a cargar-plantilla/:id tras subir). useAsyncUpload: no bloquea la app (Celery).
 // onUploadSuccess: refrescar lista para que al volver desde el detalle el nuevo pedido esté visible.
@@ -459,6 +445,15 @@ const { totalPages, currentPage, resetToFirstPage, setPageSize } = useOffsetPagi
   onPageSizeChange: guardarPageSize
 })
 
+// ========== Búsqueda por Número de Pedido (con debounce, filtra en vivo) ==========
+const {
+  texto: busquedaNumeroPedido,
+  handleInput: handleBusquedaNumeroPedido,
+  commit: buscarNumeroPedidoInmediato,
+  clear: limpiarBusquedaNumeroPedidoTexto,
+  dispose: disposeBusquedaNumeroPedido
+} = useFiltroTextoConDebounce(filtros, 'numero_pedido', aplicarFiltros)
+
 // ========== Búsqueda por Creado Por (con debounce, filtra en vivo) ==========
 const {
   texto: busquedaCreadoPor,
@@ -466,12 +461,7 @@ const {
   commit: buscarCreadoPorInmediato,
   clear: limpiarBusquedaCreadoPorTexto,
   dispose: disposeBusquedaCreadoPor
-} = useDebouncedFilterInput((valor) => {
-  if (filtros.value.creado_por !== valor) {
-    filtros.value.creado_por = valor
-    aplicarFiltros()
-  }
-})
+} = useFiltroTextoConDebounce(filtros, 'creado_por', aplicarFiltros)
 
 const columnasTabla: SortableColumnDef[] = [
   { key: 'numero_pedido', label: 'Número de Pedido' },

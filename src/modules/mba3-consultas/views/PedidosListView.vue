@@ -250,7 +250,7 @@ import { formatDate, formatDateTime } from '../utils/formatters'
 import { esProveedorElRayo } from '../utils/styleHelpers'
 import { getEstadoPedidoLabel, getEstadoPedidoBadgeClassFull, requiereAccionPedido } from '../utils/estadoPedido'
 import { PAGE_SIZE_OPTIONS } from '../config/pagination'
-import { useDebouncedFilterInput } from '../composables/useDebouncedFilterInput'
+import { useFiltroTextoConDebounce } from '../composables/useFiltroTextoConDebounce'
 import { usePageSizePreference } from '../composables/usePageSizePreference'
 import { useSortableList, type SortableColumnDef } from '../composables/useSortableList'
 import { useOffsetPagination } from '../composables/useOffsetPagination'
@@ -375,12 +375,7 @@ const {
   commit: buscarNumeroPedidoInmediato,
   clear: limpiarBusquedaNumeroPedidoTexto,
   dispose: disposeBusquedaNumeroPedido
-} = useDebouncedFilterInput((valor) => {
-  if (filtros.value.numero_pedido !== valor) {
-    filtros.value.numero_pedido = valor
-    aplicarFiltros()
-  }
-})
+} = useFiltroTextoConDebounce(filtros, 'numero_pedido', aplicarFiltros)
 
 // ========== Búsqueda por Creado Por (con debounce, filtra en vivo) ==========
 const {
@@ -389,12 +384,7 @@ const {
   commit: buscarCreadoPorInmediato,
   clear: limpiarBusquedaCreadoPorTexto,
   dispose: disposeBusquedaCreadoPor
-} = useDebouncedFilterInput((valor) => {
-  if (filtros.value.creado_por !== valor) {
-    filtros.value.creado_por = valor
-    aplicarFiltros()
-  }
-})
+} = useFiltroTextoConDebounce(filtros, 'creado_por', aplicarFiltros)
 
 // Contador de pedidos pendientes (computado desde los pedidos cargados)
 const contadorPedidosPendientes = computed(() => pedidos.value.filter(p => requiereAccionPedido(p.estado)).length)
