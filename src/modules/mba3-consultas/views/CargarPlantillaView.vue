@@ -1771,56 +1771,72 @@ async function confirmarRedistribucion() {
 }
 
 /** Aplica el resultado del proceso SAP en esta vista (modal éxito + loadPedido). */
-async function applySAPResponseCargarPlantilla(response: import('@/modules/mba3-consultas/types').ProcesoCompletoSAPResponse) {
-  let innerStatus: 'success' | 'partial' | 'error'
+type SAPCargarPlantillaResponse = import('@/modules/mba3-consultas/types').ProcesoCompletoSAPResponse
+
+function resolveInnerStatusCargarPlantilla(response: SAPCargarPlantillaResponse): 'success' | 'partial' | 'error' {
   if ((response as any).status === 'success' || (response as any).status === 'partial' || (response as any).status === 'error') {
-    innerStatus = (response as any).status
+    return (response as any).status
   } else if (response.envio_sap?.doc_num != null) {
-    innerStatus = 'success'
+    return 'success'
   } else if (response.error_detalle) {
-    innerStatus = 'partial'
+    return 'partial'
   } else {
-    innerStatus = 'error'
+    return 'error'
   }
+}
 
+async function handleSAPResponseSuccessCargarPlantilla(response: SAPCargarPlantillaResponse) {
+  mostrarBannerReintentoConexionSap.value = false
+  const docNum = response.envio_sap?.doc_num
+  sapSuccessMessage.value = docNum
+    ? `ODC enviada exitosamente a SAP. Num ODC: ${docNum}`
+    : (response.message || 'ODC procesada correctamente en SAP')
+  sapSuccessOcId.value = response.envio_sap?.oc_id ?? null
+  sapSuccessSolicitudesTransferencia.value =
+    response.solicitudes_transferencia ?? response.envio_sap?.solicitudes_transferencia ?? null
+  showSAPSuccessModal.value = true
+  if (sapSuccessSolicitudesTransferencia.value?.transferencias_creadas) {
+    const st = sapSuccessSolicitudesTransferencia.value
+    toast.success('Solicitudes de Transferencia', `Se crearon ${st.transferencias_creadas} de ${st.total_tiendas} solicitudes`)
+  }
+  await loadPedido()
+}
+
+async function handleSAPResponsePartialCargarPlantilla(response: SAPCargarPlantillaResponse) {
+  const env = response.envio_sap
+  toast.warning(
+    `Error en paso: ${response.paso_fallido ?? 'desconocido'}`,
+    response.error_detalle || response.message || 'El proceso no se completó totalmente'
+  )
+  if (response.redistribucion) toast.info('Redistribución confirmada', `Versión: ${response.redistribucion.version_confirmada}`)
+  if (response.odc_generada) toast.info('ODC generada', `ID: ${response.odc_generada.oc_id}`)
+  await loadPedido()
+
+  // Refresh antes de pintar el CTA/botón de reintento (flag backend como única fuente).
+  const puedeReintentar = pedido.value?.puede_reintentar_envio_odc_sap === true
+  mostrarBannerReintentoConexionSap.value =
+    env?.retry_recommended === true && env?.doc_num == null && puedeReintentar
+}
+
+async function handleSAPResponseErrorCargarPlantilla(response: SAPCargarPlantillaResponse) {
+  mostrarBannerReintentoConexionSap.value = false
+  toast.error('Error', response.message || 'No se pudo completar el proceso')
+  // Refresco adicional para que el flag backend (puede_reintentar_envio_odc_sap) quede sincronizado.
+  try {
+    await loadPedido()
+  } catch (e) {
+    console.warn('[applySAPResponseCargarPlantilla] loadPedido tras error SAP:', e)
+  }
+}
+
+async function applySAPResponseCargarPlantilla(response: SAPCargarPlantillaResponse) {
+  const innerStatus = resolveInnerStatusCargarPlantilla(response)
   if (innerStatus === 'success') {
-    mostrarBannerReintentoConexionSap.value = false
-    const docNum = response.envio_sap?.doc_num
-    sapSuccessMessage.value = docNum
-      ? `ODC enviada exitosamente a SAP. Num ODC: ${docNum}`
-      : (response.message || 'ODC procesada correctamente en SAP')
-    sapSuccessOcId.value = response.envio_sap?.oc_id ?? null
-    sapSuccessSolicitudesTransferencia.value =
-      response.solicitudes_transferencia ?? response.envio_sap?.solicitudes_transferencia ?? null
-    showSAPSuccessModal.value = true
-    if (sapSuccessSolicitudesTransferencia.value?.transferencias_creadas) {
-      const st = sapSuccessSolicitudesTransferencia.value
-      toast.success('Solicitudes de Transferencia', `Se crearon ${st.transferencias_creadas} de ${st.total_tiendas} solicitudes`)
-    }
-    await loadPedido()
+    await handleSAPResponseSuccessCargarPlantilla(response)
   } else if (innerStatus === 'partial') {
-    const env = response.envio_sap
-    toast.warning(
-      `Error en paso: ${response.paso_fallido ?? 'desconocido'}`,
-      response.error_detalle || response.message || 'El proceso no se completó totalmente'
-    )
-    if (response.redistribucion) toast.info('Redistribución confirmada', `Versión: ${response.redistribucion.version_confirmada}`)
-    if (response.odc_generada) toast.info('ODC generada', `ID: ${response.odc_generada.oc_id}`)
-    await loadPedido()
-
-    // Refresh antes de pintar el CTA/botón de reintento (flag backend como única fuente).
-    const puedeReintentar = pedido.value?.puede_reintentar_envio_odc_sap === true
-    mostrarBannerReintentoConexionSap.value =
-      env?.retry_recommended === true && env?.doc_num == null && puedeReintentar
+    await handleSAPResponsePartialCargarPlantilla(response)
   } else {
-    mostrarBannerReintentoConexionSap.value = false
-    toast.error('Error', response.message || 'No se pudo completar el proceso')
-    // Refresco adicional para que el flag backend (puede_reintentar_envio_odc_sap) quede sincronizado.
-    try {
-      await loadPedido()
-    } catch (e) {
-      console.warn('[applySAPResponseCargarPlantilla] loadPedido tras error SAP:', e)
-    }
+    await handleSAPResponseErrorCargarPlantilla(response)
   }
 }
 
@@ -1978,6 +1994,41 @@ watch(
   { immediate: true }
 )
 
+type NotificacionSSEMetaCargarPlantilla = import('@/composables/useNotificaciones').SSENotification['metadata']
+
+async function handleNotificacionSSEConPedidoCargado(
+  pedidoActual: PedidoCompleto['cabecera'],
+  meta: NotificacionSSEMetaCargarPlantilla
+) {
+  const coincide =
+    (meta.pedido_id && meta.pedido_id === pedidoActual.pedido_id) ||
+    (meta.numero_pedido && meta.numero_pedido === pedidoActual.numero_pedido)
+
+  if (!coincide) return
+
+  if (import.meta.env.DEV) {
+    console.log('🔄 [CargarPlantillaView] Notificación SSE recibida para pedido actual:', meta.accion)
+  }
+
+  // Si el pedido fue descartado/cancelado, redirigir a cargar-plantilla (el pedido ya no existe)
+  if (meta.accion === 'pedido_descartado' || meta.accion === 'pedido_cancelado') {
+    pedido.value = null
+    router.push('/mba3-consultas/cargar-plantilla')
+    return
+  }
+
+  await loadPedido()
+}
+
+async function handleNotificacionSSESinPedidoCargado(meta: NotificacionSSEMetaCargarPlantilla) {
+  // Sin pedido cargado (URL base /cargar-plantilla): recargar último pedido
+  // para mostrar datos actualizados si otro usuario modificó el estado
+  if (import.meta.env.DEV) {
+    console.log('🔄 [CargarPlantillaView] Notificación SSE recibida sin pedido cargado, recargando último pedido...', meta.accion)
+  }
+  await cargarUltimoPedido()
+}
+
 // ⭐ Watch para recargar pedido cuando llega una notificación SSE relevante
 // (ej: otro usuario confirma el pedido que tenemos abierto → recargar para deshabilitar botones)
 watch(lastNotification, async (notification) => {
@@ -1988,32 +2039,9 @@ watch(lastNotification, async (notification) => {
 
   // Si hay un pedido cargado, verificar si la notificación es sobre ese pedido
   if (pedido.value) {
-    const pedidoActual = pedido.value.cabecera
-    const coincide =
-      (meta.pedido_id && meta.pedido_id === pedidoActual.pedido_id) ||
-      (meta.numero_pedido && meta.numero_pedido === pedidoActual.numero_pedido)
-
-    if (coincide) {
-      if (import.meta.env.DEV) {
-        console.log('🔄 [CargarPlantillaView] Notificación SSE recibida para pedido actual:', meta.accion)
-      }
-
-      // Si el pedido fue descartado/cancelado, redirigir a cargar-plantilla (el pedido ya no existe)
-      if (meta.accion === 'pedido_descartado' || meta.accion === 'pedido_cancelado') {
-        pedido.value = null
-        router.push('/mba3-consultas/cargar-plantilla')
-        return
-      }
-
-      await loadPedido()
-    }
+    await handleNotificacionSSEConPedidoCargado(pedido.value.cabecera, meta)
   } else {
-    // Sin pedido cargado (URL base /cargar-plantilla): recargar último pedido
-    // para mostrar datos actualizados si otro usuario modificó el estado
-    if (import.meta.env.DEV) {
-      console.log('🔄 [CargarPlantillaView] Notificación SSE recibida sin pedido cargado, recargando último pedido...', meta.accion)
-    }
-    await cargarUltimoPedido()
+    await handleNotificacionSSESinPedidoCargado(meta)
   }
 })
 
