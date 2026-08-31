@@ -7,7 +7,7 @@ import { onUnmounted } from '@vue/runtime-core'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { MAX_EXCEL_UPLOAD_SIZE_BYTES, MAX_EXCEL_UPLOAD_SIZE_MB } from '@/config/uploadLimits'
-import { mba3ConsultasService } from '../services/mba3ConsultasApi'
+import { pedidosService } from '../services/domains/pedidos'
 import { normalizeValidationResponse } from '../services/utils/errorHandler'
 import type { UploadPlantillaResponse, PedidoCompleto, PlantillaProcesoEstado } from '../types'
 import { SAP_MAY_STILL_PROCESSING_MESSAGE } from '../utils/httpErrors'
@@ -637,7 +637,8 @@ function mensajeSAPFallbackDesdeTexto(errorMessageStr: string, productosPrevios:
 
   const productos = [...new Set(productosExtraidos)]
   const totalErrores = productos.length
-  const message = `Existen ${totalErrores} código(s) no válidos en SAP.\n\n❌ Códigos de PRODUCTO no encontrados (${productos.length}):\n${productos.map(c => `   • ${c}`).join('\n')}\n\n⚠️ Por favor verifica que estos códigos estén escritos correctamente en el Excel.`
+  const listaProductos = productos.map(c => `   • ${c}`).join('\n')
+  const message = `Existen ${totalErrores} código(s) no válidos en SAP.\n\n❌ Códigos de PRODUCTO no encontrados (${productos.length}):\n${listaProductos}\n\n⚠️ Por favor verifica que estos códigos estén escritos correctamente en el Excel.`
   return { message, productos }
 }
 
@@ -646,7 +647,7 @@ function construirMensajeSAP(e: any, errorMessageStr: string, errorErrors: Error
   const title = tituloSAPDesdeTipos(tiposErrores)
 
   const totalErrores = productos.length + tiendas.length + bodegas.length
-  const sapNoEncontradosCount = (e as any).sapNoEncontradosCount || 0
+  const sapNoEncontradosCount = e.sapNoEncontradosCount || 0
   const tieneCodigosEspecificos = totalErrores > 0
   const tieneConteoSinCodigos = sapNoEncontradosCount > 0 && !tieneCodigosEspecificos
 
@@ -678,17 +679,20 @@ function construirMensajeDuplicado(e: any, errorMessageStr: string): { title: st
   return { title: 'Número de pedido duplicado', message }
 }
 
-function construirTituloYMensaje(
-  e: any,
-  errorMessageStr: string,
-  errorErrors: ErrorEntry[],
-  productos: string[],
-  tiendas: string[],
-  bodegas: string[],
-  clasificacion: ClasificacionError,
-  errorTitleActual: string,
+interface ContextoTituloYMensaje {
+  e: any
+  errorMessageStr: string
+  errorErrors: ErrorEntry[]
+  productos: string[]
+  tiendas: string[]
+  bodegas: string[]
+  clasificacion: ClasificacionError
+  errorTitleActual: string
   errorMessageActual: string
-): { title: string; message: string } {
+}
+
+function construirTituloYMensaje(ctx: ContextoTituloYMensaje): { title: string; message: string } {
+  const { e, errorMessageStr, errorErrors, productos, tiendas, bodegas, clasificacion, errorTitleActual, errorMessageActual } = ctx
   const { isSAPError, isDuplicateError, isFormatError, isLongitudError, errorCode } = clasificacion
 
   if (isLongitudError) {
@@ -724,7 +728,7 @@ function construirTituloYMensaje(
     // Solo usar detección de formato si no hay error_code específico
     return { title: 'Error de formato', message: `El archivo Excel no tiene el formato correcto o está incompleto.\n\nAsegúrate de usar la plantilla oficial y completar todos los campos requeridos.` }
   }
-  if ((e as any).isBusinessException) {
+  if (e.isBusinessException) {
     return { title: 'No se puede procesar el archivo', message: errorMessageStr || 'Ocurrió un error de validación de negocio que impide procesar el archivo.' }
   }
   return { title: errorTitleActual, message: errorMessageActual }
@@ -758,8 +762,8 @@ export function processUploadError(e: any, fileName: string): UploadErrorInfo {
     bodegasNoEncontradasSAP.push(...desdeResponseData.bodegas)
   }
 
-  if ((e as any).errors && Array.isArray((e as any).errors)) {
-    errorErrors.push(...(e as any).errors)
+  if (e.errors && Array.isArray(e.errors)) {
+    errorErrors.push(...e.errors)
   }
 
   const errorData = e.response?.data
@@ -773,10 +777,10 @@ export function processUploadError(e: any, fileName: string): UploadErrorInfo {
 
   const clasificacion = clasificarError(e, errorMessageStr, errorErrors, productosNoEncontradosSAP, tiendasNoEncontradasSAP, bodegasNoEncontradasSAP)
 
-  const { title: errorTitle, message: errorMessage } = construirTituloYMensaje(
-    e, errorMessageStr, errorErrors, productosNoEncontradosSAP, tiendasNoEncontradasSAP, bodegasNoEncontradasSAP,
-    clasificacion, errorTitleInicial, errorMessageInicial
-  )
+  const { title: errorTitle, message: errorMessage } = construirTituloYMensaje({
+    e, errorMessageStr, errorErrors, productos: productosNoEncontradosSAP, tiendas: tiendasNoEncontradasSAP, bodegas: bodegasNoEncontradasSAP,
+    clasificacion, errorTitleActual: errorTitleInicial, errorMessageActual: errorMessageInicial
+  })
 
   // ⭐ Extraer información de validacion_sap del backend (incluye MBA3 y sugerencias). Busca en
   // múltiples ubicaciones posibles: directamente en data.validacion_sap (formato estándar), o en
@@ -931,9 +935,10 @@ export function extraerCodigosDeErrorInfo(errorInfo: UploadErrorInfo): string[] 
 
 /** Mensaje del toast de error: lista de códigos si hay, si no la primera línea del mensaje. */
 export function construirMensajeToastError(errorInfo: UploadErrorInfo, codigos: string[]): string {
-  return codigos.length > 0
-    ? `Códigos no válidos: ${codigos.slice(0, 5).join(', ')}${codigos.length > 5 ? ` y ${codigos.length - 5} más` : ''}`
-    : errorInfo.message.split('\n')[0]
+  if (codigos.length === 0) return errorInfo.message.split('\n')[0]
+  const primeros = codigos.slice(0, 5).join(', ')
+  const extra = codigos.length > 5 ? ` y ${codigos.length - 5} más` : ''
+  return `Códigos no válidos: ${primeros}${extra}`
 }
 
 /** Reemplaza a router.replace/loadPedido segun si el pedido cargado es el mismo que ya se estaba viendo. */
@@ -1036,20 +1041,17 @@ export function useFileUpload(options: {
       workerPickupTimeoutMs: PLANTILLA_WORKER_PICKUP_TIMEOUT_MS,
       workerNotStartedMessage:
         'El worker de Celery no tomó la plantilla en el tiempo esperado. El procesamiento en segundo plano parece estar detenido.',
-      poll: () => mba3ConsultasService.getResultadoPlantilla(processId),
+      poll: () => pedidosService.getResultadoPlantilla(processId),
       isProcessing: (result) => result.status === 'processing',
       hasWorkerStarted: (result) => {
         if (result.status !== 'processing') return false
-        const estado = result as PlantillaProcesoEstado
-        const serverProgress = estado.progress ?? 0
-        const serverStep = estado.step ?? ''
+        const serverProgress = result.progress ?? 0
+        const serverStep = result.step ?? ''
         return serverProgress > 0 || !!(serverStep && serverStep !== 'iniciando')
       },
       getTerminalError: (result) => {
         if (result.status === 'error' && 'error' in result) {
-          const err: any = new Error(
-            (result as PlantillaProcesoEstado).error || (result as PlantillaProcesoEstado).message
-          )
+          const err: any = new Error(result.error || result.message)
           err.response = { data: result }
           return err
         }
@@ -1057,7 +1059,7 @@ export function useFileUpload(options: {
       },
       onUpdate: (result) => {
         if (result.status !== 'processing') return
-        applyPlantillaProcessingUpdate(result as PlantillaProcesoEstado, {
+        applyPlantillaProcessingUpdate(result, {
           uploadMessage,
           uploadProgress,
         })
@@ -1085,7 +1087,10 @@ export function useFileUpload(options: {
 
     processingProgressInterval = setInterval(() => {
       if (currentProgress < PROCESSING_SIMULATION_CAP) {
-        const increment = currentProgress < 50 ? 2 : currentProgress < 75 ? 1 : 0.5
+        let increment: number
+        if (currentProgress < 50) increment = 2
+        else if (currentProgress < 75) increment = 1
+        else increment = 0.5
         currentProgress = Math.min(PROCESSING_SIMULATION_CAP, currentProgress + increment)
         uploadProgress.value = Math.round(currentProgress)
         updateUploadMessage('processing', currentProgress)
@@ -1215,10 +1220,10 @@ export function useFileUpload(options: {
   /** Sube el archivo (async con polling, o su fallback inmediato) o el flujo sincrono clasico segun useAsyncUpload. */
   async function realizarSubida(file: File): Promise<UploadPlantillaResponse> {
     if (!options?.useAsyncUpload) {
-      return await mba3ConsultasService.uploadPlantilla(file, handleUploadProgress)
+      return await pedidosService.uploadPlantilla(file, handleUploadProgress)
     }
     try {
-      const accepted = await mba3ConsultasService.uploadPlantillaAsync(file, {}, handleUploadProgress)
+      const accepted = await pedidosService.uploadPlantillaAsync(file, {}, handleUploadProgress)
       // Backend puede devolver 200 con resultado completo (fallback sync: process_id null, async false) — no hacer polling
       if (!esResultadoInmediatoUpload(accepted)) {
         return await waitForAsyncPlantillaResult(
@@ -1268,7 +1273,7 @@ export function useFileUpload(options: {
       // Si no viene en la respuesta, intentar obtenerlo del pedido cargado usando pedido_id (necesario para redirigir)
       if (!numeroPedido && response.pedido_id) {
         try {
-          const pedidoCompleto = await mba3ConsultasService.getPedido(response.pedido_id, false)
+          const pedidoCompleto = await pedidosService.getPedido(response.pedido_id, false)
           numeroPedido = pedidoCompleto.cabecera.numero_pedido || undefined
         } catch (e) {
           console.warn('No se pudo obtener el numero_pedido del pedido cargado:', e)
@@ -1368,7 +1373,7 @@ export function useFileUpload(options: {
       let response: UploadPlantillaResponse
       try {
         // ⭐ Subir con correcciones en segundo plano (upload-async + Celery)
-        const accepted = await mba3ConsultasService.uploadPlantillaAsync(
+        const accepted = await pedidosService.uploadPlantillaAsync(
           file,
           { correcciones_codigos: correccionesAcumuladas.value.correccionesCodigos },
           handleProgress
@@ -1400,7 +1405,7 @@ export function useFileUpload(options: {
       let numeroPedido = extraerNumeroPedidoDeRespuesta(response)
       if (!numeroPedido && response.pedido_id && options?.pedido?.value) {
         try {
-          const pedidoCompleto = await mba3ConsultasService.getPedido(response.pedido_id, false)
+          const pedidoCompleto = await pedidosService.getPedido(response.pedido_id, false)
           numeroPedido = pedidoCompleto.cabecera.numero_pedido || undefined
         } catch (e) {
           console.warn('No se pudo obtener el numero_pedido del pedido cargado:', e)
