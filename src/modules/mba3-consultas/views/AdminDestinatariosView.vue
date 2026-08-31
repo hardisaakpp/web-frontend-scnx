@@ -293,7 +293,14 @@ async function cargarUsuarios() {
   try {
     const response = await api.get('/Users/list')
     const payload = response.data as any
-    const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
+    let items: any[]
+    if (Array.isArray(payload)) {
+      items = payload
+    } else if (Array.isArray(payload?.data)) {
+      items = payload.data
+    } else {
+      items = []
+    }
     usuarios.value = items.map(normalizeUsuario).filter((u: UsuarioOption) => u.email)
   } catch {
     // Silencioso: si falla, los campos siguen funcionando como texto libre
