@@ -68,6 +68,14 @@ export interface ReceptionTransfer {
   sapStockTransferDocEntry?: number | null
   sapStockTransferDocNum?: number | null
   differencesCount: number
+  /**
+   * Real backend field — set when SAP queued the confirm instead of resolving it inline; a
+   * background job retries every 5 min. Source of truth for a "procesando" UI state that survives
+   * a page reload, independent of any single confirm() response (per backend team: don't rely on
+   * the one-off confirm response for this — re-fetching the transfer is what stays correct).
+   * Null/absent means there is nothing pending.
+   */
+  pendingSapJobQueuedAtUtc?: string | null
 }
 
 /**
@@ -107,6 +115,23 @@ export interface SaveScanProgressRequest {
 
 export interface ConfirmTransferRequest {
   allowPartial?: boolean
+}
+
+/**
+ * Real backend: ConfirmReceptionTransferResult(Success, SapDocEntry, SapDocNum, Message, Reason?).
+ * `reason` is only present when success is false:
+ * - 'Queued' / 'StillPending' — SAP confirmation was queued, not an error. No user action needed;
+ *   a background job retries every 5 min (plus reconciliation on a repeat confirm click).
+ * - 'Rejected' — a real SAP validation/business-rule rejection that needs the user's attention.
+ * Per backend team: use `reason`, not `message` text, to tell these apart — `message` is Spanish
+ * text meant for direct display, not parsing.
+ */
+export interface ConfirmTransferResponse {
+  success: boolean
+  sapDocEntry: number | null
+  sapDocNum: number | null
+  message: string
+  reason?: 'Queued' | 'StillPending' | 'Rejected'
 }
 
 /**

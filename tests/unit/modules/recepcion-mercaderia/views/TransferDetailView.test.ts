@@ -108,6 +108,30 @@ describe('TransferDetailView', () => {
     expect(wrapper.text()).toContain('6')
   })
 
+  it('shows a "Procesando en SAP" badge when the transfer has a queued SAP confirm job pending', async () => {
+    mockAuth(['recepcion.reception.view'])
+    vi.mocked(recepcionApi.getTransfer).mockResolvedValue(
+      mockGetTransfer(buildTransfer({ pendingSapJobQueuedAtUtc: '2026-08-31T12:00:00Z' }))
+    )
+
+    const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="pending-sap-job-badge"]').exists()).toBe(true)
+  })
+
+  it('does not show the "Procesando en SAP" badge when there is no pending SAP job', async () => {
+    mockAuth(['recepcion.reception.view'])
+    vi.mocked(recepcionApi.getTransfer).mockResolvedValue(
+      mockGetTransfer(buildTransfer({ pendingSapJobQueuedAtUtc: null }))
+    )
+
+    const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+
+    expect(wrapper.find('[data-testid="pending-sap-job-badge"]').exists()).toBe(false)
+  })
+
   it('shows transitoria -> destino real in the subtitle when the transfer has a transit warehouse', async () => {
     mockAuth(['recepcion.picking.scan'])
     vi.mocked(recepcionApi.getTransfer).mockResolvedValue(
