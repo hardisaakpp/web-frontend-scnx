@@ -5,6 +5,7 @@ import { ref, Ref, computed } from '@vue/reactivity'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
+import { pedidosService } from '../services/domains/pedidos'
 import type { PedidoCompleto, ReporteDiferenciasResponse } from '../types'
 
 const SCROLL_DELAY_MS = 100
@@ -130,7 +131,7 @@ export function usePedidoDetalle(options: {
 
       limpiarModificacionesSiCambioPedido(pedidoAnterior)
 
-      options.pedido.value = await mba3ConsultasService.getPedido(options.numeroPedido.value, true)
+      options.pedido.value = await pedidosService.getPedido(options.numeroPedido.value, true)
 
       await cargarModificacionesConFallback()
 
