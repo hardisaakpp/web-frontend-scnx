@@ -4,6 +4,7 @@ trigger:
     include:
       - main       # Producción
       - test       # Pruebas (DESA)
+      - develop    # Desarrollo
       - ci/*
       - feature/*
       - fix/*
@@ -40,6 +41,13 @@ variables:
       value: 'test-latest'
     - name: uniqueTag
       value: 'test-$(Build.BuildId)'
+    - name: basePath
+      value: '/scnexus-front/'
+  - ${{ elseif eq(variables['Build.SourceBranchName'], 'develop') }}:
+    - name: envTag
+      value: 'dev-latest'
+    - name: uniqueTag
+      value: 'dev-$(Build.BuildId)'
     - name: basePath
       value: '/scnexus-front/'
   - ${{ else }}:

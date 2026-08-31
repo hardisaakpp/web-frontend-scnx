@@ -59,6 +59,7 @@ export const useReposicionStore = defineStore('reposicion', {
       unidades: []
     } as ListasFiltros,
     almacenes: [] as Almacen[],
+    catalogoAlmacenes: [] as Almacen[],
     carrito: [] as CarritoItem[],
     carritoInfo: {
       fromWhs: '',
@@ -82,6 +83,12 @@ export const useReposicionStore = defineStore('reposicion', {
     comentarioPorCodigo: (state) => (itemCode: string) => {
       const item = state.carrito.find((i: CarritoItem) => i.itemCode === itemCode)
       return item ? item.comment ?? '' : ''
+    },
+    etiquetaAlmacen: (state) => (code: string | null | undefined) => {
+      if (!code) return ''
+      const info = state.catalogoAlmacenes.find(a => a.code === code)
+      if (!info?.name || info.name === info.code) return code
+      return `${info.code} — ${info.name}`
     }
   },
 
@@ -90,16 +97,28 @@ export const useReposicionStore = defineStore('reposicion', {
       try {
         const authStore = useAuthStore()
         const accesses: any = authStore.userWarehouseAccesses
+
+        try {
+          this.catalogoAlmacenes = await reposicionApi.getAlmacenes()
+        } catch (err) {
+          console.error('Error al cargar catálogo de almacenes', err)
+        }
+
         const newAlmacenes: Almacen[] = []
-        
+
         if (accesses) {
           const accessList = Array.isArray(accesses) ? accesses : [accesses]
           accessList.forEach((a: any) => {
             if (a.codAlmacen) {
-              if (!newAlmacenes.some(alm => alm.whsCode === a.codAlmacen)) {
+              const info = this.catalogoAlmacenes.find(c => c.code === a.codAlmacen)
+              // Un Centro de Distribución no es un destino de reposición: si el
+              // codAlmacen asignado resulta ser un CD (uso del rol "negocio"),
+              // se excluye de las bodegas seleccionables en el catálogo de tienda.
+              if (info?.esCentroDistribucion) return
+              if (!newAlmacenes.some(alm => alm.code === a.codAlmacen)) {
                 newAlmacenes.push({
-                  whsCode: a.codAlmacen,
-                  whsName: a.codAlmacen
+                  code: a.codAlmacen,
+                  name: info?.name ?? a.codAlmacen
                 })
               }
             }
@@ -109,7 +128,7 @@ export const useReposicionStore = defineStore('reposicion', {
         this.almacenes = newAlmacenes
 
         if (this.almacenes.length > 0 && !this.filters.whsCode) {
-          this.filters.whsCode = this.almacenes[0].whsCode
+          this.filters.whsCode = this.almacenes[0].code
         }
       } catch (err) {
         console.error('Error al procesar almacenes de sesión:', err)
@@ -198,7 +217,8 @@ export const useReposicionStore = defineStore('reposicion', {
           toWhs,
           fromWhs,
           itemCode,
-          quantity
+          quantity,
+          usuarioNombre: authStore.fullName || authStore.userName
         })
       } catch (err) {
         await this.fetchCarrito()
@@ -242,6 +262,17 @@ export const useReposicionStore = defineStore('reposicion', {
     setFilters(newFilters: Partial<CatalogoFilters>) {
       this.filters = { ...this.filters, ...newFilters, pageNumber: 1 }
       this.fetchCatalogo()
+    },
+
+    resetFilters() {
+      this.filters.descripcion = ''
+      this.filters.itemCode = ''
+      this.filters.codeBars = ''
+      this.filters.marca = ''
+      this.filters.unidad = ''
+      this.filters.categoria = ''
+      this.filters.linea = ''
+      this.filters.pageNumber = 1
     },
 
     async initialize() {

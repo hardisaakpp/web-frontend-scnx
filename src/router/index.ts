@@ -20,9 +20,12 @@ import inventarioRoutes from '../modules/inventario/router'
 import promocionSobresRoutes from '../modules/promocion-sobres/router'
 import transaccionesRoutes from '../modules/transacciones/router'
 import reposicionesRoutes from '../modules/reposiciones/router'
+import recepcionMercaderiaRoutes from '../modules/recepcion-mercaderia/router'
 import ruletaRoutes from '../modules/ruleta/router'
 import transferenciasDirectasRoutes from '../modules/transferencias-directas/router'
-import demandaOtbRoutes from '../modules/demanda-otb/router'
+
+console.log('🔍 DEBUG usuariosRoutes:', usuariosRoutes)
+console.log('🔍 DEBUG cajaChicaRoutes:', cajaChicaRoutes)
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -56,7 +59,7 @@ const router = createRouter({
           path: 'user',
           name: 'user',
           component: UserView,
-          meta: { requiresAuth: true, role: 'User' }
+          meta: { requiresAuth: true }
         },
         {
           path: 'users',
@@ -76,8 +79,8 @@ const router = createRouter({
         ...transaccionesRoutes,
         ...transferenciasDirectasRoutes,
         ...reposicionesRoutes,
+        ...recepcionMercaderiaRoutes,
         ...ruletaRoutes,
-        ...demandaOtbRoutes,
         {
           path: 'forbidden',
           name: 'forbidden',

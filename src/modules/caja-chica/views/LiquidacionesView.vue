@@ -34,11 +34,13 @@
         </div>
 
         <div v-if="isCreateOpen" class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <!-- Fila 1: almacén + datos que se llenan solos a partir de él -->
           <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Almacén asignado*</label>
+            <label for="liquidacion-almacen" class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Almacén asignado*</label>
             <select
+              id="liquidacion-almacen"
               v-model="selectedCodAlmacen"
-              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+              class="w-full rounded border-2 border-gray-400 dark:border-gray-500 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
             >
               <option value="">Seleccionar almacén</option>
               <option v-for="almacen in assignedAlmacenes" :key="almacen.codAlmacen" :value="almacen.codAlmacen">
@@ -47,61 +49,87 @@
             </select>
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Nombre custodio</label>
+            <label for="liquidacion-empresa" class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Empresa <span class="italic text-gray-400 dark:text-gray-500">(automático, no editable)</span></label>
             <input
-              v-model.trim="nombreCustodio"
+              id="liquidacion-empresa"
+              v-model="empresa"
               type="text"
-              placeholder="Nombre completo"
               readonly
-              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+              tabindex="-1"
+              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 px-3 py-2 text-sm text-gray-500 dark:text-gray-400 cursor-not-allowed"
             />
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Cédula custodio*</label>
+            <label for="liquidacion-marca" class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Marca <span class="italic text-gray-400 dark:text-gray-500">(automático, no editable)</span></label>
             <input
+              id="liquidacion-marca"
+              v-model="marca"
+              type="text"
+              readonly
+              tabindex="-1"
+              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 px-3 py-2 text-sm text-gray-500 dark:text-gray-400 cursor-not-allowed"
+            />
+          </div>
+
+          <!-- Fila 2: cédula + datos del custodio que se llenan solos a partir de ella -->
+          <div>
+            <label for="liquidacion-cedula-custodio" class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Cédula custodio*</label>
+            <input
+              id="liquidacion-cedula-custodio"
               v-model.trim="cedulaCustodio"
               type="text"
               placeholder="Identificacion"
-              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+              class="w-full rounded border-2 border-gray-400 dark:border-gray-500 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
               @blur="validateCreateCustodio"
             />
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">CardCode custodio (SAP)</label>
+            <label for="liquidacion-nombre-custodio" class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Nombre custodio <span class="italic text-gray-400 dark:text-gray-500">(automático, no editable)</span></label>
             <input
-              v-model="cardCodeCustodio"
+              id="liquidacion-nombre-custodio"
+              v-model.trim="nombreCustodio"
               type="text"
+              placeholder="Se completa al ingresar la cédula"
               readonly
-              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-700 dark:text-gray-300"
+              tabindex="-1"
+              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 px-3 py-2 text-sm text-gray-500 dark:text-gray-400 cursor-not-allowed"
             />
           </div>
           <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Forma de pago*</label>
+            <label for="liquidacion-cardcode-custodio" class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">CardCode custodio (SAP) <span class="italic text-gray-400 dark:text-gray-500">(automático, no editable)</span></label>
+            <input
+              id="liquidacion-cardcode-custodio"
+              v-model="cardCodeCustodio"
+              type="text"
+              readonly
+              tabindex="-1"
+              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 px-3 py-2 text-sm text-gray-500 dark:text-gray-400 cursor-not-allowed"
+            />
+          </div>
+
+          <!-- Fila 3: montos y forma de pago -->
+          <div>
+            <label for="liquidacion-monto-inicial" class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Monto inicial recibido*</label>
+            <input
+              id="liquidacion-monto-inicial"
+              v-model="montoInicial"
+              type="number"
+              step="0.01"
+              min="0.01"
+              placeholder="0.00"
+              class="w-full rounded border-2 border-gray-400 dark:border-gray-500 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+            />
+          </div>
+          <div>
+            <label for="liquidacion-forma-pago" class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Forma de pago*</label>
             <select
+              id="liquidacion-forma-pago"
               v-model="formatoDePago"
-              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+              class="w-full rounded border-2 border-gray-400 dark:border-gray-500 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
             >
               <option value="Transferencia">Transferencia</option>
               <option value="Cheque">Cheque</option>
             </select>
-          </div>
-          <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Empresa</label>
-            <input
-              v-model="empresa"
-              type="text"
-              readonly
-              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-700 dark:text-gray-300"
-            />
-          </div>
-          <div>
-            <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Marca</label>
-            <input
-              v-model="marca"
-              type="text"
-              readonly
-              class="w-full rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-700 dark:text-gray-300"
-            />
           </div>
         </div>
         <div v-if="isCreateOpen" class="mt-4 flex items-center gap-3">
@@ -149,7 +177,10 @@
                 <th class="py-2 pr-3">Id</th>
                 <th class="py-2 pr-3">Almacén</th>
                 <th class="py-2 pr-3">Custodio</th>
+                <th class="py-2 pr-3">Cédula custodio</th>
+                <th class="py-2 pr-3">Monto inicial</th>
                 <th class="py-2 pr-3">Fecha</th>
+                <th class="py-2 pr-3">Estado</th>
                 <th class="py-2 pr-3">Acciones</th>
               </tr>
             </thead>
@@ -158,7 +189,18 @@
                 <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.idLiquidacion }}</td>
                 <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.codAlmacen }}</td>
                 <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.nombreCustodio }}</td>
+                <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.cedulaCustodio }}</td>
+                <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ formatAmount(item.montoInicial) }}</td>
                 <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.fechaCreacion }}</td>
+                <td class="py-2 pr-3">
+                  <span
+                    v-if="item.fueDevuelta"
+                    class="inline-block rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 px-2 py-0.5 text-xs font-medium"
+                  >
+                    Devuelta para corrección
+                  </span>
+                  <span v-else class="text-xs text-gray-400">-</span>
+                </td>
                 <td class="py-2 pr-3">
                   <div class="flex items-center gap-2">
                     <button
@@ -172,7 +214,7 @@
                       type="button"
                       class="text-indigo-600 hover:text-indigo-700 text-xs font-medium disabled:opacity-50"
                       :disabled="sendingId === item.idLiquidacion"
-                      @click="sendLiquidacion(item)"
+                      @click="confirmSendLiquidacion(item)"
                     >
                       Enviar
                     </button>
@@ -182,6 +224,14 @@
                     >
                       Detalles
                     </router-link>
+                    <button
+                      v-if="item.fueDevuelta"
+                      type="button"
+                      class="text-amber-600 hover:text-amber-700 text-xs font-medium"
+                      @click="verMotivo(item)"
+                    >
+                      Ver motivo
+                    </button>
                     <button
                       type="button"
                       class="text-red-600 hover:text-red-700 text-xs font-medium"
@@ -215,12 +265,13 @@
               </select>
             </div>
             <div>
-              <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Nombre custodio</label>
+              <label for="liquidacion-edit-nombre-custodio" class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Nombre custodio <span class="italic text-gray-400 dark:text-gray-500">(automático, no editable)</span></label>
               <input
+                id="liquidacion-edit-nombre-custodio"
                 v-model.trim="editNombreCustodio"
                 type="text"
                 readonly
-                class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+                class="w-full rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 cursor-not-allowed"
               />
             </div>
             <div>
@@ -283,6 +334,17 @@
                 class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
               />
             </div>
+            <div>
+              <label for="liquidacion-edit-monto-inicial" class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Monto inicial recibido*</label>
+              <input
+                id="liquidacion-edit-monto-inicial"
+                v-model="editMontoInicial"
+                type="number"
+                step="0.01"
+                min="0.01"
+                class="w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
+              />
+            </div>
           </div>
           <div class="mt-4 flex items-center gap-3">
             <button
@@ -305,6 +367,105 @@
           </div>
         </div>
       </div>
+
+      <!-- Rechazadas -->
+      <div v-if="rechazadasFiltradas.length > 0" class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-5">
+        <div class="mb-4">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Rechazadas</h2>
+          <p class="text-xs text-gray-500 dark:text-gray-400">Liquidaciones rechazadas definitivamente</p>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm">
+            <thead>
+              <tr class="text-left text-xs uppercase text-gray-500 dark:text-gray-400">
+                <th class="py-2 pr-3">Id</th>
+                <th class="py-2 pr-3">Almacén</th>
+                <th class="py-2 pr-3">Monto inicial</th>
+                <th class="py-2 pr-3">Fecha</th>
+                <th class="py-2 pr-3">Acciones</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+              <tr v-for="item in rechazadasFiltradas" :key="item.idLiquidacion">
+                <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.idLiquidacion }}</td>
+                <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.codAlmacen }}</td>
+                <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ formatAmount(item.montoInicial) }}</td>
+                <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.fechaCreacion }}</td>
+                <td class="py-2 pr-3">
+                  <div class="flex items-center gap-2">
+                    <router-link
+                      class="text-blue-600 hover:text-blue-700 text-xs font-medium"
+                      :to="{ path: `/caja-chica/liquidaciones/${item.idLiquidacion}/detalle`, query: { readonly: '1' } }"
+                    >
+                      Detalles
+                    </router-link>
+                    <button
+                      type="button"
+                      class="text-amber-600 hover:text-amber-700 text-xs font-medium"
+                      @click="verMotivo(item)"
+                    >
+                      Ver motivo
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div v-if="motivoModalItem" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4">
+    <div class="w-full max-w-md rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5 shadow-xl">
+      <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+        Motivo — liquidación #{{ motivoModalItem.idLiquidacion }}
+      </h3>
+      <div v-if="motivoLoading" class="text-sm text-gray-500 dark:text-gray-400">Cargando...</div>
+      <div v-else-if="motivoError" class="text-sm text-red-600 dark:text-red-400">{{ motivoError }}</div>
+      <div v-else-if="motivoData">
+        <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">
+          {{ motivoData.tipoAccion === 'RECHAZO_DEFINITIVO' ? 'Rechazada definitivamente' : 'Devuelta para corrección' }}
+          · {{ motivoData.fecha ? new Date(motivoData.fecha).toLocaleString('es-PA') : '' }}
+        </p>
+        <p class="text-sm text-gray-800 dark:text-gray-100 whitespace-pre-wrap">{{ motivoData.observacion }}</p>
+      </div>
+      <div v-else class="text-sm text-gray-500 dark:text-gray-400">Sin motivo registrado.</div>
+      <div class="mt-4 flex items-center justify-end">
+        <button
+          type="button"
+          class="rounded border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300"
+          @click="motivoModalItem = null"
+        >
+          Cerrar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div v-if="confirmSendItem" class="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4">
+    <div class="w-full max-w-sm rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-5 shadow-xl">
+      <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-2">Enviar liquidación</h3>
+      <p class="text-sm text-gray-600 dark:text-gray-300">
+        ¿Estás seguro de enviar la liquidación #{{ confirmSendItem.idLiquidacion }} para aprobación?
+      </p>
+      <div class="mt-4 flex items-center justify-end gap-2">
+        <button
+          type="button"
+          class="rounded border border-gray-200 dark:border-gray-700 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300"
+          @click="confirmSendItem = null"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="rounded bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium px-3 py-1.5 disabled:opacity-50"
+          :disabled="sendingId === confirmSendItem.idLiquidacion"
+          @click="sendLiquidacion(confirmSendItem)"
+        >
+          Confirmar envío
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -314,6 +475,7 @@ import { computed, onMounted, ref, watch } from '@vue/runtime-core'
 import { cajaChicaApi } from '../services/cajaChicaApi'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
+import { extractItemsArray } from '../utils/apiPayload'
 
 function getAlmacenesAsignadosDelToken(authStore: ReturnType<typeof useAuthStore>): string[] {
   const raw = authStore.userWarehouseAccesses
@@ -354,6 +516,8 @@ interface LiquidacionItem {
   numeroLiquidacion: string
   autorizacion: string
   datosBancarios: string
+  montoInicial: number
+  fueDevuelta: boolean
 }
 
 interface ProveedorSapLookupItem {
@@ -371,6 +535,7 @@ const cardCodeCustodio = ref('')
 const formatoDePago = ref('Transferencia')
 const empresa = ref('')
 const marca = ref('')
+const montoInicial = ref('')
 const formError = ref('')
 const formSuccess = ref('')
 const loading = ref(false)
@@ -391,11 +556,24 @@ const editEmpresa = ref('')
 const editMarca = ref('')
 const editAutorizacion = ref('')
 const editDatosBancarios = ref('')
+const editMontoInicial = ref('')
 const editError = ref('')
 const editSuccess = ref('')
 const sendError = ref('')
 const sendSuccess = ref('')
 const sendingId = ref<number | null>(null)
+const confirmSendItem = ref<LiquidacionItem | null>(null)
+
+interface HistorialEstadoItem {
+  observacion: string
+  tipoAccion: string
+  fecha: string
+}
+
+const motivoModalItem = ref<LiquidacionItem | null>(null)
+const motivoLoading = ref(false)
+const motivoError = ref('')
+const motivoData = ref<HistorialEstadoItem | null>(null)
 
 const volver = () => {
   router.back()
@@ -436,6 +614,17 @@ const borradoresFiltrados = computed(() => {
   })
 })
 
+const rechazadasFiltradas = computed(() => {
+  const currentUserId = getCurrentUserId()
+  const assignedSet = new Set(asignados.value.map(item => item.codAlmacen))
+  return borradores.value.filter(item => {
+    const isRechazada = item.estado.toUpperCase() === 'RECHAZADA'
+    const isAssigned = assignedSet.size === 0 || assignedSet.has(item.codAlmacen)
+    const isCurrentUser = item.idUsuario === currentUserId
+    return isRechazada && isAssigned && isCurrentUser
+  })
+})
+
 const canSubmit = computed(() =>
   selectedCodAlmacen.value.trim() &&
   nombreCustodio.value.trim() &&
@@ -443,7 +632,8 @@ const canSubmit = computed(() =>
   cardCodeCustodio.value.trim() &&
   formatoDePago.value.trim() &&
   empresa.value.trim() &&
-  marca.value.trim()
+  marca.value.trim() &&
+  Number(montoInicial.value) > 0
 )
 
 const canUpdate = computed(() =>
@@ -454,8 +644,11 @@ const canUpdate = computed(() =>
   editCardCodeCustodio.value.trim() &&
   editFormatoDePago.value.trim() &&
   editEmpresa.value.trim() &&
-  editMarca.value.trim()
+  editMarca.value.trim() &&
+  Number(editMontoInicial.value) > 0
 )
+
+const formatAmount = (value: number) => (Number.isFinite(value) ? value.toFixed(2) : '0.00')
 
 const CUSTODIO_CARD_CODE_STORAGE_KEY = 'cajaChicaCustodioCardCodes'
 
@@ -559,7 +752,9 @@ const normalizeLiquidacion = (item: any): LiquidacionItem => ({
   formatoDePago: normalizeString(item.formatoDePago ?? item.FormatoDePago ?? ''),
   numeroLiquidacion: normalizeString(item.numeroLiquidacion ?? item.NumeroLiquidacion ?? ''),
   autorizacion: normalizeString(item.autorizacion ?? item.Autorizacion ?? ''),
-  datosBancarios: normalizeString(item.datosBancarios ?? item.DatosBancarios ?? '')
+  datosBancarios: normalizeString(item.datosBancarios ?? item.DatosBancarios ?? ''),
+  montoInicial: Number(item.montoInicial ?? item.MontoInicial ?? 0),
+  fueDevuelta: Boolean(item.fueDevuelta ?? item.FueDevuelta ?? false)
 })
 
 const loadEmpresas = async () => {
@@ -663,7 +858,8 @@ const createLiquidacion = async () => {
       Estado: 'BORRADOR',
       NumeroLiquidacion: '',
       Autorizacion: '',
-      DatosBancarios: ''
+      DatosBancarios: '',
+      MontoInicial: Number(montoInicial.value)
     })
 
     formSuccess.value = 'Liquidacion creada.'
@@ -674,6 +870,7 @@ const createLiquidacion = async () => {
     cedulaCustodio.value = ''
     cardCodeCustodio.value = ''
     formatoDePago.value = 'Transferencia'
+    montoInicial.value = ''
   } catch (err: any) {
     const message = err?.response?.data?.message || err?.response?.data
     formError.value = message || 'No se pudo crear la liquidacion.'
@@ -691,6 +888,7 @@ const startEdit = (item: LiquidacionItem) => {
   editMarca.value = item.marca
   editAutorizacion.value = item.autorizacion
   editDatosBancarios.value = item.datosBancarios
+  editMontoInicial.value = item.montoInicial ? String(item.montoInicial) : ''
   editError.value = ''
   editSuccess.value = ''
   void validateEditCustodio()
@@ -707,6 +905,7 @@ const cancelEdit = () => {
   editMarca.value = ''
   editAutorizacion.value = ''
   editDatosBancarios.value = ''
+  editMontoInicial.value = ''
   editError.value = ''
   editSuccess.value = ''
 }
@@ -737,7 +936,9 @@ const updateLiquidacion = async () => {
       NumeroLiquidacion: original.numeroLiquidacion || '',
       Autorizacion: editAutorizacion.value,
       DatosBancarios: editDatosBancarios.value,
-      Estado: original.estado || 'BORRADOR'
+      Estado: original.estado || 'BORRADOR',
+      MontoInicial: Number(editMontoInicial.value),
+      FueDevuelta: original.fueDevuelta
     })
 
     editSuccess.value = 'Cabecera actualizada.'
@@ -761,24 +962,56 @@ const deleteLiquidacion = async (item: LiquidacionItem) => {
   }
 }
 
+const confirmSendLiquidacion = (item: LiquidacionItem) => {
+  sendError.value = ''
+  sendSuccess.value = ''
+  confirmSendItem.value = item
+}
+
 const sendLiquidacion = async (item: LiquidacionItem) => {
   sendError.value = ''
   sendSuccess.value = ''
   sendingId.value = item.idLiquidacion
 
   try {
-    const confirmed = window.confirm('Estas seguro de enviar esta liquidacion?')
-    if (!confirmed) return
-
     await cajaChicaApi.post(`/Liquidaciones/${item.idLiquidacion}/enviar`)
 
     sendSuccess.value = 'Liquidacion enviada.'
+    confirmSendItem.value = null
     await loadBorradores()
   } catch (err: any) {
-    const message = err?.response?.data?.message || err?.response?.data
-    sendError.value = message || 'No se pudo enviar la liquidacion.'
+    const status = err?.response?.status
+    const rawMessage = err?.response?.data?.message || err?.response?.data
+    const message = typeof rawMessage === 'string' && rawMessage.trim() && !rawMessage.trim().startsWith('<')
+      ? rawMessage.trim()
+      : null
+    sendError.value = message || `No se pudo enviar la liquidacion (código ${status ?? 'desconocido'}). Intenta nuevamente.`
+    confirmSendItem.value = null
   } finally {
     sendingId.value = null
+  }
+}
+
+const verMotivo = async (item: LiquidacionItem) => {
+  motivoModalItem.value = item
+  motivoData.value = null
+  motivoError.value = ''
+  motivoLoading.value = true
+  try {
+    const response = await cajaChicaApi.get(`/Liquidaciones/${item.idLiquidacion}/historial-estado`)
+    const items = extractItemsArray(response.data)
+    const latest = items[0]
+    motivoData.value = latest
+      ? {
+          observacion: String(latest.observacion ?? latest.Observacion ?? ''),
+          tipoAccion: String(latest.tipoAccion ?? latest.TipoAccion ?? ''),
+          fecha: String(latest.fecha ?? latest.Fecha ?? '')
+        }
+      : null
+  } catch {
+    motivoError.value = 'No se pudo cargar el motivo.'
+  } finally {
+    motivoLoading.value = false
   }
 }
 

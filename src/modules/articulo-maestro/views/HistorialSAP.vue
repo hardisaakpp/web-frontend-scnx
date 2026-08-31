@@ -100,8 +100,19 @@
                                     {{ record.estado_resultado }}
                                 </span>
                             </td>
-                            <td class="px-6 py-4 text-xs">
-                                <span class="line-clamp-2" :title="record.mensaje_sap">{{ record.mensaje_sap }}</span>
+                            <td class="px-6 py-4 text-xs max-w-sm">
+                                <span class="line-clamp-2">{{ resumenMensaje(record).resumen }}</span>
+                                <button
+                                    v-if="resumenMensaje(record).detalleTecnico"
+                                    @click="toggleDetalleTecnico(record.id)"
+                                    class="mt-1 block text-[10px] font-medium text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 underline decoration-dotted"
+                                >
+                                    {{ detallesTecnicosAbiertos.has(record.id) ? 'Ocultar detalle técnico' : 'Ver detalle técnico' }}
+                                </button>
+                                <pre
+                                    v-if="detallesTecnicosAbiertos.has(record.id) && resumenMensaje(record).detalleTecnico"
+                                    class="mt-1 text-[10px] leading-relaxed text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-700 rounded-lg p-2 overflow-x-auto whitespace-pre-wrap break-words max-w-sm"
+                                >{{ resumenMensaje(record).detalleTecnico }}</pre>
                             </td>
                             <td class="px-6 py-4 text-xs">{{ record.usuario_sincroniza }}</td>
                             <td class="px-6 py-4 text-xs text-gray-500">{{ formatDate(record.fecha) }}</td>
@@ -139,7 +150,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { historialService } from '../services/articuloService'
+import { historialService, resumirDetalleSap } from '../services/articuloService'
 import type { HistorialSapRecord } from '../services/articuloService'
 
 const records = ref<HistorialSapRecord[]>([])
@@ -148,6 +159,29 @@ const total = ref(0)
 const currentPage = ref(1)
 const pageSize = ref(15)
 const searchCode = ref('')
+// IDs de registro cuyo acordeón de "detalle técnico" está expandido.
+const detallesTecnicosAbiertos = ref<Set<number>>(new Set())
+
+// Reutiliza el mismo filtro de trazas técnicas (pymssql/SQL Server/ODBC)
+// que MigracionSAP.vue: separa el mensaje de negocio limpio del rastro
+// crudo, que solo se muestra bajo demanda en el acordeón.
+function resumenMensaje(record: HistorialSapRecord) {
+    return resumirDetalleSap({
+        item_code: record.item_code,
+        status: record.estado_resultado,
+        message: record.mensaje_sap ?? '',
+    })
+}
+
+function toggleDetalleTecnico(id: number) {
+    const abiertos = new Set(detallesTecnicosAbiertos.value)
+    if (abiertos.has(id)) {
+        abiertos.delete(id)
+    } else {
+        abiertos.add(id)
+    }
+    detallesTecnicosAbiertos.value = abiertos
+}
 
 const totalPages = computed(() => Math.ceil(total.value / pageSize.value))
 
@@ -165,6 +199,7 @@ async function fetchHistory() {
         )
         records.value = response.data
         total.value = response.total
+        detallesTecnicosAbiertos.value = new Set()
     } catch {
         // error silencioso — la tabla muestra estado vacío
     } finally {

@@ -26,13 +26,21 @@ invPlanesApi.interceptors.response.use(
 
 export const inventarioSesionesService = {
   async getSesiones(): Promise<InventorySessionListItemDto[]> {
-    const response = await invPlanesApi.get<InventorySessionListItemDto[]>('/api/inventory-sessions')
+    // Para un usuario con acceso a todas las bodegas, el backend consulta el stock de cada bodega
+    // distinta con sesiones abiertas, una por una — puede superar el timeout default (30s).
+    const response = await invPlanesApi.get<InventorySessionListItemDto[]>('/api/inventory-sessions', { timeout: 120_000 })
     return response.data
   },
 
   async getMisSesiones(): Promise<InventorySessionListItemDto[]> {
-    const response = await invPlanesApi.get<InventorySessionListItemDto[]>('/api/inventory-sessions/my')
+    // Mismo caso que getSesiones: un admin con acceso a todas las bodegas dispara una consulta de
+    // stock por cada bodega distinta, en secuencia, en el backend — puede superar los 30s default.
+    const response = await invPlanesApi.get<InventorySessionListItemDto[]>('/api/inventory-sessions/my', { timeout: 120_000 })
     return response.data
+  },
+
+  async deleteSesion(sessionId: string): Promise<void> {
+    await invPlanesApi.delete(`/api/inventory-sessions/${sessionId}`)
   },
 
   async getMiHistorial(from?: string): Promise<MyCountHistorySessionDto[]> {
@@ -44,8 +52,8 @@ export const inventarioSesionesService = {
 
   async createSesion(
     warehouseCode: string,
-    description?: string | null,
-    plannedCloseDate?: string | null,
+    description: string | null,
+    plannedCloseDate: string,
     filters?: {
       uNv1Values?: string[]
       uNv2Values?: string[]
@@ -54,12 +62,14 @@ export const inventarioSesionesService = {
       materialValues?: string[]
       packValues?: string[]
       coleccionValues?: string[]
-    }
+    },
+    referenceCode?: string | null
   ): Promise<{ sessionId: string }> {
     const response = await invPlanesApi.post<{ sessionId: string }>('/api/inventory-sessions', {
       warehouseCode,
       description: description ?? null,
-      plannedCloseDate: plannedCloseDate ?? null,
+      plannedCloseDate,
+      referenceCode: referenceCode ?? null,
       uNv1Values: filters?.uNv1Values?.length ? filters.uNv1Values : null,
       uNv2Values: filters?.uNv2Values?.length ? filters.uNv2Values : null,
       uNv3Values: filters?.uNv3Values?.length ? filters.uNv3Values : null,
@@ -83,6 +93,11 @@ export const inventarioSesionesService = {
 
   async removePicker(sessionId: string, userId: string): Promise<void> {
     await invPlanesApi.delete(`/api/inventory-sessions/${sessionId}/pickers/${encodeURIComponent(userId)}`)
+  },
+
+  async setMyPickingLocation(sessionId: string, location: string | null): Promise<InventorySessionPickerDto> {
+    const response = await invPlanesApi.put<InventorySessionPickerDto>(`/api/inventory-sessions/${sessionId}/pickers/me/location`, { location })
+    return response.data
   },
 
   async getWarehouses(): Promise<WarehouseSimpleDto[]> {
@@ -120,7 +135,14 @@ export const inventarioSesionesService = {
   },
 
   async closeSession(sessionId: string, note?: string | null): Promise<InventorySessionStatusDto> {
-    const response = await invPlanesApi.post<InventorySessionStatusDto>(`/api/inventory-sessions/${sessionId}/close`, { note: note ?? null })
+    // Cerrar dispara un sync de stock contra SAP (sp_sync_stock_sap_warehouse/items) que puede
+    // tardar más que el timeout default (30s) en bodegas grandes — sin esto, el front corta la
+    // conexión, el backend cancela el SP a mitad de camino, y el próximo intento repite todo desde cero.
+    const response = await invPlanesApi.post<InventorySessionStatusDto>(
+      `/api/inventory-sessions/${sessionId}/close`,
+      { note: note ?? null },
+      { timeout: 180_000 }
+    )
     return response.data
   },
 
@@ -163,6 +185,15 @@ export const inventarioSesionesService = {
   async submitItems(sessionId: string, itemCodes: string[]): Promise<SubmitItemsResultDto> {
     const response = await invPlanesApi.post<SubmitItemsResultDto>(`/api/inventory-sessions/${sessionId}/submit-items`, { itemCodes })
     return response.data
+  },
+
+  async getRecountAssignmentProposal(sessionId: string): Promise<RecountAssignmentProposalDto> {
+    const response = await invPlanesApi.get<RecountAssignmentProposalDto>(`/api/inventory-sessions/${sessionId}/recount-assignment-proposal`)
+    return response.data
+  },
+
+  async setRecountAssignments(sessionId: string, assignments: { itemCode: string; userId: string }[]): Promise<void> {
+    await invPlanesApi.post(`/api/inventory-sessions/${sessionId}/recount-assignments`, { assignments })
   }
 }
 
@@ -176,6 +207,25 @@ export interface ArticleCountLineDto {
   manualQuantity: number
   totalCounted: number
   isSubmitted: boolean
+  initialTotalCounted: number
+  difference: number
+  assignedUserId: string | null
+  /** true = ya hay una fila de conteo (scan o manual, cualquier cantidad incl. 0) para la ronda vigente. */
+  hasCurrentRoundEntry: boolean
+}
+
+export interface RecountAssignmentItemDto {
+  itemCode: string
+  description: string | null
+  barcode: string | null
+  level2: string | null
+  scannedByUserIds: string[]
+  suggestedUserId: string | null
+}
+
+export interface RecountAssignmentProposalDto {
+  items: RecountAssignmentItemDto[]
+  candidateUserIds: string[]
 }
 
 export interface SubmitItemsResultDto {

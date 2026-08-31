@@ -86,7 +86,7 @@
               <div>
                 <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Liquidacion #{{ group.idLiquidacion }}</h3>
                 <p class="text-xs text-gray-500 dark:text-gray-400">
-                  {{ group.totalItems }} detalles pendientes · Tienda: {{ group.codAlmacen }} · Custodio: {{ group.nombreCustodio }} · Fecha: {{ formatDate(group.fechaCreacion) }}
+                  {{ group.totalItems }} detalles pendientes · Tienda: {{ group.codAlmacen }} · Custodio: {{ group.nombreCustodio }} ({{ group.cedulaCustodio || '-' }}) · Fecha: {{ formatDate(group.fechaCreacion) }}
                 </p>
               </div>
               <div class="flex items-center gap-3">
@@ -359,25 +359,66 @@
               </div>
             </div>
 
+            <div v-if="showRejectChoice" class="mt-4 rounded-lg border border-red-200 dark:border-red-900/40 bg-red-50/60 dark:bg-red-900/10 p-3">
+              <div class="text-xs font-medium text-red-700 dark:text-red-300 mb-2">Confirmar negación</div>
+              <div class="space-y-2 text-sm">
+                <label class="flex items-start gap-2 cursor-pointer">
+                  <input type="radio" name="tipoAccionRechazo" value="DEVOLUCION" v-model="tipoAccionRechazo" class="mt-0.5" />
+                  <span>
+                    <span class="font-medium text-gray-900 dark:text-white">Devolver para corrección</span>
+                    <span class="block text-xs text-gray-500 dark:text-gray-400">La liquidación regresa a Borrador para que el custodio la corrija y reenvíe.</span>
+                  </span>
+                </label>
+                <label class="flex items-start gap-2 cursor-pointer">
+                  <input type="radio" name="tipoAccionRechazo" value="RECHAZO_DEFINITIVO" v-model="tipoAccionRechazo" class="mt-0.5" />
+                  <span>
+                    <span class="font-medium text-gray-900 dark:text-white">Rechazar definitivamente</span>
+                    <span class="block text-xs text-gray-500 dark:text-gray-400">La liquidación queda cerrada y no podrá editarse ni reenviarse.</span>
+                  </span>
+                </label>
+              </div>
+              <p v-if="rejectValidationError" class="mt-2 text-xs text-red-600 dark:text-red-400">{{ rejectValidationError }}</p>
+            </div>
+
             <div class="mt-4 flex items-center justify-end gap-2">
-              <button
-                v-if="selectedItem"
-                type="button"
-                class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700/50 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
-                :disabled="actionLoadingId === selectedItem.idAprobacion"
-                @click="reject(selectedItem)"
-              >
-                Negar
-              </button>
-              <button
-                v-if="selectedItem"
-                type="button"
-                class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors disabled:opacity-50"
-                :disabled="actionLoadingId === selectedItem.idAprobacion"
-                @click="approve(selectedItem)"
-              >
-                Aprobar
-              </button>
+              <template v-if="!showRejectChoice">
+                <button
+                  v-if="selectedItem"
+                  type="button"
+                  class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700/50 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+                  :disabled="actionLoadingId === selectedItem.idAprobacion"
+                  @click="openRejectChoice"
+                >
+                  Negar
+                </button>
+                <button
+                  v-if="selectedItem"
+                  type="button"
+                  class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                  :disabled="actionLoadingId === selectedItem.idAprobacion"
+                  @click="approve(selectedItem)"
+                >
+                  Aprobar
+                </button>
+              </template>
+              <template v-else>
+                <button
+                  type="button"
+                  class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700/50 px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  @click="showRejectChoice = false"
+                >
+                  Cancelar
+                </button>
+                <button
+                  v-if="selectedItem"
+                  type="button"
+                  class="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 transition-colors disabled:opacity-50"
+                  :disabled="actionLoadingId === selectedItem.idAprobacion"
+                  @click="reject(selectedItem)"
+                >
+                  Confirmar negación
+                </button>
+              </template>
             </div>
           </div>
         </div>
@@ -465,58 +506,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount, ref, watch, nextTick } from 'vue'
-import { useTablePreferences } from '@/composables/useTablePreferences'
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
+import { useColumnDragReorder } from '@/composables/useColumnDragReorder'
+import { useAdjuntosByDetalle } from '@/composables/useAdjuntosByDetalle'
 import { useRouter } from 'vue-router'
-import { createBuildAdjuntoUrl } from '../utils/buildAdjuntoUrl'
 import { cajaChicaApi } from '@/lib/http'
-
-
-interface ColumnConfig {
-  key: string
-  label: string
-  fixed: boolean
-}
-
-interface AprobacionItem {
-  idAprobacion: number
-  idDetalle: number
-  idLiquidacion: number
-  codAlmacen: string
-  nombreCustodio: string
-  fechaCreacion: string
-  nombreGasto: string
-  concepto: string
-  total: number
-  nivelAprobacion: number
-  estado: string
-}
-
-interface DetalleItem {
-  idDetalle: number
-  idLiquidacion: number
-  fechaConsumo: string
-  ruc: string
-  nombreProveedor: string
-  numeroComprobante: string
-  tipoDocumento: string
-  concepto: string
-  subtotalConIva: number
-  subtotalSinIva: number
-  iva: number
-}
-
-interface AdjuntoItem {
-  idAdjunto: number
-  idDetalle: number
-  rutaArchivo: string
-  fechaSubida: string
-}
-
-interface DecisionState {
-  montoAprobado: string
-  observacion: string
-}
+import { getCurrentUserId, normalizeDetalle, normalizeAprobacion } from '../utils/normalizeAprobaciones'
+import type { ColumnConfig, AprobacionItem, DetalleItem, DecisionState } from '../types/aprobaciones'
 
 const loading = ref(false)
 const error = ref('')
@@ -557,37 +553,34 @@ const availableColumns: ColumnConfig[] = [
 // Por defecto solo mostramos un resumen compacto;
 // el usuario puede activar más columnas desde el selector.
 const defaultVisibleColumns = ['id', 'fechaConsumo', 'gasto', 'total', 'acciones']
-const defaultColumnOrder = availableColumns.map(col => col.key)
 
 const {
   visibleColumns,
-  columnOrder,
-  orderedVisibleColumns: orderedVisibleColumnKeys,
-  savePreferences
-} = useTablePreferences({
+  orderedVisibleColumns,
+  availableColumnsWithVisibility,
+  toggleColumnVisibility,
+  showColumnSelector,
+  columnSelectorWrapRef,
+  draggedColumnKey,
+  dragOverColumnKey,
+  handleDragStart,
+  handleDragOver,
+  handleDragLeave,
+  handleDrop,
+  handleDragEnd
+} = useColumnDragReorder({
   tableId: 'caja-chica-aprobaciones-pendientes',
-  defaultVisibleColumns,
-  defaultColumnOrder,
-  enableFilters: false,
-  enablePageSize: false
-})
-
-const orderedVisibleColumns = computed(() => {
-  const ordered = orderedVisibleColumnKeys.value
-    .map(key => availableColumns.find(col => col.key === key))
-    .filter((col): col is ColumnConfig => col !== undefined)
-  const fixedColumns = ordered.filter(col => col.fixed)
-  const nonFixedColumns = ordered.filter(col => !col.fixed)
-  return [...nonFixedColumns, ...fixedColumns]
+  availableColumns,
+  defaultVisibleColumns
 })
 
 // Columnas efectivamente visibles y ordenadas (no fijas primero, luego fijas)
 const tableColumns = orderedVisibleColumns
 
-const showColumnSelector = ref(false)
-const columnSelectorWrapRef = ref<HTMLElement | null>(null)
-
 const showDetallePanel = ref(false)
+const showRejectChoice = ref(false)
+const tipoAccionRechazo = ref<'DEVOLUCION' | 'RECHAZO_DEFINITIVO'>('DEVOLUCION')
+const rejectValidationError = ref('')
 const selectedContext = ref<{ idLiquidacion: number; item: AprobacionItem } | null>(null)
 const selectedItem = computed(() => selectedContext.value?.item ?? null)
 const selectedDetalle = computed(() => {
@@ -596,17 +589,17 @@ const selectedDetalle = computed(() => {
   return detallesByLiquidacion.value[idLiquidacion]?.find(d => d.idDetalle === item.idDetalle)
 })
 
-const adjuntosListByDetalle = ref<Record<number, AdjuntoItem[]>>({})
-const loadingAdjuntosMap = ref<Record<number, boolean>>({})
-const selectedAdjuntoId = ref<number | null>(null)
-const selectedAdjunto = computed(() => {
-  if (!selectedItem.value) return null
-  const detalleId = selectedItem.value.idDetalle
-  const list = adjuntosListByDetalle.value[detalleId] || []
-  if (!list.length) return null
-  const found = list.find(a => a.idAdjunto === selectedAdjuntoId.value)
-  return found || list[0]
-})
+const {
+  adjuntosListByDetalle,
+  loadingAdjuntosMap,
+  selectedAdjuntoId,
+  selectedAdjunto,
+  loadAdjuntosForDetalle,
+  buildAdjuntoUrl,
+  formatAdjuntoName,
+  isImageFile,
+  isPdfFile
+} = useAdjuntosByDetalle(computed(() => selectedItem.value?.idDetalle))
 
 const showAdjuntoFull = ref(false)
 const zoomLevel = ref(1)
@@ -617,6 +610,8 @@ function openDetalle(idLiquidacion: number, item: AprobacionItem) {
   selectedAdjuntoId.value = null
   selectedContext.value = { idLiquidacion, item }
   showDetallePanel.value = true
+  showRejectChoice.value = false
+  rejectValidationError.value = ''
   void loadAdjuntosForDetalle(item.idDetalle)
 }
 
@@ -624,114 +619,20 @@ function closeDetalle() {
   showDetallePanel.value = false
   selectedContext.value = null
   selectedAdjuntoId.value = null
+  showRejectChoice.value = false
+  rejectValidationError.value = ''
 }
 
-function closeColumnSelectorOnClickOutside(e: MouseEvent) {
-  if (columnSelectorWrapRef.value && !columnSelectorWrapRef.value.contains(e.target as Node)) {
-    showColumnSelector.value = false
-    document.removeEventListener('click', closeColumnSelectorOnClickOutside)
-  }
+function openRejectChoice() {
+  tipoAccionRechazo.value = 'DEVOLUCION'
+  rejectValidationError.value = ''
+  showRejectChoice.value = true
 }
-
-watch(showColumnSelector, (isOpen) => {
-  if (isOpen) {
-    nextTick(() => document.addEventListener('click', closeColumnSelectorOnClickOutside))
-  } else {
-    document.removeEventListener('click', closeColumnSelectorOnClickOutside)
-  }
-})
 
 onBeforeUnmount(() => {
-  document.removeEventListener('click', closeColumnSelectorOnClickOutside)
   document.removeEventListener('keydown', onDetalleKeydown)
   document.body.classList.remove('overflow-hidden')
 })
-
-const availableColumnsWithVisibility = computed(() =>
-  availableColumns.map(col => ({
-    ...col,
-    visible: col.fixed ? true : visibleColumns.value.includes(col.key)
-  }))
-)
-
-function toggleColumnVisibility(columnKey: string) {
-  const column = availableColumns.find(col => col.key === columnKey)
-  if (column?.fixed) return
-  const current = visibleColumns.value
-  const index = current.indexOf(columnKey)
-  const visibleNonFixed = current.filter(
-    key => !availableColumns.find(c => c.key === key)?.fixed
-  )
-  if (index > -1 && visibleNonFixed.length <= 1) return
-  if (index > -1) {
-    visibleColumns.value = current.filter(k => k !== columnKey)
-  } else {
-    visibleColumns.value = [...current, columnKey]
-  }
-  savePreferences()
-}
-
-const draggedColumnKey = ref<string | null>(null)
-const dragOverColumnKey = ref<string | null>(null)
-
-function handleDragStart(event: DragEvent, columnKey: string) {
-  const column = availableColumns.find(col => col.key === columnKey)
-  if (column?.fixed) return
-  draggedColumnKey.value = columnKey
-  if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = 'move'
-    event.dataTransfer.setData('text/plain', columnKey)
-  }
-}
-
-function handleDragOver(event: DragEvent, columnKey: string) {
-  event.preventDefault()
-  if (event.dataTransfer) event.dataTransfer.dropEffect = 'move'
-  if (draggedColumnKey.value !== null && draggedColumnKey.value !== columnKey) {
-    const target = availableColumns.find(col => col.key === columnKey)
-    if (!target?.fixed) dragOverColumnKey.value = columnKey
-  } else {
-    dragOverColumnKey.value = null
-  }
-}
-
-function handleDragLeave() {}
-
-function handleDrop(event: DragEvent, targetColumnKey: string) {
-  event.preventDefault()
-  if (!draggedColumnKey.value || draggedColumnKey.value === targetColumnKey) {
-    draggedColumnKey.value = null
-    dragOverColumnKey.value = null
-    return
-  }
-  const draggedColumn = availableColumns.find(col => col.key === draggedColumnKey.value)
-  const targetColumn = availableColumns.find(col => col.key === targetColumnKey)
-  if (draggedColumn?.fixed || targetColumn?.fixed) {
-    draggedColumnKey.value = null
-    dragOverColumnKey.value = null
-    return
-  }
-  const fullOrder = [...columnOrder.value]
-  const draggedIndexInFull = fullOrder.indexOf(draggedColumnKey.value)
-  const targetIndexInFull = fullOrder.indexOf(targetColumnKey)
-  if (draggedIndexInFull === -1 || targetIndexInFull === -1) {
-    draggedColumnKey.value = null
-    dragOverColumnKey.value = null
-    return
-  }
-  fullOrder.splice(draggedIndexInFull, 1)
-  const adjustedTarget = targetIndexInFull > draggedIndexInFull ? targetIndexInFull - 1 : targetIndexInFull
-  fullOrder.splice(adjustedTarget, 0, draggedColumnKey.value)
-  columnOrder.value = fullOrder
-  savePreferences()
-  draggedColumnKey.value = null
-  dragOverColumnKey.value = null
-}
-
-function handleDragEnd() {
-  draggedColumnKey.value = null
-  dragOverColumnKey.value = null
-}
 
 function getCellValue(group: { idLiquidacion: number }, item: AprobacionItem, columnKey: string): string | number {
   const d = getDetalle(group.idLiquidacion, item.idDetalle)
@@ -774,6 +675,7 @@ const groupedPendientes = computed(() => {
       totalItems: items.length,
       codAlmacen: base?.codAlmacen || '',
       nombreCustodio: base?.nombreCustodio || '',
+      cedulaCustodio: base?.cedulaCustodio || '',
       fechaCreacion: base?.fechaCreacion || ''
     }
   })
@@ -826,91 +728,12 @@ function getStickyStyle(column: ColumnConfig): { right?: string; minWidth?: stri
   return { right, minWidth: minW }
 }
 
-const buildAdjuntoUrl = createBuildAdjuntoUrl()
-
-
-const formatAdjuntoName = (ruta: string) => {
-  if (!ruta) return ''
-  const parts = ruta.split('/')
-  return parts[parts.length - 1]
-}
-
-const isImageFile = (ruta: string) => /\.(png|jpe?g|gif|webp)$/i.test(ruta)
-const isPdfFile = (ruta: string) => /\.pdf$/i.test(ruta)
-
-const getCurrentUserId = (): string => {
-  try {
-    const userStr = localStorage.getItem('user')
-    if (!userStr) return ''
-    const user = JSON.parse(userStr) as { id?: string }
-    return user.id || ''
-  } catch {
-    return ''
-  }
-}
-
-const normalizeString = (value: any) => String(value ?? '').trim()
-
-const normalizeDetalle = (item: any): DetalleItem => ({
-  idDetalle: Number(item.idDetalle ?? item.IdDetalle ?? 0),
-  idLiquidacion: Number(item.idLiquidacion ?? item.IdLiquidacion ?? 0),
-  fechaConsumo: String(item.fechaConsumo ?? item.FechaConsumo ?? ''),
-  ruc: normalizeString(item.ruc ?? item.Ruc ?? ''),
-  nombreProveedor: normalizeString(item.nombreProveedor ?? item.NombreProveedor ?? ''),
-  numeroComprobante: normalizeString(item.numeroComprobante ?? item.NumeroComprobante ?? ''),
-  tipoDocumento: normalizeString(item.numeroAutorizacion ?? item.NumeroAutorizacion ?? ''),
-  concepto: normalizeString(item.concepto ?? item.Concepto ?? ''),
-  subtotalConIva: Number(item.subtotal_Con_Iva ?? item.Subtotal_Con_Iva ?? item.subtotalConIva ?? 0),
-  subtotalSinIva: Number(item.subtotal_Sin_Iva ?? item.Subtotal_Sin_Iva ?? item.subtotalSinIva ?? 0),
-  iva: Number(item.iva ?? item.Iva ?? 0)
-})
-
-const normalizeAprobacion = (item: any): AprobacionItem => ({
-  idAprobacion: Number(item.idAprobacion ?? item.IdAprobacion ?? 0),
-  idDetalle: Number(item.idDetalle ?? item.IdDetalle ?? 0),
-  idLiquidacion: Number(item.idLiquidacion ?? item.IdLiquidacion ?? 0),
-  codAlmacen: normalizeString(item.codAlmacen ?? item.CodAlmacen ?? ''),
-  nombreCustodio: normalizeString(item.nombreCustodio ?? item.NombreCustodio ?? ''),
-  fechaCreacion: String(item.fechaCreacion ?? item.FechaCreacion ?? ''),
-  nombreGasto: normalizeString(item.nombreGasto ?? item.NombreGasto ?? ''),
-  concepto: normalizeString(item.concepto ?? item.Concepto ?? ''),
-  total: Number(item.total ?? item.Total ?? 0),
-  nivelAprobacion: Number(item.nivelAprobacion ?? item.NivelAprobacion ?? 0),
-  estado: normalizeString(item.estado ?? item.Estado ?? '')
-})
-
 function ensureDecision(item: AprobacionItem) {
   if (!decisions.value[item.idAprobacion]) {
     decisions.value[item.idAprobacion] = {
       montoAprobado: item.total.toFixed(2),
       observacion: ''
     }
-  }
-}
-
-async function loadAdjuntosForDetalle(idDetalle: number) {
-  if (!idDetalle) return
-  if (adjuntosListByDetalle.value[idDetalle]) return
-  if (loadingAdjuntosMap.value[idDetalle]) return
-
-  loadingAdjuntosMap.value = { ...loadingAdjuntosMap.value, [idDetalle]: true }
-  try {
-    const response = await cajaChicaApi.get(`/Adjuntos/por-detalle/${idDetalle}`)
-    const payload = response.data as any
-    const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
-    adjuntosListByDetalle.value = {
-      ...adjuntosListByDetalle.value,
-      [idDetalle]: items.map((item: any) => ({
-        idAdjunto: Number(item.idAdjunto ?? item.IdAdjunto ?? 0),
-        idDetalle: Number(item.idDetalle ?? item.IdDetalle ?? idDetalle),
-        rutaArchivo: String(item.rutaArchivo ?? item.RutaArchivo ?? ''),
-        fechaSubida: String(item.fechaSubida ?? item.FechaSubida ?? '')
-      }))
-    }
-  } catch {
-    adjuntosListByDetalle.value = { ...adjuntosListByDetalle.value, [idDetalle]: [] }
-  } finally {
-    loadingAdjuntosMap.value = { ...loadingAdjuntosMap.value, [idDetalle]: false }
   }
 }
 
@@ -1065,15 +888,23 @@ const approve = async (item: AprobacionItem) => {
 }
 
 const reject = async (item: AprobacionItem) => {
+  const decision = decisions.value[item.idAprobacion]
+  const observacion = (decision?.observacion || '').trim()
+  if (!observacion) {
+    rejectValidationError.value = 'El comentario es obligatorio para negar una solicitud.'
+    return
+  }
+
   actionError.value = ''
   actionSuccess.value = ''
+  rejectValidationError.value = ''
   actionLoadingId.value = item.idAprobacion
   try {
-    const decision = decisions.value[item.idAprobacion]
     const monto = Number(decision?.montoAprobado ?? 0)
     await cajaChicaApi.post(`/Aprobaciones/${item.idAprobacion}/rechazar`, {
       MontoAprobado: Number.isNaN(monto) ? 0 : monto,
-      Observacion: decision?.observacion || ''
+      Observacion: observacion,
+      TipoAccion: tipoAccionRechazo.value
     })
     actionSuccess.value = 'Aprobacion rechazada.'
     closeDetalle()

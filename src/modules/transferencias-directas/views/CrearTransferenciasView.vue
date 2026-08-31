@@ -4,7 +4,10 @@ import { ArrowLeftIcon, CalendarDaysIcon } from '@heroicons/vue/24/outline'
 import { APP_LOCALE } from '@/plugins/locale'
 import FormField from '../components/FormField.vue'
 import { useAuthStore } from '@/stores/auth.js'
-import { CrearSolicitudRequest, DetalleLinea, ProductoBusqueda, SolicitudDetalle, TiendaDestino } from '../types.js'
+import { CANTIDAD_MAX, CrearSolicitudRequest, DetalleLinea, ProductoBusqueda, SolicitudDetalle, TiendaDestino, type StockFaltante } from '../types.js'
+import { parsearErrorSolicitud } from '../utils/erroresApi'
+import { randomUUID } from '@/utils/uuid'
+import ErrorStockFaltante from '../components/ErrorStockFaltante.vue'
 import almacenesService from '../services/almacenesServices.js'
 import BuscadorProductos from '../components/BuscadorProductos.vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -12,6 +15,7 @@ import TablaDetalleProductos from '../components/TablaDetalleProductos.vue'
 import ResumenTransferencia from '../components/ResumenTransferencia.vue'
 import transferenciasService from '../services/transferenciasService.js'
 import CargandoSpinner from '../components/CargandoSpinner.vue'
+import ModalConfirmacion from '../components/ModalConfirmacion.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -19,6 +23,7 @@ const authStore = useAuthStore()
 const idEdicion = computed(() => (route.params.id ? Number(route.params.id) : null))
 const modoEdicion = computed(() => idEdicion.value !== null)
 const cargandoDetalle = ref(false)
+const faltantesSubmit = ref<StockFaltante[]>([])
 
 const inputClass =
   'w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-xs ' +
@@ -29,9 +34,12 @@ const inputClass =
 const selectClass = inputClass
 const textareaClass = `${inputClass} resize-none`
 
+// Guía Laar: solo alfanuméricos en mayúsculas (el largo exacto se valida al enviar)
 const onGuiaInput = (e: Event) => {
   const target = e.target as HTMLInputElement
-  form.guiaEnvio = target.value.toUpperCase()
+  const limpio = target.value.toUpperCase().replace(/[^A-Z0-9]/g, '')
+  form.guiaEnvio = limpio
+  target.value = limpio // refleja el filtrado en el input
 }
 
 const onResponsableInput = (e: Event) => {
@@ -62,16 +70,24 @@ const errorTiendas = ref('')
 const guardando = ref(false)
 const errorSubmit = ref('')
 
+// Clave de idempotencia: se genera UNA vez al abrir el formulario. Si el usuario
+// reintenta (por timeout o error), viaja la misma y el backend no duplica.
+const idempotencyKey = ref(randomUUID())
+
 const nombreTiendaUsuario = computed(() => {
   const t = tiendasOrigen.value.find((x) => x.whsCode === codigoTiendaUsuario.value)
   return t?.whsNombre ?? codigoTiendaUsuario.value
 })
 
+const whsCodeOrigen = computed(() =>
+  modoEdicion.value ? (detalle.value?.tiendaOrigenCodigo ?? '') : form.tiendaOrigenCodigo
+)
+
 const form = reactive({
   usuarioSolicitante: '',
-  tiendaOrigenCodigo: '',   // whsCode 
-  tiendaDestinoCodigo: '',  // uBogTra
-  tiendaDestinoNombre: '',  // whsNombre
+  tiendaOrigenCodigo: '',   
+  tiendaDestinoCodigo: '',  
+  tiendaDestinoNombre: '',  
   guiaEnvio: '',
   justificacion: '',
 })
@@ -94,6 +110,8 @@ const limpiar = () => {
   }
   limpiarErrores()
   errorSubmit.value = ''
+  faltantesSubmit.value = []
+  idempotencyKey.value = randomUUID() // formulario nuevo ⇒ clave nueva
 }
 
 const destinoSeleccionado = ref('')
@@ -103,10 +121,39 @@ watch(destinoSeleccionado, (whsCode) => {
   form.tiendaDestinoNombre = t?.whsNombre ?? ''
 })
 
+// Cambiar la tienda origen invalida el stock visto: se pide confirmación y se
+// vacía el detalle. Si el usuario cancela, se revierte al valor anterior (la
+// bandera evita que esa reversión vuelva a disparar la confirmación).
 const origenSeleccionado = ref('')
-watch(origenSeleccionado, (whsCode) => {
+const confirmarCambioOrigen = ref(false)
+let revirtiendoOrigen = false
+
+watch(origenSeleccionado, (whsCode, anterior) => {
+  if (revirtiendoOrigen) { revirtiendoOrigen = false; return }
+
+  if (productos.value.length > 0 && anterior) {
+    origenAnterior = anterior
+    origenPendiente = whsCode
+    confirmarCambioOrigen.value = true
+    return
+  }
   form.tiendaOrigenCodigo = whsCode
 })
+
+let origenAnterior = ''
+let origenPendiente = ''
+
+const aceptarCambioOrigen = () => {
+  productos.value = []
+  form.tiendaOrigenCodigo = origenPendiente
+  confirmarCambioOrigen.value = false
+}
+
+const cancelarCambioOrigen = () => {
+  revirtiendoOrigen = true
+  origenSeleccionado.value = origenAnterior
+  confirmarCambioOrigen.value = false
+}
 
 onMounted(async () => {
   if (modoEdicion.value) {
@@ -114,7 +161,7 @@ onMounted(async () => {
     return
   }
   //crear
-  form.tiendaOrigenCodigo = codigoTiendaUsuario.value
+  if (!puedeElegirOrigen.value) form.tiendaOrigenCodigo = codigoTiendaUsuario.value
   cargandoTiendas.value = true
   errorTiendas.value = ''
   try {
@@ -133,11 +180,14 @@ onMounted(async () => {
 
 const productos = ref<DetalleLinea[]>([])
 
+
 // Regla de picking: si el itemCode ya está, SUMA; si no, crea la fila
+// El stock ya no se valida aquí: lo valida el backend al enviar a aprobación (RN-22).
 const agregarAlDetalle = (p: ProductoBusqueda, cantidad: number) => {
   const existente = productos.value.find((x) => x.itemCode === p.itemCode)
   if (existente) {
-    existente.cantidadSolicitada += cantidad
+    // Al consolidar tampoco se supera el tope por producto
+    existente.cantidadSolicitada = Math.min(existente.cantidadSolicitada + cantidad, CANTIDAD_MAX)
   } else {
     productos.value.push({
       itemCode: p.itemCode,
@@ -151,6 +201,12 @@ const agregarAlDetalle = (p: ProductoBusqueda, cantidad: number) => {
 }
 const eliminarDelDetalle = (itemCode: string) => {
   productos.value = productos.value.filter((p) => p.itemCode !== itemCode)
+}
+
+// Ajuste de cantidad desde el stepper de la tabla de detalle
+const cambiarCantidadDetalle = (itemCode: string, cantidad: number) => {
+  const linea = productos.value.find((p) => p.itemCode === itemCode)
+  if (linea) linea.cantidadSolicitada = cantidad
 }
 const rutaVolver = computed(() => (modoEdicion.value ? '/transferencias-stock/historial' : '/transferencias-stock'))
 
@@ -167,6 +223,7 @@ const construirPayload = (enviarAAprobacion: boolean): CrearSolicitudRequest => 
   justificacion: form.justificacion.trim() || '',
   guiaEnvio: form.guiaEnvio.trim().toUpperCase() || '',
   enviarAAprobacion,
+  idempotencyKey: idempotencyKey.value,
   detalles: productos.value.map((p) => ({
     itemCode: p.itemCode,
     codeBars: p.codeBars,
@@ -185,6 +242,14 @@ const validar = (): boolean => {
     if (!form.tiendaDestinoCodigo) errores.tiendaDestinoCodigo = 'Selecciona la tienda destino.'
     if (!form.usuarioSolicitante.trim()) errores.usuarioSolicitante = 'Ingresa el responsable del envío.'
   }
+
+  // La guía es editable en ambos modos: debe ser exactamente 10 alfanuméricos.
+  const guia = form.guiaEnvio.trim()
+  if (!guia) errores.guiaEnvio = 'Ingrese la Guía Courier'
+  else if (!/^[A-Z0-9]{10}$/.test(guia)) {
+    errores.guiaEnvio = 'La guía debe tener exactamente 10 caracteres alfanuméricos.'
+  }
+
   if (productos.value.length === 0) errores.productos = 'Agrega al menos un producto.'
   const primerError = Object.keys(errores)[0]
   if (primerError) {
@@ -199,15 +264,18 @@ const validar = (): boolean => {
 
 const enviar = async (enviarAAprobacion: boolean) => {
   if (!validar()) return
+  if (guardando.value) return // evita un segundo envío mientras el primero está en curso
   guardando.value = true
   errorSubmit.value = ''
+  faltantesSubmit.value = []
   try {
     await transferenciasService.crear(construirPayload(enviarAAprobacion))
+    // No se reactiva el botón: la vista se desmonta al navegar. Reactivarlo aquí
+    // dejaba una ventana en la que se podía volver a enviar (causó una duplicación).
     router.push({ name: 'transferencias-stock-historial' })
   } catch (e: any) {
     manejarErrorSubmit(e)
-  } finally {
-    guardando.value = false
+    guardando.value = false // solo se reactiva si hubo error y el usuario debe corregir
   }
 }
 
@@ -215,17 +283,29 @@ const guardarBorrador = () => enviar(false)
 const enviarAprobacion = () => enviar(true)
 
 const manejarErrorSubmit = (e: any) => {
+  const { faltantes } = parsearErrorSolicitud(e)
+  faltantesSubmit.value = faltantes ?? []
   const status = e?.response?.status
   const msg = e?.response?.data?.error ?? e?.response?.data?.mensaje
+  // Timeout: la petición se cortó sin respuesta, pero el backend pudo haberla
+  // procesado. Se evita el mensaje de "intenta de nuevo" para no inducir un reintento.
+  if (e?.code === 'ECONNABORTED') {
+    errorSubmit.value =
+      'La solicitud está tardando más de lo esperado. Revisa el Historial: si no aparece, guárdala como Borrador y envíala a aprobación más tarde.'
+    return
+  }
   if (status === 400) errorSubmit.value = msg ?? 'Datos inválidos. Revisa el formulario.'
   else if (status === 404) errorSubmit.value = 'No se encontró el recurso.'
   else if (status === 409) errorSubmit.value = msg ?? 'La solicitud ya no está en Borrador.'
+  // 503: SAP no respondió. El backend manda un mensaje explicativo; se muestra tal cual.
+  else if (status === 503) errorSubmit.value = msg ?? 'SAP no está disponible en este momento. Intenta más tarde.'
   else errorSubmit.value = 'Ocurrió un error al guardar. Intenta de nuevo.'
 }
 
 const cargarParaEditar = async (id: number) => {
   cargandoDetalle.value = true
   errorSubmit.value = ''
+  faltantesSubmit.value = []
   try {
     const d = await transferenciasService.obtenerDetalle(id)
     detalle.value = d
@@ -248,6 +328,7 @@ const guardarEdicion = async () => {
   if (!validar()) return
   guardando.value = true
   errorSubmit.value = ''
+  faltantesSubmit.value = []
   try {
     await transferenciasService.actualizar(idEdicion.value!, {
       justificacion: form.justificacion.trim() || undefined,
@@ -320,29 +401,30 @@ const guardarEdicion = async () => {
             <input v-else :id="id" type="text" :value="nombreTiendaUsuario" disabled :class="inputClass" />
           </FormField>
 
-          <FormField label="Almacén Destino" required :error="errores.tiendaDestinoCodigo" v-slot="{ id }">
+          <FormField label="Almacén Destino (Tránsito)" required :error="errores.tiendaDestinoCodigo" v-slot="{ id }">
             <input v-if="modoEdicion" :id="id" type="text" :value="detalle?.tiendaDestino ?? ''" disabled
               :class="inputClass" />
             <select v-else :id="id" v-model="destinoSeleccionado" :class="selectClass" :disabled="cargandoTiendas">
               <option value="" disabled>{{ cargandoTiendas ? 'Cargando…' : 'Seleccione una tienda…' }}</option>
-              <option v-for="t in tiendasDestino" :key="t.whsCode" :value="t.whsCode">{{ t.whsNombre }}</option>
+              <option v-for="t in tiendasDestino" :key="t.whsCode" :value="t.whsCode">{{ t.uBogTra }}</option>
             </select>
           </FormField>
 
-          <FormField label="Guía Laar Courier" help="10 caracteres alfanuméricos" v-slot="{ id }">
+          <FormField label="Guía Courier" required :error="errores.guiaEnvio"
+            help="Exactamente 10 caracteres alfanuméricos" v-slot="{ id }">
             <input :id="id" v-model="form.guiaEnvio" @input="onGuiaInput" type="text" maxlength="10"
               placeholder="AB12CD34EF" :class="[inputClass, 'uppercase tracking-wider']" />
           </FormField>
 
           <FormField label="Responsable del Envío" required :error="errores.usuarioSolicitante" v-slot="{ id }">
             <input :id="id" :value="form.usuarioSolicitante" @input="onResponsableInput" type="text"
-              placeholder="Nombre del responsable" :class="[inputClass, 'uppercase']" maxlength="200"
+              placeholder="Nombre del responsable" :class="[inputClass, 'uppercase']" maxlength="139"
               :disabled="modoEdicion" />
           </FormField>
 
           <FormField label="Observaciones" class="lg:col-span-2" v-slot="{ id }">
             <textarea :id="id" v-model="form.justificacion" rows="1" placeholder="Detalle opcional de la transferencia…"
-              :class="textareaClass" maxlength="500"></textarea>
+              :class="textareaClass" maxlength="100"></textarea>
           </FormField>
         </div>
         <p v-if="errorTiendas" class="mt-3 text-xs text-red-600 dark:text-red-400">{{ errorTiendas }}</p>
@@ -353,7 +435,7 @@ const guardarEdicion = async () => {
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">
           Búsqueda de Productos
         </h3>
-        <buscador-productos @agregar="agregarAlDetalle" />
+        <buscador-productos :whs-code-origen="whsCodeOrigen" @agregar="agregarAlDetalle" />
       </div>
       <div class="px-5 py-4 border-b border-gray-200 dark:border-gray-700 ">
         <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-3">
@@ -361,7 +443,8 @@ const guardarEdicion = async () => {
         </h3>
         <div class="flex flex-col lg:flex-row gap-4">
           <div class="flex-1 min-w-0">
-            <TablaDetalleProductos :productos="productos" @eliminar="eliminarDelDetalle" />
+            <TablaDetalleProductos :productos="productos" @eliminar="eliminarDelDetalle"
+              @cambiar-cantidad="cambiarCantidadDetalle" />
           </div>
           <div class="lg:w-64 shrink-0">
             <ResumenTransferencia :productos="productos" />
@@ -371,7 +454,9 @@ const guardarEdicion = async () => {
       </div>
       <!-- Footer -->
       <div class="px-5 py-4 space-y-3">
-        <p v-if="errorSubmit" class="text-xs text-red-600 dark:text-red-400">{{ errorSubmit }}</p>
+        <ErrorStockFaltante v-if="errorSubmit && faltantesSubmit.length > 0" :mensaje="errorSubmit"
+          :faltantes="faltantesSubmit" />
+        <p v-else-if="errorSubmit" class="text-xs text-red-600 dark:text-red-400">{{ errorSubmit }}</p>
 
         <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
           <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
@@ -402,5 +487,24 @@ const guardarEdicion = async () => {
         </div>
       </div>
     </section>
+
+    <ModalConfirmacion :abierto="confirmarCambioOrigen" titulo="Cambiar tienda origen"
+      mensaje="Los productos agregados se eliminarán, ya que el stock disponible corresponde a la tienda anterior. ¿Desea continuar?"
+      texto-confirmar="Cambiar" variante="peligro" @confirmar="aceptarCambioOrigen"
+      @cancelar="cancelarCambioOrigen" />
+
+    <!-- Bloquea toda la pantalla mientras se guarda: la validación con SAP tarda y
+         sin esto el usuario puede seguir editando el detalle que ya se envió. -->
+    <div v-if="guardando" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+      <div
+        class="relative w-full max-w-sm rounded-2xl bg-white dark:bg-gray-800 p-6 text-center shadow-2xl border border-gray-200 dark:border-gray-700">
+        <div class="mx-auto animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mb-4"></div>
+        <p class="text-sm font-semibold text-gray-900 dark:text-white">Validando stock con SAP…</p>
+        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          Esto puede tardar unos segundos. Por favor, no cierres esta ventana.
+        </p>
+      </div>
+    </div>
   </div>
 </template>

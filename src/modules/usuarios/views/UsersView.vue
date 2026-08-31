@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
     <div class="space-y-4">
       <VolverButton to="/admin" title="Volver al Panel de Administración" class="shrink-0" />
       <div class="flex items-start justify-between gap-4">
@@ -9,12 +9,24 @@
         </div>
       </div>
 
-      <div class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-6">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
-          <div class="text-sm text-gray-600 dark:text-gray-300">
-            Total: <span class="font-semibold text-gray-900 dark:text-white">{{ totalCount }}</span>
-          </div>
-          <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <!-- Importar usuarios de AD -->
+      <div class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
+        <button
+          type="button"
+          class="w-full flex items-center justify-between px-5 py-4 text-left"
+          @click="showImportForm = !showImportForm"
+        >
+          <span class="text-sm font-semibold text-gray-900 dark:text-white">IMPORTAR USUARIOS DE AD</span>
+          <svg
+            class="w-4 h-4 text-slate-400 transition-transform shrink-0"
+            :class="{ 'rotate-180': showImportForm }"
+            viewBox="0 0 20 20" fill="currentColor"
+          >
+            <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+          </svg>
+        </button>
+        <div v-if="showImportForm" class="px-5 pb-5 border-t border-gray-200 dark:border-gray-700 pt-4">
+          <div class="flex justify-end mb-4">
             <button
               type="button"
               class="rounded bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 disabled:opacity-50 flex items-center gap-2 justify-center"
@@ -26,35 +38,17 @@
               </svg>
               <span>{{ syncLoading ? 'Sincronizando...' : 'Sincronizar AD' }}</span>
             </button>
-            <input
-              v-model.trim="searchQuery"
-              type="text"
-              placeholder="Buscar por usuario, nombre o email"
-              class="w-full sm:w-64 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder:text-gray-400"
-            />
-            <select
-              v-model.number="pageSize"
-              class="w-full sm:w-32 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white"
-            >
-              <option :value="5">5</option>
-              <option :value="10">10</option>
-              <option :value="20">20</option>
-              <option :value="50">50</option>
-            </select>
           </div>
-        </div>
-        <div v-if="syncSuccess" class="mb-4 text-sm text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 p-3 rounded">{{ syncSuccess }}</div>
-        <div v-if="syncError" class="mb-4 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded">{{ syncError }}</div>
-        
-        <!-- Búsqueda e importación de usuario específico -->
-        <div class="mb-4 p-4 rounded border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+          <div v-if="syncSuccess" class="mb-4 text-sm text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 p-3 rounded">{{ syncSuccess }}</div>
+          <div v-if="syncError" class="mb-4 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-3 rounded">{{ syncError }}</div>
+
           <div class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Buscar e importar usuario específico de AD</div>
           <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
             <input
               v-model.trim="searchUserTerm"
               type="text"
               placeholder="Buscar por usuario, email o nombre"
-              class="w-full sm:flex-1 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder:text-gray-400"
+              class="w-full sm:flex-1 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white placeholder:text-gray-400"
               @keyup.enter="searchAndImportUser"
             />
             <button
@@ -72,27 +66,52 @@
           <div v-if="searchUserError" class="mt-2 text-sm text-red-600 dark:text-red-400">{{ searchUserError }}</div>
           <div v-if="searchUserSuccess" class="mt-2 text-sm text-emerald-600 dark:text-emerald-400">{{ searchUserSuccess }}</div>
         </div>
-        <div v-if="loading" class="text-sm text-gray-600 dark:text-gray-300">Cargando usuarios...</div>
-        <div v-else-if="error" class="text-sm text-red-600 dark:text-red-400">{{ error }}</div>
-        <div v-else-if="users.length === 0" class="text-sm text-gray-600 dark:text-gray-300">Sin usuarios.</div>
+      </div>
+
+      <!-- Listado -->
+      <div class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700 gap-4">
+          <span class="text-sm text-gray-600 dark:text-gray-300 shrink-0">
+            Total: <span class="font-semibold text-gray-900 dark:text-white">{{ totalCount }}</span>
+          </span>
+          <input
+            v-model.trim="searchQuery"
+            type="text"
+            placeholder="Buscar por usuario, nombre o email"
+            class="w-full max-w-xs rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-sky-500"
+          />
+          <select
+            v-model.number="pageSize"
+            class="rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2 text-xs text-gray-900 dark:text-white shrink-0"
+          >
+            <option :value="5">5</option>
+            <option :value="10">10</option>
+            <option :value="20">20</option>
+            <option :value="50">50</option>
+          </select>
+        </div>
+
+        <div v-if="loading" class="py-10 text-center text-sm text-gray-500 dark:text-gray-400">Cargando usuarios...</div>
+        <div v-else-if="error" class="py-10 text-center text-sm text-red-600 dark:text-red-400">{{ error }}</div>
+        <div v-else-if="users.length === 0" class="py-10 text-center text-sm text-gray-500 dark:text-gray-400">Sin usuarios.</div>
         <div v-else class="overflow-x-auto">
           <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead class="bg-gray-50 dark:bg-gray-900">
               <tr>
-                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">ID</th>
-                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Usuario</th>
-                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Nombre</th>
-                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Email</th>
-                <th class="px-4 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase">Acciones</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">ID</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Usuario</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Nombre</th>
+                <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Email</th>
+                <th class="px-4 py-3 text-right text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Acciones</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
               <tr v-for="user in pagedUsers" :key="getValue(user, ['id', 'userId'])">
-                <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ getValue(user, ['id', 'userId']) }}</td>
-                <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ getValue(user, ['userName', 'username']) }}</td>
-                <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ getValue(user, ['fullName', 'name']) }}</td>
-                <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ getValue(user, ['email', 'mail']) }}</td>
-                <td class="px-4 py-2 text-sm">
+                <td class="px-4 py-3 text-sm text-gray-900 dark:text-gray-200">{{ getValue(user, ['id', 'userId']) }}</td>
+                <td class="px-4 py-3 text-sm text-gray-900 dark:text-gray-200">{{ getValue(user, ['userName', 'username']) }}</td>
+                <td class="px-4 py-3 text-sm text-gray-900 dark:text-gray-200">{{ getValue(user, ['fullName', 'name']) }}</td>
+                <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{{ getValue(user, ['email', 'mail']) }}</td>
+                <td class="px-4 py-3 text-right">
                   <button
                     type="button"
                     class="rounded border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/30 px-3 py-1 text-xs text-blue-700 dark:text-blue-300 hover:border-blue-300 dark:hover:border-blue-700"
@@ -105,7 +124,7 @@
             </tbody>
           </table>
         </div>
-        <div v-if="totalCount > 0" class="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div v-if="totalCount > 0" class="px-5 py-4 border-t border-gray-200 dark:border-gray-700 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div class="text-xs text-gray-500 dark:text-gray-400">
             Mostrando {{ pageStart }} - {{ pageEnd }} de {{ totalCount }}
           </div>
@@ -224,6 +243,7 @@ const selectedUserId = ref('')
 const syncLoading = ref(false)
 const syncError = ref('')
 const syncSuccess = ref('')
+const showImportForm = ref(false)
 const searchUserTerm = ref('')
 const searchUserLoading = ref(false)
 const searchUserError = ref('')
@@ -504,6 +524,7 @@ const searchAndImportUser = async () => {
         : 'Usuario importado correctamente.'
     searchUserTerm.value = ''
     page.value = 1
+    showImportForm.value = false
     await loadUsers()
   } catch (err: unknown) {
     const axiosError = err as { response?: { status?: number; data?: { message?: string } } }

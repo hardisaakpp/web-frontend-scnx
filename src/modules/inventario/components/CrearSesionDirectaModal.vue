@@ -32,8 +32,11 @@
                     </div>
                   </div>
                   <div>
-                    <label for="plannedCloseDate" class="label">Fecha cierre estimada</label>
-                    <input id="plannedCloseDate" v-model="form.plannedCloseDate" type="date" class="input" />
+                    <label for="plannedCloseDate" class="label">Fecha cierre estimada <span class="text-red-500">*</span></label>
+                    <input id="plannedCloseDate" v-model="form.plannedCloseDate" type="date" class="input" required :min="fechaHoyIso" />
+                    <p class="mt-1 text-xs text-gray-400">
+                      Obligatoria — si la toma no se cierra antes de esta fecha, se bloqueará automáticamente como no realizada.
+                    </p>
                   </div>
                 </div>
 
@@ -41,6 +44,20 @@
                 <div>
                   <label for="description" class="label">Descripción (opcional)</label>
                   <input id="description" v-model="form.description" type="text" class="input" maxlength="250" placeholder="Ej: Toma express almacén central" />
+                </div>
+
+                <!-- Código de referencia -->
+                <div>
+                  <label for="referenceCode" class="label">Código de referencia (opcional, máx. 10 caracteres alfanuméricos)</label>
+                  <input
+                    id="referenceCode"
+                    v-model="form.referenceCode"
+                    type="text"
+                    class="input uppercase"
+                    maxlength="10"
+                    placeholder="Ej: FOLIO0001"
+                    @input="form.referenceCode = form.referenceCode.replace(/[^a-zA-Z0-9]/g, '').toUpperCase()"
+                  />
                 </div>
 
                 <!-- Bodegas -->
@@ -75,7 +92,7 @@
                 </div>
 
                 <div class="flex justify-end gap-3 pt-2 border-t border-gray-100 dark:border-gray-700">
-                  <button type="button" class="btn-secondary" @click="cerrar">Cancelar</button>
+                  <button type="button" class="btn-secondary" @click="cancelar">Cancelar</button>
                   <button type="submit" class="btn-primary" :disabled="guardando || bodegasSeleccionadas.length === 0">
                     {{ guardando ? 'Generando...' : `Generar ${bodegasSeleccionadas.length > 1 ? bodegasSeleccionadas.length + ' tomas' : 'toma'}` }}
                   </button>
@@ -116,7 +133,7 @@ const FILTROS_DISPONIBLES = [
 
 type FiltroKey = 'uNv1' | 'uNv2' | 'uNv3' | 'uGen' | 'material' | 'pack' | 'coleccion'
 
-const form = ref({ plannedCloseDate: '', description: '' })
+const form = ref({ plannedCloseDate: '', description: '', referenceCode: '' })
 const bodegasSeleccionadas = ref<string[]>([])
 const filtrosSeleccionados = ref<Record<FiltroKey, string[]>>({
   uNv1: [], uNv2: [], uNv3: [], uGen: [], material: [], pack: [], coleccion: []
@@ -134,11 +151,14 @@ const error = ref<string | null>(null)
 const fechaHoy = computed(() => new Date().toLocaleDateString(APP_LOCALE, {
   weekday: 'long', day: '2-digit', month: 'long', year: 'numeric'
 }))
+const fechaHoyIso = computed(() => new Date().toISOString().slice(0, 10))
 
 watch(() => props.isOpen, async (open) => {
   if (!open) return
   error.value = null
-  resetForm()
+  // Don't reset the form here — if the user closes by clicking outside or hits Escape while
+  // filling it out, reopening should keep what they had. It only clears on explicit Cancelar
+  // or after a successful save (see cancelar()/guardar()).
   if (bodegas.value.length === 0) {
     loadingBodegas.value = true
     try { bodegas.value = await inventarioSesionesService.getWarehouses() }
@@ -154,12 +174,17 @@ watch(() => props.isOpen, async (open) => {
 })
 
 function resetForm() {
-  form.value = { plannedCloseDate: '', description: '' }
+  form.value = { plannedCloseDate: '', description: '', referenceCode: '' }
   bodegasSeleccionadas.value = []
   filtrosSeleccionados.value = { uNv1: [], uNv2: [], uNv3: [], uGen: [], material: [], pack: [], coleccion: [] }
 }
 
 function cerrar() {
+  emit('close')
+}
+
+function cancelar() {
+  resetForm()
   emit('close')
 }
 
@@ -169,6 +194,10 @@ function buildSesionFilter(key: FiltroKey): string[] | undefined {
 
 async function guardar() {
   if (bodegasSeleccionadas.value.length === 0) return
+  if (!form.value.plannedCloseDate) {
+    error.value = 'La fecha de cierre estimada es obligatoria.'
+    return
+  }
   guardando.value = true
   error.value = null
 
@@ -180,7 +209,7 @@ async function guardar() {
       const result = await inventarioSesionesService.createSesion(
         warehouseCode,
         form.value.description || null,
-        form.value.plannedCloseDate || null,
+        form.value.plannedCloseDate,
         {
           uNv1Values: buildSesionFilter('uNv1'),
           uNv2Values: buildSesionFilter('uNv2'),
@@ -189,7 +218,8 @@ async function guardar() {
           materialValues: buildSesionFilter('material'),
           packValues: buildSesionFilter('pack'),
           coleccionValues: buildSesionFilter('coleccion'),
-        }
+        },
+        form.value.referenceCode || null
       )
       lastSessionId = result.sessionId
     } catch (e: any) {
@@ -203,6 +233,7 @@ async function guardar() {
     error.value = `Errores: ${errores.join('; ')}`
   }
   if (lastSessionId) {
+    resetForm()
     emit('creada', lastSessionId)
   }
 }
@@ -361,7 +392,7 @@ const FiltroMultiselect = defineComponent({
                 class: 'absolute z-20 mt-1 w-full max-h-36 overflow-y-auto rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 shadow-lg',
                 onMousedown: (e: Event) => e.preventDefault()
               },
-                filtered.value.slice(0, 50).map(o =>
+                filtered.value.map(o =>
                   h('div', {
                     key: o,
                     class: [

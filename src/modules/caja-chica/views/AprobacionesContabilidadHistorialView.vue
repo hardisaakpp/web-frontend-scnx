@@ -18,12 +18,38 @@
       <div class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-5">
         <div class="flex items-center justify-between mb-4">
           <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Listado</h2>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              class="rounded border border-gray-200 dark:border-gray-700 text-sm px-3 py-1.5 disabled:opacity-50"
+              :disabled="excelLoading"
+              @click="downloadExcel"
+            >
+              {{ excelLoading ? 'Generando...' : 'Descargar Excel' }}
+            </button>
+            <button
+              type="button"
+              class="rounded border border-gray-200 dark:border-gray-700 text-sm px-3 py-1.5"
+              @click="loadHistorial"
+            >
+              Refrescar
+            </button>
+          </div>
+        </div>
+        <div v-if="excelError" class="mb-3 text-sm text-red-600 dark:text-red-400">{{ excelError }}</div>
+
+        <div class="mb-4 flex flex-wrap gap-2 border-b border-gray-200 dark:border-gray-700 pb-3">
           <button
+            v-for="tab in TABS"
+            :key="tab.value"
             type="button"
-            class="rounded border border-gray-200 dark:border-gray-700 text-sm px-3 py-1.5"
-            @click="loadHistorial"
+            class="rounded-full px-3 py-1.5 text-xs font-medium transition-colors"
+            :class="activeTab === tab.value
+              ? 'bg-emerald-600 text-white'
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'"
+            @click="activeTab = tab.value"
           >
-            Refrescar
+            {{ tab.label }}
           </button>
         </div>
 
@@ -44,7 +70,7 @@
               class="mt-1 w-full rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-2 py-1.5 text-sm"
             />
           </label>
-          <label class="text-xs text-gray-600 dark:text-gray-300">
+          <label v-if="activeTab === 'APROBADAS'" class="text-xs text-gray-600 dark:text-gray-300">
             Integracion
             <select
               v-model="filtroIntegracion"
@@ -92,7 +118,7 @@
                   {{ getIntegrationMessage(group.idLiquidacion)?.texto }}
                 </div>
                 <p class="text-xs text-gray-500 dark:text-gray-400">
-                  {{ group.totalItems }} detalles · Tienda: {{ group.codAlmacen }} · Custodio: {{ group.nombreCustodio }} · Fecha: {{ formatDate(group.fechaCreacion) }}
+                  {{ group.totalItems }} detalles · Tienda: {{ group.codAlmacen }} · Custodio: {{ group.nombreCustodio }} ({{ group.cedulaCustodio }}) · Supervisor: {{ group.nombreSupervisor }} · Fecha: {{ formatDate(group.fechaCreacion) }}
                 </p>
               </div>
               <div class="flex items-center gap-3">
@@ -106,12 +132,22 @@
                 <div class="text-xs text-gray-500 dark:text-gray-400">IVA: {{ formatAmount(group.ivaMonto) }}</div>
                 <div class="text-xs text-gray-500 dark:text-gray-400">Total: {{ formatAmount(group.totalMonto) }}</div>
                 <button
+                  v-if="!isEnProcesoJob(group.idLiquidacion)"
                   type="button"
                   class="rounded border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-1 text-xs text-emerald-700 dark:text-emerald-300 disabled:opacity-50"
                   :disabled="integrationLoading[group.idLiquidacion] || isIntegrado(group.idLiquidacion)"
                   @click="integrarLiquidacion(group.idLiquidacion)"
                 >
                   {{ integrationLoading[group.idLiquidacion] ? 'Integrando...' : 'Integrar' }}
+                </button>
+                <button
+                  v-else
+                  type="button"
+                  class="rounded border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/30 px-2 py-1 text-xs text-amber-700 dark:text-amber-300 disabled:opacity-50"
+                  :disabled="integrationLoading[group.idLiquidacion]"
+                  @click="actualizarEstadoJob(group.idLiquidacion)"
+                >
+                  {{ integrationLoading[group.idLiquidacion] ? 'Consultando...' : 'Actualizar estado' }}
                 </button>
                 <button
                   type="button"
@@ -139,6 +175,7 @@
                     <th class="py-2 pr-3">Total</th>
                     <th class="py-2 pr-3">Estado</th>
                     <th class="py-2 pr-3">Monto</th>
+                    <th class="py-2 pr-3">Aprobado por</th>
                     <th class="py-2 pr-3">Comentario</th>
                     <th class="py-2 pr-3">Fecha</th>
                     <th class="py-2 pr-3">Acciones</th>
@@ -157,6 +194,7 @@
                       </span>
                     </td>
                     <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ formatAmount(item.montoAprobado) }}</td>
+                    <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ getAprobadorNombre(item) }}</td>
                     <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ item.observacion || '-' }}</td>
                     <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">{{ formatDate(item.fechaAprobacion) }}</td>
                     <td class="py-2 pr-3 text-gray-700 dark:text-gray-200">
@@ -251,7 +289,7 @@
             <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-3">Detalle de consumo</div>
             <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
               <div>
-                <dt class="text-xs text-gray-500 dark:text-gray-400">Subtotal Base 15%</dt>
+                <dt class="text-xs text-gray-500 dark:text-gray-400">Subtotal Base Gravada</dt>
                 <dd class="text-sm text-gray-900 dark:text-white">{{ selectedDetalle ? formatAmount(selectedDetalle.subtotalConIva) : '-' }}</dd>
               </div>
               <div>
@@ -353,12 +391,13 @@
 </template>
 
 <script setup lang="ts">
+import { APP_LOCALE } from '@/plugins/locale'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { cajaChicaApi, slayerHttp as slayerApi } from '@/lib/http'
-import { createBuildAdjuntoUrl } from '../utils/buildAdjuntoUrl'
-import { resolveUserNames } from '../utils/resolveUserNames'
-import { APP_LOCALE } from '@/plugins/locale'
+import { useAdjuntosByDetalle } from '@/composables/useAdjuntosByDetalle'
+import { resolveUserNames } from '@/utils/resolveUserNames'
+import { extractItemsArray } from '../utils/apiPayload'
 
 interface LiquidacionItem {
   idLiquidacion: number
@@ -377,9 +416,19 @@ interface LiquidacionDetalleItem {
   concepto: string
   ruc: string
   nombreProveedor: string
+  numeroComprobante: string
   total: number
   subtotalConIva: number
   subtotalSinIva: number
+  idTipoIva: number | null
+}
+
+interface TipoIvaItem {
+  id: number
+  codigo: string
+  descripcion: string
+  porcentaje: number | null
+  taxCodeSap: string
 }
 
 interface AprobacionItem {
@@ -399,6 +448,8 @@ interface HistorialItem {
   idLiquidacion: number
   idUsuario: string
   usuarioNombre: string
+  idUsuarioSupervisor: string
+  nombreSupervisor: string
   nombreGasto: string
   concepto: string
   total: number
@@ -416,14 +467,8 @@ interface IntegracionEstadoItem {
   estado: string
   docEntry?: string | number
   docNum?: string | number
+  jobId?: string
   mensaje?: string
-}
-
-interface AdjuntoItem {
-  idAdjunto: number
-  idDetalle: number
-  rutaArchivo: string
-  fechaSubida: string
 }
 
 const router = useRouter()
@@ -482,6 +527,9 @@ const parseIntegracionResultado = (raw: unknown, fallbackText?: string) => {
 const loading = ref(false)
 const error = ref('')
 const historial = ref<HistorialItem[]>([])
+const catalogoTiposIva = ref<TipoIvaItem[]>([])
+const excelLoading = ref(false)
+const excelError = ref('')
 const openGroups = ref<Record<number, boolean>>({})
 const detallesByLiquidacion = ref<Record<number, LiquidacionDetalleItem[]>>({})
 const integraciones = ref<Record<number, IntegracionEstadoItem>>({})
@@ -489,9 +537,6 @@ const integrationLoading = ref<Record<number, boolean>>({})
 const integrationMessages = ref<Record<number, { tipo: 'ok' | 'error'; texto: string }>>({})
 const aprobadorNombreById = ref<Record<string, string>>({})
 const adjuntosByDetalle = ref<Record<number, number>>({})
-const adjuntosListByDetalle = ref<Record<number, AdjuntoItem[]>>({})
-const loadingAdjuntosMap = ref<Record<number, boolean>>({})
-const selectedAdjuntoId = ref<number | null>(null)
 const showAdjuntoFull = ref(false)
 const showDetallePanel = ref(false)
 const selectedItem = ref<HistorialItem | null>(null)
@@ -502,26 +547,17 @@ const selectedDetalle = computed(() => {
   return detalles.find(d => d.idDetalle === selectedItem.value?.idDetalle)
 })
 
-const selectedAdjunto = computed(() => {
-  if (!selectedItem.value) return null
-  const detalleId = selectedItem.value.idDetalle
-  const list = adjuntosListByDetalle.value[detalleId] || []
-  if (!list.length) return null
-  const found = list.find(a => a.idAdjunto === selectedAdjuntoId.value)
-  return found || list[0]
-})
-
-
-const buildAdjuntoUrl = createBuildAdjuntoUrl()
-
-const formatAdjuntoName = (ruta: string) => {
-  if (!ruta) return ''
-  const parts = ruta.split('/')
-  return parts[parts.length - 1]
-}
-
-const isImageFile = (ruta: string) => /\.(png|jpe?g|gif|webp)$/i.test(ruta)
-const isPdfFile = (ruta: string) => /\.pdf$/i.test(ruta)
+const {
+  adjuntosListByDetalle,
+  loadingAdjuntosMap,
+  selectedAdjuntoId,
+  selectedAdjunto,
+  loadAdjuntosForDetalle,
+  buildAdjuntoUrl,
+  formatAdjuntoName,
+  isImageFile,
+  isPdfFile
+} = useAdjuntosByDetalle(computed(() => selectedItem.value?.idDetalle))
 
 
 const getCurrentUser = (): { id: string; name: string } => {
@@ -542,6 +578,20 @@ const getCurrentUserId = (): string => getCurrentUser().id
 
 const normalizeString = (value: any) => String(value ?? '').trim()
 
+// Los payloads del backend mezclan claves camelCase y PascalCase para el mismo campo;
+// firstNonNull prueba cada clave en orden y devuelve la primera con valor real.
+const firstNonNull = (item: any, keys: string[]): any => {
+  for (const key of keys) {
+    const value = item?.[key]
+    if (value !== null && value !== undefined) return value
+  }
+  return undefined
+}
+
+const pickString = (item: any, keys: string[], fallback = '') => normalizeString(firstNonNull(item, keys) ?? fallback)
+const pickNumber = (item: any, keys: string[], fallback = 0) => Number(firstNonNull(item, keys) ?? fallback)
+const pickDate = (item: any, keys: string[]) => String(firstNonNull(item, keys) ?? '')
+
 const getAprobadorNombre = (item: HistorialItem) => {
   const nombreDirecto = normalizeString(item.usuarioNombre)
   if (nombreDirecto) return nombreDirecto
@@ -557,6 +607,14 @@ const getAprobadorNombre = (item: HistorialItem) => {
   const current = getCurrentUser()
   if (current.id && current.id === idUsuario && current.name) return current.name
   return idUsuario
+}
+
+const getSupervisorNombre = (nombreSupervisor?: string, idUsuarioSupervisor?: string) => {
+  const nombrePersistido = normalizeString(nombreSupervisor)
+  if (nombrePersistido) return nombrePersistido
+  const idUsuario = normalizeString(idUsuarioSupervisor)
+  if (!idUsuario) return '-'
+  return normalizeString(aprobadorNombreById.value[idUsuario]) || idUsuario
 }
 
 const normalizeLiquidacion = (item: any): LiquidacionItem => ({
@@ -576,9 +634,11 @@ const normalizeDetalle = (item: any): LiquidacionDetalleItem => ({
   concepto: normalizeString(item.concepto ?? item.Concepto ?? ''),
   ruc: normalizeString(item.ruc ?? item.Ruc ?? ''),
   nombreProveedor: normalizeString(item.nombreProveedor ?? item.NombreProveedor ?? ''),
+  numeroComprobante: normalizeString(item.numeroComprobante ?? item.NumeroComprobante ?? ''),
   total: Number(item.total ?? item.Total ?? 0),
   subtotalConIva: Number(item.subtotal_Con_Iva ?? item.Subtotal_Con_Iva ?? item.subtotalConIva ?? 0),
-  subtotalSinIva: Number(item.subtotal_Sin_Iva ?? item.Subtotal_Sin_Iva ?? item.subtotalSinIva ?? 0)
+  subtotalSinIva: Number(item.subtotal_Sin_Iva ?? item.Subtotal_Sin_Iva ?? item.subtotalSinIva ?? 0),
+  idTipoIva: item.idTipoIva ?? item.IdTipoIva ?? null
 })
 
 const normalizeAprobacion = (item: any): AprobacionItem => ({
@@ -607,6 +667,41 @@ const fechaDesde = ref(formatDateInput(threeDaysAgo))
 const fechaHasta = ref(formatDateInput(today))
 const filtroIntegracion = ref<'PENDIENTES' | 'TODOS'>('PENDIENTES')
 
+type TabHistorial = 'APROBADAS' | 'RECHAZADAS' | 'DEVUELTAS' | 'CERRADAS'
+const activeTab = ref<TabHistorial>('APROBADAS')
+const TABS: Array<{ value: TabHistorial; label: string }> = [
+  { value: 'APROBADAS', label: 'Aprobadas' },
+  { value: 'RECHAZADAS', label: 'Rechazadas' },
+  { value: 'DEVUELTAS', label: 'Devueltas' },
+  { value: 'CERRADAS', label: 'Cerradas (integradas)' }
+]
+
+const loadTiposIva = async () => {
+  try {
+    const response = await cajaChicaApi.get('/TiposIva/all')
+    const items = extractItemsArray(response.data)
+    catalogoTiposIva.value = items.map((item: any) => ({
+      id: Number(item.id ?? item.Id ?? 0),
+      codigo: normalizeString(item.codigo ?? item.Codigo ?? ''),
+      descripcion: normalizeString(item.descripcion ?? item.Descripcion ?? ''),
+      porcentaje: item.porcentaje ?? item.Porcentaje ?? null,
+      taxCodeSap: normalizeString(item.taxCodeSap ?? item.TaxCodeSap ?? '')
+    }))
+  } catch {
+    // Si falla la carga del catalogo, se recurre al fallback IVA_15/IVA_0 en resolveTaxCodeGravado.
+  }
+}
+
+// Antes de que existiera el catalogo de TiposIva, todos los detalles gravados usaban IVA_15.
+// Se mantiene ese fallback para no romper la integracion SAP de liquidaciones historicas sin IdTipoIva.
+const resolveTaxCodeGravado = (idTipoIva: number | null | undefined) => {
+  if (idTipoIva) {
+    const tipo = catalogoTiposIva.value.find(t => t.id === idTipoIva)
+    if (tipo?.taxCodeSap) return tipo.taxCodeSap
+  }
+  return 'IVA_15'
+}
+
 const getDateOnly = (value: string) => {
   const normalized = normalizeString(value)
   return normalized ? normalized.substring(0, 10) : ''
@@ -621,9 +716,11 @@ const resetFiltros = () => {
   filtroIntegracion.value = 'PENDIENTES'
 }
 
-type AprobacionMontosByBase = {
-  base15: number
-  base0: number
+type AprobacionMontosPorDetalle = {
+  gravado: number
+  taxCodeGravado: string
+  noGravado: number
+  ivaGravado: number
 }
 
 const resolveTipoBase = (rawTipoBase: unknown, detalle?: LiquidacionDetalleItem): 'BASE_15' | 'BASE_0' | '' => {
@@ -644,14 +741,16 @@ const resolveTipoBase = (rawTipoBase: unknown, detalle?: LiquidacionDetalleItem)
   return ''
 }
 
-const calculateTotalsFromBases = (montosByDetalle: Record<number, AprobacionMontosByBase>) => {
+// Totales para mostrar en pantalla / confirmacion. El IVA se suma desde el monto real
+// calculado por detalle (montos.ivaGravado), no desde una tasa fija, para soportar 15%/8%/0%/manual.
+const calculateTotalsFromBases = (montosByDetalle: Record<number, AprobacionMontosPorDetalle>) => {
   const roundAmount = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100
-  const base15 = roundAmount(Object.values(montosByDetalle).reduce((acc, montos) => acc + Number(montos.base15 ?? 0), 0))
-  const base0 = roundAmount(Object.values(montosByDetalle).reduce((acc, montos) => acc + Number(montos.base0 ?? 0), 0))
-  const subtotal = roundAmount(base15 + base0)
-  const iva = roundAmount(base15 * 0.15)
+  const gravado = roundAmount(Object.values(montosByDetalle).reduce((acc, montos) => acc + Number(montos.gravado ?? 0), 0))
+  const noGravado = roundAmount(Object.values(montosByDetalle).reduce((acc, montos) => acc + Number(montos.noGravado ?? 0), 0))
+  const iva = roundAmount(Object.values(montosByDetalle).reduce((acc, montos) => acc + Number(montos.ivaGravado ?? 0), 0))
+  const subtotal = roundAmount(gravado + noGravado)
   const total = roundAmount(subtotal + iva)
-  return { base15, base0, subtotal, iva, total }
+  return { base15: gravado, base0: noGravado, subtotal, iva, total }
 }
 
 const buildAprobacionMontosByDetalle = (
@@ -659,7 +758,7 @@ const buildAprobacionMontosByDetalle = (
   detalleById: Record<number, LiquidacionDetalleItem> = {}
 ) => {
   const roundAmount = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100
-  const byDetalle: Record<number, AprobacionMontosByBase> = {}
+  const byDetalle: Record<number, AprobacionMontosPorDetalle> = {}
   const approvedDetalleIds = new Set<number>()
 
   items.forEach(item => {
@@ -675,14 +774,21 @@ const buildAprobacionMontosByDetalle = (
     const detalle = detalleById[idDetalle]
     if (!detalle) return
 
-    const base15 = roundAmount(Math.max(0, Number(detalle.subtotalConIva ?? 0)))
-    const base0 = roundAmount(Math.max(0, Number(detalle.subtotalSinIva ?? 0)))
-    if (base15 > 0 || base0 > 0) {
-      byDetalle[idDetalle] = { base15, base0 }
+    const gravado = roundAmount(Math.max(0, Number(detalle.subtotalConIva ?? 0)))
+    const noGravado = roundAmount(Math.max(0, Number(detalle.subtotalSinIva ?? 0)))
+    if (gravado > 0 || noGravado > 0) {
+      const ivaDetalle = roundAmount(Math.max(0, Number(detalle.total ?? 0) - gravado - noGravado))
+      byDetalle[idDetalle] = {
+        gravado,
+        taxCodeGravado: resolveTaxCodeGravado(detalle.idTipoIva),
+        noGravado,
+        ivaGravado: gravado > 0 ? ivaDetalle : 0
+      }
     }
   })
 
-  // Fallback: si no vinieron subtotales en detalle, usar monto aprobado por tipo base.
+  // Fallback: si no vinieron subtotales en detalle, usar monto aprobado por tipo base
+  // (liquidaciones historicas anteriores al catalogo de TiposIva).
   items.forEach(item => {
     const idDetalle = Number(item.idDetalle ?? 0)
     if (!idDetalle) return
@@ -700,13 +806,14 @@ const buildAprobacionMontosByDetalle = (
     if (!tipoBase) return
 
     if (!byDetalle[idDetalle]) {
-      byDetalle[idDetalle] = { base15: 0, base0: 0 }
+      byDetalle[idDetalle] = { gravado: 0, taxCodeGravado: resolveTaxCodeGravado(detalle?.idTipoIva), noGravado: 0, ivaGravado: 0 }
     }
 
     if (tipoBase === 'BASE_15') {
-      byDetalle[idDetalle].base15 = Math.max(byDetalle[idDetalle].base15, monto)
+      byDetalle[idDetalle].gravado = Math.max(byDetalle[idDetalle].gravado, monto)
+      byDetalle[idDetalle].ivaGravado = roundAmount(byDetalle[idDetalle].gravado * 0.15)
     } else if (tipoBase === 'BASE_0') {
-      byDetalle[idDetalle].base0 = Math.max(byDetalle[idDetalle].base0, monto)
+      byDetalle[idDetalle].noGravado = Math.max(byDetalle[idDetalle].noGravado, monto)
     }
   })
 
@@ -734,14 +841,14 @@ const groupedHistorial = computed(() => {
     let subtotalMonto = 0
     let ivaMonto = 0
     Object.values(aprobacionesByDetalle).forEach(montos => {
-      const base15 = Number(montos.base15 ?? 0)
-      const base0 = Number(montos.base0 ?? 0)
+      const gravado = Number(montos.gravado ?? 0)
+      const noGravado = Number(montos.noGravado ?? 0)
 
-      if (base15 > 0) {
-        subtotalMonto += base15
-        ivaMonto += roundAmount(base15 * 0.15)
+      if (gravado > 0) {
+        subtotalMonto += gravado
+        ivaMonto += Number(montos.ivaGravado ?? 0)
       }
-      if (base0 > 0) subtotalMonto += base0
+      if (noGravado > 0) subtotalMonto += noGravado
     })
 
     subtotalMonto = roundAmount(subtotalMonto)
@@ -758,6 +865,8 @@ const groupedHistorial = computed(() => {
       totalItems: items.length,
       codAlmacen: base?.codAlmacen || '-',
       nombreCustodio: base?.nombreCustodio || '-',
+      cedulaCustodio: liquidacionesMap.value[idLiquidacion]?.cedulaCustodio || '-',
+      nombreSupervisor: getSupervisorNombre(base?.nombreSupervisor, base?.idUsuarioSupervisor),
       fechaCreacion: base?.fechaCreacion || ''
     }
   })
@@ -767,7 +876,7 @@ const groupedHistorial = computed(() => {
     if (fechaDesde.value && fecha && fecha < fechaDesde.value) return false
     if (fechaHasta.value && fecha && fecha > fechaHasta.value) return false
 
-    if (filtroIntegracion.value === 'PENDIENTES') {
+    if (activeTab.value === 'APROBADAS' && filtroIntegracion.value === 'PENDIENTES') {
       const estado = getIntegracionEstado(group.idLiquidacion).toUpperCase()
       if (estado === 'INTEGRADO') return false
     }
@@ -783,6 +892,11 @@ const toggleGroup = (idLiquidacion: number) => {
 }
 
 const isIntegrado = (idLiquidacion: number) => integraciones.value[idLiquidacion]?.estado === 'INTEGRADO'
+
+const isEnProcesoJob = (idLiquidacion: number) => {
+  const estado = String(integraciones.value[idLiquidacion]?.estado || '').toUpperCase()
+  return estado === 'ENCOLADO' || estado === 'PROCESANDO'
+}
 
 const getIntegracionEstado = (idLiquidacion: number) => {
   return integraciones.value[idLiquidacion]?.estado || 'PENDIENTE'
@@ -898,29 +1012,74 @@ const fetchMarcaContab = async (codAlmacen: string): Promise<string> => {
 
 const getUCodSt = (
   detalles: LiquidacionDetalleItem[],
-  montosByDetalle: Record<number, AprobacionMontosByBase>
+  montosByDetalle: Record<number, AprobacionMontosPorDetalle>
 ) => {
   return detalles.some(detalle => {
     const montos = montosByDetalle[detalle.idDetalle]
-    return Number(montos?.base15 ?? 0) > 0
+    return Number(montos?.gravado ?? 0) > 0
   }) ? '01' : '02'
+}
+
+type DocumentLineGroup = {
+  accountCode: string
+  itemDescription: string
+  quantity: number
+  unitPrice: number
+  taxCode: string
+}
+
+const buildTaxBreakdown = (montos: AprobacionMontosPorDetalle) => {
+  const roundAmount = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100
+  const breakdown = [] as Array<{ taxCode: string; netAmount: number }>
+  if (Number(montos.gravado ?? 0) > 0) {
+    breakdown.push({
+      taxCode: montos.taxCodeGravado,
+      netAmount: roundAmount(Number(montos.gravado))
+    })
+  }
+  if (Number(montos.noGravado ?? 0) > 0) {
+    breakdown.push({
+      taxCode: 'IVA_0',
+      netAmount: roundAmount(Number(montos.noGravado))
+    })
+  }
+  return breakdown
+}
+
+const accumulateDocumentLineGroup = (
+  grouped: Map<string, DocumentLineGroup>,
+  accountCode: string,
+  itemDescription: string,
+  part: { taxCode: string; netAmount: number }
+) => {
+  if (part.netAmount <= 0) return
+
+  const groupKey = `${accountCode}::${part.taxCode}`
+  const current = grouped.get(groupKey)
+  if (current) {
+    // Para evitar multiplicaciones no deseadas en SAP, agrupamos en una sola línea por cuenta/impuesto.
+    current.quantity = 1
+    current.unitPrice = current.unitPrice + part.netAmount
+  } else {
+    grouped.set(groupKey, {
+      accountCode,
+      itemDescription,
+      quantity: 1,
+      unitPrice: part.netAmount,
+      taxCode: part.taxCode
+    })
+  }
 }
 
 const buildDocumentLines = (
   detalles: LiquidacionDetalleItem[],
   codAlmacen: string,
   marcaContab: string,
-  montosByDetalle: Record<number, AprobacionMontosByBase>
+  montosByDetalle: Record<number, AprobacionMontosPorDetalle>
 ) => {
   const roundAmount = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100
 
-  const grouped = new Map<string, {
-    accountCode: string
-    itemDescription: string
-    quantity: number
-    unitPrice: number
-    taxCode: 'IVA_15' | 'IVA_0'
-  }>()
+  const grouped = new Map<string, DocumentLineGroup>()
 
   for (const detalle of detalles) {
     const montos = montosByDetalle[detalle.idDetalle]
@@ -929,38 +1088,9 @@ const buildDocumentLines = (
     const accountCode = normalizeString(detalle.idGasto)
     if (!accountCode) continue
 
-    const breakdown = [] as Array<{ taxCode: 'IVA_15' | 'IVA_0'; netAmount: number }>
-    if (Number(montos.base15 ?? 0) > 0) {
-      breakdown.push({
-        taxCode: 'IVA_15',
-        netAmount: roundAmount(Number(montos.base15))
-      })
-    }
-    if (Number(montos.base0 ?? 0) > 0) {
-      breakdown.push({
-        taxCode: 'IVA_0',
-        netAmount: roundAmount(Number(montos.base0))
-      })
-    }
-
-    for (const part of breakdown) {
-      if (part.netAmount <= 0) continue
-      const groupKey = `${accountCode}::${part.taxCode}`
-
-      const current = grouped.get(groupKey)
-      if (current) {
-        // Para evitar multiplicaciones no deseadas en SAP, agrupamos en una sola línea por cuenta/impuesto.
-        current.quantity = 1
-        current.unitPrice = current.unitPrice + part.netAmount
-      } else {
-        grouped.set(groupKey, {
-          accountCode,
-          itemDescription: detalle.nombreGasto || detalle.concepto || '',
-          quantity: 1,
-          unitPrice: part.netAmount,
-          taxCode: part.taxCode
-        })
-      }
+    const itemDescription = detalle.nombreGasto || detalle.concepto || ''
+    for (const part of buildTaxBreakdown(montos)) {
+      accumulateDocumentLineGroup(grouped, accountCode, itemDescription, part)
     }
   }
 
@@ -978,7 +1108,12 @@ const buildDocumentLines = (
   })
 }
 
-const calculatePayloadTotals = (documentLines: Array<{ UnitPrice?: number; Quantity?: number; TaxCode?: string }>) => {
+// El IVA real (soporta 15%/8%/0%/manual) se suma desde montosByDetalle.ivaGravado, no desde
+// una tasa fija por TaxCode, ya que distintas lineas pueden tener distintos porcentajes.
+const calculatePayloadTotals = (
+  documentLines: Array<{ UnitPrice?: number; Quantity?: number; TaxCode?: string }>,
+  montosByDetalle: Record<number, AprobacionMontosPorDetalle>
+) => {
   const roundAmount = (value: number) => Math.round((value + Number.EPSILON) * 100) / 100
 
   const subtotal = roundAmount(documentLines.reduce((acc, line) => {
@@ -987,12 +1122,7 @@ const calculatePayloadTotals = (documentLines: Array<{ UnitPrice?: number; Quant
     return acc + (quantity * unitPrice)
   }, 0))
 
-  const iva = roundAmount(documentLines.reduce((acc, line) => {
-    if (line.TaxCode !== 'IVA_15') return acc
-    const quantity = Number(line.Quantity ?? 1)
-    const unitPrice = Number(line.UnitPrice ?? 0)
-    return acc + (quantity * unitPrice * 0.15)
-  }, 0))
+  const iva = roundAmount(Object.values(montosByDetalle).reduce((acc, montos) => acc + Number(montos.ivaGravado ?? 0), 0))
 
   const total = roundAmount(subtotal + iva)
 
@@ -1026,154 +1156,277 @@ const downloadJsonPayload = (idLiquidacion: number, payload: unknown) => {
   }
 }
 
-const integrarLiquidacion = async (idLiquidacion: number) => {
-  if (integrationLoading.value[idLiquidacion]) return
+type IntegracionGroup = (typeof groupedHistorial.value)[number]
 
+const getIntegracionContext = (
+  idLiquidacion: number
+): { ok: false; error: string } | { ok: true; selectedGroup: IntegracionGroup; liquidacion: LiquidacionItem } => {
   const selectedGroup = groupedHistorial.value.find(group => group.idLiquidacion === idLiquidacion)
   if (!selectedGroup) {
-    error.value = 'No se encontro la liquidacion seleccionada en la vista actual.'
-    return
+    return { ok: false, error: 'No se encontro la liquidacion seleccionada en la vista actual.' }
   }
 
   const liquidacion = liquidacionesMap.value[idLiquidacion]
   if (!liquidacion || !liquidacion.cedulaCustodio) {
-    error.value = 'No se encontro la cedula del custodio.'
+    return { ok: false, error: 'No se encontro la cedula del custodio.' }
+  }
+
+  return { ok: true, selectedGroup, liquidacion }
+}
+
+const buildIntegracionPayload = async (
+  idLiquidacion: number,
+  selectedGroup: IntegracionGroup,
+  liquidacion: LiquidacionItem
+) => {
+  const aprobacionesLiquidacion = selectedGroup.items
+
+  const detalleIdsAprobacion = new Set(aprobacionesLiquidacion.map(item => item.idDetalle))
+  const detalles = (detallesByLiquidacion.value[idLiquidacion] || [])
+    .filter(detalle => detalle.idLiquidacion === idLiquidacion && detalleIdsAprobacion.has(detalle.idDetalle))
+
+  if (!detalles.length) {
+    return { ok: false as const, error: 'No se encontraron detalles para integrar.' }
+  }
+
+  const docDate = buildDocDate()
+  const codAlmacen = normalizeString(liquidacion.codAlmacen)
+  const [cardCodeCustodio, marcaContab] = await Promise.all([
+    resolveCardCodeByCedula(liquidacion.cedulaCustodio),
+    fetchMarcaContab(codAlmacen)
+  ])
+  const detalleById = detalles.reduce<Record<number, LiquidacionDetalleItem>>((acc, detalle) => {
+    acc[detalle.idDetalle] = detalle
+    return acc
+  }, {})
+  const montosByDetalle = buildAprobacionMontosByDetalle(aprobacionesLiquidacion, detalleById)
+  const documentLines = buildDocumentLines(detalles, codAlmacen, marcaContab, montosByDetalle)
+  if (!documentLines.length) {
+    return { ok: false as const, error: 'No hay valores aprobados por contabilidad para integrar.' }
+  }
+
+  const baseTotals = calculateTotalsFromBases(montosByDetalle)
+
+  const payload = {
+    CardCode: cardCodeCustodio,
+    Series: 217,
+    DocDate: docDate,
+    Comments: 'LIQUIDACION DE COMPRA',
+    DocType: 'dDocument_Service',
+    DocCurrency: 'USD',
+    JournalMemo: `REPOSICION CAJA CHICA ${codAlmacen}`.trim(),
+    U_COD_ST: getUCodSt(detalles, montosByDetalle),
+    U_tipo_comprob: '03',
+    U_ORIGEN: 'C',
+    U_SER_EST: '001',
+    U_SER_PE: '100',
+    DocumentLines: documentLines
+  }
+
+  return { ok: true as const, payload, baseTotals, montosByDetalle }
+}
+
+type IntegracionPayloadOk = Extract<Awaited<ReturnType<typeof buildIntegracionPayload>>, { ok: true }>
+
+const buildConfirmationMessage = (
+  idLiquidacion: number,
+  payload: IntegracionPayloadOk['payload'],
+  baseTotals: IntegracionPayloadOk['baseTotals'],
+  montosByDetalle: IntegracionPayloadOk['montosByDetalle']
+) => {
+  // Respaldo del JSON exacto antes de enviar a SAP.
+  downloadJsonPayload(idLiquidacion, payload)
+
+  const totalAprobadoPantalla = baseTotals.total
+  const totals = calculatePayloadTotals(payload.DocumentLines, montosByDetalle)
+  const diferenciaTotal = Number((totals.total - totalAprobadoPantalla).toFixed(2))
+  const hayDiferencia = Math.abs(diferenciaTotal) >= 0.01
+  const payloadJson = JSON.stringify(payload, null, 2)
+
+  const warningLines = hayDiferencia
+    ? [
+        '',
+        `ADVERTENCIA: Total SAP difiere del total aprobado en ${formatAmount(diferenciaTotal)}.`
+      ]
+    : []
+
+  return [
+    'Resumen de montos:',
+    `Total aprobado (pantalla): ${formatAmount(totalAprobadoPantalla)}`,
+    `Base gravada: ${formatAmount(baseTotals.base15)}`,
+    `Base 0%: ${formatAmount(baseTotals.base0)}`,
+    `Subtotal base SAP (sin IVA): ${formatAmount(totals.subtotal)}`,
+    `IVA SAP: ${formatAmount(totals.iva)}`,
+    `Total SAP (subtotal + IVA): ${formatAmount(totals.total)}`,
+    `Lineas (JSON): ${payload.DocumentLines.length}`,
+    ...warningLines,
+    '',
+    'JSON a enviar a SAP:',
+    payloadJson,
+    '',
+    'Esta seguro de integrar y enviar?'
+  ].join('\n')
+}
+
+const handleIntegracionEncolada = async (idLiquidacion: number, response: { data: unknown }) => {
+  const jobId = normalizeString((response.data as any)?.jobId)
+  const mensaje = `Liquidacion encolada (jobId: ${jobId || '-'}). Actualiza el estado en unos segundos.`
+
+  console.log('[Integracion][Encolado]', { jobId })
+
+  await cajaChicaApi.post('/Integraciones/Compras', {
+    idLiquidacion,
+    estado: 'ENCOLADO',
+    jobId,
+    mensaje
+  })
+
+  integraciones.value[idLiquidacion] = { estado: 'ENCOLADO', jobId, mensaje }
+  integrationMessages.value[idLiquidacion] = { tipo: 'ok', texto: mensaje }
+}
+
+const handleIntegracionExitosa = async (idLiquidacion: number, response: { data: unknown }) => {
+  const responseText = normalizeString((response as any)?.request?.responseText)
+  const { docEntry, docNum, mensaje } = parseIntegracionResultado(response.data, responseText)
+
+  console.log('[Integracion][Respuesta OK]', { docEntry, docNum, mensaje })
+
+  await cajaChicaApi.post('/Integraciones/Compras', {
+    idLiquidacion,
+    estado: 'INTEGRADO',
+    docEntry,
+    docNum,
+    mensaje
+  })
+
+  integraciones.value[idLiquidacion] = {
+    estado: 'INTEGRADO',
+    docEntry,
+    docNum,
+    mensaje
+  }
+  const okTexto = docEntry || docNum
+    ? `Liquidacion creada. DocEntry: ${docEntry || '-'}, DocNum: ${docNum || '-'}.`
+    : mensaje
+  integrationMessages.value[idLiquidacion] = {
+    tipo: 'ok',
+    texto: okTexto
+  }
+}
+
+const handleIntegracionError = async (idLiquidacion: number, err: any) => {
+  const rawMsg = err?.response?.data?.message || err?.response?.data
+  const mensaje = typeof rawMsg === 'string' ? rawMsg : JSON.stringify(rawMsg) || 'No se pudo integrar la liquidacion.'
+  console.error('[Integracion][Error]', { idLiquidacion, mensaje, err })
+  error.value = mensaje
+  await cajaChicaApi.post('/Integraciones/Compras', {
+    idLiquidacion,
+    estado: 'ERROR',
+    mensaje
+  })
+  integraciones.value[idLiquidacion] = {
+    estado: 'ERROR',
+    mensaje
+  }
+  integrationMessages.value[idLiquidacion] = {
+    tipo: 'error',
+    texto: mensaje
+  }
+}
+
+const integrarLiquidacion = async (idLiquidacion: number) => {
+  if (integrationLoading.value[idLiquidacion]) return
+
+  const context = getIntegracionContext(idLiquidacion)
+  if (!context.ok) {
+    error.value = context.error
     return
   }
 
   integrationLoading.value[idLiquidacion] = true
   error.value = ''
   try {
-    const aprobacionesLiquidacion = selectedGroup.items
-
-    const detalleIdsAprobacion = new Set(aprobacionesLiquidacion.map(item => item.idDetalle))
-    const detalles = (detallesByLiquidacion.value[idLiquidacion] || [])
-      .filter(detalle => detalle.idLiquidacion === idLiquidacion && detalleIdsAprobacion.has(detalle.idDetalle))
-
-    if (!detalles.length) {
-      error.value = 'No se encontraron detalles para integrar.'
+    const built = await buildIntegracionPayload(idLiquidacion, context.selectedGroup, context.liquidacion)
+    if (!built.ok) {
+      error.value = built.error
       return
     }
 
-    const docDate = buildDocDate()
-    const codAlmacen = normalizeString(liquidacion.codAlmacen)
-    const [cardCodeCustodio, marcaContab] = await Promise.all([
-      resolveCardCodeByCedula(liquidacion.cedulaCustodio),
-      fetchMarcaContab(codAlmacen)
-    ])
-    const detalleById = detalles.reduce<Record<number, LiquidacionDetalleItem>>((acc, detalle) => {
-      acc[detalle.idDetalle] = detalle
-      return acc
-    }, {})
-    const montosByDetalle = buildAprobacionMontosByDetalle(aprobacionesLiquidacion, detalleById)
-    const documentLines = buildDocumentLines(detalles, codAlmacen, marcaContab, montosByDetalle)
-    if (!documentLines.length) {
-      error.value = 'No hay valores aprobados por contabilidad para integrar.'
-      return
-    }
-
-    const baseTotals = calculateTotalsFromBases(montosByDetalle)
-    const totalAprobadoPantalla = baseTotals.total
-
-    const payload = {
-      CardCode: cardCodeCustodio,
-      Series: 217,
-      DocDate: docDate,
-      Comments: 'LIQUIDACION DE COMPRA',
-      DocType: 'dDocument_Service',
-      DocCurrency: 'USD',
-      JournalMemo: `REPOSICION CAJA CHICA ${codAlmacen}`.trim(),
-      U_COD_ST: getUCodSt(detalles, montosByDetalle),
-      U_tipo_comprob: '03',
-      U_ORIGEN: 'C',
-      U_SER_EST: '001',
-      U_SER_PE: '100',
-      DocumentLines: documentLines
-    }
-
-    // Respaldo del JSON exacto antes de enviar a SAP.
-    downloadJsonPayload(idLiquidacion, payload)
-
-    const totals = calculatePayloadTotals(payload.DocumentLines)
-    const diferenciaTotal = Number((totals.total - totalAprobadoPantalla).toFixed(2))
-    const hayDiferencia = Math.abs(diferenciaTotal) >= 0.01
-    const payloadJson = JSON.stringify(payload, null, 2)
-
-    const warningLines = hayDiferencia
-      ? [
-          '',
-          `ADVERTENCIA: Total SAP difiere del total aprobado en ${formatAmount(diferenciaTotal)}.`
-        ]
-      : []
-
-    const confirmationMessage = [
-      'Resumen de montos:',
-      `Total aprobado (pantalla): ${formatAmount(totalAprobadoPantalla)}`,
-      `Base 15%: ${formatAmount(baseTotals.base15)}`,
-      `Base 0%: ${formatAmount(baseTotals.base0)}`,
-      `Subtotal base SAP (sin IVA): ${formatAmount(totals.subtotal)}`,
-      `IVA SAP: ${formatAmount(totals.iva)}`,
-      `Total SAP (subtotal + IVA): ${formatAmount(totals.total)}`,
-      `Lineas (JSON): ${payload.DocumentLines.length}`,
-      ...warningLines,
-      '',
-      'JSON a enviar a SAP:',
-      payloadJson,
-      '',
-      'Esta seguro de integrar y enviar?'
-    ].join('\n')
-
+    const confirmationMessage = buildConfirmationMessage(idLiquidacion, built.payload, built.baseTotals, built.montosByDetalle)
     if (!window.confirm(confirmationMessage)) {
       return
     }
 
-    console.log('[Integracion][Payload Liquidaciones]', JSON.stringify(payload, null, 2))
+    console.log('[Integracion][Payload Liquidaciones]', JSON.stringify(built.payload, null, 2))
 
-    const response = await slayerApi.post<SlayerIntegracionResponse | string>('/Liquidaciones', payload)
-    const responseText = normalizeString((response as any)?.request?.responseText)
-    const { docEntry, docNum, mensaje } = parseIntegracionResultado(response.data, responseText)
+    const response = await slayerApi.post<SlayerIntegracionResponse | string>('/v1/liquidaciones', built.payload)
 
-    console.log('[Integracion][Respuesta OK]', { docEntry, docNum, mensaje })
-
-    await cajaChicaApi.post('/Integraciones/Compras', {
-      idLiquidacion,
-      estado: 'INTEGRADO',
-      docEntry,
-      docNum,
-      mensaje
-    })
-
-    integraciones.value[idLiquidacion] = {
-      estado: 'INTEGRADO',
-      docEntry,
-      docNum,
-      mensaje
+    if (response.status === 202) {
+      await handleIntegracionEncolada(idLiquidacion, response)
+      return
     }
-    const okTexto = docEntry || docNum
-      ? `Liquidacion creada. DocEntry: ${docEntry || '-'}, DocNum: ${docNum || '-'}.`
-      : mensaje
-    integrationMessages.value[idLiquidacion] = {
-      tipo: 'ok',
-      texto: okTexto
+
+    await handleIntegracionExitosa(idLiquidacion, response)
+  } catch (err: any) {
+    await handleIntegracionError(idLiquidacion, err)
+  } finally {
+    integrationLoading.value[idLiquidacion] = false
+  }
+}
+
+const actualizarEstadoJob = async (idLiquidacion: number) => {
+  const jobId = integraciones.value[idLiquidacion]?.jobId
+  if (!jobId) {
+    error.value = 'No hay jobId para esta liquidacion.'
+    return
+  }
+  if (integrationLoading.value[idLiquidacion]) return
+
+  integrationLoading.value[idLiquidacion] = true
+  error.value = ''
+  try {
+    const response = await slayerApi.get(`/v1/jobs/${jobId}`)
+    const job = response.data as {
+      status: string
+      result?: unknown
+      error?: string | null
+    }
+    const status = String(job.status || '').toUpperCase()
+
+    if (status === 'COMPLETADO') {
+      const { docEntry, docNum, mensaje } = parseIntegracionResultado(job.result)
+      await cajaChicaApi.post('/Integraciones/Compras', {
+        idLiquidacion,
+        estado: 'INTEGRADO',
+        docEntry,
+        docNum,
+        mensaje
+      })
+      integraciones.value[idLiquidacion] = { estado: 'INTEGRADO', docEntry, docNum, mensaje }
+      integrationMessages.value[idLiquidacion] = {
+        tipo: 'ok',
+        texto: docEntry || docNum
+          ? `Liquidacion creada. DocEntry: ${docEntry || '-'}, DocNum: ${docNum || '-'}.`
+          : mensaje
+      }
+    } else if (status === 'ERROR') {
+      const mensaje = normalizeString(job.error) || 'El job de SAP fallo.'
+      await cajaChicaApi.post('/Integraciones/Compras', {
+        idLiquidacion,
+        estado: 'ERROR',
+        mensaje
+      })
+      integraciones.value[idLiquidacion] = { estado: 'ERROR', jobId, mensaje }
+      integrationMessages.value[idLiquidacion] = { tipo: 'error', texto: mensaje }
+    } else {
+      const mensaje = `Todavia en proceso (${status || 'ENCOLADO'}). Intenta de nuevo en unos segundos.`
+      integraciones.value[idLiquidacion] = { estado: status || 'ENCOLADO', jobId, mensaje }
+      integrationMessages.value[idLiquidacion] = { tipo: 'ok', texto: mensaje }
     }
   } catch (err: any) {
-    const rawMsg = err?.response?.data?.message || err?.response?.data
-    const mensaje = typeof rawMsg === 'string' ? rawMsg : JSON.stringify(rawMsg) || 'No se pudo integrar la liquidacion.'
-    console.error('[Integracion][Error]', { idLiquidacion, mensaje, err })
+    const mensaje = err?.response?.data?.message || err?.message || 'No se pudo consultar el estado del job.'
     error.value = mensaje
-    await cajaChicaApi.post('/Integraciones/Compras', {
-      idLiquidacion,
-      estado: 'ERROR',
-      mensaje
-    })
-    integraciones.value[idLiquidacion] = {
-      estado: 'ERROR',
-      mensaje
-    }
-    integrationMessages.value[idLiquidacion] = {
-      tipo: 'error',
-      texto: mensaje
-    }
+    console.error('[ActualizarEstadoJob][Error]', { idLiquidacion, jobId, err })
   } finally {
     integrationLoading.value[idLiquidacion] = false
   }
@@ -1213,12 +1466,15 @@ const loadHistorial = async () => {
       return
     }
 
+    // No se envía idUsuario: una vez aprobada/rechazada, cualquier usuario con acceso a esta
+    // pantalla debe ver e integrar el historial completo, sin importar quién quedó asignado
+    // como aprobador de contabilidad (nivel 2).
     const response = await cajaChicaApi.get('/Aprobaciones/historial-contabilidad', {
       params: {
-        idUsuario: userId,
         fechaDesde: fechaDesde.value,
         fechaHasta: fechaHasta.value,
-        soloPendientes: filtroIntegracion.value === 'PENDIENTES'
+        soloPendientes: activeTab.value === 'APROBADAS' && filtroIntegracion.value === 'PENDIENTES',
+        tipo: activeTab.value
       }
     })
 
@@ -1231,9 +1487,13 @@ const loadHistorial = async () => {
       idGasto: normalizeString(item.idGasto ?? item.IdGasto ?? ''),
       nombreGasto: normalizeString(item.nombreGasto ?? item.NombreGasto ?? ''),
       concepto: normalizeString(item.concepto ?? item.Concepto ?? ''),
+      ruc: normalizeString(item.ruc ?? item.Ruc ?? ''),
+      nombreProveedor: normalizeString(item.nombreProveedor ?? item.NombreProveedor ?? ''),
+      numeroComprobante: normalizeString(item.numeroComprobante ?? item.NumeroComprobante ?? ''),
       total: Number(item.total ?? item.Total ?? 0),
       subtotalConIva: Number(item.subtotalConIva ?? item.SubtotalConIva ?? item.subtotal_Con_Iva ?? 0),
-      subtotalSinIva: Number(item.subtotalSinIva ?? item.SubtotalSinIva ?? item.subtotal_Sin_Iva ?? 0)
+      subtotalSinIva: Number(item.subtotalSinIva ?? item.SubtotalSinIva ?? item.subtotal_Sin_Iva ?? 0),
+      idTipoIva: item.idTipoIva ?? item.IdTipoIva ?? null
     })) as LiquidacionDetalleItem[]
 
     liquidacionesMap.value = (rows as any[]).reduce((acc: Record<number, LiquidacionItem>, item: any) => {
@@ -1267,6 +1527,7 @@ const loadHistorial = async () => {
         estado: normalizeString(item.estadoIntegracion ?? item.EstadoIntegracion ?? 'PENDIENTE') || 'PENDIENTE',
         docEntry: item.docEntry ?? item.DocEntry,
         docNum: item.docNum ?? item.DocNum,
+        jobId: normalizeString(item.jobId ?? item.JobId ?? '') || undefined,
         mensaje: normalizeString(item.mensajeIntegracion ?? item.MensajeIntegracion ?? '')
       }
       return acc
@@ -1287,30 +1548,33 @@ const loadHistorial = async () => {
     }
 
     historial.value = rows.map((item: any) => ({
-      idAprobacion: Number(item.idAprobacion ?? item.IdAprobacion ?? 0),
-      idDetalle: Number(item.idDetalle ?? item.IdDetalle ?? 0),
-      idLiquidacion: Number(item.idLiquidacion ?? item.IdLiquidacion ?? 0),
-      idUsuario: normalizeString(item.idUsuario ?? item.IdUsuario ?? ''),
-      usuarioNombre: normalizeString(
-        item.usuarioNombre
-        ?? item.UsuarioNombre
-        ?? item.nombreUsuario
-        ?? item.NombreUsuario
-        ?? item.aprobadoPor
-        ?? item.AprobadoPor
-        ?? ''
-      ),
-      nombreGasto: normalizeString(item.nombreGasto ?? item.NombreGasto ?? '-'),
-      concepto: normalizeString(item.concepto ?? item.Concepto ?? '-'),
-      total: Number(item.total ?? item.Total ?? 0),
-      estado: normalizeString(item.estado ?? item.Estado ?? ''),
-      montoAprobado: Number(item.montoAprobado ?? item.MontoAprobado ?? 0),
-      observacion: normalizeString(item.observacion ?? item.Observacion ?? ''),
-      tipoBase: normalizeString(item.tipoBase ?? item.TipoBase ?? ''),
-      fechaAprobacion: String(item.fechaAprobacion ?? item.FechaAprobacion ?? ''),
-      codAlmacen: normalizeString(item.codAlmacen ?? item.CodAlmacen ?? '-'),
-      nombreCustodio: normalizeString(item.nombreCustodio ?? item.NombreCustodio ?? '-'),
-      fechaCreacion: String(item.fechaCreacion ?? item.FechaCreacion ?? '')
+      idAprobacion: pickNumber(item, ['idAprobacion', 'IdAprobacion']),
+      idDetalle: pickNumber(item, ['idDetalle', 'IdDetalle']),
+      idLiquidacion: pickNumber(item, ['idLiquidacion', 'IdLiquidacion']),
+      idUsuario: pickString(item, ['idUsuario', 'IdUsuario']),
+      usuarioNombre: pickString(item, [
+        'nombreUsuarioAprobador',
+        'NombreUsuarioAprobador',
+        'usuarioNombre',
+        'UsuarioNombre',
+        'nombreUsuario',
+        'NombreUsuario',
+        'aprobadoPor',
+        'AprobadoPor'
+      ]),
+      idUsuarioSupervisor: pickString(item, ['idUsuarioSupervisor', 'IdUsuarioSupervisor']),
+      nombreSupervisor: pickString(item, ['nombreSupervisor', 'NombreSupervisor']),
+      nombreGasto: pickString(item, ['nombreGasto', 'NombreGasto'], '-'),
+      concepto: pickString(item, ['concepto', 'Concepto'], '-'),
+      total: pickNumber(item, ['total', 'Total']),
+      estado: pickString(item, ['estado', 'Estado']),
+      montoAprobado: pickNumber(item, ['montoAprobado', 'MontoAprobado']),
+      observacion: pickString(item, ['observacion', 'Observacion']),
+      tipoBase: pickString(item, ['tipoBase', 'TipoBase']),
+      fechaAprobacion: pickDate(item, ['fechaAprobacion', 'FechaAprobacion']),
+      codAlmacen: pickString(item, ['codAlmacen', 'CodAlmacen'], '-'),
+      nombreCustodio: pickString(item, ['nombreCustodio', 'NombreCustodio'], '-'),
+      fechaCreacion: pickDate(item, ['fechaCreacion', 'FechaCreacion'])
     }))
 
     const initialMap = historial.value.reduce<Record<string, string>>((acc, item) => {
@@ -1321,7 +1585,7 @@ const loadHistorial = async () => {
     }, {})
 
     const missingIds = Array.from(new Set(historial.value
-      .map(item => normalizeString(item.idUsuario))
+      .flatMap(item => [normalizeString(item.idUsuario), normalizeString(item.idUsuarioSupervisor)])
       .filter(id => id && !initialMap[id])))
 
     if (missingIds.length) {
@@ -1348,31 +1612,6 @@ const loadHistorial = async () => {
     error.value = 'No se pudo cargar el historial de contabilidad.'
   } finally {
     loading.value = false
-  }
-}
-
-async function loadAdjuntosForDetalle(idDetalle: number) {
-  if (!idDetalle) return
-  if (adjuntosListByDetalle.value[idDetalle]) return
-  if (loadingAdjuntosMap.value[idDetalle]) return
-  loadingAdjuntosMap.value = { ...loadingAdjuntosMap.value, [idDetalle]: true }
-  try {
-    const response = await cajaChicaApi.get(`/Adjuntos/por-detalle/${idDetalle}`)
-    const payload = response.data as any
-    const items = Array.isArray(payload) ? payload : Array.isArray(payload?.data) ? payload.data : []
-    adjuntosListByDetalle.value = {
-      ...adjuntosListByDetalle.value,
-      [idDetalle]: items.map((item: any) => ({
-        idAdjunto: Number(item.idAdjunto ?? item.IdAdjunto ?? 0),
-        idDetalle: Number(item.idDetalle ?? item.IdDetalle ?? idDetalle),
-        rutaArchivo: String(item.rutaArchivo ?? item.RutaArchivo ?? ''),
-        fechaSubida: String(item.fechaSubida ?? item.FechaSubida ?? '')
-      }))
-    }
-  } catch {
-    adjuntosListByDetalle.value = { ...adjuntosListByDetalle.value, [idDetalle]: [] }
-  } finally {
-    loadingAdjuntosMap.value = { ...loadingAdjuntosMap.value, [idDetalle]: false }
   }
 }
 
@@ -1422,15 +1661,173 @@ const closeDetalle = () => {
 const formatAmount = (value: number) => value.toFixed(2)
 const formatDate = (value: string) => (value ? value.substring(0, 10) : '')
 
-const downloadLiquidacionPdf = (idLiquidacion: number) => {
-  const esc = (s: string | number | undefined | null) =>
-    String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  const fmt = (v: string | undefined | null) => (v ? String(v).substring(0, 10) : '-')
-  const fmtAmt = (v: number | undefined | null) => {
-    const n = Number(v ?? 0)
-    return Number.isNaN(n) ? '0.00' : n.toFixed(2)
-  }
+const escHtml = (s: string | number | undefined | null) =>
+  String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+const fmtDateOrDash = (v: string | undefined | null) => (v ? String(v).substring(0, 10) : '-')
+const fmtAmtOrZero = (v: number | undefined | null) => {
+  const n = Number(v ?? 0)
+  return Number.isNaN(n) ? '0.00' : n.toFixed(2)
+}
 
+const LIQUIDACION_PDF_CSS = `
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Helvetica Neue',Arial,sans-serif;font-size:11px;color:#1a1a1a;background:#fff;padding:24px}
+  .header-doc{border-bottom:3px solid #7c3aed;padding-bottom:12px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:flex-end}
+  .header-doc .title-block .label{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#7c3aed;font-weight:600}
+  .header-doc .title-block h1{font-size:20px;font-weight:800;color:#1e1b4b;line-height:1.1}
+  .header-doc .meta-right{text-align:right;font-size:10px;color:#6b7280;line-height:1.6}
+  .section{border:1px solid #e5e7eb;border-radius:6px;margin-bottom:20px;overflow:hidden}
+  .section-head{background:#7c3aed;color:#fff;padding:9px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;display:flex;justify-content:space-between;align-items:center}
+  .section-head.green{background:#065f46}
+  .section-head.blue{background:#1e3a5f}
+  .section-head .badge{background:rgba(255,255,255,.2);border-radius:3px;padding:2px 7px;font-size:9px;font-weight:700;letter-spacing:.4px}
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr)}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr)}
+  .grid2{display:grid;grid-template-columns:repeat(2,1fr)}
+  .meta-cell{padding:9px 14px;border-right:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb}
+  .meta-cell:last-child{border-right:none}
+  .meta-label{font-size:8.5px;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:2px}
+  .meta-value{font-size:11px;font-weight:600;color:#111}
+  .meta-value.small{font-size:10px;font-weight:400}
+  .integ-bar{background:#f0fdf4;border-bottom:1px solid #bbf7d0;padding:7px 14px;font-size:10px;color:#065f46;display:flex;align-items:center;gap:8px}
+  .integ-bar.error{background:#fef2f2;border-bottom-color:#fecaca;color:#dc2626}
+  .integ-bar.pending{background:#fffbeb;border-bottom-color:#fde68a;color:#92400e}
+  .integ-dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}
+  table{width:100%;border-collapse:collapse}
+  th{background:#f3f4f6;text-align:left;padding:6px 10px;font-size:8.5px;text-transform:uppercase;letter-spacing:.4px;color:#6b7280;border-bottom:1px solid #e5e7eb}
+  td{padding:5px 10px;border-bottom:1px solid #f3f4f6;vertical-align:top;font-size:10px;color:#374151}
+  tr:last-child td{border-bottom:none}
+  .amount{text-align:right;font-variant-numeric:tabular-nums;font-family:'Courier New',monospace;font-size:10px}
+  .aprobado{color:#059669;font-weight:600}
+  .rechazado{color:#dc2626;font-weight:600}
+  .footer-totals{background:#f9fafb;padding:10px 14px;display:flex;justify-content:flex-end;gap:28px;border-top:2px solid #e5e7eb}
+  .total-item{text-align:right}
+  .total-label{font-size:9px;text-transform:uppercase;color:#6b7280;letter-spacing:.4px}
+  .total-value{font-size:13px;font-weight:700;color:#111}
+  .total-value.primary{color:#7c3aed}
+  .stats-row{display:flex;gap:20px;font-size:10px;color:rgba(255,255,255,.85)}
+  .stats-row span strong{font-weight:700;color:#fff}
+  @media print{body{padding:8mm}@page{size:A4;margin:10mm}}
+`
+
+const buildIntegBarHtml = (integ: IntegracionEstadoItem | undefined, intMessage: { texto: string } | undefined) => {
+  const integEstado = String(integ?.estado || 'PENDIENTE').toUpperCase()
+  let integBarClass = 'pending'
+  if (integEstado === 'INTEGRADO') integBarClass = ''
+  else if (integEstado === 'ERROR') integBarClass = 'error'
+  const integRef = integ?.docNum
+    ? `DocNum: ${escHtml(integ.docNum)}`
+    : integ?.docEntry
+      ? `DocEntry: ${escHtml(integ.docEntry)}`
+      : ''
+  const integMsgText = intMessage?.texto || integ?.mensaje || ''
+  return `
+    <div class="integ-bar ${integBarClass}">
+      <span class="integ-dot"></span>
+      <strong>Integración SAP: ${escHtml(integEstado)}</strong>
+      ${integRef ? `&nbsp;&middot;&nbsp;${escHtml(integRef)}` : ''}
+      ${integMsgText ? `&nbsp;&middot;&nbsp;${escHtml(integMsgText)}` : ''}
+    </div>`
+}
+
+const buildCabeceraHtml = (
+  idLiquidacion: number,
+  liq: LiquidacionItem | undefined,
+  integBarHtml: string,
+  totalSolicitado: number,
+  totalAprobado: number,
+  detallesCount: number
+) => `
+    <div class="section">
+      <div class="section-head blue"><span>Cabecera de la liquidación</span><span class="badge">#${escHtml(idLiquidacion)}</span></div>
+      ${integBarHtml}
+      <div class="grid4">
+        <div class="meta-cell"><div class="meta-label">Almacén / Tienda</div><div class="meta-value">${escHtml(liq?.codAlmacen || '-')}</div></div>
+        <div class="meta-cell"><div class="meta-label">Custodio</div><div class="meta-value">${escHtml(liq?.nombreCustodio || '-')}</div></div>
+        <div class="meta-cell"><div class="meta-label">Cédula custodio</div><div class="meta-value">${escHtml(liq?.cedulaCustodio || '-')}</div></div>
+        <div class="meta-cell"><div class="meta-label">Fecha creación</div><div class="meta-value">${fmtDateOrDash(liq?.fechaCreacion)}</div></div>
+      </div>
+      <div class="grid4">
+        <div class="meta-cell"><div class="meta-label">Estado liquidación</div><div class="meta-value">${escHtml(liq?.estado || '-')}</div></div>
+        <div class="meta-cell"><div class="meta-label">Total solicitado</div><div class="meta-value">$${fmtAmtOrZero(totalSolicitado)}</div></div>
+        <div class="meta-cell"><div class="meta-label">Total aprobado</div><div class="meta-value primary" style="color:#7c3aed">$${fmtAmtOrZero(totalAprobado)}</div></div>
+        <div class="meta-cell"><div class="meta-label"># detalles</div><div class="meta-value">${detallesCount}</div></div>
+      </div>
+    </div>`
+
+const buildDetalleRow = (d: LiquidacionDetalleItem, adjCount: number) => {
+  const iva = d.total - d.subtotalConIva - d.subtotalSinIva
+  return `<tr>
+      <td>${escHtml(d.idGasto || '-')}</td>
+      <td>${escHtml(d.nombreGasto)}</td>
+      <td>${escHtml(d.concepto)}</td>
+      <td>${escHtml(d.nombreProveedor || '-')}</td>
+      <td>${escHtml(d.ruc || '-')}</td>
+      <td>${escHtml(d.numeroComprobante || '-')}</td>
+      <td class="amount">${fmtAmtOrZero(d.subtotalConIva)}</td>
+      <td class="amount">${fmtAmtOrZero(d.subtotalSinIva)}</td>
+      <td class="amount">${fmtAmtOrZero(iva < 0 ? 0 : iva)}</td>
+      <td class="amount">${fmtAmtOrZero(d.total)}</td>
+      <td style="text-align:right">${adjCount}</td>
+    </tr>`
+}
+
+const buildDetalleHtml = (
+  detalles: LiquidacionDetalleItem[],
+  adjuntosByDetalleMap: Record<number, number>,
+  totalSolicitado: number
+) => {
+  const detallesRows = detalles.map(d => buildDetalleRow(d, adjuntosByDetalleMap[d.idDetalle] ?? 0)).join('')
+  return `
+    <div class="section">
+      <div class="section-head green"><span>Detalle de gastos</span><span class="stats-row"><span>Items: <strong>${detalles.length}</strong></span><span>Total: <strong>$${fmtAmtOrZero(totalSolicitado)}</strong></span></span></div>
+      <table><thead><tr>
+        <th>Cód. Gasto</th><th>Gasto</th><th>Concepto</th><th>Proveedor</th><th>RUC</th><th>N° Comprobante</th>
+        <th>Base Gravada</th><th>Base 0%</th><th>IVA</th><th>Total</th><th>Adj.</th>
+      </tr></thead><tbody>${detallesRows || '<tr><td colspan="11" style="color:#9ca3af;font-style:italic;padding:10px">Sin detalles.</td></tr>'}</tbody></table>
+      <div class="footer-totals">
+        <div class="total-item"><div class="total-label">Total solicitado</div><div class="total-value">$${fmtAmtOrZero(totalSolicitado)}</div></div>
+      </div>
+    </div>`
+}
+
+const buildAprobacionRow = (h: HistorialItem, aprobadorNombre: string) => {
+  const estadoClass = h.estado.toUpperCase() === 'RECHAZADO' ? 'rechazado' : 'aprobado'
+  return `<tr>
+      <td>${escHtml(h.idAprobacion)}</td>
+      <td>${escHtml(aprobadorNombre)}</td>
+      <td>${escHtml(h.nombreGasto)}</td>
+      <td>${escHtml(h.concepto)}</td>
+      <td class="amount">${fmtAmtOrZero(h.total)}</td>
+      <td class="amount">${fmtAmtOrZero(h.montoAprobado)}</td>
+      <td class="${estadoClass}">${escHtml(h.estado)}</td>
+      <td>${escHtml(h.observacion || '-')}</td>
+      <td>${fmtDateOrDash(h.fechaAprobacion)}</td>
+    </tr>`
+}
+
+const buildAprobHtml = (
+  aprobaciones: HistorialItem[],
+  aprobadorNombreDe: (h: HistorialItem) => string,
+  totalAprobado: number
+) => {
+  const aprobCount = aprobaciones.filter(h => h.estado.toUpperCase() === 'APROBADO').length
+  const rechazCount = aprobaciones.filter(h => h.estado.toUpperCase() === 'RECHAZADO').length
+  const aprobRows = aprobaciones.map(h => buildAprobacionRow(h, aprobadorNombreDe(h))).join('')
+  return `
+    <div class="section">
+      <div class="section-head"><span>Aprobaciones / Rechazos contabilidad</span><span class="stats-row"><span>Aprobados: <strong>${aprobCount}</strong></span><span>Rechazados: <strong>${rechazCount}</strong></span><span>Total aprobado: <strong>$${fmtAmtOrZero(totalAprobado)}</strong></span></span></div>
+      <table><thead><tr>
+        <th>Aprob.</th><th>Aprobado por</th><th>Gasto</th><th>Concepto</th>
+        <th>Total</th><th>Monto aprobado</th><th>Estado</th><th>Comentario</th><th>Fecha</th>
+      </tr></thead><tbody>${aprobRows || '<tr><td colspan="9" style="color:#9ca3af;font-style:italic;padding:10px">Sin aprobaciones.</td></tr>'}</tbody></table>
+      <div class="footer-totals">
+        <div class="total-item"><div class="total-label">Total aprobado contabilidad</div><div class="total-value primary">$${fmtAmtOrZero(totalAprobado)}</div></div>
+      </div>
+    </div>`
+}
+
+const downloadLiquidacionPdf = (idLiquidacion: number) => {
   const liq = liquidacionesMap.value[idLiquidacion]
   const detalles = detallesByLiquidacion.value[idLiquidacion] || []
   const aprobaciones = historial.value.filter(h => h.idLiquidacion === idLiquidacion)
@@ -1439,152 +1836,22 @@ const downloadLiquidacionPdf = (idLiquidacion: number) => {
 
   const totalSolicitado = detalles.reduce((a, d) => a + d.total, 0)
   const totalAprobado = aprobaciones.reduce((a, h) => a + h.montoAprobado, 0)
-  const aprobCount = aprobaciones.filter(h => h.estado.toUpperCase() === 'APROBADO').length
-  const rechazCount = aprobaciones.filter(h => h.estado.toUpperCase() === 'RECHAZADO').length
 
-  const CSS = `
-    *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Helvetica Neue',Arial,sans-serif;font-size:11px;color:#1a1a1a;background:#fff;padding:24px}
-    .header-doc{border-bottom:3px solid #7c3aed;padding-bottom:12px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:flex-end}
-    .header-doc .title-block .label{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#7c3aed;font-weight:600}
-    .header-doc .title-block h1{font-size:20px;font-weight:800;color:#1e1b4b;line-height:1.1}
-    .header-doc .meta-right{text-align:right;font-size:10px;color:#6b7280;line-height:1.6}
-    .section{border:1px solid #e5e7eb;border-radius:6px;margin-bottom:20px;overflow:hidden}
-    .section-head{background:#7c3aed;color:#fff;padding:9px 14px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;display:flex;justify-content:space-between;align-items:center}
-    .section-head.green{background:#065f46}
-    .section-head.blue{background:#1e3a5f}
-    .section-head .badge{background:rgba(255,255,255,.2);border-radius:3px;padding:2px 7px;font-size:9px;font-weight:700;letter-spacing:.4px}
-    .grid4{display:grid;grid-template-columns:repeat(4,1fr)}
-    .grid3{display:grid;grid-template-columns:repeat(3,1fr)}
-    .grid2{display:grid;grid-template-columns:repeat(2,1fr)}
-    .meta-cell{padding:9px 14px;border-right:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb}
-    .meta-cell:last-child{border-right:none}
-    .meta-label{font-size:8.5px;text-transform:uppercase;letter-spacing:.5px;color:#6b7280;margin-bottom:2px}
-    .meta-value{font-size:11px;font-weight:600;color:#111}
-    .meta-value.small{font-size:10px;font-weight:400}
-    .integ-bar{background:#f0fdf4;border-bottom:1px solid #bbf7d0;padding:7px 14px;font-size:10px;color:#065f46;display:flex;align-items:center;gap:8px}
-    .integ-bar.error{background:#fef2f2;border-bottom-color:#fecaca;color:#dc2626}
-    .integ-bar.pending{background:#fffbeb;border-bottom-color:#fde68a;color:#92400e}
-    .integ-dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0}
-    table{width:100%;border-collapse:collapse}
-    th{background:#f3f4f6;text-align:left;padding:6px 10px;font-size:8.5px;text-transform:uppercase;letter-spacing:.4px;color:#6b7280;border-bottom:1px solid #e5e7eb}
-    td{padding:5px 10px;border-bottom:1px solid #f3f4f6;vertical-align:top;font-size:10px;color:#374151}
-    tr:last-child td{border-bottom:none}
-    .amount{text-align:right;font-variant-numeric:tabular-nums;font-family:'Courier New',monospace;font-size:10px}
-    .aprobado{color:#059669;font-weight:600}
-    .rechazado{color:#dc2626;font-weight:600}
-    .footer-totals{background:#f9fafb;padding:10px 14px;display:flex;justify-content:flex-end;gap:28px;border-top:2px solid #e5e7eb}
-    .total-item{text-align:right}
-    .total-label{font-size:9px;text-transform:uppercase;color:#6b7280;letter-spacing:.4px}
-    .total-value{font-size:13px;font-weight:700;color:#111}
-    .total-value.primary{color:#7c3aed}
-    .stats-row{display:flex;gap:20px;font-size:10px;color:rgba(255,255,255,.85)}
-    .stats-row span strong{font-weight:700;color:#fff}
-    @media print{body{padding:8mm}@page{size:A4;margin:10mm}}
-  `
+  const integBarHtml = buildIntegBarHtml(integ, intMessage)
+  const cabeceraHtml = buildCabeceraHtml(idLiquidacion, liq, integBarHtml, totalSolicitado, totalAprobado, detalles.length)
+  const detalleHtml = buildDetalleHtml(detalles, adjuntosByDetalle.value, totalSolicitado)
+  const aprobHtml = buildAprobHtml(aprobaciones, getAprobadorNombre, totalAprobado)
 
-  // --- INTEGRACION BAR ---
-  const integEstado = String(integ?.estado || 'PENDIENTE').toUpperCase()
-  let integBarClass = 'pending'
-  if (integEstado === 'INTEGRADO') integBarClass = ''
-  else if (integEstado === 'ERROR') integBarClass = 'error'
-  const integRef = integ?.docNum ? `DocNum: ${esc(integ.docNum)}` : integ?.docEntry ? `DocEntry: ${esc(integ.docEntry)}` : ''
-  const integMsgText = intMessage?.texto || integ?.mensaje || ''
-  const integBarHtml = `
-    <div class="integ-bar ${integBarClass}">
-      <span class="integ-dot"></span>
-      <strong>Integración SAP: ${esc(integEstado)}</strong>
-      ${integRef ? `&nbsp;&middot;&nbsp;${esc(integRef)}` : ''}
-      ${integMsgText ? `&nbsp;&middot;&nbsp;${esc(integMsgText)}` : ''}
-    </div>`
-
-  // --- CABECERA ---
-  const cabeceraHtml = `
-    <div class="section">
-      <div class="section-head blue"><span>Cabecera de la liquidación</span><span class="badge">#${esc(idLiquidacion)}</span></div>
-      ${integBarHtml}
-      <div class="grid4">
-        <div class="meta-cell"><div class="meta-label">Almacén / Tienda</div><div class="meta-value">${esc(liq?.codAlmacen || '-')}</div></div>
-        <div class="meta-cell"><div class="meta-label">Custodio</div><div class="meta-value">${esc(liq?.nombreCustodio || '-')}</div></div>
-        <div class="meta-cell"><div class="meta-label">Cédula custodio</div><div class="meta-value">${esc(liq?.cedulaCustodio || '-')}</div></div>
-        <div class="meta-cell"><div class="meta-label">Fecha creación</div><div class="meta-value">${fmt(liq?.fechaCreacion)}</div></div>
-      </div>
-      <div class="grid4">
-        <div class="meta-cell"><div class="meta-label">Estado liquidación</div><div class="meta-value">${esc(liq?.estado || '-')}</div></div>
-        <div class="meta-cell"><div class="meta-label">Total solicitado</div><div class="meta-value">$${fmtAmt(totalSolicitado)}</div></div>
-        <div class="meta-cell"><div class="meta-label">Total aprobado</div><div class="meta-value primary" style="color:#7c3aed">$${fmtAmt(totalAprobado)}</div></div>
-        <div class="meta-cell"><div class="meta-label"># detalles</div><div class="meta-value">${detalles.length}</div></div>
-      </div>
-    </div>`
-
-  // --- DETALLES ---
-  let detallesRows = ''
-  detalles.forEach(d => {
-    const iva = d.total - d.subtotalConIva - d.subtotalSinIva
-    const adjCount = adjuntosByDetalle.value[d.idDetalle] ?? 0
-    detallesRows += `<tr>
-      <td>${esc(d.idGasto || '-')}</td>
-      <td>${esc(d.nombreGasto)}</td>
-      <td>${esc(d.concepto)}</td>
-      <td>${esc(d.nombreProveedor || '-')}</td>
-      <td>${esc(d.ruc || '-')}</td>
-      <td class="amount">${fmtAmt(d.subtotalConIva)}</td>
-      <td class="amount">${fmtAmt(d.subtotalSinIva)}</td>
-      <td class="amount">${fmtAmt(iva < 0 ? 0 : iva)}</td>
-      <td class="amount">${fmtAmt(d.total)}</td>
-      <td style="text-align:right">${adjCount}</td>
-    </tr>`
-  })
-  const detalleHtml = `
-    <div class="section">
-      <div class="section-head green"><span>Detalle de gastos</span><span class="stats-row"><span>Items: <strong>${detalles.length}</strong></span><span>Total: <strong>$${fmtAmt(totalSolicitado)}</strong></span></span></div>
-      <table><thead><tr>
-        <th>Cód. Gasto</th><th>Gasto</th><th>Concepto</th><th>Proveedor</th><th>RUC</th>
-        <th>Base 15%</th><th>Base 0%</th><th>IVA</th><th>Total</th><th>Adj.</th>
-      </tr></thead><tbody>${detallesRows || '<tr><td colspan="10" style="color:#9ca3af;font-style:italic;padding:10px">Sin detalles.</td></tr>'}</tbody></table>
-      <div class="footer-totals">
-        <div class="total-item"><div class="total-label">Total solicitado</div><div class="total-value">$${fmtAmt(totalSolicitado)}</div></div>
-      </div>
-    </div>`
-
-  // --- APROBACIONES ---
-  let aprobRows = ''
-  aprobaciones.forEach(h => {
-    const estadoClass = h.estado.toUpperCase() === 'RECHAZADO' ? 'rechazado' : 'aprobado'
-    aprobRows += `<tr>
-      <td>${esc(h.idAprobacion)}</td>
-      <td>${esc(getAprobadorNombre(h))}</td>
-      <td>${esc(h.nombreGasto)}</td>
-      <td>${esc(h.concepto)}</td>
-      <td class="amount">${fmtAmt(h.total)}</td>
-      <td class="amount">${fmtAmt(h.montoAprobado)}</td>
-      <td class="${estadoClass}">${esc(h.estado)}</td>
-      <td>${esc(h.observacion || '-')}</td>
-      <td>${fmt(h.fechaAprobacion)}</td>
-    </tr>`
-  })
-  const aprobHtml = `
-    <div class="section">
-      <div class="section-head"><span>Aprobaciones / Rechazos contabilidad</span><span class="stats-row"><span>Aprobados: <strong>${aprobCount}</strong></span><span>Rechazados: <strong>${rechazCount}</strong></span><span>Total aprobado: <strong>$${fmtAmt(totalAprobado)}</strong></span></span></div>
-      <table><thead><tr>
-        <th>Aprob.</th><th>Aprobado por</th><th>Gasto</th><th>Concepto</th>
-        <th>Total</th><th>Monto aprobado</th><th>Estado</th><th>Comentario</th><th>Fecha</th>
-      </tr></thead><tbody>${aprobRows || '<tr><td colspan="9" style="color:#9ca3af;font-style:italic;padding:10px">Sin aprobaciones.</td></tr>'}</tbody></table>
-      <div class="footer-totals">
-        <div class="total-item"><div class="total-label">Total aprobado contabilidad</div><div class="total-value primary">$${fmtAmt(totalAprobado)}</div></div>
-      </div>
-    </div>`
-
-  const generado = new Date().toLocaleString(APP_LOCALE)
-  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Liquidacion #${idLiquidacion}</title><style>${CSS}</style></head><body>
+  const generado = new Date().toLocaleString('es-ES')
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>Liquidacion #${idLiquidacion}</title><style>${LIQUIDACION_PDF_CSS}</style></head><body>
     <div class="header-doc">
       <div class="title-block">
         <div class="label">Historial Contabilidad</div>
-        <h1>Liquidación #${esc(idLiquidacion)}</h1>
+        <h1>Liquidación #${escHtml(idLiquidacion)}</h1>
       </div>
       <div class="meta-right">
-        Tienda: <strong>${esc(liq?.codAlmacen || '-')}</strong><br>
-        Custodio: <strong>${esc(liq?.nombreCustodio || '-')}</strong><br>
+        Tienda: <strong>${escHtml(liq?.codAlmacen || '-')}</strong><br>
+        Custodio: <strong>${escHtml(liq?.nombreCustodio || '-')}</strong><br>
         Generado: ${generado}
       </div>
     </div>
@@ -1602,10 +1869,38 @@ const downloadLiquidacionPdf = (idLiquidacion: number) => {
 }
 
 onMounted(() => {
+  loadTiposIva()
   loadHistorial()
 })
 
-watch([fechaDesde, fechaHasta, filtroIntegracion], () => {
+watch([fechaDesde, fechaHasta, filtroIntegracion, activeTab], () => {
   loadHistorial()
 })
+
+const downloadExcel = async () => {
+  excelError.value = ''
+  excelLoading.value = true
+  try {
+    const response = await cajaChicaApi.get('/Liquidaciones/exportar-excel', {
+      params: {
+        fechaDesde: fechaDesde.value,
+        fechaHasta: fechaHasta.value
+      },
+      responseType: 'blob'
+    })
+    const blob = new Blob([response.data as BlobPart], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `liquidaciones_${fechaDesde.value}_${fechaHasta.value}.xlsx`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  } catch {
+    excelError.value = 'No se pudo descargar el archivo Excel.'
+  } finally {
+    excelLoading.value = false
+  }
+}
 </script>
