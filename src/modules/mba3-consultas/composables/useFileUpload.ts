@@ -754,16 +754,26 @@ function construirTituloYMensaje(ctx: ContextoTituloYMensaje): { title: string; 
   return { title: errorTitleActual, message: errorMessageActual }
 }
 
+function extraerMensajeInicial(e: any): string {
+  return e.message ||
+    e.response?.data?.error ||
+    e.response?.data?.message ||
+    e.response?.data?.detail ||
+    'Error desconocido al subir plantilla'
+}
+
+/** numero_pedido del backend, solo cuando el error clasificó como duplicado (para mostrarlo en el modal). */
+function extraerNumeroPedidoSiDuplicado(e: any, clasificacion: ClasificacionError): string | undefined {
+  if (!(clasificacion.isDuplicateError || clasificacion.errorCode === 'NUMERO_PEDIDO_DUPLICADO')) return undefined
+  return e.response?.data?.numero_pedido || e.response?.data?.data?.numero_pedido
+}
+
 /**
  * Procesa el error de carga y prepara la información para el modal
  */
 export function processUploadError(e: any, fileName: string): UploadErrorInfo {
   const errorTitleInicial = 'Error al cargar plantilla'
-  const errorMessageInicial = e.message ||
-                    e.response?.data?.error ||
-                    e.response?.data?.message ||
-                    e.response?.data?.detail ||
-                    'Error desconocido al subir plantilla'
+  const errorMessageInicial = extraerMensajeInicial(e)
   const errorErrors: ErrorEntry[] = []
 
   const errorMessageStr = construirMensajeCompletoParaBusqueda(e)
@@ -811,10 +821,7 @@ export function processUploadError(e: any, fileName: string): UploadErrorInfo {
   // Misma búsqueda dual-path que validacion_sap arriba.
   const validacionPackPvp = e.response?.data?.validacion_pack_pvp || e.response?.data?.data?.validacion_pack_pvp
 
-  const numeroPedidoFromBackend = (clasificacion.isDuplicateError || clasificacion.errorCode === 'NUMERO_PEDIDO_DUPLICADO') ? (
-    e.response?.data?.numero_pedido ||
-    e.response?.data?.data?.numero_pedido
-  ) : undefined
+  const numeroPedidoFromBackend = extraerNumeroPedidoSiDuplicado(e, clasificacion)
 
   return {
     title: errorTitle,
@@ -851,6 +858,21 @@ export function extraerNumeroPedidoDeRespuesta(response: any): string | undefine
 }
 
 /** Arma el detalle de validación SAP (códigos válidos/no encontrados/errores/advertencias) para el toast. */
+/** Cuenta un campo de validación SAP que puede venir como array (moderno) o número (legacy). */
+function contarCampoSap(items: unknown, totalFallback: number | undefined): number {
+  return Array.isArray(items) ? items.length : (totalFallback || (typeof items === 'number' ? items : 0))
+}
+
+/** Línea "• Etiqueta (N): a, b, c y M más" (o "• Etiqueta: N" si no hay lista), vacío si count es 0. */
+function formatearSeccionSap(etiqueta: string, items: unknown, count: number, maxMostrar: number): string {
+  if (count === 0) return ''
+  if (Array.isArray(items) && items.length > 0) {
+    const extra = items.length > maxMostrar ? ` y ${items.length - maxMostrar} más` : ''
+    return `\n  • ${etiqueta} (${count}): ${items.slice(0, maxMostrar).join(', ')}${extra}`
+  }
+  return `\n  • ${etiqueta}: ${count}`
+}
+
 export function construirMensajeDetalleValidacionSap(numeroPedido: string | undefined, response: UploadPlantillaResponse): string {
   let mensajeDetalle = `Número de pedido: ${numeroPedido || 'N/A'}\nArtículos: ${response.articulos_cargados}\nDistribuciones: ${response.distribuciones_cargadas}`
 
@@ -860,38 +882,14 @@ export function construirMensajeDetalleValidacionSap(numeroPedido: string | unde
   mensajeDetalle += `\n\nValidación SAP:`
   mensajeDetalle += `\n  • Códigos válidos: ${sap.validos}/${sap.total_codigos}`
 
-  const noEncontradosCount = Array.isArray(sap.no_encontrados)
-    ? sap.no_encontrados.length
-    : (sap.total_no_encontrados || (typeof sap.no_encontrados === 'number' ? sap.no_encontrados : 0))
-  if (noEncontradosCount > 0) {
-    if (Array.isArray(sap.no_encontrados) && sap.no_encontrados.length > 0) {
-      mensajeDetalle += `\n  • No encontrados en SAP (${noEncontradosCount}): ${sap.no_encontrados.slice(0, 5).join(', ')}${sap.no_encontrados.length > 5 ? ` y ${sap.no_encontrados.length - 5} más` : ''}`
-    } else {
-      mensajeDetalle += `\n  • No encontrados en SAP: ${noEncontradosCount}`
-    }
-  }
+  const noEncontradosCount = contarCampoSap(sap.no_encontrados, sap.total_no_encontrados)
+  mensajeDetalle += formatearSeccionSap('No encontrados en SAP', sap.no_encontrados, noEncontradosCount, 5)
 
-  const erroresCount = Array.isArray(sap.errores)
-    ? sap.errores.length
-    : (sap.total_errores || (typeof sap.errores === 'number' ? sap.errores : 0))
-  if (erroresCount > 0) {
-    if (Array.isArray(sap.errores) && sap.errores.length > 0) {
-      mensajeDetalle += `\n  • Errores (${erroresCount}): ${sap.errores.slice(0, 3).join(', ')}${sap.errores.length > 3 ? ` y ${sap.errores.length - 3} más` : ''}`
-    } else {
-      mensajeDetalle += `\n  • Errores: ${erroresCount}`
-    }
-  }
+  const erroresCount = contarCampoSap(sap.errores, sap.total_errores)
+  mensajeDetalle += formatearSeccionSap('Errores', sap.errores, erroresCount, 3)
 
-  const warningsCount = Array.isArray(sap.warnings)
-    ? sap.warnings.length
-    : (sap.total_warnings || (typeof sap.warnings === 'number' ? sap.warnings : 0))
-  if (warningsCount > 0) {
-    if (Array.isArray(sap.warnings) && sap.warnings.length > 0) {
-      mensajeDetalle += `\n  • Advertencias (${warningsCount}): ${sap.warnings.slice(0, 3).join(', ')}${sap.warnings.length > 3 ? ` y ${sap.warnings.length - 3} más` : ''}`
-    } else {
-      mensajeDetalle += `\n  • Advertencias: ${warningsCount}`
-    }
-  }
+  const warningsCount = contarCampoSap(sap.warnings, sap.total_warnings)
+  mensajeDetalle += formatearSeccionSap('Advertencias', sap.warnings, warningsCount, 3)
 
   return mensajeDetalle
 }
