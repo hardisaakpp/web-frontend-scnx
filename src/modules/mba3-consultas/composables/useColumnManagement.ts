@@ -8,11 +8,13 @@ import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import { formatCurrency, formatNumber } from '../utils/formatters'
 import type { PedidoCompleto } from '../types'
 
+export type FieldType = 'costo' | 'total' | 'comentario'
+
 export interface EditingCell {
   detalleId: string
   value: string
   originalValue: number | string | null
-  fieldType: 'costo' | 'total' | 'comentario'
+  fieldType: FieldType
 }
 
 /** Mapea la key de columna a su fieldType de edición (columnas editables inline). */
@@ -112,7 +114,7 @@ export function useColumnManagement(
   /**
    * Inicia la edición de una celda
    */
-  function iniciarEdicion(detalle: any, fieldType: 'costo' | 'total' | 'comentario' = 'costo') {
+  function iniciarEdicion(detalle: any, fieldType: FieldType = 'costo') {
     if (!pedido.value) return
     
     let value: string
@@ -390,7 +392,7 @@ export function useColumnManagement(
    * edición de la siguiente fila en la misma columna. En la última fila, salta a la primera
    * fila de la siguiente columna editable (según el orden visual actual de columnas).
    */
-  function avanzarConTab(fieldType: 'costo' | 'total' | 'comentario') {
+  function avanzarConTab(fieldType: FieldType) {
     if (!editingCell.value || !pedido.value) return
 
     const detalles = pedido.value.detalles
