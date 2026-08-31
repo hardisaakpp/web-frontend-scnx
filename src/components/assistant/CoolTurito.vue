@@ -29,14 +29,25 @@
         d="M84,134 C72,136 66,148 69,162 L76,198 C79,215 93,221 110,221 C127,221 141,215 144,198 L151,162 C154,148 148,136 136,134 Z"
         :fill="`url(#ctG-${uid})`"
       />
-      <!-- Aleta izquierda -->
-      <path :d="FLIP_D" :transform="leftArmTransform" :fill="`url(#ctGarm-${uid})`" />
-      <!-- Aleta derecha (grupo externo posiciona; el interno se anima en 'wave') -->
-      <g :transform="rightArmOuterTransform">
-        <g :class="{ 'ct-wave-arm': animation === 'wave' }">
-          <path :d="FLIP_D" :transform="rightArmInnerTransform" :fill="`url(#ctGarm-${uid})`" />
-        </g>
+      <!-- Gesto: transportando una caja con código de barras -->
+      <g v-if="gesture === 'caja'">
+        <rect x="72" y="132" width="76" height="58" rx="5" fill="#dfa864" stroke="#b9834a" stroke-width="2" />
+        <rect x="105" y="132" width="10" height="58" fill="#f4e3c6" opacity="0.9" />
+        <rect x="79" y="160" width="26" height="19" rx="2" fill="#ffffff" stroke="#b9834a" stroke-width="1.2" />
+        <path d="M84,164 v11 M88,164 v11 M92,164 v11 M96.5,164 v11 M100.5,164 v11" stroke="#0f172a" stroke-width="1.5" />
+        <path :d="FLIP_D" transform="translate(79,158) scale(-1,1) rotate(70)" :fill="`url(#ctGarm-${uid})`" />
+        <path :d="FLIP_D" transform="translate(141,158) rotate(70)" :fill="`url(#ctGarm-${uid})`" />
       </g>
+      <template v-else>
+        <!-- Aleta izquierda -->
+        <path :d="FLIP_D" :transform="leftArmTransform" :fill="`url(#ctGarm-${uid})`" />
+        <!-- Aleta derecha (grupo externo posiciona; el interno se anima en 'wave') -->
+        <g :transform="rightArmOuterTransform">
+          <g :class="{ 'ct-wave-arm': animation === 'wave' }">
+            <path :d="FLIP_D" :transform="rightArmInnerTransform" :fill="`url(#ctGarm-${uid})`" />
+          </g>
+        </g>
+      </template>
     </template>
 
     <!-- Cabeza -->
@@ -107,14 +118,14 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
+import type { CoolTuritoExpression, CoolTuritoGesture } from './coolturito.types'
+
 /**
  * Cool-turito — mascota oficial de SCNEXUS AI.
  * SVG vectorial con fondo transparente, basado en la hoja de diseño
  * (Artifact "Cool-turito · Mascota SCNEXUS AI").
  */
-export type CoolTuritoExpression =
-  | 'normal' | 'feliz' | 'exito' | 'pensativo' | 'concentrado'
-  | 'alerta' | 'procesando' | 'guino' | 'durmiendo' | 'disculpa'
+export type { CoolTuritoExpression }
 
 const props = withDefaults(defineProps<{
   expression?: CoolTuritoExpression
@@ -123,11 +134,13 @@ const props = withDefaults(defineProps<{
   /** Ancho en px */
   size?: number
   animation?: 'none' | 'float' | 'wave'
+  gesture?: CoolTuritoGesture
 }>(), {
   expression: 'normal',
   variant: 'full',
   size: 96,
   animation: 'none',
+  gesture: 'none',
 })
 
 let uidCounter = 0

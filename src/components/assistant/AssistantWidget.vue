@@ -140,14 +140,15 @@
         class="mb-8 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-2xl rounded-br-md shadow-lg px-3.5 py-2 text-[13px] font-semibold text-slate-700 dark:text-slate-200 hover:border-blue-400 transition-colors"
         @click="abrir"
       >
-        ¿Necesitas ayuda?
+        {{ nombreUsuario ? `¡Hola, ${nombreUsuario}!` : '' }} ¿Necesitas ayuda?
       </button>
       <button
         class="relative ct-fab focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 rounded-xl"
         aria-label="Abrir asistente SCNEXUS AI"
         @click="abrir"
+        @mouseenter="saludar()"
       >
-        <CoolTurito expression="feliz" variant="half" :size="76" animation="wave" />
+        <CoolTurito :expression="expresionFab" variant="half" :size="76" :animation="animacionFab" :gesture="asistente.gesto ?? 'none'" />
         <span class="absolute top-0.5 right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-slate-900"></span>
       </button>
     </div>
@@ -155,8 +156,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useAssistantStore } from '@/stores/assistant'
 import CoolTurito from './CoolTurito.vue'
 import { consultarAreas, consultarCuota, preguntar, MiaApiError, type MiaArea, type MiaCuota, type MiaFuente } from '@/services/miaApi'
 
@@ -169,6 +172,8 @@ interface Mensaje {
 }
 
 const authStore = useAuthStore()
+const asistente = useAssistantStore()
+const route = useRoute()
 
 const abierto = ref(false)
 const globoDescartado = ref(false)
@@ -180,14 +185,62 @@ const areaSeleccionada = ref<string | null>(null)
 const listaRef = ref<HTMLElement | null>(null)
 const ultimoError = ref(false)
 
-const BIENVENIDA: Mensaje = {
-  rol: 'bot',
-  texto: '¡Hola! Soy Cool-turito, tu asistente de SCNEXUS. Respondo preguntas sobre los procesos, políticas y manuales publicados de la organización, citando siempre las fuentes. ¿Qué necesitas hacer?',
-}
-const mensajes = ref<Mensaje[]>([BIENVENIDA])
+const mensajes = ref<Mensaje[]>([])
 
 /** Login AD real del usuario autenticado (requisito de mIAApi: nunca un usuario genérico). */
 const usuarioAd = computed(() => authStore.userData?.userName || authStore.user || '')
+
+/** Nombre corto para saludar: primer nombre del fullName, o el login. */
+const nombreUsuario = computed(() => {
+  const completo = authStore.userData?.fullName?.trim()
+  if (completo) return completo.split(/\s+/)[0]
+  return authStore.userData?.userName || authStore.user || ''
+})
+
+/** El botón flotante saluda unos segundos (al cargar y al pasar el mouse) y luego queda flotando. */
+const saludando = ref(true)
+let saludoTimeout: ReturnType<typeof setTimeout> | null = null
+function saludar(duracionMs = 3500): void {
+  if (saludoTimeout) clearTimeout(saludoTimeout)
+  saludando.value = true
+  saludoTimeout = setTimeout(() => { saludando.value = false }, duracionMs)
+}
+
+/** Se duerme sin actividad (mouse/teclado) o al ocultar la pestaña; despierta con cualquier movimiento. */
+const dormido = ref(false)
+const INACTIVIDAD_MS = 120_000 // 2 minutos
+let idleTimeout: ReturnType<typeof setTimeout> | null = null
+function reiniciarInactividad(): void {
+  dormido.value = false
+  if (idleTimeout) clearTimeout(idleTimeout)
+  idleTimeout = setTimeout(() => { dormido.value = true }, INACTIVIDAD_MS)
+}
+function onVisibilidad(): void {
+  if (document.hidden) {
+    dormido.value = true
+    if (idleTimeout) clearTimeout(idleTimeout)
+  } else {
+    reiniciarInactividad()
+    saludar(2000)
+  }
+}
+
+onMounted(() => {
+  saludar()
+  reiniciarInactividad()
+  window.addEventListener('mousemove', reiniciarInactividad, { passive: true })
+  window.addEventListener('keydown', reiniciarInactividad)
+  window.addEventListener('click', reiniciarInactividad)
+  document.addEventListener('visibilitychange', onVisibilidad)
+})
+onUnmounted(() => {
+  if (saludoTimeout) clearTimeout(saludoTimeout)
+  if (idleTimeout) clearTimeout(idleTimeout)
+  window.removeEventListener('mousemove', reiniciarInactividad)
+  window.removeEventListener('keydown', reiniciarInactividad)
+  window.removeEventListener('click', reiniciarInactividad)
+  document.removeEventListener('visibilitychange', onVisibilidad)
+})
 
 const puedeEnviar = computed(() => borrador.value.trim().length > 0 && !!usuarioAd.value)
 
@@ -199,17 +252,52 @@ const horaRenueva = computed(() => {
     : fecha.toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' })
 })
 
-/** Expresión de la mascota en el header según el estado del chat. */
+/**
+ * Expresión de la mascota según el estado del chat.
+ * Prioridad: procesando > reacción pedida por la app > error > advertencia > feliz.
+ */
 const expresion = computed(() => {
   if (cargando.value) return 'procesando' as const
+  if (asistente.reaccion) return asistente.reaccion
   if (ultimoError.value) return 'disculpa' as const
   if (cuota.value?.advertencia) return 'alerta' as const
-  return 'feliz' as const
+  return 'normal' as const
+})
+
+/** Expresión del botón flotante: reacción > saludo > dormido > normal (ojos grandes). */
+const expresionFab = computed(() => {
+  if (asistente.reaccion) return asistente.reaccion
+  if (saludando.value) return 'feliz' as const
+  if (dormido.value) return 'durmiendo' as const
+  return 'normal' as const
+})
+const animacionFab = computed(() => {
+  if (saludando.value && !asistente.gesto) return 'wave' as const
+  if (dormido.value) return 'none' as const
+  return 'float' as const
+})
+
+/** Reacciona al cambiar de módulo: CEDI/Inventarios → transportando caja; el resto → saludo. */
+watch(() => route.path.split('/')[1] ?? '', (nuevo, anterior) => {
+  if (!nuevo || !anterior || nuevo === anterior) return
+  if (/cedi|inventario/i.test(nuevo)) {
+    asistente.reaccionar('feliz', 2800, 'caja')
+  } else {
+    asistente.reaccionar('feliz', 2000)
+    saludar(2000)
+  }
 })
 
 async function abrir(): Promise<void> {
   abierto.value = true
   globoDescartado.value = true
+  if (!mensajes.value.length) {
+    const saludo = nombreUsuario.value ? `¡Hola, ${nombreUsuario.value}!` : '¡Hola!'
+    mensajes.value.push({
+      rol: 'bot',
+      texto: `${saludo} Soy Cool-turito, tu asistente de SCNEXUS. Respondo preguntas sobre los procesos, políticas y manuales publicados de la organización, citando siempre las fuentes. ¿Qué necesitas hacer?`,
+    })
+  }
   if (!usuarioAd.value) return
   // Cargas ligeras que no consumen cuota: saldo y áreas disponibles.
   if (!cuota.value) consultarCuota(usuarioAd.value).then(c => { cuota.value = c }).catch(() => {})
