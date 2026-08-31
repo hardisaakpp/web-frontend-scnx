@@ -410,14 +410,14 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, type Ref } from '@vue/reactivity'
-import { onMounted, onActivated, nextTick, Teleport } from '@vue/runtime-core'
+import { onMounted, onActivated, Teleport } from '@vue/runtime-core'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import { lastNotification } from '@/composables/useNotificaciones'
 import { useTablePreferences } from '@/composables/useTablePreferences'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
-import type { PedidoCompleto, ReporteDiferenciasResponse, UploadPlantillaResponse, InfoArchivoPlantillaResponse, DetalleDiferenciaProduccion, HijoDiferenciaPayload } from '../types'
+import type { PedidoCompleto, InfoArchivoPlantillaResponse, DetalleDiferenciaProduccion, HijoDiferenciaPayload } from '../types'
 // Utilidades extraídas
 import {
   formatDate,
