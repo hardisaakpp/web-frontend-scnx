@@ -21,6 +21,7 @@ import promocionSobresRoutes from '../modules/promocion-sobres/router'
 import transaccionesRoutes from '../modules/transacciones/router'
 import reposicionesRoutes from '../modules/reposiciones/router'
 import ruletaRoutes from '../modules/ruleta/router'
+import cediRoutes from '../modules/cedi/router'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -74,6 +75,7 @@ const router = createRouter({
         ...transaccionesRoutes,
         ...reposicionesRoutes,
         ...ruletaRoutes,
+        ...cediRoutes,
         {
           path: 'forbidden',
           name: 'forbidden',

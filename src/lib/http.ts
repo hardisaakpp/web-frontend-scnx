@@ -175,3 +175,13 @@ export const reposicionesApi = createModuleApi(
   ENV.REPOSICIONES_URL,
   { auditHeaders: true },
 )
+
+/**
+ * CEDI (Control y Distribución de Inventario). `correlationId: true` porque el backend
+ * (SCNexus.Cedi.API) lee X-Correlation-Id y taggea con él toda su cadena de logs — con esto
+ * un caso puntual se puede rastrear de punta a punta (browser → log de CEDI → tabla app_logs).
+ */
+export const cediApi = createModuleApi(
+  ENV.CEDI_URL,
+  { correlationId: true },
+)

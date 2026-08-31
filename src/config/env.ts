@@ -31,4 +31,5 @@ export const ENV = {
   REPOSICIONES_URL: getEnv('VITE_REPOSICIONES_API_URL', '/api/reposicion-api'),
   SLAYER_URL: getEnv('VITE_SLAYER_API_URL', '/slayer-api'),
   PREFERENCES_URL: getEnv('VITE_PREFERENCES_API_URL', ''),
+  CEDI_URL: getEnv('VITE_CEDI_API_URL', '/cedi-api'),
 };

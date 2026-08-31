@@ -112,6 +112,22 @@
           <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Artículo Maestro</span>
         </router-link>
 
+        <!-- CEDI -->
+        <router-link
+          v-if="hasModuleAccess('cedi')"
+          to="/cedi"
+          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
+          :class="{
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/cedi'),
+            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/cedi')
+          }"
+          :title="effectiveSidebarCollapsed ? 'CEDI' : ''"
+        >
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <TruckIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/cedi') }" />
+          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">CEDI</span>
+        </router-link>
+
         <!-- Caja Chica -->
         <router-link
           v-if="hasModuleAccess('cajachica')"
@@ -455,7 +471,8 @@ import {
   SparklesIcon,
   ShoppingCartIcon,
   ClipboardDocumentListIcon,
-  BanknotesIcon
+  BanknotesIcon,
+  TruckIcon
 } from '@heroicons/vue/24/outline'
 import { Pin, PinOff } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth'
