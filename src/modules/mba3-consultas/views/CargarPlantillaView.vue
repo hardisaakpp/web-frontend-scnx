@@ -629,7 +629,6 @@ import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { useAuthStore } from '@/stores/auth'
 import { lastNotification } from '@/composables/useNotificaciones'
-import { useTablePreferences } from '@/composables/useTablePreferences'
 import { mba3ConsultasService, extractErrorMessage } from '../services/mba3ConsultasApi'
 import type { PedidoCompleto, ReporteDiferenciasResponse, UploadPlantillaResponse } from '../types'
 // Utilidades extraídas
@@ -665,10 +664,8 @@ import {
 import { useFileUpload, RESALTADO_CODIGOS_STORAGE_PREFIX } from '../composables/useFileUpload'
 import type { CorreccionesPlantilla } from '../composables/useFileUpload'
 import { useColumnManagement } from '../composables/useColumnManagement'
-import { useColumnVisibilityToggle } from '../composables/useColumnVisibilityToggle'
-import { useColumnDragAndDrop } from '../composables/useColumnDragAndDrop'
+import { useProductosPedidoColumnas } from '../composables/useProductosPedidoColumnas'
 import { usePedidoDetalle } from '../composables/usePedidoDetalle'
-import { useColumnasModificadasStorage } from '../composables/useColumnasModificadasStorage'
 import { useFechaPedidoHandlers } from '../composables/useFechaPedidoHandlers'
 import { useRedistribucion } from '../composables/useRedistribucion'
 import {
@@ -819,139 +816,32 @@ const availableColumns: ColumnConfig[] = [
   { key: 'comentario', label: 'Comentario', visible: true, align: 'left', format: 'text' }
 ]
 
-// ⭐ CAMBIO: Usar composable useTablePreferences
-// Asegurar que la columna 'numero' esté siempre visible y al inicio
-const defaultVisibleColumns = availableColumns.filter(col => col.visible || col.fixed).map(col => col.key)
-const defaultColumnOrder = availableColumns.map(col => col.key)
-
+// Orquestación de columnas (preferencias, visibilidad, drag & drop) y totales/numeroPedido,
+// compartida con PedidoDetalleView.vue vía useProductosPedidoColumnas (mismo tableId).
 const {
   visibleColumns,
   columnOrder,
-  orderedVisibleColumns: orderedVisibleColumnKeys,
+  orderedVisibleColumnKeys,
   savePreferences,
-  resetPreferences: resetTablePreferences,
-  selectAllColumns: selectAllTableColumns,
-  isSyncing
-} = useTablePreferences({
-  tableId: 'productos-pedido',
-  defaultVisibleColumns,
-  defaultColumnOrder,
-  enableFilters: false,
-  enablePageSize: false
-})
-
-// ⭐ Selector de columnas (botón "Columnas" + dropdown): estado abierto/cerrado, click-outside
-// y toggle de visibilidad con validación de mínimo visible, vía composable compartido.
-const columnVisibility = useColumnVisibilityToggle({
-  columns: availableColumns,
-  visibleColumns,
-  persist: savePreferences
-})
-
-// ⭐ Drag & drop de columnas (reordenar por arrastre del <th>), vía composable compartido.
-// Variante "con columnas fijas": 'numero' no es arrastrable ni objetivo de drop, columnOrder
-// incluye columnas ocultas (se valida contra orderedVisibleColumnKeys), el índice de destino
-// se ajusta tras remover la columna arrastrada, se fuerza 'numero' primero tras reordenar,
-// y se evita el parpadeo visual en dragover/dragleave -- igual que en PedidoDetalleView.vue.
-function pinNumeroFirst(order: string[]) {
-  const numeroIndex = order.indexOf('numero')
-  if (numeroIndex > 0) {
-    order.splice(numeroIndex, 1)
-    order.unshift('numero')
-  }
-  return order
-}
-
-const {
-  draggedColumn: draggedColumnKey,
-  dragOverColumn: dragOverColumnKey,
+  resetTablePreferences,
+  selectAllTableColumns,
+  isSyncing,
+  columnVisibility,
+  draggedColumnKey,
+  dragOverColumnKey,
   handleDragStart,
   handleDragOver,
   handleDragLeave,
   handleDrop,
-  handleDragEnd
-} = useColumnDragAndDrop({
-  columnOrder,
-  visibleOrder: orderedVisibleColumnKeys,
-  isColumnFixed: (key) => availableColumns.find(col => col.key === key)?.fixed ?? false,
-  adjustTargetIndexAfterRemoval: true,
-  postReorder: pinNumeroFirst,
-  avoidHoverFlicker: true,
-  persist: savePreferences
-})
-
-// ⭐ NUEVO: Computed para obtener objetos ColumnConfig ordenados
-// Asegurar que la columna 'numero' siempre esté al inicio
-const orderedVisibleColumns = computed(() => {
-  const ordered = orderedVisibleColumnKeys.value
-    .map(key => availableColumns.find(col => col.key === key))
-    .filter((col): col is ColumnConfig => col !== undefined)
-  
-  // Separar columnas fijas y no fijas
-  const fixedColumns = ordered.filter(col => col.fixed)
-  const nonFixedColumns = ordered.filter(col => !col.fixed)
-  
-  // Asegurar que 'numero' esté al inicio si existe
-  const numeroColumn = fixedColumns.find(col => col.key === 'numero')
-  const otherFixedColumns = fixedColumns.filter(col => col.key !== 'numero')
-  
-  // Reconstruir el orden: primero 'numero', luego otras fijas, luego no fijas
-  return [
-    ...(numeroColumn ? [numeroColumn] : []),
-    ...otherFixedColumns,
-    ...nonFixedColumns
-  ]
-})
-
-// ⭐ NUEVO: Computed para obtener todas las columnas con su estado de visibilidad
-const availableColumnsWithVisibility = computed(() => {
-  return availableColumns.map(col => ({
-    ...col,
-    visible: col.fixed ? true : visibleColumns.value.includes(col.key)
-  }))
-})
-
-// ⭐ Asegurar que la columna 'numero' siempre esté visible
-watch(
-  () => visibleColumns.value,
-  (newVisible) => {
-    if (!newVisible.includes('numero')) {
-      visibleColumns.value = ['numero', ...newVisible.filter((key: string) => key !== 'numero')]
-      savePreferences()
-    }
-  },
-  { immediate: true }
-)
-
-// ⭐ Totales: usar pedido.totales del backend cuando exista; si no, recalcular desde detalles (fallback)
-const totalesCostoUnitario = computed(() => {
-  const t = pedido.value?.totales
-  if (t != null && typeof t.total_costo_unitario === 'number') return t.total_costo_unitario
-  if (!pedido.value?.detalles) return 0
-  return pedido.value.detalles.reduce((sum: number, detalle: any) => sum + (detalle.costo_doc_sin_iva || 0), 0)
-})
-
-const totalesSubtotal = computed(() => {
-  const t = pedido.value?.totales
-  if (t != null && typeof t.total_subtotal === 'number') return t.total_subtotal
-  if (!pedido.value?.detalles) return 0
-  return pedido.value.detalles.reduce((sum: number, detalle: any) => sum + (detalle.subtotal || 0), 0)
-})
-
-const totalesTotal = computed(() => {
-  const t = pedido.value?.totales
-  if (t != null && typeof t.total_total === 'number') return t.total_total
-  if (!pedido.value?.detalles) return 0
-  return pedido.value.detalles.reduce((sum: number, detalle: any) => sum + (detalle.total || 0), 0)
-})
-
-// El parámetro de ruta ahora es numero_pedido
-const numeroPedido = computed(() => {
-  const id = route.params.id as string
-  return id ? decodeURIComponent(id) : ''
-})
-
-const columnasModificadasStorage = useColumnasModificadasStorage(numeroPedido, columnasModificadas, rolesModificacion)
+  handleDragEnd,
+  orderedVisibleColumns,
+  availableColumnsWithVisibility,
+  totalesCostoUnitario,
+  totalesSubtotal,
+  totalesTotal,
+  numeroPedido,
+  columnasModificadasStorage
+} = useProductosPedidoColumnas(availableColumns, pedido, columnasModificadas, rolesModificacion)
 
 /** Número de pedido para el que se muestra el botón "Finalizado" (solo Cargar plantilla, estado Despachar y Facturar). */
 const NUMERO_PEDIDO_FINALIZADO = 'P-12.01 - 12 - 2025'
