@@ -69,7 +69,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), { excluirCodigos: () => [] })
-const emit = defineEmits<{ (e: 'select', tienda: { codigo: string; nombre: string }): void }>()
+const emit = defineEmits<(e: 'select', tienda: { codigo: string; nombre: string }) => void>()
 
 const query = ref('')
 const resultados = ref<TiendaCatalogoItem[]>([])
