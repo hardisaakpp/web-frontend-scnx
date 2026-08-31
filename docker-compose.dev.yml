@@ -29,6 +29,7 @@ services:
       UPSTREAM_INVENTARIO: ${UPSTREAM_INVENTARIO:-http://host.docker.internal:8082}
       UPSTREAM_PROMOCION_SOBRES: ${UPSTREAM_PROMOCION_SOBRES:-http://host.docker.internal:8083}
       UPSTREAM_SLAYER: ${UPSTREAM_SLAYER:-http://host.docker.internal:8093}
+      UPSTREAM_MIA: ${UPSTREAM_MIA:-http://172.30.152.246:8896}
     ports:
       - "3000:3000"
     volumes:

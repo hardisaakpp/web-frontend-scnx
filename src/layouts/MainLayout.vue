@@ -441,6 +441,9 @@
 
     <!-- Toast Notifications -->
     <ToastContainer />
+
+    <!-- Asistente SCNEXUS AI (Cool-turito) -->
+    <AssistantWidget />
   </div>
 </template>
 
@@ -478,6 +481,7 @@ import { Pin, PinOff } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth'
 import { useThemeStore } from '../stores/theme'
 import ToastContainer from '../components/ToastContainer.vue'
+import AssistantWidget from '../components/assistant/AssistantWidget.vue'
 import { useNotificaciones } from '@/composables/useNotificaciones'
 import { useOdcSapVolver } from '@/composables/useOdcSapVolver'
 import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'

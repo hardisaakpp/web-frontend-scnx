@@ -32,4 +32,6 @@ export const ENV = {
   SLAYER_URL: getEnv('VITE_SLAYER_API_URL', '/slayer-api'),
   PREFERENCES_URL: getEnv('VITE_PREFERENCES_API_URL', ''),
   CEDI_URL: getEnv('VITE_CEDI_API_URL', '/cedi-api'),
+  /** mIAApi — asistente de IA (Cool-turito / SCNEXUS AI) */
+  MIA_URL: getEnv('VITE_MIA_API_URL', '/mia-api'),
 };

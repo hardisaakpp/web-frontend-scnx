@@ -55,6 +55,8 @@ export default defineConfig(async ({ mode }): Promise<UserConfig> => {
   const invPlanesProxyTarget = upstreamUrl(env, 'INV_PLANES') || upstreamUrl(env, 'INVENTARIO')
   const promocionSobresProxyTarget = upstreamUrl(env, 'PROMOCION_SOBRES')
   const slayerProxyTarget = upstreamUrl(env, 'SLAYER')
+  // mIAApi (asistente SCNEXUS AI): sin fallback a defaults genéricos — servicio propio
+  const miaProxyTarget = env.UPSTREAM_MIA || 'http://172.30.152.246:8896'
   const reposicionProxyTarget = upstreamUrl(env, 'REPOSICION')
   console.log(`\x1b[35m[proxy]\x1b[0m Reposiciones → ${reposicionProxyTarget}`)
 
@@ -269,6 +271,18 @@ export default defineConfig(async ({ mode }): Promise<UserConfig> => {
           secure: false,
 
           rewrite: (path: string) => path.replace(/^\/maestro-api/, '')
+
+        },
+
+        '/mia-api': {
+
+          target: miaProxyTarget,
+
+          changeOrigin: true,
+
+          secure: false,
+
+          rewrite: (path: string) => path.replace(/^\/mia-api/, '')
 
         },
 
