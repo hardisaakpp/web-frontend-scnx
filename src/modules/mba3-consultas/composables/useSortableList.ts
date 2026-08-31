@@ -39,6 +39,31 @@ export interface UseSortableListOptions<T> {
 }
 
 /**
+ * Compara dos valores tratando null/undefined como "siempre al final", sin importar la dirección.
+ * Devuelve null cuando ninguno de los dos es null/undefined (no aplica esta regla).
+ */
+function compareNullable(valA: any, valB: any, dir: SortDirection): number | null {
+  if (valA == null && valB == null) return 0
+  if (valA == null) return dir === 'asc' ? 1 : -1
+  if (valB == null) return dir === 'asc' ? -1 : 1
+  return null
+}
+
+function compareAsDates(valA: any, valB: any, dir: SortDirection): number {
+  const dateA = new Date(valA).getTime()
+  const dateB = new Date(valB).getTime()
+  return dir === 'asc' ? dateA - dateB : dateB - dateA
+}
+
+function compareAsText(valA: any, valB: any, dir: SortDirection): number {
+  const strA = String(valA).toLowerCase()
+  const strB = String(valB).toLowerCase()
+  if (strA < strB) return dir === 'asc' ? -1 : 1
+  if (strA > strB) return dir === 'asc' ? 1 : -1
+  return 0
+}
+
+/**
  * Devuelve el estado de ordenamiento (sortColumn/sortDirection), la función para alternarlo al
  * hacer clic en un <th> (toggleSort) y el array ya ordenado (sortedItems), listo para el `v-for`
  * de la tabla en lugar del array original.
@@ -79,21 +104,10 @@ export function useSortableList<T>(options: UseSortableListOptions<T>) {
       const valB = b[col]
 
       // Manejar valores nulos/undefined: siempre al final, sin importar la dirección
-      if (valA == null && valB == null) return 0
-      if (valA == null) return dir === 'asc' ? 1 : -1
-      if (valB == null) return dir === 'asc' ? -1 : 1
+      const nullComparison = compareNullable(valA, valB, dir)
+      if (nullComparison !== null) return nullComparison
 
-      if (isDate) {
-        const dateA = new Date(valA).getTime()
-        const dateB = new Date(valB).getTime()
-        return dir === 'asc' ? dateA - dateB : dateB - dateA
-      }
-
-      const strA = String(valA).toLowerCase()
-      const strB = String(valB).toLowerCase()
-      if (strA < strB) return dir === 'asc' ? -1 : 1
-      if (strA > strB) return dir === 'asc' ? 1 : -1
-      return 0
+      return isDate ? compareAsDates(valA, valB, dir) : compareAsText(valA, valB, dir)
     })
   })
 
