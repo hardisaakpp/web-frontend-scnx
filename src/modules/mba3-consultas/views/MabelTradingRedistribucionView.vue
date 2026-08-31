@@ -587,9 +587,16 @@ function getDetallesAdicionales(
 
 /** Aplica el resultado del proceso SAP (compartido entre flujo async y fallback sync). */
 async function applySAPResponse(response: ProcesoCompletoSAPResponse) {
-  const innerStatus = (response as any).status === 'success' || (response as any).status === 'partial' || (response as any).status === 'error'
-    ? (response as any).status
-    : (response.envio_sap?.doc_num != null ? 'success' : response.error_detalle ? 'partial' : 'error')
+  let innerStatus: 'success' | 'partial' | 'error'
+  if ((response as any).status === 'success' || (response as any).status === 'partial' || (response as any).status === 'error') {
+    innerStatus = (response as any).status
+  } else if (response.envio_sap?.doc_num != null) {
+    innerStatus = 'success'
+  } else if (response.error_detalle) {
+    innerStatus = 'partial'
+  } else {
+    innerStatus = 'error'
+  }
 
   const solicitudesTransferencia = getSolicitudesTransferencia(response)
 
