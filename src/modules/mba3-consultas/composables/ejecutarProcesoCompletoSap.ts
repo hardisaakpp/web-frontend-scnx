@@ -62,19 +62,19 @@ export function tieneSolicitudesTransferenciaSinConfirmar(data: Record<string, u
   })
 }
 
-function isProcesoSapTerminalSuccess(data: Record<string, unknown>): boolean {
-  const esExitoso =
-    data.status === 'success' ||
-    data.status === 'partial' ||
-    data.status === 'completed'
-  if (!esExitoso) return false
-  // Si el proceso ya terminó pero SAP todavía no confirmó (ni rechazó) alguna
-  // Solicitud de Transferencia, seguimos escuchando/consultando un rato más
-  // en vez de cerrar de inmediato -- el backend puede corregir el resultado
-  // tarde (ver StockTransferService._corregir_snapshot_proceso_original) y
-  // el propio backend cierra el SSE si pasa demasiado tiempo sin resolverse
-  // (ver _event_stream_proceso_sap), así que esto no cuelga indefinidamente.
-  return !tieneSolicitudesTransferenciaSinConfirmar(data)
+export function isProcesoSapTerminalSuccess(data: Record<string, unknown>): boolean {
+  // No condicionar esto a que las Solicitudes de Transferencia (ITR) ya estén
+  // confirmadas: la ODC/ITR ya se enviaron a SAP en este punto, y una ITR que
+  // SAP todavía no confirma ni rechaza (`transferencias_pendientes_confirmacion`)
+  // se resuelve sola con la reconciliación automática diaria (ver
+  // StockTransferService._corregir_snapshot_proceso_original), no necesita que
+  // este navegador siga esperando. Antes se seguía haciendo polling/SSE (hasta
+  // ~10-20 min, o más si el usuario suspendía el equipo o dejaba la pestaña en
+  // segundo plano) con el modal bloqueante "Enviando ODC a SAP" congelado en
+  // 100% -- aunque el envío ya hubiera terminado con éxito. El detalle de ITR
+  // pendiente sigue visible igual en el resultado final (ver
+  // tieneSolicitudesTransferenciaSinConfirmar / IntegracionSAPModal).
+  return data.status === 'success' || data.status === 'partial' || data.status === 'completed'
 }
 
 async function pollProcesoSapResultado(

@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest'
-import { tieneSolicitudesTransferenciaSinConfirmar } from '@/modules/mba3-consultas/composables/ejecutarProcesoCompletoSap'
+import {
+  tieneSolicitudesTransferenciaSinConfirmar,
+  isProcesoSapTerminalSuccess,
+} from '@/modules/mba3-consultas/composables/ejecutarProcesoCompletoSap'
 
 describe('tieneSolicitudesTransferenciaSinConfirmar', () => {
   it('false cuando no hay resultado ni envios', () => {
@@ -74,5 +77,40 @@ describe('tieneSolicitudesTransferenciaSinConfirmar', () => {
       envio_sap: { oc_id: 'oc-1', solicitudes_transferencia: null },
     }
     expect(tieneSolicitudesTransferenciaSinConfirmar(data)).toBe(false)
+  })
+})
+
+describe('isProcesoSapTerminalSuccess', () => {
+  it('regresión: es terminal aunque queden ITR sin confirmar (no debe colgar el modal esperando)', () => {
+    const data = {
+      status: 'completed',
+      resultado: {
+        status: 'success',
+        envios_sap: [
+          { oc_id: 'oc-RL', solicitudes_transferencia: { transferencias_pendientes_confirmacion: 1, transferencias_creadas: 13 } },
+        ],
+      },
+    }
+    expect(tieneSolicitudesTransferenciaSinConfirmar(data)).toBe(true)
+    expect(isProcesoSapTerminalSuccess(data)).toBe(true)
+  })
+
+  it('es terminal cuando todas las ITR ya están confirmadas', () => {
+    const data = {
+      status: 'completed',
+      resultado: {
+        status: 'success',
+        envio_sap: { oc_id: 'oc-1', solicitudes_transferencia: { transferencias_pendientes_confirmacion: 0 } },
+      },
+    }
+    expect(isProcesoSapTerminalSuccess(data)).toBe(true)
+  })
+
+  it('no es terminal mientras el proceso sigue "processing"', () => {
+    expect(isProcesoSapTerminalSuccess({ status: 'processing' })).toBe(false)
+  })
+
+  it('no se considera éxito terminal en status "error" (lo resuelve getTerminalError aparte)', () => {
+    expect(isProcesoSapTerminalSuccess({ status: 'error' })).toBe(false)
   })
 })
