@@ -1579,81 +1579,148 @@ async function handleStReintentado(payload: { oc: OrdenCompra; result: any }) {
 // 2 ODC que comparten la misma referenciaDespacho (número de pedido), así que reintentar solo
 // por referencia podía resolver a la ODC equivocada en backend (find_by_referencia_despacho
 // no filtra por oc_id/estado). Ver OrdenCompraTable.vue::handleIntegrar.
+/**
+ * Actualiza la orden local (array de ordenesCompraStore) con el resultado de integrarSAP y
+ * refresca estadísticas. Por oc_id (sin ambigüedad): con 2 ODC del mismo pedido mixto
+ * compartiendo referencia_despacho, buscar por referencia podía actualizar la fila equivocada.
+ */
+async function actualizarOrdenLocalTrasIntegracion(ocId: string, referenciaDespacho: string, detalle: any): Promise<void> {
+  const ordenIndex = ordenesCompraStore.ordenesCompra.findIndex((oc: any) => oc.oc_id === ocId)
+  if (ordenIndex === -1) return
+
+  const ordenActual = ordenesCompraStore.ordenesCompra[ordenIndex]
+
+  if (detalle.success === true) {
+    const { orden: ordenActualizada, toastMessage } = construirActualizacionOrdenExito(ordenActual, detalle)
+    ordenesCompraStore.ordenesCompra[ordenIndex] = ordenActualizada
+    ordenesCompraStore.ordenesCompra = [...ordenesCompraStore.ordenesCompra]
+    toast.success('Orden enviada', toastMessage)
+    if (import.meta.env.DEV) {
+      console.log(`[handleIntegrarOC] ✅ Estado actualizado localmente: ${referenciaDespacho} → ${ordenActualizada.estado}`)
+    }
+  } else {
+    const { orden: ordenActualizada, toastTitle, toastMessage, erroresAdicionales } = construirActualizacionOrdenError(ordenActual, detalle)
+    ordenesCompraStore.ordenesCompra[ordenIndex] = ordenActualizada
+    ordenesCompraStore.ordenesCompra = [...ordenesCompraStore.ordenesCompra]
+    if (erroresAdicionales.length > 0) {
+      console.warn(`[handleIntegrarOC] Múltiples errores para ${referenciaDespacho}:`, erroresAdicionales)
+    }
+    toast.error(toastTitle, toastMessage)
+    if (import.meta.env.DEV) {
+      console.log(`[handleIntegrarOC] ✅ Estado actualizado localmente: ${referenciaDespacho} → ${ordenActualizada.estado}`)
+    }
+  }
+
+  await nextTick()
+  void ordenesCompraStore.fetchEstadisticas()
+}
+
+function logSiFaltaSolicitudesTransferencia(detalle: any, response: any): void {
+  if (!(import.meta.env.DEV && !integracionSAPSolicitudes.value)) return
+  console.debug('[Integración SAP] solicitudes_transferencia no encontrado. Respuesta:', {
+    enDetalle: !!detalle.solicitudes_transferencia,
+    enMetadata: !!response?.metadata?.solicitudes_transferencia,
+    enRaiz: !!response?.solicitudes_transferencia,
+    keysDetalle: Object.keys(detalle),
+    keysMetadata: response?.metadata ? Object.keys(response.metadata) : []
+  })
+}
+
+/** Mostrar modal con resultados de integración (ITR incluidas). */
+async function mostrarModalIntegracion(detalle: any, response: any): Promise<void> {
+  integracionSAPDetalle.value = detalle
+  integracionSAPDetallesAdicionales.value = []
+  // Leer ITR: puede venir en detalle, en metadata o en la raíz de la respuesta (según backend)
+  integracionSAPSolicitudes.value =
+    detalle.solicitudes_transferencia ??
+    response?.metadata?.solicitudes_transferencia ??
+    response?.solicitudes_transferencia ??
+    null
+  logSiFaltaSolicitudesTransferencia(detalle, response)
+
+  // Determinar estado general
+  const status = response?.status || (detalle.success ? 'success' : 'error')
+  integracionSAPEstado.value = determinarEstadoIntegracion(status, detalle.success, integracionSAPSolicitudes.value)
+
+  // Mostrar modal después de un pequeño delay para que el overlay se cierre primero
+  await new Promise(resolve => setTimeout(resolve, 300))
+  showIntegracionSAPModal.value = true
+}
+
+async function manejarErrorIntegracionOC(error: any): Promise<void> {
+  console.error('Error al integrar ODC:', error)
+
+  if (isTransientClientError(error)) {
+    toast.warning('Tiempo de espera agotado', SAP_MAY_STILL_PROCESSING_MESSAGE)
+    await Promise.all([
+      ordenesCompraStore.fetchEstadisticas(),
+      cargarOrdenesCompraPendientes(),
+    ]).catch((err) => console.warn('[handleIntegrarOC] refresh tras timeout:', err))
+    if (ordenCompraTableRef.value?.clearSendingState) {
+      ordenCompraTableRef.value.clearSendingState()
+    }
+    return
+  }
+
+  const { title: errorTitle, message: errorMessage, erroresAdicionales } = interpretarErrorIntegracion(error)
+
+  if (erroresAdicionales.length > 0) {
+    // Si hay múltiples errores, mostrar el primero en el toast y los demás en consola
+    console.warn('Errores adicionales:', erroresAdicionales)
+    toast.error(errorTitle, `${errorMessage} (+${erroresAdicionales.length} error(es) más. Ver consola)`)
+    return // Salir temprano para no mostrar el toast genérico (tampoco se limpia sendingState en este caso)
+  }
+
+  // Solo mostrar toast si no se mostró antes (por errores múltiples)
+  if (!errorMessage.includes('(+')) {
+    toast.error(errorTitle, errorMessage)
+  }
+
+  // En caso de error, SÍ limpiar el estado de envío para que el usuario pueda reintentar
+  if (ordenCompraTableRef.value?.clearSendingState) {
+    ordenCompraTableRef.value.clearSendingState()
+  }
+}
+
 async function handleIntegrarOC(ocId: string, referenciaDespacho: string, almacenDestinoParam?: string) {
   // Verificar que no esté ya ejecutándose
   if (procesoStore.loading || ordenesCompraStore.loading) {
     return
   }
-  
+
   try {
     // Establecer loading en procesoStore para mostrar el overlay
     procesoStore.loading = true
     procesoStore.currentStep = 'integrar-sap'
     procesoStore.progress = 0
-    
+
     // Esperar a que Vue actualice el DOM para que el overlay aparezca
     await nextTick()
-    
+
     const almacenMsg = almacenDestinoParam ? ` (Almacén: ${almacenDestinoParam})` : ''
     toast.info('Enviando orden a SAP...', `Enviando ${referenciaDespacho}${almacenMsg}`)
-    
+
     // Simular progreso mientras se envía
     procesoStore.progress = 50
-    
+
     // ✅ ESPERAR LA RESPUESTA COMPLETA del endpoint (esto toma ~5 segundos)
     // Usar almacén destino del parámetro si se proporciona, sino undefined
     // Enviar por ocId (sin ambigüedad) en vez de referenciaDespacho -- ver comentario en la firma.
     const response = await mba3ConsultasService.integrarSAP(referenciaDespacho, almacenDestinoParam, ocId)
-    
+
     // Completar el progreso
     procesoStore.progress = 100
-    
+
     // ✅ ACTUALIZAR ESTADO LOCAL INMEDIATAMENTE basándose en la respuesta
     const detalles = normalizarDetallesIntegracion(response)
 
     if (detalles.length > 0) {
-      const detalle = detalles[0]
-      const success = detalle.success === true
-
-      // Buscar y actualizar la orden en el array local.
-      // Por oc_id (sin ambigüedad): con 2 ODC del mismo pedido mixto compartiendo
-      // referencia_despacho, buscar por referencia podía actualizar la fila equivocada.
-      const ordenIndex = ordenesCompraStore.ordenesCompra.findIndex(
-        (oc: any) => oc.oc_id === ocId
-      )
-
-      if (ordenIndex !== -1) {
-        const ordenActual = ordenesCompraStore.ordenesCompra[ordenIndex]
-
-        if (success) {
-          const { orden: ordenActualizada, toastMessage } = construirActualizacionOrdenExito(ordenActual, detalle)
-          ordenesCompraStore.ordenesCompra[ordenIndex] = ordenActualizada
-          ordenesCompraStore.ordenesCompra = [...ordenesCompraStore.ordenesCompra]
-          toast.success('Orden enviada', toastMessage)
-          if (import.meta.env.DEV) {
-            console.log(`[handleIntegrarOC] ✅ Estado actualizado localmente: ${referenciaDespacho} → ${ordenActualizada.estado}`)
-          }
-        } else {
-          const { orden: ordenActualizada, toastTitle, toastMessage, erroresAdicionales } = construirActualizacionOrdenError(ordenActual, detalle)
-          ordenesCompraStore.ordenesCompra[ordenIndex] = ordenActualizada
-          ordenesCompraStore.ordenesCompra = [...ordenesCompraStore.ordenesCompra]
-          if (erroresAdicionales.length > 0) {
-            console.warn(`[handleIntegrarOC] Múltiples errores para ${referenciaDespacho}:`, erroresAdicionales)
-          }
-          toast.error(toastTitle, toastMessage)
-          if (import.meta.env.DEV) {
-            console.log(`[handleIntegrarOC] ✅ Estado actualizado localmente: ${referenciaDespacho} → ${ordenActualizada.estado}`)
-          }
-        }
-
-        await nextTick()
-        void ordenesCompraStore.fetchEstadisticas()
-      }
+      await actualizarOrdenLocalTrasIntegracion(ocId, referenciaDespacho, detalles[0])
     }
 
     // Delay para que el usuario vea el cambio en la UI antes de cerrar el overlay
     await new Promise(resolve => setTimeout(resolve, 500))
-    
+
     // ✅ Verificar si hay pedidos cerrados en la respuesta (Fase 6)
     const pedidosCerrados = response?.metadata?.pedidos_cerrados || []
     if (pedidosCerrados.length > 0) {
@@ -1663,37 +1730,12 @@ async function handleIntegrarOC(ocId: string, referenciaDespacho: string, almace
       )
       if (import.meta.env.DEV) console.log('📦 Pedidos cerrados después del envío:', pedidosCerrados)
     }
-    
+
     // ⭐ Mostrar modal con resultados de integración
     const envioExitoso = detalles.length > 0 && detalles[0]?.success === true
 
     if (detalles.length > 0) {
-      const detalle = detalles[0]
-      integracionSAPDetalle.value = detalle
-      integracionSAPDetallesAdicionales.value = []
-      // Leer ITR: puede venir en detalle, en metadata o en la raíz de la respuesta (según backend)
-      integracionSAPSolicitudes.value =
-        detalle.solicitudes_transferencia ??
-        response?.metadata?.solicitudes_transferencia ??
-        response?.solicitudes_transferencia ??
-        null
-      if (import.meta.env.DEV && !integracionSAPSolicitudes.value) {
-        console.debug('[Integración SAP] solicitudes_transferencia no encontrado. Respuesta:', {
-          enDetalle: !!detalle.solicitudes_transferencia,
-          enMetadata: !!response?.metadata?.solicitudes_transferencia,
-          enRaiz: !!response?.solicitudes_transferencia,
-          keysDetalle: Object.keys(detalle),
-          keysMetadata: response?.metadata ? Object.keys(response.metadata) : []
-        })
-      }
-
-      // Determinar estado general
-      const status = response?.status || (detalle.success ? 'success' : 'error')
-      integracionSAPEstado.value = determinarEstadoIntegracion(status, detalle.success, integracionSAPSolicitudes.value)
-
-      // Mostrar modal después de un pequeño delay para que el overlay se cierre primero
-      await new Promise(resolve => setTimeout(resolve, 300))
-      showIntegracionSAPModal.value = true
+      await mostrarModalIntegracion(detalles[0], response)
     }
 
     // Refrescar tras envío/reintento exitoso para sincronizar flags de ACCIONES (reintentar/PDF).
@@ -1703,43 +1745,12 @@ async function handleIntegrarOC(ocId: string, referenciaDespacho: string, almace
         cargarOrdenesCompraPendientes(),
       ])
     }
-    
+
     // IMPORTANTE: NO limpiar sendingOcId aquí
     // El watch en OrdenCompraTable detectará automáticamente cuando el estado cambie
     // y limpiará sendingOcId solo cuando el estado sea != 'PENDIENTE'
   } catch (error: any) {
-    console.error('Error al integrar ODC:', error)
-
-    if (isTransientClientError(error)) {
-      toast.warning('Tiempo de espera agotado', SAP_MAY_STILL_PROCESSING_MESSAGE)
-      await Promise.all([
-        ordenesCompraStore.fetchEstadisticas(),
-        cargarOrdenesCompraPendientes(),
-      ]).catch((err) => console.warn('[handleIntegrarOC] refresh tras timeout:', err))
-      if (ordenCompraTableRef.value?.clearSendingState) {
-        ordenCompraTableRef.value.clearSendingState()
-      }
-      return
-    }
-    
-    const { title: errorTitle, message: errorMessage, erroresAdicionales } = interpretarErrorIntegracion(error)
-
-    if (erroresAdicionales.length > 0) {
-      // Si hay múltiples errores, mostrar el primero en el toast y los demás en consola
-      console.warn('Errores adicionales:', erroresAdicionales)
-      toast.error(errorTitle, `${errorMessage} (+${erroresAdicionales.length} error(es) más. Ver consola)`)
-      return // Salir temprano para no mostrar el toast genérico
-    }
-
-    // Solo mostrar toast si no se mostró antes (por errores múltiples)
-    if (!errorMessage.includes('(+')) {
-      toast.error(errorTitle, errorMessage)
-    }
-
-    // En caso de error, SÍ limpiar el estado de envío para que el usuario pueda reintentar
-    if (ordenCompraTableRef.value?.clearSendingState) {
-      ordenCompraTableRef.value.clearSendingState()
-    }
+    await manejarErrorIntegracionOC(error)
   } finally {
     // Asegurar que el loading se limpie
     procesoStore.loading = false
