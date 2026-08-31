@@ -95,6 +95,18 @@ export const ordenesCompraService = {
   },
 
   /**
+   * Descargar el Excel simple (2 hojas) de integración SAP de una OC: misma información
+   * que el correo "OC y Solicitudes de Transferencia - Listo para Despacho".
+   */
+  async downloadIntegracionSAPExcel(ocId: string): Promise<Blob> {
+    const response = await mba3Api.get(`/ordenes-compra/${ocId}/integracion-sap/excel`, {
+      responseType: 'blob',
+      timeout: 60000,
+    })
+    return response.data as Blob
+  },
+
+  /**
    * Reintenta solo las Solicitudes de Transferencia (ITR) fallidas para una OC ya enviada.
    * No reenvía la ODC. Idempotente: solo procesa tiendas pendientes que aún no tienen ITR creado.
    *

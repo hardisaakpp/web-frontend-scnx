@@ -74,12 +74,37 @@
 
                   <!-- Sección 1: Orden de Compra (OC) -->
                   <div class="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-                    <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
-                      <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      Orden de Compra (OC)
-                    </h3>
+                    <div class="flex items-center justify-between gap-2 mb-3">
+                      <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                        <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Orden de Compra (OC)
+                      </h3>
+                      <button
+                        v-if="bloque.detalle.success && bloque.detalle.oc_id"
+                        type="button"
+                        :disabled="downloadingExcelOcId === bloque.detalle.oc_id"
+                        @click="handleDescargarExcel(bloque.detalle.oc_id)"
+                        class="inline-flex items-center gap-1.5 text-xs font-medium text-blue-700 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 disabled:opacity-60 disabled:cursor-not-allowed flex-shrink-0"
+                        title="Descargar la misma información del correo de despacho en un Excel"
+                      >
+                        <svg
+                          v-if="downloadingExcelOcId === bloque.detalle.oc_id"
+                          class="animate-spin h-3.5 w-3.5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          aria-hidden="true"
+                        >
+                          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                        </svg>
+                        <svg v-else class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        {{ downloadingExcelOcId === bloque.detalle.oc_id ? 'Generando…' : 'Descargar Excel' }}
+                      </button>
+                    </div>
 
                     <div v-if="bloque.detalle.success" class="space-y-2">
                       <div class="flex items-center gap-2 text-sm">
@@ -257,8 +282,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from '@vue/reactivity'
+import { computed, ref } from '@vue/reactivity'
 import { Dialog, DialogPanel, DialogTitle, TransitionRoot, TransitionChild } from '@headlessui/vue'
+import { useToast } from '@/composables/useToast'
+import { ordenesCompraService } from '../services/domains/ordenesCompra'
 import type { IntegracionSAPDetalle, SolicitudesTransferencia } from '../types'
 
 /** Un par detalle+ITR de una ODC adicional de un pedido mixto (ver prop `detallesAdicionales`). */
@@ -409,6 +436,34 @@ const tituloModal = computed(() => {
     return '❌ Error en Integración con SAP'
   }
 })
+
+const toast = useToast()
+const downloadingExcelOcId = ref<string | null>(null)
+
+async function handleDescargarExcel(ocId: string) {
+  if (downloadingExcelOcId.value === ocId) return
+
+  try {
+    downloadingExcelOcId.value = ocId
+    const blob = await ordenesCompraService.downloadIntegracionSAPExcel(ocId)
+
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `integracion_sap_${ocId.substring(0, 8)}.xlsx`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+
+    toast.success('Excel descargado exitosamente')
+  } catch (error: any) {
+    console.error('Error al descargar Excel de integración SAP:', error)
+    toast.error('Error al descargar Excel', error.message || 'No se pudo generar el Excel de integración SAP')
+  } finally {
+    downloadingExcelOcId.value = null
+  }
+}
 
 function handleClose() {
   // Con un reintento en curso, el polling sigue corriendo en el componente padre
