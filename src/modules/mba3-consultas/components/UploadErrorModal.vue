@@ -1281,6 +1281,32 @@ function irAlSiguientePendiente(): void {
  * discrepancia recién se vería en el reintento siguiente. Se agrupan con la clave del código SAP
  * elegido (no el código original inválido), igual que hace el backend en la ronda posterior.
  */
+/**
+ * Calcula el grupo Pack/PVP preemptivo de un solo producto/código elegido, o null si no hay
+ * discrepancia. Extraído de gruposPackPvpPreemptivos (S3776: reduce su complejidad cognitiva
+ * al sacar el cuerpo del for fuera del anidamiento del loop).
+ */
+function calcularGrupoPackPvpPreemptivo(
+  producto: string,
+  codigoSap: string,
+  detalleValidacion: NonNullable<UploadErrorInfo['validacion_sap']>['detalle_validacion'],
+  sapInfoPorSugerencia: Record<string, SapInfoProducto>
+): GrupoPackPvp | null {
+  const info = sapInfoPorSugerencia[codigoSap]
+  if (!info?.encontrado) return null
+  const detalle = detalleValidacion?.[producto]
+  if (!detalle) return null
+
+  const grupo: GrupoPackPvp = { codigo: codigoSap }
+  if (detalle.pack_excel != null && info.pack_sap != null && detalle.pack_excel.trim() !== info.pack_sap.trim()) {
+    grupo.pack = { excel: detalle.pack_excel, sap: info.pack_sap }
+  }
+  if (detalle.pvp_excel != null && info.pvp_sap != null && detalle.pvp_excel !== info.pvp_sap) {
+    grupo.pvp = { excel: detalle.pvp_excel, sap: info.pvp_sap }
+  }
+  return grupo.pack || grupo.pvp ? grupo : null
+}
+
 const gruposPackPvpPreemptivos = computed<GrupoPackPvp[]>(() => {
   const detalleValidacion = props.uploadErrorInfo?.validacion_sap?.detalle_validacion
   if (!detalleValidacion) return []
@@ -1288,19 +1314,8 @@ const gruposPackPvpPreemptivos = computed<GrupoPackPvp[]>(() => {
   const grupos: GrupoPackPvp[] = []
   for (const [producto, codigoSap] of Object.entries(correccionesSeleccionadas.value)) {
     if (!codigoSap) continue
-    const info = sapInfoPorSugerencia.value[codigoSap]
-    if (!info?.encontrado) continue
-    const detalle = detalleValidacion[producto]
-    if (!detalle) continue
-
-    const grupo: GrupoPackPvp = { codigo: codigoSap }
-    if (detalle.pack_excel != null && info.pack_sap != null && detalle.pack_excel.trim() !== info.pack_sap.trim()) {
-      grupo.pack = { excel: detalle.pack_excel, sap: info.pack_sap }
-    }
-    if (detalle.pvp_excel != null && info.pvp_sap != null && detalle.pvp_excel !== info.pvp_sap) {
-      grupo.pvp = { excel: detalle.pvp_excel, sap: info.pvp_sap }
-    }
-    if (grupo.pack || grupo.pvp) grupos.push(grupo)
+    const grupo = calcularGrupoPackPvpPreemptivo(producto, codigoSap, detalleValidacion, sapInfoPorSugerencia.value)
+    if (grupo) grupos.push(grupo)
   }
   return grupos
 })
