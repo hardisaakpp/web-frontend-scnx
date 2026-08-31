@@ -1,6 +1,7 @@
 <template>
   <div ref="rootRef" class="relative">
     <input
+      :id="id"
       type="text"
       inputmode="numeric"
       autocomplete="off"
@@ -141,6 +142,7 @@ import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 const props = defineProps<{
   modelValue: string | null | undefined
   disabled?: boolean
+  id?: string
 }>()
 
 const emit = defineEmits<{

@@ -111,10 +111,11 @@
                           Pedido hijo .{{ sufijo(idx) }}
                         </p>
 
-                        <label class="text-xs text-gray-500 dark:text-gray-400">
+                        <label :for="`fecha-entrega-hijo-${idx}`" class="text-xs text-gray-500 dark:text-gray-400">
                           Fecha de entrega
                         </label>
                         <AppDateInput
+                          :id="`fecha-entrega-hijo-${idx}`"
                           v-model="hijo.fecha_entrega"
                           :disabled="procesando"
                         />
