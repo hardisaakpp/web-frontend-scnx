@@ -48,6 +48,24 @@ BORRADOR ──Enviar──► SUPERVISION ──todos los supervisores aprueban
   - **Devolver para corrección** → vuelve a BORRADOR con el badge **"Devuelta"**; el custodio corrige y reenvía.
   - **Rechazar definitivamente** → queda **RECHAZADA**: no se puede editar ni reenviar.
 
+### 2.1 Notificaciones por correo electrónico
+
+En cada paso clave del ciclo, el sistema envía un correo automático desde **"Centro de Servicios" (cs@sunsetcorpholding.com)**:
+
+| Cuándo | Quién lo recibe | Contenido |
+|---|---|---|
+| El custodio **envía** la liquidación | Los **supervisores** del grupo | "Liquidación pendiente de su aprobación", con número, almacén, empresa y custodio |
+| **Todos los supervisores aprueban** (pasa a CONTABILIDAD) | Los aprobadores de **contabilidad** | "Aprobada por supervisión — pendiente de contabilidad" |
+| Se **devuelve para corrección** | El **usuario que la creó** | "Devuelta para corrección", con el **motivo** del aprobador y quién la devolvió |
+| Se **rechaza definitivamente** | El **usuario que la creó** | "Liquidación rechazada", con el motivo |
+
+Tenga en cuenta:
+
+- El correo es **informativo**: la gestión (aprobar, corregir, integrar) siempre se hace dentro de SCNexus.
+- El destinatario se toma del **correo registrado en su usuario de SCNexus**. Si a alguien no le llegan, reporte a sistemas para verificar/actualizar su correo.
+- Si no lo ve en la bandeja de entrada, revise **correo no deseado (spam)** y marque el remitente como confiable.
+- Un problema del servidor de correo **no detiene el flujo**: la liquidación avanza igual aunque el aviso no llegue.
+
 ---
 
 ## 3. Guía del CUSTODIO (tienda)
@@ -212,3 +230,6 @@ No. El rechazo definitivo la cierra. Si el gasto es válido, debe crearse una li
 
 **"¿Quién eliminó una liquidación?"**
 **Listado general** → active **"Incluir eliminadas"**: la fila muestra quién y cuándo la eliminó.
+
+**"No me llegan los correos de caja chica."**
+Revise la carpeta de **spam** y que su usuario de SCNexus tenga el **correo correcto registrado** (repórtelo a sistemas). Los avisos salen de **cs@sunsetcorpholding.com**; el flujo continúa normalmente aunque un correo no llegue.
