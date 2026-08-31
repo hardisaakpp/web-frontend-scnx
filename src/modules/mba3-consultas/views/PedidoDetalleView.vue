@@ -1365,6 +1365,28 @@ function handleCerrarModalConfirmacionProduccion() {
   router.push('/mba3-consultas/produccion/pedidos')
 }
 
+/** Descarga un blob como archivo (crea un <a> temporal, dispara el click y libera la URL). */
+function descargarBlobComoArchivo(blob: Blob, nombreArchivo: string): void {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = nombreArchivo
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+/** Extrae status/mensaje/código de un error HTTP con el shape { response: { data: { detail: {...} } } }. */
+function extraerDetalleErrorHttp(e: any): { status: number | undefined; message: string | undefined; errorCode: string | undefined } {
+  const status = e.response?.status
+  const data = e.response?.data
+  const detail = data?.detail
+  const errorCode = detail?.error
+  const message = detail?.message || data?.message || e.message
+  return { status, message, errorCode }
+}
+
 // Función para descargar pedido ORIGINAL en formato Excel (valores antes de ediciones)
 async function handleDescargarPedido() {
   if (!pedido.value?.cabecera?.pedido_id) {
@@ -1384,14 +1406,7 @@ async function handleDescargarPedido() {
     const blob = await mba3ConsultasService.descargarPedidoOriginal(pedidoId)
 
     // Crear URL del blob y descargar con el nombre fijo especificado
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'Descargar Pedido Original.xlsx'
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    descargarBlobComoArchivo(blob, 'Descargar Pedido Original.xlsx')
 
     toast.success('Descarga completada', 'El archivo Excel se ha descargado correctamente')
   } catch (e: any) {
@@ -1461,25 +1476,14 @@ async function handleDescargarCsv() {
     const nombreArchivo = `pedido_${numeroPedidoDisplay.replace(/[^a-zA-Z0-9.-]/g, '_')}_${timestamp}.csv`
     
     // Crear URL del blob y descargar
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = nombreArchivo
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-    
+    descargarBlobComoArchivo(blob, nombreArchivo)
+
     toast.success('Descarga completada', 'El archivo CSV se ha descargado correctamente')
   } catch (e: any) {
     console.error('Error al descargar CSV:', e)
-    
-    const status = e.response?.status
-    const data = e.response?.data
-    const detail = data?.detail
-    const errorCode = detail?.error
-    const message = detail?.message || data?.message || e.message
-    
+
+    const { status, message, errorCode } = extraerDetalleErrorHttp(e)
+
     if (status === 400) {
       // Estado no permitido
       if (errorCode === 'estado_no_confirmado' || message?.includes('CONFIRMADO')) {
@@ -1545,24 +1549,14 @@ async function handleDescargarExcelOriginal() {
     const nombreArchivo = nombreOriginal || `plantilla_original_${pedido.value.cabecera.numero_pedido?.replace(/[^a-zA-Z0-9.-]/g, '_') || pedidoId}.xlsx`
     
     // Crear URL del blob y descargar
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = nombreArchivo
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-    
+    descargarBlobComoArchivo(blob, nombreArchivo)
+
     toast.success('Descarga completada', 'El archivo Excel original se ha descargado correctamente')
   } catch (e: any) {
     console.error('Error al descargar Excel original:', e)
-    
-    const status = e.response?.status
-    const data = e.response?.data
-    const detail = data?.detail
-    const message = detail?.message || data?.message || e.message
-    
+
+    const { status, message } = extraerDetalleErrorHttp(e)
+
     if (status === 404) {
       toast.error('Archivo no encontrado', 'No existe archivo Excel original para este pedido')
     } else {
@@ -1612,13 +1606,9 @@ async function handleCancelarPorElRayo() {
     }
   } catch (e: any) {
     console.error('Error al cancelar pedido:', e)
-    
-    const status = e.response?.status
-    const data = e.response?.data
-    const detail = data?.detail
-    const errorCode = detail?.error
-    const message = detail?.message || data?.message || e.message
-    
+
+    const { status, message, errorCode } = extraerDetalleErrorHttp(e)
+
     if (status === 400) {
       if (errorCode === 'estado_no_permitido' || message?.includes('estado')) {
         toast.error(
@@ -1651,16 +1641,9 @@ async function handleDescargarPlanoMba(codigoBodega?: string) {
   descargandoPlanoMbaBodega.value = codigoBodega
   try {
     const blob = await mba3ConsultasService.exportarPedidoPlanoMba(numeroPedido.value, 'txt', codigoBodega)
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
     const sufijoBodega = codigoBodega ? `_${codigoBodega}` : ''
     const nombreArchivo = `pedido_mba_${numeroPedido.value.replace(/[^a-zA-Z0-9.-]/g, '_')}${sufijoBodega}_${new Date().toISOString().split('T')[0]}.txt`
-    a.download = nombreArchivo
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    descargarBlobComoArchivo(blob, nombreArchivo)
     toast.success('Descarga completada', 'El archivo se ha descargado correctamente')
   } catch (e: any) {
     console.error('Error al descargar pedido plano:', e)
