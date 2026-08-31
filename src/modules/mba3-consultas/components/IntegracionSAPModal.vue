@@ -373,8 +373,9 @@ function calcularResumenSolicitudesTexto(
   // o se agotaron los reintentos sin un rechazo definitivo -- no es error confirmado)
   // queda invisible: ni contada como exitosa ni como error, aunque el badge "Reintentar
   // ST" de la tabla sí la muestre como pendiente (detectado 2026-08-31).
+  const plural = pendientesTransferencia === 1 ? '' : 's'
   const sufijoPendientes = pendientesTransferencia > 0
-    ? ` (${pendientesTransferencia} pendiente${pendientesTransferencia === 1 ? '' : 's'} de confirmación)`
+    ? ` (${pendientesTransferencia} pendiente${plural} de confirmación)`
     : ''
   if (estadoTransferencias === 'exitoso') {
     return `✅ ${creadasTransferencia} de ${totalTransferencia} creadas exitosamente`
