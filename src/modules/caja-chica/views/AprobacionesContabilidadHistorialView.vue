@@ -891,7 +891,11 @@ const toggleGroup = (idLiquidacion: number) => {
   openGroups.value[idLiquidacion] = !isGroupOpen(idLiquidacion)
 }
 
-const isIntegrado = (idLiquidacion: number) => integraciones.value[idLiquidacion]?.estado === 'INTEGRADO'
+const isIntegrado = (idLiquidacion: number) => {
+  const estado = String(integraciones.value[idLiquidacion]?.estado || '').toUpperCase()
+  // EN_PROCESO tambien bloquea el boton: otro usuario/pestaña la esta integrando.
+  return estado === 'INTEGRADO' || estado === 'EN_PROCESO'
+}
 
 const isEnProcesoJob = (idLiquidacion: number) => {
   const estado = String(integraciones.value[idLiquidacion]?.estado || '').toUpperCase()
@@ -1315,6 +1319,24 @@ const handleIntegracionExitosa = async (idLiquidacion: number, response: { data:
 }
 
 const handleIntegracionError = async (idLiquidacion: number, err: any) => {
+  // Timeout o corte de red: NO sabemos si SAP recibio el documento. Marcarlo como
+  // ERROR habilitaba reintentar a ciegas y asi se duplicaron liquidaciones (3253 x4).
+  const sinRespuesta = err?.code === 'ECONNABORTED' || !err?.response
+  if (sinRespuesta) {
+    const mensaje = 'La peticion a SAP no obtuvo respuesta (posible timeout). El documento PUDO haberse creado: '
+      + 'verifique en SAP (o use "Actualizar estado") antes de volver a integrar.'
+    console.error('[Integracion][SinRespuesta]', { idLiquidacion, err })
+    error.value = mensaje
+    await cajaChicaApi.post('/Integraciones/Compras', {
+      idLiquidacion,
+      estado: 'DESCONOCIDO',
+      mensaje
+    })
+    integraciones.value[idLiquidacion] = { estado: 'DESCONOCIDO', mensaje }
+    integrationMessages.value[idLiquidacion] = { tipo: 'error', texto: mensaje }
+    return
+  }
+
   const rawMsg = err?.response?.data?.message || err?.response?.data
   const mensaje = typeof rawMsg === 'string' ? rawMsg : JSON.stringify(rawMsg) || 'No se pudo integrar la liquidacion.'
   console.error('[Integracion][Error]', { idLiquidacion, mensaje, err })
@@ -1357,9 +1379,52 @@ const integrarLiquidacion = async (idLiquidacion: number) => {
       return
     }
 
+    // Confirmación extra si la última integración quedó sin respuesta (posible timeout).
+    const estadoPrevio = String(integraciones.value[idLiquidacion]?.estado || '').toUpperCase()
+    if (estadoPrevio === 'DESCONOCIDO') {
+      const seguir = window.confirm(
+        'ATENCION: la integracion anterior de esta liquidacion quedo SIN CONFIRMACION (posible timeout). '
+        + 'El documento pudo haberse creado en SAP. Verifique en SAP que NO exista antes de continuar.\n\n'
+        + 'Enviar de todas formas?'
+      )
+      if (!seguir) return
+    }
+
+    // Candado en servidor: solo un usuario/pestaña puede integrar esta liquidación a la vez,
+    // y una ya INTEGRADA o ENCOLADA no se vuelve a enviar (evita duplicados en SAP).
+    try {
+      await cajaChicaApi.post(`/Integraciones/Compras/${idLiquidacion}/iniciar`)
+    } catch (claimErr: any) {
+      if (claimErr?.response?.status === 409) {
+        const actual = claimErr.response.data || {}
+        const estadoActual = String(actual.estado ?? actual.Estado ?? 'EN_PROCESO').toUpperCase()
+        integraciones.value[idLiquidacion] = {
+          estado: estadoActual,
+          docEntry: normalizeString(actual.docEntry ?? actual.DocEntry),
+          docNum: normalizeString(actual.docNum ?? actual.DocNum),
+          jobId: normalizeString(actual.jobId ?? actual.JobId),
+          mensaje: normalizeString(actual.mensaje ?? actual.Mensaje)
+        }
+        integrationMessages.value[idLiquidacion] = {
+          tipo: 'error',
+          texto: `Esta liquidacion ya esta ${estadoActual === 'INTEGRADO' ? 'integrada' : estadoActual === 'ENCOLADO' ? 'encolada' : 'siendo integrada por otro usuario'}. No se envio de nuevo.`
+        }
+        return
+      }
+      // API sin el endpoint /iniciar todavía desplegado: continuar sin candado
+      // (se mantienen las demás protecciones: timeout amplio y estado DESCONOCIDO).
+      if (claimErr?.response?.status === 404) {
+        console.warn('[Integracion] Endpoint /iniciar no disponible; se continúa sin candado de servidor.')
+      } else {
+        throw claimErr
+      }
+    }
+
     console.log('[Integracion][Payload Liquidaciones]', JSON.stringify(built.payload, null, 2))
 
-    const response = await slayerApi.post<SlayerIntegracionResponse | string>('/v1/liquidaciones', built.payload)
+    // Timeout generoso: el Service Layer de SAP puede tardar mas de los 60 s por defecto;
+    // abortar antes de tiempo era lo que provocaba reintentos y documentos duplicados.
+    const response = await slayerApi.post<SlayerIntegracionResponse | string>('/v1/liquidaciones', built.payload, { timeout: 180_000 })
 
     if (response.status === 202) {
       await handleIntegracionEncolada(idLiquidacion, response)
