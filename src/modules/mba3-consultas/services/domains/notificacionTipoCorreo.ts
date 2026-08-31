@@ -43,7 +43,7 @@ export const notificacionTipoCorreoService = {
       const response = await mba3Api.post<TipoCorreo>('/api/notificaciones/tipos-correo', {
         tipo_notificacion: tipoNotificacion,
         tipo_correo: tipoCorreo,
-        descripcion: descripcion || null,
+        descripcion: descripcion ?? null,
       })
       return response.data
     } catch (error: any) {
