@@ -199,6 +199,27 @@ describe('processUploadError', () => {
       expect(info.message).toContain('Existen 3 código(s) de producto no válidos en SAP')
       expect(info.message).toContain('Los códigos específicos no están disponibles')
     })
+
+    it('REGRESIÓN: conteo legacy no debe pisar un código ya encontrado por el mensaje aunque ese código se filtre después', () => {
+      // Caso real que detectó una regresión al partir la función en helpers: el mensaje aporta un
+      // "código" candidato que looksLikeProductCode descarta más tarde (por su longitud), y
+      // ADEMÁS validacion_sap.no_encontrados llega como número (formato legacy). El conteo
+      // (sapNoEncontradosCount) NO debe activarse aquí porque, en el momento en que el backend
+      // legacy hace su chequeo, ya había un código "encontrado" por otra vía -- si se activa,
+      // el mensaje final cambia por completo (uno genérico con el conteo, en vez de reconstruir
+      // el detalle a partir del texto del backend).
+      const e = {
+        response: {
+          data: {
+            error: 'Productos no encontrados (1): esta frase es sospechosamente larga y menciona sap',
+            validacion_sap: { no_encontrados: 7 }
+          }
+        }
+      }
+      const info = processUploadError(e, 'x.xlsx')
+      expect(info.message).toContain('esta frase es sospechosamente larga y menciona sap')
+      expect(info.message).not.toContain('no están disponibles en la respuesta del servidor')
+    })
   })
 
   describe('looksLikeProductCode: filtra falsos positivos de la extracción por regex', () => {
