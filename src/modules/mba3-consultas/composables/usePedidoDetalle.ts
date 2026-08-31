@@ -54,64 +54,90 @@ export function usePedidoDetalle(options: {
   })
 
   /**
+   * Si se carga un pedido diferente, limpia las columnas modificadas del pedido anterior
+   */
+  function limpiarModificacionesSiCambioPedido(pedidoAnterior: string) {
+    if (!pedidoAnterior || pedidoAnterior === options.numeroPedido.value) return
+
+    if (import.meta.env.DEV) console.log(`🔄 [usePedidoDetalle] Cambiando de pedido: ${pedidoAnterior} → ${options.numeroPedido.value}`)
+    if (options.limpiarColumnasModificadasEnStorage) {
+      options.limpiarColumnasModificadasEnStorage()
+    }
+    // También limpiar el Set directamente
+    if (options.columnasModificadas) {
+      options.columnasModificadas.value.clear()
+    }
+    if (options.rolesModificacion) {
+      options.rolesModificacion.value.clear()
+    }
+  }
+
+  /**
+   * Carga las columnas modificadas desde el backend (⭐ FASE 3) y, si no hay datos,
+   * cae en el fallback de sessionStorage (migración)
+   */
+  async function cargarModificacionesConFallback() {
+    const numeroParaModificaciones = options.pedido.value?.cabecera?.numero_pedido ?? options.numeroPedido.value
+    if (import.meta.env.DEV) console.log(`📥 [usePedidoDetalle] Cargando modificaciones para pedido: ${numeroParaModificaciones}`)
+    const modificacionesCargadas = await cargarModificacionesDesdeBackend(numeroParaModificaciones)
+
+    // Fallback: Cargar desde sessionStorage SOLO si el backend no tiene datos (migración)
+    if (!modificacionesCargadas && options.cargarColumnasModificadasDesdeStorage) {
+      if (import.meta.env.DEV) console.log('📦 [usePedidoDetalle] Usando fallback: sessionStorage')
+      options.cargarColumnasModificadasDesdeStorage()
+    }
+
+    // Log final del estado de modificaciones
+    if (options.columnasModificadas) {
+      if (import.meta.env.DEV) console.log(`✅ [usePedidoDetalle] Estado final: ${options.columnasModificadas.value.size} modificaciones cargadas`)
+    }
+  }
+
+  /**
+   * Inicializa productos para redistribución si hay respuesta del proveedor (o distribución guardada)
+   */
+  async function inicializarRedistribucionSiCorresponde() {
+    if (options.pedido.value?.respuesta_proveedor && esModoMabelTrading.value && options.inicializarProductosRedistribucion) {
+      await Promise.resolve(options.inicializarProductosRedistribucion())
+    }
+  }
+
+  /**
+   * Determina si, según el estado del pedido/respuesta, corresponde cargar el reporte de diferencias
+   */
+  function debeCargarReporteDiferencias(): boolean {
+    return options.pedido.value?.respuesta_proveedor?.cabecera.estado === 'APROBADA' ||
+      options.pedido.value?.cabecera.estado === 'CONFIRMADO_PROVEEDOR' ||
+      options.pedido.value?.cabecera.estado === 'CONFIRMADO_ENVIADO'
+  }
+
+  /**
    * Carga el pedido desde el backend
    */
   async function loadPedido() {
     loading.value = true
     error.value = null
-    
+
     // Guardar el número de pedido anterior para comparar
     const pedidoAnterior = options.numeroPedido.value
-    
+
     try {
       // Cargar pedido usando numero_pedido del parámetro de ruta
       if (!options.numeroPedido.value) {
         error.value = 'Número de pedido no válido'
         return
       }
-      
-      // Si se carga un pedido diferente, limpiar las columnas modificadas del pedido anterior
-      if (pedidoAnterior && pedidoAnterior !== options.numeroPedido.value) {
-        if (import.meta.env.DEV) console.log(`🔄 [usePedidoDetalle] Cambiando de pedido: ${pedidoAnterior} → ${options.numeroPedido.value}`)
-        if (options.limpiarColumnasModificadasEnStorage) {
-          options.limpiarColumnasModificadasEnStorage()
-        }
-        // También limpiar el Set directamente
-        if (options.columnasModificadas) {
-          options.columnasModificadas.value.clear()
-        }
-        if (options.rolesModificacion) {
-          options.rolesModificacion.value.clear()
-        }
-      }
-      
+
+      limpiarModificacionesSiCambioPedido(pedidoAnterior)
+
       options.pedido.value = await mba3ConsultasService.getPedido(options.numeroPedido.value, true)
-      
-      // ⭐ FASE 3: Cargar columnas modificadas desde el backend (backend espera numero_pedido, no UUID)
-      const numeroParaModificaciones = options.pedido.value?.cabecera?.numero_pedido ?? options.numeroPedido.value
-      if (import.meta.env.DEV) console.log(`📥 [usePedidoDetalle] Cargando modificaciones para pedido: ${numeroParaModificaciones}`)
-      const modificacionesCargadas = await cargarModificacionesDesdeBackend(numeroParaModificaciones)
-      
-      // Fallback: Cargar desde sessionStorage SOLO si el backend no tiene datos (migración)
-      if (!modificacionesCargadas && options.cargarColumnasModificadasDesdeStorage) {
-        if (import.meta.env.DEV) console.log('📦 [usePedidoDetalle] Usando fallback: sessionStorage')
-        options.cargarColumnasModificadasDesdeStorage()
-      }
-      
-      // Log final del estado de modificaciones
-      if (options.columnasModificadas) {
-        if (import.meta.env.DEV) console.log(`✅ [usePedidoDetalle] Estado final: ${options.columnasModificadas.value.size} modificaciones cargadas`)
-      }
-      
-      // Inicializar productos para redistribución si hay respuesta del proveedor (o distribución guardada)
-      if (options.pedido.value?.respuesta_proveedor && esModoMabelTrading.value && options.inicializarProductosRedistribucion) {
-        await Promise.resolve(options.inicializarProductosRedistribucion())
-      }
-      
+
+      await cargarModificacionesConFallback()
+
+      await inicializarRedistribucionSiCorresponde()
+
       // Si hay respuesta aprobada, cargar el reporte de diferencias
-      if (options.pedido.value?.respuesta_proveedor?.cabecera.estado === 'APROBADA' ||
-          options.pedido.value?.cabecera.estado === 'CONFIRMADO_PROVEEDOR' ||
-          options.pedido.value?.cabecera.estado === 'CONFIRMADO_ENVIADO') {
+      if (debeCargarReporteDiferencias()) {
         await loadReporteDiferencias()
       }
     } catch (e: any) {
