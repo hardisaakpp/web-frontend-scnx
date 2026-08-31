@@ -864,59 +864,65 @@ async function handleDescargarPDF(oc: OrdenCompra) {
   }
 }
 
+function mostrarResultadoReintentoST(result: any) {
+  const status = (result?.status || '').toLowerCase()
+  const creadas = result?.resultado_st?.transferencias_creadas ?? 0
+  const errores = result?.resultado_st?.transferencias_errores ?? 0
+  const objetivo = result?.tiendas_count ?? 0
+
+  if (status === 'success' && objetivo === 0) {
+    toast.info('Sin pendientes', result?.message || 'No hay solicitudes de transferencia pendientes para reintentar.')
+  } else if (status === 'en_cola') {
+    toast.info(
+      'Sigue en proceso en SAP',
+      result?.message || 'SAP está saturado y la solicitud sigue en cola. Intenta de nuevo en unos minutos.'
+    )
+  } else if (status === 'success') {
+    toast.success(
+      'Reintento ST exitoso',
+      `Se reintentaron ${objetivo} tienda(s). Creadas: ${creadas}.`
+    )
+  } else if (status === 'partial') {
+    toast.warning(
+      'Reintento ST parcial',
+      `Creadas: ${creadas} | Errores: ${errores} de ${objetivo} tienda(s).`
+    )
+  } else {
+    toast.error('Reintento ST falló', result?.message || 'No se pudo completar el reintento de ST.')
+  }
+}
+
+function manejarErrorReintentoST(error: any, oc: OrdenCompra) {
+  const status = error?.response?.status
+  if (status === 409) {
+    toast.warning('Reintento en curso', 'Otro reintento de ST ya está en curso para esta OC. Intenta en unos segundos.')
+  } else if (status === 400) {
+    toast.warning(
+      'Estado no válido',
+      error?.response?.data?.message || 'Solo se puede reintentar ST cuando la ODC está ENVIADA.'
+    )
+  } else if (isTransientClientError(error)) {
+    toast.warning(
+      'Tiempo de espera agotado',
+      'El reintento de transferencias (ITR) puede seguir en el servidor. Actualice la lista en unos minutos para ver el estado real.'
+    )
+    emit('st-reintentado', { oc, result: null })
+  } else {
+    toast.error('Error al reintentar ST', error.message || 'No se pudo reintentar Solicitudes de Transferencia')
+  }
+}
+
 async function handleReintentarST(oc: OrdenCompra) {
   if (retryingStOcId.value === oc.oc_id) return
 
   try {
     retryingStOcId.value = oc.oc_id
     const result: any = await mba3ConsultasService.reintentarSolicitudesTransferencia(oc.oc_id)
-
-    const status = (result?.status || '').toLowerCase()
-    const creadas = result?.resultado_st?.transferencias_creadas ?? 0
-    const errores = result?.resultado_st?.transferencias_errores ?? 0
-    const objetivo = result?.tiendas_count ?? 0
-
-    if (status === 'success' && objetivo === 0) {
-      toast.info('Sin pendientes', result?.message || 'No hay solicitudes de transferencia pendientes para reintentar.')
-    } else if (status === 'en_cola') {
-      toast.info(
-        'Sigue en proceso en SAP',
-        result?.message || 'SAP está saturado y la solicitud sigue en cola. Intenta de nuevo en unos minutos.'
-      )
-    } else if (status === 'success') {
-      toast.success(
-        'Reintento ST exitoso',
-        `Se reintentaron ${objetivo} tienda(s). Creadas: ${creadas}.`
-      )
-    } else if (status === 'partial') {
-      toast.warning(
-        'Reintento ST parcial',
-        `Creadas: ${creadas} | Errores: ${errores} de ${objetivo} tienda(s).`
-      )
-    } else {
-      toast.error('Reintento ST falló', result?.message || 'No se pudo completar el reintento de ST.')
-    }
-
+    mostrarResultadoReintentoST(result)
     emit('st-reintentado', { oc, result })
   } catch (error: any) {
     console.error('Error al reintentar ST:', error)
-    const status = error?.response?.status
-    if (status === 409) {
-      toast.warning('Reintento en curso', 'Otro reintento de ST ya está en curso para esta OC. Intenta en unos segundos.')
-    } else if (status === 400) {
-      toast.warning(
-        'Estado no válido',
-        error?.response?.data?.message || 'Solo se puede reintentar ST cuando la ODC está ENVIADA.'
-      )
-    } else if (isTransientClientError(error)) {
-      toast.warning(
-        'Tiempo de espera agotado',
-        'El reintento de transferencias (ITR) puede seguir en el servidor. Actualice la lista en unos minutos para ver el estado real.'
-      )
-      emit('st-reintentado', { oc, result: null })
-    } else {
-      toast.error('Error al reintentar ST', error.message || 'No se pudo reintentar Solicitudes de Transferencia')
-    }
+    manejarErrorReintentoST(error, oc)
   } finally {
     retryingStOcId.value = null
   }
