@@ -276,14 +276,13 @@ import { useOrdenesCompraStore } from '../stores/ordenesCompraStore'
 import { useToast } from '@/composables/useToast'
 import { APP_LOCALE } from '@/plugins/locale'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
-import type { Despacho, OrdenCompra, PedidoCompleto } from '../types'
+import type { Despacho, OrdenCompra, PedidoCompleto, AjusteDetalle, IntegracionSAPDetalle, ProcesoCompletoSAPDetalleODC, ProcesoCompletoSAPResponse, SolicitudesTransferencia } from '../types'
 import DespachosTable from '../components/DespachosTable.vue'
 import OrdenCompraTable from '../components/OrdenCompraTable.vue'
 import SkeletonTable from '../components/SkeletonTable.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import IntegracionSAPModal from '../components/IntegracionSAPModal.vue'
 import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
-import type { AjusteDetalle, IntegracionSAPDetalle, ProcesoCompletoSAPDetalleODC, ProcesoCompletoSAPResponse, SolicitudesTransferencia } from '../types'
 import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
 import QuickTablePagination from '@/components/QuickTablePagination.vue'
 import { ejecutarProcesoCompletoSap } from '../composables/ejecutarProcesoCompletoSap'
@@ -296,11 +295,13 @@ const toast = useToast()
 const route = useRoute()
 const { target: odcSapVolverTarget, title: odcSapVolverTitle } = useOdcSapVolver()
 
+type EstadoIntegracionSAP = 'success' | 'partial' | 'error'
+
 // Estados para modal de integración SAP
 const showIntegracionSAPModal = ref(false)
 const integracionSAPDetalle = ref<IntegracionSAPDetalle | null>(null)
 const integracionSAPSolicitudes = ref<SolicitudesTransferencia | null>(null)
-const integracionSAPEstado = ref<'success' | 'partial' | 'error'>('success')
+const integracionSAPEstado = ref<EstadoIntegracionSAP>('success')
 /** ODC adicionales de un pedido mixto (2 ODC del mismo pedido); ver IntegracionSAPModal.vue. */
 const integracionSAPDetallesAdicionales = ref<{ detalle: IntegracionSAPDetalle; solicitudesTransferencia: SolicitudesTransferencia | null }[]>([])
 
@@ -1477,9 +1478,15 @@ function construirActualizacionOrdenExito(ordenActual: OrdenCompra, detalle: any
   orden.respuesta_sap = detalle.message || 'Enviada exitosamente'
 
   const numOdc = detalle.numero_oc_sap ?? (detalle.doc_num != null ? String(detalle.doc_num) : null)
-  const toastMessage = detalle.doc_entry
-    ? `DocEntry: ${detalle.doc_entry}${numOdc != null ? `, Num ODC: ${numOdc}` : ''}`
-    : (numOdc != null ? `Num ODC: ${numOdc}` : 'N/A')
+  let toastMessage: string
+  if (detalle.doc_entry) {
+    const numOdcParte = numOdc != null ? `, Num ODC: ${numOdc}` : ''
+    toastMessage = `DocEntry: ${detalle.doc_entry}${numOdcParte}`
+  } else if (numOdc != null) {
+    toastMessage = `Num ODC: ${numOdc}`
+  } else {
+    toastMessage = 'N/A'
+  }
   return { orden, toastMessage }
 }
 
@@ -1505,7 +1512,7 @@ function construirActualizacionOrdenError(ordenActual: OrdenCompra, detalle: any
 }
 
 /** Estado general del modal de integración: partial si hay ITR pendientes, error si falló, si no success. */
-function determinarEstadoIntegracion(status: string | undefined, detalleSuccess: boolean, solicitudes: SolicitudesTransferencia | null): 'partial' | 'error' | 'success' {
+function determinarEstadoIntegracion(status: string | undefined, detalleSuccess: boolean, solicitudes: SolicitudesTransferencia | null): EstadoIntegracionSAP {
   if (status === 'partial' || (detalleSuccess && solicitudes && solicitudes.transferencias_errores > 0)) {
     return 'partial'
   }
