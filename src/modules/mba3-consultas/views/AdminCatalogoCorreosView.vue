@@ -154,61 +154,55 @@
 
     <!-- Modal: vista previa del correo (mismo HTML que se envía realmente, con datos de ejemplo) -->
     <Teleport to="body">
-      <div
+      <dialog
+        ref="modalRef"
         v-if="previewModalOpen"
-        class="fixed inset-0 z-50 overflow-y-auto"
-        role="dialog"
-        aria-modal="true"
-        @click.self="cerrarPreview"
+        class="catalogo-correos-preview-dialog relative p-0 m-auto border-0 overflow-hidden rounded-lg bg-white dark:bg-gray-900 shadow-xl transition-all w-full max-w-3xl max-h-[90vh] flex flex-col focus:outline-none"
+        @cancel.prevent="cerrarPreview"
+        @click="onBackdropClick"
       >
-        <div class="fixed inset-0 bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-80 transition-opacity" @click.self="cerrarPreview"></div>
-
-        <div class="flex min-h-full items-center justify-center p-4">
-          <div class="relative transform overflow-hidden rounded-lg bg-white dark:bg-gray-900 shadow-xl transition-all w-full max-w-3xl max-h-[90vh] flex flex-col">
-            <div class="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4 flex-shrink-0">
-              <div class="flex items-center justify-between gap-4">
-                <div class="min-w-0">
-                  <p class="text-xs uppercase tracking-wide text-blue-100">Vista previa (datos de ejemplo)</p>
-                  <h3 class="text-base font-semibold text-white truncate">{{ previewSubject }}</h3>
-                </div>
-                <button @click="cerrarPreview" class="text-white hover:text-blue-100 transition-colors flex-shrink-0">
-                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
+        <div class="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-4 flex-shrink-0">
+          <div class="flex items-center justify-between gap-4">
+            <div class="min-w-0">
+              <p class="text-xs uppercase tracking-wide text-blue-100">Vista previa (datos de ejemplo)</p>
+              <h3 class="text-base font-semibold text-white truncate">{{ previewSubject }}</h3>
             </div>
-
-            <div class="flex-1 overflow-hidden bg-gray-100 dark:bg-gray-950">
-              <iframe
-                :srcdoc="previewHtml"
-                sandbox=""
-                class="w-full h-full border-0"
-                style="height: 70vh;"
-                title="Vista previa del correo"
-              />
-            </div>
-
-            <div class="px-6 py-3 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex-shrink-0 flex items-center justify-between gap-4">
-              <p class="text-xs text-gray-500 dark:text-gray-400">
-                Datos de ejemplo, no reales. El diseño es el mismo que usa el envío real.
-              </p>
-              <button
-                @click="cerrarPreview"
-                class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm flex-shrink-0"
-              >
-                Cerrar
-              </button>
-            </div>
+            <button @click="cerrarPreview" class="text-white hover:text-blue-100 transition-colors flex-shrink-0">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
         </div>
-      </div>
+
+        <div class="flex-1 overflow-hidden bg-gray-100 dark:bg-gray-950">
+          <iframe
+            :srcdoc="previewHtml"
+            sandbox=""
+            class="w-full h-full border-0"
+            style="height: 70vh;"
+            title="Vista previa del correo"
+          />
+        </div>
+
+        <div class="px-6 py-3 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex-shrink-0 flex items-center justify-between gap-4">
+          <p class="text-xs text-gray-500 dark:text-gray-400">
+            Datos de ejemplo, no reales. El diseño es el mismo que usa el envío real.
+          </p>
+          <button
+            @click="cerrarPreview"
+            class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors text-sm flex-shrink-0"
+          >
+            Cerrar
+          </button>
+        </div>
+      </dialog>
     </Teleport>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useToast } from '@/composables/useToast'
 import { notificacionTipoCorreoService, type TipoCorreo } from '../services/domains/notificacionTipoCorreo'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
@@ -233,6 +227,7 @@ const previewCorreoId = ref<number | null>(null)
 const previewModalOpen = ref(false)
 const previewSubject = ref('')
 const previewHtml = ref('')
+const modalRef = ref<HTMLDialogElement | null>(null)
 
 const ETIQUETAS_TIPO: Record<string, string> = {
   OPERACIONES: 'Operaciones (El Rayo)',
@@ -345,10 +340,36 @@ async function verEjemplo(correo: TipoCorreo) {
 }
 
 function cerrarPreview() {
+  modalRef.value?.close()
   previewModalOpen.value = false
   previewSubject.value = ''
   previewHtml.value = ''
 }
 
+function onBackdropClick(evento: MouseEvent): void {
+  if (evento.target === modalRef.value) {
+    cerrarPreview()
+  }
+}
+
+watch(previewModalOpen, async (abierto) => {
+  if (abierto) {
+    await nextTick()
+    modalRef.value?.showModal()
+  }
+})
+
 onMounted(cargarCatalogo)
 </script>
+
+<style>
+/* ::backdrop del <dialog> nativo: no se puede scopear (pseudo-elemento fuera del arbol normal),
+   por eso el nombre de clase bien especifico y el estilo sin "scoped". Reemplaza al overlay
+   manual bg-gray-500/75 dark:bg-gray-900/80 que envolvia el modal antes de la migracion a <dialog>. */
+.catalogo-correos-preview-dialog::backdrop {
+  background-color: rgb(100 116 139 / 0.75);
+}
+.dark .catalogo-correos-preview-dialog::backdrop {
+  background-color: rgb(15 23 42 / 0.8);
+}
+</style>
