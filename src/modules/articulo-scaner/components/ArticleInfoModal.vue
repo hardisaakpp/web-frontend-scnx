@@ -1,17 +1,13 @@
 <template>
   <Teleport to="body">
-    <div
+    <dialog
+      ref="modalRef"
       v-if="visible"
-      class="fixed inset-0 z-[100] flex items-center justify-center p-4"
-      role="dialog"
-      aria-modal="true"
       aria-labelledby="article-info-title"
+      class="article-info-modal-dialog relative max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-2xl bg-white p-0 m-auto border-0 shadow-[0_25px_50px_-12px_rgba(15,23,42,0.2),0_0_0_1px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.05] dark:bg-slate-900 dark:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.55)] dark:ring-white/[0.06]"
+      @cancel.prevent
+      @click="onBackdropClick"
     >
-      <div class="absolute inset-0 bg-slate-950/40 backdrop-blur-sm" @click="$emit('close')" />
-
-      <div
-        class="relative z-[101] max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-2xl bg-white shadow-[0_25px_50px_-12px_rgba(15,23,42,0.2),0_0_0_1px_rgba(15,23,42,0.04)] ring-1 ring-slate-900/[0.05] dark:bg-slate-900 dark:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.55)] dark:ring-white/[0.06]"
-      >
         <header
           class="flex items-center justify-between border-b border-indigo-200/60 bg-gradient-to-r from-indigo-50/95 via-white to-indigo-50/40 px-6 py-4 dark:border-indigo-900/45 dark:bg-gradient-to-r dark:from-indigo-950/70 dark:via-slate-900 dark:to-indigo-950/35"
         >
@@ -100,7 +96,7 @@
             <button
               type="button"
               class="touch-target shrink-0 rounded-xl text-indigo-700/70 transition-colors hover:bg-indigo-100/80 hover:text-indigo-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/40 focus-visible:ring-offset-2 focus-visible:ring-offset-indigo-50 dark:text-indigo-300/80 dark:hover:bg-indigo-950/60 dark:hover:text-indigo-100 dark:focus-visible:ring-indigo-400/45 dark:focus-visible:ring-offset-slate-900"
-              @click="$emit('close')"
+              @click="closeModal"
               aria-label="Cerrar modal"
             >
               <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
@@ -312,13 +308,13 @@
             </div>
           </div>
         </section>
-      </div>
-    </div>
+    </dialog>
   </Teleport>
 </template>
 
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
+import { APP_LOCALE, NUMBER_LOCALE } from '@/plugins/locale'
 import type { ArticleDetailDto, ScanStatus, WarehouseDto } from '../types'
 import { extractArticlePricing, formatCurrency, formatPercent } from '../utils/pricing'
 
@@ -345,18 +341,34 @@ const emit = defineEmits<{
 const headerCodeEditing = ref(false)
 const headerInlineCode = ref('')
 const headerInlineInputRef = ref<HTMLInputElement | null>(null)
+const modalRef = ref<HTMLDialogElement | null>(null)
 let headerBlurCollapseTimer: number | null = null
 
 watch(
   () => props.visible,
   (open) => {
-    if (!open) {
+    if (open) {
+      nextTick(() => {
+        modalRef.value?.showModal()
+      })
+    } else {
       headerCodeEditing.value = false
       headerInlineCode.value = ''
       cancelHeaderInlineBlurCollapse()
     }
   }
 )
+
+function closeModal(): void {
+  modalRef.value?.close()
+  emit('close')
+}
+
+function onBackdropClick(evento: MouseEvent): void {
+  if (evento.target === modalRef.value) {
+    closeModal()
+  }
+}
 
 function startHeaderInlineEdit() {
   if (props.loading) return
@@ -454,7 +466,7 @@ function asTextFrom(keys: string[], fallback?: string | null): string {
 
 function asNumberText(value: unknown, fallback?: unknown): string {
   const resolved = value ?? fallback
-  if (typeof resolved === 'number' && Number.isFinite(resolved)) return resolved.toLocaleString('es-CL')
+  if (typeof resolved === 'number' && Number.isFinite(resolved)) return resolved.toLocaleString(NUMBER_LOCALE)
   if (typeof resolved === 'string' && resolved.trim()) return resolved
   return 'N/A'
 }
@@ -486,7 +498,7 @@ function formatDate(value: unknown): string {
   if (typeof value !== 'string' && !(value instanceof Date)) return 'N/A'
   const date = value instanceof Date ? value : new Date(value)
   if (Number.isNaN(date.getTime())) return 'N/A'
-  return new Intl.DateTimeFormat('es-CL').format(date)
+  return new Intl.DateTimeFormat(APP_LOCALE).format(date)
 }
 
 
@@ -518,5 +530,15 @@ function formatDate(value: unknown): string {
 .header-code-morph-leave-from {
   opacity: 1;
   transform: scale(1) translateY(0);
+}
+</style>
+
+<style>
+/* ::backdrop del <dialog> nativo: no se puede scopear (pseudo-elemento fuera del arbol normal),
+   por eso el nombre de clase especifico y el estilo sin "scoped". Reemplaza al overlay manual
+   bg-slate-950/40 backdrop-blur-sm que envolvia el modal antes de la migracion a <dialog>. */
+.article-info-modal-dialog::backdrop {
+  background-color: rgb(2 6 23 / 0.4);
+  backdrop-filter: blur(4px);
 }
 </style>

@@ -34,7 +34,8 @@ export const ordenesCompraService = {
     estado?: string,
     page: number = 1,
     pageSize: number = 10,
-    filters?: OrdenesCompraListFilters
+    filters?: OrdenesCompraListFilters,
+    signal?: AbortSignal
   ): Promise<OrdenCompraResponse> {
     const params: Record<string, string> = {
       page: page.toString(),
@@ -59,7 +60,7 @@ export const ordenesCompraService = {
     }
 
     const url = buildUrlWithParams('/ordenes-compra', params)
-    const response = await mba3Api.get<OrdenCompraResponse>(url)
+    const response = await mba3Api.get<OrdenCompraResponse>(url, { signal })
     return response.data
   },
 
@@ -89,6 +90,18 @@ export const ordenesCompraService = {
     const response = await mba3Api.get(`/ordenes-compra/${ocId}/pdf`, {
       responseType: 'blob',
       timeout: 60000, // 60s para generación de PDF
+    })
+    return response.data as Blob
+  },
+
+  /**
+   * Descargar el Excel simple (2 hojas) de integración SAP de una OC: misma información
+   * que el correo "OC y Solicitudes de Transferencia - Listo para Despacho".
+   */
+  async downloadIntegracionSAPExcel(ocId: string): Promise<Blob> {
+    const response = await mba3Api.get(`/ordenes-compra/${ocId}/integracion-sap/excel`, {
+      responseType: 'blob',
+      timeout: 60000,
     })
     return response.data as Blob
   },

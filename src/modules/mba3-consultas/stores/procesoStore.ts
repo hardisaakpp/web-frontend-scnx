@@ -17,6 +17,13 @@ type ODCProcessState =
 interface SAPResultadoPendiente {
   detalle: IntegracionSAPDetalle | null
   solicitudesTransferencia: SolicitudesTransferencia | null
+  /**
+   * ODC adicionales del mismo pedido (pedido mixto: tiendas de más de una marca en el
+   * mismo Excel generan 2 ODC, una por bodega, ambas enviadas a SAP). La primera ODC va
+   * en `detalle`/`solicitudesTransferencia`; el resto va aquí para que el modal en
+   * /proceso las muestre todas en vez de solo la primera.
+   */
+  detallesAdicionales?: { detalle: IntegracionSAPDetalle; solicitudesTransferencia: SolicitudesTransferencia | null }[]
   estadoGeneral: 'success' | 'partial' | 'error'
   numeroPedido: string
   /** Último body de ajustes usado en proceso-completo-sap; permite reintentar el mismo POST desde Proceso completo. */

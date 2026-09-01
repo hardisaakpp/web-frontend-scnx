@@ -102,7 +102,7 @@
                   <template v-else>{{ item.accesoAlmacen }}</template>
                 </td>
                 <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                  {{ item.fechaCreacion ? new Date(item.fechaCreacion).toLocaleDateString('es-PA', { year: 'numeric', month: '2-digit', day: '2-digit' }) : '—' }}
+                  {{ item.fechaCreacion ? new Date(item.fechaCreacion).toLocaleDateString(APP_LOCALE, { year: 'numeric', month: '2-digit', day: '2-digit' }) : '—' }}
                 </td>
                 <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">{{ item.modificadoPor ?? '—' }}</td>
                 <td class="px-4 py-3 text-right">
@@ -158,6 +158,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import { APP_LOCALE } from '@/plugins/locale'
 import api from '@/services/api'
 import VolverButton from '@/components/VolverButton.vue'
 

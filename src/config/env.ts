@@ -29,6 +29,7 @@ export const ENV = {
   INVENTORY_URL: getEnv('VITE_SCNEXUS_INVENTORY_API_URL', '/inventario-api'),
   PROMO_SOBRES_URL: getEnv('VITE_PROMOCION_SOBRES_API_URL', '/promocion-sobres-api'),
   REPOSICIONES_URL: getEnv('VITE_REPOSICIONES_API_URL', '/api/reposicion-api'),
+  TRANSFERENCIAS_DIRECTAS_URL: getEnv('VITE_TRANSFERENCIAS_DIRECTAS_API_URL', '/api/transferencias-directas-api'),
   SLAYER_URL: getEnv('VITE_SLAYER_API_URL', '/slayer-api'),
   PREFERENCES_URL: getEnv('VITE_PREFERENCES_API_URL', ''),
   CEDI_URL: getEnv('VITE_CEDI_API_URL', '/cedi-api'),

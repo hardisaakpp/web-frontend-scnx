@@ -13,6 +13,8 @@ export function useSapProcessProgress() {
   const sapProgress = ref(0)
   const sapFase = ref<SapFase>('idle')
   const sapMessage = ref('')
+  /** Aviso de posible fallback síncrono sin progreso incremental (ver onSlowSyncLikely). */
+  const sapAvisoEsperaLarga = ref(false)
 
   let interval: ReturnType<typeof setInterval> | null = null
   let usingRealProgress = false
@@ -30,6 +32,12 @@ export function useSapProcessProgress() {
     sapProgress.value = 0
     sapFase.value = 'idle'
     sapMessage.value = ''
+    sapAvisoEsperaLarga.value = false
+  }
+
+  /** Se llama cuando el POST inicial tarda y podría ser un fallback síncrono sin progreso real. */
+  function marcarPosibleEsperaLarga() {
+    sapAvisoEsperaLarga.value = true
   }
 
   function updateFaseFromProgress(progress: number) {
@@ -50,6 +58,7 @@ export function useSapProcessProgress() {
     sapProgress.value = 0
     sapFase.value = 'redistribucion'
     sapMessage.value = 'Iniciando proceso SAP...'
+    sapAvisoEsperaLarga.value = false
 
     let current = 0
     interval = setInterval(() => {
@@ -75,6 +84,7 @@ export function useSapProcessProgress() {
       stopSimulation()
       sapProgress.value = Math.min(100, Math.max(sapProgress.value, update.progress))
       updateFaseFromProgress(sapProgress.value)
+      sapAvisoEsperaLarga.value = false
     }
     if (update.message?.trim()) {
       sapMessage.value = update.message.trim()
@@ -87,15 +97,18 @@ export function useSapProcessProgress() {
     sapProgress.value = 100
     sapFase.value = 'complete'
     sapMessage.value = 'Proceso completado'
+    sapAvisoEsperaLarga.value = false
   }
 
   return {
     sapProgress,
     sapFase,
     sapMessage,
+    sapAvisoEsperaLarga,
     resetSapProgress,
     startSapProgressSimulation,
     applySapPollingUpdate,
+    marcarPosibleEsperaLarga,
     completeSapProgress,
     stopSimulation,
   }

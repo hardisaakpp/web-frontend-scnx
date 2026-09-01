@@ -93,7 +93,8 @@ const props = defineProps<{
   placeholder?: string
   disabled?: boolean
   required?: boolean
-  valueKey?: keyof Option
+  // Obligatorio: qué propiedad de la opción espera el backend (nombre o codigo) para este campo.
+  valueKey: keyof Option
   inputId?: string
 }>()
 
@@ -121,15 +122,7 @@ const selectedOption = computed({
     }
 
     // Buscar la opción que coincida con el valor
-    const found = props.options.find(opt => {
-      if (props.valueKey) {
-        return checkMatch(opt[props.valueKey], props.modelValue)
-      }
-      // Sin valueKey: prioridad codigo > id > nombre
-      return (opt.codigo !== undefined && checkMatch(opt.codigo, props.modelValue)) || 
-             (opt.id !== undefined && opt.id === props.modelValue) ||
-             checkMatch(opt.nombre, props.modelValue)
-    })
+    const found = props.options.find(opt => checkMatch(opt[props.valueKey], props.modelValue))
     return found || null
   },
   set: (val: any) => {
@@ -138,9 +131,7 @@ const selectedOption = computed({
       emit('change', null)
       return
     }
-    // Prioridad: valueKey > codigo > id > nombre
-    const newValue = props.valueKey ? val[props.valueKey] : (val.codigo ?? val.id ?? val.nombre)
-    emit('update:modelValue', newValue)
+    emit('update:modelValue', val[props.valueKey])
     emit('change', val)
   }
 })
