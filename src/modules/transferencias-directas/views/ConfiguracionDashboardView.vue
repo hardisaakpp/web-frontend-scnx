@@ -4,12 +4,14 @@ import { computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import CardDashboard from '../components/CardDashboard.vue'
 import BotonAtrasModulo from '../components/BotonAtrasModulo.vue'
-import { Cog6ToothIcon } from '@heroicons/vue/24/outline'
+import { ArchiveBoxIcon, Cog6ToothIcon } from '@heroicons/vue/24/outline'
 
 const authStore = useAuthStore()
 
 const puedeConfigurar = computed(() => authStore.hasPermission('transferenciadirecta.configuracion_envios'))
 const puedeMatrizAprobacion = computed(() => authStore.hasPermission('transferenciadirecta.matriz_aprobacion'))
+const puedeConfigurarTransitorias = computed(() => authStore.hasPermission('transferenciadirecta.configuracion_transitorias'))
+
 </script>
 
 <template>
@@ -39,6 +41,13 @@ const puedeMatrizAprobacion = computed(() => authStore.hasPermission('transferen
                     :to="{ name: 'transferencias-stock-matriz-aprobacion' }" accent="amber">
                     <template #icon>
                         <Cog6ToothIcon />
+                    </template>
+                </CardDashboard>
+                <CardDashboard v-if="puedeConfigurarTransitorias" title="Configuración de Transitorias"
+                    description="Días para gestionar una transitoria abierta o parcialmente abierta"
+                    :to="{ name: 'transferencias-stock-config-dias-transitoria' }" accent="indigo">
+                    <template #icon>
+                        <ArchiveBoxIcon />
                     </template>
                 </CardDashboard>
             </div>

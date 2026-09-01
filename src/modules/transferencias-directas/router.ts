@@ -109,6 +109,13 @@ const routes: RouteRecordRaw[] = [
     title: 'Historial de Transitorias',
     permissions: ['transferenciadirecta.transitorias'],
   }),
+  crearRuta({
+    path: '/transferencias-stock/configuracion/dias-transitoria',
+    name: 'transferencias-stock-config-dias-transitoria',
+    component: () => import('./views/ConfiguracionDiasTransitoriaView.vue'),
+    title: 'Configuración de Transitorias',
+    permissions: ['transferenciadirecta.configuracion_transitorias'],
+  })
 
 
 ]

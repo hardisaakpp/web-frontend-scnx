@@ -382,3 +382,19 @@ export interface SincronizarTransitoriaResponse {
   id: number
   estadoRecepcion: EstadoRecepcion
 }
+
+export interface ConfiguracionDiasTransitoria {
+  id: number
+  marca: string
+  bodegaCodigo: string | null  //null = aplica a todas las tiendas de la marca 
+  dias: number
+  activo: boolean
+}
+
+export interface ConfiguracionDiasTransitoriaRequest{
+  marca: string
+  bodegaCodigo: string | null
+  dias: number
+  activo: boolean
+}
+

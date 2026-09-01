@@ -49,11 +49,9 @@ const bodegasDeLaMarca = computed(() =>
 const bodegaDeshabilitada = computed(() => marcaDestinoSel.value === MARCA_TODAS)
 const cargandoDatos = ref(false)
 
-watch(marcaDestinoSel, () => { whsDestinoSel.value = null })
-
 watch(requiereAprobacion, (val) => { if (!val) rolAprobador.value = '' })
 
-watch(() => props.abierto, async (v) => {
+watch([() => props.abierto, () => props.regla], async ([v]) => {
     if (!v) return
     cargandoDatos.value = true
     try {
@@ -129,7 +127,7 @@ const onGuardar = () => {
                         <label for="marcDest"
                             class="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">Marca
                             Destino</label>
-                        <select id="marcDest" v-model="marcaDestinoSel" :class="inputClass">
+                        <select id="marcDest" v-model="marcaDestinoSel" :class="inputClass" @change="whsDestinoSel = null">
                             <option value="" disabled>Seleccione una marca…</option>
                             <option :value="MARCA_TODAS">Todas las Marcas</option>
                             <option v-for="m in marcas" :key="m" :value="m">{{ m }}</option>
@@ -142,7 +140,7 @@ const onGuardar = () => {
                             Destino(Tránsito)</label>
                         <select id="bodDest" v-model="whsDestinoSel" :class="inputClass"
                             :disabled="bodegaDeshabilitada">
-                            <option :value="null">Todas las Bodegas</option>
+                            <option :value="null">Todas</option>
                             <option v-for="a in bodegasDeLaMarca" :key="a.whsCode" :value="a.uBogTra">{{ a.whsNombre }}
                             </option>
                         </select>
