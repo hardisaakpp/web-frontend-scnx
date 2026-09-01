@@ -1,5 +1,5 @@
 import { demandaOtbHttp } from '@/lib/http'
-import type { CatalogoFiltros, CatalogoResponse, SkuDetail } from '../types'
+import type { AgregadoResponse, CatalogoFiltros, CatalogoResponse, DesgloseResponse, NivelesTree, OtbFiltros, OtbResponse, OtbSkusResponse, SkuDetail } from '../types'
 
 interface ApiEnvelope<T> {
   success: boolean
@@ -43,4 +43,72 @@ export async function getSkuDetail(negocio: string, sku: string): Promise<SkuDet
 export async function getNegocios(): Promise<string[]> {
   const { data } = await demandaOtbHttp.get<ApiEnvelope<{ negocios: string[] }>>('/negocios')
   return data.data?.negocios ?? []
+}
+
+export async function getNiveles(negocio: string): Promise<NivelesTree> {
+  const { data } = await demandaOtbHttp.get<ApiEnvelope<NivelesTree>>(
+    `/niveles/${encodeURIComponent(negocio)}`
+  )
+  if (!data.data) throw new Error(data.message || `No se pudo cargar el árbol de niveles de '${negocio}'.`)
+  return data.data
+}
+
+export async function getAgregado(negocio: string, campo: string, valor: string): Promise<AgregadoResponse> {
+  const qs = new URLSearchParams({ campo, valor })
+  const { data } = await demandaOtbHttp.get<ApiEnvelope<AgregadoResponse>>(
+    `/niveles/${encodeURIComponent(negocio)}/agregado?${qs.toString()}`
+  )
+  if (!data.data) throw new Error(data.message || `No se encontró demanda agregada para ${campo}='${valor}'.`)
+  return data.data
+}
+
+export async function getDesgloseGenero(negocio: string, campo: string, valor: string): Promise<DesgloseResponse> {
+  const qs = new URLSearchParams({ campo, valor })
+  const { data } = await demandaOtbHttp.get<ApiEnvelope<DesgloseResponse>>(
+    `/niveles/${encodeURIComponent(negocio)}/genero?${qs.toString()}`
+  )
+  if (!data.data) throw new Error(data.message || `No se encontró desglose por género para ${campo}='${valor}'.`)
+  return data.data
+}
+
+export async function getDesgloseMarcaComercial(negocio: string, campo: string, valor: string): Promise<DesgloseResponse> {
+  const qs = new URLSearchParams({ campo, valor })
+  const { data } = await demandaOtbHttp.get<ApiEnvelope<DesgloseResponse>>(
+    `/niveles/${encodeURIComponent(negocio)}/marca-comercial?${qs.toString()}`
+  )
+  if (!data.data) throw new Error(data.message || `No se encontró desglose por marca comercial para ${campo}='${valor}'.`)
+  return data.data
+}
+
+function buildOtbQuery(filtros?: OtbFiltros): string {
+  const qs = new URLSearchParams()
+  if (filtros?.fecha) qs.append('fecha', filtros.fecha)
+  if (filtros?.coleccion) qs.append('coleccion', filtros.coleccion)
+  if (filtros?.marcaProveedor) qs.append('marcaProveedor', filtros.marcaProveedor)
+  if (filtros?.origen) qs.append('origen', filtros.origen)
+  if (filtros?.descontinuado) qs.append('descontinuado', filtros.descontinuado)
+  if (filtros?.repocision) qs.append('repocision', filtros.repocision)
+  if (filtros?.inactivo) qs.append('inactivo', filtros.inactivo)
+  if (filtros?.sku) qs.append('sku', filtros.sku)
+  const query = qs.toString()
+  return query ? `?${query}` : ''
+}
+
+export async function getOtb(negocio: string, filtros?: OtbFiltros): Promise<OtbResponse> {
+  const { data } = await demandaOtbHttp.get<ApiEnvelope<OtbResponse>>(
+    `/otb/${encodeURIComponent(negocio)}${buildOtbQuery(filtros)}`
+  )
+  if (!data.data) throw new Error(data.message || `El negocio '${negocio}' no tiene datos de OTB.`)
+  return data.data
+}
+
+export async function getOtbSkus(
+  negocio: string, nivel1: string, nivel2: string, nivel3: string, fecha: string
+): Promise<OtbSkusResponse> {
+  const qs = new URLSearchParams({ nivel1, nivel2, nivel3, fecha })
+  const { data } = await demandaOtbHttp.get<ApiEnvelope<OtbSkusResponse>>(
+    `/otb/${encodeURIComponent(negocio)}/skus?${qs.toString()}`
+  )
+  if (!data.data) throw new Error(data.message || `No se encontró ese nodo en '${negocio}'.`)
+  return data.data
 }

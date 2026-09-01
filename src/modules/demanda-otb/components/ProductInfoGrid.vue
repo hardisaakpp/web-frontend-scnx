@@ -14,7 +14,7 @@ const SEMAFORO_COLOR: Record<string, string> = {
   BAJO: 'text-amber-600 dark:text-amber-400',
   CRITICO: 'text-red-600 dark:text-red-400',
   SOBRESTOCK: 'text-blue-600 dark:text-blue-400',
-  MARGINAL: 'text-amber-600 dark:text-amber-400',
+  MARGINAL: 'text-gray-500 dark:text-gray-400',
   'SIN DEMANDA': 'text-gray-500 dark:text-gray-400',
 }
 
@@ -23,7 +23,7 @@ const SEMAFORO_DOT: Record<string, string> = {
   BAJO: 'bg-amber-500',
   CRITICO: 'bg-red-500',
   SOBRESTOCK: 'bg-blue-500',
-  MARGINAL: 'bg-amber-500',
+  MARGINAL: 'bg-gray-400',
   'SIN DEMANDA': 'bg-gray-400',
 }
 
@@ -104,6 +104,10 @@ function semaforoDot(value: string | null | undefined) {
         <div class="flex justify-between border-b border-blue-200/40 dark:border-blue-800/40 pb-1.5">
           <span class="text-gray-500 dark:text-gray-400">Rango 80%</span>
           <span class="font-semibold text-gray-900 dark:text-white">{{ producto.rangoMin80 ?? '—' }} – {{ producto.rangoMax80 ?? '—' }} uds</span>
+        </div>
+        <div v-if="producto.rangoMin95 != null || producto.rangoMax95 != null" class="flex justify-between border-b border-blue-200/40 dark:border-blue-800/40 pb-1.5">
+          <span class="text-gray-500 dark:text-gray-400">Rango 95%</span>
+          <span class="font-semibold text-gray-900 dark:text-white">{{ producto.rangoMin95 }} – {{ producto.rangoMax95 }} uds</span>
         </div>
         <div class="flex justify-between border-b border-gray-200/60 dark:border-gray-700/60 pb-1.5">
           <span class="text-gray-500 dark:text-gray-400">Semáforo OTB</span>

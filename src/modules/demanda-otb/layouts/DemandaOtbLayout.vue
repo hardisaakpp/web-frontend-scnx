@@ -10,7 +10,8 @@ const negocioId = computed(() => route.params.negocio as string)
 const TABS = [
   { name: 'demanda-otb-catalogo', label: 'Catálogo' },
   { name: 'demanda-otb-niveles', label: 'Niveles' },
-  { name: 'demanda-otb-promociones', label: 'Promociones' },
+  // Oculta hasta que BI confirme si esta vista sigue en alcance (ver conversación 2026-09-01).
+  // { name: 'demanda-otb-promociones', label: 'Promociones' },
   { name: 'demanda-otb-otb', label: 'OTB' },
 ]
 </script>
