@@ -171,6 +171,18 @@ export interface ArticuloPagination {
     totalPages: number
 }
 
+// Payload de creación (POST /articulos): uIxxMarca (Negocio) es
+// estrictamente obligatorio -- RF-001, define la letra del ItemCode
+// (GeneradorCodigosService.obtener_codigo_negocio, backend) y NUNCA admite
+// fallback a uMarca. uMarca (Marca Comercial) es texto libre opcional,
+// 100% desacoplado de la generación del código.
+export type ArticuloCreatePayload = Partial<
+    Omit<Articulo, 'id' | 'activo' | 'controlSap' | 'isStructuralLocked' | 'imagenes' | 'uIxxMarca' | 'uMarca'>
+> & {
+    uIxxMarca: string
+    uMarca?: string | null
+}
+
 // Campos que el backend bloquea en PATCH /articulos/{itemCode}:
 // - Estructurales de por vida (ArticuloUpdate.bloquear_campos_estructurales,
 //   ver CAMPOS_ESTRUCTURALES_BLOQUEADOS en app/schemas/articulo.py): rechaza
@@ -185,7 +197,6 @@ export type ArticuloPatchPayload = Partial<
         | 'id'
         | 'itemCode'
         | 'codigoAlterno'
-        | 'uMarca'
         | 'uIxxMarca'
         | 'uNv1'
         | 'uGen'

@@ -174,15 +174,20 @@
                                 valueKey="nombre"
                                 required
                                 :disabled="isEdit"
-                                :title="isEdit ? LOCK_REASON.marcaNegocioInmutable : ''"
+                                :title="isEdit ? LOCK_REASON.negocioInmutable : ''"
                             />
-                            <span v-if="isEdit" class="help">{{ LOCK_REASON.marcaNegocioInmutable }}</span>
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.negocioInmutable }}</span>
+                            <small
+                                v-if="!isEdit && showValidationErrors && !form.uIxxMarca"
+                                class="text-red-500 text-xs font-semibold mt-1"
+                            >
+                                Debe seleccionar un Negocio para generar el código del producto.
+                            </small>
                         </div>
 
                         <div class="form-field required">
                             <label for="formMarca">Marca</label>
-                            <input id="formMarca" v-model="form.uMarca" type="text" placeholder="Ej: ROLLY" required :disabled="isEdit" :title="isEdit ? LOCK_REASON.marcaNegocioInmutable : ''" />
-                            <span v-if="isEdit" class="help">{{ LOCK_REASON.marcaNegocioInmutable }}</span>
+                            <input id="formMarca" v-model="form.uMarca" type="text" placeholder="Ej: ROLLY" required />
                         </div>
 
                         <!-- Jerarquía en cascada: Sección → Categoría → Línea -->
@@ -1172,7 +1177,7 @@ const originalSnapshot = ref<typeof form.value | null>(null)
 // de estas claves llega en el body, sin importar si el valor es igual al
 // actual, así que se excluyen siempre en edición, no solo cuando cambian.
 const STRUCTURAL_LOCKED_KEYS = new Set([
-    'itemCode', 'codigoAlterno', 'uMarca', 'uIxxMarca',
+    'itemCode', 'codigoAlterno', 'uIxxMarca',
     'itemsGroupCode', 'itemType', 'purchaseItem', 'salesItem', 'inventoryItem',
     'uGen', 'uIxxTalla', 'uNv1'
 ])
@@ -1192,7 +1197,7 @@ const LOCK_REASON = {
     sapRechazaCambio: 'SAP rechaza este dato si difiere de lo ya existente en una actualización; solo puede definirse al crear el artículo.',
     historialSap: 'El artículo posee historial en SAP y no puede modificar su estructura.',
     historialSapLotes: 'Este artículo posee historial en SAP y su gestión por lotes ya no puede modificarse.',
-    marcaNegocioInmutable: 'Marca/Negocio definen el ItemCode y no pueden modificarse después de creado el artículo.',
+    negocioInmutable: 'El Negocio define el ItemCode del artículo y no puede modificarse después de creado.',
     seccionInmutable: 'La Sección define el ItemCode del artículo y no puede modificarse después de creado.',
     tallaInmutable: 'La Talla es información tomada del comprador al crear el artículo y no puede modificarse después.',
     generoInmutable: 'El Género es información tomada del comprador al crear el artículo y no puede modificarse después.',
@@ -1345,6 +1350,138 @@ onMounted(async () => {
     }
 })
 
+// Lista de campos que sí deben ser enviados como numéricos. Vive fuera de
+// handleSubmit porque es una constante: no necesita recrearse en cada guardado.
+const NUMERIC_FIELDS = new Set([
+    'uCodColor', 'uCodColSecu', 'leadTime', 'minOrderQuantity',
+    'uUnidadDespacho', 'uDespIn', 'uPrArq', 'price',
+    'itemsGroupCode', 'manufacturer', 'shipType',
+    'purchaseItemsPerUnit', 'salesItemsPerUnit'
+])
+
+function coerceValorSubmit(key: string, val: unknown): unknown {
+    // Pydantic strictness: forzar a string los campos que backend espera como texto
+    // pero que Catálogos/jerarquías pudieron asignar como número.
+    if (typeof val === 'number' && !NUMERIC_FIELDS.has(key)) {
+        return String(val)
+    }
+    return val
+}
+
+// Creación: se sigue enviando el formulario completo (menos vacíos/nulos
+// opcionales), ya que ArticuloCreate exige varios campos obligatorios.
+function buildCreatePayload(): Record<string, unknown> {
+    const payload: Record<string, unknown> = {}
+    Object.entries(form.value).forEach(([key, val]) => {
+        if (READONLY_KEYS.has(key)) return
+        if (val === '' || val == null) return
+        payload[key] = coerceValorSubmit(key, val)
+    })
+    return payload
+}
+
+// Edición: Dirty Checking real contra originalSnapshot. Solo viajan las
+// propiedades que cambiaron respecto a lo cargado desde el backend, y
+// nunca las estructurales (bloqueadas de por vida, sin importar si el
+// valor "cambió" o no: su sola presencia en el body dispara un 422).
+// Un valor vacío/null intencional se envía como null, nunca como 0/N/false.
+function buildPatchPayload(): Record<string, unknown> {
+    const payload: Record<string, unknown> = {}
+    const original = originalSnapshot.value
+    if (!original) return payload
+
+    Object.entries(form.value).forEach(([key, rawVal]) => {
+        if (STRUCTURAL_LOCKED_KEYS.has(key) || READONLY_KEYS.has(key)) return
+        // manageBatchNumbers queda bloqueado por el backend en PATCH cuando
+        // el artículo ya tiene historial en SAP (ver
+        // _ensure_manage_batch_numbers_editable); se aproxima con
+        // isStructuralLocked, ya que la confirmación real requiere una
+        // consulta en vivo a SAP que el frontend no puede anticipar.
+        if (key === 'manageBatchNumbers' && form.value.isStructuralLocked) return
+
+        const val = rawVal === '' ? null : rawVal
+        const originalRaw = (original as Record<string, unknown>)[key]
+        const originalVal = originalRaw === '' ? null : originalRaw
+
+        if (val === originalVal) return // sin cambios reales: no reenviar
+
+        payload[key] = val === null ? null : coerceValorSubmit(key, val)
+    })
+    return payload
+}
+
+// Resalta la pestaña/campos inválidos y, si aplica, muestra el toast
+// dedicado de Negocio faltante. Extraído de handleSubmit para mantener su
+// complejidad cognitiva dentro del límite de SonarQube.
+function mostrarErroresValidacion(firstErrorTab: string): void {
+    showValidationErrors.value = true
+    activeTab.value = firstErrorTab
+    showValidationModal.value = true
+
+    // RF-001: el Negocio (uIxxMarca) faltante es el único error de
+    // creación con un toast dedicado -- define la letra del ItemCode y
+    // no admite fallback a Marca (uMarca), así que merece una
+    // notificación explícita además del resaltado en rojo del campo.
+    if (!isEdit.value && !form.value.uIxxMarca) {
+        toast.addToast({
+            type: 'error',
+            title: 'Validación',
+            message: 'El campo Negocio es obligatorio para la creación.'
+        })
+    }
+
+    // Intentar hacer focus al primer campo inválido después de cambiar de pestaña
+    setTimeout(() => {
+        const firstInvalid = document.querySelector('input:invalid, select:invalid, .form-field.required input') as HTMLElement
+        if (firstInvalid) firstInvalid.focus()
+    }, 100)
+}
+
+function resolverMensajeErrorSubmit(detail: string | { msg: string; loc?: string[] }[] | undefined): string {
+    if (Array.isArray(detail)) return detail.map(d => d.msg).join('. ')
+    if (typeof detail === 'string') return detail
+    return 'Ocurrió un error al guardar. Revisa los datos e inténtalo de nuevo.'
+}
+
+// HTTP 422: el backend rechazó por Negocio ausente/no registrado en el
+// catálogo (ver GeneradorCodigosService.obtener_codigo_negocio) -- se
+// intercepta el detail crudo para mostrar un mensaje de negocio claro en
+// vez del texto técnico del backend. HTTP 409: conflicto de identificador.
+function mostrarToastErrorSubmit(
+    status: number | undefined,
+    detail: string | { msg: string; loc?: string[] }[] | undefined,
+    mensaje: string
+): void {
+    const detalleTexto = Array.isArray(detail)
+        ? detail.map(d => `${d.loc?.join('.') ?? ''} ${d.msg}`).join(' ')
+        : (detail ?? '')
+
+    if (status === 422 && /u_ixx_marca|uIxxMarca|Negocio/i.test(detalleTexto)) {
+        toast.addToast({
+            type: 'error',
+            title: 'No se pudo generar el código',
+            message: 'El Negocio seleccionado no es válido o no está registrado en el catálogo.'
+        })
+    } else if (status === 409) {
+        toast.addToast({
+            type: 'error',
+            title: 'Conflicto de identificadores',
+            message: mensaje || 'Ya existe un artículo con ese código o identificador.'
+        })
+    }
+}
+
+function manejarErrorSubmit(err: unknown): void {
+    const axiosErr = err as {
+        response?: { status?: number; data?: { detail?: string | { msg: string; loc?: string[] }[] } }
+    }
+    const status = axiosErr?.response?.status
+    const detail = axiosErr?.response?.data?.detail
+
+    submitError.value = resolverMensajeErrorSubmit(detail)
+    mostrarToastErrorSubmit(status, detail, submitError.value)
+}
+
 // Guardar formulario. Único punto de captura de Ctrl+S (FE-CONCURRENCY,
 // ver useKeyboardShortcuts(shortcuts) más abajo): antes coexistía un
 // segundo listener manual (`handleKeydown` vía
@@ -1358,80 +1495,13 @@ async function handleSubmit() {
 
     const firstErrorTab = getFirstErrorTab()
     if (firstErrorTab) {
-        showValidationErrors.value = true
-        activeTab.value = firstErrorTab
-        showValidationModal.value = true
-        
-        // Intentar hacer focus al primer campo inválido después de cambiar de pestaña
-        setTimeout(() => {
-            const firstInvalid = document.querySelector('input:invalid, select:invalid, .form-field.required input') as HTMLElement
-            if (firstInvalid) firstInvalid.focus()
-        }, 100)
+        mostrarErroresValidacion(firstErrorTab)
         return
     }
 
     submitting.value = true
     submitError.value = ''
     submitSuccess.value = ''
-
-    // Lista de campos que sí deben ser enviados como numéricos
-    const numericFields = new Set([
-        'uCodColor', 'uCodColSecu', 'leadTime', 'minOrderQuantity',
-        'uUnidadDespacho', 'uDespIn', 'uPrArq', 'price',
-        'itemsGroupCode', 'manufacturer', 'shipType',
-        'purchaseItemsPerUnit', 'salesItemsPerUnit'
-    ])
-
-    function coerce(key: string, val: unknown): unknown {
-        // Pydantic strictness: forzar a string los campos que backend espera como texto
-        // pero que Catálogos/jerarquías pudieron asignar como número.
-        if (typeof val === 'number' && !numericFields.has(key)) {
-            return String(val)
-        }
-        return val
-    }
-
-    // Creación: se sigue enviando el formulario completo (menos vacíos/nulos
-    // opcionales), ya que ArticuloCreate exige varios campos obligatorios.
-    function buildCreatePayload(): Record<string, unknown> {
-        const payload: Record<string, unknown> = {}
-        Object.entries(form.value).forEach(([key, val]) => {
-            if (READONLY_KEYS.has(key)) return
-            if (val === '' || val == null) return
-            payload[key] = coerce(key, val)
-        })
-        return payload
-    }
-
-    // Edición: Dirty Checking real contra originalSnapshot. Solo viajan las
-    // propiedades que cambiaron respecto a lo cargado desde el backend, y
-    // nunca las estructurales (bloqueadas de por vida, sin importar si el
-    // valor "cambió" o no: su sola presencia en el body dispara un 422).
-    // Un valor vacío/null intencional se envía como null, nunca como 0/N/false.
-    function buildPatchPayload(): Record<string, unknown> {
-        const payload: Record<string, unknown> = {}
-        const original = originalSnapshot.value
-        if (!original) return payload
-
-        Object.entries(form.value).forEach(([key, rawVal]) => {
-            if (STRUCTURAL_LOCKED_KEYS.has(key) || READONLY_KEYS.has(key)) return
-            // manageBatchNumbers queda bloqueado por el backend en PATCH cuando
-            // el artículo ya tiene historial en SAP (ver
-            // _ensure_manage_batch_numbers_editable); se aproxima con
-            // isStructuralLocked, ya que la confirmación real requiere una
-            // consulta en vivo a SAP que el frontend no puede anticipar.
-            if (key === 'manageBatchNumbers' && form.value.isStructuralLocked) return
-
-            const val = rawVal === '' ? null : rawVal
-            const originalRaw = (original as Record<string, unknown>)[key]
-            const originalVal = originalRaw === '' ? null : originalRaw
-
-            if (val === originalVal) return // sin cambios reales: no reenviar
-
-            payload[key] = val === null ? null : coerce(key, val)
-        })
-        return payload
-    }
 
     try {
         if (isEdit.value) {
@@ -1464,15 +1534,7 @@ async function handleSubmit() {
             await router.replace(`/articulo-maestro/editar/${article.itemCode}`)
         }
     } catch (err: unknown) {
-        const axiosErr = err as { response?: { data?: { detail?: string | { msg: string }[] } } }
-        const detail = axiosErr?.response?.data?.detail
-        if (Array.isArray(detail)) {
-            submitError.value = detail.map(d => d.msg).join('. ')
-        } else if (typeof detail === 'string') {
-            submitError.value = detail
-        } else {
-            submitError.value = 'Ocurrió un error al guardar. Revisa los datos e inténtalo de nuevo.'
-        }
+        manejarErrorSubmit(err)
     } finally {
         submitting.value = false
     }

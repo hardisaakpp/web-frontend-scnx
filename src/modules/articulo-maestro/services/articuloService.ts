@@ -122,7 +122,7 @@ export async function parsearErrorBlob(error: any): Promise<string> {
     return error?.response?.data?.detail || error?.message || 'Error de conexión.'
 }
 
-export type TipoCargaMasiva = 'crear' | 'actualizar'
+export type TipoCargaMasiva = 'crear' | 'actualizar' | 'actualizar_precios'
 export type EstadoImportacion =
     | 'ESPERANDO'
     | 'PROCESANDO'
@@ -163,7 +163,7 @@ export interface ImportacionTrabajo {
     id: number
     nombreArchivo: string
     hashArchivo: string
-    tipo: 'CREAR' | 'ACTUALIZAR'
+    tipo: 'CREAR' | 'ACTUALIZAR' | 'ACTUALIZAR_PRECIOS'
     usuario: string
     estado: EstadoImportacion
     totalGrupos: number
@@ -174,6 +174,18 @@ export interface ImportacionTrabajo {
     fechaInicio?: string | null
     fechaFin?: string | null
     grupos: ImportacionGrupo[]
+}
+
+// Resumen de un trabajo de importación (GET /articulos/importaciones, listado
+// paginado): mismos campos que ImportacionTrabajo pero sin `grupos` -- el
+// backend no los incluye en la respuesta de listado (ver
+// ImportacionTrabajoResumen en app/schemas/importacion.py), solo en el
+// detalle por id (getImportacion).
+export type ImportacionTrabajoResumen = Omit<ImportacionTrabajo, 'grupos'>
+
+export interface ImportacionTrabajoPagina {
+    total: number
+    items: ImportacionTrabajoResumen[]
 }
 
 export interface ImportacionError {
@@ -397,6 +409,28 @@ export const articuloService = {
     getImportacion: async (jobId: number): Promise<ImportacionTrabajo> => {
         const response = await apiMaestro.get<ImportacionTrabajo>(
             `/api/v1/articulos/importaciones/${jobId}`
+        )
+        return response.data
+    },
+
+    // Listado paginado de trabajos de importación (más recientes primero,
+    // el backend ordena por id DESC) -- usado por el Monitoreo de SAP para
+    // mostrar una tarjeta consolidada por lote en vez de una fila por cada
+    // grupo/artículo. `estado` es un filtro de UN solo valor (el backend no
+    // soporta lista): se omite para traer los más recientes sin importar
+    // estado, igual que ya hace sapService.getTasks() con sus tareas.
+    listarImportaciones: async (
+        params: { limit?: number; skip?: number; estado?: EstadoImportacion } = {}
+    ): Promise<ImportacionTrabajoPagina> => {
+        const response = await apiMaestro.get<ImportacionTrabajoPagina>(
+            '/api/v1/articulos/importaciones',
+            {
+                params: {
+                    skip: params.skip ?? 0,
+                    limit: params.limit ?? 8,
+                    ...(params.estado ? { estado: params.estado } : {})
+                }
+            }
         )
         return response.data
     },
