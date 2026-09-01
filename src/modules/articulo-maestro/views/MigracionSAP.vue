@@ -117,7 +117,7 @@
             <div class="lg:col-span-2 space-y-6">
                 
                 <!-- Monitor de Tareas en Segundo Plano -->
-                <div v-if="recentTasks.length > 0" class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div v-if="lotesImportacion.length > 0 || tareasSueltas.length > 0" class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                     <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/30 flex items-center justify-between">
                         <h3 class="text-xs font-bold text-gray-700 dark:text-gray-300 uppercase tracking-wider flex items-center gap-2">
                             <span class="relative flex h-2 w-2">
@@ -131,7 +131,48 @@
                         </span>
                     </div>
                     <div class="divide-y divide-gray-100 dark:divide-gray-800">
-                        <div v-for="task in recentTasks" :key="task.id" class="p-4 flex flex-col gap-3">
+                        <!-- Tarjeta maestra por lote de importación (Excel): consolida TODOS
+                             los grupos/artículos del archivo en una sola barra de progreso, en
+                             vez de una tarjeta por grupo -- ver `lotesImportacion`. -->
+                        <div v-for="lote in lotesImportacion" :key="`lote-${lote.id}`" class="p-4 flex flex-col gap-3 bg-indigo-50/30 dark:bg-indigo-900/5">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <div class="p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg text-indigo-600 dark:text-indigo-400">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-semibold text-gray-900 dark:text-white">
+                                            Lote #{{ lote.id }}: {{ lote.nombreArchivo }} ({{ lote.totalFilas }} artículo{{ lote.totalFilas === 1 ? '' : 's' }})
+                                        </p>
+                                        <p class="text-[10px] text-gray-500">Iniciado por {{ lote.usuario }} · Tiempo transcurrido: {{ tiempoTranscurrido(lote) }}</p>
+                                    </div>
+                                </div>
+                                <div class="flex flex-col items-end">
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase" :class="loteBadgeClass(lote.estado)">
+                                        {{ lote.estado }}
+                                    </span>
+                                    <p class="text-[10px] text-gray-400 mt-1 uppercase font-medium">
+                                        {{ progresoLote(lote).completados }} de {{ lote.totalFilas }} completados ({{ progresoLote(lote).porcentaje }}%)
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                                <div
+                                    class="h-full transition-all duration-500 ease-out"
+                                    :class="progresoLote(lote).barraClass"
+                                    :style="{ width: `${progresoLote(lote).porcentaje}%` }"
+                                ></div>
+                            </div>
+                            <p class="text-[10px] text-gray-500 dark:text-gray-400">
+                                <span class="text-emerald-600 dark:text-emerald-400 font-semibold">{{ lote.filasCorrectas }} éxitos</span>
+                                <span class="mx-1">·</span>
+                                <span class="text-red-600 dark:text-red-400 font-semibold">{{ lote.filasError }} errores</span>
+                                <span class="mx-1">·</span>
+                                <span>{{ progresoLote(lote).enCola }} en cola</span>
+                            </p>
+                        </div>
+
+                        <div v-for="task in tareasSueltas" :key="task.id" class="p-4 flex flex-col gap-3">
                             <div class="flex items-center justify-between">
                                 <div class="flex items-center gap-3">
                                     <div class="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600 dark:text-blue-400">
@@ -143,7 +184,7 @@
                                     </div>
                                 </div>
                                 <div class="flex flex-col items-end">
-                                    <span 
+                                    <span
                                         class="px-2 py-0.5 rounded text-[10px] font-bold uppercase"
                                         :class="{
                                             'bg-blue-100 text-blue-700 dark:bg-blue-900/30': task.estado === 'PROCESANDO',
@@ -158,7 +199,7 @@
                             </div>
                             <!-- Barra de Progreso -->
                             <div class="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
-                                <div 
+                                <div
                                     class="h-full transition-all duration-500 ease-out"
                                     :class="task.estado === 'ERROR' ? 'bg-red-500' : 'bg-blue-500'"
                                     :style="{ width: `${task.progreso_porcentaje}%` }"
@@ -176,6 +217,34 @@
                             <span v-if="selectedCount > 0" class="px-2 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded text-xs font-medium">
                                 {{ selectedCount }} seleccionados
                             </span>
+                        </div>
+
+                        <!-- Filtros rápidos por prioridad operativa -->
+                        <div class="flex items-center gap-1 rounded-lg bg-gray-100 dark:bg-gray-900/50 p-1">
+                            <button
+                                type="button"
+                                @click="filtroEstado = 'todos'"
+                                class="px-3 py-1 text-xs font-medium rounded-md transition-colors"
+                                :class="filtroEstado === 'todos' ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
+                            >
+                                Todos ({{ pendingArticulos.length }})
+                            </button>
+                            <button
+                                type="button"
+                                @click="filtroEstado = 'en_cola'"
+                                class="px-3 py-1 text-xs font-medium rounded-md transition-colors"
+                                :class="filtroEstado === 'en_cola' ? 'bg-white dark:bg-gray-700 text-amber-700 dark:text-amber-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
+                            >
+                                ⏳ En Cola ({{ countEnCola }})
+                            </button>
+                            <button
+                                type="button"
+                                @click="filtroEstado = 'error'"
+                                class="px-3 py-1 text-xs font-medium rounded-md transition-colors"
+                                :class="filtroEstado === 'error' ? 'bg-white dark:bg-gray-700 text-red-700 dark:text-red-400 shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'"
+                            >
+                                ❌ Errores ({{ countError }})
+                            </button>
                         </div>
 
                         <div class="flex items-center gap-2">
@@ -248,6 +317,16 @@
                                     </td>
                                 </tr>
 
+                                <tr v-else-if="filteredArticulosConDiagnostico.length === 0">
+                                    <td colspan="6" class="px-6 py-12 text-center">
+                                        <div class="flex flex-col items-center justify-center text-gray-500 dark:text-gray-400">
+                                            <svg class="w-12 h-12 mb-3 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 21H5a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                            <p class="text-base font-medium">Nada que mostrar con este filtro</p>
+                                            <p class="text-sm">Prueba con "Todos" o ajusta la búsqueda por código.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+
                                 <tr
                                     v-for="{ articulo: art, diagnostico: diag } in filteredArticulosConDiagnostico"
                                     :key="art.itemCode"
@@ -274,13 +353,17 @@
                                     <td class="px-6 py-4">
                                         <button
                                             type="button"
-                                            class="px-2.5 py-0.5 rounded-full text-xs font-medium border cursor-default"
+                                            class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border cursor-default"
                                             :class="getStatusBadgeClass(art.controlSap?.estado ?? 'BORRADOR')"
                                             @mouseenter="showTooltip($event, art.itemCode)"
                                             @mouseleave="hideTooltip"
                                             @focus="showTooltip($event, art.itemCode)"
                                             @blur="hideTooltip"
                                         >
+                                            <span v-if="(art.controlSap?.estado ?? 'BORRADOR') === 'EN_COLA'" class="relative flex h-1.5 w-1.5" aria-hidden="true">
+                                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                                <span class="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-500"></span>
+                                            </span>
                                             {{ art.controlSap?.estado ?? 'BORRADOR' }}
                                         </button>
                                     </td>
@@ -617,7 +700,18 @@ import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { articuloService, sapService, resumirDetalleSap, diagnosticoDeArticulo } from '../services/articuloService'
 import type { Articulo } from '../types'
-import type { SapTask, SapSyncResponse, SapSyncDetalle, DiagnosticoTipo } from '../services/articuloService'
+import type { SapTask, SapSyncResponse, SapSyncDetalle, DiagnosticoTipo, ImportacionTrabajoResumen } from '../services/articuloService'
+import {
+    ordenarPorPrioridadOperativa,
+    filtrarPorPestana,
+    contarPorEstado,
+    calcularProgresoLote,
+    tareasSinLote,
+    formatearTiempoTranscurrido,
+    loteBadgeClass as loteBadgeClaseUtil,
+    hayLoteActivo,
+    type FiltroEstadoTabla
+} from '../utils/monitoreoSap'
 
 const route = useRoute()
 
@@ -635,8 +729,23 @@ const processingAction = ref(false)
 
 // Estado de Tareas (Task Monitoring)
 const recentTasks = ref<SapTask[]>([])
+// Lotes de importación (carga masiva por Excel): una SapSyncTarea POR GRUPO
+// del archivo (ver encolar_articulos_para_sap en cada _procesar_grupo_* del
+// backend) inundaba este panel con una tarjeta por grupo -- si un Excel
+// traía 100 artículos en, digamos, 20 grupos, aparecían 20 tarjetas de "1 de
+// 1 completados" y ninguna vista consolidada del lote completo. Este nuevo
+// estado consulta el trabajo de importación (ImportacionTrabajo) en sí, que
+// ya trae el conteo agregado real (totalFilas/filasCorrectas/filasError).
+const lotesImportacion = ref<ImportacionTrabajoResumen[]>([])
 const isPolling = ref(false)
 let pollingTimer: ReturnType<typeof setInterval> | null = null
+
+// Tareas SapSyncTarea que NO pertenecen a un lote de importación por Excel
+// (ej. sincronizaciones manuales de esta pantalla: "Traer desde SAP",
+// "Reintentar Fallidos", etc.) -- las que sí pertenecen ya se muestran
+// consolidadas en `lotesImportacion`, así que se excluyen aquí para no
+// duplicar la misma información en dos tarjetas distintas.
+const tareasSueltas = computed(() => tareasSinLote(recentTasks.value))
 
 // Modales
 const showResultModal = ref(false)
@@ -751,10 +860,24 @@ const allSelected = computed(() =>
     selectedCodes.value.length === pendingArticulos.value.length
 )
 
+// Prioridad operativa: lo que está pasando AHORA MISMO (EN_COLA) siempre
+// arriba; ERROR (lo que requiere acción) se ordena por fecha_ultimo_intento
+// DESC dentro de su propio grupo -- el error más reciente arriba, no el más
+// antiguo. Antes la tabla no ordenaba nada (orden de llegada de
+// getArticulosByEstado), así que un artículo recién encolado en un lote de
+// 100 podía terminar en la última página. Ver utils/monitoreoSap.ts.
+const sortedArticulos = computed(() => ordenarPorPrioridadOperativa(pendingArticulos.value))
+
+const filtroEstado = ref<FiltroEstadoTabla>('todos')
+
+const countEnCola = computed(() => contarPorEstado(pendingArticulos.value, 'EN_COLA'))
+const countError = computed(() => contarPorEstado(pendingArticulos.value, 'ERROR'))
+
 const filteredArticulos = computed(() => {
-    if (!searchCode.value) return pendingArticulos.value
+    const lista = filtrarPorPestana(sortedArticulos.value, filtroEstado.value)
+    if (!searchCode.value) return lista
     const q = searchCode.value.trim().toUpperCase()
-    return pendingArticulos.value.filter(a => {
+    return lista.filter(a => {
         const code = (a.itemCode ?? '').toString().toUpperCase()
         const name = (a.itemName ?? '').toString().toUpperCase()
         return code.includes(q) || name.includes(q)
@@ -770,10 +893,10 @@ const filteredArticulosConDiagnostico = computed(() =>
     }))
 )
 
-// Cargar pendientes y tareas al montar
+// Cargar pendientes y tareas al montar (startPolling ya dispara la primera
+// consulta de tareas/lotes de inmediato, ver más abajo).
 onMounted(() => {
     fetchPending()
-    fetchTasks()
     startPolling()
 })
 
@@ -801,25 +924,48 @@ async function fetchPending() {
 async function fetchTasks() {
     try {
         const tasks = await sapService.getTasks()
-        
+
         // Verificar si alguna tarea terminó justo ahora para refrescar la tabla de artículos
         const hadProcessing = recentTasks.value.some(t => t.estado === 'PROCESANDO')
         const allFinished = tasks.length > 0 && tasks.every(t => t.estado !== 'PROCESANDO')
-        
+
         recentTasks.value = tasks
 
         if (hadProcessing && allFinished) {
             // Si antes había algo procesando y ahora no, refrescamos la lista de pendientes
             fetchPending()
         }
+    } catch {
+        // error silencioso — el polling reintentará en el siguiente ciclo
+    }
+}
 
-        // Si no hay nada procesando, podríamos bajar la frecuencia o detener el polling
-        if (allFinished && isPolling.value) {
-            stopPolling()
-            // Pero lo dejamos un último fetch asegurado
+async function fetchLotes() {
+    try {
+        // Los más recientes primero (backend ordena por id DESC): alcanza
+        // con una página pequeña, igual que sapService.getTasks() ya trae
+        // solo las últimas 3 tareas sueltas.
+        const pagina = await articuloService.listarImportaciones({ limit: 5 })
+
+        const teniaLoteActivo = hayLoteActivo(lotesImportacion.value)
+        const siguenActivos = hayLoteActivo(pagina.items)
+
+        lotesImportacion.value = pagina.items
+
+        if (teniaLoteActivo && !siguenActivos) {
+            fetchPending()
         }
     } catch {
         // error silencioso — el polling reintentará en el siguiente ciclo
+    }
+}
+
+async function actualizarActividad() {
+    await Promise.all([fetchTasks(), fetchLotes()])
+
+    const hayTareaSueltaActiva = tareasSueltas.value.some(t => t.estado === 'PROCESANDO')
+    if (!hayTareaSueltaActiva && !hayLoteActivo(lotesImportacion.value) && isPolling.value) {
+        stopPolling()
     }
 }
 
@@ -827,10 +973,9 @@ function startPolling() {
     if (pollingTimer) return
     isPolling.value = true
     // Primera ejecución inmediata
-    fetchTasks()
+    actualizarActividad()
     pollingTimer = setInterval(() => {
-        // Siempre consultamos si isPolling es true, pero fetchTasks decidirá si apagarlo
-        fetchTasks()
+        actualizarActividad()
     }, 2000)
 }
 
@@ -862,6 +1007,25 @@ function toggleDetalleTecnico(idx: number) {
         abiertos.add(idx)
     }
     detallesTecnicosAbiertos.value = abiertos
+}
+
+// Progreso agregado de un lote de importación: filasCorrectas/filasError ya
+// vienen consolidados desde el backend (ImportacionTrabajoResumen), así que
+// "en cola" es simplemente lo que falta por resolver del total.
+// Wrappers finos sobre utils/monitoreoSap.ts (lógica pura, cubierta por
+// tests/unit/articulo-maestro/monitoreoSap.test.ts) -- se mantienen como
+// funciones locales solo para que el template las invoque con el nombre
+// corto de siempre.
+function progresoLote(lote: ImportacionTrabajoResumen) {
+    return calcularProgresoLote(lote)
+}
+
+function loteBadgeClass(estado: string) {
+    return loteBadgeClaseUtil(estado)
+}
+
+function tiempoTranscurrido(lote: ImportacionTrabajoResumen): string {
+    return formatearTiempoTranscurrido(lote.fechaInicio, lote.fechaFin)
 }
 
 function getStatusBadgeClass(status: string) {

@@ -29,14 +29,21 @@
                                 <input type="radio" v-model="tipoCarga" value="actualizar" @change="handleTipoCargaChange" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500" />
                                 <span class="text-sm text-gray-700 dark:text-gray-300">Modificar productos</span>
                             </label>
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="radio" v-model="tipoCarga" value="actualizar_precios" @change="handleTipoCargaChange" class="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500" />
+                                <span class="text-sm text-gray-700 dark:text-gray-300">Actualizar listas de precios</span>
+                            </label>
                         </div>
                     </div>
 
                     <!-- Paso 2: Descargar Plantilla -->
                     <div class="flex items-center gap-4 p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800">
                         <div class="flex-1">
-                            <p class="text-sm font-medium text-blue-900 dark:text-blue-200">2. Descarga la plantilla de {{ tipoCarga === 'crear' ? 'creación' : 'modificación' }}</p>
+                            <p class="text-sm font-medium text-blue-900 dark:text-blue-200">2. Descarga la plantilla de {{ ETIQUETA_TIPO_CARGA[tipoCarga] }}</p>
                             <p class="text-xs text-blue-700 dark:text-blue-400 mt-0.5">Utiliza esta plantilla para garantizar la versión y los campos correctos.</p>
+                            <p v-if="tipoCarga === 'actualizar_precios'" class="text-xs text-blue-700 dark:text-blue-400 mt-1">
+                                Permite actualizar Minorista (1), Internacional (4), Tecnología (5) u otras listas de SAP por ItemCode.
+                            </p>
                         </div>
                         <button
                             @click="handleDownloadTemplate"
@@ -220,6 +227,12 @@ import ImportacionProgreso from './ImportacionProgreso.vue'
 const emit = defineEmits<(event: 'close') => void>()
 
 const importStore = useImportacionArticulosStore()
+
+const ETIQUETA_TIPO_CARGA: Record<TipoCargaMasiva, string> = {
+    crear: 'creación',
+    actualizar: 'modificación',
+    actualizar_precios: 'actualización de precios'
+}
 
 const tipoCarga = ref<TipoCargaMasiva>('crear')
 const selectedFile = ref<File | null>(null)

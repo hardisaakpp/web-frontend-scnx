@@ -174,15 +174,20 @@
                                 valueKey="nombre"
                                 required
                                 :disabled="isEdit"
-                                :title="isEdit ? LOCK_REASON.marcaNegocioInmutable : ''"
+                                :title="isEdit ? LOCK_REASON.negocioInmutable : ''"
                             />
-                            <span v-if="isEdit" class="help">{{ LOCK_REASON.marcaNegocioInmutable }}</span>
+                            <span v-if="isEdit" class="help">{{ LOCK_REASON.negocioInmutable }}</span>
+                            <small
+                                v-if="!isEdit && showValidationErrors && !form.uIxxMarca"
+                                class="text-red-500 text-xs font-semibold mt-1"
+                            >
+                                Debe seleccionar un Negocio para generar el código del producto.
+                            </small>
                         </div>
 
                         <div class="form-field required">
                             <label for="formMarca">Marca</label>
-                            <input id="formMarca" v-model="form.uMarca" type="text" placeholder="Ej: ROLLY" required :disabled="isEdit" :title="isEdit ? LOCK_REASON.marcaNegocioInmutable : ''" />
-                            <span v-if="isEdit" class="help">{{ LOCK_REASON.marcaNegocioInmutable }}</span>
+                            <input id="formMarca" v-model="form.uMarca" type="text" placeholder="Ej: ROLLY" required />
                         </div>
 
                         <!-- Jerarquía en cascada: Sección → Categoría → Línea -->
@@ -1172,7 +1177,7 @@ const originalSnapshot = ref<typeof form.value | null>(null)
 // de estas claves llega en el body, sin importar si el valor es igual al
 // actual, así que se excluyen siempre en edición, no solo cuando cambian.
 const STRUCTURAL_LOCKED_KEYS = new Set([
-    'itemCode', 'codigoAlterno', 'uMarca', 'uIxxMarca',
+    'itemCode', 'codigoAlterno', 'uIxxMarca',
     'itemsGroupCode', 'itemType', 'purchaseItem', 'salesItem', 'inventoryItem',
     'uGen', 'uIxxTalla', 'uNv1'
 ])
@@ -1192,7 +1197,7 @@ const LOCK_REASON = {
     sapRechazaCambio: 'SAP rechaza este dato si difiere de lo ya existente en una actualización; solo puede definirse al crear el artículo.',
     historialSap: 'El artículo posee historial en SAP y no puede modificar su estructura.',
     historialSapLotes: 'Este artículo posee historial en SAP y su gestión por lotes ya no puede modificarse.',
-    marcaNegocioInmutable: 'Marca/Negocio definen el ItemCode y no pueden modificarse después de creado el artículo.',
+    negocioInmutable: 'El Negocio define el ItemCode del artículo y no puede modificarse después de creado.',
     seccionInmutable: 'La Sección define el ItemCode del artículo y no puede modificarse después de creado.',
     tallaInmutable: 'La Talla es información tomada del comprador al crear el artículo y no puede modificarse después.',
     generoInmutable: 'El Género es información tomada del comprador al crear el artículo y no puede modificarse después.',
@@ -1361,7 +1366,19 @@ async function handleSubmit() {
         showValidationErrors.value = true
         activeTab.value = firstErrorTab
         showValidationModal.value = true
-        
+
+        // RF-001: el Negocio (uIxxMarca) faltante es el único error de
+        // creación con un toast dedicado -- define la letra del ItemCode y
+        // no admite fallback a Marca (uMarca), así que merece una
+        // notificación explícita además del resaltado en rojo del campo.
+        if (!isEdit.value && !form.value.uIxxMarca) {
+            toast.addToast({
+                type: 'error',
+                title: 'Validación',
+                message: 'El campo Negocio es obligatorio para la creación.'
+            })
+        }
+
         // Intentar hacer focus al primer campo inválido después de cambiar de pestaña
         setTimeout(() => {
             const firstInvalid = document.querySelector('input:invalid, select:invalid, .form-field.required input') as HTMLElement
@@ -1464,7 +1481,10 @@ async function handleSubmit() {
             await router.replace(`/articulo-maestro/editar/${article.itemCode}`)
         }
     } catch (err: unknown) {
-        const axiosErr = err as { response?: { data?: { detail?: string | { msg: string }[] } } }
+        const axiosErr = err as {
+            response?: { status?: number; data?: { detail?: string | { msg: string; loc?: string[] }[] } }
+        }
+        const status = axiosErr?.response?.status
         const detail = axiosErr?.response?.data?.detail
         if (Array.isArray(detail)) {
             submitError.value = detail.map(d => d.msg).join('. ')
@@ -1472,6 +1492,27 @@ async function handleSubmit() {
             submitError.value = detail
         } else {
             submitError.value = 'Ocurrió un error al guardar. Revisa los datos e inténtalo de nuevo.'
+        }
+
+        // HTTP 422: el backend rechazó por Negocio ausente/no registrado en
+        // el catálogo (ver GeneradorCodigosService.obtener_codigo_negocio) --
+        // se intercepta el detail crudo para mostrar un mensaje de negocio
+        // claro en vez del texto técnico del backend.
+        const detalleTexto = Array.isArray(detail)
+            ? detail.map(d => `${d.loc?.join('.') ?? ''} ${d.msg}`).join(' ')
+            : (detail ?? '')
+        if (status === 422 && /u_ixx_marca|uIxxMarca|Negocio/i.test(detalleTexto)) {
+            toast.addToast({
+                type: 'error',
+                title: 'No se pudo generar el código',
+                message: 'El Negocio seleccionado no es válido o no está registrado en el catálogo.'
+            })
+        } else if (status === 409) {
+            toast.addToast({
+                type: 'error',
+                title: 'Conflicto de identificadores',
+                message: submitError.value || 'Ya existe un artículo con ese código o identificador.'
+            })
         }
     } finally {
         submitting.value = false
