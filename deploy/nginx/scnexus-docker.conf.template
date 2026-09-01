@@ -285,6 +285,24 @@ server {
     }
 
     # =========================
+    # mIAApi — asistente SCNEXUS AI (Cool-turito)
+    # /mia-api/v1/preguntar -> ${UPSTREAM_MIA}/v1/preguntar
+    # Timeout largo: el LLM tarda 2-25 s por respuesta (manual: cliente >= 120 s)
+    # =========================
+    location /mia-api/ {
+        rewrite ^/mia-api(.*)$ $1 break;
+        proxy_pass ${UPSTREAM_MIA};
+        proxy_http_version 1.1;
+        proxy_connect_timeout 30s;
+        proxy_send_timeout 180s;
+        proxy_read_timeout 180s;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # =========================
     # Articulo Scanner
     # =========================
     location /scan-api/ {

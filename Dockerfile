@@ -32,6 +32,10 @@ COPY deploy/nginx/scnexus-docker.conf.template /etc/nginx/templates/default.conf
 
 COPY --from=build /app/dist /usr/share/nginx/html
 
+# wget requerido por el HEALTHCHECK (no viene preinstalado en nginx:stable-bookworm)
+RUN apt-get update && apt-get install -y --no-install-recommends wget \
+    && rm -rf /var/lib/apt/lists/*
+
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD curl -f http://localhost/ || exit 1
 

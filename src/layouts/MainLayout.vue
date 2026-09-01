@@ -97,20 +97,37 @@
             <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Artículo Maestro</span>
           </router-link>
 
-          <!-- Caja Chica -->
-          <router-link v-if="hasModuleAccess('cajachica')" to="/caja-chica"
-            class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
-            :class="{
-              'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/caja-chica'),
-              'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/caja-chica')
-            }" :title="effectiveSidebarCollapsed ? 'Caja Chica' : ''">
-            <div
-              class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-            </div>
-            <DocumentCheckIcon class="h-5 w-5 flex-shrink-0 relative z-10"
-              :class="{ 'scale-110': $route.path.startsWith('/caja-chica') }" />
-            <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Caja Chica</span>
-          </router-link>
+        <!-- CEDI -->
+        <router-link
+          v-if="hasModuleAccess('cedi')"
+          to="/cedi"
+          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
+          :class="{
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/cedi'),
+            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/cedi')
+          }"
+          :title="effectiveSidebarCollapsed ? 'CEDI' : ''"
+        >
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <TruckIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/cedi') }" />
+          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">CEDI</span>
+        </router-link>
+
+        <!-- Caja Chica -->
+        <router-link
+          v-if="hasModuleAccess('cajachica')"
+          to="/caja-chica"
+          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
+          :class="{
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/caja-chica'),
+            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/caja-chica')
+          }"
+          :title="effectiveSidebarCollapsed ? 'Caja Chica' : ''"
+        >
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <DocumentCheckIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/caja-chica') }" />
+          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Caja Chica</span>
+        </router-link>
 
           <!-- Conciliación -->
           <router-link v-if="hasModuleAccess('conciliacion')" to="/conciliacion"
@@ -423,6 +440,9 @@
 
     <!-- Toast Notifications -->
     <ToastContainer />
+
+    <!-- Asistente SCNEXUS AI (Cool-turito) -->
+    <AssistantWidget />
   </div>
 </template>
 
@@ -459,6 +479,7 @@ import { Pin, PinOff, TruckIcon } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth'
 import { useThemeStore } from '../stores/theme'
 import ToastContainer from '../components/ToastContainer.vue'
+import AssistantWidget from '../components/assistant/AssistantWidget.vue'
 import { useNotificaciones } from '@/composables/useNotificaciones'
 import { useOdcSapVolver } from '@/composables/useOdcSapVolver'
 import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
