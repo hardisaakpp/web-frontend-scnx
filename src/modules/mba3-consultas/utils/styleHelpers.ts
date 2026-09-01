@@ -17,42 +17,72 @@ export function getEstadoBadgeClass(estado: string): string {
 }
 
 /**
- * Retorna las clases CSS para el badge de estado del pedido (un color distintivo por estado)
+ * Retorna las clases CSS para el badge de estado del pedido (un color distintivo por estado).
+ *
+ * Paleta por rol (permiso que produce el estado, ver docs/requeriments/
+ * PYTD002_ODC-MABEL-RAYO_SEGUIMIENTO.md): mabel.view = verde/esmeralda/teal/lima
+ * (BORRADOR → ... → CONFIRMADO_ENVIADO); produccion-elrayo.view = ámbar (calza el
+ * botón "Confirmar Producción", bg-amber-600); odcsap.view = púrpura (calza los
+ * botones "Confirmar" y "Despachar y Facturar", bg-purple-600 — incluye
+ * PRODUCCION_POSPUESTA, generado por la opción "Confirmar pedido, generar nuevo
+ * pedido con la diferencia" del mismo botón "Confirmar", ver POST
+ * /confirmar-con-diferencia); Cancelado/Rechazado = rojo/rosa, cruza roles;
+ * estados ERROR_* = escala 'vermilion' (rojo/naranja, ver tailwind.config.js), para
+ * alertar sin confundirse con Cancelado/Rechazado (rojo puro) ni con éxito/pendiente
+ * (verde/lima/ámbar).
+ * Debe mantenerse en sync con getEstadoBadgeClass en PedidosListView.vue,
+ * CargarPlantillaListadoView.vue, RedistribucionListadoView.vue y
+ * RevisarRedistribucionListadoView.vue (mismos estados, misma paleta).
  */
 export function getEstadoPedidoBadgeClass(estado: string | undefined): string {
   if (!estado) return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
   const classes: Record<string, string> = {
-    'BORRADOR': `bg-slate-100 text-slate-800 ${badgeDark} dark:bg-slate-700 dark:text-slate-200`,
-    'NUEVO PEDIDO': `bg-sky-100 text-sky-800 ${badgeDark} dark:bg-sky-900/50 dark:text-sky-200`,
-    'NUEVO_PEDIDO': `bg-sky-100 text-sky-800 ${badgeDark} dark:bg-sky-900/50 dark:text-sky-200`,
+    'BORRADOR': `bg-emerald-50 text-emerald-700 ${badgeDark} dark:bg-emerald-950/40 dark:text-emerald-300`,
+    'NUEVO PEDIDO': `bg-green-100 text-green-800 ${badgeDark} dark:bg-green-900/50 dark:text-green-200`,
+    'NUEVO_PEDIDO': `bg-green-100 text-green-800 ${badgeDark} dark:bg-green-900/50 dark:text-green-200`,
     'GESTIONAR PEDIDO': `bg-amber-100 text-amber-800 ${badgeDark} dark:bg-amber-900/50 dark:text-amber-200`,
     'GESTIONAR_PEDIDO': `bg-amber-100 text-amber-800 ${badgeDark} dark:bg-amber-900/50 dark:text-amber-200`,
-    'REDISTRIBUCION': `bg-violet-100 text-violet-800 ${badgeDark} dark:bg-violet-900/50 dark:text-violet-200`,
+    'REDISTRIBUCION': `bg-purple-100 text-purple-800 ${badgeDark} dark:bg-purple-900/50 dark:text-purple-200`,
     'PENDIENTE_CONFIRMACION_PROVEEDOR': `bg-yellow-100 text-yellow-800 ${badgeDark} dark:bg-yellow-900/50 dark:text-yellow-200`,
     'RESPUESTA_PROVEEDOR_CARGADA': `bg-blue-100 text-blue-800 ${badgeDark} dark:bg-blue-900/50 dark:text-blue-200`,
     'CONFIRMADO_PROVEEDOR': `bg-green-100 text-green-800 ${badgeDark} dark:bg-green-900/50 dark:text-green-200`,
     'CONFIRMADO': `bg-green-100 text-green-800 ${badgeDark} dark:bg-green-900/50 dark:text-green-200`,
     'CONFIRMADO REDISTRIBUCION': `bg-teal-100 text-teal-800 ${badgeDark} dark:bg-teal-900/50 dark:text-teal-200`,
-    'PEDIDO_CONFIRMADO': `bg-cyan-100 text-cyan-800 ${badgeDark} dark:bg-cyan-900/50 dark:text-cyan-200`,
+    'REDISTRIBUIDO': `bg-teal-100 text-teal-800 ${badgeDark} dark:bg-teal-900/50 dark:text-teal-200`,
+    'PEDIDO_CONFIRMADO': `bg-teal-200 text-teal-900 ${badgeDark} dark:bg-teal-900/60 dark:text-teal-100`,
+    'PENDIENTE_LOGISTICA': `bg-lime-100 text-lime-800 ${badgeDark} dark:bg-lime-900/50 dark:text-lime-200`,
+    'ERROR_DATOS_MAESTROS': `bg-vermilion-100 text-vermilion-800 ${badgeDark} dark:bg-vermilion-900/50 dark:text-vermilion-200`,
     'PROCESADO_SAP': `bg-indigo-100 text-indigo-800 ${badgeDark} dark:bg-indigo-900/50 dark:text-indigo-200`,
     'CONFIRMADO_ENVIADO': `bg-emerald-100 text-emerald-800 ${badgeDark} dark:bg-emerald-900/50 dark:text-emerald-200`,
     'CONFIRMADO Y ENVIADO': `bg-emerald-100 text-emerald-800 ${badgeDark} dark:bg-emerald-900/50 dark:text-emerald-200`,
     'CONFIRMADO_Y_ENVIADO': `bg-emerald-100 text-emerald-800 ${badgeDark} dark:bg-emerald-900/50 dark:text-emerald-200`,
     'Confirmado y Enviado': `bg-emerald-100 text-emerald-800 ${badgeDark} dark:bg-emerald-900/50 dark:text-emerald-200`,
     'ENVIADA': `bg-emerald-100 text-emerald-800 ${badgeDark} dark:bg-emerald-900/50 dark:text-emerald-200`,
-    'DESPACHAR Y FACTURAR': `bg-orange-100 text-orange-800 ${badgeDark} dark:bg-orange-900/50 dark:text-orange-200`,
-    'DESPACHAR_Y_FACTURAR': `bg-orange-100 text-orange-800 ${badgeDark} dark:bg-orange-900/50 dark:text-orange-200`,
-    'FINALIZADO': `bg-lime-100 text-lime-800 ${badgeDark} dark:bg-lime-900/50 dark:text-lime-200`,
+    'DESPACHAR Y FACTURAR': `bg-purple-200 text-purple-900 ${badgeDark} dark:bg-purple-900/60 dark:text-purple-100`,
+    'DESPACHAR_Y_FACTURAR': `bg-purple-200 text-purple-900 ${badgeDark} dark:bg-purple-900/60 dark:text-purple-100`,
+    'FINALIZADO': `bg-green-300 text-green-900 ${badgeDark} dark:bg-green-900/70 dark:text-green-100`,
     'ORDEN_COMPRA_CREADA': `bg-fuchsia-100 text-fuchsia-800 ${badgeDark} dark:bg-fuchsia-900/50 dark:text-fuchsia-200`,
     'ENVIADA_SAP': `bg-purple-100 text-purple-800 ${badgeDark} dark:bg-purple-900/50 dark:text-purple-200`,
     'CERRADO': `bg-stone-100 text-stone-700 ${badgeDark} dark:bg-stone-600 dark:text-stone-200`,
     'CANCELADO': `bg-rose-100 text-rose-800 ${badgeDark} dark:bg-rose-900/50 dark:text-rose-200`,
-    'CANCELADO POR EL RAYO': `bg-rose-100 text-rose-800 ${badgeDark} dark:bg-rose-900/50 dark:text-rose-200`,
-    'CANCELADO_POR_EL_RAYO': `bg-rose-100 text-rose-800 ${badgeDark} dark:bg-rose-900/50 dark:text-rose-200`,
-    'CONFIRMADO POR EL RAYO': `bg-pink-100 text-pink-800 ${badgeDark} dark:bg-pink-900/50 dark:text-pink-200`,
-    'CONFIRMADO_POR_EL_RAYO': `bg-pink-100 text-pink-800 ${badgeDark} dark:bg-pink-900/50 dark:text-pink-200`,
-    'ERROR ENVIO SAP REINTENTO': `bg-amber-100 text-amber-900 ${badgeDark} dark:bg-amber-900/40 dark:text-amber-100`,
-    'ERROR_ENVIO_SAP_REINTENTO': `bg-amber-100 text-amber-900 ${badgeDark} dark:bg-amber-900/40 dark:text-amber-100`
+    'CANCELADO POR EL RAYO': `bg-red-200 text-red-900 ${badgeDark} dark:bg-red-900/70 dark:text-red-100`,
+    'CANCELADO_POR_EL_RAYO': `bg-red-200 text-red-900 ${badgeDark} dark:bg-red-900/70 dark:text-red-100`,
+    'CONFIRMADO POR EL RAYO': `bg-purple-100 text-purple-800 ${badgeDark} dark:bg-purple-900/50 dark:text-purple-200`,
+    'CONFIRMADO_POR_EL_RAYO': `bg-purple-100 text-purple-800 ${badgeDark} dark:bg-purple-900/50 dark:text-purple-200`,
+    'CONFIRMADO POR PRODUCCION': `bg-amber-300 text-amber-900 ${badgeDark} dark:bg-amber-900/70 dark:text-amber-100`,
+    'CONFIRMADO_POR_PRODUCCION': `bg-amber-300 text-amber-900 ${badgeDark} dark:bg-amber-900/70 dark:text-amber-100`,
+    'ERROR ENVIO SAP REINTENTO': `bg-vermilion-100 text-vermilion-800 ${badgeDark} dark:bg-vermilion-900/50 dark:text-vermilion-200`,
+    'ERROR_ENVIO_SAP_REINTENTO': `bg-vermilion-100 text-vermilion-800 ${badgeDark} dark:bg-vermilion-900/50 dark:text-vermilion-200`,
+    'PRODUCCION POSPUESTA': `bg-purple-200 text-purple-900 ${badgeDark} dark:bg-purple-900/60 dark:text-purple-100`,
+    'PRODUCCION_POSPUESTA': `bg-purple-200 text-purple-900 ${badgeDark} dark:bg-purple-900/60 dark:text-purple-100`,
+    'RECHAZADO': `bg-red-100 text-red-800 ${badgeDark} dark:bg-red-900/50 dark:text-red-200`,
+    // Excepción deliberada: no es un estado producido por odcsap.view, pero en el
+    // listado de pedidos para redistribución conviven con 'CONFIRMADO_POR_EL_RAYO'
+    // (también púrpura). Compartir la familia de color deja ambos a simple vista
+    // como los pedidos listos para avanzar, para que el usuario sepa con confianza
+    // cuáles puede seleccionar y enviar a SAP.
+    'LISTO PARA REDISTRIBUCION': `bg-purple-200 text-purple-900 ${badgeDark} dark:bg-purple-900/60 dark:text-purple-100`,
+    'LISTO_PARA_REDISTRIBUCION': `bg-purple-200 text-purple-900 ${badgeDark} dark:bg-purple-900/60 dark:text-purple-100`
   }
   return classes[estado] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
 }
@@ -105,4 +135,13 @@ export function getPorcentajeDiferenciaClass(porcentaje: number): string {
   if (porcentaje < 0) return 'text-orange-600'
   if (porcentaje > 0) return 'text-green-600'
   return 'text-gray-900'
+}
+
+/**
+ * Determina si un nombre de proveedor corresponde a El Rayo
+ */
+export function esProveedorElRayo(proveedorNombre: string | null | undefined): boolean {
+  if (!proveedorNombre) return false
+  const nombreUpper = proveedorNombre.toUpperCase()
+  return nombreUpper.includes('EL RAYO') || nombreUpper.includes('RAYO')
 }

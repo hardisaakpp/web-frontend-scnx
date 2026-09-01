@@ -2,6 +2,10 @@
 export const SAP_MAY_STILL_PROCESSING_MESSAGE =
   'La operación tardó más de lo esperado en el navegador. El servidor puede seguir procesando: revisa el estado de la ODC en unos minutos o actualiza la lista.'
 
+/** Aviso cuando el POST inicial tarda y podría tratarse de un fallback síncrono sin progreso incremental. */
+export const SAP_SLOW_SYNC_LIKELY_MESSAGE =
+  'El proceso puede tardar varios minutos. Se está ejecutando en el servidor; no hay actualizaciones de progreso en tiempo real en este modo.'
+
 export function isHttpTimeoutError(error: unknown): boolean {
   if (!error || typeof error !== 'object') return false
   const e = error as { code?: string; message?: string }
@@ -25,4 +29,19 @@ export function isNetworkError(error: unknown): boolean {
 /** Timeout o pérdida de conexión: el job en servidor puede haber terminado igual. */
 export function isTransientClientError(error: unknown): boolean {
   return isHttpTimeoutError(error) || isNetworkError(error)
+}
+
+/**
+ * Extrae status/errorCode/mensaje de un error HTTP cuyo `detail` puede venir como string u
+ * objeto `{ message }` (variante usada por los endpoints de transición de estado del pedido:
+ * marcarDespacharYFacturar, marcarFinalizado).
+ */
+export function extraerMensajeErrorAnidado(e: any): { status: number | undefined; errorCode: string | undefined; msg: string | undefined } {
+  const status = e.response?.status
+  const data = e.response?.data
+  const errorCode = data?.error
+  const detail = data?.detail
+  const detailString = typeof detail === 'string' ? detail : null
+  const msg = (typeof detail === 'object' && detail?.message) ? detail.message : detailString ?? data?.message ?? e.message
+  return { status, errorCode, msg }
 }

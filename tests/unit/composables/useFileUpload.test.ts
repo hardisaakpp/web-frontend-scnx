@@ -7,7 +7,7 @@ import {
   mapServerProcessingProgress,
 } from '@/modules/mba3-consultas/composables/useFileUpload'
 import { useToast } from '@/composables/useToast'
-import { mba3ConsultasService } from '@/modules/mba3-consultas/services/mba3ConsultasApi'
+import { pedidosService } from '@/modules/mba3-consultas/services/domains/pedidos'
 
 // Mocks
 vi.mock('@/composables/useToast')
@@ -18,8 +18,8 @@ vi.mock('vue-router', async (importOriginal) => {
     useRouter: vi.fn()
   }
 })
-vi.mock('@/modules/mba3-consultas/services/mba3ConsultasApi', () => ({
-  mba3ConsultasService: {
+vi.mock('@/modules/mba3-consultas/services/domains/pedidos', () => ({
+  pedidosService: {
     uploadPlantilla: vi.fn(),
     uploadPlantillaAsync: vi.fn(),
     getResultadoPlantilla: vi.fn(),
@@ -138,7 +138,7 @@ describe('useFileUpload', () => {
       const { uploadFile, uploading } = useFileUpload()
       const file = new File(['content'], 'test.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
 
-      vi.mocked(mba3ConsultasService.uploadPlantilla).mockResolvedValue({
+      vi.mocked(pedidosService.uploadPlantilla).mockResolvedValue({
         success: true,
         numero_pedido: 'P-12.48 - 01 - 2026'
       } as any)
@@ -153,14 +153,14 @@ describe('useFileUpload', () => {
       const { uploadFile } = useFileUpload()
       const file = new File(['content'], 'test.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
 
-      vi.mocked(mba3ConsultasService.uploadPlantilla).mockResolvedValue({
+      vi.mocked(pedidosService.uploadPlantilla).mockResolvedValue({
         success: true,
         numero_pedido: 'P-12.48 - 01 - 2026'
       } as any)
 
       await uploadFile(file)
 
-      expect(mba3ConsultasService.uploadPlantilla).toHaveBeenCalledWith(file)
+      expect(pedidosService.uploadPlantilla).toHaveBeenCalledWith(file)
     })
 
     it('should call uploadPlantilla service with success', async () => {
@@ -170,7 +170,7 @@ describe('useFileUpload', () => {
       })
       const file = new File(['content'], 'test.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
 
-      vi.mocked(mba3ConsultasService.uploadPlantilla).mockResolvedValue({
+      vi.mocked(pedidosService.uploadPlantilla).mockResolvedValue({
         success: true,
         numero_pedido: 'P-12.48 - 01 - 2026'
       } as any)
@@ -185,7 +185,7 @@ describe('useFileUpload', () => {
       const file = new File(['content'], 'test.xlsx', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
 
       const error = new Error('Upload failed')
-      vi.mocked(mba3ConsultasService.uploadPlantilla).mockRejectedValue(error)
+      vi.mocked(pedidosService.uploadPlantilla).mockRejectedValue(error)
 
       try {
         await uploadFile(file)

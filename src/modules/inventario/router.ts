@@ -48,6 +48,16 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/inventario/planes/historial',
+    name: 'inventario-planes-historial',
+    component: () => import('./views/HistorialPlanesView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Historial de Planes',
+      permissions: INVENTARIO_PLANIFICAR
+    }
+  },
+  {
     path: '/inventario/planificaciones',
     name: 'inventario-planificaciones',
     component: () => import('./views/PlanningWorkbenchView.vue'),
@@ -78,13 +88,13 @@ const routes: RouteRecordRaw[] = [
     }
   },
   {
-    path: '/inventario/sesiones/:sessionId',
-    name: 'inventario-sesion-detalle',
-    component: () => import('./views/SessionCenterView.vue'),
+    path: '/inventario/consultar-stock',
+    name: 'inventario-consultar-stock',
+    component: () => import('./views/ConsultarStockView.vue'),
     meta: {
       requiresAuth: true,
-      title: 'Toma Física - Detalle',
-      permissions: INVENTARIO_ESTADO_SESION
+      title: 'Consultar Stock',
+      permissions: INVENTARIO_PLANIFICAR
     }
   },
   {
@@ -104,6 +114,17 @@ const routes: RouteRecordRaw[] = [
       // Autoservicio: solo devuelve datos del propio usuario autenticado, sin permiso adicional.
       requiresAuth: true,
       title: 'Historial de Conteos'
+    }
+  },
+  {
+    path: '/inventario/mis-inventarios/ajuste/:sessionId',
+    name: 'inventario-ajuste-final-tienda',
+    component: () => import('./views/AjusteFinalTiendaView.vue'),
+    meta: {
+      // Autoservicio: el backend valida acceso por bodega (CanAccessWarehouse) y que el ajuste
+      // ya esté Approved/SentToSap — sin permiso RBAC adicional aquí.
+      requiresAuth: true,
+      title: 'Ajuste Final'
     }
   },
   {

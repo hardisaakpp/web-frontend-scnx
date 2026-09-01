@@ -144,7 +144,7 @@
                   {{ formatFileSize(resolveFileSizeBytes(archivo)) }}
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                  {{ formatDate(archivo.fecha_subida) }}
+                  {{ formatDateTime(archivo.fecha_subida) }}
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                   {{ formatDownloads(archivo.descargas_count) }}
@@ -263,6 +263,7 @@
 import { ref, watch, computed } from '@vue/reactivity'
 import { pedidosService } from '../services/domains/pedidos'
 import { useToast } from '@/composables/useToast'
+import { formatDateTime } from '../utils/formatters'
 import type { ArchivoOriginalItem } from '../types'
 
 const props = defineProps<{
@@ -418,19 +419,6 @@ function resolveFileSizeBytes(archivo: ArchivoOriginalItem): number {
     if (Number.isFinite(asNumber)) return asNumber
   }
   return NaN
-}
-
-function formatDate(dateStr: string): string {
-  if (!dateStr) return '-'
-  const date = new Date(dateStr)
-  if (Number.isNaN(date.getTime())) return '-'
-  return date.toLocaleDateString('es-ES', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
 }
 
 function formatDownloads(value: unknown): string {

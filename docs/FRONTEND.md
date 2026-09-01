@@ -411,7 +411,16 @@ Para inputs con limpieza rápida (`X`), usar el patrón ya implementado en `mba3
 - Colores y estados de interacción consistentes (`text-gray-400` + `hover:text-gray-600` y variantes dark).
 - Comportamiento uniforme: mostrar `X` solo si hay contenido y limpiar con un clic.
 
-### 4.4 Criterio de aceptación
+### 4.4 Campos de fecha: usar siempre `AppDateInput`, nunca `<input type="date">` nativo
+
+Toda la aplicación muestra fechas en formato **DD/MM/AAAA**. El input nativo `<input type="date">` **no sirve para esto**: el navegador decide el orden día/mes/año (y el idioma del mini-calendario) según el idioma/región configurados en el propio navegador del usuario, no según el `lang` de la página ni ningún atributo del input -- por eso el mismo formulario puede mostrarse como `dd/mm/aaaa` en un navegador y `mm/dd/aaaa` en otro, de forma inconsistente con el resto de la UI.
+
+- Usar siempre `AppDateInput.vue` (`src/modules/mba3-consultas/components/AppDateInput.vue`) para cualquier campo de fecha nuevo, en cualquier módulo. Ejemplo de uso real: `PedidoCabecera.vue` (Fecha de Pedido, Fecha de Entrega, Fecha Facturación).
+- Contrato: `v-model` recibe y emite siempre `'YYYY-MM-DD'` (string vacío si no hay fecha) -- el mismo formato que ya usa `<input type="date">`, así que es un reemplazo directo sin tocar el resto del código que consume ese valor.
+- Props: `modelValue: string | null | undefined`, `disabled?: boolean`. No expone `id` (si se necesita asociar un `<label for>`, usar el patrón ya existente de dejar el label sin `for` justo encima del componente, ver `PedidoCabecera.vue`).
+- Si se encuentra un `<input type="date">` nativo en el código (nuevo o existente), es un bug de formato pendiente de corregir a `AppDateInput`, no una variante válida.
+
+### 4.5 Criterio de aceptación
 
 Una implementación UI se considera completa cuando:
 

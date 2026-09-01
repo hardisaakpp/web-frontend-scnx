@@ -207,6 +207,7 @@
 <script setup lang="ts">
 import { ref, computed } from '@vue/reactivity'
 import type { Transaccion, EstadoTransaccion } from '../types'
+import { APP_LOCALE, NUMBER_LOCALE } from '@/plugins/locale'
 
 defineProps<{ transacciones: Transaccion[]; loading: boolean; reservando: boolean }>()
 
@@ -248,12 +249,12 @@ function limpiarFiltros() {
 }
 
 function formatMonto(valor: number): string {
-  return new Intl.NumberFormat('es-PA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(valor)
+  return new Intl.NumberFormat(NUMBER_LOCALE, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(valor)
 }
 
 function formatFecha(iso: string): string {
   if (!iso) return '—'
-  return new Date(iso).toLocaleString('es-PA', { dateStyle: 'short', timeStyle: 'short' })
+  return new Date(iso).toLocaleString(APP_LOCALE, { dateStyle: 'short', timeStyle: 'short' })
 }
 
 function clasePorEstado(estado: EstadoTransaccion): string {

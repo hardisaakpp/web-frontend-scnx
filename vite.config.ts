@@ -55,13 +55,20 @@ export default defineConfig(async ({ mode }): Promise<UserConfig> => {
   const invPlanesProxyTarget = upstreamUrl(env, 'INV_PLANES') || upstreamUrl(env, 'INVENTARIO')
   const promocionSobresProxyTarget = upstreamUrl(env, 'PROMOCION_SOBRES')
   const slayerProxyTarget = upstreamUrl(env, 'SLAYER')
+  // mIAApi (asistente SCNEXUS AI): sin fallback a defaults genéricos — servicio propio
+  const miaProxyTarget = env.UPSTREAM_MIA || 'http://172.30.152.246:8896'
   const reposicionProxyTarget = upstreamUrl(env, 'REPOSICION')
+  const transferenciasDirectasProxyTarget = upstreamUrl(env, 'TRANSFERENCIAS_DIRECTAS')
+
   console.log(`\x1b[35m[proxy]\x1b[0m Reposiciones → ${reposicionProxyTarget}`)
+  const recepcionProxyTarget = upstreamUrl(env, 'RECEPCION')
+  console.log(`\x1b[35m[proxy]\x1b[0m Recepción Mercadería → ${recepcionProxyTarget}`)
 
   const demandaOtbProxyTarget = upstreamUrl(env, 'DEMANDA_OTB')
   console.log(`\x1b[35m[proxy]\x1b[0m Demanda OTB → ${demandaOtbProxyTarget}`)
 
   const ruletaProxyTarget = upstreamUrl(env, 'RULETA')
+  const cediProxyTarget = upstreamUrl(env, 'CEDI')
   const pygProxyPrefix =
     'UPSTREAM_PYG_PREFIX' in env
       ? env.UPSTREAM_PYG_PREFIX
@@ -177,6 +184,20 @@ export default defineConfig(async ({ mode }): Promise<UserConfig> => {
           secure: false,
           rewrite: (path) => path.replace(/^\/api\/reposicion-api/, '/api')
         },
+        '/api/transferencias-directas-api': {
+          target: transferenciasDirectasProxyTarget,
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/api\/transferencias-directas-api/, '/api')
+        },
+
+
+        '/api/recepcion-api': {
+          target: recepcionProxyTarget,
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/api\/recepcion-api/, '/api')
+        },
 
         '/api/demanda-otb-api': {
           target: demandaOtbProxyTarget,
@@ -281,6 +302,18 @@ export default defineConfig(async ({ mode }): Promise<UserConfig> => {
 
         },
 
+        '/mia-api': {
+
+          target: miaProxyTarget,
+
+          changeOrigin: true,
+
+          secure: false,
+
+          rewrite: (path: string) => path.replace(/^\/mia-api/, '')
+
+        },
+
         '/scan-api': {
 
           target: articuloScanProxyTarget,
@@ -350,6 +383,20 @@ export default defineConfig(async ({ mode }): Promise<UserConfig> => {
           secure: false,
 
           rewrite: (path) => path.replace(/^\/ruleta-api/, '')
+
+        },
+
+        '/cedi-api': {
+
+          target: cediProxyTarget,
+
+          changeOrigin: true,
+
+          secure: false,
+
+          // El backend de CEDI (SCNexus.Cedi.API) usa el mismo patrón de rutas
+          // "api/[controller]" que el Core, por eso se reescribe a /api (igual que caja-chica).
+          rewrite: (path: string) => path.replace(/^\/cedi-api/, '/api')
 
         }
 

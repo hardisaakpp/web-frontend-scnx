@@ -110,6 +110,7 @@ import { Dialog, DialogPanel, DialogTitle, TransitionRoot, TransitionChild } fro
 import { XMarkIcon } from '@heroicons/vue/24/outline'
 import { inventarioSesionesService } from '../services/inventarioSesionesApi'
 import type { InventorySessionListItemDto, InventorySessionPickerDto } from '../types'
+import { APP_LOCALE } from '@/plugins/locale'
 
 const props = defineProps<{
   isOpen: boolean
@@ -175,8 +176,8 @@ async function quitarPicker(userId: string) {
 }
 
 function formatDate(value: string) {
-  return new Date(value).toLocaleDateString('es', { day: '2-digit', month: '2-digit', year: '2-digit' })
-    + ' ' + new Date(value).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' })
+  return new Date(value).toLocaleDateString(APP_LOCALE, { day: '2-digit', month: '2-digit', year: '2-digit' })
+    + ' ' + new Date(value).toLocaleTimeString(APP_LOCALE, { hour: '2-digit', minute: '2-digit' })
 }
 
 function cerrar() {

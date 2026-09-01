@@ -112,6 +112,7 @@ export interface AdjustmentSummaryDto {
   sapDocumentNumber?: string | null
   valuationMode: AdjustmentValuationMode
   totalValorizedAmount: number
+  notes?: string | null
 }
 
 export interface AdjustmentLineDto {
@@ -243,9 +244,20 @@ export const scnexusInventoryApi = {
     return normalizeObject<AdjustmentDetailDto>(data)
   },
 
+  /** Vista final para tienda: solo responde si el ajuste ya está Approved/SentToSap. */
+  async getAdjustmentBySession(sessionId: string): Promise<AdjustmentDetailDto> {
+    const { data } = await api.get(`/api/inventory-adjustments/by-session/${sessionId}`)
+    return normalizeObject<AdjustmentDetailDto>(data)
+  },
+
   async createAdjustment(sessionId: string, notes?: string): Promise<AdjustmentDetailDto> {
     const { data } = await api.post('/api/inventory-adjustments', { sessionId, notes: notes || null })
     return normalizeObject<AdjustmentDetailDto>(data)
+  },
+
+  /** Marca una sesión cerrada como "no necesita ajuste" — sin cobro, solo resuelve la revisión. */
+  async discardAdjustment(sessionId: string): Promise<void> {
+    await api.post(`/api/inventory-adjustments/discard/${sessionId}`)
   },
 
   async updateAdjustmentLine(adjustmentId: string, lineId: string, payload: { adjustedDifference?: number | null; equivalenceGroupId?: string | null; auditorNotes?: string | null }): Promise<AdjustmentLineDto> {

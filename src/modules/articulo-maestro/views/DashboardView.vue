@@ -50,8 +50,8 @@ const authStore = useAuthStore()
                         </svg>
                     </div>
                     <div class="flex-1 min-w-0">
-                        <div class="font-medium text-gray-900 dark:text-white text-sm">Migración a SAP</div>
-                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Sincronización de artículos locales a SAP</div>
+                        <div class="font-medium text-gray-900 dark:text-white text-sm">Monitoreo SAP</div>
+                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Auditoría de la sincronización automática y reintento de errores</div>
                     </div>
                 </div>
             </router-link>

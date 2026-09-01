@@ -151,6 +151,7 @@ import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import { useFileUpload } from '../composables/useFileUpload'
+import type { CorreccionesPlantilla } from '../composables/useFileUpload'
 import type { UploadPlantillaResponse } from '../types'
 import UploadErrorModal from '../components/UploadErrorModal.vue'
 
@@ -250,12 +251,12 @@ function obtenerHistorial(): string[] {
 const historialPedidos = computed(() => obtenerHistorial())
 
 /**
- * Aplica las correcciones seleccionadas y reintenta el flujo de carga
+ * Aplica las correcciones seleccionadas (código y/o pack/pvp) y reintenta el flujo de carga
  * ⭐ ACTUALIZADO: Recibe correcciones del componente UploadErrorModal
  */
-async function aplicarCorreccionesYContinuar(correcciones: Record<string, string>): Promise<void> {
+async function aplicarCorreccionesYContinuar(correcciones: CorreccionesPlantilla): Promise<void> {
   const archivo = archivoOriginalDelComposable.value
-  
+
   if (!archivo) {
     toast.error(
       'Error',
@@ -263,10 +264,10 @@ async function aplicarCorreccionesYContinuar(correcciones: Record<string, string
     )
     return
   }
-  
+
   try {
     showErrorModal.value = false
-    
+
     await reintentarConCorrecciones(
       archivo,
       correcciones

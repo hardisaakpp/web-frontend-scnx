@@ -29,9 +29,12 @@ export const LOCAL_UPSTREAM_DEFAULTS = {
   UPSTREAM_SLAYER: 'http://127.0.0.1:8093',
   UPSTREAM_EMPLOYEES: 'http://127.0.0.1:8092',
   UPSTREAM_REPOSICION: 'http://127.0.0.1:8006',
+  UPSTREAM_RECEPCION: 'http://127.0.0.1:8007',
   UPSTREAM_DEMANDA_OTB: 'http://127.0.0.1:8008',
   UPSTREAM_RULETA: 'http://localhost:5062',
   UPSTREAM_TRANSACCIONES: 'http://127.0.0.1:8080',
+  UPSTREAM_CEDI: 'http://localhost:5065',
+  UPSTREAM_TRANSFERENCIAS_DIRECTAS: 'http://localhost:5046',
 }
 
 /** Nombres legacy (vite / docker antiguos) → UPSTREAM_* */
@@ -180,6 +183,8 @@ export const DOCKER_UPSTREAM_DEFAULTS = {
   UPSTREAM_PROMOCION_SOBRES: 'http://host.docker.internal:8083',
   UPSTREAM_SLAYER: 'http://host.docker.internal:8093',
   UPSTREAM_EMPLOYEES: 'http://192.168.2.153:8092',
+  UPSTREAM_REPOSICION: 'http://host.docker.internal:8006',
+  UPSTREAM_RECEPCION: 'http://host.docker.internal:8007',
   UPSTREAM_TRANSACCIONES: 'http://host.docker.internal:8080',
 }
 
@@ -216,6 +221,7 @@ export function dockerBuildArgsFromEnv(env) {
     SLAYER_UPSTREAM: upstreamUrl(env, 'SLAYER'),
     EMPLOYEES_UPSTREAM: upstreamUrl(env, 'EMPLOYEES'),
     REPOSICION_UPSTREAM: upstreamUrl(env, 'REPOSICION'),
+    RECEPCION_UPSTREAM: upstreamUrl(env, 'RECEPCION'),
     TRANSACCIONES_UPSTREAM: upstreamUrl(env, 'TRANSACCIONES'),
     VITE_APP_BASE_PATH: env.VITE_APP_BASE_PATH || '/',
     CORE_PROXY_HOST: env.CORE_PROXY_HOST || 'host.docker.internal:5053',

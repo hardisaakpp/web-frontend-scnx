@@ -12,6 +12,8 @@ import { followAsyncJobSseOrPoll } from '../utils/followAsyncJobSseOrPoll'
 const POLL_MS = 2000
 const MAX_POLL_WAIT_MS = 10 * 60 * 1000 // 10 min
 const WORKER_PICKUP_TIMEOUT_MS = 60_000
+// Aviso si el POST inicial no resuelve rápido (posible fallback síncrono sin process_id/progreso incremental).
+const SLOW_SYNC_WARNING_MS = 7_000
 
 export type EjecutarProcesoCompletoSapOptions = {
   /**
@@ -23,6 +25,12 @@ export type EjecutarProcesoCompletoSapOptions = {
   onPollingUpdate?: (u: { message?: string; progress?: number }) => void
   /** Se reanuda un job guardado en sessionStorage (timeout cliente previo). */
   onResumePending?: () => void
+  /**
+   * Se dispara una única vez si, tras SLOW_SYNC_WARNING_MS desde el POST inicial, la
+   * respuesta aún no ha llegado (posible fallback síncrono sin process_id/progreso
+   * incremental). Se cancela automáticamente en cuanto el POST resuelve (accepted o error).
+   */
+  onSlowSyncLikely?: () => void
 }
 
 function isSyncImmediateResponse(accepted: unknown): boolean {
@@ -30,12 +38,43 @@ function isSyncImmediateResponse(accepted: unknown): boolean {
   return a.fallback === 'sync' || a.async === false || a.process_id == null
 }
 
-function isProcesoSapTerminalSuccess(data: Record<string, unknown>): boolean {
-  return (
-    data.status === 'success' ||
-    data.status === 'partial' ||
-    data.status === 'completed'
-  )
+/**
+ * True si algún envío de ODC del resultado todavía tiene Solicitudes de
+ * Transferencia sin confirmar (ver StockTransferService._enviar_itrs_a_sap,
+ * estado 'pendiente_confirmacion' -- SAP no confirmó ni rechazó a tiempo, así
+ * que el backend puede corregir el resultado más tarde vía reconciliación).
+ *
+ * Acepta las 2 formas en que puede llegar el mismo resultado: el payload SSE
+ * lo anida bajo `resultado` (ver _construir_payload_stream), mientras que
+ * GET /proceso-sap/resultado lo devuelve aplanado en la raíz (ver
+ * _procesar_estado_completado) -- mismo `isProcessing` para ambos casos.
+ */
+export function tieneSolicitudesTransferenciaSinConfirmar(data: Record<string, unknown>): boolean {
+  const resultado = (data.resultado as Record<string, unknown> | undefined) ?? data
+  const envioUnico = resultado.envio_sap as Record<string, unknown> | undefined
+  const envios =
+    (resultado.envios_sap as Array<Record<string, unknown>> | undefined) ??
+    (envioUnico ? [envioUnico] : [])
+  return envios.some((envio) => {
+    const st = envio?.solicitudes_transferencia as Record<string, unknown> | undefined
+    const pendientes = st?.transferencias_pendientes_confirmacion
+    return typeof pendientes === 'number' && pendientes > 0
+  })
+}
+
+export function isProcesoSapTerminalSuccess(data: Record<string, unknown>): boolean {
+  // No condicionar esto a que las Solicitudes de Transferencia (ITR) ya estén
+  // confirmadas: la ODC/ITR ya se enviaron a SAP en este punto, y una ITR que
+  // SAP todavía no confirma ni rechaza (`transferencias_pendientes_confirmacion`)
+  // se resuelve sola con la reconciliación automática diaria (ver
+  // StockTransferService._corregir_snapshot_proceso_original), no necesita que
+  // este navegador siga esperando. Antes se seguía haciendo polling/SSE (hasta
+  // ~10-20 min, o más si el usuario suspendía el equipo o dejaba la pestaña en
+  // segundo plano) con el modal bloqueante "Enviando ODC a SAP" congelado en
+  // 100% -- aunque el envío ya hubiera terminado con éxito. El detalle de ITR
+  // pendiente sigue visible igual en el resultado final (ver
+  // tieneSolicitudesTransferenciaSinConfirmar / IntegracionSAPModal).
+  return data.status === 'success' || data.status === 'partial' || data.status === 'completed'
 }
 
 async function pollProcesoSapResultado(
@@ -129,13 +168,15 @@ export async function ejecutarProcesoCompletoSap(
   ajustesDetalle: AjusteDetalle[],
   options: EjecutarProcesoCompletoSapOptions = {}
 ): Promise<ProcesoCompletoSAPResponse> {
-  const { onFallbackSync, onPollingUpdate, onResumePending } = options
+  const { onFallbackSync, onPollingUpdate, onResumePending, onSlowSyncLikely } = options
 
   const pending = await getPendingOdcSapProcessingState(numeroPedido)
   if (pending.processing && pending.processId) {
     onResumePending?.()
     return pollProcesoSapResultado(pending.processId, numeroPedido, onPollingUpdate, null)
   }
+
+  const slowSyncTimer = onSlowSyncLikely ? setTimeout(onSlowSyncLikely, SLOW_SYNC_WARNING_MS) : null
 
   try {
     const accepted = await mba3ConsultasService.procesoCompletoSAPAsync(numeroPedido, ajustesDetalle)
@@ -177,6 +218,8 @@ export async function ejecutarProcesoCompletoSap(
     }
 
     throw asyncErr
+  } finally {
+    if (slowSyncTimer) clearTimeout(slowSyncTimer)
   }
 }
 

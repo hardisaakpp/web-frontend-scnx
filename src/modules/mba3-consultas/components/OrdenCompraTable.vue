@@ -9,60 +9,17 @@
         </div>
       </div>
       
-      <!-- Acciones (Columnas) -->
-      <div class="mt-4 flex flex-col md:flex-row gap-3">
-        <div class="flex items-center gap-2">
-          <button
-            @click="showColumnSelector = !showColumnSelector"
-            class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium flex items-center gap-2 relative bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            Columnas
-            <span v-if="visibleColumnsCount < availableColumns.length" class="ml-1 px-1.5 py-0.5 text-xs bg-emerald-100 text-emerald-700 rounded-full">
-              {{ visibleColumnsCount }}
-            </span>
-          </button>
-        </div>
-      </div>
-      
       <!-- Selector de Columnas -->
-      <div v-if="showColumnSelector" class="mt-4 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600 transition-colors duration-300">
-        <div class="flex items-center justify-between mb-3">
-          <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 transition-colors duration-300">Seleccionar Columnas</h3>
-          <div class="flex items-center gap-2">
-            <button
-              @click="selectAllColumns"
-              class="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
-            >
-              Mostrar todas
-            </button>
-            <span class="text-gray-300">|</span>
-            <button
-              @click="resetColumns"
-              class="text-xs text-gray-600 hover:text-gray-700 font-medium"
-            >
-              Restaurar predeterminadas
-            </button>
-          </div>
-        </div>
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-          <label
-            v-for="column in availableColumns"
-            :key="column.key"
-            class="flex items-center gap-2 p-2 rounded-lg hover:bg-white dark:hover:bg-gray-600 transition-colors cursor-pointer"
-          >
-            <input
-              type="checkbox"
-              v-model="visibleColumns"
-              :value="column.key"
-              class="w-4 h-4 text-emerald-600 border-gray-300 dark:border-gray-600 rounded focus:ring-emerald-500"
-            />
-            <span class="text-sm text-gray-700 dark:text-gray-200 transition-colors duration-300">{{ column.label }}</span>
-          </label>
-        </div>
+      <div class="mt-4">
+        <ColumnSelectorPanel
+          :columns="columnsWithVisibility"
+          :is-open="columnVisibility.isOpen.value"
+          :selector-id="columnVisibility.selectorId"
+          @toggle-open="columnVisibility.toggleOpen"
+          @toggle-column="columnVisibility.toggleColumnVisibility"
+          @select-all="() => selectAllTableColumns(availableColumns.map(c => c.key))"
+          @reset="resetTablePreferences"
+        />
       </div>
     </div>
 
@@ -276,8 +233,16 @@
             </template>
             <td v-if="!props.readOnly" class="px-6 py-4 whitespace-nowrap text-sm">
               <div class="flex items-center gap-2 flex-wrap">
+                <span
+                  v-if="oc.estado === 'ENVIANDO'"
+                  class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-800 dark:text-blue-200 bg-blue-50 dark:bg-blue-900/30 rounded-lg"
+                  title="Envío a SAP en curso"
+                >
+                  <LoadingSpinner layout="inline" size="sm" color="current" aria-label="Enviando a SAP" />
+                  Enviando...
+                </span>
                 <button
-                  v-if="shouldShowRetryAction(oc)"
+                  v-else-if="shouldShowRetryAction(oc)"
                   @click="handleIntegrar(oc.referencia_despacho, oc.oc_id)"
                   class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-900/30 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   :disabled="sendingOcId === oc.oc_id || props.loading"
@@ -405,10 +370,14 @@ import { useRouter } from 'vue-router'
 import type { OrdenCompra, DetalleOC } from '../types'
 import { useToast } from '@/composables/useToast'
 import { useTablePreferences } from '@/composables/useTablePreferences'
+import { useColumnVisibilityToggle } from '../composables/useColumnVisibilityToggle'
+import type { ColumnVisibilityOption } from '../composables/useColumnVisibilityToggle'
+import { useColumnDragAndDrop } from '../composables/useColumnDragAndDrop'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
 import { isTransientClientError } from '../utils/httpErrors'
-import { formatNumber, formatCurrencyWithDecimals } from '../utils/formatters'
+import { formatNumber, formatCurrencyWithDecimals, formatDate, formatDateTime } from '../utils/formatters'
 import LoadingSpinner from './LoadingSpinner.vue'
+import ColumnSelectorPanel from './ColumnSelectorPanel.vue'
 
 const props = defineProps<{
   ordenesCompra: OrdenCompra[]
@@ -423,7 +392,9 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  integrar: [referenciaDespacho: string, almacenDestino?: string]
+  // ocId identifica sin ambigüedad la ODC a reintentar (un pedido mixto ROLAND/REGIONS
+  // genera 2 ODC que comparten la misma referenciaDespacho -- ver mba3ConsultasApi.integrarSAP).
+  integrar: [ocId: string, referenciaDespacho: string, almacenDestino?: string]
   integrarMultiples: [referenciasDespacho: string[]]
   eliminar: [ocIds: string[]]
   'filtered-count-changed': [count: number]
@@ -470,7 +441,6 @@ const loadingDetalles = ref<Record<string, boolean>>({})
 const filtroFechaDesde = ref('')
 const filtroFechaHasta = ref('')
 const filtroNumeroOC = ref('')
-const showColumnSelector = ref(false)
 
 // Columnas disponibles. Por defecto: #, DETALLES, NÚMERO PEDIDO, FECHA CREACIÓN, ESTADO, NÚMERO ODC SAP, RESPUESTA SAP, ACCIONES
 const availableColumns = [
@@ -504,6 +474,18 @@ const {
   enablePageSize: false
 })
 
+// Selector de columnas (composable compartido). enforceMinVisible: false preserva el
+// comportamiento actual de esta tabla, que no valida un mínimo de columnas visibles.
+const columnVisibility = useColumnVisibilityToggle({
+  columns: availableColumns,
+  visibleColumns,
+  enforceMinVisible: false
+})
+
+const columnsWithVisibility = computed<ColumnVisibilityOption[]>(() =>
+  availableColumns.map(c => ({ key: c.key, label: c.label, visible: visibleColumns.value.includes(c.key) }))
+)
+
 // Watch para limpiar la selección de ODCs que ya no son seleccionables (no pendientes)
 watch(() => props.ordenesCompra, (newOrdenes) => {
   // Remover de la selección las ODCs que no están pendientes
@@ -513,12 +495,16 @@ watch(() => props.ordenesCompra, (newOrdenes) => {
   })
   
   // IMPORTANTE: Limpiar sendingOcId si la orden cambió de estado
-  // Esto fuerza que el botón se actualice visualmente cuando el estado cambia de PENDIENTE a ENVIADA/ERROR
+  // Esto fuerza que el botón se actualice visualmente cuando el estado cambia de PENDIENTE a ENVIADA/ERROR.
+  // ENVIANDO se excluye a propósito: con useListadoAutoRefresh (recuperar foco de pestaña) el
+  // listado puede refrescarse mientras esta misma pestaña sigue esperando su propia llamada a
+  // integrarSAP -- sin este exclude, el botón de la fila que YA se está enviando se reactivaría
+  // prematuramente en cuanto el backend reporte ENVIANDO (que no es 'PENDIENTE').
   if (sendingOcId.value) {
     const ordenEnviada = newOrdenes.find((o: OrdenCompra) => o.oc_id === sendingOcId.value)
-    
-    if (ordenEnviada && ordenEnviada.estado !== 'PENDIENTE') {
-      // La orden ya no está pendiente, limpiar el estado de envío para que el botón desaparezca
+
+    if (ordenEnviada && ordenEnviada.estado !== 'PENDIENTE' && ordenEnviada.estado !== 'ENVIANDO') {
+      // La orden ya no está pendiente ni enviándose, limpiar el estado de envío para que el botón desaparezca
       if (import.meta.env.DEV) console.log(`[OrdenCompraTable] ✅ Botón deshabilitado: ${sendingOcId.value} cambió a ${ordenEnviada.estado}`)
       sendingOcId.value = null
     }
@@ -565,12 +551,16 @@ function isColumnSortable(key: string): boolean {
 function shouldShowRetryAction(oc: OrdenCompra): boolean {
   if (typeof oc.mostrar_reintentar === 'boolean') return oc.mostrar_reintentar
   const estado = (oc.estado || '').toUpperCase()
+  // ENVIANDO queda excluido (no es PENDIENTE ni ERROR): reintentar durante un envío en
+  // curso sería un doble envío engañoso, ver la rama v-else-if="oc.estado === 'ENVIANDO'"
+  // en el template, que toma prioridad sobre este botón.
   return estado === 'PENDIENTE' || estado === 'ERROR'
 }
 
 function shouldShowPdfAction(oc: OrdenCompra): boolean {
   if (typeof oc.mostrar_descargar_pdf === 'boolean') return oc.mostrar_descargar_pdf
-  return !shouldShowRetryAction(oc)
+  const estado = (oc.estado || '').toUpperCase()
+  return estado !== 'ENVIANDO' && !shouldShowRetryAction(oc)
 }
 
 /**
@@ -585,70 +575,17 @@ function shouldShowRetryStAction(oc: OrdenCompra): boolean {
   return estado === 'ENVIADA' && (oc.st_pendientes_reintento ?? 0) > 0
 }
 
-function selectAllColumns() {
-  const allKeys = availableColumns.map(col => col.key)
-  visibleColumns.value = [...allKeys]
-  columnOrder.value = [...allKeys]
-}
-
-function resetColumns() {
-  resetTablePreferences()
-}
-
-// Funciones para drag and drop
-const draggedColumn = ref<string | null>(null)
-const dragOverColumn = ref<string | null>(null)
-
-function handleDragStart(event: DragEvent, columnKey: string) {
-  draggedColumn.value = columnKey
-  if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = 'move'
-    event.dataTransfer.setData('text/plain', columnKey)
-  }
-}
-
-function handleDragOver(event: DragEvent, columnKey: string) {
-  event.preventDefault()
-  if (event.dataTransfer) {
-    event.dataTransfer.dropEffect = 'move'
-  }
-  dragOverColumn.value = columnKey
-}
-
-function handleDragLeave() {
-  dragOverColumn.value = null
-}
-
-function handleDrop(event: DragEvent, targetColumnKey: string) {
-  event.preventDefault()
-  
-  if (!draggedColumn.value || draggedColumn.value === targetColumnKey) {
-    draggedColumn.value = null
-    dragOverColumn.value = null
-    return
-  }
-  
-  // Reordenar columnas
-  const currentOrder = [...columnOrder.value]
-  const draggedIndex = currentOrder.indexOf(draggedColumn.value)
-  const targetIndex = currentOrder.indexOf(targetColumnKey)
-  
-  if (draggedIndex !== -1 && targetIndex !== -1) {
-    // Remover la columna arrastrada
-    currentOrder.splice(draggedIndex, 1)
-    // Insertar en la nueva posición
-    currentOrder.splice(targetIndex, 0, draggedColumn.value)
-    columnOrder.value = currentOrder
-  }
-  
-  draggedColumn.value = null
-  dragOverColumn.value = null
-}
-
-function handleDragEnd() {
-  draggedColumn.value = null
-  dragOverColumn.value = null
-}
+// Drag and drop de columnas (composable compartido, variante simple: sin columnas fijas,
+// sin persist explícito porque el watcher interno de useTablePreferences ya persiste columnOrder)
+const {
+  draggedColumn,
+  dragOverColumn,
+  handleDragStart,
+  handleDragOver,
+  handleDragLeave,
+  handleDrop,
+  handleDragEnd
+} = useColumnDragAndDrop({ columnOrder })
 
 // Ordenamiento
 const sortField = ref<string | null>(null)
@@ -907,7 +844,7 @@ async function handleIntegrar(referenciaDespacho: string, ocId: string) {
   try {
     sendingOcId.value = ocId
     // Pasar el almacén destino seleccionado (opcional, si existe)
-    emit('integrar', referenciaDespacho, almacen || undefined)
+    emit('integrar', ocId, referenciaDespacho, almacen || undefined)
     // El estado se limpiará cuando el componente padre termine la operación
     // Pero como no podemos saber cuándo termina directamente, lo hacemos después de un pequeño delay
     // El componente padre debería manejar la actualización del estado
@@ -943,54 +880,65 @@ async function handleDescargarPDF(oc: OrdenCompra) {
   }
 }
 
+function mostrarResultadoReintentoST(result: any) {
+  const status = (result?.status || '').toLowerCase()
+  const creadas = result?.resultado_st?.transferencias_creadas ?? 0
+  const errores = result?.resultado_st?.transferencias_errores ?? 0
+  const objetivo = result?.tiendas_count ?? 0
+
+  if (status === 'success' && objetivo === 0) {
+    toast.info('Sin pendientes', result?.message || 'No hay solicitudes de transferencia pendientes para reintentar.')
+  } else if (status === 'en_cola') {
+    toast.info(
+      'Sigue en proceso en SAP',
+      result?.message || 'SAP está saturado y la solicitud sigue en cola. Intenta de nuevo en unos minutos.'
+    )
+  } else if (status === 'success') {
+    toast.success(
+      'Reintento ST exitoso',
+      `Se reintentaron ${objetivo} tienda(s). Creadas: ${creadas}.`
+    )
+  } else if (status === 'partial') {
+    toast.warning(
+      'Reintento ST parcial',
+      `Creadas: ${creadas} | Errores: ${errores} de ${objetivo} tienda(s).`
+    )
+  } else {
+    toast.error('Reintento ST falló', result?.message || 'No se pudo completar el reintento de ST.')
+  }
+}
+
+function manejarErrorReintentoST(error: any, oc: OrdenCompra) {
+  const status = error?.response?.status
+  if (status === 409) {
+    toast.warning('Reintento en curso', 'Otro reintento de ST ya está en curso para esta OC. Intenta en unos segundos.')
+  } else if (status === 400) {
+    toast.warning(
+      'Estado no válido',
+      error?.response?.data?.message || 'Solo se puede reintentar ST cuando la ODC está ENVIADA.'
+    )
+  } else if (isTransientClientError(error)) {
+    toast.warning(
+      'Tiempo de espera agotado',
+      'El reintento de transferencias (ITR) puede seguir en el servidor. Actualice la lista en unos minutos para ver el estado real.'
+    )
+    emit('st-reintentado', { oc, result: null })
+  } else {
+    toast.error('Error al reintentar ST', error.message || 'No se pudo reintentar Solicitudes de Transferencia')
+  }
+}
+
 async function handleReintentarST(oc: OrdenCompra) {
   if (retryingStOcId.value === oc.oc_id) return
 
   try {
     retryingStOcId.value = oc.oc_id
     const result: any = await mba3ConsultasService.reintentarSolicitudesTransferencia(oc.oc_id)
-
-    const status = (result?.status || '').toLowerCase()
-    const creadas = result?.resultado_st?.transferencias_creadas ?? 0
-    const errores = result?.resultado_st?.transferencias_errores ?? 0
-    const objetivo = result?.tiendas_count ?? 0
-
-    if (status === 'success' && objetivo === 0) {
-      toast.info('Sin pendientes', result?.message || 'No hay solicitudes de transferencia pendientes para reintentar.')
-    } else if (status === 'success') {
-      toast.success(
-        'Reintento ST exitoso',
-        `Se reintentaron ${objetivo} tienda(s). Creadas: ${creadas}.`
-      )
-    } else if (status === 'partial') {
-      toast.warning(
-        'Reintento ST parcial',
-        `Creadas: ${creadas} | Errores: ${errores} de ${objetivo} tienda(s).`
-      )
-    } else {
-      toast.error('Reintento ST falló', result?.message || 'No se pudo completar el reintento de ST.')
-    }
-
+    mostrarResultadoReintentoST(result)
     emit('st-reintentado', { oc, result })
   } catch (error: any) {
     console.error('Error al reintentar ST:', error)
-    const status = error?.response?.status
-    if (status === 409) {
-      toast.warning('Reintento en curso', 'Otro reintento de ST ya está en curso para esta OC. Intenta en unos segundos.')
-    } else if (status === 400) {
-      toast.warning(
-        'Estado no válido',
-        error?.response?.data?.message || 'Solo se puede reintentar ST cuando la ODC está ENVIADA.'
-      )
-    } else if (isTransientClientError(error)) {
-      toast.warning(
-        'Tiempo de espera agotado',
-        'El reintento de transferencias (ITR) puede seguir en el servidor. Actualice la lista en unos minutos para ver el estado real.'
-      )
-      emit('st-reintentado', { oc, result: null })
-    } else {
-      toast.error('Error al reintentar ST', error.message || 'No se pudo reintentar Solicitudes de Transferencia')
-    }
+    manejarErrorReintentoST(error, oc)
   } finally {
     retryingStOcId.value = null
   }
@@ -1075,43 +1023,6 @@ function handleEliminarSeleccionadas() {
   }
   
   emit('eliminar', ordenesAEliminar)
-}
-
-function formatDate(dateString: string): string {
-  if (!dateString) return '-'
-  try {
-    const date = new Date(dateString)
-    
-    // Verificar si la fecha es válida
-    if (isNaN(date.getTime())) {
-      return dateString
-    }
-    
-    // Obtener componentes de fecha en la zona horaria local (sin hora)
-    const day = String(date.getDate()).padStart(2, '0')
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const year = date.getFullYear()
-    
-    return `${day}/${month}/${year}`
-  } catch {
-    return dateString
-  }
-}
-
-function formatDateTime(dateString: string): string {
-  if (!dateString) return '-'
-  try {
-    const date = new Date(dateString)
-    if (isNaN(date.getTime())) return dateString
-    const day = String(date.getDate()).padStart(2, '0')
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const year = date.getFullYear()
-    const hours = String(date.getHours()).padStart(2, '0')
-    const minutes = String(date.getMinutes()).padStart(2, '0')
-    return `${day}/${month}/${year} ${hours}:${minutes}`
-  } catch {
-    return dateString
-  }
 }
 
 function getTimeAgo(dateString: string): string {
@@ -1210,6 +1121,7 @@ function getRowWarningClass(oc: OrdenCompra): string {
 function getEstadoClass(estado: string): string {
   const classes: Record<string, string> = {
     'PENDIENTE': 'px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-200 transition-colors duration-300',
+    'ENVIANDO': 'px-2 py-1 text-xs font-medium rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 transition-colors duration-300',
     'ENVIADA': 'px-2 py-1 text-xs font-medium rounded-full bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200 transition-colors duration-300',
     'ERROR': 'px-2 py-1 text-xs font-medium rounded-full bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200 transition-colors duration-300',
   }
@@ -1219,6 +1131,9 @@ function getEstadoClass(estado: string): string {
 function getEstadoTooltip(oc: OrdenCompra): string {
   if (oc.estado === 'PENDIENTE') {
     return 'Lista para enviar a SAP'
+  }
+  if (oc.estado === 'ENVIANDO') {
+    return 'Enviando a SAP ahora mismo...'
   }
   if (oc.estado === 'ENVIADA') {
     return 'Enviada exitosamente a SAP'

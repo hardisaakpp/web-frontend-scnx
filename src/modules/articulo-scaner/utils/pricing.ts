@@ -1,4 +1,5 @@
 import type { ArticleDetailDto } from '../types'
+import { NUMBER_LOCALE } from '@/plugins/locale'
 
 export type ArticlePricing = {
   avgPrice: number | null
@@ -76,7 +77,7 @@ export function extractArticlePricing(article: ArticleDetailDto | null): Article
 
 export function formatCurrency(value: number | null, currency = 'CLP', emptyText = 'No autorizado'): string {
   if (value == null || !Number.isFinite(value)) return emptyText
-  return new Intl.NumberFormat('es-CL', {
+  return new Intl.NumberFormat(NUMBER_LOCALE, {
     style: 'currency',
     currency: currency || 'CLP',
     maximumFractionDigits: 2
@@ -85,7 +86,7 @@ export function formatCurrency(value: number | null, currency = 'CLP', emptyText
 
 export function formatPercent(value: number | null, emptyText = 'No autorizado'): string {
   if (value == null || !Number.isFinite(value)) return emptyText
-  return `${new Intl.NumberFormat('es-CL', {
+  return `${new Intl.NumberFormat(NUMBER_LOCALE, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   }).format(value)}%`

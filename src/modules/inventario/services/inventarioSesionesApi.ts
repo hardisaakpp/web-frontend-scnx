@@ -26,12 +26,16 @@ invPlanesApi.interceptors.response.use(
 
 export const inventarioSesionesService = {
   async getSesiones(): Promise<InventorySessionListItemDto[]> {
-    const response = await invPlanesApi.get<InventorySessionListItemDto[]>('/api/inventory-sessions')
+    // Para un usuario con acceso a todas las bodegas, el backend consulta el stock de cada bodega
+    // distinta con sesiones abiertas, una por una — puede superar el timeout default (30s).
+    const response = await invPlanesApi.get<InventorySessionListItemDto[]>('/api/inventory-sessions', { timeout: 120_000 })
     return response.data
   },
 
   async getMisSesiones(): Promise<InventorySessionListItemDto[]> {
-    const response = await invPlanesApi.get<InventorySessionListItemDto[]>('/api/inventory-sessions/my')
+    // Mismo caso que getSesiones: un admin con acceso a todas las bodegas dispara una consulta de
+    // stock por cada bodega distinta, en secuencia, en el backend — puede superar los 30s default.
+    const response = await invPlanesApi.get<InventorySessionListItemDto[]>('/api/inventory-sessions/my', { timeout: 120_000 })
     return response.data
   },
 
@@ -65,7 +69,7 @@ export const inventarioSesionesService = {
       warehouseCode,
       description: description ?? null,
       plannedCloseDate,
-      referenceCode: referenceCode || null,
+      referenceCode: referenceCode ?? null,
       uNv1Values: filters?.uNv1Values?.length ? filters.uNv1Values : null,
       uNv2Values: filters?.uNv2Values?.length ? filters.uNv2Values : null,
       uNv3Values: filters?.uNv3Values?.length ? filters.uNv3Values : null,

@@ -265,6 +265,19 @@ export interface InventorySessionListItemDto {
   description?: string | null
   plannedCloseDate?: string | null
   referenceCode?: string | null
+  /** Cuántos artículos distintos entran en el alcance de esta toma (no depende de si ya se contaron). */
+  totalItems: number
+  /** Qué cantidad total (stock del sistema) entra en el alcance de esta toma. */
+  totalQuantity: number
+  /** Fecha de apertura DEFINIDA al crear la toma o el plan — no la real de ejecución (esa está en el Resumen). */
+  definedOpenDate: string
+  /** Fecha de cierre DEFINIDA al crear la toma o el plan — no la real de cuando cerró el usuario. */
+  definedCloseDate?: string | null
+  /** True si ya tiene un ajuste Approved o SentToSap — marca los cerrados con informe. */
+  hasApprovedAdjustment: boolean
+  adjustmentId?: string | null
+  /** True si un supervisor marcó explícitamente que esta sesión cerrada no necesita ajuste. */
+  adjustmentDiscarded: boolean
 }
 
 export interface MyCountHistoryLineDto {
@@ -286,6 +299,11 @@ export interface MyCountHistorySessionDto {
   totalQuantity: number
   skuCount: number
   lines: MyCountHistoryLineDto[]
+  /** True si ya tiene un ajuste Approved o SentToSap — habilita "Ver ajuste final". */
+  hasApprovedAdjustment: boolean
+  adjustmentId?: string | null
+  /** True si un supervisor marcó explícitamente que esta sesión cerrada no necesita ajuste. */
+  adjustmentDiscarded: boolean
 }
 
 export interface InventorySessionLineStatusDto {
@@ -449,4 +467,8 @@ export interface SupervisorSummaryDto {
   totalValorizedCost: number
   /** Valorizado Mabeltrading — Cuánto se auditó: lo contado a costo. */
   auditedValorizedCost: number
+  planId?: string | null
+  createdByUserId: string
+  createdByUserName?: string | null
+  referenceCode?: string | null
 }

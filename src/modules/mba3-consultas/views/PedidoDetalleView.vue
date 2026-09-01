@@ -106,6 +106,7 @@
         :confirmando="confirmando"
         :descargando-pedido="descargandoPedido"
         :descargando-plano-mba="descargandoPlanoMba"
+        :descargando-plano-mba-bodega="descargandoPlanoMbaBodega"
         :descargando-csv="descargandoCsv"
         :descargando-excel-original="descargandoExcelOriginal"
         :can-generar-o-c="canGenerarOC"
@@ -116,12 +117,17 @@
         :hide-confirm-and-download="false"
         :hide-cargar-plantillas="true"
         :show-despachar-y-facturar="true"
+        :despachar-y-facturar-deshabilitado="despacharYFacturarDeshabilitadoPorFecha"
         :puede-descargar-pedido="puedeDescargarPedido"
         :puede-descargar-csv="puedeDescargarCsv"
+        :puede-generar-txt-mba3="puedeGenerarTxtMba3"
         :tiene-archivo-original="false"
+        :puede-confirmar-produccion="puedeConfirmarProduccion"
+        :confirmando-produccion="confirmandoProduccion"
         @cargar-plantillas="goToCargarPlantillas"
         @generar-oc="handleGenerarOCDesdePedido"
         @confirmar="handleConfirmar"
+        @confirmar-produccion="handleConfirmarProduccion"
         @update-estado="handleUpdateEstado"
         @go-to-pedido="goToPedido"
         @search-blur="handleSearchBlur"
@@ -129,7 +135,19 @@
         @descargar-pedido="handleDescargarPedido"
         @descargar-csv="handleDescargarCsv"
         @descargar-excel-original="handleDescargarExcelOriginal"
-      />
+      >
+        <!-- Botones Rechazar / Aceptar (req. 1.2) - Estado PRODUCCION POSPUESTA, solo mabel.view -->
+        <template v-if="puedeCancelarPedidoPospuesto || puedeAceptarProduccionPospuesta" #toolbar-extra>
+          <ProduccionPospuestaActions
+            :puede-rechazar="puedeCancelarPedidoPospuesto"
+            :puede-aceptar="puedeAceptarProduccionPospuesta"
+            :rechazando="cancelandoPedidoPospuesto"
+            :aceptando="aceptandoProduccionPospuesta"
+            @rechazar="handleCancelarPedidoPospuesto"
+            @aceptar="handleAceptarProduccionPospuesta"
+          />
+        </template>
+      </PedidoHeaderActions>
 
       <!-- Loading state -->
       <div v-if="loading && !pedido" class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
@@ -160,9 +178,11 @@
           :permitir-edicion-fechas-en-gestionar="true"
           :show-inmediato-option="false"
           :fecha-pedido-editable="false"
+          :puede-editar-fecha-facturacion="puedeEditarFechaFacturacion"
           @copy-to-clipboard="copyToClipboard"
           @update-fecha-pedido="handleUpdateFechaPedido"
           @update-fecha-entrega="handleUpdateFechaEntrega"
+          @update-fecha-facturacion="handleUpdateFechaFacturacion"
           @update-estado="handleUpdateEstado"
         />
 
@@ -190,56 +210,14 @@
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6">
           <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Productos del Pedido</h2>
-            <div class="relative">
-              <button
-                @click="showColumnSelector = !showColumnSelector"
-                class="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-2 text-gray-700 dark:text-gray-300"
-              >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-                </svg>
-                Columnas
-              </button>
-              
-              <!-- Dropdown de selección de columnas -->
-              <div
-                v-if="showColumnSelector"
-                @click.stop
-                class="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50 p-3"
-              >
-                <div class="flex items-center justify-between mb-2 px-2">
-                  <div class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Seleccionar columnas</div>
-                  <div v-if="isSyncing" class="flex items-center gap-1">
-                    <LoadingSpinner layout="inline" size="xs" aria-label="Guardando preferencias" />
-                    <span class="text-xs text-indigo-600 dark:text-indigo-400">Guardando...</span>
-                  </div>
-                </div>
-                <div class="space-y-1 max-h-80 overflow-y-auto">
-                  <label
-                    v-for="column in availableColumnsWithVisibility"
-                    :key="column.key"
-                    :class="[
-                      'flex items-center gap-2 px-2 py-2 rounded transition-colors',
-                      column.fixed 
-                        ? 'cursor-not-allowed opacity-60 bg-gray-50 dark:bg-gray-900' 
-                        : 'hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer'
-                    ]"
-                  >
-                    <input
-                      type="checkbox"
-                      :checked="column.visible"
-                      :disabled="column.fixed"
-                      @change="!column.fixed && toggleColumnVisibility(column.key)"
-                      class="w-4 h-4 text-indigo-600 border-gray-300 dark:border-gray-600 rounded focus:ring-indigo-500 dark:focus:ring-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed"
-                    />
-                    <span class="text-sm text-gray-700 dark:text-gray-300">
-                      {{ column.label }}
-                      <span v-if="column.fixed" class="text-xs text-gray-500 dark:text-gray-500 ml-1">(fija)</span>
-                    </span>
-                  </label>
-                </div>
-              </div>
-            </div>
+            <ColumnSelectorDropdown
+              :columns="availableColumnsWithVisibility"
+              :is-open="columnVisibility.isOpen.value"
+              :selector-id="columnVisibility.selectorId"
+              :is-syncing="isSyncing"
+              @toggle-open="columnVisibility.toggleOpen"
+              @toggle-column="columnVisibility.toggleColumnVisibility"
+            />
           </div>
           <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
@@ -278,9 +256,7 @@
                       'px-4 py-4 text-sm',
                       column.align === 'right' ? 'text-right whitespace-nowrap' : column.align === 'center' ? 'text-center whitespace-nowrap' : '',
                       // ⭐ Resaltado persistente para columnas modificadas (no aplicar a columna numero)
-                      isColumnaModificada(detalle.pedido_detalle_id, column.key) && column.key !== 'numero'
-                        ? 'bg-amber-50 dark:bg-amber-900/20 border-l-2 border-amber-500 dark:border-amber-400' 
-                        : '',
+                      claseResaltadoModificado(detalle.pedido_detalle_id, column.key),
                       column.key === 'numero' ? 'font-medium text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-900/50' :
                       column.key === 'codigo_interno' ? 'font-medium text-gray-900 dark:text-white whitespace-nowrap' :
                       column.key === 'total' ? (puedeEditarCostoTotalComentario ? 'font-medium text-gray-900 dark:text-white cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors' : 'font-medium text-gray-900 dark:text-white') :
@@ -303,7 +279,7 @@
                         :step="editingCell.fieldType === 'total' ? '0.5' : '0.01'"
                         :inputmode="editingCell.fieldType === 'total' ? 'numeric' : 'decimal'"
                         min="0"
-                        @blur="guardarEdicion"
+                        @blur="manejarBlurEdicion"
                         @keydown="manejarTeclasEdicion"
                         @click.stop
                         :title="editingCell.fieldType === 'total' ? 'Solo múltiplos de 0,5. Escriba números; use flechas para 0,5, 1,5…' : undefined"
@@ -313,7 +289,7 @@
                         v-else
                         :data-editing-cell="detalle.pedido_detalle_id"
                         v-model="editingCell.value"
-                        @blur="guardarEdicion"
+                        @blur="manejarBlurEdicion"
                         @keydown="manejarTeclasEdicion"
                         @click.stop
                         rows="2"
@@ -365,8 +341,8 @@
           </div>
         </div>
 
-        <!-- Botón Cancelar Pedido (parte inferior) - Estado GESTIONAR PEDIDO -->
-        <div 
+        <!-- Botón Cancelar Pedido (parte inferior) - Estado CONFIRMADO POR PRODUCCION, solo odcsap.view -->
+        <div
           v-if="puedeCancelarPorElRayo" 
           class="mt-6 pb-6 flex items-center justify-between border-t border-gray-200 dark:border-gray-700 pt-6"
         >
@@ -388,6 +364,7 @@
             {{ cancelandoPorElRayo ? 'Cancelando...' : 'Cancelar Pedido' }}
           </button>
         </div>
+
       </div>
     </div>
 
@@ -408,18 +385,38 @@
       @close="handleCerrarModalConfirmacion"
     />
 
+    <!-- Modal de confirmación: pedido confirmado por Producción (req. 1.8) -->
+    <SimpleConfirmModal
+      :is-open="showConfirmacionProduccionModal"
+      title="Pedido confirmado por Producción"
+      message="El pedido cambió al estado Confirmado por Producción y se notificó a Administración El Rayo."
+      confirm-label="Aceptar"
+      @close="handleCerrarModalConfirmacionProduccion"
+    />
+
+    <!-- Modal de diferencia de producción (req. 1.2): al hacer clic en "Confirmar" con
+         algún producto por debajo de la cantidad solicitada original -->
+    <DiferenciaProduccionModal
+      :is-open="showDiferenciaModal"
+      :detalles="detallesDiferencia"
+      :procesando="procesandoDiferencia"
+      @cancelar="handleCancelarDiferencia"
+      @diferencia-no-entregada="handleDiferenciaNoEntregada"
+      @confirmar-con-diferencia="handleConfirmarConDiferencia"
+    />
+
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, type Ref } from '@vue/reactivity'
-import { onMounted, onActivated, onUnmounted, nextTick, Teleport } from '@vue/runtime-core'
+import { onMounted, onActivated, Teleport } from '@vue/runtime-core'
 import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import { lastNotification } from '@/composables/useNotificaciones'
-import { useTablePreferences } from '@/composables/useTablePreferences'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
-import type { PedidoCompleto, ReporteDiferenciasResponse, UploadPlantillaResponse, InfoArchivoPlantillaResponse } from '../types'
+import type { PedidoCompleto, InfoArchivoPlantillaResponse, DetalleDiferenciaProduccion, HijoDiferenciaPayload } from '../types'
 // Utilidades extraídas
 import {
   formatDate,
@@ -451,16 +448,25 @@ import {
 } from '../utils/redistribucionHelpers'
 // Composables
 import { useFileUpload } from '../composables/useFileUpload'
+import type { CorreccionesPlantilla } from '../composables/useFileUpload'
 import { useColumnManagement } from '../composables/useColumnManagement'
 import { usePedidoDetalle } from '../composables/usePedidoDetalle'
+import { useFechaPedidoHandlers } from '../composables/useFechaPedidoHandlers'
+import { extraerMensajeErrorAnidado } from '../utils/httpErrors'
+import { descargarBlobComoArchivo } from '../utils/downloadHelpers'
 import { useRedistribucion } from '../composables/useRedistribucion'
+import { useProduccionPospuestaActions } from '../composables/useProduccionPospuestaActions'
+import { useProductosPedidoColumnas } from '../composables/useProductosPedidoColumnas'
 // Componentes
 import PedidoHeaderActions from '../components/PedidoHeaderActions.vue'
+import ProduccionPospuestaActions from '../components/ProduccionPospuestaActions.vue'
 import PedidoCabecera from '../components/PedidoCabecera.vue'
 import RedistribucionTiendas from '../components/RedistribucionTiendas.vue'
 import UploadErrorModal from '../components/UploadErrorModal.vue'
 import SimpleConfirmModal from '../components/SimpleConfirmModal.vue'
+import DiferenciaProduccionModal from '../components/DiferenciaProduccionModal.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
+import ColumnSelectorDropdown from '../components/ColumnSelectorDropdown.vue'
 
 // Constantes de configuración
 const SCROLL_DELAY_MS = 100
@@ -470,224 +476,118 @@ const COPY_FEEDBACK_DURATION_MS = 2000
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 const toast = useToast()
 
 const pedido = ref<PedidoCompleto | null>(null)
 
+// Req. 1.2: par "Rechazar" / "Aceptar" en Producción Pospuesta (compartido con CargarPlantillaView.vue)
+const {
+  puedeRechazar: puedeCancelarPedidoPospuesto,
+  puedeAceptar: puedeAceptarProduccionPospuesta,
+  rechazando: cancelandoPedidoPospuesto,
+  aceptando: aceptandoProduccionPospuesta,
+  handleRechazar: handleCancelarPedidoPospuesto,
+  handleAceptar: handleAceptarProduccionPospuesta,
+} = useProduccionPospuestaActions(pedido)
+
 // ⭐ HU-08: Descarga directa del archivo plano MBA (sin modal)
 const descargandoPlanoMba = ref(false)
+// Bodega del botón que disparó la descarga en curso (pedidos con más de una ODC) --
+// permite mostrar el spinner solo en ese botón, no en todos (ver PedidoHeaderActions.vue)
+const descargandoPlanoMbaBodega = ref<string | undefined>(undefined)
 
 // Modal de confirmación tras "Confirmar" (pedido confirmado)
 const showConfirmacionModal = ref(false)
 
+// Modal de confirmación tras "Confirmar Producción" (req. 1.8): a diferencia del
+// modal de "Confirmar", al cerrar este redirige al listado de pedidos de Producción.
+const showConfirmacionProduccionModal = ref(false)
+
+// Modal de diferencia de producción (req. 1.2): se muestra al hacer clic en
+// "Confirmar" cuando algún producto tiene Total por debajo de lo solicitado
+// originalmente en la plantilla Excel.
+const showDiferenciaModal = ref(false)
+const detallesDiferencia = ref<DetalleDiferenciaProduccion[]>([])
+const procesandoDiferencia = ref(false)
+
 // ⭐ Set para rastrear columnas modificadas (formato: "detalleId:columnKey")
 const columnasModificadas = ref<Set<string>>(new Set())
+// Rol responsable de la última modificación de cada columna ('PRODUCCION_ELRAYO' | 'ODCSAP' | null),
+// misma clave "detalleId:columnKey". Determina el color de resaltado (morado/ámbar).
+const rolesModificacion = ref<Map<string, string | null>>(new Map())
 
 // Gestión de columnas visibles en la tabla
-const showColumnSelector = ref(false)
 const confirmando = ref(false)
+const confirmandoProduccion = ref(false)
 const cancelandoPorElRayo = ref(false)
 const descargandoPedido = ref(false)
 const descargandoCsv = ref(false)
 const descargandoExcelOriginal = ref(false)
 const tieneArchivoOriginal = ref(false)
 const infoArchivoOriginal = ref<InfoArchivoPlantillaResponse | null>(null)
-const draggedColumnKey = ref<string | null>(null)
-const dragOverColumnKey = ref<string | null>(null)
 
 // La interfaz EditingCell ahora está importada desde composables/useColumnManagement
 
-// ⭐ Funciones para persistencia en sessionStorage (fallback/migración)
-// ⚠️ NOTA: El backend es la fuente principal de verdad. sessionStorage solo se usa como fallback.
-function getStorageKey(): string {
-  return `pedido_columnas_modificadas_${numeroPedido.value}`
-}
-
-function guardarColumnasModificadasEnStorage() {
-  if (!numeroPedido.value) return
-  
-  try {
-    const storageKey = getStorageKey()
-    const columnasArray = Array.from(columnasModificadas.value)
-    sessionStorage.setItem(storageKey, JSON.stringify(columnasArray))
-  } catch (e) {
-    console.warn('Error al guardar columnas modificadas en sessionStorage (fallback):', e)
-  }
-}
-
-function cargarColumnasModificadasDesdeStorage() {
-  if (!numeroPedido.value) return
-  
-  // Solo cargar desde sessionStorage si no hay modificaciones ya cargadas desde el backend
-  // Esto permite migración gradual de datos
-  if (columnasModificadas.value.size > 0) {
-    if (import.meta.env.DEV) console.log('ℹ️ [PedidoDetalleView] Modificaciones ya cargadas desde backend, omitiendo sessionStorage')
-    return
-  }
-  
-  try {
-    const storageKey = getStorageKey()
-    const stored = sessionStorage.getItem(storageKey)
-    
-    if (stored) {
-      const columnasArray = JSON.parse(stored) as string[]
-      // Limpiar antes de cargar desde storage
-      columnasModificadas.value.clear()
-      columnasModificadas.value = new Set(columnasArray)
-      if (import.meta.env.DEV) console.log(`ℹ️ [PedidoDetalleView] Cargadas ${columnasArray.length} modificaciones desde sessionStorage (fallback)`)
-    }
-  } catch (e) {
-    console.warn('Error al cargar columnas modificadas desde sessionStorage (fallback):', e)
-  }
-}
-
-function limpiarColumnasModificadasEnStorage() {
-  if (!numeroPedido.value) return
-  
-  try {
-    const storageKey = getStorageKey()
-    sessionStorage.removeItem(storageKey)
-    columnasModificadas.value.clear()
-  } catch (e) {
-    console.warn('Error al limpiar columnas modificadas en sessionStorage:', e)
-  }
-}
-
 // Por defecto: #, CÓDIGO, DESCRIPCIÓN, COSTO UNIT., TOTAL, COMENTARIO (dev y prod)
+// "Costo Unit." se excluye por completo (ni visible ni disponible en el selector de
+// columnas) para produccion-elrayo.view (req. 1.8): Producción no debe ver costos.
 const availableColumns: ColumnConfig[] = [
   { key: 'numero', label: '#', visible: true, align: 'center', format: 'number', fixed: true },
   { key: 'codigo_interno', label: 'Código', visible: true, align: 'left', format: 'text' },
   { key: 'descripcion_sap', label: 'Descripción', visible: true, align: 'left', format: 'text' },
   { key: 'codigo_barras', label: 'Código de Barras', visible: false, align: 'left', format: 'text' },
   { key: 'pack', label: 'Pack', visible: false, align: 'left', format: 'text' },
-  { key: 'costo_doc_sin_iva', label: 'Costo Unit.', visible: true, align: 'right', format: 'currency' },
+  { key: 'marca', label: 'Marca', visible: true, align: 'left', format: 'text' },
+  ...(authStore.canViewProduccionElRayo
+    ? []
+    : [{ key: 'costo_doc_sin_iva', label: 'Costo Unit.', visible: true, align: 'right' as const, format: 'currency' as const }]),
   { key: 'descuento_1', label: 'Descuento', visible: false, align: 'right', format: 'number' },
-  { key: 'pvp', label: 'PVP', visible: false, align: 'right', format: 'currency' },
+  // Solo mabel.view: PVP (precio de venta al público) queda fuera del selector de
+  // columnas para odcsap.view y produccion-elrayo.view (ver ocultar_pvp_si_no_mabel).
+  ...(authStore.canViewMabel
+    ? [{ key: 'pvp', label: 'PVP', visible: false, align: 'right' as const, format: 'currency' as const }]
+    : []),
   { key: 'subtotal', label: 'Subtotal', visible: false, align: 'right', format: 'number' },
   { key: 'total', label: 'Total', visible: true, align: 'right', format: 'number' },
   { key: 'comentario', label: 'Comentario', visible: true, align: 'left', format: 'text' }
 ]
 
-// ⭐ CAMBIO: Usar composable useTablePreferences
-// Asegurar que la columna 'numero' esté siempre visible y al inicio
-const defaultVisibleColumns = availableColumns.filter(col => col.visible || col.fixed).map(col => col.key)
-const defaultColumnOrder = availableColumns.map(col => col.key)
-
+// Orquestación de columnas (preferencias, visibilidad, drag & drop) y totales/numeroPedido,
+// compartida con CargarPlantillaView.vue vía useProductosPedidoColumnas (mismo tableId).
 const {
   visibleColumns,
   columnOrder,
-  orderedVisibleColumns: orderedVisibleColumnKeys,
+  orderedVisibleColumnKeys,
   savePreferences,
-  resetPreferences: resetTablePreferences,
-  selectAllColumns: selectAllTableColumns,
-  isSyncing
-} = useTablePreferences({
-  tableId: 'productos-pedido',
-  defaultVisibleColumns,
-  defaultColumnOrder,
-  enableFilters: false,
-  enablePageSize: false
-})
-
-// ⭐ NUEVO: Computed para obtener objetos ColumnConfig ordenados
-// Asegurar que la columna 'numero' siempre esté al inicio
-const orderedVisibleColumns = computed(() => {
-  const ordered = orderedVisibleColumnKeys.value
-    .map(key => availableColumns.find(col => col.key === key))
-    .filter((col): col is ColumnConfig => col !== undefined)
-  
-  // Separar columnas fijas y no fijas
-  const fixedColumns = ordered.filter(col => col.fixed)
-  const nonFixedColumns = ordered.filter(col => !col.fixed)
-  
-  // Asegurar que 'numero' esté al inicio si existe
-  const numeroColumn = fixedColumns.find(col => col.key === 'numero')
-  const otherFixedColumns = fixedColumns.filter(col => col.key !== 'numero')
-  
-  // Reconstruir el orden: primero 'numero', luego otras fijas, luego no fijas
-  return [
-    ...(numeroColumn ? [numeroColumn] : []),
-    ...otherFixedColumns,
-    ...nonFixedColumns
-  ]
-})
-
-// ⭐ NUEVO: Computed para obtener todas las columnas con su estado de visibilidad
-const availableColumnsWithVisibility = computed(() => {
-  return availableColumns.map(col => ({
-    ...col,
-    visible: col.fixed ? true : visibleColumns.value.includes(col.key)
-  }))
-})
-
-// ⭐ Asegurar que la columna 'numero' siempre esté visible
-watch(
-  () => visibleColumns.value,
-  (newVisible) => {
-    if (!newVisible.includes('numero')) {
-      visibleColumns.value = ['numero', ...newVisible.filter((key: string) => key !== 'numero')]
-      savePreferences()
-    }
-  },
-  { immediate: true }
-)
-
-// ⭐ Totales: usar pedido.totales del backend cuando exista; si no, recalcular desde detalles (fallback)
-const totalesCostoUnitario = computed(() => {
-  const t = pedido.value?.totales
-  if (t != null && typeof t.total_costo_unitario === 'number') return t.total_costo_unitario
-  if (!pedido.value?.detalles) return 0
-  return pedido.value.detalles.reduce((sum: number, detalle: any) => sum + (detalle.costo_doc_sin_iva || 0), 0)
-})
-
-const totalesSubtotal = computed(() => {
-  const t = pedido.value?.totales
-  if (t != null && typeof t.total_subtotal === 'number') return t.total_subtotal
-  if (!pedido.value?.detalles) return 0
-  return pedido.value.detalles.reduce((sum: number, detalle: any) => sum + (detalle.subtotal || 0), 0)
-})
-
-const totalesTotal = computed(() => {
-  const t = pedido.value?.totales
-  if (t != null && typeof t.total_total === 'number') return t.total_total
-  if (!pedido.value?.detalles) return 0
-  return pedido.value.detalles.reduce((sum: number, detalle: any) => sum + (detalle.total || 0), 0)
-})
-
-// El parámetro de ruta ahora es numero_pedido
-const numeroPedido = computed(() => {
-  const id = route.params.id as string
-  return id ? decodeURIComponent(id) : ''
-})
+  resetTablePreferences,
+  selectAllTableColumns,
+  isSyncing,
+  columnVisibility,
+  draggedColumnKey,
+  dragOverColumnKey,
+  handleDragStart,
+  handleDragOver,
+  handleDragLeave,
+  handleDrop,
+  handleDragEnd,
+  orderedVisibleColumns,
+  availableColumnsWithVisibility,
+  totalesCostoUnitario,
+  totalesSubtotal,
+  totalesTotal,
+  numeroPedido,
+  columnasModificadasStorage
+} = useProductosPedidoColumnas(availableColumns, pedido, columnasModificadas, rolesModificacion)
 
 // Inicializar composable de pedido detalle primero (sin modo MABEL TRADING: cabecera siempre editable)
 const pedidoDetalle = usePedidoDetalle({
   pedido,
   numeroPedido,
   columnasModificadas,
-  limpiarColumnasModificadasEnStorage: () => {
-    if (!numeroPedido.value) return
-    try {
-      const storageKey = `pedido_columnas_modificadas_${numeroPedido.value}`
-      sessionStorage.removeItem(storageKey)
-      columnasModificadas.value.clear()
-    } catch (e) {
-      console.warn('Error al limpiar columnas modificadas en sessionStorage:', e)
-    }
-  },
-  cargarColumnasModificadasDesdeStorage: () => {
-    if (!numeroPedido.value) return
-    try {
-      const storageKey = `pedido_columnas_modificadas_${numeroPedido.value}`
-      const stored = sessionStorage.getItem(storageKey)
-      if (stored) {
-        const columnasArray = JSON.parse(stored) as string[]
-        columnasModificadas.value = new Set(columnasArray)
-      }
-    } catch (e) {
-      console.warn('Error al cargar columnas modificadas desde sessionStorage:', e)
-    }
-  }
+  rolesModificacion,
+  limpiarColumnasModificadasEnStorage: columnasModificadasStorage.limpiar,
+  cargarColumnasModificadasDesdeStorage: columnasModificadasStorage.cargar
 })
 
 // Inicializar composable de redistribución después de pedidoDetalle
@@ -722,62 +622,9 @@ const {
 const tituloInterfaz = 'Detalle del Pedido - EL RAYO'
 
 
-// ⭐ FASE 4: Computed para resumen de redistribución
-const resumenRedistribucion = computed(() => {
-  if (redistribucion.productosRedistribucion.value.length === 0) {
-    return {
-      total_solicitado: 0,
-      total_confirmado: 0,
-      total_distribuido: 0,
-      diferencia_pendiente: 0
-    }
-  }
-  
-  const total_solicitado = redistribucion.productosRedistribucion.value.reduce((sum, p) => sum + p.cantidad_solicitada, 0)
-  const total_confirmado = redistribucion.productosRedistribucion.value.reduce((sum, p) => sum + p.cantidad_confirmada, 0)
-  const total_distribuido = redistribucion.productosRedistribucion.value.reduce((sum, p) => sum + p.cantidad_distribuida, 0)
-  const diferencia_pendiente = total_confirmado - total_distribuido
-  
-  return {
-    total_solicitado,
-    total_confirmado,
-    total_distribuido,
-    diferencia_pendiente
-  }
-})
-
-// ⭐ FASE 4: Computed para impacto económico
-const impactoEconomico = computed(() => {
-  let costo_unitario_total = 0
-  let subtotal_original = 0
-  let subtotal_ajustado = 0
-  let diferencia_economica = 0
-  
-  redistribucion.productosRedistribucion.value.forEach(producto => {
-    const costo = producto.costo_unitario || 0
-    costo_unitario_total += costo
-    subtotal_original += producto.cantidad_solicitada * costo
-    subtotal_ajustado += producto.cantidad_distribuida * costo
-  })
-  
-  diferencia_economica = subtotal_ajustado - subtotal_original
-  
-  return {
-    costo_unitario_promedio: redistribucion.productosRedistribucion.value.length > 0 
-      ? costo_unitario_total / redistribucion.productosRedistribucion.value.length 
-      : 0,
-    subtotal_original,
-    subtotal_ajustado,
-    diferencia_economica
-  }
-})
-
-// ⭐ FASE 4: Validar si se puede confirmar
-const puedeConfirmarRedistribucion = computed(() => {
-  return resumenRedistribucion.value.diferencia_pendiente === 0 &&
-         redistribucion.productosRedistribucion.value.every(p => p.diferencia === 0) &&
-         redistribucion.productosRedistribucion.value.every(p => !p.error)
-})
+// ⭐ FASE 4: resumen de redistribución / impacto económico / validación de confirmación,
+// ahora calculados dentro de useRedistribucion (dependen solo de su propio estado interno).
+const { resumenRedistribucion, impactoEconomico, puedeConfirmarRedistribucion } = redistribucion
 
 const canGenerarOC = computed(() => {
   // Permitir generar OC si el pedido está confirmado por proveedor
@@ -785,29 +632,15 @@ const canGenerarOC = computed(() => {
   return estado === 'CONFIRMADO_PROVEEDOR'
 })
 
-// ⭐ Deshabilitar "Confirmar" desde estado CONFIRMADO (id 4) en adelante (ver docs/FRONTEND.md §2)
-const ESTADOS_YA_CONFIRMADOS = [
-  'CONFIRMADO', // Backend devuelve este estado al confirmar (estado_id 4)
-  'RESPUESTA_PROVEEDOR_CARGADA',
-  'CONFIRMADO_PROVEEDOR',
-  'CONFIRMADO REDISTRIBUCION',
-  'PEDIDO_CONFIRMADO',
-  'CONFIRMADO_ENVIADO',
-  'PROCESADO_SAP',
-  'REDISTRIBUCION',
-  'CANCELADO POR EL RAYO',
-  'CANCELADO_POR_EL_RAYO'
-]
+// Req. 1.8: "Confirmar" (odcsap.view) se habilita únicamente en el estado
+// "Confirmado por Producción" (estado_id 23). La habilitación previa desde
+// Gestionar Pedido (3) queda obsoleta con el nuevo flujo intermedio
+// Gestionar Pedido -> Confirmar Producción -> Confirmar.
 const confirmarDeshabilitadoPorEstado = computed(() => {
   const cabecera = pedido.value?.cabecera
-  if (!cabecera) return false
+  if (!cabecera) return true
   const estadoId = cabecera.estado_id != null ? Number(cabecera.estado_id) : null
-  const estado = cabecera.estado ?? ''
-  // Cancelado por EL RAYO (estado_id 20)
-  if (estadoId === 20) return true
-  if (estadoId === 4 || estado === 'CONFIRMADO') return true
-  if (estadoId != null && estadoId >= 4) return true
-  if (ESTADOS_YA_CONFIRMADOS.includes(estado)) return true
+  if (estadoId !== 23) return true
 
   // Si la fecha de entrega es "INMEDIATO", el usuario debe seleccionar una fecha real antes de confirmar
   const fechaEntrega = cabecera.fecha_entrega?.trim()?.toUpperCase()
@@ -816,14 +649,35 @@ const confirmarDeshabilitadoPorEstado = computed(() => {
   return false
 })
 
+// Req. 1.8: "Confirmar" se oculta y "Confirmar Producción" se muestra en su lugar
+// solo para produccion-elrayo.view, y solo mientras el pedido está en Gestionar Pedido.
+const puedeConfirmarProduccion = computed(() => {
+  if (!authStore.canViewProduccionElRayo) return false
+  const estadoIdRaw = pedido.value?.cabecera?.estado_id
+  const estadoId = estadoIdRaw != null ? Number(estadoIdRaw) : null
+  return estadoId === 3
+})
+
+// Fecha Facturación (req. 1.8): exclusiva de odcsap.view, solo en Confirmado y Enviado (12),
+// donde habilita "Despachar y Facturar".
+const puedeEditarFechaFacturacion = computed(() => {
+  const estadoIdRaw = pedido.value?.cabecera?.estado_id
+  const estadoId = estadoIdRaw != null ? Number(estadoIdRaw) : null
+  return authStore.canManageOrder && estadoId === 12
+})
+
+// "Despachar y Facturar" solo se activa cuando se seleccionó la Fecha Facturación
+const despacharYFacturarDeshabilitadoPorFecha = computed(() => {
+  return !pedido.value?.cabecera?.fecha_facturacion
+})
+
 // Indica si el botón está deshabilitado específicamente porque el pedido es INMEDIATO y falta seleccionar fecha de entrega
 const esInmediatoSinFecha = computed(() => {
   const cabecera = pedido.value?.cabecera
   if (!cabecera) return false
   const estadoId = cabecera.estado_id != null ? Number(cabecera.estado_id) : null
-  // Solo aplica si el pedido NO está ya confirmado (estado_id < 4)
-  if (estadoId != null && estadoId >= 4) return false
-  if (ESTADOS_YA_CONFIRMADOS.includes(cabecera.estado ?? '')) return false
+  // Solo aplica en el estado donde "Confirmar" está habilitado: Confirmado por Producción (23)
+  if (estadoId !== 23) return false
   const fechaEntrega = cabecera.fecha_entrega?.trim()?.toUpperCase()
   return fechaEntrega === 'INMEDIATO'
 })
@@ -833,23 +687,27 @@ const confirmarRedistribucionDeshabilitadoPorEstado = computed(() =>
   pedido.value?.puede_confirmar_redistribucion === false
 )
 
-// Solo permitir editar COSTO UNIT., TOTAL y COMENTARIO en estado GESTIONAR PEDIDO (docs/FRONTEND.md §0.5.8.2)
+// Permitir editar COSTO UNIT., TOTAL y COMENTARIO en GESTIONAR PEDIDO (docs/FRONTEND.md §0.5.8.2)
+// y también en CONFIRMADO POR PRODUCCIÓN (23): odcsap.view hereda en ese estado las mismas
+// funcionalidades que tenía en Gestionar Pedido (req. 1.8).
 const puedeEditarCostoTotalComentario = computed(() => {
   const cabecera = pedido.value?.cabecera
   if (!cabecera) return false
   const estadoId = cabecera.estado_id != null ? Number(cabecera.estado_id) : null
   const estado = String(cabecera.estado ?? '').trim().toUpperCase()
-  if (estadoId === 3) return true
+  if (estadoId === 3 || estadoId === 23) return true
   if (estado === 'GESTIONAR_PEDIDO' || estado === 'GESTIONAR PEDIDO') return true
   return false
 })
 
-// Permitir cancelar pedido por EL RAYO solo en estado GESTIONAR PEDIDO (estado_id = 3)
+// Permitir cancelar pedido por EL RAYO solo en estado CONFIRMADO POR PRODUCCION (estado_id = 23),
+// una vez que Producción ya confirmó (req. 1.8 segunda fase). Exclusivo de odcsap.view.
 const puedeCancelarPorElRayo = computed(() => {
+  if (!authStore.canManageOrder) return false
   const cabecera = pedido.value?.cabecera
   if (!cabecera) return false
   const estadoId = cabecera.estado_id != null ? Number(cabecera.estado_id) : null
-  return estadoId === 3
+  return estadoId === 23
 })
 
 // Permitir descargar CSV solo en estado CONFIRMADO (estado_id = 4)
@@ -858,6 +716,21 @@ const puedeDescargarCsv = computed(() => {
   if (!cabecera) return false
   const estadoId = cabecera.estado_id != null ? Number(cabecera.estado_id) : null
   return estadoId === 4
+})
+
+// Permitir generar TXT MBA3 solo en estado CONFIRMADO Y ENVIADO (estado_id = 12),
+// ya que la columna Orden Compra Cliente del TXT depende del DocNum de la OC en SAP.
+// Usa el flag del backend (única fuente de verdad, ver enrich_pedido_with_ui_flags);
+// si no viene en la respuesta (pedido de un endpoint que aún no lo agrega), calcula
+// localmente como respaldo.
+const puedeGenerarTxtMba3 = computed(() => {
+  if (pedido.value?.puede_generar_txt_mba3 !== undefined) {
+    return pedido.value.puede_generar_txt_mba3
+  }
+  const cabecera = pedido.value?.cabecera
+  if (!cabecera) return false
+  const estadoId = cabecera.estado_id != null ? Number(cabecera.estado_id) : null
+  return estadoId === 12
 })
 
 // Permitir descargar pedido desde estado GESTIONAR PEDIDO (estado_id >= 3) en adelante
@@ -907,14 +780,14 @@ const {
 // - todosCodigosTienenCorreccion (computed)
 
 /**
- * Aplica las correcciones seleccionadas y reintenta el flujo de carga
+ * Aplica las correcciones seleccionadas (código y/o pack/pvp) y reintenta el flujo de carga
  * ⭐ ACTUALIZADO: Ahora recibe las correcciones como parámetro desde UploadErrorModal
  */
-async function aplicarCorreccionesYContinuar(correcciones: Record<string, string>): Promise<void> {
+async function aplicarCorreccionesYContinuar(correcciones: CorreccionesPlantilla): Promise<void> {
   // Obtener archivo original desde el composable
   // El composable lo guarda cuando hay error SAP
   const archivo = archivoOriginalDelComposable.value
-  
+
   if (!archivo) {
     toast.error(
       'Error',
@@ -922,11 +795,11 @@ async function aplicarCorreccionesYContinuar(correcciones: Record<string, string
     )
     return
   }
-  
+
   try {
     // Ocultar modal temporalmente mientras se procesa
     showErrorModal.value = false
-    
+
     // Llamar a la función de reintento con correcciones
     await reintentarConCorrecciones(
       archivo,
@@ -954,17 +827,38 @@ async function aplicarCorreccionesYContinuar(correcciones: Record<string, string
 // - setLimiteSugerencias
 // - inicializarLimiteSugerencias
 
-const columnManagement = useColumnManagement(pedido, numeroPedido, columnasModificadas)
+const columnManagement = useColumnManagement(
+  pedido,
+  numeroPedido,
+  columnasModificadas,
+  rolesModificacion,
+  () => orderedVisibleColumns.value.map(column => column.key)
+)
 
 // Extraer funciones del composable para uso directo
-const { editingCell, iniciarEdicion, cancelarEdicion, manejarTeclasEdicion, isColumnaModificada, getColumnaModificadaKey } = columnManagement
+const { editingCell, iniciarEdicion, cancelarEdicion, manejarTeclasEdicion, manejarBlurEdicion, isColumnaModificada, getColumnaModificadaKey, getRolModificador } = columnManagement
+
+// Color de resaltado de celda modificada en COSTO UNIT./TOTAL/COMENTARIO: naranja si la última
+// edición la hizo produccion-elrayo.view, púrpura si la hizo odcsap.view (su color de marca,
+// igual que la tarjeta "Listado de Pedidos" y el botón "Confirmar"/"Despachar y Facturar" en
+// DashboardView.vue / PedidoHeaderActions.vue). Depende de quién editó cada celda (persistido en
+// backend), no de quién esté viendo la pantalla ahora — así el color puesto por el primer editor
+// sobrevive el avance de estado hasta que el otro rol la vuelva a editar.
+function claseResaltadoModificado(detalleId: string, columnKey: string): string {
+  if (columnKey === 'numero' || !isColumnaModificada(detalleId, columnKey)) return ''
+  const esColumnaDeElRayo = columnKey === 'costo_doc_sin_iva' || columnKey === 'total' || columnKey === 'comentario'
+  if (esColumnaDeElRayo && getRolModificador(detalleId, columnKey) === 'PRODUCCION_ELRAYO') {
+    return 'bg-orange-50 dark:bg-orange-900/20 border-l-2 border-orange-500 dark:border-orange-400'
+  }
+  return 'bg-purple-50 dark:bg-purple-900/20 border-l-2 border-purple-500 dark:border-purple-400'
+}
 
 // Wrapper para guardarEdicion que incluye guardar en storage (fallback)
 // ⚠️ NOTA: El backend se actualiza automáticamente en useColumnManagement
 async function guardarEdicion() {
   await columnManagement.guardarEdicion(() => {
     // Guardar en sessionStorage como fallback (migración)
-    guardarColumnasModificadasEnStorage()
+    columnasModificadasStorage.guardar()
   })
 }
 
@@ -974,52 +868,27 @@ async function guardarEdicion() {
 // Funciones de gestión del pedido ahora están en el composable usePedidoDetalle
 
 // ⭐ HU-06: Funciones para actualizar cabecera del pedido
-async function handleUpdateFechaPedido(fecha: string | null) {
-  if (!pedido.value?.cabecera?.pedido_id) return
-  
-  try {
-    await mba3ConsultasService.actualizarCabeceraPedido(pedido.value.cabecera.pedido_id, {
-      fecha_pedido: fecha
-    })
-    
-    // Actualizar el valor localmente
-    if (pedido.value.cabecera) {
-      pedido.value.cabecera.fecha_pedido = fecha
-    }
-    
-    toast.success('Fecha actualizada', 'La fecha de pedido se ha actualizado correctamente')
-    
-    // Recargar el pedido para asegurar sincronización
-    await loadPedido()
-  } catch (e: any) {
-    console.error('Error al actualizar fecha de pedido:', e)
-    toast.error('Error al actualizar', e.message || 'No se pudo actualizar la fecha de pedido')
-    // Recargar para restaurar valor original
-    await loadPedido()
-  }
-}
+const { handleUpdateFechaPedido, handleUpdateFechaEntrega } = useFechaPedidoHandlers(pedido, toast, loadPedido)
 
-async function handleUpdateFechaEntrega(fecha: string | null) {
+// Fecha Facturación (req. 1.8): exclusiva de Producción El Rayo, solo en Gestionar Pedido
+async function handleUpdateFechaFacturacion(fecha: string | null) {
   if (!pedido.value?.cabecera?.pedido_id) return
-  
+
   try {
     await mba3ConsultasService.actualizarCabeceraPedido(pedido.value.cabecera.pedido_id, {
-      fecha_entrega: fecha
+      fecha_facturacion: fecha
     })
-    
-    // Actualizar el valor localmente
+
     if (pedido.value.cabecera) {
-      pedido.value.cabecera.fecha_entrega = fecha
+      pedido.value.cabecera.fecha_facturacion = fecha
     }
-    
-    toast.success('Fecha actualizada', 'La fecha de entrega se ha actualizado correctamente')
-    
-    // Recargar el pedido para asegurar sincronización
+
+    toast.success('Fecha actualizada', 'La fecha de facturación se ha actualizado correctamente')
+
     await loadPedido()
   } catch (e: any) {
-    console.error('Error al actualizar fecha de entrega:', e)
-    toast.error('Error al actualizar', e.message || 'No se pudo actualizar la fecha de entrega')
-    // Recargar para restaurar valor original
+    console.error('Error al actualizar fecha de facturación:', e)
+    toast.error('Error al actualizar', e.message || 'No se pudo actualizar la fecha de facturación')
     await loadPedido()
   }
 }
@@ -1037,11 +906,7 @@ async function handleUpdateEstado(estado: string | null) {
       toast.success('Estado actualizado', 'El pedido se ha marcado para Despachar y Facturar.')
       await loadPedido()
     } catch (e: any) {
-      const status = e.response?.status
-      const data = e.response?.data
-      const errorCode = data?.error
-      const detail = data?.detail
-      const msg = (typeof detail === 'object' && detail?.message) ? detail.message : (typeof detail === 'string' ? detail : null) ?? data?.message ?? e.message
+      const { status, errorCode, msg } = extraerMensajeErrorAnidado(e)
       if (status === 400 && (errorCode === 'estado_no_confirmado_enviado' || msg?.includes('Confirmado y Enviado'))) {
         toast.error('Estado incorrecto', 'Solo se puede marcar "Despachar y Facturar" cuando el pedido está en estado Confirmado y Enviado.')
       } else {
@@ -1072,16 +937,44 @@ async function handleConfirmar() {
   // Prevenir múltiples clics
   if (confirmando.value || !pedido.value || !numeroPedido.value) return
 
+  // Activar el spinner de inmediato al hacer clic, antes de cualquier
+  // llamada async, para que el botón dé feedback visual sin demora perceptible.
+  confirmando.value = true
+
+  // Req. 1.2: si algún producto quedó con Total por debajo de lo solicitado
+  // originalmente en la plantilla Excel, mostrar el modal de diferencia de
+  // producción en vez de confirmar directo. Si la consulta falla, no bloquear
+  // el flujo normal (misma tolerancia que otras notificaciones best-effort).
+  try {
+    const diferencia = await mba3ConsultasService.obtenerDiferenciaProduccion(numeroPedido.value)
+    if (diferencia.tiene_diferencia) {
+      detallesDiferencia.value = diferencia.detalles
+      showDiferenciaModal.value = true
+      confirmando.value = false
+      return
+    }
+  } catch (e) {
+    console.error('Error al consultar diferencia de producción:', e)
+  }
+
+  await ejecutarConfirmacion()
+}
+
+async function ejecutarConfirmacion(diferenciaReconocida = false) {
+  if (!pedido.value || !numeroPedido.value) return
   const pedidoId = pedido.value.cabecera?.pedido_id
 
   // Un solo flujo: POST crear-respuesta-desde-pedido (crea respuesta, guarda modificaciones,
   // registra confirmación de EL RAYO y envía email). Válido tanto desde GESTIONAR PEDIDO
   // como desde otros estados; el backend aplica la transición y el correo según corresponda.
+  // Req. 1.2 (endurecimiento): el backend ahora repite la verificación de diferencia por su
+  // cuenta y rechaza (400) si hay diferencia sin reconocer -- diferenciaReconocida=true es lo
+  // que le dice "el usuario ya vio el modal y decidió confirmar sin generar pedido hijo".
   confirmando.value = true
   toast.info('Guardando cambios...', 'Guardando los cambios realizados en la tabla')
 
   try {
-    await mba3ConsultasService.crearRespuestaProveedorDesdePedido(numeroPedido.value, pedidoId)
+    await mba3ConsultasService.crearRespuestaProveedorDesdePedido(numeroPedido.value, pedidoId, diferenciaReconocida)
 
     // Actualizar pedido en memoria para deshabilitar el botón y la edición de costo/total/comentario (docs/FRONTEND.md §2, §0.5.8.2)
     if (pedido.value?.cabecera) {
@@ -1111,10 +1004,86 @@ async function handleConfirmar() {
   }
 }
 
+function handleCancelarDiferencia() {
+  showDiferenciaModal.value = false
+}
+
+async function handleDiferenciaNoEntregada() {
+  // Opción 1 del modal: continúa el flujo de confirmación existente, reconociendo la
+  // diferencia explícitamente (el usuario ya la vio en el modal y decidió no generar
+  // pedido hijo) para que el backend no la rechace.
+  showDiferenciaModal.value = false
+  await ejecutarConfirmacion(true)
+}
+
+async function handleConfirmarConDiferencia(hijos: HijoDiferenciaPayload[]) {
+  if (!numeroPedido.value || procesandoDiferencia.value) return
+  procesandoDiferencia.value = true
+
+  try {
+    const resultado = await mba3ConsultasService.confirmarConDiferencia(numeroPedido.value, hijos)
+
+    showDiferenciaModal.value = false
+    if (pedido.value?.cabecera) {
+      pedido.value.cabecera.estado = 'CONFIRMADO'
+      pedido.value.cabecera.estado_id = 4
+    }
+    cancelarEdicion()
+    await loadPedido()
+    const cantidadHijos = resultado.pedidos_hijos.length
+    toast.success(
+      'Pedido confirmado',
+      `Se confirmó el pedido y se generaron ${cantidadHijos} pedido${cantidadHijos === 1 ? '' : 's'} con la diferencia (Producción Pospuesta).`
+    )
+    showConfirmacionModal.value = true
+  } catch (e: any) {
+    console.error('Error al confirmar con diferencia:', e)
+    toast.error('Error al confirmar', e.message || 'No se pudo confirmar el pedido con la diferencia')
+  } finally {
+    procesandoDiferencia.value = false
+  }
+}
+
 function handleCerrarModalConfirmacion() {
   showConfirmacionModal.value = false
   // El usuario permanece en la misma página (Detalle del Pedido)
   // No se realiza redirección
+}
+
+// Confirmar Producción (req. 1.8): exclusivo de produccion-elrayo.view, Gestionar Pedido -> Confirmado por Producción
+async function handleConfirmarProduccion() {
+  if (confirmandoProduccion.value || !pedido.value?.cabecera?.pedido_id) return
+
+  const pedidoId = pedido.value.cabecera.pedido_id
+  confirmandoProduccion.value = true
+
+  try {
+    await mba3ConsultasService.confirmarProduccion(pedidoId)
+    // No se recarga el pedido: al pasar a Confirmado por Producción (estado 23),
+    // produccion-elrayo.view ya no puede acceder a su detalle (ver requisito de
+    // acceso solo a Nuevo Pedido/Gestionar Pedido); el modal redirige al listado.
+    showConfirmacionProduccionModal.value = true
+  } catch (e: any) {
+    console.error('Error al confirmar producción:', e)
+    toast.error('Error al confirmar', e.message || 'No se pudo confirmar el pedido')
+  } finally {
+    confirmandoProduccion.value = false
+  }
+}
+
+function handleCerrarModalConfirmacionProduccion() {
+  showConfirmacionProduccionModal.value = false
+  router.push('/mba3-consultas/produccion/pedidos')
+}
+
+/** Extrae status/mensaje/código de un error HTTP con el shape { response: { data: { detail: {...} } } }. */
+function extraerDetalleErrorHttp(e: any): { status: number | undefined; message: string | undefined; errorCode: string | undefined } {
+  const status = e.response?.status
+  const data = e.response?.data
+  const detail = data?.detail
+  const errorCode = detail?.error
+  const message = detail?.message || data?.message || e.message
+  return { status, message, errorCode }
 }
 
 // Función para descargar pedido ORIGINAL en formato Excel (valores antes de ediciones)
@@ -1136,14 +1105,7 @@ async function handleDescargarPedido() {
     const blob = await mba3ConsultasService.descargarPedidoOriginal(pedidoId)
 
     // Crear URL del blob y descargar con el nombre fijo especificado
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'Descargar Pedido Original.xlsx'
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    descargarBlobComoArchivo(blob, 'Descargar Pedido Original.xlsx')
 
     toast.success('Descarga completada', 'El archivo Excel se ha descargado correctamente')
   } catch (e: any) {
@@ -1213,25 +1175,14 @@ async function handleDescargarCsv() {
     const nombreArchivo = `pedido_${numeroPedidoDisplay.replace(/[^a-zA-Z0-9.-]/g, '_')}_${timestamp}.csv`
     
     // Crear URL del blob y descargar
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = nombreArchivo
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-    
+    descargarBlobComoArchivo(blob, nombreArchivo)
+
     toast.success('Descarga completada', 'El archivo CSV se ha descargado correctamente')
   } catch (e: any) {
     console.error('Error al descargar CSV:', e)
-    
-    const status = e.response?.status
-    const data = e.response?.data
-    const detail = data?.detail
-    const errorCode = detail?.error
-    const message = detail?.message || data?.message || e.message
-    
+
+    const { status, message, errorCode } = extraerDetalleErrorHttp(e)
+
     if (status === 400) {
       // Estado no permitido
       if (errorCode === 'estado_no_confirmado' || message?.includes('CONFIRMADO')) {
@@ -1297,24 +1248,14 @@ async function handleDescargarExcelOriginal() {
     const nombreArchivo = nombreOriginal || `plantilla_original_${pedido.value.cabecera.numero_pedido?.replace(/[^a-zA-Z0-9.-]/g, '_') || pedidoId}.xlsx`
     
     // Crear URL del blob y descargar
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = nombreArchivo
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-    
+    descargarBlobComoArchivo(blob, nombreArchivo)
+
     toast.success('Descarga completada', 'El archivo Excel original se ha descargado correctamente')
   } catch (e: any) {
     console.error('Error al descargar Excel original:', e)
-    
-    const status = e.response?.status
-    const data = e.response?.data
-    const detail = data?.detail
-    const message = detail?.message || data?.message || e.message
-    
+
+    const { status, message } = extraerDetalleErrorHttp(e)
+
     if (status === 404) {
       toast.error('Archivo no encontrado', 'No existe archivo Excel original para este pedido')
     } else {
@@ -1325,7 +1266,7 @@ async function handleDescargarExcelOriginal() {
   }
 }
 
-// Función para cancelar pedido por EL RAYO (desde Detalle del Pedido - estado GESTIONAR PEDIDO)
+// Función para cancelar pedido por EL RAYO (desde Detalle del Pedido - estado CONFIRMADO POR PRODUCCION)
 async function handleCancelarPorElRayo() {
   if (!pedido.value?.cabecera?.pedido_id) {
     toast.error('Error', 'No hay pedido para cancelar')
@@ -1364,13 +1305,9 @@ async function handleCancelarPorElRayo() {
     }
   } catch (e: any) {
     console.error('Error al cancelar pedido:', e)
-    
-    const status = e.response?.status
-    const data = e.response?.data
-    const detail = data?.detail
-    const errorCode = detail?.error
-    const message = detail?.message || data?.message || e.message
-    
+
+    const { status, message, errorCode } = extraerDetalleErrorHttp(e)
+
     if (status === 400) {
       if (errorCode === 'estado_no_permitido' || message?.includes('estado')) {
         toast.error(
@@ -1391,30 +1328,28 @@ async function handleCancelarPorElRayo() {
 }
 
 // ⭐ HU-08: Descarga directa del archivo plano MBA (un clic, sin modal)
-async function handleDescargarPlanoMba() {
+// codigoBodega viene del botón correspondiente cuando el pedido tiene más de una ODC
+// (una por bodega/CD, ver PedidoHeaderActions.vue -> ordenesCompraParaTxt).
+async function handleDescargarPlanoMba(codigoBodega?: string) {
   if (!pedido.value || !numeroPedido.value) {
     toast.error('Error', 'No hay pedido seleccionado')
     return
   }
   if (descargandoPlanoMba.value) return
   descargandoPlanoMba.value = true
+  descargandoPlanoMbaBodega.value = codigoBodega
   try {
-    const blob = await mba3ConsultasService.exportarPedidoPlanoMba(numeroPedido.value, 'txt')
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    const nombreArchivo = `pedido_mba_${numeroPedido.value.replace(/[^a-zA-Z0-9.-]/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`
-    a.download = nombreArchivo
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
+    const blob = await mba3ConsultasService.exportarPedidoPlanoMba(numeroPedido.value, 'txt', codigoBodega)
+    const sufijoBodega = codigoBodega ? `_${codigoBodega}` : ''
+    const nombreArchivo = `pedido_mba_${numeroPedido.value.replace(/[^a-zA-Z0-9.-]/g, '_')}${sufijoBodega}_${new Date().toISOString().split('T')[0]}.txt`
+    descargarBlobComoArchivo(blob, nombreArchivo)
     toast.success('Descarga completada', 'El archivo se ha descargado correctamente')
   } catch (e: any) {
     console.error('Error al descargar pedido plano:', e)
     toast.error('Error al descargar', e.message || 'No se pudo descargar el archivo')
   } finally {
     descargandoPlanoMba.value = false
+    descargandoPlanoMbaBodega.value = undefined
   }
 }
 
@@ -1422,35 +1357,18 @@ async function handleDescargarPlanoMba() {
 
 // ⭐ REMOVIDO: Funciones de redistribución movidas al composable useRedistribucion.ts
 
-// ⭐ FASE 4: Funciones de redistribución - ahora delegadas al composable useRedistribucion
+// ⭐ FASE 4: Funciones de redistribución - delegadas directamente al composable useRedistribucion
+// (mismos nombres que antes: la plantilla las sigue usando como @evento="funcion" sin cambios).
 // Las funciones se pasan al componente RedistribucionTiendas como eventos
-function toggleExpandirProducto(codigoProducto: string) {
-  redistribucion.toggleExpandirProducto(codigoProducto)
-}
-
-function actualizarCantidadTienda(codigoProducto: string, tiendaCodigo: string, event: Event) {
-  redistribucion.actualizarCantidadTienda(codigoProducto, tiendaCodigo, event)
-}
-
-function validarYCorregirCantidad(producto: ProductoRedistribucion, tienda: DistribucionTiendaEditada) {
-  redistribucion.validarYCorregirCantidad(producto, tienda)
-}
-
-function distribuirProporcionalmente(codigoProducto: string) {
-  redistribucion.distribuirProporcionalmente(codigoProducto)
-}
-
-function copiarDistribucionOriginal(codigoProducto: string) {
-  redistribucion.copiarDistribucionOriginal(codigoProducto)
-}
-
-function resetearDistribucion(codigoProducto: string) {
-  redistribucion.resetearDistribucion(codigoProducto)
-}
-
-async function guardarBorradorRedistribucion() {
-  await redistribucion.guardarBorradorRedistribucion()
-}
+const {
+  toggleExpandirProducto,
+  actualizarCantidadTienda,
+  validarYCorregirCantidad,
+  distribuirProporcionalmente,
+  copiarDistribucionOriginal,
+  resetearDistribucion,
+  guardarBorradorRedistribucion
+} = redistribucion
 
 async function confirmarRedistribucion() {
   await redistribucion.confirmarRedistribucion(puedeConfirmarRedistribucion)
@@ -1469,9 +1387,6 @@ onMounted(() => {
   // ⭐ Las columnas modificadas se cargan automáticamente en loadPedido()
   // Autofocus opcional: descomentar si quieres que el input tenga foco al cargar
   // pedidoInputRef.value?.focus()
-  
-  // Agregar listener para cerrar dropdown al hacer click fuera
-  document.addEventListener('click', handleClickOutsideColumnSelector)
 })
 
 // ⭐ Si el componente está en un keep-alive, también cargar al activarse
@@ -1548,8 +1463,8 @@ watch(lastNotification, async (notification) => {
       console.log('🔄 [PedidoDetalleView] Notificación SSE recibida para pedido actual:', meta.accion)
     }
 
-    // Si el pedido fue eliminado, redirigir a cargar-plantilla (el pedido ya no existe)
-    if (meta.accion === 'pedido_eliminado' || meta.accion === 'pedido_descartado' || meta.accion === 'pedido_cancelado') {
+    // Si el pedido fue descartado/cancelado, redirigir a cargar-plantilla (el pedido ya no existe)
+    if (meta.accion === 'pedido_descartado' || meta.accion === 'pedido_cancelado') {
       router.push('/mba3-consultas/cargar-plantilla')
       return
     }
@@ -1558,173 +1473,11 @@ watch(lastNotification, async (notification) => {
   }
 })
 
-// Cleanup: eliminar listener del dropdown cuando el componente se destruye
-// El composable useFileUpload maneja el cleanup del fileInput
-onUnmounted(() => {
-  // Remover listener del dropdown
-  document.removeEventListener('click', handleClickOutsideColumnSelector)
-})
+// Cleanup del listener del dropdown de columnas: lo maneja useColumnVisibilityToggle
+// (registra/remueve su propio listener de click-outside internamente).
+// El composable useFileUpload maneja el cleanup del fileInput.
 
-function handleClickOutsideColumnSelector(event: MouseEvent) {
-  if (!showColumnSelector.value) return
-  
-  const target = event.target as HTMLElement
-  // Si el click es dentro del dropdown o del botón, no hacer nada
-  if (target.closest('.relative')) {
-    return
-  }
-  
-  // Cerrar el dropdown
-  showColumnSelector.value = false
-}
-
-function handleDragStart(event: DragEvent, columnKey: string) {
-  const column = availableColumns.find(col => col.key === columnKey)
-  if (column?.fixed) {
-    return
-  }
-  
-  draggedColumnKey.value = columnKey
-  if (event.dataTransfer) {
-    event.dataTransfer.effectAllowed = 'move'
-    event.dataTransfer.setData('text/plain', columnKey)
-  }
-}
-
-function handleDragOver(event: DragEvent, columnKey: string) {
-  event.preventDefault()
-  if (event.dataTransfer) {
-    event.dataTransfer.dropEffect = 'move'
-  }
-  
-  if (draggedColumnKey.value !== null && draggedColumnKey.value !== columnKey) {
-    dragOverColumnKey.value = columnKey
-  }
-  else {
-    dragOverColumnKey.value = null
-  }
-}
-
-function handleDragLeave() {
-  // No limpiar dragOverColumnKey aquí porque puede causar parpadeo
-  // Se limpiará en handleDrop o handleDragEnd
-}
-
-// ⭐ ACTUALIZAR: handleDrop para usar columnKey en lugar de índices
-function handleDrop(event: DragEvent, targetColumnKey: string) {
-  event.preventDefault()
-  
-  if (!draggedColumnKey.value || draggedColumnKey.value === targetColumnKey) {
-    draggedColumnKey.value = null
-    dragOverColumnKey.value = null
-    return
-  }
-  
-  // No permitir arrastrar columnas fijas
-  const draggedColumn = availableColumns.find(col => col.key === draggedColumnKey.value)
-  if (draggedColumn?.fixed) {
-    draggedColumnKey.value = null
-    dragOverColumnKey.value = null
-    return
-  }
-  
-  // No permitir colocar columnas antes de columnas fijas
-  const targetColumn = availableColumns.find(col => col.key === targetColumnKey)
-  if (targetColumn?.fixed) {
-    draggedColumnKey.value = null
-    dragOverColumnKey.value = null
-    return
-  }
-  
-  // Reordenar usando el composable
-  // Preservar el orden completo (incluyendo columnas no visibles)
-  const fullOrder = [...columnOrder.value]
-  const visibleOrder = [...orderedVisibleColumnKeys.value]
-  
-  const draggedIndex = visibleOrder.indexOf(draggedColumnKey.value)
-  const targetIndex = visibleOrder.indexOf(targetColumnKey)
-  
-  if (draggedIndex === -1 || targetIndex === -1) {
-    draggedColumnKey.value = null
-    dragOverColumnKey.value = null
-    return
-  }
-  
-  // Obtener índices en el orden completo
-  const draggedIndexInFull = fullOrder.indexOf(draggedColumnKey.value)
-  const targetIndexInFull = fullOrder.indexOf(targetColumnKey)
-  
-  if (draggedIndexInFull === -1 || targetIndexInFull === -1) {
-    draggedColumnKey.value = null
-    dragOverColumnKey.value = null
-    return
-  }
-  
-  // Remover columna arrastrada del orden completo
-  fullOrder.splice(draggedIndexInFull, 1)
-  
-  // Insertar en nueva posición en el orden completo
-  // Si el índice objetivo es mayor que el arrastrado, ajustar porque ya removimos un elemento
-  const adjustedTargetIndex = targetIndexInFull > draggedIndexInFull ? targetIndexInFull - 1 : targetIndexInFull
-  fullOrder.splice(adjustedTargetIndex, 0, draggedColumnKey.value)
-  
-  // Asegurar que 'numero' esté al inicio
-  const numeroIndex = fullOrder.indexOf('numero')
-  if (numeroIndex > 0) {
-    fullOrder.splice(numeroIndex, 1)
-    fullOrder.unshift('numero')
-  }
-  
-  // Actualizar el orden usando el composable
-  columnOrder.value = fullOrder
-  
-  // Guardar preferencias
-  savePreferences()
-  
-  // Limpiar estados
-  draggedColumnKey.value = null
-  dragOverColumnKey.value = null
-}
-
-function handleDragEnd() {
-  draggedColumnKey.value = null
-  dragOverColumnKey.value = null
-}
-
-// ⭐ NUEVO: Función para toggle de visibilidad de columnas
-function toggleColumnVisibility(columnKey: string) {
-  // No permitir ocultar columnas fijas
-  const column = availableColumns.find(col => col.key === columnKey)
-  if (column?.fixed) {
-    return
-  }
-  
-  const currentVisible = [...visibleColumns.value]
-  const index = currentVisible.indexOf(columnKey)
-  
-  // Validación: Asegurar que hay al menos una columna visible (excluyendo fijas)
-  const visibleNonFixed = currentVisible.filter(key => {
-    const col = availableColumns.find(c => c.key === key)
-    return !col?.fixed
-  })
-  
-  if (index > -1 && visibleNonFixed.length === 1) {
-    console.warn('⚠️ Debe haber al menos una columna visible. Operación cancelada.')
-    return
-  }
-  
-  if (index > -1) {
-    // Ocultar columna
-    currentVisible.splice(index, 1)
-  } else {
-    // Mostrar columna
-    currentVisible.push(columnKey)
-  }
-  
-  visibleColumns.value = currentVisible
-  savePreferences()
-}
-
+// Funciones de drag & drop de columnas ahora están en el composable useColumnDragAndDrop
 // Funciones de edición ahora están en el composable useColumnManagement
 </script>
 

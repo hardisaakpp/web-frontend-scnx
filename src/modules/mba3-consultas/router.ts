@@ -11,8 +11,17 @@ import type { RouteRecordRaw } from 'vue-router'
  *   → Cargar Plantilla, Redistribución, Procesamiento SAP,
  *     Homologaciones, Órdenes de Compra, Remisiones, ODC Errores,
  *     ODC a SAP (Proceso Completo), etc.
- * 
- * El dashboard y ODC a SAP permiten acceso con cualquiera de los dos permisos.
+ *
+ * - produccion-elrayo.view: Acceso restringido de Producción El Rayo (req. 1.8)
+ *   → Listado de Pedidos (mismo componente que EL RAYO, filas restringidas en
+ *     backend a NUEVO_PEDIDO/GESTIONAR_PEDIDO)
+ *
+ * - funcionalidades-admin.view: único requisito para ver el desplegable
+ *   "Información Pedidos y ODC (EN DESARROLLO)" en el dashboard (Órdenes de
+ *   Compra, Homologaciones, Procesamiento SAP, etc.). Reemplaza los permisos
+ *   internos que tenía cada botón.
+ *
+ * El dashboard permite acceso con cualquiera de los cuatro permisos.
  */
 
 const routes: RouteRecordRaw[] = [
@@ -23,11 +32,11 @@ const routes: RouteRecordRaw[] = [
     path: '/mba3-consultas',
     name: 'mba3-consultas-dashboard',
     component: () => import('./views/DashboardView.vue'),
-    meta: { 
+    meta: {
       requiresAuth: true,
       title: 'Gestión ODC SAP',
       icon: 'DocumentTextIcon',
-      permissions: ['odcsap.view', 'mabel.view']
+      permissions: ['odcsap.view', 'mabel.view', 'produccion-elrayo.view', 'funcionalidades-admin.view']
     }
   },
 
@@ -60,11 +69,28 @@ const routes: RouteRecordRaw[] = [
     path: '/mba3-consultas/pedidos/:id',
     name: 'mba3-consultas-pedido-detalle',
     component: () => import('./views/PedidoDetalleView.vue'),
-    meta: { 
+    meta: {
       requiresAuth: true,
       title: 'Detalle del Pedido - EL RAYO',
       icon: 'DocumentTextIcon',
-      permissions: ['odcsap.view']
+      permissions: ['odcsap.view', 'produccion-elrayo.view']
+    }
+  },
+
+  // =============================================
+  // Producción El Rayo - permiso: produccion-elrayo.view (req. 1.8)
+  // Mismo componente de listado que EL RAYO; el backend restringe las
+  // filas/estados devueltos a NUEVO_PEDIDO y GESTIONAR_PEDIDO.
+  // =============================================
+  {
+    path: '/mba3-consultas/produccion/pedidos',
+    name: 'mba3-consultas-produccion-pedidos-listado',
+    component: () => import('./views/PedidosListView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Listado de Pedidos - Producción El Rayo',
+      icon: 'DocumentTextIcon',
+      permissions: ['produccion-elrayo.view']
     }
   },
 
@@ -218,11 +244,37 @@ const routes: RouteRecordRaw[] = [
     path: '/mba3-consultas/reporte-diferencias/:id?',
     name: 'mba3-consultas-reporte-diferencias',
     component: () => import('./views/ReporteDiferenciasView.vue'),
-    meta: { 
+    meta: {
       requiresAuth: true,
       title: 'Reporte de Diferencias',
       icon: 'ChartBarIcon',
       permissions: ['mabel.view']
+    }
+  },
+
+  // =============================================
+  // Administración - solo rol Admin
+  // =============================================
+  {
+    path: '/mba3-consultas/admin/destinatarios',
+    name: 'mba3-consultas-admin-destinatarios',
+    component: () => import('./views/AdminDestinatariosView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Destinatarios de Notificaciones',
+      icon: 'EnvelopeIcon',
+      role: 'Admin'
+    }
+  },
+  {
+    path: '/mba3-consultas/admin/catalogo-correos',
+    name: 'mba3-consultas-admin-catalogo-correos',
+    component: () => import('./views/AdminCatalogoCorreosView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Catálogo de Correos',
+      icon: 'EnvelopeIcon',
+      role: 'Admin'
     }
   }
 ]

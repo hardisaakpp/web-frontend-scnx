@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <title>Autenticando...</title>
+</head>
+<body>
+    <div style="text-align: center; font-family: sans-serif; margin-top: 50px;">
+        <h2>Completando inicio de sesión...</h2>
+        <p>Por favor espera un momento, serás redirigido automáticamente.</p>
+    </div>
+    <script src="https://alcdn.msauth.net/browser/3.10.0/js/msal-browser.min.js"></script>
+    <script type="text/javascript">
+        // El popup extrae su propia configuración y procesa el token por su cuenta
+        // para evadir el bloqueo de ventanas de Brave/Chrome.
+        const tenantId = sessionStorage.getItem('msal_tenantId');
+        const clientId = sessionStorage.getItem('msal_clientId');
+        
+        if (tenantId && clientId) {
+            const msalConfig = {
+                auth: {
+                    clientId: clientId,
+                    authority: `https://login.microsoftonline.com/${tenantId}`,
+                    redirectUri: window.location.href.split('#')[0]
+                },
+                cache: { cacheLocation: "localStorage" }
+            };
+            const msalInstance = new msal.PublicClientApplication(msalConfig);
+            msalInstance.initialize().then(() => {
+                msalInstance.handleRedirectPromise().then(() => {
+                    // Token guardado en localStorage. Cerramos el popup.
+                    // La ventana principal detectará que se cerró y leerá el caché.
+                    window.close();
+                }).catch(err => {
+                    console.error("Error en popup MSAL:", err);
+                    document.body.innerHTML += `<p style="color:red">Error: ${err.message}</p>`;
+                });
+            });
+        }
+    </script>
+</body>
+</html>

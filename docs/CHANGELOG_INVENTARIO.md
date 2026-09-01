@@ -6,6 +6,47 @@ Registro cronológico de cambios realizados al módulo `src/modules/inventario` 
 
 ---
 
+## 2026-08-28 (2) — Historial de Planes ejecutados
+
+- **Nueva vista `HistorialPlanesView.vue`** (`/inventario/planes/historial`): "Planes Pendientes" filtra a `status=Planned` y los ejecutados desaparecían de esa lista sin forma de consultarlos — el plan en sí **no se borra** al ejecutarse (solo pasa a `Executed`, ver backend), así que no hacía falta ninguna tabla de auditoría nueva, solo exponer el filtro correcto.
+- Filtro "Desde" con default de **últimos 15 días** (mismo estándar que "Historial de Mis Conteos"), búsqueda + orden por columna (mismo patrón que "Planes Pendientes"), nombre de quién ejecutó resuelto vía `resolveUserNames`, link directo a la sesión de inventario que generó cada plan.
+- Botón "Ver historial" agregado en `PlanesInventarioView.vue`. `inventarioPlanesService.getPlanes()` acepta `since` opcional.
+- Estado: **commiteado** en `fix/inventarios-lilipink` (`9a1c3ed`), aún sin pushear. Ver `api-inventario/docs/CHANGELOG_INVENTARIO.md` (2026-08-28, "GetAllAsync de planes acepta filtro 'since'") para el backend.
+
+## 2026-08-28 — Nombre en vez de GUID, "No realizado" visible al usuario, texto (tuya)/(tuyos)
+
+- **`MisInventariosView.vue`**: "Generada por" mostraba el GUID crudo (`s.createdByUserId`) en vez del nombre — el backend ya manda `createdByUserName` en el DTO (no hacía falta resolver por endpoint de usuarios, como sí necesita caja-chica). Ahora usa `s.createdByUserName || s.createdByUserId`.
+- **`HistorialConteosView.vue`**: se quita el calificador `(tuya)/(tuyos)` de "cantidad total" y "SKUs" — quedan los dos nombres solos, sin aclaración redundante (la nota de que Excel/Imprimir traen el total de *todos* los usuarios se deja igual, no fue lo que se pidió simplificar).
+- Fix relacionado de fondo (100% backend, ver `api-inventario/docs/CHANGELOG_INVENTARIO.md` 2026-08-28): las tomas "No realizado" (Expired) ahora aparecen en "Historial de Mis Conteos" del propio usuario asignado, no solo en la vista de admin — no requirió cambios en este repo, el frontend ya consume `GetMyCountHistoryAsync` tal cual.
+- Estado: **commiteado** en rama `fix/inventarios-lilipink` (commit `31cfe62`), aún sin pushear.
+
+## 2026-08-25 — Selector de toma + descartar ajuste + copiar ID en Resumen
+
+- **`AdjustmentsBoardView.vue`**: el formulario "Crear Ajuste" ya no pide pegar el `sessionId` a mano — ahora es un `<select>` con las tomas cerradas que todavía no tienen ajuste ni fueron descartadas (`sesionesPendientes`, calculado sobre `inventarioSesionesService.getSesiones()`). Nuevo botón "Descartar (sin ajuste)" junto a "Crear Ajuste" — llama a `discardAdjustment` (ver backend), sin cobro, la toma se queda cerrada tal cual está; confirma con un diálogo simple antes de ejecutar.
+- **`SupervisorResumenView.vue`**: botón de copiar el ID completo de la sesión al portapapeles junto al ID truncado del encabezado (antes no había forma de obtener el ID completo sin abrir devtools).
+- **Ícono de "ajuste terminado"**: se reemplazó la ⭐ por `CheckBadgeIcon` en `HistorialConteosView.vue` y `SesionesInventarioView.vue` — ahora cubre dos casos con el mismo ícono pero tooltip distinto: verde "Cerrado con informe de ajuste aprobado" o gris "Cerrado — revisado sin ajuste" (descartado).
+- Tipos nuevos: `adjustmentDiscarded` en `InventorySessionListItemDto`/`MyCountHistorySessionDto` (`types.ts`), `discardAdjustment` en `scnexusInventoryApi.ts`.
+- Estado: **sin commitear**, en `feature/req_inventarios240826`. Ver `api-inventario/docs/CHANGELOG_INVENTARIO.md` (2026-08-25, "Descartar ajuste...") para el backend.
+
+## 2026-08-25 — Ajuste final para tienda, marca de cerrados con informe, enteros, búsqueda/orden en listas
+
+- **`AjusteFinalTiendaView.vue`** (nueva, ruta `/inventario/mis-inventarios/ajuste/:sessionId`, sin permiso RBAC — autoservicio, el backend valida acceso por bodega): vista de solo lectura del ajuste ya aprobado de una toma, para el rol tienda. Muestra Item/Descripción/Diferencia final/Valor final — **sin columnas de costo ni PVP** (a diferencia de `AdjustmentsBoardView.vue`, que sí las muestra a auditoría/supervisión). Descarga a Excel con las mismas 4 columnas, también sin costo.
+- **`HistorialConteosView.vue`**: botón "Ver ajuste final" por sesión (habilitado cuando `hasApprovedAdjustment`) y una ⭐ junto al badge de estado en las sesiones cerradas que ya tienen ajuste aprobado.
+- **`SesionesInventarioView.vue`** (listado de Toma Física): misma ⭐ junto al badge "Cerrada". Además, estándar de búsqueda + orden por columna (ver abajo).
+- **Estándar de búsqueda + orden por columna** aplicado a las listas de tabla que no lo tenían — mismo patrón que ya tenía `DetalleTomaFisicaView.vue` (`search` + clic en `<th>` para ordenar, con indicador ▲/▼): `SesionesInventarioView.vue` (pedido explícito, "tomas físicas"), `AdjustmentsBoardView.vue`, `PlanesInventarioView.vue`, `GeneratedInventoriesView.vue`, `InventoryDetailView.vue`, `InventoryPlanningsView.vue`, y la tabla de detalle de `GestionScansView.vue` (que ya tenía búsqueda, solo le faltaba orden). No se tocaron `PlanningDetailView.vue`/`ResumenPickingView.vue` (tablas chicas de tamaño fijo, no lo necesitan) ni `SessionCenterView.vue`/`PlanningWorkbenchView.vue` (pantallas de prueba de API, no de uso diario).
+- **`AdjustmentsBoardView.vue`**: la diferencia ajustada de cada línea ahora solo acepta enteros (`step="1"`, validación en frontend con mensaje claro antes de guardar) — espejo de la validación nueva en el backend (`InventoryAdjustmentLine.UpdateAudit`).
+- Tipos nuevos en `types.ts` (`hasApprovedAdjustment`/`adjustmentId` en `InventorySessionListItemDto` y `MyCountHistorySessionDto`) y `scnexusInventoryApi.ts` (`getAdjustmentBySession`). Ver `api-inventario/docs/CHANGELOG_INVENTARIO.md` (2026-08-25) para el backend.
+- **Incidente durante el trabajo**: al correr varios agentes en paralelo (uno por vista, para aplicar el estándar de búsqueda/orden) sobre el mismo worktree, uno de ellos hizo un `git stash`/`git stash pop` exploratorio que salió mal a medias y dejó temporalmente 2 archivos (`GestionScansView.vue`, `InventoryPlanningsView.vue`) con la plantilla ya editada pero el script sin los cambios correspondientes (no compilaban). Detectado con `vue-tsc --noEmit` y corregido a mano completando el script faltante en ambos; verificado de nuevo con `vue-tsc` limpio (exit 0) en todo el proyecto y `git status`/`git stash list` consistentes al terminar. Nada se perdió, pero quedó documentado por si el mismo patrón (agentes en paralelo + `git stash` exploratorio) se repite en otra sesión.
+- Estado: **sin commitear**, en `feature/req_inventarios240826` (worktree de esta sesión). `vue-tsc --noEmit` limpio.
+
+## 2026-08-25 — Escáner de código de barras copiado a Inventario + rediseño de listas
+
+- **`useBarcodeScanner.ts`/`ScannerPanel.vue`** copiados tal cual (no importados) desde `articulo-scaner` a `src/modules/inventario/{composables,components}/` — a pedido explícito del usuario, para no acoplar el módulo inventario al módulo scanner. Único cambio: el import interno de `ScannerPanel.vue` apunta a la copia local del composable.
+- Botón de cámara agregado en **`ContarArticulosView.vue`** (junto a "Buscar artículo") y **`ConteoPickingView.vue`** (junto a "Escanear código de barras") — abren el mismo `ScannerPanel` copiado; el código detectado llena el campo de búsqueda/pasa directo a la cola de picking, respectivamente.
+- **`SesionesInventarioView.vue`** (listado de Toma Física): ancho completo, columnas reducidas a Bodega/Descripción/Estado/Listado(items+cant.)/Fecha definida/Acciones (Plan/ID/Creado por se movieron al Resumen), paginado de 10. "Listado (items/cant.)" y "Fecha definida" reflejan el **alcance definido** de la toma (filtros con los que se generó), no el avance de conteo ni las fechas reales de apertura/cierre — esas siguen en `SupervisorResumenView.vue`.
+- **`SupervisorResumenView.vue`**: encabezado gana `referenceCode`, Plan/ID, Creado por. Descarga cambiada de CSV a **Excel de 2 hojas** ("Resumen" con los datos ya visibles en pantalla, "Detalle" con Código/Descripción/SAP/Conteo/Reconteo/Diferencia final/Estado) — antes bajaba TODO el almacén (~3k filas) en vez de solo el alcance de la toma (~45), ver fix de backend del mismo día.
+- Estado: **sin commitear**, en `feature/req_inventarios240826` (worktree de esta sesión).
+
 ## 2026-08-21 — Fix: columna "Género" traía el dato equivocado
 
 - **`DetalleTomaFisicaView.vue`** (tabla y ambos descargables — filtrado y consolidado): la columna "Género" (rebautizada así el 17-ago desde "Familia", ver esa entrada) seguía leyendo `row.familia`, que en el backend venía de `item_group_name` en vez de `u_gen`. Nivel1/Nivel2/Nivel3 estaban correctos, solo Género estaba mal. **Fix es 100% backend** — `familia`/`Familia` se dejó igual como nombre de campo (no se tocó nada en este repo), solo cambió su origen en `api-inventario`. Ver `api-inventario/docs/CHANGELOG_INVENTARIO.md` (2026-08-21, "Fix: columna Género...").

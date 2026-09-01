@@ -45,9 +45,25 @@
       </div>
       <div class="flex-[2] min-w-[220px]">
         <label for="search" class="block text-xs font-medium text-gray-500 mb-1">Buscar artículo</label>
-        <input id="search" v-model="search" type="text" placeholder="Código o nombre..." class="text-input w-full" />
+        <div class="flex gap-2">
+          <input id="search" v-model="search" type="text" placeholder="Código, código de barras o nombre..." class="text-input w-full" />
+          <button
+            type="button"
+            class="btn-secondary flex-shrink-0 px-3"
+            title="Escanear con cámara"
+            @click="mostrarEscaner = true"
+          >
+            <CameraIcon class="w-4 h-4" />
+          </button>
+        </div>
       </div>
     </div>
+
+    <ScannerPanel
+      :visible="mostrarEscaner"
+      @detected="onCodigoEscaneado"
+      @close="mostrarEscaner = false"
+    />
 
     <div v-if="actionMsg" class="mb-4">
       <span :class="['text-xs font-medium', actionMsgError ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400']">
@@ -189,12 +205,14 @@ import { ref, computed, onMounted, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import {
   ChevronLeftIcon,
-  ArrowPathIcon
+  ArrowPathIcon,
+  CameraIcon
 } from '@heroicons/vue/24/outline'
 import { inventarioSesionesService } from '../services/inventarioSesionesApi'
 import type { ArticleCountLineDto } from '../services/inventarioSesionesApi'
 import { useWarehouseAccessType } from '../composables/useWarehouseAccessType'
 import { resolveUserNames } from '@/utils/resolveUserNames'
+import ScannerPanel from '../components/ScannerPanel.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -232,6 +250,12 @@ const erroredItems = ref(new Set<string>())
 
 const filterLevel2 = ref('')
 const search = ref('')
+const mostrarEscaner = ref(false)
+
+function onCodigoEscaneado(code: string) {
+  search.value = code
+  mostrarEscaner.value = false
+}
 
 // Sentinel value for the "OTROS CÓDIGOS" filter option — groups items with no Nivel 2
 // classification (e.g. counted items that don't exist in the item master catalog).
