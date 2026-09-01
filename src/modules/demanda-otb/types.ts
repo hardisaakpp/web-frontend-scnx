@@ -230,6 +230,16 @@ export interface OtbFiltros {
   sku?: string
 }
 
+/** POST /otb/{negocio}/export — mismos filtros que /otb, más los de columna (nivel1/2/3/
+ *  género) y tipoMes, ya que el Excel se genera server-side con todos los nodos+SKUs. */
+export interface OtbExportRequest extends OtbFiltros {
+  tipoMes?: 'regular' | 'pico'
+  nivel1?: string
+  nivel2?: string
+  nivel3?: string
+  genero?: string
+}
+
 /** GET /otb/{negocio}/skus — drill-down del [+], SIN filtrar por género (viaja por SKU). */
 export interface OtbSkuItem {
   codigo: string

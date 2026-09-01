@@ -3,8 +3,7 @@ import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { MagnifyingGlassIcon, ArrowPathIcon, ArrowDownTrayIcon, ChevronRightIcon, ChevronDownIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon, MinusIcon } from '@heroicons/vue/24/outline'
 import FilterDropdown from '../components/FilterDropdown.vue'
-import { getOtb, getOtbSkus } from '../services/demandaOtbApi'
-import { downloadExcel, type ExcelColumn } from '@/utils/exportExcel'
+import { getOtb, getOtbSkus, exportOtb } from '../services/demandaOtbApi'
 import type { NodoFila, OtbResponse, OtbSkuItem } from '../types'
 
 const route = useRoute()
@@ -318,32 +317,53 @@ function otbUnidadesSku(sku: OtbSkuItem) {
   return invFinalPlanificadoSku(sku) + ventas - stock
 }
 
-// ── Exportar a Excel de lo que se ve en pantalla (ya filtrado) ──────────────
-const EXCEL_COLUMNS: ExcelColumn<NodoFila>[] = [
-  { header: 'Nivel 1', key: 'nivel1' },
-  { header: 'Nivel 2', key: 'nivel2' },
-  { header: 'Nivel 3', key: 'nivel3' },
-  { header: 'Género', key: 'genero' },
-  { header: 'SKUs', key: 'skus' },
-  { header: 'Cobertura deseada', key: (r) => coberturaDeseadaValue(r) },
-  { header: 'Stock inicial', key: 'stockInicial' },
-  { header: 'Stock día', key: 'stockDia' },
-  { header: 'Tránsito', key: 'transito' },
-  { header: 'Mín 80%', key: 'min80' },
-  { header: 'Ventas planificada', key: 'ventasPlanificada' },
-  { header: 'Máx 80%', key: 'max80' },
-  { header: 'Catálogo nuevo', key: 'catNuevo' },
-  { header: 'Total nivel', key: 'ventasTotal' },
-  { header: 'Inv. Final Planificado', key: (r) => invFinalPlanificado(r).toFixed(1) },
-  { header: 'OTB', key: (r) => otbUnidades(r).toFixed(1) },
-  { header: 'Semáforo', key: 'semaforo' },
-  { header: 'Cobertura (días)', key: 'coberturaDias' },
-  { header: 'Tendencia', key: 'tendencia' },
-  { header: 'Decisión', key: 'decisionOtb' },
-  { header: 'Sugerencia compra', key: 'sugerenciaCompra' },
-]
-function exportarExcel() {
-  downloadExcel(`otb_${negocio.value}_${otb.value?.fecha ?? ''}.xlsx`, EXCEL_COLUMNS, filteredRows.value)
+// ── Exportar a Excel: ahora lo genera el backend (agrupación nativa + drill-down de
+// TODOS los nodos filtrados, no solo los expandidos en pantalla) — ver
+// NEXUS_OTB_ENDPOINT_OTB.md y la conversación sobre POST /otb/{negocio}/export.
+const exportandoExcel = ref(false)
+const errorExportExcel = ref<string | null>(null)
+
+async function exportarExcel() {
+  exportandoExcel.value = true
+  errorExportExcel.value = null
+  try {
+    const blob = await exportOtb(negocio.value, {
+      fecha: fecha.value || undefined,
+      tipoMes: tipoMes.value,
+      nivel1: colNivel1.value || undefined,
+      nivel2: colNivel2.value || undefined,
+      nivel3: colNivel3.value || undefined,
+      genero: colGenero.value || undefined,
+      coleccion: coleccion.value || undefined,
+      marcaProveedor: marcaProveedor.value || undefined,
+      origen: origen.value || undefined,
+      descontinuado: descontinuado.value || undefined,
+      repocision: repocision.value || undefined,
+      inactivo: inactivo.value || undefined,
+      sku: skuBusqueda.value || undefined,
+    })
+
+    // El backend siempre responde 200 con este endpoint incluso en error de validación,
+    // pero como blob — si viene JSON en vez de un xlsx real, hay que leerlo aparte.
+    if (blob.type.includes('json')) {
+      const texto = await blob.text()
+      const parseado = JSON.parse(texto) as { message?: string }
+      throw new Error(parseado.message || 'Error generando el Excel.')
+    }
+
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `otb_${negocio.value}_${fecha.value}.xlsx`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  } catch (e) {
+    errorExportExcel.value = e instanceof Error ? e.message : 'Error generando el Excel.'
+  } finally {
+    exportandoExcel.value = false
+  }
 }
 
 onMounted(cargarOtb)
@@ -454,14 +474,16 @@ onUnmounted(() => {
 
           <button
             @click="exportarExcel"
-            :disabled="!otb"
+            :disabled="!otb || exportandoExcel"
             class="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <ArrowDownTrayIcon class="w-4 h-4" />
-            <span>Exportar a Excel</span>
+            <span>{{ exportandoExcel ? 'Generando...' : 'Exportar a Excel' }}</span>
           </button>
         </div>
       </div>
+
+      <p v-if="errorExportExcel" class="text-xs text-red-600 dark:text-red-400 mt-2">{{ errorExportExcel }}</p>
 
       <p v-if="otb" class="text-xs text-gray-400 dark:text-gray-500 mt-3">
         Catálogo nuevo: {{ otb.catNuevoTotal.toLocaleString() }} uds<span v-if="!otb.catNuevoAplicable"> (no aplica con este filtro)</span>

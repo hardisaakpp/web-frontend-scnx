@@ -1,5 +1,5 @@
 import { demandaOtbHttp } from '@/lib/http'
-import type { AgregadoResponse, CatalogoFiltros, CatalogoResponse, DesgloseResponse, NivelesTree, OtbFiltros, OtbResponse, OtbSkusResponse, SkuDetail } from '../types'
+import type { AgregadoResponse, CatalogoFiltros, CatalogoResponse, DesgloseResponse, NivelesTree, OtbExportRequest, OtbFiltros, OtbResponse, OtbSkusResponse, SkuDetail } from '../types'
 
 interface ApiEnvelope<T> {
   success: boolean
@@ -111,4 +111,18 @@ export async function getOtbSkus(
   )
   if (!data.data) throw new Error(data.message || `No se encontró ese nodo en '${negocio}'.`)
   return data.data
+}
+
+/**
+ * Excel generado server-side (agrupación nativa por Nivel1/2/3/Género + drill-down de SKUs
+ * de TODOS los nodos filtrados, no solo los expandidos en pantalla) — por eso es POST con
+ * body en vez de reusar los filtros de /otb como query params.
+ */
+export async function exportOtb(negocio: string, filtros: OtbExportRequest): Promise<Blob> {
+  const response = await demandaOtbHttp.post(
+    `/otb/${encodeURIComponent(negocio)}/export`,
+    filtros,
+    { responseType: 'blob' }
+  )
+  return response.data as Blob
 }
