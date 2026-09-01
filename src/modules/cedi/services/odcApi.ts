@@ -56,7 +56,7 @@ const odcApi = {
     return response.data
   },
 
-  /** Anula todo lo escaneado de un ítem y lo vuelve a 0 — requiere cedi.odc.picking.supervisor. */
+  /** Anula lo escaneado del ítem completo y lo vuelve a 0 — requiere cedi.odc.picking.supervisor. */
   resetLine: async (sessionId: string, request: LineActionRequest) => {
     const response = await cediApi.post<OdcPickingSessionDto>(`odc-picking-sessions/${sessionId}/lines/reset`, request)
     return response.data

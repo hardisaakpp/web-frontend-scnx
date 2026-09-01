@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import stockApi from '../services/stockApi'
 import type { ConsultaStockDto, ItemBusquedaDto } from '../types'
 
-/** "Consulta Stock" (P-012) — sin caché local, el stock cambia todo el tiempo. */
+/** "Consulta Stock" (P-012) — sin caché local, el stock cambia constantemente. */
 export const useConsultaStockStore = defineStore('cediConsultaStock', () => {
   const query = ref('')
   const resultados = ref<ItemBusquedaDto[]>([])

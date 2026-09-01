@@ -99,6 +99,35 @@ const http = axios.create({
 
 const sleep = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms))
 
+/** Código del contrato a partir del error HTTP (timeout y red incluidos). */
+function codigoDeError(err: AxiosError<MiaErrorBody>): string {
+  if (err.response?.data?.error) return err.response.data.error
+  return err.code === 'ECONNABORTED' ? 'timeout' : 'sin-conexion'
+}
+
+/** ¿El error es definitivo? (sin respuesta, no-reintenable, o se agotaron los intentos). */
+function esErrorDefinitivo(err: AxiosError<MiaErrorBody>, codigo: string, esUltimoIntento: boolean): boolean {
+  return !err.response || NO_REINTENTAR.has(codigo) || esUltimoIntento
+}
+
+function aMiaApiError(err: AxiosError<MiaErrorBody>, codigo: string): MiaApiError {
+  const body = err.response?.data
+  return new MiaApiError(
+    codigo,
+    body?.message ?? MENSAJES[codigo] ?? 'El asistente no pudo responder.',
+    body?.traza_id,
+    body?.cuota,
+    body?.reintentar_en_segundos,
+  )
+}
+
+/** Espera antes de reintentar: Retry-After del servidor si viene; si no, la espera exponencial local. */
+function msDeEspera(err: AxiosError<MiaErrorBody>, esperaActual: number): number {
+  const retryAfter = Number(err.response?.headers?.['retry-after'])
+  const hayRetryAfter = Number.isFinite(retryAfter) && retryAfter > 0
+  return hayRetryAfter ? retryAfter * 1000 : esperaActual
+}
+
 /**
  * Pregunta a mIA con reintentos responsables.
  * @param usuarioAd Login AD real del usuario (para cuota y auditoría).
@@ -121,25 +150,15 @@ export async function preguntar(
       return data
     } catch (e) {
       const err = e as AxiosError<MiaErrorBody>
-      const body = err.response?.data
-      const codigo = body?.error
-        ?? (err.code === 'ECONNABORTED' ? 'timeout' : 'sin-conexion')
-      console.warn(`[mIA] error ${codigo} · traza ${body?.traza_id ?? '-'}`)
+      const codigo = codigoDeError(err)
+      console.warn(`[mIA] error ${codigo} · traza ${err.response?.data?.traza_id ?? '-'}`)
 
-      const esUltimo = intento === intentos - 1
-      if (!err.response || NO_REINTENTAR.has(codigo) || esUltimo) {
-        throw new MiaApiError(
-          codigo,
-          body?.message ?? MENSAJES[codigo] ?? 'El asistente no pudo responder.',
-          body?.traza_id,
-          body?.cuota,
-          body?.reintentar_en_segundos,
-        )
+      if (esErrorDefinitivo(err, codigo, intento === intentos - 1)) {
+        throw aMiaApiError(err, codigo)
       }
 
       // Solo se llega acá con 503 sin-modelo o 429 demasiadas-peticiones.
-      const retryAfter = Number(err.response.headers?.['retry-after'])
-      await sleep(Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : espera)
+      await sleep(msDeEspera(err, espera))
       espera *= 3
     }
   }

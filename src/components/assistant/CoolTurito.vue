@@ -2,8 +2,7 @@
   <svg
     :viewBox="viewBox"
     :width="size"
-    :aria-label="`Cool-turito (${expression})`"
-    role="img"
+    aria-hidden="true"
     class="ct-svg"
     :class="{ 'ct-float': animation === 'float' || animation === 'wave' }"
   >
@@ -151,10 +150,12 @@ const DARK = '#1565c0'
 /** Aleta: base en (0,0) local, punta en (45,8). */
 const FLIP_D = 'M0,-10 C16,-14 36,-6 45,8 C49,15 44,23 36,20 C24,15 10,10 -2,10 C-9,5 -7,-6 0,-10 Z'
 
-const viewBox = computed(() =>
-  props.variant === 'head' ? '28 6 164 140'
-  : props.variant === 'half' ? '0 0 220 176'
-  : '0 0 220 260')
+const VIEWBOXES: Record<'head' | 'half' | 'full', string> = {
+  head: '28 6 164 140',
+  half: '0 0 220 176',
+  full: '0 0 220 260',
+}
+const viewBox = computed(() => VIEWBOXES[props.variant])
 
 /** Hombros: izquierdo (79,158), derecho (141,158). Reposo = rotate(38). */
 const leftArmTransform = 'translate(79,158) scale(-1,1) rotate(38)'
@@ -166,10 +167,11 @@ const rightArmInnerTransform = computed(() =>
 const hasOpenEyes = computed(() => ['normal', 'pensativo', 'alerta', 'disculpa'].includes(props.expression))
 const hasHappyEyes = computed(() => ['feliz', 'exito'].includes(props.expression))
 const eyeR = computed(() => (props.expression === 'alerta' ? 24.5 : 21))
-const eyesTransform = computed(() =>
-  props.expression === 'pensativo' ? 'translate(-5,-6)'
-  : props.expression === 'disculpa' ? 'translate(0,4)'
-  : '')
+const EYES_TRANSFORMS: Partial<Record<CoolTuritoExpression, string>> = {
+  pensativo: 'translate(-5,-6)',
+  disculpa: 'translate(0,4)',
+}
+const eyesTransform = computed(() => EYES_TRANSFORMS[props.expression] ?? '')
 const smileMouth = computed(() => ['normal', 'feliz', 'guino'].includes(props.expression))
 </script>
 

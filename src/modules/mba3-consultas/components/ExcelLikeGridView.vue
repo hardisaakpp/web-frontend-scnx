@@ -61,10 +61,11 @@
          porque un ancestro con overflow-x:auto ya es el scrollport del sticky
          (overflow-x:auto + overflow-y:visible ⇒ overflow-y computa a auto).
          Mismo patrón usado en CargarPlantillaView.vue:207 y conciliacion/ReporteMaestroView.vue. -->
+    <!-- Sin tabindex: los navegadores modernos hacen enfocable un contenedor con scroll
+         por sí solos, y Sonar (Web:S6845) rechaza tabindex en elementos no interactivos. -->
     <section
       ref="scrollerRef"
       class="grid-scroller"
-      tabindex="0"
       aria-label="Matriz de redistribución por tienda"
     >
       <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">

@@ -88,7 +88,12 @@ const confirmando = ref(false)
 
 const modalConfig = computed(() => {
   if (!accionActiva.value) return null
-  const item = accionActiva.value.itemCode ? `"${accionActiva.value.itemCode}"${accionActiva.value.descripcion ? ` (${accionActiva.value.descripcion})` : ''}` : ''
+  const { itemCode, descripcion } = accionActiva.value
+  let item = ''
+  if (itemCode) {
+    const sufijoDescripcion = descripcion ? ` (${descripcion})` : ''
+    item = `"${itemCode}"${sufijoDescripcion}`
+  }
   switch (accionActiva.value.tipo) {
     case 'reset':
       return {
