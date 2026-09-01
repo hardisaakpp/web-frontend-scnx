@@ -46,9 +46,11 @@ export interface UseColumnDragAndDropOptions {
    * useTablePreferences). Opcional: si `columnOrder` ya se persiste solo vía su propio watcher
    * (como hace useTablePreferences internamente), puede omitirse — igual que en
    * useColumnVisibilityToggle. Si se pasa, se llama ADEMÁS de cualquier watcher externo sobre
-   * `columnOrder` (no lo reemplaza).
+   * `columnOrder` (no lo reemplaza). Se invoca sin esperar su resultado (fire-and-forget) --
+   * por eso admite `Promise<void>` además de `void`, para no forzar un `void` incorrecto sobre
+   * funciones async como `savePreferences` (que ya maneja sus propios errores internamente).
    */
-  persist?: () => void
+  persist?: () => void | Promise<void>
   /**
    * Determina si una columna es "fija": no se puede iniciar un drag desde ella ni soltar sobre
    * ella (PedidoDetalleView.vue). Por defecto ninguna columna es fija (OrdenCompraTable.vue /

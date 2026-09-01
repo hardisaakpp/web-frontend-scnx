@@ -177,20 +177,6 @@
               <button
                 v-if="pedido && tieneDistribucionConfirmada && pedidoConfirmadoYEnviado"
                 type="button"
-                @click="handleDescargarDistribucionExcel"
-                :disabled="descargandoRedistribucion"
-                class="shrink-0 inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-green-600 dark:bg-green-500 rounded-lg shadow-sm hover:bg-green-700 dark:hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Descargar distribución por tiendas en formato Excel"
-              >
-                <svg v-if="!descargandoRedistribucion" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <LoadingSpinner v-else layout="inline" size="md" color="current" aria-label="Descargando redistribución" />
-                {{ descargandoRedistribucion ? 'Descargando...' : 'Descargar Redistribución' }}
-              </button>
-              <button
-                v-if="pedido && tieneDistribucionConfirmada && pedidoConfirmadoYEnviado"
-                type="button"
                 @click="handleExportarTrasladosExcel"
                 :disabled="exportandoTraslados"
                 class="shrink-0 inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-white bg-teal-600 dark:bg-teal-500 rounded-lg shadow-sm hover:bg-teal-700 dark:hover:bg-teal-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -343,7 +329,6 @@ const procesoStore = useProcesoStore()
 
 const pedido = ref<PedidoCompleto | null>(null)
 const pedidoIdInput = ref('')
-const descargandoRedistribucion = ref(false)
 const exportandoTraslados = ref(false)
 const enviandoOdcSap = ref(false)
 
@@ -818,53 +803,6 @@ const pedidoConfirmadoYEnviado = computed(() => {
   const estadoId = pedido.value?.cabecera?.estado_id
   return estadoId != null && estadoId >= 12
 })
-
-// Descargar distribución en formato Excel
-async function handleDescargarDistribucionExcel() {
-  const pedidoId = pedido.value?.cabecera?.pedido_id
-  if (!pedidoId) {
-    toast.error('Error', 'No hay pedido para descargar')
-    return
-  }
-
-  if (descargandoRedistribucion.value) return
-
-  descargandoRedistribucion.value = true
-  toast.info('Generando archivo Excel...', 'Por favor espera')
-
-  try {
-    const blob = await mba3ConsultasService.descargarDistribucionExcel(pedidoId)
-    
-    // Crear nombre de archivo con timestamp
-    const numeroPedidoDisplay = pedido.value?.cabecera?.numero_pedido ?? 'pedido'
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
-    const nombreArchivo = `distribucion_${numeroPedidoDisplay.replace(/[^a-zA-Z0-9.-]/g, '_')}_${timestamp}.xlsx`
-    
-    // Crear URL del blob y descargar
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = nombreArchivo
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(url)
-    
-    toast.success('Descarga completada', 'El archivo de distribución se ha descargado correctamente')
-  } catch (e: any) {
-    console.error('Error al descargar distribución Excel:', e)
-    
-    const message = extractErrorMessage(e)
-    
-    if (e.response?.status === 404) {
-      toast.error('Sin distribución', 'No se encontró distribución confirmada para este pedido')
-    } else {
-      toast.error('Error al descargar', message || 'Ocurrió un error al descargar el archivo de distribución')
-    }
-  } finally {
-    descargandoRedistribucion.value = false
-  }
-}
 
 // Exportar Solicitudes de Traslado en formato Excel (req. 1.9)
 async function handleExportarTrasladosExcel() {
