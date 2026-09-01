@@ -171,6 +171,24 @@
         </router-link>
 
         <router-link
+          to="/caja-chica/listado-general"
+          class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left block"
+          v-if="canViewListadoGeneral"
+        >
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded bg-slate-50 dark:bg-slate-900/30 flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-slate-600 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+              </svg>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-gray-900 dark:text-white text-sm">Listado general</div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Estado de todas las liquidaciones, incluidas rechazadas y eliminadas</div>
+            </div>
+          </div>
+        </router-link>
+
+        <router-link
           to="/caja-chica/tipos-iva"
           class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 p-4 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-sm transition-all text-left block"
           v-if="canViewTiposIva"
@@ -222,6 +240,10 @@ const canViewAprobacionesContabilidad = computed(() =>
 
 const canViewAprobacionesContabilidadHistorial = computed(() =>
   authStore.hasAnyPermission(['cajachica.aprobaciones.contabilidad.history'])
+)
+
+const canViewListadoGeneral = computed(() =>
+  authStore.hasAnyPermission(['cajachica.liquidaciones.listado-general'])
 )
 
 const canViewCatalogo = computed(() =>

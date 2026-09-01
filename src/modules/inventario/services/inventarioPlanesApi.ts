@@ -16,9 +16,9 @@ invPlanesApi.interceptors.response.use(
 )
 
 export const inventarioPlanesService = {
-  async getPlanes(status?: 'Planned' | 'Executed'): Promise<InventoryPlanDto[]> {
+  async getPlanes(status?: 'Planned' | 'Executed', since?: string): Promise<InventoryPlanDto[]> {
     const response = await invPlanesApi.get<InventoryPlanDto[]>('/api/inventory-plans', {
-      params: status ? { status } : undefined
+      params: { status, since } as Record<string, string | undefined>
     })
     return response.data
   },

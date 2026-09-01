@@ -60,7 +60,11 @@ export interface IdentificacionCliente {
 }
 
 // ─── Admin: Campañas ──────────────────────────────────────────────────────────
-export type EstadoCampana = 'activa' | 'programada' | 'finalizada' | 'borrador' | 'pausada'
+// Estado persistido de la campaña (máquina de estados estricta e inmutable, Fase 1):
+// Borrador → Activa ↔ Pausada → Finalizada (candado permanente, nunca regresa).
+// "programada" NO es un estado persistido — es un derivado de estado_operativo
+// (Activa con fecha_inicio futura), por eso vive solo en EstadoOperativoCampana.
+export type EstadoCampana = 'borrador' | 'activa' | 'pausada' | 'finalizada'
 export type EstadoOperativoCampana = 'borrador' | 'programada' | 'disponible' | 'pausada' | 'vencida' | 'finalizada'
 
 export interface Campana {
@@ -116,6 +120,15 @@ export interface CrearCampanaDTO {
   requiere_validacion_onecard: boolean
   hora_feliz_inicio?: string | null
   hora_feliz_fin?: string | null
+}
+
+// Duplicación limpia (deep clone) de una campaña: solo pide lo que no puede heredarse
+// automáticamente del origen (nombre y vigencia) — el resto de parámetros, premios y tiendas
+// se copian tal cual en el backend, con el stock reseteado a 0 y sin arrastrar historial.
+export interface DuplicarCampanaDTO {
+  nombre: string
+  fecha_inicio: string
+  fecha_fin: string
 }
 
 export interface CampanaDisponibleBackendResponse {
@@ -195,10 +208,14 @@ export interface InventarioPremio {
   premio_id: string
   nombre: string
   tipo: string
+  // Techo real e inmutable de bodega (Premio.StockTotalBodega crudo) — NO la suma de lo ya
+  // repartido entre tiendas. Ver PremioBackendResponse.stockTotalBodega.
   stock_total: number
   por_tienda: Record<number, number>
   total_asignado: number
   restante_bodega: number
+  // Token de concurrencia optimista del premio, para reenviarlo en setDistribucionTienda.
+  row_version?: string
 }
 
 // ─── Admin: Dashboard Global ──────────────────────────────────────────────────
@@ -289,6 +306,10 @@ export interface PremioBackendResponse {
   tipo: string
   segmento: string | null
   stockTotal: number | null
+  // Techo real e inmutable de bodega. Cuando controlaStockPorTienda=true, `stockTotal` arriba es
+  // la SUMA de lo ya repartido entre tiendas (no un límite) — este campo es el que hay que usar
+  // para validar contra el límite real. Ver PremioDto.StockTotalBodega en el backend.
+  stockTotalBodega?: number | null
   stockDisponible?: number | null
   valorReferencial: number | null
   esVacio: boolean
@@ -297,6 +318,10 @@ export interface PremioBackendResponse {
   controlaStockPorTienda?: boolean
   inventariosTienda?: InventarioTiendaBackend[]
   rowVersion?: string
+  // Orden visual del segmento en la ruleta. El backend siempre lo envía (int no-anulable);
+  // nunca reenviar `0` a secas al editar sin intención real de mover el premio — ver
+  // premioToBackend en ruletaApi.ts.
+  ordenRuleta?: number
 }
 
 export interface StockPremio {
@@ -313,6 +338,12 @@ export interface PreviewImpactoStockItem {
   premioId: string
   tiendaCodigo: string
   nuevoStockTotal: number
+}
+
+// Una fila tienda→stock dentro de una distribución completa (guardado atómico por premio).
+export interface DistribucionTiendaItem {
+  tiendaCodigo: string
+  stockTotal: number
 }
 
 export interface ImpactoStock {
@@ -401,6 +432,7 @@ export interface GiroFilters {
   fechaInicio?: string
   fechaFin?: string
   estado?: EstadoPremioFiltro
+  tienda?: string
 }
 
 export interface DistribucionSegmentos {

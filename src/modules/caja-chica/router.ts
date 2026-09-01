@@ -109,6 +109,16 @@ const routes: RouteRecordRaw[] = [
     },
   },
   {
+    path: '/caja-chica/listado-general',
+    name: 'caja-chica-listado-general',
+    component: () => import('./views/ListadoGeneralLiquidacionesView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Listado General de Liquidaciones',
+      permissions: ['cajachica.liquidaciones.listado-general']
+    },
+  },
+  {
     path: '/caja-chica/aprobaciones-contabilidad',
     name: 'caja-chica-aprobaciones-contabilidad',
     component: () => import('./views/AprobacionesContabilidadView.vue'),
