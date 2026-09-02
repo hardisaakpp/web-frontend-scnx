@@ -192,3 +192,8 @@ export const transferenciasDirectasApi = createModuleApi(
   ENV.TRANSFERENCIAS_DIRECTAS_URL,
   { auditHeaders: true },
 )
+
+/** Demanda OTB */
+export const demandaOtbHttp = createModuleApi(
+  ENV.DEMANDA_OTB_URL,
+)

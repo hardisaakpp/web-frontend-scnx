@@ -129,50 +129,69 @@
           <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Caja Chica</span>
         </router-link>
 
-          <!-- Conciliación -->
-          <router-link v-if="hasModuleAccess('conciliacion')" to="/conciliacion"
-            class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
-            :class="{
-              'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/conciliacion'),
-              'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/conciliacion')
-            }" :title="effectiveSidebarCollapsed ? 'Conciliación' : ''">
-            <div
-              class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-            </div>
-            <ClipboardDocumentCheckIcon class="h-5 w-5 flex-shrink-0 relative z-10"
-              :class="{ 'scale-110': $route.path.startsWith('/conciliacion') }" />
-            <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Conciliación</span>
-          </router-link>
+        <!-- Conciliación -->
+        <router-link
+          v-if="hasModuleAccess('conciliacion')"
+          to="/conciliacion"
+          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
+          :class="{
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/conciliacion'),
+            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/conciliacion')
+          }"
+          :title="effectiveSidebarCollapsed ? 'Conciliación' : ''"
+        >
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <ClipboardDocumentCheckIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/conciliacion') }" />
+          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Conciliación</span>
+        </router-link>
 
-          <!-- Gestión ODC SAP -->
-          <router-link v-if="canAccessGestionOdcSap" to="/mba3-consultas"
-            class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
-            :class="{
-              'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/mba3-consultas'),
-              'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/mba3-consultas')
-            }" :title="effectiveSidebarCollapsed ? 'Gestión ODC SAP' : ''">
-            <div
-              class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-            </div>
-            <ArrowsRightLeftIcon class="h-5 w-5 flex-shrink-0 relative z-10"
-              :class="{ 'scale-110': $route.path.startsWith('/mba3-consultas') }" />
-            <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Gestión ODC SAP</span>
-          </router-link>
+        <!-- Demanda OTB -->
+        <router-link
+          v-if="hasModuleAccess('demanda-otb')"
+          to="/demanda-otb"
+          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
+          :class="{
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/demanda-otb'),
+            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/demanda-otb')
+          }"
+          :title="effectiveSidebarCollapsed ? 'Demanda OTB' : ''"
+        >
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <ChartBarIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/demanda-otb') }" />
+          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Demanda OTB</span>
+        </router-link>
 
-          <!-- Importador PYG (main) -->
-          <router-link v-if="hasModuleAccess('pyg')" to="/pyg"
-            class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
-            :class="{
-              'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/pyg'),
-              'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/pyg')
-            }" :title="effectiveSidebarCollapsed ? 'Importador PYG' : ''">
-            <div
-              class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-            </div>
-            <DocumentArrowUpIcon class="h-5 w-5 flex-shrink-0 relative z-10"
-              :class="{ 'scale-110': $route.path.startsWith('/pyg') }" />
-            <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Importador PYG</span>
-          </router-link>
+        <!-- Gestión ODC SAP -->
+        <router-link
+          v-if="canAccessGestionOdcSap"
+          to="/mba3-consultas"
+          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
+          :class="{
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/mba3-consultas'),
+            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/mba3-consultas')
+          }"
+          :title="effectiveSidebarCollapsed ? 'Gestión ODC SAP' : ''"
+        >
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <ArrowsRightLeftIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/mba3-consultas') }" />
+          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Gestión ODC SAP</span>
+        </router-link>
+
+        <!-- Importador PYG (main) -->
+        <router-link
+          v-if="hasModuleAccess('pyg')"
+          to="/pyg"
+          class="group flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 relative overflow-hidden"
+          :class="{
+            'bg-gradient-to-r from-blue-600 to-sky-500 text-white shadow-lg shadow-blue-500/50': $route.path.startsWith('/pyg'),
+            'text-slate-600 hover:bg-slate-200/70 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800/50 dark:hover:text-white': !$route.path.startsWith('/pyg')
+          }"
+          :title="effectiveSidebarCollapsed ? 'Importador PYG' : ''"
+        >
+          <div class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+          <DocumentArrowUpIcon class="h-5 w-5 flex-shrink-0 relative z-10" :class="{ 'scale-110': $route.path.startsWith('/pyg') }" />
+          <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Importador PYG</span>
+        </router-link>
 
         <!-- Mis Inventarios (usuarios con acceso tipo Tienda, o pickers invitados a una sesión puntual) -->
         <router-link
@@ -473,7 +492,8 @@ import {
   SparklesIcon,
   ShoppingCartIcon,
   ClipboardDocumentListIcon,
-  BanknotesIcon
+  BanknotesIcon,
+  ChartBarIcon
 } from '@heroicons/vue/24/outline'
 import { Pin, PinOff, TruckIcon } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth'
@@ -667,6 +687,8 @@ const pageTitle = computed(() => {
     '/transferencias-stock': 'Transferencias de Stock',
     '/transferencias-stock/crearsolicitud': 'Crear Transferencia',
     '/transferencias-stock/historial' : 'Historial de Transferencias',
+    '/demanda-otb': 'Demanda OTB',
+    '/demanda-otb/ejemplo': 'Demanda OTB — Ejemplo de gráfico'
   }
 
   return (route.meta?.title as string) || titles[route.path] || 'SCNexus'

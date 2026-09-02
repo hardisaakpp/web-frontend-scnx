@@ -1,3 +1,6 @@
+# SonarLens local scan config (contiene el token de SonarQube en texto plano)
+sonar-project.properties
+
 # Logs
 logs
 *.log

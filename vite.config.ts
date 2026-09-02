@@ -64,6 +64,9 @@ export default defineConfig(async ({ mode }): Promise<UserConfig> => {
   const recepcionProxyTarget = upstreamUrl(env, 'RECEPCION')
   console.log(`\x1b[35m[proxy]\x1b[0m Recepción Mercadería → ${recepcionProxyTarget}`)
 
+  const demandaOtbProxyTarget = upstreamUrl(env, 'DEMANDA_OTB')
+  console.log(`\x1b[35m[proxy]\x1b[0m Demanda OTB → ${demandaOtbProxyTarget}`)
+
   const ruletaProxyTarget = upstreamUrl(env, 'RULETA')
   const cediProxyTarget = upstreamUrl(env, 'CEDI')
   const pygProxyPrefix =
@@ -194,6 +197,13 @@ export default defineConfig(async ({ mode }): Promise<UserConfig> => {
           changeOrigin: true,
           secure: false,
           rewrite: (path) => path.replace(/^\/api\/recepcion-api/, '/api')
+        },
+
+        '/api/demanda-otb-api': {
+          target: demandaOtbProxyTarget,
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/api\/demanda-otb-api/, '/api/v1')
         },
 
         '/api': {
