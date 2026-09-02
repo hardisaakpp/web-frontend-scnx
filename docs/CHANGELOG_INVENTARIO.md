@@ -6,6 +6,16 @@ Registro cronológico de cambios realizados al módulo `src/modules/inventario` 
 
 ---
 
+## 2026-09-02 — Fix: "Conteo por usuario" del resumen supervisor mostraba GUIDs
+
+- **`SessionUserStatDto.userName`** (types.ts): el backend (`api-inventario` rama `fix/leak`) ahora
+  expone el nombre legible tomado de cada conteo (`InventoryCount.UserName`, que ya se guardaba).
+  El resumen (`SupervisorResumenView`) y su export CSV usan `u.userName || userLabel(u.userId)` —
+  el nombre viene directo del backend y `resolveUserNames` (Core API `/Users`, que falla en
+  silencio y dejaba los GUIDs crudos) queda solo como fallback para conteos antiguos sin nombre.
+- Estado: rama `fix/nombres-usuarios-inventario` (desde `test`). Requiere desplegar el backend
+  `fix/leak` de api-inventario para ver nombres; sin él, el front sigue cayendo al fallback actual.
+
 ## 2026-08-28 (2) — Historial de Planes ejecutados
 
 - **Nueva vista `HistorialPlanesView.vue`** (`/inventario/planes/historial`): "Planes Pendientes" filtra a `status=Planned` y los ejecutados desaparecían de esa lista sin forma de consultarlos — el plan en sí **no se borra** al ejecutarse (solo pasa a `Executed`, ver backend), así que no hacía falta ninguna tabla de auditoría nueva, solo exponer el filtro correcto.

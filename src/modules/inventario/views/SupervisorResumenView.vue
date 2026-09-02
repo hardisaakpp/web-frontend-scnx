@@ -207,7 +207,7 @@
             </thead>
             <tbody class="divide-y divide-gray-50 dark:divide-gray-700/50">
               <tr v-for="u in summary.userStats" :key="u.userId" class="hover:bg-gray-50 dark:hover:bg-gray-700/20">
-                <td class="td font-medium">{{ userLabel(u.userId) }}</td>
+                <td class="td font-medium">{{ u.userName || userLabel(u.userId) }}</td>
                 <td class="td text-xs text-gray-500 dark:text-gray-400">{{ u.location ?? '—' }}</td>
                 <td class="td text-right">
                   <span class="inline-flex items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2.5 py-0.5 text-xs font-semibold">
@@ -507,7 +507,7 @@ async function descargarExcel() {
       [],
       ['CONTEO POR USUARIO'],
       ['Usuario', 'Ubicación', 'Entradas', 'Artículos únicos', 'Último registro'],
-      ...s.userStats.map(u => [userLabel(u.userId), u.location || '—', u.countEntries, u.uniqueItemsCounted, formatDateTime(u.lastCountedAt)])
+      ...s.userStats.map(u => [u.userName || userLabel(u.userId), u.location || '—', u.countEntries, u.uniqueItemsCounted, formatDateTime(u.lastCountedAt)])
     ]
     XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(resumenRows), 'Resumen')
 
