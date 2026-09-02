@@ -106,7 +106,12 @@ async function cargarDesgloseMarca(campo: string, valor: string) {
 // El nodo "activo" es el más profundo que tenga valor — no hace falta llegar a Nivel3
 // para ver un agregado, cualquier nivel se puede consultar por sí solo.
 watch([nivel1, nivel2, nivel3], () => {
-  const campo = nivel3.value ? 'Nivel3' : nivel2.value ? 'Nivel2' : nivel1.value ? 'Nivel1' : null
+  let campo: 'Nivel3' | 'Nivel2' | 'Nivel1' | null
+  if (nivel3.value) campo = 'Nivel3'
+  else if (nivel2.value) campo = 'Nivel2'
+  else if (nivel1.value) campo = 'Nivel1'
+  else campo = null
+
   const valor = nivel3.value || nivel2.value || nivel1.value
 
   if (campo) {
@@ -224,23 +229,23 @@ onMounted(async () => {
     <div class="flex-shrink-0 w-full lg:w-80">
       <div class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 shadow-sm p-4 space-y-4">
         <div>
-          <label class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Nivel 1</label>
+          <label for="niveles-filtro-nivel1" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Nivel 1</label>
           <div class="mt-1">
-            <FilterDropdown v-model="nivel1" :options="nivel1Options" :placeholder="loadingTree ? 'Cargando...' : 'Todos'" />
+            <FilterDropdown id="niveles-filtro-nivel1" v-model="nivel1" :options="nivel1Options" :placeholder="loadingTree ? 'Cargando...' : 'Todos'" />
           </div>
         </div>
 
         <div>
-          <label class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Nivel 2</label>
+          <label for="niveles-filtro-nivel2" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Nivel 2</label>
           <div class="mt-1">
-            <FilterDropdown v-model="nivel2" :options="nivel2Options" placeholder="Todos" />
+            <FilterDropdown id="niveles-filtro-nivel2" v-model="nivel2" :options="nivel2Options" placeholder="Todos" />
           </div>
         </div>
 
         <div>
-          <label class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Nivel 3</label>
+          <label for="niveles-filtro-nivel3" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Nivel 3</label>
           <div class="mt-1">
-            <FilterDropdown v-model="nivel3" :options="nivel3Options" placeholder="Todos" />
+            <FilterDropdown id="niveles-filtro-nivel3" v-model="nivel3" :options="nivel3Options" placeholder="Todos" />
           </div>
         </div>
       </div>

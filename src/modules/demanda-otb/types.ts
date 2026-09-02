@@ -151,7 +151,7 @@ export interface DesgloseResponse {
 
 /**
  * GET /otb/{negocio} — fila de la tabla OTB, grano Nivel1×Nivel2×Nivel3×Género. Sin filtros de
- * atributo es passthrough de otb.Nodo (todo poblado); con Coleccion/MarcaProveedor/Origen/
+ * atributo es passthrough de otb.Nodo (completamente poblado); con Coleccion/MarcaProveedor/Origen/
  * Descontinuado/Repocision/Inactivo/Sku se recalcula en vivo desde Proyeccion+Historico y varios
  * campos quedan en null (ver `OtbResponse.filtrado` para saber cuál camino se usó).
  */

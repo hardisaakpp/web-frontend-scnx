@@ -3,6 +3,7 @@
     <div class="relative">
       <ComboboxButton as="div" class="relative w-full cursor-default overflow-hidden rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 text-left focus-within:ring-2 focus-within:ring-blue-100 dark:focus-within:ring-blue-900/20 focus-within:border-blue-500 transition-all">
         <ComboboxInput
+          :id="id"
           class="w-full border-none py-2 pl-3 pr-16 text-sm leading-5 text-gray-900 dark:text-white bg-transparent focus:ring-0 outline-none"
           :displayValue="(val: unknown) => (val as string) || ''"
           :placeholder="placeholder"
@@ -68,6 +69,7 @@ const props = withDefaults(defineProps<{
   modelValue: string
   options: string[]
   placeholder?: string
+  id?: string
 }>(), {
   placeholder: 'Todos',
 })

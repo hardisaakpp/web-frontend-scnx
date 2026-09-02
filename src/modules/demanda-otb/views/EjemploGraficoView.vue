@@ -38,12 +38,12 @@ onMounted(buscar)
 
     <form class="flex flex-wrap items-end gap-3 mb-4" @submit.prevent="buscar">
       <div>
-        <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Negocio</label>
-        <input v-model="negocio" type="text" class="w-40 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm px-2 py-1.5 text-gray-900 dark:text-white" />
+        <label for="ejemplo-negocio" class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Negocio</label>
+        <input id="ejemplo-negocio" v-model="negocio" type="text" class="w-40 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm px-2 py-1.5 text-gray-900 dark:text-white" />
       </div>
       <div>
-        <label class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">SKU</label>
-        <input v-model="sku" type="text" class="w-48 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm px-2 py-1.5 text-gray-900 dark:text-white" />
+        <label for="ejemplo-sku" class="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">SKU</label>
+        <input id="ejemplo-sku" v-model="sku" type="text" class="w-48 rounded border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-sm px-2 py-1.5 text-gray-900 dark:text-white" />
       </div>
       <button type="submit" class="px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium" :disabled="loading">
         {{ loading ? 'Buscando...' : 'Buscar' }}

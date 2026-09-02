@@ -323,25 +323,29 @@ function otbUnidadesSku(sku: OtbSkuItem) {
 const exportandoExcel = ref(false)
 const errorExportExcel = ref<string | null>(null)
 
+function buildExportParams() {
+  return {
+    fecha: fecha.value || undefined,
+    tipoMes: tipoMes.value,
+    nivel1: colNivel1.value || undefined,
+    nivel2: colNivel2.value || undefined,
+    nivel3: colNivel3.value || undefined,
+    genero: colGenero.value || undefined,
+    coleccion: coleccion.value || undefined,
+    marcaProveedor: marcaProveedor.value || undefined,
+    origen: origen.value || undefined,
+    descontinuado: descontinuado.value || undefined,
+    repocision: repocision.value || undefined,
+    inactivo: inactivo.value || undefined,
+    sku: skuBusqueda.value || undefined,
+  }
+}
+
 async function exportarExcel() {
   exportandoExcel.value = true
   errorExportExcel.value = null
   try {
-    const blob = await exportOtb(negocio.value, {
-      fecha: fecha.value || undefined,
-      tipoMes: tipoMes.value,
-      nivel1: colNivel1.value || undefined,
-      nivel2: colNivel2.value || undefined,
-      nivel3: colNivel3.value || undefined,
-      genero: colGenero.value || undefined,
-      coleccion: coleccion.value || undefined,
-      marcaProveedor: marcaProveedor.value || undefined,
-      origen: origen.value || undefined,
-      descontinuado: descontinuado.value || undefined,
-      repocision: repocision.value || undefined,
-      inactivo: inactivo.value || undefined,
-      sku: skuBusqueda.value || undefined,
-    })
+    const blob = await exportOtb(negocio.value, buildExportParams())
 
     // El backend siempre responde 200 con este endpoint incluso en error de validación,
     // pero como blob — si viene JSON en vez de un xlsx real, hay que leerlo aparte.
@@ -379,59 +383,60 @@ onUnmounted(() => {
     <div class="bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 shadow-sm p-4">
       <div class="flex flex-wrap items-end gap-3">
         <div>
-          <label class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Mes objetivo</label>
+          <label for="otb-filtro-mes" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Mes objetivo</label>
           <div class="mt-1 w-36">
-            <FilterDropdown v-model="fecha" :options="otb?.fechasDisponibles ?? []" :placeholder="loadingOtb ? 'Cargando...' : '—'" />
+            <FilterDropdown id="otb-filtro-mes" v-model="fecha" :options="otb?.fechasDisponibles ?? []" :placeholder="loadingOtb ? 'Cargando...' : '—'" />
           </div>
         </div>
 
         <div>
-          <label class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Colección</label>
+          <label for="otb-filtro-coleccion" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Colección</label>
           <div class="mt-1 w-40">
-            <FilterDropdown v-model="coleccion" :options="otb?.colecciones ?? []" placeholder="Todas" />
+            <FilterDropdown id="otb-filtro-coleccion" v-model="coleccion" :options="otb?.colecciones ?? []" placeholder="Todas" />
           </div>
         </div>
 
         <div>
-          <label class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Marca proveedor</label>
+          <label for="otb-filtro-marca-proveedor" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Marca proveedor</label>
           <div class="mt-1 w-40">
-            <FilterDropdown v-model="marcaProveedor" :options="otb?.marcasProveedor ?? []" placeholder="Todas" />
+            <FilterDropdown id="otb-filtro-marca-proveedor" v-model="marcaProveedor" :options="otb?.marcasProveedor ?? []" placeholder="Todas" />
           </div>
         </div>
 
         <div>
-          <label class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Origen</label>
+          <label for="otb-filtro-origen" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Origen</label>
           <div class="mt-1 w-32">
-            <FilterDropdown v-model="origen" :options="otb?.origenes ?? []" placeholder="Todos" />
+            <FilterDropdown id="otb-filtro-origen" v-model="origen" :options="otb?.origenes ?? []" placeholder="Todos" />
           </div>
         </div>
 
         <div>
-          <label class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Descontinuado</label>
+          <label for="otb-filtro-descontinuado" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Descontinuado</label>
           <div class="mt-1 w-28">
-            <FilterDropdown v-model="descontinuado" :options="otb?.descontinuados ?? []" placeholder="Todos" />
+            <FilterDropdown id="otb-filtro-descontinuado" v-model="descontinuado" :options="otb?.descontinuados ?? []" placeholder="Todos" />
           </div>
         </div>
 
         <div>
-          <label class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Reposición</label>
+          <label for="otb-filtro-reposicion" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Reposición</label>
           <div class="mt-1 w-32">
-            <FilterDropdown v-model="repocision" :options="otb?.repociones ?? []" placeholder="Todas" />
+            <FilterDropdown id="otb-filtro-reposicion" v-model="repocision" :options="otb?.repociones ?? []" placeholder="Todas" />
           </div>
         </div>
 
         <div>
-          <label class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Inactivo</label>
+          <label for="otb-filtro-inactivo" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Inactivo</label>
           <div class="mt-1 w-24">
-            <FilterDropdown v-model="inactivo" :options="otb?.inactivos ?? []" placeholder="Todos" />
+            <FilterDropdown id="otb-filtro-inactivo" v-model="inactivo" :options="otb?.inactivos ?? []" placeholder="Todos" />
           </div>
         </div>
 
         <div class="flex-1 min-w-[200px]">
-          <label class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Buscar SKU</label>
+          <label for="otb-buscar-sku" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Buscar SKU</label>
           <div class="relative mt-1">
             <MagnifyingGlassIcon class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
+              id="otb-buscar-sku"
               v-model="skuBusqueda"
               type="text"
               placeholder="Código o nombre..."
@@ -503,36 +508,36 @@ onUnmounted(() => {
         <table class="w-full text-left text-sm">
           <thead class="sticky top-0 z-10">
             <tr class="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
-              <th class="w-8"></th>
-              <th class="px-3 py-2 min-w-[150px] text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('nivel1')">Nivel 1 {{ sortIndicator('nivel1') }}</th>
-              <th class="px-3 py-2 min-w-[150px] text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('nivel2')">Nivel 2 {{ sortIndicator('nivel2') }}</th>
-              <th class="px-3 py-2 min-w-[150px] text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('nivel3')">Nivel 3 {{ sortIndicator('nivel3') }}</th>
-              <th class="px-3 py-2 min-w-[130px] text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('genero')">Género {{ sortIndicator('genero') }}</th>
-              <th class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('skus')">SKUs {{ sortIndicator('skus') }}</th>
-              <th class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right" title="Editable — recalcula Inv. Final Planificado; no recalcula Semáforo/Decisión, ver nota abajo">Cobertura deseada</th>
-              <th class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('stockInicial')">Stock inicial {{ sortIndicator('stockInicial') }}</th>
-              <th class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('stockDia')">Stock día {{ sortIndicator('stockDia') }}</th>
-              <th class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('transito')">Tránsito {{ sortIndicator('transito') }}</th>
-              <th class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('min80')">Mín 80% {{ sortIndicator('min80') }}</th>
-              <th class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('ventasPlanificada')">Ventas planificada {{ sortIndicator('ventasPlanificada') }}</th>
-              <th class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('max80')">Máx 80% {{ sortIndicator('max80') }}</th>
-              <th class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('catNuevo')">Catálogo nuevo {{ sortIndicator('catNuevo') }}</th>
-              <th class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('ventasTotal')">Total nivel {{ sortIndicator('ventasTotal') }}</th>
-              <th class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right" title="Calculado en el cliente — ver nota abajo">Inv. Final Planificado</th>
-              <th class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right" title="Calculado en el cliente — ver nota abajo">OTB</th>
-              <th class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Semáforo</th>
-              <th class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('coberturaDias')">Cobertura (días) {{ sortIndicator('coberturaDias') }}</th>
-              <th class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tendencia</th>
-              <th class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Decisión</th>
-              <th class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('sugerenciaCompra')">Sugerencia {{ sortIndicator('sugerenciaCompra') }}</th>
+              <th scope="col" class="w-8"></th>
+              <th scope="col" class="px-3 py-2 min-w-[150px] text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('nivel1')">Nivel 1 {{ sortIndicator('nivel1') }}</th>
+              <th scope="col" class="px-3 py-2 min-w-[150px] text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('nivel2')">Nivel 2 {{ sortIndicator('nivel2') }}</th>
+              <th scope="col" class="px-3 py-2 min-w-[150px] text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('nivel3')">Nivel 3 {{ sortIndicator('nivel3') }}</th>
+              <th scope="col" class="px-3 py-2 min-w-[130px] text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('genero')">Género {{ sortIndicator('genero') }}</th>
+              <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('skus')">SKUs {{ sortIndicator('skus') }}</th>
+              <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right" title="Editable — recalcula Inv. Final Planificado; no recalcula Semáforo/Decisión, ver nota abajo">Cobertura deseada</th>
+              <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('stockInicial')">Stock inicial {{ sortIndicator('stockInicial') }}</th>
+              <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('stockDia')">Stock día {{ sortIndicator('stockDia') }}</th>
+              <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('transito')">Tránsito {{ sortIndicator('transito') }}</th>
+              <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('min80')">Mín 80% {{ sortIndicator('min80') }}</th>
+              <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('ventasPlanificada')">Ventas planificada {{ sortIndicator('ventasPlanificada') }}</th>
+              <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('max80')">Máx 80% {{ sortIndicator('max80') }}</th>
+              <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('catNuevo')">Catálogo nuevo {{ sortIndicator('catNuevo') }}</th>
+              <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('ventasTotal')">Total nivel {{ sortIndicator('ventasTotal') }}</th>
+              <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right" title="Calculado en el cliente — ver nota abajo">Inv. Final Planificado</th>
+              <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right" title="Calculado en el cliente — ver nota abajo">OTB</th>
+              <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Semáforo</th>
+              <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('coberturaDias')">Cobertura (días) {{ sortIndicator('coberturaDias') }}</th>
+              <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tendencia</th>
+              <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Decisión</th>
+              <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('sugerenciaCompra')">Sugerencia {{ sortIndicator('sugerenciaCompra') }}</th>
             </tr>
             <tr class="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
-              <th></th>
-              <th class="px-2 pb-2"><FilterDropdown v-model="colNivel1" :options="colNivel1Options" placeholder="Todos" /></th>
-              <th class="px-2 pb-2"><FilterDropdown v-model="colNivel2" :options="colNivel2Options" placeholder="Todos" /></th>
-              <th class="px-2 pb-2"><FilterDropdown v-model="colNivel3" :options="colNivel3Options" placeholder="Todos" /></th>
-              <th class="px-2 pb-2"><FilterDropdown v-model="colGenero" :options="colGeneroOptions" placeholder="Todos" /></th>
-              <th colspan="17"></th>
+              <th scope="col"></th>
+              <th scope="col" class="px-2 pb-2"><FilterDropdown v-model="colNivel1" :options="colNivel1Options" placeholder="Todos" /></th>
+              <th scope="col" class="px-2 pb-2"><FilterDropdown v-model="colNivel2" :options="colNivel2Options" placeholder="Todos" /></th>
+              <th scope="col" class="px-2 pb-2"><FilterDropdown v-model="colNivel3" :options="colNivel3Options" placeholder="Todos" /></th>
+              <th scope="col" class="px-2 pb-2"><FilterDropdown v-model="colGenero" :options="colGeneroOptions" placeholder="Todos" /></th>
+              <th scope="col" colspan="17"></th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100 dark:divide-gray-700/60">

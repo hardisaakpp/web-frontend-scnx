@@ -174,11 +174,12 @@ watch(negocio, () => {
       <div class="flex flex-col bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 shadow-sm">
         <div class="p-4 space-y-4">
             <div>
-              <label class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">
+              <label for="catalogo-filtro-producto" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">
                 Producto — mostrando {{ items.length }} de {{ total.toLocaleString() }}
               </label>
               <div class="mt-1">
                 <ProductComboBox
+                  id="catalogo-filtro-producto"
                   v-model="selectedCodigo"
                   :items="items"
                   :loading="loadingCatalogo"
@@ -189,51 +190,51 @@ watch(negocio, () => {
             </div>
 
             <div>
-              <label class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Nivel 1</label>
+              <label for="catalogo-filtro-nivel1" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Nivel 1</label>
               <div class="mt-1">
-                <FilterDropdown v-model="nivel1" :options="facetas.nivel1" />
+                <FilterDropdown id="catalogo-filtro-nivel1" v-model="nivel1" :options="facetas.nivel1" />
               </div>
             </div>
 
             <div>
-              <label class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Nivel 2</label>
+              <label for="catalogo-filtro-nivel2" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Nivel 2</label>
               <div class="mt-1">
-                <FilterDropdown v-model="nivel2" :options="facetas.nivel2" />
+                <FilterDropdown id="catalogo-filtro-nivel2" v-model="nivel2" :options="facetas.nivel2" />
               </div>
             </div>
 
             <div>
-              <label class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Nivel 3</label>
+              <label for="catalogo-filtro-nivel3" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Nivel 3</label>
               <div class="mt-1">
-                <FilterDropdown v-model="nivel3" :options="facetas.nivel3" />
+                <FilterDropdown id="catalogo-filtro-nivel3" v-model="nivel3" :options="facetas.nivel3" />
               </div>
             </div>
 
             <div>
-              <label class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Género</label>
+              <label for="catalogo-filtro-genero" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Género</label>
               <div class="mt-1">
-                <FilterDropdown v-model="genero" :options="facetas.genero" />
+                <FilterDropdown id="catalogo-filtro-genero" v-model="genero" :options="facetas.genero" />
               </div>
             </div>
 
             <div>
-              <label class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Marca comercial</label>
+              <label for="catalogo-filtro-marca-comercial" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Marca comercial</label>
               <div class="mt-1">
-                <FilterDropdown v-model="marcaComercial" :options="facetas.marcaComercial" placeholder="Todas" />
+                <FilterDropdown id="catalogo-filtro-marca-comercial" v-model="marcaComercial" :options="facetas.marcaComercial" placeholder="Todas" />
               </div>
             </div>
 
             <div>
-              <label class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Colección</label>
+              <label for="catalogo-filtro-coleccion" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Colección</label>
               <div class="mt-1">
-                <FilterDropdown v-model="coleccion" :options="facetas.coleccion" placeholder="Todas" />
+                <FilterDropdown id="catalogo-filtro-coleccion" v-model="coleccion" :options="facetas.coleccion" placeholder="Todas" />
               </div>
             </div>
 
             <div>
-              <label class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Confianza</label>
+              <label for="catalogo-filtro-confianza" class="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Confianza</label>
               <div class="mt-1">
-                <FilterDropdown v-model="confianza" :options="facetas.confianza" placeholder="Todas" />
+                <FilterDropdown id="catalogo-filtro-confianza" v-model="confianza" :options="facetas.confianza" placeholder="Todas" />
               </div>
             </div>
           </div>
