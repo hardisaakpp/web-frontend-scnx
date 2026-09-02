@@ -385,6 +385,9 @@ export interface InventoryPickingSummaryDto {
 
 export interface SessionUserStatDto {
   userId: string
+  /** Nombre legible que el backend toma de los conteos (InventoryCount.UserName);
+   *  null en conteos antiguos que no lo registraron — se cae al resolver por userId. */
+  userName?: string | null
   countEntries: number
   uniqueItemsCounted: number
   lastCountedAt: string
