@@ -49,6 +49,13 @@ export const DESCRIPCION_COLUMNA_FECHA_CREACION =
 export const DESCRIPCION_COLUMNA_FECHA_MODIFICACION =
   'Fecha de la última modificación realizada a este pedido'
 
+/**
+ * Hint del gesto de "triple clic para restablecer el orden" (ver `resetSort` más abajo), agregado
+ * al `title` de cada columna en SortableTableHead.vue para que el gesto sea descubrible sin agregar
+ * un botón adicional a las 4 vistas.
+ */
+export const HINT_TRIPLE_CLIC_RESET_ORDEN = 'Triple clic en el encabezado para quitar el ordenamiento'
+
 export interface UseSortableListOptions<T> {
   /** Array a ordenar (fuente de datos ya cargada/filtrada por la vista). */
   items: Ref<T[]> | ComputedRef<T[]>
@@ -151,6 +158,17 @@ export function useSortableList<T>(options: UseSortableListOptions<T>) {
     guardarOrden()
   }
 
+  /**
+   * Quita el ordenamiento sin importar qué columna estaba activa (vuelve al orden por defecto que
+   * entrega el backend). Disparado por el gesto de triple clic en el encabezado (ver
+   * SortableTableHead.vue), independiente de en qué columna se haga el triple clic.
+   */
+  function resetSort() {
+    sortColumn.value = null
+    sortDirection.value = null
+    guardarOrden()
+  }
+
   const sortedItems = computed((): T[] => {
     const lista = options.items.value
 
@@ -174,5 +192,5 @@ export function useSortableList<T>(options: UseSortableListOptions<T>) {
     })
   })
 
-  return { sortColumn, sortDirection, toggleSort, sortedItems }
+  return { sortColumn, sortDirection, toggleSort, resetSort, sortedItems }
 }

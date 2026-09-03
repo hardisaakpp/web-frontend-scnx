@@ -174,8 +174,11 @@
         v-model:proveedorNombre="filtros.proveedor_nombre"
         v-model:filtroSoloPendientes="filtroSoloPendientes"
         v-model:numeroPedidoTexto="busquedaNumeroPedido"
-        v-model:creadoPorTexto="busquedaCreadoPor"
+        v-model:creadoPor="filtros.creado_por"
+        v-model:modificadoPor="filtros.modificado_por"
         :estados-disponibles="estadosDisponibles"
+        :creadores-disponibles="creadoresDisponibles"
+        :modificadores-disponibles="modificadoresDisponibles"
         :show-quick-filter="true"
         :contador-pedidos-pendientes="contadorPedidosPendientes"
         numero-pedido-placeholder="Buscar por número de pedido (ej: P-12.08)"
@@ -186,9 +189,6 @@
         @numero-pedido-input="handleBusquedaNumeroPedido"
         @numero-pedido-commit="buscarNumeroPedidoInmediato"
         @numero-pedido-clear="limpiarBusquedaNumeroPedidoTexto"
-        @creado-por-input="handleBusquedaCreadoPor"
-        @creado-por-commit="buscarCreadoPorInmediato"
-        @creado-por-clear="limpiarBusquedaCreadoPorTexto"
       />
 
       <!-- Tabla de Pedidos -->
@@ -265,6 +265,7 @@
                 :sort-column="sortColumn"
                 :sort-direction="sortDirection"
                 @toggle-sort="toggleSort"
+                @reset-sort="resetSort"
               />
               <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 <tr
@@ -429,6 +430,8 @@ const pedidos = ref<PedidoResumido[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 const estadosDisponibles = ref<EstadoPedidoOption[]>([])
+const creadoresDisponibles = ref<string[]>([])
+const modificadoresDisponibles = ref<string[]>([])
 const PAGE_SIZE = 10
 const { pageSize: pageSizeGuardado, guardar: guardarPageSize } = usePageSizePreference('cargar-plantilla-listado', PAGE_SIZE)
 const { offset: offsetGuardado, guardar: guardarOffset } = usePaginaPreference('cargar-plantilla-listado')
@@ -450,6 +453,7 @@ const filtros = ref<PedidosListadoFiltros>({
   proveedor_nombre: '',
   numero_pedido: '',
   creado_por: '',
+  modificado_por: '',
   limit: PAGE_SIZE,
   offset: offsetGuardado.value
 })
@@ -468,15 +472,6 @@ const {
   dispose: disposeBusquedaNumeroPedido
 } = useFiltroTextoConDebounce(filtros, 'numero_pedido', aplicarFiltros)
 
-// ========== Búsqueda por Creado Por (con debounce, filtra en vivo) ==========
-const {
-  texto: busquedaCreadoPor,
-  handleInput: handleBusquedaCreadoPor,
-  commit: buscarCreadoPorInmediato,
-  clear: limpiarBusquedaCreadoPorTexto,
-  dispose: disposeBusquedaCreadoPor
-} = useFiltroTextoConDebounce(filtros, 'creado_por', aplicarFiltros)
-
 const columnasTabla: SortableColumnDef[] = [
   { key: 'numero_pedido', label: 'Número de Pedido' },
   { key: 'fecha_pedido', label: 'Fecha Pedido', description: DESCRIPCION_COLUMNA_FECHA_PEDIDO },
@@ -488,7 +483,7 @@ const columnasTabla: SortableColumnDef[] = [
   { key: 'modificado_por', label: 'Modificado Por' }
 ]
 
-const { sortColumn, sortDirection, toggleSort, sortedItems: sortedPedidos } = useSortableList<PedidoResumido>({
+const { sortColumn, sortDirection, toggleSort, resetSort, sortedItems: sortedPedidos } = useSortableList<PedidoResumido>({
   items: pedidos,
   dateColumns: ['fecha_pedido', 'creado_en', 'modificado_fecha'],
   storageKey: 'cargar-plantilla-listado'
@@ -505,6 +500,19 @@ async function cargarEstados() {
   }
 }
 
+async function cargarCreadoresYModificadores() {
+  try {
+    const [creadores, modificadores] = await Promise.all([
+      mba3ConsultasService.getCreadoresPedido(),
+      mba3ConsultasService.getModificadoresPedido()
+    ])
+    creadoresDisponibles.value = creadores.data
+    modificadoresDisponibles.value = modificadores.data
+  } catch (e: any) {
+    console.error('Error al cargar creadores/modificadores:', e)
+  }
+}
+
 async function obtenerPedidos() {
   error.value = null
   try {
@@ -514,6 +522,7 @@ async function obtenerPedidos() {
       estado: filtros.value.estado || undefined,
       numero_pedido: filtros.value.numero_pedido || undefined,
       creado_por: filtros.value.creado_por || undefined,
+      modificado_por: filtros.value.modificado_por || undefined,
       fecha_desde: filtros.value.fecha_desde || undefined,
       fecha_hasta: filtros.value.fecha_hasta || undefined,
       tipo_fecha: filtros.value.tipo_fecha,
@@ -577,12 +586,12 @@ function limpiarFiltros() {
     proveedor_nombre: '',
     numero_pedido: '',
     creado_por: '',
+    modificado_por: '',
     limit: PAGE_SIZE,
     offset: 0
   }
-  // Mantener en sync los inputs de búsqueda con debounce (Número de Pedido, Creado Por)
+  // Mantener en sync el input de búsqueda con debounce (Número de Pedido)
   busquedaNumeroPedido.value = ''
-  busquedaCreadoPor.value = ''
   filtroSoloPendientes.value = false
   resetToFirstPage()
 }
@@ -603,11 +612,11 @@ useListadoAutoRefresh(refrescarPedidosSilenciosamente)
 
 onMounted(() => {
   cargarEstados()
+  cargarCreadoresYModificadores()
   cargarPedidos()
 })
 
 onUnmounted(() => {
   disposeBusquedaNumeroPedido()
-  disposeBusquedaCreadoPor()
 })
 </script>

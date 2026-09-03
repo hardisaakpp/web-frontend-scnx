@@ -46,16 +46,16 @@
         v-model:fechaHasta="filtros.fecha_hasta"
         v-model:proveedorNombre="filtros.proveedor_nombre"
         v-model:numeroPedidoTexto="busquedaNumeroPedido"
-        v-model:creadoPorTexto="busquedaCreadoPor"
+        v-model:creadoPor="filtros.creado_por"
+        v-model:modificadoPor="filtros.modificado_por"
         :estados-disponibles="[]"
+        :creadores-disponibles="creadoresDisponibles"
+        :modificadores-disponibles="modificadoresDisponibles"
         @aplicar="aplicarFiltros"
         @limpiar="limpiarFiltros"
         @numero-pedido-input="handleBusquedaNumeroPedido"
         @numero-pedido-commit="buscarNumeroPedidoInmediato"
         @numero-pedido-clear="limpiarBusquedaNumeroPedido"
-        @creado-por-input="handleBusquedaCreadoPor"
-        @creado-por-commit="buscarCreadoPorInmediato"
-        @creado-por-clear="limpiarBusquedaCreadoPor"
       >
         <template #estado-field>
           <div>
@@ -132,6 +132,7 @@
                 :sort-column="sortColumn"
                 :sort-direction="sortDirection"
                 @toggle-sort="toggleSort"
+                @reset-sort="resetSort"
               />
               <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 <tr
@@ -249,6 +250,8 @@ const toast = useToast()
 const pedidos = ref<PedidoResumido[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
+const creadoresDisponibles = ref<string[]>([])
+const modificadoresDisponibles = ref<string[]>([])
 const PAGE_SIZE = 10
 const { pageSize: pageSizeGuardado, guardar: guardarPageSize } = usePageSizePreference('revisar-redistribucion-listado', PAGE_SIZE)
 const { offset: offsetGuardado, guardar: guardarOffset } = usePaginaPreference('revisar-redistribucion-listado')
@@ -278,6 +281,7 @@ const filtros = ref<PedidosListadoFiltros>({
   proveedor_nombre: '',
   numero_pedido: '',
   creado_por: '',
+  modificado_por: '',
   solo_redistribucion: true,
   limit: PAGE_SIZE,
   offset: offsetGuardado.value
@@ -297,19 +301,18 @@ const {
   }
 })
 
-// ========== Búsqueda por Creado Por (con debounce, filtra en vivo) ==========
-const {
-  texto: busquedaCreadoPor,
-  handleInput: handleBusquedaCreadoPor,
-  commit: buscarCreadoPorInmediato,
-  clear: limpiarBusquedaCreadoPor,
-  dispose: disposeBusquedaCreadoPor
-} = useDebouncedFilterInput((valor) => {
-  if (filtros.value.creado_por !== valor) {
-    filtros.value.creado_por = valor
-    aplicarFiltros()
+async function cargarCreadoresYModificadores() {
+  try {
+    const [creadores, modificadores] = await Promise.all([
+      mba3ConsultasService.getCreadoresPedido(),
+      mba3ConsultasService.getModificadoresPedido()
+    ])
+    creadoresDisponibles.value = creadores.data
+    modificadoresDisponibles.value = modificadores.data
+  } catch (e: any) {
+    console.error('Error al cargar creadores/modificadores:', e)
   }
-})
+}
 
 // Columnas ordenables de la tabla (thead genérico SortableTableHead)
 const pedidosColumns: SortableColumnDef[] = [
@@ -323,7 +326,7 @@ const pedidosColumns: SortableColumnDef[] = [
   { key: 'modificado_por', label: 'Modificado Por' },
 ]
 
-const { sortColumn, sortDirection, toggleSort, sortedItems: sortedPedidos } = useSortableList<PedidoResumido>({
+const { sortColumn, sortDirection, toggleSort, resetSort, sortedItems: sortedPedidos } = useSortableList<PedidoResumido>({
   items: pedidos,
   dateColumns: ['fecha_pedido', 'creado_en', 'modificado_fecha'],
   storageKey: 'revisar-redistribucion-listado'
@@ -343,6 +346,7 @@ async function obtenerPedidos() {
       proveedor_nombre: filtros.value.proveedor_nombre || undefined,
       numero_pedido: filtros.value.numero_pedido || undefined,
       creado_por: filtros.value.creado_por || undefined,
+      modificado_por: filtros.value.modificado_por || undefined,
     })
 
     // Mapear PedidoCompleto → PedidoResumido para reutilizar la tabla actual
@@ -425,12 +429,12 @@ function limpiarFiltros() {
     proveedor_nombre: '',
     numero_pedido: '',
     creado_por: '',
+    modificado_por: '',
     solo_redistribucion: true,
     limit: PAGE_SIZE,
     offset: 0
   }
   busquedaNumeroPedido.value = ''
-  busquedaCreadoPor.value = ''
   resetToFirstPage()
 }
 
@@ -449,12 +453,12 @@ function abrirRevisar(pedido: PedidoResumido) {
 }
 
 onMounted(() => {
+  cargarCreadoresYModificadores()
   cargarPedidos()
 })
 
 onUnmounted(() => {
   disposeBusquedaNumeroPedido()
-  disposeBusquedaCreadoPor()
 })
 
 // ⭐ Recarga la lista ante notificación SSE relevante (ej: ODC enviada a SAP, pedido

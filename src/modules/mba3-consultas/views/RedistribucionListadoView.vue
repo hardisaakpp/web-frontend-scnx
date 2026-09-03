@@ -58,8 +58,11 @@
         v-model:proveedorNombre="filtros.proveedor_nombre"
         v-model:filtroSoloPendientes="filtroSoloPendientes"
         v-model:numeroPedidoTexto="busquedaNumeroPedido"
-        v-model:creadoPorTexto="busquedaCreadoPor"
+        v-model:creadoPor="filtros.creado_por"
+        v-model:modificadoPor="filtros.modificado_por"
         :estados-disponibles="estadosDisponibles"
+        :creadores-disponibles="creadoresDisponibles"
+        :modificadores-disponibles="modificadoresDisponibles"
         :show-quick-filter="true"
         :contador-pedidos-pendientes="contadorPedidosPendientes"
         @aplicar="aplicarFiltros"
@@ -69,9 +72,6 @@
         @numero-pedido-input="handleBusquedaNumeroPedido"
         @numero-pedido-commit="buscarNumeroPedidoInmediato"
         @numero-pedido-clear="limpiarBusquedaNumeroPedidoTexto"
-        @creado-por-input="handleBusquedaCreadoPor"
-        @creado-por-commit="buscarCreadoPorInmediato"
-        @creado-por-clear="limpiarBusquedaCreadoPorTexto"
       />
 
       <!-- Tabla de Pedidos -->
@@ -148,6 +148,7 @@
                 :sort-column="sortColumn"
                 :sort-direction="sortDirection"
                 @toggle-sort="toggleSort"
+                @reset-sort="resetSort"
               />
               <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 <tr
@@ -265,6 +266,8 @@ const pedidos = ref<PedidoResumido[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 const estadosDisponibles = ref<EstadoPedidoOption[]>([])
+const creadoresDisponibles = ref<string[]>([])
+const modificadoresDisponibles = ref<string[]>([])
 const PAGE_SIZE = 10
 const { pageSize: pageSizeGuardado, guardar: guardarPageSize } = usePageSizePreference('redistribucion-listado', PAGE_SIZE)
 const { offset: offsetGuardado, guardar: guardarOffset } = usePaginaPreference('redistribucion-listado')
@@ -286,6 +289,7 @@ const filtros = ref<PedidosListadoFiltros>({
   proveedor_nombre: '',
   numero_pedido: '',
   creado_por: '',
+  modificado_por: '',
   limit: PAGE_SIZE,
   offset: offsetGuardado.value
 })
@@ -298,15 +302,6 @@ const {
   clear: limpiarBusquedaNumeroPedidoTexto,
   dispose: disposeBusquedaNumeroPedido
 } = useFiltroTextoConDebounce(filtros, 'numero_pedido', aplicarFiltros)
-
-// ========== Búsqueda por Creado Por (con debounce, filtra en vivo) ==========
-const {
-  texto: busquedaCreadoPor,
-  handleInput: handleBusquedaCreadoPor,
-  commit: buscarCreadoPorInmediato,
-  clear: limpiarBusquedaCreadoPorTexto,
-  dispose: disposeBusquedaCreadoPor
-} = useFiltroTextoConDebounce(filtros, 'creado_por', aplicarFiltros)
 
 const contadorPedidosPendientes = computed(() =>
   pedidos.value.filter(p => requiereAccionPedido(p.estado)).length
@@ -324,7 +319,7 @@ const columnasTabla: SortableColumnDef[] = [
   { key: 'modificado_por', label: 'Modificado Por' }
 ]
 
-const { sortColumn, sortDirection, toggleSort, sortedItems: sortedPedidos } = useSortableList<PedidoResumido>({
+const { sortColumn, sortDirection, toggleSort, resetSort, sortedItems: sortedPedidos } = useSortableList<PedidoResumido>({
   items: pedidos,
   dateColumns: ['fecha_pedido', 'creado_en', 'modificado_fecha'],
   storageKey: 'redistribucion-listado'
@@ -336,6 +331,19 @@ async function cargarEstados() {
     estadosDisponibles.value = response.data
   } catch (e: any) {
     console.error('Error al cargar estados:', e)
+  }
+}
+
+async function cargarCreadoresYModificadores() {
+  try {
+    const [creadores, modificadores] = await Promise.all([
+      mba3ConsultasService.getCreadoresPedido(),
+      mba3ConsultasService.getModificadoresPedido()
+    ])
+    creadoresDisponibles.value = creadores.data
+    modificadoresDisponibles.value = modificadores.data
+  } catch (e: any) {
+    console.error('Error al cargar creadores/modificadores:', e)
   }
 }
 
@@ -417,11 +425,11 @@ function limpiarFiltros() {
     proveedor_nombre: '',
     numero_pedido: '',
     creado_por: '',
+    modificado_por: '',
     limit: PAGE_SIZE,
     offset: 0
   }
   busquedaNumeroPedido.value = ''
-  busquedaCreadoPor.value = ''
   filtroSoloPendientes.value = false
   resetToFirstPage()
 }
@@ -441,12 +449,12 @@ function abrirRedistribucion(pedido: PedidoResumido) {
 
 onMounted(() => {
   cargarEstados()
+  cargarCreadoresYModificadores()
   cargarPedidos()
 })
 
 onUnmounted(() => {
   disposeBusquedaNumeroPedido()
-  disposeBusquedaCreadoPor()
 })
 
 // ⭐ Refresco automático del listado (notificación SSE con metadata.accion, reconexión SSE

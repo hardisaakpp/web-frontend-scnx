@@ -1606,7 +1606,7 @@ export interface TienePedidosResponse {
 }
 
 /** Columna de fecha sobre la que aplica fecha_desde/fecha_hasta (default: 'pedido') */
-export type TipoFechaFiltro = 'pedido' | 'entrega' | 'facturacion'
+export type TipoFechaFiltro = 'pedido' | 'creacion' | 'modificacion' | 'entrega' | 'facturacion'
 
 export interface PedidosListadoFiltros {
   estado?: string
@@ -1616,6 +1616,7 @@ export interface PedidosListadoFiltros {
   proveedor_nombre?: string
   numero_pedido?: string
   creado_por?: string
+  modificado_por?: string
   limit?: number
   offset?: number
   /** Si true, excluye BORRADOR, NUEVO PEDIDO, GESTIONAR PEDIDO y CANCELADO (solo muestra estado_id >= 4 y != 19) */
@@ -1639,6 +1640,14 @@ export interface EstadoPedidoOption {
 export interface EstadosPedidoResponse {
   status: string
   data: EstadoPedidoOption[]
+}
+
+/** Respuesta de /api/pedidos/creadores y /api/pedidos/modificadores: lista de
+ * valores distintos de creado_por/modificado_por, para alimentar los <select>
+ * "Creado Por"/"Modificado Por" del contenedor "Filtros de Búsqueda". */
+export interface UsuariosPedidoResponse {
+  status: string
+  data: string[]
 }
 
 // ========== HU-08: Exportación de Pedidos a Formato MBA ==========

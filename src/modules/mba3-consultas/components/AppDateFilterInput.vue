@@ -5,8 +5,9 @@
       :class="[
         disabled
           ? 'border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 cursor-not-allowed'
-          : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600/50 focus-within:ring-2 focus-within:ring-indigo-500 dark:focus-within:ring-indigo-400'
+          : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600/50 focus-within:ring-2 focus-within:ring-indigo-500 dark:focus-within:ring-indigo-400 cursor-pointer'
       ]"
+      @click="togglePopover"
     >
       <button
         type="button"
@@ -14,7 +15,6 @@
         :disabled="disabled"
         class="flex-1 min-w-0 text-left truncate focus:outline-none"
         :class="tieneFiltro ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'"
-        @click="togglePopover"
       >
         {{ resumen }}
       </button>
@@ -140,7 +140,7 @@
  * que se usaban antes en los paneles de filtros de listado de pedidos.
  *
  * Cada v-model expone/recibe 'YYYY-MM-DD' (fechas) o el value del tipo
- * ('pedido' | 'entrega' | 'facturacion'), igual que antes, para no tener que
+ * (TipoFechaFiltro: 'pedido' | 'creacion' | 'modificacion' | 'entrega' | 'facturacion'), para no tener que
  * tocar el resto del código de filtros.
  */
 import { ref, computed, watch, nextTick, onBeforeUnmount, useId } from 'vue'
@@ -165,11 +165,15 @@ watch([desde, hasta], ([d, h]) => {
 
 const TIPO_OPTIONS: Array<{ value: TipoFechaFiltro; label: string }> = [
   { value: 'pedido', label: 'Fecha Pedido' },
+  { value: 'creacion', label: 'Fecha Creación' },
+  { value: 'modificacion', label: 'Fecha Modificación' },
   { value: 'entrega', label: 'Fecha Entrega' },
   { value: 'facturacion', label: 'Fecha Facturación' }
 ]
 const TIPO_LABELS: Record<TipoFechaFiltro, string> = {
   pedido: 'Fecha Pedido',
+  creacion: 'Fecha Creación',
+  modificacion: 'Fecha Modificación',
   entrega: 'Fecha Entrega',
   facturacion: 'Fecha Facturación'
 }

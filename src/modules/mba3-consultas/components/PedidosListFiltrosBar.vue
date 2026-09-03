@@ -39,7 +39,7 @@
         </p>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-4">
         <!-- Estado: slot completo (label + control) -- el default es el <select> que usan 3 de los
              4 listados; RevisarRedistribucionListadoView.vue no filtra por estado individual y
              sobreescribe este slot con su propio texto informativo. -->
@@ -57,7 +57,7 @@
               v-model="estado"
               @keyup.enter="emit('aplicar')"
               @change="emit('estado-change'); emit('aplicar')"
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 text-sm"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 text-sm cursor-pointer"
             >
               <option value="">Todos los estados</option>
               <option
@@ -75,7 +75,7 @@
         <div>
           <label
             :for="fechaFiltroId"
-            title="Filtra por rango de fechas; elige si se busca por fecha del pedido, fecha de entrega o fecha de facturación"
+            title="Filtra por rango de fechas; elige si se busca por fecha del pedido, de creación, de modificación, de entrega o de facturación"
             class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
           >
             Fecha
@@ -126,26 +126,47 @@
           />
         </div>
 
-        <!-- Creado Por (filtra en vivo con debounce) -->
+        <!-- Creado Por: usuario que creó el pedido (fijo desde la creación, no cambia) -->
         <div>
           <label
-            :for="creadoPorInputId"
-            title="Filtra por el usuario que creó el pedido; se aplica automáticamente mientras escribes"
+            :for="creadoPorSelectId"
+            title="Filtra por el usuario que creó el pedido"
             class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
           >
             Creado Por
           </label>
-          <DebouncedSearchField
-            :id="creadoPorInputId"
-            v-model="creadoPorTexto"
-            :placeholder="creadoPorPlaceholder"
-            @input="emit('creado-por-input')"
-            @keyup-enter="emit('creado-por-commit')"
-            @clear="emit('creado-por-clear')"
-          />
+          <select
+            :id="creadoPorSelectId"
+            v-model="creadoPor"
+            @change="emit('aplicar')"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 text-sm cursor-pointer"
+          >
+            <option value="">Todos</option>
+            <option v-for="usuario in creadoresDisponibles" :key="usuario" :value="usuario">{{ usuario }}</option>
+          </select>
         </div>
 
-        <!-- Acción: todos los filtros de arriba se aplican solos (auto-apply/debounce/Enter); solo
+        <!-- Modificado Por: usuario de la última modificación (puede cambiar con el tiempo, distinto de Creado Por) -->
+        <div>
+          <label
+            :for="modificadoPorSelectId"
+            title="Filtra por el usuario que hizo la última modificación al pedido"
+            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+          >
+            Modificado Por
+          </label>
+          <select
+            :id="modificadoPorSelectId"
+            v-model="modificadoPor"
+            @change="emit('aplicar')"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 text-sm cursor-pointer"
+          >
+            <option value="">Todos</option>
+            <option v-for="usuario in modificadoresDisponibles" :key="usuario" :value="usuario">{{ usuario }}</option>
+          </select>
+        </div>
+
+        <!-- Acción: todos los filtros de arriba se aplican solos (auto-apply/debounce/Enter/change); solo
              queda limpiar -->
         <div class="flex items-end gap-2">
           <button
@@ -165,7 +186,15 @@
  * Barra de filtros de los 4 listados de pedidos del módulo (PedidosListView.vue,
  * CargarPlantillaListadoView.vue, RedistribucionListadoView.vue, RevisarRedistribucionListadoView.vue):
  * contenedor colapsable "Filtros de Búsqueda" + filtro rápido opcional "Solo pedidos que requieren
- * acción" + grid de campos (Estado, Fecha, Proveedor, Número de Pedido, Creado Por, Limpiar).
+ * acción" + grid de campos (Estado, Fecha, Proveedor, Número de Pedido, Creado Por, Modificado Por,
+ * Limpiar).
+ *
+ * Creado Por / Modificado Por son <select> (no texto libre): alimentados por `creadoresDisponibles`/
+ * `modificadoresDisponibles`, listas de valores DISTINCT que cada vista resuelve contra
+ * GET /api/pedidos/creadores y GET /api/pedidos/modificadores respectivamente -- mismo criterio que
+ * `estadosDisponibles`. Antes "Creado Por" era texto libre con debounce; se cambió a selector porque
+ * el usuario no tenía forma de saber qué escribir (el campo guarda email/username exacto, ver
+ * src/utils/audit_context.py del backend) ni de distinguirlo de "Modificado Por".
  *
  * PURO shell de UI -- no decide qué estados mostrar (estadosDisponibles llega siempre por prop,
  * ya resuelto por cada vista contra su propio endpoint) ni cuándo disparar la búsqueda al backend
@@ -203,13 +232,20 @@ const estadoSelectId = useId()
 const fechaFiltroId = useId()
 const proveedorInputId = useId()
 const numeroPedidoInputId = useId()
-const creadoPorInputId = useId()
+const creadoPorSelectId = useId()
+const modificadoPorSelectId = useId()
 
 withDefaults(
   defineProps<{
     /** Opciones del <select> de Estado (slot por defecto). Siempre resuelta por la vista contra su
      * propio endpoint -- este componente nunca decide qué estados existen. */
     estadosDisponibles: EstadoPedidoOption[]
+    /** Opciones del <select> de "Creado Por": valores distintos de creado_por que existen en la
+     * base de datos, resueltos por la vista contra GET /api/pedidos/creadores. */
+    creadoresDisponibles?: string[]
+    /** Opciones del <select> de "Modificado Por": valores distintos de modificado_por que existen
+     * en la base de datos, resueltos por la vista contra GET /api/pedidos/modificadores. */
+    modificadoresDisponibles?: string[]
     /** Muestra la sección "Solo pedidos que requieren acción". Default false (comportamiento de
      * RevisarRedistribucionListadoView, que no la tiene). */
     showQuickFilter?: boolean
@@ -219,23 +255,21 @@ withDefaults(
     /** Placeholder del input "Número de Pedido". Default 'Buscar por número de pedido...' (el de 3
      * de los 4 listados); CargarPlantillaListadoView pasa el suyo con ejemplo ('...ej: P-12.08'). */
     numeroPedidoPlaceholder?: string
-    /** Placeholder del input "Creado Por". Idéntico en los 4 listados hoy, expuesto igual por si
-     * algún consumidor futuro lo necesita distinto. */
-    creadoPorPlaceholder?: string
   }>(),
   {
+    creadoresDisponibles: () => [],
+    modificadoresDisponibles: () => [],
     showQuickFilter: false,
     contadorPedidosPendientes: 0,
-    numeroPedidoPlaceholder: 'Buscar por número de pedido...',
-    creadoPorPlaceholder: 'Buscar por usuario creador...'
+    numeroPedidoPlaceholder: 'Buscar por número de pedido...'
   }
 )
 
 const emit = defineEmits<{
   /** Disparar la búsqueda con los filtros actuales (Estado @change/Enter, Fecha @change/Enter,
-   * Proveedor Enter) -- conectar a `aplicarFiltros` de la vista. NO se emite para Número de
-   * Pedido/Creado Por (esos ya disparan solos vía su propio composable de debounce, ver los
-   * eventos `numero-pedido-*`/`creado-por-*`). */
+   * Proveedor Enter, Creado Por @change, Modificado Por @change) -- conectar a `aplicarFiltros` de
+   * la vista. NO se emite para Número de Pedido (ese ya dispara solo vía su propio composable de
+   * debounce, ver los eventos `numero-pedido-*`). */
   aplicar: []
   /** Clic en "Limpiar" -- conectar a `limpiarFiltros` de la vista. */
   limpiar: []
@@ -250,10 +284,6 @@ const emit = defineEmits<{
   'numero-pedido-input': []
   'numero-pedido-commit': []
   'numero-pedido-clear': []
-  /** Idem para "Creado Por". */
-  'creado-por-input': []
-  'creado-por-commit': []
-  'creado-por-clear': []
 }>()
 
 const estado = defineModel<string>('estado', { default: '' })
@@ -263,7 +293,8 @@ const fechaHasta = defineModel<string | null | undefined>('fechaHasta', { defaul
 const proveedorNombre = defineModel<string>('proveedorNombre', { default: '' })
 const filtroSoloPendientes = defineModel<boolean>('filtroSoloPendientes', { default: false })
 const numeroPedidoTexto = defineModel<string>('numeroPedidoTexto', { default: '' })
-const creadoPorTexto = defineModel<string>('creadoPorTexto', { default: '' })
+const creadoPor = defineModel<string>('creadoPor', { default: '' })
+const modificadoPor = defineModel<string>('modificadoPor', { default: '' })
 
 /** Colapsado por defecto, igual que `filtrosColapsados` en los 4 listados hoy. 100% interno, ver
  * comentario de archivo. */

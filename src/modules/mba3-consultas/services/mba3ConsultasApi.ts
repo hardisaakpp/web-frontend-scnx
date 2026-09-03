@@ -12,7 +12,7 @@
  * Los nuevos servicios modulares están disponibles en `domains/`.
  */
 
-import type { Despacho, DespachoDetalle, OrdenCompraResponse, OrdenCompraLogResponse, RemisionResponse, HealthResponse, ProcesoResponse, SkuHomologacionResponse, SkuHomologacionUpdateRequest, SkuHomologacionCreateRequest, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstadoResponse, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, UploadPlantillaAsyncAcceptedResponse, PlantillaProcesoEstado, PedidoCompleto, CargarRespuestaProveedorResponse, RespuestaProveedorResponse, ProcesarConfirmacionResponse, ReporteDiferenciasResponse, IntegracionSAPResponse, ActualizarCostoPedidoResponse, AjusteDetalle, ResumenConfirmacion, GuardarModificacionesColumnasResponse, ObtenerModificacionesColumnasResponse, ProcesamientoSAPResponse, CrearOCDesdePedidoResponse, CrearPedidoRequest, CrearPedidoResponse, ModificarPedidoCabeceraRequest, ModificarPedidoCabeceraResponse, TienePedidosResponse, InfoArchivoPlantillaResponse, BuscarPlantillasResponse, PlantillasPedidosResponse, ProcesoCompletoSAPResponse, ProcesoCompletoSAPAsyncResponse, ProcesoCompletoSAPResultadoPolling, IntegracionSAPPorOCResponse, EstadosPedidoResponse, DiferenciaProduccionResponse, ConfirmarConDiferenciaResponse, HijoDiferenciaPayload, OrdenesCompraListFilters } from '../types'
+import type { Despacho, DespachoDetalle, OrdenCompraResponse, OrdenCompraLogResponse, RemisionResponse, HealthResponse, ProcesoResponse, SkuHomologacionResponse, SkuHomologacionUpdateRequest, SkuHomologacionCreateRequest, SugerenciasResponse, EstadoSincronizacionResponse, SincronizarMaestrosResponse, IniciarCruceResponse, ProcesoEstadoSSE, ProcesoEstadoResponse, SugerenciasSkuResponse, DetallesOCResponse, ActualizarSkuResponse, BuscarSkuMba3Response, UploadPlantillaResponse, UploadPlantillaAsyncAcceptedResponse, PlantillaProcesoEstado, PedidoCompleto, CargarRespuestaProveedorResponse, RespuestaProveedorResponse, ProcesarConfirmacionResponse, ReporteDiferenciasResponse, IntegracionSAPResponse, ActualizarCostoPedidoResponse, AjusteDetalle, ResumenConfirmacion, GuardarModificacionesColumnasResponse, ObtenerModificacionesColumnasResponse, ProcesamientoSAPResponse, CrearOCDesdePedidoResponse, CrearPedidoRequest, CrearPedidoResponse, ModificarPedidoCabeceraRequest, ModificarPedidoCabeceraResponse, TienePedidosResponse, InfoArchivoPlantillaResponse, BuscarPlantillasResponse, PlantillasPedidosResponse, ProcesoCompletoSAPResponse, ProcesoCompletoSAPAsyncResponse, ProcesoCompletoSAPResultadoPolling, IntegracionSAPPorOCResponse, EstadosPedidoResponse, UsuariosPedidoResponse, DiferenciaProduccionResponse, ConfirmarConDiferenciaResponse, HijoDiferenciaPayload, OrdenesCompraListFilters } from '../types'
 
 // ⭐ REEXPORTAR CONFIGURACIÓN Y UTILIDADES REFACTORIZADAS
 export { mba3Api, API_BASE_URL } from './config/axiosConfig'
@@ -1592,6 +1592,7 @@ export const mba3ConsultasService = {
     proveedor_nombre?: string
     numero_pedido?: string
     creado_por?: string
+    modificado_por?: string
   }): Promise<{
     data: PedidoCompleto[]
     total: number
@@ -1783,6 +1784,7 @@ export const mba3ConsultasService = {
     estado?: string
     numero_pedido?: string
     creado_por?: string
+    modificado_por?: string
     fecha_desde?: string
     fecha_hasta?: string
     tipo_fecha?: import('../types').TipoFechaFiltro
@@ -1803,6 +1805,26 @@ export const mba3ConsultasService = {
    */
   async getEstadosPedido(contexto?: 'pedidos' | 'redistribucion' | 'cargar-plantilla' | 'produccion'): Promise<EstadosPedidoResponse> {
     return pedidosService.getEstadosPedido(contexto)
+  },
+
+  /**
+   * Obtiene la lista de usuarios que han creado al menos un pedido, para el <select> "Creado Por".
+   *
+   * GET /api/pedidos/creadores
+   * @deprecated Usar pedidosService.getCreadoresPedido() directamente
+   */
+  async getCreadoresPedido(): Promise<UsuariosPedidoResponse> {
+    return pedidosService.getCreadoresPedido()
+  },
+
+  /**
+   * Obtiene la lista de usuarios que han modificado al menos un pedido, para el <select> "Modificado Por".
+   *
+   * GET /api/pedidos/modificadores
+   * @deprecated Usar pedidosService.getModificadoresPedido() directamente
+   */
+  async getModificadoresPedido(): Promise<UsuariosPedidoResponse> {
+    return pedidosService.getModificadoresPedido()
   },
 }
 

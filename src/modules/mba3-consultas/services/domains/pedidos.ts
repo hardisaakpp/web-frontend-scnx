@@ -52,6 +52,7 @@ import type {
   ProcesoCompletoSAPAsyncResponse,
   ProcesoCompletoSAPResultadoPolling,
   EstadosPedidoResponse,
+  UsuariosPedidoResponse,
   SapInfoProductosResponse,
   DiferenciaProduccionResponse,
   ConfirmarConDiferenciaResponse,
@@ -443,6 +444,7 @@ export const pedidosService = {
     estado?: string
     numero_pedido?: string
     creado_por?: string
+    modificado_por?: string
     fecha_desde?: string
     fecha_hasta?: string
     tipo_fecha?: TipoFechaFiltro
@@ -1446,6 +1448,7 @@ export const pedidosService = {
     proveedor_nombre?: string
     numero_pedido?: string
     creado_por?: string
+    modificado_por?: string
   }): Promise<{
     data: PedidoCompleto[]
     total: number
@@ -1670,6 +1673,38 @@ export const pedidosService = {
     } catch (error: any) {
       console.error('❌ [getEstadosPedido] Error al obtener estados:', error)
       throw createEnrichedError(error, 'Error al obtener los estados de pedido')
+    }
+  },
+
+  /**
+   * Obtiene la lista de usuarios que han creado al menos un pedido, para el
+   * <select> "Creado Por" del contenedor "Filtros de Búsqueda".
+   *
+   * GET /api/pedidos/creadores
+   */
+  async getCreadoresPedido(): Promise<UsuariosPedidoResponse> {
+    try {
+      const response = await mba3Api.get<UsuariosPedidoResponse>('/api/pedidos/creadores')
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [getCreadoresPedido] Error al obtener creadores:', error)
+      throw createEnrichedError(error, 'Error al obtener los creadores de pedido')
+    }
+  },
+
+  /**
+   * Obtiene la lista de usuarios que han modificado al menos un pedido, para
+   * el <select> "Modificado Por" del contenedor "Filtros de Búsqueda".
+   *
+   * GET /api/pedidos/modificadores
+   */
+  async getModificadoresPedido(): Promise<UsuariosPedidoResponse> {
+    try {
+      const response = await mba3Api.get<UsuariosPedidoResponse>('/api/pedidos/modificadores')
+      return response.data
+    } catch (error: any) {
+      console.error('❌ [getModificadoresPedido] Error al obtener modificadores:', error)
+      throw createEnrichedError(error, 'Error al obtener los modificadores de pedido')
     }
   },
 }

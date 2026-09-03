@@ -62,8 +62,11 @@
         v-model:proveedor-nombre="filtros.proveedor_nombre"
         v-model:filtro-solo-pendientes="filtroSoloPendientes"
         v-model:numero-pedido-texto="busquedaNumeroPedido"
-        v-model:creado-por-texto="busquedaCreadoPor"
+        v-model:creado-por="filtros.creado_por"
+        v-model:modificado-por="filtros.modificado_por"
         :estados-disponibles="estadosDisponibles"
+        :creadores-disponibles="creadoresDisponibles"
+        :modificadores-disponibles="modificadoresDisponibles"
         :show-quick-filter="esModoElRayo || mostrarFiltroRapido"
         :contador-pedidos-pendientes="contadorPedidosPendientes"
         @aplicar="aplicarFiltros"
@@ -73,9 +76,6 @@
         @numero-pedido-input="handleBusquedaNumeroPedido"
         @numero-pedido-commit="buscarNumeroPedidoInmediato"
         @numero-pedido-clear="limpiarBusquedaNumeroPedidoTexto"
-        @creado-por-input="handleBusquedaCreadoPor"
-        @creado-por-commit="buscarCreadoPorInmediato"
-        @creado-por-clear="limpiarBusquedaCreadoPorTexto"
       />
 
       <!-- Tabla de Pedidos -->
@@ -159,6 +159,7 @@
               :sort-column="sortColumn"
               :sort-direction="sortDirection"
               @toggle-sort="toggleSort"
+              @reset-sort="resetSort"
             />
             <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               <tr
@@ -284,6 +285,8 @@ const pedidos = ref<PedidoResumido[]>([])
 const loading = ref(false)
 const error = ref<string | null>(null)
 const estadosDisponibles = ref<EstadoPedidoOption[]>([])
+const creadoresDisponibles = ref<string[]>([])
+const modificadoresDisponibles = ref<string[]>([])
 const PAGE_SIZE = 10
 const { pageSize: pageSizeGuardado, guardar: guardarPageSize } = usePageSizePreference('pedidos-listado', PAGE_SIZE)
 const { offset: offsetGuardado, guardar: guardarOffset } = usePaginaPreference('pedidos-listado')
@@ -321,6 +324,7 @@ const filtros = ref<PedidosListadoFiltros>({
   proveedor_nombre: '',
   numero_pedido: '',
   creado_por: '',
+  modificado_por: '',
   limit: PAGE_SIZE,
   offset: offsetGuardado.value
 })
@@ -378,7 +382,7 @@ const {
 const aplicarFiltros = resetToFirstPage
 
 // Ordenamiento de columnas (pieza compartida)
-const { sortColumn, sortDirection, toggleSort, sortedItems: sortedPedidos } = useSortableList<PedidoResumido>({
+const { sortColumn, sortDirection, toggleSort, resetSort, sortedItems: sortedPedidos } = useSortableList<PedidoResumido>({
   items: pedidos,
   dateColumns: ['fecha_pedido', 'creado_en', 'modificado_fecha'],
   storageKey: 'pedidos-listado'
@@ -405,15 +409,6 @@ const {
   dispose: disposeBusquedaNumeroPedido
 } = useFiltroTextoConDebounce(filtros, 'numero_pedido', aplicarFiltros)
 
-// ========== Búsqueda por Creado Por (con debounce, filtra en vivo) ==========
-const {
-  texto: busquedaCreadoPor,
-  handleInput: handleBusquedaCreadoPor,
-  commit: buscarCreadoPorInmediato,
-  clear: limpiarBusquedaCreadoPorTexto,
-  dispose: disposeBusquedaCreadoPor
-} = useFiltroTextoConDebounce(filtros, 'creado_por', aplicarFiltros)
-
 // Contador de pedidos pendientes (computado desde los pedidos cargados)
 const contadorPedidosPendientes = computed(() => pedidos.value.filter(p => requiereAccionPedido(p.estado)).length)
 
@@ -425,6 +420,21 @@ async function cargarEstados() {
   } catch (e: any) {
     console.error('Error al cargar estados:', e)
     // Si falla, el dropdown quedará vacío pero no bloquea la UI
+  }
+}
+
+// Cargar creadores/modificadores disponibles para los <select> "Creado Por"/"Modificado Por"
+async function cargarCreadoresYModificadores() {
+  try {
+    const [creadores, modificadores] = await Promise.all([
+      mba3ConsultasService.getCreadoresPedido(),
+      mba3ConsultasService.getModificadoresPedido()
+    ])
+    creadoresDisponibles.value = creadores.data
+    modificadoresDisponibles.value = modificadores.data
+  } catch (e: any) {
+    console.error('Error al cargar creadores/modificadores:', e)
+    // Si falla, los dropdowns quedarán vacíos pero no bloquea la UI
   }
 }
 
@@ -477,11 +487,11 @@ function limpiarFiltros() {
     proveedor_nombre: '',
     numero_pedido: '',
     creado_por: '',
+    modificado_por: '',
     limit: PAGE_SIZE,
     offset: 0
   }
   busquedaNumeroPedido.value = ''
-  busquedaCreadoPor.value = ''
   filtroSoloPendientes.value = false
   resetToFirstPage()
 }
@@ -504,6 +514,7 @@ async function verDetalle(pedidoId: string) {
 // Cargar datos al montar
 onMounted(() => {
   cargarEstados()
+  cargarCreadoresYModificadores()
   // Si es modo El Rayo, activar filtro de pendientes por defecto
   if (esModoElRayo.value) {
     filtroSoloPendientes.value = true
@@ -515,7 +526,6 @@ onMounted(() => {
 
 onUnmounted(() => {
   disposeBusquedaNumeroPedido()
-  disposeBusquedaCreadoPor()
 })
 
 // Watch para detectar cambios en query params

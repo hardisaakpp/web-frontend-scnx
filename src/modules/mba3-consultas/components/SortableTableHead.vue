@@ -12,8 +12,8 @@
         v-for="column in columns"
         :key="column.key"
         scope="col"
-        :title="column.description"
-        @click="emit('toggle-sort', column.key)"
+        :title="tituloColumna(column)"
+        @click="handleClick(column.key, $event)"
         :class="[
           'px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors',
           column.align === 'center' ? 'text-center' : 'text-left'
@@ -55,11 +55,18 @@
  * `sortColumn`/`sortDirection`/`toggleSort` son los que devuelve useSortableList (../composables/useSortableList.ts).
  * `column.description` (opcional) se renderiza como `title` nativo, tooltip al pasar el mouse sobre el encabezado.
  *
+ * Gesto de reset: un triple clic (MouseEvent.detail === 3, contador nativo del navegador para clics
+ * rápidos en la misma posición) en CUALQUIER columna del encabezado emite `reset-sort` en vez de
+ * `toggle-sort`, sin importar sobre qué columna se hizo el triple clic -- restablece el ordenamiento
+ * completo de la tabla a su estado por defecto (sin columna activa). El segundo clic de la secuencia
+ * (detail === 2) se ignora a propósito para no disparar un toggle intermedio no deseado mientras el
+ * usuario completa el gesto.
+ *
  * No asume nada sobre qué columnas existen -- las recibe todas por prop. Los 4 listados actuales le
  * pasarían las mismas 8 columnas (numero_pedido, fecha_pedido, proveedor_nombre, estado [centrada],
  * comprador_nombre, creado_en, modificado_fecha, modificado_por), pero nada aquí depende de esos keys.
  */
-import type { SortableColumnDef } from '../composables/useSortableList'
+import { HINT_TRIPLE_CLIC_RESET_ORDEN, type SortableColumnDef } from '../composables/useSortableList'
 
 withDefaults(
   defineProps<{
@@ -80,5 +87,24 @@ withDefaults(
 
 const emit = defineEmits<{
   'toggle-sort': [key: string]
+  'reset-sort': []
 }>()
+
+function tituloColumna(column: SortableColumnDef): string {
+  return column.description
+    ? `${column.description}\n${HINT_TRIPLE_CLIC_RESET_ORDEN}`
+    : HINT_TRIPLE_CLIC_RESET_ORDEN
+}
+
+function handleClick(columnKey: string, event: MouseEvent) {
+  if (event.detail >= 3) {
+    emit('reset-sort')
+    return
+  }
+  if (event.detail === 1) {
+    emit('toggle-sort', columnKey)
+  }
+  // event.detail === 2 (o mayor pero menor a 3, imposible en la práctica) se ignora a propósito:
+  // evita un toggle intermedio no deseado mientras el usuario completa el gesto de triple clic.
+}
 </script>
