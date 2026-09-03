@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, watch, watchEffect, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { MagnifyingGlassIcon, ArrowPathIcon, ArrowDownTrayIcon, ChevronRightIcon, ChevronDownIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon, MinusIcon } from '@heroicons/vue/24/outline'
 import { XMarkIcon } from '@heroicons/vue/20/solid'
@@ -254,6 +254,27 @@ const totales = computed(() => {
     sugerenciaCompra: sum(r => r.sugerenciaCompra),
     semaforos,
   }
+})
+
+// Checkbox maestro del header "Seleccionar" — marca/quita todas las filas visibles
+// (ya filtradas por columna) que tengan Nivel3, no todo lo cargado.
+const nivel3CheckableRows = computed(() => filteredRows.value.filter(r => r.nivel3))
+const allExportChecked = computed(() =>
+  nivel3CheckableRows.value.length > 0 && nivel3CheckableRows.value.every(r => exportSelectedRows.has(rowKey(r)))
+)
+const someExportChecked = computed(() =>
+  !allExportChecked.value && nivel3CheckableRows.value.some(r => exportSelectedRows.has(rowKey(r)))
+)
+function toggleExportAll() {
+  if (allExportChecked.value) {
+    nivel3CheckableRows.value.forEach(r => exportSelectedRows.delete(rowKey(r)))
+  } else {
+    nivel3CheckableRows.value.forEach(r => exportSelectedRows.add(rowKey(r)))
+  }
+}
+const selectAllExportEl = ref<HTMLInputElement | null>(null)
+watchEffect(() => {
+  if (selectAllExportEl.value) selectAllExportEl.value.indeterminate = someExportChecked.value
 })
 
 // ── Drill-down [+] por Nivel1×Nivel2×Nivel3 (sin Género — así lo expone el backend) ──
@@ -586,7 +607,18 @@ onUnmounted(() => {
               <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Decisión</th>
               <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('sugerenciaCompra')">Sugerencia {{ sortIndicator('sugerenciaCompra') }}</th>
               <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Pedido</th>
-              <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center" title="Marca el Nivel 3 de esta fila para el filtro multi-select del Excel (arriba, junto a 'Exportar a Excel')">Seleccionar</th>
+              <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center" title="Marca filas puntuales (Nivel3+Género) para exportar solo esas al Excel, con su Pedido editado">
+                <div class="flex items-center justify-center gap-1.5">
+                  <input
+                    ref="selectAllExportEl"
+                    type="checkbox"
+                    :checked="allExportChecked"
+                    title="Marcar/quitar todas las filas visibles"
+                    @change="toggleExportAll"
+                  />
+                  <span>Seleccionar</span>
+                </div>
+              </th>
             </tr>
             <tr class="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
               <th scope="col"></th>
