@@ -64,6 +64,7 @@ function buildDifference(overrides: Partial<Difference> = {}): Difference {
     differenceId: 1,
     transferId: 7,
     barcode: '999888777',
+    lineId: null,
     productDescription: null,
     isRecognized: false,
     scannedAtUtc: '2026-01-02T00:00:00Z',
@@ -818,6 +819,36 @@ describe('TransferDetailView', () => {
       courierWaybillNumber: null,
     })
     expect(recepcionApi.recordDifference).not.toHaveBeenCalled()
+  })
+
+  it('caps a manual entry above the line quantity at line.quantity and redirects the overflow to differences (lineId-identified)', async () => {
+    mockAuth(['recepcion.picking.scan'])
+    const line = buildLine({ lineId: 1, quantity: 10, scanned: 4, barcode: null })
+    vi.mocked(recepcionApi.getTransfer)
+      .mockResolvedValueOnce(mockGetTransfer(buildTransfer({ lines: [line] })))
+      .mockResolvedValue(mockGetTransfer(buildTransfer({ lines: [{ ...line, scanned: 10 }] })))
+    vi.mocked(recepcionApi.scan).mockResolvedValue(undefined)
+    vi.mocked(recepcionApi.recordDifference).mockResolvedValue(undefined)
+
+    const wrapper = mount(TransferDetailView, { global: { stubs: { RouterLink: true } } })
+    await flushPromises()
+
+    // Manual input has no :max — typing above line.quantity must still submit the form.
+    await wrapper.find('[data-testid="scan-quantity-input-1"]').setValue('13')
+    await wrapper.find('[data-testid="scan-form"]').trigger('submit.prevent')
+    await flushPromises()
+
+    // entered = 13, line.quantity = 10 -> fillAmount = 10 (capped), excess = 3
+    expect(recepcionApi.scan).toHaveBeenCalledWith(7, {
+      scans: [{ lineId: 1, scannedQuantity: 10 }],
+      responsibleName: null,
+      courierWaybillNumber: null,
+    })
+    expect(recepcionApi.recordDifference).toHaveBeenCalledTimes(3)
+    expect(recepcionApi.recordDifference).toHaveBeenCalledWith(7, { lineId: 1 })
+
+    // Input reseeds from the capped line.scanned after the store's post-save re-fetch.
+    expect((wrapper.find('[data-testid="scan-quantity-input-1"]').element as HTMLInputElement).value).toBe('10')
   })
 
   it('scans a recognized barcode with room, capping the fill with no leftover when it fits exactly', async () => {
