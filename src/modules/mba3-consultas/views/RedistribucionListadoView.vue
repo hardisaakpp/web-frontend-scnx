@@ -154,13 +154,19 @@
                   v-for="(pedido, index) in sortedPedidos"
                   :key="pedido.pedido_id"
                   :class="[
-                    'hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer',
+                    'transition-colors cursor-pointer',
+                    filaCargandoId === pedido.pedido_id
+                      ? 'bg-indigo-50 dark:bg-indigo-900/30 ring-2 ring-inset ring-indigo-400 dark:ring-indigo-500'
+                      : filaCargandoId
+                        ? 'opacity-50 pointer-events-none'
+                        : 'hover:bg-gray-50 dark:hover:bg-gray-700/50',
                     requiereAccionPedido(pedido.estado) ? 'bg-orange-50/30 dark:bg-orange-900/10 border-l-4 border-orange-500 dark:border-orange-400' : ''
                   ]"
                   @click="abrirRedistribucion(pedido)"
                 >
                   <td class="px-4 py-4 whitespace-nowrap text-sm text-center text-gray-500 dark:text-gray-400 font-medium">
-                    {{ metadata.offset + index + 1 }}
+                    <LoadingSpinner v-if="filaCargandoId === pedido.pedido_id" size="xs" color="indigo" layout="inline" aria-label="Abriendo pedido" />
+                    <span v-else>{{ metadata.offset + index + 1 }}</span>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                     {{ pedido.numero_pedido }}
@@ -235,7 +241,13 @@ import { useFiltroTextoConDebounce } from '../composables/useFiltroTextoConDebou
 import { usePageSizePreference } from '../composables/usePageSizePreference'
 import { usePaginaPreference } from '../composables/usePaginaPreference'
 import { getEstadoPedidoLabel, getEstadoPedidoBadgeClassFull, requiereAccionPedido } from '../utils/estadoPedido'
-import { useSortableList, type SortableColumnDef } from '../composables/useSortableList'
+import {
+  useSortableList,
+  type SortableColumnDef,
+  DESCRIPCION_COLUMNA_FECHA_PEDIDO,
+  DESCRIPCION_COLUMNA_FECHA_CREACION,
+  DESCRIPCION_COLUMNA_FECHA_MODIFICACION
+} from '../composables/useSortableList'
 import { useOffsetPagination } from '../composables/useOffsetPagination'
 import { useListadoAutoRefresh } from '../composables/useListadoAutoRefresh'
 import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
@@ -303,12 +315,12 @@ const contadorPedidosPendientes = computed(() =>
 // Columnas de la tabla (ordenables vía SortableTableHead)
 const columnasTabla: SortableColumnDef[] = [
   { key: 'numero_pedido', label: 'Número de Pedido' },
-  { key: 'fecha_pedido', label: 'Fecha' },
+  { key: 'fecha_pedido', label: 'Fecha', description: DESCRIPCION_COLUMNA_FECHA_PEDIDO },
   { key: 'proveedor_nombre', label: 'Proveedor' },
   { key: 'estado', label: 'Estado', align: 'center' },
   { key: 'comprador_nombre', label: 'Comprador' },
-  { key: 'creado_en', label: 'Fecha Creación' },
-  { key: 'modificado_fecha', label: 'Fecha Modificación' },
+  { key: 'creado_en', label: 'Fecha Creación', description: DESCRIPCION_COLUMNA_FECHA_CREACION },
+  { key: 'modificado_fecha', label: 'Fecha Modificación', description: DESCRIPCION_COLUMNA_FECHA_MODIFICACION },
   { key: 'modificado_por', label: 'Modificado Por' }
 ]
 
@@ -415,11 +427,16 @@ function limpiarFiltros() {
 }
 
 /** Navega a la vista de Redistribución del pedido seleccionado */
+const filaCargandoId = ref<string | null>(null)
 function abrirRedistribucion(pedido: PedidoResumido) {
+  if (filaCargandoId.value) return
+  filaCargandoId.value = pedido.pedido_id
   router.push({
     name: 'mba3-consultas-pedido-redistribucion',
     params: { id: encodeURIComponent(pedido.numero_pedido) }
   })
+    .catch(() => {})
+    .finally(() => { filaCargandoId.value = null })
 }
 
 onMounted(() => {

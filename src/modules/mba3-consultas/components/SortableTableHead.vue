@@ -12,6 +12,7 @@
         v-for="column in columns"
         :key="column.key"
         scope="col"
+        :title="column.description"
         @click="emit('toggle-sort', column.key)"
         :class="[
           'px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors',
@@ -52,6 +53,7 @@
  *     <tbody>...</tbody>
  *   </table>
  * `sortColumn`/`sortDirection`/`toggleSort` son los que devuelve useSortableList (../composables/useSortableList.ts).
+ * `column.description` (opcional) se renderiza como `title` nativo, tooltip al pasar el mouse sobre el encabezado.
  *
  * No asume nada sobre qué columnas existen -- las recibe todas por prop. Los 4 listados actuales le
  * pasarían las mismas 8 columnas (numero_pedido, fecha_pedido, proveedor_nombre, estado [centrada],

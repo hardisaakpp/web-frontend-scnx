@@ -45,7 +45,11 @@
              sobreescribe este slot con su propio texto informativo. -->
         <slot name="estado-field">
           <div>
-            <label :for="estadoSelectId" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <label
+              :for="estadoSelectId"
+              title="Filtra los pedidos por su estado actual dentro del flujo (ej. Pendiente Confirmación, Confirmado Proveedor)"
+              class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+            >
               Estado
             </label>
             <select
@@ -69,7 +73,11 @@
 
         <!-- Fecha -->
         <div>
-          <label :for="fechaFiltroId" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label
+            :for="fechaFiltroId"
+            title="Filtra por rango de fechas; elige si se busca por fecha del pedido, fecha de entrega o fecha de facturación"
+            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+          >
             Fecha
           </label>
           <AppDateFilterInput
@@ -101,7 +109,11 @@
 
         <!-- Número de Pedido (filtra en vivo con debounce) -->
         <div>
-          <label :for="numeroPedidoInputId" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label
+            :for="numeroPedidoInputId"
+            title="Busca por el número de pedido; se aplica automáticamente mientras escribes"
+            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+          >
             Número de Pedido
           </label>
           <DebouncedSearchField
@@ -116,7 +128,11 @@
 
         <!-- Creado Por (filtra en vivo con debounce) -->
         <div>
-          <label :for="creadoPorInputId" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label
+            :for="creadoPorInputId"
+            title="Filtra por el usuario que creó el pedido; se aplica automáticamente mientras escribes"
+            class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+          >
             Creado Por
           </label>
           <DebouncedSearchField

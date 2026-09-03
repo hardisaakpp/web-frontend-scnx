@@ -30,7 +30,24 @@ export interface SortableColumnDef {
   label: string
   /** Alineación del contenido del <th> (y de las flechas de orden). Por defecto 'left'. */
   align?: 'left' | 'center'
+  /** Tooltip (atributo title nativo) que se muestra al pasar el mouse sobre el encabezado, para
+   * aclarar a qué corresponde la columna cuando el label por sí solo puede ser ambiguo (ej. las 3
+   * columnas de fecha del pedido). */
+  description?: string
 }
+
+/**
+ * Descripciones de las 3 columnas de fecha compartidas por los 4 listados de pedidos del módulo,
+ * para el tooltip del encabezado (ver `description` en SortableColumnDef). Semántica tomada de los
+ * campos del backend: fecha_pedido (Pydantic: "Fecha del pedido"), creado_en/modificado_fecha
+ * (mba3-consultas/src/utils/audit_context.py: metadatos de auditoría con DEFAULT de la BD).
+ */
+export const DESCRIPCION_COLUMNA_FECHA_PEDIDO =
+  'Fecha del pedido (la del documento/Excel original), no la fecha en que se cargó al sistema'
+export const DESCRIPCION_COLUMNA_FECHA_CREACION =
+  'Fecha en que se creó el registro de este pedido en el sistema'
+export const DESCRIPCION_COLUMNA_FECHA_MODIFICACION =
+  'Fecha de la última modificación realizada a este pedido'
 
 export interface UseSortableListOptions<T> {
   /** Array a ordenar (fuente de datos ya cargada/filtrada por la vista). */
