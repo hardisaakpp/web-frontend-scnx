@@ -932,10 +932,12 @@ watch(
       return
     }
     
-    // ⭐ CRÍTICO: Cargar columnas modificadas ANTES de inicializar la redistribución
-    // Esto hereda el resaltado del flujo anterior (Detalle del Pedido - EL RAYO)
-    // Debe ejecutarse primero para que el resaltado esté disponible cuando se rendericen los productos
-    cargarColumnasModificadasDesdeStorage()
+    // Las columnas modificadas y sus roles (ODCSAP/PRODUCCION_ELRAYO) ya se cargaron desde el
+    // backend en loadPedido() (usePedidoDetalle -> cargarModificacionesConFallback), que solo cae a
+    // sessionStorage si el backend no tiene datos. No repetir esa carga aquí: sessionStorage no
+    // incluye rol_modificador, y si el navegador tiene una copia vieja de una visita anterior a este
+    // mismo pedido, pisaba el Set correcto recién cargado (bug: el resaltado por rol en
+    // Redistribución caía siempre a ámbar aunque la última edición fuera de odcsap.view).
     const columnasAntes = columnasModificadas.value.size
     if (import.meta.env.DEV) console.log(`🎨 [MabelTradingRedistribucionView] Columnas modificadas ANTES de inicializar: ${columnasAntes}`)
     
@@ -976,7 +978,6 @@ watch(
     if (newId && newId !== oldId) {
       await loadPedido()
       pedidoIdInput.value = ''
-      cargarColumnasModificadasDesdeStorage()
     }
     // Solo cargar último pedido cuando seguimos en la ruta de redistribución de pedido sin id.
     // No ejecutar al navegar fuera (dashboard, etc.): comprobar path para evitar toast/redirect indebidos.
@@ -1015,7 +1016,6 @@ onMounted(async () => {
   if (numeroPedido.value) {
     await loadPedido()
     await refreshPendingOdcSapState()
-    cargarColumnasModificadasDesdeStorage()
     if (import.meta.env.DEV) console.log(`🎨 [MabelTradingRedistribucionView] Estado final de columnas modificadas: ${columnasModificadas.value.size} modificaciones`)
     if (columnasModificadas.value.size > 0) {
       if (import.meta.env.DEV) console.log(`   Columnas modificadas: ${Array.from(columnasModificadas.value).join(', ')}`)
