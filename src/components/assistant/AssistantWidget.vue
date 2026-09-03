@@ -11,7 +11,7 @@
         <div class="flex items-center gap-3 px-4 py-3 bg-[#0c2340]">
           <CoolTurito :expression="expresion" variant="head" :size="38" />
           <div class="min-w-0 flex-1">
-            <p class="text-white font-bold text-sm leading-tight">Cool-turito · SCNEXUS AI</p>
+            <p class="text-white font-bold text-sm leading-tight">mIA · SCNEXUS AI</p>
             <p class="text-[11px] text-sky-300 flex items-center gap-1.5">
               <span class="w-1.5 h-1.5 rounded-full" :class="cargando ? 'bg-amber-400 animate-pulse' : 'bg-emerald-400'"></span>
               Tu asistente inteligente
@@ -295,7 +295,7 @@ async function abrir(): Promise<void> {
     const saludo = nombreUsuario.value ? `¡Hola, ${nombreUsuario.value}!` : '¡Hola!'
     mensajes.value.push({
       rol: 'bot',
-      texto: `${saludo} Soy Cool-turito, tu asistente de SCNEXUS. Respondo preguntas sobre los procesos, políticas y manuales publicados de la organización, citando siempre las fuentes. ¿Qué necesitas hacer?`,
+      texto: `${saludo} Soy mIA, tu asistente de SCNEXUS. Respondo preguntas sobre los procesos, políticas y manuales publicados de la organización, citando siempre las fuentes. ¿Qué necesitas hacer?`,
     })
   }
   if (!usuarioAd.value) return
