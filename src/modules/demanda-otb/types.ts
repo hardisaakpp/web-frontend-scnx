@@ -183,6 +183,7 @@ export interface NodoFila {
   lyUds: number | null
   nivelMes: number | null
   crec12M: number | null
+  pedido: number | null
 }
 
 /** Constantes del modelo de semáforo — mismos números que usó BI, para que el frontend simule. */
@@ -199,6 +200,8 @@ export interface OtbResponse {
   negocio: string
   fecha: string
   fechasDisponibles: string[]
+  /** Día del mes en que BI ejecutó el cálculo de Stock día — se muestra junto a esa columna. */
+  diaEjecucionBi: number
   filtrado: boolean
   rows: NodoFila[]
   otbParams: OtbParams
@@ -238,6 +241,18 @@ export interface OtbExportRequest extends OtbFiltros {
   nivel2?: string
   nivel3?: string
   genero?: string
+  /** Filtro adicional e independiente del `nivel3` de arriba — se arma marcando el checkbox
+   *  "Nivel 3 → Excel" de filas puntuales en la tabla (Nivel3+Género), cada una con su propio
+   *  Pedido editado. Vacío/omitido = comportamiento actual sin cambios (exporta todo). */
+  nivel3Multiple?: OtbExportNivel3Item[]
+}
+
+/** Un ítem de `OtbExportRequest.nivel3Multiple` — una fila (Nivel3+Género) marcada para
+ *  exportar, con su Pedido editado. `genero` se omite si la fila no tiene género (null). */
+export interface OtbExportNivel3Item {
+  nivel3: string
+  genero?: string
+  pedido: number
 }
 
 /** GET /otb/{negocio}/skus — drill-down del [+], SIN filtrar por género (viaja por SKU). */
@@ -252,6 +267,7 @@ export interface OtbSkuItem {
   coberturaTotalDias: number | null
   decisionOtb: string | null
   sugerenciaCompra: number | null
+  pedido: number | null
 }
 
 export interface OtbSkusResponse {
