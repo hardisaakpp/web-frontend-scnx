@@ -39,6 +39,7 @@ function buildDifference(overrides: Partial<Difference> = {}): Difference {
     differenceId: 1,
     transferId: 7,
     barcode: '7791234',
+    lineId: null,
     productDescription: null,
     isRecognized: false,
     scannedAtUtc: '2026-01-02T00:00:00Z',
@@ -1144,6 +1145,121 @@ describe('usePickingStore', () => {
       expect(recepcionApi.scan).not.toHaveBeenCalled()
       expect(recepcionApi.recordDifference).toHaveBeenCalledTimes(2)
       expect(result).toEqual({ matchedLine: transfer.lines[0], fillAmount: 0, excess: 2 })
+    })
+  })
+
+  // Manual-entry counterpart to scanBarcode, for lines with no barcode. Unlike scanBarcode's
+  // enteredQty (an incremental "just scanned this many more"), the manual quantity input already
+  // holds an ABSOLUTE total, so fillAmount = min(enteredQuantity, line.quantity) directly (not
+  // line.scanned + fillAmount) and the new absolute value submitted is simply fillAmount.
+  describe('scanManual', () => {
+    it('batches a normal scan() call with no recordDifference calls when the entry is within the line quantity', async () => {
+      const transfer = buildTransfer({
+        lines: [{ lineId: 1, itemCode: 'A1', itemName: 'Item A1', quantity: 10, scanned: 4, barcode: null }],
+      })
+      vi.mocked(recepcionApi.getTransfer).mockResolvedValueOnce(mockGetTransfer(transfer))
+      const store = usePickingStore()
+      await store.fetchTransfer(7)
+
+      vi.mocked(recepcionApi.scan).mockResolvedValue(undefined)
+      vi.mocked(recepcionApi.getTransfer).mockResolvedValue(
+        mockGetTransfer(buildTransfer({ lines: [{ ...transfer.lines[0], scanned: 7 }] }))
+      )
+
+      await store.scanManual([{ lineId: 1, enteredQuantity: 7 }])
+
+      expect(recepcionApi.scan).toHaveBeenCalledWith(7, {
+        scans: [{ lineId: 1, scannedQuantity: 7 }],
+        responsibleName: null,
+        courierWaybillNumber: null,
+      })
+      expect(recepcionApi.recordDifference).not.toHaveBeenCalled()
+    })
+
+    it("caps the scan() call's scannedQuantity at the line's quantity and records one difference per excess unit, keyed by lineId", async () => {
+      const transfer = buildTransfer({
+        lines: [{ lineId: 1, itemCode: 'A1', itemName: 'Item A1', quantity: 10, scanned: 4, barcode: null }],
+      })
+      vi.mocked(recepcionApi.getTransfer).mockResolvedValueOnce(mockGetTransfer(transfer))
+      const store = usePickingStore()
+      await store.fetchTransfer(7)
+
+      vi.mocked(recepcionApi.scan).mockResolvedValue(undefined)
+      vi.mocked(recepcionApi.recordDifference).mockResolvedValue(undefined)
+      vi.mocked(recepcionApi.getTransfer).mockResolvedValue(
+        mockGetTransfer(buildTransfer({ lines: [{ ...transfer.lines[0], scanned: 10 }] }))
+      )
+
+      // entered = 13, line.quantity = 10 -> fillAmount = 10, excess = 3
+      await store.scanManual([{ lineId: 1, enteredQuantity: 13 }])
+
+      expect(recepcionApi.scan).toHaveBeenCalledWith(7, {
+        scans: [{ lineId: 1, scannedQuantity: 10 }],
+        responsibleName: null,
+        courierWaybillNumber: null,
+      })
+      expect(recepcionApi.recordDifference).toHaveBeenCalledTimes(3)
+      expect(recepcionApi.recordDifference).toHaveBeenCalledWith(7, { lineId: 1 })
+    })
+
+    it('batches multiple changed lines into a single scan() POST with one ScanLineRequest per line', async () => {
+      const transfer = buildTransfer({
+        lines: [
+          { lineId: 1, itemCode: 'A1', itemName: 'Item A1', quantity: 10, scanned: 4, barcode: null },
+          { lineId: 2, itemCode: 'A2', itemName: 'Item A2', quantity: 5, scanned: 1, barcode: null },
+        ],
+      })
+      vi.mocked(recepcionApi.getTransfer).mockResolvedValueOnce(mockGetTransfer(transfer))
+      const store = usePickingStore()
+      await store.fetchTransfer(7)
+
+      vi.mocked(recepcionApi.scan).mockResolvedValue(undefined)
+      vi.mocked(recepcionApi.getTransfer).mockResolvedValue(mockGetTransfer(transfer))
+
+      await store.scanManual([
+        { lineId: 1, enteredQuantity: 6 },
+        { lineId: 2, enteredQuantity: 3 },
+      ])
+
+      expect(recepcionApi.scan).toHaveBeenCalledTimes(1)
+      expect(recepcionApi.scan).toHaveBeenCalledWith(7, {
+        scans: [
+          { lineId: 1, scannedQuantity: 6 },
+          { lineId: 2, scannedQuantity: 3 },
+        ],
+        responsibleName: null,
+        courierWaybillNumber: null,
+      })
+      expect(recepcionApi.recordDifference).not.toHaveBeenCalled()
+    })
+
+    it('skips a line whose entered quantity equals its current scanned value, but still redirects any excess', async () => {
+      const transfer = buildTransfer({
+        lines: [{ lineId: 1, itemCode: 'A1', itemName: 'Item A1', quantity: 10, scanned: 10, barcode: null }],
+      })
+      vi.mocked(recepcionApi.getTransfer).mockResolvedValueOnce(mockGetTransfer(transfer))
+      const store = usePickingStore()
+      await store.fetchTransfer(7)
+
+      vi.mocked(recepcionApi.recordDifference).mockResolvedValue(undefined)
+      vi.mocked(recepcionApi.getTransfer).mockResolvedValue(mockGetTransfer(transfer))
+
+      // entered = 12, line.quantity = 10 -> fillAmount = 10 (equal to current scanned, so no scan()
+      // call), excess = 2 still redirected.
+      await store.scanManual([{ lineId: 1, enteredQuantity: 12 }])
+
+      expect(recepcionApi.scan).not.toHaveBeenCalled()
+      expect(recepcionApi.recordDifference).toHaveBeenCalledTimes(2)
+      expect(recepcionApi.recordDifference).toHaveBeenCalledWith(7, { lineId: 1 })
+    })
+
+    it('returns/no-ops when there is no current transfer loaded', async () => {
+      const store = usePickingStore()
+
+      await store.scanManual([{ lineId: 1, enteredQuantity: 5 }])
+
+      expect(recepcionApi.scan).not.toHaveBeenCalled()
+      expect(recepcionApi.recordDifference).not.toHaveBeenCalled()
     })
   })
 })

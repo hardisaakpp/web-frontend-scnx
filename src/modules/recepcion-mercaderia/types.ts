@@ -79,16 +79,16 @@ export interface ReceptionTransfer {
 }
 
 /**
- * Real backend shape: ReceptionDifferenceResponse (Id, ReceptionTransferId, Barcode,
- * ProductDescription?, IsRecognized, ScannedAtUtc, ScannedByUserId). This does NOT carry a
- * lineId/reason/quantity the way this module's current differences form assumes — see
- * {@link RecordDifferenceRequest} for the flagged mismatch this type intentionally now reflects
- * (real, not the module's prior invented shape).
+ * Real backend shape: ReceptionDifferenceResponse (Id, ReceptionTransferId, Barcode?, LineId?,
+ * ProductDescription?, IsRecognized, ScannedAtUtc, ScannedByUserId). Barcode is now nullable and
+ * LineId was added: a difference is identified by exactly one of the two — Barcode for the
+ * barcode-scan flow, LineId for the manual-entry flow on lines with no barcode.
  */
 export interface Difference {
   differenceId: number
   transferId: number
-  barcode: string
+  barcode: string | null
+  lineId: number | null
   productDescription: string | null
   isRecognized: boolean
   scannedAtUtc: string
@@ -143,14 +143,14 @@ export interface GlpiTicketRequest {
 }
 
 /**
- * Real backend: RecordDifferenceRequest(Barcode: string) only — no lineId/reason/quantity. This
- * module's differences form UI still collects lineId+reason+quantity; recepcionApi.ts's
- * recordDifference is left UNCHANGED (not adapted) pending a product decision on whether the extra
- * fields get a real backend home or get dropped from the UI. This type documents the REAL shape
- * for whenever that redesign happens.
+ * Real backend: RecordDifferenceRequest(Barcode?: string, LineId?: long) — exactly one of the two
+ * must be non-null (the backend 400s otherwise). `barcode` is the scan flow (matches a line by
+ * Barcode == barcode); `lineId` is the manual-entry flow for lines with no barcode (matches a line
+ * by Id == lineId).
  */
 export interface RecordDifferenceRequest {
-  barcode: string
+  barcode?: string | null
+  lineId?: number | null
 }
 
 export interface HistoryFilters {

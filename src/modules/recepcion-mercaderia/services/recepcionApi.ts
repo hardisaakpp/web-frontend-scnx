@@ -65,7 +65,8 @@ interface WireReceptionTransfer {
 interface WireDifference {
   id: number
   receptionTransferId: number
-  barcode: string
+  barcode: string | null
+  lineId: number | null
   productDescription: string | null
   isRecognized: boolean
   scannedAtUtc: string
@@ -77,6 +78,7 @@ function mapDifference(d: WireDifference): Difference {
     differenceId: d.id,
     transferId: d.receptionTransferId,
     barcode: d.barcode,
+    lineId: d.lineId,
     productDescription: d.productDescription,
     isRecognized: d.isRecognized,
     scannedAtUtc: d.scannedAtUtc,
@@ -243,15 +245,17 @@ const recepcionApi = {
     return (await recepcionApi.getTransfer(transferId)).transfer
   },
 
-  // Real RecordDifferenceRequest only accepts a barcode (no lineId/reason/quantity) — that part
-  // was already correct. The response, however, is just { id } (DifferencesController.RecordDifference
+  // Real RecordDifferenceRequest(Barcode?, LineId?) accepts exactly one of the two — both keys
+  // must always be sent explicitly (missing = deserialization failure risk on the backend
+  // record), the unused one as null. The response is just { id } (DifferencesController.RecordDifference
   // returns Ok(new { id }), not the full ReceptionDifferenceResponse) — the real productDescription/
   // isRecognized/scannedAtUtc/scannedByUserId only exist in GET /transfers/{id}'s differences array,
   // so the caller (pickingStore) re-fetches the transfer afterward to pick up the real record,
   // exactly like scan()'s 204-then-refetch pattern above.
   recordDifference: async (transferId: number, body: RecordDifferenceRequest): Promise<void> => {
     await api.post<{ id: number }>(`${BASE}/transfers/${transferId}/differences`, {
-      barcode: body.barcode,
+      barcode: body.barcode ?? null,
+      lineId: body.lineId ?? null,
     })
   },
 

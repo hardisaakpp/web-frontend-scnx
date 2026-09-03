@@ -2,10 +2,11 @@
 import { computed, onMounted, ref } from 'vue'
 import { useHistoryStore } from '../stores/historyStore'
 import { useAuthStore } from '@/stores/auth'
-import { CalendarIcon, DocumentArrowDownIcon, PencilIcon, ArrowLeftIcon } from '@heroicons/vue/24/outline'
+import { CalendarIcon, ArrowDownTrayIcon, PencilIcon, ArrowLeftIcon, EyeIcon } from '@heroicons/vue/24/outline'
 import type { HistoryRow } from '../types'
 import { triggerBlobDownload } from '../utils/downloadBlob'
 import PageJumpInput from '../components/PageJumpInput.vue'
+import HistoryDetailModal from '../components/HistoryDetailModal.vue'
 
 const store = useHistoryStore()
 const authStore = useAuthStore()
@@ -108,10 +109,23 @@ onMounted(() => {
 // prior "Ver" detail-navigation button per explicit product decision). One-shot axios-blob
 // download, same pattern as handleExportCsv below, scoped per row/transferId rather than a
 // single "active transfer" (there is no such concept on a history list).
+// A "Ver detalle" eye-icon button now lives alongside it again (explicit product decision,
+// reversing part of the above) — but as a read-only MODAL over data already in memory
+// (HistoryRow.lines), not the old navigation-to-another-screen behavior.
 async function handleExportRowDifferences(transferId: number): Promise<void> {
   const blob = await activeScope.value.downloadDifferencesReport(transferId)
   if (!blob) return
   triggerBlobDownload(blob, `diferencias-${transferId}.xlsx`)
+}
+
+const detailRow = ref<HistoryRow | null>(null)
+
+function openDetail(row: HistoryRow): void {
+  detailRow.value = row
+}
+
+function closeDetail(): void {
+  detailRow.value = null
 }
 
 // Real server-side pagination AND filtering (verified HistoryController: dateFrom/dateTo/
@@ -243,10 +257,10 @@ async function handleExportCsv(): Promise<void> {
           <button
             type="button"
             data-testid="export-csv-btn"
-            class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800 transition-colors shadow-sm"
+            class="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             @click="handleExportCsv"
           >
-            <DocumentArrowDownIcon class="w-4 h-4" />
+            <ArrowDownTrayIcon class="w-4 h-4" />
             Exportar Excel
           </button>
         </div>
@@ -304,10 +318,10 @@ async function handleExportCsv(): Promise<void> {
             <button
               type="button"
               data-testid="export-csv-btn"
-              class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800 transition-colors shadow-sm"
+              class="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-all disabled:opacity-60 disabled:cursor-not-allowed"
               @click="handleExportCsv"
             >
-              <DocumentArrowDownIcon class="w-4 h-4" />
+              <ArrowDownTrayIcon class="w-4 h-4" />
               Exportar Excel
             </button>
           </div>
@@ -415,14 +429,25 @@ async function handleExportCsv(): Promise<void> {
                   </div>
                 </td>
                 <td class="px-4 py-3 text-sm text-right">
-                  <button
-                    type="button"
-                    :data-testid="`export-differences-btn-${row.transferId}`"
-                    class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors text-xs"
-                    @click="handleExportRowDifferences(row.transferId)"
-                  >
-                    Exportar Diferencias
-                  </button>
+                  <div class="flex items-center justify-end gap-2">
+                    <button
+                      type="button"
+                      :data-testid="`view-detail-btn-${row.transferId}`"
+                      title="Ver detalle"
+                      class="p-2 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+                      @click="openDetail(row)"
+                    >
+                      <EyeIcon class="w-5 h-5" />
+                    </button>
+                    <button
+                      type="button"
+                      :data-testid="`export-differences-btn-${row.transferId}`"
+                      class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors text-xs"
+                      @click="handleExportRowDifferences(row.transferId)"
+                    >
+                      Exportar Diferencias
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -472,4 +497,6 @@ async function handleExportCsv(): Promise<void> {
       </div>
     </div>
   </div>
+
+  <HistoryDetailModal :open="!!detailRow" :row="detailRow" @close="closeDetail" />
 </template>
