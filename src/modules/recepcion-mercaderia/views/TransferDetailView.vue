@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { usePickingStore } from '../stores/pickingStore'
 import { useAuthStore } from '@/stores/auth'
 import { APP_LOCALE } from '@/plugins/locale'
-import { PencilIcon, DocumentArrowDownIcon, TrashIcon, ArrowLeftIcon } from '@heroicons/vue/24/outline'
+import { PencilIcon, ArrowDownTrayIcon, TrashIcon, ArrowLeftIcon } from '@heroicons/vue/24/outline'
 import type { ReceptionLine } from '../types'
 import { triggerBlobDownload } from '../utils/downloadBlob'
 import { statusMeta } from '../utils/statusMeta'
@@ -138,12 +138,11 @@ watch(
 
 async function handleScan(): Promise<void> {
   if (!store.currentTransfer) return
-  const scans = store.currentTransfer.lines
+  const entries = store.currentTransfer.lines
     .filter((l) => scanQuantities.value[l.lineId] !== l.scanned)
-    .map((l) => ({ lineId: l.lineId, scannedQuantity: scanQuantities.value[l.lineId] }))
-  if (scans.length === 0) return
-  await store.scan({
-    scans,
+    .map((l) => ({ lineId: l.lineId, enteredQuantity: scanQuantities.value[l.lineId] }))
+  if (entries.length === 0) return
+  await store.scanManual(entries, {
     responsibleName: scanResponsibleName.value || null,
     courierWaybillNumber: scanCourierWaybill.value || null,
   })
@@ -191,7 +190,8 @@ async function confirmPartialFromRecountDialog(): Promise<void> {
 }
 
 interface DifferenceGroup {
-  barcode: string
+  barcode: string | null
+  lineId: number | null
   productDescription: string | null
   count: number
   scannedAtUtc: string
@@ -199,19 +199,24 @@ interface DifferenceGroup {
 }
 
 // Display-only grouping: the backend still persists one difference row per scanned unit (see
-// scanBarcode in pickingStore.ts) so no audit granularity is lost — this just collapses repeat
-// scans of the same barcode into one row with a count, instead of one row per unit.
+// scanBarcode/scanManual in pickingStore.ts) so no audit granularity is lost — this just collapses
+// repeat scans of the same barcode (or the same manual line) into one row with a count, instead of
+// one row per unit. Grouped by `barcode ?? line-${lineId}` rather than bare barcode: a manual
+// (lineId-identified) difference always has barcode: null, so grouping by barcode alone would
+// collapse every different manual item into a single row.
 const groupedDifferences = computed<DifferenceGroup[]>(() => {
   const groups = new Map<string, DifferenceGroup>()
   for (const d of store.differences) {
-    const group = groups.get(d.barcode)
+    const key = d.barcode ?? `line-${d.lineId}`
+    const group = groups.get(key)
     if (group) {
       group.count += 1
       group.differenceIds.push(d.differenceId)
       if (d.scannedAtUtc > group.scannedAtUtc) group.scannedAtUtc = d.scannedAtUtc
     } else {
-      groups.set(d.barcode, {
+      groups.set(key, {
         barcode: d.barcode,
+        lineId: d.lineId,
         productDescription: d.productDescription,
         count: 1,
         scannedAtUtc: d.scannedAtUtc,
@@ -464,7 +469,7 @@ async function handleDownloadPickingReport(): Promise<void> {
                          scanned total comes exclusively from handleBarcodeScan. Falsy check (not
                          `=== null`) to match the barcode-cell display just above: the backend can
                          send either null or '' for "no barcode", and both must show the manual input. -->
-                    <div v-if="canScan && !line.barcode" class="flex flex-col items-center gap-0.5">
+                    <div v-if="canScan && !line.barcode" class="flex flex-col items-center gap-1">
                       <label :for="`scan-quantity-input-${line.lineId}`" class="sr-only">Cantidad escaneada</label>
                       <input
                         :id="`scan-quantity-input-${line.lineId}`"
@@ -472,10 +477,12 @@ async function handleDownloadPickingReport(): Promise<void> {
                         v-model.number="scanQuantities[line.lineId]"
                         type="number"
                         min="0"
-                        :max="line.quantity"
-                        class="w-16 text-center rounded-md border border-amber-300 dark:border-amber-800 bg-gray-50 dark:bg-gray-900 px-2 py-0.5 text-sm font-semibold text-blue-600 dark:text-blue-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                        class="w-16 text-center rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50/60 dark:bg-indigo-950/30 px-2 py-1 text-sm font-semibold text-indigo-700 dark:text-indigo-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
                       />
-                      <span class="text-[9px] text-amber-600 dark:text-amber-400">Sin código — carga manual</span>
+                      <span class="inline-flex items-center gap-1 text-[9px] font-medium text-indigo-500 dark:text-indigo-400">
+                        <PencilSquareIcon class="w-2.5 h-2.5" />
+                        Carga manual
+                      </span>
                     </div>
                     <span v-else class="font-semibold text-blue-600 dark:text-blue-400">{{ line.scanned }}</span>
                   </td>
@@ -538,8 +545,8 @@ async function handleDownloadPickingReport(): Promise<void> {
                 </tr>
               </thead>
               <tbody class="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
-                <tr v-for="group in groupedDifferences" :key="group.barcode" class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                  <td class="px-3 py-1 text-sm font-medium text-gray-900 dark:text-white">{{ group.barcode }}</td>
+                <tr v-for="group in groupedDifferences" :key="group.barcode ?? `line-${group.lineId}`" class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                  <td class="px-3 py-1 text-sm font-medium text-gray-900 dark:text-white">{{ group.barcode ?? 'Manual (sin código)' }}</td>
                   <td class="px-3 py-1 text-xs text-gray-600 dark:text-gray-300">{{ group.productDescription ?? '—' }}</td>
                   <td class="px-3 py-1 text-center text-sm font-semibold text-gray-900 dark:text-white">{{ group.count }}</td>
                   <td class="px-3 py-1 text-xs text-gray-600 dark:text-gray-300">{{ formatDateTime(group.scannedAtUtc) }}</td>
@@ -585,19 +592,19 @@ async function handleDownloadPickingReport(): Promise<void> {
           <button
             type="button"
             data-testid="download-report-btn"
-            class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700 transition-colors shadow-sm"
+            class="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             @click="handleDownloadReport"
           >
-            <DocumentArrowDownIcon class="w-4 h-4" />
+            <ArrowDownTrayIcon class="w-4 h-4" />
             Descargar reporte de diferencias
           </button>
           <button
             type="button"
             data-testid="download-picking-report-btn"
-            class="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600 dark:hover:bg-gray-700 transition-colors shadow-sm"
+            class="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             @click="handleDownloadPickingReport"
           >
-            <DocumentArrowDownIcon class="w-4 h-4" />
+            <ArrowDownTrayIcon class="w-4 h-4" />
             Exportar Picking
           </button>
         </div>

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { mount, flushPromises, DOMWrapper } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import HistoryView from '@/modules/recepcion-mercaderia/views/HistoryView.vue'
 import recepcionApi from '@/modules/recepcion-mercaderia/services/recepcionApi'
@@ -64,6 +64,9 @@ describe('HistoryView', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
+    // HistoryDetailModal mounts a Teleport-to-body anchor only while open — clear document.body
+    // before each test as a defensive guard, same convention as TransferDetailView.test.ts.
+    document.body.innerHTML = ''
   })
 
   afterEach(() => {
@@ -330,21 +333,75 @@ describe('HistoryView', () => {
     expect(wrapper.text()).toContain('CD01 → RL-QSN')
   })
 
-  it('the Acción column exports the per-row differences report instead of navigating to a detail view (legacy parity)', async () => {
+  it('the Acción column exports the per-row differences report and also opens a read-only detail modal via the eye icon', async () => {
     mockAuth({ canViewAll: false })
-    vi.mocked(recepcionApi.getHistory).mockResolvedValue(paged([buildRow({ transferId: 1 })]))
+    vi.mocked(recepcionApi.getHistory).mockResolvedValue(paged([buildRow({ transferId: 1, documentNumber: 'DOC-1' })]))
     const blob = new Blob(['report'], { type: 'application/pdf' })
     vi.mocked(recepcionApi.downloadDifferencesReport).mockResolvedValue(blob)
 
     const wrapper = mount(HistoryView)
     await flushPromises()
 
-    expect(wrapper.find('[data-testid="view-detail-btn-1"]').exists()).toBe(false)
+    await wrapper.find('[data-testid="view-detail-btn-1"]').trigger('click')
+    await flushPromises()
+
+    // HistoryDetailModal renders via Teleport-to-body, so it must be found in document.body, not
+    // inside wrapper's own element tree — same convention as TransferDetailView.test.ts's
+    // ErrorDialog/ConfirmDialog assertions.
+    const body = new DOMWrapper(document.body)
+    expect(body.find('[data-testid="history-detail-modal"]').exists()).toBe(true)
+    expect(body.find('[data-testid="history-detail-modal"]').text()).toContain('DOC-1')
+
+    await body.find('[data-testid="history-detail-modal-close-btn"]').trigger('click')
+    await flushPromises()
+
+    expect(body.find('[data-testid="history-detail-modal"]').exists()).toBe(false)
 
     await wrapper.find('[data-testid="export-differences-btn-1"]').trigger('click')
     await flushPromises()
 
     expect(recepcionApi.downloadDifferencesReport).toHaveBeenCalledWith(1)
+
+    wrapper.unmount()
+  })
+
+  it('does not render the detail modal before the eye icon is clicked', async () => {
+    mockAuth({ canViewAll: false })
+    vi.mocked(recepcionApi.getHistory).mockResolvedValue(paged([buildRow({ transferId: 1 })]))
+
+    const wrapper = mount(HistoryView)
+    await flushPromises()
+
+    expect(new DOMWrapper(document.body).find('[data-testid="history-detail-modal"]').exists()).toBe(false)
+
+    wrapper.unmount()
+  })
+
+  it('renders each line item code in the detail modal product table once opened', async () => {
+    mockAuth({ canViewAll: false })
+    vi.mocked(recepcionApi.getHistory).mockResolvedValue(
+      paged([
+        buildRow({
+          transferId: 1,
+          lines: [
+            { lineId: 1, itemCode: 'ITM-1', itemName: 'Producto 1', quantity: 5, scanned: 5, barcode: '1111' },
+            { lineId: 2, itemCode: 'ITM-2', itemName: 'Producto 2', quantity: 3, scanned: 2, barcode: null },
+          ],
+        }),
+      ])
+    )
+
+    const wrapper = mount(HistoryView)
+    await flushPromises()
+
+    await wrapper.find('[data-testid="view-detail-btn-1"]').trigger('click')
+    await flushPromises()
+
+    const modalText = new DOMWrapper(document.body).find('[data-testid="history-detail-modal"]').text()
+    expect(modalText).toContain('ITM-1')
+    expect(modalText).toContain('ITM-2')
+
+    wrapper.unmount()
   })
 
   it('exports the per-row differences report via the admin-scoped action in the consolidated view', async () => {

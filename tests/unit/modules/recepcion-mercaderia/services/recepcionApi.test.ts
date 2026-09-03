@@ -240,6 +240,7 @@ describe('recepcionApi', () => {
             id: 9,
             receptionTransferId: 7,
             barcode: '7861230028713',
+            lineId: null,
             productDescription: 'DNFK1017.4 FALDA DENIM',
             isRecognized: true,
             scannedAtUtc: '2026-07-24T19:31:53Z',
@@ -256,6 +257,7 @@ describe('recepcionApi', () => {
         differenceId: 9,
         transferId: 7,
         barcode: '7861230028713',
+        lineId: null,
         productDescription: 'DNFK1017.4 FALDA DENIM',
         isRecognized: true,
         scannedAtUtc: '2026-07-24T19:31:53Z',
@@ -331,17 +333,29 @@ describe('recepcionApi', () => {
     expect(result.glpiTicket).toBe('GLPI-1')
   })
 
-  it('recordDifference POSTs only { barcode } (real shape has no lineId/reason/quantity) and does not fabricate a response', async () => {
+  it('recordDifference POSTs both barcode and lineId (lineId null) for a barcode-identified difference, and does not fabricate a response', async () => {
     vi.mocked(api.post).mockResolvedValue({ data: { id: 9 } })
 
     const result = await recepcionApi.recordDifference(7, { barcode: '7791234567890' })
 
     expect(api.post).toHaveBeenCalledWith('recepcion-api/reception/transfers/7/differences', {
       barcode: '7791234567890',
+      lineId: null,
     })
     // Real endpoint only returns { id } — no product description/recognition/timestamp to
     // fabricate here; the caller (pickingStore) re-fetches the transfer for the real record.
     expect(result).toBeUndefined()
+  })
+
+  it('recordDifference POSTs both barcode (null) and lineId for a manual line-identified difference', async () => {
+    vi.mocked(api.post).mockResolvedValue({ data: { id: 10 } })
+
+    await recepcionApi.recordDifference(7, { lineId: 42 })
+
+    expect(api.post).toHaveBeenCalledWith('recepcion-api/reception/transfers/7/differences', {
+      barcode: null,
+      lineId: 42,
+    })
   })
 
   it('deleteDifference calls DELETE .../differences/{differenceId}', async () => {

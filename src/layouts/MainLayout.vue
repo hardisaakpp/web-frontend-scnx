@@ -324,7 +324,7 @@
             <div
               class="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-sky-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
             </div>
-            <TruckIcon class="h-5 w-5 flex-shrink-0 relative z-10"
+            <ForkliftIcon class="h-5 w-5 flex-shrink-0 relative z-10"
               :class="{ 'scale-110': $route.path.startsWith('/recepcion-mercaderia') }" />
             <span v-show="!effectiveSidebarCollapsed" class="relative z-10 font-medium">Recepción Mercadería</span>
           </router-link>
@@ -495,7 +495,7 @@ import {
   BanknotesIcon,
   ChartBarIcon
 } from '@heroicons/vue/24/outline'
-import { Pin, PinOff, TruckIcon } from 'lucide-vue-next'
+import { Pin, PinOff, TruckIcon, ForkliftIcon } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth'
 import { useThemeStore } from '../stores/theme'
 import ToastContainer from '../components/ToastContainer.vue'

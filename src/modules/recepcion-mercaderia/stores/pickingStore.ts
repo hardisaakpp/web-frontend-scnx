@@ -10,6 +10,7 @@ import type {
   ReceptionTransfer,
   RecordDifferenceRequest,
   SaveScanProgressRequest,
+  ScanLineRequest,
 } from '../types'
 
 const SAP_ERROR_MESSAGE =
@@ -334,6 +335,52 @@ export const usePickingStore = defineStore('recepcionPicking', () => {
     return { matchedLine: line, fillAmount, excess }
   }
 
+  /**
+   * Manual-entry counterpart to scanBarcode, for lines with no barcode. The manual quantity input
+   * already holds an ABSOLUTE total (unlike scanBarcode's incremental enteredQty), so the math is
+   * simpler: cap each entry at the line's requested quantity and redirect the overflow to
+   * recordDifference, one call per excess unit (same "nothing silently dropped" decision as
+   * scanBarcode). Batches every changed line's capped fill into one scan() POST, matching the
+   * existing "Guardar escaneo" batch-save UX.
+   *
+   * @returns null (and does nothing) when there is no active transfer to scan against.
+   */
+  async function scanManual(
+    entries: { lineId: number; enteredQuantity: number }[],
+    options: { responsibleName?: string | null; courierWaybillNumber?: string | null } = {}
+  ): Promise<void> {
+    if (!currentTransfer.value) return
+    const lines = currentTransfer.value.lines
+
+    const scans: ScanLineRequest[] = []
+    const excessEntries: { lineId: number; excess: number }[] = []
+
+    for (const entry of entries) {
+      const line = lines.find((l) => l.lineId === entry.lineId)
+      if (!line) continue
+      const fillAmount = Math.min(entry.enteredQuantity, line.quantity)
+      const excess = entry.enteredQuantity - fillAmount
+      if (fillAmount !== line.scanned) {
+        scans.push({ lineId: line.lineId, scannedQuantity: fillAmount })
+      }
+      if (excess > 0) excessEntries.push({ lineId: line.lineId, excess })
+    }
+
+    if (scans.length > 0) {
+      await scan({
+        scans,
+        responsibleName: options.responsibleName ?? null,
+        courierWaybillNumber: options.courierWaybillNumber ?? null,
+      })
+    }
+
+    for (const { lineId, excess } of excessEntries) {
+      for (let i = 0; i < excess; i++) {
+        await recordDifference({ lineId })
+      }
+    }
+  }
+
   async function downloadDifferencesReport(): Promise<Blob | null> {
     if (!currentTransfer.value) return null
     const transferId = currentTransfer.value.transferId
@@ -380,6 +427,7 @@ export const usePickingStore = defineStore('recepcionPicking', () => {
     clearConfirmError,
     recordDifference,
     scanBarcode,
+    scanManual,
     deleteDifference,
     updateGlpiTicket,
     downloadDifferencesReport,
