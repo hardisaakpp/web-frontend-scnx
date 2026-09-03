@@ -8,6 +8,10 @@
  * cada columna es accesible por índice (`item[column]`) y es comparable como fecha o como texto.
  * Los 4 listados actuales lo usan con PedidoResumido y con las mismas 3 columnas de fecha
  * ('fecha_pedido', 'creado_en', 'modificado_fecha'), pero nada aquí depende de esos nombres.
+ *
+ * `storageKey` (opcional) persiste el ordenamiento elegido en localStorage bajo `${storageKey}-sort`,
+ * mismo criterio que usePageSizePreference.ts, para que se mantenga al recargar o volver de ver el
+ * detalle de un pedido.
  */
 import { ref, computed, type Ref, type ComputedRef } from '@vue/reactivity'
 
@@ -36,6 +40,32 @@ export interface UseSortableListOptions<T> {
    * texto. Por defecto ninguna (todas las columnas se comparan como texto case-insensitive).
    */
   dateColumns?: string[]
+  /**
+   * Si se pasa, persiste en localStorage la columna/dirección de ordenamiento elegida (mismo
+   * criterio que usePageSizePreference: una clave por listado) y la restaura al montar.
+   */
+  storageKey?: string
+}
+
+interface OrdenGuardado {
+  column: string
+  direction: 'asc' | 'desc'
+}
+
+function leerOrdenGuardado(storageKey: string | undefined): OrdenGuardado | null {
+  if (!storageKey) return null
+  try {
+    const guardado = localStorage.getItem(`${storageKey}-sort`)
+    if (guardado) {
+      const parsed = JSON.parse(guardado)
+      if (typeof parsed.column === 'string' && (parsed.direction === 'asc' || parsed.direction === 'desc')) {
+        return { column: parsed.column, direction: parsed.direction }
+      }
+    }
+  } catch (error) {
+    console.error(`Error leyendo orden guardado (${storageKey}):`, error)
+  }
+  return null
 }
 
 /**
@@ -69,9 +99,24 @@ function compareAsText(valA: any, valB: any, dir: SortDirection): number {
  * de la tabla en lugar del array original.
  */
 export function useSortableList<T>(options: UseSortableListOptions<T>) {
-  const sortColumn = ref<string | null>(null)
-  const sortDirection = ref<SortDirection>(null)
+  const guardado = leerOrdenGuardado(options.storageKey)
+  const sortColumn = ref<string | null>(guardado?.column ?? null)
+  const sortDirection = ref<SortDirection>(guardado?.direction ?? null)
   const dateColumns = options.dateColumns ?? []
+
+  function guardarOrden() {
+    if (!options.storageKey) return
+    try {
+      if (sortColumn.value && sortDirection.value) {
+        const valor: OrdenGuardado = { column: sortColumn.value, direction: sortDirection.value }
+        localStorage.setItem(`${options.storageKey}-sort`, JSON.stringify(valor))
+      } else {
+        localStorage.removeItem(`${options.storageKey}-sort`)
+      }
+    } catch (error) {
+      console.error(`Error guardando orden (${options.storageKey}):`, error)
+    }
+  }
 
   /** Alterna el ordenamiento de una columna: sin orden -> asc -> desc -> sin orden. */
   function toggleSort(column: string) {
@@ -86,6 +131,7 @@ export function useSortableList<T>(options: UseSortableListOptions<T>) {
       sortColumn.value = column
       sortDirection.value = 'asc'
     }
+    guardarOrden()
   }
 
   const sortedItems = computed((): T[] => {

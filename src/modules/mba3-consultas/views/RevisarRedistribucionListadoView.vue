@@ -217,6 +217,7 @@ import { getEstadoPedidoLabel, getEstadoPedidoBadgeClassFull } from '../utils/es
 import { PAGE_SIZE_OPTIONS } from '../config/pagination'
 import { useDebouncedFilterInput } from '../composables/useDebouncedFilterInput'
 import { usePageSizePreference } from '../composables/usePageSizePreference'
+import { usePaginaPreference } from '../composables/usePaginaPreference'
 import { useSortableList, type SortableColumnDef } from '../composables/useSortableList'
 import { useOffsetPagination } from '../composables/useOffsetPagination'
 import { useListadoAutoRefresh } from '../composables/useListadoAutoRefresh'
@@ -236,10 +237,11 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 const PAGE_SIZE = 10
 const { pageSize: pageSizeGuardado, guardar: guardarPageSize } = usePageSizePreference('revisar-redistribucion-listado', PAGE_SIZE)
+const { offset: offsetGuardado, guardar: guardarOffset } = usePaginaPreference('revisar-redistribucion-listado')
 const metadata = ref<PedidosListadoMetadata>({
   total: 0,
   limit: pageSizeGuardado.value,
-  offset: 0,
+  offset: offsetGuardado.value,
   has_more: false
 })
 
@@ -264,7 +266,7 @@ const filtros = ref<PedidosListadoFiltros>({
   creado_por: '',
   solo_redistribucion: true,
   limit: PAGE_SIZE,
-  offset: 0
+  offset: offsetGuardado.value
 })
 
 // ========== Búsqueda por Número de Pedido (con debounce, filtra en vivo) ==========
@@ -309,7 +311,8 @@ const pedidosColumns: SortableColumnDef[] = [
 
 const { sortColumn, sortDirection, toggleSort, sortedItems: sortedPedidos } = useSortableList<PedidoResumido>({
   items: pedidos,
-  dateColumns: ['fecha_pedido', 'creado_en', 'modificado_fecha']
+  dateColumns: ['fecha_pedido', 'creado_en', 'modificado_fecha'],
+  storageKey: 'revisar-redistribucion-listado'
 })
 
 async function obtenerPedidos() {
@@ -371,6 +374,7 @@ async function obtenerPedidos() {
       offset: ((response.page || 1) - 1) * (response.pageSize || metadata.value.limit),
       has_more: (response.page || 1) < (response.totalPages || 1),
     }
+    guardarOffset(metadata.value.offset)
   } catch (e: any) {
     console.error('Error al cargar pedidos:', e)
     error.value = e.message || 'No se pudieron cargar los pedidos'

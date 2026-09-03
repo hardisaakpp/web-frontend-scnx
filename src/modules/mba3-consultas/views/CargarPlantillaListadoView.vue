@@ -367,6 +367,7 @@ import { esProveedorElRayo } from '../utils/styleHelpers'
 import { PAGE_SIZE_OPTIONS } from '../config/pagination'
 import { useFiltroTextoConDebounce } from '../composables/useFiltroTextoConDebounce'
 import { usePageSizePreference } from '../composables/usePageSizePreference'
+import { usePaginaPreference } from '../composables/usePaginaPreference'
 import { getEstadoPedidoLabel, getEstadoPedidoBadgeClassFull, ESTADOS_QUE_REQUIEREN_ACCION, requiereAccionPedido } from '../utils/estadoPedido'
 import { useSortableList, type SortableColumnDef } from '../composables/useSortableList'
 import { useOffsetPagination } from '../composables/useOffsetPagination'
@@ -418,10 +419,11 @@ const error = ref<string | null>(null)
 const estadosDisponibles = ref<EstadoPedidoOption[]>([])
 const PAGE_SIZE = 10
 const { pageSize: pageSizeGuardado, guardar: guardarPageSize } = usePageSizePreference('cargar-plantilla-listado', PAGE_SIZE)
+const { offset: offsetGuardado, guardar: guardarOffset } = usePaginaPreference('cargar-plantilla-listado')
 const metadata = ref<PedidosListadoMetadata>({
   total: 0,
   limit: pageSizeGuardado.value,
-  offset: 0,
+  offset: offsetGuardado.value,
   has_more: false
 })
 
@@ -437,7 +439,7 @@ const filtros = ref<PedidosListadoFiltros>({
   numero_pedido: '',
   creado_por: '',
   limit: PAGE_SIZE,
-  offset: 0
+  offset: offsetGuardado.value
 })
 
 const { totalPages, currentPage, resetToFirstPage, setPageSize } = useOffsetPagination(metadata, cargarPedidos, {
@@ -476,7 +478,8 @@ const columnasTabla: SortableColumnDef[] = [
 
 const { sortColumn, sortDirection, toggleSort, sortedItems: sortedPedidos } = useSortableList<PedidoResumido>({
   items: pedidos,
-  dateColumns: ['fecha_pedido', 'creado_en', 'modificado_fecha']
+  dateColumns: ['fecha_pedido', 'creado_en', 'modificado_fecha'],
+  storageKey: 'cargar-plantilla-listado'
 })
 
 const contadorPedidosPendientes = computed(() => pedidos.value.filter(p => requiereAccionPedido(p.estado)).length)
@@ -508,6 +511,7 @@ async function obtenerPedidos() {
     })
     pedidos.value = response.data
     metadata.value = response.metadata
+    guardarOffset(metadata.value.offset)
   } catch (e: any) {
     console.error('Error al cargar pedidos:', e)
     error.value = e.message || 'No se pudieron cargar los pedidos'
