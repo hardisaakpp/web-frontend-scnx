@@ -311,9 +311,7 @@ const filtros = ref<PedidosListadoFiltros>({
   offset: 0
 })
 
-// Cargar pedidos
-async function cargarPedidos() {
-  loading.value = true
+async function obtenerPedidos() {
   error.value = null
 
   try {
@@ -331,9 +329,23 @@ async function cargarPedidos() {
     console.error('Error al cargar pedidos:', e)
     error.value = e.message || 'No se pudieron cargar los pedidos'
     toast.error('Error', error.value ?? undefined)
+  }
+}
+
+// Cargar pedidos (carga inicial / filtros / paginación): activa el spinner de pantalla completa
+async function cargarPedidos() {
+  loading.value = true
+  try {
+    await obtenerPedidos()
   } finally {
     loading.value = false
   }
+}
+
+/** Refresco en segundo plano (foco/SSE): no toca `loading`, para no desmontar la tabla mientras
+ * el usuario hace clic en una fila (ver useRefetchOnFocus.ts). */
+async function refrescarPedidosSilenciosamente() {
+  await obtenerPedidos()
 }
 
 // Paginación offset/limit (piezas compartidas)
@@ -501,5 +513,5 @@ watch(
 )
 
 // Auto-refresh del listado (SSE relevante, reconexión SSE, foco/visibilidad) -- pieza compartida
-useListadoAutoRefresh(cargarPedidos, { debugLabel: 'PedidosListView' })
+useListadoAutoRefresh(refrescarPedidosSilenciosamente, { debugLabel: 'PedidosListView' })
 </script>

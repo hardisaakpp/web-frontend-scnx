@@ -490,8 +490,7 @@ async function cargarEstados() {
   }
 }
 
-async function cargarPedidos() {
-  loading.value = true
+async function obtenerPedidos() {
   error.value = null
   try {
     // ⭐ Usar getPlantillasPedidos en lugar de getPedidosListado
@@ -513,9 +512,23 @@ async function cargarPedidos() {
     console.error('Error al cargar pedidos:', e)
     error.value = e.message || 'No se pudieron cargar los pedidos'
     toast.error('Error', error.value ?? undefined)
+  }
+}
+
+// Carga inicial / filtros / paginación: activa el spinner de pantalla completa
+async function cargarPedidos() {
+  loading.value = true
+  try {
+    await obtenerPedidos()
   } finally {
     loading.value = false
   }
+}
+
+/** Refresco en segundo plano (foco/SSE): no toca `loading`, para no desmontar la tabla mientras
+ * el usuario hace clic en una fila (ver useRefetchOnFocus.ts). */
+async function refrescarPedidosSilenciosamente() {
+  await obtenerPedidos()
 }
 
 function aplicarFiltroPendientes() {
@@ -565,7 +578,7 @@ function abrirPedido(pedido: PedidoResumido) {
 
 // Recargar listado automáticamente ante notificaciones SSE relevantes, reconexión tras gap, y
 // recuperación de foco/visibilidad de la pestaña (ver useListadoAutoRefresh.ts).
-useListadoAutoRefresh(cargarPedidos)
+useListadoAutoRefresh(refrescarPedidosSilenciosamente)
 
 onMounted(() => {
   cargarEstados()

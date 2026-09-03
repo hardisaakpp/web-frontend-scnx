@@ -312,8 +312,7 @@ const { sortColumn, sortDirection, toggleSort, sortedItems: sortedPedidos } = us
   dateColumns: ['fecha_pedido', 'creado_en', 'modificado_fecha']
 })
 
-async function cargarPedidos() {
-  loading.value = true
+async function obtenerPedidos() {
   error.value = null
   try {
     // Usar listado de pedidos confirmados (>= 10 y no cancelados) del backend
@@ -376,9 +375,23 @@ async function cargarPedidos() {
     console.error('Error al cargar pedidos:', e)
     error.value = e.message || 'No se pudieron cargar los pedidos'
     toast.error('Error', error.value ?? undefined)
+  }
+}
+
+// Carga inicial / filtros / paginación: activa el spinner de pantalla completa
+async function cargarPedidos() {
+  loading.value = true
+  try {
+    await obtenerPedidos()
   } finally {
     loading.value = false
   }
+}
+
+/** Refresco en segundo plano (foco/SSE): no toca `loading`, para no desmontar la tabla mientras
+ * el usuario hace clic en una fila (ver useRefetchOnFocus.ts). */
+async function refrescarPedidosSilenciosamente() {
+  await obtenerPedidos()
 }
 
 function aplicarFiltros() {
@@ -425,5 +438,5 @@ onUnmounted(() => {
 // confirmado, cancelado, etc.), reconexión SSE tras una desconexión, o recuperar foco/
 // visibilidad de la pestaña. requireAccion: false -- esta vista recarga ante CUALQUIER
 // notificación no nula, sin exigir metadata.accion (a diferencia de los otros 3 listados).
-useListadoAutoRefresh(cargarPedidos, { requireAccion: false, debugLabel: 'RevisarRedistribucionListadoView' })
+useListadoAutoRefresh(refrescarPedidosSilenciosamente, { requireAccion: false, debugLabel: 'RevisarRedistribucionListadoView' })
 </script>
