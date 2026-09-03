@@ -2,9 +2,10 @@
 import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { MagnifyingGlassIcon, ArrowPathIcon, ArrowDownTrayIcon, ChevronRightIcon, ChevronDownIcon, ArrowTrendingUpIcon, ArrowTrendingDownIcon, MinusIcon } from '@heroicons/vue/24/outline'
+import { XMarkIcon } from '@heroicons/vue/20/solid'
 import FilterDropdown from '../components/FilterDropdown.vue'
 import { getOtb, getOtbSkus, exportOtb } from '../services/demandaOtbApi'
-import type { NodoFila, OtbResponse, OtbSkuItem } from '../types'
+import type { NodoFila, OtbExportNivel3Item, OtbResponse, OtbSkuItem } from '../types'
 
 const route = useRoute()
 const negocio = computed(() => route.params.negocio as string)
@@ -106,6 +107,7 @@ function handleClearFilters() {
   colNivel2.value = ''
   colNivel3.value = ''
   colGenero.value = ''
+  exportSelectedRows.clear()
   cargarOtb()
 }
 
@@ -137,6 +139,42 @@ const colGeneroOptions = computed(() => {
   if (colNivel3.value) scope = scope.filter(r => r.nivel3 === colNivel3.value)
   return [...new Set(scope.map(r => r.genero).filter((v): v is string => !!v))].sort()
 })
+
+// ── Selección de filas para el Excel ("Nivel 3 → Excel") — checkbox por fila
+// (Nivel3+Género), independiente de los filtros de columna, no toca la tabla en pantalla.
+// Vacío = exporta todo (comportamiento actual, sin cambios).
+const exportSelectedRows = reactive(new Set<string>())
+function toggleExportRow(row: NodoFila) {
+  const key = rowKey(row)
+  if (exportSelectedRows.has(key)) exportSelectedRows.delete(key)
+  else exportSelectedRows.add(key)
+}
+
+// Pedido es editable — mismo patrón que Cobertura Deseada: un Map reactivo por fila en vez
+// de mutar el NodoFila original, con el valor de BI como default hasta que se edite.
+const pedidoEditado = reactive(new Map<string, number>())
+function pedidoValue(row: NodoFila) {
+  const key = rowKey(row)
+  if (!pedidoEditado.has(key)) pedidoEditado.set(key, row.pedido ?? 0)
+  return pedidoEditado.get(key)!
+}
+function setPedido(row: NodoFila, value: number) {
+  pedidoEditado.set(rowKey(row), value)
+}
+
+function buildNivel3MultipleForExport(): OtbExportNivel3Item[] | undefined {
+  if (exportSelectedRows.size === 0) return undefined
+  const items: OtbExportNivel3Item[] = []
+  for (const row of rows.value) {
+    if (!row.nivel3 || !exportSelectedRows.has(rowKey(row))) continue
+    items.push({
+      nivel3: row.nivel3,
+      ...(row.genero ? { genero: row.genero } : {}),
+      pedido: pedidoValue(row),
+    })
+  }
+  return items.length ? items : undefined
+}
 
 watch(colNivel1, () => { colNivel2.value = ''; colNivel3.value = '' })
 watch(colNivel2, () => { colNivel3.value = '' })
@@ -330,6 +368,7 @@ function buildExportParams() {
     nivel1: colNivel1.value || undefined,
     nivel2: colNivel2.value || undefined,
     nivel3: colNivel3.value || undefined,
+    nivel3Multiple: buildNivel3MultipleForExport(),
     genero: colGenero.value || undefined,
     coleccion: coleccion.value || undefined,
     marcaProveedor: marcaProveedor.value || undefined,
@@ -477,6 +516,22 @@ onUnmounted(() => {
             <span>Limpiar filtros</span>
           </button>
 
+          <span
+            v-if="exportSelectedRows.size > 0"
+            class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-xs font-medium"
+            title="Filas marcadas con 'Nivel 3 → Excel' — el Excel exportado solo traerá estas"
+          >
+            {{ exportSelectedRows.size }} fila{{ exportSelectedRows.size === 1 ? '' : 's' }} para Excel
+            <button
+              type="button"
+              @click="exportSelectedRows.clear()"
+              class="text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-200"
+              title="Limpiar selección (solo esto, no afecta los demás filtros)"
+            >
+              <XMarkIcon class="w-3.5 h-3.5" />
+            </button>
+          </span>
+
           <button
             @click="exportarExcel"
             :disabled="!otb || exportandoExcel"
@@ -516,7 +571,7 @@ onUnmounted(() => {
               <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('skus')">SKUs {{ sortIndicator('skus') }}</th>
               <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right" title="Editable — recalcula Inv. Final Planificado; no recalcula Semáforo/Decisión, ver nota abajo">Cobertura deseada</th>
               <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('stockInicial')">Stock inicial {{ sortIndicator('stockInicial') }}</th>
-              <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('stockDia')">Stock día {{ sortIndicator('stockDia') }}</th>
+              <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('stockDia')">Stock día <span v-if="otb?.diaEjecucionBi"> {{ otb.diaEjecucionBi }}</span> {{ sortIndicator('stockDia') }}</th>
               <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('transito')">Tránsito {{ sortIndicator('transito') }}</th>
               <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('min80')">Mín 80% {{ sortIndicator('min80') }}</th>
               <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('ventasPlanificada')">Ventas planificada {{ sortIndicator('ventasPlanificada') }}</th>
@@ -530,6 +585,8 @@ onUnmounted(() => {
               <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tendencia</th>
               <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Decisión</th>
               <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right cursor-pointer select-none hover:text-gray-700 dark:hover:text-gray-200" @click="toggleSort('sugerenciaCompra')">Sugerencia {{ sortIndicator('sugerenciaCompra') }}</th>
+              <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-right">Pedido</th>
+              <th scope="col" class="px-3 py-2 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center" title="Marca el Nivel 3 de esta fila para el filtro multi-select del Excel (arriba, junto a 'Exportar a Excel')">Seleccionar</th>
             </tr>
             <tr class="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
               <th scope="col"></th>
@@ -537,7 +594,7 @@ onUnmounted(() => {
               <th scope="col" class="px-2 pb-2"><FilterDropdown v-model="colNivel2" :options="colNivel2Options" placeholder="Todos" /></th>
               <th scope="col" class="px-2 pb-2"><FilterDropdown v-model="colNivel3" :options="colNivel3Options" placeholder="Todos" /></th>
               <th scope="col" class="px-2 pb-2"><FilterDropdown v-model="colGenero" :options="colGeneroOptions" placeholder="Todos" /></th>
-              <th scope="col" colspan="17"></th>
+              <th scope="col" colspan="19"></th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100 dark:divide-gray-700/60">
@@ -602,15 +659,32 @@ onUnmounted(() => {
                 </td>
                 <td class="px-3 py-2 text-gray-500 dark:text-gray-400 max-w-[220px] truncate" :title="row.decisionOtb ?? ''">{{ row.decisionOtb || '—' }}</td>
                 <td class="px-3 py-2 text-right text-gray-700 dark:text-gray-300">{{ row.sugerenciaCompra ?? '—' }}</td>
+                <td class="px-3 py-2 text-right">
+                  <input
+                    type="number"
+                    min="0"
+                    class="w-16 text-right rounded border-gray-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white text-sm py-1 px-1.5 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/20 focus:border-blue-500 border"
+                    :value="pedidoValue(row)"
+                    @change="setPedido(row, Number(($event.target as HTMLInputElement).value))"
+                  />
+                </td>
+                <td class="px-3 py-2 text-center">
+                  <input
+                    v-if="row.nivel3"
+                    type="checkbox"
+                    :checked="exportSelectedRows.has(rowKey(row))"
+                    @change="toggleExportRow(row)"
+                  />
+                </td>
               </tr>
 
               <tr v-if="expandedKeys.has(nodeKey(row)) && skusLoading.has(nodeKey(row))">
                 <td></td>
-                <td colspan="21" class="px-4 py-2 text-xs text-gray-400">Cargando SKUs...</td>
+                <td colspan="23" class="px-4 py-2 text-xs text-gray-400">Cargando SKUs...</td>
               </tr>
               <tr v-if="expandedKeys.has(nodeKey(row)) && skusError.has(nodeKey(row))">
                 <td></td>
-                <td colspan="21" class="px-4 py-2 text-xs text-red-600 dark:text-red-400">{{ skusError.get(nodeKey(row)) }}</td>
+                <td colspan="23" class="px-4 py-2 text-xs text-red-600 dark:text-red-400">{{ skusError.get(nodeKey(row)) }}</td>
               </tr>
               <tr
                 v-for="sku in (expandedKeys.has(nodeKey(row)) ? skusCache.get(nodeKey(row)) ?? [] : [])"
@@ -651,6 +725,8 @@ onUnmounted(() => {
                 <td class="px-3 py-2 text-gray-400">—</td>
                 <td class="px-3 py-2 text-gray-500 dark:text-gray-400 max-w-[220px] truncate" :title="sku.decisionOtb ?? ''">{{ sku.decisionOtb || '—' }}</td>
                 <td class="px-3 py-2 text-right text-blue-700 dark:text-blue-400">{{ sku.sugerenciaCompra ?? '—' }}</td>
+                <td class="px-3 py-2 text-right text-blue-700 dark:text-blue-400">{{ sku.pedido ?? '—' }}</td>
+                <td></td>
               </tr>
             </template>
           </tbody>
@@ -681,7 +757,9 @@ onUnmounted(() => {
               <td></td>
               <td></td>
               <td></td>
-              <td class="px-3 py-2 text-right">{{ totales.sugerenciaCompra }}</td>
+              <td class="px-3 py-2 text-right">{{ totales.sugerenciaCompra.toFixed(2) }}</td>
+              <td></td>
+              <td></td>
             </tr>
           </tfoot>
         </table>
