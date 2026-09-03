@@ -82,7 +82,13 @@ async function ejecutarBusqueda(texto: string) {
   try {
     const excluidos = new Set(props.excluirCodigos.map(c => c.toUpperCase()))
     const data = await pedidosService.buscarTiendas(texto)
-    resultados.value = data.filter(t => !excluidos.has(t.codigo.toUpperCase()))
+    resultados.value = data.filter(t => {
+      const codigo = t.codigo.toUpperCase()
+      if (excluidos.has(codigo)) return false
+      // DESCUENTON (prefijo OUT/TOUT) no participa en redistribución de pedidos hijo.
+      if (codigo.startsWith('OUT') || codigo.startsWith('TOUT')) return false
+      return true
+    })
   } catch (error) {
     console.error('❌ [TiendaSearchCombobox] Error al buscar tiendas:', error)
     resultados.value = []
