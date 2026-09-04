@@ -152,25 +152,7 @@
       </div>
       <div v-if="pedido.cabecera.estado || editable">
         <label class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Estado del Pedido</label>
-        <!-- Editable: select con todos los estados -->
-        <select
-          v-if="editable && (editableEstado !== false)"
-          v-model="estadoLocal"
-          @change="actualizarEstado"
-          class="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-        >
-          <option value="">-- Seleccionar estado --</option>
-          <option value="PENDIENTE_CONFIRMACION_PROVEEDOR">Pendiente Confirmación Proveedor</option>
-          <option value="RESPUESTA_PROVEEDOR_CARGADA">Respuesta Proveedor Cargada</option>
-          <option value="CONFIRMADO_PROVEEDOR">Confirmado Proveedor</option>
-          <option value="ORDEN_COMPRA_CREADA">Orden Compra Creada</option>
-          <option value="ENVIADA_SAP">Enviada SAP</option>
-          <option value="CONFIRMADO_ENVIADO">Confirmado Enviado</option>
-          <option value="CERRADO">Cerrado</option>
-          <option value="CANCELADO">Cancelado</option>
-        </select>
-        <!-- Solo lectura: badge -->
-        <p v-else class="mt-1">
+        <p class="mt-1">
           <span class="px-2 py-1 text-xs font-medium rounded-full" :class="getEstadoPedidoBadgeClass(pedido.cabecera.estado)">
             {{ formatEstadoPedido(pedido.cabecera.estado) }}
           </span>
@@ -233,9 +215,7 @@ const props = defineProps<{
   copyFeedback: boolean
   defaultExpanded?: boolean
   editable?: boolean
-  /** Si false, el estado del pedido se muestra solo lectura (badge) aunque editable sea true. Por defecto true. */
-  editableEstado?: boolean
-  /** 
+  /**
    * Si true, permite editar fechas cuando el estado sea GESTIONAR_PEDIDO (estado_id = 3).
    * Por defecto false (solo editable en BORRADOR).
    * Usar true en la interfaz de detalle de pedido (/pedidos/{id}).
@@ -314,7 +294,6 @@ const emit = defineEmits<{
   'update-fecha-pedido': [fecha: string | null]
   'update-fecha-entrega': [fecha: string | null]
   'update-fecha-facturacion': [fecha: string | null]
-  'update-estado': [estado: string | null]
 }>()
 
 /**
@@ -344,7 +323,6 @@ const fechaPedidoLocal = ref<string>('')
 const fechaEntregaLocal = ref<string | null>(null)
 const fechaFacturacionLocal = ref<string>('')
 const fechaFacturacionInputId = useId()
-const estadoLocal = ref<string>('')
 
 // Convertir fecha a formato YYYY-MM-DD para input type="date"
 function dateToInputFormat(dateString: string | null): string {
@@ -365,7 +343,6 @@ watch(() => props.pedido, (newPedido) => {
     fechaPedidoLocal.value = dateToInputFormat(newPedido.cabecera.fecha_pedido)
     fechaEntregaLocal.value = newPedido.cabecera.fecha_entrega || null
     fechaFacturacionLocal.value = dateToInputFormat(newPedido.cabecera.fecha_facturacion ?? null)
-    estadoLocal.value = newPedido.cabecera.estado || ''
   }
 }, { immediate: true, deep: true })
 
@@ -412,10 +389,6 @@ function handleInmediatoChange(event: Event) {
   if (import.meta.env.DEV) {
     console.log('✅ [PedidoCabecera] fechaEntregaLocal después:', fechaEntregaLocal.value)
   }
-}
-
-function actualizarEstado() {
-  emit('update-estado', estadoLocal.value || null)
 }
 
 function actualizarFechaFacturacion() {

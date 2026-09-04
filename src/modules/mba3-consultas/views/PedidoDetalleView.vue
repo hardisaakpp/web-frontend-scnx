@@ -183,7 +183,6 @@
           @update-fecha-pedido="handleUpdateFechaPedido"
           @update-fecha-entrega="handleUpdateFechaEntrega"
           @update-fecha-facturacion="handleUpdateFechaFacturacion"
-          @update-estado="handleUpdateEstado"
         />
 
         <!-- ⭐ FASE 4: Ajuste y Redistribución a Tiendas -->

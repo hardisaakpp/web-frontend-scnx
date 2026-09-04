@@ -398,13 +398,11 @@
           :pedido="pedido"
           :copy-feedback="copyFeedback"
           :editable="!esModoMabelTrading"
-          :editable-estado="false"
           :default-expanded="!esModoMabelTrading"
           :show-inmediato-option="true"
           @copy-to-clipboard="copyToClipboard"
           @update-fecha-pedido="handleUpdateFechaPedido"
           @update-fecha-entrega="handleUpdateFechaEntrega"
-          @update-estado="handleUpdateEstado"
         />
 
         <!-- Job SAP async aún en Celery (p. ej. tras timeout del navegador) -->
@@ -1304,31 +1302,6 @@ async function guardarEdicion() {
 
 // ⭐ HU-06: Funciones para actualizar cabecera del pedido
 const { handleUpdateFechaPedido, handleUpdateFechaEntrega } = useFechaPedidoHandlers(pedido, toast, loadPedido)
-
-async function handleUpdateEstado(estado: string | null) {
-  if (!pedido.value?.cabecera?.pedido_id) return
-  
-  try {
-    await mba3ConsultasService.actualizarCabeceraPedido(pedido.value.cabecera.pedido_id, {
-      estado: estado || undefined
-    })
-    
-    // Actualizar el valor localmente
-    if (pedido.value.cabecera) {
-      pedido.value.cabecera.estado = estado || undefined
-    }
-    
-    toast.success('Estado actualizado', 'El estado del pedido se ha actualizado correctamente')
-    
-    // Recargar el pedido para asegurar sincronización
-    await loadPedido()
-  } catch (e: any) {
-    console.error('Error al actualizar estado:', e)
-    toast.error('Error al actualizar', e.message || 'No se pudo actualizar el estado del pedido')
-    // Recargar para restaurar valor original
-    await loadPedido()
-  }
-}
 
 // Pese al nombre del botón/función, esto NO es una confirmación real del pedido (req.
 // 1.2/1.8): es el paso "Fase 3" de Mabel Trading -- guarda cambios y crea la respuesta del
