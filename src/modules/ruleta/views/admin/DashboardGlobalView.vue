@@ -112,8 +112,12 @@ async function cargarDashboard(id: string) {
 
 onMounted(async () => {
   await Promise.all([store.cargarCampanas(), store.cargarTiendas()])
-  campanaSeleccionadaId.value = TODOS
-  await cargarDashboard(TODOS)
+  // Sin campaña seleccionada aún: preseleccionar la primera campaña activa/disponible en vez de
+  // arrancar siempre en "Todas las campañas", para que el operador vea de entrada las métricas
+  // de la campaña que realmente está corriendo ahora mismo.
+  const primeraDisponible = store.campanas.find(c => c.estado_operativo === 'disponible')
+  campanaSeleccionadaId.value = primeraDisponible?.id ?? TODOS
+  await cargarDashboard(campanaSeleccionadaId.value)
 })
 
 async function onCampanaChange(event: Event) {

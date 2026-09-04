@@ -75,10 +75,15 @@ async function abrirMenu(e: MouseEvent, id: string) {
   const rect = btn.getBoundingClientRect()
   const right = `${globalThis.innerWidth - rect.right}px`
 
-  // Posición provisional hacia abajo del botón. La altura real del menú varía según cuántas
-  // acciones aplican al estado de esa campaña (Activar/Pausar/Finalizar son condicionales), así
-  // que no se puede calcular de antemano si cabe — se mide después de montarlo.
-  menuStyle.value = { top: `${rect.bottom + globalThis.scrollY + 6}px`, right }
+  // Posición provisional hacia abajo del botón. El menú es `position: fixed` (Teleport a body),
+  // así que sus coordenadas son relativas al viewport — igual que getBoundingClientRect(). Sumar
+  // scrollY aquí lo trataba como si fuera `position: absolute` (relativo al documento): con la
+  // página desplazada hacia abajo (muchas campañas), el menú terminaba renderizándose cientos de
+  // píxeles por debajo del viewport visible, invisible aunque el clic sí abría el menú.
+  // La altura real del menú varía según cuántas acciones aplican al estado de esa campaña
+  // (Activar/Pausar/Finalizar son condicionales), así que no se puede calcular de antemano si
+  // cabe — se mide después de montarlo.
+  menuStyle.value = { top: `${rect.bottom + 6}px`, right }
   menuAbierto.value = id
 
   await nextTick()
@@ -91,7 +96,7 @@ async function abrirMenu(e: MouseEvent, id: string) {
   // hacia arriba en vez de quedar cortado por el borde de la ventana. Si tampoco cabe hacia
   // arriba (ventana muy baja), se deja hacia abajo — es el menor de dos desbordes posibles.
   if (espacioAbajo < menuAltura + 12 && espacioArriba > menuAltura + 12) {
-    menuStyle.value = { top: `${rect.top + globalThis.scrollY - menuAltura - 6}px`, right }
+    menuStyle.value = { top: `${rect.top - menuAltura - 6}px`, right }
   }
 }
 function cerrarMenu() { menuAbierto.value = null }

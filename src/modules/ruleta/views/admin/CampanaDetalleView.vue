@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { ref, computed, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { useAdminStore } from '../../stores/adminStore'
@@ -12,16 +12,30 @@ const route  = useRoute()
 const router = useRouter()
 const toast  = useToast()
 
-const campanaId = route.params.campanaId as string
+// Reactivo: Vue Router reutiliza esta misma instancia de componente al navegar entre
+// /admin/campanas/{id}/detalle de dos campañas distintas (p. ej. tras duplicar una campaña),
+// así que leer el param una sola vez en el montaje dejaba la pantalla mostrando los datos de
+// la campaña anterior hasta un F5 manual.
+const campanaId = computed(() => route.params.campanaId as string)
 
 let probInterval: ReturnType<typeof setInterval> | null = null
 
-// ─── Carga inicial ────────────────────────────────────────────────────────────
-onMounted(async () => {
+// ─── Carga inicial (y recarga al cambiar de campaña sin desmontar el componente) ─────────────
+async function cargarDatosCampana(id: string) {
   if (store.campanas.length === 0) await store.cargarCampanas()
-  await store.cargarPremiosCampana(campanaId)
+  await store.cargarPremiosCampana(id)
   await store.cargarTiendas()
-})
+}
+
+watch(
+  () => route.params.campanaId,
+  (nuevoId) => {
+    if (nuevoId && typeof nuevoId === 'string') {
+      cargarDatosCampana(nuevoId)
+    }
+  },
+  { immediate: true }
+)
 
 onUnmounted(() => {
   revocarPreview()
@@ -31,8 +45,8 @@ onUnmounted(() => {
 const selectedTiendaInfo = ref<string>('')
 
 async function refetchProbabilidades() {
-  if (campanaId && selectedTiendaInfo.value) {
-    await store.cargarProbabilidadesEnVivo(campanaId, selectedTiendaInfo.value)
+  if (campanaId.value && selectedTiendaInfo.value) {
+    await store.cargarProbabilidadesEnVivo(campanaId.value, selectedTiendaInfo.value)
   } else {
     store.probabilidadesEnVivo = []
   }
@@ -52,7 +66,7 @@ watch(selectedTiendaInfo, async () => {
 
 
 // ─── Datos de la campaña ─────────────────────────────────────────────────────
-const campana = computed(() => store.campanas.find(c => c.id === campanaId))
+const campana = computed(() => store.campanas.find(c => c.id === campanaId.value))
 
 const hoy = new Date().toISOString().slice(0, 10)
 // Puramente visual: solo alimenta el badge de estado. Nunca debe usarse para decidir qué
@@ -154,7 +168,7 @@ async function activarCampana() {
   activando.value = true
   errorEstado.value = ''
   try {
-    await store.cambiarEstado(campanaId, 'activa')
+    await store.cambiarEstado(campanaId.value, 'activa')
     toast.success(campanaPausada.value ? 'Campaña reanudada' : 'Campaña activada')
     router.push({ name: 'ruleta-admin-campanas' })
   } catch (e) {
@@ -171,7 +185,7 @@ async function pausarCampana() {
   pausando.value = true
   errorEstado.value = ''
   try {
-    await store.cambiarEstado(campanaId, 'pausada')
+    await store.cambiarEstado(campanaId.value, 'pausada')
     toast.success('Campaña pausada', 'Los enroladores no podrán girar hasta que la reanudes.')
   } catch (e) {
     errorEstado.value = extraerMensajeError(e, 'Error al pausar la campaña.')
@@ -196,7 +210,7 @@ async function finalizarCampana() {
   finalizando.value = true
   errorEstado.value = ''
   try {
-    await store.cambiarEstado(campanaId, 'finalizada')
+    await store.cambiarEstado(campanaId.value, 'finalizada')
     mostrarConfirmFinalizar.value = false
     toast.success('Campaña finalizada', 'Queda como registro histórico de solo lectura.')
   } catch (e) {
@@ -292,7 +306,7 @@ function cerrarModal() {
   premioRecienCreado.value = null
   premioEditando.value = null
   if (necesitaResincronizarGrupos) {
-    store.cargarPremiosCampana(campanaId).catch(e =>
+    store.cargarPremiosCampana(campanaId.value).catch(e =>
       console.error('Error al resincronizar premios tras repartir stock:', e)
     )
   }

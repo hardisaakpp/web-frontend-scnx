@@ -177,25 +177,42 @@ export const useRuletaStore = defineStore('ruleta', {
         // Propagar el segmento identificado al resultado para que PremioModal pueda evaluarlo
         resultado.cliente.segmento = cliente.segmento
 
-        // Ajustar índice ganador visual buscando en nuestros segmentos el id devuelto
-        const indexEncontrado = this.segmentos.findIndex(s => s.nombre === resultado.premio.nombre)
-        if (indexEncontrado >= 0) {
-          resultado.indice_segmento = indexEncontrado
-        } else {
-          resultado.indice_segmento = Math.floor(Math.random() * this.segmentos.length) // NOSONAR – visual fallback index, not security-sensitive
-        }
+        // Ajustar el índice visual sobre el que debe frenar la aguja (ver calcularIndiceSegmento).
+        resultado.indice_segmento = this.calcularIndiceSegmento(resultado)
 
         this.resultadoGiro = resultado
       } catch (err: any) {
-                const raw = err.response?.data?.error
-                           || err.response?.data?.detail
-                           || err.response?.data?.message
-                           || err.message
-                           || 'Ocurrió un error al procesar el giro.'
-                this.errorEnrolador = raw
+        // Sin err.response, el request nunca llegó a completarse (timeout de campanaApi a los
+        // 10s, WiFi de tienda caído, DNS, CORS): el mensaje técnico de axios no le sirve al
+        // enrolador para decidir qué hacer, así que se normaliza a una instrucción accionable.
+        this.errorEnrolador = err.response
+          ? (err.response.data?.error
+             || err.response.data?.detail
+             || err.response.data?.message
+             || 'Ocurrió un error al procesar el giro.')
+          : 'Problema de conexión en tienda, verifica el estado antes de reintentar.'
       } finally {
         this.girando = false
       }
+    },
+
+    // Determina de forma determinista el segmento visual sobre el que debe frenar la aguja.
+    // Nunca usa azar: antes, si el nombre del premio no calzaba exacto con un segmento, caía en
+    // Math.random() y la aguja podía frenar sobre un premio físico real aunque el resultado del
+    // backend fuera "Sigue participando" (o viceversa), rompiendo la confianza del cliente en el
+    // sorteo. El backend no expone un id único de premio en la respuesta del giro (GiroDto solo
+    // trae nombre/tipo/descripción), así que el único emparejamiento posible para un premio real
+    // ganado es por nombre; para cualquier otro caso (sin premio, o nombre no encontrado) se
+    // apunta siempre al comodín/vacío configurado, y en último caso al índice 0 fijo.
+    calcularIndiceSegmento(resultado: ResultadoGiro): number {
+      const esPremioReal = resultado.es_ganador && !resultado.premio.es_vacio
+      if (esPremioReal) {
+        const porNombre = this.segmentos.findIndex(s => s.nombre === resultado.premio.nombre)
+        if (porNombre >= 0) return porNombre
+      }
+
+      const indiceComodin = this.segmentos.findIndex(s => s.es_vacio || s.tipo === 'relleno')
+      return indiceComodin >= 0 ? indiceComodin : 0
     },
 
     async enviarNotificacion(correo: string) {

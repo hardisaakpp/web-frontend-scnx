@@ -20,9 +20,17 @@ const enroladoresFiltrados = computed(() => {
   return [...lista].sort((a, b) => b.afiliaciones - a.afiliaciones)
 })
 
+// Panel "Giros por enrolador": copia independiente ordenada por giros descendente. No reutiliza
+// el array de enroladoresFiltrados tal cual porque ese está ordenado por afiliaciones para la
+// tabla "Ranking global" (ver su encabezado "ordenado por afiliaciones") — cada panel tiene su
+// propio criterio de orden sobre el mismo set ya filtrado por tienda.
+const enroladoresPorGiros = computed(() =>
+  [...enroladoresFiltrados.value].sort((a, b) => b.giros - a.giros)
+)
+
 const maxGiros = computed(() => store.maxGiros)
 const animatedBars = ref(false)
-watch(() => enroladoresFiltrados.value, () => {
+watch(() => enroladoresPorGiros.value, () => {
   animatedBars.value = false
   setTimeout(() => { animatedBars.value = true }, 50)
 }, { immediate: true, deep: true })
@@ -93,7 +101,7 @@ function dotClass(estado: string): string {
       <div class="bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 p-6 shadow-sm">
         <h3 class="text-sm font-semibold text-gray-800 dark:text-white mb-5">Giros por enrolador</h3>
         <div class="space-y-3.5">
-          <div v-for="e in enroladoresFiltrados" :key="e.id" class="flex items-center gap-3">
+          <div v-for="e in enroladoresPorGiros" :key="e.id" class="flex items-center gap-3">
             <div class="w-32 flex-shrink-0">
               <p class="text-sm text-gray-700 dark:text-gray-200 truncate">{{ e.nombre }}</p>
               <p class="text-xs text-gray-400">{{ e.tienda }}</p>

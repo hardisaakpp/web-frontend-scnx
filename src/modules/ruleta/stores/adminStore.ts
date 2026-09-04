@@ -4,7 +4,6 @@ import { extraerMensajeError } from '../services/utils/errorHandler'
 import type {
   Campana, CrearCampanaDTO, DuplicarCampanaDTO, GrupoProbabilidad, PremioAdmin,
   TiendaInventario, InventarioPremio, Tienda,
-  MetricasGlobal, EfectividadTienda, SegmentacionGrupo, ConversionSemanal,
   MetricasCampana, EnroladorMetrica, StockPremio, HistorialGiroItem, GiroFilters,
   RedencionResponse, PreviewImpactoStockItem, ImpactoStock, ProbabilidadGrupo, DistribucionTiendaItem
 } from '../types'
@@ -32,15 +31,10 @@ interface AdminState {
   errorInventario: string | null
   verificandoImpactoStock: boolean
 
-  // Dashboard Global — KPIs + analytics mock
+  // Dashboard Global — métricas reales por campaña
   campanaDashboardId: string | null
-  metricas: MetricasGlobal | null
   metricasCampana: MetricasCampana | null
   loadingMetricasCampana: boolean
-  efectividadTiendas: EfectividadTienda[]
-  segmentacion: SegmentacionGrupo[]
-  conversionSemanal: ConversionSemanal[]
-  loadingDashboard: boolean
 
   // Dashboard Global — datos reales por campaña
   enroladores: EnroladorMetrica[]
@@ -89,13 +83,8 @@ export const useAdminStore = defineStore('admin', {
     verificandoImpactoStock: false,
 
     campanaDashboardId: null,
-    metricas: null,
     metricasCampana: null,
     loadingMetricasCampana: false,
-    efectividadTiendas: [],
-    segmentacion: [],
-    conversionSemanal: [],
-    loadingDashboard: false,
 
     enroladores: [],
     loadingEnroladores: false,
@@ -616,28 +605,6 @@ export const useAdminStore = defineStore('admin', {
         return redencion
       } finally {
         this.redimiendo = false
-      }
-    },
-
-    async cargarDashboardGlobal() {
-      this.loadingDashboard = true
-      this.error = null
-      try {
-        const [metricas, efectividad, segmentacion, conversion] = await Promise.all([
-          ruletaService.getMetricasGlobal(),
-          ruletaService.getEfectividadTiendas(),
-          ruletaService.getSegmentacion(),
-          ruletaService.getConversionSemanal()
-        ])
-        this.metricas = metricas
-        this.efectividadTiendas = efectividad
-        this.segmentacion = segmentacion
-        this.conversionSemanal = conversion
-      } catch (e) {
-        console.error('Error al cargar dashboard global:', e)
-        this.error = 'Error al cargar el dashboard.'
-      } finally {
-        this.loadingDashboard = false
       }
     }
   }
