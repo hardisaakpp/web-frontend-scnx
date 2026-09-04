@@ -122,3 +122,23 @@ export const ESTADOS_QUE_REQUIEREN_ACCION = [
 export function requiereAccionPedido(estado: string): boolean {
   return (ESTADOS_QUE_REQUIEREN_ACCION as readonly string[]).includes(estado)
 }
+
+/**
+ * Estados que requieren acción específicamente en Cargar Plantilla (Mabel Trading): el pedido ya fue
+ * "transaccionado" por otro actor (Producción confirma/pospone, Administración El Rayo envía la ODC
+ * a SAP) y vuelve a la cancha de Mabel Trading para una decisión o acción final -- botón
+ * Aceptar/Rechazar en Producción Pospuesta, botón Finalizado en Despachar y Facturar (ambos solo en
+ * CargarPlantillaView.vue). Distinto de ESTADOS_QUE_REQUIEREN_ACCION (estados de respuesta del
+ * proveedor): ese flujo de aprobación quedó sin conectar a ningún endpoint
+ * (PedidoAjusteService.procesar_confirmacion_proveedor huérfano en el backend), así que
+ * CONFIRMADO_PROVEEDOR nunca se alcanza en la práctica y no se incluye aquí.
+ */
+export const ESTADOS_QUE_REQUIEREN_ACCION_CARGAR_PLANTILLA = [
+  'PRODUCCION_POSPUESTA',
+  'DESPACHAR_Y_FACTURAR'
+] as const
+
+/** true si el estado es uno de los que requiere acción de Mabel Trading en Cargar Plantilla. */
+export function requiereAccionPedidoCargarPlantilla(estado: string): boolean {
+  return (ESTADOS_QUE_REQUIEREN_ACCION_CARGAR_PLANTILLA as readonly string[]).includes(estado)
+}

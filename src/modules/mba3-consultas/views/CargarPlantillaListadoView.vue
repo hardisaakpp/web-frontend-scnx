@@ -181,6 +181,7 @@
         :modificadores-disponibles="modificadoresDisponibles"
         :show-quick-filter="true"
         :contador-pedidos-pendientes="contadorPedidosPendientes"
+        descripcion-filtro-pendientes="Muestra solo pedidos en estados: Producción Pospuesta, Despachar y Facturar"
         numero-pedido-placeholder="Buscar por número de pedido (ej: P-12.08)"
         @aplicar="aplicarFiltros"
         @limpiar="limpiarFiltros"
@@ -278,7 +279,7 @@
                       : filaCargandoId
                         ? 'opacity-50 pointer-events-none'
                         : 'hover:bg-gray-50 dark:hover:bg-gray-700/50',
-                    requiereAccionPedido(pedido.estado) ? 'bg-orange-50/30 dark:bg-orange-900/10 border-l-4 border-orange-500 dark:border-orange-400' : ''
+                    requiereAccionPedidoCargarPlantilla(pedido.estado) ? 'bg-orange-50/30 dark:bg-orange-900/10 border-l-4 border-orange-500 dark:border-orange-400' : ''
                   ]"
                   @click="abrirPedido(pedido)"
                 >
@@ -305,7 +306,7 @@
                   <td class="px-6 py-4 whitespace-nowrap text-center">
                     <div class="flex items-center justify-center gap-2">
                       <span :class="getEstadoPedidoBadgeClassFull(pedido.estado)">{{ getEstadoPedidoLabel(pedido.estado) }}</span>
-                      <span v-if="requiereAccionPedido(pedido.estado)" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300" title="Requiere acción">!</span>
+                      <span v-if="requiereAccionPedidoCargarPlantilla(pedido.estado)" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300" title="Requiere acción">!</span>
                     </div>
                   </td>
                   <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{{ pedido.comprador_nombre || '-' }}</td>
@@ -375,7 +376,7 @@ import { PAGE_SIZE_OPTIONS } from '../config/pagination'
 import { useFiltroTextoConDebounce } from '../composables/useFiltroTextoConDebounce'
 import { usePageSizePreference } from '../composables/usePageSizePreference'
 import { usePaginaPreference } from '../composables/usePaginaPreference'
-import { getEstadoPedidoLabel, getEstadoPedidoBadgeClassFull, ESTADOS_QUE_REQUIEREN_ACCION, requiereAccionPedido } from '../utils/estadoPedido'
+import { getEstadoPedidoLabel, getEstadoPedidoBadgeClassFull, ESTADOS_QUE_REQUIEREN_ACCION_CARGAR_PLANTILLA, requiereAccionPedidoCargarPlantilla } from '../utils/estadoPedido'
 import {
   useSortableList,
   type SortableColumnDef,
@@ -489,7 +490,7 @@ const { sortColumn, sortDirection, toggleSort, resetSort, sortedItems: sortedPed
   storageKey: 'cargar-plantilla-listado'
 })
 
-const contadorPedidosPendientes = computed(() => pedidos.value.filter(p => requiereAccionPedido(p.estado)).length)
+const contadorPedidosPendientes = computed(() => pedidos.value.filter(p => requiereAccionPedidoCargarPlantilla(p.estado)).length)
 
 async function cargarEstados() {
   try {
@@ -559,7 +560,7 @@ async function refrescarPedidosSilenciosamente() {
 function aplicarFiltroPendientes() {
   if (filtroSoloPendientes.value) {
     const estadoAnterior = filtros.value.estado
-    if (estadoAnterior && (ESTADOS_QUE_REQUIEREN_ACCION as readonly string[]).includes(estadoAnterior)) {
+    if (estadoAnterior && (ESTADOS_QUE_REQUIEREN_ACCION_CARGAR_PLANTILLA as readonly string[]).includes(estadoAnterior)) {
       filtros.value.estado = ''
     }
   }
@@ -568,7 +569,7 @@ function aplicarFiltroPendientes() {
 
 function actualizarFiltroPendientes() {
   const estadoActual = filtros.value.estado
-  if (estadoActual && !(ESTADOS_QUE_REQUIEREN_ACCION as readonly string[]).includes(estadoActual)) {
+  if (estadoActual && !(ESTADOS_QUE_REQUIEREN_ACCION_CARGAR_PLANTILLA as readonly string[]).includes(estadoActual)) {
     filtroSoloPendientes.value = false
   }
 }

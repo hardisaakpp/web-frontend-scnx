@@ -35,7 +35,7 @@
           </span>
         </div>
         <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-6">
-          Muestra solo pedidos en estados: Pendiente Confirmación, Respuesta Cargada, Confirmado Proveedor
+          {{ descripcionFiltroPendientes }}
         </p>
       </div>
 
@@ -255,13 +255,19 @@ withDefaults(
     /** Placeholder del input "Número de Pedido". Default 'Buscar por número de pedido...' (el de 3
      * de los 4 listados); CargarPlantillaListadoView pasa el suyo con ejemplo ('...ej: P-12.08'). */
     numeroPedidoPlaceholder?: string
+    /** Texto bajo el checkbox "Solo pedidos que requieren acción" que explica qué estados incluye.
+     * Default: los 3 estados de respuesta del proveedor (Pedidos/Redistribución/Confirmados).
+     * CargarPlantillaListadoView pasa el suyo propio (Producción Pospuesta, Despachar y Facturar --
+     * ver ESTADOS_QUE_REQUIEREN_ACCION_CARGAR_PLANTILLA en utils/estadoPedido.ts). */
+    descripcionFiltroPendientes?: string
   }>(),
   {
     creadoresDisponibles: () => [],
     modificadoresDisponibles: () => [],
     showQuickFilter: false,
     contadorPedidosPendientes: 0,
-    numeroPedidoPlaceholder: 'Buscar por número de pedido...'
+    numeroPedidoPlaceholder: 'Buscar por número de pedido...',
+    descripcionFiltroPendientes: 'Muestra solo pedidos en estados: Pendiente Confirmación, Respuesta Cargada, Confirmado Proveedor'
   }
 )
 

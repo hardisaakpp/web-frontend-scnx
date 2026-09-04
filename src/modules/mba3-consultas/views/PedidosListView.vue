@@ -67,7 +67,7 @@
         :estados-disponibles="estadosDisponibles"
         :creadores-disponibles="creadoresDisponibles"
         :modificadores-disponibles="modificadoresDisponibles"
-        :show-quick-filter="esModoElRayo || mostrarFiltroRapido"
+        :show-quick-filter="mostrarFiltroRapido"
         :contador-pedidos-pendientes="contadorPedidosPendientes"
         @aplicar="aplicarFiltros"
         @limpiar="limpiarFiltros"
@@ -314,7 +314,11 @@ const esProduccionElRayo = computed(() => {
 
 // Filtro rápido para pedidos pendientes
 const filtroSoloPendientes = ref(false)
-const mostrarFiltroRapido = ref(true) // Mostrar siempre el filtro rápido
+// Oculto en Producción El Rayo (req. 1.8): esa pantalla solo gestiona pedidos en NUEVO_PEDIDO/
+// GESTIONAR_PEDIDO, ninguno de los estados "requiere acción" (proveedor) aplica ahí. Detectado por
+// ruta (esProduccionElRayo), no por permiso -- mismo criterio ya usado en este archivo para no
+// afectar /mba3-consultas/pedidos si un rol llegara a tener ambos permisos.
+const mostrarFiltroRapido = computed(() => !esProduccionElRayo.value)
 
 const filtros = ref<PedidosListadoFiltros>({
   estado: '',
@@ -515,8 +519,10 @@ async function verDetalle(pedidoId: string) {
 onMounted(() => {
   cargarEstados()
   cargarCreadoresYModificadores()
-  // Si es modo El Rayo, activar filtro de pendientes por defecto
-  if (esModoElRayo.value) {
+  // Si es modo El Rayo, activar filtro de pendientes por defecto -- salvo en Producción El Rayo,
+  // donde el filtro rápido está oculto (ver mostrarFiltroRapido arriba): activarlo ahí dejaría un
+  // filtro aplicado sin ningún control visible para quitarlo.
+  if (esModoElRayo.value && mostrarFiltroRapido.value) {
     filtroSoloPendientes.value = true
     aplicarFiltroPendientes()
   } else {
