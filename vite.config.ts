@@ -59,6 +59,8 @@ export default defineConfig(async ({ mode }): Promise<UserConfig> => {
   const transferenciasDirectasProxyTarget = upstreamUrl(env, 'TRANSFERENCIAS_DIRECTAS')
 
   console.log(`\x1b[35m[proxy]\x1b[0m Reposiciones → ${reposicionProxyTarget}`)
+  const recepcionProxyTarget = upstreamUrl(env, 'RECEPCION')
+  console.log(`\x1b[35m[proxy]\x1b[0m Recepción Mercadería → ${recepcionProxyTarget}`)
 
   const ruletaProxyTarget = upstreamUrl(env, 'RULETA')
   const pygProxyPrefix =
@@ -183,6 +185,13 @@ export default defineConfig(async ({ mode }): Promise<UserConfig> => {
           rewrite: (path) => path.replace(/^\/api\/transferencias-directas-api/, '/api')
         },
 
+
+        '/api/recepcion-api': {
+          target: recepcionProxyTarget,
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/api\/recepcion-api/, '/api')
+        },
 
         '/api': {
 
