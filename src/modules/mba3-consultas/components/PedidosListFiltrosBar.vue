@@ -16,25 +16,20 @@
     </div>
 
     <div v-show="!collapsed" class="p-6">
-      <!-- Filtro rápido: Solo pedidos que requieren acción (opcional -- ver prop showQuickFilter) -->
-      <div v-if="showQuickFilter" class="mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
-        <div class="flex items-center gap-3">
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              v-model="filtroSoloPendientes"
-              @change="emit('toggle-filtro-pendientes')"
-              class="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500 dark:focus:ring-orange-400 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-            />
-            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Solo pedidos que requieren acción
-            </span>
-          </label>
-          <span v-if="filtroSoloPendientes" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300">
-            {{ contadorPedidosPendientes }} encontrados
-          </span>
-        </div>
-        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 ml-6">
+      <!-- Filtro rápido: Solo pedidos que requieren acción (opcional -- ver prop showQuickFilter).
+           Un solo botón, siempre con el mismo estilo (mismo naranja que ya usa la vista para el
+           banner "Mostrando solo pedidos que requieren acción" en la tabla) -- el propio texto ya
+           comunica el conteo, no hace falta variar el color entre activo/inactivo. -->
+      <div v-if="showQuickFilter">
+        <button
+          type="button"
+          @click="filtroSoloPendientes = !filtroSoloPendientes; emit('toggle-filtro-pendientes')"
+          :aria-pressed="filtroSoloPendientes"
+          class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 text-sm font-medium text-orange-800 dark:text-orange-300 transition-colors hover:bg-orange-100 dark:hover:bg-orange-900/30 focus:outline-none focus:ring-2 focus:ring-orange-500 dark:focus:ring-orange-400"
+        >
+          {{ textoContadorPendientes }}
+        </button>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
           {{ descripcionFiltroPendientes }}
         </p>
       </div>
@@ -226,7 +221,7 @@ import { getEstadoPedidoLabel } from '../utils/estadoPedido'
 import { MOSTRAR_FILTRO_PROVEEDOR_PEDIDOS } from '../config/featureFlags'
 import type { EstadoPedidoOption, TipoFechaFiltro } from '../types'
 import { ref } from '@vue/reactivity'
-import { useId } from 'vue'
+import { computed, useId } from 'vue'
 
 const estadoSelectId = useId()
 const fechaFiltroId = useId()
@@ -235,7 +230,7 @@ const numeroPedidoInputId = useId()
 const creadoPorSelectId = useId()
 const modificadoPorSelectId = useId()
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     /** Opciones del <select> de Estado (slot por defecto). Siempre resuelta por la vista contra su
      * propio endpoint -- este componente nunca decide qué estados existen. */
@@ -246,16 +241,17 @@ withDefaults(
     /** Opciones del <select> de "Modificado Por": valores distintos de modificado_por que existen
      * en la base de datos, resueltos por la vista contra GET /api/pedidos/modificadores. */
     modificadoresDisponibles?: string[]
-    /** Muestra la sección "Solo pedidos que requieren acción". Default false (comportamiento de
+    /** Muestra el botón toggle "Solo pedidos que requieren acción". Default false (comportamiento de
      * RevisarRedistribucionListadoView, que no la tiene). */
     showQuickFilter?: boolean
-    /** Texto "N encontrados" junto al checkbox cuando showQuickFilter+filtroSoloPendientes están
-     * activos. Ignorado si showQuickFilter es false. */
+    /** Cantidad usada en el texto del botón ("N pedidos requieren acción"). Se muestra siempre,
+     * activo o no el filtro -- es el propio conteo el que indica al usuario si vale la pena
+     * activarlo. Ignorado si showQuickFilter es false. */
     contadorPedidosPendientes?: number
     /** Placeholder del input "Número de Pedido". Default 'Buscar por número de pedido...' (el de 3
      * de los 4 listados); CargarPlantillaListadoView pasa el suyo con ejemplo ('...ej: P-12.08'). */
     numeroPedidoPlaceholder?: string
-    /** Texto bajo el checkbox "Solo pedidos que requieren acción" que explica qué estados incluye.
+    /** Texto bajo el botón "N pedidos requieren acción" que explica qué estados incluye.
      * Default: los 3 estados de respuesta del proveedor (Pedidos/Redistribución/Confirmados).
      * CargarPlantillaListadoView pasa el suyo propio (Producción Pospuesta, Despachar y Facturar --
      * ver ESTADOS_QUE_REQUIEREN_ACCION_CARGAR_PLANTILLA en utils/estadoPedido.ts). */
@@ -282,7 +278,7 @@ const emit = defineEmits<{
   /** El <select> de Estado cambió, ANTES de `aplicar` -- conectar a `actualizarFiltroPendientes`
    * (o equivalente) si la vista necesita reaccionar al cambio de estado antes de recargar. */
   'estado-change': []
-  /** El checkbox "Solo pedidos que requieren acción" cambió -- conectar a `aplicarFiltroPendientes`
+  /** El botón "N pedidos requieren acción" cambió de estado -- conectar a `aplicarFiltroPendientes`
    * (o equivalente) de la vista, que decide su propia lógica de qué hacer con el filtro de estado. */
   'toggle-filtro-pendientes': []
   /** Passthrough de los eventos de DebouncedSearchField para "Número de Pedido" -- conectar
@@ -305,4 +301,13 @@ const modificadoPor = defineModel<string>('modificadoPor', { default: '' })
 /** Colapsado por defecto, igual que `filtrosColapsados` en los 4 listados hoy. 100% interno, ver
  * comentario de archivo. */
 const collapsed = ref(true)
+
+/** Texto del botón toggle "Solo pedidos que requieren acción" (ver plantilla). Sufijo plural
+ * extraído a variable propia (no inline en el template) para evitar S3358. */
+const textoContadorPendientes = computed(() => {
+  const cantidad = props.contadorPedidosPendientes
+  const sufijoPedido = cantidad === 1 ? '' : 's'
+  const sufijoVerbo = cantidad === 1 ? '' : 'n'
+  return `${cantidad} pedido${sufijoPedido} requiere${sufijoVerbo} acción`
+})
 </script>
