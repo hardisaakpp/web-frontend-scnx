@@ -135,7 +135,9 @@ export function requiereAccionPedido(estado: string): boolean {
  */
 export const ESTADOS_QUE_REQUIEREN_ACCION_CARGAR_PLANTILLA = [
   'PRODUCCION_POSPUESTA',
-  'DESPACHAR_Y_FACTURAR'
+  'PRODUCCION POSPUESTA',
+  'DESPACHAR_Y_FACTURAR',
+  'DESPACHAR Y FACTURAR'
 ] as const
 
 /** true si el estado es uno de los que requiere acción de Mabel Trading en Cargar Plantilla. */
