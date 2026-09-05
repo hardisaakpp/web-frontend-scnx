@@ -43,7 +43,7 @@ export function useVerDetalleSapModal() {
   // explícito -- sin esto siempre cae en "❌ Error" aunque el envío haya sido exitoso.
   const integracionSAPEstadoGeneral = computed<'success' | 'partial' | 'error'>(() => {
     const detalle = integracionSAPDetalle.value
-    if (!detalle || !detalle.success) return 'error'
+    if (!detalle?.success) return 'error'
     const st = integracionSAPSolicitudes.value
     if (st && st.transferencias_errores > 0) return 'partial'
     return 'success'
