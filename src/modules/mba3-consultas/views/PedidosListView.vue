@@ -32,7 +32,7 @@
                 type="button"
                 @click="filtroSoloPendientes = !filtroSoloPendientes; aplicarFiltroPendientes()"
                 :aria-pressed="filtroSoloPendientes"
-                :title="filtroSoloPendientes ? 'Quitar el filtro y ver todos los pedidos' : 'Filtrar para ver solo pedidos en estados: Pendiente Confirmación, Respuesta Cargada, Confirmado Proveedor'"
+                :title="filtroSoloPendientes ? 'Quitar el filtro y ver todos los pedidos' : 'Filtrar para ver solo pedidos en estados: Confirmado por Producción, Confirmado y Enviado'"
                 class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 text-sm font-medium text-orange-800 dark:text-orange-300 transition-colors hover:bg-orange-100 dark:hover:bg-orange-900/30 focus:outline-none focus:ring-2 focus:ring-orange-500 dark:focus:ring-orange-400"
               >
                 <svg class="w-4 h-4 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -175,7 +175,7 @@
                     : verDetalleCargandoId
                       ? 'opacity-50 pointer-events-none'
                       : 'hover:bg-gray-50 dark:hover:bg-gray-700/50',
-                  requiereAccionPedido(pedido.estado) && esModoElRayo ? 'bg-orange-50/30 dark:bg-orange-900/10 border-l-4 border-orange-500 dark:border-orange-400' : ''
+                  requiereAccionPedidoListado(pedido.estado) && esModoElRayo ? 'bg-orange-50/30 dark:bg-orange-900/10 border-l-4 border-orange-500 dark:border-orange-400' : ''
                 ]"
                 @click="verDetalle(pedido.pedido_id)"
               >
@@ -204,7 +204,7 @@
                     <span :class="getEstadoPedidoBadgeClassFull(pedido.estado)">
                       {{ getEstadoPedidoLabel(pedido.estado) }}
                     </span>
-                    <span v-if="requiereAccionPedido(pedido.estado)" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300" title="Requiere acción">
+                    <span v-if="requiereAccionPedidoListado(pedido.estado)" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300" title="Requiere acción">
                       !
                     </span>
                   </div>
@@ -258,7 +258,7 @@ import { mba3ConsultasService, extractErrorMessage } from '../services/mba3Consu
 import type { PedidosListadoResponse, PedidoResumido, PedidosListadoFiltros, PedidosListadoMetadata, EstadoPedidoOption } from '../types'
 import { formatDate, formatDateTime } from '../utils/formatters'
 import { esProveedorElRayo } from '../utils/styleHelpers'
-import { getEstadoPedidoLabel, getEstadoPedidoBadgeClassFull, requiereAccionPedido } from '../utils/estadoPedido'
+import { getEstadoPedidoLabel, getEstadoPedidoBadgeClassFull, requiereAccionPedidoListado, ESTADOS_QUE_REQUIEREN_ACCION_PEDIDOS } from '../utils/estadoPedido'
 import { PAGE_SIZE_OPTIONS } from '../config/pagination'
 import { useFiltroTextoConDebounce } from '../composables/useFiltroTextoConDebounce'
 import { usePageSizePreference } from '../composables/usePageSizePreference'
@@ -417,7 +417,7 @@ const {
 } = useFiltroTextoConDebounce(filtros, 'numero_pedido', aplicarFiltros)
 
 // Contador de pedidos pendientes (computado desde los pedidos cargados)
-const contadorPedidosPendientes = computed(() => pedidos.value.filter(p => requiereAccionPedido(p.estado)).length)
+const contadorPedidosPendientes = computed(() => pedidos.value.filter(p => requiereAccionPedidoListado(p.estado)).length)
 
 // Cargar estados disponibles para el dropdown de filtros
 async function cargarEstados() {
@@ -452,7 +452,7 @@ function aplicarFiltroPendientes() {
     // para obtener todos los pedidos y luego filtrar en el frontend por los estados que requieren acción
     // Esto permite mostrar todos los pedidos pendientes independientemente de su estado específico
     const estadoAnterior = filtros.value.estado
-    const estadosPendientes = ['PENDIENTE_CONFIRMACION_PROVEEDOR', 'RESPUESTA_PROVEEDOR_CARGADA', 'CONFIRMADO_PROVEEDOR']
+    const estadosPendientes = ESTADOS_QUE_REQUIEREN_ACCION_PEDIDOS as readonly string[]
 
     // Solo limpiar el estado si estaba filtrando por uno de los estados pendientes
     if (estadoAnterior && estadosPendientes.includes(estadoAnterior)) {
@@ -461,7 +461,7 @@ function aplicarFiltroPendientes() {
   } else {
     // Si se desactiva, limpiar el filtro de estado solo si estaba activo por el filtro rápido
     const estadoActual = filtros.value.estado
-    const estadosPendientes = ['PENDIENTE_CONFIRMACION_PROVEEDOR', 'RESPUESTA_PROVEEDOR_CARGADA', 'CONFIRMADO_PROVEEDOR']
+    const estadosPendientes = ESTADOS_QUE_REQUIEREN_ACCION_PEDIDOS as readonly string[]
 
     // No limpiar si el usuario había seleccionado manualmente un estado
     // Solo limpiar si el estado actual es uno de los pendientes (probablemente activado por el filtro rápido)
@@ -476,7 +476,7 @@ function aplicarFiltroPendientes() {
 // Actualizar filtro pendientes cuando cambia el estado manualmente
 function actualizarFiltroPendientes() {
   const estadoActual = filtros.value.estado
-  const estadosPendientes = ['PENDIENTE_CONFIRMACION_PROVEEDOR', 'RESPUESTA_PROVEEDOR_CARGADA', 'CONFIRMADO_PROVEEDOR']
+  const estadosPendientes = ESTADOS_QUE_REQUIEREN_ACCION_PEDIDOS as readonly string[]
 
   // Si el estado seleccionado no es uno de los pendientes, desactivar el filtro rápido
   if (estadoActual && !estadosPendientes.includes(estadoActual)) {

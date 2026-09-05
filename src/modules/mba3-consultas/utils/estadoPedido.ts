@@ -144,3 +144,25 @@ export const ESTADOS_QUE_REQUIEREN_ACCION_CARGAR_PLANTILLA = [
 export function requiereAccionPedidoCargarPlantilla(estado: string): boolean {
   return (ESTADOS_QUE_REQUIEREN_ACCION_CARGAR_PLANTILLA as readonly string[]).includes(estado)
 }
+
+/**
+ * Estados que requieren acción del usuario odcsap.view en el listado de Pedidos (EL RAYO,
+ * PedidosListView.vue): el pedido ya fue confirmado por Producción o enviado a SAP y vuelve a la
+ * cancha de Administración El Rayo para revisar/continuar el flujo. Distinto de
+ * ESTADOS_QUE_REQUIEREN_ACCION (estados de respuesta del proveedor): esos tres quedaron huérfanos y
+ * ya fueron desactivados en el backend (ids 5, 6 y el legado sin id propio de
+ * PENDIENTE_CONFIRMACION_PROVEEDOR -- ver migraciones 654/655/656 en mba3-consultas), así que ningún
+ * pedido real cae nunca en ellos; no se reutiliza ese array aquí a propósito, para no arrastrar esa
+ * condición muerta a este listado ni afectar a RedistribucionListadoView.vue (que sí sigue usando
+ * ESTADOS_QUE_REQUIEREN_ACCION para su propio resaltado).
+ */
+export const ESTADOS_QUE_REQUIEREN_ACCION_PEDIDOS = [
+  'CONFIRMADO POR PRODUCCION',
+  'CONFIRMADO_POR_PRODUCCION',
+  'CONFIRMADO_ENVIADO'
+] as const
+
+/** true si el estado es uno de los que requiere acción del usuario odcsap.view en el listado de Pedidos. */
+export function requiereAccionPedidoListado(estado: string): boolean {
+  return (ESTADOS_QUE_REQUIEREN_ACCION_PEDIDOS as readonly string[]).includes(estado)
+}
