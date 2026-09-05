@@ -60,7 +60,8 @@ export function useRedistribucion(options: {
           cantidad_original: cantidadOriginal,
           cantidad_asignada: d.cantidad_asignada,
           diferencia: (d.cantidad_asignada ?? 0) - cantidadOriginal,
-          es_bodega: esBodega(d.tienda_codigo)
+          es_bodega: esBodega(d.tienda_codigo),
+          agregada_manualmente: d.agregada_manualmente ?? false
         }
       })
       const cantidad_distribuida = p.cantidad_asignada_total ?? distribucion_tiendas.reduce((sum, t) => sum + t.cantidad_asignada, 0)
@@ -170,7 +171,8 @@ export function useRedistribucion(options: {
           cantidad_original: cantidad,
           cantidad_asignada: cantidad,
           diferencia: 0,
-          es_bodega: esBodega(t.tienda_codigo)
+          es_bodega: esBodega(t.tienda_codigo),
+          agregada_manualmente: t.agregada_manualmente ?? false
         }
       })
       const cantidad_distribuida = a.cantidad_ajustada ?? distribucion_tiendas.reduce((sum, t) => sum + t.cantidad_asignada, 0)
@@ -637,7 +639,8 @@ export function useRedistribucion(options: {
         cantidad_original: 0,
         cantidad_asignada: 0,
         diferencia: 0,
-        es_bodega: false
+        es_bodega: false,
+        agregada_manualmente: true
       })
       agregada = true
     })
@@ -746,7 +749,8 @@ export function useRedistribucion(options: {
         distribucion_tiendas: producto.distribucion_tiendas.map(t => ({
           tienda_codigo: t.tienda_codigo,
           tienda_nombre: t.tienda_nombre,
-          cantidad: t.cantidad_asignada
+          cantidad: t.cantidad_asignada,
+          agregada_manualmente: t.agregada_manualmente ?? false
         })),
         costo_original: producto.costo_unitario,
         costo_ajustado: producto.costo_unitario,
@@ -857,13 +861,14 @@ export function useRedistribucion(options: {
         distribucion_tiendas: producto.distribucion_tiendas.map(t => ({
           tienda_codigo: t.tienda_codigo,
           tienda_nombre: t.tienda_nombre,
-          cantidad: t.cantidad_asignada
+          cantidad: t.cantidad_asignada,
+          agregada_manualmente: t.agregada_manualmente ?? false
         })),
         costo_original: producto.costo_unitario,
         costo_ajustado: producto.costo_unitario,
         cambio_precio: false
       }))
-      
+
       // 2. Confirmar redistribución (el backend procesa hasta terminar; el modal bloquea la pantalla hasta que responda)
       // El backend procesa automáticamente:
       // - Consulta SAP para cada producto

@@ -123,10 +123,20 @@
             <th
               v-for="tienda in tiendasUnicas"
               :key="tienda.codigo"
-              class="sticky top-0 z-[15] header-shadow px-6 py-2 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider min-w-[120px] bg-gray-50 dark:bg-gray-900"
+              :class="[
+                'sticky top-0 z-[15] header-shadow px-6 py-2 text-right text-xs font-medium uppercase tracking-wider min-w-[120px]',
+                tienda.agregadaManualmente
+                  ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-300'
+                  : 'bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400'
+              ]"
               :title="`${tienda.codigo} - ${tienda.nombre}`"
             >
-              <span class="font-semibold text-sm text-gray-900 dark:text-gray-100 leading-tight whitespace-nowrap">
+              <span
+                :class="[
+                  'font-semibold text-sm leading-tight whitespace-nowrap',
+                  tienda.agregadaManualmente ? 'text-indigo-700 dark:text-indigo-200' : 'text-gray-900 dark:text-gray-100'
+                ]"
+              >
                 {{ tienda.codigo }}
               </span>
             </th>
@@ -622,18 +632,24 @@ function totalConfirmadoModificado(producto: ProductoRedistribucion): boolean {
 // - Fila 2: códigos (ej: "RL-CD", "OUT-CD", "REG-CD")
 // Esto aplica tanto para bodegas (K, L, M) como para tiendas (N+)
 const tiendasUnicas = computed(() => {
-  const tiendasMap = new Map<string, { codigo: string; nombre: string }>()
-  
+  const tiendasMap = new Map<string, { codigo: string; nombre: string; agregadaManualmente: boolean }>()
+
   productosArray.value.forEach((producto: ProductoRedistribucion) => {
     producto.distribucion_tiendas.forEach((tienda: DistribucionTiendaEditada) => {
-      if (!tiendasMap.has(tienda.tienda_codigo)) {
+      const existente = tiendasMap.get(tienda.tienda_codigo)
+      if (!existente) {
         // ⭐ El código viene de la fila 2 del Excel (ej: "RL-CD", "OUT-CD", "REG-CD", códigos de tiendas)
         // ⭐ El nombre viene de la fila 1 del Excel (ej: "Roland", "Descuentón", "Región", nombres de tiendas)
         const nombre = tienda.tienda_nombre || tienda.tienda_codigo
         tiendasMap.set(tienda.tienda_codigo, {
           codigo: tienda.tienda_codigo,
-          nombre: nombre
+          nombre: nombre,
+          agregadaManualmente: tienda.agregada_manualmente ?? false
         })
+      } else if (tienda.agregada_manualmente) {
+        // Persiste como "agregada manualmente" si CUALQUIER producto tiene ese flag
+        // en esta tienda (ej. se agregó a todos los productos, pero solo se verificó uno).
+        existente.agregadaManualmente = true
       }
     })
   })
