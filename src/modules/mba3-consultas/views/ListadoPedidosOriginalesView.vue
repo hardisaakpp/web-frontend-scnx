@@ -1,30 +1,30 @@
 <template>
-  <div
-    v-if="visible"
-    class="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50 p-4"
-    @click.self="closeModal"
-  >
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-4xl w-full max-h-[90vh] flex flex-col">
-      <!-- Header del modal -->
-      <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0">
-        <div>
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Listado Pedidos Originales</h3>
-          <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Archivos Excel originales almacenados en el sistema
-          </p>
-        </div>
+  <div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between flex-wrap gap-4">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Listado Pedidos Originales</h1>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          Archivos Excel originales almacenados en el sistema
+        </p>
+      </div>
+      <div class="flex flex-wrap items-center gap-3">
         <button
-          @click="closeModal"
-          class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+          @click="cargarArchivos"
+          :disabled="loading"
+          class="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          <svg class="w-4 h-4" :class="{ 'animate-spin': loading }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
+          Actualizar
         </button>
       </div>
+    </div>
 
-      <!-- Contenido del modal -->
-      <div class="flex-1 overflow-auto px-6 py-4">
+    <!-- Card -->
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700">
+      <div class="p-4 md:p-6">
         <!-- Estado de carga -->
         <div v-if="loading" class="flex items-center justify-center py-12">
           <svg class="animate-spin w-8 h-8 text-cyan-600 dark:text-cyan-400" fill="none" viewBox="0 0 24 24">
@@ -95,134 +95,113 @@
           </div>
 
           <div v-else class="overflow-x-auto">
-          <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead class="bg-gray-50 dark:bg-gray-700/50">
-              <tr>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  N° Pedido
-                </th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Archivo
-                </th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Tamaño
-                </th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Fecha Subida
-                </th>
-                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Descargas
-                </th>
-                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Acciones
-                </th>
-              </tr>
-            </thead>
-            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-              <tr
-                v-for="archivo in archivos"
-                :key="archivo.archivo_id"
-                class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
-              >
-                <td class="px-4 py-3 whitespace-nowrap">
-                  <div class="inline-flex items-center gap-2">
-                    <span class="text-sm font-medium text-gray-900 dark:text-white">
-                      {{ displayNumeroPedido(archivo.numero_pedido) }}
-                    </span>
-                    <button
-                      type="button"
-                      @click="copyToClipboard(archivo.numero_pedido)"
-                      class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                      title="Copiar número de pedido"
-                    >
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead class="bg-gray-50 dark:bg-gray-700/50">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    N° Pedido
+                  </th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Archivo
+                  </th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Tamaño
+                  </th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Fecha Subida
+                  </th>
+                  <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Descargas
+                  </th>
+                  <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Acciones
+                  </th>
+                </tr>
+              </thead>
+              <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                <tr
+                  v-for="archivo in archivos"
+                  :key="archivo.archivo_id"
+                  class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                >
+                  <td class="px-4 py-3 whitespace-nowrap">
+                    <div class="inline-flex items-center gap-2">
+                      <span class="text-sm font-medium text-gray-900 dark:text-white">
+                        {{ displayNumeroPedido(archivo.numero_pedido) }}
+                      </span>
+                      <button
+                        type="button"
+                        @click="copyToClipboard(archivo.numero_pedido)"
+                        class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                        title="Copiar número de pedido"
+                      >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                      </button>
+                    </div>
+                  </td>
+                  <td class="px-4 py-3">
+                    <div class="flex items-center gap-2">
+                      <svg class="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
-                    </button>
-                  </div>
-                </td>
-                <td class="px-4 py-3">
-                  <div class="flex items-center gap-2">
-                    <svg class="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <span class="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[200px]" :title="archivo.nombre_original">
-                      {{ displayNombreArchivo(archivo.nombre_original) }}
-                    </span>
-                  </div>
-                </td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                  {{ formatFileSize(resolveFileSizeBytes(archivo)) }}
-                </td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                  {{ formatDateTime(archivo.fecha_subida) }}
-                </td>
-                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                  {{ formatDownloads(archivo.descargas) }}
-                </td>
-                <td class="px-4 py-3 whitespace-nowrap text-right">
-                  <div class="flex items-center justify-end gap-2">
-                    <!-- Botón Descargar -->
-                    <button
-                      @click="descargarArchivo(archivo)"
-                      :disabled="descargando === archivo.archivo_id"
-                      class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-900/30 border border-cyan-200 dark:border-cyan-700 rounded-lg hover:bg-cyan-100 dark:hover:bg-cyan-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Descargar archivo"
-                    >
-                      <svg v-if="descargando === archivo.archivo_id" class="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                      </svg>
-                      <span>Descargar</span>
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                      <span class="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[200px]" :title="archivo.nombre_original">
+                        {{ displayNombreArchivo(archivo.nombre_original) }}
+                      </span>
+                    </div>
+                  </td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    {{ formatFileSize(resolveFileSizeBytes(archivo)) }}
+                  </td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    {{ formatDateTime(archivo.fecha_subida) }}
+                  </td>
+                  <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                    {{ formatDownloads(archivo.descargas) }}
+                  </td>
+                  <td class="px-4 py-3 whitespace-nowrap text-right">
+                    <div class="flex items-center justify-end gap-2">
+                      <!-- Botón Descargar -->
+                      <button
+                        @click="descargarArchivo(archivo)"
+                        :disabled="descargando === archivo.archivo_id"
+                        class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-cyan-700 dark:text-cyan-300 bg-cyan-50 dark:bg-cyan-900/30 border border-cyan-200 dark:border-cyan-700 rounded-lg hover:bg-cyan-100 dark:hover:bg-cyan-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Descargar archivo"
+                      >
+                        <svg v-if="descargando === archivo.archivo_id" class="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
+                          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <svg v-else class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        <span>Descargar</span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
 
-      <!-- Footer del modal -->
-      <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between flex-wrap gap-3 flex-shrink-0">
-        <div class="text-sm text-gray-500 dark:text-gray-400">
-          <template v-if="archivos.length > 0">
+      <!-- Footer: conteo + paginación -->
+      <div v-if="archivos.length > 0 && !loading" class="px-4 md:px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+        <div class="flex items-center justify-between flex-wrap gap-4">
+          <div class="text-sm text-gray-700 dark:text-gray-300">
             Mostrando {{ metadata.offset + 1 }} - {{ Math.min(metadata.offset + metadata.limit, metadata.total) }} de {{ metadata.total }} archivo(s)
-          </template>
-          <template v-else>
-            0 archivo(s)
-          </template>
-        </div>
-        <QuickTablePagination
-          v-model="currentPage"
-          :total-pages="totalPages"
-          :page-size="metadata.limit"
-          :page-size-options="PAGE_SIZE_OPTIONS"
-          :disabled="loading"
-          aria-label="Paginación de archivos"
-          @update:page-size="setPageSize"
-        />
-        <div class="flex items-center gap-3">
-          <button
-            @click="cargarArchivos"
+          </div>
+          <QuickTablePagination
+            v-model="currentPage"
+            :total-pages="totalPages"
+            :page-size="metadata.limit"
+            :page-size-options="PAGE_SIZE_OPTIONS"
             :disabled="loading"
-            class="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-gray-700 dark:text-gray-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-          >
-            <svg class="w-4 h-4" :class="{ 'animate-spin': loading }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Actualizar
-          </button>
-          <button
-            @click="closeModal"
-            class="px-4 py-2 text-sm bg-gray-600 dark:bg-gray-500 text-white rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors"
-          >
-            Cerrar
-          </button>
+            aria-label="Paginación de archivos"
+            @update:page-size="setPageSize"
+          />
         </div>
       </div>
     </div>
@@ -230,7 +209,7 @@
     <!-- Modal de confirmación de eliminación -->
     <div
       v-if="archivoAEliminar"
-      class="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-[60]"
+      class="fixed inset-0 bg-black bg-opacity-50 dark:bg-opacity-70 flex items-center justify-center z-50"
       @click.self="cancelarEliminar"
     >
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg max-w-md w-full mx-4">
@@ -273,8 +252,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from '@vue/reactivity'
-import { onUnmounted } from '@vue/runtime-core'
+import { ref } from '@vue/reactivity'
+import { onMounted, onUnmounted } from '@vue/runtime-core'
 import { pedidosService } from '../services/domains/pedidos'
 import { useToast } from '@/composables/useToast'
 import { formatDateTime } from '../utils/formatters'
@@ -284,14 +263,6 @@ import { useOffsetPagination } from '../composables/useOffsetPagination'
 import { PAGE_SIZE_OPTIONS } from '../config/pagination'
 import QuickTablePagination from '@/components/QuickTablePagination.vue'
 import type { ArchivoOriginalItem, PedidosListadoMetadata } from '../types'
-
-const props = defineProps<{
-  visible: boolean
-}>()
-
-const emit = defineEmits<{
-  (e: 'close'): void
-}>()
 
 const toast = useToast()
 
@@ -314,8 +285,7 @@ const metadata = ref<PedidosListadoMetadata>({
 })
 
 // Búsqueda por número de pedido o nombre de archivo -- server-side (backend filtra sobre TODOS
-// los archivos, no solo la página cargada; antes filtraba en el frontend solo sobre la página
-// visible, así que no encontraba coincidencias fuera de ella).
+// los archivos, no solo la página cargada).
 const {
   texto: busqueda,
   handleInput: handleBusquedaInput,
@@ -335,14 +305,6 @@ const {
   setPageSize
 } = useOffsetPagination(metadata, cargarArchivos, {
   onPageSizeChange: guardarPageSize
-})
-
-// Cargar archivos cuando se abre el modal (siempre desde la página 1)
-watch(() => props.visible, (newVal) => {
-  if (newVal) {
-    metadata.value.offset = 0
-    cargarArchivos()
-  }
 })
 
 // Funciones
@@ -368,10 +330,10 @@ async function cargarArchivos() {
 
 async function descargarArchivo(archivo: ArchivoOriginalItem) {
   descargando.value = archivo.archivo_id
-  
+
   try {
     const blob = await pedidosService.descargarExcelOriginal(archivo.pedido_id)
-    
+
     // Crear link de descarga
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
@@ -381,7 +343,7 @@ async function descargarArchivo(archivo: ArchivoOriginalItem) {
     link.click()
     document.body.removeChild(link)
     window.URL.revokeObjectURL(url)
-    
+
     toast.success('Descarga exitosa', `Archivo ${archivo.nombre_original} descargado`)
 
     // Refrescar desde backend para mostrar descargas persistidas (fuente de verdad).
@@ -404,10 +366,10 @@ function cancelarEliminar() {
 
 async function ejecutarEliminar() {
   if (!archivoAEliminar.value) return
-  
+
   const archivo = archivoAEliminar.value
   eliminando.value = archivo.archivo_id
-  
+
   try {
     await pedidosService.eliminarArchivoOriginal(archivo.archivo_id)
 
@@ -423,10 +385,6 @@ async function ejecutarEliminar() {
   } finally {
     eliminando.value = null
   }
-}
-
-function closeModal() {
-  emit('close')
 }
 
 async function copyToClipboard(text: string) {
@@ -483,4 +441,8 @@ function displayNombreArchivo(value: unknown): string {
   const text = String(value ?? '').trim()
   return text || 'Archivo sin nombre'
 }
+
+onMounted(() => {
+  cargarArchivos()
+})
 </script>

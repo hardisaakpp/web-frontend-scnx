@@ -251,6 +251,17 @@ const routes: RouteRecordRaw[] = [
       permissions: ['mabel.view']
     }
   },
+  {
+    path: '/mba3-consultas/listado-pedidos-originales',
+    name: 'mba3-consultas-listado-pedidos-originales',
+    component: () => import('./views/ListadoPedidosOriginalesView.vue'),
+    meta: {
+      requiresAuth: true,
+      title: 'Listado Pedidos Originales',
+      icon: 'DocumentTextIcon',
+      permissions: ['funcionalidades-admin.view']
+    }
+  },
 
   // =============================================
   // Administración - solo rol Admin
