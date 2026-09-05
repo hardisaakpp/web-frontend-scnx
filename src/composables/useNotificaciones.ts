@@ -303,23 +303,28 @@ export function useNotificaciones() {
     }
   }
 
+  /** Cuerpo del caso 'connected' de handleSSEEvent, extraído para reducir su complejidad cognitiva. */
+  function handleSSEConnected(data: Record<string, unknown>) {
+    isConnected.value = true
+    if (disconnectWarningShown) {
+      disconnectWarningShown = false
+      if (estaEnModuloMba3Consultas(route.path)) {
+        toast.success('Notificaciones reconectadas', 'La conexión en tiempo real se restableció.')
+      }
+      reconnectedAfterGap.value++
+    }
+    if (import.meta.env.DEV) {
+      console.log('📢 [Notificaciones] Conectado al stream SSE:', data)
+    }
+  }
+
   /**
    * Procesa un evento SSE recibido.
    */
   function handleSSEEvent(eventType: string, data: Record<string, unknown>) {
     switch (eventType) {
       case 'connected':
-        isConnected.value = true
-        if (disconnectWarningShown) {
-          disconnectWarningShown = false
-          if (estaEnModuloMba3Consultas(route.path)) {
-            toast.success('Notificaciones reconectadas', 'La conexión en tiempo real se restableció.')
-          }
-          reconnectedAfterGap.value++
-        }
-        if (import.meta.env.DEV) {
-          console.log('📢 [Notificaciones] Conectado al stream SSE:', data)
-        }
+        handleSSEConnected(data)
         break
 
       case 'notification':
