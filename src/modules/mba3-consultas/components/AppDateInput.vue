@@ -229,7 +229,12 @@ function handleKeydown(event: KeyboardEvent) {
 function commitFromText() {
   const trimmed = textValue.value.trim()
   if (trimmed === '') {
-    if (props.modelValue) {
+    // Solo emitir el "borrado" si antes había una fecha ISO realmente mostrada en el
+    // input. Si modelValue trae un valor no parseable como fecha (ej. el sentinel
+    // 'INMEDIATO' de fecha_entrega), isoToDisplay ya lo muestra vacío desde el montaje,
+    // así que un blur sin tipear nada NO debe interpretarse como "el usuario borró la
+    // fecha" -- de lo contrario cualquier foco+blur sobre ese input limpia el valor.
+    if (isoToDisplay(props.modelValue ?? '') !== '') {
       emit('update:modelValue', '')
       emit('change', '')
     }
