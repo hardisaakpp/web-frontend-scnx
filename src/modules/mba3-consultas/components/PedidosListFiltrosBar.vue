@@ -183,11 +183,10 @@
  * (emite `aplicar`/`limpiar`/eventos de debounce; cada vista conecta esos eventos a su propia
  * `aplicarFiltros()`/`limpiarFiltros()`/composable de debounce, tal como hace hoy).
  *
- * Estado colapsado/expandido (`collapsed`) es 100% interno: ninguno de los 4 listados actuales lo
- * lee ni lo controla desde fuera de su propio template, así que no hace falta exponerlo como
- * v-model. Si algún consumidor futuro necesita controlarlo desde afuera, se puede añadir después
- * sin romper a los actuales (un defineModel con default `true` no cambia el comportamiento de nadie
- * que no lo use).
+ * Estado colapsado/expandido (`collapsed`): controlable desde afuera vía `:collapsed` +
+ * `@update:collapsed` (defineModel) para que cada vista persista la última preferencia del usuario
+ * en localStorage con useFiltrosColapsadosPreference -- mismo mecanismo que usePageSizePreference
+ * (tamaño de página). Default `false` (expandido) si la vista no lo controla.
  *
  * ASIMETRÍAS REALES cubiertas, sin forzar comportamiento nuevo en ningún consumidor:
  * - slot `estado-field`: el default (un <select> alimentado por `estadosDisponibles`) cubre a los
@@ -202,7 +201,6 @@ import DebouncedSearchField from './DebouncedSearchField.vue'
 import { getEstadoPedidoLabel } from '../utils/estadoPedido'
 import { MOSTRAR_FILTRO_PROVEEDOR_PEDIDOS } from '../config/featureFlags'
 import type { EstadoPedidoOption, TipoFechaFiltro } from '../types'
-import { ref } from '@vue/reactivity'
 import { useId } from 'vue'
 
 const estadoSelectId = useId()
@@ -261,7 +259,6 @@ const numeroPedidoTexto = defineModel<string>('numeroPedidoTexto', { default: ''
 const creadoPor = defineModel<string>('creadoPor', { default: '' })
 const modificadoPor = defineModel<string>('modificadoPor', { default: '' })
 
-/** Colapsado por defecto, igual que `filtrosColapsados` en los 4 listados hoy. 100% interno, ver
- * comentario de archivo. */
-const collapsed = ref(true)
+/** Expandido por defecto; controlable/persistido desde afuera, ver comentario de archivo. */
+const collapsed = defineModel<boolean>('collapsed', { default: false })
 </script>

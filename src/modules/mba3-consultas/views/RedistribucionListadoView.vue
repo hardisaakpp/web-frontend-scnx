@@ -47,6 +47,8 @@
 
       <!-- Filtros -->
       <PedidosListFiltrosBar
+        :collapsed="filtrosColapsados"
+        @update:collapsed="guardarFiltrosColapsados"
         v-model:estado="filtros.estado"
         v-model:tipoFecha="filtros.tipo_fecha"
         v-model:fechaDesde="filtros.fecha_desde"
@@ -233,6 +235,7 @@ import { PAGE_SIZE_OPTIONS } from '../config/pagination'
 import { useFiltroTextoConDebounce } from '../composables/useFiltroTextoConDebounce'
 import { usePageSizePreference } from '../composables/usePageSizePreference'
 import { usePaginaPreference } from '../composables/usePaginaPreference'
+import { useFiltrosColapsadosPreference } from '../composables/useFiltrosColapsadosPreference'
 import { getEstadoPedidoLabel, getEstadoPedidoBadgeClassFull, requiereAccionPedidoRedistribucion, ESTADOS_QUE_REQUIEREN_ACCION_REDISTRIBUCION } from '../utils/estadoPedido'
 import {
   useSortableList,
@@ -263,6 +266,7 @@ const creadoresDisponibles = ref<string[]>([])
 const modificadoresDisponibles = ref<string[]>([])
 const PAGE_SIZE = 10
 const { pageSize: pageSizeGuardado, guardar: guardarPageSize } = usePageSizePreference('redistribucion-listado', PAGE_SIZE)
+const { colapsado: filtrosColapsados, guardar: guardarFiltrosColapsados } = useFiltrosColapsadosPreference('redistribucion-listado')
 const { offset: offsetGuardado, guardar: guardarOffset } = usePaginaPreference('redistribucion-listado')
 const metadata = ref<PedidosListadoMetadata>({
   total: 0,
