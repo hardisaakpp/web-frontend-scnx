@@ -365,32 +365,51 @@ function mapPedidoCompletoToPedidoResumido(p: PedidoCompleto): PedidoResumido {
   }
 }
 
+/** Arma los parámetros de getPedidosConfirmados desde los filtros activos (extraído de
+ * obtenerPedidos para reducir su complejidad cognitiva). */
+function construirParametrosPedidosConfirmados(page: number) {
+  return {
+    page,
+    pageSize: metadata.value.limit,
+    fecha_desde: filtros.value.fecha_desde || undefined,
+    fecha_hasta: filtros.value.fecha_hasta || undefined,
+    tipo_fecha: filtros.value.tipo_fecha,
+    proveedor_nombre: filtros.value.proveedor_nombre || undefined,
+    numero_pedido: filtros.value.numero_pedido || undefined,
+    creado_por: filtros.value.creado_por || undefined,
+    modificado_por: filtros.value.modificado_por || undefined,
+  }
+}
+
+interface RespuestaPedidosConfirmados {
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
+}
+
+/** Arma la metadata de paginación desde la respuesta del backend (extraído de
+ * obtenerPedidos para reducir su complejidad cognitiva). */
+function construirMetadataDesdeRespuesta(response: RespuestaPedidosConfirmados, cantidadPedidos: number) {
+  return {
+    total: response.total || cantidadPedidos,
+    limit: response.pageSize || metadata.value.limit,
+    offset: ((response.page || 1) - 1) * (response.pageSize || metadata.value.limit),
+    has_more: (response.page || 1) < (response.totalPages || 1),
+  }
+}
+
 async function obtenerPedidos() {
   error.value = null
   try {
     // Usar listado de pedidos confirmados (>= 10 y no cancelados) del backend
     const page = Math.floor(metadata.value.offset / metadata.value.limit) + 1
-    const response = await mba3ConsultasService.getPedidosConfirmados({
-      page,
-      pageSize: metadata.value.limit,
-      fecha_desde: filtros.value.fecha_desde || undefined,
-      fecha_hasta: filtros.value.fecha_hasta || undefined,
-      tipo_fecha: filtros.value.tipo_fecha,
-      proveedor_nombre: filtros.value.proveedor_nombre || undefined,
-      numero_pedido: filtros.value.numero_pedido || undefined,
-      creado_por: filtros.value.creado_por || undefined,
-      modificado_por: filtros.value.modificado_por || undefined,
-    })
+    const response = await mba3ConsultasService.getPedidosConfirmados(construirParametrosPedidosConfirmados(page))
 
     // Mapear PedidoCompleto → PedidoResumido para reutilizar la tabla actual
     pedidos.value = (response.data || []).map(mapPedidoCompletoToPedidoResumido)
 
-    metadata.value = {
-      total: response.total || pedidos.value.length,
-      limit: response.pageSize || metadata.value.limit,
-      offset: ((response.page || 1) - 1) * (response.pageSize || metadata.value.limit),
-      has_more: (response.page || 1) < (response.totalPages || 1),
-    }
+    metadata.value = construirMetadataDesdeRespuesta(response, pedidos.value.length)
     guardarOffset(metadata.value.offset)
   } catch (e: any) {
     console.error('Error al cargar pedidos:', e)
