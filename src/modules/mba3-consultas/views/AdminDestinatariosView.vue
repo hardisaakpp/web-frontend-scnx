@@ -372,6 +372,7 @@ import { notificacionTipoCorreoService, type TipoCorreo } from '../services/doma
 import { notificacionPersonaCorreoService, type PersonaCorreoRow } from '../services/domains/notificacionPersonaCorreo'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
+import { inicialesDe } from '@/utils/iniciales'
 
 const toast = useToast()
 
@@ -627,17 +628,6 @@ const personasAgrupadasFiltradas = computed(() => {
 function avatarPaletaPersona(persona: PersonaAgrupada): PaletaTipoNotificacion | null {
   const primero = persona.correos[0]
   return primero ? paletaTipoNotificacion(primero.tipo_notificacion) : null
-}
-
-function inicialesDe(nombre: string): string {
-  // Varios nombres reales traen un sufijo entre parentesis (ej. "Carlos Ortiz (SIS-MBL)"):
-  // se descarta antes de partir en palabras para no tomar "(SIS-MBL)" como "apellido".
-  const sinSufijo = nombre.replace(/\([^)]*\)/g, ' ')
-  const partes = sinSufijo.trim().split(/\s+/).filter(Boolean)
-  if (partes.length === 0) return '?'
-  const primera = partes[0][0]
-  const ultima = partes.length > 1 ? partes[partes.length - 1][0] : ''
-  return (primera + ultima).toUpperCase()
 }
 
 // ── Vincular un correo con una persona: arrastrar y soltar, o tocar y tocar ──

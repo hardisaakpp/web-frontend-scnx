@@ -320,7 +320,7 @@
               title="Panel de Usuario"
             >
               <div class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-600 to-sky-500 flex items-center justify-center text-xs font-bold flex-shrink-0 text-white">
-                <span>{{ authStore.userName?.charAt(0).toUpperCase() || 'U' }}</span>
+                <span>{{ inicialesDe(authStore.fullName || authStore.userName || 'U') }}</span>
               </div>
               <div class="flex-1 min-w-0">
                 <p class="text-sm font-medium text-slate-800 dark:text-white truncate">{{ authStore.userName }}</p>
@@ -457,6 +457,7 @@ import {
 } from '@heroicons/vue/24/outline'
 import { Pin, PinOff, TruckIcon } from 'lucide-vue-next'
 import { useAuthStore } from '../stores/auth'
+import { inicialesDe } from '@/utils/iniciales'
 import { useThemeStore } from '../stores/theme'
 import ToastContainer from '../components/ToastContainer.vue'
 import { useNotificaciones } from '@/composables/useNotificaciones'
