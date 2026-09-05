@@ -1776,12 +1776,13 @@ export interface ArchivoOriginalItem {
 }
 
 /**
- * Respuesta del endpoint GET /api/plantillas/archivos
+ * Respuesta del endpoint GET /api/plantillas/archivos (paginado offset/limit, mismo shape de
+ * metadata que PedidosListadoMetadata -- el backend puede incluir además storage_habilitado).
  */
 export interface ListadoArchivosOriginalesResponse {
   status: 'success'
   data: ArchivoOriginalItem[]
-  total: number
+  metadata: PedidosListadoMetadata
   message?: string
 }
 

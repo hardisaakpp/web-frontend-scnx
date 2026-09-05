@@ -48,8 +48,8 @@
           </button>
         </div>
 
-        <!-- Lista vacía -->
-        <div v-else-if="archivos.length === 0" class="text-center py-12">
+        <!-- Lista vacía (sin búsqueda activa: no hay archivos en absoluto) -->
+        <div v-else-if="archivos.length === 0 && !busqueda" class="text-center py-12">
           <svg class="w-16 h-16 mx-auto text-gray-300 dark:text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
@@ -69,12 +69,14 @@
               v-model.trim="busqueda"
               type="search"
               placeholder="Buscar por número de pedido o nombre de archivo..."
+              @input="handleBusquedaInput"
+              @keydown.enter="commitBusqueda"
               class="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 dark:focus:ring-cyan-400 dark:focus:border-cyan-400"
             />
             <button
               v-if="busqueda"
               type="button"
-              @click="busqueda = ''"
+              @click="limpiarBusqueda"
               class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
               title="Limpiar búsqueda"
             >
@@ -83,7 +85,16 @@
               </svg>
             </button>
           </div>
-          <div class="overflow-x-auto">
+
+          <!-- Sin resultados de búsqueda (server-side: ya viene filtrado, cero filas en esta respuesta) -->
+          <div
+            v-if="archivos.length === 0"
+            class="text-center py-8 text-gray-500 dark:text-gray-400 text-sm"
+          >
+            No hay archivos que coincidan con "{{ busqueda }}".
+          </div>
+
+          <div v-else class="overflow-x-auto">
           <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead class="bg-gray-50 dark:bg-gray-700/50">
               <tr>
@@ -109,7 +120,7 @@
             </thead>
             <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               <tr
-                v-for="archivo in archivosFiltrados"
+                v-for="archivo in archivos"
                 :key="archivo.archivo_id"
                 class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
               >
@@ -173,26 +184,28 @@
             </tbody>
           </table>
           </div>
-          <!-- Sin resultados de búsqueda -->
-          <div
-            v-if="busqueda && archivosFiltrados.length === 0"
-            class="text-center py-8 text-gray-500 dark:text-gray-400 text-sm"
-          >
-            No hay archivos que coincidan con "{{ busqueda }}".
-          </div>
         </div>
       </div>
 
       <!-- Footer del modal -->
-      <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0">
+      <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between flex-wrap gap-3 flex-shrink-0">
         <div class="text-sm text-gray-500 dark:text-gray-400">
-          <template v-if="busqueda">
-            {{ archivosFiltrados.length }} de {{ archivos.length }} archivo(s)
+          <template v-if="archivos.length > 0">
+            Mostrando {{ metadata.offset + 1 }} - {{ Math.min(metadata.offset + metadata.limit, metadata.total) }} de {{ metadata.total }} archivo(s)
           </template>
           <template v-else>
-            {{ archivos.length }} archivo(s) encontrado(s)
+            0 archivo(s)
           </template>
         </div>
+        <QuickTablePagination
+          v-model="currentPage"
+          :total-pages="totalPages"
+          :page-size="metadata.limit"
+          :page-size-options="PAGE_SIZE_OPTIONS"
+          :disabled="loading"
+          aria-label="Paginación de archivos"
+          @update:page-size="setPageSize"
+        />
         <div class="flex items-center gap-3">
           <button
             @click="cargarArchivos"
@@ -260,11 +273,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed } from '@vue/reactivity'
+import { ref, watch } from '@vue/reactivity'
+import { onUnmounted } from '@vue/runtime-core'
 import { pedidosService } from '../services/domains/pedidos'
 import { useToast } from '@/composables/useToast'
 import { formatDateTime } from '../utils/formatters'
-import type { ArchivoOriginalItem } from '../types'
+import { useDebouncedFilterInput } from '../composables/useDebouncedFilterInput'
+import { usePageSizePreference } from '../composables/usePageSizePreference'
+import { useOffsetPagination } from '../composables/useOffsetPagination'
+import { PAGE_SIZE_OPTIONS } from '../config/pagination'
+import QuickTablePagination from '@/components/QuickTablePagination.vue'
+import type { ArchivoOriginalItem, PedidosListadoMetadata } from '../types'
 
 const props = defineProps<{
   visible: boolean
@@ -276,6 +295,8 @@ const emit = defineEmits<{
 
 const toast = useToast()
 
+const PAGE_SIZE = 10
+
 // Estado
 const loading = ref(false)
 const error = ref<string | null>(null)
@@ -283,22 +304,43 @@ const archivos = ref<ArchivoOriginalItem[]>([])
 const descargando = ref<string | null>(null)
 const eliminando = ref<string | null>(null)
 const archivoAEliminar = ref<ArchivoOriginalItem | null>(null)
-const busqueda = ref('')
 
-// Lista filtrada por buscador (número de pedido o nombre de archivo)
-const archivosFiltrados = computed(() => {
-  const q = busqueda.value.trim().toLowerCase()
-  if (!q) return archivos.value
-  return archivos.value.filter(
-    (a) =>
-      (a.numero_pedido && String(a.numero_pedido).toLowerCase().includes(q)) ||
-      (a.nombre_original && a.nombre_original.toLowerCase().includes(q))
-  )
+const { pageSize: pageSizeGuardado, guardar: guardarPageSize } = usePageSizePreference('listado-pedidos-originales', PAGE_SIZE)
+const metadata = ref<PedidosListadoMetadata>({
+  total: 0,
+  limit: pageSizeGuardado.value,
+  offset: 0,
+  has_more: false
 })
 
-// Cargar archivos cuando se abre el modal
+// Búsqueda por número de pedido o nombre de archivo -- server-side (backend filtra sobre TODOS
+// los archivos, no solo la página cargada; antes filtraba en el frontend solo sobre la página
+// visible, así que no encontraba coincidencias fuera de ella).
+const {
+  texto: busqueda,
+  handleInput: handleBusquedaInput,
+  commit: commitBusqueda,
+  clear: limpiarBusqueda,
+  dispose: disposeBusqueda
+} = useDebouncedFilterInput(() => {
+  metadata.value.offset = 0
+  cargarArchivos()
+})
+
+onUnmounted(() => disposeBusqueda())
+
+const {
+  totalPages,
+  currentPage,
+  setPageSize
+} = useOffsetPagination(metadata, cargarArchivos, {
+  onPageSizeChange: guardarPageSize
+})
+
+// Cargar archivos cuando se abre el modal (siempre desde la página 1)
 watch(() => props.visible, (newVal) => {
   if (newVal) {
+    metadata.value.offset = 0
     cargarArchivos()
   }
 })
@@ -307,10 +349,15 @@ watch(() => props.visible, (newVal) => {
 async function cargarArchivos() {
   loading.value = true
   error.value = null
-  
+
   try {
-    const response = await pedidosService.getListadoArchivosOriginales()
+    const response = await pedidosService.getListadoArchivosOriginales({
+      limit: metadata.value.limit,
+      offset: metadata.value.offset,
+      busqueda: busqueda.value || undefined
+    })
     archivos.value = response.data || []
+    metadata.value = response.metadata
   } catch (err: any) {
     console.error('Error al cargar archivos:', err)
     error.value = err.message || 'Error al cargar el listado de archivos'
@@ -363,12 +410,13 @@ async function ejecutarEliminar() {
   
   try {
     await pedidosService.eliminarArchivoOriginal(archivo.archivo_id)
-    
-    // Remover de la lista
-    archivos.value = archivos.value.filter(a => a.archivo_id !== archivo.archivo_id)
-    
+
     toast.success('Archivo eliminado', `El archivo ${archivo.nombre_original} ha sido eliminado`)
     archivoAEliminar.value = null
+
+    // Refrescar desde backend: eliminar localmente dejaría metadata.total desincronizado del
+    // total real (fuente de verdad), igual que tras una descarga.
+    await cargarArchivos()
   } catch (err: any) {
     console.error('Error al eliminar archivo:', err)
     toast.error('Error', err.message || 'No se pudo eliminar el archivo')
