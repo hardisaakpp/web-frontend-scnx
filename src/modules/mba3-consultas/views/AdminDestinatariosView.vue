@@ -95,13 +95,13 @@
                     :title="correo.descripcion || undefined"
                     class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs cursor-pointer transition-colors select-none"
                     :class="nuevaPersonaCorreoIds.includes(correo.id)
-                      ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300'
-                      : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-violet-300 hover:bg-violet-50/60 dark:hover:bg-gray-700'"
+                      ? paletaTipoNotificacion(grupo.tipo).seleccionado
+                      : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-gray-300 dark:hover:bg-gray-700'"
                   >
                     <input type="checkbox" :value="correo.id" v-model="nuevaPersonaCorreoIds" class="sr-only" />
                     <span
                       class="flex items-center justify-center h-3.5 w-3.5 rounded-full border shrink-0 transition-colors"
-                      :class="nuevaPersonaCorreoIds.includes(correo.id) ? 'bg-violet-600 border-violet-600' : 'border-gray-300 dark:border-gray-500'"
+                      :class="nuevaPersonaCorreoIds.includes(correo.id) ? paletaTipoNotificacion(grupo.tipo).circulo : 'border-gray-300 dark:border-gray-500'"
                     >
                       <svg v-if="nuevaPersonaCorreoIds.includes(correo.id)" class="h-2.5 w-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
@@ -153,7 +153,8 @@
                     <span
                       v-for="tipo in tiposDePersona(persona)"
                       :key="tipo"
-                      class="px-2 py-1 text-xs font-medium rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300 whitespace-nowrap"
+                      class="px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap"
+                      :class="paletaTipoNotificacion(tipo).badge"
                     >
                       {{ etiquetaTipo(tipo) }}
                     </span>
@@ -165,7 +166,8 @@
                       v-for="correo in persona.correos"
                       :key="correo.id"
                       :title="correo.descripcion || undefined"
-                      class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-800 dark:text-violet-300 text-xs"
+                      class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs"
+                      :class="paletaTipoNotificacion(correo.tipo_notificacion).badge"
                     >
                       {{ correo.tipo_correo }}
                       <button
@@ -173,7 +175,7 @@
                         title="Quitar este correo"
                         :disabled="procesandoPersonaId === correo.id"
                         @click="quitarCorreoDePersona(correo)"
-                        class="text-violet-500 hover:text-violet-800 dark:hover:text-violet-100 disabled:opacity-50"
+                        class="text-current opacity-60 hover:opacity-100 disabled:opacity-40"
                       >
                         ×
                       </button>
@@ -215,7 +217,7 @@
                             class="w-full text-left px-3 py-2 text-xs text-gray-700 dark:text-gray-200 hover:bg-violet-50 dark:hover:bg-gray-600 leading-snug"
                             @click="agregarCorreoAPersona(persona, String(correo.id)); correoDropdownAbierto = null"
                           >
-                            <span class="font-medium text-indigo-600 dark:text-indigo-400">{{ etiquetaTipo(correo.tipo_notificacion) }}</span>
+                            <span class="font-medium" :class="paletaTipoNotificacion(correo.tipo_notificacion).texto">{{ etiquetaTipo(correo.tipo_notificacion) }}</span>
                             · {{ correo.tipo_correo }}
                           </button>
                         </div>
@@ -263,6 +265,64 @@ const ETIQUETAS_TIPO: Record<string, string> = {
 
 function etiquetaTipo(tipo: string): string {
   return ETIQUETAS_TIPO[tipo] || tipo
+}
+
+// Colores por tipo_notificacion, alineados a la paleta por permiso ya establecida en
+// styleHelpers.ts (mabel.view = verde/esmeralda/teal, produccion-elrayo.view = ámbar,
+// odcsap.view = púrpura): OPERACIONES notifica a EL RAYO (odcsap.view), MABEL_TRADING y
+// HOMOLOGACIONES son funcionalidades de mabel.view (mismo tono distinto matiz para
+// distinguirlas entre sí), PRODUCCION_ELRAYO es produccion-elrayo.view. TECNICOS no
+// depende de un permiso de negocio (son notificaciones de error interno/soporte), así
+// que usa 'vermilion', reservado en tailwind.config.js a estados de error.
+interface PaletaTipoNotificacion {
+  badge: string
+  texto: string
+  seleccionado: string
+  circulo: string
+}
+
+const PALETA_TIPO_NOTIFICACION: Record<string, PaletaTipoNotificacion> = {
+  MABEL_TRADING: {
+    badge: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
+    texto: 'text-emerald-600 dark:text-emerald-400',
+    seleccionado: 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300',
+    circulo: 'bg-emerald-600 border-emerald-600',
+  },
+  HOMOLOGACIONES: {
+    badge: 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300',
+    texto: 'text-teal-600 dark:text-teal-400',
+    seleccionado: 'border-teal-500 bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300',
+    circulo: 'bg-teal-600 border-teal-600',
+  },
+  OPERACIONES: {
+    badge: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+    texto: 'text-purple-600 dark:text-purple-400',
+    seleccionado: 'border-purple-500 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300',
+    circulo: 'bg-purple-600 border-purple-600',
+  },
+  PRODUCCION_ELRAYO: {
+    badge: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200',
+    texto: 'text-amber-600 dark:text-amber-400',
+    seleccionado: 'border-amber-500 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300',
+    circulo: 'bg-amber-600 border-amber-600',
+  },
+  TECNICOS: {
+    badge: 'bg-vermilion-100 text-vermilion-800 dark:bg-vermilion-900/30 dark:text-vermilion-200',
+    texto: 'text-vermilion-600 dark:text-vermilion-400',
+    seleccionado: 'border-vermilion-500 bg-vermilion-50 dark:bg-vermilion-900/30 text-vermilion-700 dark:text-vermilion-300',
+    circulo: 'bg-vermilion-600 border-vermilion-600',
+  },
+}
+
+const PALETA_TIPO_NOTIFICACION_DEFECTO: PaletaTipoNotificacion = {
+  badge: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
+  texto: 'text-gray-600 dark:text-gray-400',
+  seleccionado: 'border-gray-500 bg-gray-50 dark:bg-gray-900/30 text-gray-700 dark:text-gray-300',
+  circulo: 'bg-gray-600 border-gray-600',
+}
+
+function paletaTipoNotificacion(tipo: string): PaletaTipoNotificacion {
+  return PALETA_TIPO_NOTIFICACION[tipo] || PALETA_TIPO_NOTIFICACION_DEFECTO
 }
 
 function extraerMensajeError(err: any, fallback: string): string {
