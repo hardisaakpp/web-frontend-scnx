@@ -902,7 +902,7 @@ function onMotivosToggle(): void {
   if (!contenedor) return
   const columnCountOriginal = contenedor.style.columnCount
   contenedor.style.columnCount = 'auto'
-  void contenedor.offsetHeight
+  contenedor.offsetHeight
   contenedor.style.columnCount = columnCountOriginal
 }
 
