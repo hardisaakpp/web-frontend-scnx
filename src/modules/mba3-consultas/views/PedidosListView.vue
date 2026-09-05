@@ -25,24 +25,13 @@
                 : 'Visualiza y filtra pedidos según estado, fechas, proveedor y más'
               }}
             </p>
-            <!-- Contador de pedidos pendientes: botón toggle del filtro "requiere acción" (misma
-                 funcionalidad que el checkbox/botón que traía PedidosListFiltrosBar). -->
-            <div v-if="contadorPedidosPendientes > 0" class="mt-2">
-              <button
-                type="button"
-                @click="filtroSoloPendientes = !filtroSoloPendientes; aplicarFiltroPendientes()"
-                :aria-pressed="filtroSoloPendientes"
-                :title="filtroSoloPendientes ? 'Quitar el filtro y ver todos los pedidos' : 'Filtrar para ver solo pedidos en estados: Confirmado por Producción, Confirmado y Enviado'"
-                class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 text-sm font-medium text-orange-800 dark:text-orange-300 transition-colors hover:bg-orange-100 dark:hover:bg-orange-900/30 focus:outline-none focus:ring-2 focus:ring-orange-500 dark:focus:ring-orange-400"
-              >
-                <svg class="w-4 h-4 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                <span class="text-sm font-semibold text-orange-800 dark:text-orange-200">
-                  {{ contadorPedidosPendientes }} pedido{{ contadorPedidosPendientes !== 1 ? 's' : '' }} {{ esModoElRayo ? 'requieren tu acción' : 'requieren acción' }}
-                </span>
-              </button>
-            </div>
+            <RequiereAccionToggleButton
+              :contador="contadorPedidosPendientes"
+              :activo="filtroSoloPendientes"
+              :sufijo="esModoElRayo ? 'requieren tu acción' : 'requieren acción'"
+              titulo-inactivo="Filtrar para ver solo pedidos en estados: Confirmado por Producción, Confirmado y Enviado"
+              @toggle="filtroSoloPendientes = !filtroSoloPendientes; aplicarFiltroPendientes()"
+            />
           </div>
         </div>
         <div class="flex w-full flex-wrap items-center justify-end gap-3">
@@ -277,6 +266,7 @@ import QuickTablePagination from '@/components/QuickTablePagination.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import SortableTableHead from '../components/SortableTableHead.vue'
 import PedidosListFiltrosBar from '../components/PedidosListFiltrosBar.vue'
+import RequiereAccionToggleButton from '../components/RequiereAccionToggleButton.vue'
 import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
 
 const router = useRouter()
