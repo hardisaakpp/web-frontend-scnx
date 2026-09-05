@@ -1,5 +1,12 @@
 <template>
   <div class="space-y-6">
+    <OdcSapVolverButton
+      v-if="odcSapVolverTarget"
+      :to="odcSapVolverTarget"
+      :title="odcSapVolverTitle"
+      class="shrink-0 self-start"
+    />
+
     <!-- Header -->
     <div class="flex items-center justify-between flex-wrap gap-4">
       <div>
@@ -262,8 +269,11 @@ import { usePageSizePreference } from '../composables/usePageSizePreference'
 import { useOffsetPagination } from '../composables/useOffsetPagination'
 import { PAGE_SIZE_OPTIONS } from '../config/pagination'
 import QuickTablePagination from '@/components/QuickTablePagination.vue'
+import OdcSapVolverButton from '@/components/OdcSapVolverButton.vue'
+import { useOdcSapVolver } from '../../../composables/useOdcSapVolver'
 import type { ArchivoOriginalItem, PedidosListadoMetadata } from '../types'
 
+const { target: odcSapVolverTarget, title: odcSapVolverTitle } = useOdcSapVolver()
 const toast = useToast()
 
 const PAGE_SIZE = 10
