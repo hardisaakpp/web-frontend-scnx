@@ -158,7 +158,7 @@
               </svg>
             </div>
             <div class="flex-1 min-w-0">
-              <div class="font-medium text-gray-900 dark:text-white text-sm">Listado Pedidos Originales</div>
+              <div class="font-medium text-gray-900 dark:text-white text-sm">Pedidos Originales Excel</div>
               <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Archivos Excel en storage</div>
             </div>
           </div>
