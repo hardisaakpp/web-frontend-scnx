@@ -147,7 +147,7 @@
                   {{ formatDateTime(archivo.fecha_subida) }}
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                  {{ formatDownloads(archivo.descargas_count) }}
+                  {{ formatDownloads(archivo.descargas) }}
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap text-right">
                   <div class="flex items-center justify-end gap-2">
@@ -337,7 +337,7 @@ async function descargarArchivo(archivo: ArchivoOriginalItem) {
     
     toast.success('Descarga exitosa', `Archivo ${archivo.nombre_original} descargado`)
 
-    // Refrescar desde backend para mostrar descargas_count persistido (fuente de verdad).
+    // Refrescar desde backend para mostrar descargas persistidas (fuente de verdad).
     await cargarArchivos()
   } catch (err: any) {
     console.error('Error al descargar archivo:', err)

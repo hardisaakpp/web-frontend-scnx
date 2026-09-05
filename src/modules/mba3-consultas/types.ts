@@ -1704,7 +1704,7 @@ export interface InfoArchivoPlantilla {
   hash_md5?: string | null
   fecha_subida: string
   subido_por: string
-  descargas_count: number
+  descargas: number
   ultima_descarga?: string | null
 }
 
@@ -1770,7 +1770,7 @@ export interface ArchivoOriginalItem {
   hash_md5?: string | null
   fecha_subida: string
   subido_por: string
-  descargas_count: number
+  descargas: number
   ultima_descarga?: string | null
   activo: boolean
 }
