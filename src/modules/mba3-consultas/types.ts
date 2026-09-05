@@ -991,10 +991,13 @@ export interface PedidoCabecera {
   /** ODC(s) del pedido (disponible cuando estado_id = 12 CONFIRMADO_ENVIADO). Trae más
    * de un elemento cuando el pedido mezcla tiendas de más de una bodega/CD (ver
    * origen_traslado_detectado) -- el frontend usa esto para mostrar un botón
-   * "Generar TXT MBA3" por ODC en vez de uno solo. */
+   * "Generar TXT MBA3" por ODC en vez de uno solo, y para abrir el modal de
+   * integración SAP de cada ODC (oc_id) desde PedidoCabecera.vue. */
   ordenes_compra?: Array<{
+    oc_id: string
     codigo_bodega: string | null
     numero_oc_sap: string | null
+    doc_entry: number | null
     estado: string | null
   }>
 }
@@ -1129,6 +1132,7 @@ export interface DistribucionTienda {
   tienda_codigo: string
   tienda_nombre: string
   cantidad: number
+  agregada_manualmente?: boolean
 }
 
 export interface AjusteDetalle {
@@ -1162,6 +1166,7 @@ export interface DistribucionTiendaItemResponse {
   cantidad_asignada: number
   cantidad_solicitada?: number
   cantidad_confirmada?: number
+  agregada_manualmente?: boolean
 }
 
 export interface ProductoDistribucionResponse {
@@ -1525,10 +1530,11 @@ export interface SolicitudTransferenciaResultado {
   error: string | null
 }
 
-/** Una entrada por ITR para la tabla del modal (DocNum + código tienda) */
+/** Una entrada por ITR para la tabla del modal (DocNum + tienda) */
 export interface ItrPorTienda {
   doc_num: number
   tienda_codigo: string
+  tienda_nombre?: string | null
 }
 
 /**

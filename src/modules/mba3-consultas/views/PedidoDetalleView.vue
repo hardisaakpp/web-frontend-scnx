@@ -113,7 +113,7 @@
         :es-modo-mabel-trading="false"
         :pedido="pedido"
         :confirmar-deshabilitado="confirmarDeshabilitadoPorEstado"
-        :es-inmediato-sin-fecha="esInmediatoSinFecha"
+        :falta-fecha-entrega="faltaFechaEntrega"
         :hide-confirm-and-download="false"
         :hide-cargar-plantillas="true"
         :show-despachar-y-facturar="true"
@@ -179,10 +179,14 @@
           :show-inmediato-option="false"
           :fecha-pedido-editable="false"
           :puede-editar-fecha-facturacion="puedeEditarFechaFacturacion"
+          :guardando-fecha-pedido="guardandoFechaPedido"
+          :guardando-fecha-entrega="guardandoFechaEntrega"
+          :guardando-fecha-facturacion="guardandoFechaFacturacion"
           @copy-to-clipboard="copyToClipboard"
           @update-fecha-pedido="handleUpdateFechaPedido"
           @update-fecha-entrega="handleUpdateFechaEntrega"
           @update-fecha-facturacion="handleUpdateFechaFacturacion"
+          @ver-detalle-sap="handleVerDetalleSap"
         />
 
         <!-- ⭐ FASE 4: Ajuste y Redistribución a Tiendas -->
@@ -404,6 +408,15 @@
       @confirmar-con-diferencia="handleConfirmarConDiferencia"
     />
 
+    <!-- Modal de integración SAP: al hacer clic en un "Número OC SAP" de la cabecera -->
+    <IntegracionSAPModal
+      :is-open="showIntegracionSAPModal"
+      :detalle="integracionSAPDetalle"
+      :solicitudes-transferencia="integracionSAPSolicitudes"
+      :estado-general="integracionSAPEstadoGeneral"
+      @close="showIntegracionSAPModal = false"
+    />
+
   </div>
 </template>
 
@@ -415,7 +428,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useToast } from '@/composables/useToast'
 import { lastNotification } from '@/composables/useNotificaciones'
 import { mba3ConsultasService } from '../services/mba3ConsultasApi'
-import type { PedidoCompleto, InfoArchivoPlantillaResponse, DetalleDiferenciaProduccion, HijoDiferenciaPayload } from '../types'
+import type { PedidoCompleto, InfoArchivoPlantillaResponse, DetalleDiferenciaProduccion, HijoDiferenciaPayload, IntegracionSAPDetalle, SolicitudesTransferencia } from '../types'
 // Utilidades extraídas
 import {
   formatDate,
@@ -464,6 +477,7 @@ import RedistribucionTiendas from '../components/RedistribucionTiendas.vue'
 import UploadErrorModal from '../components/UploadErrorModal.vue'
 import SimpleConfirmModal from '../components/SimpleConfirmModal.vue'
 import DiferenciaProduccionModal from '../components/DiferenciaProduccionModal.vue'
+import IntegracionSAPModal from '../components/IntegracionSAPModal.vue'
 import LoadingSpinner from '../components/LoadingSpinner.vue'
 import ColumnSelectorDropdown from '../components/ColumnSelectorDropdown.vue'
 
@@ -509,6 +523,22 @@ const showConfirmacionProduccionModal = ref(false)
 const showDiferenciaModal = ref(false)
 const detallesDiferencia = ref<DetalleDiferenciaProduccion[]>([])
 const procesandoDiferencia = ref(false)
+
+// Modal de integración SAP: al hacer clic en un "Número OC SAP" de la cabecera
+// (pedidos con más de una ODC muestran un botón por cada una, ver PedidoCabecera.vue).
+const showIntegracionSAPModal = ref(false)
+const integracionSAPDetalle = ref<IntegracionSAPDetalle | null>(null)
+const integracionSAPSolicitudes = ref<SolicitudesTransferencia | null>(null)
+
+// Título/ícono del modal (IntegracionSAPModal.vue::tituloModal) exige estadoGeneral
+// explícito -- sin esto siempre cae en "❌ Error" aunque el envío haya sido exitoso.
+const integracionSAPEstadoGeneral = computed<'success' | 'partial' | 'error'>(() => {
+  const detalle = integracionSAPDetalle.value
+  if (!detalle || !detalle.success) return 'error'
+  const st = integracionSAPSolicitudes.value
+  if (st && st.transferencias_errores > 0) return 'partial'
+  return 'success'
+})
 
 // ⭐ Set para rastrear columnas modificadas (formato: "detalleId:columnKey")
 const columnasModificadas = ref<Set<string>>(new Set())
@@ -641,9 +671,10 @@ const confirmarDeshabilitadoPorEstado = computed(() => {
   const estadoId = cabecera.estado_id != null ? Number(cabecera.estado_id) : null
   if (estadoId !== 23) return true
 
-  // Si la fecha de entrega es "INMEDIATO", el usuario debe seleccionar una fecha real antes de confirmar
+  // El usuario debe tener seleccionada una fecha de entrega real: ni vacía/sin
+  // seleccionar, ni el sentinel "INMEDIATO" pendiente de reemplazar por una fecha.
   const fechaEntrega = cabecera.fecha_entrega?.trim()?.toUpperCase()
-  if (fechaEntrega === 'INMEDIATO') return true
+  if (!fechaEntrega || fechaEntrega === 'INMEDIATO') return true
 
   return false
 })
@@ -670,15 +701,17 @@ const despacharYFacturarDeshabilitadoPorFecha = computed(() => {
   return !pedido.value?.cabecera?.fecha_facturacion
 })
 
-// Indica si el botón está deshabilitado específicamente porque el pedido es INMEDIATO y falta seleccionar fecha de entrega
-const esInmediatoSinFecha = computed(() => {
+// Indica si "Confirmar" está deshabilitado porque falta una fecha de entrega real
+// (vacía/sin seleccionar, o todavía "INMEDIATO" sin reemplazar) -- controla el hint
+// visible junto al botón.
+const faltaFechaEntrega = computed(() => {
   const cabecera = pedido.value?.cabecera
   if (!cabecera) return false
   const estadoId = cabecera.estado_id != null ? Number(cabecera.estado_id) : null
   // Solo aplica en el estado donde "Confirmar" está habilitado: Confirmado por Producción (23)
   if (estadoId !== 23) return false
   const fechaEntrega = cabecera.fecha_entrega?.trim()?.toUpperCase()
-  return fechaEntrega === 'INMEDIATO'
+  return !fechaEntrega || fechaEntrega === 'INMEDIATO'
 })
 
 // Deshabilitar "Confirmar Redistribución" usando el flag del backend (incluye CANCELADO y estados ya confirmados)
@@ -867,12 +900,16 @@ async function guardarEdicion() {
 // Funciones de gestión del pedido ahora están en el composable usePedidoDetalle
 
 // ⭐ HU-06: Funciones para actualizar cabecera del pedido
-const { handleUpdateFechaPedido, handleUpdateFechaEntrega } = useFechaPedidoHandlers(pedido, toast, loadPedido)
+const { handleUpdateFechaPedido, handleUpdateFechaEntrega, guardandoFechaPedido, guardandoFechaEntrega } =
+  useFechaPedidoHandlers(pedido, toast, loadPedido)
 
 // Fecha Facturación (req. 1.8): exclusiva de Producción El Rayo, solo en Gestionar Pedido
+const guardandoFechaFacturacion = ref(false)
+
 async function handleUpdateFechaFacturacion(fecha: string | null) {
   if (!pedido.value?.cabecera?.pedido_id) return
 
+  guardandoFechaFacturacion.value = true
   try {
     await mba3ConsultasService.actualizarCabeceraPedido(pedido.value.cabecera.pedido_id, {
       fecha_facturacion: fecha
@@ -889,6 +926,8 @@ async function handleUpdateFechaFacturacion(fecha: string | null) {
     console.error('Error al actualizar fecha de facturación:', e)
     toast.error('Error al actualizar', e.message || 'No se pudo actualizar la fecha de facturación')
     await loadPedido()
+  } finally {
+    guardandoFechaFacturacion.value = false
   }
 }
 
@@ -1047,6 +1086,58 @@ function handleCerrarModalConfirmacion() {
   showConfirmacionModal.value = false
   // El usuario permanece en la misma página (Detalle del Pedido)
   // No se realiza redirección
+}
+
+/** Detalle mínimo para mostrar el modal cuando no hay integración SAP registrada para la ODC (404) o falla el fetch. */
+function construirDetalleSapMinimo(oc: { oc_id: string | null; numero_oc_sap: string | null; doc_entry: number | null }): IntegracionSAPDetalle {
+  return {
+    oc_id: oc.oc_id ?? '',
+    success: true,
+    doc_entry: oc.doc_entry ?? null,
+    doc_num: null,
+    numero_oc_sap: oc.numero_oc_sap ?? null,
+    message: 'Enviada exitosamente',
+    error: null,
+    error_message: null,
+    error_code: null,
+    error_source: null
+  }
+}
+
+// Al hacer clic en un "Número OC SAP" de la cabecera (PedidoCabecera.vue): abre el
+// mismo modal "Integración con SAP Completada" que usa la interfaz "ODC a SAP"
+// (ver ProcesoCompletoView.vue::handleVerDetalleSAP), una ODC a la vez.
+async function handleVerDetalleSap(oc: { oc_id: string | null; numero_oc_sap: string | null; doc_entry: number | null }) {
+  if (!oc.oc_id) return
+
+  try {
+    const response = await mba3ConsultasService.getIntegracionSAP(oc.oc_id)
+    const envio = response.envio_sap
+    if (!envio) throw new Error('Respuesta sin envio_sap')
+
+    integracionSAPDetalle.value = {
+      oc_id: envio.oc_id,
+      success: envio.success,
+      doc_entry: envio.doc_entry ?? null,
+      doc_num: envio.doc_num ?? null,
+      numero_oc_sap: envio.numero_oc_sap ?? oc.numero_oc_sap ?? null,
+      message: envio.message ?? 'Enviada exitosamente',
+      error: envio.error ?? null,
+      error_message: envio.error ?? null,
+      error_code: envio.error_code ?? null,
+      error_source: null
+    }
+    integracionSAPSolicitudes.value = response.solicitudes_transferencia ?? envio.solicitudes_transferencia ?? null
+  } catch (err: any) {
+    if (err?.response?.status !== 404) {
+      console.warn('[handleVerDetalleSap] Error al obtener integración SAP:', err)
+      toast.warning('No se pudo cargar el detalle de integración', err?.response?.data?.detail ?? err?.message ?? 'Error desconocido')
+    }
+    integracionSAPDetalle.value = construirDetalleSapMinimo(oc)
+    integracionSAPSolicitudes.value = null
+  }
+
+  showIntegracionSAPModal.value = true
 }
 
 // Confirmar Producción (req. 1.8): exclusivo de produccion-elrayo.view, Gestionar Pedido -> Confirmado por Producción
