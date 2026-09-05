@@ -400,6 +400,8 @@
           :editable="!esModoMabelTrading"
           :default-expanded="!esModoMabelTrading"
           :show-inmediato-option="true"
+          :guardando-fecha-pedido="guardandoFechaPedido"
+          :guardando-fecha-entrega="guardandoFechaEntrega"
           @copy-to-clipboard="copyToClipboard"
           @update-fecha-pedido="handleUpdateFechaPedido"
           @update-fecha-entrega="handleUpdateFechaEntrega"
@@ -1301,7 +1303,8 @@ async function guardarEdicion() {
 // Funciones de gestión del pedido ahora están en el composable usePedidoDetalle
 
 // ⭐ HU-06: Funciones para actualizar cabecera del pedido
-const { handleUpdateFechaPedido, handleUpdateFechaEntrega } = useFechaPedidoHandlers(pedido, toast, loadPedido)
+const { handleUpdateFechaPedido, handleUpdateFechaEntrega, guardandoFechaPedido, guardandoFechaEntrega } =
+  useFechaPedidoHandlers(pedido, toast, loadPedido)
 
 // Pese al nombre del botón/función, esto NO es una confirmación real del pedido (req.
 // 1.2/1.8): es el paso "Fase 3" de Mabel Trading -- guarda cambios y crea la respuesta del

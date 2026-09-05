@@ -1,4 +1,4 @@
-import type { Ref } from 'vue'
+import { ref, type Ref } from 'vue'
 import type { useToast } from '@/composables/useToast'
 import type { PedidoCompleto } from '../types'
 import { pedidosService } from '../services/domains/pedidos'
@@ -9,9 +9,15 @@ export function useFechaPedidoHandlers(
   toast: ReturnType<typeof useToast>,
   loadPedido: () => Promise<void>
 ) {
+  // Feedback de "guardando" mientras se persiste la fecha (PATCH + recarga completa del
+  // pedido): PedidoCabecera.vue deshabilita el input y muestra un spinner con esto.
+  const guardandoFechaPedido = ref(false)
+  const guardandoFechaEntrega = ref(false)
+
   async function handleUpdateFechaPedido(fecha: string | null) {
     if (!pedido.value?.cabecera?.pedido_id) return
 
+    guardandoFechaPedido.value = true
     try {
       await pedidosService.actualizarCabeceraPedido(pedido.value.cabecera.pedido_id, {
         fecha_pedido: fecha
@@ -31,12 +37,15 @@ export function useFechaPedidoHandlers(
       toast.error('Error al actualizar', e.message || 'No se pudo actualizar la fecha de pedido')
       // Recargar para restaurar valor original
       await loadPedido()
+    } finally {
+      guardandoFechaPedido.value = false
     }
   }
 
   async function handleUpdateFechaEntrega(fecha: string | null) {
     if (!pedido.value?.cabecera?.pedido_id) return
 
+    guardandoFechaEntrega.value = true
     try {
       await pedidosService.actualizarCabeceraPedido(pedido.value.cabecera.pedido_id, {
         fecha_entrega: fecha
@@ -56,8 +65,10 @@ export function useFechaPedidoHandlers(
       toast.error('Error al actualizar', e.message || 'No se pudo actualizar la fecha de entrega')
       // Recargar para restaurar valor original
       await loadPedido()
+    } finally {
+      guardandoFechaEntrega.value = false
     }
   }
 
-  return { handleUpdateFechaPedido, handleUpdateFechaEntrega }
+  return { handleUpdateFechaPedido, handleUpdateFechaEntrega, guardandoFechaPedido, guardandoFechaEntrega }
 }
