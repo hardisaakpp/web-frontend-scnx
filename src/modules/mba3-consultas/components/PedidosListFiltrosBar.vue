@@ -16,24 +16,6 @@
     </div>
 
     <div v-show="!collapsed" class="p-6">
-      <!-- Filtro rápido: Solo pedidos que requieren acción (opcional -- ver prop showQuickFilter).
-           Un solo botón, siempre con el mismo estilo (mismo naranja que ya usa la vista para el
-           banner "Mostrando solo pedidos que requieren acción" en la tabla) -- el propio texto ya
-           comunica el conteo, no hace falta variar el color entre activo/inactivo. -->
-      <div v-if="showQuickFilter">
-        <button
-          type="button"
-          @click="filtroSoloPendientes = !filtroSoloPendientes; emit('toggle-filtro-pendientes')"
-          :aria-pressed="filtroSoloPendientes"
-          class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 text-sm font-medium text-orange-800 dark:text-orange-300 transition-colors hover:bg-orange-100 dark:hover:bg-orange-900/30 focus:outline-none focus:ring-2 focus:ring-orange-500 dark:focus:ring-orange-400"
-        >
-          {{ textoContadorPendientes }}
-        </button>
-        <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-          {{ descripcionFiltroPendientes }}
-        </p>
-      </div>
-
       <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-4">
         <!-- Estado: slot completo (label + control) -- el default es el <select> que usan 3 de los
              4 listados; RevisarRedistribucionListadoView.vue no filtra por estado individual y
@@ -180,9 +162,14 @@
 /**
  * Barra de filtros de los 4 listados de pedidos del módulo (PedidosListView.vue,
  * CargarPlantillaListadoView.vue, RedistribucionListadoView.vue, RevisarRedistribucionListadoView.vue):
- * contenedor colapsable "Filtros de Búsqueda" + filtro rápido opcional "Solo pedidos que requieren
- * acción" + grid de campos (Estado, Fecha, Proveedor, Número de Pedido, Creado Por, Modificado Por,
- * Limpiar).
+ * contenedor colapsable "Filtros de Búsqueda" + grid de campos (Estado, Fecha, Proveedor, Número de
+ * Pedido, Creado Por, Modificado Por, Limpiar).
+ *
+ * El filtro rápido "Solo pedidos que requieren acción" NO vive aquí -- cada vista lo resuelve con su
+ * propio botón en la cabecera (junto al contador "N pedidos requieren acción"), que alterna
+ * directamente su propio `filtroSoloPendientes` local y llama a `aplicarFiltroPendientes()`. Antes
+ * era un checkbox (y luego un botón) dentro de esta barra; se movió a la cabecera para no duplicar
+ * el mismo control dos veces en la misma pantalla.
  *
  * Creado Por / Modificado Por son <select> (no texto libre): alimentados por `creadoresDisponibles`/
  * `modificadoresDisponibles`, listas de valores DISTINCT que cada vista resuelve contra
@@ -203,11 +190,6 @@
  * que no lo use).
  *
  * ASIMETRÍAS REALES cubiertas, sin forzar comportamiento nuevo en ningún consumidor:
- * - `showQuickFilter` (default false): PedidosListView lo pasa como `esModoElRayo || mostrarFiltroRapido`
- *   (mostrarFiltroRapido ya es `true` fijo hoy, pero se preserva el cálculo tal cual);
- *   CargarPlantillaListadoView y RedistribucionListadoView lo pasan fijo en `true`;
- *   RevisarRedistribucionListadoView simplemente no lo pasa (false), igual que hoy no tiene esta
- *   sección en absoluto.
  * - slot `estado-field`: el default (un <select> alimentado por `estadosDisponibles`) cubre a los
  *   3 listados que sí filtran por estado. RevisarRedistribucionListadoView reemplaza el slot
  *   completo por su propio párrafo informativo ("Estados incluidos") -- no es un <select> siquiera,
@@ -221,7 +203,7 @@ import { getEstadoPedidoLabel } from '../utils/estadoPedido'
 import { MOSTRAR_FILTRO_PROVEEDOR_PEDIDOS } from '../config/featureFlags'
 import type { EstadoPedidoOption, TipoFechaFiltro } from '../types'
 import { ref } from '@vue/reactivity'
-import { computed, useId } from 'vue'
+import { useId } from 'vue'
 
 const estadoSelectId = useId()
 const fechaFiltroId = useId()
@@ -230,7 +212,7 @@ const numeroPedidoInputId = useId()
 const creadoPorSelectId = useId()
 const modificadoPorSelectId = useId()
 
-const props = withDefaults(
+withDefaults(
   defineProps<{
     /** Opciones del <select> de Estado (slot por defecto). Siempre resuelta por la vista contra su
      * propio endpoint -- este componente nunca decide qué estados existen. */
@@ -241,29 +223,14 @@ const props = withDefaults(
     /** Opciones del <select> de "Modificado Por": valores distintos de modificado_por que existen
      * en la base de datos, resueltos por la vista contra GET /api/pedidos/modificadores. */
     modificadoresDisponibles?: string[]
-    /** Muestra el botón toggle "Solo pedidos que requieren acción". Default false (comportamiento de
-     * RevisarRedistribucionListadoView, que no la tiene). */
-    showQuickFilter?: boolean
-    /** Cantidad usada en el texto del botón ("N pedidos requieren acción"). Se muestra siempre,
-     * activo o no el filtro -- es el propio conteo el que indica al usuario si vale la pena
-     * activarlo. Ignorado si showQuickFilter es false. */
-    contadorPedidosPendientes?: number
     /** Placeholder del input "Número de Pedido". Default 'Buscar por número de pedido...' (el de 3
      * de los 4 listados); CargarPlantillaListadoView pasa el suyo con ejemplo ('...ej: P-12.08'). */
     numeroPedidoPlaceholder?: string
-    /** Texto bajo el botón "N pedidos requieren acción" que explica qué estados incluye.
-     * Default: los 3 estados de respuesta del proveedor (Pedidos/Redistribución/Confirmados).
-     * CargarPlantillaListadoView pasa el suyo propio (Producción Pospuesta, Despachar y Facturar --
-     * ver ESTADOS_QUE_REQUIEREN_ACCION_CARGAR_PLANTILLA en utils/estadoPedido.ts). */
-    descripcionFiltroPendientes?: string
   }>(),
   {
     creadoresDisponibles: () => [],
     modificadoresDisponibles: () => [],
-    showQuickFilter: false,
-    contadorPedidosPendientes: 0,
-    numeroPedidoPlaceholder: 'Buscar por número de pedido...',
-    descripcionFiltroPendientes: 'Muestra solo pedidos en estados: Pendiente Confirmación, Respuesta Cargada, Confirmado Proveedor'
+    numeroPedidoPlaceholder: 'Buscar por número de pedido...'
   }
 )
 
@@ -278,9 +245,6 @@ const emit = defineEmits<{
   /** El <select> de Estado cambió, ANTES de `aplicar` -- conectar a `actualizarFiltroPendientes`
    * (o equivalente) si la vista necesita reaccionar al cambio de estado antes de recargar. */
   'estado-change': []
-  /** El botón "N pedidos requieren acción" cambió de estado -- conectar a `aplicarFiltroPendientes`
-   * (o equivalente) de la vista, que decide su propia lógica de qué hacer con el filtro de estado. */
-  'toggle-filtro-pendientes': []
   /** Passthrough de los eventos de DebouncedSearchField para "Número de Pedido" -- conectar
    * directo a `handleInput`/`commit`/`clear` del useDebouncedFilterInput de la vista. */
   'numero-pedido-input': []
@@ -293,7 +257,6 @@ const tipoFecha = defineModel<TipoFechaFiltro | undefined>('tipoFecha', { defaul
 const fechaDesde = defineModel<string | null | undefined>('fechaDesde', { default: '' })
 const fechaHasta = defineModel<string | null | undefined>('fechaHasta', { default: '' })
 const proveedorNombre = defineModel<string>('proveedorNombre', { default: '' })
-const filtroSoloPendientes = defineModel<boolean>('filtroSoloPendientes', { default: false })
 const numeroPedidoTexto = defineModel<string>('numeroPedidoTexto', { default: '' })
 const creadoPor = defineModel<string>('creadoPor', { default: '' })
 const modificadoPor = defineModel<string>('modificadoPor', { default: '' })
@@ -301,13 +264,4 @@ const modificadoPor = defineModel<string>('modificadoPor', { default: '' })
 /** Colapsado por defecto, igual que `filtrosColapsados` en los 4 listados hoy. 100% interno, ver
  * comentario de archivo. */
 const collapsed = ref(true)
-
-/** Texto del botón toggle "Solo pedidos que requieren acción" (ver plantilla). Sufijo plural
- * extraído a variable propia (no inline en el template) para evitar S3358. */
-const textoContadorPendientes = computed(() => {
-  const cantidad = props.contadorPedidosPendientes
-  const sufijoPedido = cantidad === 1 ? '' : 's'
-  const sufijoVerbo = cantidad === 1 ? '' : 'n'
-  return `${cantidad} pedido${sufijoPedido} requiere${sufijoVerbo} acción`
-})
 </script>
