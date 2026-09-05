@@ -630,7 +630,10 @@ function avatarPaletaPersona(persona: PersonaAgrupada): PaletaTipoNotificacion |
 }
 
 function inicialesDe(nombre: string): string {
-  const partes = nombre.trim().split(/\s+/).filter(Boolean)
+  // Varios nombres reales traen un sufijo entre parentesis (ej. "Carlos Ortiz (SIS-MBL)"):
+  // se descarta antes de partir en palabras para no tomar "(SIS-MBL)" como "apellido".
+  const sinSufijo = nombre.replace(/\([^)]*\)/g, ' ')
+  const partes = sinSufijo.trim().split(/\s+/).filter(Boolean)
   if (partes.length === 0) return '?'
   const primera = partes[0][0]
   const ultima = partes.length > 1 ? partes[partes.length - 1][0] : ''
