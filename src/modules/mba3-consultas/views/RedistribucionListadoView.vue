@@ -25,7 +25,7 @@
             <RequiereAccionToggleButton
               :contador="contadorPedidosPendientes"
               :activo="filtroSoloPendientes"
-              titulo-inactivo="Filtrar para ver solo pedidos en estados: Pendiente Confirmación, Respuesta Cargada, Confirmado Proveedor"
+              titulo-inactivo="Filtrar para ver solo pedidos en estados: Confirmado por El Rayo, Listo para Redistribución"
               @toggle="filtroSoloPendientes = !filtroSoloPendientes; aplicarFiltroPendientes()"
             />
           </div>
@@ -153,7 +153,7 @@
                       : filaCargandoId
                         ? 'opacity-50 pointer-events-none'
                         : 'hover:bg-gray-50 dark:hover:bg-gray-700/50',
-                    requiereAccionPedido(pedido.estado) ? 'bg-orange-50/30 dark:bg-orange-900/10 border-l-4 border-orange-500 dark:border-orange-400' : ''
+                    requiereAccionPedidoRedistribucion(pedido.estado) ? 'bg-orange-50/30 dark:bg-orange-900/10 border-l-4 border-orange-500 dark:border-orange-400' : ''
                   ]"
                   @click="abrirRedistribucion(pedido)"
                 >
@@ -180,7 +180,7 @@
                   <td class="px-6 py-4 whitespace-nowrap text-center">
                     <div class="flex items-center justify-center gap-2">
                       <span :class="getEstadoPedidoBadgeClassFull(pedido.estado)">{{ getEstadoPedidoLabel(pedido.estado) }}</span>
-                      <span v-if="requiereAccionPedido(pedido.estado)" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300" title="Requiere acción">!</span>
+                      <span v-if="requiereAccionPedidoRedistribucion(pedido.estado)" class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300" title="Requiere acción">!</span>
                     </div>
                   </td>
                   <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{{ pedido.comprador_nombre || '-' }}</td>
@@ -233,7 +233,7 @@ import { PAGE_SIZE_OPTIONS } from '../config/pagination'
 import { useFiltroTextoConDebounce } from '../composables/useFiltroTextoConDebounce'
 import { usePageSizePreference } from '../composables/usePageSizePreference'
 import { usePaginaPreference } from '../composables/usePaginaPreference'
-import { getEstadoPedidoLabel, getEstadoPedidoBadgeClassFull, requiereAccionPedido } from '../utils/estadoPedido'
+import { getEstadoPedidoLabel, getEstadoPedidoBadgeClassFull, requiereAccionPedidoRedistribucion, ESTADOS_QUE_REQUIEREN_ACCION_REDISTRIBUCION } from '../utils/estadoPedido'
 import {
   useSortableList,
   type SortableColumnDef,
@@ -297,7 +297,7 @@ const {
 } = useFiltroTextoConDebounce(filtros, 'numero_pedido', aplicarFiltros)
 
 const contadorPedidosPendientes = computed(() =>
-  pedidos.value.filter(p => requiereAccionPedido(p.estado)).length
+  pedidos.value.filter(p => requiereAccionPedidoRedistribucion(p.estado)).length
 )
 
 // Columnas de la tabla (ordenables vía SortableTableHead)
@@ -389,7 +389,7 @@ const {
 function aplicarFiltroPendientes() {
   if (filtroSoloPendientes.value) {
     const estadoAnterior = filtros.value.estado
-    const estadosPendientes = ['PENDIENTE_CONFIRMACION_PROVEEDOR', 'RESPUESTA_PROVEEDOR_CARGADA', 'CONFIRMADO_PROVEEDOR']
+    const estadosPendientes = ESTADOS_QUE_REQUIEREN_ACCION_REDISTRIBUCION as readonly string[]
     if (estadoAnterior && estadosPendientes.includes(estadoAnterior)) {
       filtros.value.estado = ''
     }
@@ -399,7 +399,7 @@ function aplicarFiltroPendientes() {
 
 function actualizarFiltroPendientes() {
   const estadoActual = filtros.value.estado
-  const estadosPendientes = ['PENDIENTE_CONFIRMACION_PROVEEDOR', 'RESPUESTA_PROVEEDOR_CARGADA', 'CONFIRMADO_PROVEEDOR']
+  const estadosPendientes = ESTADOS_QUE_REQUIEREN_ACCION_REDISTRIBUCION as readonly string[]
   if (estadoActual && !estadosPendientes.includes(estadoActual)) {
     filtroSoloPendientes.value = false
   }
